@@ -1,0 +1,2277 @@
+{
+    "org": {
+        "name": "Exported org",
+        "sanctions_threshold": 70,
+        "sanctions_limit": 30,
+        "sentry_replay_enabled": null,
+        "environment": null
+    },
+    "admins": [
+        {
+            "email": "admin@export.com",
+            "first_name": "Demo",
+            "last_name": "Export"
+        }
+    ],
+    "data_model": {
+        "tables": [
+            {
+                "id": "9a5765ad-feaf-4f1c-b53b-528136c74c53",
+                "name": "payment",
+                "description": "",
+                "fields": {
+                    "amount": {
+                        "id": "9c39bda9-8ac5-40a3-b25e-1adec356377e",
+                        "data_type": "Float",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "amount",
+                        "nullable": true,
+                        "table_id": "9a5765ad-feaf-4f1c-b53b-528136c74c53",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "object_id": {
+                        "id": "fc047e03-cc6e-4e0b-bd84-efbab4b503dc",
+                        "data_type": "String",
+                        "description": "required id on all objects in the payment table",
+                        "is_enum": false,
+                        "name": "object_id",
+                        "nullable": false,
+                        "table_id": "9a5765ad-feaf-4f1c-b53b-528136c74c53",
+                        "unicity_constraint": "active_unique_constraint"
+                    },
+                    "people_internal_id": {
+                        "id": "704ffe2a-04b6-409f-90c1-6114d4807d59",
+                        "data_type": "Float",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "people_internal_id",
+                        "nullable": true,
+                        "table_id": "9a5765ad-feaf-4f1c-b53b-528136c74c53",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "salut": {
+                        "id": "3899921b-853c-446d-83d2-162debc270ee",
+                        "data_type": "String",
+                        "description": "dasdas",
+                        "is_enum": false,
+                        "name": "salut",
+                        "nullable": true,
+                        "table_id": "9a5765ad-feaf-4f1c-b53b-528136c74c53",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "updated_at": {
+                        "id": "992b1f79-a3cb-4c93-8e38-d8473cbd5d4b",
+                        "data_type": "Timestamp",
+                        "description": "required timestamp on all objects in the payment table",
+                        "is_enum": false,
+                        "name": "updated_at",
+                        "nullable": false,
+                        "table_id": "9a5765ad-feaf-4f1c-b53b-528136c74c53",
+                        "unicity_constraint": "no_unicity_constraint"
+                    }
+                },
+                "alias": "",
+                "semantic_type": "",
+                "caption_field": ""
+            },
+            {
+                "id": "f06e3b36-964f-43f5-88d4-2a8d07d6b528",
+                "name": "tx",
+                "description": "",
+                "fields": {
+                    "account_id": {
+                        "id": "78bcfffa-b43c-42f1-b772-d98e019b0c73",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "account_id",
+                        "nullable": true,
+                        "table_id": "f06e3b36-964f-43f5-88d4-2a8d07d6b528",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "amount": {
+                        "id": "f66f9692-19f6-4fca-a22c-7a9b075fe4f2",
+                        "data_type": "Float",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "amount",
+                        "nullable": true,
+                        "table_id": "f06e3b36-964f-43f5-88d4-2a8d07d6b528",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "object_id": {
+                        "id": "441e5994-b749-4e86-b3fb-bead697018aa",
+                        "data_type": "String",
+                        "description": "required id on all objects in the tx table",
+                        "is_enum": false,
+                        "name": "object_id",
+                        "nullable": false,
+                        "table_id": "f06e3b36-964f-43f5-88d4-2a8d07d6b528",
+                        "unicity_constraint": "active_unique_constraint"
+                    },
+                    "updated_at": {
+                        "id": "0df5daa4-a812-4a33-9494-e8b2bf1cfe39",
+                        "data_type": "Timestamp",
+                        "description": "required timestamp on all objects in the tx table",
+                        "is_enum": false,
+                        "name": "updated_at",
+                        "nullable": false,
+                        "table_id": "f06e3b36-964f-43f5-88d4-2a8d07d6b528",
+                        "unicity_constraint": "no_unicity_constraint"
+                    }
+                },
+                "alias": "",
+                "semantic_type": "",
+                "caption_field": ""
+            },
+            {
+                "id": "ef00c89a-810b-45c7-a3ac-5d63b91468e3",
+                "name": "table_chield",
+                "description": "",
+                "fields": {
+                    "object_id": {
+                        "id": "d9aadb42-9b41-4529-9355-06fd288b2b84",
+                        "data_type": "String",
+                        "description": "required id on all objects in the table_chield table",
+                        "is_enum": false,
+                        "name": "object_id",
+                        "nullable": false,
+                        "table_id": "ef00c89a-810b-45c7-a3ac-5d63b91468e3",
+                        "unicity_constraint": "active_unique_constraint"
+                    },
+                    "updated_at": {
+                        "id": "76c4f5ad-bf95-42f1-8285-5b02e0e19fc7",
+                        "data_type": "Timestamp",
+                        "description": "required timestamp on all objects in the table_chield table",
+                        "is_enum": false,
+                        "name": "updated_at",
+                        "nullable": false,
+                        "table_id": "ef00c89a-810b-45c7-a3ac-5d63b91468e3",
+                        "unicity_constraint": "no_unicity_constraint"
+                    }
+                },
+                "alias": "",
+                "semantic_type": "",
+                "caption_field": ""
+            },
+            {
+                "id": "04c4ceaf-0b2d-4057-aa3d-c863c56bd841",
+                "name": "transaction",
+                "description": "",
+                "fields": {
+                    "account_id": {
+                        "id": "53625a1c-b926-4957-b878-131d543c134d",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "account_id",
+                        "nullable": true,
+                        "table_id": "04c4ceaf-0b2d-4057-aa3d-c863c56bd841",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "amount": {
+                        "id": "9ed4059f-89da-40e9-8696-fb69e2f883a0",
+                        "data_type": "Float",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "amount",
+                        "nullable": true,
+                        "table_id": "04c4ceaf-0b2d-4057-aa3d-c863c56bd841",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "description": {
+                        "id": "462f5c8a-1d00-4238-824f-256ea4bb2cc0",
+                        "data_type": "String",
+                        "description": "label of the transaction",
+                        "is_enum": false,
+                        "name": "description",
+                        "nullable": true,
+                        "table_id": "04c4ceaf-0b2d-4057-aa3d-c863c56bd841",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "object_id": {
+                        "id": "e566ac11-fd8a-4507-8f79-296bb26c82b4",
+                        "data_type": "String",
+                        "description": "required id on all objects in the transaction table",
+                        "is_enum": false,
+                        "name": "object_id",
+                        "nullable": false,
+                        "table_id": "04c4ceaf-0b2d-4057-aa3d-c863c56bd841",
+                        "unicity_constraint": "active_unique_constraint"
+                    },
+                    "trigger": {
+                        "id": "3c81579b-058c-48b5-a1af-ce583b78d745",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": true,
+                        "name": "trigger",
+                        "nullable": true,
+                        "table_id": "04c4ceaf-0b2d-4057-aa3d-c863c56bd841",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "updated_at": {
+                        "id": "b641079d-6eaa-420f-bbae-282be91e3bdb",
+                        "data_type": "Timestamp",
+                        "description": "required timestamp on all objects in the transaction table",
+                        "is_enum": false,
+                        "name": "updated_at",
+                        "nullable": false,
+                        "table_id": "04c4ceaf-0b2d-4057-aa3d-c863c56bd841",
+                        "unicity_constraint": "no_unicity_constraint"
+                    }
+                },
+                "alias": "",
+                "semantic_type": "",
+                "caption_field": ""
+            },
+            {
+                "id": "cea01370-08fc-4f47-84a0-e313bd0b9800",
+                "name": "company_areeba",
+                "description": "",
+                "fields": {
+                    "country": {
+                        "id": "8351038e-3af4-40c4-a294-f77daf168a34",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "country",
+                        "nullable": true,
+                        "table_id": "cea01370-08fc-4f47-84a0-e313bd0b9800",
+                        "unicity_constraint": "no_unicity_constraint",
+                        "ftm_property": "country"
+                    },
+                    "name": {
+                        "id": "b7858c0d-be83-47a0-a1bb-97d0c8ebbcca",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "name",
+                        "nullable": true,
+                        "table_id": "cea01370-08fc-4f47-84a0-e313bd0b9800",
+                        "unicity_constraint": "no_unicity_constraint",
+                        "ftm_property": "name"
+                    },
+                    "object_id": {
+                        "id": "9ff008c9-cc5b-43e1-a5ee-778089d39da7",
+                        "data_type": "String",
+                        "description": "required id on all objects in the company_areeba table",
+                        "is_enum": false,
+                        "name": "object_id",
+                        "nullable": false,
+                        "table_id": "cea01370-08fc-4f47-84a0-e313bd0b9800",
+                        "unicity_constraint": "active_unique_constraint"
+                    },
+                    "updated_at": {
+                        "id": "58d184fa-2c51-43e6-a5fe-8fe9fe8c0557",
+                        "data_type": "Timestamp",
+                        "description": "required timestamp on all objects in the company_areeba table",
+                        "is_enum": false,
+                        "name": "updated_at",
+                        "nullable": false,
+                        "table_id": "cea01370-08fc-4f47-84a0-e313bd0b9800",
+                        "unicity_constraint": "no_unicity_constraint"
+                    }
+                },
+                "ftm_entity": "Company",
+                "alias": "",
+                "semantic_type": "",
+                "caption_field": ""
+            },
+            {
+                "id": "60127d0e-2bbf-45ba-acbc-a367a129cb05",
+                "name": "company",
+                "description": "",
+                "fields": {
+                    "country": {
+                        "id": "79994bee-0bb7-4195-a690-988340a99424",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "country",
+                        "nullable": true,
+                        "table_id": "60127d0e-2bbf-45ba-acbc-a367a129cb05",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "creation_date": {
+                        "id": "0b823c36-4613-439b-95e1-41d949fdc4ac",
+                        "data_type": "Timestamp",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "creation_date",
+                        "nullable": true,
+                        "table_id": "60127d0e-2bbf-45ba-acbc-a367a129cb05",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "holder_id": {
+                        "id": "6ad27536-eb38-41ed-96c4-948c1be63b10",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "holder_id",
+                        "nullable": true,
+                        "table_id": "60127d0e-2bbf-45ba-acbc-a367a129cb05",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "name": {
+                        "id": "5bf3731b-f8f2-4269-a77e-b3dee087cd3b",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "name",
+                        "nullable": true,
+                        "table_id": "60127d0e-2bbf-45ba-acbc-a367a129cb05",
+                        "unicity_constraint": "no_unicity_constraint",
+                        "ftm_property": "name"
+                    },
+                    "object_id": {
+                        "id": "043b250b-c32f-4f02-8315-14379aca763f",
+                        "data_type": "String",
+                        "description": "required id on all objects in the company table",
+                        "is_enum": false,
+                        "name": "object_id",
+                        "nullable": false,
+                        "table_id": "60127d0e-2bbf-45ba-acbc-a367a129cb05",
+                        "unicity_constraint": "active_unique_constraint"
+                    },
+                    "registration_number": {
+                        "id": "ccc92bca-3fd7-4028-a872-b6015369fbbb",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "registration_number",
+                        "nullable": true,
+                        "table_id": "60127d0e-2bbf-45ba-acbc-a367a129cb05",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "updated_at": {
+                        "id": "8f97ea48-d87a-4550-95a9-8e62b48671b2",
+                        "data_type": "Timestamp",
+                        "description": "required timestamp on all objects in the company table",
+                        "is_enum": false,
+                        "name": "updated_at",
+                        "nullable": false,
+                        "table_id": "60127d0e-2bbf-45ba-acbc-a367a129cb05",
+                        "unicity_constraint": "no_unicity_constraint"
+                    }
+                },
+                "ftm_entity": "Company",
+                "alias": "",
+                "semantic_type": "",
+                "caption_field": ""
+            },
+            {
+                "id": "3aa185ef-6038-4658-9e61-ecd8413fff55",
+                "name": "company_holder",
+                "description": "",
+                "fields": {
+                    "name": {
+                        "id": "3abd06b4-98a7-4dd8-b221-f6edfb922e08",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "name",
+                        "nullable": true,
+                        "table_id": "3aa185ef-6038-4658-9e61-ecd8413fff55",
+                        "unicity_constraint": "no_unicity_constraint",
+                        "ftm_property": "name"
+                    },
+                    "object_id": {
+                        "id": "b3b21dc7-5574-4d46-98e6-b732594ab1fa",
+                        "data_type": "String",
+                        "description": "required id on all objects in the company_holder table",
+                        "is_enum": false,
+                        "name": "object_id",
+                        "nullable": false,
+                        "table_id": "3aa185ef-6038-4658-9e61-ecd8413fff55",
+                        "unicity_constraint": "active_unique_constraint"
+                    },
+                    "updated_at": {
+                        "id": "0ebf5546-b49a-480a-9261-ff9acfae9907",
+                        "data_type": "Timestamp",
+                        "description": "required timestamp on all objects in the company_holder table",
+                        "is_enum": false,
+                        "name": "updated_at",
+                        "nullable": false,
+                        "table_id": "3aa185ef-6038-4658-9e61-ecd8413fff55",
+                        "unicity_constraint": "no_unicity_constraint"
+                    }
+                },
+                "ftm_entity": "Person",
+                "alias": "",
+                "semantic_type": "",
+                "caption_field": ""
+            },
+            {
+                "id": "a3f26f58-761d-4bac-b7d7-e14d67219e6c",
+                "name": "holder",
+                "description": "",
+                "fields": {
+                    "object_id": {
+                        "id": "36ee4361-8198-45e6-9b2f-bbb500e9f306",
+                        "data_type": "String",
+                        "description": "required id on all objects in the holder table",
+                        "is_enum": false,
+                        "name": "object_id",
+                        "nullable": false,
+                        "table_id": "a3f26f58-761d-4bac-b7d7-e14d67219e6c",
+                        "unicity_constraint": "active_unique_constraint"
+                    },
+                    "un_truc": {
+                        "id": "ecf2aecf-1ce5-42ea-9c33-df25c3e28359",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "un_truc",
+                        "nullable": true,
+                        "table_id": "a3f26f58-761d-4bac-b7d7-e14d67219e6c",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "updated_at": {
+                        "id": "7a18f7c9-3801-430a-a0c2-91888f637125",
+                        "data_type": "Timestamp",
+                        "description": "required timestamp on all objects in the holder table",
+                        "is_enum": false,
+                        "name": "updated_at",
+                        "nullable": false,
+                        "table_id": "a3f26f58-761d-4bac-b7d7-e14d67219e6c",
+                        "unicity_constraint": "no_unicity_constraint"
+                    }
+                },
+                "alias": "",
+                "semantic_type": "",
+                "caption_field": ""
+            },
+            {
+                "id": "db25b97b-d47d-492e-afb0-ff780e97c4c0",
+                "name": "ewqweqweqweqweqweqweqweqwewqeqweqwewqewqeqwejiofhjdosihfidsahfiosdhfisahfishfisdhfiashfiashfisdhfiashpfihapsdfhasdfhpashfpasdhfiosadhfiosdahfisohfiashfposahfpahsifoahsdfioahsiofhsaidofhaioshfiosdhfioashfioasdhfiosadhfiosdahfiodsi",
+                "description": "test",
+                "fields": {
+                    "object_id": {
+                        "id": "4ba60710-6f98-4373-985d-8cc81aad26a3",
+                        "data_type": "String",
+                        "description": "required id on all objects in the ewqweqweqweqweqweqweqweqwewqeqweqwewqewqeqwejiofhjdosihfidsahfiosdhfisahfishfisdhfiashfiashfisdhfiashpfihapsdfhasdfhpashfpasdhfiosadhfiosdahfisohfiashfposahfpahsifoahsdfioahsiofhsaidofhaioshfiosdhfioashfioasdhfiosadhfiosdahfiodsi table",
+                        "is_enum": false,
+                        "name": "object_id",
+                        "nullable": false,
+                        "table_id": "db25b97b-d47d-492e-afb0-ff780e97c4c0",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "updated_at": {
+                        "id": "a1728f08-2730-4da2-ba23-6be9ae0a2bfe",
+                        "data_type": "Timestamp",
+                        "description": "required timestamp on all objects in the ewqweqweqweqweqweqweqweqwewqeqweqwewqewqeqwejiofhjdosihfidsahfiosdhfisahfishfisdhfiashfiashfisdhfiashpfihapsdfhasdfhpashfpasdhfiosadhfiosdahfisohfiashfposahfpahsifoahsdfioahsiofhsaidofhaioshfiosdhfioashfioasdhfiosadhfiosdahfiodsi table",
+                        "is_enum": false,
+                        "name": "updated_at",
+                        "nullable": false,
+                        "table_id": "db25b97b-d47d-492e-afb0-ff780e97c4c0",
+                        "unicity_constraint": "no_unicity_constraint"
+                    }
+                },
+                "alias": "",
+                "semantic_type": "",
+                "caption_field": ""
+            },
+            {
+                "id": "82e9a917-6b9f-4381-9bc7-65450d1ea1df",
+                "name": "transfer",
+                "description": "",
+                "fields": {
+                    "amount": {
+                        "id": "f8217ece-665f-46dd-8f8c-7329ea61945c",
+                        "data_type": "Float",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "amount",
+                        "nullable": true,
+                        "table_id": "82e9a917-6b9f-4381-9bc7-65450d1ea1df",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "company_id": {
+                        "id": "23e68c24-4af2-4478-95a8-2d019d84a452",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "company_id",
+                        "nullable": true,
+                        "table_id": "82e9a917-6b9f-4381-9bc7-65450d1ea1df",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "ewqweqweqweqweqweqweqweqwewqeqweqwewqewqeqwejiofhjdosihfidsahfiosdhfisahfishfisdhfiashfiashfisdhfiashpfihapsdfhasdfhpashfpasdhfiosadhfiosdahfisohfiashfposahfpahsifoahsdfioahsiofhsaidofhaioshfiosdhfioashfioasdhfiosadhfiosdahfiodsh": {
+                        "id": "313ebe38-e054-4f8f-ae25-8fdf51371a7c",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "ewqweqweqweqweqweqweqweqwewqeqweqwewqewqeqwejiofhjdosihfidsahfiosdhfisahfishfisdhfiashfiashfisdhfiashpfihapsdfhasdfhpashfpasdhfiosadhfiosdahfisohfiashfposahfpahsifoahsdfioahsiofhsaidofhaioshfiosdhfioashfioasdhfiosadhfiosdahfiodsh",
+                        "nullable": true,
+                        "table_id": "82e9a917-6b9f-4381-9bc7-65450d1ea1df",
+                        "unicity_constraint": "no_unicity_constraint",
+                        "ftm_property": "name"
+                    },
+                    "object_id": {
+                        "id": "4391b93e-4951-4cfa-be51-0b0cab093c30",
+                        "data_type": "String",
+                        "description": "required id on all objects in the transfer table",
+                        "is_enum": false,
+                        "name": "object_id",
+                        "nullable": false,
+                        "table_id": "82e9a917-6b9f-4381-9bc7-65450d1ea1df",
+                        "unicity_constraint": "active_unique_constraint"
+                    },
+                    "updated_at": {
+                        "id": "45cbd93f-1a5c-4ed9-93cc-0ba4dcacb8d5",
+                        "data_type": "Timestamp",
+                        "description": "required timestamp on all objects in the transfer table",
+                        "is_enum": false,
+                        "name": "updated_at",
+                        "nullable": false,
+                        "table_id": "82e9a917-6b9f-4381-9bc7-65450d1ea1df",
+                        "unicity_constraint": "no_unicity_constraint"
+                    }
+                },
+                "ftm_entity": "Person",
+                "alias": "",
+                "semantic_type": "",
+                "caption_field": ""
+            },
+            {
+                "id": "62cc5f13-3b0b-41d6-8cd2-8be2031fb340",
+                "name": "ewqweqweqweqweqweqweqweqwewqeqweqwewqewqeqwejiofhjdosihfidsahfiosdhfisahfishfisdhfiashfiashfisdhfiashpfihapsdfhasdfhpashfpasdhfiosadhfiosdahfisohfiashfposahfpahsifoahsdfioahsiofhsaidofhaioshfiosdhfioashfioasdhfiosadhfiosdahfiodsh",
+                "description": "",
+                "fields": {
+                    "object_id": {
+                        "id": "b9224042-d423-4448-8a92-7994fe192c63",
+                        "data_type": "String",
+                        "description": "required id on all objects in the ewqweqweqweqweqweqweqweqwewqeqweqwewqewqeqwejiofhjdosihfidsahfiosdhfisahfishfisdhfiashfiashfisdhfiashpfihapsdfhasdfhpashfpasdhfiosadhfiosdahfisohfiashfposahfpahsifoahsdfioahsiofhsaidofhaioshfiosdhfioashfioasdhfiosadhfiosdahfiodsh table",
+                        "is_enum": false,
+                        "name": "object_id",
+                        "nullable": false,
+                        "table_id": "62cc5f13-3b0b-41d6-8cd2-8be2031fb340",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "updated_at": {
+                        "id": "9b9a30ca-6244-436b-8539-7235bc8a73e5",
+                        "data_type": "Timestamp",
+                        "description": "required timestamp on all objects in the ewqweqweqweqweqweqweqweqwewqeqweqwewqewqeqwejiofhjdosihfidsahfiosdhfisahfishfisdhfiashfiashfisdhfiashpfihapsdfhasdfhpashfpasdhfiosadhfiosdahfisohfiashfposahfpahsifoahsdfioahsiofhsaidofhaioshfiosdhfioashfioasdhfiosadhfiosdahfiodsh table",
+                        "is_enum": false,
+                        "name": "updated_at",
+                        "nullable": false,
+                        "table_id": "62cc5f13-3b0b-41d6-8cd2-8be2031fb340",
+                        "unicity_constraint": "no_unicity_constraint"
+                    }
+                },
+                "alias": "",
+                "semantic_type": "",
+                "caption_field": ""
+            },
+            {
+                "id": "88380ff1-53e7-403d-9d30-04bdcd5ca74d",
+                "name": "organization",
+                "description": "",
+                "fields": {
+                    "holder_id": {
+                        "id": "cd2fd57b-d83b-4b6b-9c50-b2fad543a60c",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "holder_id",
+                        "nullable": false,
+                        "table_id": "88380ff1-53e7-403d-9d30-04bdcd5ca74d",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "object_id": {
+                        "id": "a56509d0-30e4-4878-887b-a90fab10b6c6",
+                        "data_type": "String",
+                        "description": "required id on all objects in the organization table",
+                        "is_enum": false,
+                        "name": "object_id",
+                        "nullable": false,
+                        "table_id": "88380ff1-53e7-403d-9d30-04bdcd5ca74d",
+                        "unicity_constraint": "active_unique_constraint"
+                    },
+                    "updated_at": {
+                        "id": "8873c4e0-d544-442d-a58c-d2989f5bb4be",
+                        "data_type": "Timestamp",
+                        "description": "required timestamp on all objects in the organization table",
+                        "is_enum": false,
+                        "name": "updated_at",
+                        "nullable": false,
+                        "table_id": "88380ff1-53e7-403d-9d30-04bdcd5ca74d",
+                        "unicity_constraint": "no_unicity_constraint"
+                    }
+                },
+                "alias": "",
+                "semantic_type": "",
+                "caption_field": ""
+            },
+            {
+                "id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                "name": "account",
+                "description": "updated description",
+                "fields": {
+                    "age": {
+                        "id": "67a74027-ea8e-4794-8985-9000f5e2d490",
+                        "data_type": "Float",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "age",
+                        "nullable": true,
+                        "table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "company_id": {
+                        "id": "4f3396d3-3edb-40f4-a67e-c58216724cb7",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "company_id",
+                        "nullable": true,
+                        "table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "country": {
+                        "id": "cf5437df-a2a1-4a22-8525-1454b279bd9d",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "country",
+                        "nullable": false,
+                        "table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                        "unicity_constraint": "no_unicity_constraint",
+                        "ftm_property": "country"
+                    },
+                    "eqweqweqweqw": {
+                        "id": "a6be8784-52d2-407f-bf3d-f945ec7c75e2",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "eqweqweqweqw",
+                        "nullable": true,
+                        "table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "name": {
+                        "id": "b6f677d4-24c0-45af-b41b-ccee0d89db78",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "name",
+                        "nullable": false,
+                        "table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                        "unicity_constraint": "no_unicity_constraint",
+                        "ftm_property": "name"
+                    },
+                    "object_id": {
+                        "id": "7467cdab-d3ab-4055-9440-d57460be0aa3",
+                        "data_type": "String",
+                        "description": "required id on all objects in the account table",
+                        "is_enum": false,
+                        "name": "object_id",
+                        "nullable": false,
+                        "table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                        "unicity_constraint": "active_unique_constraint"
+                    },
+                    "test_nullable": {
+                        "id": "266c5f95-4ae4-48ed-8d5e-8fa4012a3a38",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "test_nullable",
+                        "nullable": true,
+                        "table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                        "unicity_constraint": "no_unicity_constraint",
+                        "ftm_property": "nationality"
+                    },
+                    "updated_at": {
+                        "id": "cb279974-1e8b-4601-b09d-dabdc2706a2a",
+                        "data_type": "Timestamp",
+                        "description": "required timestamp on all objects in the account table",
+                        "is_enum": false,
+                        "name": "updated_at",
+                        "nullable": false,
+                        "table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                        "unicity_constraint": "no_unicity_constraint"
+                    }
+                },
+                "ftm_entity": "Person",
+                "alias": "",
+                "semantic_type": "",
+                "caption_field": ""
+            },
+            {
+                "id": "a2682e01-18d3-4e43-bc58-ea7d05599d3b",
+                "name": "baloo",
+                "description": "ewqewq",
+                "fields": {
+                    "mougli": {
+                        "id": "c0ec845d-8aba-4ddd-a432-234821c089d0",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "mougli",
+                        "nullable": true,
+                        "table_id": "a2682e01-18d3-4e43-bc58-ea7d05599d3b",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "object_id": {
+                        "id": "74e19fe2-c9ef-467e-90df-59d875ff3e7b",
+                        "data_type": "String",
+                        "description": "required id on all objects in the baloo table",
+                        "is_enum": false,
+                        "name": "object_id",
+                        "nullable": false,
+                        "table_id": "a2682e01-18d3-4e43-bc58-ea7d05599d3b",
+                        "unicity_constraint": "active_unique_constraint"
+                    },
+                    "updated_at": {
+                        "id": "cd0b8af2-4dcb-43d6-bf71-22d6c859aa63",
+                        "data_type": "Timestamp",
+                        "description": "required timestamp on all objects in the baloo table",
+                        "is_enum": false,
+                        "name": "updated_at",
+                        "nullable": false,
+                        "table_id": "a2682e01-18d3-4e43-bc58-ea7d05599d3b",
+                        "unicity_constraint": "no_unicity_constraint"
+                    }
+                },
+                "alias": "",
+                "semantic_type": "",
+                "caption_field": ""
+            },
+            {
+                "id": "8cc2392a-9be0-4fac-9049-ae2f15781fa2",
+                "name": "company_2",
+                "description": "updated description",
+                "fields": {
+                    "my_field": {
+                        "id": "ed886e47-16b6-4a83-b8bf-c39a591f140c",
+                        "data_type": "Int",
+                        "description": "description",
+                        "is_enum": false,
+                        "name": "my_field",
+                        "nullable": false,
+                        "table_id": "8cc2392a-9be0-4fac-9049-ae2f15781fa2",
+                        "unicity_constraint": "no_unicity_constraint",
+                        "ftm_property": "name"
+                    },
+                    "my_field_with_property": {
+                        "id": "0f69f286-4e82-4485-9e5b-b8377af15cf6",
+                        "data_type": "Int",
+                        "description": "updated description",
+                        "is_enum": false,
+                        "name": "my_field_with_property",
+                        "nullable": false,
+                        "table_id": "8cc2392a-9be0-4fac-9049-ae2f15781fa2",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "object_id": {
+                        "id": "6a250941-3a3e-40c4-bba4-08d3fb605f7d",
+                        "data_type": "String",
+                        "description": "required id on all objects in the company_2 table",
+                        "is_enum": false,
+                        "name": "object_id",
+                        "nullable": false,
+                        "table_id": "8cc2392a-9be0-4fac-9049-ae2f15781fa2",
+                        "unicity_constraint": "active_unique_constraint"
+                    },
+                    "updated_at": {
+                        "id": "b7e65ef3-6405-4671-aca6-568dec50fdb9",
+                        "data_type": "Timestamp",
+                        "description": "required timestamp on all objects in the company_2 table",
+                        "is_enum": false,
+                        "name": "updated_at",
+                        "nullable": false,
+                        "table_id": "8cc2392a-9be0-4fac-9049-ae2f15781fa2",
+                        "unicity_constraint": "no_unicity_constraint"
+                    }
+                },
+                "ftm_entity": "Company",
+                "alias": "",
+                "semantic_type": "",
+                "caption_field": ""
+            },
+            {
+                "id": "59400078-5c2c-453a-9802-8d98f118cfcf",
+                "name": "table_parent",
+                "description": "",
+                "fields": {
+                    "age": {
+                        "id": "aab5efeb-a5ea-49c6-af9c-d32840da0b6b",
+                        "data_type": "Float",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "age",
+                        "nullable": true,
+                        "table_id": "59400078-5c2c-453a-9802-8d98f118cfcf",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "chield_fk_id": {
+                        "id": "6519a618-caf6-453c-bec4-3c614f0220bc",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "chield_fk_id",
+                        "nullable": true,
+                        "table_id": "59400078-5c2c-453a-9802-8d98f118cfcf",
+                        "unicity_constraint": "active_unique_constraint"
+                    },
+                    "lalaland": {
+                        "id": "34f454e4-f531-44f7-8e2a-88d543df4806",
+                        "data_type": "String",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "lalaland",
+                        "nullable": false,
+                        "table_id": "59400078-5c2c-453a-9802-8d98f118cfcf",
+                        "unicity_constraint": "no_unicity_constraint"
+                    },
+                    "object_id": {
+                        "id": "1bc58f10-407a-42d4-a657-1be5f153ac49",
+                        "data_type": "String",
+                        "description": "required id on all objects in the table_parent table",
+                        "is_enum": false,
+                        "name": "object_id",
+                        "nullable": false,
+                        "table_id": "59400078-5c2c-453a-9802-8d98f118cfcf",
+                        "unicity_constraint": "active_unique_constraint"
+                    },
+                    "updated_at": {
+                        "id": "08849d60-1d61-4ccb-833c-c5cb7b6a3972",
+                        "data_type": "Timestamp",
+                        "description": "required timestamp on all objects in the table_parent table",
+                        "is_enum": false,
+                        "name": "updated_at",
+                        "nullable": false,
+                        "table_id": "59400078-5c2c-453a-9802-8d98f118cfcf",
+                        "unicity_constraint": "no_unicity_constraint"
+                    }
+                },
+                "alias": "",
+                "semantic_type": "",
+                "caption_field": ""
+            },
+            {
+                "id": "55922ae5-f961-400c-936a-1b22204d4df2",
+                "name": "people",
+                "description": "",
+                "fields": {
+                    "internal_id": {
+                        "id": "01cc2d3c-c465-4c03-a21f-460ee31c36ff",
+                        "data_type": "Float",
+                        "description": "",
+                        "is_enum": false,
+                        "name": "internal_id",
+                        "nullable": true,
+                        "table_id": "55922ae5-f961-400c-936a-1b22204d4df2",
+                        "unicity_constraint": "active_unique_constraint"
+                    },
+                    "object_id": {
+                        "id": "59b417a2-2c86-47c1-94d0-92c85fde4634",
+                        "data_type": "String",
+                        "description": "required id on all objects in the people table",
+                        "is_enum": false,
+                        "name": "object_id",
+                        "nullable": false,
+                        "table_id": "55922ae5-f961-400c-936a-1b22204d4df2",
+                        "unicity_constraint": "active_unique_constraint"
+                    },
+                    "updated_at": {
+                        "id": "ede4e2e9-48ef-4af8-ace5-ee46b0b8a255",
+                        "data_type": "Timestamp",
+                        "description": "required timestamp on all objects in the people table",
+                        "is_enum": false,
+                        "name": "updated_at",
+                        "nullable": false,
+                        "table_id": "55922ae5-f961-400c-936a-1b22204d4df2",
+                        "unicity_constraint": "no_unicity_constraint"
+                    }
+                },
+                "alias": "",
+                "semantic_type": "",
+                "caption_field": ""
+            }
+        ],
+        "links": [
+            {
+                "id": "551d1980-1e5f-4658-9fa2-9d277d2cb11c",
+                "parent_table_name": "account",
+                "parent_table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                "parent_field_name": "object_id",
+                "parent_field_id": "7467cdab-d3ab-4055-9440-d57460be0aa3",
+                "child_table_name": "transaction",
+                "child_table_id": "04c4ceaf-0b2d-4057-aa3d-c863c56bd841",
+                "child_field_name": "account_id",
+                "child_field_id": "53625a1c-b926-4957-b878-131d543c134d"
+            },
+            {
+                "id": "841269ec-9c5a-4c14-9471-337c3a38fd4f",
+                "parent_table_name": "people",
+                "parent_table_id": "55922ae5-f961-400c-936a-1b22204d4df2",
+                "parent_field_name": "internal_id",
+                "parent_field_id": "01cc2d3c-c465-4c03-a21f-460ee31c36ff",
+                "child_table_name": "payment",
+                "child_table_id": "9a5765ad-feaf-4f1c-b53b-528136c74c53",
+                "child_field_name": "people_internal_id",
+                "child_field_id": "704ffe2a-04b6-409f-90c1-6114d4807d59"
+            },
+            {
+                "id": "1b43084d-f43e-41de-97de-deff86715947",
+                "parent_table_name": "account",
+                "parent_table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                "parent_field_name": "object_id",
+                "parent_field_id": "7467cdab-d3ab-4055-9440-d57460be0aa3",
+                "child_table_name": "ewqweqweqweqweqweqweqweqwewqeqweqwewqewqeqwejiofhjdosihfidsahfiosdhfisahfishfisdhfiashfiashfisdhfiashpfihapsdfhasdfhpashfpasdhfiosadhfiosdahfisohfiashfposahfpahsifoahsdfioahsiofhsaidofhaioshfiosdhfioashfioasdhfiosadhfiosdahfiodsh",
+                "child_table_id": "62cc5f13-3b0b-41d6-8cd2-8be2031fb340",
+                "child_field_name": "object_id",
+                "child_field_id": "b9224042-d423-4448-8a92-7994fe192c63"
+            },
+            {
+                "id": "ce52be32-3a03-4a2f-ad4b-3587b88e7fbe",
+                "parent_table_name": "company_2",
+                "parent_table_id": "8cc2392a-9be0-4fac-9049-ae2f15781fa2",
+                "parent_field_name": "object_id",
+                "parent_field_id": "6a250941-3a3e-40c4-bba4-08d3fb605f7d",
+                "child_table_name": "account",
+                "child_table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                "child_field_name": "company_id",
+                "child_field_id": "4f3396d3-3edb-40f4-a67e-c58216724cb7"
+            },
+            {
+                "id": "0db9fa3f-5db7-4958-bdde-057f5b73a0bb",
+                "parent_table_name": "company_2",
+                "parent_table_id": "8cc2392a-9be0-4fac-9049-ae2f15781fa2",
+                "parent_field_name": "object_id",
+                "parent_field_id": "6a250941-3a3e-40c4-bba4-08d3fb605f7d",
+                "child_table_name": "account",
+                "child_table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                "child_field_name": "eqweqweqweqw",
+                "child_field_id": "a6be8784-52d2-407f-bf3d-f945ec7c75e2"
+            },
+            {
+                "id": "4d78534f-7381-432e-8d7e-115dba1b92ff",
+                "parent_table_name": "company",
+                "parent_table_id": "60127d0e-2bbf-45ba-acbc-a367a129cb05",
+                "parent_field_name": "object_id",
+                "parent_field_id": "043b250b-c32f-4f02-8315-14379aca763f",
+                "child_table_name": "account",
+                "child_table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                "child_field_name": "company_id",
+                "child_field_id": "4f3396d3-3edb-40f4-a67e-c58216724cb7"
+            },
+            {
+                "id": "ed7635c4-2d8b-4d6f-ba1d-9b48335a99c6",
+                "parent_table_name": "table_chield",
+                "parent_table_id": "ef00c89a-810b-45c7-a3ac-5d63b91468e3",
+                "parent_field_name": "object_id",
+                "parent_field_id": "d9aadb42-9b41-4529-9355-06fd288b2b84",
+                "child_table_name": "table_parent",
+                "child_table_id": "59400078-5c2c-453a-9802-8d98f118cfcf",
+                "child_field_name": "lalaland",
+                "child_field_id": "34f454e4-f531-44f7-8e2a-88d543df4806"
+            },
+            {
+                "id": "9faaae18-6784-428b-9fa2-3037648ba5df",
+                "parent_table_name": "table_parent",
+                "parent_table_id": "59400078-5c2c-453a-9802-8d98f118cfcf",
+                "parent_field_name": "chield_fk_id",
+                "parent_field_id": "6519a618-caf6-453c-bec4-3c614f0220bc",
+                "child_table_name": "table_chield",
+                "child_table_id": "ef00c89a-810b-45c7-a3ac-5d63b91468e3",
+                "child_field_name": "object_id",
+                "child_field_id": "d9aadb42-9b41-4529-9355-06fd288b2b84"
+            },
+            {
+                "id": "89b86c93-75ba-4e7c-aa78-2c7685e8e32a",
+                "parent_table_name": "holder",
+                "parent_table_id": "a3f26f58-761d-4bac-b7d7-e14d67219e6c",
+                "parent_field_name": "object_id",
+                "parent_field_id": "36ee4361-8198-45e6-9b2f-bbb500e9f306",
+                "child_table_name": "organization",
+                "child_table_id": "88380ff1-53e7-403d-9d30-04bdcd5ca74d",
+                "child_field_name": "holder_id",
+                "child_field_id": "cd2fd57b-d83b-4b6b-9c50-b2fad543a60c"
+            },
+            {
+                "id": "baa715ce-c5cf-4165-9794-9b68ca3a5987",
+                "parent_table_name": "company_holder",
+                "parent_table_id": "3aa185ef-6038-4658-9e61-ecd8413fff55",
+                "parent_field_name": "object_id",
+                "parent_field_id": "b3b21dc7-5574-4d46-98e6-b732594ab1fa",
+                "child_table_name": "company",
+                "child_table_id": "60127d0e-2bbf-45ba-acbc-a367a129cb05",
+                "child_field_name": "holder_id",
+                "child_field_id": "6ad27536-eb38-41ed-96c4-948c1be63b10"
+            },
+            {
+                "id": "dc188c5c-8123-4e94-935e-42aa643f0aeb",
+                "parent_table_name": "account",
+                "parent_table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                "parent_field_name": "eqweqweqweqw",
+                "parent_field_id": "a6be8784-52d2-407f-bf3d-f945ec7c75e2",
+                "child_table_name": "company_2",
+                "child_table_id": "8cc2392a-9be0-4fac-9049-ae2f15781fa2",
+                "child_field_name": "object_id",
+                "child_field_id": "6a250941-3a3e-40c4-bba4-08d3fb605f7d"
+            },
+            {
+                "id": "5ddd2408-7059-45b4-b929-3a5a12ef815d",
+                "parent_table_name": "account",
+                "parent_table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                "parent_field_name": "object_id",
+                "parent_field_id": "7467cdab-d3ab-4055-9440-d57460be0aa3",
+                "child_table_name": "tx",
+                "child_table_id": "f06e3b36-964f-43f5-88d4-2a8d07d6b528",
+                "child_field_name": "account_id",
+                "child_field_id": "78bcfffa-b43c-42f1-b772-d98e019b0c73"
+            },
+            {
+                "id": "3baa77f8-0571-4227-8bdf-c637b9dc559f",
+                "parent_table_name": "company",
+                "parent_table_id": "60127d0e-2bbf-45ba-acbc-a367a129cb05",
+                "parent_field_name": "object_id",
+                "parent_field_id": "043b250b-c32f-4f02-8315-14379aca763f",
+                "child_table_name": "transfer",
+                "child_table_id": "82e9a917-6b9f-4381-9bc7-65450d1ea1df",
+                "child_field_name": "company_id",
+                "child_field_id": "23e68c24-4af2-4478-95a8-2d019d84a452"
+            }
+        ],
+        "pivots": [
+            {
+                "id": "d82d3a15-4423-4e27-9241-5a1e69eed3eb",
+                "created_at": "2026-02-05T14:49:51.215044+01:00",
+                "base_table": "table_chield",
+                "base_table_id": "ef00c89a-810b-45c7-a3ac-5d63b91468e3",
+                "pivot_table": "table_parent",
+                "pivot_table_id": "59400078-5c2c-453a-9802-8d98f118cfcf",
+                "field": "chield_fk_id",
+                "field_id": "6519a618-caf6-453c-bec4-3c614f0220bc",
+                "path_links": [
+                    "test_link_eqwewq"
+                ],
+                "path_link_ids": [
+                    "9faaae18-6784-428b-9fa2-3037648ba5df"
+                ]
+            },
+            {
+                "id": "60ed1510-0585-479f-b37e-7a9cb2cc67a4",
+                "created_at": "2026-01-30T17:18:00.53172+01:00",
+                "base_table": "company",
+                "base_table_id": "60127d0e-2bbf-45ba-acbc-a367a129cb05",
+                "pivot_table": "company_holder",
+                "pivot_table_id": "3aa185ef-6038-4658-9e61-ecd8413fff55",
+                "field": "object_id",
+                "field_id": "b3b21dc7-5574-4d46-98e6-b732594ab1fa",
+                "path_links": [
+                    "company_to_holder"
+                ],
+                "path_link_ids": [
+                    "baa715ce-c5cf-4165-9794-9b68ca3a5987"
+                ]
+            },
+            {
+                "id": "7aeca32b-aed3-494a-a422-fff8f865bd52",
+                "created_at": "2026-01-30T14:07:10.159652+01:00",
+                "base_table": "tx",
+                "base_table_id": "f06e3b36-964f-43f5-88d4-2a8d07d6b528",
+                "pivot_table": "account",
+                "pivot_table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                "field": "object_id",
+                "field_id": "7467cdab-d3ab-4055-9440-d57460be0aa3",
+                "path_links": [
+                    "tx_to_account"
+                ],
+                "path_link_ids": [
+                    "5ddd2408-7059-45b4-b929-3a5a12ef815d"
+                ]
+            },
+            {
+                "id": "3cd98393-519e-410e-9042-2619967fd166",
+                "created_at": "2026-01-26T14:56:53.629471+01:00",
+                "base_table": "organization",
+                "base_table_id": "88380ff1-53e7-403d-9d30-04bdcd5ca74d",
+                "pivot_table": "holder",
+                "pivot_table_id": "a3f26f58-761d-4bac-b7d7-e14d67219e6c",
+                "field": "object_id",
+                "field_id": "36ee4361-8198-45e6-9b2f-bbb500e9f306",
+                "path_links": [
+                    "org_to_holder"
+                ],
+                "path_link_ids": [
+                    "89b86c93-75ba-4e7c-aa78-2c7685e8e32a"
+                ]
+            },
+            {
+                "id": "f6cf6c31-202e-4446-8e9c-b43c4d219173",
+                "created_at": "2026-01-26T14:53:41.557194+01:00",
+                "base_table": "table_parent",
+                "base_table_id": "59400078-5c2c-453a-9802-8d98f118cfcf",
+                "pivot_table": "table_chield",
+                "pivot_table_id": "ef00c89a-810b-45c7-a3ac-5d63b91468e3",
+                "field": "object_id",
+                "field_id": "d9aadb42-9b41-4529-9355-06fd288b2b84",
+                "path_links": [
+                    "dsadsadsadasda"
+                ],
+                "path_link_ids": [
+                    "ed7635c4-2d8b-4d6f-ba1d-9b48335a99c6"
+                ]
+            },
+            {
+                "id": "26f1b7a5-d196-4364-8764-ac02e0071cf8",
+                "created_at": "2025-09-03T14:09:33.250027+02:00",
+                "base_table": "account",
+                "base_table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                "pivot_table": "company",
+                "pivot_table_id": "60127d0e-2bbf-45ba-acbc-a367a129cb05",
+                "field": "object_id",
+                "field_id": "043b250b-c32f-4f02-8315-14379aca763f",
+                "path_links": [
+                    "account_to_company"
+                ],
+                "path_link_ids": [
+                    "4d78534f-7381-432e-8d7e-115dba1b92ff"
+                ]
+            },
+            {
+                "id": "cef05ddc-2505-439d-afe3-063091fc8986",
+                "created_at": "2025-09-03T11:24:21.536935+02:00",
+                "base_table": "transfer",
+                "base_table_id": "82e9a917-6b9f-4381-9bc7-65450d1ea1df",
+                "pivot_table": "company",
+                "pivot_table_id": "60127d0e-2bbf-45ba-acbc-a367a129cb05",
+                "field": "object_id",
+                "field_id": "043b250b-c32f-4f02-8315-14379aca763f",
+                "path_links": [
+                    "transfer_to_company"
+                ],
+                "path_link_ids": [
+                    "3baa77f8-0571-4227-8bdf-c637b9dc559f"
+                ]
+            },
+            {
+                "id": "6007d4e0-eb33-4bab-a964-876241dc4cf5",
+                "created_at": "2025-07-30T15:57:20.347809+02:00",
+                "base_table": "transaction",
+                "base_table_id": "04c4ceaf-0b2d-4057-aa3d-c863c56bd841",
+                "pivot_table": "account",
+                "pivot_table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                "field": "object_id",
+                "field_id": "7467cdab-d3ab-4055-9440-d57460be0aa3",
+                "path_links": [
+                    "transaction_account"
+                ],
+                "path_link_ids": [
+                    "551d1980-1e5f-4658-9fa2-9d277d2cb11c"
+                ]
+            }
+        ],
+        "navigation_options": {
+            "3aa185ef-6038-4658-9e61-ecd8413fff55": {
+                "source_field_id": "b3b21dc7-5574-4d46-98e6-b732594ab1fa",
+                "target_table_id": "60127d0e-2bbf-45ba-acbc-a367a129cb05",
+                "filter_field_id": "6ad27536-eb38-41ed-96c4-948c1be63b10",
+                "ordering_field_id": "8f97ea48-d87a-4550-95a9-8e62b48671b2"
+            },
+            "60127d0e-2bbf-45ba-acbc-a367a129cb05": {
+                "source_field_id": "043b250b-c32f-4f02-8315-14379aca763f",
+                "target_table_id": "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76",
+                "filter_field_id": "4f3396d3-3edb-40f4-a67e-c58216724cb7",
+                "ordering_field_id": "7467cdab-d3ab-4055-9440-d57460be0aa3"
+            },
+            "8bd8c61c-f86a-4531-9bb0-c0a98d98ac76": {
+                "source_field_id": "7467cdab-d3ab-4055-9440-d57460be0aa3",
+                "target_table_id": "04c4ceaf-0b2d-4057-aa3d-c863c56bd841",
+                "filter_field_id": "53625a1c-b926-4957-b878-131d543c134d",
+                "ordering_field_id": "b641079d-6eaa-420f-bbae-282be91e3bdb"
+            }
+        }
+    },
+    "scenarios": [
+        {
+            "scenario": {
+                "id": "35a55508-a6ca-4b53-b335-cba8e0e99713",
+                "created_at": "2026-02-17T12:07:51.024604+01:00",
+                "description": "",
+                "live_version_id": "35a55508-f21b-4924-b14c-96aedfa31bf6",
+                "name": "Screening test bench",
+                "organization_id": "35a55508-c418-4ef5-a442-032a4d16d5ea",
+                "trigger_object_type": "account",
+                "archived": false
+            },
+            "iteration": {
+                "trigger_condition_ast_expression": null,
+                "rules": [],
+                "score_review_threshold": 1,
+                "score_block_and_review_threshold": 10,
+                "score_decline_threshold": 20,
+                "schedule": ""
+            }
+        },
+        {
+            "scenario": {
+                "id": "35a55508-ebfe-43a9-9753-8a4928f574a7",
+                "created_at": "2026-01-30T14:11:43.675312+01:00",
+                "description": "",
+                "live_version_id": "35a55508-438e-463d-bb57-7fee9cac4d94",
+                "name": "Monitoring on TX demo",
+                "organization_id": "35a55508-c418-4ef5-a442-032a4d16d5ea",
+                "trigger_object_type": "tx",
+                "archived": false
+            },
+            "iteration": {
+                "trigger_condition_ast_expression": null,
+                "rules": [
+                    {
+                        "id": "35a55508-b1e7-49fb-98ec-62759d6aaaae",
+                        "stable_id": "bcc599fb-3300-4ed4-bf6b-e7f645de57e0",
+                        "scenario_iteration_id": "35a55508-438e-463d-bb57-7fee9cac4d94",
+                        "display_order": 1,
+                        "name": "New rule",
+                        "description": "",
+                        "formula_ast_expression": {
+                            "name": "Or",
+                            "children": [
+                                {
+                                    "name": "And",
+                                    "children": [
+                                        {
+                                            "name": "=",
+                                            "children": [
+                                                {
+                                                    "name": "MonitoringListCheck",
+                                                    "named_children": {
+                                                        "config": {
+                                                            "constant": {
+                                                                "linkedTableChecks": [],
+                                                                "pathToTarget": [
+                                                                    "tx_to_account"
+                                                                ],
+                                                                "targetTableName": "account",
+                                                                "topicFilters": []
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "constant": true
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "score_modifier": 100,
+                        "created_at": "2026-01-30T14:40:05.396763+01:00",
+                        "rule_group": ""
+                    }
+                ],
+                "score_review_threshold": 1,
+                "score_block_and_review_threshold": 10,
+                "score_decline_threshold": 20,
+                "schedule": ""
+            }
+        },
+        {
+            "scenario": {
+                "id": "35a55508-c912-465a-9ddf-3d77243528f9",
+                "created_at": "2026-01-30T14:07:32.752352+01:00",
+                "description": "",
+                "live_version_id": "35a55508-d18b-4389-8308-0f25cc791a66",
+                "name": "Monitoring rules on TX",
+                "organization_id": "35a55508-c418-4ef5-a442-032a4d16d5ea",
+                "trigger_object_type": "tx",
+                "archived": false
+            },
+            "iteration": {
+                "trigger_condition_ast_expression": null,
+                "rules": [
+                    {
+                        "id": "35a55508-b2be-44b3-9451-723b0d06a26a",
+                        "stable_id": "96641fd4-ffad-414e-a3cc-9212997a867f",
+                        "scenario_iteration_id": "35a55508-d18b-4389-8308-0f25cc791a66",
+                        "display_order": 1,
+                        "name": "New rule",
+                        "description": "",
+                        "formula_ast_expression": {
+                            "name": "Or",
+                            "children": [
+                                {
+                                    "name": "And",
+                                    "children": [
+                                        {
+                                            "name": ">",
+                                            "children": [
+                                                {
+                                                    "name": "Payload",
+                                                    "children": [
+                                                        {
+                                                            "constant": "amount"
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "constant": 1000
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "score_modifier": 50,
+                        "created_at": "2026-02-04T17:38:38.066131+01:00",
+                        "rule_group": ""
+                    },
+                    {
+                        "id": "35a55508-aa3d-4013-8ceb-85e59749de3b",
+                        "stable_id": "aa54d685-aa79-4c39-ba2f-733c8e6dbdbe",
+                        "scenario_iteration_id": "35a55508-d18b-4389-8308-0f25cc791a66",
+                        "display_order": 1,
+                        "name": "New rule",
+                        "description": "",
+                        "formula_ast_expression": {
+                            "name": "Or",
+                            "children": [
+                                {
+                                    "name": "And",
+                                    "children": [
+                                        {
+                                            "name": "=",
+                                            "children": [
+                                                {
+                                                    "name": "MonitoringListCheck",
+                                                    "named_children": {
+                                                        "config": {
+                                                            "constant": {
+                                                                "linkedTableChecks": [
+                                                                    {
+                                                                        "linkToSingleName": "company_to_holder",
+                                                                        "tableName": "company_holder"
+                                                                    },
+                                                                    {
+                                                                        "navigationOption": {
+                                                                            "orderingFieldName": "updated_at",
+                                                                            "sourceFieldName": "object_id",
+                                                                            "sourceTableName": "company",
+                                                                            "targetFieldName": "company_id",
+                                                                            "targetTableName": "transfer"
+                                                                        },
+                                                                        "tableName": "transfer"
+                                                                    },
+                                                                    {
+                                                                        "navigationOption": {
+                                                                            "orderingFieldName": "updated_at",
+                                                                            "sourceFieldName": "object_id",
+                                                                            "sourceTableName": "company",
+                                                                            "targetFieldName": "company_id",
+                                                                            "targetTableName": "account"
+                                                                        },
+                                                                        "tableName": "account"
+                                                                    }
+                                                                ],
+                                                                "pathToTarget": [
+                                                                    "tx_to_account",
+                                                                    "account_to_company"
+                                                                ],
+                                                                "targetTableName": "company",
+                                                                "topicFilters": []
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "constant": true
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "name": "=",
+                                            "children": [
+                                                {
+                                                    "name": "MonitoringListCheck",
+                                                    "named_children": {
+                                                        "config": {
+                                                            "constant": {
+                                                                "linkedTableChecks": [
+                                                                    {
+                                                                        "linkToSingleName": "company_to_holder",
+                                                                        "tableName": "company_holder"
+                                                                    },
+                                                                    {
+                                                                        "navigationOption": {
+                                                                            "orderingFieldName": "updated_at",
+                                                                            "sourceFieldName": "object_id",
+                                                                            "sourceTableName": "company",
+                                                                            "targetFieldName": "company_id",
+                                                                            "targetTableName": "transfer"
+                                                                        },
+                                                                        "tableName": "transfer"
+                                                                    },
+                                                                    {
+                                                                        "navigationOption": {
+                                                                            "orderingFieldName": "updated_at",
+                                                                            "sourceFieldName": "object_id",
+                                                                            "sourceTableName": "company",
+                                                                            "targetFieldName": "company_id",
+                                                                            "targetTableName": "account"
+                                                                        },
+                                                                        "tableName": "account"
+                                                                    }
+                                                                ],
+                                                                "pathToTarget": [
+                                                                    "tx_to_account",
+                                                                    "account_to_company"
+                                                                ],
+                                                                "targetTableName": "company",
+                                                                "topicFilters": []
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "constant": true
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "score_modifier": 100,
+                        "created_at": "2026-02-04T17:38:38.066131+01:00",
+                        "rule_group": ""
+                    }
+                ],
+                "score_review_threshold": 1,
+                "score_block_and_review_threshold": 10,
+                "score_decline_threshold": 20,
+                "schedule": ""
+            }
+        },
+        {
+            "scenario": {
+                "id": "35a55508-457d-4ee3-bdf2-ba370d66aa64",
+                "created_at": "2026-01-26T16:53:31.56964+01:00",
+                "description": "",
+                "live_version_id": "35a55508-26bd-4e51-b5d0-68d90c3710c7",
+                "name": "Test monitoring rule",
+                "organization_id": "35a55508-c418-4ef5-a442-032a4d16d5ea",
+                "trigger_object_type": "account",
+                "archived": false
+            },
+            "iteration": {
+                "trigger_condition_ast_expression": null,
+                "rules": [
+                    {
+                        "id": "35a55508-f7f0-4241-a29a-3128d5ab682d",
+                        "stable_id": "9a5318ab-b4c6-4f00-ab49-c00f886e6e6c",
+                        "scenario_iteration_id": "35a55508-26bd-4e51-b5d0-68d90c3710c7",
+                        "display_order": 1,
+                        "name": "New rule",
+                        "description": "",
+                        "formula_ast_expression": {
+                            "name": "Or",
+                            "children": [
+                                {
+                                    "name": "And",
+                                    "children": [
+                                        {
+                                            "name": "=",
+                                            "children": [
+                                                {
+                                                    "name": "MonitoringListCheck",
+                                                    "named_children": {
+                                                        "config": {
+                                                            "constant": {
+                                                                "linkedTableChecks": [],
+                                                                "pathToTarget": [],
+                                                                "targetTableName": "account",
+                                                                "topicFilters": []
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "constant": true
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "score_modifier": 100,
+                        "created_at": "2026-01-29T18:21:47.860212+01:00",
+                        "rule_group": ""
+                    }
+                ],
+                "score_review_threshold": 1,
+                "score_block_and_review_threshold": 10,
+                "score_decline_threshold": 20,
+                "schedule": ""
+            }
+        },
+        {
+            "scenario": {
+                "id": "35a55508-efab-4b05-a0cc-0f4ba575327e",
+                "created_at": "2026-01-26T15:01:53.208061+01:00",
+                "description": "",
+                "live_version_id": "35a55508-d794-4c93-880d-fc71aff062c9",
+                "name": "Holder Org",
+                "organization_id": "35a55508-c418-4ef5-a442-032a4d16d5ea",
+                "trigger_object_type": "organization",
+                "archived": false
+            },
+            "iteration": {
+                "trigger_condition_ast_expression": null,
+                "rules": [
+                    {
+                        "id": "35a55508-e474-4252-971c-7abdacb80deb",
+                        "stable_id": "edc91947-e472-4c6f-9642-777cd8b314f7",
+                        "scenario_iteration_id": "35a55508-d794-4c93-880d-fc71aff062c9",
+                        "display_order": 1,
+                        "name": "New rule",
+                        "description": "",
+                        "formula_ast_expression": {
+                            "name": "Or",
+                            "children": [
+                                {
+                                    "name": "And",
+                                    "children": [
+                                        {
+                                            "name": "=",
+                                            "children": [
+                                                {
+                                                    "name": "Payload",
+                                                    "children": [
+                                                        {
+                                                            "constant": "object_id"
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "constant": "\"trigger_id\""
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "score_modifier": 60,
+                        "created_at": "2026-01-26T15:02:00.205734+01:00",
+                        "rule_group": ""
+                    }
+                ],
+                "score_review_threshold": 1,
+                "score_block_and_review_threshold": 10,
+                "score_decline_threshold": 20,
+                "schedule": ""
+            }
+        },
+        {
+            "scenario": {
+                "id": "35a55508-3e99-4807-bbf7-644cf1bc648a",
+                "created_at": "2025-10-21T11:56:57.150156+02:00",
+                "description": "Screening Test",
+                "live_version_id": "35a55508-0239-4622-b8d7-d2374d938d95",
+                "name": "transfer screening",
+                "organization_id": "35a55508-c418-4ef5-a442-032a4d16d5ea",
+                "trigger_object_type": "transfer",
+                "archived": false
+            },
+            "iteration": {
+                "trigger_condition_ast_expression": null,
+                "rules": [],
+                "score_review_threshold": 1,
+                "score_block_and_review_threshold": 10,
+                "score_decline_threshold": 20,
+                "schedule": ""
+            }
+        },
+        {
+            "scenario": {
+                "id": "35a55508-bd28-4dec-8033-3327e2fa8c7e",
+                "created_at": "2025-09-03T11:33:22.286114+02:00",
+                "description": "",
+                "live_version_id": "35a55508-4729-46f4-aff2-241062501fa1",
+                "name": "transfer_company",
+                "organization_id": "35a55508-c418-4ef5-a442-032a4d16d5ea",
+                "trigger_object_type": "transfer",
+                "archived": false
+            },
+            "iteration": {
+                "trigger_condition_ast_expression": null,
+                "rules": [
+                    {
+                        "id": "35a55508-9546-4cd6-9bae-0789259b60aa",
+                        "stable_id": "abc9e698-c8bc-4a99-90e0-640de262841a",
+                        "scenario_iteration_id": "35a55508-4729-46f4-aff2-241062501fa1",
+                        "display_order": 1,
+                        "name": "Transfer too high",
+                        "description": "",
+                        "formula_ast_expression": {
+                            "name": "Or",
+                            "children": [
+                                {
+                                    "name": "And",
+                                    "children": [
+                                        {
+                                            "name": ">",
+                                            "children": [
+                                                {
+                                                    "name": "Payload",
+                                                    "children": [
+                                                        {
+                                                            "constant": "amount"
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "constant": 10
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "score_modifier": 100,
+                        "created_at": "2025-09-03T11:33:29.533298+02:00",
+                        "rule_group": ""
+                    }
+                ],
+                "score_review_threshold": 1,
+                "score_block_and_review_threshold": 10,
+                "score_decline_threshold": 10,
+                "schedule": ""
+            }
+        },
+        {
+            "scenario": {
+                "id": "35a55508-bb57-4be1-974e-a5e3d18b8942",
+                "created_at": "2025-08-21T11:39:35.38318+02:00",
+                "description": "",
+                "live_version_id": "35a55508-aaa1-47c2-abf3-cbd16729aa67",
+                "name": "payment people",
+                "organization_id": "35a55508-c418-4ef5-a442-032a4d16d5ea",
+                "trigger_object_type": "payment",
+                "archived": false
+            },
+            "iteration": {
+                "trigger_condition_ast_expression": null,
+                "rules": [
+                    {
+                        "id": "35a55508-4a01-4d39-92d4-baf965602dea",
+                        "stable_id": "2bbf5506-c114-4091-8f3c-06178c8e3b38",
+                        "scenario_iteration_id": "35a55508-aaa1-47c2-abf3-cbd16729aa67",
+                        "display_order": 1,
+                        "name": "New rule",
+                        "description": "",
+                        "formula_ast_expression": {
+                            "name": "Or",
+                            "children": [
+                                {
+                                    "name": "And",
+                                    "children": [
+                                        {
+                                            "name": ">",
+                                            "children": [
+                                                {
+                                                    "name": "Payload",
+                                                    "children": [
+                                                        {
+                                                            "constant": "amount"
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "constant": 1
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "score_modifier": 50,
+                        "created_at": "2025-08-21T11:56:58.287752+02:00",
+                        "rule_group": ""
+                    }
+                ],
+                "score_review_threshold": 1,
+                "score_block_and_review_threshold": 10,
+                "score_decline_threshold": 10,
+                "schedule": ""
+            }
+        },
+        {
+            "scenario": {
+                "id": "35a55508-9e4d-44fb-924c-359f83cefd52",
+                "created_at": "2025-07-30T15:56:44.502235+02:00",
+                "description": "",
+                "live_version_id": "35a55508-72e0-4114-80c5-148b4551a9fb",
+                "name": "transaction too high for france",
+                "organization_id": "35a55508-c418-4ef5-a442-032a4d16d5ea",
+                "trigger_object_type": "transaction",
+                "archived": false
+            },
+            "iteration": {
+                "trigger_condition_ast_expression": null,
+                "rules": [
+                    {
+                        "id": "35a55508-5c9e-4a40-b143-fb56a9565456",
+                        "stable_id": "2ec04101-38df-42b1-80ad-b8331f772787",
+                        "scenario_iteration_id": "35a55508-72e0-4114-80c5-148b4551a9fb",
+                        "display_order": 1,
+                        "name": "Automatic transaction",
+                        "description": "",
+                        "formula_ast_expression": {
+                            "name": "Or",
+                            "children": [
+                                {
+                                    "name": "And",
+                                    "children": [
+                                        {
+                                            "name": "=",
+                                            "children": [
+                                                {
+                                                    "name": "Payload",
+                                                    "children": [
+                                                        {
+                                                            "constant": "trigger"
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "constant": "system"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "score_modifier": 30,
+                        "created_at": "2025-07-31T16:36:50.114485+02:00",
+                        "rule_group": ""
+                    },
+                    {
+                        "id": "35a55508-6239-4191-bfc5-6e040cebcc5c",
+                        "stable_id": "639dec55-1dad-4d1e-a1be-b9c55b71c5d3",
+                        "scenario_iteration_id": "35a55508-72e0-4114-80c5-148b4551a9fb",
+                        "display_order": 1,
+                        "name": "French very high amount",
+                        "description": "",
+                        "formula_ast_expression": {
+                            "name": "Or",
+                            "children": [
+                                {
+                                    "name": "And",
+                                    "children": [
+                                        {
+                                            "name": ">=",
+                                            "children": [
+                                                {
+                                                    "name": "Payload",
+                                                    "children": [
+                                                        {
+                                                            "constant": "amount"
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "constant": 100000
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "name": "=",
+                                            "children": [
+                                                {
+                                                    "name": "DatabaseAccess",
+                                                    "named_children": {
+                                                        "fieldName": {
+                                                            "constant": "country"
+                                                        },
+                                                        "path": {
+                                                            "constant": [
+                                                                "transaction_account"
+                                                            ]
+                                                        },
+                                                        "tableName": {
+                                                            "constant": "transaction"
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "constant": "FR"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "score_modifier": 20,
+                        "created_at": "2025-07-31T16:36:50.114485+02:00",
+                        "rule_group": ""
+                    },
+                    {
+                        "id": "35a55508-308a-4bcb-a967-738bf90b7b80",
+                        "stable_id": "965718cf-ce2e-436e-9a33-bd5160cacb02",
+                        "scenario_iteration_id": "35a55508-72e0-4114-80c5-148b4551a9fb",
+                        "display_order": 1,
+                        "name": "Too young",
+                        "description": "",
+                        "formula_ast_expression": {
+                            "name": "Or",
+                            "children": [
+                                {
+                                    "name": "And",
+                                    "children": [
+                                        {
+                                            "name": "<",
+                                            "children": [
+                                                {
+                                                    "name": "DatabaseAccess",
+                                                    "named_children": {
+                                                        "fieldName": {
+                                                            "constant": "age"
+                                                        },
+                                                        "path": {
+                                                            "constant": [
+                                                                "transaction_account"
+                                                            ]
+                                                        },
+                                                        "tableName": {
+                                                            "constant": "transaction"
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "constant": 18
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "score_modifier": 10,
+                        "created_at": "2025-07-31T16:36:53.90648+02:00",
+                        "rule_group": ""
+                    }
+                ],
+                "score_review_threshold": 1,
+                "score_block_and_review_threshold": 10,
+                "score_decline_threshold": 40,
+                "schedule": ""
+            }
+        },
+        {
+            "scenario": {
+                "id": "35a55508-52d1-49a1-946d-6e9fda3e0ff4",
+                "created_at": "2025-07-10T18:20:38.001727+02:00",
+                "description": "Ahaha",
+                "live_version_id": "35a55508-f1ac-4cc9-911b-079e00c79d89",
+                "name": "Discrimination nom",
+                "organization_id": "35a55508-c418-4ef5-a442-032a4d16d5ea",
+                "trigger_object_type": "account",
+                "archived": false
+            },
+            "iteration": {
+                "trigger_condition_ast_expression": null,
+                "rules": [
+                    {
+                        "id": "35a55508-71fa-4469-86b4-5b8c370dcaa6",
+                        "stable_id": "dd1fbf81-aaf0-40c6-9391-a459b8765b6f",
+                        "scenario_iteration_id": "35a55508-f1ac-4cc9-911b-079e00c79d89",
+                        "display_order": 1,
+                        "name": "New rule",
+                        "description": "",
+                        "formula_ast_expression": {
+                            "name": "Or",
+                            "children": [
+                                {
+                                    "name": "And",
+                                    "children": [
+                                        {
+                                            "name": "=",
+                                            "children": [
+                                                {
+                                                    "name": "Payload",
+                                                    "children": [
+                                                        {
+                                                            "constant": "name"
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "constant": "Asterix"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "score_modifier": 10,
+                        "created_at": "2025-07-21T15:53:25.297554+02:00",
+                        "rule_group": ""
+                    }
+                ],
+                "score_review_threshold": 1,
+                "score_block_and_review_threshold": 10,
+                "score_decline_threshold": 10,
+                "schedule": ""
+            }
+        }
+    ],
+    "tags": [
+        {
+            "target": "case",
+            "name": "Sandy",
+            "color": "#C8C3FF",
+            "id": "744b83a8-86ca-483b-b9d1-697eec847d81"
+        },
+        {
+            "target": "case",
+            "name": "Bob",
+            "color": "#C8C3FF",
+            "id": "1308c8e0-303e-45cf-b48b-6ba8aac95ab0"
+        },
+        {
+            "target": "object",
+            "name": "Gary",
+            "color": "#C8C3FF",
+            "id": "1b91410c-873c-417e-b704-594eac581ae5"
+        },
+        {
+            "target": "object",
+            "name": "Patrick",
+            "color": "#C8C3FF",
+            "id": "c35f4b22-fc1d-4aa6-b4c9-ea4971c3780a"
+        }
+    ],
+    "custom_lists": [
+        {
+            "id": "d7eeafed-07c4-45ae-aa57-636d36f5a37b",
+            "name": "New list",
+            "description": "",
+            "kind": "text",
+            "created_at": "2026-01-26T16:59:48.398208+01:00",
+            "updated_at": "2026-01-26T16:59:48.398208+01:00",
+            "values_count": {
+                "count": 0,
+                "has_more": false
+            },
+            "values": []
+        },
+        {
+            "id": "19bc1672-d986-4780-81de-b0cc79f4fc1e",
+            "name": "Welcome to Marble",
+            "description": "Need a whitelist or blacklist ? The list is your friend :)",
+            "kind": "text",
+            "created_at": "2025-07-10T18:17:45.908673+02:00",
+            "updated_at": "2025-07-10T18:17:45.908673+02:00",
+            "values_count": {
+                "count": 3,
+                "has_more": false
+            },
+            "values": [
+                "Welcome",
+                "to",
+                "marble"
+            ]
+        }
+    ],
+    "inboxes": [
+        {
+            "id": "35a55508-1dbd-45f8-ae51-413799a2c355",
+            "created_at": "2025-12-08T14:25:01.786999+01:00",
+            "updated_at": "2025-12-08T14:25:01.786999+01:00",
+            "name": "wesh ma gueule",
+            "status": "active",
+            "escalation_inbox_id": null,
+            "auto_assign_enabled": false,
+            "users": [],
+            "case_review_manual": true,
+            "case_review_on_case_created": false,
+            "case_review_on_escalate": false,
+            "cases_count": null
+        },
+        {
+            "id": "35a55508-6946-41b1-bcab-0b87c6e2eb8b",
+            "created_at": "2025-12-08T13:58:00.765465+01:00",
+            "updated_at": "2025-12-08T13:58:00.765465+01:00",
+            "name": "nouvelle inbox",
+            "status": "active",
+            "escalation_inbox_id": null,
+            "auto_assign_enabled": false,
+            "users": [],
+            "case_review_manual": true,
+            "case_review_on_case_created": false,
+            "case_review_on_escalate": false,
+            "cases_count": null
+        },
+        {
+            "id": "35a55508-c539-4d62-a19f-64c2394e90ff",
+            "created_at": "2025-07-30T16:14:40.846836+02:00",
+            "updated_at": "2025-07-30T16:14:40.846836+02:00",
+            "name": "Vive les frites",
+            "status": "active",
+            "escalation_inbox_id": null,
+            "auto_assign_enabled": false,
+            "users": [],
+            "case_review_manual": true,
+            "case_review_on_case_created": false,
+            "case_review_on_escalate": false,
+            "cases_count": null
+        },
+        {
+            "id": "35a55508-84c6-44fc-b841-9bae6eeaf656",
+            "created_at": "2025-07-10T18:23:13.152621+02:00",
+            "updated_at": "2025-09-09T10:54:53.014701+02:00",
+            "name": "Discrimination pas ouf",
+            "status": "active",
+            "escalation_inbox_id": null,
+            "auto_assign_enabled": true,
+            "users": [],
+            "case_review_manual": true,
+            "case_review_on_case_created": false,
+            "case_review_on_escalate": false,
+            "cases_count": null
+        }
+    ],
+    "workflows": [
+        {
+            "id": "1a5838e8-d96e-4596-b726-99e89254acbc",
+            "name": "Migrated Workflow",
+            "fallthrough": false,
+            "scenario_id": "35a55508-52d1-49a1-946d-6e9fda3e0ff4",
+            "conditions": [
+                {
+                    "id": "bf03c577-791e-4e3e-8ee0-350fc5c653f2",
+                    "function": "outcome_in",
+                    "params": [
+                        "approve",
+                        "block_and_review"
+                    ]
+                }
+            ],
+            "actions": [
+                {
+                    "id": "8a9bbdda-260b-47af-aa19-874b5032fce0",
+                    "action": "CREATE_CASE",
+                    "params": {
+                        "inbox_id": "35a55508-84c6-44fc-b841-9bae6eeaf656",
+                        "title_template": {
+                            "name": "StringTemplate",
+                            "children": [
+                                {
+                                    "constant": "Case for account: %object_id%"
+                                }
+                            ],
+                            "named_children": {
+                                "object_id": {
+                                    "name": "Payload",
+                                    "children": [
+                                        {
+                                            "constant": "object_id"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": "35a8c850-b9d7-4d87-b613-651ee0b1f4d4",
+            "name": "New Rule",
+            "fallthrough": false,
+            "scenario_id": "35a55508-bb57-4be1-974e-a5e3d18b8942",
+            "conditions": [],
+            "actions": [
+                {
+                    "id": "b9b3fc47-aaa0-4e84-af2b-6f3fc5a8454e",
+                    "action": "DISABLED"
+                }
+            ]
+        },
+        {
+            "id": "50bd55f7-d452-4c94-b098-98dd2779eede",
+            "name": "New Rule",
+            "fallthrough": false,
+            "scenario_id": "35a55508-bd28-4dec-8033-3327e2fa8c7e",
+            "conditions": [
+                {
+                    "id": "f9d9d66f-fad0-4458-abe9-1a4b9c298092",
+                    "function": "always"
+                }
+            ],
+            "actions": [
+                {
+                    "id": "f7a2923a-0bec-4c18-af04-c5858cca103b",
+                    "action": "ADD_TO_CASE_IF_POSSIBLE",
+                    "params": {
+                        "inbox_id": "35a55508-84c6-44fc-b841-9bae6eeaf656",
+                        "any_inbox": false,
+                        "title_template": {
+                            "id": "019980fc-7432-701b-baf4-79e46786395b",
+                            "name": "StringTemplate",
+                            "children": [
+                                {
+                                    "id": "019980fc-7432-701b-baf4-7d4bc03ca84c",
+                                    "children": [],
+                                    "constant": "Case %object_id%",
+                                    "named_children": {}
+                                }
+                            ],
+                            "named_children": {
+                                "object_id": {
+                                    "id": "019980fc-7432-701b-baf4-735cbb1e651d",
+                                    "name": "Payload",
+                                    "children": [
+                                        {
+                                            "id": "019980fc-7432-701b-baf4-7445ecfa247e",
+                                            "children": [],
+                                            "constant": "object_id",
+                                            "named_children": {}
+                                        }
+                                    ],
+                                    "named_children": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": "6cab63b4-8a29-433c-bcdb-01604e8e366b",
+            "name": "New Rule",
+            "fallthrough": false,
+            "scenario_id": "35a55508-bb57-4be1-974e-a5e3d18b8942",
+            "conditions": [
+                {
+                    "id": "d090c1c2-fc21-45ab-9f2f-4b6283ec4cc5",
+                    "function": "always"
+                }
+            ],
+            "actions": [
+                {
+                    "id": "443db4de-2e39-4f63-ae80-acc5bd96c3a2",
+                    "action": "CREATE_CASE",
+                    "params": {
+                        "inbox_id": "35a55508-84c6-44fc-b841-9bae6eeaf656",
+                        "any_inbox": false,
+                        "title_template": {
+                            "id": "0198cc54-1639-754e-a5d6-489a4d12237c",
+                            "name": "StringTemplate",
+                            "children": [
+                                {
+                                    "id": "0198cc54-1639-754e-a5d6-4c352ce4bf69",
+                                    "children": [],
+                                    "constant": "Case %object_id%",
+                                    "named_children": {}
+                                }
+                            ],
+                            "named_children": {
+                                "object_id": {
+                                    "id": "0198cc5f-8201-77d0-81bc-4588715fb8aa",
+                                    "name": "Payload",
+                                    "children": [
+                                        {
+                                            "id": "0198cc5f-8201-77d0-81bc-4bcae2cca02a",
+                                            "children": [],
+                                            "constant": "amount",
+                                            "named_children": {}
+                                        }
+                                    ],
+                                    "named_children": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": "cbd414a8-d56f-48b9-ba6c-01b1612567ac",
+            "name": "New Rule",
+            "fallthrough": false,
+            "scenario_id": "35a55508-9e4d-44fb-924c-359f83cefd52",
+            "conditions": [
+                {
+                    "id": "9bfc8a94-0a88-4669-a4c5-8774ccc27f8f",
+                    "function": "outcome_in",
+                    "params": [
+                        "block_and_review",
+                        "decline",
+                        "review"
+                    ]
+                }
+            ],
+            "actions": [
+                {
+                    "id": "cd66791f-5ae4-4831-9cab-8207ee734012",
+                    "action": "ADD_TO_CASE_IF_POSSIBLE",
+                    "params": {
+                        "inbox_id": "35a55508-c539-4d62-a19f-64c2394e90ff",
+                        "any_inbox": false,
+                        "title_template": {
+                            "id": "01985bb8-87bb-71c8-aef2-16d7fc882550",
+                            "name": "StringTemplate",
+                            "children": [
+                                {
+                                    "id": "01985bb8-87bb-71c8-aef2-1a160c056722",
+                                    "children": [],
+                                    "constant": "Case %object_id%",
+                                    "named_children": {}
+                                }
+                            ],
+                            "named_children": {
+                                "object_id": {
+                                    "id": "019860f1-0d6d-77ff-b217-775f9a77422b",
+                                    "name": "DatabaseAccess",
+                                    "children": [],
+                                    "named_children": {
+                                        "path": {
+                                            "id": "019860f1-0d6d-77ff-b217-7f83b1af403c",
+                                            "children": [],
+                                            "constant": [
+                                                "transaction_account"
+                                            ],
+                                            "named_children": {}
+                                        },
+                                        "fieldName": {
+                                            "id": "019860f1-0d6d-77ff-b217-798fcbab6261",
+                                            "children": [],
+                                            "constant": "object_id",
+                                            "named_children": {}
+                                        },
+                                        "tableName": {
+                                            "id": "019860f1-0d6d-77ff-b217-829d9f03dd0f",
+                                            "children": [],
+                                            "constant": "transaction",
+                                            "named_children": {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "seeds": {
+        "ingestion": null,
+        "decisions": null
+    }
+}

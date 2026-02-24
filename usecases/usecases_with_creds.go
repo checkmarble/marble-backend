@@ -1054,6 +1054,25 @@ func (usecases *UsecasesWithCreds) NewOrgImportUsecase() OrgImportUsecase {
 	)
 }
 
+func (usecases *UsecasesWithCreds) NewOrgExportUsecase() OrgExportUsecase {
+	return NewOrgExportUsecase(
+		usecases.NewExecutorFactory(),
+		security.EnforceSecurityOrgImportImpl{
+			EnforceSecurity: usecases.NewEnforceSecurity(),
+			Credentials:     usecases.Credentials,
+		},
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.NewDataModelUseCase(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.CustomListRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+	)
+}
+
 func (usecases *UsecasesWithCreds) NewClient360Usecase() Client360Usecase {
 	return NewClient360Usecase(
 		usecases.NewEnforceSecurity(),
