@@ -402,7 +402,7 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 
 		err := uc.dataModelRepository.CreateDataModelLink(ctx, tx, linkId.String(), models.DataModelLinkCreateInput{
 			OrganizationID: orgId,
-			Name:           fmt.Sprintf("%s_%s", link.ChildTableName, link.ParentTableName),
+			Name:           link.Name,
 			ParentTableID:  ids[link.ParentTableId],
 			ParentFieldID:  ids[link.ParentFieldId],
 			ChildTableID:   ids[link.ChildTableId],
@@ -418,8 +418,8 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 		ids[pivot.Id.String()] = pivotId.String()
 
 		var field *string
-		if pivot.FieldId != "" {
-			field = utils.Ptr(ids[pivot.FieldId])
+		if pivot.FieldId != nil {
+			field = utils.Ptr(ids[*pivot.FieldId])
 		}
 
 		err := uc.dataModelRepository.CreatePivot(ctx, tx, pivotId.String(), models.CreatePivotInput{
@@ -435,19 +435,21 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 		}
 	}
 
-	for navTable, navOptions := range dataModel.NavigationOptions {
-		err := uc.dataModelUsecase.CreateNavigationOption(ctx, models.CreateNavigationOptionInput{
-			Blocking:        true,
-			SourceTableId:   ids[navTable],
-			SourceFieldId:   ids[navOptions.SourceFieldId],
-			TargetTableId:   ids[navOptions.TargetTableId],
-			FilterFieldId:   ids[navOptions.FilterFieldId],
-			OrderingFieldId: ids[navOptions.OrderingFieldId],
-		})
-		if err != nil {
-			// Navigation options are checked for duplication, we want to ignore that
-			if !errors.Is(err, models.ConflictError) {
-				return err
+	for navTableId, navOptionsList := range dataModel.NavigationOptions {
+		for _, navOption := range navOptionsList {
+			err := uc.dataModelUsecase.CreateNavigationOption(ctx, models.CreateNavigationOptionInput{
+				Blocking:        true,
+				SourceTableId:   ids[navTableId],
+				SourceFieldId:   ids[navOption.SourceFieldId],
+				TargetTableId:   ids[navOption.TargetTableId],
+				FilterFieldId:   ids[navOption.FilterFieldId],
+				OrderingFieldId: ids[navOption.OrderingFieldId],
+			})
+			if err != nil {
+				// Navigation options are checked for duplication, we want to ignore that
+				if !errors.Is(err, models.ConflictError) {
+					return err
+				}
 			}
 		}
 	}
@@ -540,7 +542,7 @@ func (uc *OrgImportUsecase) createCustomLists(ctx context.Context, tx repositori
 
 		// We can have a duplication of Value, but it is not a problem for the use of custom list.
 		err = uc.customListRepository.BatchInsertCustomListValues(ctx, tx,
-			kind, listId.String(), pure_utils.Map(
+			models.CustomListText, listId.String(), pure_utils.Map(
 				list.Values, func(v string) models.BatchInsertCustomListValue {
 					valueId, _ := uuid.NewV7()
 					return models.BatchInsertCustomListValue{Id: valueId.String(), Value: v}

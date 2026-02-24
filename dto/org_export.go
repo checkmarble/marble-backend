@@ -20,20 +20,23 @@ func AdaptImportOrgDto(org models.Organization) ImportOrg {
 func AdaptImportDataModelDto(
 	dataModel models.DataModel,
 	links []models.LinkToSingle,
-	pivots []models.Pivot,
+	pivots []models.PivotMetadata,
 ) ImportDataModel {
 	tables := make([]Table, 0, len(dataModel.Tables))
-	navigationOptions := make(map[string]CreateNavigationOptionInput)
+	navigationOptions := make(map[string][]CreateNavigationOptionInput)
 
 	for _, table := range dataModel.Tables {
 		// Extract navigation options to top-level map keyed by source table ID
 		for _, navOption := range table.NavigationOptions {
-			navigationOptions[navOption.SourceTableId] = CreateNavigationOptionInput{
-				SourceFieldId:   navOption.SourceFieldId,
-				TargetTableId:   navOption.TargetTableId,
-				FilterFieldId:   navOption.FilterFieldId,
-				OrderingFieldId: navOption.OrderingFieldId,
-			}
+			navigationOptions[navOption.SourceTableId] = append(
+				navigationOptions[navOption.SourceTableId],
+				CreateNavigationOptionInput{
+					SourceFieldId:   navOption.SourceFieldId,
+					TargetTableId:   navOption.TargetTableId,
+					FilterFieldId:   navOption.FilterFieldId,
+					OrderingFieldId: navOption.OrderingFieldId,
+				},
+			)
 		}
 
 		var ftmEntity *string
@@ -57,7 +60,7 @@ func AdaptImportDataModelDto(
 	return ImportDataModel{
 		Tables:            tables,
 		Links:             pure_utils.Map(links, adaptDataModelLink),
-		Pivots:            pure_utils.Map(pivots, AdaptPivotDto),
+		Pivots:            pure_utils.Map(pivots, AdaptPivotMetadataDto),
 		NavigationOptions: navigationOptions,
 	}
 }

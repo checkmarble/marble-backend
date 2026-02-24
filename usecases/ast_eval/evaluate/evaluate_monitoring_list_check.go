@@ -51,6 +51,10 @@ type MonitoringListCheck struct {
 	IngestedDataReader repositories.IngestedDataReadRepository
 	ClientDbRepository ClientDbRepository // For dry run navigation option validation
 	ReturnFakeValue    bool
+
+	// precomputedNavDataModel is set once before goroutines launch in dry run mode
+	// to avoid concurrent ListPivots calls on the same executor (e.g. a transaction).
+	precomputedNavDataModel *models.DataModel
 }
 
 func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
@@ -88,6 +92,24 @@ func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Argum
 	// Step 2: check LinkedTableChecks for risk topics in parallel
 	if len(config.LinkedTableChecks) == 0 {
 		return false, nil
+	}
+
+	// In dry run mode, pre-compute the data model with navigation options once before
+	// launching goroutines. Each goroutine would otherwise call ListPivots on the same
+	// executor concurrently, which causes "conn busy" when the executor is a transaction
+	// (e.g. during org import validation).
+	if mlc.ReturnFakeValue {
+		for _, check := range config.LinkedTableChecks {
+			if check.NavigationOption != nil {
+				dm, err := mlc.buildDataModelWithNavigationOptions(ctx, exec, execDbClient)
+				if err != nil {
+					return MakeEvaluateError(errors.Wrap(err,
+						"failed to build data model with navigation options for dry run"))
+				}
+				mlc.precomputedNavDataModel = &dm
+				break
+			}
+		}
 	}
 
 	// Create cancellable context and channels for early exit
@@ -391,13 +413,10 @@ func (mlc MonitoringListCheck) checkLinkedTableViaNavigation(
 ) (bool, error) {
 	nav := linkedCheck.NavigationOption
 
-	// For dry run, build data model with navigation options and validate the navigation exists
+	// For dry run, validate the navigation exists. Use the pre-computed data model if available
+	// (set on the struct before goroutines launch to avoid concurrent DB access).
 	if mlc.ReturnFakeValue {
-		dataModelWithNav, err := mlc.buildDataModelWithNavigationOptions(ctx, exec, execDbClient)
-		if err != nil {
-			return false, errors.Wrap(err, "failed to build data model with navigation options for dry run")
-		}
-		_, err = DryRunListIngestedObjects(dataModelWithNav, *nav, "object_id")
+		_, err := DryRunListIngestedObjects(*mlc.precomputedNavDataModel, *nav, "object_id")
 		if err != nil {
 			return false, err
 		}

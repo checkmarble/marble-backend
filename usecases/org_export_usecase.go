@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -92,9 +93,6 @@ func (uc *OrgExportUsecase) Export(ctx context.Context, orgId uuid.UUID) (dto.Or
 	if err != nil {
 		return dto.OrgImport{}, errors.Wrap(err, "failed to fetch pivots")
 	}
-	pivots := pure_utils.Map(pivotMetadatas, func(p models.PivotMetadata) models.Pivot {
-		return p.Enrich(dataModel)
-	})
 
 	// Fetch tags (both case and object targets)
 	caseTags, err := uc.tagRepository.ListOrganizationTags(ctx, exec, orgId, models.TagTargetCase, false)
@@ -167,14 +165,25 @@ func (uc *OrgExportUsecase) Export(ctx context.Context, orgId uuid.UUID) (dto.Or
 	if err != nil {
 		return dto.OrgImport{}, errors.Wrap(err, "failed to fetch workflows")
 	}
+	// Filter out workflows with scenarios that don't have a published iteration (since we won't be able to export those scenarios)
+	filteredWorkflows := make([]models.Workflow, 0, len(workflows))
+	exportedScenarioIds := make([]uuid.UUID, len(importScenarios))
+	for i := range importScenarios {
+		exportedScenarioIds[i] = uuid.MustParse(importScenarios[i].Scenario.Id)
+	}
+	for _, workflow := range workflows {
+		if slices.Contains(exportedScenarioIds, workflow.ScenarioId) {
+			filteredWorkflows = append(filteredWorkflows, workflow)
+		}
+	}
 
 	return dto.OrgImport{
 		Org:         dto.AdaptImportOrgDto(org),
-		DataModel:   dto.AdaptImportDataModelDto(dataModel, links, pivots),
+		DataModel:   dto.AdaptImportDataModelDto(dataModel, links, pivotMetadatas),
 		Tags:        pure_utils.Map(allTags, dto.AdaptImportTagDto),
 		CustomLists: importCustomLists,
 		Scenarios:   importScenarios,
 		Inboxes:     pure_utils.Map(inboxes, dto.AdaptInboxDto),
-		Workflows:   pure_utils.Map(workflows, dto.AdaptImportWorkflowDto),
+		Workflows:   pure_utils.Map(filteredWorkflows, dto.AdaptImportWorkflowDto),
 	}, nil
 }
