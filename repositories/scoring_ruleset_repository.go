@@ -38,6 +38,7 @@ func (repo *MarbleDbRepository) GetScoringRuleset(
 	exec Executor,
 	orgId uuid.UUID,
 	entityType string,
+	status string,
 ) (models.ScoringRuleset, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.ScoringRuleset{}, err
@@ -49,6 +50,7 @@ func (repo *MarbleDbRepository) GetScoringRuleset(
 			From(dbmodels.TABLE_SCORING_RULESETS).
 			Where("org_id = ?", orgId).
 			Where("entity_type = ?", entityType).
+			Where("status = ?", status).
 			OrderBy("version desc").
 			Limit(1)
 	})
@@ -104,6 +106,14 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersion(
 			ruleset.Thresholds,
 			ruleset.CooldownSeconds,
 		).
+		Suffix(`
+			on conflict (org_id, entity_type) where status = 'draft'
+			do update set
+				name = excluded.name,
+				description = excluded.description,
+				thresholds = excluded.thresholds,
+				cooldown_seconds = excluded.cooldown_seconds
+		`).
 		Suffix("returning *")
 
 	return SqlToModel(ctx, tx, query, dbmodels.AdaptScoringRuleset)
@@ -116,6 +126,14 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersionRule(
 	rule models.CreateScoringRuleRequest,
 ) (models.ScoringRule, error) {
 	if err := validateMarbleDbExecutor(tx); err != nil {
+		return models.ScoringRule{}, err
+	}
+
+	deleteQuery := NewQueryBuilder().
+		Delete(dbmodels.TABLE_SCORING_RULES).
+		Where("ruleset_id = ?", ruleset.Id)
+
+	if err := ExecBuilder(ctx, tx, deleteQuery); err != nil {
 		return models.ScoringRule{}, err
 	}
 
@@ -140,4 +158,18 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersionRule(
 		Suffix("returning *")
 
 	return SqlToModel(ctx, tx, query, dbmodels.AdaptScoringRule)
+}
+
+func (repo *MarbleDbRepository) CommitRuleset(ctx context.Context, exec Executor, ruleset models.ScoringRuleset) (models.ScoringRuleset, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ScoringRuleset{}, err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_SCORING_RULESETS).
+		Set("status", models.ScoreRulesetCommitted).
+		Where("id = ?", ruleset.Id).
+		Suffix("returning *")
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptScoringRuleset)
 }

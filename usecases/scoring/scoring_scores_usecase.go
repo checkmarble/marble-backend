@@ -49,8 +49,13 @@ func (uc ScoringScoresUsecase) ComputeScore(ctx context.Context, entityType, ent
 		ctx,
 		uc.executorFactory.NewExecutor(),
 		uc.enforceSecurity.OrgId(),
-		entityType)
+		entityType,
+		models.ScoreRulesetCommitted)
 	if err != nil {
+		if errors.Is(err, models.NotFoundError) {
+			return models.ScoringEvaluation{}, errors.Wrap(err, "no committed version of this ruleset")
+		}
+
 		return models.ScoringEvaluation{}, err
 	}
 
