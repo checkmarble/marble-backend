@@ -27,6 +27,25 @@ func ScoreSourceFrom(s string) ScoreSource {
 	}
 }
 
+type ScoreRulesetStatus string
+
+const (
+	ScoreRulesetDraft     = "draft"
+	ScoreRulesetCommitted = "committed"
+	ScoreRulesetUnknown   = "unknown"
+)
+
+func ScoreRulesetStatusFrom(s string) ScoreSource {
+	switch s {
+	case string(ScoreRulesetDraft):
+		return ScoreRulesetDraft
+	case string(ScoreRulesetCommitted):
+		return ScoreRulesetCommitted
+	default:
+		return ScoreRulesetUnknown
+	}
+}
+
 type ScoringSettings struct {
 	Id        uuid.UUID
 	OrgId     uuid.UUID
@@ -78,11 +97,13 @@ type ScoringRuleset struct {
 	Id              uuid.UUID
 	OrgId           uuid.UUID
 	Version         int
+	Status          string
 	Name            string
 	Description     string
 	EntityType      string
 	Thresholds      []int
 	CooldownSeconds int
+	CreatedAt       time.Time
 
 	Rules []ScoringRule
 }

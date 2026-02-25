@@ -137,6 +137,27 @@ func handleScoringCreateRulesetVersion(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
+func handleScoringCommitRuleset(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		uc := usecasesWithCreds(ctx, uc)
+		scoringUsecase := uc.NewScoringRulesetsUsecase()
+
+		ruleset, err := scoringUsecase.CommitRuleset(ctx, c.Param("entityType"))
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		out, err := scoring.AdaptScoringRuleset(ruleset)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, out)
+	}
+}
+
 func handleScoringGetScoreHistory(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
