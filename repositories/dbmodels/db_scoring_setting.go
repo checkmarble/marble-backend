@@ -15,15 +15,15 @@ type DbScoringSetting struct {
 	MaxScore int `db:"max_score"`
 
 	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 }
 
 const TABLE_SCORING_SETTINGS = "scoring_settings"
 
 var SelectScoringSettingsColumns = utils.ColumnList[DbScoringSetting]()
 
-func AdaptScoringSetting(db DbScoringSetting) (models.ScoringSetting, error) {
-	return models.ScoringSetting{
+func AdaptScoringSetting(db DbScoringSetting) (models.ScoringSettings, error) {
+	return models.ScoringSettings{
 		Id:        db.Id,
 		OrgId:     db.OrgId,
 		MaxScore:  db.MaxScore,

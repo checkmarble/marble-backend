@@ -27,7 +27,7 @@ func ScoreSourceFrom(s string) ScoreSource {
 	}
 }
 
-type ScoringSetting struct {
+type ScoringSettings struct {
 	Id        uuid.UUID
 	OrgId     uuid.UUID
 	MaxScore  int

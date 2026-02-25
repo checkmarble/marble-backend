@@ -7,8 +7,50 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 )
+
+func handleScoringGetSettings(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		uc := usecasesWithCreds(ctx, uc)
+		scoringUsecase := uc.NewScoringSettingsUsecase()
+		settings, err := scoringUsecase.GetSettings(ctx)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, scoring.AdaptSettings(settings))
+	}
+}
+
+func handleScoringUpdateSettings(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var payload scoring.UpdateSettingsRequest
+
+		if err := c.ShouldBindBodyWithJSON(&payload); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		req := models.ScoringSettings{
+			MaxScore: payload.MaxScore,
+		}
+
+		uc := usecasesWithCreds(ctx, uc)
+		scoringUsecase := uc.NewScoringSettingsUsecase()
+		settings, err := scoringUsecase.UpdateSettings(ctx, req)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, scoring.AdaptSettings(settings))
+	}
+}
 
 func handleScoringComputeScore(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -73,7 +115,8 @@ func handleScoringCreateRulesetVersion(uc usecases.Usecases) gin.HandlerFunc {
 
 		var payload scoring.CreateRulesetRequest
 
-		if err := c.ShouldBindBodyWithJSON(&payload); presentError(ctx, c, err) {
+		if err := c.ShouldBindBodyWithJSON(&payload); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
@@ -147,7 +190,8 @@ func handleOverrideEntityScore(uc usecases.Usecases) gin.HandlerFunc {
 
 		var payload scoring.OverrideScoreRequest
 
-		if err := c.ShouldBindBodyWithJSON(&payload); presentError(ctx, c, err) {
+		if err := c.ShouldBindBodyWithJSON(&payload); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
