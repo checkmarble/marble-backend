@@ -820,7 +820,7 @@ func parseStringValuesToMap(headers []string, values []string, table models.Tabl
 			if err != nil {
 				return nil, fmt.Errorf("invalid IP address %s", value)
 			}
-			result[fieldName] = val
+			result[fieldName] = val.Unmap()
 		case models.Coords:
 			latS, lngS, ok := strings.Cut(value, ",")
 			if !ok {
