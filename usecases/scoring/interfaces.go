@@ -33,3 +33,8 @@ type scoringIngestedDataReader interface {
 	QueryIngestedObject(ctx context.Context, exec repositories.Executor,
 		table models.Table, objectId string, metadataFields ...string) ([]models.DataModelObject, error)
 }
+
+type scoringIndexEditor interface {
+	GetIndexesToCreateForScoringRuleset(ctx context.Context, organizationId uuid.UUID, ruleset models.ScoringRuleset) (toCreate []models.ConcreteIndex, numPending int, err error)
+	CreateIndexesAsync(ctx context.Context, organizationId uuid.UUID, indexes []models.ConcreteIndex) error
+}
