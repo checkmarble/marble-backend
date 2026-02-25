@@ -81,11 +81,28 @@ func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgI
 		return false, "", err
 	}
 
+	var chargeUsageForCode *int
+	for _, chargeUsage := range customerUsage.ChargesUsage {
+		if chargeUsage.BillableMetric.Code == code.String() {
+			chargeUsageForCode = &chargeUsage.AmountCents
+			break
+		}
+	}
+	// It should never happen since we fetch the subscriptions with the code, but we add this check just in case
+	if chargeUsageForCode == nil {
+		logger.DebugContext(ctx, "no charge usage found for the billable metric in customer usage",
+			"orgId", orgId, "code", code, "customerUsage", customerUsage)
+		return false, "", errors.New("no charge usage found for the billable metric in customer usage")
+	}
+	logger.InfoContext(ctx, "customer usage for the event", "orgId", orgId, "code", code, "usage", *chargeUsageForCode)
+
 	// For now, suppose there is only one wallet
-	if activeWallet.BalanceCents <= customerUsage.TotalAmountCents {
-		logger.DebugContext(ctx, "not enough funds in the wallet", "orgId", orgId, "code", code,
-			"wallet", activeWallet.BalanceCents, "subscription",
-			customerUsage.TotalAmountCents,
+	if activeWallet.BalanceCents <= *chargeUsageForCode {
+		logger.DebugContext(ctx, "not enough funds in the wallet",
+			"orgId", orgId,
+			"code", code,
+			"wallet_funds", activeWallet.BalanceCents,
+			"usage", *chargeUsageForCode,
 		)
 		return false, "", nil
 	}

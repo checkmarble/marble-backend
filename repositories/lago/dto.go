@@ -98,15 +98,45 @@ func AdaptSubscriptionsDtoToModel(dto SubscriptionsDto) []models.Subscription {
 	return pure_utils.Map(dto.Subscriptions, AdaptSubscriptionsItemDtoToModel)
 }
 
+type BillableMetricInUsageDto struct {
+	LagoId          string `json:"lago_id"`
+	Code            string `json:"code"`
+	Name            string `json:"name"`
+	AggregationType string `json:"aggregation_type"`
+}
+
+func AdaptBillableMetricInUsageDtoToModel(dto BillableMetricInUsageDto) models.BillableMetricInUsage {
+	return models.BillableMetricInUsage{
+		LagoId:          dto.LagoId,
+		Code:            dto.Code,
+		Name:            dto.Name,
+		AggregationType: dto.AggregationType,
+	}
+}
+
+type ChargeUsageDto struct {
+	AmountCents    int                      `json:"amount_cents"`
+	BillableMetric BillableMetricInUsageDto `json:"billable_metric"`
+}
+
+func AdaptChargeUsageDtoToModel(dto ChargeUsageDto) models.ChargeUsage {
+	return models.ChargeUsage{
+		AmountCents:    dto.AmountCents,
+		BillableMetric: AdaptBillableMetricInUsageDtoToModel(dto.BillableMetric),
+	}
+}
+
 type CustomerUsageDto struct {
 	CustomerUsage struct {
-		TotalAmountCents int `json:"total_amount_cents"`
+		TotalAmountCents int              `json:"total_amount_cents"`
+		ChargesUsage     []ChargeUsageDto `json:"charges_usage"`
 	} `json:"customer_usage"`
 }
 
 func AdaptCustomerUsageDtoToModel(dto CustomerUsageDto) models.CustomerUsage {
 	return models.CustomerUsage{
 		TotalAmountCents: dto.CustomerUsage.TotalAmountCents,
+		ChargesUsage:     pure_utils.Map(dto.CustomerUsage.ChargesUsage, AdaptChargeUsageDtoToModel),
 	}
 }
 

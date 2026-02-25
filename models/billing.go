@@ -54,8 +54,21 @@ type Subscription struct {
 	Plan       Plan
 }
 
+type BillableMetricInUsage struct {
+	LagoId          string
+	Code            string
+	Name            string
+	AggregationType string
+}
+
+type ChargeUsage struct {
+	AmountCents    int
+	BillableMetric BillableMetricInUsage
+}
+
 type CustomerUsage struct {
 	TotalAmountCents int
+	ChargesUsage     []ChargeUsage
 }
 
 type BillingEvent struct {
