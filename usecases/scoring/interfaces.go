@@ -9,6 +9,9 @@ import (
 )
 
 type scoringRepository interface {
+	GetScoringSettings(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (*models.ScoringSettings, error)
+	UpdateScoringSettings(ctx context.Context, exec repositories.Executor, settings models.ScoringSettings) (models.ScoringSettings, error)
+
 	ListScoringRulesets(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.ScoringRuleset, error)
 	GetScoringRuleset(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, entityType string) (models.ScoringRuleset, error)
 	InsertScoringRulesetVersion(ctx context.Context, exec repositories.Transaction,

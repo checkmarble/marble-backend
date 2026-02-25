@@ -61,6 +61,10 @@ func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, entit
 	orgId := uc.enforceSecurity.OrgId()
 	exec := uc.executorFactory.NewExecutor()
 
+	if err := uc.enforceSecurity.UpdateRuleset(orgId); err != nil {
+		return models.ScoringRuleset{}, err
+	}
+
 	existingRuleset, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, entityType)
 	if err != nil && !errors.Is(err, models.NotFoundError) {
 		return models.ScoringRuleset{}, err
