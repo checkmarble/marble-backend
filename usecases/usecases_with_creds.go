@@ -1072,8 +1072,17 @@ func (usecases *UsecasesWithCreds) NewClient360Usecase() Client360Usecase {
 	)
 }
 
-func (usecases *UsecasesWithCreds) NewScoringUsecase() scoring.ScoringUsecase {
-	return scoring.NewScoringUsecase(
+func (usecases *UsecasesWithCreds) NewScoringRulesetsUsecase() scoring.ScoringRulesetsUsecase {
+	return scoring.NewScoringRulesetsUsecase(
+		usecases.NewEnforceSecurityScoring(),
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewScoringScoresUsecase() scoring.ScoringScoresUsecase {
+	return scoring.NewScoringScoresUsecase(
 		usecases.NewEnforceSecurityScoring(),
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),

@@ -21,7 +21,7 @@ func createEval(modifier, floor int) models.ScoringEvaluation {
 }
 
 func TestInternalScoreToScore(t *testing.T) {
-	uc := ScoringUsecase{}
+	uc := ScoringScoresUsecase{}
 
 	r := createRuleset([]int{10, 20, 30, 40})
 	e := createEval(25, 0)

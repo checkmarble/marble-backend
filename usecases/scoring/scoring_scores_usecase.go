@@ -2,9 +2,7 @@ package scoring
 
 import (
 	"context"
-	"encoding/json"
 
-	"github.com/checkmarble/marble-backend/dto/scoring"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -16,29 +14,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type scoringRepository interface {
-	ListScoringRulesets(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.ScoringRuleset, error)
-	GetScoringRuleset(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, entityType string) (models.ScoringRuleset, error)
-	InsertScoringRulesetVersion(ctx context.Context, exec repositories.Transaction,
-		orgId uuid.UUID,
-		ruleset models.CreateScoringRulesetRequest,
-	) (models.ScoringRuleset, error)
-	InsertScoringRulesetVersionRule(ctx context.Context, tx repositories.Transaction,
-		ruleset models.ScoringRuleset,
-		rule models.CreateScoringRuleRequest,
-	) (models.ScoringRule, error)
-
-	GetScoreHistory(ctx context.Context, exec repositories.Executor, entityRef models.ScoringEntityRef) ([]models.ScoringScore, error)
-	GetActiveScore(ctx context.Context, exec repositories.Executor, entityRef models.ScoringEntityRef) (*models.ScoringScore, error)
-	InsertScore(ctx context.Context, tx repositories.Transaction, req models.InsertScoreRequest) (models.ScoringScore, error)
-}
-
-type scoringIngestedDataReader interface {
-	QueryIngestedObject(ctx context.Context, exec repositories.Executor,
-		table models.Table, objectId string, metadataFields ...string) ([]models.DataModelObject, error)
-}
-
-type ScoringUsecase struct {
+type ScoringScoresUsecase struct {
 	enforceSecurity     security.EnforceSecurityScoring
 	executorFactory     executor_factory.ExecutorFactory
 	transactionFactory  executor_factory.TransactionFactory
@@ -48,7 +24,7 @@ type ScoringUsecase struct {
 	evaluateAst         ast_eval.EvaluateAstExpression
 }
 
-func NewScoringUsecase(
+func NewScoringScoresUsecase(
 	enforceSecurity security.EnforceSecurityScoring,
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
@@ -56,8 +32,8 @@ func NewScoringUsecase(
 	dataModelRepository repositories.DataModelRepository,
 	ingestedDataReader scoringIngestedDataReader,
 	evaluateAst ast_eval.EvaluateAstExpression,
-) ScoringUsecase {
-	return ScoringUsecase{
+) ScoringScoresUsecase {
+	return ScoringScoresUsecase{
 		enforceSecurity:     enforceSecurity,
 		executorFactory:     executorFactory,
 		transactionFactory:  transactionFactory,
@@ -68,7 +44,7 @@ func NewScoringUsecase(
 	}
 }
 
-func (uc ScoringUsecase) ComputeScore(ctx context.Context, entityType, entityId string) (models.ScoringEvaluation, error) {
+func (uc ScoringScoresUsecase) ComputeScore(ctx context.Context, entityType, entityId string) (models.ScoringEvaluation, error) {
 	ruleset, err := uc.repository.GetScoringRuleset(
 		ctx,
 		uc.executorFactory.NewExecutor(),
@@ -107,81 +83,7 @@ func (uc ScoringUsecase) ComputeScore(ctx context.Context, entityType, entityId 
 	return eval, nil
 }
 
-func (uc ScoringUsecase) ListRulesets(ctx context.Context) ([]models.ScoringRuleset, error) {
-	rulesets, err := uc.repository.ListScoringRulesets(ctx, uc.executorFactory.NewExecutor(), uc.enforceSecurity.OrgId())
-	if err != nil {
-		return nil, err
-	}
-
-	return rulesets, err
-}
-
-func (uc ScoringUsecase) GetRuleset(ctx context.Context, entityType string) (models.ScoringRuleset, error) {
-	ruleset, err := uc.repository.GetScoringRuleset(
-		ctx,
-		uc.executorFactory.NewExecutor(),
-		uc.enforceSecurity.OrgId(),
-		entityType)
-	if err != nil {
-		return models.ScoringRuleset{}, err
-	}
-
-	return ruleset, err
-}
-
-func (uc ScoringUsecase) CreateRulesetVersion(ctx context.Context, entityType string, req scoring.CreateRulesetRequest) (models.ScoringRuleset, error) {
-	orgId := uc.enforceSecurity.OrgId()
-	exec := uc.executorFactory.NewExecutor()
-
-	existingRuleset, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, entityType)
-	if err != nil && !errors.Is(err, models.NotFoundError) {
-		return models.ScoringRuleset{}, err
-	}
-
-	ruleset, err := executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (models.ScoringRuleset, error) {
-		rs := models.CreateScoringRulesetRequest{
-			Version:         existingRuleset.Version + 1,
-			Name:            req.Name,
-			Description:     req.Description,
-			EntityType:      entityType,
-			Thresholds:      req.Thresholds,
-			CooldownSeconds: req.CooldownSeconds,
-		}
-
-		ruleset, err := uc.repository.InsertScoringRulesetVersion(ctx, tx, orgId, rs)
-		if err != nil {
-			return models.ScoringRuleset{}, err
-		}
-
-		ruleset.Rules = make([]models.ScoringRule, len(req.Rules))
-
-		for idx, rreq := range req.Rules {
-			ser, err := json.Marshal(rreq.Ast)
-			if err != nil {
-				return models.ScoringRuleset{}, err
-			}
-
-			r := models.CreateScoringRuleRequest{
-				Name:        rreq.Name,
-				Description: rreq.Description,
-				Ast:         ser,
-			}
-
-			rule, err := uc.repository.InsertScoringRulesetVersionRule(ctx, tx, ruleset, r)
-			if err != nil {
-				return models.ScoringRuleset{}, err
-			}
-
-			ruleset.Rules[idx] = rule
-		}
-
-		return ruleset, nil
-	})
-
-	return ruleset, err
-}
-
-func (uc ScoringUsecase) GetScoreHistory(ctx context.Context, entityRef models.ScoringEntityRef) ([]models.ScoringScore, error) {
+func (uc ScoringScoresUsecase) GetScoreHistory(ctx context.Context, entityRef models.ScoringEntityRef) ([]models.ScoringScore, error) {
 	entityRef.OrgId = uc.enforceSecurity.OrgId()
 
 	scores, err := uc.repository.GetScoreHistory(ctx, uc.executorFactory.NewExecutor(), entityRef)
@@ -198,7 +100,7 @@ func (uc ScoringUsecase) GetScoreHistory(ctx context.Context, entityRef models.S
 	return scores, nil
 }
 
-func (uc ScoringUsecase) GetActiveScore(ctx context.Context, entityRef models.ScoringEntityRef) (*models.ScoringScore, error) {
+func (uc ScoringScoresUsecase) GetActiveScore(ctx context.Context, entityRef models.ScoringEntityRef) (*models.ScoringScore, error) {
 	entityRef.OrgId = uc.enforceSecurity.OrgId()
 
 	score, err := uc.repository.GetActiveScore(ctx, uc.executorFactory.NewExecutor(), entityRef)
@@ -213,7 +115,7 @@ func (uc ScoringUsecase) GetActiveScore(ctx context.Context, entityRef models.Sc
 	return score, nil
 }
 
-func (uc ScoringUsecase) OverrideScore(ctx context.Context, req models.InsertScoreRequest) (models.ScoringScore, error) {
+func (uc ScoringScoresUsecase) OverrideScore(ctx context.Context, req models.InsertScoreRequest) (models.ScoringScore, error) {
 	exec := uc.executorFactory.NewExecutor()
 
 	req.OrgId = uc.enforceSecurity.OrgId()
@@ -247,7 +149,7 @@ func (uc ScoringUsecase) OverrideScore(ctx context.Context, req models.InsertSco
 	return score, err
 }
 
-func (uc ScoringUsecase) getPayloadObject(ctx context.Context, orgId uuid.UUID, dataModel models.DataModel, entityType, entityId string) (models.ClientObject, error) {
+func (uc ScoringScoresUsecase) getPayloadObject(ctx context.Context, orgId uuid.UUID, dataModel models.DataModel, entityType, entityId string) (models.ClientObject, error) {
 	table, ok := dataModel.Tables[entityType]
 	if !ok {
 		return models.ClientObject{}, errors.Newf("unknown entity type '%s'", entityType)
@@ -272,7 +174,7 @@ func (uc ScoringUsecase) getPayloadObject(ctx context.Context, orgId uuid.UUID, 
 	}, nil
 }
 
-func (uc ScoringUsecase) executeRules(ctx context.Context, env ast_eval.AstEvaluationEnvironment, ruleset models.ScoringRuleset) (models.ScoringEvaluation, error) {
+func (uc ScoringScoresUsecase) executeRules(ctx context.Context, env ast_eval.AstEvaluationEnvironment, ruleset models.ScoringRuleset) (models.ScoringEvaluation, error) {
 	score := models.ScoringEvaluation{
 		Evaluation: make([]ast.NodeEvaluation, len(ruleset.Rules)),
 	}
@@ -301,7 +203,7 @@ func (uc ScoringUsecase) executeRules(ctx context.Context, env ast_eval.AstEvalu
 	return score, nil
 }
 
-func (uc ScoringUsecase) internalScoreToScore(ruleset models.ScoringRuleset, eval models.ScoringEvaluation) int {
+func (uc ScoringScoresUsecase) internalScoreToScore(ruleset models.ScoringRuleset, eval models.ScoringEvaluation) int {
 	thresholds := make([]int, 0, len(ruleset.Thresholds)+1)
 	thresholds = append(thresholds, ruleset.Thresholds...)
 	thresholds = append(thresholds, 1<<32)
