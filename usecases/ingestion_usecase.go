@@ -698,6 +698,7 @@ func (usecase *IngestionUseCase) enqueueObjectsNeedScreeningTaskIfNeeded(
 	configs []models.ContinuousScreeningConfig,
 	organizationId uuid.UUID,
 	table models.Table,
+	ingestionOptions models.IngestionOptions,
 	ingestionResults models.IngestionResults,
 ) error {
 	if len(configs) == 0 {
@@ -730,24 +731,47 @@ func (usecase *IngestionUseCase) enqueueObjectsNeedScreeningTaskIfNeeded(
 		return nil
 	}
 
-	enqueueObjectUpdateTasks := make([]models.ContinuousScreeningEnqueueObjectUpdateTask, len(monitoredObjects))
-	for i, monitoredObject := range monitoredObjects {
-		enqueueObjectUpdateTasks[i] = models.ContinuousScreeningEnqueueObjectUpdateTask{
-			MonitoringId:       monitoredObject.Id,
-			PreviousInternalId: ingestionResults[monitoredObject.ObjectId].PreviousInternalId,
-			NewInternalId:      ingestionResults[monitoredObject.ObjectId].NewInternalId,
+	enqueueAddedObjectUpdateTasks := make([]models.ContinuousScreeningEnqueueObjectUpdateTask, 0, len(monitoredObjects))
+	enqueueUpdatedObjectUpdateTasks := make([]models.ContinuousScreeningEnqueueObjectUpdateTask, 0, len(monitoredObjects))
+
+	for _, monitoredObject := range monitoredObjects {
+		if ingestionResults[monitoredObject.ObjectId].PreviousInternalId != "" {
+			enqueueUpdatedObjectUpdateTasks = append(enqueueUpdatedObjectUpdateTasks, models.ContinuousScreeningEnqueueObjectUpdateTask{
+				MonitoringId:       monitoredObject.Id,
+				PreviousInternalId: ingestionResults[monitoredObject.ObjectId].PreviousInternalId,
+				NewInternalId:      ingestionResults[monitoredObject.ObjectId].NewInternalId,
+			})
+		}
+
+		if ingestionResults[monitoredObject.ObjectId].PreviousInternalId == "" && ingestionOptions.ShouldScreen {
+			enqueueAddedObjectUpdateTasks = append(enqueueUpdatedObjectUpdateTasks, models.ContinuousScreeningEnqueueObjectUpdateTask{
+				MonitoringId:       monitoredObject.Id,
+				PreviousInternalId: ingestionResults[monitoredObject.ObjectId].PreviousInternalId,
+				NewInternalId:      ingestionResults[monitoredObject.ObjectId].NewInternalId,
+			})
 		}
 	}
 
 	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		return usecase.taskEnqueuer.EnqueueContinuousScreeningDoScreeningTaskMany(
+		errUpdated := usecase.taskEnqueuer.EnqueueContinuousScreeningDoScreeningTaskMany(
 			ctx,
 			tx,
 			organizationId,
 			table.Name,
-			enqueueObjectUpdateTasks,
+			enqueueUpdatedObjectUpdateTasks,
 			models.ContinuousScreeningTriggerTypeObjectUpdated,
 		)
+
+		errAdded := usecase.taskEnqueuer.EnqueueContinuousScreeningDoScreeningTaskMany(
+			ctx,
+			tx,
+			organizationId,
+			table.Name,
+			enqueueAddedObjectUpdateTasks,
+			models.ContinuousScreeningTriggerTypeObjectAdded,
+		)
+
+		return errors.Join(errUpdated, errAdded)
 	})
 }
 
@@ -899,14 +923,12 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 		return nil, err
 	}
 
-	if ingestionOptions.ShouldScreen {
-		err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx,
-			continuousScreeningConfigs, organizationId, table, ingestionResults)
-		if err != nil {
-			utils.LoggerFromContext(ctx).WarnContext(ctx,
-				"could not enqueue continuous monitoring initial screening",
-				"error", err.Error())
-		}
+	err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx, continuousScreeningConfigs, organizationId, table,
+		ingestionOptions, ingestionResults)
+	if err != nil {
+		utils.LoggerFromContext(ctx).WarnContext(ctx,
+			"could not enqueue continuous monitoring initial screening",
+			"error", err.Error())
 	}
 
 	utils.MetricIngestionCount.
