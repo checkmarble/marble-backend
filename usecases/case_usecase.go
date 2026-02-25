@@ -40,6 +40,7 @@ type CaseUseCaseRepository interface {
 	GetCaseReferents(ctx context.Context, exec repositories.Executor, caseIds []string) ([]models.CaseReferents, error)
 
 	DecisionPivotValuesByCase(ctx context.Context, exec repositories.Executor, caseId string) ([]models.PivotDataWithCount, error)
+	DecisionsByIds(ctx context.Context, exec repositories.Executor, decisionIds []string) ([]models.Decision, error)
 
 	CreateCaseEvent(ctx context.Context, exec repositories.Executor,
 		createCaseEventAttributes models.CreateCaseEventAttributes) (models.CaseEvent, error)
@@ -104,7 +105,8 @@ type CaseUseCaseRepository interface {
 	// inboxes
 	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
 
-	GetCasesRelatedToObject(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, objectType, objectId string) ([]models.Case, error)
+	GetCasesRelatedToObject(ctx context.Context, exec repositories.Executor, orgId uuid.UUID,
+		objectType, objectId string) ([]models.Case, error)
 }
 
 type CaseUsecaseScreeningRepository interface {
@@ -1219,7 +1221,8 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 		c.Decisions = decisions
 
 	case models.CaseTypeContinuousScreening:
-		continuousScreeningsWithMatches, err := usecase.repository.ListContinuousScreeningsWithMatchesByCaseId(ctx, exec, caseId)
+		continuousScreeningsWithMatches, err :=
+			usecase.repository.ListContinuousScreeningsWithMatchesByCaseId(ctx, exec, caseId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -1791,6 +1794,14 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 			if err != nil {
 				return models.Case{}, err
 			}
+			decisionsAfterReview, err := usecase.decisionRepository.DecisionsById(ctx, tx, []string{input.DecisionId})
+			if err != nil {
+				return models.Case{}, err
+			}
+			if len(decisionsAfterReview) == 0 {
+				return models.Case{}, errors.Wrapf(models.NotFoundError,
+					"decision %s not found after review, should not happen", input.DecisionId)
+			}
 
 			resourceType := models.DecisionResourceType
 			_, err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
@@ -1820,7 +1831,7 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
 				OrganizationId: c.OrganizationId,
-				EventContent:   models.NewWebhookEventDecisionReviewed(c, decision),
+				EventContent:   models.NewWebhookEventDecisionReviewed(c, decisionsAfterReview[0]),
 			})
 			if err != nil {
 				return models.Case{}, err
