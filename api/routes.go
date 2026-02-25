@@ -420,6 +420,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/scoring/rulesets", tom, handleScoringListRulesets(uc))
 	router.GET("/scoring/rulesets/:entityType", tom, handleScoringGetRuleset(uc))
 	router.POST("/scoring/rulesets/:entityType", tom, handleScoringCreateRulesetVersion(uc))
+	router.POST("/scoring/rulesets/:entityType/commit", tom, handleScoringCommitRuleset(uc))
 	router.GET("/scoring/scores/:entityType/:entityId", tom, handleScoringGetActiveScore(uc))
 	router.GET("/scoring/scores/:entityType/:entityId/history", tom, handleScoringGetScoreHistory(uc))
 	router.POST("/scoring/scores/:entityType/:entityId", tom, handleOverrideEntityScore(uc))

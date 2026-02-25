@@ -13,7 +13,7 @@ type scoringRepository interface {
 	UpdateScoringSettings(ctx context.Context, exec repositories.Executor, settings models.ScoringSettings) (models.ScoringSettings, error)
 
 	ListScoringRulesets(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.ScoringRuleset, error)
-	GetScoringRuleset(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, entityType string) (models.ScoringRuleset, error)
+	GetScoringRuleset(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, entityType, status string) (models.ScoringRuleset, error)
 	InsertScoringRulesetVersion(ctx context.Context, exec repositories.Transaction,
 		orgId uuid.UUID,
 		ruleset models.CreateScoringRulesetRequest,
@@ -22,6 +22,7 @@ type scoringRepository interface {
 		ruleset models.ScoringRuleset,
 		rule models.CreateScoringRuleRequest,
 	) (models.ScoringRule, error)
+	CommitRuleset(ctx context.Context, exec repositories.Executor, ruleset models.ScoringRuleset) (models.ScoringRuleset, error)
 
 	GetScoreHistory(ctx context.Context, exec repositories.Executor, entityRef models.ScoringEntityRef) ([]models.ScoringScore, error)
 	GetActiveScore(ctx context.Context, exec repositories.Executor, entityRef models.ScoringEntityRef) (*models.ScoringScore, error)

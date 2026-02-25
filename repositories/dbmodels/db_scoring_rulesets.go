@@ -2,6 +2,7 @@ package dbmodels
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -14,11 +15,13 @@ type DbScoringRuleset struct {
 	Id              uuid.UUID `db:"id"`
 	OrgId           uuid.UUID `db:"org_id"`
 	Version         int       `db:"version"`
+	Status          string    `db:"status"`
 	Name            string    `db:"name"`
 	Description     string    `db:"description"`
 	EntityType      string    `db:"entity_type"`
 	Thresholds      []int     `db:"thresholds"`
 	CooldownSeconds int       `db:"cooldown_seconds"`
+	CreatedAt       time.Time `db:"created_at"`
 }
 
 type DbScoringRule struct {
@@ -50,11 +53,13 @@ func AdaptScoringRuleset(db DbScoringRuleset) (models.ScoringRuleset, error) {
 		Id:              db.Id,
 		OrgId:           db.OrgId,
 		Version:         db.Version,
+		Status:          db.Status,
 		Name:            db.Name,
 		Description:     db.Description,
 		EntityType:      db.EntityType,
 		Thresholds:      db.Thresholds,
 		CooldownSeconds: db.CooldownSeconds,
+		CreatedAt:       db.CreatedAt,
 	}, nil
 }
 

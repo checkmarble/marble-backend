@@ -49,7 +49,8 @@ func (uc ScoringRulesetsUsecase) GetRuleset(ctx context.Context, entityType stri
 		ctx,
 		uc.executorFactory.NewExecutor(),
 		uc.enforceSecurity.OrgId(),
-		entityType)
+		entityType,
+		models.ScoreRulesetCommitted)
 	if err != nil {
 		return models.ScoringRuleset{}, err
 	}
@@ -65,7 +66,13 @@ func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, entit
 		return models.ScoringRuleset{}, err
 	}
 
-	existingRuleset, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, entityType)
+	for _, rule := range req.Rules {
+		if err := uc.validateScoringRuleAst(rule.Ast); err != nil {
+			return models.ScoringRuleset{}, errors.Wrap(models.BadParameterError, err.Error())
+		}
+	}
+
+	existingRuleset, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, entityType, models.ScoreRulesetCommitted)
 	if err != nil && !errors.Is(err, models.NotFoundError) {
 		return models.ScoringRuleset{}, err
 	}
@@ -112,4 +119,53 @@ func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, entit
 	})
 
 	return ruleset, err
+}
+
+// TODO: check if the version needs to be prepared
+// TODO: implement preparation action and status
+func (uc ScoringRulesetsUsecase) CommitRuleset(ctx context.Context, entityType string) (models.ScoringRuleset, error) {
+	orgId := uc.enforceSecurity.OrgId()
+	exec := uc.executorFactory.NewExecutor()
+
+	if err := uc.enforceSecurity.UpdateRuleset(orgId); err != nil {
+		return models.ScoringRuleset{}, err
+	}
+
+	draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, entityType, models.ScoreRulesetDraft)
+	if err != nil {
+		if errors.Is(err, models.NotFoundError) {
+			return models.ScoringRuleset{}, errors.Wrap(err, "no draft version found")
+		}
+
+		return models.ScoringRuleset{}, err
+	}
+
+	ruleset, err := uc.repository.CommitRuleset(ctx, exec, draft)
+	if err != nil {
+		return models.ScoringRuleset{}, err
+	}
+
+	return ruleset, err
+}
+
+func (uc ScoringRulesetsUsecase) validateScoringRuleAst(tree dto.NodeDto) error {
+	if tree.Name == ast.FuncAttributesMap[ast.FUNC_SCORE_COMPUTATION].AstName {
+		return nil
+	}
+
+	if tree.Name == ast.FuncAttributesMap[ast.FUNC_SWITCH].AstName {
+		if len(tree.Children) == 0 {
+			return errors.New("invalid root AST node for user scoring: `Switch` must contain at least one child")
+		}
+
+		for _, child := range tree.Children {
+			if child.Name != ast.FuncAttributesMap[ast.FUNC_SWITCH].AstName {
+				return errors.New("invalid root AST node for user scoring: all `Switch` children must be `ScoreComputation`")
+			}
+		}
+
+		return nil
+	}
+
+	return errors.New("invalid AST root node for user scoring: must be `ScoreComputation` or `Switch`")
 }

@@ -45,14 +45,19 @@ create table scoring_rulesets (
     org_id uuid not null,
 
     version integer not null default 1,
+    status text not null default 'draft',
     name text not null,
     description text,
     entity_type text not null,
     thresholds int[] not null,
     cooldown_seconds integer not null default 0,
 
+    created_at timestamp with time zone not null default now(),
+
     constraint fk_org foreign key (org_id) references organizations (id) on delete cascade
 );
+
+create unique index idx_scoring_rulesets_entity_type_draft on scoring_rulesets (org_id, entity_type) where status = 'draft';
 
 create table scoring_rules (
     id uuid primary key default gen_random_uuid(),
