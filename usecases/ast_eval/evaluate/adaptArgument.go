@@ -86,16 +86,20 @@ func adaptArgumentToIp(argument any) (netip.Addr, error) {
 		return netip.Addr{}, err
 	}
 
-	ipBytes, ok := argument.(net.IP)
-	if !ok {
-		return netip.Addr{}, fmt.Errorf("can't promote argument to IP address")
-	}
-	ip, ok := netip.AddrFromSlice(ipBytes)
-	if !ok {
-		return netip.Addr{}, fmt.Errorf("can't promote argument to IP address")
+	switch in := argument.(type) {
+	case net.IP:
+		ip, ok := netip.AddrFromSlice(in)
+		if !ok {
+			return netip.Addr{}, fmt.Errorf("can't promote argument to IP address")
+		}
+
+		return ip.Unmap(), nil
+
+	case netip.Addr:
+		return in, nil
 	}
 
-	return ip.Unmap(), nil
+	return netip.Addr{}, fmt.Errorf("can't promote argument to IP address")
 }
 
 func adaptArgumentToDuration(argument any) (time.Duration, error) {

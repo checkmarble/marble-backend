@@ -24,6 +24,7 @@ type Parser struct {
 	parsers               fieldParser
 	allowPatch            bool
 	disallowUnknownFields bool
+	columnEscape          bool
 	enricher              PayloadEnrichementUsecase
 }
 
@@ -114,7 +115,12 @@ func (p *Parser) ParsePayload(ctx context.Context, table models.Table, json []by
 						out[name] = ip.Unmap()
 
 						if metadata := p.enricher.EnrichIp(ip.Unmap()); metadata != nil {
-							out[fmt.Sprintf(`"%s.metadata"`, field.Name)] = metadata
+							key := fmt.Sprintf("%s.metadata", field.Name)
+							if p.columnEscape {
+								key = fmt.Sprintf(`"%s"`, key)
+							}
+
+							out[key] = metadata
 						}
 					}
 				}
@@ -125,7 +131,12 @@ func (p *Parser) ParsePayload(ctx context.Context, table models.Table, json []by
 				point := val.(models.Location)
 
 				if metadata := p.enricher.EnrichCoordinates(point.X(), point.Y()); metadata != nil {
-					out[fmt.Sprintf(`"%s.metadata"`, field.Name)] = map[string]string{
+					key := fmt.Sprintf("%s.metadata", field.Name)
+					if p.columnEscape {
+						key = fmt.Sprintf(`"%s"`, key)
+					}
+
+					out[key] = map[string]string{
 						"country": metadata.CountryCode2,
 					}
 				}
@@ -168,6 +179,7 @@ func (p *Parser) ParsePayload(ctx context.Context, table models.Table, json []by
 type parserOpts struct {
 	allowPatch            bool
 	disallowUnknownFields bool
+	columnEscape          bool
 	enricher              PayloadEnrichementUsecase
 }
 
@@ -194,6 +206,12 @@ func DisallowUnknownFields() ParserOpt {
 func WithEnricher(uc PayloadEnrichementUsecase) ParserOpt {
 	return func(o *parserOpts) {
 		o.enricher = uc
+	}
+}
+
+func WithColumnEscape() ParserOpt {
+	return func(o *parserOpts) {
+		o.columnEscape = true
 	}
 }
 
@@ -273,6 +291,7 @@ func NewParser(opts ...ParserOpt) *Parser {
 		parsers:               parsers,
 		allowPatch:            options.allowPatch,
 		disallowUnknownFields: options.disallowUnknownFields,
+		columnEscape:          options.columnEscape,
 		enricher:              options.enricher,
 	}
 }

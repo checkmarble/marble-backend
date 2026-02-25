@@ -155,7 +155,7 @@ func (usecase *IngestionUseCase) IngestObject(
 		}
 	}
 
-	parser := payload_parser.NewParser(append(parserOpts, payload_parser.WithEnricher(usecase.payloadEnricher))...)
+	parser := payload_parser.NewParser(append(parserOpts, payload_parser.WithColumnEscape(), payload_parser.WithEnricher(usecase.payloadEnricher))...)
 	payload, err := parser.ParsePayload(ctx, table, objectBody)
 	if err != nil {
 		return 0, errors.WithDetail(err, "error parsing payload in decision usecase validate payload")
@@ -250,7 +250,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 
 	clientObjects := make([]models.ClientObject, 0, len(rawMessages))
 	objectIds := make(map[string]struct{}, len(rawMessages))
-	parser := payload_parser.NewParser(append(parserOpts, payload_parser.WithEnricher(usecase.payloadEnricher))...)
+	parser := payload_parser.NewParser(append(parserOpts, payload_parser.WithColumnEscape(), payload_parser.WithEnricher(usecase.payloadEnricher))...)
 	validationErrorsGroup := make(models.IngestionValidationErrors)
 	for _, rawMsg := range rawMessages {
 		payload, err := parser.ParsePayload(ctx, table, rawMsg)
