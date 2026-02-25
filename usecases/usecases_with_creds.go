@@ -1087,6 +1087,8 @@ func (usecases *UsecasesWithCreds) NewScoringRulesetsUsecase() scoring.ScoringRu
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.MarbleDbRepository,
+		usecases.NewClientDbIndexEditor(),
+		usecases.Repositories.TaskQueueRepository,
 	)
 }
 

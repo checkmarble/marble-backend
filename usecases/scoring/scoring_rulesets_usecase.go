@@ -15,10 +15,12 @@ import (
 )
 
 type ScoringRulesetsUsecase struct {
-	enforceSecurity    security.EnforceSecurityScoring
-	executorFactory    executor_factory.ExecutorFactory
-	transactionFactory executor_factory.TransactionFactory
-	repository         scoringRepository
+	enforceSecurity     security.EnforceSecurityScoring
+	executorFactory     executor_factory.ExecutorFactory
+	transactionFactory  executor_factory.TransactionFactory
+	repository          scoringRepository
+	indexEditor         scoringIndexEditor
+	taskQueueRepository repositories.TaskQueueRepository
 }
 
 func NewScoringRulesetsUsecase(
@@ -26,12 +28,16 @@ func NewScoringRulesetsUsecase(
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
 	repository scoringRepository,
+	indexEditor scoringIndexEditor,
+	taskQueueRepository repositories.TaskQueueRepository,
 ) ScoringRulesetsUsecase {
 	return ScoringRulesetsUsecase{
-		enforceSecurity:    enforceSecurity,
-		executorFactory:    executorFactory,
-		transactionFactory: transactionFactory,
-		repository:         repository,
+		enforceSecurity:     enforceSecurity,
+		executorFactory:     executorFactory,
+		transactionFactory:  transactionFactory,
+		repository:          repository,
+		indexEditor:         indexEditor,
+		taskQueueRepository: taskQueueRepository,
 	}
 }
 
@@ -121,8 +127,78 @@ func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, entit
 	return ruleset, err
 }
 
-// TODO: check if the version needs to be prepared
-// TODO: implement preparation action and status
+func (uc ScoringRulesetsUsecase) PreparationStatus(ctx context.Context, entityType string) (models.PublicationPreparationStatus, error) {
+	orgId := uc.enforceSecurity.OrgId()
+	exec := uc.executorFactory.NewExecutor()
+
+	if err := uc.enforceSecurity.UpdateRuleset(orgId); err != nil {
+		return models.PublicationPreparationStatus{}, err
+	}
+
+	draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, entityType, models.ScoreRulesetDraft)
+	if err != nil {
+		if errors.Is(err, models.NotFoundError) {
+			return models.PublicationPreparationStatus{}, errors.Wrap(err, "no draft version found")
+		}
+
+		return models.PublicationPreparationStatus{}, err
+	}
+
+	indexes, pending, err := uc.indexEditor.GetIndexesToCreateForScoringRuleset(ctx, orgId, draft)
+	if err != nil {
+		return models.PublicationPreparationStatus{}, err
+	}
+
+	status := models.PublicationPreparationStatus{
+		PreparationStatus:        models.PreparationStatusReadyToActivate,
+		PreparationServiceStatus: models.PreparationServiceStatusAvailable,
+	}
+
+	if len(indexes) > 0 {
+		status.PreparationStatus = models.PreparationStatusRequired
+	}
+	if pending > 0 {
+		status.PreparationServiceStatus = models.PreparationServiceStatusOccupied
+	}
+
+	return status, nil
+}
+
+func (uc ScoringRulesetsUsecase) PrepareRuleset(ctx context.Context, entityType string) error {
+	orgId := uc.enforceSecurity.OrgId()
+	exec := uc.executorFactory.NewExecutor()
+
+	if err := uc.enforceSecurity.UpdateRuleset(orgId); err != nil {
+		return err
+	}
+
+	draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, entityType, models.ScoreRulesetDraft)
+	if err != nil {
+		if errors.Is(err, models.NotFoundError) {
+			return errors.Wrap(err, "no draft version found")
+		}
+
+		return err
+	}
+
+	indexes, pending, err := uc.indexEditor.GetIndexesToCreateForScoringRuleset(ctx, orgId, draft)
+	if err != nil {
+		return err
+	}
+
+	if pending > 0 {
+		return errors.Wrap(models.UnprocessableEntityError, "ruleset is still being prepared")
+	}
+
+	if len(indexes) > 0 {
+		if err := uc.taskQueueRepository.EnqueueCreateIndexTask(ctx, orgId, indexes); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (uc ScoringRulesetsUsecase) CommitRuleset(ctx context.Context, entityType string) (models.ScoringRuleset, error) {
 	orgId := uc.enforceSecurity.OrgId()
 	exec := uc.executorFactory.NewExecutor()
@@ -138,6 +214,18 @@ func (uc ScoringRulesetsUsecase) CommitRuleset(ctx context.Context, entityType s
 		}
 
 		return models.ScoringRuleset{}, err
+	}
+
+	indexes, pending, err := uc.indexEditor.GetIndexesToCreateForScoringRuleset(ctx, orgId, draft)
+	if err != nil {
+		return models.ScoringRuleset{}, err
+	}
+
+	if pending > 0 {
+		return models.ScoringRuleset{}, errors.Wrap(models.UnprocessableEntityError, "ruleset is still being prepared")
+	}
+	if len(indexes) > 0 {
+		return models.ScoringRuleset{}, errors.Wrap(models.UnprocessableEntityError, "ruleset is not prepared")
 	}
 
 	ruleset, err := uc.repository.CommitRuleset(ctx, exec, draft)
