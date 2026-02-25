@@ -224,7 +224,7 @@ func ColumnNames(table Table) []string {
 
 		switch table.Fields[fieldName].DataType {
 		case IpAddress, Coords:
-			columnNames = append(columnNames, fmt.Sprintf("%s.metadata", fieldName))
+			columnNames = append(columnNames, fmt.Sprintf(`"%s.metadata"`, fieldName))
 		}
 	}
 	slices.Sort(columnNames)

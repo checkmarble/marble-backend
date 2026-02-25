@@ -211,7 +211,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		WithArgs("now()", rowIdStr).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 	// insert the new version
-	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" ("object_id","status","updated_at","value","id") VALUES ($1,$2,$3,$4,$5)`)).
+	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" (object_id,status,updated_at,value,id) VALUES ($1,$2,$3,$4,$5)`)).
 		WithArgs("1", "OK", updAt, 1.0, anyUuid{}).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
@@ -245,7 +245,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		WithArgs("Infinity", "1").
 		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}))
 	// insert the new version
-	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" ("object_id","status","updated_at","value","id") VALUES ($1,$2,$3,$4,$5)`)).
+	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" (object_id,status,updated_at,value,id) VALUES ($1,$2,$3,$4,$5)`)).
 		WithArgs("1", "OK", updAt, 1.0, anyUuid{}).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
@@ -286,7 +286,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		WithArgs("Infinity", "1").
 		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}))
 	// insert the new version
-	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" ("object_id","status","updated_at","value","id") VALUES ($1,$2,$3,$4,$5)`)).
+	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" (object_id,status,updated_at,value,id) VALUES ($1,$2,$3,$4,$5)`)).
 		WithArgs("1", "OK", updAt, 1.0, anyUuid{}).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
@@ -364,7 +364,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		WithArgs("now()", rowIdStr).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 	// insert the new version
-	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" ("object_id","status","updated_at","value","id") VALUES ($1,$2,$3,$4,$5)`)).
+	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" (object_id,status,updated_at,value,id) VALUES ($1,$2,$3,$4,$5)`)).
 		WithArgs("1", "OK", updAt, 1.0, anyUuid{}).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
@@ -423,7 +423,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_nomin
 		WithArgs("Infinity", "1", "2").
 		WillReturnRows(pgxmock.NewRows([]string{"object_id", "updated_at", "id"}))
 	// insert the new versions
-	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" ("object_id","status","updated_at","value","id") VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10)`)).
+	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" (object_id,status,updated_at,value,id) VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10)`)).
 		WithArgs(
 			"1", "OK", updAt, 1.0, anyUuid{},
 			"2", "OK", updAt, 2.0, anyUuid{}).
@@ -470,7 +470,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		WithArgs("now()", rowIdStr1, rowIdStr2).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 2))
 	// insert the new versions
-	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" ("object_id","status","updated_at","value","id") VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10)`)).
+	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" (object_id,status,updated_at,value,id) VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10)`)).
 		WithArgs(
 			"1", "OK", updAt, 1.0, anyUuid{},
 			"2", "OK", updAt, 2.0, anyUuid{}).
@@ -513,7 +513,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		WithArgs("now()", rowIdStr1).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 	// insert the new versions
-	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" ("object_id","status","updated_at","value","id") VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10)`)).
+	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" (object_id,status,updated_at,value,id) VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10)`)).
 		WithArgs("1", "OK", updAt, 1.0, anyUuid{}, "2", "OK", updAt, 2.0, anyUuid{}).
 		WillReturnResult(pgxmock.NewResult("INSERT", 2))
 
@@ -643,7 +643,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		WillReturnResult(pgxmock.NewResult("UPDATE", 5))
 
 	// insert the new versions (5 objects)
-	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" ("object_id","status","updated_at","value","id") VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10),($11,$12,$13,$14,$15),($16,$17,$18,$19,$20),($21,$22,$23,$24,$25)`)).
+	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" (object_id,status,updated_at,value,id) VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10),($11,$12,$13,$14,$15),($16,$17,$18,$19,$20),($21,$22,$23,$24,$25)`)).
 		WithArgs(
 			"1", "OK", updAt, 1.0, anyUuid{},
 			"2", "OK", updAt, 2.0, anyUuid{},

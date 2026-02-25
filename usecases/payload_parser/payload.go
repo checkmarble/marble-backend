@@ -100,8 +100,6 @@ func (p *Parser) ParsePayload(ctx context.Context, table models.Table, json []by
 		if val, err := parseField(value); err != nil {
 			addError(allErrors, objectId, name, err)
 		} else {
-			out[name] = val
-
 			// Enrich ingested data for fields supporting it
 			switch field.DataType {
 			case models.IpAddress:
@@ -113,20 +111,27 @@ func (p *Parser) ParsePayload(ctx context.Context, table models.Table, json []by
 					case false:
 						addError(allErrors, objectId, name, fmt.Errorf("expected IP address"))
 					case true:
+						out[name] = ip.Unmap()
+
 						if metadata := p.enricher.EnrichIp(ip.Unmap()); metadata != nil {
-							out[fmt.Sprintf("%s.metadata", field.Name)] = metadata
+							out[fmt.Sprintf(`"%s.metadata"`, field.Name)] = metadata
 						}
 					}
 				}
 
 			case models.Coords:
+				out[name] = val
+
 				point := val.(models.Location)
 
 				if metadata := p.enricher.EnrichCoordinates(point.X(), point.Y()); metadata != nil {
-					out[fmt.Sprintf("%s.metadata", field.Name)] = map[string]string{
+					out[fmt.Sprintf(`"%s.metadata"`, field.Name)] = map[string]string{
 						"country": metadata.CountryCode2,
 					}
 				}
+
+			default:
+				out[name] = val
 			}
 		}
 	}
