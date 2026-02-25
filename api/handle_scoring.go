@@ -15,7 +15,7 @@ func handleScoringComputeScore(uc usecases.Usecases) gin.HandlerFunc {
 		ctx := c.Request.Context()
 
 		uc := usecasesWithCreds(ctx, uc)
-		scoringUsecase := uc.NewScoringUsecase()
+		scoringUsecase := uc.NewScoringScoresUsecase()
 		eval, err := scoringUsecase.ComputeScore(ctx, c.Param("entityType"), c.Param("entityId"))
 		if presentError(ctx, c, err) {
 			return
@@ -30,7 +30,7 @@ func handleScoringListRulesets(uc usecases.Usecases) gin.HandlerFunc {
 		ctx := c.Request.Context()
 
 		uc := usecasesWithCreds(ctx, uc)
-		scoringUsecase := uc.NewScoringUsecase()
+		scoringUsecase := uc.NewScoringRulesetsUsecase()
 
 		rulesets, err := scoringUsecase.ListRulesets(ctx)
 		if presentError(ctx, c, err) {
@@ -51,7 +51,7 @@ func handleScoringGetRuleset(uc usecases.Usecases) gin.HandlerFunc {
 		ctx := c.Request.Context()
 
 		uc := usecasesWithCreds(ctx, uc)
-		scoringUsecase := uc.NewScoringUsecase()
+		scoringUsecase := uc.NewScoringRulesetsUsecase()
 
 		ruleset, err := scoringUsecase.GetRuleset(ctx, c.Param("entityType"))
 		if presentError(ctx, c, err) {
@@ -78,7 +78,7 @@ func handleScoringCreateRulesetVersion(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		uc := usecasesWithCreds(ctx, uc)
-		scoringUsecase := uc.NewScoringUsecase()
+		scoringUsecase := uc.NewScoringRulesetsUsecase()
 
 		ruleset, err := scoringUsecase.CreateRulesetVersion(ctx, c.Param("entityType"), payload)
 		if presentError(ctx, c, err) {
@@ -99,7 +99,7 @@ func handleScoringGetScoreHistory(uc usecases.Usecases) gin.HandlerFunc {
 		ctx := c.Request.Context()
 
 		uc := usecasesWithCreds(ctx, uc)
-		scoringUsecase := uc.NewScoringUsecase()
+		scoringUsecase := uc.NewScoringScoresUsecase()
 
 		entityRef := models.ScoringEntityRef{
 			EntityType: c.Param("entityType"),
@@ -120,7 +120,7 @@ func handleScoringGetActiveScore(uc usecases.Usecases) gin.HandlerFunc {
 		ctx := c.Request.Context()
 
 		uc := usecasesWithCreds(ctx, uc)
-		scoringUsecase := uc.NewScoringUsecase()
+		scoringUsecase := uc.NewScoringScoresUsecase()
 
 		entityRef := models.ScoringEntityRef{
 			EntityType: c.Param("entityType"),
@@ -152,7 +152,7 @@ func handleOverrideEntityScore(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		uc := usecasesWithCreds(ctx, uc)
-		scoringUsecase := uc.NewScoringUsecase()
+		scoringUsecase := uc.NewScoringScoresUsecase()
 
 		req := models.InsertScoreRequest{
 			EntityType: c.Param("entityType"),
