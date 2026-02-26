@@ -151,7 +151,8 @@ func (uc *OrgImportUsecase) ImportFromArchetype(
 
 	if existingOrgId == uuid.Nil {
 		if apply.OrgName == "" || len(apply.Admins) == 0 {
-			return uuid.Nil, errors.Wrap(models.BadParameterError, "org name and admins are required to create a new organization from archetype")
+			return uuid.Nil, errors.Wrap(models.BadParameterError,
+				"org name and admins are required to create a new organization from archetype")
 		}
 		pattern.Org.Name = apply.OrgName
 		pattern.Admins = apply.Admins
@@ -211,7 +212,8 @@ func (uc *OrgImportUsecase) importIntoExistingOrganization(ctx context.Context,
 	}
 
 	if uc.security.UserId() == nil {
-		return uuid.Nil, errors.Wrap(models.ForbiddenError, "user id is required to import into an existing organization")
+		return uuid.Nil, errors.Wrap(models.ForbiddenError,
+			"user id is required to import into an existing organization")
 	}
 	user, err := uc.userRepository.UserById(ctx, tx, *uc.security.UserId())
 	if err != nil {
@@ -500,6 +502,12 @@ func (uc *OrgImportUsecase) createCustomLists(ctx context.Context, tx repositori
 		listId, _ := uuid.NewV7()
 		ids[list.Id] = listId.String()
 
+		kind := models.CustomListKindFromString(list.Kind)
+		if kind == models.CustomListUnknown {
+			return errors.Wrap(models.BadParameterError,
+				fmt.Sprintf("unknown custom list kind: %s", list.Kind))
+		}
+
 		// Use a subtransaction (savepoint) so that a unique violation doesn't abort the outer transaction
 		subTx, err := tx.Begin(ctx)
 		if err != nil {
@@ -509,6 +517,7 @@ func (uc *OrgImportUsecase) createCustomLists(ctx context.Context, tx repositori
 			OrganizationId: orgId,
 			Name:           list.Name,
 			Description:    list.Description,
+			Kind:           kind,
 		}, listId.String())
 		if err != nil && !repositories.IsUniqueViolationError(err) {
 			_ = subTx.Rollback(ctx)
@@ -530,11 +539,12 @@ func (uc *OrgImportUsecase) createCustomLists(ctx context.Context, tx repositori
 		}
 
 		// We can have a duplication of Value, but it is not a problem for the use of custom list.
-		err = uc.customListRepository.BatchInsertCustomListValues(ctx, tx, models.CustomListText, listId.String(), pure_utils.Map(
-			list.Values, func(v string) models.BatchInsertCustomListValue {
-				valueId, _ := uuid.NewV7()
-				return models.BatchInsertCustomListValue{Id: valueId.String(), Value: v}
-			}), nil)
+		err = uc.customListRepository.BatchInsertCustomListValues(ctx, tx,
+			kind, listId.String(), pure_utils.Map(
+				list.Values, func(v string) models.BatchInsertCustomListValue {
+					valueId, _ := uuid.NewV7()
+					return models.BatchInsertCustomListValue{Id: valueId.String(), Value: v}
+				}), nil)
 		if err != nil {
 			return err
 		}

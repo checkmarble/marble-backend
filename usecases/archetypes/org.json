@@ -1106,13 +1106,15 @@
       "id": "88888888-8888-8888-8888-888888888881",
       "name": "High_risk_MCC",
       "description": "List of MCC codes with high risk profile",
-      "values": ["7995", "8821"]
+      "values": ["7995", "8821"],
+      "kind": "text"
     },
     {
       "id": "88888888-8888-8888-8888-888888888882",
       "name": "blacklist_Card_tokens",
       "description": "Blacklisted card tokens",
-      "values": ["5975", "1794", "5840"]
+      "values": ["5975", "1794", "5840"],
+      "kind": "text"
     },
     {
       "id": "88888888-8888-8888-8888-888888888883",
@@ -1124,7 +1126,8 @@
         "f18c04c3-4637-4dae-9d58-d7c6d2467d2c",
         "3e12ea1a-e601-477c-b7ee-15124b239f8f",
         "b0997c43-cc4f-42d9-a3f0-d475a6388f63"
-      ]
+      ],
+      "kind": "text"
     },
     {
       "id": "88888888-8888-8888-8888-888888888884",
@@ -1137,7 +1140,8 @@
         "4f611faa-2e06-4e99-8e73-4771738a8cb5",
         "b52e29d8-1b07-48dd-8aff-2b38f767febf",
         "0c97fcd8-0758-46f6-8a55-bd6bc9517898"
-      ]
+      ],
+      "kind": "text"
     }
   ],
   "inboxes": [
