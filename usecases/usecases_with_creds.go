@@ -1037,6 +1037,7 @@ func (usecases UsecasesWithCreds) NewTriggeredScoreComputationWorker() *scoring_
 	return scoring_jobs.NewTriggeredScoreComputationWorker(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
+		usecases.NewScoringRulesetsUsecase(),
 		usecases.NewScoringScoresUsecase(),
 		usecases.Repositories.MarbleDbRepository,
 	)

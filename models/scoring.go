@@ -69,6 +69,31 @@ type ScoringScore struct {
 	DeletedAt *time.Time
 }
 
+func (s *ScoringScore) IsStale(maxAge time.Duration) bool {
+	if s == nil {
+		return true
+	}
+	if s.IsOverriden() {
+		return false
+	}
+	if s.CreatedAt.Add(maxAge).After(time.Now()) {
+		return false
+	}
+	return true
+}
+
+func (s *ScoringScore) IsOverriden() bool {
+	if s == nil {
+		return false
+	}
+	if s.Source == ScoreSourceOverride {
+		if s.StaleAt == nil || s.StaleAt.After(time.Now()) {
+			return true
+		}
+	}
+	return false
+}
+
 type ScoringEntityRef struct {
 	OrgId      uuid.UUID
 	EntityType string

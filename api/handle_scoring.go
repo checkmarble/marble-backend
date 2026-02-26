@@ -64,8 +64,12 @@ func handleScoringComputeScore(uc usecases.Usecases) gin.HandlerFunc {
 		if presentError(ctx, c, err) {
 			return
 		}
+		if eval == nil {
+			c.Status(http.StatusNotFound)
+			return
+		}
 
-		c.JSON(http.StatusOK, scoring.AdaptScoringEvaluation(eval))
+		c.JSON(http.StatusOK, scoring.AdaptScoringEvaluation(*eval))
 	}
 }
 
@@ -227,7 +231,7 @@ func handleScoringGetActiveScore(uc usecases.Usecases) gin.HandlerFunc {
 
 		opts := models.RefreshScoreOptions{
 			RefreshOlderThan:    time.Hour,
-			RefreshInBackground: true,
+			RefreshInBackground: false,
 		}
 
 		score, err := scoringUsecase.GetActiveScore(ctx, entity, opts)
