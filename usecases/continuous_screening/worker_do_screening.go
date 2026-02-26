@@ -131,7 +131,6 @@ func (w *DoScreeningWorker) Timeout(job *river.Job[models.ContinuousScreeningDoS
 	return 10 * time.Second
 }
 
-// ⚠️ Only Trigger Type = Updated is supported for now, the other trigger types are doing synchonously and don't call this worker
 // Work executes the continuous screening process for a specific monitored object.
 // The flow consists of the following steps:
 //  1. Retrieve the monitored object details from the client's database which contains the object ID and the screening configuration ID.
@@ -152,11 +151,6 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 
 	if err := w.usecase.CheckFeatureAccess(ctx, job.Args.OrgId); err != nil {
 		logger.WarnContext(ctx, "Continuous Screening - feature access not allowed, skipping screening", "error", err)
-		return nil
-	}
-
-	if job.Args.TriggerType != models.ContinuousScreeningTriggerTypeObjectUpdated {
-		logger.WarnContext(ctx, "Continuous Screening - only trigger type ObjectUpdated is supported for now, skipping screening", "trigger_type", job.Args.TriggerType)
 		return nil
 	}
 

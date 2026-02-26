@@ -219,6 +219,13 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
 		Return(nil)
 
+	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
+		mock.MatchedBy(matchContext), mock.Anything, "transactions", mock.Anything).
+		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningDoScreeningTaskMany",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId, "transactions", mock.Anything, mock.Anything).
+		Return(nil)
+
 	nb, err := uc.IngestObject(suite.ctx, suite.organizationId, "transactions",
 		json.RawMessage(`{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}`), models.IngestionOptions{ShouldScreen: true})
 	asserts := assert.New(t)
@@ -248,6 +255,13 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 	suite.executorFactory.Mock.ExpectExec(escapeSql(`INSERT INTO "test"."transactions" (object_id,status,updated_at,value,id) VALUES ($1,$2,$3,$4,$5)`)).
 		WithArgs("1", "OK", updAt, 1.0, anyUuid{}).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+
+	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
+		mock.MatchedBy(matchContext), mock.Anything, "transactions", mock.Anything).
+		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningDoScreeningTaskMany",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId, "transactions", mock.Anything, mock.Anything).
+		Return(nil)
 
 	suite.dataModelRepository.On("BatchInsertEnumValues", mock.MatchedBy(matchContext),
 		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
@@ -296,6 +310,13 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		mock.MatchedBy(matchExec), values, dataModel.Tables["transactions"]).
 		Return(nil)
 
+	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
+		mock.MatchedBy(matchContext), mock.Anything, "transactions", mock.Anything).
+		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningDoScreeningTaskMany",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId, "transactions", mock.Anything, mock.Anything).
+		Return(nil)
+
 	nb, err := uc.IngestObject(suite.ctx, suite.organizationId, "transactions",
 		json.RawMessage(`{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}`), models.IngestionOptions{ShouldScreen: true})
 
@@ -328,6 +349,13 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 
 	suite.dataModelRepository.On("BatchInsertEnumValues", mock.MatchedBy(matchContext),
 		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
+		Return(nil)
+
+	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
+		mock.MatchedBy(matchContext), mock.Anything, "transactions", mock.Anything).
+		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningDoScreeningTaskMany",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId, "transactions", mock.Anything, mock.Anything).
 		Return(nil)
 
 	nb, err := uc.IngestObject(suite.ctx, suite.organizationId, "transactions",
@@ -370,6 +398,13 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 
 	suite.dataModelRepository.On("BatchInsertEnumValues", mock.MatchedBy(matchContext),
 		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
+		Return(nil)
+
+	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
+		mock.MatchedBy(matchContext), mock.Anything, "transactions", mock.Anything).
+		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningDoScreeningTaskMany",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId, "transactions", mock.Anything, mock.Anything).
 		Return(nil)
 
 	nb, err := uc.IngestObject(suite.ctx, suite.organizationId, "transactions",
@@ -433,6 +468,13 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_nomin
 		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
 		Return(nil)
 
+	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
+		mock.MatchedBy(matchContext), mock.Anything, "transactions", mock.Anything).
+		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningDoScreeningTaskMany",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId, "transactions", mock.Anything, mock.Anything).
+		Return(nil)
+
 	nb, err := uc.IngestObjects(suite.ctx, suite.organizationId, "transactions",
 		json.RawMessage(`[{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}, {"object_id": "2", "updated_at": "2020-01-01T00:00:00Z", "value": 2.0, "status": "OK"}]`), models.IngestionOptions{ShouldScreen: true})
 	asserts := assert.New(t)
@@ -480,6 +522,13 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
 		Return(nil)
 
+	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
+		mock.MatchedBy(matchContext), mock.Anything, "transactions", mock.Anything).
+		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningDoScreeningTaskMany",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId, "transactions", mock.Anything, mock.Anything).
+		Return(nil)
+
 	nb, err := uc.IngestObjects(suite.ctx, suite.organizationId, "transactions",
 		json.RawMessage(`[{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}, {"object_id": "2", "updated_at": "2020-01-01T00:00:00Z", "value": 2.0, "status": "OK"}]`), models.IngestionOptions{ShouldScreen: true})
 	asserts := assert.New(t)
@@ -519,6 +568,13 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 
 	suite.dataModelRepository.On("BatchInsertEnumValues", mock.MatchedBy(matchContext),
 		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
+		Return(nil)
+
+	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
+		mock.MatchedBy(matchContext), mock.Anything, "transactions", mock.Anything).
+		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningDoScreeningTaskMany",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId, "transactions", mock.Anything, mock.Anything).
 		Return(nil)
 
 	nb, err := uc.IngestObjects(suite.ctx, suite.organizationId, "transactions",
@@ -623,6 +679,13 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 
 			return true
 		}), models.ContinuousScreeningTriggerTypeObjectUpdated).
+		Return(nil)
+
+	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
+		mock.MatchedBy(matchContext), mock.Anything, "transactions", mock.Anything).
+		Return([]models.ContinuousScreeningMonitoredObject{}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningDoScreeningTaskMany",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId, "transactions", mock.Anything, mock.Anything).
 		Return(nil)
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
