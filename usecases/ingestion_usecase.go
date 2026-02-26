@@ -68,6 +68,7 @@ type continuousScreeningClientDbRepository interface {
 		configStableId uuid.UUID,
 		ignoreConflicts bool,
 	) error
+	IsContinuousScreeningSetup(ctx context.Context, exec repositories.Executor) (bool, error)
 }
 
 type taskEnqueuer interface {
@@ -708,6 +709,14 @@ func (usecase *IngestionUseCase) enqueueObjectsNeedScreeningTaskIfNeeded(
 	objectIds := make([]string, 0, len(ingestionResults))
 	for objectId := range ingestionResults {
 		objectIds = append(objectIds, objectId)
+	}
+
+	continuousScreeningSetup, err := usecase.continuousScreeningClientRepository.IsContinuousScreeningSetup(ctx, clientDbExec)
+	if err != nil {
+		return err
+	}
+	if !continuousScreeningSetup {
+		return nil
 	}
 
 	monitoredObjects, err := usecase.continuousScreeningClientRepository.ListMonitoredObjectsByObjectIds(
