@@ -14,6 +14,7 @@ type lagoRepository interface {
 	GetSubscriptions(ctx context.Context, orgId uuid.UUID) ([]models.Subscription, error)
 	GetSubscription(ctx context.Context, subscriptionExternalId string) (models.Subscription, error)
 	GetCustomerUsage(ctx context.Context, orgId uuid.UUID, subscriptionExternalId string) (models.CustomerUsage, error)
+	GetEntitlements(ctx context.Context, subscriptionExternalId string) ([]models.BillingEntitlement, error)
 }
 
 type billingEventTaskEnqueuer interface {
@@ -140,4 +141,40 @@ func selectActiveWallet(wallets []models.Wallet) (models.Wallet, error) {
 		}
 	}
 	return models.Wallet{}, errors.New("no active wallet found")
+}
+
+func (u LagoBillingUsecase) CheckEntitlement(
+	ctx context.Context,
+	orgId uuid.UUID,
+	code BillableMetric,
+	entitlementCode BillingEntitlementCode,
+) (bool, string, error) {
+	logger := utils.LoggerFromContext(ctx)
+
+	subscriptions, err := u.getSubscriptionsForEvent(ctx, orgId, code)
+	if err != nil {
+		return false, "", err
+	}
+	if len(subscriptions) == 0 {
+		logger.DebugContext(ctx, "no subscription found for the event", "orgId", orgId, "code", code)
+		return false, "", nil
+	}
+
+	// Suppose have only one subscription for the event
+	subscription := subscriptions[0]
+
+	// Check if in the subscription have the entitlement
+	entitlements, err := u.lagoRepository.GetEntitlements(ctx, subscription.ExternalId)
+	if err != nil {
+		return false, "", err
+	}
+	for _, entitlement := range entitlements {
+		if entitlement.Code == entitlementCode.String() {
+			return true, subscription.ExternalId, nil
+		}
+	}
+
+	logger.DebugContext(ctx, "entitlement not found for the subscription", "orgId", orgId,
+		"code", code, "entitlementCode", entitlementCode)
+	return false, "", nil
 }

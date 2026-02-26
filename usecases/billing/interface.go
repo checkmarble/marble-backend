@@ -14,6 +14,12 @@ var ErrInsufficientFunds = errors.New("insufficient funds in wallet")
 type BillingUsecase interface {
 	EnqueueBillingEventTask(ctx context.Context, event models.BillingEvent) error
 	CheckIfEnoughFundsInWallet(ctx context.Context, orgId uuid.UUID, code BillableMetric) (bool, string, error)
+	CheckEntitlement(
+		ctx context.Context,
+		orgId uuid.UUID,
+		code BillableMetric,
+		entitlementCode BillingEntitlementCode,
+	) (bool, string, error)
 }
 
 // Factory function to create the appropriate billing usecase
