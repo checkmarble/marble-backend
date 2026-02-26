@@ -164,7 +164,7 @@ func (usecase *IngestionUseCase) IngestObject(
 	var ingestionResults models.IngestionResults
 	err = retryIngestion(ctx, func() error {
 		ingestionResults, err = usecase.insertEnumValuesAndIngest(ctx,
-			organizationId, []models.ClientObject{payload}, table, ingestionOptions, continuousScreeningConfigs)
+			organizationId, []models.ClientObject{payload}, table, ingestionOptions)
 		return err
 	})
 	if err != nil {
@@ -280,7 +280,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 	var ingestionResults models.IngestionResults
 	err = retryIngestion(ctx, func() error {
 		ingestionResults, err = usecase.insertEnumValuesAndIngest(ctx, organizationId,
-			clientObjects, table, ingestionOptions, continuousScreeningConfigs)
+			clientObjects, table, ingestionOptions)
 		return err
 	})
 	if err != nil {
@@ -676,7 +676,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 		var ingestionResults models.IngestionResults
 		if err := retryIngestion(iterationCtx, func() error {
 			ingestionResults, err = usecase.insertEnumValuesAndIngest(iterationCtx,
-				organizationId, clientObjects, table, ingestionOptions, continuousScreeningConfigs)
+				organizationId, clientObjects, table, ingestionOptions)
 			return err
 		}); err != nil {
 			return ingestionResult{
@@ -695,17 +695,11 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 
 func (usecase *IngestionUseCase) enqueueObjectsNeedScreeningTaskIfNeeded(
 	ctx context.Context,
-	configs []models.ContinuousScreeningConfig,
 	organizationId uuid.UUID,
 	table models.Table,
 	ingestionOptions models.IngestionOptions,
 	ingestionResults models.IngestionResults,
 ) error {
-	if len(configs) == 0 {
-		// No continuous screening config found, the feature is not enabled for this organization and object type
-		return nil
-	}
-
 	clientDbExec, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
 		return err
@@ -744,7 +738,7 @@ func (usecase *IngestionUseCase) enqueueObjectsNeedScreeningTaskIfNeeded(
 		}
 
 		if ingestionResults[monitoredObject.ObjectId].PreviousInternalId == "" && ingestionOptions.ShouldScreen {
-			enqueueAddedObjectUpdateTasks = append(enqueueUpdatedObjectUpdateTasks, models.ContinuousScreeningEnqueueObjectUpdateTask{
+			enqueueAddedObjectUpdateTasks = append(enqueueAddedObjectUpdateTasks, models.ContinuousScreeningEnqueueObjectUpdateTask{
 				MonitoringId:       monitoredObject.Id,
 				PreviousInternalId: ingestionResults[monitoredObject.ObjectId].PreviousInternalId,
 				NewInternalId:      ingestionResults[monitoredObject.ObjectId].NewInternalId,
@@ -888,7 +882,6 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	payloads []models.ClientObject,
 	table models.Table,
 	ingestionOptions models.IngestionOptions,
-	continuousScreeningConfigs []models.ContinuousScreeningConfig,
 ) (models.IngestionResults, error) {
 	start := time.Now()
 
@@ -923,10 +916,10 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 		return nil, err
 	}
 
-	err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx, continuousScreeningConfigs, organizationId, table,
+	err = usecase.enqueueObjectsNeedScreeningTaskIfNeeded(ctx, organizationId, table,
 		ingestionOptions, ingestionResults)
 	if err != nil {
-		utils.LoggerFromContext(ctx).WarnContext(ctx,
+		utils.LoggerFromContext(ctx).ErrorContext(ctx,
 			"could not enqueue continuous monitoring initial screening",
 			"error", err.Error())
 	}

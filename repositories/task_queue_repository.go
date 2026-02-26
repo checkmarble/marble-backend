@@ -399,6 +399,10 @@ func (r riverRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
 	enqueueObjectUpdateTasks []models.ContinuousScreeningEnqueueObjectUpdateTask,
 	triggerType models.ContinuousScreeningTriggerType,
 ) error {
+	if len(enqueueObjectUpdateTasks) == 0 {
+		return nil
+	}
+
 	params := make([]river.InsertManyParams, len(enqueueObjectUpdateTasks))
 	for i, enqueueObjectUpdateTask := range enqueueObjectUpdateTasks {
 		params[i] = river.InsertManyParams{
