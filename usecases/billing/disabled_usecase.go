@@ -20,3 +20,12 @@ func (u NoOpBillingUsecase) EnqueueBillingEventTask(ctx context.Context, event m
 func (u NoOpBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgId uuid.UUID, code BillableMetric) (bool, string, error) {
 	return true, "Fake subscription ID", nil
 }
+
+func (u NoOpBillingUsecase) CheckEntitlement(
+	ctx context.Context,
+	orgId uuid.UUID,
+	code BillableMetric,
+	entitlementCode BillingEntitlementCode,
+) (bool, string, error) {
+	return true, "Fake subscription ID", nil
+}
