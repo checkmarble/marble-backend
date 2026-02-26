@@ -186,3 +186,12 @@ func (m *TaskQueueRepository) EnqueueWebhookDeliveryAt(
 	args := m.Called(ctx, tx, organizationId, deliveryId, scheduledAt)
 	return args.Error(0)
 }
+
+func (m *TaskQueueRepository) EnqueueTriggerScoreComputation(
+	ctx context.Context,
+	tx repositories.Transaction,
+	entityRef models.ScoringEntityRef,
+) error {
+	args := m.Called(ctx, tx, entityRef)
+	return args.Error(1)
+}

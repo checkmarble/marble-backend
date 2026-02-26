@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type scoringRepository interface {
+type ScoringRepository interface {
 	GetScoringSettings(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (*models.ScoringSettings, error)
 	UpdateScoringSettings(ctx context.Context, exec repositories.Executor, settings models.ScoringSettings) (models.ScoringSettings, error)
 
