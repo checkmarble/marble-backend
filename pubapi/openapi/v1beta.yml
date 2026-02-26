@@ -19,6 +19,8 @@ tags:
     description: Routes for cases
   - name: Continuous Screenings
     description: Routes for continuous screenings
+  - name: Client Data
+    description: Routes for client data annotations
 paths:
   /ingest/{objectType}:
     post:
@@ -689,6 +691,214 @@ paths:
         "404":
           $ref: "#/components/responses/404"
 
+  /client-data/object-type/{objectType}/object-id/{objectId}/annotations:
+    get:
+      operationId: listClientDataAnnotations
+      tags:
+        - Client Data
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: List annotations for an object
+      description: |
+        List all annotations attached to a specific object.
+      parameters:
+        - name: objectType
+          in: path
+          required: true
+          description: Type of the object as defined in the data model
+          schema:
+            type: string
+        - name: objectId
+          in: path
+          required: true
+          description: Client-side ID of the object
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of annotations
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/ClientDataAnnotation"
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+
+    post:
+      operationId: createClientDataAnnotation
+      tags:
+        - Client Data
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Attach an annotation to an object
+      description: |
+        Attach an annotation to a specific object. Supported annotation types are `comment`, `tag` and `risk_tag`.
+
+        To attach a file annotation, use the dedicated endpoint
+        `POST /client-data/object-type/{objectType}/object-id/{objectId}/annotations/files`.
+      parameters:
+        - name: objectType
+          in: path
+          required: true
+          description: Type of the object as defined in the data model
+          schema:
+            type: string
+        - name: objectId
+          in: path
+          required: true
+          description: Client-side ID of the object
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/CreateCommentAnnotation"
+                - $ref: "#/components/schemas/CreateTagAnnotation"
+                - $ref: "#/components/schemas/CreateRiskTagAnnotation"
+      responses:
+        "201":
+          description: Annotation created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ClientDataAnnotation"
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+        "409":
+          $ref: "#/components/responses/409"
+
+  /client-data/object-type/{objectType}/object-id/{objectId}/annotations/files:
+    post:
+      operationId: createClientDataFileAnnotation
+      tags:
+        - Client Data
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Attach files to an object as an annotation
+      description: |
+        Upload one or more files and attach them as a file annotation to a specific object.
+      parameters:
+        - name: objectType
+          in: path
+          required: true
+          description: Type of the object as defined in the data model
+          schema:
+            type: string
+        - name: objectId
+          in: path
+          required: true
+          description: Client-side ID of the object
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - caption
+                - files[]
+              properties:
+                caption:
+                  description: Caption for the uploaded files
+                  type: string
+                files[]:
+                  description: One or more files to attach. At least one file is required.
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        "201":
+          description: File annotation(s) created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/ClientDataAnnotation"
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+
+  /client-data/annotations/{id}/files/{partId}/download:
+    get:
+      operationId: downloadClientDataAnnotationFile
+      tags:
+        - Client Data
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Get a download URL for a file annotation part
+      description: |
+        Get a temporary download URL for a specific file within a file annotation.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the file annotation
+          schema:
+            type: string
+            format: uuid
+        - name: partId
+          in: path
+          required: true
+          description: Filename of the specific file part within the annotation
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Temporary download URL for the file
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - url
+                        properties:
+                          url:
+                            type: string
+                            format: uri
+                            description: Temporary URL to download the file
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+
 components:
   securitySchemes:
     BearerTokenAuth:
@@ -1102,3 +1312,103 @@ components:
         updated_at:
           type: string
           format: date-time
+
+    ClientDataAnnotation:
+      title: Client data annotation
+      type: object
+      required:
+        - id
+        - object_type
+        - object_id
+        - annotation_type
+        - payload
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        object_type:
+          type: string
+          description: Type of the annotated object as defined in the data model
+        object_id:
+          type: string
+          description: Client-side ID of the annotated object
+        annotation_type:
+          type: string
+          enum: [comment, tag, risk_tag, file]
+        payload:
+          type: object
+          description: |
+            Payload contents depend on the annotation_type:
+            - `comment`: `{text: string}`
+            - `tag`: `{tag_id: string}`
+            - `risk_tag`: `{tag: string, reason?: string, url?: string}`
+            - `file`: `{caption: string, files: [{id: string, filename: string}]}`
+        created_at:
+          type: string
+          format: date-time
+
+    CreateAnnotationBase:
+      type: object
+      required:
+        - type
+        - payload
+      properties:
+        type:
+          type: string
+        payload:
+          type: object
+
+    CreateCommentAnnotation:
+      title: Create comment annotation
+      allOf:
+        - $ref: "#/components/schemas/CreateAnnotationBase"
+        - properties:
+            type:
+              enum: [comment]
+            payload:
+              required:
+                - text
+              properties:
+                text:
+                  type: string
+                  description: Text content of the comment
+
+    CreateTagAnnotation:
+      title: Create tag annotation
+      allOf:
+        - $ref: "#/components/schemas/CreateAnnotationBase"
+        - properties:
+            type:
+              enum: [tag]
+            payload:
+              required:
+                - tag_id
+              properties:
+                tag_id:
+                  type: string
+                  format: uuid
+                  description: ID of the tag to attach to the object
+
+    CreateRiskTagAnnotation:
+      title: Create risk tag annotation
+      allOf:
+        - $ref: "#/components/schemas/CreateAnnotationBase"
+        - properties:
+            type:
+              enum: [risk_tag]
+            payload:
+              required:
+                - tag
+              properties:
+                tag:
+                  type: string
+                  description: Risk tag identifier
+                  enum: [sanctions, peps, adverse-media, third-parties]
+                reason:
+                  type: string
+                  description: Human-readable reason for applying the risk tag
+                url:
+                  type: string
+                  format: uri
+                  description: URL to supporting evidence for the risk tag

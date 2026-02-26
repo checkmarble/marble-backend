@@ -86,8 +86,6 @@ func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gi
 			v1beta.HandleCreateEntityFileAnnotation(uc))
 		root.GET("/client-data/annotations/:id/files/:partId/download",
 			v1beta.HandleGetEntityFileAnnotation(uc))
-		root.DELETE("/client-data/annotations/:id",
-			v1beta.HandleDeleteClientDataAnnotation(uc))
 	}
 }
 
