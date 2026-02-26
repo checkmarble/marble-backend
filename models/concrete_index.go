@@ -60,12 +60,14 @@ func (i ConcreteIndex) MarshalJSON() ([]byte, error) {
 		IndexName string   `json:"IndexName"` //nolint:tagliatelle
 		Indexed   []string `json:"Indexed"`   //nolint:tagliatelle
 		Included  []string `json:"Included"`  //nolint:tagliatelle
+		Type      int      `json:"Type"`      //nolint:tagliatelle
 	}
 	return json.Marshal(concreteIndexJSON{
 		TableName: i.TableName,
 		IndexName: i.name,
 		Indexed:   i.Indexed,
 		Included:  i.Included,
+		Type:      int(i.Type),
 	})
 }
 
@@ -76,6 +78,7 @@ func (i *ConcreteIndex) UnmarshalJSON(data []byte) error {
 		IndexName string   `json:"IndexName"` //nolint:tagliatelle
 		Indexed   []string `json:"Indexed"`   //nolint:tagliatelle
 		Included  []string `json:"Included"`  //nolint:tagliatelle
+		Type      int      `json:"Type"`      //nolint:tagliatelle
 	}
 	if err := json.Unmarshal(data, &rawData); err != nil {
 		return err
@@ -84,6 +87,7 @@ func (i *ConcreteIndex) UnmarshalJSON(data []byte) error {
 	i.name = rawData.IndexName
 	i.Indexed = rawData.Indexed
 	i.Included = rawData.Included
+	i.Type = IndexType(rawData.Type)
 
 	return nil
 }
