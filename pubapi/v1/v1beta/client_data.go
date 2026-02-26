@@ -214,37 +214,3 @@ func HandleGetEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 		types.NewResponse(dto.ClientDataFileUrl{Url: downloadUrl}).Serve(c)
 	}
 }
-
-func HandleDeleteClientDataAnnotation(uc usecases.Usecases) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
-
-		orgId, err := utils.OrganizationIdFromRequest(c.Request)
-		if err != nil {
-			types.NewErrorResponse().WithError(err).Serve(c)
-			return
-		}
-
-		annotationId, err := types.UuidParam(c, "id")
-		if err != nil {
-			types.NewErrorResponse().WithError(err).Serve(c)
-			return
-		}
-
-		uc := pubapi.UsecasesWithCreds(ctx, uc).NewEntityAnnotationUsecase()
-
-		err = uc.DeleteAnnotation(
-			ctx,
-			models.AnnotationByIdRequest{
-				OrgId:        orgId,
-				AnnotationId: annotationId.String(),
-			},
-		)
-		if err != nil {
-			types.NewErrorResponse().WithError(err).Serve(c)
-			return
-		}
-
-		c.Status(http.StatusNoContent)
-	}
-}
