@@ -407,6 +407,10 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewWebhookDeliveryWorker())
 	river.AddWorker(workers, adminUc.NewWebhookCleanupWorker())
 
+	if infra.HasGlobalFeatureFlag(infra.FEATURE_USER_SCORING) {
+		river.AddWorker(workers, adminUc.NewTriggeredScoreComputationWorker())
+	}
+
 	if err := riverClient.Start(ctx); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err
@@ -622,6 +626,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "webhook_cleanup":
 		return uc.NewWebhookCleanupWorker().Work(ctx,
 			singleJobCreate[models.WebhookCleanupJobArgs](ctx, jobArgs))
+	case "triggered_score_computation":
+		return uc.NewTriggeredScoreComputationWorker().Work(ctx,
+			singleJobCreate[models.TriggeredScoreComputationArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}

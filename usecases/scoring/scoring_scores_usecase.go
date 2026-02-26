@@ -2,6 +2,7 @@ package scoring
 
 import (
 	"context"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -18,9 +19,10 @@ type ScoringScoresUsecase struct {
 	enforceSecurity     security.EnforceSecurityScoring
 	executorFactory     executor_factory.ExecutorFactory
 	transactionFactory  executor_factory.TransactionFactory
-	repository          scoringRepository
+	repository          ScoringRepository
 	dataModelRepository repositories.DataModelRepository
 	ingestedDataReader  scoringIngestedDataReader
+	taskQueueRepository repositories.TaskQueueRepository
 	evaluateAst         ast_eval.EvaluateAstExpression
 }
 
@@ -28,9 +30,10 @@ func NewScoringScoresUsecase(
 	enforceSecurity security.EnforceSecurityScoring,
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
-	repository scoringRepository,
+	repository ScoringRepository,
 	dataModelRepository repositories.DataModelRepository,
 	ingestedDataReader scoringIngestedDataReader,
+	taskQueueRepository repositories.TaskQueueRepository,
 	evaluateAst ast_eval.EvaluateAstExpression,
 ) ScoringScoresUsecase {
 	return ScoringScoresUsecase{
@@ -40,15 +43,25 @@ func NewScoringScoresUsecase(
 		repository:          repository,
 		dataModelRepository: dataModelRepository,
 		ingestedDataReader:  ingestedDataReader,
+		taskQueueRepository: taskQueueRepository,
 		evaluateAst:         evaluateAst,
 	}
 }
 
 func (uc ScoringScoresUsecase) ComputeScore(ctx context.Context, entityType, entityId string) (models.ScoringEvaluation, error) {
-	ruleset, err := uc.repository.GetScoringRuleset(
-		ctx,
+	return uc.InternalComputeScore(ctx,
 		uc.executorFactory.NewExecutor(),
 		uc.enforceSecurity.OrgId(),
+		entityType, entityId)
+}
+
+func (uc ScoringScoresUsecase) InternalComputeScore(ctx context.Context, exec repositories.Executor,
+	orgId uuid.UUID, entityType, entityId string,
+) (models.ScoringEvaluation, error) {
+	ruleset, err := uc.repository.GetScoringRuleset(
+		ctx,
+		exec,
+		orgId,
 		entityType,
 		models.ScoreRulesetCommitted)
 	if err != nil {
@@ -58,9 +71,6 @@ func (uc ScoringScoresUsecase) ComputeScore(ctx context.Context, entityType, ent
 
 		return models.ScoringEvaluation{}, err
 	}
-
-	exec := uc.executorFactory.NewExecutor()
-	orgId := uc.enforceSecurity.OrgId()
 
 	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, exec, orgId, false, false)
 	if err != nil {
@@ -105,12 +115,26 @@ func (uc ScoringScoresUsecase) GetScoreHistory(ctx context.Context, entityRef mo
 	return scores, nil
 }
 
-func (uc ScoringScoresUsecase) GetActiveScore(ctx context.Context, entityRef models.ScoringEntityRef) (*models.ScoringScore, error) {
-	entityRef.OrgId = uc.enforceSecurity.OrgId()
+func (uc ScoringScoresUsecase) GetActiveScore(ctx context.Context, entity models.ScoringEntityRef, opts models.RefreshScoreOptions) (*models.ScoringScore, error) {
+	entity.OrgId = uc.enforceSecurity.OrgId()
 
-	score, err := uc.repository.GetActiveScore(ctx, uc.executorFactory.NewExecutor(), entityRef)
-	if err != nil || score == nil {
+	score, err := uc.repository.GetActiveScore(ctx, uc.executorFactory.NewExecutor(), entity)
+	if err != nil {
 		return nil, err
+	}
+
+	if score == nil || time.Now().After(score.CreatedAt.Add(opts.RefreshOlderThan)) {
+		newScore, err := uc.refreshScore(ctx, score, entity, opts)
+		if err != nil {
+			return nil, err
+		}
+		// If we did not get a new score from the refresh (because it it done in the
+		// background), return the previous active one.
+		if newScore == nil {
+			return score, nil
+		}
+		// Otherwise, return the refreshed score.
+		return newScore, nil
 	}
 
 	if err := uc.enforceSecurity.ReadEntityScore(*score); err != nil {
@@ -118,6 +142,41 @@ func (uc ScoringScoresUsecase) GetActiveScore(ctx context.Context, entityRef mod
 	}
 
 	return score, nil
+}
+
+func (uc ScoringScoresUsecase) refreshScore(ctx context.Context, activeScore *models.ScoringScore, entity models.ScoringEntityRef, opts models.RefreshScoreOptions) (*models.ScoringScore, error) {
+	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (*models.ScoringScore, error) {
+		// We do not compute the score in the background if we do not have a
+		// currently active score. In this case, we fall back to synchronous
+		// computing.
+		if activeScore != nil && opts.RefreshInBackground {
+			if err := uc.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, entity); err != nil {
+				return nil, err
+			}
+
+			return nil, nil
+		}
+
+		newScore, err := uc.ComputeScore(ctx, entity.EntityType, entity.EntityId)
+		if err != nil {
+			return nil, err
+		}
+
+		req := models.InsertScoreRequest{
+			OrgId:      entity.OrgId,
+			EntityType: entity.EntityType,
+			EntityId:   entity.EntityId,
+			Score:      newScore.Score,
+			Source:     models.ScoreSourceRuleset,
+		}
+
+		score, err := uc.repository.InsertScore(ctx, tx, req)
+		if err != nil {
+			return nil, err
+		}
+
+		return &score, nil
+	})
 }
 
 func (uc ScoringScoresUsecase) OverrideScore(ctx context.Context, req models.InsertScoreRequest) (models.ScoringScore, error) {

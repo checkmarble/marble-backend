@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/dto/scoring"
@@ -198,12 +199,12 @@ func handleScoringGetScoreHistory(uc usecases.Usecases) gin.HandlerFunc {
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringScoresUsecase()
 
-		entityRef := models.ScoringEntityRef{
+		entity := models.ScoringEntityRef{
 			EntityType: c.Param("entityType"),
 			EntityId:   c.Param("entityId"),
 		}
 
-		scores, err := scoringUsecase.GetScoreHistory(ctx, entityRef)
+		scores, err := scoringUsecase.GetScoreHistory(ctx, entity)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -219,12 +220,17 @@ func handleScoringGetActiveScore(uc usecases.Usecases) gin.HandlerFunc {
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringScoresUsecase()
 
-		entityRef := models.ScoringEntityRef{
+		entity := models.ScoringEntityRef{
 			EntityType: c.Param("entityType"),
 			EntityId:   c.Param("entityId"),
 		}
 
-		score, err := scoringUsecase.GetActiveScore(ctx, entityRef)
+		opts := models.RefreshScoreOptions{
+			RefreshOlderThan:    time.Hour,
+			RefreshInBackground: true,
+		}
+
+		score, err := scoringUsecase.GetActiveScore(ctx, entity, opts)
 		if presentError(ctx, c, err) {
 			return
 		}

@@ -15,6 +15,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/usecases/scoring"
+	"github.com/checkmarble/marble-backend/usecases/scoring/scoring_jobs"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transfers_data_read"
 	"github.com/checkmarble/marble-backend/usecases/webhooks"
@@ -1011,6 +1012,15 @@ func (usecases UsecasesWithCreds) NewWebhookCleanupWorker() *worker_jobs.Webhook
 	)
 }
 
+func (usecases UsecasesWithCreds) NewTriggeredScoreComputationWorker() *scoring_jobs.TriggeredScoreComputationWorker {
+	return scoring_jobs.NewTriggeredScoreComputationWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.NewScoringScoresUsecase(),
+		usecases.Repositories.MarbleDbRepository,
+	)
+}
+
 func (usecases *UsecasesWithCreds) NewDataModelDestroyUsecase() DataModelDestroyUsecase {
 	return NewDataModelDestroyUsecase(
 		usecases.NewExecutorFactory(),
@@ -1100,6 +1110,7 @@ func (usecases *UsecasesWithCreds) NewScoringScoresUsecase() scoring.ScoringScor
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.IngestedDataReadRepository,
+		usecases.Repositories.TaskQueueRepository,
 		usecases.NewEvaluateAstExpression(),
 	)
 }

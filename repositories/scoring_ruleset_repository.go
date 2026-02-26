@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
@@ -56,7 +58,12 @@ func (repo *MarbleDbRepository) GetScoringRuleset(
 	})
 
 	query := NewQueryBuilder().
-		Select("any_value(rs.*) as ruleset", "array_agg(row(r.*)) as rules").
+		Select(
+			fmt.Sprintf("any_value(row(%s)) as ruleset",
+				strings.Join(columnsNames("rs", dbmodels.SelectScoringRulesetsColumns), ",")),
+			fmt.Sprintf("array_agg(row(%s)) as rules",
+				strings.Join(columnsNames("r", dbmodels.SelectScoringRulesColumns), ",")),
+		).
 		From("ruleset rs").
 		Join(dbmodels.TABLE_SCORING_RULES + " r on r.ruleset_id = rs.id").
 		GroupBy("rs.id").

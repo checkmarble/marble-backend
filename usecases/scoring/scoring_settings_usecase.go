@@ -15,14 +15,14 @@ type ScoringSettingsUsecase struct {
 	enforceSecurity    security.EnforceSecurityScoring
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
-	repository         scoringRepository
+	repository         ScoringRepository
 }
 
 func NewScoringSettingsUsecase(
 	enforceSecurity security.EnforceSecurityScoring,
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
-	repository scoringRepository,
+	repository ScoringRepository,
 ) ScoringSettingsUsecase {
 	return ScoringSettingsUsecase{
 		enforceSecurity:    enforceSecurity,
