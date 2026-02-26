@@ -16,6 +16,23 @@ func sanitizedTableName(exec Executor, tableName string) string {
 	return pgx.Identifier.Sanitize([]string{exec.DatabaseSchema().Schema, tableName})
 }
 
+func (repo *ClientDbRepository) IsContinuousScreeningSetup(ctx context.Context, exec Executor) (bool, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return false, err
+	}
+
+	sql := `select exists(select 1 from information_schema.tables where table_name = '_monitored_objects')`
+	row := exec.QueryRow(ctx, sql)
+
+	var exists bool
+
+	if err := row.Scan(&exists); err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
 // Table schema
 // id: UUID, primary key
 // object_type: TEXT

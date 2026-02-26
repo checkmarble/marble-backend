@@ -500,3 +500,8 @@ func (m *ContinuousScreeningClientDbRepository) ListMonitoredObjects(
 	args := m.Called(ctx, exec, filters, pagination)
 	return args.Get(0).([]models.ContinuousScreeningMonitoredObject), args.Error(1)
 }
+
+func (m *ContinuousScreeningClientDbRepository) IsContinuousScreeningSetup(ctx context.Context, exec repositories.Executor) (bool, error) {
+	args := m.Called(ctx, exec)
+	return args.Bool(0), args.Error(1)
+}
