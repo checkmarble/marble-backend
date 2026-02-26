@@ -12,6 +12,7 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -283,4 +284,30 @@ func (repo LagoRepository) sendBatch(ctx context.Context, baseUrl string, body [
 		return errors.New("failed to send events")
 	}
 	return nil
+}
+
+func (repo LagoRepository) GetEntitlements(ctx context.Context, subscriptionExternalId string) ([]models.BillingEntitlement, error) {
+	if !repo.IsConfigured() {
+		return nil, errors.New("lago repository is not configured")
+	}
+
+	baseUrl := *repo.lagoConfig.ParsedUrl
+	baseUrl.Path = fmt.Sprintf("/api/v1/subscriptions/%s/entitlements", subscriptionExternalId)
+
+	resp, err := repo.doRequestWithRetry(ctx, http.MethodGet, baseUrl.String(), nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get customer usage")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Newf("failed to get customer usage: %s", resp.Status)
+	}
+
+	var result EntitlementsDto
+	if err = json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, errors.Wrap(err, "failed to decode entitlements")
+	}
+
+	return pure_utils.Map(result.Entitlements, AdaptEntitlementDtoToModel), nil
 }

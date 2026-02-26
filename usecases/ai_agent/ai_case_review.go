@@ -363,16 +363,33 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		return nil, errors.Wrap(err, "could not get case data")
 	}
 
-	// Check if the organization has enough funds to cover the cost of the case review
-	enoughFunds, subscriptionId, err := uc.billingUsecase.CheckIfEnoughFundsInWallet(
+	var subscriptionId string
+
+	// Check if the organization has the entitlement to disable pay-as-you-go for AI case review
+	no_pay_as_you_go_entitlement, subscriptionId, err := uc.billingUsecase.CheckEntitlement(
 		ctx,
 		caseData.organizationId,
-		billing.AI_CASE_REVIEW)
+		billing.AI_CASE_REVIEW,
+		billing.BillingEntitlementAINoPayAsYouGo,
+	)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not check if enough funds in wallet")
+		return nil, errors.Wrap(err, "could not check billing entitlement")
 	}
-	if !enoughFunds {
-		return nil, billing.ErrInsufficientFunds
+	// In case the org need to pay-as-you-go, check its wallets
+	if !no_pay_as_you_go_entitlement {
+		// Check if the organization has enough funds to cover the cost of the case review
+		enoughFunds, _, err := uc.billingUsecase.CheckIfEnoughFundsInWallet(
+			ctx,
+			caseData.organizationId,
+			billing.AI_CASE_REVIEW)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not check if enough funds in wallet")
+		}
+		if !enoughFunds {
+			return nil, billing.ErrInsufficientFunds
+		}
+	} else {
+		logger.InfoContext(ctx, "Organization has entitlement to disable pay-as-you-go for AI case review, skipping wallet check", "subscription_id", subscriptionId)
 	}
 
 	// Get AI setting
