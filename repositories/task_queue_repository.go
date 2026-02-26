@@ -139,6 +139,11 @@ type TaskQueueRepository interface {
 		tx Transaction,
 		entity models.ScoringEntityRef,
 	) error
+	EnqueueManyTriggerScoreComputation(
+		ctx context.Context,
+		tx Transaction,
+		entities []models.ScoringEntityRef,
+	) error
 }
 
 type riverRepository struct {
@@ -663,6 +668,38 @@ func (r riverRepository) EnqueueTriggerScoreComputation(
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued triggered score computation",
 		"job_id", res.Job.ID)
+
+	return nil
+}
+
+func (r riverRepository) EnqueueManyTriggerScoreComputation(
+	ctx context.Context,
+	tx Transaction,
+	entities []models.ScoringEntityRef,
+) error {
+	params := make([]river.InsertManyParams, len(entities))
+
+	for idx, entity := range entities {
+		params[idx] = river.InsertManyParams{
+			Args: models.TriggeredScoreComputationArgs(entity),
+			InsertOpts: &river.InsertOpts{
+				Queue:    entity.OrgId.String(),
+				Priority: 4, // Low priority
+				UniqueOpts: river.UniqueOpts{
+					ByArgs:   true,
+					ByPeriod: time.Hour,
+				},
+			},
+		}
+	}
+
+	count, err := r.client.InsertManyFastTx(ctx, tx.RawTx(), params)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued many triggered score computation", "count", count)
 
 	return nil
 }

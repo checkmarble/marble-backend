@@ -40,7 +40,7 @@ func (repo *MarbleDbRepository) GetScoringRuleset(
 	exec Executor,
 	orgId uuid.UUID,
 	entityType string,
-	status string,
+	status models.ScoreRulesetStatus,
 ) (models.ScoringRuleset, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.ScoringRuleset{}, err
