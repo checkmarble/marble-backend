@@ -1,6 +1,8 @@
 package api
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -9,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 )
 
 func handleListArchetypes(uc usecases.Usecases) gin.HandlerFunc {
@@ -31,8 +34,7 @@ func handleOrgImport(uc usecases.Usecases) gin.HandlerFunc {
 
 		var spec dto.OrgImport
 
-		err := c.ShouldBindJSON(&spec)
-		if err != nil {
+		if err := c.ShouldBindJSON(&spec); err != nil {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
@@ -40,6 +42,53 @@ func handleOrgImport(uc usecases.Usecases) gin.HandlerFunc {
 		uc := usecasesWithCreds(ctx, uc)
 		orgImportUsecase := uc.NewOrgImportUsecase()
 
+		// If this endpoint is called by marble admin, the organizationId is Nil
+		// and a new organization is created. Otherwise the organizationId corresponds
+		// to the organization the admin is currently in, which will be filled.
+		orgId, err := orgImportUsecase.Import(ctx, uc.Credentials.OrganizationId, spec, c.Query("seed") == "true")
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"org_id": orgId,
+		})
+	}
+}
+
+func handleOrgImportFromFile(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		file, _, err := c.Request.FormFile("file")
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+		defer file.Close()
+
+		data, err := io.ReadAll(file)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		var spec dto.OrgImport
+		if err := json.Unmarshal(data, &spec); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+		if err := binding.Validator.ValidateStruct(&spec); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc)
+		orgImportUsecase := uc.NewOrgImportUsecase()
+
+		// If this endpoint is called by marble admin, the organizationId is Nil
+		// and a new organization is created. Otherwise the organizationId corresponds
+		// to the organization the admin is currently in, which will be filled.
 		orgId, err := orgImportUsecase.Import(ctx, uc.Credentials.OrganizationId, spec, c.Query("seed") == "true")
 		if presentError(ctx, c, err) {
 			return
