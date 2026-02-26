@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"context"
-	"slices"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -167,12 +166,12 @@ func (uc *OrgExportUsecase) Export(ctx context.Context, orgId uuid.UUID) (dto.Or
 	}
 	// Filter out workflows with scenarios that don't have a published iteration (since we won't be able to export those scenarios)
 	filteredWorkflows := make([]models.Workflow, 0, len(workflows))
-	exportedScenarioIds := make([]uuid.UUID, len(importScenarios))
+	exportedScenarioIds := make(map[uuid.UUID]struct{}, len(importScenarios))
 	for i := range importScenarios {
-		exportedScenarioIds[i] = uuid.MustParse(importScenarios[i].Scenario.Id)
+		exportedScenarioIds[uuid.MustParse(importScenarios[i].Scenario.Id)] = struct{}{}
 	}
 	for _, workflow := range workflows {
-		if slices.Contains(exportedScenarioIds, workflow.ScenarioId) {
+		if _, ok := exportedScenarioIds[workflow.ScenarioId]; ok {
 			filteredWorkflows = append(filteredWorkflows, workflow)
 		}
 	}

@@ -278,6 +278,12 @@ func (uc *OrgImportUsecase) createOrganization(ctx context.Context, tx repositor
 	if err := uc.orgRepository.CreateOrganization(ctx, tx, orgId, models.CreateOrganizationInput{
 		Name: spec.Org.Name,
 	}); err != nil {
+		if repositories.IsUniqueViolationError(err) {
+			return uuid.Nil, errors.Wrap(
+				models.ConflictError,
+				"organization with the same name already exists",
+			)
+		}
 		return uuid.Nil, err
 	}
 
