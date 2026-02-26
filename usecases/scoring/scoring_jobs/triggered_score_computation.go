@@ -3,7 +3,6 @@ package scoring_jobs
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
@@ -18,6 +17,7 @@ type TriggeredScoreComputationWorker struct {
 
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
+	rulesetUsecase     scoring.ScoringRulesetsUsecase
 	scoreUsecase       scoring.ScoringScoresUsecase
 	repository         scoring.ScoringRepository
 }
@@ -25,12 +25,14 @@ type TriggeredScoreComputationWorker struct {
 func NewTriggeredScoreComputationWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
+	rulesetUsecase scoring.ScoringRulesetsUsecase,
 	scoreUsecase scoring.ScoringScoresUsecase,
 	repository scoring.ScoringRepository,
 ) *TriggeredScoreComputationWorker {
 	return &TriggeredScoreComputationWorker{
 		executorFactory:    executorFactory,
 		transactionFactory: transactionFactory,
+		rulesetUsecase:     rulesetUsecase,
 		scoreUsecase:       scoreUsecase,
 		repository:         repository,
 	}
@@ -42,6 +44,17 @@ func (w *TriggeredScoreComputationWorker) Work(ctx context.Context, job *river.J
 	}
 
 	err := w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		ruleset, err := w.repository.GetScoringRuleset(ctx, tx, job.Args.OrgId, job.Args.EntityType, models.ScoreRulesetCommitted)
+		if err != nil {
+			// Not having a ruleset here is okay, it means scoring is not configured
+			// for that table.
+			if errors.Is(err, models.NotFoundError) {
+				return nil
+			}
+
+			return err
+		}
+
 		activeScore, err := w.repository.GetActiveScore(ctx, tx, models.ScoringEntityRef{
 			OrgId:      job.Args.OrgId,
 			EntityType: job.Args.EntityType,
@@ -51,13 +64,16 @@ func (w *TriggeredScoreComputationWorker) Work(ctx context.Context, job *river.J
 			return err
 		}
 
-		if activeScore != nil && activeScore.Source == models.ScoreSourceOverride && (activeScore.StaleAt == nil || activeScore.StaleAt.After(time.Now())) {
+		if activeScore.IsOverriden() {
 			return nil
 		}
 
-		eval, err := w.scoreUsecase.InternalComputeScore(ctx, tx, job.Args.OrgId, job.Args.EntityType, job.Args.EntityId)
+		eval, err := w.scoreUsecase.InternalComputeScore(ctx, tx, job.Args.OrgId, ruleset, job.Args.EntityType, job.Args.EntityId)
 		if err != nil {
 			return err
+		}
+		if eval == nil {
+			return nil
 		}
 
 		req := models.InsertScoreRequest{
@@ -66,7 +82,6 @@ func (w *TriggeredScoreComputationWorker) Work(ctx context.Context, job *river.J
 			EntityId:   job.Args.EntityId,
 			Score:      eval.Score,
 			Source:     models.ScoreSourceRuleset,
-			StaleAt:    nil, // TODO: auto stale
 		}
 
 		_, err = w.repository.InsertScore(ctx, tx, req)
