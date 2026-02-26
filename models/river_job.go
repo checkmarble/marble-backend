@@ -221,3 +221,11 @@ func (WebhookDeliveryJobArgs) Kind() string { return "webhook_delivery" }
 type WebhookCleanupJobArgs struct{}
 
 func (WebhookCleanupJobArgs) Kind() string { return "webhook_cleanup" }
+
+type TriggeredScoreComputationArgs struct {
+	OrgId      uuid.UUID `json:"org_id"`
+	EntityType string    `json:"entity_type"`
+	EntityId   string    `json:"entity_id"`
+}
+
+func (TriggeredScoreComputationArgs) Kind() string { return "triggered_score_computation" }

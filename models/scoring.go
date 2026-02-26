@@ -75,6 +75,11 @@ type ScoringEntityRef struct {
 	EntityId   string
 }
 
+type RefreshScoreOptions struct {
+	RefreshOlderThan    time.Duration
+	RefreshInBackground bool
+}
+
 type InsertScoreRequest struct {
 	OrgId       uuid.UUID
 	EntityType  string
