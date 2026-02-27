@@ -85,7 +85,8 @@ func (repo *MarbleDbRepository) InsertScore(
 			"entity_id",
 			"score",
 			"source",
-			"overriden_by",
+			"ruleset_id",
+			"overridden_by",
 			"stale_at",
 		).
 		Values(
@@ -95,7 +96,8 @@ func (repo *MarbleDbRepository) InsertScore(
 			req.EntityId,
 			req.Score,
 			req.Source,
-			req.OverridenBy,
+			req.RulesetId,
+			req.OverriddenBy,
 			req.StaleAt,
 		).
 		Suffix("returning *")

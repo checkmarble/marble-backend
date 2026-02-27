@@ -24,6 +24,8 @@ type DbScoringRuleset struct {
 	CreatedAt       time.Time `db:"created_at"`
 }
 
+// TODO: stable ID is a bit useless and unusable since we commit the whole
+// ruleset at once.
 type DbScoringRule struct {
 	Id          uuid.UUID       `db:"id"`
 	RulesetId   uuid.UUID       `db:"ruleset_id"`

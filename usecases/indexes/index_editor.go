@@ -128,13 +128,13 @@ func (editor ClientDbIndexEditor) GetIndexesToCreateForScoringRuleset(
 	db, err := editor.executorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
 		return toCreate, numPending, errors.Wrap(err,
-			"Error while creating client schema executor in CreateDatamodelIndexesForScenarioPublication")
+			"Error while creating client schema executor in GetIndexesToCreateForScoringRuleset")
 	}
 
 	existingIndexes, err := editor.ingestedDataIndexesRepository.ListAllValidIndexes(ctx, db, models.IndexTypeAggregation)
 	if err != nil {
 		return toCreate, numPending, errors.Wrap(err,
-			"Error while fetching existing indexes in CreateDatamodelIndexesForScenarioPublication")
+			"Error while fetching existing indexes in GetIndexesToCreateForScoringRuleset")
 	}
 
 	astNodes := make([]ast.Node, len(ruleset.Rules))
@@ -153,7 +153,7 @@ func (editor ClientDbIndexEditor) GetIndexesToCreateForScoringRuleset(
 	numPending, err = editor.ingestedDataIndexesRepository.CountPendingIndexes(ctx, db)
 	if err != nil {
 		return toCreate, numPending, errors.Wrap(err,
-			"Error while counting pending indexes in CreateDatamodelIndexesForScenarioPublication")
+			"Error while counting pending indexes in GetIndexesToCreateForScoringRuleset")
 	}
 
 	return

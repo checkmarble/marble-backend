@@ -8,13 +8,14 @@ import (
 )
 
 type Score struct {
-	Id          uuid.UUID  `json:"id"`
-	Score       int        `json:"score"`
-	Source      string     `json:"source"`
-	OverridenBy *uuid.UUID `json:"overriden_by,omitempty"`
-	Current     bool       `json:"current"`
-	CreatedAt   time.Time  `json:"created_at"`
-	StaleAt     *time.Time `json:"stale_at,omitempty"`
+	Id           uuid.UUID  `json:"id"`
+	Score        int        `json:"score"`
+	Source       string     `json:"source"`
+	RulesetId    *uuid.UUID `json:"ruleset_id"`
+	OverriddenBy *uuid.UUID `json:"overridden_by,omitempty"`
+	Current      bool       `json:"current"`
+	CreatedAt    time.Time  `json:"created_at"`
+	StaleAt      *time.Time `json:"stale_at,omitempty"`
 }
 
 type OverrideScoreRequest struct {
@@ -24,12 +25,13 @@ type OverrideScoreRequest struct {
 
 func AdaptScore(m models.ScoringScore) Score {
 	return Score{
-		Id:          m.Id,
-		Score:       m.Score,
-		Source:      string(m.Source),
-		OverridenBy: m.OverridenBy,
-		Current:     m.DeletedAt == nil,
-		CreatedAt:   m.CreatedAt,
+		Id:           m.Id,
+		Score:        m.Score,
+		Source:       string(m.Source),
+		RulesetId:    m.RulesetId,
+		OverriddenBy: m.OverriddenBy,
+		Current:      m.DeletedAt == nil,
+		CreatedAt:    m.CreatedAt,
 		StaleAt: func() *time.Time {
 			if m.DeletedAt != nil {
 				return nil

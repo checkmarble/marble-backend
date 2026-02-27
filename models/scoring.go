@@ -58,11 +58,12 @@ type ScoringScore struct {
 	Id    uuid.UUID
 	OrgId uuid.UUID
 
-	EntityType  string
-	EntityId    string
-	Score       int
-	Source      ScoreSource
-	OverridenBy *uuid.UUID
+	EntityType   string
+	EntityId     string
+	Score        int
+	Source       ScoreSource
+	RulesetId    *uuid.UUID
+	OverriddenBy *uuid.UUID
 
 	CreatedAt time.Time
 	StaleAt   *time.Time
@@ -73,7 +74,7 @@ func (s *ScoringScore) IsStale(maxAge time.Duration) bool {
 	if s == nil {
 		return true
 	}
-	if s.IsOverriden() {
+	if s.IsOverridden() {
 		return false
 	}
 	if s.CreatedAt.Add(maxAge).After(time.Now()) {
@@ -82,7 +83,7 @@ func (s *ScoringScore) IsStale(maxAge time.Duration) bool {
 	return true
 }
 
-func (s *ScoringScore) IsOverriden() bool {
+func (s *ScoringScore) IsOverridden() bool {
 	if s == nil {
 		return false
 	}
@@ -106,13 +107,14 @@ type RefreshScoreOptions struct {
 }
 
 type InsertScoreRequest struct {
-	OrgId       uuid.UUID
-	EntityType  string
-	EntityId    string
-	Score       int
-	Source      ScoreSource
-	OverridenBy *uuid.UUID
-	StaleAt     *time.Time
+	OrgId        uuid.UUID
+	EntityType   string
+	EntityId     string
+	Score        int
+	Source       ScoreSource
+	OverriddenBy *uuid.UUID
+	RulesetId    *uuid.UUID
+	StaleAt      *time.Time
 }
 
 func (r InsertScoreRequest) ToEntityRef() ScoringEntityRef {

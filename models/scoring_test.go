@@ -11,19 +11,19 @@ import (
 func TestIsOverriden_NilScore(t *testing.T) {
 	var s *ScoringScore
 
-	assert.False(t, s.IsOverriden())
+	assert.False(t, s.IsOverridden())
 }
 
 func TestIsOverriden_NotOverride(t *testing.T) {
 	s := &ScoringScore{Source: ScoreSourceRuleset}
 
-	assert.False(t, s.IsOverriden())
+	assert.False(t, s.IsOverridden())
 }
 
 func TestIsOverriden_Override_NoStaleAt(t *testing.T) {
 	s := &ScoringScore{Source: ScoreSourceOverride, StaleAt: nil}
 
-	assert.True(t, s.IsOverriden())
+	assert.True(t, s.IsOverridden())
 }
 
 func TestIsOverriden_Override_FutureStaleAt(t *testing.T) {
@@ -35,7 +35,7 @@ func TestIsOverriden_Override_FutureStaleAt(t *testing.T) {
 			StaleAt: &staleAt,
 		}
 
-		assert.True(t, s.IsOverriden())
+		assert.True(t, s.IsOverridden())
 	})
 }
 
@@ -48,7 +48,7 @@ func TestIsOverriden_Override_PastStaleAt(t *testing.T) {
 			StaleAt: &staleAt,
 		}
 
-		assert.False(t, s.IsOverriden())
+		assert.False(t, s.IsOverridden())
 	})
 }
 
