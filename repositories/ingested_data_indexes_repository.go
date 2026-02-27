@@ -466,7 +466,7 @@ func (repo *ClientDbRepository) ListIndicesPendingCreation(ctx context.Context, 
 		left join pg_namespace pgn on pgn.oid  = pgc.relnamespace
 		where
 			pgn.nspname = $1
-			and pga.query ~* '^\ycreate(?:\s+unique)?\s+index\s+concurrently\y'
+			and pga.query ~* E'^\\ycreate(?:\\s+unique)?\\s+index\\s+concurrently\\y'
 			and pga.leader_pid is null
 		;
 	`
