@@ -247,7 +247,7 @@ func (uc ScoringRulesetsUsecase) validateScoringRuleAst(tree dto.NodeDto) error 
 		}
 
 		for _, child := range tree.Children {
-			if child.Name != ast.FuncAttributesMap[ast.FUNC_SWITCH].AstName {
+			if child.Name != ast.FuncAttributesMap[ast.FUNC_SCORE_COMPUTATION].AstName {
 				return errors.New("invalid root AST node for user scoring: all `Switch` children must be `ScoreComputation`")
 			}
 		}
