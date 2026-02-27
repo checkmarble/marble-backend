@@ -83,13 +83,14 @@ func (uc Client360Usecase) SearchObject(ctx context.Context, input models.Client
 	}
 
 	if _, ok := dataModel.Tables[input.Table]; !ok {
-		return nil, errors.Newf("table %s does not exist", input.Table)
+		return nil, errors.Wrapf(models.UnprocessableEntityError, "table %s does not exist", input.Table)
 	}
 
 	table := dataModel.Tables[input.Table]
 
 	if table.CaptionField == "" {
-		return nil, errors.Wrapf(models.UnprocessableEntityError, "table %s was not configured", table.Name)
+		return nil, errors.Wrapf(models.UnprocessableEntityError,
+			"table %s was not configured", table.Name)
 	}
 
 	done, err := uc.indexEditor.IngestedObjectsSearchIndexExists(ctx, orgId, table.Name, table.CaptionField)
@@ -97,7 +98,8 @@ func (uc Client360Usecase) SearchObject(ctx context.Context, input models.Client
 		return nil, err
 	}
 	if !done {
-		return nil, errors.Wrapf(models.UnprocessableEntityError, "search index for table %s does not exist", table.Name)
+		return nil, errors.Wrapf(models.UnprocessableEntityError,
+			"search index for table %s does not exist", table.Name)
 	}
 
 	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, orgId)
@@ -108,7 +110,8 @@ func (uc Client360Usecase) SearchObject(ctx context.Context, input models.Client
 	pageSize := OBJECTS_PER_PAGE + 1
 	offset := OBJECTS_PER_PAGE * (input.Page - 1)
 
-	objects, err := uc.ingestedDataRepository.SearchObjects(ctx, clientDbExec, table, table.CaptionField, input.Terms, pageSize, offset)
+	objects, err := uc.ingestedDataRepository.SearchObjects(ctx, clientDbExec, table,
+		table.CaptionField, input.Terms, pageSize, offset)
 	if err != nil {
 		return nil, err
 	}
