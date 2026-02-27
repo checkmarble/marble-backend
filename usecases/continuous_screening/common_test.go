@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCaseNameBuilderFromIngestedObject(t *testing.T) {
+func TestBuildCaseName(t *testing.T) {
 	tests := []struct {
 		name           string
 		ingestedObject models.DataModelObject
@@ -214,11 +214,43 @@ func TestCaseNameBuilderFromIngestedObject(t *testing.T) {
 			},
 			expected: "Company Name Inc", // Name should take priority over all others
 		},
+		{
+			name: "Email fallback",
+			ingestedObject: models.DataModelObject{
+				Data: map[string]any{
+					"object_id":   "obj123",
+					"email_field": "john@example.com",
+				},
+			},
+			mapping: models.ContinuousScreeningDataModelMapping{
+				Properties: map[string]string{
+					"email_field": "email",
+				},
+			},
+			expected: "john@example.com",
+		},
+		{
+			name: "Email before imoNumber in priority",
+			ingestedObject: models.DataModelObject{
+				Data: map[string]any{
+					"object_id":   "obj123",
+					"imo_field":   "IMO987654",
+					"email_field": "john@example.com",
+				},
+			},
+			mapping: models.ContinuousScreeningDataModelMapping{
+				Properties: map[string]string{
+					"imo_field":   "imoNumber",
+					"email_field": "email",
+				},
+			},
+			expected: "john@example.com",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := caseNameBuilderFromIngestedObject(tt.ingestedObject, tt.mapping)
+			result, err := buildCaseName(tt.ingestedObject, tt.mapping)
 
 			if tt.expectError {
 				assert.Error(t, err)
