@@ -43,6 +43,11 @@ type caseReviewWorkerRepository interface {
 		exec repositories.Executor,
 		caseId uuid.UUID,
 	) ([]models.AiCaseReview, error)
+	ListAllCaseReviewFiles(
+		ctx context.Context,
+		exec repositories.Executor,
+		caseId uuid.UUID,
+	) ([]models.AiCaseReview, error)
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
 	GetOrganizationById(
 		ctx context.Context,
