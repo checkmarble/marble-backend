@@ -73,6 +73,10 @@ func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gi
 		root.POST("/cases/:caseId/files", HandleCreateCaseFile(uc))
 		root.GET("/cases/:caseId/files/:fileId/download", HandleDownloadCaseFile(uc))
 
+		root.GET("/tags", HandleListTags(uc))
+		root.POST("/cases/:caseId/tags", HandleAddCaseTags(uc))
+		root.DELETE("/cases/:caseId/tags/:tagId", HandleRemoveCaseTag(uc))
+
 		root.POST("/continuous-screenings/objects",
 			HandleCreateContinuousScreeningObject(uc))
 		root.DELETE("/continuous-screenings/objects",
