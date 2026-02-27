@@ -275,7 +275,7 @@ func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteInd
 	indexedColumns := index.Indexed
 	includedColumns := index.Included
 
-	concurrently := " concurrently "
+	concurrently := "concurrently"
 	if blocking {
 		concurrently = ""
 	}
@@ -465,9 +465,10 @@ func (repo *ClientDbRepository) ListIndicesPendingCreation(ctx context.Context, 
 		left join pg_stat_all_indexes pgai on pgai.relname = pgc.relname and pgai.indexrelid = pgi.index_relid
 		left join pg_namespace pgn on pgn.oid  = pgc.relnamespace
 		where
-			pgn.nspname = $1 and
-			(pga.query ilike 'create index concurrently %' or pga.query ilike 'create unique index concurrently %') and
-			pga.leader_pid is null;
+			pgn.nspname = $1
+			and pga.query ~* '^\ycreate(?:\s+unique)?\s+index\s+concurrently\y'
+			and pga.leader_pid is null
+		;
 	`
 
 	rows, err := exec.Query(ctx, sql, exec.DatabaseSchema().Schema)
