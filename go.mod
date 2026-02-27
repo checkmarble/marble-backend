@@ -1,5 +1,7 @@
 module github.com/checkmarble/marble-backend
 
+replace github.com/checkmarble/llmberjack => /Users/pascal/Documents/marble/llmberjack
+
 go 1.25.4
 
 require (
@@ -18,7 +20,7 @@ require (
 	github.com/authenticvision/rgeo v1.4.0
 	github.com/avast/retry-go/v4 v4.7.0
 	github.com/biter777/countries v1.7.5
-	github.com/checkmarble/llmberjack v0.0.0-20250918140151-35a7e6d6fe5a
+	github.com/checkmarble/llmberjack v0.0.0-20251026203202-3a1f82294fff
 	github.com/cockroachdb/errors v1.12.0
 	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/disintegration/imaging v1.6.2
