@@ -14,6 +14,7 @@ func PublicApiV1(t *testing.T, e *httpexpect.Expect) {
 }
 
 func PublicApiV1Beta(t *testing.T, e *httpexpect.Expect) {
+	tags(t, e)
 	cases(t, e)
 	continuousScreenings(t, e)
 }
