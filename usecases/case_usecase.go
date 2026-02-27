@@ -40,7 +40,7 @@ type CaseUseCaseRepository interface {
 	GetCaseReferents(ctx context.Context, exec repositories.Executor, caseIds []string) ([]models.CaseReferents, error)
 
 	DecisionPivotValuesByCase(ctx context.Context, exec repositories.Executor, caseId string) ([]models.PivotDataWithCount, error)
-	DecisionsByIds(ctx context.Context, exec repositories.Executor, decisionIds []string) ([]models.Decision, error)
+	DecisionsById(ctx context.Context, exec repositories.Executor, decisionIds []string) ([]models.Decision, error)
 
 	CreateCaseEvent(ctx context.Context, exec repositories.Executor,
 		createCaseEventAttributes models.CreateCaseEventAttributes) (models.CaseEvent, error)
