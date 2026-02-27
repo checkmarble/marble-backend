@@ -166,6 +166,55 @@ func (uc *AiAgentUsecase) GetCaseReview(ctx context.Context, caseId string) ([]a
 	return existingReviewDtos[:1], nil
 }
 
+// ListCaseReviews returns all case reviews for a case, ordered by created_at DESC.
+// For completed reviews the full review content is included; for others, Review is nil.
+func (uc *AiAgentUsecase) ListCaseReviews(ctx context.Context, caseId uuid.UUID) ([]agent_dto.AiCaseReviewListItemDto, error) {
+	_, err := uc.getCaseWithPermissions(ctx, caseId.String())
+	if err != nil {
+		return nil, err
+	}
+
+	exec := uc.executorFactory.NewExecutor()
+	reviews, err := uc.caseReviewFileRepository.ListAllCaseReviewFiles(ctx, exec, caseId)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not list case review files")
+	}
+
+	result := make([]agent_dto.AiCaseReviewListItemDto, len(reviews))
+	for i, review := range reviews {
+		var reaction *string
+		if review.Reaction != nil {
+			reaction = utils.Ptr(review.Reaction.String())
+		}
+
+		item := agent_dto.AiCaseReviewListItemDto{
+			Id:        review.Id,
+			CaseId:    review.CaseId,
+			Status:    review.Status.String(),
+			CreatedAt: review.CreatedAt,
+			UpdatedAt: review.UpdatedAt,
+			Reaction:  reaction,
+		}
+
+		if review.Status == models.AiCaseReviewStatusCompleted {
+			blob, err := uc.blobRepository.GetBlob(ctx, review.BucketName, review.FileReference)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not get case review file")
+			}
+			reviewDto, err := agent_dto.UnmarshalCaseReviewDto(review.DtoVersion, blob.ReadCloser)
+			blob.ReadCloser.Close()
+			if err != nil {
+				return nil, errors.Wrap(err, "could not unmarshal case review file")
+			}
+			item.Review = reviewDto
+		}
+
+		result[i] = item
+	}
+
+	return result, nil
+}
+
 func (uc *AiAgentUsecase) GetCaseReviewById(ctx context.Context, caseId string, reviewId uuid.UUID) (agent_dto.AiCaseReviewOutputDto, error) {
 	_, err := uc.getCaseWithPermissions(ctx, caseId)
 	if err != nil {
