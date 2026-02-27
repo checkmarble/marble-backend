@@ -389,6 +389,84 @@ func handleGetContinuousScreeningDelta(uc usecases.Usecases) func(c *gin.Context
 	}
 }
 
+var continuousScreeningUpdateJobsPaginationDefaults = models.PaginationDefaults{
+	Limit:  25,
+	SortBy: models.SortingFieldCreatedAt,
+	Order:  models.SortingOrderDesc,
+}
+
+func handleListContinuousScreeningUpdateJobs(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		var paginationAndSortingDto dto.PaginationAndSorting
+		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+				Message: err.Error(),
+			})
+			return
+		}
+		paginationAndSorting := models.WithPaginationDefaults(
+			dto.AdaptPaginationAndSorting(paginationAndSortingDto),
+			continuousScreeningUpdateJobsPaginationDefaults,
+		)
+
+		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
+		result, err := uc.ListUpdateJobs(ctx, organizationId, paginationAndSorting)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.PaginatedContinuousScreeningUpdateJobs{
+			HasNextPage: result.HasNextPage,
+			Items:       pure_utils.Map(result.Items, dto.AdaptContinuousScreeningUpdateJobDto),
+		})
+	}
+}
+
+var continuousScreeningDeltaTracksPaginationDefaults = models.PaginationDefaults{
+	Limit:  25,
+	SortBy: models.SortingFieldCreatedAt,
+	Order:  models.SortingOrderDesc,
+}
+
+func handleListContinuousScreeningDeltaTracks(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		var paginationAndSortingDto dto.PaginationAndSorting
+		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+				Message: err.Error(),
+			})
+			return
+		}
+		paginationAndSorting := models.WithPaginationDefaults(
+			dto.AdaptPaginationAndSorting(paginationAndSortingDto),
+			continuousScreeningDeltaTracksPaginationDefaults,
+		)
+
+		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
+		result, err := uc.ListDeltaTracks(ctx, organizationId, paginationAndSorting)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.PaginatedContinuousScreeningDeltaTracks{
+			HasNextPage: result.HasNextPage,
+			Items:       pure_utils.Map(result.Items, dto.AdaptContinuousScreeningDeltaTrackDto),
+		})
+	}
+}
+
 func handleGetContinuousScreeningFull(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()

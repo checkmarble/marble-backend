@@ -669,3 +669,65 @@ func (uc *ContinuousScreeningUsecase) ListMonitoredObjects(
 
 	return uc.clientDbRepository.ListMonitoredObjects(ctx, clientDbExec, filters, pagination)
 }
+
+func (uc *ContinuousScreeningUsecase) ListUpdateJobs(
+	ctx context.Context,
+	orgId uuid.UUID,
+	paginationAndSorting models.PaginationAndSorting,
+) (models.Paginated[models.ContinuousScreeningUpdateJobWithProgress], error) {
+	if err := uc.CheckFeatureAccess(ctx, orgId); err != nil {
+		return models.Paginated[models.ContinuousScreeningUpdateJobWithProgress]{}, err
+	}
+
+	if err := uc.enforceSecurity.ReadContinuousScreeningObject(orgId); err != nil {
+		return models.Paginated[models.ContinuousScreeningUpdateJobWithProgress]{}, err
+	}
+
+	exec := uc.executorFactory.NewExecutor()
+
+	paginationWithExtra := paginationAndSorting
+	paginationWithExtra.Limit = paginationAndSorting.Limit + 1
+
+	jobs, err := uc.repository.ListContinuousScreeningUpdateJobsByOrgId(
+		ctx, exec, orgId, paginationWithExtra,
+	)
+	if err != nil {
+		return models.Paginated[models.ContinuousScreeningUpdateJobWithProgress]{}, err
+	}
+
+	return models.Paginated[models.ContinuousScreeningUpdateJobWithProgress]{
+		Items:       jobs[:min(paginationAndSorting.Limit, len(jobs))],
+		HasNextPage: len(jobs) > paginationAndSorting.Limit,
+	}, nil
+}
+
+func (uc *ContinuousScreeningUsecase) ListDeltaTracks(
+	ctx context.Context,
+	orgId uuid.UUID,
+	paginationAndSorting models.PaginationAndSorting,
+) (models.Paginated[models.ContinuousScreeningDeltaTrackWithFile], error) {
+	if err := uc.CheckFeatureAccess(ctx, orgId); err != nil {
+		return models.Paginated[models.ContinuousScreeningDeltaTrackWithFile]{}, err
+	}
+
+	if err := uc.enforceSecurity.ReadContinuousScreeningObject(orgId); err != nil {
+		return models.Paginated[models.ContinuousScreeningDeltaTrackWithFile]{}, err
+	}
+
+	exec := uc.executorFactory.NewExecutor()
+
+	paginationWithExtra := paginationAndSorting
+	paginationWithExtra.Limit = paginationAndSorting.Limit + 1
+
+	tracks, err := uc.repository.ListContinuousScreeningDeltaTracksByOrgId(
+		ctx, exec, orgId, paginationWithExtra,
+	)
+	if err != nil {
+		return models.Paginated[models.ContinuousScreeningDeltaTrackWithFile]{}, err
+	}
+
+	return models.Paginated[models.ContinuousScreeningDeltaTrackWithFile]{
+		Items:       tracks[:min(paginationAndSorting.Limit, len(tracks))],
+		HasNextPage: len(tracks) > paginationAndSorting.Limit,
+	}, nil
+}
