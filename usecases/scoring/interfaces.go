@@ -22,6 +22,7 @@ type ScoringRepository interface {
 		ruleset models.ScoringRuleset,
 		rule models.CreateScoringRuleRequest,
 	) (models.ScoringRule, error)
+	DeleteAllRulesetRules(ctx context.Context, tx repositories.Transaction, ruleset models.ScoringRuleset) error
 	CommitRuleset(ctx context.Context, exec repositories.Executor, ruleset models.ScoringRuleset) (models.ScoringRuleset, error)
 
 	GetScoreHistory(ctx context.Context, exec repositories.Executor, entityRef models.ScoringEntityRef) ([]models.ScoringScore, error)

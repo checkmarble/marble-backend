@@ -142,6 +142,9 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCreateRulesetVersion_InsertsRulese
 	s.repository.On("InsertScoringRulesetVersion", s.ctx, s.transaction, s.orgId, mock.MatchedBy(func(r models.CreateScoringRulesetRequest) bool {
 		return r.Version == 1 && r.Name == req.Name && r.EntityType == s.entityType
 	})).Return(insertedRuleset, nil).Once()
+	s.repository.On("DeleteAllRulesetRules", s.ctx, s.transaction, mock.MatchedBy(func(r models.ScoringRuleset) bool {
+		return r.Version == 1 && r.EntityType == s.entityType
+	})).Return(nil).Once()
 	s.repository.On("InsertScoringRulesetVersionRule", s.ctx, s.transaction,
 		mock.MatchedBy(func(rs models.ScoringRuleset) bool { return rs.Id == insertedRuleset.Id }),
 		mock.MatchedBy(func(r models.CreateScoringRuleRequest) bool {
@@ -162,6 +165,9 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCreateRulesetVersion_InsertsRulese
 	s.repository.On("InsertScoringRulesetVersion", s.ctx, s.transaction, s.orgId, mock.MatchedBy(func(r models.CreateScoringRulesetRequest) bool {
 		return r.Version == 2 && r.Name == req.Name && r.EntityType == s.entityType
 	})).Return(updatedRuleset, nil).Once()
+	s.repository.On("DeleteAllRulesetRules", s.ctx, s.transaction, mock.MatchedBy(func(rs models.ScoringRuleset) bool {
+		return rs.Version == 2 && rs.EntityType == s.entityType
+	})).Return(nil).Once()
 	s.repository.On("InsertScoringRulesetVersionRule", s.ctx, s.transaction,
 		mock.MatchedBy(func(rs models.ScoringRuleset) bool { return rs.Id == updatedRuleset.Id }),
 		mock.MatchedBy(func(r models.CreateScoringRuleRequest) bool {
@@ -192,6 +198,7 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCommitRuleset_NoDraft() {
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
 	s.enforceSecurity.On("UpdateRuleset", s.orgId).Return(nil)
+	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.entityType, models.ScoreRulesetDraft).
 		Return(models.ScoringRuleset{}, models.NotFoundError)
 
@@ -206,6 +213,7 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCommitRuleset_IndexesPending() {
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
 	s.enforceSecurity.On("UpdateRuleset", s.orgId).Return(nil)
+	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.entityType, models.ScoreRulesetDraft).
 		Return(draft, nil)
 	s.indexEditor.On("GetIndexesToCreateForScoringRuleset", s.ctx, s.orgId, draft).
@@ -224,6 +232,7 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCommitRuleset_IndexesNotCreated() 
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
 	s.enforceSecurity.On("UpdateRuleset", s.orgId).Return(nil)
+	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.entityType, models.ScoreRulesetDraft).
 		Return(draft, nil)
 	s.indexEditor.On("GetIndexesToCreateForScoringRuleset", s.ctx, s.orgId, draft).
@@ -242,6 +251,7 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCommitRuleset_HappyPath() {
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
 	s.enforceSecurity.On("UpdateRuleset", s.orgId).Return(nil)
+	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.entityType, models.ScoreRulesetDraft).
 		Return(draft, nil)
 	s.indexEditor.On("GetIndexesToCreateForScoringRuleset", s.ctx, s.orgId, draft).

@@ -41,6 +41,11 @@ func (m *ScoringRepository) InsertScoringRulesetVersion(ctx context.Context, tx 
 	return args.Get(0).(models.ScoringRuleset), args.Error(1)
 }
 
+func (m *ScoringRepository) DeleteAllRulesetRules(ctx context.Context, tx repositories.Transaction, ruleset models.ScoringRuleset) error {
+	args := m.Called(ctx, tx, ruleset)
+	return args.Error(0)
+}
+
 func (m *ScoringRepository) InsertScoringRulesetVersionRule(ctx context.Context, tx repositories.Transaction, ruleset models.ScoringRuleset, rule models.CreateScoringRuleRequest) (models.ScoringRule, error) {
 	args := m.Called(ctx, tx, ruleset, rule)
 	return args.Get(0).(models.ScoringRule), args.Error(1)

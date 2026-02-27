@@ -50,13 +50,13 @@ func (uc ScoringRulesetsUsecase) ListRulesets(ctx context.Context) ([]models.Sco
 	return rulesets, err
 }
 
-func (uc ScoringRulesetsUsecase) GetRuleset(ctx context.Context, entityType string) (models.ScoringRuleset, error) {
+func (uc ScoringRulesetsUsecase) GetRuleset(ctx context.Context, entityType string, status models.ScoreRulesetStatus) (models.ScoringRuleset, error) {
 	ruleset, err := uc.repository.GetScoringRuleset(
 		ctx,
 		uc.executorFactory.NewExecutor(),
 		uc.enforceSecurity.OrgId(),
 		entityType,
-		models.ScoreRulesetCommitted)
+		status)
 	if err != nil {
 		return models.ScoringRuleset{}, err
 	}
@@ -99,6 +99,10 @@ func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, entit
 		}
 
 		ruleset.Rules = make([]models.ScoringRule, len(req.Rules))
+
+		if err := uc.repository.DeleteAllRulesetRules(ctx, tx, ruleset); err != nil {
+			return models.ScoringRuleset{}, err
+		}
 
 		for idx, rreq := range req.Rules {
 			ser, err := json.Marshal(rreq.Ast)
@@ -207,31 +211,30 @@ func (uc ScoringRulesetsUsecase) CommitRuleset(ctx context.Context, entityType s
 		return models.ScoringRuleset{}, err
 	}
 
-	draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, entityType, models.ScoreRulesetDraft)
-	if err != nil {
-		if errors.Is(err, models.NotFoundError) {
-			return models.ScoringRuleset{}, errors.Wrap(err, "no draft version found")
+	ruleset, err := executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (models.ScoringRuleset, error) {
+		draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, entityType, models.ScoreRulesetDraft)
+		if err != nil {
+			if errors.Is(err, models.NotFoundError) {
+				return models.ScoringRuleset{}, errors.Wrap(err, "no draft version found")
+			}
+
+			return models.ScoringRuleset{}, err
 		}
 
-		return models.ScoringRuleset{}, err
-	}
+		indexes, pending, err := uc.indexEditor.GetIndexesToCreateForScoringRuleset(ctx, orgId, draft)
+		if err != nil {
+			return models.ScoringRuleset{}, err
+		}
 
-	indexes, pending, err := uc.indexEditor.GetIndexesToCreateForScoringRuleset(ctx, orgId, draft)
-	if err != nil {
-		return models.ScoringRuleset{}, err
-	}
+		if pending > 0 {
+			return models.ScoringRuleset{}, errors.Wrap(models.UnprocessableEntityError, "ruleset is still being prepared")
+		}
+		if len(indexes) > 0 {
+			return models.ScoringRuleset{}, errors.Wrap(models.UnprocessableEntityError, "ruleset is not prepared")
+		}
 
-	if pending > 0 {
-		return models.ScoringRuleset{}, errors.Wrap(models.UnprocessableEntityError, "ruleset is still being prepared")
-	}
-	if len(indexes) > 0 {
-		return models.ScoringRuleset{}, errors.Wrap(models.UnprocessableEntityError, "ruleset is not prepared")
-	}
-
-	ruleset, err := uc.repository.CommitRuleset(ctx, exec, draft)
-	if err != nil {
-		return models.ScoringRuleset{}, err
-	}
+		return uc.repository.CommitRuleset(ctx, exec, draft)
+	})
 
 	return ruleset, err
 }

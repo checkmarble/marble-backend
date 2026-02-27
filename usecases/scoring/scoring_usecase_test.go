@@ -26,7 +26,7 @@ func TestInternalScoreToScore(t *testing.T) {
 	r := createRuleset([]int{10, 20, 30, 40})
 	e := createEval(25, 0)
 
-	assert.Equal(t, 2, uc.internalScoreToScore(r, e))
+	assert.Equal(t, 3, uc.internalScoreToScore(r, e))
 
 	r = createRuleset([]int{10, 20, 30, 40})
 	e = createEval(25, 4)

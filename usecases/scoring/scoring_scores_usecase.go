@@ -136,7 +136,7 @@ func (uc ScoringScoresUsecase) GetActiveScore(ctx context.Context, entity models
 		return nil, err
 	}
 	if score == nil {
-		return &models.ScoringScore{}, errors.Wrap(models.NotFoundError, "no score was found for this entity")
+		return nil, errors.Wrap(models.NotFoundError, "no score was found for this entity")
 	}
 
 	if err := uc.enforceSecurity.ReadEntityScore(*score); err != nil {
@@ -299,23 +299,14 @@ func (uc ScoringScoresUsecase) executeRules(ctx context.Context, env ast_eval.As
 }
 
 func (uc ScoringScoresUsecase) internalScoreToScore(ruleset models.ScoringRuleset, eval models.ScoringEvaluation) int {
-	thresholds := make([]int, 0, len(ruleset.Thresholds)+1)
-	thresholds = append(thresholds, ruleset.Thresholds...)
-	thresholds = append(thresholds, 1<<32)
+	score := 1
 
-	score := 0
-
-	for idx, threshold := range thresholds {
-		if threshold > eval.Modifier {
-			if idx == len(ruleset.Thresholds) {
-				score += 1
-			}
-
+	for _, threshold := range ruleset.Thresholds {
+		if eval.Modifier < threshold {
 			break
 		}
-
-		score = idx
+		score++
 	}
 
-	return max(score+1, eval.Floor)
+	return max(score, eval.Floor)
 }

@@ -101,7 +101,19 @@ func handleScoringGetRuleset(uc usecases.Usecases) gin.HandlerFunc {
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringRulesetsUsecase()
 
-		ruleset, err := scoringUsecase.GetRuleset(ctx, c.Param("entityType"))
+		var status models.ScoreRulesetStatus
+
+		switch c.Query("status") {
+		case "draft":
+			status = models.ScoreRulesetDraft
+		case "committed", "":
+			status = models.ScoreRulesetCommitted
+		default:
+			presentError(ctx, c, errors.Wrapf(models.BadParameterError, "unknown status '%s'", c.Query("status")))
+			return
+		}
+
+		ruleset, err := scoringUsecase.GetRuleset(ctx, c.Param("entityType"), status)
 		if presentError(ctx, c, err) {
 			return
 		}

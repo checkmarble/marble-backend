@@ -415,7 +415,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/org-import/archetypes", tom, handleListArchetypes(uc))
 	router.POST("/org-import/archetypes/apply", timeoutMiddleware(conf.BatchTimeout), handleOrgImportFromArchetype(uc))
 
-	infra.RouteWithFeatureFlag(router, infra.FEATURE_USER_SCORING, func(sub gin.IRoutes) {
+	infra.RouteWithFeatureFlag(router, infra.FEATURE_USER_SCORING, func(r gin.IRoutes) {
 		r.GET("/scoring/settings", tom, handleScoringGetSettings(uc))
 		r.POST("/scoring/settings", tom, handleScoringUpdateSettings(uc))
 		r.GET("/scoring/rulesets", tom, handleScoringListRulesets(uc))
