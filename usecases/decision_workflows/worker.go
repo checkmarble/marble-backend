@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/riverqueue/river"
@@ -114,9 +115,14 @@ func (w *DecisionWorkflowsWorker) Work(ctx context.Context, job *river.Job[model
 		return errors.Wrap(err, "error getting data model")
 	}
 
+	clientObject, err := payload_parser.TypedClientObject(ctx, dataModel, decision.ClientObject)
+	if err != nil {
+		return errors.Wrap(err, "could not type client object from decision payload")
+	}
+
 	evalParams := evaluate_scenario.ScenarioEvaluationParameters{
 		Scenario:     scenario,
-		ClientObject: decision.ClientObject,
+		ClientObject: clientObject,
 		DataModel:    dataModel,
 	}
 

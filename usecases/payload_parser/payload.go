@@ -2,6 +2,7 @@ package payload_parser
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -294,4 +295,20 @@ func NewParser(opts ...ParserOpt) *Parser {
 		columnEscape:          options.columnEscape,
 		enricher:              options.enricher,
 	}
+}
+
+func TypedClientObject(ctx context.Context, dataModel models.DataModel, o models.ClientObject) (models.ClientObject, error) {
+	payloadJson, err := json.Marshal(o.Data)
+	if err != nil {
+		return models.ClientObject{}, err
+	}
+
+	parser := NewParser()
+
+	clientObject, err := parser.ParsePayload(ctx, dataModel.Tables[o.TableName], payloadJson)
+	if err != nil {
+		return models.ClientObject{}, err
+	}
+
+	return clientObject, nil
 }
