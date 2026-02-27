@@ -30,12 +30,12 @@ func ScoreSourceFrom(s string) ScoreSource {
 type ScoreRulesetStatus string
 
 const (
-	ScoreRulesetDraft     = "draft"
-	ScoreRulesetCommitted = "committed"
-	ScoreRulesetUnknown   = "unknown"
+	ScoreRulesetDraft     ScoreRulesetStatus = "draft"
+	ScoreRulesetCommitted ScoreRulesetStatus = "committed"
+	ScoreRulesetUnknown   ScoreRulesetStatus = "unknown"
 )
 
-func ScoreRulesetStatusFrom(s string) ScoreSource {
+func ScoreRulesetStatusFrom(s string) ScoreRulesetStatus {
 	switch s {
 	case string(ScoreRulesetDraft):
 		return ScoreRulesetDraft

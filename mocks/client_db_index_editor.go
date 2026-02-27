@@ -109,3 +109,12 @@ func (editor *ClientDbIndexEditor) GetRequiredIndices(ctx context.Context, organ
 	args := editor.Called(ctx, organizationId)
 	return []models.AggregateQueryFamily{}, args.Error(1)
 }
+
+func (editor *ClientDbIndexEditor) GetIndexesToCreateForScoringRuleset(
+	ctx context.Context,
+	organizationId uuid.UUID,
+	ruleset models.ScoringRuleset,
+) (toCreate []models.ConcreteIndex, numPending int, err error) {
+	args := editor.Called(ctx, organizationId, ruleset)
+	return args.Get(0).([]models.ConcreteIndex), args.Int(1), args.Error(2)
+}

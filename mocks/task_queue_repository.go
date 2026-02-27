@@ -193,7 +193,7 @@ func (m *TaskQueueRepository) EnqueueTriggerScoreComputation(
 	entityRef models.ScoringEntityRef,
 ) error {
 	args := m.Called(ctx, tx, entityRef)
-	return args.Error(1)
+	return args.Error(0)
 }
 
 func (m *TaskQueueRepository) EnqueueManyTriggerScoreComputation(
@@ -202,5 +202,5 @@ func (m *TaskQueueRepository) EnqueueManyTriggerScoreComputation(
 	entities []models.ScoringEntityRef,
 ) error {
 	args := m.Called(ctx, tx, entities)
-	return args.Error(1)
+	return args.Error(0)
 }

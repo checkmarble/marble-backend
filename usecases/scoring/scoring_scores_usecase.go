@@ -2,6 +2,7 @@ package scoring
 
 import (
 	"context"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -153,8 +154,10 @@ func (uc ScoringScoresUsecase) tryRefreshScore(ctx context.Context, activeScore 
 		//
 		// If we trigger the refresh in the background, we return the current score.
 		if activeScore != nil && opts.RefreshInBackground {
-			if err := uc.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, entity); err != nil {
-				return nil, err
+			if activeScore.CreatedAt.Add(opts.RefreshOlderThan).Before(time.Now()) {
+				if err := uc.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, entity); err != nil {
+					return nil, err
+				}
 			}
 
 			return activeScore, nil
