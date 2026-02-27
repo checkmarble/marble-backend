@@ -17,6 +17,8 @@ servers:
 tags:
   - name: Cases
     description: Routes for cases
+  - name: Tags
+    description: Routes for tags
   - name: Continuous Screenings
     description: Routes for continuous screenings
 paths:
@@ -791,6 +793,132 @@ paths:
         "302":
           $ref: "#/components/responses/302"
 
+  /tags:
+    get:
+      operationId: listTags
+      tags:
+        - Tags
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: List tags
+      description: |
+        List all tags for the organization.
+
+        Tags can be filtered by target type using the optional `target` query parameter.
+      parameters:
+        - name: target
+          description: Filter tags by target type
+          in: query
+          schema:
+            type: string
+            enum: [case, object]
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/after"
+      responses:
+        "200":
+          description: List of tags
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - $ref: "#/components/schemas/BasePagination"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Tag"
+        "400":
+          $ref: "#/components/responses/400"
+
+  /cases/{caseId}/tags:
+    post:
+      operationId: addCaseTags
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Add tags to a case
+      description: |
+        Add one or more tags to a case. This operation is idempotent: adding a tag that is already present on the case is a no-op.
+
+        All provided tag IDs must reference tags with `target=case`. Returns 400 if any tag has a different target.
+      parameters:
+        - name: caseId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tag_ids
+              properties:
+                tag_ids:
+                  description: List of tag IDs to add to the case
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        "200":
+          description: Updated case
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Case"
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+
+  /cases/{caseId}/tags/{tagId}:
+    delete:
+      operationId: removeCaseTag
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Remove a tag from a case
+      description: |
+        Remove a tag from a case. This operation is idempotent: removing a tag that is not present on the case is a no-op.
+      parameters:
+        - name: caseId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+        - name: tagId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Tag removed from case (or was not present)
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+
   /continuous-screenings/objects:
     post:
       summary: Add an object under continuous screening with given configuration
@@ -1031,6 +1159,23 @@ components:
         name:
           type: string
           description: Optional name for the referenced object, not all references will have it.
+
+    Tag:
+      title: Tag
+      type: object
+      required:
+        - id
+        - name
+        - target
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        target:
+          type: string
+          enum: [case, object]
 
     Case:
       title: Case
