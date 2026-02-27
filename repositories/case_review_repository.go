@@ -110,6 +110,31 @@ func (repo *MarbleDbRepository) ListCaseReviewFiles(
 	)
 }
 
+func (repo *MarbleDbRepository) ListAllCaseReviewFiles(
+	ctx context.Context,
+	exec Executor,
+	caseId uuid.UUID,
+) ([]models.AiCaseReview, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.AiCaseReviewFields...).
+		From(dbmodels.TABLE_AI_CASE_REVIEWS).
+		Where(squirrel.Eq{"case_id": caseId}).
+		OrderBy("created_at DESC")
+
+	return SqlToListOfModels(
+		ctx,
+		exec,
+		query,
+		func(dbModel dbmodels.AiCaseReview) (models.AiCaseReview, error) {
+			return dbmodels.AdaptAiCaseReview(dbModel)
+		},
+	)
+}
+
 func (repo *MarbleDbRepository) CountAiCaseReviewsByOrg(
 	ctx context.Context,
 	exec Executor,

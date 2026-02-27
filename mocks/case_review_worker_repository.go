@@ -50,6 +50,15 @@ func (r *MockCaseReviewWorkerRepository) ListCaseReviewFiles(
 	return args.Get(0).([]models.AiCaseReview), args.Error(1)
 }
 
+func (r *MockCaseReviewWorkerRepository) ListAllCaseReviewFiles(
+	ctx context.Context,
+	exec repositories.Executor,
+	caseId uuid.UUID,
+) ([]models.AiCaseReview, error) {
+	args := r.Called(ctx, exec, caseId)
+	return args.Get(0).([]models.AiCaseReview), args.Error(1)
+}
+
 func (r *MockCaseReviewWorkerRepository) GetCaseById(ctx context.Context,
 	exec repositories.Executor, caseId string,
 ) (models.Case, error) {
