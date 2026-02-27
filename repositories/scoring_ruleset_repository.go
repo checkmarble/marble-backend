@@ -61,11 +61,11 @@ func (repo *MarbleDbRepository) GetScoringRuleset(
 		Select(
 			fmt.Sprintf("any_value(row(%s)) as ruleset",
 				strings.Join(columnsNames("rs", dbmodels.SelectScoringRulesetsColumns), ",")),
-			fmt.Sprintf("array_agg(row(%s)) as rules",
+			fmt.Sprintf("array_agg(row(%s)) filter (where r.id is not null) as rules",
 				strings.Join(columnsNames("r", dbmodels.SelectScoringRulesColumns), ",")),
 		).
 		From("ruleset rs").
-		Join(dbmodels.TABLE_SCORING_RULES + " r on r.ruleset_id = rs.id").
+		LeftJoin(dbmodels.TABLE_SCORING_RULES + " r on r.ruleset_id = rs.id").
 		GroupBy("rs.id").
 		PrefixExpr(cte)
 
@@ -130,10 +130,10 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersionRule(
 	ctx context.Context,
 	tx Transaction,
 	ruleset models.ScoringRuleset,
-	rule models.CreateScoringRuleRequest,
-) (models.ScoringRule, error) {
+	rules []models.CreateScoringRuleRequest,
+) ([]models.ScoringRule, error) {
 	if err := validateMarbleDbExecutor(tx); err != nil {
-		return models.ScoringRule{}, err
+		return nil, err
 	}
 
 	deleteQuery := NewQueryBuilder().
@@ -141,7 +141,7 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersionRule(
 		Where("ruleset_id = ?", ruleset.Id)
 
 	if err := ExecBuilder(ctx, tx, deleteQuery); err != nil {
-		return models.ScoringRule{}, err
+		return nil, err
 	}
 
 	query := NewQueryBuilder().
@@ -154,17 +154,20 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersionRule(
 			"description",
 			"ast",
 		).
-		Values(
+		Suffix("returning *")
+
+	for _, rule := range rules {
+		query = query.Values(
 			uuid.Must(uuid.NewV7()),
 			ruleset.Id,
 			rule.StableId,
 			rule.Name,
 			rule.Description,
 			rule.Ast,
-		).
-		Suffix("returning *")
+		)
+	}
 
-	return SqlToModel(ctx, tx, query, dbmodels.AdaptScoringRule)
+	return SqlToListOfModels(ctx, tx, query, dbmodels.AdaptScoringRule)
 }
 
 func (repo *MarbleDbRepository) CommitRuleset(ctx context.Context, exec Executor, ruleset models.ScoringRuleset) (models.ScoringRuleset, error) {
@@ -175,6 +178,7 @@ func (repo *MarbleDbRepository) CommitRuleset(ctx context.Context, exec Executor
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_SCORING_RULESETS).
 		Set("status", models.ScoreRulesetCommitted).
+		Where("org_id = ?", ruleset.OrgId).
 		Where("id = ?", ruleset.Id).
 		Suffix("returning *")
 

@@ -209,6 +209,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeAndInsert_Ha
 		EntityId:   s.entityId,
 		Score:      1,
 		Source:     models.ScoreSourceRuleset,
+		RulesetId:  &ruleset.Id,
 	}
 
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)

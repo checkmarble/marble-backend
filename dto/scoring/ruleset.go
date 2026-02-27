@@ -24,18 +24,18 @@ type ScoringRuleset struct {
 }
 
 type CreateRulesetRequest struct {
-	Name            string              `json:"name"`
+	Name            string              `json:"name" binding:"required"`
 	Description     string              `json:"description"`
-	Thresholds      []int               `json:"thresholds"`
+	Thresholds      []int               `json:"thresholds" binding:"required"`
 	CooldownSeconds int                 `json:"cooldown_seconds"`
 	Rules           []CreateRuleRequest `json:"rules"`
 }
 
 type CreateRuleRequest struct {
-	StableId    uuid.UUID   `json:"stable_id"`
-	Name        string      `json:"name"`
+	StableId    uuid.UUID   `json:"stable_id" binding:"required"`
+	Name        string      `json:"name" binding:"required"`
 	Description string      `json:"description"`
-	Ast         dto.NodeDto `json:"ast"`
+	Ast         dto.NodeDto `json:"ast" binding:"required"`
 }
 
 type ScoringRule struct {

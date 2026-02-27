@@ -13,11 +13,12 @@ type DbScoringScore struct {
 	Id    uuid.UUID `db:"id"`
 	OrgId uuid.UUID `db:"org_id"`
 
-	EntityType  string     `db:"entity_type"`
-	EntityId    string     `db:"entity_id"`
-	Score       int        `db:"score"`
-	Source      string     `db:"source"`
-	OverridenBy *uuid.UUID `db:"overriden_by"`
+	EntityType   string     `db:"entity_type"`
+	EntityId     string     `db:"entity_id"`
+	Score        int        `db:"score"`
+	Source       string     `db:"source"`
+	RulesetId    *uuid.UUID `db:"ruleset_id"`
+	OverriddenBy *uuid.UUID `db:"overridden_by"`
 
 	CreatedAt time.Time  `db:"created_at"`
 	StaleAt   *time.Time `db:"stale_at"`
@@ -35,15 +36,16 @@ func AdaptScoringScore(db DbScoringScore) (models.ScoringScore, error) {
 	}
 
 	return models.ScoringScore{
-		Id:          db.Id,
-		OrgId:       db.OrgId,
-		EntityType:  db.EntityType,
-		EntityId:    db.EntityId,
-		Score:       db.Score,
-		Source:      src,
-		OverridenBy: db.OverridenBy,
-		CreatedAt:   db.CreatedAt,
-		StaleAt:     db.StaleAt,
-		DeletedAt:   db.DeletedAt,
+		Id:           db.Id,
+		OrgId:        db.OrgId,
+		EntityType:   db.EntityType,
+		EntityId:     db.EntityId,
+		Score:        db.Score,
+		Source:       src,
+		RulesetId:    db.RulesetId,
+		OverriddenBy: db.OverriddenBy,
+		CreatedAt:    db.CreatedAt,
+		StaleAt:      db.StaleAt,
+		DeletedAt:    db.DeletedAt,
 	}, nil
 }

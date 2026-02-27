@@ -64,7 +64,7 @@ func (w *TriggeredScoreComputationWorker) Work(ctx context.Context, job *river.J
 			return err
 		}
 
-		if activeScore.IsOverriden() {
+		if activeScore.IsOverridden() {
 			return nil
 		}
 
@@ -82,6 +82,7 @@ func (w *TriggeredScoreComputationWorker) Work(ctx context.Context, job *river.J
 			EntityId:   job.Args.EntityId,
 			Score:      eval.Score,
 			Source:     models.ScoreSourceRuleset,
+			RulesetId:  &ruleset.Id,
 		}
 
 		_, err = w.repository.InsertScore(ctx, tx, req)
