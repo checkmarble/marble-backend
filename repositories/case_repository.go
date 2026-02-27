@@ -251,6 +251,24 @@ func (repo *MarbleDbRepository) GetCaseMetadataById(ctx context.Context, exec Ex
 	return c.GetMetadata(), err
 }
 
+func (repo *MarbleDbRepository) GetCaseByIdForUpdate(ctx context.Context, exec Executor, caseId string) (models.CaseMetadata, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.CaseMetadata{}, err
+	}
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectCaseColumn...).
+		From(dbmodels.TABLE_CASES).
+		Where(squirrel.Eq{"id": caseId}).
+		Suffix("FOR UPDATE")
+	c, err := SqlToModel(
+		ctx,
+		exec,
+		query,
+		dbmodels.AdaptCase,
+	)
+	return c.GetMetadata(), err
+}
+
 func (repo *MarbleDbRepository) GetCaseReferents(ctx context.Context, exec Executor, caseIds []string) ([]models.CaseReferents, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err

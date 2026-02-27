@@ -50,7 +50,7 @@ type AiAgentUsecaseRepository interface {
 	GetCasesWithPivotValue(ctx context.Context, exec repositories.Executor,
 		orgId uuid.UUID, pivotValue string) ([]models.Case, error)
 	ListOrganizationTags(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID,
-		target models.TagTarget, withCaseCount bool) ([]models.Tag, error)
+		target models.TagTarget, withCaseCount bool, pagination *models.PaginationAndSorting) ([]models.Tag, error)
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string,
 		useCache bool) (models.ScenarioIteration, error)
 	ListScreeningsForDecision(ctx context.Context, exec repositories.Executor, decisionId string,

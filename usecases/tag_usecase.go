@@ -15,7 +15,7 @@ import (
 
 type TagUseCaseRepository interface {
 	ListOrganizationTags(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID,
-		target models.TagTarget, withCaseCount bool) ([]models.Tag, error)
+		target models.TagTarget, withCaseCount bool, pagination *models.PaginationAndSorting) ([]models.Tag, error)
 	CreateTag(ctx context.Context, exec repositories.Executor, attributes models.CreateTagAttributes, newTagId string) error
 	UpdateTag(ctx context.Context, exec repositories.Executor, attributes models.UpdateTagAttributes) error
 	GetTagById(ctx context.Context, exec repositories.Executor, tagId string) (models.Tag, error)
@@ -35,7 +35,7 @@ func (usecase *TagUseCase) ListAllTags(ctx context.Context, organizationId uuid.
 	target models.TagTarget, withCaseCount bool,
 ) ([]models.Tag, error) {
 	tags, err := usecase.repository.ListOrganizationTags(ctx,
-		usecase.executorFactory.NewExecutor(), organizationId, target, withCaseCount)
+		usecase.executorFactory.NewExecutor(), organizationId, target, withCaseCount, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -46,6 +46,32 @@ func (usecase *TagUseCase) ListAllTags(ctx context.Context, organizationId uuid.
 		}
 	}
 	return tags, err
+}
+
+func (usecase *TagUseCase) ListTagsPaginated(ctx context.Context, organizationId uuid.UUID,
+	target models.TagTarget, pagination models.PaginationAndSorting,
+) ([]models.Tag, bool, error) {
+	paginationWithExtra := pagination
+	paginationWithExtra.Limit++
+
+	tags, err := usecase.repository.ListOrganizationTags(ctx,
+		usecase.executorFactory.NewExecutor(), organizationId, target, false, &paginationWithExtra)
+	if err != nil {
+		return nil, false, err
+	}
+
+	for _, t := range tags {
+		if err := usecase.enforceSecurity.ReadTag(t); err != nil {
+			return nil, false, err
+		}
+	}
+
+	hasNextPage := len(tags) > pagination.Limit
+	if hasNextPage {
+		tags = tags[:pagination.Limit]
+	}
+
+	return tags, hasNextPage, nil
 }
 
 func (usecase *TagUseCase) CreateTag(ctx context.Context, attributes models.CreateTagAttributes) (models.Tag, error) {
