@@ -181,3 +181,21 @@ func AdaptModelToBillingEventsDto(events []models.BillingEvent) BillingEventsDto
 		Events: pure_utils.Map(events, AdaptModelToBillingEventItemDto),
 	}
 }
+
+type EntitlementDto struct {
+	Code        string `json:"code"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Privileges  []any  `json:"privileges"`
+	Overrides   any    `json:"overrides,omitempty"`
+}
+
+type EntitlementsDto struct {
+	Entitlements []EntitlementDto `json:"entitlements"`
+}
+
+func AdaptEntitlementDtoToModel(dto EntitlementDto) models.BillingEntitlement {
+	return models.BillingEntitlement{
+		Code: dto.Code,
+	}
+}

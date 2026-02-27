@@ -166,6 +166,59 @@ func (uc *AiAgentUsecase) GetCaseReview(ctx context.Context, caseId string) ([]a
 	return existingReviewDtos[:1], nil
 }
 
+// ListCaseReviews returns all case reviews for a case, ordered by created_at DESC.
+// For completed reviews the full review content is included; for others, Review is nil.
+func (uc *AiAgentUsecase) ListCaseReviews(ctx context.Context, caseId uuid.UUID) ([]agent_dto.AiCaseReviewListItemDto, error) {
+	_, err := uc.getCaseWithPermissions(ctx, caseId.String())
+	if err != nil {
+		return nil, err
+	}
+
+	if err != nil {
+		return nil, errors.Wrap(err, "could not parse case id")
+	}
+
+	exec := uc.executorFactory.NewExecutor()
+	reviews, err := uc.caseReviewFileRepository.ListAllCaseReviewFiles(ctx, exec, caseId)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not list case review files")
+	}
+
+	result := make([]agent_dto.AiCaseReviewListItemDto, 0, len(reviews))
+	for _, review := range reviews {
+		var reaction *string
+		if review.Reaction != nil {
+			reaction = utils.Ptr(review.Reaction.String())
+		}
+
+		item := agent_dto.AiCaseReviewListItemDto{
+			Id:        review.Id,
+			CaseId:    review.CaseId,
+			Status:    review.Status.String(),
+			CreatedAt: review.CreatedAt,
+			UpdatedAt: review.UpdatedAt,
+			Reaction:  reaction,
+		}
+
+		if review.Status == models.AiCaseReviewStatusCompleted {
+			blob, err := uc.blobRepository.GetBlob(ctx, review.BucketName, review.FileReference)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not get case review file")
+			}
+			reviewDto, err := agent_dto.UnmarshalCaseReviewDto(review.DtoVersion, blob.ReadCloser)
+			blob.ReadCloser.Close()
+			if err != nil {
+				return nil, errors.Wrap(err, "could not unmarshal case review file")
+			}
+			item.Review = reviewDto
+		}
+
+		result = append(result, item)
+	}
+
+	return result, nil
+}
+
 func (uc *AiAgentUsecase) GetCaseReviewById(ctx context.Context, caseId string, reviewId uuid.UUID) (agent_dto.AiCaseReviewOutputDto, error) {
 	_, err := uc.getCaseWithPermissions(ctx, caseId)
 	if err != nil {
@@ -310,16 +363,33 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		return nil, errors.Wrap(err, "could not get case data")
 	}
 
-	// Check if the organization has enough funds to cover the cost of the case review
-	enoughFunds, subscriptionId, err := uc.billingUsecase.CheckIfEnoughFundsInWallet(
+	var subscriptionId string
+
+	// Check if the organization has the entitlement to disable pay-as-you-go for AI case review
+	no_pay_as_you_go_entitlement, subscriptionId, err := uc.billingUsecase.CheckEntitlement(
 		ctx,
 		caseData.organizationId,
-		billing.AI_CASE_REVIEW)
+		billing.AI_CASE_REVIEW,
+		billing.BillingEntitlementAINoPayAsYouGo,
+	)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not check if enough funds in wallet")
+		return nil, errors.Wrap(err, "could not check billing entitlement")
 	}
-	if !enoughFunds {
-		return nil, billing.ErrInsufficientFunds
+	// In case the org need to pay-as-you-go, check its wallets
+	if !no_pay_as_you_go_entitlement {
+		// Check if the organization has enough funds to cover the cost of the case review
+		enoughFunds, _, err := uc.billingUsecase.CheckIfEnoughFundsInWallet(
+			ctx,
+			caseData.organizationId,
+			billing.AI_CASE_REVIEW)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not check if enough funds in wallet")
+		}
+		if !enoughFunds {
+			return nil, billing.ErrInsufficientFunds
+		}
+	} else {
+		logger.InfoContext(ctx, "Organization has entitlement to disable pay-as-you-go for AI case review, skipping wallet check", "subscription_id", subscriptionId)
 	}
 
 	// Get AI setting
