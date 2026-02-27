@@ -29,6 +29,7 @@ type CaseUseCaseRepository interface {
 	ListOrganizationCases(ctx context.Context, exec repositories.Executor, filters models.CaseFilters,
 		pagination models.PaginationAndSorting) ([]models.Case, error)
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
+	GetCaseByIdForUpdate(ctx context.Context, exec repositories.Executor, caseId string) (models.CaseMetadata, error)
 	GetCaseMetadataById(ctx context.Context, exec repositories.Executor, caseId string) (models.CaseMetadata, error)
 	CreateCase(ctx context.Context, exec repositories.Executor,
 		createCaseAttributes models.CreateCaseAttributes, newCaseId string) error
@@ -1203,6 +1204,199 @@ func (usecase *CaseUseCase) createCaseTag(ctx context.Context, exec repositories
 		return err
 	}
 
+	return nil
+}
+
+func (usecase *CaseUseCase) AddCaseTags(ctx context.Context, caseId string, tagIds []string) (models.Case, error) {
+	webhookEventId := uuid.New().String()
+
+	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
+		tx repositories.Transaction,
+	) (models.Case, error) {
+		caseMeta, err := usecase.repository.GetCaseByIdForUpdate(ctx, tx, caseId)
+		if err != nil {
+			return models.Case{}, err
+		}
+
+		availableInboxIds, err := usecase.getAvailableInboxIds(
+			ctx, usecase.executorFactory.NewExecutor(), caseMeta.OrganizationId)
+		if err != nil {
+			return models.Case{}, err
+		}
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(caseMeta, availableInboxIds); err != nil {
+			return models.Case{}, err
+		}
+
+		previousCaseTags, err := usecase.repository.ListCaseTagsByCaseId(ctx, tx, caseId)
+		if err != nil {
+			return models.Case{}, err
+		}
+		previousTagIds := pure_utils.Map(previousCaseTags,
+			func(caseTag models.CaseTag) string { return caseTag.TagId })
+
+		added := false
+		for _, tagId := range tagIds {
+			if !slices.Contains(previousTagIds, tagId) {
+				if err := usecase.createCaseTag(ctx, tx, caseId, tagId); err != nil {
+					return models.Case{}, err
+				}
+				added = true
+			}
+		}
+
+		if !added {
+			return usecase.repository.GetCaseById(ctx, tx, caseId)
+		}
+
+		var newlyAdded []string
+		for _, id := range tagIds {
+			if !slices.Contains(previousTagIds, id) {
+				newlyAdded = append(newlyAdded, id)
+			}
+		}
+		newTagIds := append(slices.Clone(previousTagIds), newlyAdded...)
+
+		previousValue := strings.Join(previousTagIds, ",")
+		newValue := strings.Join(newTagIds, ",")
+		_, err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			OrgId:         caseMeta.OrganizationId,
+			CaseId:        caseId,
+			EventType:     models.CaseTagsUpdated,
+			PreviousValue: &previousValue,
+			NewValue:      &newValue,
+		})
+		if err != nil {
+			return models.Case{}, err
+		}
+
+		c, err := usecase.repository.GetCaseById(ctx, tx, caseId)
+		if err != nil {
+			return models.Case{}, err
+		}
+		if err := usecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+			return models.Case{}, err
+		}
+
+		updatedCase, err := usecase.getCaseWithDetails(ctx, tx, caseId)
+		if err != nil {
+			return models.Case{}, err
+		}
+
+		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+			Id:             webhookEventId,
+			OrganizationId: updatedCase.OrganizationId,
+			EventContent:   models.NewWebhookEventCaseTagsUpdated(updatedCase),
+		})
+		if err != nil {
+			return models.Case{}, err
+		}
+
+		return updatedCase, nil
+	})
+	if err != nil {
+		return models.Case{}, err
+	}
+
+	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
+
+	tracking.TrackEvent(ctx, models.AnalyticsCaseTagsUpdated, map[string]interface{}{
+		"case_id": updatedCase.Id,
+	})
+	return updatedCase, nil
+}
+
+func (usecase *CaseUseCase) RemoveCaseTag(ctx context.Context, caseId string, tagId string) error {
+	webhookEventId := uuid.New().String()
+
+	var updatedCase models.Case
+	err := executor_factory.TransactionFactory.Transaction(usecase.transactionFactory, ctx, func(
+		tx repositories.Transaction,
+	) error {
+		caseMeta, err := usecase.repository.GetCaseByIdForUpdate(ctx, tx, caseId)
+		if err != nil {
+			return err
+		}
+
+		availableInboxIds, err := usecase.getAvailableInboxIds(
+			ctx, usecase.executorFactory.NewExecutor(), caseMeta.OrganizationId)
+		if err != nil {
+			return err
+		}
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(caseMeta, availableInboxIds); err != nil {
+			return err
+		}
+
+		previousCaseTags, err := usecase.repository.ListCaseTagsByCaseId(ctx, tx, caseId)
+		if err != nil {
+			return err
+		}
+
+		var caseTagToDelete *models.CaseTag
+		for _, ct := range previousCaseTags {
+			if ct.TagId == tagId {
+				caseTagToDelete = &ct
+				break
+			}
+		}
+
+		if caseTagToDelete == nil {
+			return nil
+		}
+
+		if err := usecase.repository.SoftDeleteCaseTag(ctx, tx, caseTagToDelete.Id); err != nil {
+			return err
+		}
+
+		previousTagIds := pure_utils.Map(previousCaseTags,
+			func(ct models.CaseTag) string { return ct.TagId })
+		var newTagIds []string
+		for _, id := range previousTagIds {
+			if id != tagId {
+				newTagIds = append(newTagIds, id)
+			}
+		}
+
+		previousValue := strings.Join(previousTagIds, ",")
+		newValue := strings.Join(newTagIds, ",")
+		_, err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			OrgId:         caseMeta.OrganizationId,
+			CaseId:        caseId,
+			EventType:     models.CaseTagsUpdated,
+			PreviousValue: &previousValue,
+			NewValue:      &newValue,
+		})
+		if err != nil {
+			return err
+		}
+
+		c, err := usecase.repository.GetCaseById(ctx, tx, caseId)
+		if err != nil {
+			return err
+		}
+		if err := usecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+			return err
+		}
+
+		updatedCase, err = usecase.getCaseWithDetails(ctx, tx, caseId)
+		if err != nil {
+			return err
+		}
+
+		return usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+			Id:             webhookEventId,
+			OrganizationId: updatedCase.OrganizationId,
+			EventContent:   models.NewWebhookEventCaseTagsUpdated(updatedCase),
+		})
+	})
+	if err != nil {
+		return err
+	}
+
+	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
+
+	tracking.TrackEvent(ctx, models.AnalyticsCaseTagsUpdated, map[string]interface{}{
+		"case_id": updatedCase.Id,
+	})
 	return nil
 }
 

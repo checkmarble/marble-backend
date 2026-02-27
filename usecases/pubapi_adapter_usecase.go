@@ -12,7 +12,7 @@ import (
 
 type publicApiAdapterRepository interface {
 	ListUsers(ctx context.Context, exec repositories.Executor, organizationId *uuid.UUID) ([]models.User, error)
-	ListOrganizationTags(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID, target models.TagTarget, withCaseCount bool) ([]models.Tag, error)
+	ListOrganizationTags(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID, target models.TagTarget, withCaseCount bool, pagination *models.PaginationAndSorting) ([]models.Tag, error)
 	GetCaseReferents(ctx context.Context, exec repositories.Executor, caseIds []string) ([]models.CaseReferents, error)
 }
 
@@ -26,7 +26,7 @@ func (uc PublicApiAdapterUsecase) ListUsers(ctx context.Context, exec repositori
 }
 
 func (uc PublicApiAdapterUsecase) ListTags(ctx context.Context, exec repositories.Executor) ([]models.Tag, error) {
-	return uc.repository.ListOrganizationTags(ctx, exec, uc.enforceSecurity.OrgId(), models.TagTargetCase, false)
+	return uc.repository.ListOrganizationTags(ctx, exec, uc.enforceSecurity.OrgId(), models.TagTargetCase, false, nil)
 }
 
 func (uc PublicApiAdapterUsecase) GetCaseReferents(ctx context.Context, exec repositories.Executor, caseIds []string) ([]models.CaseReferents, error) {

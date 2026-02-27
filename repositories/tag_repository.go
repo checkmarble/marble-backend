@@ -7,11 +7,13 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
 func (repo *MarbleDbRepository) ListOrganizationTags(ctx context.Context, exec Executor,
 	organizationId uuid.UUID, target models.TagTarget, withCaseCount bool,
+	pagination *models.PaginationAndSorting,
 ) ([]models.Tag, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
@@ -20,9 +22,39 @@ func (repo *MarbleDbRepository) ListOrganizationTags(ctx context.Context, exec E
 		Select(dbmodels.SelectTagColumn...).
 		From(fmt.Sprintf("%s AS t", dbmodels.TABLE_TAGS)).
 		Where(squirrel.Eq{"org_id": organizationId}).
-		Where(squirrel.Eq{"target": target}).
 		Where(squirrel.Eq{"deleted_at": nil}).
-		OrderBy("created_at DESC")
+		OrderBy("t.created_at DESC", "t.id DESC")
+
+	if target != models.TagTargetUnknown {
+		query = query.Where(squirrel.Eq{"target": target})
+	}
+
+	if pagination != nil {
+		if pagination.OffsetId != "" {
+			offsetTag, err := repo.GetTagById(ctx, exec, pagination.OffsetId)
+			if err != nil {
+				return nil, errors.Wrap(err, "invalid pagination offset")
+			}
+			if pagination.Order == models.SortingOrderAsc {
+				query = query.Where(squirrel.Or{
+					squirrel.Gt{"t.created_at": offsetTag.CreatedAt},
+					squirrel.And{
+						squirrel.Eq{"t.created_at": offsetTag.CreatedAt},
+						squirrel.Gt{"t.id": offsetTag.Id},
+					},
+				})
+			} else {
+				query = query.Where(squirrel.Or{
+					squirrel.Lt{"t.created_at": offsetTag.CreatedAt},
+					squirrel.And{
+						squirrel.Eq{"t.created_at": offsetTag.CreatedAt},
+						squirrel.Lt{"t.id": offsetTag.Id},
+					},
+				})
+			}
+		}
+		query = query.Limit(uint64(pagination.Limit))
+	}
 
 	if target == models.TagTargetCase && withCaseCount {
 		query = query.Column("(SELECT count(distinct ct.case_id) FROM " +
