@@ -1249,7 +1249,7 @@ func (usecase *CaseUseCase) AddCaseTags(ctx context.Context, caseId string, tagI
 			return usecase.repository.GetCaseById(ctx, tx, caseId)
 		}
 
-		newTagIds := append(slices.Clone(previousTagIds), newlyAdded...)
+		newTagIds := append(previousTagIds, newlyAdded...)
 
 		previousValue := strings.Join(previousTagIds, ",")
 		newValue := strings.Join(newTagIds, ",")
@@ -1294,9 +1294,6 @@ func (usecase *CaseUseCase) AddCaseTags(ctx context.Context, caseId string, tagI
 
 	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
 
-	tracking.TrackEvent(ctx, models.AnalyticsCaseTagsUpdated, map[string]interface{}{
-		"case_id": updatedCase.Id,
-	})
 	return updatedCase, nil
 }
 
@@ -1389,9 +1386,6 @@ func (usecase *CaseUseCase) RemoveCaseTag(ctx context.Context, caseId string, ta
 
 	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
 
-	tracking.TrackEvent(ctx, models.AnalyticsCaseTagsUpdated, map[string]interface{}{
-		"case_id": updatedCase.Id,
-	})
 	return nil
 }
 
