@@ -1234,26 +1234,20 @@ func (usecase *CaseUseCase) AddCaseTags(ctx context.Context, caseId string, tagI
 		previousTagIds := pure_utils.Map(previousCaseTags,
 			func(caseTag models.CaseTag) string { return caseTag.TagId })
 
-		added := false
+		var newlyAdded []string
 		for _, tagId := range tagIds {
 			if !slices.Contains(previousTagIds, tagId) {
 				if err := usecase.createCaseTag(ctx, tx, caseId, tagId); err != nil {
 					return models.Case{}, err
 				}
-				added = true
+				newlyAdded = append(newlyAdded, tagId)
 			}
 		}
 
-		if !added {
+		if len(newlyAdded) == 0 {
 			return usecase.repository.GetCaseById(ctx, tx, caseId)
 		}
 
-		var newlyAdded []string
-		for _, id := range tagIds {
-			if !slices.Contains(previousTagIds, id) {
-				newlyAdded = append(newlyAdded, id)
-			}
-		}
 		newTagIds := append(slices.Clone(previousTagIds), newlyAdded...)
 
 		previousValue := strings.Join(previousTagIds, ",")
