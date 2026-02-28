@@ -42,23 +42,16 @@ func (repo *MarbleDbRepository) ListOrganizationTags(ctx context.Context, exec E
 			if err != nil {
 				return nil, errors.Wrap(err, "invalid pagination offset")
 			}
+			op := "<"
 			if pagination.Order == models.SortingOrderAsc {
-				query = query.Where(squirrel.Or{
-					squirrel.Gt{"t.created_at": offsetTag.CreatedAt},
-					squirrel.And{
-						squirrel.Eq{"t.created_at": offsetTag.CreatedAt},
-						squirrel.Gt{"t.id": offsetTag.Id},
-					},
-				})
-			} else {
-				query = query.Where(squirrel.Or{
-					squirrel.Lt{"t.created_at": offsetTag.CreatedAt},
-					squirrel.And{
-						squirrel.Eq{"t.created_at": offsetTag.CreatedAt},
-						squirrel.Lt{"t.id": offsetTag.Id},
-					},
-				})
+				op = ">"
 			}
+			query = query.Where(
+				squirrel.Expr(
+					fmt.Sprintf("(t.created_at, t.id) %s (?, ?)", op),
+					offsetTag.CreatedAt, offsetTag.Id,
+				),
+			)
 		}
 		query = query.Limit(uint64(pagination.Limit))
 	}
