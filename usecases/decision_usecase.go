@@ -15,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -412,6 +413,19 @@ func (usecase *DecisionUsecase) CreateDecision(
 					utils.LogAndReportSentryError(ctx, errors.Wrap(err,
 						"could not enqueue screening for refinement"))
 				}
+			}
+		}
+
+		if infra.HasFeatureFlag(infra.FEATURE_USER_SCORING, scenario.OrganizationId) {
+			err := usecase.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringEntityRef{
+				OrgId:      scenario.OrganizationId,
+				EntityType: scenario.TriggerObjectType,
+				EntityId:   payload.Data["object_id"].(string),
+			})
+			if err != nil {
+				logger.ErrorContext(ctx,
+					"could not trigger score computation job",
+					"error", err.Error())
 			}
 		}
 

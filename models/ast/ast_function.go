@@ -52,6 +52,10 @@ const (
 	FUNC_STRING_CONCAT
 	FUNC_FUZZY_MATCH_FILTER_OPTIONS
 	FUNC_MONITORING_LIST_CHECK
+
+	FUNC_SCORE_COMPUTATION
+	FUNC_SWITCH
+
 	FUNC_UNDEFINED Function = -1
 	FUNC_UNKNOWN   Function = -2
 )
@@ -73,6 +77,12 @@ type FuncAttributes struct {
 	Commutative bool `json:"-"`
 	// Cost modelizes the computation cost of a given node, the default being zero.
 	Cost int `json:"-"`
+}
+
+type ScoreComputationResult struct {
+	Triggered bool
+	Modifier  int
+	Floor     int
 }
 
 // If number of arguments -1 the function can take any number of arguments
@@ -281,6 +291,16 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 			"config",
 		},
 	},
+	FUNC_SCORE_COMPUTATION: {
+		DebugName:      "FUNC_SCORE_COMPUTATION",
+		AstName:        "ScoreComputation",
+		NamedArguments: []string{"modifier", "floor"},
+	},
+	FUNC_SWITCH: {
+		DebugName:           "FUNC_SWITCH",
+		AstName:             "Switch",
+		LazyChildEvaluation: shortCircuitIfScoringTriggered,
+	},
 }
 
 func (f Function) Attributes() (FuncAttributes, error) {
@@ -329,6 +349,13 @@ func shortCircuitIfFalse(res NodeEvaluation) bool {
 		return b
 	}
 	return true
+}
+
+func shortCircuitIfScoringTriggered(res NodeEvaluation) bool {
+	if s, ok := res.ReturnValue.(ScoreComputationResult); ok {
+		return !s.Triggered
+	}
+	return false
 }
 
 func IsLogicalOperation(f Function) bool {

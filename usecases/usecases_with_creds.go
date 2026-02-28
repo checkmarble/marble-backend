@@ -14,6 +14,8 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
+	"github.com/checkmarble/marble-backend/usecases/scoring"
+	"github.com/checkmarble/marble-backend/usecases/scoring/scoring_jobs"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transfers_data_read"
 	"github.com/checkmarble/marble-backend/usecases/webhooks"
@@ -146,6 +148,13 @@ func (usecases *UsecasesWithCreds) NewEnforceSecurityContinuousScreening() secur
 
 func (usecases *UsecasesWithCreds) NewEnforceSecurityAudit() security.EnforceSecurityAudit {
 	return &security.EnforceSecurityAuditImpl{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewEnforceSecurityScoring() security.EnforceSecurityScoring {
+	return &security.EnforceSecurityScoringImpl{
 		EnforceSecurity: usecases.NewEnforceSecurity(),
 		Credentials:     usecases.Credentials,
 	}
@@ -1003,6 +1012,16 @@ func (usecases UsecasesWithCreds) NewWebhookCleanupWorker() *worker_jobs.Webhook
 	)
 }
 
+func (usecases UsecasesWithCreds) NewTriggeredScoreComputationWorker() *scoring_jobs.TriggeredScoreComputationWorker {
+	return scoring_jobs.NewTriggeredScoreComputationWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.NewScoringRulesetsUsecase(),
+		usecases.NewScoringScoresUsecase(),
+		usecases.Repositories.MarbleDbRepository,
+	)
+}
+
 func (usecases *UsecasesWithCreds) NewDataModelDestroyUsecase() DataModelDestroyUsecase {
 	return NewDataModelDestroyUsecase(
 		usecases.NewExecutorFactory(),
@@ -1061,5 +1080,38 @@ func (usecases *UsecasesWithCreds) NewClient360Usecase() Client360Usecase {
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.NewClientDbIndexEditor(),
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewScoringSettingsUsecase() scoring.ScoringSettingsUsecase {
+	return scoring.NewScoringSettingsUsecase(
+		usecases.NewEnforceSecurityScoring(),
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewScoringRulesetsUsecase() scoring.ScoringRulesetsUsecase {
+	return scoring.NewScoringRulesetsUsecase(
+		usecases.NewEnforceSecurityScoring(),
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.NewClientDbIndexEditor(),
+		usecases.Repositories.TaskQueueRepository,
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewScoringScoresUsecase() scoring.ScoringScoresUsecase {
+	return scoring.NewScoringScoresUsecase(
+		usecases.NewEnforceSecurityScoring(),
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.IngestedDataReadRepository,
+		usecases.Repositories.TaskQueueRepository,
+		usecases.NewEvaluateAstExpression(),
 	)
 }

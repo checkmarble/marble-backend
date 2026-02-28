@@ -22,6 +22,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -86,6 +87,16 @@ type taskEnqueuer interface {
 		organizationId uuid.UUID,
 		uploadLogId string,
 		ingestionOptions models.IngestionOptions,
+	) error
+	EnqueueTriggerScoreComputation(
+		ctx context.Context,
+		tx repositories.Transaction,
+		entity models.ScoringEntityRef,
+	) error
+	EnqueueManyTriggerScoreComputation(
+		ctx context.Context,
+		tx repositories.Transaction,
+		entities []models.ScoringEntityRef,
 	) error
 }
 
@@ -931,6 +942,27 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 		utils.LoggerFromContext(ctx).ErrorContext(ctx,
 			"could not enqueue continuous monitoring initial screening",
 			"error", err.Error())
+	}
+
+	if infra.HasFeatureFlag(infra.FEATURE_USER_SCORING, organizationId) {
+		err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+			entities := make([]models.ScoringEntityRef, 0, len(ingestionResults))
+
+			for objectId := range ingestionResults {
+				entities = append(entities, models.ScoringEntityRef{
+					OrgId:      organizationId,
+					EntityType: table.Name,
+					EntityId:   objectId,
+				})
+			}
+
+			return usecase.taskEnqueuer.EnqueueManyTriggerScoreComputation(ctx, tx, entities)
+		})
+		if err != nil {
+			utils.LoggerFromContext(ctx).WarnContext(ctx,
+				"could not enqueue scoring job for ingestion batch",
+				"error", err.Error())
+		}
 	}
 
 	utils.MetricIngestionCount.

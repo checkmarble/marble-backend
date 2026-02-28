@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -114,6 +115,45 @@ func (editor ClientDbIndexEditor) GetIndexesToCreate(
 	if err != nil {
 		return toCreate, numPending, errors.Wrap(err,
 			"Error while counting pending indexes in CreateDatamodelIndexesForScenarioPublication")
+	}
+
+	return
+}
+
+func (editor ClientDbIndexEditor) GetIndexesToCreateForScoringRuleset(
+	ctx context.Context,
+	organizationId uuid.UUID,
+	ruleset models.ScoringRuleset,
+) (toCreate []models.ConcreteIndex, numPending int, err error) {
+	db, err := editor.executorFactory.NewClientDbExecutor(ctx, organizationId)
+	if err != nil {
+		return toCreate, numPending, errors.Wrap(err,
+			"Error while creating client schema executor in GetIndexesToCreateForScoringRuleset")
+	}
+
+	existingIndexes, err := editor.ingestedDataIndexesRepository.ListAllValidIndexes(ctx, db, models.IndexTypeAggregation)
+	if err != nil {
+		return toCreate, numPending, errors.Wrap(err,
+			"Error while fetching existing indexes in GetIndexesToCreateForScoringRuleset")
+	}
+
+	astNodes := make([]ast.Node, len(ruleset.Rules))
+
+	for idx, rule := range ruleset.Rules {
+		astNodes[idx] = rule.Ast
+	}
+
+	families, err := extractQueryFamiliesFromAstSlice(ctx, astNodes)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "Error extracting query families from scenario iterations")
+	}
+
+	toCreate = indexesToCreateFromQueryFamilies(families, existingIndexes)
+
+	numPending, err = editor.ingestedDataIndexesRepository.CountPendingIndexes(ctx, db)
+	if err != nil {
+		return toCreate, numPending, errors.Wrap(err,
+			"Error while counting pending indexes in GetIndexesToCreateForScoringRuleset")
 	}
 
 	return
