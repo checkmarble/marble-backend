@@ -18,12 +18,19 @@ func (repo *MarbleDbRepository) ListOrganizationTags(ctx context.Context, exec E
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
+	orderBy := "t.created_at DESC"
+	orderById := "t.id DESC"
+	if pagination != nil && pagination.Order == models.SortingOrderAsc {
+		orderBy = "t.created_at ASC"
+		orderById = "t.id ASC"
+	}
+
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectTagColumn...).
 		From(fmt.Sprintf("%s AS t", dbmodels.TABLE_TAGS)).
 		Where(squirrel.Eq{"org_id": organizationId}).
 		Where(squirrel.Eq{"deleted_at": nil}).
-		OrderBy("t.created_at DESC", "t.id DESC")
+		OrderBy(orderBy, orderById)
 
 	if target != models.TagTargetUnknown {
 		query = query.Where(squirrel.Eq{"target": target})
