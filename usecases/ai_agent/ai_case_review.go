@@ -788,7 +788,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 		return caseData{}, casePivotDataByPivot{}, err
 	}
 
-	tags, err := uc.repository.ListOrganizationTags(ctx, exec, c.OrganizationId, models.TagTargetCase, false)
+	tags, err := uc.repository.ListOrganizationTags(ctx, exec, c.OrganizationId, models.TagTargetCase, false, nil)
 	if err != nil {
 		return caseData{}, casePivotDataByPivot{},
 			errors.Wrap(err, "could not retrieve tags for case")
