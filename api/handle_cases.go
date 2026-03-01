@@ -679,6 +679,24 @@ func handleGetCaseDataForCopilot(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
+func handleListCaseReviews(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		caseId, err := uuid.Parse(c.Param("case_id"))
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
+		reviews, err := usecase.ListCaseReviews(ctx, caseId)
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, reviews)
+	}
+}
+
 func handleGetCaseReview(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
