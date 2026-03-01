@@ -40,6 +40,13 @@ type OpenSanctionsRepository struct {
 
 type openSanctionsRequest struct {
 	Queries map[string]openSanctionsRequestQuery `json:"queries"`
+	Params  *motivaRequestParams                 `json:"params,omitempty"`
+}
+
+type motivaRequestParams struct {
+	IncludeDatasets  []string `json:"include_datasets"`
+	ExcludeDatasets  []string `json:"exclude_datasets"`
+	ExcludeEntityIds []string `json:"exclude_entity_ids"`
 }
 
 type openSanctionsRequestQuery struct {
@@ -343,7 +350,7 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 func (repo OpenSanctionsRepository) EnrichMatch(ctx context.Context, match models.ScreeningMatch) ([]byte, error) {
 	requestUrl := fmt.Sprintf("%s/entities/%s", repo.opensanctions.Host(), match.EntityId)
 
-	if qs := repo.buildQueryString(nil, nil); len(qs) > 0 {
+	if qs := repo.buildQueryString(ctx, nil, nil); len(qs) > 0 {
 		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())
 	}
 
@@ -401,6 +408,17 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 		Queries: make(map[string]openSanctionsRequestQuery, len(query.Queries)),
 	}
 
+	if repo.opensanctions.IsMotiva(ctx) {
+		q.Params = &motivaRequestParams{}
+
+		if len(query.Config.Datasets) > 0 {
+			q.Params.IncludeDatasets = query.Config.Datasets
+		}
+		if len(query.WhitelistedEntityIds) > 0 {
+			q.Params.ExcludeEntityIds = query.WhitelistedEntityIds
+		}
+	}
+
 	for _, subquery := range query.Queries {
 		q.Queries[uuid.NewString()] = openSanctionsRequestQuery{
 			Schema:     subquery.Type,
@@ -422,7 +440,7 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 
 	requestUrl := fmt.Sprintf("%s/match/%s", repo.opensanctions.Host(), scope)
 
-	if qs := repo.buildQueryString(&query.Config, query); len(qs) > 0 {
+	if qs := repo.buildQueryString(ctx, &query.Config, query); len(qs) > 0 {
 		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())
 	}
 
@@ -434,7 +452,7 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 	return req, rawQuery.Bytes(), err
 }
 
-func (repo OpenSanctionsRepository) buildQueryString(cfg *models.ScreeningConfig, query *models.OpenSanctionsQuery) url.Values {
+func (repo OpenSanctionsRepository) buildQueryString(ctx context.Context, cfg *models.ScreeningConfig, query *models.OpenSanctionsQuery) url.Values {
 	qs := url.Values{}
 
 	if repo.opensanctions.AuthMethod() == infra.OPEN_SANCTIONS_AUTH_SAAS &&
@@ -442,7 +460,7 @@ func (repo OpenSanctionsRepository) buildQueryString(cfg *models.ScreeningConfig
 		qs.Set("api_key", repo.opensanctions.Credentials())
 	}
 
-	if cfg != nil && len(cfg.Datasets) > 0 {
+	if !repo.opensanctions.IsMotiva(ctx) && cfg != nil && len(cfg.Datasets) > 0 {
 		qs["include_dataset"] = cfg.Datasets
 	}
 
@@ -466,7 +484,7 @@ func (repo OpenSanctionsRepository) buildQueryString(cfg *models.ScreeningConfig
 		// cf: https://api.opensanctions.org/#tag/Matching/operation/match_match__dataset__post
 		// exclude_entity_ids is a global filter that is applied to all queries and the list is limited to 50 elements.
 		// For our use, we think this is enough, in case we need to add more, we need to think about how to handle it.
-		if len(query.WhitelistedEntityIds) > 0 {
+		if !repo.opensanctions.IsMotiva(ctx) && len(query.WhitelistedEntityIds) > 0 {
 			qs["exclude_entity_ids"] = query.WhitelistedEntityIds[:min(
 				OPEN_SANCTIONS_MAX_EXCLUDE_ENTITY_IDS, len(query.WhitelistedEntityIds))]
 		}

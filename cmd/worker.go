@@ -70,16 +70,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
 		RateLimit: utils.GetEnv("CONVOY_RATE_LIMIT", 50),
 	}
-	openSanctionsConfig := infra.InitializeOpenSanctions(
-		http.DefaultClient,
-		utils.GetEnv("OPENSANCTIONS_API_HOST", ""),
-		utils.GetEnv("OPENSANCTIONS_AUTH_METHOD", ""),
-		utils.GetEnv("OPENSANCTIONS_API_KEY", ""),
-	)
-	if apiUrl := utils.GetEnv("NAME_RECOGNITION_API_URL", ""); apiUrl != "" {
-		openSanctionsConfig.WithNameRecognition(apiUrl,
-			utils.GetEnv("NAME_RECOGNITION_API_KEY", ""))
-	}
 
 	licenseConfig := models.LicenseConfiguration{
 		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
@@ -108,6 +98,18 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	logger := utils.NewLogger(workerConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
+
+	openSanctionsConfig := infra.InitializeOpenSanctions(
+		ctx,
+		http.DefaultClient,
+		utils.GetEnv("OPENSANCTIONS_API_HOST", ""),
+		utils.GetEnv("OPENSANCTIONS_AUTH_METHOD", ""),
+		utils.GetEnv("OPENSANCTIONS_API_KEY", ""),
+	)
+	if apiUrl := utils.GetEnv("NAME_RECOGNITION_API_URL", ""); apiUrl != "" {
+		openSanctionsConfig.WithNameRecognition(apiUrl,
+			utils.GetEnv("NAME_RECOGNITION_API_KEY", ""))
+	}
 
 	gcpConfig, ok := infra.NewGcpConfig(ctx, utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""), false)
 	if !ok {
