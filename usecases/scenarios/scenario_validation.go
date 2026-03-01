@@ -163,7 +163,8 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 				queryNameValidation := models.NewRuleValidation()
 				providedFields += 1
 
-				queryNameValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment, fieldAst)
+				queryNameValidation.RuleEvaluation, _ =
+					ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment, fieldAst)
 
 				if _, ok := queryNameValidation.RuleEvaluation.ReturnValue.(string); !ok {
 					queryNameValidation.Errors = append(
@@ -298,7 +299,8 @@ func (validator *AstValidatorImpl) MakeDryRunEnvironment(ctx context.Context,
 ) (ast_eval.AstEvaluationEnvironment, *models.ScenarioValidationError) {
 	organizationId := scenario.OrganizationId
 
-	dataModel, err := validator.DataModelRepository.GetDataModel(ctx, validator.ExecutorFactory.NewExecutor(), organizationId, false, false)
+	dataModel, err := validator.DataModelRepository.GetDataModel(ctx,
+		validator.ExecutorFactory.NewExecutor(), organizationId, false, false)
 	if err != nil {
 		return ast_eval.AstEvaluationEnvironment{}, &models.ScenarioValidationError{
 			Error: errors.Wrap(err, "could not get data model for dry run"),
@@ -311,7 +313,7 @@ func (validator *AstValidatorImpl) MakeDryRunEnvironment(ctx context.Context,
 		return ast_eval.AstEvaluationEnvironment{}, &models.ScenarioValidationError{
 			Error: errors.Wrap(models.NotFoundError,
 				fmt.Sprintf("table %s not found in data model for dry run", scenario.TriggerObjectType)),
-			Code: models.TrigerObjectNotFound,
+			Code: models.TriggerObjectNotFound,
 		}
 	}
 
