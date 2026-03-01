@@ -1037,6 +1037,7 @@ components:
       type: object
       required:
         - id
+        - type
         - inbox
         - name
         - status
@@ -1048,6 +1049,9 @@ components:
         id:
           type: string
           format: uuid
+        type:
+          type: string
+          enum: [decision continuous_screening]
         inbox:
           $ref: "#/components/schemas/Ref"
         name:
