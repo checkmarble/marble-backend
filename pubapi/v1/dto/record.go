@@ -8,7 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/pubapi/types"
 )
 
-type ClientDataAnnotationDto struct {
+type RecordAnnotationDto struct {
 	Id             string         `json:"id"`
 	ObjectType     string         `json:"object_type"`
 	ObjectId       string         `json:"object_id"`
@@ -17,25 +17,25 @@ type ClientDataAnnotationDto struct {
 	CreatedAt      types.DateTime `json:"created_at"`
 }
 
-type ClientDataCommentPayload struct {
+type RecordCommentPayload struct {
 	Text string `json:"text"`
 }
 
-type ClientDataTagPayload struct {
+type RecordTagPayload struct {
 	TagId string `json:"tag_id"`
 }
 
-type ClientDataFilePayload struct {
-	Caption string                      `json:"caption"`
-	Files   []ClientDataFilePayloadFile `json:"files"`
+type RecordFilePayload struct {
+	Caption string                 `json:"caption"`
+	Files   []RecordFilePayloadFile `json:"files"`
 }
 
-type ClientDataFilePayloadFile struct {
+type RecordFilePayloadFile struct {
 	Id       string `json:"id"`
 	Filename string `json:"filename"`
 }
 
-type ClientDataRiskTagPayload struct {
+type RecordRiskTagPayload struct {
 	Tag                   string `json:"tag"`
 	Reason                string `json:"reason,omitempty"`
 	Url                   string `json:"url,omitempty"`
@@ -43,12 +43,12 @@ type ClientDataRiskTagPayload struct {
 	OpenSanctionsEntityId string `json:"opensanctions_entity_id,omitempty"` //nolint: tagliatelle
 }
 
-func AdaptClientDataAnnotationDto(m models.EntityAnnotation) (ClientDataAnnotationDto, error) {
-	payload, err := adaptClientDataAnnotationPayload(m)
+func AdaptRecordAnnotationDto(m models.EntityAnnotation) (RecordAnnotationDto, error) {
+	payload, err := adaptRecordAnnotationPayload(m)
 	if err != nil {
-		return ClientDataAnnotationDto{}, err
+		return RecordAnnotationDto{}, err
 	}
-	return ClientDataAnnotationDto{
+	return RecordAnnotationDto{
 		Id:             m.Id,
 		ObjectType:     m.ObjectType,
 		ObjectId:       m.ObjectId,
@@ -58,31 +58,31 @@ func AdaptClientDataAnnotationDto(m models.EntityAnnotation) (ClientDataAnnotati
 	}, nil
 }
 
-func adaptClientDataAnnotationPayload(m models.EntityAnnotation) (any, error) {
+func adaptRecordAnnotationPayload(m models.EntityAnnotation) (any, error) {
 	switch m.AnnotationType {
 	case models.EntityAnnotationComment:
-		var p ClientDataCommentPayload
+		var p RecordCommentPayload
 		if err := json.Unmarshal(m.Payload, &p); err != nil {
 			return nil, err
 		}
 		return p, nil
 
 	case models.EntityAnnotationTag:
-		var p ClientDataTagPayload
+		var p RecordTagPayload
 		if err := json.Unmarshal(m.Payload, &p); err != nil {
 			return nil, err
 		}
 		return p, nil
 
 	case models.EntityAnnotationFile:
-		var p ClientDataFilePayload
+		var p RecordFilePayload
 		if err := json.Unmarshal(m.Payload, &p); err != nil {
 			return nil, err
 		}
 		return p, nil
 
 	case models.EntityAnnotationRiskTag:
-		var p ClientDataRiskTagPayload
+		var p RecordRiskTagPayload
 		if err := json.Unmarshal(m.Payload, &p); err != nil {
 			return nil, err
 		}
@@ -94,6 +94,6 @@ func adaptClientDataAnnotationPayload(m models.EntityAnnotation) (any, error) {
 	}
 }
 
-type ClientDataFileUrl struct {
+type RecordFileUrl struct {
 	Url string `json:"url"`
 }

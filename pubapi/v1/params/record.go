@@ -7,21 +7,20 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/cockroachdb/errors"
-	"github.com/google/uuid"
 )
 
-type AttachClientDataAnnotationParams struct {
-	Annotations []AttachClientDataAnnotationItem `json:"annotations" binding:"required,gte=1,lte=100,dive"`
+type AttachRecordAnnotationParams struct {
+	Annotations []AttachRecordAnnotationItem `json:"annotations" binding:"required,gte=1,lte=100,dive"`
 }
 
-type AttachClientDataAnnotationItem struct {
+type AttachRecordAnnotationItem struct {
 	Type string `json:"type" binding:"required"`
 
 	// See description of the payload schema in models/entity_annotation_payload.go
 	Payload json.RawMessage `json:"payload"`
 }
 
-type AttachClientDataFileAnnotationParams struct {
+type AttachRecordFileAnnotationParams struct {
 	Caption string                 `form:"caption" binding:"required"`
 	Files   []multipart.FileHeader `form:"files[]" binding:"required,gte=1,lte=100"`
 }
@@ -82,6 +81,6 @@ func DecodeAnnotationPayload(kind models.EntityAnnotationType, payload json.RawM
 	}
 }
 
-type ClientDataDeleteAnnotationsParams struct {
-	Ids []uuid.UUID `json:"ids" binding:"required,gte=1,lte=100"`
+type RecordDeleteAnnotationsParams struct {
+	Ids []string `json:"ids" binding:"required,gte=1,lte=100,dive,uuid"`
 }

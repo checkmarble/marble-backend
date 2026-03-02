@@ -21,8 +21,8 @@ tags:
     description: Routes for tags
   - name: Continuous Screenings
     description: Routes for continuous screenings
-  - name: Client Data
-    description: Routes for client data annotations
+  - name: Record
+    description: Routes for record (data ingested into Marble)
 paths:
   /ingest/{objectType}:
     post:
@@ -998,28 +998,28 @@ paths:
         "404":
           $ref: "#/components/responses/404"
 
-  /client-data/{objectType}/{objectId}/annotations:
+  /records/{recordType}/{recordId}/annotations:
     get:
-      operationId: listClientDataAnnotations
+      operationId: listRecordAnnotations
       tags:
-        - Client Data
+        - Record
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
-      summary: List annotations for an object
+      summary: List annotations for an record
       description: |
-        List all annotations attached to a specific object.
+        List all annotations attached to a specific record.
       parameters:
-        - name: objectType
+        - name: recordType
           in: path
           required: true
-          description: Type of the object as defined in the data model
+          description: Type of the record as defined in the data model
           schema:
             type: string
-        - name: objectId
+        - name: recordId
           in: path
           required: true
-          description: Client-side ID of the object
+          description: Client-side ID of the record
           schema:
             type: string
       responses:
@@ -1035,38 +1035,38 @@ paths:
                       data:
                         type: array
                         items:
-                          $ref: "#/components/schemas/ClientDataAnnotation"
+                          $ref: "#/components/schemas/RecordAnnotation"
         "400":
           $ref: "#/components/responses/400"
         "404":
           $ref: "#/components/responses/404"
 
     post:
-      operationId: createClientDataAnnotation
+      operationId: createRecordAnnotation
       tags:
-        - Client Data
+        - Record
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
-      summary: Attach annotations to an object
+      summary: Attach annotations to an record
       description: |
-        Attach one or more annotations to a specific object. Supported annotation types are `comment`, `tag` and `risk_tag`.
+        Attach one or more annotations to a specific record. Supported annotation types are `comment`, `tag` and `risk_tag`.
 
-        For `tag` and `risk_tag` types, if an identical annotation already exists on the object, the existing annotation is returned instead of creating a duplicate.
+        For `tag` and `risk_tag` types, if an identical annotation already exists on the record, the existing annotation is returned instead of creating a duplicate.
 
         To attach a file annotation, use the dedicated endpoint
-        `POST /client-data/{objectType}/{objectId}/annotations/files`.
+        `POST /records/{recordType}/{recordId}/annotations/files`.
       parameters:
-        - name: objectType
+        - name: recordType
           in: path
           required: true
-          description: Type of the object as defined in the data model
+          description: Type of the record as defined in the data model
           schema:
             type: string
-        - name: objectId
+        - name: recordId
           in: path
           required: true
-          description: Client-side ID of the object
+          description: Client-side ID of the record
           schema:
             type: string
       requestBody:
@@ -1075,12 +1075,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: 
+              required:
                 - annotations
               properties:
                 annotations:
                   type: array
                   minItems: 1
+                  maxItems: 100
                   items:
                     oneOf:
                       - $ref: "#/components/schemas/CreateCommentAnnotation"
@@ -1099,7 +1100,7 @@ paths:
                       data:
                         type: array
                         items:
-                          $ref: "#/components/schemas/ClientDataAnnotation"
+                          $ref: "#/components/schemas/RecordAnnotation"
         "400":
           $ref: "#/components/responses/400"
         "404":
@@ -1107,28 +1108,28 @@ paths:
         "409":
           $ref: "#/components/responses/409"
 
-  /client-data/{objectType}/{objectId}/annotations/files:
+  /records/{recordType}/{recordId}/annotations/files:
     post:
-      operationId: createClientDataFileAnnotation
+      operationId: createRecordFileAnnotation
       tags:
-        - Client Data
+        - Record
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
-      summary: Attach files to an object as an annotation
+      summary: Attach files to a record as an annotation
       description: |
-        Upload one or more files and attach them as a file annotation to a specific object.
+        Upload one or more files and attach them as a file annotation to a specific record.
       parameters:
-        - name: objectType
+        - name: recordType
           in: path
           required: true
-          description: Type of the object as defined in the data model
+          description: Type of the record as defined in the data model
           schema:
             type: string
-        - name: objectId
+        - name: recordId
           in: path
           required: true
-          description: Client-side ID of the object
+          description: Client-side ID of the record
           schema:
             type: string
       requestBody:
@@ -1147,6 +1148,8 @@ paths:
                 files[]:
                   description: One or more files to attach. At least one file is required.
                   type: array
+                  minItems: 1
+                  maxItems: 100
                   items:
                     type: string
                     format: binary
@@ -1163,17 +1166,17 @@ paths:
                       data:
                         type: array
                         items:
-                          $ref: "#/components/schemas/ClientDataAnnotation"
+                          $ref: "#/components/schemas/RecordAnnotation"
         "400":
           $ref: "#/components/responses/400"
         "404":
           $ref: "#/components/responses/404"
 
-  /client-data/annotations/{id}/files/{partId}/download:
+  /records/annotations/{id}/files/{partId}/download:
     get:
-      operationId: downloadClientDataAnnotationFile
+      operationId: downloadRecordAnnotationFile
       tags:
-        - Client Data
+        - Record
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
@@ -1218,11 +1221,11 @@ paths:
         "404":
           $ref: "#/components/responses/404"
 
-  /client-data/annotations:
+  /records/annotations:
     delete:
-      operationId: deleteClientDataAnnotations
+      operationId: deleteRecordAnnotations
       tags:
-        - Client Data
+        - Record
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
@@ -1242,6 +1245,7 @@ paths:
                 ids:
                   type: array
                   minItems: 1
+                  maxItems: 100
                   items:
                     type: string
                     format: uuid
@@ -1684,8 +1688,8 @@ components:
           type: string
           format: date-time
 
-    ClientDataAnnotation:
-      title: Client data annotation
+    RecordAnnotation:
+      title: Record annotation
       type: object
       required:
         - id

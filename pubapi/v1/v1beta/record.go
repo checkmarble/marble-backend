@@ -15,7 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func HandleGetClientDataAnnotations(uc usecases.Usecases) gin.HandlerFunc {
+func HandleGetRecordAnnotations(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -25,16 +25,16 @@ func HandleGetClientDataAnnotations(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		objectType := c.Param("objectType")
-		objectId := c.Param("objectId")
+		recordType := c.Param("recordType")
+		recordId := c.Param("recordId")
 
 		uc := pubapi.UsecasesWithCreds(ctx, uc).NewEntityAnnotationUsecase()
 		annotations, err := uc.List(
 			ctx,
 			models.EntityAnnotationRequest{
 				OrgId:      orgId,
-				ObjectType: objectType,
-				ObjectId:   objectId,
+				ObjectType: recordType,
+				ObjectId:   recordId,
 			},
 		)
 		if err != nil {
@@ -42,7 +42,7 @@ func HandleGetClientDataAnnotations(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		response, err := pure_utils.MapErr(annotations, dto.AdaptClientDataAnnotationDto)
+		response, err := pure_utils.MapErr(annotations, dto.AdaptRecordAnnotationDto)
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -52,7 +52,7 @@ func HandleGetClientDataAnnotations(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
-func HandleAttachClientDataAnnotation(uc usecases.Usecases) gin.HandlerFunc {
+func HandleAttachRecordAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -62,10 +62,10 @@ func HandleAttachClientDataAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		objectType := c.Param("objectType")
-		objectId := c.Param("objectId")
+		recordType := c.Param("recordType")
+		recordId := c.Param("recordId")
 
-		var payload params.AttachClientDataAnnotationParams
+		var payload params.AttachRecordAnnotationParams
 		if err := c.ShouldBindBodyWithJSON(&payload); err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -93,8 +93,8 @@ func HandleAttachClientDataAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			}
 			createRequests[i] = models.CreateEntityAnnotationRequest{
 				OrgId:          orgId,
-				ObjectType:     objectType,
-				ObjectId:       objectId,
+				ObjectType:     recordType,
+				ObjectId:       recordId,
 				AnnotationType: annotationType,
 				Payload:        parsedPayload,
 			}
@@ -108,7 +108,7 @@ func HandleAttachClientDataAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		response, err := pure_utils.MapErr(annotation, dto.AdaptClientDataAnnotationDto)
+		response, err := pure_utils.MapErr(annotation, dto.AdaptRecordAnnotationDto)
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -128,10 +128,10 @@ func HandleCreateEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		objectType := c.Param("objectType")
-		objectId := c.Param("objectId")
+		recordType := c.Param("recordType")
+		recordId := c.Param("recordId")
 
-		var payload params.AttachClientDataFileAnnotationParams
+		var payload params.AttachRecordFileAnnotationParams
 
 		if err := c.ShouldBind(&payload); err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
@@ -144,8 +144,8 @@ func HandleCreateEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			ctx,
 			models.CreateEntityAnnotationRequest{
 				OrgId:          orgId,
-				ObjectType:     objectType,
-				ObjectId:       objectId,
+				ObjectType:     recordType,
+				ObjectId:       recordId,
 				AnnotationType: models.EntityAnnotationFile,
 				Payload: models.EntityAnnotationFilePayload{
 					Caption: payload.Caption,
@@ -158,7 +158,7 @@ func HandleCreateEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		response, err := pure_utils.MapErr(annotations, dto.AdaptClientDataAnnotationDto)
+		response, err := pure_utils.MapErr(annotations, dto.AdaptRecordAnnotationDto)
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -206,7 +206,7 @@ func HandleGetEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		types.NewResponse(dto.ClientDataFileUrl{Url: downloadUrl}).Serve(c)
+		types.NewResponse(dto.RecordFileUrl{Url: downloadUrl}).Serve(c)
 	}
 }
 
@@ -220,7 +220,7 @@ func HandleDeleteEntityAnnotations(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		var params params.ClientDataDeleteAnnotationsParams
+		var params params.RecordDeleteAnnotationsParams
 		if err := c.ShouldBindJSON(&params); err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -230,7 +230,7 @@ func HandleDeleteEntityAnnotations(uc usecases.Usecases) gin.HandlerFunc {
 		for i, id := range params.Ids {
 			requests[i] = models.AnnotationByIdRequest{
 				OrgId:        orgId,
-				AnnotationId: id.String(),
+				AnnotationId: id,
 			}
 		}
 

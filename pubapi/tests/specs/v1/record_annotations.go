@@ -7,11 +7,11 @@ import (
 	"github.com/gavv/httpexpect/v2"
 )
 
-func clientDataAnnotations(_ *testing.T, e *httpexpect.Expect) {
+func recordAnnotations(_ *testing.T, e *httpexpect.Expect) {
 	const (
 		objectType = "account"
 		objectId   = "account-002"
-		listPath   = "/client-data/" + objectType + "/" + objectId + "/annotations"
+		listPath   = "/records/" + objectType + "/" + objectId + "/annotations"
 	)
 
 	// List annotations: one pre-seeded comment annotation
@@ -88,4 +88,31 @@ func clientDataAnnotations(_ *testing.T, e *httpexpect.Expect) {
 		JSON().
 		Object().Path("$.data").Array().
 		Length().IsEqual(3)
+
+	// Delete the two created annotations by ID
+	createdId := created.Value("id").String().Raw()
+	riskTagId := riskTag.Value("id").String().Raw()
+
+	e.DELETE("/records/annotations").
+		WithJSON(map[string]any{
+			"ids": []string{createdId, riskTagId},
+		}).
+		Expect().
+		Status(http.StatusNoContent)
+
+	// List is back to 1 (only the seeded annotation remains)
+	e.GET(listPath).
+		Expect().
+		Status(http.StatusOK).
+		JSON().
+		Object().Path("$.data").Array().
+		Length().IsEqual(1)
+
+	// Deleting already-deleted IDs is idempotent
+	e.DELETE("/records/annotations").
+		WithJSON(map[string]any{
+			"ids": []string{createdId},
+		}).
+		Expect().
+		Status(http.StatusNoContent)
 }

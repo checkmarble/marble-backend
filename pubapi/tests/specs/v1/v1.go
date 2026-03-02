@@ -17,5 +17,5 @@ func PublicApiV1Beta(t *testing.T, e *httpexpect.Expect) {
 	tags(t, e)
 	cases(t, e)
 	continuousScreenings(t, e)
-	clientDataAnnotations(t, e)
+	recordAnnotations(t, e)
 }
