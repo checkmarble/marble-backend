@@ -34,6 +34,8 @@ type ScoringRepository interface {
 	GetScoreHistory(ctx context.Context, exec repositories.Executor, record models.ScoringRecordRef) ([]models.ScoringScore, error)
 	GetActiveScore(ctx context.Context, exec repositories.Executor, record models.ScoringRecordRef) (*models.ScoringScore, error)
 	InsertScore(ctx context.Context, tx repositories.Transaction, req models.InsertScoreRequest) (models.ScoringScore, error)
+
+	GetScoreDistribution(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, entityType string) ([]models.ScoreDistribution, error)
 }
 
 type scoringIngestedDataReader interface {

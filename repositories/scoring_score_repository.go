@@ -113,3 +113,27 @@ func (repo *MarbleDbRepository) InsertScore(
 
 	return SqlToModel(ctx, tx, insert, dbmodels.AdaptScoringScore)
 }
+
+func (repo *MarbleDbRepository) GetScoreDistribution(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	recordType string,
+) ([]models.ScoreDistribution, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("risk_level", "count(*) as n").
+		From(dbmodels.TABLE_SCORING_SCORES).
+		Where(squirrel.Eq{
+			"org_id":      orgId,
+			"record_type": recordType,
+			"source":      "ruleset",
+			"deleted_at":  nil,
+		}).
+		GroupBy("risk_level")
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptScoringScoreDistribution)
+}
