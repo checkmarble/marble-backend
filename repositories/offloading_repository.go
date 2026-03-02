@@ -23,3 +23,8 @@ func (repo *MarbleDbRepository) GetOffloadedDecisionEvaluationKey(orgId uuid.UUI
 	return fmt.Sprintf("offloading/rule_evaluations/%s/%s/%d/%d/%s", decision.Outcome, orgId,
 		decision.CreatedAt.Year(), decision.CreatedAt.Month(), decision.DecisionId.String())
 }
+
+func (repo *MarbleDbRepository) GetScoreComputationEvaluationKey(ruleset models.ScoringRuleset, score models.ScoringScore) string {
+	return fmt.Sprintf("offloading/score_computations/%s/%s/%d/%d/%s", ruleset.OrgId.String(), ruleset.RecordType,
+		score.CreatedAt.Year(), score.CreatedAt.Month(), score.Id.String())
+}

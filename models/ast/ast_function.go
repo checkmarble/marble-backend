@@ -80,9 +80,9 @@ type FuncAttributes struct {
 }
 
 type ScoreComputationResult struct {
-	Triggered bool
-	Modifier  int
-	Floor     int
+	Triggered bool `json:"triggered"`
+	Modifier  int  `json:"modifier"`
+	Floor     int  `json:"floor"`
 }
 
 // If number of arguments -1 the function can take any number of arguments

@@ -36,11 +36,6 @@ func (m *ScoringRepository) GetScoringRuleset(ctx context.Context, exec reposito
 	return args.Get(0).(models.ScoringRuleset), args.Error(1)
 }
 
-func (m *ScoringRepository) GetScoringRulesetById(ctx context.Context, exec repositories.Executor, orgId, id uuid.UUID) (models.ScoringRuleset, error) {
-	args := m.Called(ctx, exec, orgId, id)
-	return args.Get(0).(models.ScoringRuleset), args.Error(1)
-}
-
 func (m *ScoringRepository) ListScoringRulesetVersions(
 	ctx context.Context,
 	exec repositories.Executor,
@@ -49,6 +44,11 @@ func (m *ScoringRepository) ListScoringRulesetVersions(
 ) ([]models.ScoringRuleset, error) {
 	args := m.Called(ctx, exec, orgId, recordType)
 	return args.Get(0).([]models.ScoringRuleset), args.Error(1)
+}
+
+func (m *ScoringRepository) GetScoringRulesetById(ctx context.Context, exec repositories.Executor, orgId, id uuid.UUID) (models.ScoringRuleset, error) {
+	args := m.Called(ctx, exec, orgId, id)
+	return args.Get(0).(models.ScoringRuleset), args.Error(1)
 }
 
 func (m *ScoringRepository) InsertScoringRulesetVersion(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, ruleset models.CreateScoringRulesetRequest) (models.ScoringRuleset, error) {
