@@ -311,16 +311,29 @@ func (repository *blobRepository) ExtractHost(bucketUrl string) []string {
 
 	switch u.Scheme {
 	case "gs", "gcs":
-		return []string{"https://*.storage.googleapis.com"}
+		return []string{"https://storage.googleapis.com"}
 	case "azblob":
 		return []string{"https://*.blob.core.windows.net"}
 	case "s3":
-		if ep := u.Query().Get("endpoint"); ep != "" {
-			return []string{ep}
+		endpoint := u.Query().Get("endpoint")
+		if ep := os.Getenv("AWS_ENDPOINT_URL"); endpoint == "" && ep != "" {
+			endpoint = ep
 		}
-		if region := u.Query().Get("region"); region != "" {
+		if endpoint != "" {
+			return []string{endpoint}
+		}
+
+		region := u.Query().Get("region")
+		if r := os.Getenv("AWS_REGION"); region == "" && r != "" {
+			region = r
+		}
+		if r := os.Getenv("AWS_DEFAULT_REGION"); region == "" && r != "" {
+			region = r
+		}
+		if region != "" {
 			return []string{"https://s3.amazonaws.com", fmt.Sprintf("https://s3.%s.amazonaws.com", region)}
 		}
+
 		return []string{"https://s3.amazonaws.com"}
 	}
 
