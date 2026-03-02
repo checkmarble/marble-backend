@@ -195,6 +195,12 @@ func (uc ScoringScoresUsecase) tryRefreshScore(ctx context.Context, activeScore 
 			RulesetId:  &scoreRuleset.Id,
 		}
 
+		if activeScore != nil && newScore.Score < activeScore.RiskLevel {
+			if activeScore.CreatedAt.Add(time.Duration(scoreRuleset.CooldownSeconds) * time.Second).After(time.Now()) {
+				req.IgnoredByCooldown = true
+			}
+		}
+
 		score, err := uc.repository.InsertScore(ctx, tx, req)
 		if err != nil {
 			if activeScore == nil {
