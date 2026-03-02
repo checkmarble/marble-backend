@@ -115,6 +115,8 @@ type InsertScoreRequest struct {
 	OverriddenBy *uuid.UUID
 	RulesetId    *uuid.UUID
 	StaleAt      *time.Time
+
+	IgnoredByCooldown bool
 }
 
 func (r InsertScoreRequest) ToRecordRef() ScoringRecordRef {
