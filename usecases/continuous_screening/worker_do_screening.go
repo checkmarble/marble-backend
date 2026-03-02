@@ -88,7 +88,7 @@ type doScreeningWorkerCSUsecase interface {
 		ctx context.Context,
 		tx repositories.Transaction,
 		config models.ContinuousScreeningConfig,
-		objectId string,
+		caseName string,
 		continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
 	) (models.Case, error)
 	CheckFeatureAccess(ctx context.Context, orgId uuid.UUID) error
@@ -332,11 +332,16 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 		}
 
 		if !skipCaseCreation && screeningWithMatches.Status == models.ScreeningStatusInReview {
+			caseName, err := buildCaseName(newObjectData, mapping)
+			if err != nil {
+				logger.WarnContext(ctx, "Continuous Screening - error building case name, falling back to object_id", "error", err)
+				caseName = monitoredObject.ObjectId
+			}
 			_, err = w.usecase.HandleCaseCreation(
 				ctx,
 				tx,
 				config,
-				monitoredObject.ObjectId,
+				caseName,
 				continuousScreeningWithMatches,
 			)
 			if err != nil {

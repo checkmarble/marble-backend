@@ -240,9 +240,10 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 				if continuousScreeningWithMatches.Status == models.ScreeningStatusInReview {
 					// Create and attach to a case
 					// Update the continuousScreeningWithMatches with the created case ID
-					caseName, err := caseNameBuilderFromIngestedObject(ingestedObject, mapping)
+					caseName, err := buildCaseName(ingestedObject, mapping)
 					if err != nil {
-						return models.ContinuousScreeningWithMatches{}, err
+						logger.WarnContext(ctx, "Continuous Screening - error building case name, falling back to object_id", "error", err)
+						caseName = objectId
 					}
 					caseCreated, err := uc.HandleCaseCreation(
 						ctx,

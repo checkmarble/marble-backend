@@ -265,8 +265,9 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 
 	ingestedObject := models.DataModelObject{
 		Data: map[string]any{
-			"id":     suite.objectId,
-			"status": "new",
+			"object_id": suite.objectId,
+			"id":        suite.objectId,
+			"status":    "new",
 		},
 		Metadata: map[string]any{
 			"valid_from": time.Now(),
@@ -275,8 +276,9 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 
 	previousObjectData := models.DataModelObject{
 		Data: map[string]any{
-			"id":     suite.objectId,
-			"status": "old",
+			"object_id": suite.objectId,
+			"id":        suite.objectId,
+			"status":    "old",
 		},
 		Metadata: map[string]any{
 			"valid_from": time.Now().Add(-1 * time.Hour),

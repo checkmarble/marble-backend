@@ -91,14 +91,15 @@ func stringRepresentation(value any) string {
 	return strings.TrimSpace(fmt.Sprintf("%v", value))
 }
 
-// Build the case name from the ingested object and the data model mapping, we use the FTM properties to build the case name
-// The case name is built from the following priority order:
-// 1. Name property
-// 2. FirstName and LastName properties
-// 3. RegistrationNumber property
-// 4. ImoNumber property
-// 5. objectId
-func caseNameBuilderFromIngestedObject(
+// buildCaseName returns a human-readable case name from the ingested object using FTM property
+// values from the data model mapping. Priority order:
+// 1. name
+// 2. lastName + firstName (combined), or lastName alone, or firstName alone
+// 3. email
+// 4. registrationNumber
+// 5. imoNumber
+// 6. object_id
+func buildCaseName(
 	ingestedObject models.DataModelObject,
 	mapping models.ContinuousScreeningDataModelMapping,
 ) (string, error) {
@@ -130,6 +131,10 @@ func caseNameBuilderFromIngestedObject(
 		return lastName, nil
 	} else if firstName != "" {
 		return firstName, nil
+	}
+
+	if email := getValueByFTMProperty(models.FollowTheMoneyPropertyEmail); email != "" {
+		return email, nil
 	}
 
 	if regNum := getValueByFTMProperty(models.FollowTheMoneyPropertyRegistrationNumber); regNum != "" {
