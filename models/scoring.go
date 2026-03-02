@@ -173,3 +173,8 @@ type ScoringEvaluation struct {
 	Score      int
 	Evaluation []ast.NodeEvaluation
 }
+
+type ScoreDistribution struct {
+	Score int
+	Count int
+}
