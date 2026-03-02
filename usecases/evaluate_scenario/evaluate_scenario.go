@@ -797,18 +797,23 @@ func (e ScenarioEvaluator) EvalCaseName(
 		params.ClientObject,
 		params.DataModel,
 	)
+	logger := utils.LoggerFromContext(ctx)
 	switch {
 	case ast.IsAuthorizedError(err):
 		return
 	case err != nil:
-		return "", errors.Wrap(err, "Unexpected error evaluating case name in EvalCaseName")
+		logger.ErrorContext(ctx, "unexpected error evaluating case name, falling back to default",
+			"error", err)
+		return
 	case caseNameEvaluation.ReturnValue == nil:
 		return
 	}
 
 	returnValue, ok := caseNameEvaluation.ReturnValue.(string)
 	if !ok {
-		return "", errors.Wrap(err, "case name query did not return a string")
+		logger.WarnContext(ctx, "case name template did not return a string, falling back to default",
+			"return_value", caseNameEvaluation.ReturnValue)
+		return
 	}
 	if returnValue == "" {
 		return

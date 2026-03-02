@@ -35,10 +35,11 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 		if action.Params.TitleTemplate != nil {
 			astNode, err := dto.AdaptASTNode(*action.Params.TitleTemplate)
 			if err != nil {
-				return models.WorkflowExecution{}, err
+				logger.WarnContext(ctx, "error parsing case name template, falling back to default case name",
+					"error", err)
+			} else {
+				titleTemplateAst = &astNode
 			}
-
-			titleTemplateAst = &astNode
 		}
 
 		caseName, err := d.caseNameEvaluator.EvalCaseName(ctx, evalParams, scenario, titleTemplateAst)
