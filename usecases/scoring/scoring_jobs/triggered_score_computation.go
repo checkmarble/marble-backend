@@ -3,6 +3,7 @@ package scoring_jobs
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
@@ -83,6 +84,12 @@ func (w *TriggeredScoreComputationWorker) Work(ctx context.Context, job *river.J
 			RiskLevel:  eval.Score,
 			Source:     models.ScoreSourceRuleset,
 			RulesetId:  &ruleset.Id,
+		}
+
+		if activeScore != nil && eval.Score < activeScore.RiskLevel {
+			if activeScore.CreatedAt.Add(time.Duration(ruleset.CooldownSeconds) * time.Second).After(time.Now()) {
+				req.IgnoredByCooldown = true
+			}
 		}
 
 		_, err = w.repository.InsertScore(ctx, tx, req)
