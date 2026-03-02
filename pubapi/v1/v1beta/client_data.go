@@ -66,47 +66,49 @@ func HandleAttachClientDataAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 		objectId := c.Param("objectId")
 
 		var payload params.AttachClientDataAnnotationParams
-
 		if err := c.ShouldBindBodyWithJSON(&payload); err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
+		createRequests := make([]models.CreateEntityAnnotationRequest, len(payload.Annotations))
+		for i, item := range payload.Annotations {
+			annotationType := models.EntityAnnotationFrom(item.Type)
+			if annotationType == models.EntityAnnotationUnknown {
+				types.NewErrorResponse().WithError(errors.WithDetail(
+					types.ErrInvalidPayload, "invalid annotation type")).Serve(c)
+				return
+			}
+			if annotationType == models.EntityAnnotationFile {
+				types.NewErrorResponse().WithError(
+					errors.WithDetail(types.ErrInvalidPayload,
+						"cannot use generic annotation endpoint to add file annotation"),
+				).Serve(c)
+				return
+			}
 
-		annotationType := models.EntityAnnotationFrom(payload.Type)
-		if annotationType == models.EntityAnnotationUnknown {
-			types.NewErrorResponse().WithError(errors.WithDetail(
-				types.ErrInvalidPayload, "invalid annotation type")).Serve(c)
-			return
-		}
-		if annotationType == models.EntityAnnotationFile {
-			types.NewErrorResponse().WithError(
-				errors.WithDetail(types.ErrInvalidPayload,
-					"cannot use generic annotation endpoint to add file annotation"),
-			).Serve(c)
-			return
-		}
-
-		parsedPayload, err := params.DecodeAnnotationPayload(annotationType, payload.Payload)
-		if err != nil {
-			types.NewErrorResponse().WithError(err).Serve(c)
-			return
+			parsedPayload, err := params.DecodeAnnotationPayload(annotationType, item.Payload)
+			if err != nil {
+				types.NewErrorResponse().WithError(err).Serve(c)
+				return
+			}
+			createRequests[i] = models.CreateEntityAnnotationRequest{
+				OrgId:          orgId,
+				ObjectType:     objectType,
+				ObjectId:       objectId,
+				AnnotationType: annotationType,
+				Payload:        parsedPayload,
+			}
 		}
 
 		uc := pubapi.UsecasesWithCreds(ctx, uc).NewEntityAnnotationUsecase()
 
-		annotation, err := uc.Attach(ctx, models.CreateEntityAnnotationRequest{
-			OrgId:          orgId,
-			ObjectType:     objectType,
-			ObjectId:       objectId,
-			AnnotationType: annotationType,
-			Payload:        parsedPayload,
-		})
+		annotation, err := uc.AttachByBatch(ctx, createRequests)
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}
 
-		response, err := dto.AdaptClientDataAnnotationDto(annotation)
+		response, err := pure_utils.MapErr(annotation, dto.AdaptClientDataAnnotationDto)
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -133,13 +135,6 @@ func HandleCreateEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 
 		if err := c.ShouldBind(&payload); err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
-			return
-		}
-		if len(payload.Files) == 0 {
-			types.NewErrorResponse().WithError(
-				errors.WithDetail(types.ErrInvalidPayload,
-					"at least one file should be provided"),
-			).Serve(c)
 			return
 		}
 
@@ -212,5 +207,41 @@ func HandleGetEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		types.NewResponse(dto.ClientDataFileUrl{Url: downloadUrl}).Serve(c)
+	}
+}
+
+func HandleDeleteEntityAnnotations(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		var params params.ClientDataDeleteAnnotationsParams
+		if err := c.ShouldBindJSON(&params); err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		requests := make([]models.AnnotationByIdRequest, len(params.Ids))
+		for i, id := range params.Ids {
+			requests[i] = models.AnnotationByIdRequest{
+				OrgId:        orgId,
+				AnnotationId: id.String(),
+			}
+		}
+
+		uc := pubapi.UsecasesWithCreds(ctx, uc).NewEntityAnnotationUsecase()
+
+		err = uc.DeleteAnnotationByBatch(ctx, requests)
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		c.Status(http.StatusNoContent)
 	}
 }

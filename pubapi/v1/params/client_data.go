@@ -7,9 +7,14 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 type AttachClientDataAnnotationParams struct {
+	Annotations []AttachClientDataAnnotationItem `json:"annotations" binding:"required,gte=1,lte=100,dive"`
+}
+
+type AttachClientDataAnnotationItem struct {
 	Type string `json:"type" binding:"required"`
 
 	// See description of the payload schema in models/entity_annotation_payload.go
@@ -18,7 +23,7 @@ type AttachClientDataAnnotationParams struct {
 
 type AttachClientDataFileAnnotationParams struct {
 	Caption string                 `form:"caption" binding:"required"`
-	Files   []multipart.FileHeader `form:"files[]" binding:"gte=1"`
+	Files   []multipart.FileHeader `form:"files[]" binding:"required,gte=1,lte=100"`
 }
 
 // Define struct for annotation payloads
@@ -75,4 +80,8 @@ func DecodeAnnotationPayload(kind models.EntityAnnotationType, payload json.RawM
 	default:
 		return nil, errors.WithDetail(types.ErrInvalidPayload, "unsupported annotation type")
 	}
+}
+
+type ClientDataDeleteAnnotationsParams struct {
+	Ids []uuid.UUID `json:"ids" binding:"required,gte=1,lte=100"`
 }

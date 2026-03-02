@@ -35,10 +35,10 @@ type EntityAnnotationRepository interface {
 		req models.CreateEntityAnnotationRequest) (models.EntityAnnotation, error)
 	DeleteEntityAnnotation(ctx context.Context, exec repositories.Executor,
 		req models.AnnotationByIdRequest) error
-	IsObjectTagSet(ctx context.Context, exec repositories.Executor,
-		req models.CreateEntityAnnotationRequest, tagId string) (bool, error)
-	IsObjectRiskTagSet(ctx context.Context, exec repositories.Executor,
-		req models.CreateEntityAnnotationRequest, tag string) (bool, error)
+	FindExistingObjectTagAnnotation(ctx context.Context, exec repositories.Executor,
+		req models.CreateEntityAnnotationRequest, tagId string) (models.EntityAnnotation, error)
+	FindExistingObjectRiskTagAnnotation(ctx context.Context, exec repositories.Executor,
+		req models.CreateEntityAnnotationRequest, tag string) (models.EntityAnnotation, error)
 	FindEntityAnnotationsWithRiskTags(ctx context.Context, exec repositories.Executor,
 		filter models.EntityAnnotationRiskTagsFilter) ([]models.EntityAnnotation, error)
 }
@@ -144,33 +144,65 @@ func (uc EntityAnnotationUsecase) ListForCase(ctx context.Context,
 func (uc EntityAnnotationUsecase) Attach(ctx context.Context,
 	req models.CreateEntityAnnotationRequest,
 ) (models.EntityAnnotation, error) {
-	if err := uc.enforceSecurityAnnotation.WriteAnnotation(req.OrgId, req.AnnotationType); err != nil {
-		return models.EntityAnnotation{}, errors.Wrap(models.ForbiddenError, err.Error())
-	}
-
-	if err := uc.checkObject(ctx, req.OrgId, req.ObjectType); err != nil {
-		return models.EntityAnnotation{}, errors.Wrap(models.NotFoundError, err.Error())
-	}
-
-	if err := uc.validateAnnotation(ctx, req); err != nil {
+	annotations, err := uc.AttachByBatch(ctx, []models.CreateEntityAnnotationRequest{req})
+	if err != nil {
 		return models.EntityAnnotation{}, err
+	}
+	return annotations[0], nil
+}
+
+func (uc EntityAnnotationUsecase) AttachByBatch(ctx context.Context,
+	reqs []models.CreateEntityAnnotationRequest,
+) ([]models.EntityAnnotation, error) {
+	if len(reqs) == 0 {
+		return nil, errors.Wrap(models.BadParameterError, "no annotations to attach")
+	}
+
+	// Suppose all CreateEntityAnnotationRequest have the same orgId and objectType
+	orgId := reqs[0].OrgId
+	objectType := reqs[0].ObjectType
+
+	if err := uc.checkObject(ctx, orgId, objectType); err != nil {
+		return nil, errors.Wrap(models.NotFoundError, err.Error())
 	}
 
 	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
 		tx repositories.Transaction,
-	) (models.EntityAnnotation, error) {
-		annotation, err := uc.repository.CreateEntityAnnotation(ctx, tx, req)
-		if err != nil {
-			return models.EntityAnnotation{}, err
-		}
-
-		if req.CaseId != nil {
-			if err := uc.caseUsecase.AttachAnnotation(ctx, tx, annotation.Id, req); err != nil {
-				return models.EntityAnnotation{}, err
+	) ([]models.EntityAnnotation, error) {
+		annotations := make([]models.EntityAnnotation, len(reqs))
+		for i, req := range reqs {
+			if err := uc.enforceSecurityAnnotation.WriteAnnotation(orgId, req.AnnotationType); err != nil {
+				return nil, errors.Wrap(models.ForbiddenError, err.Error())
 			}
+
+			if err := uc.validateAnnotation(ctx, req); err != nil {
+				return nil, err
+			}
+
+			// If the same annotation already exists, return it as-is and skip creation.
+			existing, err := uc.findExistingAnnotation(ctx, tx, req)
+			if err != nil && !errors.Is(err, models.NotFoundError) {
+				return nil, err
+			}
+			if err == nil {
+				annotations[i] = existing
+				continue
+			}
+
+			annotation, err := uc.repository.CreateEntityAnnotation(ctx, tx, req)
+			if err != nil {
+				return nil, err
+			}
+
+			if req.CaseId != nil {
+				if err := uc.caseUsecase.AttachAnnotation(ctx, tx, annotation.Id, req); err != nil {
+					return nil, err
+				}
+			}
+			annotations[i] = annotation
 		}
 
-		return annotation, nil
+		return annotations, nil
 	})
 }
 
@@ -179,6 +211,10 @@ func (uc EntityAnnotationUsecase) AttachFile(
 	req models.CreateEntityAnnotationRequest,
 	files []multipart.FileHeader,
 ) ([]models.EntityAnnotation, error) {
+	if err := uc.enforceSecurityAnnotation.WriteAnnotation(req.OrgId, req.AnnotationType); err != nil {
+		return nil, errors.Wrap(models.ForbiddenError, err.Error())
+	}
+
 	if err := uc.checkObject(ctx, req.OrgId, req.ObjectType); err != nil {
 		return nil, errors.Wrap(models.NotFoundError, err.Error())
 	}
@@ -268,14 +304,25 @@ func (uc EntityAnnotationUsecase) GetFileDownloadUrl(ctx context.Context,
 	return "", errors.Wrap(models.NotFoundError, "could not find requested file part")
 }
 
-func (uc EntityAnnotationUsecase) DeleteAnnotation(ctx context.Context,
-	req models.AnnotationByIdRequest,
-) error {
+func (uc EntityAnnotationUsecase) DeleteAnnotationByBatch(ctx context.Context, reqs []models.AnnotationByIdRequest) error {
 	if err := uc.enforceSecurityAnnotation.DeleteAnnotation(); err != nil {
 		return errors.Wrap(models.ForbiddenError, err.Error())
 	}
 
-	return uc.repository.DeleteEntityAnnotation(ctx, uc.executorFactory.NewExecutor(), req)
+	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		for _, r := range reqs {
+			if err := uc.repository.DeleteEntityAnnotation(ctx, tx, r); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (uc EntityAnnotationUsecase) DeleteAnnotation(ctx context.Context,
+	req models.AnnotationByIdRequest,
+) error {
+	return uc.DeleteAnnotationByBatch(ctx, []models.AnnotationByIdRequest{req})
 }
 
 // checkObject validates that the given object type exists in the organization's data model.
@@ -293,6 +340,7 @@ func (uc EntityAnnotationUsecase) checkObject(ctx context.Context, orgId uuid.UU
 	return nil
 }
 
+// Validate the input for creating annotation of type Tag or RiskTag. Other types doesn't require validation
 func (uc EntityAnnotationUsecase) validateAnnotation(ctx context.Context, req models.CreateEntityAnnotationRequest) error {
 	switch req.AnnotationType {
 	case models.EntityAnnotationTag:
@@ -314,16 +362,6 @@ func (uc EntityAnnotationUsecase) validateAnnotation(ctx context.Context, req mo
 				"provided tag is not targeting ingested objects",
 			)
 		}
-		exists, err := uc.repository.IsObjectTagSet(ctx, uc.executorFactory.NewExecutor(), req, payload.TagId)
-		if err != nil {
-			return err
-		}
-		if exists {
-			return errors.WithDetail(
-				errors.Wrap(models.ConflictError, "tag is already annotated on this object"),
-				"tag is already annotated on this object",
-			)
-		}
 
 	case models.EntityAnnotationRiskTag:
 		payload, ok := req.Payload.(models.EntityAnnotationRiskTagPayload)
@@ -336,20 +374,37 @@ func (uc EntityAnnotationUsecase) validateAnnotation(ctx context.Context, req mo
 				"invalid risk tag",
 			)
 		}
-		exists, err := uc.repository.IsObjectRiskTagSet(ctx,
-			uc.executorFactory.NewExecutor(), req, string(payload.Tag))
-		if err != nil {
-			return err
-		}
-		if exists {
-			return errors.WithDetail(
-				errors.Wrap(models.ConflictError, "risk tag is already annotated on this object"),
-				"risk tag is already annotated on this object",
-			)
-		}
 	}
 
 	return nil
+}
+
+// findExistingAnnotation looks up an annotation that is identical to the one being created
+// (same object, type, and tag value). Returns the existing record if found, models.NotFoundError
+// if no duplicate exists, or another error if the lookup fails.
+// Only for Tag and RiskTag annotation types
+func (uc EntityAnnotationUsecase) findExistingAnnotation(
+	ctx context.Context,
+	exec repositories.Executor,
+	req models.CreateEntityAnnotationRequest,
+) (models.EntityAnnotation, error) {
+	var (
+		existing models.EntityAnnotation
+		err      error
+	)
+
+	switch req.AnnotationType {
+	case models.EntityAnnotationTag:
+		payload := req.Payload.(models.EntityAnnotationTagPayload)
+		existing, err = uc.repository.FindExistingObjectTagAnnotation(ctx, exec, req, payload.TagId)
+	case models.EntityAnnotationRiskTag:
+		payload := req.Payload.(models.EntityAnnotationRiskTagPayload)
+		existing, err = uc.repository.FindExistingObjectRiskTagAnnotation(ctx, exec, req, string(payload.Tag))
+	default:
+		return models.EntityAnnotation{}, models.NotFoundError
+	}
+
+	return existing, err
 }
 
 func (uc EntityAnnotationUsecase) writeFileAnnotationToBlobStorage(ctx context.Context, file multipart.FileHeader, key string) error {
@@ -392,11 +447,11 @@ func (uc EntityAnnotationUsecase) AttachObjectRiskTags(
 	}
 
 	for _, tag := range input.Tags {
-		exists, err := uc.repository.IsObjectRiskTagSet(ctx, tx, req, string(tag))
-		if err != nil {
+		existing, err := uc.repository.FindExistingObjectRiskTagAnnotation(ctx, tx, req, string(tag))
+		if err != nil && !errors.Is(err, models.NotFoundError) {
 			return err
 		}
-		if exists {
+		if existing.Id != "" {
 			continue
 		}
 

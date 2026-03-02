@@ -11,7 +11,7 @@ func clientDataAnnotations(_ *testing.T, e *httpexpect.Expect) {
 	const (
 		objectType = "account"
 		objectId   = "account-002"
-		listPath   = "/client-data/object-type/" + objectType + "/object-id/" + objectId + "/annotations"
+		listPath   = "/client-data/" + objectType + "/" + objectId + "/annotations"
 	)
 
 	// List annotations: one pre-seeded comment annotation
@@ -34,15 +34,19 @@ func clientDataAnnotations(_ *testing.T, e *httpexpect.Expect) {
 	// Create a comment annotation
 	created := e.POST(listPath).
 		WithJSON(map[string]any{
-			"type": "comment",
-			"payload": map[string]string{
-				"text": "A new comment",
+			"annotations": []map[string]any{
+				{
+					"type": "comment",
+					"payload": map[string]string{
+						"text": "A new comment",
+					},
+				},
 			},
 		}).
 		Expect().
 		Status(http.StatusCreated).
 		JSON().
-		Object().Path("$.data").Object()
+		Object().Path("$.data").Array().Value(0).Object()
 
 	created.
 		HasValue("object_type", objectType).
@@ -53,17 +57,21 @@ func clientDataAnnotations(_ *testing.T, e *httpexpect.Expect) {
 	// Create a risk_tag annotation
 	riskTag := e.POST(listPath).
 		WithJSON(map[string]any{
-			"type": "risk_tag",
-			"payload": map[string]string{
-				"tag":    "sanctions",
-				"reason": "matched on a sanctions list",
-				"url":    "https://example.com/entity/123",
+			"annotations": []map[string]any{
+				{
+					"type": "risk_tag",
+					"payload": map[string]any{
+						"tag":    "sanctions",
+						"reason": "matched on a sanctions list",
+						"url":    "https://example.com/entity/123",
+					},
+				},
 			},
 		}).
 		Expect().
 		Status(http.StatusCreated).
 		JSON().
-		Object().Path("$.data").Object()
+		Object().Path("$.data").Array().Value(0).Object()
 
 	riskTag.
 		HasValue("object_type", objectType).

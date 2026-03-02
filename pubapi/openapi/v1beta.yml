@@ -998,7 +998,7 @@ paths:
         "404":
           $ref: "#/components/responses/404"
 
-  /client-data/object-type/{objectType}/object-id/{objectId}/annotations:
+  /client-data/{objectType}/{objectId}/annotations:
     get:
       operationId: listClientDataAnnotations
       tags:
@@ -1048,12 +1048,14 @@ paths:
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
-      summary: Attach an annotation to an object
+      summary: Attach annotations to an object
       description: |
-        Attach an annotation to a specific object. Supported annotation types are `comment`, `tag` and `risk_tag`.
+        Attach one or more annotations to a specific object. Supported annotation types are `comment`, `tag` and `risk_tag`.
+
+        For `tag` and `risk_tag` types, if an identical annotation already exists on the object, the existing annotation is returned instead of creating a duplicate.
 
         To attach a file annotation, use the dedicated endpoint
-        `POST /client-data/object-type/{objectType}/object-id/{objectId}/annotations/files`.
+        `POST /client-data/{objectType}/{objectId}/annotations/files`.
       parameters:
         - name: objectType
           in: path
@@ -1072,13 +1074,21 @@ paths:
         content:
           application/json:
             schema:
-              oneOf:
-                - $ref: "#/components/schemas/CreateCommentAnnotation"
-                - $ref: "#/components/schemas/CreateTagAnnotation"
-                - $ref: "#/components/schemas/CreateRiskTagAnnotation"
+              type: object
+              required: 
+                - annotations
+              properties:
+                annotations:
+                  type: array
+                  minItems: 1
+                  items:
+                    oneOf:
+                      - $ref: "#/components/schemas/CreateCommentAnnotation"
+                      - $ref: "#/components/schemas/CreateTagAnnotation"
+                      - $ref: "#/components/schemas/CreateRiskTagAnnotation"
       responses:
         "201":
-          description: Annotation created
+          description: Annotation(s) created or pre-existing
           content:
             application/json:
               schema:
@@ -1087,7 +1097,9 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/ClientDataAnnotation"
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/ClientDataAnnotation"
         "400":
           $ref: "#/components/responses/400"
         "404":
@@ -1095,7 +1107,7 @@ paths:
         "409":
           $ref: "#/components/responses/409"
 
-  /client-data/object-type/{objectType}/object-id/{objectId}/annotations/files:
+  /client-data/{objectType}/{objectId}/annotations/files:
     post:
       operationId: createClientDataFileAnnotation
       tags:
@@ -1205,6 +1217,39 @@ paths:
           $ref: "#/components/responses/400"
         "404":
           $ref: "#/components/responses/404"
+
+  /client-data/annotations:
+    delete:
+      operationId: deleteClientDataAnnotations
+      tags:
+        - Client Data
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Delete annotations by ID
+      description: |
+        Delete one or more annotations by their IDs.
+
+        This operation is idempotent — IDs that do not exist are silently ignored. All deletions are performed atomically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        "204":
+          description: Annotations deleted
+        "400":
+          $ref: "#/components/responses/400"
 
 components:
   securitySchemes:

@@ -82,14 +82,15 @@ func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gi
 		root.DELETE("/continuous-screenings/objects",
 			HandleDeleteContinuousScreeningObject(uc))
 
-		root.GET("/client-data/object-type/:objectType/object-id/:objectId/annotations",
+		root.GET("/client-data/:objectType/:objectId/annotations",
 			v1beta.HandleGetClientDataAnnotations(uc))
-		root.POST("/client-data/object-type/:objectType/object-id/:objectId/annotations",
+		root.POST("/client-data/:objectType/:objectId/annotations",
 			v1beta.HandleAttachClientDataAnnotation(uc))
-		root.POST("/client-data/object-type/:objectType/object-id/:objectId/annotations/files",
+		root.POST("/client-data/:objectType/:objectId/annotations/files",
 			v1beta.HandleCreateEntityFileAnnotation(uc))
 		root.GET("/client-data/annotations/:id/files/:partId/download",
 			v1beta.HandleGetEntityFileAnnotation(uc))
+		root.DELETE("/client-data/annotations", v1beta.HandleDeleteEntityAnnotations(uc))
 	}
 }
 
