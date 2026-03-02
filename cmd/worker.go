@@ -357,6 +357,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithAppName(appName),
 		usecases.WithIngestionBucketUrl(workerConfig.ingestionBucketUrl),
+		usecases.WithOffloadingBucketUrl(offloadingConfig.BucketUrl),
 		usecases.WithOffloading(offloadingConfig),
 		usecases.WithFailedWebhooksRetryPageSize(workerConfig.failedWebhooksRetryPageSize),
 		usecases.WithLicense(license),

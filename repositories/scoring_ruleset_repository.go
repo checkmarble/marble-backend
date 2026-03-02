@@ -81,24 +81,6 @@ func (repo *MarbleDbRepository) GetScoringRuleset(
 	return *ruleset, nil
 }
 
-func (repo *MarbleDbRepository) GetScoringRulesetById(
-	ctx context.Context,
-	exec Executor,
-	orgId, id uuid.UUID,
-) (models.ScoringRuleset, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.ScoringRuleset{}, err
-	}
-
-	query := NewQueryBuilder().
-		Select(dbmodels.SelectScoringRulesetsColumns...).
-		From(dbmodels.TABLE_SCORING_RULESETS).
-		Where("org_id = ?", orgId).
-		Where("id = ?", id)
-
-	return SqlToModel(ctx, exec, query, dbmodels.AdaptScoringRuleset)
-}
-
 func (repo *MarbleDbRepository) ListScoringRulesetVersions(
 	ctx context.Context,
 	exec Executor,
@@ -122,6 +104,24 @@ func (repo *MarbleDbRepository) ListScoringRulesetVersions(
 	}
 
 	return rulesets, nil
+}
+
+func (repo *MarbleDbRepository) GetScoringRulesetById(
+	ctx context.Context,
+	exec Executor,
+	orgId, id uuid.UUID,
+) (models.ScoringRuleset, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ScoringRuleset{}, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectScoringRulesetsColumns...).
+		From(dbmodels.TABLE_SCORING_RULESETS).
+		Where("org_id = ?", orgId).
+		Where("id = ?", id)
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptScoringRuleset)
 }
 
 func (repo *MarbleDbRepository) InsertScoringRulesetVersion(
