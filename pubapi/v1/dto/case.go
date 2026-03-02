@@ -32,6 +32,7 @@ type CaseComment struct {
 	User      Ref            `json:"user"`
 	Comment   string         `json:"comment"`
 	CreatedAt types.DateTime `json:"created_at"`
+	Source    models.CaseCommentSource `json:"source"`
 }
 
 type CaseFile struct {
@@ -79,14 +80,15 @@ func AdaptCase(users []models.User, tags []models.Tag, referents map[string]mode
 	}
 }
 
-func AdaptCaseComment(users []models.User) func(models.CaseEvent) CaseComment {
+func AdaptCaseComment(users []models.User) func(models.CaseCommentEvent) CaseComment {
 	userMap := pure_utils.MapSliceToMap(users, func(u models.User) (models.UserId, models.User) { return u.UserId, u })
 
-	return func(c models.CaseEvent) CaseComment {
+	return func(c models.CaseCommentEvent) CaseComment {
 		comment := CaseComment{
 			Id:        c.Id,
-			Comment:   c.AdditionalNote,
+			Comment:   c.Comment,
 			CreatedAt: types.DateTime(c.CreatedAt),
+			Source:    c.Source,
 			User: Ref{
 				Id:   uuid.Nil.String(),
 				Name: "unknown user",

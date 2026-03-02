@@ -62,6 +62,21 @@ const (
 	AnnotationResourceType               CaseEventResourceType = "annotation"
 )
 
+type CaseCommentSource string
+
+const (
+	CaseCommentSourceCase   CaseCommentSource = "case"
+	CaseCommentSourceEntity CaseCommentSource = "entity"
+)
+
+type CaseCommentEvent struct {
+	Id        string
+	UserId    null.String
+	CreatedAt time.Time
+	Comment   string
+	Source    CaseCommentSource
+}
+
 type CreateCaseEventAttributes struct {
 	OrgId          uuid.UUID
 	CaseId         string

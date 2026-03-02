@@ -1,6 +1,7 @@
 package dbmodels
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -26,6 +27,41 @@ type DBCaseEvent struct {
 const TABLE_CASE_EVENTS = "case_events"
 
 var SelectCaseEventColumn = utils.ColumnList[DBCaseEvent]()
+
+// DBCaseCommentEvent is the result of a JOIN between case_events and entity_annotations,
+// used specifically by ListCaseMixedCommentEvents.
+type DBCaseCommentEvent struct {
+	Id                string          `db:"id"`
+	UserId            null.String     `db:"user_id"`
+	CreatedAt         time.Time       `db:"created_at"`
+	EventType         string          `db:"event_type"`
+	AdditionalNote    *string         `db:"additional_note"`
+	AnnotationPayload *json.RawMessage `db:"annotation_payload"`
+}
+
+func AdaptCaseCommentEvent(db DBCaseCommentEvent) (models.CaseCommentEvent, error) {
+	event := models.CaseCommentEvent{
+		Id:        db.Id,
+		UserId:    db.UserId,
+		CreatedAt: db.CreatedAt,
+		Source:    models.CaseCommentSourceCase,
+	}
+	if db.AdditionalNote != nil {
+		event.Comment = *db.AdditionalNote
+	}
+
+	if db.EventType == string(models.CaseEntityAnnotated) {
+		event.Source = models.CaseCommentSourceEntity
+		if db.AnnotationPayload != nil {
+			var payload models.EntityAnnotationCommentPayload
+			if err := json.Unmarshal(*db.AnnotationPayload, &payload); err == nil {
+				event.Comment = payload.Text
+			}
+		}
+	}
+
+	return event, nil
+}
 
 func AdaptCaseEvent(caseEvent DBCaseEvent) (models.CaseEvent, error) {
 	var additionalNote, resourceId, resourceType, newValue, previousValue string
