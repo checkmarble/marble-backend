@@ -52,12 +52,13 @@ Rule:
 		for _, cond := range rule.Conditions {
 			fn, err := CreateFunction(cond)
 			if err != nil {
-				return models.WorkflowExecution{}, errors.Wrap(err, "could not evaluate workflow condition")
+				return models.WorkflowExecution{}, errors.Wrap(err,
+					"could not evaluate workflow condition")
 			}
 
 			result, err := fn(ctx, req)
 			if err != nil {
-				logger.Warn("error while executing workflow condition",
+				logger.WarnContext(ctx, "error while executing workflow condition",
 					"decision", decision.Decision,
 					"condition", cond.Id,
 					"error", err.Error())
@@ -89,12 +90,14 @@ Rule:
 				if !performed.AddedToCase {
 					params, err := models.ParseWorkflowAction[dto.WorkflowActionCaseParams](action)
 					if err != nil {
-						return models.WorkflowExecution{}, errors.Wrap(err, "could not unmarshal workflow action parameters")
+						return models.WorkflowExecution{}, errors.Wrap(err,
+							"could not unmarshal workflow action parameters")
 					}
 
 					exec, err := d.AutomaticDecisionToCase(ctx, tx, scenario, decision, evalParams, params)
 					if err != nil {
-						return models.WorkflowExecution{}, errors.Wrap(err, "error while executing workflow action")
+						return models.WorkflowExecution{}, errors.Wrap(err,
+							"error while executing workflow action")
 					}
 
 					performed.AddedToCase = performed.AddedToCase || exec.AddedToCase
