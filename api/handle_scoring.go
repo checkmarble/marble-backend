@@ -290,3 +290,19 @@ func handleOverrideRecordScore(uc usecases.Usecases) gin.HandlerFunc {
 		c.JSON(http.StatusCreated, scoring.AdaptScore(score))
 	}
 }
+
+func handleScoringGetDistribution(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		uc := usecasesWithCreds(ctx, uc)
+		scoringUsecase := uc.NewScoringScoresUsecase()
+
+		scores, err := scoringUsecase.GetScoreDistribution(ctx, c.Param("entityType"))
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(scores, scoring.AdaptScoreDistribution))
+	}
+}

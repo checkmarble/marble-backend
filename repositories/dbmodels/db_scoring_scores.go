@@ -49,3 +49,15 @@ func AdaptScoringScore(db DbScoringScore) (models.ScoringScore, error) {
 		DeletedAt:    db.DeletedAt,
 	}, nil
 }
+
+type DbScoringScoreDistribution struct {
+	RiskLevel int `db:"risk_level"`
+	Count     int `db:"n"` //nolint:tagliatelle
+}
+
+func AdaptScoringScoreDistribution(db DbScoringScoreDistribution) (models.ScoreDistribution, error) {
+	return models.ScoreDistribution{
+		RiskLevel: db.RiskLevel,
+		Count:     db.Count,
+	}, nil
+}
