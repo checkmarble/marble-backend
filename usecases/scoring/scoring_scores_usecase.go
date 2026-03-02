@@ -252,6 +252,13 @@ func (uc ScoringScoresUsecase) OverrideScore(ctx context.Context, req models.Ins
 	return score, err
 }
 
+func (uc ScoringScoresUsecase) GetScoreDistribution(ctx context.Context, entityType string) ([]models.ScoreDistribution, error) {
+	exec := uc.executorFactory.NewExecutor()
+	orgId := uc.enforceSecurity.OrgId()
+
+	return uc.repository.GetScoreDistribution(ctx, exec, orgId, entityType)
+}
+
 func (uc ScoringScoresUsecase) getPayloadObject(ctx context.Context, orgId uuid.UUID, dataModel models.DataModel, recordType, recordId string) (models.ClientObject, error) {
 	table, ok := dataModel.Tables[recordType]
 	if !ok {

@@ -40,3 +40,15 @@ func AdaptScore(m models.ScoringScore) Score {
 		}(),
 	}
 }
+
+type ScoreDistribution struct {
+	RiskLevel int `json:"risk_level"`
+	Count     int `json:"count"`
+}
+
+func AdaptScoreDistribution(m models.ScoreDistribution) ScoreDistribution {
+	return ScoreDistribution{
+		RiskLevel: m.RiskLevel,
+		Count:     m.Count,
+	}
+}

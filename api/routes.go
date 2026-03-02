@@ -443,6 +443,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		r.GET("/scoring/risk-levels/:recordType/:recordId/history", tom, handleScoringScoreHistory(uc))
 		r.POST("/scoring/risk-levels/:recordType/:recordId", tom, handleOverrideRecordScore(uc))
 		r.POST("/scoring/risk-levels/:recordType/:recordId/compute", tom, handleScoringComputeScore(uc))
+		r.GET("/scoring/distribution/:entityType", tom, handleScoringGetDistribution(uc))
 	})
 
 	if conf.AnalyticsProxyApiUrl == "" {
