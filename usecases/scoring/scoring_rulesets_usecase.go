@@ -260,6 +260,9 @@ func (uc ScoringRulesetsUsecase) validateScoringRuleAst(tree dto.NodeDto) error 
 		if len(tree.Children) == 0 {
 			return errors.New("invalid root AST node for user scoring: `Switch` must contain at least one child")
 		}
+		if _, ok := tree.NamedChildren["field"]; !ok {
+			return errors.New("invalid root AST node for user scoring: `Switch` must contain the evaluated field in a `field` named children")
+		}
 
 		for _, child := range tree.Children {
 			if child.Name != ast.FuncAttributesMap[ast.FUNC_SCORE_COMPUTATION].AstName {

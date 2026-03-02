@@ -14,6 +14,7 @@ type ScoringRepository interface {
 
 	ListScoringRulesets(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.ScoringRuleset, error)
 	GetScoringRuleset(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, recordType string, status models.ScoreRulesetStatus) (models.ScoringRuleset, error)
+	GetScoringRulesetById(ctx context.Context, exec repositories.Executor, orgId, id uuid.UUID) (models.ScoringRuleset, error)
 	InsertScoringRulesetVersion(ctx context.Context, exec repositories.Transaction,
 		orgId uuid.UUID,
 		ruleset models.CreateScoringRulesetRequest,

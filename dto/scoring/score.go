@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/google/uuid"
 )
 
@@ -16,6 +17,8 @@ type Score struct {
 	Current      bool       `json:"current"`
 	CreatedAt    time.Time  `json:"created_at"`
 	StaleAt      *time.Time `json:"stale_at,omitempty"`
+
+	Evaluations []*ast.NodeEvaluationDto `json:"evaluations,omitempty"`
 }
 
 type OverrideScoreRequest struct {
@@ -23,21 +26,29 @@ type OverrideScoreRequest struct {
 	StaleAt   *time.Time `json:"stale_at"`
 }
 
-func AdaptScore(m models.ScoringScore) Score {
-	return Score{
-		Id:           m.Id,
-		RiskLevel:    m.RiskLevel,
-		Source:       string(m.Source),
-		RulesetId:    m.RulesetId,
-		OverriddenBy: m.OverriddenBy,
-		Current:      m.DeletedAt == nil,
-		CreatedAt:    m.CreatedAt,
-		StaleAt: func() *time.Time {
-			if m.DeletedAt != nil {
-				return nil
-			}
-			return m.StaleAt
-		}(),
+func AdaptScore(evals []*ast.NodeEvaluationDto) func(m models.ScoringScore) Score {
+	return func(m models.ScoringScore) Score {
+		score := Score{
+			Id:           m.Id,
+			RiskLevel:    m.RiskLevel,
+			Source:       string(m.Source),
+			RulesetId:    m.RulesetId,
+			OverriddenBy: m.OverriddenBy,
+			Current:      m.DeletedAt == nil,
+			CreatedAt:    m.CreatedAt,
+			StaleAt: func() *time.Time {
+				if m.DeletedAt != nil {
+					return nil
+				}
+				return m.StaleAt
+			}(),
+		}
+
+		if evals != nil {
+			score.Evaluations = evals
+		}
+
+		return score
 	}
 }
 

@@ -225,7 +225,7 @@ func handleScoringScoreHistory(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, pure_utils.Map(scores, scoring.AdaptScore))
+		c.JSON(http.StatusOK, pure_utils.Map(scores, scoring.AdaptScore(nil)))
 	}
 }
 
@@ -246,7 +246,7 @@ func handleScoringGetActiveScore(uc usecases.Usecases) gin.HandlerFunc {
 			RefreshInBackground: false,
 		}
 
-		score, err := scoringUsecase.GetActiveScore(ctx, record, opts)
+		score, evals, err := scoringUsecase.GetActiveScore(ctx, record, c.Query("include_evaluation") == "true", opts)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -256,7 +256,7 @@ func handleScoringGetActiveScore(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, scoring.AdaptScore(*score))
+		c.JSON(http.StatusOK, scoring.AdaptScore(evals)(*score))
 	}
 }
 
@@ -287,7 +287,7 @@ func handleOverrideRecordScore(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, scoring.AdaptScore(score))
+		c.JSON(http.StatusCreated, scoring.AdaptScore(nil)(score))
 	}
 }
 

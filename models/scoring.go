@@ -170,7 +170,7 @@ type CreateScoringRuleRequest struct {
 type ScoringEvaluation struct {
 	Modifier   int
 	Floor      int
-	Score      int
+	RiskLevel  int
 	Evaluation []ast.NodeEvaluation
 }
 

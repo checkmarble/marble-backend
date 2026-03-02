@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/google/uuid"
@@ -61,6 +62,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) makeScoreUsecase() scoring.Sc
 		nil,
 		s.repository,
 		s.dataModelRepo,
+		repositories.OffloadedReadWriter{},
 		s.ingestedDataReader,
 		nil,
 		ast_eval.EvaluateAstExpression{
@@ -86,6 +88,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) makeWorker(scoreUsecase scori
 		scoring.ScoringRulesetsUsecase{},
 		scoreUsecase,
 		s.repository,
+		repositories.OffloadedReadWriter{},
 	)
 }
 
