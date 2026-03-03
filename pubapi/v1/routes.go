@@ -31,10 +31,10 @@ func Routes(conf pubapi.Config, version string, unauthed *gin.RouterGroup, authM
 
 		decision.POST("/decisions", HandleCreateDecision(uc))
 		decision.POST("/decisions/all", HandleCreateAllDecisions(uc))
-		decision.POST("/decisions/all/async", HandleCreateAsyncDecision(uc))
-		decision.POST("/decisions/all/async/batch", HandleCreateAsyncDecisionBatch(uc))
+		decision.POST("/decisions/async", HandleCreateAsyncDecision(uc))
+		decision.POST("/decisions/async/batch", HandleCreateAsyncDecisionBatch(uc))
 
-		root.GET("/decisions/all/async/:executionId", HandleGetAsyncDecisionExecution(uc))
+		root.GET("/decisions/async/:executionId", HandleGetAsyncDecisionExecution(uc))
 
 		root.GET("/batch-executions", HandleListBatchExecutions(uc))
 
