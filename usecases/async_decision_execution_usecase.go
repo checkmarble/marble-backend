@@ -22,7 +22,6 @@ type AsyncDecisionExecutionUsecase struct {
 	asyncDecisionExecutionRepository repositories.AsyncDecisionExecutionRepository
 	taskQueueRepository              repositories.TaskQueueRepository
 	dataModelRepository              repositories.DataModelRepository
-	payloadEnricher                  payload_parser.PayloadEnrichementUsecase
 }
 
 func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecution(
@@ -100,11 +99,20 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecutionBatch(
 		return nil, err
 	}
 
-	// Validate all payloads upfront
-	for i, obj := range objects {
-		if err := usecase.validatePayload(ctx, orgId, objectType, obj); err != nil {
-			return nil, errors.Wrapf(err, "validation failed for object at index %d", i)
+	// Validate all payloads upfront, collecting all errors
+	validationErrors := make(models.IngestionValidationErrors)
+	for _, obj := range objects {
+		err := usecase.validatePayload(ctx, orgId, objectType, obj)
+		var objErrors models.IngestionValidationErrors
+		if errors.As(err, &objErrors) {
+			objectId, errMap := objErrors.GetSomeItem()
+			validationErrors[objectId] = errMap
+		} else if err != nil {
+			return nil, err
 		}
+	}
+	if len(validationErrors) > 0 {
+		return nil, validationErrors
 	}
 
 	// Generate IDs for all executions
@@ -213,9 +221,9 @@ func (usecase *AsyncDecisionExecutionUsecase) validatePayload(
 		)
 	}
 
-	parser := payload_parser.NewParser(payload_parser.WithEnricher(usecase.payloadEnricher), payload_parser.DisallowUnknownFields())
+	parser := payload_parser.NewParser(payload_parser.DisallowUnknownFields())
 	if _, err := parser.ParsePayload(ctx, table, rawPayload); err != nil {
-		return errors.Wrap(err, "error parsing payload in async decision execution")
+		return err
 	}
 
 	return nil

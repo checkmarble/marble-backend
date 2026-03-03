@@ -3,6 +3,8 @@ package v1
 import (
 	"net/http"
 
+	gdto "github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
@@ -10,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -72,7 +75,14 @@ func HandleCreateAsyncDecisionBatch(uc usecases.Usecases) gin.HandlerFunc {
 		executions, err := asyncUsecase.CreateAsyncDecisionExecutionBatch(ctx,
 			orgId, payload.TriggerObjectType, payload.Objects, payload.ScenarioId, payload.Ingest)
 		if err != nil {
-			if presentDecisionCreationError(c, err) {
+			var validationError models.IngestionValidationErrors
+			if errors.As(err, &validationError) {
+				types.NewErrorResponse().
+					WithError(err).
+					WithErrorCode(string(gdto.SchemaMismatchError)).
+					WithErrorMessage("input validation error").
+					WithErrorDetails(validationError).
+					Serve(c)
 				return
 			}
 
