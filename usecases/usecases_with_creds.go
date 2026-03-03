@@ -1044,6 +1044,18 @@ func (usecases UsecasesWithCreds) NewTriggeredScoreComputationWorker() *scoring_
 	)
 }
 
+func (usecases UsecasesWithCreds) NewRulesetDryRunWorker() *scoring_jobs.RulesetDryRunWorker {
+	return scoring_jobs.NewRulesetDryRunWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.NewScoringRulesetsUsecase(),
+		usecases.NewScoringScoresUsecase(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.NewOffloadedReader(),
+		usecases.Repositories.IngestedDataReadRepository,
+	)
+}
+
 func (usecases *UsecasesWithCreds) NewDataModelDestroyUsecase() DataModelDestroyUsecase {
 	return NewDataModelDestroyUsecase(
 		usecases.NewExecutorFactory(),

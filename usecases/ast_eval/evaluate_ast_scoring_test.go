@@ -106,14 +106,7 @@ func TestSwitchScoring(t *testing.T) {
 			},
 		},
 		NamedChildren: map[string]ast.Node{
-			"default": {
-				Function: ast.FUNC_SCORE_COMPUTATION,
-				Children: []ast.Node{{Constant: true}},
-				NamedChildren: map[string]ast.Node{
-					"modifier": {Constant: 42},
-					"floor":    {Constant: 9000},
-				},
-			},
+			"field": {Constant: "Value"},
 		},
 	}
 
@@ -170,6 +163,9 @@ func TestSwitchScoringDefaultCase(t *testing.T) {
 					"floor":    {Constant: 9000},
 				},
 			},
+		},
+		NamedChildren: map[string]ast.Node{
+			"field": {Constant: "Value"},
 		},
 	}
 

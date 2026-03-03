@@ -422,6 +422,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	if infra.HasGlobalFeatureFlag(infra.FEATURE_USER_SCORING) {
 		river.AddWorker(workers, adminUc.NewTriggeredScoreComputationWorker())
+		river.AddWorker(workers, adminUc.NewRulesetDryRunWorker())
 	}
 
 	if err := riverClient.Start(ctx); err != nil {

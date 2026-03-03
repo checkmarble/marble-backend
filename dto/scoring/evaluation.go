@@ -9,7 +9,7 @@ import (
 type ScoringEvaluation struct {
 	Modifier    int                     `json:"modifier"`
 	Floor       int                     `json:"floor"`
-	RiskLevel   int                     `json:"score"`
+	RiskLevel   int                     `json:"risk_level"`
 	Evaluations []ast.NodeEvaluationDto `json:"evaluations"`
 }
 

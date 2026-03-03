@@ -63,3 +63,43 @@ func AdaptScoreDistribution(m models.ScoreDistribution) ScoreDistribution {
 		Count: m.Count,
 	}
 }
+
+type DryRun struct {
+	Id           uuid.UUID           `json:"id"`
+	RulesetId    uuid.UUID           `json:"ruleset_id"`
+	Status       string              `json:"status"`
+	RecordCount  int                 `json:"record_count"`
+	Progress     float64             `json:"progress"`
+	Distribution []ScoreDistribution `json:"distribution"`
+	CreatedAt    time.Time           `json:"created_at"`
+}
+
+func AdaptDryRun(m models.ScoringDryRun) DryRun {
+	dryRun := DryRun{
+		Id:           m.Id,
+		RulesetId:    m.RulesetId,
+		Status:       string(m.Status),
+		RecordCount:  m.RecordCount,
+		Distribution: make([]ScoreDistribution, 0),
+		CreatedAt:    m.CreatedAt,
+	}
+
+	processedRecords := 0
+
+	if m.Results != nil {
+		dryRun.Distribution = make([]ScoreDistribution, 0, len(m.Results))
+
+		for score, count := range m.Results {
+			processedRecords += count
+
+			dryRun.Distribution = append(dryRun.Distribution, ScoreDistribution{
+				Score: score,
+				Count: count,
+			})
+		}
+	}
+
+	dryRun.Progress = float64(processedRecords) / float64(m.RecordCount)
+
+	return dryRun
+}

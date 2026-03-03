@@ -87,6 +87,13 @@ type IngestedDataReadRepository interface {
 		pageSize uint64,
 		offset uint64,
 	) ([]models.DataModelObject, error)
+
+	SampleObjectIds(
+		ctx context.Context,
+		exec Executor,
+		recordType string,
+		size int,
+	) ([]string, error)
 }
 
 type IngestedDataReadRepositoryImpl struct{}
@@ -937,4 +944,53 @@ func (repo *IngestedDataReadRepositoryImpl) SearchObjects(
 	}
 
 	return ingestedObjects, nil
+}
+
+func (repo *IngestedDataReadRepositoryImpl) SampleObjectIds(
+	ctx context.Context,
+	exec Executor,
+	recordType string,
+	size int,
+) ([]string, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	tableName := pgIdentifierWithSchema(exec, recordType)
+
+	query := NewQueryBuilder().
+		Select("object_id").
+		From(tableName).
+		Where("valid_until = 'infinity'").
+		OrderBy("random()").
+		Limit(uint64(size))
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	recordIds := make([]string, 0, size)
+
+	var tmp string
+
+	for rows.Next() {
+		if err := rows.Scan(&tmp); err != nil {
+			return nil, err
+		}
+
+		recordIds = append(recordIds, tmp)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error while iterating over rows: %w", err)
+	}
+
+	return recordIds, nil
 }
