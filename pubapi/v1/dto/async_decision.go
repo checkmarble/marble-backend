@@ -32,6 +32,7 @@ func AdaptAsyncDecisionExecution(m models.AsyncDecisionExecution) AsyncDecisionE
 	return AsyncDecisionExecution{
 		Id:           m.Id,
 		ObjectType:   m.ObjectType,
+		ScenarioId:   m.ScenarioId,
 		Status:       m.Status.String(),
 		DecisionIds:  decisionIds,
 		ErrorMessage: m.ErrorMessage,
@@ -48,14 +49,14 @@ func AdaptAsyncDecisionExecutionCreated(m models.AsyncDecisionExecution) AsyncDe
 }
 
 type CreateAsyncDecisionParams struct {
-	TriggerObjectType string          `json:"trigger_object_type" binding:"required"`
+	TriggerObjectType string          `json:"trigger_object_type"`
 	TriggerObject     json.RawMessage `json:"trigger_object" binding:"required"`
 	ScenarioId        *string         `json:"scenario_id" binding:"omitempty,uuid"`
 	Ingest            bool            `json:"ingest"`
 }
 
 type CreateAsyncDecisionBatchParams struct {
-	TriggerObjectType string            `json:"trigger_object_type" binding:"required"`
+	TriggerObjectType string            `json:"trigger_object_type"`
 	TriggerObjects    []json.RawMessage `json:"trigger_objects" binding:"required,min=1,max=100"`
 	ScenarioId        *string           `json:"scenario_id" binding:"omitempty,uuid"`
 	Ingest            bool              `json:"ingest"`

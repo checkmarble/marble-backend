@@ -118,6 +118,7 @@ func (w *AsyncDecisionExecutionWorker) Work(ctx context.Context, job *river.Job[
 				OrganizationId:     execution.OrgId,
 				TriggerObjectTable: execution.ObjectType,
 				PayloadRaw:         execution.TriggerObject,
+				ScenarioId:         execution.ScenarioId,
 			},
 			models.CreateDecisionParams{
 				WithDecisionWebhooks:        true,
@@ -244,6 +245,7 @@ func (w *AsyncDecisionExecutionWorker) handleError(
 				AsyncDecisionExecutionId: execution.Id,
 				ObjectType:               execution.ObjectType,
 				Stage:                    stage,
+				ScenarioId:               execution.ScenarioId,
 				TriggerObject:            execution.TriggerObject,
 				ErrorMessage:             safeMessage,
 			}),

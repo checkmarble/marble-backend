@@ -16,7 +16,6 @@ type DBAsyncDecisionExecution struct {
 	ObjectType    string          `db:"object_type"`
 	TriggerObject json.RawMessage `db:"trigger_object"`
 
-	// Created in advance to avoid a future migration. Unused for now.
 	ScenarioId   *string     `db:"scenario_id"`
 	ShouldIngest bool        `db:"should_ingest"`
 	Status       string      `db:"status"`
@@ -43,6 +42,7 @@ func AdaptAsyncDecisionExecution(db DBAsyncDecisionExecution) (models.AsyncDecis
 		Id:            db.Id,
 		OrgId:         db.OrgId,
 		ObjectType:    db.ObjectType,
+		ScenarioId:    db.ScenarioId,
 		TriggerObject: db.TriggerObject,
 		ShouldIngest:  db.ShouldIngest,
 		Status:        status,

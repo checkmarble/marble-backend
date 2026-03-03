@@ -206,6 +206,7 @@ func (usecases *UsecasesWithCreds) NewAsyncDecisionExecutionUsecase() AsyncDecis
 		asyncDecisionExecutionRepository: usecases.Repositories.MarbleDbRepository,
 		taskQueueRepository:              usecases.Repositories.TaskQueueRepository,
 		dataModelRepository:              usecases.Repositories.MarbleDbRepository,
+		scenarioReader:                   usecases.Repositories.MarbleDbRepository,
 	}
 }
 

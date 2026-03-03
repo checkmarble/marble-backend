@@ -49,16 +49,24 @@ paths:
             schema:
               type: object
               required:
-                - trigger_object_type
                 - trigger_object
               properties:
                 trigger_object_type:
-                  description: Name of the data model table for the trigger object
+                  description: |
+                    Name of the data model table for the trigger object.
+                    At least one of `trigger_object_type` or `scenario_id` must be provided.
+                    When only `scenario_id` is provided, the trigger object type is derived from the scenario.
                   type: string
                 trigger_object:
                   description: The trigger object payload, must conform to the data model schema
                   type: object
                   additionalProperties: true
+                scenario_id:
+                  description: |
+                    Optional scenario ID to restrict execution to a single scenario.
+                    At least one of `trigger_object_type` or `scenario_id` must be provided.
+                  type: string
+                  format: uuid
                 ingest:
                   description: Whether to ingest the trigger object before creating decisions.
                   type: boolean
@@ -102,11 +110,13 @@ paths:
             schema:
               type: object
               required:
-                - trigger_object_type
                 - trigger_objects
               properties:
                 trigger_object_type:
-                  description: Name of the data model table for the trigger objects
+                  description: |
+                    Name of the data model table for the trigger objects.
+                    At least one of `trigger_object_type` or `scenario_id` must be provided.
+                    When only `scenario_id` is provided, the trigger object type is derived from the scenario.
                   type: string
                 trigger_objects:
                   description: Array of trigger object payloads (1 to 100 objects)
@@ -117,7 +127,9 @@ paths:
                     type: object
                     additionalProperties: true
                 scenario_id:
-                  description: Optional scenario ID to restrict execution to a single scenario
+                  description: |
+                    Optional scenario ID to restrict execution to a single scenario.
+                    At least one of `trigger_object_type` or `scenario_id` must be provided.
                   type: string
                   format: uuid
                 ingest:

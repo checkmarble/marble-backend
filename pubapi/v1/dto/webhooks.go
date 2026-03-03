@@ -104,6 +104,7 @@ func AdaptWebhookEventData(
 					Id:            d.AsyncDecisionExecutionId,
 					ObjectType:    d.ObjectType,
 					Stage:         d.Stage.String(),
+					ScenarioId:    d.ScenarioId,
 					TriggerObject: d.TriggerObject,
 					ErrorMessage:  d.ErrorMessage,
 				}

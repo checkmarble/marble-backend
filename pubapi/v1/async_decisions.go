@@ -36,7 +36,7 @@ func HandleCreateAsyncDecision(uc usecases.Usecases) gin.HandlerFunc {
 		asyncUsecase := uc.NewAsyncDecisionExecutionUsecase()
 
 		execution, err := asyncUsecase.CreateAsyncDecisionExecution(ctx,
-			orgId, payload.TriggerObjectType, payload.TriggerObject, payload.Ingest)
+			orgId, payload.TriggerObjectType, payload.TriggerObject, payload.ScenarioId, payload.Ingest)
 		if err != nil {
 			if presentDecisionCreationError(c, err) {
 				return
@@ -72,7 +72,7 @@ func HandleCreateAsyncDecisionBatch(uc usecases.Usecases) gin.HandlerFunc {
 		asyncUsecase := uc.NewAsyncDecisionExecutionUsecase()
 
 		executions, err := asyncUsecase.CreateAsyncDecisionExecutionBatch(ctx,
-			orgId, payload.TriggerObjectType, payload.TriggerObjects, payload.Ingest)
+			orgId, payload.TriggerObjectType, payload.TriggerObjects, payload.ScenarioId, payload.Ingest)
 		if err != nil {
 			var validationError models.IngestionValidationErrors
 			if errors.As(err, &validationError) {

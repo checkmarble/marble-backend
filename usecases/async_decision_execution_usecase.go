@@ -15,6 +15,10 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/security"
 )
 
+type scenarioReader interface {
+	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
+}
+
 type AsyncDecisionExecutionUsecase struct {
 	executorFactory                  executor_factory.ExecutorFactory
 	transactionFactory               executor_factory.TransactionFactory
@@ -22,6 +26,7 @@ type AsyncDecisionExecutionUsecase struct {
 	asyncDecisionExecutionRepository repositories.AsyncDecisionExecutionRepository
 	taskQueueRepository              repositories.TaskQueueRepository
 	dataModelRepository              repositories.DataModelRepository
+	scenarioReader                   scenarioReader
 }
 
 func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecution(
@@ -29,9 +34,15 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecution(
 	orgId uuid.UUID,
 	objectType string,
 	triggerObject json.RawMessage,
+	scenarioId *string,
 	shouldIngest bool,
 ) (models.AsyncDecisionExecution, error) {
 	if err := usecase.enforceSecurity.CreateDecision(orgId); err != nil {
+		return models.AsyncDecisionExecution{}, err
+	}
+
+	objectType, err := usecase.resolveObjectType(ctx, orgId, objectType, scenarioId)
+	if err != nil {
 		return models.AsyncDecisionExecution{}, err
 	}
 
@@ -41,7 +52,7 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecution(
 		return models.AsyncDecisionExecution{}, errors.Wrap(err,
 			"error getting data model in validatePayload")
 	}
-	if err := usecase.validatePayload(ctx, orgId, objectType, triggerObject, dataModel); err != nil {
+	if err := usecase.validatePayload(ctx, objectType, triggerObject, dataModel); err != nil {
 		return models.AsyncDecisionExecution{}, err
 	}
 
@@ -56,6 +67,7 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecution(
 				OrgId:         orgId,
 				ObjectType:    objectType,
 				TriggerObject: triggerObject,
+				ScenarioId:    scenarioId,
 				ShouldIngest:  shouldIngest,
 			}
 
@@ -77,6 +89,7 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecution(
 				Id:            executionId,
 				OrgId:         orgId,
 				ObjectType:    objectType,
+				ScenarioId:    scenarioId,
 				TriggerObject: triggerObject,
 				ShouldIngest:  shouldIngest,
 				Status:        models.AsyncDecisionExecutionStatusPending,
@@ -95,9 +108,15 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecutionBatch(
 	orgId uuid.UUID,
 	objectType string,
 	objects []json.RawMessage,
+	scenarioId *string,
 	shouldIngest bool,
 ) ([]models.AsyncDecisionExecution, error) {
 	if err := usecase.enforceSecurity.CreateDecision(orgId); err != nil {
+		return nil, err
+	}
+
+	objectType, err := usecase.resolveObjectType(ctx, orgId, objectType, scenarioId)
+	if err != nil {
 		return nil, err
 	}
 
@@ -110,7 +129,7 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecutionBatch(
 	// Validate all payloads upfront, collecting all errors
 	validationErrors := make(models.IngestionValidationErrors)
 	for _, obj := range objects {
-		err := usecase.validatePayload(ctx, orgId, objectType, obj, dataModel)
+		err := usecase.validatePayload(ctx, objectType, obj, dataModel)
 		var objErrors models.IngestionValidationErrors
 		if errors.As(err, &objErrors) {
 			objectId, errMap := objErrors.GetSomeItem()
@@ -140,6 +159,7 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecutionBatch(
 					OrgId:         orgId,
 					ObjectType:    objectType,
 					TriggerObject: obj,
+					ScenarioId:    scenarioId,
 					ShouldIngest:  shouldIngest,
 				}
 			}
@@ -164,6 +184,7 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecutionBatch(
 					Id:            executionIds[i],
 					OrgId:         orgId,
 					ObjectType:    objectType,
+					ScenarioId:    scenarioId,
 					TriggerObject: obj,
 					ShouldIngest:  shouldIngest,
 					Status:        models.AsyncDecisionExecutionStatusPending,
@@ -202,10 +223,39 @@ func (usecase *AsyncDecisionExecutionUsecase) GetAsyncDecisionExecution(
 	return execution, nil
 }
 
+// resolveObjectType ensures we have a trigger_object_type. When only scenario_id is provided,
+// it looks up the scenario to derive the object type.
+func (usecase *AsyncDecisionExecutionUsecase) resolveObjectType(
+	ctx context.Context,
+	orgId uuid.UUID,
+	objectType string,
+	scenarioId *string,
+) (string, error) {
+	if objectType == "" && scenarioId == nil {
+		return "", errors.Wrap(models.BadParameterError,
+			"one of trigger_object_type or scenario_id is required")
+	}
+
+	if objectType != "" {
+		return objectType, nil
+	}
+
+	// Derive object type from scenario
+	exec := usecase.executorFactory.NewExecutor()
+	scenario, err := usecase.scenarioReader.GetScenarioById(ctx, exec, *scenarioId)
+	if err != nil {
+		return "", errors.Wrap(err, "error looking up scenario for trigger_object_type")
+	}
+	if scenario.OrganizationId != orgId {
+		return "", errors.Wrap(models.NotFoundError, "scenario not found")
+	}
+
+	return scenario.TriggerObjectType, nil
+}
+
 // validatePayload validates the trigger object payload against the data model schema.
 func (usecase *AsyncDecisionExecutionUsecase) validatePayload(
 	ctx context.Context,
-	orgId uuid.UUID,
 	objectType string,
 	rawPayload json.RawMessage,
 	dm models.DataModel,

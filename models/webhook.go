@@ -213,6 +213,7 @@ type FailedAsyncDecisionEvent struct {
 	AsyncDecisionExecutionId uuid.UUID
 	ObjectType               string
 	Stage                    AsyncDecisionExecutionFailureStage // int enum, serialized as string
+	ScenarioId               *string
 	TriggerObject            json.RawMessage
 	ErrorMessage             string
 }

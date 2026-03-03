@@ -79,6 +79,7 @@ type AsyncDecisionExecution struct {
 	Id            uuid.UUID
 	OrgId         uuid.UUID
 	ObjectType    string
+	ScenarioId    *string
 	TriggerObject json.RawMessage
 	ShouldIngest  bool
 	Status        AsyncDecisionExecutionStatus
