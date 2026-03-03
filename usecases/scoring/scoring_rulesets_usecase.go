@@ -14,6 +14,8 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
+const RULESET_DRY_RUN_SAMPLE_SIZE = 5000
+
 type ScoringRulesetsUsecase struct {
 	enforceSecurity     security.EnforceSecurityScoring
 	executorFactory     executor_factory.ExecutorFactory
@@ -47,6 +49,12 @@ func (uc ScoringRulesetsUsecase) ListRulesets(ctx context.Context) ([]models.Sco
 		return nil, err
 	}
 
+	for _, ruleset := range rulesets {
+		if err := uc.enforceSecurity.ReadOrganization(ruleset.OrgId); err != nil {
+			return nil, err
+		}
+	}
+
 	return rulesets, err
 }
 
@@ -58,6 +66,10 @@ func (uc ScoringRulesetsUsecase) GetRuleset(ctx context.Context, recordType stri
 		recordType,
 		status)
 	if err != nil {
+		return models.ScoringRuleset{}, err
+	}
+
+	if err := uc.enforceSecurity.ReadOrganization(ruleset.OrgId); err != nil {
 		return models.ScoringRuleset{}, err
 	}
 
@@ -128,6 +140,10 @@ func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, recor
 				Description: r.Description,
 				Ast:         ser,
 			}
+		}
+
+		if err := uc.repository.CancelRulesetDryRun(ctx, tx, ruleset); err != nil {
+			return models.ScoringRuleset{}, err
 		}
 
 		rules, err := uc.repository.InsertScoringRulesetVersionRule(ctx, tx, ruleset, rulesReq)
@@ -215,6 +231,68 @@ func (uc ScoringRulesetsUsecase) PrepareRuleset(ctx context.Context, recordType 
 	return nil
 }
 
+func (uc ScoringRulesetsUsecase) GetDryRun(ctx context.Context, recordType string) (models.ScoringDryRun, error) {
+	orgId := uc.enforceSecurity.OrgId()
+	exec := uc.executorFactory.NewExecutor()
+
+	draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, recordType, models.ScoreRulesetDraft)
+	if err != nil {
+		if errors.Is(err, models.NotFoundError) {
+			return models.ScoringDryRun{}, errors.Wrap(err, "no draft version found")
+		}
+
+		return models.ScoringDryRun{}, err
+	}
+
+	if err := uc.enforceSecurity.UpdateRuleset(orgId); err != nil {
+		return models.ScoringDryRun{}, err
+	}
+
+	return uc.repository.GetScoringLatestDryRun(ctx, exec, draft.Id)
+}
+
+func (uc ScoringRulesetsUsecase) StartDryRun(ctx context.Context, recordType string) (models.ScoringDryRun, error) {
+	orgId := uc.enforceSecurity.OrgId()
+
+	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (models.ScoringDryRun, error) {
+		draft, err := uc.repository.GetScoringRuleset(ctx, tx, orgId, recordType, models.ScoreRulesetDraft)
+		if err != nil {
+			if errors.Is(err, models.NotFoundError) {
+				return models.ScoringDryRun{}, errors.Wrap(err, "no draft version found")
+			}
+
+			return models.ScoringDryRun{}, err
+		}
+
+		if err := uc.enforceSecurity.UpdateRuleset(orgId); err != nil {
+			return models.ScoringDryRun{}, err
+		}
+
+		indexes, pending, err := uc.indexEditor.GetIndexesToCreateForScoringRuleset(ctx, orgId, draft)
+		if err != nil {
+			return models.ScoringDryRun{}, err
+		}
+
+		if pending > 0 {
+			return models.ScoringDryRun{}, errors.Wrap(models.UnprocessableEntityError, "ruleset is still being prepared")
+		}
+		if len(indexes) > 0 {
+			return models.ScoringDryRun{}, errors.Wrap(models.UnprocessableEntityError, "ruleset is not prepared")
+		}
+
+		dryRun, err := uc.repository.InsertRulesetDryRun(ctx, tx, draft, RULESET_DRY_RUN_SAMPLE_SIZE)
+		if err != nil {
+			return models.ScoringDryRun{}, err
+		}
+
+		if err := uc.taskQueueRepository.EnqueueRulesetDryRun(ctx, tx, orgId, dryRun); err != nil {
+			return models.ScoringDryRun{}, err
+		}
+
+		return dryRun, nil
+	})
+}
+
 func (uc ScoringRulesetsUsecase) CommitRuleset(ctx context.Context, recordType string) (models.ScoringRuleset, error) {
 	orgId := uc.enforceSecurity.OrgId()
 	exec := uc.executorFactory.NewExecutor()
@@ -243,6 +321,10 @@ func (uc ScoringRulesetsUsecase) CommitRuleset(ctx context.Context, recordType s
 		}
 		if len(indexes) > 0 {
 			return models.ScoringRuleset{}, errors.Wrap(models.UnprocessableEntityError, "ruleset is not prepared")
+		}
+
+		if err := uc.repository.CancelRulesetDryRun(ctx, tx, draft); err != nil {
+			return models.ScoringRuleset{}, err
 		}
 
 		return uc.repository.CommitRuleset(ctx, exec, draft)

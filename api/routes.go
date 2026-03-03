@@ -436,6 +436,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		r.POST("/scoring/rulesets/:recordType", tom, handleScoringCreateRulesetVersion(uc))
 		r.GET("/scoring/rulesets/:recordType/prepare", tom, handleScoringGetRulesetPreparationStatus(uc))
 		r.POST("/scoring/rulesets/:recordType/prepare", tom, handleScoringPrepareRuleset(uc))
+		r.POST("/scoring/rulesets/:recordType/dry-run", tom, handleScoringStartDryRun(uc))
+		r.GET("/scoring/rulesets/:recordType/dry-run", tom, handleScoringGetDryRun(uc))
 		r.POST("/scoring/rulesets/:recordType/commit", tom, handleScoringCommitRuleset(uc))
 		r.GET("/scoring/risk-levels/:recordType/:recordId", tom, handleScoringGetActiveScore(uc))
 		r.GET("/scoring/risk-levels/:recordType/:recordId/history", tom, handleScoringScoreHistory(uc))

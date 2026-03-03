@@ -187,6 +187,38 @@ func handleScoringPrepareRuleset(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
+func handleScoringStartDryRun(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		uc := usecasesWithCreds(ctx, uc)
+		scoringUsecase := uc.NewScoringRulesetsUsecase()
+
+		dryRun, err := scoringUsecase.StartDryRun(ctx, c.Param("recordType"))
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusAccepted, scoring.AdaptDryRun(dryRun))
+	}
+}
+
+func handleScoringGetDryRun(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		uc := usecasesWithCreds(ctx, uc)
+		scoringUsecase := uc.NewScoringRulesetsUsecase()
+
+		dryRun, err := scoringUsecase.GetDryRun(ctx, c.Param("recordType"))
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, scoring.AdaptDryRun(dryRun))
+	}
+}
+
 func handleScoringCommitRuleset(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()

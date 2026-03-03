@@ -1,8 +1,8 @@
 -- +goose Up
 
 create index idx_score_distribution
-    on scoring_scores (org_id, entity_type, ruleset_id)
-    include (score)
+    on scoring_scores (org_id, record_type, ruleset_id)
+    include (risk_level)
     where (source = 'ruleset' and deleted_at is null);
 
 -- +goose Down
