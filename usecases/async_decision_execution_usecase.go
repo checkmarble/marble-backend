@@ -213,7 +213,7 @@ func (usecase *AsyncDecisionExecutionUsecase) validatePayload(
 		)
 	}
 
-	parser := payload_parser.NewParser(payload_parser.WithEnricher(usecase.payloadEnricher))
+	parser := payload_parser.NewParser(payload_parser.WithEnricher(usecase.payloadEnricher), payload_parser.DisallowUnknownFields())
 	if _, err := parser.ParsePayload(ctx, table, rawPayload); err != nil {
 		return errors.Wrap(err, "error parsing payload in async decision execution")
 	}
