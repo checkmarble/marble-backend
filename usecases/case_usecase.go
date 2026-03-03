@@ -1341,12 +1341,8 @@ func (usecase *CaseUseCase) RemoveCaseTag(ctx context.Context, caseId string, ta
 
 		previousTagIds := pure_utils.Map(previousCaseTags,
 			func(ct models.CaseTag) string { return ct.TagId })
-		var newTagIds []string
-		for _, id := range previousTagIds {
-			if id != tagId {
-				newTagIds = append(newTagIds, id)
-			}
-		}
+		newTagIds := slices.DeleteFunc(previousTagIds,
+			func(id string) bool { return id == tagId })
 
 		previousValue := strings.Join(previousTagIds, ",")
 		newValue := strings.Join(newTagIds, ",")
