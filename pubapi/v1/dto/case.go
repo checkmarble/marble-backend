@@ -3,6 +3,7 @@ package dto
 import (
 	"fmt"
 
+	"github.com/checkmarble/marble-backend/dto/agent_dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -116,4 +117,49 @@ func AdaptCaseFile(f models.CaseFile) CaseFile {
 	}
 
 	return file
+}
+
+type CaseReview struct {
+	Id        string         `json:"id"`
+	CaseId    string         `json:"case_id"`
+	Status    string         `json:"status"`
+	Reaction  *string        `json:"reaction,omitempty"`
+	CreatedAt types.DateTime `json:"created_at"`
+	UpdatedAt types.DateTime `json:"updated_at"`
+}
+
+type CaseReviewDetail struct {
+	Id        string         `json:"id"`
+	CaseId    string         `json:"case_id"`
+	Status    string         `json:"status"`
+	Reaction  *string        `json:"reaction,omitempty"`
+	CreatedAt types.DateTime `json:"created_at"`
+	UpdatedAt types.DateTime `json:"updated_at"`
+	Content   any            `json:"content,omitempty"`
+}
+
+func AdaptCaseReview(r agent_dto.AiCaseReviewListItemDto) CaseReview {
+	return CaseReview{
+		Id:        r.Id.String(),
+		CaseId:    r.CaseId.String(),
+		Status:    r.Status,
+		Reaction:  r.Reaction,
+		CreatedAt: types.DateTime(r.CreatedAt),
+		UpdatedAt: types.DateTime(r.UpdatedAt),
+	}
+}
+
+func AdaptCaseReviewDetail(r agent_dto.AiCaseReviewOutputDto) CaseReviewDetail {
+	out := CaseReviewDetail{
+		Id:        r.Id.String(),
+		CaseId:    r.CaseId.String(),
+		Status:    r.Status,
+		Reaction:  r.Reaction,
+		CreatedAt: types.DateTime(r.CreatedAt),
+		UpdatedAt: types.DateTime(r.UpdatedAt),
+	}
+	if r.Review != nil {
+		out.Content = r.Review
+	}
+	return out
 }

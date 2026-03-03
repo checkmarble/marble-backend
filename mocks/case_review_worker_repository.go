@@ -54,8 +54,9 @@ func (r *MockCaseReviewWorkerRepository) ListAllCaseReviewFiles(
 	ctx context.Context,
 	exec repositories.Executor,
 	caseId uuid.UUID,
+	pagination *models.PaginationAndSorting,
 ) ([]models.AiCaseReview, error) {
-	args := r.Called(ctx, exec, caseId)
+	args := r.Called(ctx, exec, caseId, pagination)
 	return args.Get(0).([]models.AiCaseReview), args.Error(1)
 }
 

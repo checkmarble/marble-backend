@@ -86,17 +86,16 @@ func (uc *AiAgentUsecase) getCaseReviewById(ctx context.Context, reviewId uuid.U
 			errors.Wrap(err, "could not get case review by id")
 	}
 
-	blob, err := uc.blobRepository.GetBlob(ctx, review.BucketName, review.FileReference)
-	if err != nil {
-		return agent_dto.AiCaseReviewOutputDto{},
-			errors.Wrap(err, "could not get case review file")
-	}
-	defer blob.ReadCloser.Close()
-
 	var reviewDto agent_dto.AiCaseReviewDto
 	if review.Status == models.AiCaseReviewStatusCompleted {
-		reviewDto, err = agent_dto.UnmarshalCaseReviewDto(
-			review.DtoVersion, blob.ReadCloser)
+		blob, err := uc.blobRepository.GetBlob(ctx, review.BucketName, review.FileReference)
+		if err != nil {
+			return agent_dto.AiCaseReviewOutputDto{},
+				errors.Wrap(err, "could not get case review file")
+		}
+		defer blob.ReadCloser.Close()
+
+		reviewDto, err = agent_dto.UnmarshalCaseReviewDto(review.DtoVersion, blob.ReadCloser)
 		if err != nil {
 			return agent_dto.AiCaseReviewOutputDto{},
 				errors.Wrap(err, "could not unmarshal case review file")
@@ -109,10 +108,14 @@ func (uc *AiAgentUsecase) getCaseReviewById(ctx context.Context, reviewId uuid.U
 	}
 
 	return agent_dto.AiCaseReviewOutputDto{
-		Id:       review.Id,
-		Reaction: reaction,
-		Version:  review.DtoVersion,
-		Review:   reviewDto,
+		Id:        review.Id,
+		CaseId:    review.CaseId,
+		Status:    review.Status.String(),
+		Reaction:  reaction,
+		Version:   review.DtoVersion,
+		CreatedAt: review.CreatedAt,
+		UpdatedAt: review.UpdatedAt,
+		Review:    reviewDto,
 	}, nil
 }
 
@@ -164,18 +167,36 @@ func (uc *AiAgentUsecase) GetCaseReview(ctx context.Context, caseId string) ([]a
 	return existingReviewDtos[:1], nil
 }
 
-// ListCaseReviews returns all case reviews for a case, ordered by created_at DESC.
-// For completed reviews the full review content is included; for others, Review is nil.
-func (uc *AiAgentUsecase) ListCaseReviews(ctx context.Context, caseId uuid.UUID) ([]agent_dto.AiCaseReviewListItemDto, error) {
+// ListCaseReviews returns case reviews for a case, ordered by created_at DESC.
+func (uc *AiAgentUsecase) ListCaseReviews(ctx context.Context, caseId uuid.UUID,
+	pagination *models.PaginationAndSorting,
+) (models.Paginated[agent_dto.AiCaseReviewListItemDto], error) {
 	_, err := uc.getCaseWithPermissions(ctx, caseId.String())
 	if err != nil {
-		return nil, err
+		return models.Paginated[agent_dto.AiCaseReviewListItemDto]{}, err
+	}
+
+	// Use limit+1 to detect HasNextPage
+	var paginationWithExtra *models.PaginationAndSorting
+	originalLimit := 0
+	if pagination != nil {
+		originalLimit = pagination.Limit
+		extra := *pagination
+		extra.Limit = pagination.Limit + 1
+		paginationWithExtra = &extra
 	}
 
 	exec := uc.executorFactory.NewExecutor()
-	reviews, err := uc.caseReviewFileRepository.ListAllCaseReviewFiles(ctx, exec, caseId)
+	reviews, err := uc.caseReviewFileRepository.ListAllCaseReviewFiles(ctx, exec, caseId, paginationWithExtra)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not list case review files")
+		return models.Paginated[agent_dto.AiCaseReviewListItemDto]{},
+			errors.Wrap(err, "could not list case review files")
+	}
+
+	hasNextPage := false
+	if pagination != nil && len(reviews) > originalLimit {
+		hasNextPage = true
+		reviews = reviews[:originalLimit]
 	}
 
 	result := make([]agent_dto.AiCaseReviewListItemDto, len(reviews))
@@ -185,7 +206,7 @@ func (uc *AiAgentUsecase) ListCaseReviews(ctx context.Context, caseId uuid.UUID)
 			reaction = utils.Ptr(review.Reaction.String())
 		}
 
-		item := agent_dto.AiCaseReviewListItemDto{
+		result[i] = agent_dto.AiCaseReviewListItemDto{
 			Id:        review.Id,
 			CaseId:    review.CaseId,
 			Status:    review.Status.String(),
@@ -193,19 +214,12 @@ func (uc *AiAgentUsecase) ListCaseReviews(ctx context.Context, caseId uuid.UUID)
 			UpdatedAt: review.UpdatedAt,
 			Reaction:  reaction,
 		}
-
-		if review.Status == models.AiCaseReviewStatusCompleted {
-			reviewDto, err := uc.getCaseReviewContent(ctx, review)
-			if err != nil {
-				return nil, err
-			}
-			item.Review = reviewDto
-		}
-
-		result[i] = item
 	}
 
-	return result, nil
+	return models.Paginated[agent_dto.AiCaseReviewListItemDto]{
+		Items:       result,
+		HasNextPage: hasNextPage,
+	}, nil
 }
 
 func (uc *AiAgentUsecase) GetCaseReviewById(ctx context.Context, caseId string, reviewId uuid.UUID) (agent_dto.AiCaseReviewOutputDto, error) {

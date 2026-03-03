@@ -795,6 +795,87 @@ paths:
         "302":
           $ref: "#/components/responses/302"
 
+  /cases/{caseId}/reviews:
+    get:
+      operationId: listCaseReviews
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: List AI case reviews
+      description: |
+        List AI reviews generated for the given case, ordered by creation date.
+        The review content is not included — use the get review by ID endpoint to fetch the full content.
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/after"
+        - name: caseId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of AI case reviews
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - $ref: "#/components/schemas/BasePagination"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/CaseReview"
+        "400":
+          $ref: "#/components/responses/400"
+
+  /cases/{caseId}/reviews/{reviewId}:
+    get:
+      operationId: getCaseReview
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Get AI case review
+      description: |
+        Get an AI case review by its ID. The full review content is included when the status is "completed".
+      parameters:
+        - name: caseId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+        - name: reviewId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: AI case review
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/CaseReviewDetail"
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+
   /tags:
     get:
       operationId: listTags
@@ -1499,6 +1580,67 @@ components:
         created_at:
           type: string
           format: date-time
+
+    CaseReview:
+      title: Case AI review
+      type: object
+      required:
+        - id
+        - case_id
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        case_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, completed, failed, insufficient_funds]
+        reaction:
+          type: string
+          enum: [ok, ko]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CaseReviewDetail:
+      title: Case AI review detail
+      type: object
+      required:
+        - id
+        - case_id
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        case_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, completed, failed, insufficient_funds]
+        reaction:
+          type: string
+          enum: [ok, ko]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        content:
+          description: The AI review content. Only present when status is "completed".
+          type: [object, "null"]
 
     ScreeningEntity:
       type: string

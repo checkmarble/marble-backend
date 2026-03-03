@@ -689,11 +689,30 @@ func handleListCaseReviews(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		reviews, err := usecase.ListCaseReviews(ctx, caseId)
+		result, err := usecase.ListCaseReviews(ctx, caseId, nil)
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, reviews)
+		c.JSON(http.StatusOK, result.Items)
+	}
+}
+
+func handleGetCaseReviewById(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		caseId := c.Param("case_id")
+		reviewId, err := uuid.Parse(c.Param("review_id"))
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
+		review, err := usecase.GetCaseReviewById(ctx, caseId, reviewId)
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, review)
 	}
 }
 
