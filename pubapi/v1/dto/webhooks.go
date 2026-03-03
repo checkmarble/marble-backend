@@ -76,7 +76,6 @@ func AdaptWebhookEventData(ctx context.Context, exec repositories.Executor, adap
 					UserId:    c.UserId,
 					CreatedAt: c.CreatedAt,
 					Comment:   c.AdditionalNote,
-					Source:    models.CaseCommentSourceCase,
 				})
 			}),
 		},

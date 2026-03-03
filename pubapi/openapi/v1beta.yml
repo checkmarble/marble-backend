@@ -1471,7 +1471,6 @@ components:
         - user
         - comment
         - created_at
-        - source
       properties:
         id:
           type: string
@@ -1483,14 +1482,6 @@ components:
         created_at:
           type: string
           format: date-time
-        source:
-          type: string
-          description: |
-            Indicates the origin of the comment.
-
-            - `case`: a comment written directly on the case
-            - `entity`: a comment written on a pivot object associated with this case
-          enum: [case, entity]
 
     CaseFile:
       title: Case file

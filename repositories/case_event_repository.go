@@ -75,7 +75,7 @@ func (repo *MarbleDbRepository) ListCaseEventsOfTypes(ctx context.Context, exec 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptCaseEvent)
 }
 
-func (repo *MarbleDbRepository) ListCaseMixedCommentEvents(ctx context.Context, exec Executor,
+func (repo *MarbleDbRepository) ListCaseCommentEvents(ctx context.Context, exec Executor,
 	caseId string, paging models.PaginationAndSorting,
 ) ([]models.CaseCommentEvent, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {

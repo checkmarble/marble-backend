@@ -50,7 +50,7 @@ type CaseUseCaseRepository interface {
 	ListCaseEvents(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseEvent, error)
 	ListCaseEventsOfTypes(ctx context.Context, exec repositories.Executor, caseId string,
 		types []models.CaseEventType, paging models.PaginationAndSorting) ([]models.CaseEvent, error)
-	ListCaseMixedCommentEvents(ctx context.Context, exec repositories.Executor, caseId string,
+	ListCaseCommentEvents(ctx context.Context, exec repositories.Executor, caseId string,
 		paging models.PaginationAndSorting) ([]models.CaseCommentEvent, error)
 
 	GetCaseContributor(ctx context.Context, exec repositories.Executor, caseId, userId string) (*models.CaseContributor, error)
@@ -279,7 +279,7 @@ func (usecase *CaseUseCase) GetCaseComments(ctx context.Context, caseId string,
 	pagingPlusOne := paging
 	pagingPlusOne.Limit += 1
 
-	comments, err := usecase.repository.ListCaseMixedCommentEvents(ctx,
+	comments, err := usecase.repository.ListCaseCommentEvents(ctx,
 		usecase.executorFactory.NewExecutor(), caseId, pagingPlusOne)
 	if err != nil {
 		return models.Paginated[models.CaseCommentEvent]{},

@@ -32,7 +32,6 @@ type CaseComment struct {
 	User      Ref            `json:"user"`
 	Comment   string         `json:"comment"`
 	CreatedAt types.DateTime `json:"created_at"`
-	Source    models.CaseCommentSource `json:"source"`
 }
 
 type CaseFile struct {
@@ -88,7 +87,6 @@ func AdaptCaseComment(users []models.User) func(models.CaseCommentEvent) CaseCom
 			Id:        c.Id,
 			Comment:   c.Comment,
 			CreatedAt: types.DateTime(c.CreatedAt),
-			Source:    c.Source,
 			User: Ref{
 				Id:   uuid.Nil.String(),
 				Name: "unknown user",

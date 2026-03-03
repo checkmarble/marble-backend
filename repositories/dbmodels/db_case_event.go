@@ -44,14 +44,12 @@ func AdaptCaseCommentEvent(db DBCaseCommentEvent) (models.CaseCommentEvent, erro
 		Id:        db.Id,
 		UserId:    db.UserId,
 		CreatedAt: db.CreatedAt,
-		Source:    models.CaseCommentSourceCase,
 	}
 	if db.AdditionalNote != nil {
 		event.Comment = *db.AdditionalNote
 	}
 
 	if db.EventType == string(models.CaseEntityAnnotated) {
-		event.Source = models.CaseCommentSourceEntity
 		if db.AnnotationPayload != nil {
 			var payload models.EntityAnnotationCommentPayload
 			if err := json.Unmarshal(*db.AnnotationPayload, &payload); err == nil {
