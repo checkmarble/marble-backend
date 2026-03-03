@@ -212,11 +212,11 @@ func (uc EntityAnnotationUsecase) AttachFile(
 	files []multipart.FileHeader,
 ) ([]models.EntityAnnotation, error) {
 	if err := uc.enforceSecurityAnnotation.WriteAnnotation(req.OrgId, req.AnnotationType); err != nil {
-		return nil, errors.Wrap(models.ForbiddenError, err.Error())
+		return nil, err
 	}
 
 	if err := uc.checkObject(ctx, req.OrgId, req.ObjectType); err != nil {
-		return nil, errors.Wrap(models.NotFoundError, err.Error())
+		return nil, err
 	}
 
 	metadata := make([]models.EntityAnnotationFilePayloadFile, len(files))
@@ -350,10 +350,13 @@ func (uc EntityAnnotationUsecase) validateAnnotation(ctx context.Context, req mo
 		}
 		tag, err := uc.tagRepository.GetTagById(ctx, uc.executorFactory.NewExecutor(), payload.TagId)
 		if err != nil {
-			return errors.WithDetail(
-				errors.Wrap(models.NotFoundError, "unknown tag"),
-				"unknown tag",
-			)
+			if errors.Is(err, models.NotFoundError) {
+				return errors.WithDetail(
+					errors.Wrap(models.NotFoundError, "unknown tag"),
+					"unknown tag",
+				)
+			}
+			return err
 		}
 		if tag.Target != models.TagTargetObject {
 			return errors.WithDetail(
@@ -387,12 +390,7 @@ func (uc EntityAnnotationUsecase) findExistingAnnotation(
 	ctx context.Context,
 	exec repositories.Executor,
 	req models.CreateEntityAnnotationRequest,
-) (models.EntityAnnotation, error) {
-	var (
-		existing models.EntityAnnotation
-		err      error
-	)
-
+) (existing models.EntityAnnotation, err error) {
 	switch req.AnnotationType {
 	case models.EntityAnnotationTag:
 		payload := req.Payload.(models.EntityAnnotationTagPayload)

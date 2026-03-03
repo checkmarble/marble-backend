@@ -206,7 +206,7 @@ func HandleGetEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		types.NewResponse(dto.RecordFileUrl{Url: downloadUrl}).Serve(c)
+		types.Redirect(c, downloadUrl)
 	}
 }
 

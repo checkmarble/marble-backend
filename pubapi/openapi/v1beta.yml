@@ -1180,9 +1180,9 @@ paths:
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
-      summary: Get a download URL for a file annotation part
+      summary: Download a file annotation part
       description: |
-        Get a temporary download URL for a specific file within a file annotation.
+        Download a specific file within a file annotation.
       parameters:
         - name: id
           in: path
@@ -1198,24 +1198,8 @@ paths:
           schema:
             type: string
       responses:
-        "200":
-          description: Temporary download URL for the file
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/BaseResponse"
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        required:
-                          - url
-                        properties:
-                          url:
-                            type: string
-                            format: uri
-                            description: Temporary URL to download the file
+        "302":
+          $ref: "#/components/responses/302"
         "400":
           $ref: "#/components/responses/400"
         "404":

@@ -26,7 +26,7 @@ type RecordTagPayload struct {
 }
 
 type RecordFilePayload struct {
-	Caption string                 `json:"caption"`
+	Caption string                  `json:"caption"`
 	Files   []RecordFilePayloadFile `json:"files"`
 }
 
@@ -92,8 +92,4 @@ func adaptRecordAnnotationPayload(m models.EntityAnnotation) (any, error) {
 		// Should never happen
 		return nil, fmt.Errorf("invalid annotation type: %s", m.AnnotationType)
 	}
-}
-
-type RecordFileUrl struct {
-	Url string `json:"url"`
 }
