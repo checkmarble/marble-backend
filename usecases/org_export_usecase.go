@@ -17,6 +17,7 @@ import (
 type OrgExportUsecase struct {
 	executorFactory executor_factory.ExecutorFactory
 	security        security.EnforceSecurityOrgImportImpl
+	apiVersion      string
 
 	orgRepository        repositories.OrganizationRepository
 	dataModelRepository  repositories.DataModelRepository
@@ -32,6 +33,7 @@ type OrgExportUsecase struct {
 func NewOrgExportUsecase(
 	executorFactory executor_factory.ExecutorFactory,
 	security security.EnforceSecurityOrgImportImpl,
+	apiVersion string,
 	orgRepository repositories.OrganizationRepository,
 	dataModelRepository repositories.DataModelRepository,
 	dataModelUsecase usecase,
@@ -45,6 +47,7 @@ func NewOrgExportUsecase(
 	return OrgExportUsecase{
 		executorFactory:      executorFactory,
 		security:             security,
+		apiVersion:           apiVersion,
 		orgRepository:        orgRepository,
 		dataModelRepository:  dataModelRepository,
 		dataModelUsecase:     dataModelUsecase,
@@ -94,11 +97,11 @@ func (uc *OrgExportUsecase) Export(ctx context.Context, orgId uuid.UUID) (dto.Or
 	}
 
 	// Fetch tags (both case and object targets)
-	caseTags, err := uc.tagRepository.ListOrganizationTags(ctx, exec, orgId, models.TagTargetCase, false)
+	caseTags, err := uc.tagRepository.ListOrganizationTags(ctx, exec, orgId, models.TagTargetCase, false, nil)
 	if err != nil {
 		return dto.OrgImport{}, errors.Wrap(err, "failed to fetch case tags")
 	}
-	objectTags, err := uc.tagRepository.ListOrganizationTags(ctx, exec, orgId, models.TagTargetObject, false)
+	objectTags, err := uc.tagRepository.ListOrganizationTags(ctx, exec, orgId, models.TagTargetObject, false, nil)
 	if err != nil {
 		return dto.OrgImport{}, errors.Wrap(err, "failed to fetch object tags")
 	}
@@ -177,6 +180,9 @@ func (uc *OrgExportUsecase) Export(ctx context.Context, orgId uuid.UUID) (dto.Or
 	}
 
 	return dto.OrgImport{
+		Metadata: dto.OrgImportMetadata{
+			AppVersion: uc.apiVersion,
+		},
 		Org:         dto.AdaptImportOrgDto(org),
 		DataModel:   dto.AdaptImportDataModelDto(dataModel, links, pivotMetadatas),
 		Tags:        pure_utils.Map(allTags, dto.AdaptImportTagDto),

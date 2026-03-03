@@ -10,6 +10,7 @@ type ArchetypeDto struct {
 	Name        string `json:"name"`
 	Label       string `json:"label,omitempty"`
 	Description string `json:"description,omitempty"`
+	AppVersion  string `json:"app_version,omitempty"`
 }
 
 type ArchetypesDto struct {
@@ -21,6 +22,7 @@ func AdaptArchetypeDto(a models.ArchetypeInfo) ArchetypeDto {
 		Name:        a.Name,
 		Label:       a.Label,
 		Description: a.Description,
+		AppVersion:  a.AppVersion,
 	}
 }
 
@@ -39,9 +41,12 @@ type ArchetypeApplyDto struct {
 type OrgImportMetadata struct {
 	Label       string `json:"label"`
 	Description string `json:"description"`
+	AppVersion  string `json:"app_version"`
 }
 
 type OrgImport struct {
+	Metadata OrgImportMetadata `json:"metadata"`
+
 	Org         ImportOrg          `json:"org" binding:"required"`
 	Admins      []CreateUser       `json:"admins"`
 	DataModel   ImportDataModel    `json:"data_model"`

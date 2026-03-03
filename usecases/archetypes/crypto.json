@@ -1,6 +1,9 @@
 {
-  "label": "Demo Crypto Archetype",
-  "description": "Archetypes for a crypto institution with data model, scenarios and rules examples ...",
+  "metadata": {
+    "label": "Demo Crypto Archetype",
+    "description": "Archetypes for a crypto institution with data model, scenarios and rules examples ...",
+    "app_version": "v0.62.2"
+  },
   "org": {
     "name": "New org",
     "default_scenario_timezone": "Europe/Paris",

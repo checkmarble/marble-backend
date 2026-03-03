@@ -6,4 +6,5 @@ type ArchetypeInfo struct {
 	// Human friendly name for the archetype
 	Label       string
 	Description string
+	AppVersion  string
 }

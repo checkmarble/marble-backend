@@ -1082,6 +1082,7 @@ func (usecases *UsecasesWithCreds) NewOrgExportUsecase() OrgExportUsecase {
 			EnforceSecurity: usecases.NewEnforceSecurity(),
 			Credentials:     usecases.Credentials,
 		},
+		usecases.apiVersion,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewDataModelUseCase(),

@@ -116,15 +116,16 @@ func (uc *OrgImportUsecase) ListArchetypes(ctx context.Context) ([]models.Archet
 			return nil, err
 		}
 
-		var spec dto.OrgImportMetadata
+		var spec dto.OrgImport
 		if err := json.Unmarshal(d, &spec); err != nil {
 			return nil, err
 		}
 
 		archetypes[i] = models.ArchetypeInfo{
 			Name:        filename[:len(filename)-len(".json")],
-			Label:       spec.Label,
-			Description: spec.Description,
+			Label:       spec.Metadata.Label,
+			Description: spec.Metadata.Description,
+			AppVersion:  spec.Metadata.AppVersion,
 		}
 	}
 
