@@ -32,7 +32,8 @@ type asyncDecisionCreator interface {
 		ctx context.Context,
 		input models.CreateAllDecisionsInput,
 		params models.CreateDecisionParams,
-	) ([]models.DecisionWithRuleExecutions, int, error)
+		optTx ...repositories.Transaction,
+	) ([]models.DecisionWithRuleExecutions, int, []string, error)
 }
 
 type asyncDecisionExecutionRepo interface {
@@ -90,7 +91,8 @@ func (w *AsyncDecisionExecutionWorker) Work(ctx context.Context, job *river.Job[
 
 	// Idempotency: if already terminal, nothing to do
 	switch execution.Status {
-	case models.AsyncDecisionExecutionStatusCompleted, models.AsyncDecisionExecutionStatusFailed:
+	case models.AsyncDecisionExecutionStatusCompleted,
+		models.AsyncDecisionExecutionStatusFailed:
 		logger.InfoContext(ctx, "async decision execution already in terminal state, skipping",
 			"execution_id", executionId,
 			"status", execution.Status,
@@ -108,41 +110,53 @@ func (w *AsyncDecisionExecutionWorker) Work(ctx context.Context, job *river.Job[
 		execution.Status = models.AsyncDecisionExecutionStatusIngested
 	}
 
-	// Decision creation step
-	decisions, _, err := w.decisionCreator.CreateAllDecisions(ctx, models.CreateAllDecisionsInput{
-		OrganizationId:     execution.OrgId,
-		TriggerObjectTable: execution.ObjectType,
-		PayloadRaw:         execution.TriggerObject,
-	}, models.CreateDecisionParams{
-		WithDecisionWebhooks:        true,
-		WithRuleExecutionDetails:    true,
-		WithScenarioPermissionCheck: false,
-		WithDisallowUnknownFields:   false,
+	// Decision creation + status update in a single transaction
+	var allWebhookEventIds []string
+	err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		decisions, _, webhookEventIds, err := w.decisionCreator.CreateAllDecisions(ctx,
+			models.CreateAllDecisionsInput{
+				OrganizationId:     execution.OrgId,
+				TriggerObjectTable: execution.ObjectType,
+				PayloadRaw:         execution.TriggerObject,
+			},
+			models.CreateDecisionParams{
+				WithDecisionWebhooks:        true,
+				WithRuleExecutionDetails:    true,
+				WithScenarioPermissionCheck: false,
+				WithDisallowUnknownFields:   false,
+			},
+			tx,
+		)
+		if err != nil {
+			return err
+		}
+
+		allWebhookEventIds = webhookEventIds
+
+		// Extract decision IDs
+		decisionIds := make([]uuid.UUID, len(decisions))
+		for i, d := range decisions {
+			decisionIds[i] = d.DecisionId
+		}
+
+		// Mark as completed in the same transaction
+		return w.executionRepo.UpdateAsyncDecisionExecution(ctx, tx, models.AsyncDecisionExecutionUpdate{
+			Id:          executionId,
+			Status:      utils.Ptr(models.AsyncDecisionExecutionStatusCompleted),
+			DecisionIds: &decisionIds,
+		})
 	})
 	if err != nil {
 		return w.handleError(ctx, job, execution, models.AsyncDecisionExecutionStageDecision, err)
 	}
 
-	// Extract decision IDs
-	decisionIds := make([]uuid.UUID, len(decisions))
-	for i, d := range decisions {
-		decisionIds[i] = d.DecisionId
-	}
-
-	// Mark as completed
-	exec = w.executorFactory.NewExecutor()
-	err = w.executionRepo.UpdateAsyncDecisionExecution(ctx, exec, models.AsyncDecisionExecutionUpdate{
-		Id:          executionId,
-		Status:      utils.Ptr(models.AsyncDecisionExecutionStatusCompleted),
-		DecisionIds: &decisionIds,
-	})
-	if err != nil {
-		return errors.Wrap(err, "failed to update async decision execution to completed")
+	// Send webhooks after transaction commits
+	for _, webhookEventId := range allWebhookEventIds {
+		w.webhookEventsSender.SendWebhookEventAsync(ctx, webhookEventId)
 	}
 
 	logger.DebugContext(ctx, "async decision execution completed",
 		"execution_id", executionId,
-		"num_decisions", len(decisionIds),
 	)
 
 	return nil
@@ -229,7 +243,6 @@ func (w *AsyncDecisionExecutionWorker) handleError(
 			EventContent: models.NewWebhookEventAsyncDecisionFailed(models.FailedAsyncDecisionEvent{
 				AsyncDecisionExecutionId: execution.Id,
 				ObjectType:               execution.ObjectType,
-				ScenarioId:               execution.ScenarioId,
 				Stage:                    stage,
 				TriggerObject:            execution.TriggerObject,
 				ErrorMessage:             safeMessage,

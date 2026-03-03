@@ -212,7 +212,6 @@ func NewWebhookEventDecisionReviewed(c Case, decision Decision) WebhookEventCont
 type FailedAsyncDecisionEvent struct {
 	AsyncDecisionExecutionId uuid.UUID
 	ObjectType               string
-	ScenarioId               *string
 	Stage                    AsyncDecisionExecutionFailureStage // int enum, serialized as string
 	TriggerObject            json.RawMessage
 	ErrorMessage             string

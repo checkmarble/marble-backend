@@ -29,7 +29,6 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecution(
 	orgId uuid.UUID,
 	objectType string,
 	triggerObject json.RawMessage,
-	scenarioId *string,
 	shouldIngest bool,
 ) (models.AsyncDecisionExecution, error) {
 	if err := usecase.enforceSecurity.CreateDecision(orgId); err != nil {
@@ -51,7 +50,6 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecution(
 				OrgId:         orgId,
 				ObjectType:    objectType,
 				TriggerObject: triggerObject,
-				ScenarioId:    scenarioId,
 				ShouldIngest:  shouldIngest,
 			}
 
@@ -74,7 +72,6 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecution(
 				OrgId:         orgId,
 				ObjectType:    objectType,
 				TriggerObject: triggerObject,
-				ScenarioId:    scenarioId,
 				ShouldIngest:  shouldIngest,
 				Status:        models.AsyncDecisionExecutionStatusPending,
 			}, nil
@@ -92,7 +89,6 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecutionBatch(
 	orgId uuid.UUID,
 	objectType string,
 	objects []json.RawMessage,
-	scenarioId *string,
 	shouldIngest bool,
 ) ([]models.AsyncDecisionExecution, error) {
 	if err := usecase.enforceSecurity.CreateDecision(orgId); err != nil {
@@ -132,7 +128,6 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecutionBatch(
 					OrgId:         orgId,
 					ObjectType:    objectType,
 					TriggerObject: obj,
-					ScenarioId:    scenarioId,
 					ShouldIngest:  shouldIngest,
 				}
 			}
@@ -158,7 +153,6 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecutionBatch(
 					OrgId:         orgId,
 					ObjectType:    objectType,
 					TriggerObject: obj,
-					ScenarioId:    scenarioId,
 					ShouldIngest:  shouldIngest,
 					Status:        models.AsyncDecisionExecutionStatusPending,
 				}

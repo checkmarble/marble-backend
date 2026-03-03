@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"encoding/json"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/google/uuid"
@@ -30,7 +32,6 @@ func AdaptAsyncDecisionExecution(m models.AsyncDecisionExecution) AsyncDecisionE
 	return AsyncDecisionExecution{
 		Id:           m.Id,
 		ObjectType:   m.ObjectType,
-		ScenarioId:   m.ScenarioId,
 		Status:       m.Status.String(),
 		DecisionIds:  decisionIds,
 		ErrorMessage: m.ErrorMessage,
@@ -44,4 +45,18 @@ func AdaptAsyncDecisionExecutionCreated(m models.AsyncDecisionExecution) AsyncDe
 		Id:     m.Id,
 		Status: m.Status.String(),
 	}
+}
+
+type CreateAsyncDecisionParams struct {
+	TriggerObjectType string          `json:"trigger_object_type" binding:"required"`
+	TriggerObject     json.RawMessage `json:"trigger_object" binding:"required"`
+	ScenarioId        *string         `json:"scenario_id" binding:"omitempty,uuid"`
+	Ingest            bool            `json:"ingest"`
+}
+
+type CreateAsyncDecisionBatchParams struct {
+	TriggerObjectType string            `json:"trigger_object_type" binding:"required"`
+	TriggerObjects    []json.RawMessage `json:"trigger_objects" binding:"required,min=1,max=100"`
+	ScenarioId        *string           `json:"scenario_id" binding:"omitempty,uuid"`
+	Ingest            bool              `json:"ingest"`
 }

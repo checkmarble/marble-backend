@@ -8,7 +8,6 @@ import (
 	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
-	"github.com/checkmarble/marble-backend/pubapi/v1/params"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
@@ -26,7 +25,7 @@ func HandleCreateAsyncDecision(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		var payload params.CreateAsyncDecisionParams
+		var payload dto.CreateAsyncDecisionParams
 
 		if err := c.ShouldBindJSON(&payload); err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
@@ -37,7 +36,7 @@ func HandleCreateAsyncDecision(uc usecases.Usecases) gin.HandlerFunc {
 		asyncUsecase := uc.NewAsyncDecisionExecutionUsecase()
 
 		execution, err := asyncUsecase.CreateAsyncDecisionExecution(ctx,
-			orgId, payload.TriggerObjectType, payload.TriggerObject, payload.ScenarioId, payload.Ingest)
+			orgId, payload.TriggerObjectType, payload.TriggerObject, payload.Ingest)
 		if err != nil {
 			if presentDecisionCreationError(c, err) {
 				return
@@ -62,7 +61,7 @@ func HandleCreateAsyncDecisionBatch(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		var payload params.CreateAsyncDecisionBatchParams
+		var payload dto.CreateAsyncDecisionBatchParams
 
 		if err := c.ShouldBindJSON(&payload); err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
@@ -73,7 +72,7 @@ func HandleCreateAsyncDecisionBatch(uc usecases.Usecases) gin.HandlerFunc {
 		asyncUsecase := uc.NewAsyncDecisionExecutionUsecase()
 
 		executions, err := asyncUsecase.CreateAsyncDecisionExecutionBatch(ctx,
-			orgId, payload.TriggerObjectType, payload.Objects, payload.ScenarioId, payload.Ingest)
+			orgId, payload.TriggerObjectType, payload.TriggerObjects, payload.Ingest)
 		if err != nil {
 			var validationError models.IngestionValidationErrors
 			if errors.As(err, &validationError) {

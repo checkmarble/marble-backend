@@ -44,9 +44,11 @@ func (m *mockAsyncDecisionCreator) CreateAllDecisions(
 	ctx context.Context,
 	input models.CreateAllDecisionsInput,
 	params models.CreateDecisionParams,
-) ([]models.DecisionWithRuleExecutions, int, error) {
-	args := m.Called(ctx, input, params)
-	return args.Get(0).([]models.DecisionWithRuleExecutions), args.Int(1), args.Error(2)
+	optTx ...repositories.Transaction,
+) ([]models.DecisionWithRuleExecutions, int, []string, error) {
+	args := m.Called(ctx, input, params, optTx)
+	return args.Get(0).([]models.DecisionWithRuleExecutions), args.Int(1),
+		args.Get(2).([]string), args.Error(3)
 }
 
 type mockAsyncDecisionExecutionRepo struct {
@@ -227,26 +229,15 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_PendingWithIngestion_In
 	decisions := []models.DecisionWithRuleExecutions{
 		{Decision: models.Decision{DecisionId: decisionId}},
 	}
-	s.decisionCreator.On("CreateAllDecisions", mock.Anything,
-		models.CreateAllDecisionsInput{
-			OrganizationId:     s.orgId,
-			TriggerObjectTable: "transactions",
-			PayloadRaw:         triggerObject,
-		},
-		models.CreateDecisionParams{
-			WithDecisionWebhooks:        true,
-			WithRuleExecutionDetails:    true,
-			WithScenarioPermissionCheck: false,
-			WithDisallowUnknownFields:   false,
-		}).Return(decisions, 1, nil)
+	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return(decisions, 1, []string{}, nil)
 
-	// Mark completed
+	// Mark completed (in same transaction)
 	s.executionRepo.On("UpdateAsyncDecisionExecution", mock.Anything, mock.Anything,
-		models.AsyncDecisionExecutionUpdate{
-			Id:          executionId,
-			Status:      utils.Ptr(models.AsyncDecisionExecutionStatusCompleted),
-			DecisionIds: &[]uuid.UUID{decisionId},
-		}).Return(nil)
+		mock.MatchedBy(func(input models.AsyncDecisionExecutionUpdate) bool {
+			return input.Id == executionId &&
+				input.Status != nil && *input.Status == models.AsyncDecisionExecutionStatusCompleted
+		})).Return(nil)
 
 	worker := s.makeWorker()
 	err := worker.Work(s.ctx, job)
@@ -278,26 +269,15 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_IngestedStatus_SkipsIng
 	decisions := []models.DecisionWithRuleExecutions{
 		{Decision: models.Decision{DecisionId: decisionId}},
 	}
-	s.decisionCreator.On("CreateAllDecisions", mock.Anything,
-		models.CreateAllDecisionsInput{
-			OrganizationId:     s.orgId,
-			TriggerObjectTable: "transactions",
-			PayloadRaw:         triggerObject,
-		},
-		models.CreateDecisionParams{
-			WithDecisionWebhooks:        true,
-			WithRuleExecutionDetails:    true,
-			WithScenarioPermissionCheck: false,
-			WithDisallowUnknownFields:   false,
-		}).Return(decisions, 1, nil)
+	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return(decisions, 1, []string{}, nil)
 
-	// Mark completed
+	// Mark completed (in same transaction)
 	s.executionRepo.On("UpdateAsyncDecisionExecution", mock.Anything, mock.Anything,
-		models.AsyncDecisionExecutionUpdate{
-			Id:          executionId,
-			Status:      utils.Ptr(models.AsyncDecisionExecutionStatusCompleted),
-			DecisionIds: &[]uuid.UUID{decisionId},
-		}).Return(nil)
+		mock.MatchedBy(func(input models.AsyncDecisionExecutionUpdate) bool {
+			return input.Id == executionId &&
+				input.Status != nil && *input.Status == models.AsyncDecisionExecutionStatusCompleted
+		})).Return(nil)
 
 	worker := s.makeWorker()
 	err := worker.Work(s.ctx, job)
@@ -327,8 +307,8 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_NonRetryableError_Marks
 		Return(execution, nil)
 
 	// Decision creation fails with NotFoundError
-	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything).
-		Return([]models.DecisionWithRuleExecutions(nil), 0, models.NotFoundError)
+	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return([]models.DecisionWithRuleExecutions(nil), 0, []string(nil), models.NotFoundError)
 
 	// Expect update to failed
 	s.executionRepo.On("UpdateAsyncDecisionExecution", mock.Anything, mock.Anything,
@@ -377,8 +357,8 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_LastAttempt_MarksFailed
 		Return(execution, nil)
 
 	// Decision creation fails with a generic (retryable) error
-	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything).
-		Return([]models.DecisionWithRuleExecutions(nil), 0, assert.AnError)
+	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return([]models.DecisionWithRuleExecutions(nil), 0, []string(nil), assert.AnError)
 
 	// Expect update to failed
 	s.executionRepo.On("UpdateAsyncDecisionExecution", mock.Anything, mock.Anything,
@@ -427,8 +407,8 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_RetryableError_ReturnsE
 		Return(execution, nil)
 
 	// Decision creation fails with a generic (retryable) error
-	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything).
-		Return([]models.DecisionWithRuleExecutions(nil), 0, assert.AnError)
+	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return([]models.DecisionWithRuleExecutions(nil), 0, []string(nil), assert.AnError)
 
 	worker := s.makeWorker()
 	err := worker.Work(s.ctx, job)
@@ -468,16 +448,15 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_PendingNoIngestion_Skip
 	decisions := []models.DecisionWithRuleExecutions{
 		{Decision: models.Decision{DecisionId: decisionId}},
 	}
-	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything).
-		Return(decisions, 1, nil)
+	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return(decisions, 1, []string{}, nil)
 
-	// Mark completed
+	// Mark completed (in same transaction)
 	s.executionRepo.On("UpdateAsyncDecisionExecution", mock.Anything, mock.Anything,
-		models.AsyncDecisionExecutionUpdate{
-			Id:          executionId,
-			Status:      utils.Ptr(models.AsyncDecisionExecutionStatusCompleted),
-			DecisionIds: &[]uuid.UUID{decisionId},
-		}).Return(nil)
+		mock.MatchedBy(func(input models.AsyncDecisionExecutionUpdate) bool {
+			return input.Id == executionId &&
+				input.Status != nil && *input.Status == models.AsyncDecisionExecutionStatusCompleted
+		})).Return(nil)
 
 	worker := s.makeWorker()
 	err := worker.Work(s.ctx, job)

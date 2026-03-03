@@ -14,13 +14,15 @@ type DBAsyncDecisionExecution struct {
 	OrgId         uuid.UUID       `db:"org_id"`
 	ObjectType    string          `db:"object_type"`
 	TriggerObject json.RawMessage `db:"trigger_object"`
-	ScenarioId    *string         `db:"scenario_id"`
-	ShouldIngest  bool            `db:"should_ingest"`
-	Status        string          `db:"status"`
-	DecisionIds   []uuid.UUID     `db:"decision_ids"`
-	ErrorMessage  *string         `db:"error_message"`
-	CreatedAt     time.Time       `db:"created_at"`
-	UpdatedAt     time.Time       `db:"updated_at"`
+
+	// Created in advance to avoid a future migration. Unused for now.
+	ScenarioId   *string     `db:"scenario_id"`
+	ShouldIngest bool        `db:"should_ingest"`
+	Status       string      `db:"status"`
+	DecisionIds  []uuid.UUID `db:"decision_ids"`
+	ErrorMessage *string     `db:"error_message"`
+	CreatedAt    time.Time   `db:"created_at"`
+	UpdatedAt    time.Time   `db:"updated_at"`
 }
 
 const TABLE_ASYNC_DECISION_EXECUTIONS = "async_decision_executions"
@@ -36,7 +38,6 @@ func AdaptAsyncDecisionExecution(db DBAsyncDecisionExecution) (models.AsyncDecis
 		OrgId:         db.OrgId,
 		ObjectType:    db.ObjectType,
 		TriggerObject: db.TriggerObject,
-		ScenarioId:    db.ScenarioId,
 		ShouldIngest:  db.ShouldIngest,
 		Status:        models.AsyncDecisionExecutionStatusFromString(db.Status),
 		DecisionIds:   decisionIds,

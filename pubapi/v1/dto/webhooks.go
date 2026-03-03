@@ -100,7 +100,6 @@ func AdaptWebhookEventData(ctx context.Context, exec repositories.Executor,
 				return FailedAsyncDecisionEvent{
 					Id:            d.AsyncDecisionExecutionId,
 					ObjectType:    d.ObjectType,
-					ScenarioId:    d.ScenarioId,
 					Stage:         d.Stage.String(),
 					TriggerObject: d.TriggerObject,
 					ErrorMessage:  d.ErrorMessage,
