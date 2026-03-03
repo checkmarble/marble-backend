@@ -31,11 +31,11 @@ var SelectCaseEventColumn = utils.ColumnList[DBCaseEvent]()
 // DBCaseCommentEvent is the result of a JOIN between case_events and entity_annotations,
 // used specifically by ListCaseMixedCommentEvents.
 type DBCaseCommentEvent struct {
-	Id                string          `db:"id"`
-	UserId            null.String     `db:"user_id"`
-	CreatedAt         time.Time       `db:"created_at"`
-	EventType         string          `db:"event_type"`
-	AdditionalNote    *string         `db:"additional_note"`
+	Id                string           `db:"id"`
+	UserId            null.String      `db:"user_id"`
+	CreatedAt         time.Time        `db:"created_at"`
+	EventType         string           `db:"event_type"`
+	AdditionalNote    *string          `db:"additional_note"`
 	AnnotationPayload *json.RawMessage `db:"annotation_payload"`
 }
 

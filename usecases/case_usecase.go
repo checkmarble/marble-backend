@@ -257,7 +257,9 @@ func (usecase *CaseUseCase) GetCasesReferents(ctx context.Context, caseIds []str
 	return referentMap, nil
 }
 
-func (usecase *CaseUseCase) GetCaseComments(ctx context.Context, caseId string,
+func (usecase *CaseUseCase) GetCaseComments(
+	ctx context.Context,
+	caseId string,
 	paging models.PaginationAndSorting,
 ) (models.Paginated[models.CaseCommentEvent], error) {
 	c, err := usecase.GetCase(ctx, caseId)
