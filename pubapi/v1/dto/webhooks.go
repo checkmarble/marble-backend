@@ -27,10 +27,20 @@ func (p WebhookEventPayload) ApiVersion() string {
 }
 
 type WebhookEventData struct {
-	Decision *Decision    `json:"decision,omitzero"`
-	Case     *Case        `json:"case,omitzero"`
-	Files    *[]CaseFile  `json:"files,omitempty"`
-	Comments *CaseComment `json:"comments,omitempty"`
+	Decision             *Decision                    `json:"decision,omitzero"`
+	Case                 *Case                        `json:"case,omitzero"`
+	Files                *[]CaseFile                  `json:"files,omitempty"`
+	Comments             *CaseComment                 `json:"comments,omitempty"`
+	AsyncDecisionFailed  *AsyncDecisionFailedEvent    `json:"async_decision_failed,omitzero"`
+}
+
+type AsyncDecisionFailedEvent struct {
+	AsyncDecisionExecutionId string          `json:"async_decision_execution_id"`
+	ObjectType               string          `json:"object_type"`
+	ScenarioId               *string         `json:"scenario_id"`
+	Stage                    string          `json:"stage"`
+	TriggerObject            json.RawMessage `json:"trigger_object"`
+	ErrorMessage             string          `json:"error_message"`
 }
 
 func AdaptWebhookEventData(ctx context.Context, exec repositories.Executor, adapter types.PublicApiDataAdapter, m models.WebhookEventPayload) (string, json.RawMessage, error) {
@@ -77,6 +87,16 @@ func AdaptWebhookEventData(ctx context.Context, exec repositories.Executor, adap
 					CreatedAt: c.CreatedAt,
 					Comment:   c.AdditionalNote,
 				})
+			}),
+			AsyncDecisionFailed: applyWebhookEventData(m.Content.AsyncDecisionFailed, func(d models.AsyncDecisionFailedEventData) AsyncDecisionFailedEvent {
+				return AsyncDecisionFailedEvent{
+					AsyncDecisionExecutionId: d.AsyncDecisionExecutionId.String(),
+					ObjectType:               d.ObjectType,
+					ScenarioId:               d.ScenarioId,
+					Stage:                    string(d.Stage),
+					TriggerObject:            d.TriggerObject,
+					ErrorMessage:             d.ErrorMessage,
+				}
 			}),
 		},
 		Timestamp: m.Timestamp,

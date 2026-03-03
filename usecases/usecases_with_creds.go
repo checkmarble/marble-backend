@@ -198,6 +198,18 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewAsyncDecisionExecutionUsecase() AsyncDecisionExecutionUsecase {
+	return AsyncDecisionExecutionUsecase{
+		executorFactory:                  usecases.NewExecutorFactory(),
+		transactionFactory:               usecases.NewTransactionFactory(),
+		enforceSecurity:                  usecases.NewEnforceDecisionSecurity(),
+		asyncDecisionExecutionRepository: usecases.Repositories.AsyncDecisionExecutionRepository,
+		taskQueueRepository:              usecases.Repositories.TaskQueueRepository,
+		dataModelRepository:              usecases.Repositories.MarbleDbRepository,
+		payloadEnricher:                  usecases.NewPayloadEnrichmentUsecase(),
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewOffloadedReader() repositories.OffloadedReadWriter {
 	return repositories.OffloadedReadWriter{
 		Repository:          usecases.Repositories.MarbleDbRepository,
@@ -1040,6 +1052,27 @@ func (usecases UsecasesWithCreds) NewTriggeredScoreComputationWorker() *scoring_
 		usecases.NewScoringRulesetsUsecase(),
 		usecases.NewScoringScoresUsecase(),
 		usecases.Repositories.MarbleDbRepository,
+	)
+}
+
+func (usecases UsecasesWithCreds) NewAsyncDecisionExecutionWorker() *worker_jobs.AsyncDecisionExecutionWorker {
+	ingestionUsecase := usecases.NewIngestionUseCase()
+	decisionUsecase := usecases.NewDecisionUsecase()
+	return worker_jobs.NewAsyncDecisionExecutionWorker(
+		usecases.Repositories.AsyncDecisionExecutionRepository,
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		&ingestionUsecase,
+		&decisionUsecase,
+		usecases.NewWebhookEventsUsecase(),
+		usecases.Repositories.TaskQueueRepository,
+	)
+}
+
+func (usecases UsecasesWithCreds) NewAsyncDecisionExecutionCleanupWorker() *worker_jobs.AsyncDecisionExecutionCleanupWorker {
+	return worker_jobs.NewAsyncDecisionExecutionCleanupWorker(
+		usecases.Repositories.AsyncDecisionExecutionRepository,
+		usecases.NewExecutorFactory(),
 	)
 }
 

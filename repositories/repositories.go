@@ -113,25 +113,26 @@ func WithLagoConfig(lagoConfig infra.LagoConfig) Option {
 }
 
 type Repositories struct {
-	ExecutorGetter                    ExecutorGetter
-	RedisClient                       *RedisClient
-	ConvoyRepository                  ConvoyRepository
-	IngestionRepository               IngestionRepository
-	IngestedDataReadRepository        IngestedDataReadRepository
-	MarbleDbRepository                *MarbleDbRepository
-	ClientDbRepository                ClientDbRepository
-	ScenarioPublicationRepository     ScenarioPublicationRepository
-	OrganizationSchemaRepository      OrganizationSchemaRepository
-	BlobRepository                    BlobRepository
-	CustomListRepository              CustomListRepository
-	UploadLogRepository               UploadLogRepository
-	MarbleAnalyticsRepository         MarbleAnalyticsRepository
-	OpenSanctionsRepository           OpenSanctionsRepository
-	NameRecognitionRepository         NameRecognitionRepository
-	TransferCheckEnrichmentRepository *TransferCheckEnrichmentRepository
-	TaskQueueRepository               TaskQueueRepository
-	MetricsIngestionRepository        MetricsIngestionRepository
-	LagoRepository                    lago_repository.LagoRepository
+	ExecutorGetter                       ExecutorGetter
+	RedisClient                          *RedisClient
+	ConvoyRepository                     ConvoyRepository
+	IngestionRepository                  IngestionRepository
+	IngestedDataReadRepository           IngestedDataReadRepository
+	MarbleDbRepository                   *MarbleDbRepository
+	ClientDbRepository                   ClientDbRepository
+	ScenarioPublicationRepository        ScenarioPublicationRepository
+	OrganizationSchemaRepository         OrganizationSchemaRepository
+	BlobRepository                       BlobRepository
+	CustomListRepository                 CustomListRepository
+	UploadLogRepository                  UploadLogRepository
+	MarbleAnalyticsRepository            MarbleAnalyticsRepository
+	OpenSanctionsRepository              OpenSanctionsRepository
+	NameRecognitionRepository            NameRecognitionRepository
+	TransferCheckEnrichmentRepository    *TransferCheckEnrichmentRepository
+	TaskQueueRepository                  TaskQueueRepository
+	MetricsIngestionRepository           MetricsIngestionRepository
+	LagoRepository                       lago_repository.LagoRepository
+	AsyncDecisionExecutionRepository     AsyncDecisionExecutionRepository
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
@@ -186,6 +187,7 @@ func NewRepositories(
 		),
 		TaskQueueRepository:        NewTaskQueueRepository(options.riverClient),
 		MetricsIngestionRepository: NewMetricsIngestionRepository(options.bigQueryInfra),
-		LagoRepository:             lago_repository.NewLagoRepository(http.DefaultClient, options.lagoConfig),
+		LagoRepository:                   lago_repository.NewLagoRepository(http.DefaultClient, options.lagoConfig),
+		AsyncDecisionExecutionRepository: &AsyncDecisionExecutionRepositoryImpl{},
 	}
 }

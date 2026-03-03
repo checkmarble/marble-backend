@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"net/url"
 	"slices"
 	"time"
@@ -36,6 +37,7 @@ const (
 	WebhookEventType_CaseRuleSnoozeCreated WebhookEventType = "case.rule_snooze_created"
 	WebhookEventType_CaseDecisionReviewed  WebhookEventType = "case.decision_reviewed"
 	WebhookEventType_DecisionCreated       WebhookEventType = "decision.created"
+	WebhookEventType_AsyncDecisionFailed   WebhookEventType = "async_decision.failed"
 )
 
 var validWebhookEventTypes = []WebhookEventType{
@@ -49,6 +51,7 @@ var validWebhookEventTypes = []WebhookEventType{
 	WebhookEventType_DecisionCreated,
 	WebhookEventType_CaseRuleSnoozeCreated,
 	WebhookEventType_CaseDecisionReviewed,
+	WebhookEventType_AsyncDecisionFailed,
 }
 
 type WebhookEventContent struct {
@@ -63,10 +66,11 @@ type WebhookEventPayload struct {
 }
 
 type WebhookEventData struct {
-	Decision *DecisionWithRuleExecutions
-	Case     *Case
-	Files    *[]CaseFile
-	Comments *CaseEvent
+	Decision             *DecisionWithRuleExecutions
+	Case                 *Case
+	Files                *[]CaseFile
+	Comments             *CaseEvent
+	AsyncDecisionFailed  *AsyncDecisionFailedEventData
 }
 
 type WebhookEvent struct {
@@ -203,6 +207,26 @@ func NewWebhookEventDecisionReviewed(c Case, decision Decision) WebhookEventCont
 	return newWebhookContent(WebhookEventType_CaseDecisionReviewed, WebhookEventData{
 		Case: &c, Decision: &DecisionWithRuleExecutions{Decision: decision},
 	})
+}
+
+type AsyncDecisionFailedEventData struct {
+	AsyncDecisionExecutionId uuid.UUID                          `json:"async_decision_execution_id"`
+	ObjectType               string                             `json:"object_type"`
+	ScenarioId               *string                            `json:"scenario_id"`
+	Stage                    AsyncDecisionExecutionFailureStage `json:"stage"`
+	TriggerObject            json.RawMessage                    `json:"trigger_object"`
+	ErrorMessage             string                             `json:"error_message"`
+}
+
+func NewWebhookEventAsyncDecisionFailed(data AsyncDecisionFailedEventData) WebhookEventContent {
+	return WebhookEventContent{
+		Type: WebhookEventType_AsyncDecisionFailed,
+		Data: WebhookEventPayload{
+			Type:      WebhookEventType_AsyncDecisionFailed,
+			Content:   WebhookEventData{AsyncDecisionFailed: &data},
+			Timestamp: time.Now(),
+		},
+	}
 }
 
 type Webhook struct {

@@ -114,6 +114,18 @@ type TaskQueueRepository interface {
 		organizationId uuid.UUID,
 		bucket, key string,
 	) error
+	EnqueueAsyncDecisionExecution(
+		ctx context.Context,
+		tx Transaction,
+		organizationId uuid.UUID,
+		executionId uuid.UUID,
+	) error
+	EnqueueAsyncDecisionExecutionBatch(
+		ctx context.Context,
+		tx Transaction,
+		organizationId uuid.UUID,
+		executionIds []uuid.UUID,
+	) error
 	// New webhook delivery system
 	EnqueueWebhookDispatch(
 		ctx context.Context,
@@ -555,6 +567,66 @@ func (r riverRepository) EnqueueGenerateThumbnailTask(
 
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued thumbnail generation task", "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueAsyncDecisionExecution(
+	ctx context.Context,
+	tx Transaction,
+	organizationId uuid.UUID,
+	executionId uuid.UUID,
+) error {
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.AsyncDecisionExecutionArgs{
+			AsyncDecisionExecutionId: executionId.String(),
+		},
+		&river.InsertOpts{
+			MaxAttempts: 10,
+			Queue:       organizationId.String(),
+			UniqueOpts:  river.UniqueOpts{ByArgs: true},
+		},
+	)
+	if err != nil {
+		return err
+	}
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued async decision execution task",
+		"execution_id", executionId, "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueAsyncDecisionExecutionBatch(
+	ctx context.Context,
+	tx Transaction,
+	organizationId uuid.UUID,
+	executionIds []uuid.UUID,
+) error {
+	if len(executionIds) == 0 {
+		return nil
+	}
+
+	params := make([]river.InsertManyParams, len(executionIds))
+	for i, executionId := range executionIds {
+		params[i] = river.InsertManyParams{
+			Args: models.AsyncDecisionExecutionArgs{
+				AsyncDecisionExecutionId: executionId.String(),
+			},
+			InsertOpts: &river.InsertOpts{
+				MaxAttempts: 10,
+				Queue:       organizationId.String(),
+			},
+		}
+	}
+
+	res, err := r.client.InsertManyFastTx(ctx, tx.RawTx(), params)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, fmt.Sprintf("Enqueued %d async decision execution tasks", res))
 	return nil
 }
 

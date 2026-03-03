@@ -229,3 +229,16 @@ type TriggeredScoreComputationArgs struct {
 }
 
 func (TriggeredScoreComputationArgs) Kind() string { return "triggered_score_computation" }
+
+type AsyncDecisionExecutionArgs struct {
+	AsyncDecisionExecutionId string `json:"async_decision_execution_id"`
+}
+
+func (AsyncDecisionExecutionArgs) Kind() string { return "async_decision_execution" }
+
+// AsyncDecisionExecutionCleanupArgs - Cleanup old async decision executions
+type AsyncDecisionExecutionCleanupArgs struct{}
+
+func (AsyncDecisionExecutionCleanupArgs) Kind() string {
+	return "async_decision_execution_cleanup"
+}

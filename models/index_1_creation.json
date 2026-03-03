@@ -1,0 +1,11 @@
+{
+  "org_id": "718c1e31-0423-48d1-aa79-6eb5bb064a2b",
+  "indices": [
+    {
+      "Indexed": ["partner_id", "amount"],
+      "Included": ["trans_utc_date", "object_id"],
+      "IndexName": "idx_Transaction_partner_id-amount_17de037c-25cc-484e-87ff-89d70",
+      "TableName": "Transaction"
+    }
+  ]
+}

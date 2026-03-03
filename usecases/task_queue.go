@@ -283,3 +283,11 @@ func QueueWebhookCleanup() map[string]river.QueueConfig {
 	}
 	return queues
 }
+
+func QueueAsyncDecisionCleanup() map[string]river.QueueConfig {
+	queues := make(map[string]river.QueueConfig, 1)
+	queues[worker_jobs.ASYNC_DECISION_CLEANUP_QUEUE] = river.QueueConfig{
+		MaxWorkers: 1,
+	}
+	return queues
+}
