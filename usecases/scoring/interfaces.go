@@ -36,6 +36,35 @@ type ScoringRepository interface {
 	InsertScore(ctx context.Context, tx repositories.Transaction, req models.InsertScoreRequest) (models.ScoringScore, error)
 
 	GetScoreDistribution(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, entityType string) ([]models.ScoreDistribution, error)
+
+	GetScoringLatestDryRun(
+		ctx context.Context,
+		exec repositories.Executor,
+		rulesetId uuid.UUID,
+	) (models.ScoringDryRun, error)
+	GetScoringDryRunById(
+		ctx context.Context,
+		exec repositories.Executor,
+		id uuid.UUID,
+	) (models.ScoringDryRun, error)
+	InsertRulesetDryRun(
+		ctx context.Context,
+		exec repositories.Transaction,
+		ruleset models.ScoringRuleset,
+		objectCount int,
+	) (models.ScoringDryRun, error)
+	CancelRulesetDryRun(
+		ctx context.Context,
+		exec repositories.Executor,
+		ruleset models.ScoringRuleset,
+	) error
+	SetRulesetDryRunStatus(
+		ctx context.Context,
+		exec repositories.Executor,
+		dryRun models.ScoringDryRun,
+		status models.DryRunStatus,
+		results map[int]int,
+	) (*models.ScoringDryRun, error)
 }
 
 type scoringIngestedDataReader interface {

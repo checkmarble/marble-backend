@@ -91,3 +91,51 @@ func (m *ScoringRepository) GetScoreDistribution(ctx context.Context, exec repos
 	args := m.Called(ctx, exec, orgId, entityType)
 	return args.Get(0).([]models.ScoreDistribution), args.Error(1)
 }
+
+func (m *ScoringRepository) GetScoringLatestDryRun(
+	ctx context.Context,
+	exec repositories.Executor,
+	rulesetId uuid.UUID,
+) (models.ScoringDryRun, error) {
+	args := m.Called(ctx, exec, rulesetId)
+	return args.Get(0).(models.ScoringDryRun), args.Error(1)
+}
+
+func (m *ScoringRepository) GetScoringDryRunById(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+) (models.ScoringDryRun, error) {
+	args := m.Called(ctx, exec, id)
+	return args.Get(0).(models.ScoringDryRun), args.Error(1)
+}
+
+func (m *ScoringRepository) InsertRulesetDryRun(
+	ctx context.Context,
+	tx repositories.Transaction,
+	ruleset models.ScoringRuleset,
+	objectCount int,
+) (models.ScoringDryRun, error) {
+	args := m.Called(ctx, tx, ruleset, objectCount)
+	return args.Get(0).(models.ScoringDryRun), args.Error(1)
+}
+
+func (m *ScoringRepository) CancelRulesetDryRun(
+	ctx context.Context,
+	exec repositories.Executor,
+	ruleset models.ScoringRuleset,
+) error {
+	args := m.Called(ctx, exec, ruleset)
+	return args.Error(0)
+}
+
+func (m *ScoringRepository) SetRulesetDryRunStatus(
+	ctx context.Context,
+	exec repositories.Executor,
+	dryRun models.ScoringDryRun,
+	status models.DryRunStatus,
+	results map[int]int,
+) (*models.ScoringDryRun, error) {
+	args := m.Called(ctx, exec, dryRun, status, results)
+	return args.Get(0).(*models.ScoringDryRun), args.Error(1)
+}
