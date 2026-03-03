@@ -35,7 +35,13 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecution(
 		return models.AsyncDecisionExecution{}, err
 	}
 
-	if err := usecase.validatePayload(ctx, orgId, objectType, triggerObject); err != nil {
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx,
+		usecase.executorFactory.NewExecutor(), orgId, false, true)
+	if err != nil {
+		return models.AsyncDecisionExecution{}, errors.Wrap(err,
+			"error getting data model in validatePayload")
+	}
+	if err := usecase.validatePayload(ctx, orgId, objectType, triggerObject, dataModel); err != nil {
 		return models.AsyncDecisionExecution{}, err
 	}
 
@@ -95,10 +101,16 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecutionBatch(
 		return nil, err
 	}
 
+	exec := usecase.executorFactory.NewExecutor()
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, orgId, false, true)
+	if err != nil {
+		return nil, errors.Wrap(err,
+			"error getting data model in validatePayload")
+	}
 	// Validate all payloads upfront, collecting all errors
 	validationErrors := make(models.IngestionValidationErrors)
 	for _, obj := range objects {
-		err := usecase.validatePayload(ctx, orgId, objectType, obj)
+		err := usecase.validatePayload(ctx, orgId, objectType, obj, dataModel)
 		var objErrors models.IngestionValidationErrors
 		if errors.As(err, &objErrors) {
 			objectId, errMap := objErrors.GetSomeItem()
@@ -196,18 +208,13 @@ func (usecase *AsyncDecisionExecutionUsecase) validatePayload(
 	orgId uuid.UUID,
 	objectType string,
 	rawPayload json.RawMessage,
+	dm models.DataModel,
 ) error {
 	if len(rawPayload) == 0 {
 		return errors.Wrap(models.BadParameterError, "empty payload received")
 	}
 
-	exec := usecase.executorFactory.NewExecutor()
-	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, orgId, false, true)
-	if err != nil {
-		return errors.Wrap(err, "error getting data model in validatePayload")
-	}
-
-	table, ok := dataModel.Tables[objectType]
+	table, ok := dm.Tables[objectType]
 	if !ok {
 		return errors.Wrap(
 			models.NotFoundError,

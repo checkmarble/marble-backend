@@ -7,7 +7,7 @@ CREATE TABLE
         trigger_object JSONB NOT NULL,
         scenario_id TEXT,
         should_ingest BOOLEAN NOT NULL DEFAULT false,
-        status TEXT NOT NULL DEFAULT 'pending',
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'failed')),
         decision_ids UUID[],
         error_message TEXT,
         created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),

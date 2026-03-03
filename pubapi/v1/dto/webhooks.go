@@ -44,8 +44,11 @@ type FailedAsyncDecisionEvent struct {
 	ErrorMessage  string          `json:"error_message"`
 }
 
-func AdaptWebhookEventData(ctx context.Context, exec repositories.Executor,
-	adapter types.PublicApiDataAdapter, m models.WebhookEventPayload,
+func AdaptWebhookEventData(
+	ctx context.Context,
+	exec repositories.Executor,
+	adapter types.PublicApiDataAdapter,
+	m models.WebhookEventPayload,
 ) (string, json.RawMessage, error) {
 	users, err := adapter.ListUsers(ctx, exec)
 	if err != nil {

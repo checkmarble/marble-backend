@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
-	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
@@ -18,86 +17,14 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-// --- Mock implementations for unexported interfaces ---
-
-type mockAsyncDecisionIngester struct {
-	mock.Mock
-}
-
-func (m *mockAsyncDecisionIngester) IngestObject(
-	ctx context.Context,
-	organizationId uuid.UUID,
-	objectType string,
-	objectBody json.RawMessage,
-	ingestionOptions models.IngestionOptions,
-	parserOpts ...payload_parser.ParserOpt,
-) (int, error) {
-	args := m.Called(ctx, organizationId, objectType, objectBody, ingestionOptions)
-	return args.Int(0), args.Error(1)
-}
-
-type mockAsyncDecisionCreator struct {
-	mock.Mock
-}
-
-func (m *mockAsyncDecisionCreator) CreateAllDecisions(
-	ctx context.Context,
-	input models.CreateAllDecisionsInput,
-	params models.CreateDecisionParams,
-	optTx ...repositories.Transaction,
-) ([]models.DecisionWithRuleExecutions, int, []string, error) {
-	args := m.Called(ctx, input, params, optTx)
-	return args.Get(0).([]models.DecisionWithRuleExecutions), args.Int(1),
-		args.Get(2).([]string), args.Error(3)
-}
-
-type mockAsyncDecisionExecutionRepo struct {
-	mock.Mock
-}
-
-func (m *mockAsyncDecisionExecutionRepo) GetAsyncDecisionExecution(
-	ctx context.Context,
-	exec repositories.Executor,
-	id uuid.UUID,
-) (models.AsyncDecisionExecution, error) {
-	args := m.Called(ctx, exec, id)
-	return args.Get(0).(models.AsyncDecisionExecution), args.Error(1)
-}
-
-func (m *mockAsyncDecisionExecutionRepo) UpdateAsyncDecisionExecution(
-	ctx context.Context,
-	exec repositories.Executor,
-	input models.AsyncDecisionExecutionUpdate,
-) error {
-	args := m.Called(ctx, exec, input)
-	return args.Error(0)
-}
-
-type mockWebhookEventsUsecase struct {
-	mock.Mock
-}
-
-func (m *mockWebhookEventsUsecase) CreateWebhookEvent(
-	ctx context.Context,
-	tx repositories.Transaction,
-	input models.WebhookEventCreate,
-) error {
-	args := m.Called(ctx, tx, input)
-	return args.Error(0)
-}
-
-func (m *mockWebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, webhookEventId string) {
-	m.Called(ctx, webhookEventId)
-}
-
 // --- Test suite ---
 
 type AsyncDecisionExecutionWorkerTestSuite struct {
 	suite.Suite
-	executionRepo      *mockAsyncDecisionExecutionRepo
-	ingester           *mockAsyncDecisionIngester
-	decisionCreator    *mockAsyncDecisionCreator
-	webhookSender      *mockWebhookEventsUsecase
+	executionRepo      *mocks.AsyncDecisionExecutionRepository
+	ingester           *mocks.AsyncDecisionIngester
+	decisionCreator    *mocks.AsyncDecisionCreator
+	webhookSender      *mocks.WebhookEventsUsecase
 	executorFactory    executor_factory.ExecutorFactoryStub
 	transactionFactory executor_factory.TransactionFactoryStub
 
@@ -106,10 +33,10 @@ type AsyncDecisionExecutionWorkerTestSuite struct {
 }
 
 func (s *AsyncDecisionExecutionWorkerTestSuite) SetupTest() {
-	s.executionRepo = new(mockAsyncDecisionExecutionRepo)
-	s.ingester = new(mockAsyncDecisionIngester)
-	s.decisionCreator = new(mockAsyncDecisionCreator)
-	s.webhookSender = new(mockWebhookEventsUsecase)
+	s.executionRepo = new(mocks.AsyncDecisionExecutionRepository)
+	s.ingester = new(mocks.AsyncDecisionIngester)
+	s.decisionCreator = new(mocks.AsyncDecisionCreator)
+	s.webhookSender = new(mocks.WebhookEventsUsecase)
 
 	s.executorFactory = executor_factory.NewExecutorFactoryStub()
 	s.transactionFactory = executor_factory.NewTransactionFactoryStub(s.executorFactory)
@@ -199,7 +126,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_FailedStatus_Noop() {
 func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_PendingWithIngestion_IngestsThenCreatesDecisions() {
 	executionId := uuid.Must(uuid.NewV7())
 	job := s.makeJob(executionId)
-	triggerObject := json.RawMessage(`{"object_id": "obj-1",'updated_at":"2000-01-01T00:00:00Z"}`)
+	triggerObject := json.RawMessage(`{"object_id": "obj-1","updated_at":"2000-01-01T00:00:00Z"}`)
 	decisionId := uuid.Must(uuid.NewV7())
 
 	execution := models.AsyncDecisionExecution{
@@ -250,7 +177,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_PendingWithIngestion_In
 func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_IngestedStatus_SkipsIngestion() {
 	executionId := uuid.Must(uuid.NewV7())
 	job := s.makeJob(executionId)
-	triggerObject := json.RawMessage(`{"object_id": "obj-1",'updated_at":"2000-01-01T00:00:00Z"}`)
+	triggerObject := json.RawMessage(`{"object_id": "obj-1","updated_at":"2000-01-01T00:00:00Z"}`)
 	decisionId := uuid.Must(uuid.NewV7())
 
 	execution := models.AsyncDecisionExecution{
@@ -292,7 +219,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_IngestedStatus_SkipsIng
 func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_NonRetryableError_MarksFailed() {
 	executionId := uuid.Must(uuid.NewV7())
 	job := s.makeJob(executionId)
-	triggerObject := json.RawMessage(`{"object_id": "obj-1",'updated_at":"2000-01-01T00:00:00Z"}`)
+	triggerObject := json.RawMessage(`{"object_id": "obj-1","updated_at":"2000-01-01T00:00:00Z"}`)
 
 	execution := models.AsyncDecisionExecution{
 		Id:            executionId,
@@ -342,7 +269,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_LastAttempt_MarksFailed
 	// Set to last attempt
 	job.JobRow.Attempt = 5
 	job.JobRow.MaxAttempts = 5
-	triggerObject := json.RawMessage(`{"object_id": "obj-1",'updated_at":"2000-01-01T00:00:00Z"}`)
+	triggerObject := json.RawMessage(`{"object_id": "obj-1","updated_at":"2000-01-01T00:00:00Z"}`)
 
 	execution := models.AsyncDecisionExecution{
 		Id:            executionId,
@@ -392,7 +319,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_RetryableError_ReturnsE
 	// Not last attempt
 	job.JobRow.Attempt = 2
 	job.JobRow.MaxAttempts = 5
-	triggerObject := json.RawMessage(`{"object_id": "obj-1",'updated_at":"2000-01-01T00:00:00Z"}`)
+	triggerObject := json.RawMessage(`{"object_id": "obj-1","updated_at":"2000-01-01T00:00:00Z"}`)
 
 	execution := models.AsyncDecisionExecution{
 		Id:            executionId,
@@ -418,7 +345,8 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_RetryableError_ReturnsE
 	// Should NOT have called update or webhook since it's a retry
 	s.executionRepo.AssertNotCalled(s.T(), "UpdateAsyncDecisionExecution",
 		s.ctx, mock.Anything, mock.MatchedBy(func(input models.AsyncDecisionExecutionUpdate) bool {
-			return input.Status != nil && *input.Status == models.AsyncDecisionExecutionStatusFailed
+			return input.Status != nil && *input.Status ==
+				models.AsyncDecisionExecutionStatusFailed
 		}))
 	s.webhookSender.AssertNotCalled(s.T(), "CreateWebhookEvent")
 	s.webhookSender.AssertNotCalled(s.T(), "SendWebhookEventAsync")
@@ -429,7 +357,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_RetryableError_ReturnsE
 func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_PendingNoIngestion_SkipsIngestion() {
 	executionId := uuid.Must(uuid.NewV7())
 	job := s.makeJob(executionId)
-	triggerObject := json.RawMessage(`{"object_id": "obj-1",'updated_at":"2000-01-01T00:00:00Z"}`)
+	triggerObject := json.RawMessage(`{"object_id": "obj-1","updated_at":"2000-01-01T00:00:00Z"}`)
 	decisionId := uuid.Must(uuid.NewV7())
 
 	execution := models.AsyncDecisionExecution{

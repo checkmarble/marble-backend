@@ -6,6 +6,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -33,13 +34,18 @@ func AdaptAsyncDecisionExecution(db DBAsyncDecisionExecution) (models.AsyncDecis
 	decisionIds := make([]uuid.UUID, len(db.DecisionIds))
 	copy(decisionIds, db.DecisionIds)
 
+	status := models.AsyncDecisionExecutionStatusFromString(db.Status)
+	if status == models.AsyncDecisionExecutionStatusUnknown {
+		return models.AsyncDecisionExecution{},
+			errors.Wrapf(nil, "unknown async decision execution status: %s", db.Status)
+	}
 	return models.AsyncDecisionExecution{
 		Id:            db.Id,
 		OrgId:         db.OrgId,
 		ObjectType:    db.ObjectType,
 		TriggerObject: db.TriggerObject,
 		ShouldIngest:  db.ShouldIngest,
-		Status:        models.AsyncDecisionExecutionStatusFromString(db.Status),
+		Status:        status,
 		DecisionIds:   decisionIds,
 		ErrorMessage:  db.ErrorMessage,
 		CreatedAt:     db.CreatedAt,
