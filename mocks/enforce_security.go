@@ -270,7 +270,7 @@ func (e *EnforceSecurity) PerformFreeformSearch(ctx context.Context) error {
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) ReadEntityScore(score models.ScoringScore) error {
+func (e *EnforceSecurity) ReadRecordScore(score models.ScoringScore) error {
 	args := e.Called(score)
 	return args.Error(0)
 }
@@ -285,7 +285,7 @@ func (e *EnforceSecurity) UpdateRuleset(orgId uuid.UUID) error {
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) OverrideScore(ref models.ScoringEntityRef) error {
+func (e *EnforceSecurity) OverrideScore(ref models.ScoringRecordRef) error {
 	args := e.Called(ref)
 	return args.Error(0)
 }

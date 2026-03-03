@@ -48,7 +48,7 @@ func NewScoringScoresUsecase(
 	}
 }
 
-func (uc ScoringScoresUsecase) ComputeScore(ctx context.Context, entityType, entityId string) (models.ScoringRuleset, *models.ScoringEvaluation, error) {
+func (uc ScoringScoresUsecase) ComputeScore(ctx context.Context, recordType, recordId string) (models.ScoringRuleset, *models.ScoringEvaluation, error) {
 	exec := uc.executorFactory.NewExecutor()
 	orgId := uc.enforceSecurity.OrgId()
 
@@ -56,7 +56,7 @@ func (uc ScoringScoresUsecase) ComputeScore(ctx context.Context, entityType, ent
 		ctx,
 		exec,
 		orgId,
-		entityType,
+		recordType,
 		models.ScoreRulesetCommitted)
 	if err != nil {
 		if errors.Is(err, models.NotFoundError) {
@@ -66,7 +66,7 @@ func (uc ScoringScoresUsecase) ComputeScore(ctx context.Context, entityType, ent
 		return models.ScoringRuleset{}, nil, err
 	}
 
-	eval, err := uc.InternalComputeScore(ctx, exec, orgId, ruleset, entityType, entityId)
+	eval, err := uc.InternalComputeScore(ctx, exec, orgId, ruleset, recordType, recordId)
 	if err != nil {
 		return ruleset, nil, err
 	}
@@ -76,14 +76,14 @@ func (uc ScoringScoresUsecase) ComputeScore(ctx context.Context, entityType, ent
 
 func (uc ScoringScoresUsecase) InternalComputeScore(ctx context.Context, exec repositories.Executor, orgId uuid.UUID,
 	ruleset models.ScoringRuleset,
-	entityType, entityId string,
+	recordType, recordId string,
 ) (*models.ScoringEvaluation, error) {
 	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, exec, orgId, false, false)
 	if err != nil {
 		return nil, err
 	}
 
-	object, err := uc.getPayloadObject(ctx, orgId, dataModel, entityType, entityId)
+	object, err := uc.getPayloadObject(ctx, orgId, dataModel, recordType, recordId)
 	if err != nil {
 		if errors.Is(err, models.NotFoundError) {
 			return nil, nil
@@ -102,21 +102,21 @@ func (uc ScoringScoresUsecase) InternalComputeScore(ctx context.Context, exec re
 		return nil, err
 	}
 
-	eval.Score = uc.internalScoreToScore(ruleset, eval)
+	eval.Score = uc.scoreToRiskLevel(ruleset, eval)
 
 	return &eval, nil
 }
 
-func (uc ScoringScoresUsecase) GetScoreHistory(ctx context.Context, entityRef models.ScoringEntityRef) ([]models.ScoringScore, error) {
-	entityRef.OrgId = uc.enforceSecurity.OrgId()
+func (uc ScoringScoresUsecase) GetScoreHistory(ctx context.Context, record models.ScoringRecordRef) ([]models.ScoringScore, error) {
+	record.OrgId = uc.enforceSecurity.OrgId()
 
-	scores, err := uc.repository.GetScoreHistory(ctx, uc.executorFactory.NewExecutor(), entityRef)
+	scores, err := uc.repository.GetScoreHistory(ctx, uc.executorFactory.NewExecutor(), record)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, score := range scores {
-		if err := uc.enforceSecurity.ReadEntityScore(score); err != nil {
+		if err := uc.enforceSecurity.ReadRecordScore(score); err != nil {
 			return nil, err
 		}
 	}
@@ -124,30 +124,30 @@ func (uc ScoringScoresUsecase) GetScoreHistory(ctx context.Context, entityRef mo
 	return scores, nil
 }
 
-func (uc ScoringScoresUsecase) GetActiveScore(ctx context.Context, entity models.ScoringEntityRef, opts models.RefreshScoreOptions) (*models.ScoringScore, error) {
-	entity.OrgId = uc.enforceSecurity.OrgId()
+func (uc ScoringScoresUsecase) GetActiveScore(ctx context.Context, record models.ScoringRecordRef, opts models.RefreshScoreOptions) (*models.ScoringScore, error) {
+	record.OrgId = uc.enforceSecurity.OrgId()
 
-	score, err := uc.repository.GetActiveScore(ctx, uc.executorFactory.NewExecutor(), entity)
+	score, err := uc.repository.GetActiveScore(ctx, uc.executorFactory.NewExecutor(), record)
 	if err != nil {
 		return nil, err
 	}
 
-	score, err = uc.tryRefreshScore(ctx, score, entity, opts)
+	score, err = uc.tryRefreshScore(ctx, score, record, opts)
 	if err != nil {
 		return nil, err
 	}
 	if score == nil {
-		return nil, errors.Wrap(models.NotFoundError, "no score was found for this entity")
+		return nil, errors.Wrap(models.NotFoundError, "no score was found for this record")
 	}
 
-	if err := uc.enforceSecurity.ReadEntityScore(*score); err != nil {
+	if err := uc.enforceSecurity.ReadRecordScore(*score); err != nil {
 		return nil, err
 	}
 
 	return score, nil
 }
 
-func (uc ScoringScoresUsecase) tryRefreshScore(ctx context.Context, activeScore *models.ScoringScore, entity models.ScoringEntityRef, opts models.RefreshScoreOptions) (*models.ScoringScore, error) {
+func (uc ScoringScoresUsecase) tryRefreshScore(ctx context.Context, activeScore *models.ScoringScore, record models.ScoringRecordRef, opts models.RefreshScoreOptions) (*models.ScoringScore, error) {
 	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (*models.ScoringScore, error) {
 		// We do not compute the score in the background if we do not have a
 		// currently active score. In this case, we fall back to synchronous
@@ -156,7 +156,7 @@ func (uc ScoringScoresUsecase) tryRefreshScore(ctx context.Context, activeScore 
 		// If we trigger the refresh in the background, we return the current score.
 		if activeScore != nil && opts.RefreshInBackground {
 			if activeScore.CreatedAt.Add(opts.RefreshOlderThan).Before(time.Now()) {
-				if err := uc.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, entity); err != nil {
+				if err := uc.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, record); err != nil {
 					return nil, err
 				}
 			}
@@ -170,7 +170,7 @@ func (uc ScoringScoresUsecase) tryRefreshScore(ctx context.Context, activeScore 
 
 		// In case an error is encountered while synchronously refreshing the
 		// score, log it but return the current score, if there is one.
-		scoreRuleset, newScore, err := uc.ComputeScore(ctx, entity.EntityType, entity.EntityId)
+		scoreRuleset, newScore, err := uc.ComputeScore(ctx, record.RecordType, record.RecordId)
 		if err != nil {
 			if activeScore == nil {
 				return nil, err
@@ -187,10 +187,10 @@ func (uc ScoringScoresUsecase) tryRefreshScore(ctx context.Context, activeScore 
 		}
 
 		req := models.InsertScoreRequest{
-			OrgId:      entity.OrgId,
-			EntityType: entity.EntityType,
-			EntityId:   entity.EntityId,
-			Score:      newScore.Score,
+			OrgId:      record.OrgId,
+			RecordType: record.RecordType,
+			RecordId:   record.RecordId,
+			RiskLevel:  newScore.Score,
 			Source:     models.ScoreSourceRuleset,
 			RulesetId:  &scoreRuleset.Id,
 		}
@@ -230,11 +230,11 @@ func (uc ScoringScoresUsecase) OverrideScore(ctx context.Context, req models.Ins
 			return models.ScoringScore{}, err
 		}
 
-		if _, err := uc.getPayloadObject(ctx, req.OrgId, dataModel, req.EntityType, req.EntityId); err != nil {
+		if _, err := uc.getPayloadObject(ctx, req.OrgId, dataModel, req.RecordType, req.RecordId); err != nil {
 			return models.ScoringScore{}, err
 		}
 
-		if err := uc.enforceSecurity.OverrideScore(req.ToEntityRef()); err != nil {
+		if err := uc.enforceSecurity.OverrideScore(req.ToRecordRef()); err != nil {
 			return models.ScoringScore{}, err
 		}
 	}
@@ -246,10 +246,10 @@ func (uc ScoringScoresUsecase) OverrideScore(ctx context.Context, req models.Ins
 	return score, err
 }
 
-func (uc ScoringScoresUsecase) getPayloadObject(ctx context.Context, orgId uuid.UUID, dataModel models.DataModel, entityType, entityId string) (models.ClientObject, error) {
-	table, ok := dataModel.Tables[entityType]
+func (uc ScoringScoresUsecase) getPayloadObject(ctx context.Context, orgId uuid.UUID, dataModel models.DataModel, recordType, recordId string) (models.ClientObject, error) {
+	table, ok := dataModel.Tables[recordType]
 	if !ok {
-		return models.ClientObject{}, errors.Newf("unknown entity type '%s'", entityType)
+		return models.ClientObject{}, errors.Newf("unknown record type '%s'", recordType)
 	}
 
 	clientExec, err := uc.executorFactory.NewClientDbExecutor(ctx, orgId)
@@ -257,7 +257,7 @@ func (uc ScoringScoresUsecase) getPayloadObject(ctx context.Context, orgId uuid.
 		return models.ClientObject{}, err
 	}
 
-	objs, err := uc.ingestedDataReader.QueryIngestedObject(ctx, clientExec, table, entityId)
+	objs, err := uc.ingestedDataReader.QueryIngestedObject(ctx, clientExec, table, recordId)
 	if err != nil {
 		return models.ClientObject{}, err
 	}
@@ -300,15 +300,15 @@ func (uc ScoringScoresUsecase) executeRules(ctx context.Context, env ast_eval.As
 	return score, nil
 }
 
-func (uc ScoringScoresUsecase) internalScoreToScore(ruleset models.ScoringRuleset, eval models.ScoringEvaluation) int {
-	score := 1
+func (uc ScoringScoresUsecase) scoreToRiskLevel(ruleset models.ScoringRuleset, eval models.ScoringEvaluation) int {
+	riskLevel := 1
 
 	for _, threshold := range ruleset.Thresholds {
 		if eval.Modifier < threshold {
 			break
 		}
-		score++
+		riskLevel++
 	}
 
-	return max(score, eval.Floor)
+	return max(riskLevel, eval.Floor)
 }

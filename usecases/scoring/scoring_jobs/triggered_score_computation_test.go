@@ -35,8 +35,8 @@ type TriggeredScoreComputationWorkerTestSuite struct {
 	ingestedDataReader *mocks.IngestedDataReader
 
 	orgId      uuid.UUID
-	entityType string
-	entityId   string
+	recordType string
+	recordId   string
 	ctx        context.Context
 }
 
@@ -49,8 +49,8 @@ func (s *TriggeredScoreComputationWorkerTestSuite) SetupTest() {
 	s.ingestedDataReader = new(mocks.IngestedDataReader)
 
 	s.orgId = uuid.New()
-	s.entityType = "account"
-	s.entityId = "entity-123"
+	s.recordType = "account"
+	s.recordId = "entity-123"
 	s.ctx = context.Background()
 }
 
@@ -73,8 +73,8 @@ func (s *TriggeredScoreComputationWorkerTestSuite) makeJob() *river.Job[models.T
 	return &river.Job[models.TriggeredScoreComputationArgs]{
 		Args: models.TriggeredScoreComputationArgs{
 			OrgId:      s.orgId,
-			EntityType: s.entityType,
-			EntityId:   s.entityId,
+			RecordType: s.recordType,
+			RecordId:   s.recordId,
 		},
 	}
 }
@@ -103,7 +103,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_NoRuleset() {
 	s.T().Setenv(fmt.Sprintf("ENABLE_%s", "USER_SCORING"), s.orgId.String())
 
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.entityType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
 		Return(models.ScoringRuleset{}, models.NotFoundError)
 
 	worker := s.makeWorker(scoring.ScoringScoresUsecase{})
@@ -119,7 +119,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_RepoError() {
 
 	repoErr := fmt.Errorf("db connection lost")
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.entityType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
 		Return(models.ScoringRuleset{}, repoErr)
 
 	worker := s.makeWorker(scoring.ScoringScoresUsecase{})
@@ -132,16 +132,16 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_RepoError() {
 func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_ScoreIsOverriden() {
 	s.T().Setenv(fmt.Sprintf("ENABLE_%s", "USER_SCORING"), s.orgId.String())
 
-	ruleset := models.ScoringRuleset{Id: uuid.New(), EntityType: s.entityType}
+	ruleset := models.ScoringRuleset{Id: uuid.New(), RecordType: s.recordType}
 	activeScore := &models.ScoringScore{
 		Source: models.ScoreSourceOverride,
 	}
-	entityRef := models.ScoringEntityRef{OrgId: s.orgId, EntityType: s.entityType, EntityId: s.entityId}
+	record := models.ScoringRecordRef{OrgId: s.orgId, RecordType: s.recordType, RecordId: s.recordId}
 
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.entityType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
 		Return(ruleset, nil)
-	s.repository.On("GetActiveScore", s.ctx, s.transaction, entityRef).
+	s.repository.On("GetActiveScore", s.ctx, s.transaction, record).
 		Return(activeScore, nil)
 
 	worker := s.makeWorker(scoring.ScoringScoresUsecase{})
@@ -155,32 +155,32 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_ScoreIsOverriden() {
 func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_NoActiveScore_ComputesAndInserts() {
 	s.T().Setenv(fmt.Sprintf("ENABLE_%s", "USER_SCORING"), s.orgId.String())
 
-	ruleset := models.ScoringRuleset{Id: uuid.New(), EntityType: s.entityType, Thresholds: []int{10}}
-	entityRef := models.ScoringEntityRef{OrgId: s.orgId, EntityType: s.entityType, EntityId: s.entityId}
+	ruleset := models.ScoringRuleset{Id: uuid.New(), RecordType: s.recordType, Thresholds: []int{10}}
+	record := models.ScoringRecordRef{OrgId: s.orgId, RecordType: s.recordType, RecordId: s.recordId}
 	dataModel := models.DataModel{
 		Tables: map[string]models.Table{
-			s.entityType: {Name: s.entityType},
+			s.recordType: {Name: s.recordType},
 		},
 	}
 	clientExec := new(mocks.Transaction)
-	obj := models.DataModelObject{Data: map[string]any{"id": s.entityId}}
+	obj := models.DataModelObject{Data: map[string]any{"id": s.recordId}}
 
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.entityType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
 		Return(ruleset, nil)
-	s.repository.On("GetActiveScore", s.ctx, s.transaction, entityRef).
+	s.repository.On("GetActiveScore", s.ctx, s.transaction, record).
 		Return((*models.ScoringScore)(nil), models.NotFoundError)
 	s.dataModelRepo.On("GetDataModel", s.ctx, s.transaction, s.orgId, false, false).
 		Return(dataModel, nil)
 	s.executorFactory.On("NewClientDbExecutor", s.ctx, s.orgId).Return(clientExec, nil)
-	s.ingestedDataReader.On("QueryIngestedObject", s.ctx, clientExec, dataModel.Tables[s.entityType], s.entityId, []string(nil)).
+	s.ingestedDataReader.On("QueryIngestedObject", s.ctx, clientExec, dataModel.Tables[s.recordType], s.recordId, []string(nil)).
 		Return([]models.DataModelObject{obj}, nil)
 	s.repository.On("InsertScore", s.ctx, s.transaction, mock.MatchedBy(func(r models.InsertScoreRequest) bool {
 		return r.OrgId == s.orgId &&
-			r.EntityType == s.entityType &&
-			r.EntityId == s.entityId &&
+			r.RecordType == s.recordType &&
+			r.RecordId == s.recordId &&
 			r.Source == models.ScoreSourceRuleset &&
-			r.Score == 1
+			r.RiskLevel == 1
 	})).Return(models.ScoringScore{}, nil)
 
 	worker := s.makeWorker(s.makeScoreUsecase())
@@ -193,33 +193,33 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_NoActiveScore_Comput
 func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_ActiveScore_ComputesAndInserts() {
 	s.T().Setenv(fmt.Sprintf("ENABLE_%s", "USER_SCORING"), s.orgId.String())
 
-	ruleset := models.ScoringRuleset{Id: uuid.New(), EntityType: s.entityType, Thresholds: []int{10}}
-	entityRef := models.ScoringEntityRef{OrgId: s.orgId, EntityType: s.entityType, EntityId: s.entityId}
-	activeScore := &models.ScoringScore{Source: models.ScoreSourceRuleset, Score: 3}
+	ruleset := models.ScoringRuleset{Id: uuid.New(), RecordType: s.recordType, Thresholds: []int{10}}
+	record := models.ScoringRecordRef{OrgId: s.orgId, RecordType: s.recordType, RecordId: s.recordId}
+	activeScore := &models.ScoringScore{Source: models.ScoreSourceRuleset, RiskLevel: 3}
 	dataModel := models.DataModel{
 		Tables: map[string]models.Table{
-			s.entityType: {Name: s.entityType},
+			s.recordType: {Name: s.recordType},
 		},
 	}
 	clientExec := new(mocks.Transaction)
-	obj := models.DataModelObject{Data: map[string]any{"id": s.entityId}}
+	obj := models.DataModelObject{Data: map[string]any{"id": s.recordId}}
 
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.entityType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
 		Return(ruleset, nil)
-	s.repository.On("GetActiveScore", s.ctx, s.transaction, entityRef).
+	s.repository.On("GetActiveScore", s.ctx, s.transaction, record).
 		Return(activeScore, nil)
 	s.dataModelRepo.On("GetDataModel", s.ctx, s.transaction, s.orgId, false, false).
 		Return(dataModel, nil)
 	s.executorFactory.On("NewClientDbExecutor", s.ctx, s.orgId).Return(clientExec, nil)
-	s.ingestedDataReader.On("QueryIngestedObject", s.ctx, clientExec, dataModel.Tables[s.entityType], s.entityId, []string(nil)).
+	s.ingestedDataReader.On("QueryIngestedObject", s.ctx, clientExec, dataModel.Tables[s.recordType], s.recordId, []string(nil)).
 		Return([]models.DataModelObject{obj}, nil)
 	s.repository.On("InsertScore", s.ctx, s.transaction, mock.MatchedBy(func(r models.InsertScoreRequest) bool {
 		return r.OrgId == s.orgId &&
-			r.EntityType == s.entityType &&
-			r.EntityId == s.entityId &&
+			r.RecordType == s.recordType &&
+			r.RecordId == s.recordId &&
 			r.Source == models.ScoreSourceRuleset &&
-			r.Score == 1
+			r.RiskLevel == 1
 	})).Return(models.ScoringScore{}, nil)
 
 	worker := s.makeWorker(s.makeScoreUsecase())

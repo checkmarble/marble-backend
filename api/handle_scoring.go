@@ -40,7 +40,7 @@ func handleScoringUpdateSettings(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		req := models.ScoringSettings{
-			MaxScore: payload.MaxScore,
+			MaxRiskLevel: payload.MaxRiskLevel,
 		}
 
 		uc := usecasesWithCreds(ctx, uc)
@@ -60,7 +60,7 @@ func handleScoringComputeScore(uc usecases.Usecases) gin.HandlerFunc {
 
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringScoresUsecase()
-		_, eval, err := scoringUsecase.ComputeScore(ctx, c.Param("entityType"), c.Param("entityId"))
+		_, eval, err := scoringUsecase.ComputeScore(ctx, c.Param("recordType"), c.Param("recordId"))
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -113,7 +113,7 @@ func handleScoringGetRuleset(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		ruleset, err := scoringUsecase.GetRuleset(ctx, c.Param("entityType"), status)
+		ruleset, err := scoringUsecase.GetRuleset(ctx, c.Param("recordType"), status)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -141,7 +141,7 @@ func handleScoringCreateRulesetVersion(uc usecases.Usecases) gin.HandlerFunc {
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringRulesetsUsecase()
 
-		ruleset, err := scoringUsecase.CreateRulesetVersion(ctx, c.Param("entityType"), payload)
+		ruleset, err := scoringUsecase.CreateRulesetVersion(ctx, c.Param("recordType"), payload)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -162,7 +162,7 @@ func handleScoringGetRulesetPreparationStatus(uc usecases.Usecases) gin.HandlerF
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringRulesetsUsecase()
 
-		status, err := scoringUsecase.PreparationStatus(ctx, c.Param("entityType"))
+		status, err := scoringUsecase.PreparationStatus(ctx, c.Param("recordType"))
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -178,7 +178,7 @@ func handleScoringPrepareRuleset(uc usecases.Usecases) gin.HandlerFunc {
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringRulesetsUsecase()
 
-		err := scoringUsecase.PrepareRuleset(ctx, c.Param("entityType"))
+		err := scoringUsecase.PrepareRuleset(ctx, c.Param("recordType"))
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -194,7 +194,7 @@ func handleScoringCommitRuleset(uc usecases.Usecases) gin.HandlerFunc {
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringRulesetsUsecase()
 
-		ruleset, err := scoringUsecase.CommitRuleset(ctx, c.Param("entityType"))
+		ruleset, err := scoringUsecase.CommitRuleset(ctx, c.Param("recordType"))
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -208,19 +208,19 @@ func handleScoringCommitRuleset(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
-func handleScoringGetScoreHistory(uc usecases.Usecases) gin.HandlerFunc {
+func handleScoringScoreHistory(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringScoresUsecase()
 
-		entity := models.ScoringEntityRef{
-			EntityType: c.Param("entityType"),
-			EntityId:   c.Param("entityId"),
+		record := models.ScoringRecordRef{
+			RecordType: c.Param("recordType"),
+			RecordId:   c.Param("recordId"),
 		}
 
-		scores, err := scoringUsecase.GetScoreHistory(ctx, entity)
+		scores, err := scoringUsecase.GetScoreHistory(ctx, record)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -236,9 +236,9 @@ func handleScoringGetActiveScore(uc usecases.Usecases) gin.HandlerFunc {
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringScoresUsecase()
 
-		entity := models.ScoringEntityRef{
-			EntityType: c.Param("entityType"),
-			EntityId:   c.Param("entityId"),
+		record := models.ScoringRecordRef{
+			RecordType: c.Param("recordType"),
+			RecordId:   c.Param("recordId"),
 		}
 
 		opts := models.RefreshScoreOptions{
@@ -246,7 +246,7 @@ func handleScoringGetActiveScore(uc usecases.Usecases) gin.HandlerFunc {
 			RefreshInBackground: false,
 		}
 
-		score, err := scoringUsecase.GetActiveScore(ctx, entity, opts)
+		score, err := scoringUsecase.GetActiveScore(ctx, record, opts)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -260,7 +260,7 @@ func handleScoringGetActiveScore(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
-func handleOverrideEntityScore(uc usecases.Usecases) gin.HandlerFunc {
+func handleOverrideRecordScore(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -275,9 +275,9 @@ func handleOverrideEntityScore(uc usecases.Usecases) gin.HandlerFunc {
 		scoringUsecase := uc.NewScoringScoresUsecase()
 
 		req := models.InsertScoreRequest{
-			EntityType: c.Param("entityType"),
-			EntityId:   c.Param("entityId"),
-			Score:      payload.Score,
+			RecordType: c.Param("recordType"),
+			RecordId:   c.Param("recordId"),
+			RiskLevel:  payload.RiskLevel,
 			Source:     models.ScoreSourceOverride,
 			StaleAt:    payload.StaleAt,
 		}

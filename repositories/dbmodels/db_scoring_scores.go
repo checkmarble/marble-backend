@@ -13,9 +13,9 @@ type DbScoringScore struct {
 	Id    uuid.UUID `db:"id"`
 	OrgId uuid.UUID `db:"org_id"`
 
-	EntityType   string     `db:"entity_type"`
-	EntityId     string     `db:"entity_id"`
-	Score        int        `db:"score"`
+	RecordType   string     `db:"record_type"`
+	RecordId     string     `db:"record_id"`
+	RiskLevel    int        `db:"risk_level"`
 	Source       string     `db:"source"`
 	RulesetId    *uuid.UUID `db:"ruleset_id"`
 	OverriddenBy *uuid.UUID `db:"overridden_by"`
@@ -38,9 +38,9 @@ func AdaptScoringScore(db DbScoringScore) (models.ScoringScore, error) {
 	return models.ScoringScore{
 		Id:           db.Id,
 		OrgId:        db.OrgId,
-		EntityType:   db.EntityType,
-		EntityId:     db.EntityId,
-		Score:        db.Score,
+		RecordType:   db.RecordType,
+		RecordId:     db.RecordId,
+		RiskLevel:    db.RiskLevel,
 		Source:       src,
 		RulesetId:    db.RulesetId,
 		OverriddenBy: db.OverriddenBy,

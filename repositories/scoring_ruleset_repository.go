@@ -22,10 +22,10 @@ func (repo *MarbleDbRepository) ListScoringRulesets(
 
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectScoringRulesetsColumns...).
-		Options("distinct on (entity_type)").
+		Options("distinct on (record_type)").
 		From(dbmodels.TABLE_SCORING_RULESETS).
 		Where("org_id = ?", orgId).
-		OrderBy("entity_type", "version desc")
+		OrderBy("record_type", "version desc")
 
 	rulesets, err := SqlToListOfModels(ctx, exec, query, dbmodels.AdaptScoringRuleset)
 	if err != nil {
@@ -39,7 +39,7 @@ func (repo *MarbleDbRepository) GetScoringRuleset(
 	ctx context.Context,
 	exec Executor,
 	orgId uuid.UUID,
-	entityType string,
+	recordType string,
 	status models.ScoreRulesetStatus,
 ) (models.ScoringRuleset, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -51,7 +51,7 @@ func (repo *MarbleDbRepository) GetScoringRuleset(
 			Select(dbmodels.SelectScoringRulesetsColumns...).
 			From(dbmodels.TABLE_SCORING_RULESETS).
 			Where("org_id = ?", orgId).
-			Where("entity_type = ?", entityType).
+			Where("record_type = ?", recordType).
 			Where("status = ?", status).
 			OrderBy("version desc").
 			Limit(1)
@@ -99,7 +99,7 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersion(
 			"version",
 			"name",
 			"description",
-			"entity_type",
+			"record_type",
 			"thresholds",
 			"cooldown_seconds",
 		).
@@ -109,12 +109,12 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersion(
 			ruleset.Version,
 			ruleset.Name,
 			ruleset.Description,
-			ruleset.EntityType,
+			ruleset.RecordType,
 			ruleset.Thresholds,
 			ruleset.CooldownSeconds,
 		).
 		Suffix(`
-			on conflict (org_id, entity_type) where status = 'draft'
+			on conflict (org_id, record_type) where status = 'draft'
 			do update set
 				name = excluded.name,
 				description = excluded.description,

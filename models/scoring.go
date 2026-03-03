@@ -47,20 +47,20 @@ func ScoreRulesetStatusFrom(s string) ScoreRulesetStatus {
 }
 
 type ScoringSettings struct {
-	Id        uuid.UUID
-	OrgId     uuid.UUID
-	MaxScore  int
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	Id           uuid.UUID
+	OrgId        uuid.UUID
+	MaxRiskLevel int
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type ScoringScore struct {
 	Id    uuid.UUID
 	OrgId uuid.UUID
 
-	EntityType   string
-	EntityId     string
-	Score        int
+	RecordType   string
+	RecordId     string
+	RiskLevel    int
 	Source       ScoreSource
 	RulesetId    *uuid.UUID
 	OverriddenBy *uuid.UUID
@@ -95,10 +95,10 @@ func (s *ScoringScore) IsOverridden() bool {
 	return false
 }
 
-type ScoringEntityRef struct {
+type ScoringRecordRef struct {
 	OrgId      uuid.UUID
-	EntityType string
-	EntityId   string
+	RecordType string
+	RecordId   string
 }
 
 type RefreshScoreOptions struct {
@@ -108,20 +108,20 @@ type RefreshScoreOptions struct {
 
 type InsertScoreRequest struct {
 	OrgId        uuid.UUID
-	EntityType   string
-	EntityId     string
-	Score        int
+	RecordType   string
+	RecordId     string
+	RiskLevel    int
 	Source       ScoreSource
 	OverriddenBy *uuid.UUID
 	RulesetId    *uuid.UUID
 	StaleAt      *time.Time
 }
 
-func (r InsertScoreRequest) ToEntityRef() ScoringEntityRef {
-	return ScoringEntityRef{
+func (r InsertScoreRequest) ToRecordRef() ScoringRecordRef {
+	return ScoringRecordRef{
 		OrgId:      r.OrgId,
-		EntityType: r.EntityType,
-		EntityId:   r.EntityId,
+		RecordType: r.RecordType,
+		RecordId:   r.RecordId,
 	}
 }
 
@@ -132,7 +132,7 @@ type ScoringRuleset struct {
 	Status          string
 	Name            string
 	Description     string
-	EntityType      string
+	RecordType      string
 	Thresholds      []int
 	CooldownSeconds int
 	CreatedAt       time.Time
@@ -153,7 +153,7 @@ type CreateScoringRulesetRequest struct {
 	Version         int
 	Name            string
 	Description     string
-	EntityType      string
+	RecordType      string
 	Thresholds      []int
 	CooldownSeconds int
 }

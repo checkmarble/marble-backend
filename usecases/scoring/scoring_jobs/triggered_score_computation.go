@@ -44,7 +44,7 @@ func (w *TriggeredScoreComputationWorker) Work(ctx context.Context, job *river.J
 	}
 
 	err := w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		ruleset, err := w.repository.GetScoringRuleset(ctx, tx, job.Args.OrgId, job.Args.EntityType, models.ScoreRulesetCommitted)
+		ruleset, err := w.repository.GetScoringRuleset(ctx, tx, job.Args.OrgId, job.Args.RecordType, models.ScoreRulesetCommitted)
 		if err != nil {
 			// Not having a ruleset here is okay, it means scoring is not configured
 			// for that table.
@@ -55,10 +55,10 @@ func (w *TriggeredScoreComputationWorker) Work(ctx context.Context, job *river.J
 			return err
 		}
 
-		activeScore, err := w.repository.GetActiveScore(ctx, tx, models.ScoringEntityRef{
+		activeScore, err := w.repository.GetActiveScore(ctx, tx, models.ScoringRecordRef{
 			OrgId:      job.Args.OrgId,
-			EntityType: job.Args.EntityType,
-			EntityId:   job.Args.EntityId,
+			RecordType: job.Args.RecordType,
+			RecordId:   job.Args.RecordId,
 		})
 		if err != nil && !errors.Is(err, models.NotFoundError) {
 			return err
@@ -68,7 +68,7 @@ func (w *TriggeredScoreComputationWorker) Work(ctx context.Context, job *river.J
 			return nil
 		}
 
-		eval, err := w.scoreUsecase.InternalComputeScore(ctx, tx, job.Args.OrgId, ruleset, job.Args.EntityType, job.Args.EntityId)
+		eval, err := w.scoreUsecase.InternalComputeScore(ctx, tx, job.Args.OrgId, ruleset, job.Args.RecordType, job.Args.RecordId)
 		if err != nil {
 			return err
 		}
@@ -78,9 +78,9 @@ func (w *TriggeredScoreComputationWorker) Work(ctx context.Context, job *river.J
 
 		req := models.InsertScoreRequest{
 			OrgId:      job.Args.OrgId,
-			EntityType: job.Args.EntityType,
-			EntityId:   job.Args.EntityId,
-			Score:      eval.Score,
+			RecordType: job.Args.RecordType,
+			RecordId:   job.Args.RecordId,
+			RiskLevel:  eval.Score,
 			Source:     models.ScoreSourceRuleset,
 			RulesetId:  &ruleset.Id,
 		}

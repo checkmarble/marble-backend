@@ -13,7 +13,7 @@ type ScoringRepository interface {
 	UpdateScoringSettings(ctx context.Context, exec repositories.Executor, settings models.ScoringSettings) (models.ScoringSettings, error)
 
 	ListScoringRulesets(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.ScoringRuleset, error)
-	GetScoringRuleset(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, entityType string, status models.ScoreRulesetStatus) (models.ScoringRuleset, error)
+	GetScoringRuleset(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, recordType string, status models.ScoreRulesetStatus) (models.ScoringRuleset, error)
 	InsertScoringRulesetVersion(ctx context.Context, exec repositories.Transaction,
 		orgId uuid.UUID,
 		ruleset models.CreateScoringRulesetRequest,
@@ -24,8 +24,8 @@ type ScoringRepository interface {
 	) ([]models.ScoringRule, error)
 	CommitRuleset(ctx context.Context, exec repositories.Executor, ruleset models.ScoringRuleset) (models.ScoringRuleset, error)
 
-	GetScoreHistory(ctx context.Context, exec repositories.Executor, entityRef models.ScoringEntityRef) ([]models.ScoringScore, error)
-	GetActiveScore(ctx context.Context, exec repositories.Executor, entityRef models.ScoringEntityRef) (*models.ScoringScore, error)
+	GetScoreHistory(ctx context.Context, exec repositories.Executor, record models.ScoringRecordRef) ([]models.ScoringScore, error)
+	GetActiveScore(ctx context.Context, exec repositories.Executor, record models.ScoringRecordRef) (*models.ScoringScore, error)
 	InsertScore(ctx context.Context, tx repositories.Transaction, req models.InsertScoreRequest) (models.ScoringScore, error)
 }
 

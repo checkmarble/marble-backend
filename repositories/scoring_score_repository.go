@@ -12,7 +12,7 @@ import (
 func (repo *MarbleDbRepository) GetScoreHistory(
 	ctx context.Context,
 	exec Executor,
-	entityRef models.ScoringEntityRef,
+	record models.ScoringRecordRef,
 ) ([]models.ScoringScore, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
@@ -22,9 +22,9 @@ func (repo *MarbleDbRepository) GetScoreHistory(
 		Select(dbmodels.SelectScoringScoresColumns...).
 		From(dbmodels.TABLE_SCORING_SCORES).
 		Where(squirrel.Eq{
-			"org_id":      entityRef.OrgId,
-			"entity_type": entityRef.EntityType,
-			"entity_id":   entityRef.EntityId,
+			"org_id":      record.OrgId,
+			"record_type": record.RecordType,
+			"record_id":   record.RecordId,
 		}).
 		OrderBy("created_at")
 
@@ -34,7 +34,7 @@ func (repo *MarbleDbRepository) GetScoreHistory(
 func (repo *MarbleDbRepository) GetActiveScore(
 	ctx context.Context,
 	exec Executor,
-	entityRef models.ScoringEntityRef,
+	record models.ScoringRecordRef,
 ) (*models.ScoringScore, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
@@ -44,9 +44,9 @@ func (repo *MarbleDbRepository) GetActiveScore(
 		Select(dbmodels.SelectScoringScoresColumns...).
 		From(dbmodels.TABLE_SCORING_SCORES).
 		Where(squirrel.Eq{
-			"org_id":      entityRef.OrgId,
-			"entity_type": entityRef.EntityType,
-			"entity_id":   entityRef.EntityId,
+			"org_id":      record.OrgId,
+			"record_type": record.RecordType,
+			"record_id":   record.RecordId,
 		}).
 		Where("deleted_at is null")
 
@@ -67,8 +67,8 @@ func (repo *MarbleDbRepository) InsertScore(
 		Set("deleted_at", squirrel.Expr("now()")).
 		Where(squirrel.Eq{
 			"org_id":      req.OrgId,
-			"entity_type": req.EntityType,
-			"entity_id":   req.EntityId,
+			"record_type": req.RecordType,
+			"record_id":   req.RecordId,
 		}).
 		Where("deleted_at is null")
 
@@ -81,9 +81,9 @@ func (repo *MarbleDbRepository) InsertScore(
 		Columns(
 			"id",
 			"org_id",
-			"entity_type",
-			"entity_id",
-			"score",
+			"record_type",
+			"record_id",
+			"risk_level",
 			"source",
 			"ruleset_id",
 			"overridden_by",
@@ -92,9 +92,9 @@ func (repo *MarbleDbRepository) InsertScore(
 		Values(
 			uuid.Must(uuid.NewV7()),
 			req.OrgId,
-			req.EntityType,
-			req.EntityId,
-			req.Score,
+			req.RecordType,
+			req.RecordId,
+			req.RiskLevel,
 			req.Source,
 			req.RulesetId,
 			req.OverriddenBy,

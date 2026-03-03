@@ -26,25 +26,25 @@ func TestInternalScoreToScore(t *testing.T) {
 	r := createRuleset([]int{10, 20, 30, 40})
 	e := createEval(25, 0)
 
-	assert.Equal(t, 3, uc.internalScoreToScore(r, e))
+	assert.Equal(t, 3, uc.scoreToRiskLevel(r, e))
 
 	r = createRuleset([]int{10, 20, 30, 40})
 	e = createEval(25, 4)
 
-	assert.Equal(t, 4, uc.internalScoreToScore(r, e))
+	assert.Equal(t, 4, uc.scoreToRiskLevel(r, e))
 
 	r = createRuleset([]int{10, 20, 30, 40})
 	e = createEval(5, 0)
 
-	assert.Equal(t, 1, uc.internalScoreToScore(r, e))
+	assert.Equal(t, 1, uc.scoreToRiskLevel(r, e))
 
 	r = createRuleset([]int{10, 20, 30, 40})
 	e = createEval(5, 3)
 
-	assert.Equal(t, 3, uc.internalScoreToScore(r, e))
+	assert.Equal(t, 3, uc.scoreToRiskLevel(r, e))
 
 	r = createRuleset([]int{10, 20, 30, 40})
 	e = createEval(45, 0)
 
-	assert.Equal(t, 5, uc.internalScoreToScore(r, e))
+	assert.Equal(t, 5, uc.scoreToRiskLevel(r, e))
 }
