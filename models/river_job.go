@@ -242,3 +242,11 @@ type AsyncDecisionExecutionCleanupArgs struct{}
 func (AsyncDecisionExecutionCleanupArgs) Kind() string {
 	return "async_decision_execution_cleanup"
 }
+
+type RulesetDryRunArgs struct {
+	OrgId     uuid.UUID `json:"org_id"`
+	RulesetId uuid.UUID `json:"ruleset_id"`
+	DryRunId  uuid.UUID `json:"dry_run_id"`
+}
+
+func (RulesetDryRunArgs) Kind() string { return "ruleset_dry_run" }

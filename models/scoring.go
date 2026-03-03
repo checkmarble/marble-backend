@@ -178,3 +178,21 @@ type ScoreDistribution struct {
 	RiskLevel int
 	Count     int
 }
+
+type DryRunStatus string
+
+const (
+	DryRunPending   DryRunStatus = "pending"
+	DryRunRunning   DryRunStatus = "running"
+	DryRunCompleted DryRunStatus = "completed"
+	DryRunCancelled DryRunStatus = "cancelled"
+)
+
+type ScoringDryRun struct {
+	Id          uuid.UUID
+	RulesetId   uuid.UUID
+	Status      DryRunStatus
+	RecordCount int
+	Results     map[int]int
+	CreatedAt   time.Time
+}
