@@ -9,7 +9,7 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-const MAX_SCORE_SCALE = 6
+const MAX_RISK_LEVEL_SCALE = 6
 
 type ScoringSettingsUsecase struct {
 	enforceSecurity    security.EnforceSecurityScoring
@@ -51,8 +51,8 @@ func (uc ScoringSettingsUsecase) UpdateSettings(ctx context.Context, settings mo
 		return models.ScoringSettings{}, err
 	}
 
-	if settings.MaxScore < 1 || settings.MaxScore > MAX_SCORE_SCALE {
-		return models.ScoringSettings{}, errors.Wrapf(models.BadParameterError, "maximum score outside of allowed bounds (1-%d)", MAX_SCORE_SCALE)
+	if settings.MaxRiskLevel < 1 || settings.MaxRiskLevel > MAX_RISK_LEVEL_SCALE {
+		return models.ScoringSettings{}, errors.Wrapf(models.BadParameterError, "maximum risk level outside of allowed bounds (1-%d)", MAX_RISK_LEVEL_SCALE)
 	}
 
 	return uc.repository.UpdateScoringSettings(ctx, uc.executorFactory.NewExecutor(), settings)

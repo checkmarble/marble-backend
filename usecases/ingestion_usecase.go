@@ -91,12 +91,12 @@ type taskEnqueuer interface {
 	EnqueueTriggerScoreComputation(
 		ctx context.Context,
 		tx repositories.Transaction,
-		entity models.ScoringEntityRef,
+		record models.ScoringRecordRef,
 	) error
 	EnqueueManyTriggerScoreComputation(
 		ctx context.Context,
 		tx repositories.Transaction,
-		entities []models.ScoringEntityRef,
+		entities []models.ScoringRecordRef,
 	) error
 }
 
@@ -946,13 +946,13 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 
 	if infra.HasFeatureFlag(infra.FEATURE_USER_SCORING, organizationId) {
 		err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-			entities := make([]models.ScoringEntityRef, 0, len(ingestionResults))
+			entities := make([]models.ScoringRecordRef, 0, len(ingestionResults))
 
 			for objectId := range ingestionResults {
-				entities = append(entities, models.ScoringEntityRef{
+				entities = append(entities, models.ScoringRecordRef{
 					OrgId:      organizationId,
-					EntityType: table.Name,
-					EntityId:   objectId,
+					RecordType: table.Name,
+					RecordId:   objectId,
 				})
 			}
 

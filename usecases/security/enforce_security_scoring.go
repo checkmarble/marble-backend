@@ -9,10 +9,10 @@ import (
 type EnforceSecurityScoring interface {
 	EnforceSecurity
 
-	ReadEntityScore(models.ScoringScore) error
+	ReadRecordScore(models.ScoringScore) error
 	UpdateSettings(uuid.UUID) error
 	UpdateRuleset(uuid.UUID) error
-	OverrideScore(models.ScoringEntityRef) error
+	OverrideScore(models.ScoringRecordRef) error
 }
 
 type EnforceSecurityScoringImpl struct {
@@ -20,7 +20,7 @@ type EnforceSecurityScoringImpl struct {
 	Credentials models.Credentials
 }
 
-func (e *EnforceSecurityScoringImpl) ReadEntityScore(score models.ScoringScore) error {
+func (e *EnforceSecurityScoringImpl) ReadRecordScore(score models.ScoringScore) error {
 	return e.ReadOrganization(score.OrgId)
 }
 
@@ -38,9 +38,9 @@ func (e *EnforceSecurityScoringImpl) UpdateRuleset(orgId uuid.UUID) error {
 	)
 }
 
-func (e *EnforceSecurityScoringImpl) OverrideScore(entityRef models.ScoringEntityRef) error {
+func (e *EnforceSecurityScoringImpl) OverrideScore(record models.ScoringRecordRef) error {
 	return errors.Join(
 		e.Permission(models.SCORING_OVERRIDE_SCORE),
-		e.ReadOrganization(entityRef.OrgId),
+		e.ReadOrganization(record.OrgId),
 	)
 }

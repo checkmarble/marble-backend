@@ -4,7 +4,7 @@ create table scoring_settings (
     id uuid primary key default gen_random_uuid(),
     org_id uuid not null,
 
-    max_score integer not null,
+    max_risk_level integer not null,
 
     created_at timestamp with time zone not null default now(),
     updated_at timestamp with time zone not null default now(),
@@ -22,7 +22,7 @@ create table scoring_rulesets (
     status text not null default 'draft',
     name text not null,
     description text,
-    entity_type text not null,
+    record_type text not null,
     thresholds int[] not null,
     cooldown_seconds integer not null default 0,
 
@@ -31,7 +31,7 @@ create table scoring_rulesets (
     constraint fk_org foreign key (org_id) references organizations (id) on delete cascade
 );
 
-create unique index idx_scoring_rulesets_entity_type_draft on scoring_rulesets (org_id, entity_type) where status = 'draft';
+create unique index idx_scoring_rulesets_record_type_draft on scoring_rulesets (org_id, record_type) where status = 'draft';
 
 create table scoring_rules (
     id uuid primary key default gen_random_uuid(),
@@ -51,9 +51,9 @@ create table scoring_scores (
     id uuid primary key default gen_random_uuid(),
     org_id uuid not null,
 
-    entity_type text not null,
-    entity_id text not null,
-    score int not null,
+    record_type text not null,
+    record_id text not null,
+    risk_level int not null,
     source text not null,
     ruleset_id uuid,
     overridden_by uuid,
@@ -67,16 +67,17 @@ create table scoring_scores (
 );
 
 create index idx_scoring_scores
-  on scoring_scores (org_id, entity_type, entity_id)
-  include (score);
+  on scoring_scores (org_id, record_type, record_id)
+  include (risk_level);
 
 create unique index idx_scoring_active_scores
-    on scoring_scores (org_id, entity_type, entity_id)
-    include (score)
+    on scoring_scores (org_id, record_type, record_id)
+    include (risk_level)
     where (deleted_at is null);
 
 -- +goose Down
 
+drop table scoring_scores;
 drop table scoring_rules;
 drop table scoring_rulesets;
 drop table scoring_settings;

@@ -15,7 +15,7 @@ type ScoringRuleset struct {
 	Status          string    `json:"status"`
 	Name            string    `json:"name"`
 	Description     string    `json:"description"`
-	EntityType      string    `json:"entity_type"`
+	RecordType      string    `json:"record_type"`
 	Thresholds      []int     `json:"thresholds"`
 	CooldownSeconds int       `json:"cooldown_seconds"`
 	CreatedAt       time.Time `json:"created_at"`
@@ -55,7 +55,7 @@ func AdaptScoringRuleset(m models.ScoringRuleset) (ScoringRuleset, error) {
 		Status:          m.Status,
 		Name:            m.Name,
 		Description:     m.Description,
-		EntityType:      m.EntityType,
+		RecordType:      m.RecordType,
 		Thresholds:      m.Thresholds,
 		CooldownSeconds: m.CooldownSeconds,
 		CreatedAt:       m.CreatedAt,

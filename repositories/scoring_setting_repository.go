@@ -40,20 +40,20 @@ func (repo *MarbleDbRepository) UpdateScoringSettings(
 		Columns(
 			"id",
 			"org_id",
-			"max_score",
+			"max_risk_level",
 			"created_at",
 			"updated_at",
 		).
 		Values(
 			uuid.Must(uuid.NewV7()),
 			settings.OrgId,
-			settings.MaxScore,
+			settings.MaxRiskLevel,
 			squirrel.Expr("now()"),
 			squirrel.Expr("now()"),
 		).
 		Suffix(`
 			on conflict (org_id) do update set
-				max_score = excluded.max_score,
+				max_risk_level = excluded.max_risk_level,
 				updated_at = now()
 		`).
 		Suffix("returning *")

@@ -137,12 +137,12 @@ type TaskQueueRepository interface {
 	EnqueueTriggerScoreComputation(
 		ctx context.Context,
 		tx Transaction,
-		entity models.ScoringEntityRef,
+		score models.ScoringRecordRef,
 	) error
 	EnqueueManyTriggerScoreComputation(
 		ctx context.Context,
 		tx Transaction,
-		entities []models.ScoringEntityRef,
+		entities []models.ScoringRecordRef,
 	) error
 }
 
@@ -646,14 +646,14 @@ func (r riverRepository) EnqueueWebhookDeliveryAt(
 func (r riverRepository) EnqueueTriggerScoreComputation(
 	ctx context.Context,
 	tx Transaction,
-	entity models.ScoringEntityRef,
+	record models.ScoringRecordRef,
 ) error {
 	res, err := r.client.InsertTx(
 		ctx,
 		tx.RawTx(),
-		models.TriggeredScoreComputationArgs(entity),
+		models.TriggeredScoreComputationArgs(record),
 		&river.InsertOpts{
-			Queue:    entity.OrgId.String(),
+			Queue:    record.OrgId.String(),
 			Priority: 4, // Low priority
 			UniqueOpts: river.UniqueOpts{
 				ByArgs:   true,
@@ -675,15 +675,15 @@ func (r riverRepository) EnqueueTriggerScoreComputation(
 func (r riverRepository) EnqueueManyTriggerScoreComputation(
 	ctx context.Context,
 	tx Transaction,
-	entities []models.ScoringEntityRef,
+	records []models.ScoringRecordRef,
 ) error {
-	params := make([]river.InsertManyParams, len(entities))
+	params := make([]river.InsertManyParams, len(records))
 
-	for idx, entity := range entities {
+	for idx, record := range records {
 		params[idx] = river.InsertManyParams{
-			Args: models.TriggeredScoreComputationArgs(entity),
+			Args: models.TriggeredScoreComputationArgs(record),
 			InsertOpts: &river.InsertOpts{
-				Queue:    entity.OrgId.String(),
+				Queue:    record.OrgId.String(),
 				Priority: 4, // Low priority
 				UniqueOpts: river.UniqueOpts{
 					ByArgs:   true,

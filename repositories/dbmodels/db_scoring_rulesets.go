@@ -18,7 +18,7 @@ type DbScoringRuleset struct {
 	Status          string    `db:"status"`
 	Name            string    `db:"name"`
 	Description     string    `db:"description"`
-	EntityType      string    `db:"entity_type"`
+	RecordType      string    `db:"record_type"`
 	Thresholds      []int     `db:"thresholds"`
 	CooldownSeconds int       `db:"cooldown_seconds"`
 	CreatedAt       time.Time `db:"created_at"`
@@ -58,7 +58,7 @@ func AdaptScoringRuleset(db DbScoringRuleset) (models.ScoringRuleset, error) {
 		Status:          db.Status,
 		Name:            db.Name,
 		Description:     db.Description,
-		EntityType:      db.EntityType,
+		RecordType:      db.RecordType,
 		Thresholds:      db.Thresholds,
 		CooldownSeconds: db.CooldownSeconds,
 		CreatedAt:       db.CreatedAt,

@@ -7,19 +7,19 @@ import (
 )
 
 type Settings struct {
-	MaxScore  int       `json:"max_score"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	MaxRiskLevel int       `json:"max_risk_level"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 type UpdateSettingsRequest struct {
-	MaxScore int `json:"max_score" binding:"required"`
+	MaxRiskLevel int `json:"max_risk_level" binding:"required"`
 }
 
 func AdaptSettings(m models.ScoringSettings) Settings {
 	return Settings{
-		MaxScore:  m.MaxScore,
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
+		MaxRiskLevel: m.MaxRiskLevel,
+		CreatedAt:    m.CreatedAt,
+		UpdatedAt:    m.UpdatedAt,
 	}
 }

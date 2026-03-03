@@ -9,7 +9,7 @@ import (
 
 type Score struct {
 	Id           uuid.UUID  `json:"id"`
-	Score        int        `json:"score"`
+	RiskLevel    int        `json:"risk_level"`
 	Source       string     `json:"source"`
 	RulesetId    *uuid.UUID `json:"ruleset_id"`
 	OverriddenBy *uuid.UUID `json:"overridden_by,omitempty"`
@@ -19,14 +19,14 @@ type Score struct {
 }
 
 type OverrideScoreRequest struct {
-	Score   int        `json:"score"`
-	StaleAt *time.Time `json:"stale_at"`
+	RiskLevel int        `json:"risk_level"`
+	StaleAt   *time.Time `json:"stale_at"`
 }
 
 func AdaptScore(m models.ScoringScore) Score {
 	return Score{
 		Id:           m.Id,
-		Score:        m.Score,
+		RiskLevel:    m.RiskLevel,
 		Source:       string(m.Source),
 		RulesetId:    m.RulesetId,
 		OverriddenBy: m.OverriddenBy,

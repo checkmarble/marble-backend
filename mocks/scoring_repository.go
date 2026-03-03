@@ -31,8 +31,8 @@ func (m *ScoringRepository) ListScoringRulesets(ctx context.Context, exec reposi
 	return args.Get(0).([]models.ScoringRuleset), args.Error(1)
 }
 
-func (m *ScoringRepository) GetScoringRuleset(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, entityType string, status models.ScoreRulesetStatus) (models.ScoringRuleset, error) {
-	args := m.Called(ctx, exec, orgId, entityType, status)
+func (m *ScoringRepository) GetScoringRuleset(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, recordType string, status models.ScoreRulesetStatus) (models.ScoringRuleset, error) {
+	args := m.Called(ctx, exec, orgId, recordType, status)
 	return args.Get(0).(models.ScoringRuleset), args.Error(1)
 }
 
@@ -51,16 +51,16 @@ func (m *ScoringRepository) CommitRuleset(ctx context.Context, exec repositories
 	return args.Get(0).(models.ScoringRuleset), args.Error(1)
 }
 
-func (m *ScoringRepository) GetScoreHistory(ctx context.Context, exec repositories.Executor, entityRef models.ScoringEntityRef) ([]models.ScoringScore, error) {
-	args := m.Called(ctx, exec, entityRef)
+func (m *ScoringRepository) GetScoreHistory(ctx context.Context, exec repositories.Executor, record models.ScoringRecordRef) ([]models.ScoringScore, error) {
+	args := m.Called(ctx, exec, record)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]models.ScoringScore), args.Error(1)
 }
 
-func (m *ScoringRepository) GetActiveScore(ctx context.Context, exec repositories.Executor, entityRef models.ScoringEntityRef) (*models.ScoringScore, error) {
-	args := m.Called(ctx, exec, entityRef)
+func (m *ScoringRepository) GetActiveScore(ctx context.Context, exec repositories.Executor, record models.ScoringRecordRef) (*models.ScoringScore, error) {
+	args := m.Called(ctx, exec, record)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

@@ -12,7 +12,7 @@ type DbScoringSetting struct {
 	Id    uuid.UUID `db:"id"`
 	OrgId uuid.UUID `db:"org_id"`
 
-	MaxScore int `db:"max_score"`
+	MaxRiskLevel int `db:"max_risk_level"`
 
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
@@ -24,10 +24,10 @@ var SelectScoringSettingsColumns = utils.ColumnList[DbScoringSetting]()
 
 func AdaptScoringSetting(db DbScoringSetting) (models.ScoringSettings, error) {
 	return models.ScoringSettings{
-		Id:        db.Id,
-		OrgId:     db.OrgId,
-		MaxScore:  db.MaxScore,
-		CreatedAt: db.CreatedAt,
-		UpdatedAt: db.UpdatedAt,
+		Id:           db.Id,
+		OrgId:        db.OrgId,
+		MaxRiskLevel: db.MaxRiskLevel,
+		CreatedAt:    db.CreatedAt,
+		UpdatedAt:    db.UpdatedAt,
 	}, nil
 }

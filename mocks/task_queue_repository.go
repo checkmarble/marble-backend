@@ -190,16 +190,16 @@ func (m *TaskQueueRepository) EnqueueWebhookDeliveryAt(
 func (m *TaskQueueRepository) EnqueueTriggerScoreComputation(
 	ctx context.Context,
 	tx repositories.Transaction,
-	entityRef models.ScoringEntityRef,
+	record models.ScoringRecordRef,
 ) error {
-	args := m.Called(ctx, tx, entityRef)
+	args := m.Called(ctx, tx, record)
 	return args.Error(0)
 }
 
 func (m *TaskQueueRepository) EnqueueManyTriggerScoreComputation(
 	ctx context.Context,
 	tx repositories.Transaction,
-	entities []models.ScoringEntityRef,
+	entities []models.ScoringRecordRef,
 ) error {
 	args := m.Called(ctx, tx, entities)
 	return args.Error(0)

@@ -417,10 +417,10 @@ func (usecase *DecisionUsecase) CreateDecision(
 		}
 
 		if infra.HasFeatureFlag(infra.FEATURE_USER_SCORING, scenario.OrganizationId) {
-			err := usecase.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringEntityRef{
+			err := usecase.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringRecordRef{
 				OrgId:      scenario.OrganizationId,
-				EntityType: scenario.TriggerObjectType,
-				EntityId:   payload.Data["object_id"].(string),
+				RecordType: scenario.TriggerObjectType,
+				RecordId:   payload.Data["object_id"].(string),
 			})
 			if err != nil {
 				logger.ErrorContext(ctx,

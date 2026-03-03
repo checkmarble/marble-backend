@@ -31,9 +31,9 @@ type TryRefreshScoreTestSuite struct {
 	ingestedDataReader *mocks.IngestedDataReader
 
 	orgId      uuid.UUID
-	entityType string
-	entityId   string
-	entity     models.ScoringEntityRef
+	recordType string
+	recordId   string
+	record     models.ScoringRecordRef
 	ctx        context.Context
 }
 
@@ -52,9 +52,9 @@ func (s *TryRefreshScoreTestSuite) SetupTest() {
 	s.ingestedDataReader = new(mocks.IngestedDataReader)
 
 	s.orgId = uuid.New()
-	s.entityType = "account"
-	s.entityId = "entity-123"
-	s.entity = models.ScoringEntityRef{OrgId: s.orgId, EntityType: s.entityType, EntityId: s.entityId}
+	s.recordType = "account"
+	s.recordId = "entity-123"
+	s.record = models.ScoringRecordRef{OrgId: s.orgId, RecordType: s.recordType, RecordId: s.recordId}
 	s.ctx = context.Background()
 }
 
@@ -79,14 +79,14 @@ func (s *TryRefreshScoreTestSuite) makeUsecaseWithCompute() ScoringScoresUsecase
 }
 
 func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_BackgroundRefresh_EnqueuesAndReturnsCurrentScore() {
-	current := &models.ScoringScore{Score: 3, Source: models.ScoreSourceRuleset, CreatedAt: time.Now().Add(2 * -time.Hour)}
+	current := &models.ScoringScore{RiskLevel: 3, Source: models.ScoreSourceRuleset, CreatedAt: time.Now().Add(2 * -time.Hour)}
 	opts := models.RefreshScoreOptions{RefreshInBackground: true, RefreshOlderThan: time.Hour}
 
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
-	s.taskQueue.On("EnqueueTriggerScoreComputation", s.ctx, s.transaction, s.entity).Return(nil)
+	s.taskQueue.On("EnqueueTriggerScoreComputation", s.ctx, s.transaction, s.record).Return(nil)
 
 	uc := s.makeUsecase()
-	result, err := uc.tryRefreshScore(s.ctx, current, s.entity, opts)
+	result, err := uc.tryRefreshScore(s.ctx, current, s.record, opts)
 
 	s.NoError(err)
 	s.Equal(current, result)
@@ -94,15 +94,15 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_BackgroundRefresh_Enqueue
 }
 
 func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_BackgroundRefresh_EnqueueError() {
-	current := &models.ScoringScore{Score: 3, Source: models.ScoreSourceRuleset, CreatedAt: time.Now().Add(2 * -time.Hour)}
+	current := &models.ScoringScore{RiskLevel: 3, Source: models.ScoreSourceRuleset, CreatedAt: time.Now().Add(2 * -time.Hour)}
 	opts := models.RefreshScoreOptions{RefreshInBackground: true, RefreshOlderThan: time.Hour}
 	enqueueErr := fmt.Errorf("queue full")
 
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
-	s.taskQueue.On("EnqueueTriggerScoreComputation", s.ctx, s.transaction, s.entity).Return(enqueueErr)
+	s.taskQueue.On("EnqueueTriggerScoreComputation", s.ctx, s.transaction, s.record).Return(enqueueErr)
 
 	uc := s.makeUsecase()
-	_, err := uc.tryRefreshScore(s.ctx, current, s.entity, opts)
+	_, err := uc.tryRefreshScore(s.ctx, current, s.record, opts)
 
 	s.ErrorIs(err, enqueueErr)
 }
@@ -114,11 +114,11 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_NoScore_BackgroundFallsTh
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.entityType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
 		Return(models.ScoringRuleset{}, computeErr)
 
 	uc := s.makeUsecase()
-	_, err := uc.tryRefreshScore(s.ctx, nil, s.entity, opts)
+	_, err := uc.tryRefreshScore(s.ctx, nil, s.record, opts)
 
 	s.ErrorIs(err, computeErr)
 	s.taskQueue.AssertNotCalled(s.T(), "EnqueueTriggerScoreComputation")
@@ -126,7 +126,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_NoScore_BackgroundFallsTh
 
 func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_NotStale() {
 	current := &models.ScoringScore{
-		Score:     3,
+		RiskLevel: 3,
 		Source:    models.ScoreSourceRuleset,
 		CreatedAt: time.Now().Add(-time.Minute),
 	}
@@ -135,7 +135,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_NotStale() {
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 
 	uc := s.makeUsecase()
-	result, err := uc.tryRefreshScore(s.ctx, current, s.entity, opts)
+	result, err := uc.tryRefreshScore(s.ctx, current, s.record, opts)
 
 	s.NoError(err)
 	s.Equal(current, result)
@@ -145,7 +145,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_NotStale() {
 
 func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeError_HasCurrentScore() {
 	current := &models.ScoringScore{
-		Score:     3,
+		RiskLevel: 3,
 		Source:    models.ScoreSourceRuleset,
 		CreatedAt: time.Now().Add(-2 * time.Hour),
 	}
@@ -155,11 +155,11 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeError_HasCur
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.entityType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
 		Return(models.ScoringRuleset{}, computeErr)
 
 	uc := s.makeUsecase()
-	result, err := uc.tryRefreshScore(s.ctx, current, s.entity, opts)
+	result, err := uc.tryRefreshScore(s.ctx, current, s.record, opts)
 
 	s.NoError(err)
 	s.Equal(current, result)
@@ -172,18 +172,18 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeError_NoCurr
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.entityType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
 		Return(models.ScoringRuleset{}, computeErr)
 
 	uc := s.makeUsecase()
-	_, err := uc.tryRefreshScore(s.ctx, nil, s.entity, opts)
+	_, err := uc.tryRefreshScore(s.ctx, nil, s.record, opts)
 
 	s.ErrorIs(err, computeErr)
 }
 
 func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeAndInsert_HappyPath() {
 	current := &models.ScoringScore{
-		Score:     2,
+		RiskLevel: 2,
 		Source:    models.ScoreSourceRuleset,
 		CreatedAt: time.Now().Add(-2 * time.Hour),
 	}
@@ -191,23 +191,23 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeAndInsert_Ha
 
 	ruleset := models.ScoringRuleset{
 		Id:         uuid.New(),
-		EntityType: s.entityType,
+		RecordType: s.recordType,
 		Thresholds: []int{10},
 	}
 	dataModel := models.DataModel{
 		Tables: map[string]models.Table{
-			s.entityType: {Name: s.entityType},
+			s.recordType: {Name: s.recordType},
 		},
 	}
 	clientExec := new(mocks.Transaction)
-	obj := models.DataModelObject{Data: map[string]any{"id": s.entityId}}
-	inserted := models.ScoringScore{Score: 2, Source: models.ScoreSourceRuleset}
+	obj := models.DataModelObject{Data: map[string]any{"id": s.recordId}}
+	inserted := models.ScoringScore{RiskLevel: 2, Source: models.ScoreSourceRuleset}
 
 	expectedReq := models.InsertScoreRequest{
 		OrgId:      s.orgId,
-		EntityType: s.entityType,
-		EntityId:   s.entityId,
-		Score:      1,
+		RecordType: s.recordType,
+		RecordId:   s.recordId,
+		RiskLevel:  1,
 		Source:     models.ScoreSourceRuleset,
 		RulesetId:  &ruleset.Id,
 	}
@@ -215,18 +215,18 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeAndInsert_Ha
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.entityType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
 		Return(ruleset, nil)
 	s.dataModelRepo.On("GetDataModel", s.ctx, s.transaction, s.orgId, false, false).
 		Return(dataModel, nil)
 	s.executorFactory.On("NewClientDbExecutor", s.ctx, s.orgId).Return(clientExec, nil)
-	s.ingestedDataReader.On("QueryIngestedObject", s.ctx, clientExec, dataModel.Tables[s.entityType], s.entityId, []string(nil)).
+	s.ingestedDataReader.On("QueryIngestedObject", s.ctx, clientExec, dataModel.Tables[s.recordType], s.recordId, []string(nil)).
 		Return([]models.DataModelObject{obj}, nil)
 	s.repository.On("InsertScore", s.ctx, s.transaction, expectedReq).
 		Return(inserted, nil)
 
 	uc := s.makeUsecaseWithCompute()
-	result, err := uc.tryRefreshScore(s.ctx, current, s.entity, opts)
+	result, err := uc.tryRefreshScore(s.ctx, current, s.record, opts)
 
 	s.NoError(err)
 	s.Equal(&inserted, result)
@@ -235,7 +235,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeAndInsert_Ha
 
 func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_InsertError_HasCurrentScore() {
 	current := &models.ScoringScore{
-		Score:     1,
+		RiskLevel: 1,
 		Source:    models.ScoreSourceRuleset,
 		CreatedAt: time.Now().Add(-2 * time.Hour),
 	}
@@ -244,31 +244,31 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_InsertError_HasCurr
 
 	ruleset := models.ScoringRuleset{
 		Id:         uuid.New(),
-		EntityType: s.entityType,
+		RecordType: s.recordType,
 		Thresholds: []int{10},
 	}
 	dataModel := models.DataModel{
 		Tables: map[string]models.Table{
-			s.entityType: {Name: s.entityType},
+			s.recordType: {Name: s.recordType},
 		},
 	}
 	clientExec := new(mocks.Transaction)
-	obj := models.DataModelObject{Data: map[string]any{"id": s.entityId}}
+	obj := models.DataModelObject{Data: map[string]any{"id": s.recordId}}
 
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.entityType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
 		Return(ruleset, nil)
 	s.dataModelRepo.On("GetDataModel", s.ctx, s.transaction, s.orgId, false, false).
 		Return(dataModel, nil)
 	s.executorFactory.On("NewClientDbExecutor", s.ctx, s.orgId).Return(clientExec, nil)
-	s.ingestedDataReader.On("QueryIngestedObject", s.ctx, clientExec, dataModel.Tables[s.entityType], s.entityId, []string(nil)).
+	s.ingestedDataReader.On("QueryIngestedObject", s.ctx, clientExec, dataModel.Tables[s.recordType], s.recordId, []string(nil)).
 		Return([]models.DataModelObject{obj}, nil)
 	s.repository.On("InsertScore", s.ctx, s.transaction, mock.Anything).Return(models.ScoringScore{}, insertErr)
 
 	uc := s.makeUsecaseWithCompute()
-	result, err := uc.tryRefreshScore(s.ctx, current, s.entity, opts)
+	result, err := uc.tryRefreshScore(s.ctx, current, s.record, opts)
 
 	s.NoError(err)
 	s.Equal(current, result)

@@ -50,12 +50,12 @@ func (uc ScoringRulesetsUsecase) ListRulesets(ctx context.Context) ([]models.Sco
 	return rulesets, err
 }
 
-func (uc ScoringRulesetsUsecase) GetRuleset(ctx context.Context, entityType string, status models.ScoreRulesetStatus) (models.ScoringRuleset, error) {
+func (uc ScoringRulesetsUsecase) GetRuleset(ctx context.Context, recordType string, status models.ScoreRulesetStatus) (models.ScoringRuleset, error) {
 	ruleset, err := uc.repository.GetScoringRuleset(
 		ctx,
 		uc.executorFactory.NewExecutor(),
 		uc.enforceSecurity.OrgId(),
-		entityType,
+		recordType,
 		status)
 	if err != nil {
 		return models.ScoringRuleset{}, err
@@ -64,7 +64,7 @@ func (uc ScoringRulesetsUsecase) GetRuleset(ctx context.Context, entityType stri
 	return ruleset, err
 }
 
-func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, entityType string, req scoring.CreateRulesetRequest) (models.ScoringRuleset, error) {
+func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, recordType string, req scoring.CreateRulesetRequest) (models.ScoringRuleset, error) {
 	orgId := uc.enforceSecurity.OrgId()
 	exec := uc.executorFactory.NewExecutor()
 
@@ -83,9 +83,9 @@ func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, entit
 	// We need a number of thresholds == (max_level - 1) for the score mapping to make sense:
 	//   T-1 | T-2
 	// 1  <  2  <  3
-	if len(req.Thresholds) != settings.MaxScore-1 {
+	if len(req.Thresholds) != settings.MaxRiskLevel-1 {
 		return models.ScoringRuleset{}, errors.Wrapf(models.BadParameterError,
-			"invalid thresholds, expected a list of %d (max score is %d)", settings.MaxScore-1, settings.MaxScore)
+			"invalid thresholds, expected a list of %d (max score is %d)", settings.MaxRiskLevel-1, settings.MaxRiskLevel)
 	}
 
 	for _, rule := range req.Rules {
@@ -94,7 +94,7 @@ func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, entit
 		}
 	}
 
-	existingRuleset, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, entityType, models.ScoreRulesetCommitted)
+	existingRuleset, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, recordType, models.ScoreRulesetCommitted)
 	if err != nil && !errors.Is(err, models.NotFoundError) {
 		return models.ScoringRuleset{}, err
 	}
@@ -104,7 +104,7 @@ func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, entit
 			Version:         existingRuleset.Version + 1,
 			Name:            req.Name,
 			Description:     req.Description,
-			EntityType:      entityType,
+			RecordType:      recordType,
 			Thresholds:      req.Thresholds,
 			CooldownSeconds: req.CooldownSeconds,
 		}
@@ -143,7 +143,7 @@ func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, entit
 	return ruleset, err
 }
 
-func (uc ScoringRulesetsUsecase) PreparationStatus(ctx context.Context, entityType string) (models.PublicationPreparationStatus, error) {
+func (uc ScoringRulesetsUsecase) PreparationStatus(ctx context.Context, recordType string) (models.PublicationPreparationStatus, error) {
 	orgId := uc.enforceSecurity.OrgId()
 	exec := uc.executorFactory.NewExecutor()
 
@@ -151,7 +151,7 @@ func (uc ScoringRulesetsUsecase) PreparationStatus(ctx context.Context, entityTy
 		return models.PublicationPreparationStatus{}, err
 	}
 
-	draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, entityType, models.ScoreRulesetDraft)
+	draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, recordType, models.ScoreRulesetDraft)
 	if err != nil {
 		if errors.Is(err, models.NotFoundError) {
 			return models.PublicationPreparationStatus{}, errors.Wrap(err, "no draft version found")
@@ -180,7 +180,7 @@ func (uc ScoringRulesetsUsecase) PreparationStatus(ctx context.Context, entityTy
 	return status, nil
 }
 
-func (uc ScoringRulesetsUsecase) PrepareRuleset(ctx context.Context, entityType string) error {
+func (uc ScoringRulesetsUsecase) PrepareRuleset(ctx context.Context, recordType string) error {
 	orgId := uc.enforceSecurity.OrgId()
 	exec := uc.executorFactory.NewExecutor()
 
@@ -188,7 +188,7 @@ func (uc ScoringRulesetsUsecase) PrepareRuleset(ctx context.Context, entityType 
 		return err
 	}
 
-	draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, entityType, models.ScoreRulesetDraft)
+	draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, recordType, models.ScoreRulesetDraft)
 	if err != nil {
 		if errors.Is(err, models.NotFoundError) {
 			return errors.Wrap(err, "no draft version found")
@@ -215,7 +215,7 @@ func (uc ScoringRulesetsUsecase) PrepareRuleset(ctx context.Context, entityType 
 	return nil
 }
 
-func (uc ScoringRulesetsUsecase) CommitRuleset(ctx context.Context, entityType string) (models.ScoringRuleset, error) {
+func (uc ScoringRulesetsUsecase) CommitRuleset(ctx context.Context, recordType string) (models.ScoringRuleset, error) {
 	orgId := uc.enforceSecurity.OrgId()
 	exec := uc.executorFactory.NewExecutor()
 
@@ -224,7 +224,7 @@ func (uc ScoringRulesetsUsecase) CommitRuleset(ctx context.Context, entityType s
 	}
 
 	ruleset, err := executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (models.ScoringRuleset, error) {
-		draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, entityType, models.ScoreRulesetDraft)
+		draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, recordType, models.ScoreRulesetDraft)
 		if err != nil {
 			if errors.Is(err, models.NotFoundError) {
 				return models.ScoringRuleset{}, errors.Wrap(err, "no draft version found")
