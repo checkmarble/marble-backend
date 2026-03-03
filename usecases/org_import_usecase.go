@@ -549,7 +549,7 @@ func (uc *OrgImportUsecase) createCustomLists(ctx context.Context, tx repositori
 
 		// We can have a duplication of Value, but it is not a problem for the use of custom list.
 		err = uc.customListRepository.BatchInsertCustomListValues(ctx, tx,
-			models.CustomListText, listId.String(), pure_utils.Map(
+			kind, listId.String(), pure_utils.Map(
 				list.Values, func(v string) models.BatchInsertCustomListValue {
 					valueId, _ := uuid.NewV7()
 					return models.BatchInsertCustomListValue{Id: valueId.String(), Value: v}

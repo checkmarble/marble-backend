@@ -19,8 +19,8 @@ type ScenarioDto struct {
 	Archived          bool      `json:"archived"`
 }
 
-func AdaptScenarioDto(scenario models.Scenario) (ScenarioDto, error) {
-	scenarioDto := ScenarioDto{
+func AdaptScenarioDto(scenario models.Scenario) ScenarioDto {
+	return ScenarioDto{
 		Id:                scenario.Id,
 		CreatedAt:         scenario.CreatedAt,
 		Description:       scenario.Description,
@@ -30,8 +30,6 @@ func AdaptScenarioDto(scenario models.Scenario) (ScenarioDto, error) {
 		TriggerObjectType: scenario.TriggerObjectType,
 		Archived:          scenario.Archived,
 	}
-
-	return scenarioDto, nil
 }
 
 // Create scenario DTO

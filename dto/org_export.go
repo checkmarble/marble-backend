@@ -93,9 +93,8 @@ func AdaptImportCustomListDto(list models.CustomList, values []models.CustomList
 }
 
 func AdaptImportScenarioDto(scenario models.Scenario, iterationBody ScenarioIterationBodyDto) ImportScenario {
-	scenarioDto, _ := AdaptScenarioDto(scenario)
 	return ImportScenario{
-		Scenario:  scenarioDto,
+		Scenario:  AdaptScenarioDto(scenario),
 		Iteration: iterationBody,
 	}
 }

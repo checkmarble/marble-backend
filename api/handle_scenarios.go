@@ -28,12 +28,7 @@ func listScenarios(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		scenariosDto, err := pure_utils.MapErr(scenarios, dto.AdaptScenarioDto)
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		c.JSON(http.StatusOK, scenariosDto)
+		c.JSON(http.StatusOK, pure_utils.Map(scenarios, dto.AdaptScenarioDto))
 	}
 }
 
@@ -59,12 +54,7 @@ func createScenario(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		scenarioDto, err := dto.AdaptScenarioDto(scenario)
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		c.JSON(http.StatusOK, scenarioDto)
+		c.JSON(http.StatusOK, dto.AdaptScenarioDto(scenario))
 	}
 }
 
@@ -80,12 +70,7 @@ func getScenario(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		scenarioDto, err := dto.AdaptScenarioDto(scenario)
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		c.JSON(http.StatusOK, scenarioDto)
+		c.JSON(http.StatusOK, dto.AdaptScenarioDto(scenario))
 	}
 }
 
@@ -108,12 +93,7 @@ func updateScenario(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		scenarioDto, err := dto.AdaptScenarioDto(scenario)
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		c.JSON(http.StatusOK, scenarioDto)
+		c.JSON(http.StatusOK, dto.AdaptScenarioDto(scenario))
 	}
 }
 
@@ -193,11 +173,6 @@ func copyScenario(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		scenarioDto, err := dto.AdaptScenarioDto(scenario)
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		c.JSON(http.StatusOK, scenarioDto)
+		c.JSON(http.StatusOK, dto.AdaptScenarioDto(scenario))
 	}
 }

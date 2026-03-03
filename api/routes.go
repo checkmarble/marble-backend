@@ -412,8 +412,18 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/settings/ai", tom, HandleGetAiSettingForOrganization(uc))
 	router.PUT("/settings/ai", tom, HandlePutAiSettingForOrganization(uc))
 
-	router.POST("/org-import", timeoutMiddleware(conf.BatchTimeout), handleOrgImport(uc))
-	router.POST("/org-import/file", timeoutMiddleware(conf.BatchTimeout), handleOrgImportFromFile(uc))
+	router.POST(
+		"/org-import",
+		timeoutMiddleware(conf.BatchTimeout),
+		limits.RequestSizeLimiter(maxCaseFileSize),
+		handleOrgImport(uc),
+	)
+	router.POST(
+		"/org-import/file",
+		timeoutMiddleware(conf.BatchTimeout),
+		limits.RequestSizeLimiter(maxCaseFileSize),
+		handleOrgImportFromFile(uc),
+	)
 	router.GET("/org-import/archetypes", tom, handleListArchetypes(uc))
 	router.POST("/org-import/archetypes/apply", timeoutMiddleware(conf.BatchTimeout), handleOrgImportFromArchetype(uc))
 	router.GET("/org-export", tom, handleOrgExport(uc))
