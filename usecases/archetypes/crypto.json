@@ -1,6 +1,9 @@
 {
-  "label": "Demo Crypto Archetype",
-  "description": "Archetypes for a crypto institution with data model, scenarios and rules examples ...",
+  "metadata": {
+    "label": "Demo Crypto Archetype",
+    "description": "Archetypes for a crypto institution with data model, scenarios and rules examples ...",
+    "app_version": "v0.62.2"
+  },
   "org": {
     "name": "New org",
     "default_scenario_timezone": "Europe/Paris",
@@ -328,6 +331,7 @@
     "links": [
       {
         "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        "name": "accounts_companies",
         "parent_table_name": "companies",
         "parent_table_id": "11111111-1111-1111-1111-111111111111",
         "parent_field_id": "11111111-1111-1111-1111-111111111001",
@@ -337,6 +341,7 @@
       },
       {
         "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+        "name": "users_companies",
         "parent_table_name": "companies",
         "parent_table_id": "11111111-1111-1111-1111-111111111111",
         "parent_field_id": "11111111-1111-1111-1111-111111111001",
@@ -346,6 +351,7 @@
       },
       {
         "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+        "name": "transactions_accounts",
         "parent_table_name": "accounts",
         "parent_table_id": "22222222-2222-2222-2222-222222222222",
         "parent_field_id": "22222222-2222-2222-2222-222222222201",
@@ -355,6 +361,7 @@
       },
       {
         "id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+        "name": "transactions_companies",
         "parent_table_name": "companies",
         "parent_table_id": "11111111-1111-1111-1111-111111111111",
         "parent_field_id": "11111111-1111-1111-1111-111111111001",
@@ -374,18 +381,22 @@
       }
     ],
     "navigation_options": {
-      "22222222-2222-2222-2222-222222222222": {
-        "source_field_id": "22222222-2222-2222-2222-222222222201",
-        "target_table_id": "44444444-4444-4444-4444-444444444444",
-        "filter_field_id": "44444444-4444-4444-4444-444444444403",
-        "ordering_field_id": "44444444-4444-4444-4444-444444444408"
-      },
-      "11111111-1111-1111-1111-111111111111": {
-        "source_field_id": "11111111-1111-1111-1111-111111111001",
-        "target_table_id": "22222222-2222-2222-2222-222222222222",
-        "filter_field_id": "22222222-2222-2222-2222-222222222207",
-        "ordering_field_id": "22222222-2222-2222-2222-222222222208"
-      }
+      "22222222-2222-2222-2222-222222222222": [
+        {
+          "source_field_id": "22222222-2222-2222-2222-222222222201",
+          "target_table_id": "44444444-4444-4444-4444-444444444444",
+          "filter_field_id": "44444444-4444-4444-4444-444444444403",
+          "ordering_field_id": "44444444-4444-4444-4444-444444444408"
+        }
+      ],
+      "11111111-1111-1111-1111-111111111111": [
+        {
+          "source_field_id": "11111111-1111-1111-1111-111111111001",
+          "target_table_id": "22222222-2222-2222-2222-222222222222",
+          "filter_field_id": "22222222-2222-2222-2222-222222222207",
+          "ordering_field_id": "22222222-2222-2222-2222-222222222208"
+        }
+      ]
     }
   },
   "scenarios": [

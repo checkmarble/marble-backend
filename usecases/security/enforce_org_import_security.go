@@ -14,7 +14,8 @@ type EnforceSecurityOrgImportImpl struct {
 
 func (e *EnforceSecurityOrgImportImpl) ImportOrg() error {
 	if e.Credentials.Role != models.MARBLE_ADMIN {
-		return errors.Wrap(models.UnAuthorizedError, "only admins can import an organization")
+		return errors.Wrap(models.UnAuthorizedError,
+			"only admins can import an organization")
 	}
 
 	return nil
@@ -26,4 +27,8 @@ func (e *EnforceSecurityOrgImportImpl) ListOrgArchetypes() error {
 
 func (e *EnforceSecurityOrgImportImpl) ImportIntoOrg(orgId uuid.UUID) error {
 	return errors.Join(e.Permission(models.ORG_IMPORT_INTO_EXISTING), e.ReadOrganization(orgId))
+}
+
+func (e *EnforceSecurityOrgImportImpl) ExportOrg(orgId uuid.UUID) error {
+	return errors.Join(e.Permission(models.ORG_EXPORT), e.ReadOrganization(orgId))
 }

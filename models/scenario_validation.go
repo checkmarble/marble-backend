@@ -7,7 +7,7 @@ type ScenarioValidationErrorCode int
 const (
 	// General
 	DataModelNotFound ScenarioValidationErrorCode = iota
-	TrigerObjectNotFound
+	TriggerObjectNotFound
 	// Trigger
 	TriggerConditionRequired
 	// Rule
@@ -26,7 +26,7 @@ func (e ScenarioValidationErrorCode) String() string {
 	switch e {
 	case DataModelNotFound:
 		return "DATA_MODEL_NOT_FOUND"
-	case TrigerObjectNotFound:
+	case TriggerObjectNotFound:
 		return "TRIGGER_OBJECT_NOT_FOUND"
 	case TriggerConditionRequired:
 		return "TRIGGER_CONDITION_REQUIRED"

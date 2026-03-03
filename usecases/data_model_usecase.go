@@ -212,13 +212,16 @@ func (usecase *usecase) UpdateDataModelTable(
 		}
 
 		if _, ok := dataModel.Tables[table.Name].Fields[captionField.Value()]; !ok {
-			return errors.Wrapf(models.BadParameterError, "field %s not found on table %s", captionField.Value(), table.Name)
+			return errors.Wrapf(models.BadParameterError,
+				"field %s not found on table %s", captionField.Value(), table.Name)
 		}
 		if dataModel.Tables[table.Name].Fields[captionField.Value()].DataType != models.String {
-			return errors.Wrap(models.BadParameterError, "a table caption field must be a string field")
+			return errors.Wrap(models.BadParameterError,
+				"a table caption field must be a string field")
 		}
 
-		indexExists, err := usecase.indexEditor.IngestedObjectsSearchIndexExists(ctx, usecase.enforceSecurity.OrgId(), table.Name, captionField.Value())
+		indexExists, err := usecase.indexEditor.IngestedObjectsSearchIndexExists(ctx,
+			usecase.enforceSecurity.OrgId(), table.Name, captionField.Value())
 		if err != nil {
 			return err
 		}
@@ -229,13 +232,15 @@ func (usecase *usecase) UpdateDataModelTable(
 				Indexed:   []string{captionField.Value()},
 			}
 
-			if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(ctx, usecase.enforceSecurity.OrgId(), []models.ConcreteIndex{index}); err != nil {
+			if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(ctx,
+				usecase.enforceSecurity.OrgId(), []models.ConcreteIndex{index}); err != nil {
 				return err
 			}
 		}
 	}
 
-	return usecase.dataModelRepository.UpdateDataModelTable(ctx, exec, tableID, description, ftmEntity, alias, semanticType, captionField)
+	return usecase.dataModelRepository.UpdateDataModelTable(ctx, exec, tableID, description,
+		ftmEntity, alias, semanticType, captionField)
 }
 
 func (usecase *usecase) CreateDataModelField(ctx context.Context, field models.CreateFieldInput) (string, error) {
@@ -769,6 +774,10 @@ func (usecase *usecase) CreateNavigationOption(ctx context.Context, input models
 	}
 	for _, pivot := range pivots {
 		// no navigation option on fields that are marked as unique
+		// WARNING: Pivot check seems different from the AddNavigationOptionsToDataModel method.
+		// Mismatch between SourceTableId and TargetTableId because the index.TableName represent the TargetTableId
+		// and not the SourceTableId.
+		// TODO: Fix it or delete this part if we don't want to allow navigation option on pivot field.
 		if pivot.BaseTableId == input.SourceTableId && pivot.Field == sourceField.Name {
 			if filterField.UnicityConstraint != models.NoUnicityConstraint {
 				return errors.Wrap(

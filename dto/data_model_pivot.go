@@ -7,6 +7,27 @@ import (
 	"github.com/google/uuid"
 )
 
+type PivotMetadata struct {
+	Id             uuid.UUID `json:"id"`
+	CreatedAt      time.Time `json:"created_at"`
+	OrganizationId uuid.UUID `json:"organization_id"`
+
+	BaseTableId string   `json:"base_table_id"`
+	FieldId     *string  `json:"field_id"`
+	PathLinkIds []string `json:"path_link_ids"`
+}
+
+func AdaptPivotMetadataDto(pivotMetadata models.PivotMetadata) PivotMetadata {
+	return PivotMetadata{
+		Id:             pivotMetadata.Id,
+		CreatedAt:      pivotMetadata.CreatedAt,
+		OrganizationId: pivotMetadata.OrganizationId,
+		BaseTableId:    pivotMetadata.BaseTableId,
+		FieldId:        pivotMetadata.FieldId,
+		PathLinkIds:    pivotMetadata.PathLinkIds,
+	}
+}
+
 type Pivot struct {
 	Id        uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"created_at"`

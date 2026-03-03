@@ -48,6 +48,7 @@ var (
 		CONTINUOUS_SCREENING_HIT_DISMISS, // Only admin can dismiss all hits for a continuous screening
 		ORG_IMPORT_ARCHETYPE_READ,        // Only org admin can list organization archetypes
 		ORG_IMPORT_INTO_EXISTING,         // Only org admin can seed an organization via import
+		ORG_EXPORT,
 	)
 )
 

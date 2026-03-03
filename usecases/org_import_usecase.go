@@ -116,15 +116,16 @@ func (uc *OrgImportUsecase) ListArchetypes(ctx context.Context) ([]models.Archet
 			return nil, err
 		}
 
-		var spec dto.OrgImportMetadata
+		var spec dto.OrgImport
 		if err := json.Unmarshal(d, &spec); err != nil {
 			return nil, err
 		}
 
 		archetypes[i] = models.ArchetypeInfo{
 			Name:        filename[:len(filename)-len(".json")],
-			Label:       spec.Label,
-			Description: spec.Description,
+			Label:       spec.Metadata.Label,
+			Description: spec.Metadata.Description,
+			AppVersion:  spec.Metadata.AppVersion,
 		}
 	}
 
@@ -278,6 +279,12 @@ func (uc *OrgImportUsecase) createOrganization(ctx context.Context, tx repositor
 	if err := uc.orgRepository.CreateOrganization(ctx, tx, orgId, models.CreateOrganizationInput{
 		Name: spec.Org.Name,
 	}); err != nil {
+		if repositories.IsUniqueViolationError(err) {
+			return uuid.Nil, errors.Wrap(
+				models.ConflictError,
+				"organization with the same name already exists",
+			)
+		}
 		return uuid.Nil, err
 	}
 
@@ -402,7 +409,7 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 
 		err := uc.dataModelRepository.CreateDataModelLink(ctx, tx, linkId.String(), models.DataModelLinkCreateInput{
 			OrganizationID: orgId,
-			Name:           fmt.Sprintf("%s_%s", link.ChildTableName, link.ParentTableName),
+			Name:           link.Name,
 			ParentTableID:  ids[link.ParentTableId],
 			ParentFieldID:  ids[link.ParentFieldId],
 			ChildTableID:   ids[link.ChildTableId],
@@ -418,8 +425,8 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 		ids[pivot.Id.String()] = pivotId.String()
 
 		var field *string
-		if pivot.FieldId != "" {
-			field = utils.Ptr(ids[pivot.FieldId])
+		if pivot.FieldId != nil {
+			field = utils.Ptr(ids[*pivot.FieldId])
 		}
 
 		err := uc.dataModelRepository.CreatePivot(ctx, tx, pivotId.String(), models.CreatePivotInput{
@@ -435,19 +442,21 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 		}
 	}
 
-	for navTable, navOptions := range dataModel.NavigationOptions {
-		err := uc.dataModelUsecase.CreateNavigationOption(ctx, models.CreateNavigationOptionInput{
-			Blocking:        true,
-			SourceTableId:   ids[navTable],
-			SourceFieldId:   ids[navOptions.SourceFieldId],
-			TargetTableId:   ids[navOptions.TargetTableId],
-			FilterFieldId:   ids[navOptions.FilterFieldId],
-			OrderingFieldId: ids[navOptions.OrderingFieldId],
-		})
-		if err != nil {
-			// Navigation options are checked for duplication, we want to ignore that
-			if !errors.Is(err, models.ConflictError) {
-				return err
+	for navTableId, navOptionsList := range dataModel.NavigationOptions {
+		for _, navOption := range navOptionsList {
+			err := uc.dataModelUsecase.CreateNavigationOption(ctx, models.CreateNavigationOptionInput{
+				Blocking:        true,
+				SourceTableId:   ids[navTableId],
+				SourceFieldId:   ids[navOption.SourceFieldId],
+				TargetTableId:   ids[navOption.TargetTableId],
+				FilterFieldId:   ids[navOption.FilterFieldId],
+				OrderingFieldId: ids[navOption.OrderingFieldId],
+			})
+			if err != nil {
+				// Navigation options are checked for duplication, we want to ignore that
+				if !errors.Is(err, models.ConflictError) {
+					return err
+				}
 			}
 		}
 	}
