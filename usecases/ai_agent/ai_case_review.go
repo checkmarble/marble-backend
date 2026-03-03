@@ -80,6 +80,20 @@ func getOrganizationCustomInstructions(aiSetting models.AiSetting) customOrgInst
 	}
 }
 
+func (uc *AiAgentUsecase) getCaseReviewContent(ctx context.Context, review models.AiCaseReview) (agent_dto.AiCaseReviewDto, error) {
+	blob, err := uc.blobRepository.GetBlob(ctx, review.BucketName, review.FileReference)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get case review file")
+	}
+	defer blob.ReadCloser.Close()
+
+	reviewDto, err := agent_dto.UnmarshalCaseReviewDto(review.DtoVersion, blob.ReadCloser)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not unmarshal case review file")
+	}
+	return reviewDto, nil
+}
+
 func (uc *AiAgentUsecase) getCaseReviewById(ctx context.Context, reviewId uuid.UUID) (agent_dto.AiCaseReviewOutputDto, error) {
 	exec := uc.executorFactory.NewExecutor()
 	review, err := uc.repository.GetCaseReviewById(ctx, exec, reviewId)
@@ -197,14 +211,9 @@ func (uc *AiAgentUsecase) ListCaseReviews(ctx context.Context, caseId uuid.UUID)
 		}
 
 		if review.Status == models.AiCaseReviewStatusCompleted {
-			blob, err := uc.blobRepository.GetBlob(ctx, review.BucketName, review.FileReference)
+			reviewDto, err := uc.getCaseReviewContent(ctx, review)
 			if err != nil {
-				return nil, errors.Wrap(err, "could not get case review file")
-			}
-			reviewDto, err := agent_dto.UnmarshalCaseReviewDto(review.DtoVersion, blob.ReadCloser)
-			blob.ReadCloser.Close()
-			if err != nil {
-				return nil, errors.Wrap(err, "could not unmarshal case review file")
+				return nil, err
 			}
 			item.Review = reviewDto
 		}
