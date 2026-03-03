@@ -5,3 +5,10 @@
   valid_from: "2025-01-01T00:00:00Z"
   name: John Doe
   country: US
+
+- id: 22222222-2222-2222-2222-222222222222
+  object_id: account-002
+  updated_at: "2025-01-01T00:00:00Z"
+  valid_from: "2025-01-01T00:00:00Z"
+  name: Jane Doe
+  country: FR

@@ -159,11 +159,11 @@ func (repo *MarbleDbRepository) CreateEntityAnnotation(
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptEntityAnnotation)
 }
 
-func (repo *MarbleDbRepository) IsObjectTagSet(ctx context.Context, exec Executor,
+func (repo *MarbleDbRepository) FindExistingObjectTagAnnotation(ctx context.Context, exec Executor,
 	req models.CreateEntityAnnotationRequest, tagId string,
-) (bool, error) {
+) (models.EntityAnnotation, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return false, err
+		return models.EntityAnnotation{}, err
 	}
 
 	filters := squirrel.Eq{
@@ -176,31 +176,19 @@ func (repo *MarbleDbRepository) IsObjectTagSet(ctx context.Context, exec Executo
 	}
 
 	query := NewQueryBuilder().
-		Select("1").
+		Select(dbmodels.EntityAnnotationColumns...).
 		From(dbmodels.TABLE_ENTITY_ANNOTATIONS).
 		Where(filters).
-		Limit(1).
-		Prefix("select exists (").Suffix(")")
+		Limit(1)
 
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return false, err
-	}
-
-	var hasTag bool
-
-	if err := exec.QueryRow(ctx, sql, args...).Scan(&hasTag); err != nil {
-		return false, err
-	}
-
-	return hasTag, nil
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptEntityAnnotation)
 }
 
-func (repo *MarbleDbRepository) IsObjectRiskTagSet(ctx context.Context, exec Executor,
+func (repo *MarbleDbRepository) FindExistingObjectRiskTagAnnotation(ctx context.Context, exec Executor,
 	req models.CreateEntityAnnotationRequest, tag string,
-) (bool, error) {
+) (models.EntityAnnotation, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return false, err
+		return models.EntityAnnotation{}, err
 	}
 
 	filters := squirrel.Eq{
@@ -213,24 +201,12 @@ func (repo *MarbleDbRepository) IsObjectRiskTagSet(ctx context.Context, exec Exe
 	}
 
 	query := NewQueryBuilder().
-		Select("1").
+		Select(dbmodels.EntityAnnotationColumns...).
 		From(dbmodels.TABLE_ENTITY_ANNOTATIONS).
 		Where(filters).
-		Limit(1).
-		Prefix("select exists (").Suffix(")")
+		Limit(1)
 
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return false, err
-	}
-
-	var exists bool
-
-	if err := exec.QueryRow(ctx, sql, args...).Scan(&exists); err != nil {
-		return false, err
-	}
-
-	return exists, nil
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptEntityAnnotation)
 }
 
 func (repo *MarbleDbRepository) DeleteEntityAnnotation(ctx context.Context, exec Executor,

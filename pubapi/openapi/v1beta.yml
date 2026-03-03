@@ -21,6 +21,8 @@ tags:
     description: Routes for tags
   - name: Continuous Screenings
     description: Routes for continuous screenings
+  - name: Record
+    description: Routes for record (data ingested into Marble)
 paths:
   /ingest/{objectType}:
     post:
@@ -996,6 +998,247 @@ paths:
         "404":
           $ref: "#/components/responses/404"
 
+  /records/{recordType}/{recordId}/annotations:
+    get:
+      operationId: listRecordAnnotations
+      tags:
+        - Record
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: List annotations for an record
+      description: |
+        List all annotations attached to a specific record.
+      parameters:
+        - name: recordType
+          in: path
+          required: true
+          description: Type of the record as defined in the data model
+          schema:
+            type: string
+        - name: recordId
+          in: path
+          required: true
+          description: Client-side ID of the record
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of annotations
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/RecordAnnotation"
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+
+    post:
+      operationId: createRecordAnnotation
+      tags:
+        - Record
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Attach annotations to an record
+      description: |
+        Attach one or more annotations to a specific record. Supported annotation types are `comment`, `tag` and `risk_tag`.
+
+        For `tag` and `risk_tag` types, if an identical annotation already exists on the record, the existing annotation is returned instead of creating a duplicate.
+
+        To attach a file annotation, use the dedicated endpoint
+        `POST /records/{recordType}/{recordId}/annotations/files`.
+      parameters:
+        - name: recordType
+          in: path
+          required: true
+          description: Type of the record as defined in the data model
+          schema:
+            type: string
+        - name: recordId
+          in: path
+          required: true
+          description: Client-side ID of the record
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - annotations
+              properties:
+                annotations:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    oneOf:
+                      - $ref: "#/components/schemas/CreateCommentAnnotation"
+                      - $ref: "#/components/schemas/CreateTagAnnotation"
+                      - $ref: "#/components/schemas/CreateRiskTagAnnotation"
+      responses:
+        "201":
+          description: Annotation(s) created or pre-existing
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/RecordAnnotation"
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+        "409":
+          $ref: "#/components/responses/409"
+
+  /records/{recordType}/{recordId}/annotations/files:
+    post:
+      operationId: createRecordFileAnnotation
+      tags:
+        - Record
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Attach files to a record as an annotation
+      description: |
+        Upload one or more files and attach them as a file annotation to a specific record.
+      parameters:
+        - name: recordType
+          in: path
+          required: true
+          description: Type of the record as defined in the data model
+          schema:
+            type: string
+        - name: recordId
+          in: path
+          required: true
+          description: Client-side ID of the record
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - caption
+                - files[]
+              properties:
+                caption:
+                  description: Caption for the uploaded files
+                  type: string
+                files[]:
+                  description: One or more files to attach. At least one file is required.
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        "201":
+          description: File annotation(s) created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/RecordAnnotation"
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+
+  /records/annotations/{id}/files/{partId}/download:
+    get:
+      operationId: downloadRecordAnnotationFile
+      tags:
+        - Record
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Download a file annotation part
+      description: |
+        Download a specific file within a file annotation.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the file annotation
+          schema:
+            type: string
+            format: uuid
+        - name: partId
+          in: path
+          required: true
+          description: Filename of the specific file part within the annotation
+          schema:
+            type: string
+      responses:
+        "302":
+          $ref: "#/components/responses/302"
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+
+  /records/annotations:
+    delete:
+      operationId: deleteRecordAnnotations
+      tags:
+        - Record
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Delete annotations by ID
+      description: |
+        Delete one or more annotations by their IDs.
+
+        This operation is idempotent — IDs that do not exist are silently ignored. All deletions are performed atomically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        "204":
+          description: Annotations deleted
+        "400":
+          $ref: "#/components/responses/400"
+
 components:
   securitySchemes:
     BearerTokenAuth:
@@ -1428,3 +1671,103 @@ components:
         updated_at:
           type: string
           format: date-time
+
+    RecordAnnotation:
+      title: Record annotation
+      type: object
+      required:
+        - id
+        - object_type
+        - object_id
+        - annotation_type
+        - payload
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        object_type:
+          type: string
+          description: Type of the annotated object as defined in the data model
+        object_id:
+          type: string
+          description: Client-side ID of the annotated object
+        annotation_type:
+          type: string
+          enum: [comment, tag, risk_tag, file]
+        payload:
+          type: object
+          description: |
+            Payload contents depend on the annotation_type:
+            - `comment`: `{text: string}`
+            - `tag`: `{tag_id: string}`
+            - `risk_tag`: `{tag: string, reason?: string, url?: string}`
+            - `file`: `{caption: string, files: [{id: string, filename: string}]}`
+        created_at:
+          type: string
+          format: date-time
+
+    CreateAnnotationBase:
+      type: object
+      required:
+        - type
+        - payload
+      properties:
+        type:
+          type: string
+        payload:
+          type: object
+
+    CreateCommentAnnotation:
+      title: Create comment annotation
+      allOf:
+        - $ref: "#/components/schemas/CreateAnnotationBase"
+        - properties:
+            type:
+              enum: [comment]
+            payload:
+              required:
+                - text
+              properties:
+                text:
+                  type: string
+                  description: Text content of the comment
+
+    CreateTagAnnotation:
+      title: Create tag annotation
+      allOf:
+        - $ref: "#/components/schemas/CreateAnnotationBase"
+        - properties:
+            type:
+              enum: [tag]
+            payload:
+              required:
+                - tag_id
+              properties:
+                tag_id:
+                  type: string
+                  format: uuid
+                  description: ID of the tag to attach to the object
+
+    CreateRiskTagAnnotation:
+      title: Create risk tag annotation
+      allOf:
+        - $ref: "#/components/schemas/CreateAnnotationBase"
+        - properties:
+            type:
+              enum: [risk_tag]
+            payload:
+              required:
+                - tag
+              properties:
+                tag:
+                  type: string
+                  description: Risk tag identifier
+                  enum: [sanctions, peps, adverse-media, third-parties]
+                reason:
+                  type: string
+                  description: Human-readable reason for applying the risk tag
+                url:
+                  type: string
+                  format: uri
+                  description: URL to supporting evidence for the risk tag
