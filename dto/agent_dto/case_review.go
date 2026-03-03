@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
@@ -91,6 +92,18 @@ type AiCaseReviewOutputDto struct {
 	Version  string    `json:"version"`
 
 	Review AiCaseReviewDto `json:"review"`
+}
+
+// AiCaseReviewListItemDto is used by the list endpoint to return all reviews for a case.
+// Review is null for non-completed reviews.
+type AiCaseReviewListItemDto struct {
+	Id        uuid.UUID       `json:"id"`
+	CaseId    uuid.UUID       `json:"case_id"`
+	Status    string          `json:"status"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
+	Reaction  *string         `json:"reaction"`
+	Review    AiCaseReviewDto `json:"review"`
 }
 
 type UpdateCaseReviewFeedbackDto struct {
