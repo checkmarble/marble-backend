@@ -38,7 +38,7 @@ func AdaptAsyncDecisionExecution(db DBAsyncDecisionExecution) (models.AsyncDecis
 		TriggerObject: db.TriggerObject,
 		ScenarioId:    db.ScenarioId,
 		ShouldIngest:  db.ShouldIngest,
-		Status:        models.AsyncDecisionExecutionStatus(db.Status),
+		Status:        models.AsyncDecisionExecutionStatusFromString(db.Status),
 		DecisionIds:   decisionIds,
 		ErrorMessage:  db.ErrorMessage,
 		CreatedAt:     db.CreatedAt,

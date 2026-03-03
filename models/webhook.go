@@ -66,11 +66,11 @@ type WebhookEventPayload struct {
 }
 
 type WebhookEventData struct {
-	Decision             *DecisionWithRuleExecutions
-	Case                 *Case
-	Files                *[]CaseFile
-	Comments             *CaseEvent
-	AsyncDecisionFailed  *AsyncDecisionFailedEventData
+	Decision            *DecisionWithRuleExecutions
+	Case                *Case
+	Files               *[]CaseFile
+	Comments            *CaseEvent
+	FailedAsyncDecision *FailedAsyncDecisionEvent
 }
 
 type WebhookEvent struct {
@@ -209,21 +209,21 @@ func NewWebhookEventDecisionReviewed(c Case, decision Decision) WebhookEventCont
 	})
 }
 
-type AsyncDecisionFailedEventData struct {
-	AsyncDecisionExecutionId uuid.UUID                          `json:"async_decision_execution_id"`
-	ObjectType               string                             `json:"object_type"`
-	ScenarioId               *string                            `json:"scenario_id"`
-	Stage                    AsyncDecisionExecutionFailureStage `json:"stage"`
-	TriggerObject            json.RawMessage                    `json:"trigger_object"`
-	ErrorMessage             string                             `json:"error_message"`
+type FailedAsyncDecisionEvent struct {
+	AsyncDecisionExecutionId uuid.UUID
+	ObjectType               string
+	ScenarioId               *string
+	Stage                    AsyncDecisionExecutionFailureStage // int enum, serialized as string
+	TriggerObject            json.RawMessage
+	ErrorMessage             string
 }
 
-func NewWebhookEventAsyncDecisionFailed(data AsyncDecisionFailedEventData) WebhookEventContent {
+func NewWebhookEventAsyncDecisionFailed(data FailedAsyncDecisionEvent) WebhookEventContent {
 	return WebhookEventContent{
 		Type: WebhookEventType_AsyncDecisionFailed,
 		Data: WebhookEventPayload{
 			Type:      WebhookEventType_AsyncDecisionFailed,
-			Content:   WebhookEventData{AsyncDecisionFailed: &data},
+			Content:   WebhookEventData{FailedAsyncDecision: &data},
 			Timestamp: time.Now(),
 		},
 	}

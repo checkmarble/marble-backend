@@ -90,12 +90,6 @@ func HandleGetAsyncDecisionExecution(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		orgId, err := utils.OrganizationIdFromRequest(c.Request)
-		if err != nil {
-			types.NewErrorResponse().WithError(err).Serve(c)
-			return
-		}
-
 		executionId, err := types.UuidParam(c, "executionId")
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
@@ -105,7 +99,7 @@ func HandleGetAsyncDecisionExecution(uc usecases.Usecases) gin.HandlerFunc {
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
 		asyncUsecase := uc.NewAsyncDecisionExecutionUsecase()
 
-		execution, err := asyncUsecase.GetAsyncDecisionExecution(ctx, orgId, *executionId)
+		execution, err := asyncUsecase.GetAsyncDecisionExecution(ctx, *executionId)
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return

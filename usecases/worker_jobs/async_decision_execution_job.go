@@ -37,7 +37,8 @@ type asyncDecisionCreator interface {
 
 type asyncDecisionExecutionRepo interface {
 	GetAsyncDecisionExecution(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.AsyncDecisionExecution, error)
-	UpdateAsyncDecisionExecution(ctx context.Context, tx repositories.Transaction, input models.AsyncDecisionExecutionUpdate) error
+	UpdateAsyncDecisionExecution(ctx context.Context, exec repositories.Executor,
+		input models.AsyncDecisionExecutionUpdate) error
 }
 
 type AsyncDecisionExecutionWorker struct {
@@ -49,7 +50,6 @@ type AsyncDecisionExecutionWorker struct {
 	ingester            asyncDecisionIngester
 	decisionCreator     asyncDecisionCreator
 	webhookEventsSender webhookEventsUsecase
-	taskQueueRepository repositories.TaskQueueRepository
 }
 
 func NewAsyncDecisionExecutionWorker(
@@ -59,7 +59,6 @@ func NewAsyncDecisionExecutionWorker(
 	ingester asyncDecisionIngester,
 	decisionCreator asyncDecisionCreator,
 	webhookEventsSender webhookEventsUsecase,
-	taskQueueRepository repositories.TaskQueueRepository,
 ) *AsyncDecisionExecutionWorker {
 	return &AsyncDecisionExecutionWorker{
 		executionRepo:       executionRepo,
@@ -68,7 +67,6 @@ func NewAsyncDecisionExecutionWorker(
 		ingester:            ingester,
 		decisionCreator:     decisionCreator,
 		webhookEventsSender: webhookEventsSender,
-		taskQueueRepository: taskQueueRepository,
 	}
 }
 
@@ -92,7 +90,7 @@ func (w *AsyncDecisionExecutionWorker) Work(ctx context.Context, job *river.Job[
 
 	// Idempotency: if already terminal, nothing to do
 	switch execution.Status {
-	case models.AsyncDecisionExecution_Completed, models.AsyncDecisionExecution_Failed:
+	case models.AsyncDecisionExecutionStatusCompleted, models.AsyncDecisionExecutionStatusFailed:
 		logger.InfoContext(ctx, "async decision execution already in terminal state, skipping",
 			"execution_id", executionId,
 			"status", execution.Status,
@@ -101,12 +99,13 @@ func (w *AsyncDecisionExecutionWorker) Work(ctx context.Context, job *river.Job[
 	}
 
 	// Ingestion step (with checkpoint)
-	if execution.Status == models.AsyncDecisionExecution_Pending && execution.ShouldIngest {
+	if execution.Status == models.AsyncDecisionExecutionStatusPending && execution.ShouldIngest {
 		if err := w.ingestAndCheckpoint(ctx, execution); err != nil {
-			return w.handleError(ctx, job, execution, models.AsyncDecisionExecution_StageIngestion, err)
+			return w.handleError(ctx, job, execution,
+				models.AsyncDecisionExecutionStageIngestion, err)
 		}
 		// Update local status to reflect the checkpoint
-		execution.Status = models.AsyncDecisionExecution_Ingested
+		execution.Status = models.AsyncDecisionExecutionStatusIngested
 	}
 
 	// Decision creation step
@@ -121,7 +120,7 @@ func (w *AsyncDecisionExecutionWorker) Work(ctx context.Context, job *river.Job[
 		WithDisallowUnknownFields:   false,
 	})
 	if err != nil {
-		return w.handleError(ctx, job, execution, models.AsyncDecisionExecution_StageDecision, err)
+		return w.handleError(ctx, job, execution, models.AsyncDecisionExecutionStageDecision, err)
 	}
 
 	// Extract decision IDs
@@ -131,18 +130,17 @@ func (w *AsyncDecisionExecutionWorker) Work(ctx context.Context, job *river.Job[
 	}
 
 	// Mark as completed
-	err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		return w.executionRepo.UpdateAsyncDecisionExecution(ctx, tx, models.AsyncDecisionExecutionUpdate{
-			Id:          executionId,
-			Status:      models.AsyncDecisionExecution_Completed,
-			DecisionIds: decisionIds,
-		})
+	exec = w.executorFactory.NewExecutor()
+	err = w.executionRepo.UpdateAsyncDecisionExecution(ctx, exec, models.AsyncDecisionExecutionUpdate{
+		Id:          executionId,
+		Status:      utils.Ptr(models.AsyncDecisionExecutionStatusCompleted),
+		DecisionIds: &decisionIds,
 	})
 	if err != nil {
 		return errors.Wrap(err, "failed to update async decision execution to completed")
 	}
 
-	logger.InfoContext(ctx, "async decision execution completed",
+	logger.DebugContext(ctx, "async decision execution completed",
 		"execution_id", executionId,
 		"num_decisions", len(decisionIds),
 	)
@@ -168,11 +166,10 @@ func (w *AsyncDecisionExecutionWorker) ingestAndCheckpoint(
 	}
 
 	// Checkpoint: mark as ingested so retries skip ingestion
-	err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		return w.executionRepo.UpdateAsyncDecisionExecution(ctx, tx, models.AsyncDecisionExecutionUpdate{
-			Id:     execution.Id,
-			Status: models.AsyncDecisionExecution_Ingested,
-		})
+	exec := w.executorFactory.NewExecutor()
+	err = w.executionRepo.UpdateAsyncDecisionExecution(ctx, exec, models.AsyncDecisionExecutionUpdate{
+		Id:     execution.Id,
+		Status: utils.Ptr(models.AsyncDecisionExecutionStatusIngested),
 	})
 	if err != nil {
 		return errors.Wrap(err, "failed to checkpoint execution as ingested")
@@ -195,9 +192,11 @@ func (w *AsyncDecisionExecutionWorker) handleError(
 
 	isNonRetryable := errors.Is(originalErr, models.NotFoundError) ||
 		errors.Is(originalErr, models.BadParameterError)
-	isLastAttempt := job.Attempt >= job.MaxAttempts
+	// Reserve the last 2 attempts for failure handling (marking failed + sending webhook).
+	// This way if the failure handling itself fails, River still has retries left.
+	shouldMarkFailed := job.Attempt >= job.MaxAttempts-2
 
-	if !isNonRetryable && !isLastAttempt {
+	if !isNonRetryable && !shouldMarkFailed {
 		// Let River retry
 		return originalErr
 	}
@@ -217,7 +216,7 @@ func (w *AsyncDecisionExecutionWorker) handleError(
 	err := w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := w.executionRepo.UpdateAsyncDecisionExecution(ctx, tx, models.AsyncDecisionExecutionUpdate{
 			Id:           execution.Id,
-			Status:       models.AsyncDecisionExecution_Failed,
+			Status:       utils.Ptr(models.AsyncDecisionExecutionStatusFailed),
 			ErrorMessage: &safeMessage,
 		}); err != nil {
 			return errors.Wrap(err, "failed to update execution to failed")
@@ -227,7 +226,7 @@ func (w *AsyncDecisionExecutionWorker) handleError(
 		if err := w.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
 			OrganizationId: execution.OrgId,
-			EventContent: models.NewWebhookEventAsyncDecisionFailed(models.AsyncDecisionFailedEventData{
+			EventContent: models.NewWebhookEventAsyncDecisionFailed(models.FailedAsyncDecisionEvent{
 				AsyncDecisionExecutionId: execution.Id,
 				ObjectType:               execution.ObjectType,
 				ScenarioId:               execution.ScenarioId,
@@ -261,7 +260,7 @@ func (w *AsyncDecisionExecutionWorker) handleError(
 // avoiding leaking internal details.
 func userSafeErrorMessage(stage models.AsyncDecisionExecutionFailureStage, err error) string {
 	switch stage {
-	case models.AsyncDecisionExecution_StageIngestion:
+	case models.AsyncDecisionExecutionStageIngestion:
 		if errors.Is(err, models.NotFoundError) {
 			return "Ingestion failed: the specified object type was not found in the data model."
 		}
@@ -269,7 +268,7 @@ func userSafeErrorMessage(stage models.AsyncDecisionExecutionFailureStage, err e
 			return "Ingestion failed: invalid parameters in the trigger object."
 		}
 		return "Ingestion failed: an unexpected error occurred during object ingestion."
-	case models.AsyncDecisionExecution_StageDecision:
+	case models.AsyncDecisionExecutionStageDecision:
 		if errors.Is(err, models.NotFoundError) {
 			return "Decision creation failed: a required resource was not found."
 		}

@@ -13,16 +13,17 @@ import (
 )
 
 type AsyncDecisionExecutionRepository interface {
-	CreateAsyncDecisionExecution(ctx context.Context, tx Transaction, input models.AsyncDecisionExecutionCreate) error
-	CreateAsyncDecisionExecutionBatch(ctx context.Context, tx Transaction, inputs []models.AsyncDecisionExecutionCreate) error
+	CreateAsyncDecisionExecution(ctx context.Context, tx Transaction,
+		input models.AsyncDecisionExecutionCreate) error
+	CreateAsyncDecisionExecutionBatch(ctx context.Context, tx Transaction,
+		inputs []models.AsyncDecisionExecutionCreate) error
 	GetAsyncDecisionExecution(ctx context.Context, exec Executor, id uuid.UUID) (models.AsyncDecisionExecution, error)
-	UpdateAsyncDecisionExecution(ctx context.Context, tx Transaction, input models.AsyncDecisionExecutionUpdate) error
+	UpdateAsyncDecisionExecution(ctx context.Context, exec Executor,
+		input models.AsyncDecisionExecutionUpdate) error
 	DeleteOldAsyncDecisionExecutionsBatch(ctx context.Context, exec Executor, olderThan time.Time, limit int) (int64, error)
 }
 
-type AsyncDecisionExecutionRepositoryImpl struct{}
-
-func (repo *AsyncDecisionExecutionRepositoryImpl) CreateAsyncDecisionExecution(
+func (repo *MarbleDbRepository) CreateAsyncDecisionExecution(
 	ctx context.Context,
 	tx Transaction,
 	input models.AsyncDecisionExecutionCreate,
@@ -61,7 +62,7 @@ func (repo *AsyncDecisionExecutionRepositoryImpl) CreateAsyncDecisionExecution(
 	return nil
 }
 
-func (repo *AsyncDecisionExecutionRepositoryImpl) CreateAsyncDecisionExecutionBatch(
+func (repo *MarbleDbRepository) CreateAsyncDecisionExecutionBatch(
 	ctx context.Context,
 	tx Transaction,
 	inputs []models.AsyncDecisionExecutionCreate,
@@ -106,7 +107,7 @@ func (repo *AsyncDecisionExecutionRepositoryImpl) CreateAsyncDecisionExecutionBa
 	return nil
 }
 
-func (repo *AsyncDecisionExecutionRepositoryImpl) GetAsyncDecisionExecution(
+func (repo *MarbleDbRepository) GetAsyncDecisionExecution(
 	ctx context.Context,
 	exec Executor,
 	id uuid.UUID,
@@ -126,36 +127,34 @@ func (repo *AsyncDecisionExecutionRepositoryImpl) GetAsyncDecisionExecution(
 	)
 }
 
-func (repo *AsyncDecisionExecutionRepositoryImpl) UpdateAsyncDecisionExecution(
+func (repo *MarbleDbRepository) UpdateAsyncDecisionExecution(
 	ctx context.Context,
-	tx Transaction,
+	exec Executor,
 	input models.AsyncDecisionExecutionUpdate,
 ) error {
-	if err := validateMarbleDbExecutor(tx); err != nil {
+	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
 
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_ASYNC_DECISION_EXECUTIONS).
-		Set("status", string(input.Status)).
-		Set("decision_ids", input.DecisionIds).
-		Set("error_message", input.ErrorMessage).
 		Set("updated_at", squirrel.Expr("NOW()")).
 		Where(squirrel.Eq{"id": input.Id})
 
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return errors.Wrap(err, "error building query for UpdateAsyncDecisionExecution")
+	if input.Status != nil {
+		query = query.Set("status", input.Status.String())
+	}
+	if input.DecisionIds != nil {
+		query = query.Set("decision_ids", *input.DecisionIds)
+	}
+	if input.ErrorMessage != nil {
+		query = query.Set("error_message", *input.ErrorMessage)
 	}
 
-	_, err = tx.Exec(ctx, sql, args...)
-	if err != nil {
-		return errors.Wrap(err, "error updating async decision execution")
-	}
-	return nil
+	return ExecBuilder(ctx, exec, query)
 }
 
-func (repo *AsyncDecisionExecutionRepositoryImpl) DeleteOldAsyncDecisionExecutionsBatch(
+func (repo *MarbleDbRepository) DeleteOldAsyncDecisionExecutionsBatch(
 	ctx context.Context,
 	exec Executor,
 	olderThan time.Time,

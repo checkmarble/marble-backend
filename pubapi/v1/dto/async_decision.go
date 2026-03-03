@@ -25,13 +25,13 @@ type AsyncDecisionExecutionCreated struct {
 func AdaptAsyncDecisionExecution(m models.AsyncDecisionExecution) AsyncDecisionExecution {
 	decisionIds := m.DecisionIds
 	if decisionIds == nil {
-		decisionIds = []uuid.UUID{}
+		decisionIds = make([]uuid.UUID, 0)
 	}
 	return AsyncDecisionExecution{
 		Id:           m.Id,
 		ObjectType:   m.ObjectType,
 		ScenarioId:   m.ScenarioId,
-		Status:       string(m.Status),
+		Status:       m.Status.String(),
 		DecisionIds:  decisionIds,
 		ErrorMessage: m.ErrorMessage,
 		CreatedAt:    types.DateTime(m.CreatedAt),
@@ -42,6 +42,6 @@ func AdaptAsyncDecisionExecution(m models.AsyncDecisionExecution) AsyncDecisionE
 func AdaptAsyncDecisionExecutionCreated(m models.AsyncDecisionExecution) AsyncDecisionExecutionCreated {
 	return AsyncDecisionExecutionCreated{
 		Id:     m.Id,
-		Status: string(m.Status),
+		Status: m.Status.String(),
 	}
 }

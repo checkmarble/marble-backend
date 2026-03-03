@@ -77,7 +77,7 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecution(
 				TriggerObject: triggerObject,
 				ScenarioId:    scenarioId,
 				ShouldIngest:  shouldIngest,
-				Status:        models.AsyncDecisionExecution_Pending,
+				Status:        models.AsyncDecisionExecutionStatusPending,
 			}, nil
 		},
 	)
@@ -152,7 +152,7 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecutionBatch(
 					TriggerObject: obj,
 					ScenarioId:    scenarioId,
 					ShouldIngest:  shouldIngest,
-					Status:        models.AsyncDecisionExecution_Pending,
+					Status:        models.AsyncDecisionExecutionStatusPending,
 				}
 			}
 			return result, nil
@@ -167,13 +167,8 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecutionBatch(
 
 func (usecase *AsyncDecisionExecutionUsecase) GetAsyncDecisionExecution(
 	ctx context.Context,
-	orgId uuid.UUID,
 	executionId uuid.UUID,
 ) (models.AsyncDecisionExecution, error) {
-	if err := usecase.enforceSecurity.ReadDecision(models.Decision{OrganizationId: orgId}); err != nil {
-		return models.AsyncDecisionExecution{}, err
-	}
-
 	exec := usecase.executorFactory.NewExecutor()
 	execution, err := usecase.asyncDecisionExecutionRepository.GetAsyncDecisionExecution(
 		ctx, exec, executionId,
@@ -183,11 +178,11 @@ func (usecase *AsyncDecisionExecutionUsecase) GetAsyncDecisionExecution(
 			"error getting async decision execution")
 	}
 
-	if execution.OrgId != orgId {
-		return models.AsyncDecisionExecution{}, errors.Wrap(
-			models.ForbiddenError,
-			"async decision execution does not belong to organization",
-		)
+	// Enforce permission + org ownership (same pattern as GetDecision)
+	if err := usecase.enforceSecurity.ReadDecision(models.Decision{
+		OrganizationId: execution.OrgId,
+	}); err != nil {
+		return models.AsyncDecisionExecution{}, err
 	}
 
 	return execution, nil

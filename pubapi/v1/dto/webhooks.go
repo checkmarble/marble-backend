@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type WebhookEventPayload struct {
@@ -27,23 +28,25 @@ func (p WebhookEventPayload) ApiVersion() string {
 }
 
 type WebhookEventData struct {
-	Decision             *Decision                    `json:"decision,omitzero"`
-	Case                 *Case                        `json:"case,omitzero"`
-	Files                *[]CaseFile                  `json:"files,omitempty"`
-	Comments             *CaseComment                 `json:"comments,omitempty"`
-	AsyncDecisionFailed  *AsyncDecisionFailedEvent    `json:"async_decision_failed,omitzero"`
+	Decision            *Decision                 `json:"decision,omitzero"`
+	Case                *Case                     `json:"case,omitzero"`
+	Files               *[]CaseFile               `json:"files,omitempty"`
+	Comments            *CaseComment              `json:"comments,omitempty"`
+	FailedAsyncDecision *FailedAsyncDecisionEvent `json:"failed_async_decision,omitzero"`
 }
 
-type AsyncDecisionFailedEvent struct {
-	AsyncDecisionExecutionId string          `json:"async_decision_execution_id"`
-	ObjectType               string          `json:"object_type"`
-	ScenarioId               *string         `json:"scenario_id"`
-	Stage                    string          `json:"stage"`
-	TriggerObject            json.RawMessage `json:"trigger_object"`
-	ErrorMessage             string          `json:"error_message"`
+type FailedAsyncDecisionEvent struct {
+	Id            uuid.UUID       `json:"id"`
+	ObjectType    string          `json:"object_type"`
+	ScenarioId    *string         `json:"scenario_id"`
+	Stage         string          `json:"stage"`
+	TriggerObject json.RawMessage `json:"trigger_object"`
+	ErrorMessage  string          `json:"error_message"`
 }
 
-func AdaptWebhookEventData(ctx context.Context, exec repositories.Executor, adapter types.PublicApiDataAdapter, m models.WebhookEventPayload) (string, json.RawMessage, error) {
+func AdaptWebhookEventData(ctx context.Context, exec repositories.Executor,
+	adapter types.PublicApiDataAdapter, m models.WebhookEventPayload,
+) (string, json.RawMessage, error) {
 	users, err := adapter.ListUsers(ctx, exec)
 	if err != nil {
 		return "", nil, err
@@ -69,8 +72,11 @@ func AdaptWebhookEventData(ctx context.Context, exec repositories.Executor, adap
 	payload := WebhookEventPayload{
 		Type: string(m.Type),
 		Content: WebhookEventData{
-			Decision: applyWebhookEventData(m.Content.Decision, func(d models.DecisionWithRuleExecutions) Decision {
-				return AdaptDecision(true, m.Content.Decision.RuleExecutions, m.Content.Decision.ScreeningExecutions)(m.Content.Decision.Decision)
+			Decision: applyWebhookEventData(m.Content.Decision, func(
+				d models.DecisionWithRuleExecutions,
+			) Decision {
+				return AdaptDecision(true, m.Content.Decision.RuleExecutions,
+					m.Content.Decision.ScreeningExecutions)(m.Content.Decision.Decision)
 			}),
 			Case: applyWebhookEventData(m.Content.Case, func(c models.Case) Case {
 				return AdaptCase(users, tags, refs)(c)
@@ -88,14 +94,16 @@ func AdaptWebhookEventData(ctx context.Context, exec repositories.Executor, adap
 					Comment:   c.AdditionalNote,
 				})
 			}),
-			AsyncDecisionFailed: applyWebhookEventData(m.Content.AsyncDecisionFailed, func(d models.AsyncDecisionFailedEventData) AsyncDecisionFailedEvent {
-				return AsyncDecisionFailedEvent{
-					AsyncDecisionExecutionId: d.AsyncDecisionExecutionId.String(),
-					ObjectType:               d.ObjectType,
-					ScenarioId:               d.ScenarioId,
-					Stage:                    string(d.Stage),
-					TriggerObject:            d.TriggerObject,
-					ErrorMessage:             d.ErrorMessage,
+			FailedAsyncDecision: applyWebhookEventData(m.Content.FailedAsyncDecision, func(
+				d models.FailedAsyncDecisionEvent,
+			) FailedAsyncDecisionEvent {
+				return FailedAsyncDecisionEvent{
+					Id:            d.AsyncDecisionExecutionId,
+					ObjectType:    d.ObjectType,
+					ScenarioId:    d.ScenarioId,
+					Stage:         d.Stage.String(),
+					TriggerObject: d.TriggerObject,
+					ErrorMessage:  d.ErrorMessage,
 				}
 			}),
 		},

@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
@@ -63,10 +64,10 @@ func (m *mockAsyncDecisionExecutionRepo) GetAsyncDecisionExecution(
 
 func (m *mockAsyncDecisionExecutionRepo) UpdateAsyncDecisionExecution(
 	ctx context.Context,
-	tx repositories.Transaction,
+	exec repositories.Executor,
 	input models.AsyncDecisionExecutionUpdate,
 ) error {
-	args := m.Called(ctx, tx, input)
+	args := m.Called(ctx, exec, input)
 	return args.Error(0)
 }
 
@@ -111,7 +112,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) SetupTest() {
 	s.executorFactory = executor_factory.NewExecutorFactoryStub()
 	s.transactionFactory = executor_factory.NewTransactionFactoryStub(s.executorFactory)
 
-	s.ctx = context.Background()
+	s.ctx = utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	s.orgId = uuid.MustParse("12345678-1234-1234-1234-123456789012")
 }
 
@@ -123,7 +124,6 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) makeWorker() *AsyncDecisionExecu
 		s.ingester,
 		s.decisionCreator,
 		s.webhookSender,
-		nil, // taskQueueRepository not used directly in Work
 	)
 }
 
@@ -156,11 +156,11 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_CompletedStatus_Noop() 
 	executionId := uuid.Must(uuid.NewV7())
 	job := s.makeJob(executionId)
 
-	s.executionRepo.On("GetAsyncDecisionExecution", s.ctx, mock.Anything, executionId).
+	s.executionRepo.On("GetAsyncDecisionExecution", mock.Anything, mock.Anything, executionId).
 		Return(models.AsyncDecisionExecution{
 			Id:     executionId,
 			OrgId:  s.orgId,
-			Status: models.AsyncDecisionExecution_Completed,
+			Status: models.AsyncDecisionExecutionStatusCompleted,
 		}, nil)
 
 	worker := s.makeWorker()
@@ -177,11 +177,11 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_FailedStatus_Noop() {
 	executionId := uuid.Must(uuid.NewV7())
 	job := s.makeJob(executionId)
 
-	s.executionRepo.On("GetAsyncDecisionExecution", s.ctx, mock.Anything, executionId).
+	s.executionRepo.On("GetAsyncDecisionExecution", mock.Anything, mock.Anything, executionId).
 		Return(models.AsyncDecisionExecution{
 			Id:     executionId,
 			OrgId:  s.orgId,
-			Status: models.AsyncDecisionExecution_Failed,
+			Status: models.AsyncDecisionExecutionStatusFailed,
 		}, nil)
 
 	worker := s.makeWorker()
@@ -197,7 +197,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_FailedStatus_Noop() {
 func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_PendingWithIngestion_IngestsThenCreatesDecisions() {
 	executionId := uuid.Must(uuid.NewV7())
 	job := s.makeJob(executionId)
-	triggerObject := json.RawMessage(`{"id": "obj-1"}`)
+	triggerObject := json.RawMessage(`{"object_id": "obj-1",'updated_at":"2000-01-01T00:00:00Z"}`)
 	decisionId := uuid.Must(uuid.NewV7())
 
 	execution := models.AsyncDecisionExecution{
@@ -206,28 +206,28 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_PendingWithIngestion_In
 		ObjectType:    "transactions",
 		TriggerObject: triggerObject,
 		ShouldIngest:  true,
-		Status:        models.AsyncDecisionExecution_Pending,
+		Status:        models.AsyncDecisionExecutionStatusPending,
 	}
 
-	s.executionRepo.On("GetAsyncDecisionExecution", s.ctx, mock.Anything, executionId).
+	s.executionRepo.On("GetAsyncDecisionExecution", mock.Anything, mock.Anything, executionId).
 		Return(execution, nil)
 
 	// Ingestion succeeds
-	s.ingester.On("IngestObject", s.ctx, s.orgId, "transactions", triggerObject, models.IngestionOptions{}).
+	s.ingester.On("IngestObject", mock.Anything, s.orgId, "transactions", triggerObject, models.IngestionOptions{}).
 		Return(1, nil)
 
 	// Checkpoint: update status to ingested
-	s.executionRepo.On("UpdateAsyncDecisionExecution", s.ctx, mock.Anything,
+	s.executionRepo.On("UpdateAsyncDecisionExecution", mock.Anything, mock.Anything,
 		models.AsyncDecisionExecutionUpdate{
 			Id:     executionId,
-			Status: models.AsyncDecisionExecution_Ingested,
+			Status: utils.Ptr(models.AsyncDecisionExecutionStatusIngested),
 		}).Return(nil)
 
 	// Decision creation succeeds
 	decisions := []models.DecisionWithRuleExecutions{
 		{Decision: models.Decision{DecisionId: decisionId}},
 	}
-	s.decisionCreator.On("CreateAllDecisions", s.ctx,
+	s.decisionCreator.On("CreateAllDecisions", mock.Anything,
 		models.CreateAllDecisionsInput{
 			OrganizationId:     s.orgId,
 			TriggerObjectTable: "transactions",
@@ -241,11 +241,11 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_PendingWithIngestion_In
 		}).Return(decisions, 1, nil)
 
 	// Mark completed
-	s.executionRepo.On("UpdateAsyncDecisionExecution", s.ctx, mock.Anything,
+	s.executionRepo.On("UpdateAsyncDecisionExecution", mock.Anything, mock.Anything,
 		models.AsyncDecisionExecutionUpdate{
 			Id:          executionId,
-			Status:      models.AsyncDecisionExecution_Completed,
-			DecisionIds: []uuid.UUID{decisionId},
+			Status:      utils.Ptr(models.AsyncDecisionExecutionStatusCompleted),
+			DecisionIds: &[]uuid.UUID{decisionId},
 		}).Return(nil)
 
 	worker := s.makeWorker()
@@ -259,7 +259,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_PendingWithIngestion_In
 func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_IngestedStatus_SkipsIngestion() {
 	executionId := uuid.Must(uuid.NewV7())
 	job := s.makeJob(executionId)
-	triggerObject := json.RawMessage(`{"id": "obj-1"}`)
+	triggerObject := json.RawMessage(`{"object_id": "obj-1",'updated_at":"2000-01-01T00:00:00Z"}`)
 	decisionId := uuid.Must(uuid.NewV7())
 
 	execution := models.AsyncDecisionExecution{
@@ -268,17 +268,17 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_IngestedStatus_SkipsIng
 		ObjectType:    "transactions",
 		TriggerObject: triggerObject,
 		ShouldIngest:  true,
-		Status:        models.AsyncDecisionExecution_Ingested,
+		Status:        models.AsyncDecisionExecutionStatusIngested,
 	}
 
-	s.executionRepo.On("GetAsyncDecisionExecution", s.ctx, mock.Anything, executionId).
+	s.executionRepo.On("GetAsyncDecisionExecution", mock.Anything, mock.Anything, executionId).
 		Return(execution, nil)
 
 	// Decision creation succeeds
 	decisions := []models.DecisionWithRuleExecutions{
 		{Decision: models.Decision{DecisionId: decisionId}},
 	}
-	s.decisionCreator.On("CreateAllDecisions", s.ctx,
+	s.decisionCreator.On("CreateAllDecisions", mock.Anything,
 		models.CreateAllDecisionsInput{
 			OrganizationId:     s.orgId,
 			TriggerObjectTable: "transactions",
@@ -292,11 +292,11 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_IngestedStatus_SkipsIng
 		}).Return(decisions, 1, nil)
 
 	// Mark completed
-	s.executionRepo.On("UpdateAsyncDecisionExecution", s.ctx, mock.Anything,
+	s.executionRepo.On("UpdateAsyncDecisionExecution", mock.Anything, mock.Anything,
 		models.AsyncDecisionExecutionUpdate{
 			Id:          executionId,
-			Status:      models.AsyncDecisionExecution_Completed,
-			DecisionIds: []uuid.UUID{decisionId},
+			Status:      utils.Ptr(models.AsyncDecisionExecutionStatusCompleted),
+			DecisionIds: &[]uuid.UUID{decisionId},
 		}).Return(nil)
 
 	worker := s.makeWorker()
@@ -312,7 +312,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_IngestedStatus_SkipsIng
 func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_NonRetryableError_MarksFailed() {
 	executionId := uuid.Must(uuid.NewV7())
 	job := s.makeJob(executionId)
-	triggerObject := json.RawMessage(`{"id": "obj-1"}`)
+	triggerObject := json.RawMessage(`{"object_id": "obj-1",'updated_at":"2000-01-01T00:00:00Z"}`)
 
 	execution := models.AsyncDecisionExecution{
 		Id:            executionId,
@@ -320,32 +320,32 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_NonRetryableError_Marks
 		ObjectType:    "transactions",
 		TriggerObject: triggerObject,
 		ShouldIngest:  false,
-		Status:        models.AsyncDecisionExecution_Pending,
+		Status:        models.AsyncDecisionExecutionStatusPending,
 	}
 
-	s.executionRepo.On("GetAsyncDecisionExecution", s.ctx, mock.Anything, executionId).
+	s.executionRepo.On("GetAsyncDecisionExecution", mock.Anything, mock.Anything, executionId).
 		Return(execution, nil)
 
 	// Decision creation fails with NotFoundError
-	s.decisionCreator.On("CreateAllDecisions", s.ctx, mock.Anything, mock.Anything).
+	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything).
 		Return([]models.DecisionWithRuleExecutions(nil), 0, models.NotFoundError)
 
 	// Expect update to failed
-	s.executionRepo.On("UpdateAsyncDecisionExecution", s.ctx, mock.Anything,
+	s.executionRepo.On("UpdateAsyncDecisionExecution", mock.Anything, mock.Anything,
 		mock.MatchedBy(func(input models.AsyncDecisionExecutionUpdate) bool {
 			return input.Id == executionId &&
-				input.Status == models.AsyncDecisionExecution_Failed &&
+				input.Status != nil && *input.Status == models.AsyncDecisionExecutionStatusFailed &&
 				input.ErrorMessage != nil
 		})).Return(nil)
 
 	// Expect webhook creation
-	s.webhookSender.On("CreateWebhookEvent", s.ctx, mock.Anything,
+	s.webhookSender.On("CreateWebhookEvent", mock.Anything, mock.Anything,
 		mock.MatchedBy(func(input models.WebhookEventCreate) bool {
 			return input.OrganizationId == s.orgId
 		})).Return(nil)
 
 	// Expect async webhook send
-	s.webhookSender.On("SendWebhookEventAsync", s.ctx, mock.AnythingOfType("string")).Return()
+	s.webhookSender.On("SendWebhookEventAsync", mock.Anything, mock.AnythingOfType("string")).Return()
 
 	worker := s.makeWorker()
 	err := worker.Work(s.ctx, job)
@@ -362,7 +362,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_LastAttempt_MarksFailed
 	// Set to last attempt
 	job.JobRow.Attempt = 5
 	job.JobRow.MaxAttempts = 5
-	triggerObject := json.RawMessage(`{"id": "obj-1"}`)
+	triggerObject := json.RawMessage(`{"object_id": "obj-1",'updated_at":"2000-01-01T00:00:00Z"}`)
 
 	execution := models.AsyncDecisionExecution{
 		Id:            executionId,
@@ -370,32 +370,32 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_LastAttempt_MarksFailed
 		ObjectType:    "transactions",
 		TriggerObject: triggerObject,
 		ShouldIngest:  false,
-		Status:        models.AsyncDecisionExecution_Pending,
+		Status:        models.AsyncDecisionExecutionStatusPending,
 	}
 
-	s.executionRepo.On("GetAsyncDecisionExecution", s.ctx, mock.Anything, executionId).
+	s.executionRepo.On("GetAsyncDecisionExecution", mock.Anything, mock.Anything, executionId).
 		Return(execution, nil)
 
 	// Decision creation fails with a generic (retryable) error
-	s.decisionCreator.On("CreateAllDecisions", s.ctx, mock.Anything, mock.Anything).
+	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything).
 		Return([]models.DecisionWithRuleExecutions(nil), 0, assert.AnError)
 
 	// Expect update to failed
-	s.executionRepo.On("UpdateAsyncDecisionExecution", s.ctx, mock.Anything,
+	s.executionRepo.On("UpdateAsyncDecisionExecution", mock.Anything, mock.Anything,
 		mock.MatchedBy(func(input models.AsyncDecisionExecutionUpdate) bool {
 			return input.Id == executionId &&
-				input.Status == models.AsyncDecisionExecution_Failed &&
+				input.Status != nil && *input.Status == models.AsyncDecisionExecutionStatusFailed &&
 				input.ErrorMessage != nil
 		})).Return(nil)
 
 	// Expect webhook creation
-	s.webhookSender.On("CreateWebhookEvent", s.ctx, mock.Anything,
+	s.webhookSender.On("CreateWebhookEvent", mock.Anything, mock.Anything,
 		mock.MatchedBy(func(input models.WebhookEventCreate) bool {
 			return input.OrganizationId == s.orgId
 		})).Return(nil)
 
 	// Expect async webhook send
-	s.webhookSender.On("SendWebhookEventAsync", s.ctx, mock.AnythingOfType("string")).Return()
+	s.webhookSender.On("SendWebhookEventAsync", mock.Anything, mock.AnythingOfType("string")).Return()
 
 	worker := s.makeWorker()
 	err := worker.Work(s.ctx, job)
@@ -412,7 +412,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_RetryableError_ReturnsE
 	// Not last attempt
 	job.JobRow.Attempt = 2
 	job.JobRow.MaxAttempts = 5
-	triggerObject := json.RawMessage(`{"id": "obj-1"}`)
+	triggerObject := json.RawMessage(`{"object_id": "obj-1",'updated_at":"2000-01-01T00:00:00Z"}`)
 
 	execution := models.AsyncDecisionExecution{
 		Id:            executionId,
@@ -420,14 +420,14 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_RetryableError_ReturnsE
 		ObjectType:    "transactions",
 		TriggerObject: triggerObject,
 		ShouldIngest:  false,
-		Status:        models.AsyncDecisionExecution_Pending,
+		Status:        models.AsyncDecisionExecutionStatusPending,
 	}
 
-	s.executionRepo.On("GetAsyncDecisionExecution", s.ctx, mock.Anything, executionId).
+	s.executionRepo.On("GetAsyncDecisionExecution", mock.Anything, mock.Anything, executionId).
 		Return(execution, nil)
 
 	// Decision creation fails with a generic (retryable) error
-	s.decisionCreator.On("CreateAllDecisions", s.ctx, mock.Anything, mock.Anything).
+	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything).
 		Return([]models.DecisionWithRuleExecutions(nil), 0, assert.AnError)
 
 	worker := s.makeWorker()
@@ -438,7 +438,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_RetryableError_ReturnsE
 	// Should NOT have called update or webhook since it's a retry
 	s.executionRepo.AssertNotCalled(s.T(), "UpdateAsyncDecisionExecution",
 		s.ctx, mock.Anything, mock.MatchedBy(func(input models.AsyncDecisionExecutionUpdate) bool {
-			return input.Status == models.AsyncDecisionExecution_Failed
+			return input.Status != nil && *input.Status == models.AsyncDecisionExecutionStatusFailed
 		}))
 	s.webhookSender.AssertNotCalled(s.T(), "CreateWebhookEvent")
 	s.webhookSender.AssertNotCalled(s.T(), "SendWebhookEventAsync")
@@ -449,7 +449,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_RetryableError_ReturnsE
 func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_PendingNoIngestion_SkipsIngestion() {
 	executionId := uuid.Must(uuid.NewV7())
 	job := s.makeJob(executionId)
-	triggerObject := json.RawMessage(`{"id": "obj-1"}`)
+	triggerObject := json.RawMessage(`{"object_id": "obj-1",'updated_at":"2000-01-01T00:00:00Z"}`)
 	decisionId := uuid.Must(uuid.NewV7())
 
 	execution := models.AsyncDecisionExecution{
@@ -458,25 +458,25 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_PendingNoIngestion_Skip
 		ObjectType:    "transactions",
 		TriggerObject: triggerObject,
 		ShouldIngest:  false,
-		Status:        models.AsyncDecisionExecution_Pending,
+		Status:        models.AsyncDecisionExecutionStatusPending,
 	}
 
-	s.executionRepo.On("GetAsyncDecisionExecution", s.ctx, mock.Anything, executionId).
+	s.executionRepo.On("GetAsyncDecisionExecution", mock.Anything, mock.Anything, executionId).
 		Return(execution, nil)
 
 	// Decision creation succeeds
 	decisions := []models.DecisionWithRuleExecutions{
 		{Decision: models.Decision{DecisionId: decisionId}},
 	}
-	s.decisionCreator.On("CreateAllDecisions", s.ctx, mock.Anything, mock.Anything).
+	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything).
 		Return(decisions, 1, nil)
 
 	// Mark completed
-	s.executionRepo.On("UpdateAsyncDecisionExecution", s.ctx, mock.Anything,
+	s.executionRepo.On("UpdateAsyncDecisionExecution", mock.Anything, mock.Anything,
 		models.AsyncDecisionExecutionUpdate{
 			Id:          executionId,
-			Status:      models.AsyncDecisionExecution_Completed,
-			DecisionIds: []uuid.UUID{decisionId},
+			Status:      utils.Ptr(models.AsyncDecisionExecutionStatusCompleted),
+			DecisionIds: &[]uuid.UUID{decisionId},
 		}).Return(nil)
 
 	worker := s.makeWorker()

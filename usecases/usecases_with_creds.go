@@ -203,7 +203,7 @@ func (usecases *UsecasesWithCreds) NewAsyncDecisionExecutionUsecase() AsyncDecis
 		executorFactory:                  usecases.NewExecutorFactory(),
 		transactionFactory:               usecases.NewTransactionFactory(),
 		enforceSecurity:                  usecases.NewEnforceDecisionSecurity(),
-		asyncDecisionExecutionRepository: usecases.Repositories.AsyncDecisionExecutionRepository,
+		asyncDecisionExecutionRepository: usecases.Repositories.MarbleDbRepository,
 		taskQueueRepository:              usecases.Repositories.TaskQueueRepository,
 		dataModelRepository:              usecases.Repositories.MarbleDbRepository,
 		payloadEnricher:                  usecases.NewPayloadEnrichmentUsecase(),
@@ -1059,19 +1059,18 @@ func (usecases UsecasesWithCreds) NewAsyncDecisionExecutionWorker() *worker_jobs
 	ingestionUsecase := usecases.NewIngestionUseCase()
 	decisionUsecase := usecases.NewDecisionUsecase()
 	return worker_jobs.NewAsyncDecisionExecutionWorker(
-		usecases.Repositories.AsyncDecisionExecutionRepository,
+		usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		&ingestionUsecase,
 		&decisionUsecase,
 		usecases.NewWebhookEventsUsecase(),
-		usecases.Repositories.TaskQueueRepository,
 	)
 }
 
 func (usecases UsecasesWithCreds) NewAsyncDecisionExecutionCleanupWorker() *worker_jobs.AsyncDecisionExecutionCleanupWorker {
 	return worker_jobs.NewAsyncDecisionExecutionCleanupWorker(
-		usecases.Repositories.AsyncDecisionExecutionRepository,
+		usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
 	)
 }

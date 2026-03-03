@@ -7,21 +7,73 @@ import (
 	"github.com/google/uuid"
 )
 
-type AsyncDecisionExecutionStatus string
+type AsyncDecisionExecutionStatus int
 
 const (
-	AsyncDecisionExecution_Pending   AsyncDecisionExecutionStatus = "pending"
-	AsyncDecisionExecution_Ingested  AsyncDecisionExecutionStatus = "ingested"
-	AsyncDecisionExecution_Completed AsyncDecisionExecutionStatus = "completed"
-	AsyncDecisionExecution_Failed    AsyncDecisionExecutionStatus = "failed"
+	AsyncDecisionExecutionStatusUnknown AsyncDecisionExecutionStatus = iota
+	AsyncDecisionExecutionStatusPending
+	AsyncDecisionExecutionStatusIngested
+	AsyncDecisionExecutionStatusCompleted
+	AsyncDecisionExecutionStatusFailed
 )
 
-type AsyncDecisionExecutionFailureStage string
+func (s AsyncDecisionExecutionStatus) String() string {
+	switch s {
+	case AsyncDecisionExecutionStatusPending:
+		return "pending"
+	case AsyncDecisionExecutionStatusIngested:
+		return "ingested"
+	case AsyncDecisionExecutionStatusCompleted:
+		return "completed"
+	case AsyncDecisionExecutionStatusFailed:
+		return "failed"
+	}
+	return "unknown"
+}
+
+func AsyncDecisionExecutionStatusFromString(s string) AsyncDecisionExecutionStatus {
+	switch s {
+	case "pending":
+		return AsyncDecisionExecutionStatusPending
+	case "ingested":
+		return AsyncDecisionExecutionStatusIngested
+	case "completed":
+		return AsyncDecisionExecutionStatusCompleted
+	case "failed":
+		return AsyncDecisionExecutionStatusFailed
+	default:
+		return AsyncDecisionExecutionStatusUnknown
+	}
+}
+
+type AsyncDecisionExecutionFailureStage int
 
 const (
-	AsyncDecisionExecution_StageIngestion AsyncDecisionExecutionFailureStage = "ingestion"
-	AsyncDecisionExecution_StageDecision  AsyncDecisionExecutionFailureStage = "decision"
+	AsyncDecisionExecutionStageUnknown AsyncDecisionExecutionFailureStage = iota
+	AsyncDecisionExecutionStageIngestion
+	AsyncDecisionExecutionStageDecision
 )
+
+func (s AsyncDecisionExecutionFailureStage) String() string {
+	switch s {
+	case AsyncDecisionExecutionStageIngestion:
+		return "ingestion"
+	case AsyncDecisionExecutionStageDecision:
+		return "decision"
+	}
+	return "unknown"
+}
+
+func AsyncDecisionExecutionFailureStageFromString(s string) AsyncDecisionExecutionFailureStage {
+	switch s {
+	case "ingestion":
+		return AsyncDecisionExecutionStageIngestion
+	case "decision":
+		return AsyncDecisionExecutionStageDecision
+	default:
+		return AsyncDecisionExecutionStageUnknown
+	}
+}
 
 type AsyncDecisionExecution struct {
 	Id            uuid.UUID
@@ -48,7 +100,7 @@ type AsyncDecisionExecutionCreate struct {
 
 type AsyncDecisionExecutionUpdate struct {
 	Id           uuid.UUID
-	Status       AsyncDecisionExecutionStatus
-	DecisionIds  []uuid.UUID
+	Status       *AsyncDecisionExecutionStatus
+	DecisionIds  *[]uuid.UUID
 	ErrorMessage *string
 }
