@@ -514,12 +514,15 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	if caseReviewContext.RulesDefinitionsReview == nil {
 
 		// Rules definitions review
+		ruleDefinitionsData := map[string]any{
+			"decisions": caseData.decisions,
+		}
+		if aiSetting.CaseReviewSetting.OrgDescription != nil {
+			ruleDefinitionsData["activity_description"] = *aiSetting.CaseReviewSetting.OrgDescription
+		}
 		modelRulesDefinitions, promptRulesDefinitions, err := uc.preparePromptWithModel(
 			PROMPT_RULE_DEFINITIONS_PATH,
-			map[string]any{
-				"decisions":            caseData.decisions,
-				"activity_description": aiSetting.CaseReviewSetting.OrgDescription,
-			},
+			ruleDefinitionsData,
 		)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not prepare rules definitions review request")
@@ -598,29 +601,34 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if err != nil {
 			return nil, errors.Wrap(err, "could not marshal ast options")
 		}
+		caseReviewData := map[string]any{
+			// Global data
+			"rule_ast_options": string(astOptionsBytes),
+
+			// Case data
+			"case_detail":           caseData.case_,
+			"case_events":           caseData.events,
+			"decisions":             caseData.decisions,
+			"has_more_alerts":       caseData.hasMoreDecisions,
+			"pivot_objects":         caseData.pivotData,
+			"previous_cases":        relatedDataPerClient.relatedCases,
+			"customer_related_data": relatedDataPerClient.ingestedData,
+
+			// Data from previous steps
+			"data_model_summary": caseReviewContext.DataModelSummary,
+			"rules_summary":      caseReviewContext.RulesDefinitionsReview,
+			"rule_thresholds":    caseReviewContext.RuleThresholds,
+			"pivot_enrichments":  caseReviewContext.PivotEnrichments,
+		}
+		if aiSetting.CaseReviewSetting.OrgDescription != nil {
+			caseReviewData["org_activity"] = *aiSetting.CaseReviewSetting.OrgDescription
+		}
+		if aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction != nil {
+			caseReviewData["additional_case_review_instruction"] = *aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
+		}
 		modelCaseReview, promptCaseReview, err := uc.preparePromptWithModel(
 			PROMPT_CASE_REVIEW_PATH,
-			map[string]any{
-				// Global data
-				"org_activity":                       aiSetting.CaseReviewSetting.OrgDescription,
-				"rule_ast_options":                   string(astOptionsBytes),
-				"additional_case_review_instruction": aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction,
-
-				// Case data
-				"case_detail":           caseData.case_,
-				"case_events":           caseData.events,
-				"decisions":             caseData.decisions,
-				"has_more_alerts":       caseData.hasMoreDecisions,
-				"pivot_objects":         caseData.pivotData,
-				"previous_cases":        relatedDataPerClient.relatedCases,
-				"customer_related_data": relatedDataPerClient.ingestedData,
-
-				// Data from previous steps
-				"data_model_summary": caseReviewContext.DataModelSummary,
-				"rules_summary":      caseReviewContext.RulesDefinitionsReview,
-				"rule_thresholds":    caseReviewContext.RuleThresholds,
-				"pivot_enrichments":  caseReviewContext.PivotEnrichments,
-			},
+			caseReviewData,
 		)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not prepare case review request")
@@ -661,28 +669,32 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 	if caseReviewContext.SanityCheck == nil {
 		// Finally, sanity check the resulting case review using a judgement prompt
+		sanityCheckData := map[string]any{
+			// Case data
+			"case_detail":           caseData.case_,
+			"case_events":           caseData.events,
+			"decisions":             caseData.decisions,
+			"pivot_objects":         caseData.pivotData,
+			"has_more_alerts":       caseData.hasMoreDecisions,
+			"previous_cases":        relatedDataPerClient.relatedCases,
+			"customer_related_data": relatedDataPerClient.ingestedData,
+
+			// Data from previous steps
+			"data_model_summary": caseReviewContext.DataModelSummary,
+			"rules_summary":      caseReviewContext.RulesDefinitionsReview,
+			"rule_thresholds":    caseReviewContext.RuleThresholds,
+			"pivot_enrichments":  caseReviewContext.PivotEnrichments,
+			"case_review":        caseReviewContext.CaseReview,
+		}
+		if aiSetting.CaseReviewSetting.OrgDescription != nil {
+			sanityCheckData["org_activity"] = *aiSetting.CaseReviewSetting.OrgDescription
+		}
+		if aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction != nil {
+			sanityCheckData["additional_case_review_instruction"] = *aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
+		}
 		modelSanityCheck, promptSanityCheck, err := uc.preparePromptWithModel(
 			PROMPT_SANITY_CHECK_PATH,
-			map[string]any{
-				// Global data
-				"org_activity": aiSetting.CaseReviewSetting.OrgDescription,
-
-				// Case data
-				"case_detail":           caseData.case_,
-				"case_events":           caseData.events,
-				"decisions":             caseData.decisions,
-				"pivot_objects":         caseData.pivotData,
-				"has_more_alerts":       caseData.hasMoreDecisions,
-				"previous_cases":        relatedDataPerClient.relatedCases,
-				"customer_related_data": relatedDataPerClient.ingestedData,
-
-				// Data from previous steps
-				"data_model_summary": caseReviewContext.DataModelSummary,
-				"rules_summary":      caseReviewContext.RulesDefinitionsReview,
-				"rule_thresholds":    caseReviewContext.RuleThresholds,
-				"pivot_enrichments":  caseReviewContext.PivotEnrichments,
-				"case_review":        caseReviewContext.CaseReview,
-			},
+			sanityCheckData,
 		)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not prepare sanity check request")
@@ -1209,3 +1221,5 @@ func getProofSchema(dataModel models.DataModel) jsonschema.Schema {
 		Properties:  properties,
 	}
 }
+
+
