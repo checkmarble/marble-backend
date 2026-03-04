@@ -64,22 +64,6 @@ type proof struct {
 	Reason string               `json:"reason"`
 }
 
-type customOrgInstructions struct {
-	Language       *string `json:"language"`
-	Structure      *string `json:"structure"`
-	OrgDescription *string `json:"org_description"`
-}
-
-// Get from ai setting
-// Not all organizations have custom instructions
-func getOrganizationCustomInstructions(aiSetting models.AiSetting) customOrgInstructions {
-	return customOrgInstructions{
-		Language:       utils.Ptr(aiSetting.CaseReviewSetting.Language),
-		Structure:      aiSetting.CaseReviewSetting.Structure,
-		OrgDescription: aiSetting.CaseReviewSetting.OrgDescription,
-	}
-}
-
 func (uc *AiAgentUsecase) getCaseReviewContent(ctx context.Context, review models.AiCaseReview) (agent_dto.AiCaseReviewDto, error) {
 	blob, err := uc.blobRepository.GetBlob(ctx, review.BucketName, review.FileReference)
 	if err != nil {
@@ -276,37 +260,37 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 // Return a list of instructions to give to the LLM and the model to use for the prompt
 // NOTE: The model is given by `prepareRequest()`, we call it at most twice and the the last call will set the model
 func (uc *AiAgentUsecase) getOrganizationInstructionsForPrompt(ctx context.Context,
-	customInstructions customOrgInstructions,
+	caseReviewSetting models.CaseReviewSetting,
 ) ([]string, string) {
 	logger := utils.LoggerFromContext(ctx)
 	instructions := []string{}
 	modelToUse := ""
 
-	if customInstructions.Language != nil {
-		language, err := pure_utils.BCP47ToEnglish(*customInstructions.Language)
-		if err != nil {
-			logger.DebugContext(ctx, "could not convert language to english, do not format the output with language", "error", err)
-		} else {
-			model, customLanguagePrompt, err := uc.preparePromptWithModel(
-				INSTRUCTION_LANGUAGE_PATH,
-				map[string]any{
-					"language": language,
-				},
-			)
-			if err != nil {
-				logger.DebugContext(ctx, "could not read custom language prompt", "error", err)
-			} else {
-				instructions = append(instructions, customLanguagePrompt)
-			}
-
-			modelToUse = model
-		}
+	language, err := pure_utils.BCP47ToEnglish(caseReviewSetting.Language)
+	if err != nil {
+		logger.DebugContext(ctx, "could not convert language to english, do not format the output with language", "error", err)
 	}
-	if customInstructions.Structure != nil {
+	if language != "English" {
+		// If the language is English, ignore this step because the case review is already in English
+		model, customLanguagePrompt, err := uc.preparePromptWithModel(
+			INSTRUCTION_LANGUAGE_PATH,
+			map[string]any{
+				"language": language,
+			},
+		)
+		if err != nil {
+			logger.DebugContext(ctx, "could not read custom language prompt", "error", err)
+		} else {
+			instructions = append(instructions, customLanguagePrompt)
+		}
+
+		modelToUse = model
+	}
+	if caseReviewSetting.Structure != nil {
 		model, customStructurePrompt, err := uc.preparePromptWithModel(
 			INSTRUCTION_STRUCTURE_PATH,
 			map[string]any{
-				"structure": *customInstructions.Structure,
+				"structure": *caseReviewSetting.Structure,
 			},
 		)
 		if err != nil {
@@ -384,13 +368,6 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	aiSetting, err := uc.getAiSetting(ctx, caseData.organizationId)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get ai setting")
-	}
-
-	// Prepare the custom org instructions
-	customOrgInstructions := getOrganizationCustomInstructions(aiSetting)
-	organizationDescription := "No description provided"
-	if customOrgInstructions.OrgDescription != nil {
-		organizationDescription = *customOrgInstructions.OrgDescription
 	}
 
 	// Define the system instruction for prompt
@@ -541,7 +518,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			PROMPT_RULE_DEFINITIONS_PATH,
 			map[string]any{
 				"decisions":            caseData.decisions,
-				"activity_description": organizationDescription,
+				"activity_description": aiSetting.CaseReviewSetting.OrgDescription,
 			},
 		)
 		if err != nil {
@@ -625,8 +602,9 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			PROMPT_CASE_REVIEW_PATH,
 			map[string]any{
 				// Global data
-				"org_activity":     organizationDescription,
-				"rule_ast_options": string(astOptionsBytes),
+				"org_activity":                       aiSetting.CaseReviewSetting.OrgDescription,
+				"rule_ast_options":                   string(astOptionsBytes),
+				"additional_case_review_instruction": aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction,
 
 				// Case data
 				"case_detail":           caseData.case_,
@@ -687,7 +665,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			PROMPT_SANITY_CHECK_PATH,
 			map[string]any{
 				// Global data
-				"org_activity": organizationDescription,
+				"org_activity": aiSetting.CaseReviewSetting.OrgDescription,
 
 				// Case data
 				"case_detail":           caseData.case_,
@@ -730,7 +708,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	// Do custom language and structure instructions
 	finalOutput := caseReviewContext.CaseReview.CaseReview
 
-	instructions, modelForInstruction := uc.getOrganizationInstructionsForPrompt(ctx, customOrgInstructions)
+	instructions, modelForInstruction := uc.getOrganizationInstructionsForPrompt(ctx, aiSetting.CaseReviewSetting)
 
 	// If there are instructions, we need to format the output
 	if len(instructions) == 0 {
