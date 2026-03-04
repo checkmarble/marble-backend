@@ -806,7 +806,7 @@ paths:
       summary: List AI case reviews
       description: |
         List AI reviews generated for the given case, ordered by creation date.
-        The review content is not included — use the get review by ID endpoint to fetch the full content.
+        The review content is not included, use the get review by ID endpoint to fetch the full content.
       parameters:
         - $ref: "#/components/parameters/limit"
         - $ref: "#/components/parameters/order"
@@ -1612,35 +1612,13 @@ components:
 
     CaseReviewDetail:
       title: Case AI review detail
-      type: object
-      required:
-        - id
-        - case_id
-        - status
-        - created_at
-        - updated_at
-      properties:
-        id:
-          type: string
-          format: uuid
-        case_id:
-          type: string
-          format: uuid
-        status:
-          type: string
-          enum: [pending, completed, failed, insufficient_funds]
-        reaction:
-          type: string
-          enum: [ok, ko]
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-        content:
-          description: The AI review content. Only present when status is "completed".
-          type: [object, "null"]
+      allOf:
+        - $ref: "#/components/schemas/CaseReview"
+        - type: object
+          properties:
+            content:
+              description: The AI review content. Only present when status is "completed".
+              type: object
 
     ScreeningEntity:
       type: string

@@ -88,17 +88,9 @@ func (uc *AiAgentUsecase) getCaseReviewById(ctx context.Context, reviewId uuid.U
 
 	var reviewDto agent_dto.AiCaseReviewDto
 	if review.Status == models.AiCaseReviewStatusCompleted {
-		blob, err := uc.blobRepository.GetBlob(ctx, review.BucketName, review.FileReference)
+		reviewDto, err = uc.getCaseReviewContent(ctx, review)
 		if err != nil {
-			return agent_dto.AiCaseReviewOutputDto{},
-				errors.Wrap(err, "could not get case review file")
-		}
-		defer blob.ReadCloser.Close()
-
-		reviewDto, err = agent_dto.UnmarshalCaseReviewDto(review.DtoVersion, blob.ReadCloser)
-		if err != nil {
-			return agent_dto.AiCaseReviewOutputDto{},
-				errors.Wrap(err, "could not unmarshal case review file")
+			return agent_dto.AiCaseReviewOutputDto{}, err
 		}
 	}
 
