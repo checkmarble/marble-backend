@@ -61,7 +61,7 @@ func (exec *RedisExecutor) Key(keys ...string) string {
 
 func (exec *RedisExecutor) Exec(f func(*redis.Client) error) error {
 	if exec == nil {
-		return models.NotFoundError
+		return nil
 	}
 
 	return f(exec.client.client)
