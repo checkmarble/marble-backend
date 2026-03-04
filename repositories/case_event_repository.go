@@ -42,7 +42,9 @@ func (repo *MarbleDbRepository) GetCaseEventById(ctx context.Context, exec Execu
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptCaseEvent)
 }
 
-func (repo *MarbleDbRepository) ListCaseEventsOfTypes(ctx context.Context, exec Executor, caseId string, types []models.CaseEventType, paging models.PaginationAndSorting) ([]models.CaseEvent, error) {
+func (repo *MarbleDbRepository) ListCaseEventsOfTypes(ctx context.Context, exec Executor,
+	caseId string, types []models.CaseEventType, paging models.PaginationAndSorting,
+) ([]models.CaseEvent, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -62,19 +64,70 @@ func (repo *MarbleDbRepository) ListCaseEventsOfTypes(ctx context.Context, exec 
 		}
 
 		if paging.Order == models.SortingOrderDesc {
-			query = query.Where(fmt.Sprintf("(%s, id) < (?, ?)", paging.Sorting), offsetCaseEvent.CreatedAt, offsetCaseEvent.Id)
+			query = query.Where(fmt.Sprintf("(%s, id) < (?, ?)", paging.Sorting),
+				offsetCaseEvent.CreatedAt, offsetCaseEvent.Id)
 		} else {
-			query = query.Where(fmt.Sprintf("(%s, id) > (?, ?)", paging.Sorting), offsetCaseEvent.CreatedAt, offsetCaseEvent.Id)
+			query = query.Where(fmt.Sprintf("(%s, id) > (?, ?)", paging.Sorting),
+				offsetCaseEvent.CreatedAt, offsetCaseEvent.Id)
 		}
 	}
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptCaseEvent)
 }
 
+func (repo *MarbleDbRepository) ListCaseCommentEvents(ctx context.Context, exec Executor,
+	caseId string, paging models.PaginationAndSorting,
+) ([]models.CaseCommentEvent, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(
+			"ce.id",
+			"ce.user_id",
+			"ce.created_at",
+			"ce.event_type",
+			"ce.additional_note",
+			"ea.payload as annotation_payload",
+		).
+		From("case_events ce").
+		LeftJoin("entity_annotations ea ON ea.id = ce.resource_id").
+		Where("ce.case_id = ?", caseId).
+		Where(squirrel.Or{
+			squirrel.Eq{"ce.event_type": string(models.CaseCommentAdded)},
+			squirrel.And{
+				squirrel.Eq{"ce.event_type": string(models.CaseEntityAnnotated)},
+				squirrel.Eq{"ce.additional_note": models.EntityAnnotationComment.String()},
+			},
+		}).
+		OrderBy(fmt.Sprintf("ce.created_at %[1]s, ce.id %[1]s", paging.Order)).
+		Limit(uint64(paging.Limit))
+
+	if paging.OffsetId != "" {
+		offsetCaseEvent, err := repo.GetCaseEventById(ctx, exec, paging.OffsetId)
+		if err != nil {
+			return nil, err
+		}
+
+		if paging.Order == models.SortingOrderDesc {
+			query = query.Where("(ce.created_at, ce.id) < (?, ?)",
+				offsetCaseEvent.CreatedAt, offsetCaseEvent.Id)
+		} else {
+			query = query.Where("(ce.created_at, ce.id) > (?, ?)",
+				offsetCaseEvent.CreatedAt, offsetCaseEvent.Id)
+		}
+	}
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptCaseCommentEvent)
+}
+
 func (repo *MarbleDbRepository) CreateCaseEvent(ctx context.Context, exec Executor,
 	createCaseEventAttributes models.CreateCaseEventAttributes,
 ) (models.CaseEvent, error) {
-	events, err := repo.BatchCreateCaseEvents(ctx, exec, []models.CreateCaseEventAttributes{createCaseEventAttributes})
+	events, err := repo.BatchCreateCaseEvents(ctx, exec, []models.CreateCaseEventAttributes{
+		createCaseEventAttributes,
+	})
 	if err != nil {
 		return models.CaseEvent{}, err
 	}

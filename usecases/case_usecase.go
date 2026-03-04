@@ -50,6 +50,8 @@ type CaseUseCaseRepository interface {
 	ListCaseEvents(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseEvent, error)
 	ListCaseEventsOfTypes(ctx context.Context, exec repositories.Executor, caseId string,
 		types []models.CaseEventType, paging models.PaginationAndSorting) ([]models.CaseEvent, error)
+	ListCaseCommentEvents(ctx context.Context, exec repositories.Executor, caseId string,
+		paging models.PaginationAndSorting) ([]models.CaseCommentEvent, error)
 
 	GetCaseContributor(ctx context.Context, exec repositories.Executor, caseId, userId string) (*models.CaseContributor, error)
 	CreateCaseContributor(ctx context.Context, exec repositories.Executor, caseId, userId string) error
@@ -255,38 +257,38 @@ func (usecase *CaseUseCase) GetCasesReferents(ctx context.Context, caseIds []str
 	return referentMap, nil
 }
 
-func (usecase *CaseUseCase) GetCaseComments(ctx context.Context, caseId string,
+func (usecase *CaseUseCase) GetCaseComments(
+	ctx context.Context,
+	caseId string,
 	paging models.PaginationAndSorting,
-) (models.Paginated[models.CaseEvent], error) {
+) (models.Paginated[models.CaseCommentEvent], error) {
 	c, err := usecase.GetCase(ctx, caseId)
 	if err != nil {
-		return models.Paginated[models.CaseEvent]{},
+		return models.Paginated[models.CaseCommentEvent]{},
 			errors.Wrap(err, "could not retrieve requested case")
 	}
 
 	inboxes, err := usecase.getAvailableInboxIds(ctx, usecase.executorFactory.NewExecutor(), c.OrganizationId)
 	if err != nil {
-		return models.Paginated[models.CaseEvent]{},
+		return models.Paginated[models.CaseCommentEvent]{},
 			errors.Wrap(err, "could not retrieve available inboxes")
 	}
 
 	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), inboxes); err != nil {
-		return models.Paginated[models.CaseEvent]{}, err
+		return models.Paginated[models.CaseCommentEvent]{}, err
 	}
 
 	pagingPlusOne := paging
 	pagingPlusOne.Limit += 1
 
-	comments, err := usecase.repository.ListCaseEventsOfTypes(ctx,
-		usecase.executorFactory.NewExecutor(), caseId, []models.CaseEventType{
-			models.CaseCommentAdded,
-		}, pagingPlusOne)
+	comments, err := usecase.repository.ListCaseCommentEvents(ctx,
+		usecase.executorFactory.NewExecutor(), caseId, pagingPlusOne)
 	if err != nil {
-		return models.Paginated[models.CaseEvent]{},
+		return models.Paginated[models.CaseCommentEvent]{},
 			errors.Wrap(err, "could not list comment case events")
 	}
 
-	return models.Paginated[models.CaseEvent]{
+	return models.Paginated[models.CaseCommentEvent]{
 		Items:       comments[:min(len(comments), paging.Limit)],
 		HasNextPage: len(comments) > paging.Limit,
 	}, nil

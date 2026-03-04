@@ -79,13 +79,13 @@ func AdaptCase(users []models.User, tags []models.Tag, referents map[string]mode
 	}
 }
 
-func AdaptCaseComment(users []models.User) func(models.CaseEvent) CaseComment {
+func AdaptCaseComment(users []models.User) func(models.CaseCommentEvent) CaseComment {
 	userMap := pure_utils.MapSliceToMap(users, func(u models.User) (models.UserId, models.User) { return u.UserId, u })
 
-	return func(c models.CaseEvent) CaseComment {
+	return func(c models.CaseCommentEvent) CaseComment {
 		comment := CaseComment{
 			Id:        c.Id,
-			Comment:   c.AdditionalNote,
+			Comment:   c.Comment,
 			CreatedAt: types.DateTime(c.CreatedAt),
 			User: Ref{
 				Id:   uuid.Nil.String(),

@@ -71,7 +71,12 @@ func AdaptWebhookEventData(ctx context.Context, exec repositories.Executor, adap
 				})
 			}),
 			Comments: applyWebhookEventData(m.Content.Comments, func(c models.CaseEvent) CaseComment {
-				return AdaptCaseComment(users)(c)
+				return AdaptCaseComment(users)(models.CaseCommentEvent{
+					Id:        c.Id,
+					UserId:    c.UserId,
+					CreatedAt: c.CreatedAt,
+					Comment:   c.AdditionalNote,
+				})
 			}),
 		},
 		Timestamp: m.Timestamp,
