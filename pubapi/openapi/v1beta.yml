@@ -835,6 +835,52 @@ paths:
         "400":
           $ref: "#/components/responses/400"
 
+    post:
+      operationId: enqueueCaseReview
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Enqueue an AI case review
+      description: |
+        Create a new AI review for the given case, which will be processed asynchronously.
+        Requires AI case review to be enabled for the organization and the inbox to be configured for manual review.
+        Returns a 409 conflict if a review is already pending for this case.
+      parameters:
+        - name: caseId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "202":
+          description: Case review successfully enqueued
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: 
+                          - review_id
+                        properties:
+                          review_id:
+                            type: string
+                            format: uuid
+        "400":
+          $ref: "#/components/responses/400"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+        "409":
+          $ref: "#/components/responses/409"
+
   /cases/{caseId}/reviews/{reviewId}:
     get:
       operationId: getCaseReview
@@ -1588,6 +1634,7 @@ components:
         - id
         - case_id
         - status
+        - reaction
         - created_at
         - updated_at
       properties:
@@ -1601,8 +1648,8 @@ components:
           type: string
           enum: [pending, completed, failed, insufficient_funds]
         reaction:
-          type: string
-          enum: [ok, ko]
+          type: [string, "null"]
+          enum: [ok, ko, null]
         created_at:
           type: string
           format: date-time
@@ -1615,10 +1662,102 @@ components:
       allOf:
         - $ref: "#/components/schemas/CaseReview"
         - type: object
+          required:
+            - content
           properties:
             content:
               description: The AI review content. Only present when status is "completed".
-              type: object
+              oneOf:
+                - $ref: "#/components/schemas/CaseReviewContentV1"
+                - type: "null"
+
+    CaseReviewContentV1:
+      title: Case AI review content (v1)
+      type: object
+      required:
+        - version
+        - ok
+        - output
+        - thought
+        - sanity_check
+        - proofs
+      properties:
+        version:
+          type: string
+          enum: [v1]
+        ok:
+          description: Whether the case review passed the sanity check
+          type: boolean
+        output:
+          description: The main case review text produced by the AI
+          type: string
+        thought:
+          description: The chain-of-thought reasoning produced by the AI
+          type: string
+        sanity_check:
+          description: The sanity check result produced by the AI
+          type: string
+        review_level:
+          description: Estimated review level recommended by the AI
+          type: [string, "null"]
+          enum: [probable_false_positive, investigate, escalate, null]
+        proofs:
+          description: List of proof elements referenced in the review
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - type
+              - origin
+              - reason
+            properties:
+              id:
+                type: string
+              type:
+                type: string
+              origin:
+                type: string
+                enum: [data_model, internal, unknown]
+              reason:
+                type: string
+        pivot_enrichments:
+          description: KYC enrichment results for pivot objects, if any
+          type: [object, "null"]
+          properties:
+            results:
+              type: array
+              items:
+                type: object
+                required:
+                  - analysis
+                  - entity_name
+                  - citations
+                properties:
+                  analysis:
+                    type: string
+                  entity_name:
+                    type: string
+                  citations:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - title
+                        - domain
+                        - url
+                        - date
+                      properties:
+                        title:
+                          type: string
+                        domain:
+                          type: string
+                        url:
+                          type: string
+                          format: uri
+                        date:
+                          type: string
+                          format: date-time
 
     ScreeningEntity:
       type: string

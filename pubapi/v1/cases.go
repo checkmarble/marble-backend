@@ -583,6 +583,32 @@ func HandleGetCaseReviewById(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
+func HandleEnqueueCaseReview(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		caseId, err := types.UuidParam(c, "caseId")
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		usecase := pubapi.UsecasesWithCreds(ctx, uc).NewAiAgentUsecase()
+		reviewId, ok, err := usecase.EnqueueCreateCaseReview(ctx, caseId.String())
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+		if !ok {
+			types.NewErrorResponse().
+				WithError(errors.Wrap(models.ForbiddenError, "AI case review is not enabled")).
+				Serve(c)
+			return
+		}
+		types.NewResponse(gin.H{"review_id": reviewId}).Serve(c, http.StatusAccepted)
+	}
+}
+
 func HandleCreateCaseFile(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()

@@ -231,3 +231,21 @@ func (repo *MarbleDbRepository) GetCaseReviewById(
 		dbmodels.AdaptAiCaseReview,
 	)
 }
+
+func (repo *MarbleDbRepository) HasPendingCaseReview(
+	ctx context.Context,
+	exec Executor,
+	caseId uuid.UUID,
+) (bool, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return false, err
+	}
+
+	var exists bool
+	err := exec.QueryRow(ctx,
+		"SELECT EXISTS (SELECT 1 FROM "+dbmodels.TABLE_AI_CASE_REVIEWS+
+			" WHERE case_id = $1 AND status = $2)",
+		caseId, models.AiCaseReviewStatusPending.String(),
+	).Scan(&exists)
+	return exists, err
+}

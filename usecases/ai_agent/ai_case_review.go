@@ -15,9 +15,9 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/billing"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/invopop/jsonschema"
-	"github.com/pkg/errors"
 )
 
 // TODO: the current version of the code uses some static heuristics to limit the amount of data loaded into the context.
@@ -230,37 +230,58 @@ func (uc *AiAgentUsecase) GetCaseReviewById(ctx context.Context, caseId string, 
 }
 
 // EnqueueCreateCaseReview enqueues a case review task for a given case.
-func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId string) (bool, error) {
+// Returns the created review ID, a boolean indicating whether the review was enqueued (false if AI review
+// is not enabled or the inbox is not configured for manual review), and an error if any.
+func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId string) (uuid.UUID, bool, error) {
 	c, err := uc.getCaseWithPermissions(ctx, caseId)
 	if err != nil {
-		return false, err
+		return uuid.UUID{}, false, err
 	}
 
 	hasAiCaseReviewEnabled, err := uc.HasAiCaseReviewEnabled(ctx, c.OrganizationId)
 	if err != nil {
-		return false, errors.Wrap(err, "error checking if AI case review is enabled")
+		return uuid.UUID{}, false, errors.Wrap(err,
+			"error checking if AI case review is enabled")
 	}
 	if !hasAiCaseReviewEnabled {
-		return false, nil
+		return uuid.UUID{}, false, nil
 	}
 	inbox, err := uc.inboxReader.GetInboxById(ctx, uc.executorFactory.NewExecutor(), c.InboxId)
 	if err != nil {
-		return false, errors.Wrap(err, "error getting inbox")
+		return uuid.UUID{}, false, errors.Wrap(err, "error getting inbox")
 	}
 	if !inbox.CaseReviewManual {
-		return false, nil
+		return uuid.UUID{}, false, nil
 	}
 
 	caseIdUuid, err := uuid.Parse(caseId)
 	if err != nil {
-		return false, errors.Wrap(err, "could not parse case id")
+		return uuid.UUID{}, false, errors.Wrap(err, "could not parse case id")
 	}
 
 	caseReviewId := uuid.Must(uuid.NewV7())
 	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		hasPending, err := uc.caseReviewFileRepository.HasPendingCaseReview(ctx, tx, caseIdUuid)
+		if err != nil {
+			return errors.Wrap(err, "error checking for pending case review")
+		}
+		if hasPending {
+			return errors.WithDetail(errors.Wrap(models.ConflictError,
+				"already has a pending case review"), "already has a pending case review")
+		}
+
+		aiCaseReview := models.NewAiCaseReview(caseIdUuid, uc.caseManagerBucketUrl, caseReviewId)
+		if err := uc.caseReviewFileRepository.CreateCaseReviewFile(ctx, tx, aiCaseReview); err != nil {
+			return errors.Wrap(err, "error creating case review file")
+		}
+
 		return uc.caseReviewTaskEnqueuer.EnqueueCaseReviewTask(ctx, tx, c.OrganizationId, caseIdUuid, caseReviewId)
 	})
-	return true, err
+	if err != nil {
+		return uuid.UUID{}, false, err
+	}
+
+	return caseReviewId, true, nil
 }
 
 // Return a list of instructions to give to the LLM and the model to use for the prompt

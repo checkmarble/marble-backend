@@ -123,7 +123,7 @@ type CaseReview struct {
 	Id        string         `json:"id"`
 	CaseId    string         `json:"case_id"`
 	Status    string         `json:"status"`
-	Reaction  *string        `json:"reaction,omitempty"`
+	Reaction  *string        `json:"reaction"`
 	CreatedAt types.DateTime `json:"created_at"`
 	UpdatedAt types.DateTime `json:"updated_at"`
 }
@@ -132,10 +132,10 @@ type CaseReviewDetail struct {
 	Id        string         `json:"id"`
 	CaseId    string         `json:"case_id"`
 	Status    string         `json:"status"`
-	Reaction  *string        `json:"reaction,omitempty"`
+	Reaction  *string        `json:"reaction"`
 	CreatedAt types.DateTime `json:"created_at"`
 	UpdatedAt types.DateTime `json:"updated_at"`
-	Content   any            `json:"content,omitempty"`
+	Content   any            `json:"content"`
 }
 
 func AdaptCaseReview(r agent_dto.AiCaseReviewListItemDto) CaseReview {

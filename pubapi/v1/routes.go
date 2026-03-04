@@ -73,6 +73,7 @@ func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gi
 		root.POST("/cases/:caseId/files", HandleCreateCaseFile(uc))
 		root.GET("/cases/:caseId/files/:fileId/download", HandleDownloadCaseFile(uc))
 		root.GET("/cases/:caseId/reviews", HandleListCaseReviews(uc))
+		root.POST("/cases/:caseId/reviews", HandleEnqueueCaseReview(uc))
 		root.GET("/cases/:caseId/reviews/:reviewId", HandleGetCaseReviewById(uc))
 
 		root.GET("/tags", HandleListTags(uc))

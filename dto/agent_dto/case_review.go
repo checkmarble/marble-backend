@@ -90,12 +90,12 @@ type AiCaseReviewOutputDto struct {
 	Id        uuid.UUID `json:"id"`
 	CaseId    uuid.UUID `json:"case_id"`
 	Status    string    `json:"status"`
-	Reaction  *string   `json:"reaction,omitempty"`
+	Reaction  *string   `json:"reaction"`
 	Version   string    `json:"version"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	Review AiCaseReviewDto `json:"review,omitempty"`
+	Review AiCaseReviewDto `json:"review"`
 }
 
 // AiCaseReviewListItemDto is used by the list endpoint to return all reviews for a case.
@@ -106,8 +106,8 @@ type AiCaseReviewListItemDto struct {
 	Status    string          `json:"status"`
 	CreatedAt time.Time       `json:"created_at"`
 	UpdatedAt time.Time       `json:"updated_at"`
-	Reaction  *string         `json:"reaction,omitempty"`
-	Review    AiCaseReviewDto `json:"review,omitempty"`
+	Reaction  *string         `json:"reaction"`
+	Review    AiCaseReviewDto `json:"review"`
 }
 
 type UpdateCaseReviewFeedbackDto struct {

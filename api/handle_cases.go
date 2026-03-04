@@ -744,15 +744,15 @@ func handleEnqueueCaseReview(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		ok, err := usecase.EnqueueCreateCaseReview(ctx, caseId.String())
+		reviewId, ok, err := usecase.EnqueueCreateCaseReview(ctx, caseId.String())
+		if presentError(ctx, c, err) {
+			return
+		}
 		if !ok {
 			presentError(ctx, c, errors.Wrap(models.ForbiddenError, "AI case review is not enabled"))
 			return
 		}
-		if presentError(ctx, c, err) {
-			return
-		}
-		c.Status(http.StatusNoContent)
+		c.JSON(http.StatusAccepted, gin.H{"review_id": reviewId})
 	}
 }
 
