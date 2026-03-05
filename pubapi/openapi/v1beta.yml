@@ -1558,6 +1558,7 @@ components:
         - outcome
         - contributors
         - tags
+        - review_level
         - created_at
       properties:
         id:
@@ -1586,6 +1587,14 @@ components:
         snoozed_until:
           type: string
           format: date-time
+        review_level:
+          type:
+            - string
+            - "null"
+          enum: [probable_false_positive, investigate, escalate, null]
+          description: |
+            The review level from AI review.
+            This field is only filled if the ai case review feature is enabled and did a review on this case, otherwise it is null.
         created_at:
           type: string
           format: date-time
@@ -1669,6 +1678,7 @@ components:
               description: The AI review content. Only present when status is "completed".
               oneOf:
                 - $ref: "#/components/schemas/CaseReviewContentV1"
+                - type: object
                 - type: "null"
 
     CaseReviewContentV1:
@@ -1676,88 +1686,20 @@ components:
       type: object
       required:
         - version
-        - ok
         - output
-        - thought
         - sanity_check
-        - proofs
       properties:
         version:
           type: string
           enum: [v1]
-        ok:
-          description: Whether the case review passed the sanity check
-          type: boolean
         output:
           description: The main case review text produced by the AI
           type: string
-        thought:
-          description: The chain-of-thought reasoning produced by the AI
-          type: string
         sanity_check:
           description: The sanity check result produced by the AI
-          type: string
-        review_level:
-          description: Estimated review level recommended by the AI
-          type: [string, "null"]
-          enum: [probable_false_positive, investigate, escalate, null]
-        proofs:
-          description: List of proof elements referenced in the review
-          type: array
-          items:
-            type: object
-            required:
-              - id
-              - type
-              - origin
-              - reason
-            properties:
-              id:
-                type: string
-              type:
-                type: string
-              origin:
-                type: string
-                enum: [data_model, internal, unknown]
-              reason:
-                type: string
-        pivot_enrichments:
-          description: KYC enrichment results for pivot objects, if any
-          type: [object, "null"]
-          properties:
-            results:
-              type: array
-              items:
-                type: object
-                required:
-                  - analysis
-                  - entity_name
-                  - citations
-                properties:
-                  analysis:
-                    type: string
-                  entity_name:
-                    type: string
-                  citations:
-                    type: array
-                    items:
-                      type: object
-                      required:
-                        - title
-                        - domain
-                        - url
-                        - date
-                      properties:
-                        title:
-                          type: string
-                        domain:
-                          type: string
-                        url:
-                          type: string
-                          format: uri
-                        date:
-                          type: string
-                          format: date-time
+          type: 
+            - string
+            - 'null'
 
     ScreeningEntity:
       type: string

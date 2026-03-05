@@ -21,6 +21,7 @@ type Case struct {
 	Contributors []Ref           `json:"contributors"`
 	Tags         []Ref           `json:"tags"`
 	SnoozedUntil *types.DateTime `json:"snoozed_until,omitempty"`
+	ReviewLevel  *string         `json:"review_level"`
 	CreatedAt    types.DateTime  `json:"created_at"`
 }
 
@@ -55,6 +56,7 @@ func AdaptCase(users []models.User, tags []models.Tag, referents map[string]mode
 			CreatedAt:    types.DateTime(c.CreatedAt),
 			Contributors: make([]Ref, 0),
 			Tags:         make([]Ref, 0),
+			ReviewLevel:  c.ReviewLevel,
 		}
 
 		if ref, ok := referents[c.Id]; ok {
@@ -128,15 +130,33 @@ type CaseReview struct {
 	UpdatedAt types.DateTime `json:"updated_at"`
 }
 
-type CaseReviewDetail struct {
-	Id        string         `json:"id"`
-	CaseId    string         `json:"case_id"`
-	Status    string         `json:"status"`
-	Reaction  *string        `json:"reaction"`
-	CreatedAt types.DateTime `json:"created_at"`
-	UpdatedAt types.DateTime `json:"updated_at"`
-	Content   any            `json:"content"`
+// CaseReviewContent is a marker interface for versioned case review content payloads.
+// Implement this interface on each new version (CaseReviewContentV1, CaseReviewContentV2, …).
+type CaseReviewContent interface {
+	caseReviewContent()
 }
+
+type CaseReviewDetail struct {
+	Id        string            `json:"id"`
+	CaseId    string            `json:"case_id"`
+	Status    string            `json:"status"`
+	Reaction  *string           `json:"reaction"`
+	CreatedAt types.DateTime    `json:"created_at"`
+	UpdatedAt types.DateTime    `json:"updated_at"`
+	Content   CaseReviewContent `json:"content"`
+}
+
+type CaseReviewContentV1 struct {
+	Version string `json:"version"`
+	Output  string `json:"output"`
+
+	// SanityCheck is optional, it replace the `ok` field from the v1 response.
+	// ok = true => `sanity_check = nil`
+	// ok = false => `sanity_check = sanity check output`
+	SanityCheck *string `json:"sanity_check"`
+}
+
+func (CaseReviewContentV1) caseReviewContent() {}
 
 func AdaptCaseReview(r agent_dto.AiCaseReviewListItemDto) CaseReview {
 	return CaseReview{
@@ -149,6 +169,20 @@ func AdaptCaseReview(r agent_dto.AiCaseReviewListItemDto) CaseReview {
 	}
 }
 
+func adaptCaseReviewContent(review agent_dto.AiCaseReviewDto) CaseReviewContent {
+	switch v := review.(type) {
+	case agent_dto.CaseReviewV1:
+		sanityCheck := v.SanityCheck
+		return CaseReviewContentV1{
+			Version:     v.GetVersion(),
+			Output:      v.Output,
+			SanityCheck: &sanityCheck,
+		}
+		// future versions: case agent_dto.CaseReviewV2: return CaseReviewContentV2{...}
+	}
+	return nil
+}
+
 func AdaptCaseReviewDetail(r agent_dto.AiCaseReviewOutputDto) CaseReviewDetail {
 	out := CaseReviewDetail{
 		Id:        r.Id.String(),
@@ -159,7 +193,7 @@ func AdaptCaseReviewDetail(r agent_dto.AiCaseReviewOutputDto) CaseReviewDetail {
 		UpdatedAt: types.DateTime(r.UpdatedAt),
 	}
 	if r.Review != nil {
-		out.Content = r.Review
+		out.Content = adaptCaseReviewContent(r.Review)
 	}
 	return out
 }
