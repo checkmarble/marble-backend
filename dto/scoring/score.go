@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/google/uuid"
 )
 
@@ -16,27 +17,89 @@ type Score struct {
 	Current      bool       `json:"current"`
 	CreatedAt    time.Time  `json:"created_at"`
 	StaleAt      *time.Time `json:"stale_at,omitempty"`
+
+	Evaluations []*ast.NodeEvaluationDto `json:"evaluations,omitempty"`
 }
 
 type OverrideScoreRequest struct {
-	RiskLevel int        `json:"risk_level"`
+	RiskLevel int        `json:"risk_level" binding:"required"`
 	StaleAt   *time.Time `json:"stale_at"`
 }
 
-func AdaptScore(m models.ScoringScore) Score {
-	return Score{
-		Id:           m.Id,
-		RiskLevel:    m.RiskLevel,
-		Source:       string(m.Source),
-		RulesetId:    m.RulesetId,
-		OverriddenBy: m.OverriddenBy,
-		Current:      m.DeletedAt == nil,
-		CreatedAt:    m.CreatedAt,
-		StaleAt: func() *time.Time {
-			if m.DeletedAt != nil {
-				return nil
-			}
-			return m.StaleAt
-		}(),
+func AdaptScore(evals []*ast.NodeEvaluationDto) func(m models.ScoringScore) Score {
+	return func(m models.ScoringScore) Score {
+		score := Score{
+			Id:           m.Id,
+			RiskLevel:    m.RiskLevel,
+			Source:       string(m.Source),
+			RulesetId:    m.RulesetId,
+			OverriddenBy: m.OverriddenBy,
+			Current:      m.DeletedAt == nil,
+			CreatedAt:    m.CreatedAt,
+			StaleAt: func() *time.Time {
+				if m.DeletedAt != nil {
+					return nil
+				}
+				return m.StaleAt
+			}(),
+		}
+
+		if evals != nil {
+			score.Evaluations = evals
+		}
+
+		return score
 	}
+}
+
+type ScoreDistribution struct {
+	Score int `json:"score"`
+	Count int `json:"count"`
+}
+
+func AdaptScoreDistribution(m models.ScoreDistribution) ScoreDistribution {
+	return ScoreDistribution{
+		Score: m.Score,
+		Count: m.Count,
+	}
+}
+
+type DryRun struct {
+	Id           uuid.UUID           `json:"id"`
+	RulesetId    uuid.UUID           `json:"ruleset_id"`
+	Status       string              `json:"status"`
+	RecordCount  int                 `json:"record_count"`
+	Progress     float64             `json:"progress"`
+	Distribution []ScoreDistribution `json:"distribution"`
+	CreatedAt    time.Time           `json:"created_at"`
+}
+
+func AdaptDryRun(m models.ScoringDryRun) DryRun {
+	dryRun := DryRun{
+		Id:           m.Id,
+		RulesetId:    m.RulesetId,
+		Status:       string(m.Status),
+		RecordCount:  m.RecordCount,
+		Distribution: make([]ScoreDistribution, 0),
+		CreatedAt:    m.CreatedAt,
+	}
+
+	processedRecords := 0
+
+	if m.Results != nil {
+		dryRun.Distribution = make([]ScoreDistribution, 0, len(m.Results))
+
+		for score, count := range m.Results {
+			processedRecords += count
+
+			dryRun.Distribution = append(dryRun.Distribution, ScoreDistribution{
+				Score: score,
+				Count: count,
+			})
+		}
+	}
+
+	dryRun.Progress = float64(processedRecords) / float64(m.RecordCount)
+
+	return dryRun
 }

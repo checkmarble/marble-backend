@@ -50,6 +50,9 @@ func TestValidateAst_Switch_WithScoreComputationChildren(t *testing.T) {
 			{Name: "ScoreComputation"},
 			{Name: "ScoreComputation"},
 		},
+		NamedChildren: map[string]dto.NodeDto{
+			"field": {Constant: "Hello, world"},
+		},
 	}
 
 	err := uc.validateScoringRuleAst(tree)
@@ -64,6 +67,9 @@ func TestValidateAst_Switch_WrongChildType(t *testing.T) {
 		Name: "Switch",
 		Children: []dto.NodeDto{
 			{Name: "And"},
+		},
+		NamedChildren: map[string]dto.NodeDto{
+			"field": {Constant: "Hello, world"},
 		},
 	}
 
@@ -144,6 +150,8 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCreateRulesetVersion_InsertsRulese
 	s.repository.On("InsertScoringRulesetVersion", s.ctx, s.transaction, s.orgId, mock.MatchedBy(func(r models.CreateScoringRulesetRequest) bool {
 		return r.Version == 1 && r.Name == req.Name && r.RecordType == s.recordType
 	})).Return(insertedRuleset, nil).Once()
+	s.repository.On("CancelRulesetDryRun", s.ctx, s.transaction,
+		mock.MatchedBy(func(rs models.ScoringRuleset) bool { return rs.RecordType == insertedRuleset.RecordType })).Return(nil)
 	s.repository.On("InsertScoringRulesetVersionRule", s.ctx, s.transaction,
 		mock.MatchedBy(func(rs models.ScoringRuleset) bool { return rs.Id == insertedRuleset.Id }),
 		mock.MatchedBy(func(r []models.CreateScoringRuleRequest) bool {
@@ -166,6 +174,8 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCreateRulesetVersion_InsertsRulese
 	s.repository.On("InsertScoringRulesetVersion", s.ctx, s.transaction, s.orgId, mock.MatchedBy(func(r models.CreateScoringRulesetRequest) bool {
 		return r.Version == 2 && r.Name == req.Name && r.RecordType == s.recordType
 	})).Return(updatedRuleset, nil).Once()
+	s.repository.On("CancelRulesetDryRun", s.ctx, s.transaction,
+		mock.MatchedBy(func(rs models.ScoringRuleset) bool { return rs.Id == insertedRuleset.Id })).Return(nil)
 	s.repository.On("InsertScoringRulesetVersionRule", s.ctx, s.transaction,
 		mock.MatchedBy(func(rs models.ScoringRuleset) bool { return rs.Id == updatedRuleset.Id }),
 		mock.MatchedBy(func(r []models.CreateScoringRuleRequest) bool {
@@ -254,6 +264,7 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCommitRuleset_HappyPath() {
 		Return(draft, nil)
 	s.indexEditor.On("GetIndexesToCreateForScoringRuleset", s.ctx, s.orgId, draft).
 		Return([]models.ConcreteIndex{}, 0, nil)
+	s.repository.On("CancelRulesetDryRun", s.ctx, s.transaction, draft).Return(nil)
 	s.repository.On("CommitRuleset", s.ctx, s.transaction, draft).Return(committed, nil)
 
 	result, err := s.makeUsecase().CommitRuleset(s.ctx, s.recordType)

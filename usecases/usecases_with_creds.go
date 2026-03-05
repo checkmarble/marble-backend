@@ -1040,6 +1040,19 @@ func (usecases UsecasesWithCreds) NewTriggeredScoreComputationWorker() *scoring_
 		usecases.NewScoringRulesetsUsecase(),
 		usecases.NewScoringScoresUsecase(),
 		usecases.Repositories.MarbleDbRepository,
+		usecases.NewOffloadedReader(),
+	)
+}
+
+func (usecases UsecasesWithCreds) NewRulesetDryRunWorker() *scoring_jobs.RulesetDryRunWorker {
+	return scoring_jobs.NewRulesetDryRunWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.NewScoringRulesetsUsecase(),
+		usecases.NewScoringScoresUsecase(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.NewOffloadedReader(),
+		usecases.Repositories.IngestedDataReadRepository,
 	)
 }
 
@@ -1151,6 +1164,7 @@ func (usecases *UsecasesWithCreds) NewScoringScoresUsecase() scoring.ScoringScor
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
+		usecases.NewOffloadedReader(),
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.Repositories.TaskQueueRepository,
 		usecases.NewEvaluateAstExpression(),

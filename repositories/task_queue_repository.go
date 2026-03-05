@@ -144,6 +144,12 @@ type TaskQueueRepository interface {
 		tx Transaction,
 		entities []models.ScoringRecordRef,
 	) error
+	EnqueueRulesetDryRun(
+		ctx context.Context,
+		tx Transaction,
+		orgId uuid.UUID,
+		dryRun models.ScoringDryRun,
+	) error
 }
 
 type riverRepository struct {
@@ -700,6 +706,38 @@ func (r riverRepository) EnqueueManyTriggerScoreComputation(
 
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued many triggered score computation", "count", count)
+
+	return nil
+}
+
+func (r riverRepository) EnqueueRulesetDryRun(
+	ctx context.Context,
+	tx Transaction,
+	orgId uuid.UUID,
+	dryRun models.ScoringDryRun,
+) error {
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.RulesetDryRunArgs{
+			OrgId:     orgId,
+			RulesetId: dryRun.RulesetId,
+			DryRunId:  dryRun.Id,
+		},
+		&river.InsertOpts{
+			Queue:    orgId.String(),
+			Priority: 4, // Low priority
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued scoring ruleset dry run",
+		"job_id", res.Job.ID,
+		"dry_run_id", dryRun.Id,
+		"ruleset_id", dryRun.RulesetId)
 
 	return nil
 }

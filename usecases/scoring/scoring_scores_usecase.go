@@ -6,7 +6,9 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -21,6 +23,7 @@ type ScoringScoresUsecase struct {
 	transactionFactory  executor_factory.TransactionFactory
 	repository          ScoringRepository
 	dataModelRepository repositories.DataModelRepository
+	offloadedReadWriter repositories.OffloadedReadWriter
 	ingestedDataReader  scoringIngestedDataReader
 	taskQueueRepository repositories.TaskQueueRepository
 	evaluateAst         ast_eval.EvaluateAstExpression
@@ -32,6 +35,7 @@ func NewScoringScoresUsecase(
 	transactionFactory executor_factory.TransactionFactory,
 	repository ScoringRepository,
 	dataModelRepository repositories.DataModelRepository,
+	offloadedReadWriter repositories.OffloadedReadWriter,
 	ingestedDataReader scoringIngestedDataReader,
 	taskQueueRepository repositories.TaskQueueRepository,
 	evaluateAst ast_eval.EvaluateAstExpression,
@@ -42,6 +46,7 @@ func NewScoringScoresUsecase(
 		transactionFactory:  transactionFactory,
 		repository:          repository,
 		dataModelRepository: dataModelRepository,
+		offloadedReadWriter: offloadedReadWriter,
 		ingestedDataReader:  ingestedDataReader,
 		taskQueueRepository: taskQueueRepository,
 		evaluateAst:         evaluateAst,
@@ -102,7 +107,7 @@ func (uc ScoringScoresUsecase) InternalComputeScore(ctx context.Context, exec re
 		return nil, err
 	}
 
-	eval.Score = uc.scoreToRiskLevel(ruleset, eval)
+	eval.RiskLevel = uc.scoreToRiskLevel(ruleset, eval)
 
 	return &eval, nil
 }
@@ -124,27 +129,47 @@ func (uc ScoringScoresUsecase) GetScoreHistory(ctx context.Context, record model
 	return scores, nil
 }
 
-func (uc ScoringScoresUsecase) GetActiveScore(ctx context.Context, record models.ScoringRecordRef, opts models.RefreshScoreOptions) (*models.ScoringScore, error) {
+func (uc ScoringScoresUsecase) GetActiveScore(ctx context.Context, record models.ScoringRecordRef, withEvaluation bool, opts models.RefreshScoreOptions) (*models.ScoringScore, []*ast.NodeEvaluationDto, error) {
+	exec := uc.executorFactory.NewExecutor()
+
 	record.OrgId = uc.enforceSecurity.OrgId()
 
-	score, err := uc.repository.GetActiveScore(ctx, uc.executorFactory.NewExecutor(), record)
+	score, err := uc.repository.GetActiveScore(ctx, exec, record)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	score, err = uc.tryRefreshScore(ctx, score, record, opts)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if score == nil {
-		return nil, errors.Wrap(models.NotFoundError, "no score was found for this record")
+		return nil, nil, errors.Wrap(models.NotFoundError, "no score was found for this record")
 	}
 
 	if err := uc.enforceSecurity.ReadRecordScore(*score); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return score, nil
+	if score.RulesetId == nil {
+		return score, nil, nil
+	}
+
+	var ruleEvaluations []*ast.NodeEvaluationDto
+
+	if withEvaluation {
+		ruleset, err := uc.repository.GetScoringRulesetById(ctx, exec, record.OrgId, *score.RulesetId)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		ruleEvaluations, err = uc.offloadedReadWriter.GetOffloadedScoreComputation(ctx, exec, record.OrgId, ruleset, *score)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	return score, ruleEvaluations, nil
 }
 
 func (uc ScoringScoresUsecase) tryRefreshScore(ctx context.Context, activeScore *models.ScoringScore, record models.ScoringRecordRef, opts models.RefreshScoreOptions) (*models.ScoringScore, error) {
@@ -190,9 +215,15 @@ func (uc ScoringScoresUsecase) tryRefreshScore(ctx context.Context, activeScore 
 			OrgId:      record.OrgId,
 			RecordType: record.RecordType,
 			RecordId:   record.RecordId,
-			RiskLevel:  newScore.Score,
+			RiskLevel:  newScore.RiskLevel,
 			Source:     models.ScoreSourceRuleset,
 			RulesetId:  &scoreRuleset.Id,
+		}
+
+		if activeScore != nil && newScore.RiskLevel < activeScore.RiskLevel {
+			if activeScore.CreatedAt.Add(time.Duration(scoreRuleset.CooldownSeconds) * time.Second).After(time.Now()) {
+				req.IgnoredByCooldown = true
+			}
 		}
 
 		score, err := uc.repository.InsertScore(ctx, tx, req)
@@ -208,6 +239,19 @@ func (uc ScoringScoresUsecase) tryRefreshScore(ctx context.Context, activeScore 
 			return activeScore, nil
 		}
 
+		scoreEvaluations := pure_utils.Map(newScore.Evaluation, func(ne ast.NodeEvaluation) *ast.NodeEvaluationDto {
+			return utils.Ptr(ast.AdaptNodeEvaluationDto(ne))
+		})
+
+		scoreEvaluationsSer, err := dbmodels.SerializeDecisionEvaluationDto(scoreEvaluations)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := uc.offloadedReadWriter.OffloadScoreComputation(ctx, scoreRuleset, score, scoreEvaluationsSer); err != nil {
+			return nil, errors.Wrap(err, "could not offload score computation")
+		}
+
 		return &score, nil
 	})
 }
@@ -216,6 +260,18 @@ func (uc ScoringScoresUsecase) OverrideScore(ctx context.Context, req models.Ins
 	exec := uc.executorFactory.NewExecutor()
 
 	req.OrgId = uc.enforceSecurity.OrgId()
+
+	settings, err := uc.repository.GetScoringSettings(ctx, exec, req.OrgId)
+	if err != nil {
+		return models.ScoringScore{}, err
+	}
+	if settings == nil {
+		return models.ScoringScore{}, errors.Wrap(models.BadParameterError, "no global scoring settings for this organization")
+	}
+
+	if req.RiskLevel < 1 || req.RiskLevel > settings.MaxRiskLevel {
+		return models.ScoringScore{}, errors.Wrapf(models.BadParameterError, "expected risk level in range 1-%d", settings.MaxRiskLevel)
+	}
 
 	if req.Source == models.ScoreSourceOverride {
 		switch {
@@ -244,6 +300,13 @@ func (uc ScoringScoresUsecase) OverrideScore(ctx context.Context, req models.Ins
 	})
 
 	return score, err
+}
+
+func (uc ScoringScoresUsecase) GetScoreDistribution(ctx context.Context, entityType string) ([]models.ScoreDistribution, error) {
+	exec := uc.executorFactory.NewExecutor()
+	orgId := uc.enforceSecurity.OrgId()
+
+	return uc.repository.GetScoreDistribution(ctx, exec, orgId, entityType)
 }
 
 func (uc ScoringScoresUsecase) getPayloadObject(ctx context.Context, orgId uuid.UUID, dataModel models.DataModel, recordType, recordId string) (models.ClientObject, error) {

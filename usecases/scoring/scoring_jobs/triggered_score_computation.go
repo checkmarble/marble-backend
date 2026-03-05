@@ -2,24 +2,30 @@ package scoring_jobs
 
 import (
 	"context"
-	"errors"
+	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scoring"
+	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/riverqueue/river"
 )
 
 type TriggeredScoreComputationWorker struct {
 	river.WorkerDefaults[models.TriggeredScoreComputationArgs]
 
-	executorFactory    executor_factory.ExecutorFactory
-	transactionFactory executor_factory.TransactionFactory
-	rulesetUsecase     scoring.ScoringRulesetsUsecase
-	scoreUsecase       scoring.ScoringScoresUsecase
-	repository         scoring.ScoringRepository
+	executorFactory     executor_factory.ExecutorFactory
+	transactionFactory  executor_factory.TransactionFactory
+	rulesetUsecase      scoring.ScoringRulesetsUsecase
+	scoreUsecase        scoring.ScoringScoresUsecase
+	repository          scoring.ScoringRepository
+	offloadedReadWriter repositories.OffloadedReadWriter
 }
 
 func NewTriggeredScoreComputationWorker(
@@ -28,13 +34,15 @@ func NewTriggeredScoreComputationWorker(
 	rulesetUsecase scoring.ScoringRulesetsUsecase,
 	scoreUsecase scoring.ScoringScoresUsecase,
 	repository scoring.ScoringRepository,
+	offloadedReadWriter repositories.OffloadedReadWriter,
 ) *TriggeredScoreComputationWorker {
 	return &TriggeredScoreComputationWorker{
-		executorFactory:    executorFactory,
-		transactionFactory: transactionFactory,
-		rulesetUsecase:     rulesetUsecase,
-		scoreUsecase:       scoreUsecase,
-		repository:         repository,
+		executorFactory:     executorFactory,
+		transactionFactory:  transactionFactory,
+		rulesetUsecase:      rulesetUsecase,
+		scoreUsecase:        scoreUsecase,
+		repository:          repository,
+		offloadedReadWriter: offloadedReadWriter,
 	}
 }
 
@@ -80,14 +88,36 @@ func (w *TriggeredScoreComputationWorker) Work(ctx context.Context, job *river.J
 			OrgId:      job.Args.OrgId,
 			RecordType: job.Args.RecordType,
 			RecordId:   job.Args.RecordId,
-			RiskLevel:  eval.Score,
+			RiskLevel:  eval.RiskLevel,
 			Source:     models.ScoreSourceRuleset,
 			RulesetId:  &ruleset.Id,
 		}
 
-		_, err = w.repository.InsertScore(ctx, tx, req)
+		if activeScore != nil && eval.RiskLevel < activeScore.RiskLevel {
+			if activeScore.CreatedAt.Add(time.Duration(ruleset.CooldownSeconds) * time.Second).After(time.Now()) {
+				req.IgnoredByCooldown = true
+			}
+		}
 
-		return err
+		score, err := w.repository.InsertScore(ctx, tx, req)
+		if err != nil {
+			return err
+		}
+
+		scoreEvaluations := pure_utils.Map(eval.Evaluation, func(ne ast.NodeEvaluation) *ast.NodeEvaluationDto {
+			return utils.Ptr(ast.AdaptNodeEvaluationDto(ne))
+		})
+
+		scoreEvaluationsSer, err := dbmodels.SerializeDecisionEvaluationDto(scoreEvaluations)
+		if err != nil {
+			return err
+		}
+
+		if err := w.offloadedReadWriter.OffloadScoreComputation(ctx, ruleset, score, scoreEvaluationsSer); err != nil {
+			return errors.Wrap(err, "could not offload score computation")
+		}
+
+		return nil
 	})
 
 	return err

@@ -7,6 +7,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -16,6 +17,7 @@ import (
 type offloadableRepository interface {
 	GetOffloadedDecisionRuleKey(orgId uuid.UUID, decisionId, ruleId, outcome string, createdAt time.Time) string
 	GetOffloadedDecisionEvaluationKey(orgId uuid.UUID, decision models.Decision) string
+	GetScoreComputationEvaluationKey(ruleset models.ScoringRuleset, score models.ScoringScore) string
 	GetWatermark(
 		ctx context.Context,
 		exec Executor,
@@ -152,4 +154,86 @@ func (uc OffloadedReadWriter) MutateWithOffloadedDecisionRules(
 	}
 
 	return nil
+}
+
+func (uc OffloadedReadWriter) OffloadScoreComputation(
+	ctx context.Context,
+	ruleset models.ScoringRuleset,
+	score models.ScoringScore,
+	evaluation []byte,
+) error {
+	if uc.OffloadingBucketUrl == "" {
+		return nil
+	}
+
+	opts := blob.WriterOptions{}
+	opts.BeforeWrite = func(asFunc func(any) bool) error {
+		var gcsWriter *storage.Writer
+
+		if asFunc(&gcsWriter) {
+			gcsWriter.CustomTime = score.CreatedAt
+			gcsWriter.ChunkSize = 0
+		}
+
+		return nil
+	}
+
+	wr, err := uc.BlobRepository.OpenStreamWithOptions(ctx,
+		uc.OffloadingBucketUrl,
+		uc.Repository.GetScoreComputationEvaluationKey(ruleset, score),
+		&opts)
+	if err != nil {
+		return err
+	}
+	defer wr.Close()
+
+	if _, err := wr.Write(evaluation); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (uc OffloadedReadWriter) GetOffloadedScoreComputation(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	ruleset models.ScoringRuleset,
+	score models.ScoringScore,
+) ([]*ast.NodeEvaluationDto, error) {
+	if uc.OffloadingBucketUrl == "" {
+		return nil, nil
+	}
+
+	bucket, err := uc.BlobRepository.RawBucket(ctx, uc.OffloadingBucketUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	scoreEvaluationKey := uc.Repository.GetScoreComputationEvaluationKey(ruleset, score)
+
+	exists, err := bucket.Exists(ctx, scoreEvaluationKey)
+	if err != nil {
+		return nil, err
+	}
+
+	if exists {
+		if blob, err := uc.BlobRepository.GetBlob(ctx, uc.OffloadingBucketUrl, scoreEvaluationKey); err == nil {
+			defer blob.ReadCloser.Close()
+
+			content, err := io.ReadAll(blob.ReadCloser)
+			if err != nil {
+				return nil, err
+			}
+
+			ruleEvaluations, err := dbmodels.DeserializeDecisionEvaluationDto(content)
+			if err != nil {
+				return nil, err
+			}
+
+			return ruleEvaluations, nil
+		}
+	}
+
+	return nil, nil
 }

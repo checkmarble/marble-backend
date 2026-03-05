@@ -92,3 +92,13 @@ func (m *IngestedDataReader) SearchObjects(
 
 	return args.Get(0).([]models.DataModelObject), args.Error(1)
 }
+
+func (m *IngestedDataReader) SampleObjectIds(
+	ctx context.Context,
+	exec repositories.Executor,
+	recordType string,
+	size int,
+) ([]string, error) {
+	args := m.Called(ctx, exec, recordType, size)
+	return args.Get(0).([]string), args.Error(1)
+}

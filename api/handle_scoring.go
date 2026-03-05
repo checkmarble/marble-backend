@@ -187,6 +187,37 @@ func handleScoringPrepareRuleset(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
+func handleScoringStartDryRun(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		uc := usecasesWithCreds(ctx, uc)
+		scoringUsecase := uc.NewScoringRulesetsUsecase()
+
+		if err := scoringUsecase.StartDryRun(ctx, c.Param("recordType")); presentError(ctx, c, err) {
+			return
+		}
+
+		c.Status(http.StatusCreated)
+	}
+}
+
+func handleScoringGetDryRun(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		uc := usecasesWithCreds(ctx, uc)
+		scoringUsecase := uc.NewScoringRulesetsUsecase()
+
+		dryRun, err := scoringUsecase.GetDryRun(ctx, c.Param("recordType"))
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, scoring.AdaptDryRun(dryRun))
+	}
+}
+
 func handleScoringCommitRuleset(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -225,7 +256,7 @@ func handleScoringScoreHistory(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, pure_utils.Map(scores, scoring.AdaptScore))
+		c.JSON(http.StatusOK, pure_utils.Map(scores, scoring.AdaptScore(nil)))
 	}
 }
 
@@ -246,7 +277,7 @@ func handleScoringGetActiveScore(uc usecases.Usecases) gin.HandlerFunc {
 			RefreshInBackground: false,
 		}
 
-		score, err := scoringUsecase.GetActiveScore(ctx, record, opts)
+		score, evals, err := scoringUsecase.GetActiveScore(ctx, record, c.Query("include_evaluation") == "true", opts)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -256,7 +287,7 @@ func handleScoringGetActiveScore(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, scoring.AdaptScore(*score))
+		c.JSON(http.StatusOK, scoring.AdaptScore(evals)(*score))
 	}
 }
 
@@ -287,6 +318,22 @@ func handleOverrideRecordScore(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, scoring.AdaptScore(score))
+		c.JSON(http.StatusCreated, scoring.AdaptScore(nil)(score))
+	}
+}
+
+func handleScoringGetDistribution(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		uc := usecasesWithCreds(ctx, uc)
+		scoringUsecase := uc.NewScoringScoresUsecase()
+
+		scores, err := scoringUsecase.GetScoreDistribution(ctx, c.Param("entityType"))
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(scores, scoring.AdaptScoreDistribution))
 	}
 }

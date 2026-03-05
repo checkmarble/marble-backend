@@ -9,7 +9,7 @@ import (
 type ScoringEvaluation struct {
 	Modifier    int                     `json:"modifier"`
 	Floor       int                     `json:"floor"`
-	Score       int                     `json:"score"`
+	RiskLevel   int                     `json:"risk_level"`
 	Evaluations []ast.NodeEvaluationDto `json:"evaluations"`
 }
 
@@ -17,7 +17,7 @@ func AdaptScoringEvaluation(m models.ScoringEvaluation) ScoringEvaluation {
 	eval := ScoringEvaluation{
 		Modifier:    m.Modifier,
 		Floor:       m.Floor,
-		Score:       m.Score,
+		RiskLevel:   m.RiskLevel,
 		Evaluations: pure_utils.Map(m.Evaluation, ast.AdaptNodeEvaluationDto),
 	}
 
