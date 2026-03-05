@@ -795,9 +795,9 @@ paths:
         "302":
           $ref: "#/components/responses/302"
 
-  /cases/{caseId}/reviews:
+  /cases/{caseId}/ai_reviews:
     get:
-      operationId: listCaseReviews
+      operationId: listAiCaseReviews
       tags:
         - Cases
       security:
@@ -806,7 +806,7 @@ paths:
       summary: List AI case reviews
       description: |
         List AI reviews generated for the given case, ordered by creation date.
-        The review content is not included, use the get review by ID endpoint to fetch the full content.
+        The review content is not included, use the get AI review by ID endpoint to fetch the full content.
       parameters:
         - $ref: "#/components/parameters/limit"
         - $ref: "#/components/parameters/order"
@@ -881,9 +881,9 @@ paths:
         "409":
           $ref: "#/components/responses/409"
 
-  /cases/{caseId}/reviews/{reviewId}:
+  /cases/{caseId}/ai_reviews/{aiReviewId}:
     get:
-      operationId: getCaseReview
+      operationId: getAiCaseReview
       tags:
         - Cases
       security:
@@ -899,7 +899,7 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: reviewId
+        - name: aiReviewId
           required: true
           in: path
           schema:

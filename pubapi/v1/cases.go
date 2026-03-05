@@ -515,7 +515,7 @@ var caseReviewPaginationDefaults = models.PaginationDefaults{
 	Order:  models.SortingOrderDesc,
 }
 
-func HandleListCaseReviews(uc usecases.Usecases) gin.HandlerFunc {
+func HandleListAiCaseReviews(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -554,7 +554,7 @@ func HandleListCaseReviews(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
-func HandleGetCaseReviewById(uc usecases.Usecases) gin.HandlerFunc {
+func HandleGetAiCaseReviewById(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -564,7 +564,7 @@ func HandleGetCaseReviewById(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		reviewId, err := types.UuidParam(c, "reviewId")
+		aiReviewId, err := types.UuidParam(c, "aiReviewId")
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -573,7 +573,7 @@ func HandleGetCaseReviewById(uc usecases.Usecases) gin.HandlerFunc {
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
 		aiUsecase := uc.NewAiAgentUsecase()
 
-		review, err := aiUsecase.GetCaseReviewById(ctx, caseId.String(), *reviewId)
+		review, err := aiUsecase.GetCaseReviewById(ctx, caseId.String(), *aiReviewId)
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -583,7 +583,7 @@ func HandleGetCaseReviewById(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
-func HandleEnqueueCaseReview(uc usecases.Usecases) gin.HandlerFunc {
+func HandleEnqueueAiCaseReview(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -594,7 +594,7 @@ func HandleEnqueueCaseReview(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		usecase := pubapi.UsecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		reviewId, ok, err := usecase.EnqueueCreateCaseReview(ctx, caseId.String())
+		aiReviewId, ok, err := usecase.EnqueueCreateCaseReview(ctx, caseId.String())
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -605,7 +605,7 @@ func HandleEnqueueCaseReview(uc usecases.Usecases) gin.HandlerFunc {
 				Serve(c)
 			return
 		}
-		types.NewResponse(gin.H{"review_id": reviewId}).Serve(c, http.StatusAccepted)
+		types.NewResponse(gin.H{"ai_review_id": aiReviewId}).Serve(c, http.StatusAccepted)
 	}
 }
 
