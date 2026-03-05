@@ -64,6 +64,19 @@ func (uc ScoringRulesetsUsecase) GetRuleset(ctx context.Context, recordType stri
 	return ruleset, err
 }
 
+func (uc ScoringRulesetsUsecase) ListRulesetVersions(ctx context.Context, recordType string) ([]models.ScoringRuleset, error) {
+	rulesets, err := uc.repository.ListScoringRulesetVersions(
+		ctx,
+		uc.executorFactory.NewExecutor(),
+		uc.enforceSecurity.OrgId(),
+		recordType)
+	if err != nil {
+		return nil, err
+	}
+
+	return rulesets, err
+}
+
 func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, recordType string, req scoring.CreateRulesetRequest) (models.ScoringRuleset, error) {
 	orgId := uc.enforceSecurity.OrgId()
 	exec := uc.executorFactory.NewExecutor()
