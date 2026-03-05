@@ -261,6 +261,18 @@ func (uc ScoringScoresUsecase) OverrideScore(ctx context.Context, req models.Ins
 
 	req.OrgId = uc.enforceSecurity.OrgId()
 
+	settings, err := uc.repository.GetScoringSettings(ctx, exec, req.OrgId)
+	if err != nil {
+		return models.ScoringScore{}, err
+	}
+	if settings == nil {
+		return models.ScoringScore{}, errors.Wrap(models.BadParameterError, "no global scoring settings for this organization")
+	}
+
+	if req.RiskLevel < 1 || req.RiskLevel > settings.MaxRiskLevel {
+		return models.ScoringScore{}, errors.Wrapf(models.BadParameterError, "expected risk level in range 1-%d", settings.MaxRiskLevel)
+	}
+
 	if req.Source == models.ScoreSourceOverride {
 		switch {
 		case uc.enforceSecurity.UserId() != nil:
