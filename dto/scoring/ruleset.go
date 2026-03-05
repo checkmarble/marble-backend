@@ -9,26 +9,28 @@ import (
 )
 
 type ScoringRuleset struct {
-	Id              uuid.UUID `json:"id"`
-	OrgId           uuid.UUID `json:"org_id"`
-	Version         int       `json:"version"`
-	Status          string    `json:"status"`
-	Name            string    `json:"name"`
-	Description     string    `json:"description"`
-	RecordType      string    `json:"record_type"`
-	Thresholds      []int     `json:"thresholds"`
-	CooldownSeconds int       `json:"cooldown_seconds"`
-	CreatedAt       time.Time `json:"created_at"`
+	Id                     uuid.UUID `json:"id"`
+	OrgId                  uuid.UUID `json:"org_id"`
+	Version                int       `json:"version"`
+	Status                 string    `json:"status"`
+	Name                   string    `json:"name"`
+	Description            string    `json:"description"`
+	RecordType             string    `json:"record_type"`
+	Thresholds             []int     `json:"thresholds"`
+	CooldownSeconds        int       `json:"cooldown_seconds"`
+	ScoringIntervalSeconds int       `json:"scoring_interval_seconds"`
+	CreatedAt              time.Time `json:"created_at"`
 
 	Rules []ScoringRule `json:"rules,omitempty"`
 }
 
 type CreateRulesetRequest struct {
-	Name            string              `json:"name" binding:"required"`
-	Description     string              `json:"description"`
-	Thresholds      []int               `json:"thresholds" binding:"required"`
-	CooldownSeconds int                 `json:"cooldown_seconds"`
-	Rules           []CreateRuleRequest `json:"rules"`
+	Name                   string              `json:"name" binding:"required"`
+	Description            string              `json:"description"`
+	Thresholds             []int               `json:"thresholds" binding:"required"`
+	CooldownSeconds        int                 `json:"cooldown_seconds"`
+	ScoringIntervalSeconds int                 `json:"scoring_interval_seconds"`
+	Rules                  []CreateRuleRequest `json:"rules"`
 }
 
 type CreateRuleRequest struct {
@@ -49,17 +51,18 @@ type ScoringRule struct {
 
 func AdaptScoringRuleset(m models.ScoringRuleset) (ScoringRuleset, error) {
 	ruleset := ScoringRuleset{
-		Id:              m.Id,
-		OrgId:           m.OrgId,
-		Version:         m.Version,
-		Status:          m.Status,
-		Name:            m.Name,
-		Description:     m.Description,
-		RecordType:      m.RecordType,
-		Thresholds:      m.Thresholds,
-		CooldownSeconds: m.CooldownSeconds,
-		CreatedAt:       m.CreatedAt,
-		Rules:           make([]ScoringRule, len(m.Rules)),
+		Id:                     m.Id,
+		OrgId:                  m.OrgId,
+		Version:                m.Version,
+		Status:                 m.Status,
+		Name:                   m.Name,
+		Description:            m.Description,
+		RecordType:             m.RecordType,
+		Thresholds:             m.Thresholds,
+		CooldownSeconds:        int(m.Cooldown.Seconds()),
+		ScoringIntervalSeconds: int(m.ScoringInterval.Seconds()),
+		CreatedAt:              m.CreatedAt,
+		Rules:                  make([]ScoringRule, len(m.Rules)),
 	}
 
 	for idx, r := range m.Rules {
