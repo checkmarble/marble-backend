@@ -150,8 +150,6 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCreateRulesetVersion_InsertsRulese
 	s.repository.On("InsertScoringRulesetVersion", s.ctx, s.transaction, s.orgId, mock.MatchedBy(func(r models.CreateScoringRulesetRequest) bool {
 		return r.Version == 1 && r.Name == req.Name && r.RecordType == s.recordType
 	})).Return(insertedRuleset, nil).Once()
-	s.repository.On("CancelRulesetDryRun", s.ctx, s.transaction,
-		mock.MatchedBy(func(rs models.ScoringRuleset) bool { return rs.RecordType == insertedRuleset.RecordType })).Return(nil)
 	s.repository.On("InsertScoringRulesetVersionRule", s.ctx, s.transaction,
 		mock.MatchedBy(func(rs models.ScoringRuleset) bool { return rs.Id == insertedRuleset.Id }),
 		mock.MatchedBy(func(r []models.CreateScoringRuleRequest) bool {
