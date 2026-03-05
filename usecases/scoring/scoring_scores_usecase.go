@@ -53,9 +53,8 @@ func NewScoringScoresUsecase(
 	}
 }
 
-func (uc ScoringScoresUsecase) ComputeScore(ctx context.Context, recordType, recordId string) (models.ScoringRuleset, *models.ScoringEvaluation, error) {
+func (uc ScoringScoresUsecase) ComputeScore(ctx context.Context, orgId uuid.UUID, recordType, recordId string) (models.ScoringRuleset, *models.ScoringEvaluation, error) {
 	exec := uc.executorFactory.NewExecutor()
-	orgId := uc.enforceSecurity.OrgId()
 
 	ruleset, err := uc.repository.GetScoringRuleset(
 		ctx,
@@ -94,9 +93,6 @@ func (uc ScoringScoresUsecase) InternalComputeScore(ctx context.Context, exec re
 
 	object, err := uc.getPayloadObject(ctx, orgId, dataModel, recordType, recordId)
 	if err != nil {
-		if errors.Is(err, models.NotFoundError) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
@@ -135,8 +131,6 @@ func (uc ScoringScoresUsecase) GetScoreHistory(ctx context.Context, record model
 
 func (uc ScoringScoresUsecase) GetActiveScore(ctx context.Context, record models.ScoringRecordRef, withEvaluation bool, opts models.RefreshScoreOptions) (*models.ScoringScore, []*ast.NodeEvaluationDto, error) {
 	exec := uc.executorFactory.NewExecutor()
-
-	record.OrgId = uc.enforceSecurity.OrgId()
 
 	score, err := uc.repository.GetActiveScore(ctx, exec, record)
 	if err != nil {
@@ -199,7 +193,7 @@ func (uc ScoringScoresUsecase) tryRefreshScore(ctx context.Context, activeScore 
 
 		// In case an error is encountered while synchronously refreshing the
 		// score, log it but return the current score, if there is one.
-		scoreRuleset, newScore, err := uc.ComputeScore(ctx, record.RecordType, record.RecordId)
+		scoreRuleset, newScore, err := uc.ComputeScore(ctx, record.OrgId, record.RecordType, record.RecordId)
 		if err != nil {
 			if activeScore == nil {
 				return nil, err
@@ -225,7 +219,7 @@ func (uc ScoringScoresUsecase) tryRefreshScore(ctx context.Context, activeScore 
 		}
 
 		if activeScore != nil && newScore.RiskLevel < activeScore.RiskLevel {
-			if activeScore.CreatedAt.Add(time.Duration(scoreRuleset.CooldownSeconds) * time.Second).After(time.Now()) {
+			if activeScore.CreatedAt.Add(scoreRuleset.Cooldown).After(time.Now()) {
 				req.IgnoredByCooldown = true
 			}
 		}

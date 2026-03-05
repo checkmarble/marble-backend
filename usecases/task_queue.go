@@ -14,6 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/continuous_screening"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/scoring/scoring_jobs"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
@@ -209,6 +210,10 @@ func listOrgPeriodics(
 
 	if analyticsConfig.Enabled {
 		periodics = append(periodics, worker_jobs.NewAnalyticsExportJob(org.Id, analyticsConfig.JobInterval))
+	}
+
+	if infra.HasGlobalFeatureFlag(infra.FEATURE_USER_SCORING) {
+		periodics = append(periodics, scoring_jobs.NewScoreComputationJob(org.Id, time.Hour))
 	}
 
 	return periodics

@@ -2,6 +2,7 @@ package scoring
 
 import (
 	"context"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -59,6 +60,15 @@ type ScoringRepository interface {
 		status models.DryRunStatus,
 		results map[int]int,
 	) (*models.ScoringDryRun, error)
+
+	GetStaleScoreBatch(
+		ctx context.Context,
+		exec repositories.Executor,
+		orgId uuid.UUID,
+		recordType string,
+		before time.Time,
+		limit int,
+	) ([]string, error)
 }
 
 type scoringIngestedDataReader interface {

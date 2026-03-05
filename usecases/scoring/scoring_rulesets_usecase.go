@@ -113,12 +113,13 @@ func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, recor
 
 	ruleset, err := executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (models.ScoringRuleset, error) {
 		rs := models.CreateScoringRulesetRequest{
-			Version:         existingRuleset.Version + 1,
-			Name:            req.Name,
-			Description:     req.Description,
-			RecordType:      recordType,
-			Thresholds:      req.Thresholds,
-			CooldownSeconds: req.CooldownSeconds,
+			Version:                existingRuleset.Version + 1,
+			Name:                   req.Name,
+			Description:            req.Description,
+			RecordType:             recordType,
+			Thresholds:             req.Thresholds,
+			CooldownSeconds:        req.CooldownSeconds,
+			ScoringIntervalSeconds: req.ScoringIntervalSeconds,
 		}
 
 		ruleset, err := uc.repository.InsertScoringRulesetVersion(ctx, tx, orgId, rs)

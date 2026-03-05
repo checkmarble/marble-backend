@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 )
@@ -60,7 +61,13 @@ func handleScoringComputeScore(uc usecases.Usecases) gin.HandlerFunc {
 
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringScoresUsecase()
-		_, eval, err := scoringUsecase.ComputeScore(ctx, c.Param("recordType"), c.Param("recordId"))
+
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		_, eval, err := scoringUsecase.ComputeScore(ctx, orgId, c.Param("recordType"), c.Param("recordId"))
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -268,7 +275,13 @@ func handleScoringGetActiveScore(uc usecases.Usecases) gin.HandlerFunc {
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringScoresUsecase()
 
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
 		record := models.ScoringRecordRef{
+			OrgId:      orgId,
 			RecordType: c.Param("recordType"),
 			RecordId:   c.Param("recordId"),
 		}
