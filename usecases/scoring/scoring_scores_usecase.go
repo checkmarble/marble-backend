@@ -53,9 +53,8 @@ func NewScoringScoresUsecase(
 	}
 }
 
-func (uc ScoringScoresUsecase) ComputeScore(ctx context.Context, recordType, recordId string) (models.ScoringRuleset, *models.ScoringEvaluation, error) {
+func (uc ScoringScoresUsecase) ComputeScore(ctx context.Context, orgId uuid.UUID, recordType, recordId string) (models.ScoringRuleset, *models.ScoringEvaluation, error) {
 	exec := uc.executorFactory.NewExecutor()
-	orgId := uc.enforceSecurity.OrgId()
 
 	ruleset, err := uc.repository.GetScoringRuleset(
 		ctx,
@@ -68,6 +67,10 @@ func (uc ScoringScoresUsecase) ComputeScore(ctx context.Context, recordType, rec
 			return models.ScoringRuleset{}, nil, errors.Wrap(err, "no committed version of this ruleset")
 		}
 
+		return models.ScoringRuleset{}, nil, err
+	}
+
+	if err := uc.enforceSecurity.ReadOrganization(ruleset.OrgId); err != nil {
 		return models.ScoringRuleset{}, nil, err
 	}
 
@@ -132,8 +135,6 @@ func (uc ScoringScoresUsecase) GetScoreHistory(ctx context.Context, record model
 func (uc ScoringScoresUsecase) GetActiveScore(ctx context.Context, record models.ScoringRecordRef, withEvaluation bool, opts models.RefreshScoreOptions) (*models.ScoringScore, []*ast.NodeEvaluationDto, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	record.OrgId = uc.enforceSecurity.OrgId()
-
 	score, err := uc.repository.GetActiveScore(ctx, exec, record)
 	if err != nil {
 		return nil, nil, err
@@ -195,7 +196,7 @@ func (uc ScoringScoresUsecase) tryRefreshScore(ctx context.Context, activeScore 
 
 		// In case an error is encountered while synchronously refreshing the
 		// score, log it but return the current score, if there is one.
-		scoreRuleset, newScore, err := uc.ComputeScore(ctx, record.RecordType, record.RecordId)
+		scoreRuleset, newScore, err := uc.ComputeScore(ctx, record.OrgId, record.RecordType, record.RecordId)
 		if err != nil {
 			if activeScore == nil {
 				return nil, err
@@ -261,6 +262,22 @@ func (uc ScoringScoresUsecase) OverrideScore(ctx context.Context, req models.Ins
 
 	req.OrgId = uc.enforceSecurity.OrgId()
 
+	if err := uc.enforceSecurity.OverrideScore(req.ToRecordRef()); err != nil {
+		return models.ScoringScore{}, err
+	}
+
+	settings, err := uc.repository.GetScoringSettings(ctx, exec, req.OrgId)
+	if err != nil {
+		return models.ScoringScore{}, err
+	}
+	if settings == nil {
+		return models.ScoringScore{}, errors.Wrap(models.BadParameterError, "no global scoring settings for this organization")
+	}
+
+	if req.RiskLevel < 1 || req.RiskLevel > settings.MaxRiskLevel {
+		return models.ScoringScore{}, errors.Wrapf(models.BadParameterError, "expected risk level in range 1-%d", settings.MaxRiskLevel)
+	}
+
 	if req.Source == models.ScoreSourceOverride {
 		switch {
 		case uc.enforceSecurity.UserId() != nil:
@@ -277,10 +294,6 @@ func (uc ScoringScoresUsecase) OverrideScore(ctx context.Context, req models.Ins
 		if _, err := uc.getPayloadObject(ctx, req.OrgId, dataModel, req.RecordType, req.RecordId); err != nil {
 			return models.ScoringScore{}, err
 		}
-
-		if err := uc.enforceSecurity.OverrideScore(req.ToRecordRef()); err != nil {
-			return models.ScoringScore{}, err
-		}
 	}
 
 	score, err := executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (models.ScoringScore, error) {
@@ -293,6 +306,10 @@ func (uc ScoringScoresUsecase) OverrideScore(ctx context.Context, req models.Ins
 func (uc ScoringScoresUsecase) GetScoreDistribution(ctx context.Context, entityType string) ([]models.ScoreDistribution, error) {
 	exec := uc.executorFactory.NewExecutor()
 	orgId := uc.enforceSecurity.OrgId()
+
+	if err := uc.enforceSecurity.ReadOrganization(orgId); err != nil {
+		return nil, err
+	}
 
 	return uc.repository.GetScoreDistribution(ctx, exec, orgId, entityType)
 }

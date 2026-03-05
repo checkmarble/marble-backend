@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 const RULESET_DRY_RUN_SAMPLE_SIZE = 5000
@@ -155,8 +156,10 @@ func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, recor
 			}
 		}
 
-		if err := uc.repository.CancelRulesetDryRun(ctx, tx, ruleset); err != nil {
-			return models.ScoringRuleset{}, err
+		if existingRuleset.Id != uuid.Nil {
+			if err := uc.repository.CancelRulesetDryRun(ctx, tx, existingRuleset); err != nil {
+				return models.ScoringRuleset{}, err
+			}
 		}
 
 		if len(rulesReq) > 0 {
@@ -310,14 +313,13 @@ func (uc ScoringRulesetsUsecase) StartDryRun(ctx context.Context, recordType str
 
 func (uc ScoringRulesetsUsecase) CommitRuleset(ctx context.Context, recordType string) (models.ScoringRuleset, error) {
 	orgId := uc.enforceSecurity.OrgId()
-	exec := uc.executorFactory.NewExecutor()
 
 	if err := uc.enforceSecurity.UpdateRuleset(orgId); err != nil {
 		return models.ScoringRuleset{}, err
 	}
 
 	ruleset, err := executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (models.ScoringRuleset, error) {
-		draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, recordType, models.ScoreRulesetDraft)
+		draft, err := uc.repository.GetScoringRuleset(ctx, tx, orgId, recordType, models.ScoreRulesetDraft)
 		if err != nil {
 			if errors.Is(err, models.NotFoundError) {
 				return models.ScoringRuleset{}, errors.Wrap(err, "no draft version found")
@@ -342,7 +344,7 @@ func (uc ScoringRulesetsUsecase) CommitRuleset(ctx context.Context, recordType s
 			return models.ScoringRuleset{}, err
 		}
 
-		return uc.repository.CommitRuleset(ctx, exec, draft)
+		return uc.repository.CommitRuleset(ctx, tx, draft)
 	})
 
 	return ruleset, err
