@@ -94,7 +94,7 @@ func (w *TriggeredScoreComputationWorker) Work(ctx context.Context, job *river.J
 		}
 
 		if activeScore != nil && eval.RiskLevel < activeScore.RiskLevel {
-			if activeScore.CreatedAt.Add(time.Duration(ruleset.CooldownSeconds) * time.Second).After(time.Now()) {
+			if activeScore.CreatedAt.Add(ruleset.Cooldown).After(time.Now()) {
 				req.IgnoredByCooldown = true
 			}
 		}

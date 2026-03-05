@@ -428,6 +428,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewWebhookCleanupWorker())
 
 	if infra.HasGlobalFeatureFlag(infra.FEATURE_USER_SCORING) {
+		river.AddWorker(workers, adminUc.NewScoreComputationWorker())
 		river.AddWorker(workers, adminUc.NewTriggeredScoreComputationWorker())
 		river.AddWorker(workers, adminUc.NewRulesetDryRunWorker())
 	}
@@ -662,6 +663,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "async_decision_execution_cleanup":
 		return uc.NewAsyncDecisionExecutionCleanupWorker().Work(ctx,
 			singleJobCreate[models.AsyncDecisionExecutionCleanupArgs](ctx, jobArgs))
+	case "score_computation":
+		return uc.NewScoreComputationWorker().Work(ctx,
+			singleJobCreate[models.ScoreComputationArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}
