@@ -127,6 +127,27 @@ func handleScoringGetRuleset(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
+func handleScoringListRulesetVersions(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		uc := usecasesWithCreds(ctx, uc)
+		scoringUsecase := uc.NewScoringRulesetsUsecase()
+
+		rulesets, err := scoringUsecase.ListRulesetVersions(ctx, c.Param("recordType"))
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		out, err := pure_utils.MapErr(rulesets, scoring.AdaptScoringRuleset)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, out)
+	}
+}
+
 func handleScoringCreateRulesetVersion(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
