@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -138,4 +139,16 @@ func (m *ScoringRepository) SetRulesetDryRunStatus(
 ) (*models.ScoringDryRun, error) {
 	args := m.Called(ctx, exec, dryRun, status, results)
 	return args.Get(0).(*models.ScoringDryRun), args.Error(1)
+}
+
+func (m *ScoringRepository) GetStaleScoreBatch(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	recordType string,
+	before time.Time,
+	limit int,
+) ([]string, error) {
+	args := m.Called(ctx, exec, orgId, recordType, before, limit)
+	return args.Get(0).([]string), args.Error(1)
 }
