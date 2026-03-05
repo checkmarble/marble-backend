@@ -136,7 +136,8 @@ type ScoringRuleset struct {
 	Description     string
 	RecordType      string
 	Thresholds      []int
-	CooldownSeconds int
+	Cooldown        time.Duration
+	ScoringInterval time.Duration
 	CreatedAt       time.Time
 
 	Rules []ScoringRule
@@ -152,12 +153,13 @@ type ScoringRule struct {
 }
 
 type CreateScoringRulesetRequest struct {
-	Version         int
-	Name            string
-	Description     string
-	RecordType      string
-	Thresholds      []int
-	CooldownSeconds int
+	Version                int
+	Name                   string
+	Description            string
+	RecordType             string
+	Thresholds             []int
+	CooldownSeconds        int
+	ScoringIntervalSeconds int
 }
 
 type CreateScoringRuleRequest struct {

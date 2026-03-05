@@ -1041,6 +1041,15 @@ func (usecases UsecasesWithCreds) NewWebhookCleanupWorker() *worker_jobs.Webhook
 	)
 }
 
+func (usecases UsecasesWithCreds) NewScoreComputationWorker() *scoring_jobs.ScoreComputationWorker {
+	return scoring_jobs.NewScoreComputationWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.NewScoringScoresUsecase(),
+		usecases.Repositories.MarbleDbRepository,
+	)
+}
+
 func (usecases UsecasesWithCreds) NewTriggeredScoreComputationWorker() *scoring_jobs.TriggeredScoreComputationWorker {
 	return scoring_jobs.NewTriggeredScoreComputationWorker(
 		usecases.NewExecutorFactory(),

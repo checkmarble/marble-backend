@@ -94,9 +94,6 @@ func (uc ScoringScoresUsecase) InternalComputeScore(ctx context.Context, exec re
 
 	object, err := uc.getPayloadObject(ctx, orgId, dataModel, recordType, recordId)
 	if err != nil {
-		if errors.Is(err, models.NotFoundError) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
@@ -223,7 +220,7 @@ func (uc ScoringScoresUsecase) tryRefreshScore(ctx context.Context, activeScore 
 		}
 
 		if activeScore != nil && newScore.RiskLevel < activeScore.RiskLevel {
-			if activeScore.CreatedAt.Add(time.Duration(scoreRuleset.CooldownSeconds) * time.Second).After(time.Now()) {
+			if activeScore.CreatedAt.Add(scoreRuleset.Cooldown).After(time.Now()) {
 				req.IgnoredByCooldown = true
 			}
 		}

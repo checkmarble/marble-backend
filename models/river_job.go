@@ -256,3 +256,9 @@ type RulesetDryRunArgs struct {
 }
 
 func (RulesetDryRunArgs) Kind() string { return "ruleset_dry_run" }
+
+type ScoreComputationArgs struct {
+	OrgId uuid.UUID `json:"org_id"`
+}
+
+func (ScoreComputationArgs) Kind() string { return "score_computation" }
