@@ -38,9 +38,10 @@ func AdaptKYCEnrichmentSetting(setting KYCEnrichmentSettingDto) models.KYCEnrich
 }
 
 type CaseReviewSettingDto struct {
-	Language       string  `json:"language" binding:"required"`
-	Structure      *string `json:"structure"`
-	OrgDescription *string `json:"org_description"`
+	Language                        string  `json:"language" binding:"required"`
+	Structure                       *string `json:"structure"`
+	OrgDescription                  *string `json:"org_description"`
+	AdditionalCaseReviewInstruction *string `json:"additional_case_review_instruction"`
 }
 
 func (dto CaseReviewSettingDto) Validate() error {
@@ -54,17 +55,19 @@ func (dto CaseReviewSettingDto) Validate() error {
 
 func AdaptCaseReviewSettingDto(setting models.CaseReviewSetting) CaseReviewSettingDto {
 	return CaseReviewSettingDto{
-		Language:       setting.Language,
-		Structure:      setting.Structure,
-		OrgDescription: setting.OrgDescription,
+		Language:                        setting.Language,
+		Structure:                       setting.Structure,
+		OrgDescription:                  setting.OrgDescription,
+		AdditionalCaseReviewInstruction: setting.AdditionalCaseReviewInstruction,
 	}
 }
 
 func AdaptCaseReviewSetting(setting CaseReviewSettingDto) models.CaseReviewSetting {
 	return models.CaseReviewSetting{
-		Language:       setting.Language,
-		Structure:      setting.Structure,
-		OrgDescription: setting.OrgDescription,
+		Language:                        setting.Language,
+		Structure:                       setting.Structure,
+		OrgDescription:                  setting.OrgDescription,
+		AdditionalCaseReviewInstruction: setting.AdditionalCaseReviewInstruction,
 	}
 }
 

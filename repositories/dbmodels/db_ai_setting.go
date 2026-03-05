@@ -112,5 +112,9 @@ func adaptCaseReviewFromJSONB(value map[string]any) (models.CaseReviewSetting, e
 		setting.OrgDescription = &orgDesc
 	}
 
+	if additionalInstruction, ok := value["additional_case_review_instruction"].(string); ok && additionalInstruction != "" {
+		setting.AdditionalCaseReviewInstruction = &additionalInstruction
+	}
+
 	return setting, nil
 }

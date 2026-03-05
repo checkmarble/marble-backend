@@ -53,9 +53,10 @@ func DefaultKYCEnrichmentSetting() KYCEnrichmentSetting {
 
 // Json tag for json serialization into JSONB column
 type CaseReviewSetting struct {
-	Language       string  `json:"language"`
-	Structure      *string `json:"structure"`
-	OrgDescription *string `json:"org_description"`
+	Language                        string  `json:"language"`
+	Structure                       *string `json:"structure"`
+	OrgDescription                  *string `json:"org_description"`
+	AdditionalCaseReviewInstruction *string `json:"additional_case_review_instruction"`
 }
 
 func (CaseReviewSetting) entityAiSetting() {}

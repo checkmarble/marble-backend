@@ -64,22 +64,6 @@ type proof struct {
 	Reason string               `json:"reason"`
 }
 
-type customOrgInstructions struct {
-	Language       *string `json:"language"`
-	Structure      *string `json:"structure"`
-	OrgDescription *string `json:"org_description"`
-}
-
-// Get from ai setting
-// Not all organizations have custom instructions
-func getOrganizationCustomInstructions(aiSetting models.AiSetting) customOrgInstructions {
-	return customOrgInstructions{
-		Language:       utils.Ptr(aiSetting.CaseReviewSetting.Language),
-		Structure:      aiSetting.CaseReviewSetting.Structure,
-		OrgDescription: aiSetting.CaseReviewSetting.OrgDescription,
-	}
-}
-
 func (uc *AiAgentUsecase) getCaseReviewContent(ctx context.Context, review models.AiCaseReview) (agent_dto.AiCaseReviewDto, error) {
 	blob, err := uc.blobRepository.GetBlob(ctx, review.BucketName, review.FileReference)
 	if err != nil {
@@ -276,37 +260,37 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 // Return a list of instructions to give to the LLM and the model to use for the prompt
 // NOTE: The model is given by `prepareRequest()`, we call it at most twice and the the last call will set the model
 func (uc *AiAgentUsecase) getOrganizationInstructionsForPrompt(ctx context.Context,
-	customInstructions customOrgInstructions,
+	caseReviewSetting models.CaseReviewSetting,
 ) ([]string, string) {
 	logger := utils.LoggerFromContext(ctx)
 	instructions := []string{}
 	modelToUse := ""
 
-	if customInstructions.Language != nil {
-		language, err := pure_utils.BCP47ToEnglish(*customInstructions.Language)
-		if err != nil {
-			logger.DebugContext(ctx, "could not convert language to english, do not format the output with language", "error", err)
-		} else {
-			model, customLanguagePrompt, err := uc.preparePromptWithModel(
-				INSTRUCTION_LANGUAGE_PATH,
-				map[string]any{
-					"language": language,
-				},
-			)
-			if err != nil {
-				logger.DebugContext(ctx, "could not read custom language prompt", "error", err)
-			} else {
-				instructions = append(instructions, customLanguagePrompt)
-			}
-
-			modelToUse = model
-		}
+	language, err := pure_utils.BCP47ToEnglish(caseReviewSetting.Language)
+	if err != nil {
+		logger.DebugContext(ctx, "could not convert language to english, do not format the output with language", "error", err)
 	}
-	if customInstructions.Structure != nil {
+	if language != "English" {
+		// If the language is English, ignore this step because the case review is already in English
+		model, customLanguagePrompt, err := uc.preparePromptWithModel(
+			INSTRUCTION_LANGUAGE_PATH,
+			map[string]any{
+				"language": language,
+			},
+		)
+		if err != nil {
+			logger.DebugContext(ctx, "could not read custom language prompt", "error", err)
+		} else {
+			instructions = append(instructions, customLanguagePrompt)
+		}
+
+		modelToUse = model
+	}
+	if caseReviewSetting.Structure != nil {
 		model, customStructurePrompt, err := uc.preparePromptWithModel(
 			INSTRUCTION_STRUCTURE_PATH,
 			map[string]any{
-				"structure": *customInstructions.Structure,
+				"structure": *caseReviewSetting.Structure,
 			},
 		)
 		if err != nil {
@@ -384,13 +368,6 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	aiSetting, err := uc.getAiSetting(ctx, caseData.organizationId)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get ai setting")
-	}
-
-	// Prepare the custom org instructions
-	customOrgInstructions := getOrganizationCustomInstructions(aiSetting)
-	organizationDescription := "No description provided"
-	if customOrgInstructions.OrgDescription != nil {
-		organizationDescription = *customOrgInstructions.OrgDescription
 	}
 
 	// Define the system instruction for prompt
@@ -537,12 +514,15 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	if caseReviewContext.RulesDefinitionsReview == nil {
 
 		// Rules definitions review
+		ruleDefinitionsData := map[string]any{
+			"decisions": caseData.decisions,
+		}
+		if aiSetting.CaseReviewSetting.OrgDescription != nil {
+			ruleDefinitionsData["activity_description"] = *aiSetting.CaseReviewSetting.OrgDescription
+		}
 		modelRulesDefinitions, promptRulesDefinitions, err := uc.preparePromptWithModel(
 			PROMPT_RULE_DEFINITIONS_PATH,
-			map[string]any{
-				"decisions":            caseData.decisions,
-				"activity_description": organizationDescription,
-			},
+			ruleDefinitionsData,
 		)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not prepare rules definitions review request")
@@ -621,28 +601,34 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if err != nil {
 			return nil, errors.Wrap(err, "could not marshal ast options")
 		}
+		caseReviewData := map[string]any{
+			// Global data
+			"rule_ast_options": string(astOptionsBytes),
+
+			// Case data
+			"case_detail":           caseData.case_,
+			"case_events":           caseData.events,
+			"decisions":             caseData.decisions,
+			"has_more_alerts":       caseData.hasMoreDecisions,
+			"pivot_objects":         caseData.pivotData,
+			"previous_cases":        relatedDataPerClient.relatedCases,
+			"customer_related_data": relatedDataPerClient.ingestedData,
+
+			// Data from previous steps
+			"data_model_summary": caseReviewContext.DataModelSummary,
+			"rules_summary":      caseReviewContext.RulesDefinitionsReview,
+			"rule_thresholds":    caseReviewContext.RuleThresholds,
+			"pivot_enrichments":  caseReviewContext.PivotEnrichments,
+		}
+		if aiSetting.CaseReviewSetting.OrgDescription != nil {
+			caseReviewData["org_activity"] = *aiSetting.CaseReviewSetting.OrgDescription
+		}
+		if aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction != nil {
+			caseReviewData["additional_case_review_instruction"] = *aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
+		}
 		modelCaseReview, promptCaseReview, err := uc.preparePromptWithModel(
 			PROMPT_CASE_REVIEW_PATH,
-			map[string]any{
-				// Global data
-				"org_activity":     organizationDescription,
-				"rule_ast_options": string(astOptionsBytes),
-
-				// Case data
-				"case_detail":           caseData.case_,
-				"case_events":           caseData.events,
-				"decisions":             caseData.decisions,
-				"has_more_alerts":       caseData.hasMoreDecisions,
-				"pivot_objects":         caseData.pivotData,
-				"previous_cases":        relatedDataPerClient.relatedCases,
-				"customer_related_data": relatedDataPerClient.ingestedData,
-
-				// Data from previous steps
-				"data_model_summary": caseReviewContext.DataModelSummary,
-				"rules_summary":      caseReviewContext.RulesDefinitionsReview,
-				"rule_thresholds":    caseReviewContext.RuleThresholds,
-				"pivot_enrichments":  caseReviewContext.PivotEnrichments,
-			},
+			caseReviewData,
 		)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not prepare case review request")
@@ -683,28 +669,32 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 	if caseReviewContext.SanityCheck == nil {
 		// Finally, sanity check the resulting case review using a judgement prompt
+		sanityCheckData := map[string]any{
+			// Case data
+			"case_detail":           caseData.case_,
+			"case_events":           caseData.events,
+			"decisions":             caseData.decisions,
+			"pivot_objects":         caseData.pivotData,
+			"has_more_alerts":       caseData.hasMoreDecisions,
+			"previous_cases":        relatedDataPerClient.relatedCases,
+			"customer_related_data": relatedDataPerClient.ingestedData,
+
+			// Data from previous steps
+			"data_model_summary": caseReviewContext.DataModelSummary,
+			"rules_summary":      caseReviewContext.RulesDefinitionsReview,
+			"rule_thresholds":    caseReviewContext.RuleThresholds,
+			"pivot_enrichments":  caseReviewContext.PivotEnrichments,
+			"case_review":        caseReviewContext.CaseReview,
+		}
+		if aiSetting.CaseReviewSetting.OrgDescription != nil {
+			sanityCheckData["org_activity"] = *aiSetting.CaseReviewSetting.OrgDescription
+		}
+		if aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction != nil {
+			sanityCheckData["additional_case_review_instruction"] = *aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
+		}
 		modelSanityCheck, promptSanityCheck, err := uc.preparePromptWithModel(
 			PROMPT_SANITY_CHECK_PATH,
-			map[string]any{
-				// Global data
-				"org_activity": organizationDescription,
-
-				// Case data
-				"case_detail":           caseData.case_,
-				"case_events":           caseData.events,
-				"decisions":             caseData.decisions,
-				"pivot_objects":         caseData.pivotData,
-				"has_more_alerts":       caseData.hasMoreDecisions,
-				"previous_cases":        relatedDataPerClient.relatedCases,
-				"customer_related_data": relatedDataPerClient.ingestedData,
-
-				// Data from previous steps
-				"data_model_summary": caseReviewContext.DataModelSummary,
-				"rules_summary":      caseReviewContext.RulesDefinitionsReview,
-				"rule_thresholds":    caseReviewContext.RuleThresholds,
-				"pivot_enrichments":  caseReviewContext.PivotEnrichments,
-				"case_review":        caseReviewContext.CaseReview,
-			},
+			sanityCheckData,
 		)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not prepare sanity check request")
@@ -730,7 +720,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	// Do custom language and structure instructions
 	finalOutput := caseReviewContext.CaseReview.CaseReview
 
-	instructions, modelForInstruction := uc.getOrganizationInstructionsForPrompt(ctx, customOrgInstructions)
+	instructions, modelForInstruction := uc.getOrganizationInstructionsForPrompt(ctx, aiSetting.CaseReviewSetting)
 
 	// If there are instructions, we need to format the output
 	if len(instructions) == 0 {
@@ -1231,3 +1221,5 @@ func getProofSchema(dataModel models.DataModel) jsonschema.Schema {
 		Properties:  properties,
 	}
 }
+
+
