@@ -232,7 +232,8 @@ func (uc *AiAgentUsecase) GetCaseReviewById(ctx context.Context, caseId string, 
 // EnqueueCreateCaseReview enqueues a case review task for a given case.
 // Returns the created review ID, a boolean indicating whether the review was enqueued (false if AI review
 // is not enabled or the inbox is not configured for manual review), and an error if any.
-func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId string) (uuid.UUID, bool, error) {
+// skipInboxManualCheck can be set to true (e.g. from the public API) to bypass the inbox CaseReviewManual setting.
+func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId string, skipInboxManualCheck bool) (uuid.UUID, bool, error) {
 	c, err := uc.getCaseWithPermissions(ctx, caseId)
 	if err != nil {
 		return uuid.UUID{}, false, err
@@ -246,12 +247,14 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 	if !hasAiCaseReviewEnabled {
 		return uuid.UUID{}, false, nil
 	}
-	inbox, err := uc.inboxReader.GetInboxById(ctx, uc.executorFactory.NewExecutor(), c.InboxId)
-	if err != nil {
-		return uuid.UUID{}, false, errors.Wrap(err, "error getting inbox")
-	}
-	if !inbox.CaseReviewManual {
-		return uuid.UUID{}, false, nil
+	if !skipInboxManualCheck {
+		inbox, err := uc.inboxReader.GetInboxById(ctx, uc.executorFactory.NewExecutor(), c.InboxId)
+		if err != nil {
+			return uuid.UUID{}, false, errors.Wrap(err, "error getting inbox")
+		}
+		if !inbox.CaseReviewManual {
+			return uuid.UUID{}, false, nil
+		}
 	}
 
 	caseIdUuid, err := uuid.Parse(caseId)

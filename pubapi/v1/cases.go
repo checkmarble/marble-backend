@@ -594,7 +594,7 @@ func HandleEnqueueAiCaseReview(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		usecase := pubapi.UsecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		aiReviewId, ok, err := usecase.EnqueueCreateCaseReview(ctx, caseId.String())
+		aiReviewId, ok, err := usecase.EnqueueCreateCaseReview(ctx, caseId.String(), true)
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return

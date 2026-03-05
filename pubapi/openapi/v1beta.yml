@@ -845,7 +845,7 @@ paths:
       summary: Enqueue an AI case review
       description: |
         Create a new AI review for the given case, which will be processed asynchronously.
-        Requires AI case review to be enabled for the organization and the inbox to be configured for manual review.
+        Requires AI case review to be enabled for the organization
         Returns a 409 conflict if a review is already pending for this case.
       parameters:
         - name: caseId

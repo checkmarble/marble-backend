@@ -744,7 +744,7 @@ func handleEnqueueCaseReview(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		reviewId, ok, err := usecase.EnqueueCreateCaseReview(ctx, caseId.String())
+		reviewId, ok, err := usecase.EnqueueCreateCaseReview(ctx, caseId.String(), false)
 		if presentError(ctx, c, err) {
 			return
 		}
