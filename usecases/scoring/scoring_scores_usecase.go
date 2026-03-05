@@ -71,6 +71,10 @@ func (uc ScoringScoresUsecase) ComputeScore(ctx context.Context, recordType, rec
 		return models.ScoringRuleset{}, nil, err
 	}
 
+	if err := uc.enforceSecurity.ReadOrganization(ruleset.OrgId); err != nil {
+		return models.ScoringRuleset{}, nil, err
+	}
+
 	eval, err := uc.InternalComputeScore(ctx, exec, orgId, ruleset, recordType, recordId)
 	if err != nil {
 		return ruleset, nil, err
@@ -261,6 +265,18 @@ func (uc ScoringScoresUsecase) OverrideScore(ctx context.Context, req models.Ins
 
 	req.OrgId = uc.enforceSecurity.OrgId()
 
+	settings, err := uc.repository.GetScoringSettings(ctx, exec, req.OrgId)
+	if err != nil {
+		return models.ScoringScore{}, err
+	}
+	if settings == nil {
+		return models.ScoringScore{}, errors.Wrap(models.BadParameterError, "no global scoring settings for this organization")
+	}
+
+	if req.RiskLevel < 1 || req.RiskLevel > settings.MaxRiskLevel {
+		return models.ScoringScore{}, errors.Wrapf(models.BadParameterError, "expected risk level in range 1-%d", settings.MaxRiskLevel)
+	}
+
 	if req.Source == models.ScoreSourceOverride {
 		switch {
 		case uc.enforceSecurity.UserId() != nil:
@@ -293,6 +309,10 @@ func (uc ScoringScoresUsecase) OverrideScore(ctx context.Context, req models.Ins
 func (uc ScoringScoresUsecase) GetScoreDistribution(ctx context.Context, entityType string) ([]models.ScoreDistribution, error) {
 	exec := uc.executorFactory.NewExecutor()
 	orgId := uc.enforceSecurity.OrgId()
+
+	if err := uc.enforceSecurity.ReadOrganization(orgId); err != nil {
+		return nil, err
+	}
 
 	return uc.repository.GetScoreDistribution(ctx, exec, orgId, entityType)
 }

@@ -22,7 +22,7 @@ type Score struct {
 }
 
 type OverrideScoreRequest struct {
-	RiskLevel int        `json:"risk_level"`
+	RiskLevel int        `json:"risk_level" binding:"required"`
 	StaleAt   *time.Time `json:"stale_at"`
 }
 
