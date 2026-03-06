@@ -19,7 +19,7 @@ type validatee struct {
 	Bool        string `json:"bool" validate:"boolean"`
 	Date        string `json:"date" validate:"datetime=2006-01-02T15:04:05-07:00"`
 	Untagged    string `validate:"required"`
-	UnnamedJson string `json:"," validate:"required"`
+	UnnamedJson string `json:"," validate:"required"` //nolint:staticcheck // intentionally malformed json tag to test fallback to struct field name
 	SkippedJson string `json:"-" validate:"required"`
 	FormField   int    `form:"form_field" validate:"required"`
 	OtherCheck  string `json:"other" validate:"cidrv4"`
