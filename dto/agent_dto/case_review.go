@@ -87,9 +87,13 @@ func UnmarshalCaseReviewDto(version string, payload io.Reader) (AiCaseReviewDto,
 
 // Extend the AiCaseReviewDto with the id and reaction fields for our API endpoints
 type AiCaseReviewOutputDto struct {
-	Id       uuid.UUID `json:"id"`
-	Reaction *string   `json:"reaction"`
-	Version  string    `json:"version"`
+	Id        uuid.UUID `json:"id"`
+	CaseId    uuid.UUID `json:"case_id"`
+	Status    string    `json:"status"`
+	Reaction  *string   `json:"reaction"`
+	Version   string    `json:"version"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 
 	Review AiCaseReviewDto `json:"review"`
 }

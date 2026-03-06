@@ -2,11 +2,13 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -114,16 +116,46 @@ func (repo *MarbleDbRepository) ListAllCaseReviewFiles(
 	ctx context.Context,
 	exec Executor,
 	caseId uuid.UUID,
+	pagination *models.PaginationAndSorting,
 ) ([]models.AiCaseReview, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
+	}
+
+	orderDir := "DESC"
+	if pagination != nil && pagination.Order == models.SortingOrderAsc {
+		orderDir = "ASC"
 	}
 
 	query := NewQueryBuilder().
 		Select(dbmodels.AiCaseReviewFields...).
 		From(dbmodels.TABLE_AI_CASE_REVIEWS).
 		Where(squirrel.Eq{"case_id": caseId}).
-		OrderBy("created_at DESC")
+		OrderBy(fmt.Sprintf("created_at %s", orderDir), fmt.Sprintf("id %s", orderDir))
+
+	if pagination != nil {
+		if pagination.OffsetId != "" {
+			offsetId, err := uuid.Parse(pagination.OffsetId)
+			if err != nil {
+				return nil, errors.Wrap(err, "invalid pagination offset id")
+			}
+			offsetReview, err := repo.GetCaseReviewFile(ctx, exec, offsetId)
+			if err != nil {
+				return nil, errors.Wrap(err, "invalid pagination offset")
+			}
+			op := "<"
+			if pagination.Order == models.SortingOrderAsc {
+				op = ">"
+			}
+			query = query.Where(
+				squirrel.Expr(
+					fmt.Sprintf("(created_at, id) %s (?, ?)", op),
+					offsetReview.CreatedAt, offsetReview.Id,
+				),
+			)
+		}
+		query = query.Limit(uint64(pagination.Limit))
+	}
 
 	return SqlToListOfModels(
 		ctx,
@@ -198,4 +230,22 @@ func (repo *MarbleDbRepository) GetCaseReviewById(
 			Where(squirrel.Eq{"id": reviewId}),
 		dbmodels.AdaptAiCaseReview,
 	)
+}
+
+func (repo *MarbleDbRepository) HasPendingCaseReview(
+	ctx context.Context,
+	exec Executor,
+	caseId uuid.UUID,
+) (bool, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return false, err
+	}
+
+	var exists bool
+	err := exec.QueryRow(ctx,
+		"SELECT EXISTS (SELECT 1 FROM "+dbmodels.TABLE_AI_CASE_REVIEWS+
+			" WHERE case_id = $1 AND status = $2)",
+		caseId, models.AiCaseReviewStatusPending.String(),
+	).Scan(&exists)
+	return exists, err
 }

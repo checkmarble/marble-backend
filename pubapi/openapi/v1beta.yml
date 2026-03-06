@@ -795,6 +795,133 @@ paths:
         "302":
           $ref: "#/components/responses/302"
 
+  /cases/{caseId}/ai_reviews:
+    get:
+      operationId: listAiCaseReviews
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: List AI case reviews
+      description: |
+        List AI reviews generated for the given case, ordered by creation date.
+        The review content is not included, use the get AI review by ID endpoint to fetch the full content.
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/after"
+        - name: caseId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of AI case reviews
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - $ref: "#/components/schemas/BasePagination"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/CaseReview"
+        "400":
+          $ref: "#/components/responses/400"
+
+    post:
+      operationId: enqueueCaseReview
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Enqueue an AI case review
+      description: |
+        Create a new AI review for the given case, which will be processed asynchronously.
+        Requires AI case review to be enabled for the organization
+        Returns a 409 conflict if a review is already pending for this case.
+      parameters:
+        - name: caseId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "202":
+          description: Case review successfully enqueued
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: 
+                          - ai_review_id
+                        properties:
+                          ai_review_id:
+                            type: string
+                            format: uuid
+        "400":
+          $ref: "#/components/responses/400"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+        "409":
+          $ref: "#/components/responses/409"
+
+  /cases/{caseId}/ai_reviews/{aiReviewId}:
+    get:
+      operationId: getAiCaseReview
+      tags:
+        - Cases
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Get AI case review
+      description: |
+        Get an AI case review by its ID. The full review content is included when the status is "completed".
+      parameters:
+        - name: caseId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+        - name: aiReviewId
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: AI case review
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/CaseReviewDetail"
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+
   /tags:
     get:
       operationId: listTags
@@ -1431,6 +1558,7 @@ components:
         - outcome
         - contributors
         - tags
+        - review_level
         - created_at
       properties:
         id:
@@ -1459,6 +1587,14 @@ components:
         snoozed_until:
           type: string
           format: date-time
+        review_level:
+          anyOf:
+            - type: string
+              enum: [probable_false_positive, investigate, escalate]
+            - type: "null"
+          description: |
+            The review level from AI review.
+            This field is only filled if the ai case review feature is enabled and did a review on this case, otherwise it is null.
         created_at:
           type: string
           format: date-time
@@ -1488,17 +1624,84 @@ components:
       type: object
       required:
         - id
-        - filename
+        - file_name
         - created_at
       properties:
         id:
           type: string
           format: uuid
-        filename:
+        file_name:
           type: string
         created_at:
           type: string
           format: date-time
+
+    CaseReview:
+      title: Case AI review
+      type: object
+      required:
+        - id
+        - case_id
+        - status
+        - reaction
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        case_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, completed, failed, insufficient_funds]
+        reaction:
+          anyOf:
+            - type: string
+              enum: [ok, ko]
+            - type: "null"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CaseReviewDetail:
+      title: Case AI review detail
+      allOf:
+        - $ref: "#/components/schemas/CaseReview"
+        - type: object
+          required:
+            - content
+          properties:
+            content:
+              description: The AI review content. Only present when status is "completed".
+              anyOf:
+                - $ref: "#/components/schemas/CaseReviewContentV1"
+                - type: object
+                - type: "null"
+
+    CaseReviewContentV1:
+      title: Case AI review content (v1)
+      type: object
+      required:
+        - version
+        - output
+        - sanity_check
+      properties:
+        version:
+          type: string
+          enum: [v1]
+        output:
+          description: The main case review text produced by the AI
+          type: string
+        sanity_check:
+          description: The sanity check result produced by the AI
+          anyOf:
+            - type: string
+            - type: "null"
 
     ScreeningEntity:
       type: string

@@ -509,6 +509,106 @@ func HandleDownloadCaseFile(uc usecases.Usecases) gin.HandlerFunc {
 
 const CaseFileUploadMaxSize = 5 << 20 // 5 MB
 
+var caseReviewPaginationDefaults = models.PaginationDefaults{
+	Limit:  50,
+	SortBy: models.SortingFieldCreatedAt,
+	Order:  models.SortingOrderDesc,
+}
+
+func HandleListAiCaseReviews(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		caseId, err := types.UuidParam(c, "caseId")
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		var p types.PaginationParams
+		if err := c.ShouldBindQuery(&p); err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		pagination := p.ToModel(caseReviewPaginationDefaults)
+
+		uc := pubapi.UsecasesWithCreds(ctx, uc)
+		aiUsecase := uc.NewAiAgentUsecase()
+
+		result, err := aiUsecase.ListCaseReviews(ctx, *caseId, &pagination)
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		nextPageId := ""
+		if len(result.Items) > 0 {
+			nextPageId = result.Items[len(result.Items)-1].Id.String()
+		}
+
+		types.
+			NewResponse(pure_utils.Map(result.Items, dto.AdaptCaseReview)).
+			WithPagination(result.HasNextPage, nextPageId).
+			Serve(c)
+	}
+}
+
+func HandleGetAiCaseReviewById(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		caseId, err := types.UuidParam(c, "caseId")
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		aiReviewId, err := types.UuidParam(c, "aiReviewId")
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		uc := pubapi.UsecasesWithCreds(ctx, uc)
+		aiUsecase := uc.NewAiAgentUsecase()
+
+		review, err := aiUsecase.GetCaseReviewById(ctx, caseId.String(), *aiReviewId)
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		types.NewResponse(dto.AdaptCaseReviewDetail(review)).Serve(c)
+	}
+}
+
+func HandleEnqueueAiCaseReview(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		caseId, err := types.UuidParam(c, "caseId")
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		usecase := pubapi.UsecasesWithCreds(ctx, uc).NewAiAgentUsecase()
+		aiReviewId, ok, err := usecase.EnqueueCreateCaseReview(ctx, caseId.String(), true)
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+		if !ok {
+			types.NewErrorResponse().
+				WithError(errors.Wrap(models.ForbiddenError, "AI case review is not enabled")).
+				Serve(c)
+			return
+		}
+		types.NewResponse(gin.H{"ai_review_id": aiReviewId}).Serve(c, http.StatusAccepted)
+	}
+}
+
 func HandleCreateCaseFile(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()

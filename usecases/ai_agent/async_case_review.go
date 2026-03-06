@@ -47,7 +47,13 @@ type caseReviewWorkerRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		caseId uuid.UUID,
+		pagination *models.PaginationAndSorting,
 	) ([]models.AiCaseReview, error)
+	HasPendingCaseReview(
+		ctx context.Context,
+		exec repositories.Executor,
+		caseId uuid.UUID,
+	) (bool, error)
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
 	GetOrganizationById(
 		ctx context.Context,

@@ -15,9 +15,9 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/billing"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/invopop/jsonschema"
-	"github.com/pkg/errors"
 )
 
 // TODO: the current version of the code uses some static heuristics to limit the amount of data loaded into the context.
@@ -86,20 +86,11 @@ func (uc *AiAgentUsecase) getCaseReviewById(ctx context.Context, reviewId uuid.U
 			errors.Wrap(err, "could not get case review by id")
 	}
 
-	blob, err := uc.blobRepository.GetBlob(ctx, review.BucketName, review.FileReference)
-	if err != nil {
-		return agent_dto.AiCaseReviewOutputDto{},
-			errors.Wrap(err, "could not get case review file")
-	}
-	defer blob.ReadCloser.Close()
-
 	var reviewDto agent_dto.AiCaseReviewDto
 	if review.Status == models.AiCaseReviewStatusCompleted {
-		reviewDto, err = agent_dto.UnmarshalCaseReviewDto(
-			review.DtoVersion, blob.ReadCloser)
+		reviewDto, err = uc.getCaseReviewContent(ctx, review)
 		if err != nil {
-			return agent_dto.AiCaseReviewOutputDto{},
-				errors.Wrap(err, "could not unmarshal case review file")
+			return agent_dto.AiCaseReviewOutputDto{}, err
 		}
 	}
 
@@ -109,10 +100,14 @@ func (uc *AiAgentUsecase) getCaseReviewById(ctx context.Context, reviewId uuid.U
 	}
 
 	return agent_dto.AiCaseReviewOutputDto{
-		Id:       review.Id,
-		Reaction: reaction,
-		Version:  review.DtoVersion,
-		Review:   reviewDto,
+		Id:        review.Id,
+		CaseId:    review.CaseId,
+		Status:    review.Status.String(),
+		Reaction:  reaction,
+		Version:   review.DtoVersion,
+		CreatedAt: review.CreatedAt,
+		UpdatedAt: review.UpdatedAt,
+		Review:    reviewDto,
 	}, nil
 }
 
@@ -164,18 +159,36 @@ func (uc *AiAgentUsecase) GetCaseReview(ctx context.Context, caseId string) ([]a
 	return existingReviewDtos[:1], nil
 }
 
-// ListCaseReviews returns all case reviews for a case, ordered by created_at DESC.
-// For completed reviews the full review content is included; for others, Review is nil.
-func (uc *AiAgentUsecase) ListCaseReviews(ctx context.Context, caseId uuid.UUID) ([]agent_dto.AiCaseReviewListItemDto, error) {
+// ListCaseReviews returns case reviews for a case, ordered by created_at DESC.
+func (uc *AiAgentUsecase) ListCaseReviews(ctx context.Context, caseId uuid.UUID,
+	pagination *models.PaginationAndSorting,
+) (models.Paginated[agent_dto.AiCaseReviewListItemDto], error) {
 	_, err := uc.getCaseWithPermissions(ctx, caseId.String())
 	if err != nil {
-		return nil, err
+		return models.Paginated[agent_dto.AiCaseReviewListItemDto]{}, err
+	}
+
+	// Use limit+1 to detect HasNextPage
+	var paginationWithExtra *models.PaginationAndSorting
+	originalLimit := 0
+	if pagination != nil {
+		originalLimit = pagination.Limit
+		extra := *pagination
+		extra.Limit = pagination.Limit + 1
+		paginationWithExtra = &extra
 	}
 
 	exec := uc.executorFactory.NewExecutor()
-	reviews, err := uc.caseReviewFileRepository.ListAllCaseReviewFiles(ctx, exec, caseId)
+	reviews, err := uc.caseReviewFileRepository.ListAllCaseReviewFiles(ctx, exec, caseId, paginationWithExtra)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not list case review files")
+		return models.Paginated[agent_dto.AiCaseReviewListItemDto]{},
+			errors.Wrap(err, "could not list case review files")
+	}
+
+	hasNextPage := false
+	if pagination != nil && len(reviews) > originalLimit {
+		hasNextPage = true
+		reviews = reviews[:originalLimit]
 	}
 
 	result := make([]agent_dto.AiCaseReviewListItemDto, len(reviews))
@@ -185,7 +198,7 @@ func (uc *AiAgentUsecase) ListCaseReviews(ctx context.Context, caseId uuid.UUID)
 			reaction = utils.Ptr(review.Reaction.String())
 		}
 
-		item := agent_dto.AiCaseReviewListItemDto{
+		result[i] = agent_dto.AiCaseReviewListItemDto{
 			Id:        review.Id,
 			CaseId:    review.CaseId,
 			Status:    review.Status.String(),
@@ -193,19 +206,12 @@ func (uc *AiAgentUsecase) ListCaseReviews(ctx context.Context, caseId uuid.UUID)
 			UpdatedAt: review.UpdatedAt,
 			Reaction:  reaction,
 		}
-
-		if review.Status == models.AiCaseReviewStatusCompleted {
-			reviewDto, err := uc.getCaseReviewContent(ctx, review)
-			if err != nil {
-				return nil, err
-			}
-			item.Review = reviewDto
-		}
-
-		result[i] = item
 	}
 
-	return result, nil
+	return models.Paginated[agent_dto.AiCaseReviewListItemDto]{
+		Items:       result,
+		HasNextPage: hasNextPage,
+	}, nil
 }
 
 func (uc *AiAgentUsecase) GetCaseReviewById(ctx context.Context, caseId string, reviewId uuid.UUID) (agent_dto.AiCaseReviewOutputDto, error) {
@@ -224,37 +230,61 @@ func (uc *AiAgentUsecase) GetCaseReviewById(ctx context.Context, caseId string, 
 }
 
 // EnqueueCreateCaseReview enqueues a case review task for a given case.
-func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId string) (bool, error) {
+// Returns the created review ID, a boolean indicating whether the review was enqueued (false if AI review
+// is not enabled or the inbox is not configured for manual review), and an error if any.
+// skipInboxManualCheck can be set to true (e.g. from the public API) to bypass the inbox CaseReviewManual setting.
+func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId string, skipInboxManualCheck bool) (uuid.UUID, bool, error) {
 	c, err := uc.getCaseWithPermissions(ctx, caseId)
 	if err != nil {
-		return false, err
+		return uuid.UUID{}, false, err
 	}
 
 	hasAiCaseReviewEnabled, err := uc.HasAiCaseReviewEnabled(ctx, c.OrganizationId)
 	if err != nil {
-		return false, errors.Wrap(err, "error checking if AI case review is enabled")
+		return uuid.UUID{}, false, errors.Wrap(err,
+			"error checking if AI case review is enabled")
 	}
 	if !hasAiCaseReviewEnabled {
-		return false, nil
+		return uuid.UUID{}, false, nil
 	}
-	inbox, err := uc.inboxReader.GetInboxById(ctx, uc.executorFactory.NewExecutor(), c.InboxId)
-	if err != nil {
-		return false, errors.Wrap(err, "error getting inbox")
-	}
-	if !inbox.CaseReviewManual {
-		return false, nil
+	if !skipInboxManualCheck {
+		inbox, err := uc.inboxReader.GetInboxById(ctx, uc.executorFactory.NewExecutor(), c.InboxId)
+		if err != nil {
+			return uuid.UUID{}, false, errors.Wrap(err, "error getting inbox")
+		}
+		if !inbox.CaseReviewManual {
+			return uuid.UUID{}, false, nil
+		}
 	}
 
 	caseIdUuid, err := uuid.Parse(caseId)
 	if err != nil {
-		return false, errors.Wrap(err, "could not parse case id")
+		return uuid.UUID{}, false, errors.Wrap(err, "could not parse case id")
 	}
 
 	caseReviewId := uuid.Must(uuid.NewV7())
 	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		hasPending, err := uc.caseReviewFileRepository.HasPendingCaseReview(ctx, tx, caseIdUuid)
+		if err != nil {
+			return errors.Wrap(err, "error checking for pending case review")
+		}
+		if hasPending {
+			return errors.WithDetail(errors.Wrap(models.ConflictError,
+				"already has a pending case review"), "already has a pending case review")
+		}
+
+		aiCaseReview := models.NewAiCaseReview(caseIdUuid, uc.caseManagerBucketUrl, caseReviewId)
+		if err := uc.caseReviewFileRepository.CreateCaseReviewFile(ctx, tx, aiCaseReview); err != nil {
+			return errors.Wrap(err, "error creating case review file")
+		}
+
 		return uc.caseReviewTaskEnqueuer.EnqueueCaseReviewTask(ctx, tx, c.OrganizationId, caseIdUuid, caseReviewId)
 	})
-	return true, err
+	if err != nil {
+		return uuid.UUID{}, false, err
+	}
+
+	return caseReviewId, true, nil
 }
 
 // Return a list of instructions to give to the LLM and the model to use for the prompt
