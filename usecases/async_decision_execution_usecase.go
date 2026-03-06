@@ -60,80 +60,6 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecution(
 	ctx context.Context,
 	orgId uuid.UUID,
 	objectType string,
-	triggerObject json.RawMessage,
-	scenarioId *string,
-	shouldIngest bool,
-) (models.AsyncDecisionExecution, error) {
-	if err := usecase.enforceSecurityDecisions.CreateDecision(orgId); err != nil {
-		return models.AsyncDecisionExecution{}, err
-	}
-
-	objectType, err := usecase.resolveObjectType(ctx, orgId, objectType, scenarioId)
-	if err != nil {
-		return models.AsyncDecisionExecution{}, err
-	}
-
-	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx,
-		usecase.executorFactory.NewExecutor(), orgId, false, true)
-	if err != nil {
-		return models.AsyncDecisionExecution{}, errors.Wrap(err,
-			"error getting data model in validatePayload")
-	}
-	if err := usecase.validatePayload(ctx, objectType, triggerObject, dataModel); err != nil {
-		return models.AsyncDecisionExecution{}, err
-	}
-
-	executionId := uuid.Must(uuid.NewV7())
-
-	execution, err := executor_factory.TransactionReturnValue(
-		ctx,
-		usecase.transactionFactory,
-		func(tx repositories.Transaction) (models.AsyncDecisionExecution, error) {
-			createInput := models.AsyncDecisionExecutionCreate{
-				Id:            executionId,
-				OrgId:         orgId,
-				ObjectType:    objectType,
-				TriggerObject: triggerObject,
-				ScenarioId:    scenarioId,
-				ShouldIngest:  shouldIngest,
-			}
-
-			if err := usecase.asyncDecisionExecutionRepository.CreateAsyncDecisionExecution(
-				ctx, tx, createInput,
-			); err != nil {
-				return models.AsyncDecisionExecution{}, errors.Wrap(err,
-					"error creating async decision execution")
-			}
-
-			if err := usecase.taskQueueRepository.EnqueueAsyncDecisionExecution(
-				ctx, tx, orgId, executionId,
-			); err != nil {
-				return models.AsyncDecisionExecution{}, errors.Wrap(err,
-					"error enqueuing async decision execution")
-			}
-
-			return models.AsyncDecisionExecution{
-				Id:            executionId,
-				OrgId:         orgId,
-				ObjectType:    objectType,
-				ScenarioId:    scenarioId,
-				TriggerObject: triggerObject,
-				ShouldIngest:  shouldIngest,
-				Status:        models.AsyncDecisionExecutionStatusPending,
-			}, nil
-		},
-	)
-	if err != nil {
-		return models.AsyncDecisionExecution{}, err
-	}
-
-	return execution, nil
-}
-
-func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecutionBatch(
-	ctx context.Context,
-	orgId uuid.UUID,
-	objectType string,
 	objects []json.RawMessage,
 	scenarioId *string,
 	shouldIngest bool,
@@ -200,14 +126,14 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecutionBatch(
 				}
 			}
 
-			if err := usecase.asyncDecisionExecutionRepository.CreateAsyncDecisionExecutionBatch(
+			if err := usecase.asyncDecisionExecutionRepository.CreateAsyncDecisionExecutions(
 				ctx, tx, createInputs,
 			); err != nil {
 				return nil, errors.Wrap(err,
 					"error creating async decision execution batch")
 			}
 
-			if err := usecase.taskQueueRepository.EnqueueAsyncDecisionExecutionBatch(
+			if err := usecase.taskQueueRepository.EnqueueAsyncDecisionExecutions(
 				ctx, tx, orgId, executionIds,
 			); err != nil {
 				return nil, errors.Wrap(err,

@@ -13,9 +13,7 @@ import (
 )
 
 type AsyncDecisionExecutionRepository interface {
-	CreateAsyncDecisionExecution(ctx context.Context, exec Executor,
-		input models.AsyncDecisionExecutionCreate) error
-	CreateAsyncDecisionExecutionBatch(ctx context.Context, exec Executor,
+	CreateAsyncDecisionExecutions(ctx context.Context, exec Executor,
 		inputs []models.AsyncDecisionExecutionCreate) error
 	GetAsyncDecisionExecution(ctx context.Context, exec Executor, id uuid.UUID) (models.AsyncDecisionExecution, error)
 	UpdateAsyncDecisionExecution(ctx context.Context, exec Executor,
@@ -23,46 +21,7 @@ type AsyncDecisionExecutionRepository interface {
 	DeleteOldAsyncDecisionExecutionsBatch(ctx context.Context, exec Executor, olderThan time.Time, limit int) (int64, error)
 }
 
-func (repo *MarbleDbRepository) CreateAsyncDecisionExecution(
-	ctx context.Context,
-	exec Executor,
-	input models.AsyncDecisionExecutionCreate,
-) error {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return err
-	}
-
-	query := NewQueryBuilder().Insert(dbmodels.TABLE_ASYNC_DECISION_EXECUTIONS).
-		Columns(
-			"id",
-			"org_id",
-			"object_type",
-			"trigger_object",
-			"scenario_id",
-			"should_ingest",
-		).
-		Values(
-			input.Id,
-			input.OrgId,
-			input.ObjectType,
-			input.TriggerObject,
-			input.ScenarioId,
-			input.ShouldIngest,
-		)
-
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return errors.Wrap(err, "error building query for CreateAsyncDecisionExecution")
-	}
-
-	_, err = exec.Exec(ctx, sql, args...)
-	if err != nil {
-		return errors.Wrap(err, "error creating async decision execution")
-	}
-	return nil
-}
-
-func (repo *MarbleDbRepository) CreateAsyncDecisionExecutionBatch(
+func (repo *MarbleDbRepository) CreateAsyncDecisionExecutions(
 	ctx context.Context,
 	exec Executor,
 	inputs []models.AsyncDecisionExecutionCreate,
@@ -97,7 +56,7 @@ func (repo *MarbleDbRepository) CreateAsyncDecisionExecutionBatch(
 
 	sql, args, err := query.ToSql()
 	if err != nil {
-		return errors.Wrap(err, "error building query for CreateAsyncDecisionExecutionBatch")
+		return errors.Wrap(err, "error building query for CreateAsyncDecisionExecutions")
 	}
 
 	_, err = exec.Exec(ctx, sql, args...)

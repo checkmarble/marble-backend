@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func HandleCreateAsyncDecision(uc usecases.Usecases) gin.HandlerFunc {
+func HandleCreateAsyncDecisions(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -32,43 +32,7 @@ func HandleCreateAsyncDecision(uc usecases.Usecases) gin.HandlerFunc {
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
 		asyncUsecase := uc.NewAsyncDecisionExecutionUsecase()
 
-		execution, err := asyncUsecase.CreateAsyncDecisionExecution(ctx,
-			orgId, payload.TriggerObjectType, payload.TriggerObject, payload.ScenarioId, payload.Ingest)
-		if err != nil {
-			if types.PresentSingleObjectValidationError(c, err) {
-				return
-			}
-
-			types.NewErrorResponse().WithError(err).Serve(c)
-			return
-		}
-
-		types.NewResponse(dto.AdaptAsyncDecisionExecutionCreated(execution)).
-			Serve(c, http.StatusCreated)
-	}
-}
-
-func HandleCreateAsyncDecisionBatch(uc usecases.Usecases) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
-
-		orgId, err := utils.OrganizationIdFromRequest(c.Request)
-		if err != nil {
-			types.NewErrorResponse().WithError(err).Serve(c)
-			return
-		}
-
-		var payload dto.CreateAsyncDecisionBatchParams
-
-		if err := c.ShouldBindJSON(&payload); err != nil {
-			types.NewErrorResponse().WithError(err).Serve(c)
-			return
-		}
-
-		uc := pubapi.UsecasesWithCreds(ctx, uc)
-		asyncUsecase := uc.NewAsyncDecisionExecutionUsecase()
-
-		executions, err := asyncUsecase.CreateAsyncDecisionExecutionBatch(ctx,
+		executions, err := asyncUsecase.CreateAsyncDecisionExecution(ctx,
 			orgId, payload.TriggerObjectType, payload.TriggerObjects, payload.ScenarioId, payload.Ingest)
 		if err != nil {
 			if types.PresentMultipleObjectsValidationError(c, err) {

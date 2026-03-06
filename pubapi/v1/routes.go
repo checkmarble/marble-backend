@@ -31,10 +31,6 @@ func Routes(conf pubapi.Config, version string, unauthed *gin.RouterGroup, authM
 
 		decision.POST("/decisions", HandleCreateDecision(uc))
 		decision.POST("/decisions/all", HandleCreateAllDecisions(uc))
-		decision.POST("/decisions/async", HandleCreateAsyncDecision(uc))
-		decision.POST("/decisions/async/batch", HandleCreateAsyncDecisionBatch(uc))
-
-		root.GET("/decisions/async/:executionId", HandleGetAsyncDecisionExecution(uc))
 
 		root.GET("/batch-executions", HandleListBatchExecutions(uc))
 
@@ -63,6 +59,9 @@ func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gi
 		root.PATCH("/ingest/:objectType/batch", v1beta.HandleIngestObject(uc, true))
 
 		root.POST("/decisions/:decisionId/case", HandleAddDecisionToCase(uc))
+
+		root.POST("/decisions/async", HandleCreateAsyncDecisions(uc))
+		root.GET("/decisions/async/:executionId", HandleGetAsyncDecisionExecution(uc))
 
 		root.GET("/cases", HandleListCases(uc))
 		root.GET("/cases/:caseId", HandleGetCase(uc))

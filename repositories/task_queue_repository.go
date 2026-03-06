@@ -114,13 +114,7 @@ type TaskQueueRepository interface {
 		organizationId uuid.UUID,
 		bucket, key string,
 	) error
-	EnqueueAsyncDecisionExecution(
-		ctx context.Context,
-		tx Transaction,
-		organizationId uuid.UUID,
-		executionId uuid.UUID,
-	) error
-	EnqueueAsyncDecisionExecutionBatch(
+	EnqueueAsyncDecisionExecutions(
 		ctx context.Context,
 		tx Transaction,
 		organizationId uuid.UUID,
@@ -570,34 +564,7 @@ func (r riverRepository) EnqueueGenerateThumbnailTask(
 	return nil
 }
 
-func (r riverRepository) EnqueueAsyncDecisionExecution(
-	ctx context.Context,
-	tx Transaction,
-	organizationId uuid.UUID,
-	executionId uuid.UUID,
-) error {
-	res, err := r.client.InsertTx(
-		ctx,
-		tx.RawTx(),
-		models.AsyncDecisionExecutionArgs{
-			AsyncDecisionExecutionId: executionId,
-		},
-		&river.InsertOpts{
-			MaxAttempts: 10,
-			Queue:       organizationId.String(),
-			UniqueOpts:  river.UniqueOpts{ByArgs: true},
-		},
-	)
-	if err != nil {
-		return err
-	}
-	logger := utils.LoggerFromContext(ctx)
-	logger.DebugContext(ctx, "Enqueued async decision execution task",
-		"execution_id", executionId, "job_id", res.Job.ID)
-	return nil
-}
-
-func (r riverRepository) EnqueueAsyncDecisionExecutionBatch(
+func (r riverRepository) EnqueueAsyncDecisionExecutions(
 	ctx context.Context,
 	tx Transaction,
 	organizationId uuid.UUID,
