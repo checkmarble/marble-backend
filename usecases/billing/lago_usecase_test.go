@@ -45,8 +45,8 @@ func TestLagoBillingUsecase(t *testing.T) {
 	suite.Run(t, new(LagoBillingUsecaseTestSuite))
 }
 
-// Test getSubscriptionsForEvent - return the right list with subscription with the right code match
-func (suite *LagoBillingUsecaseTestSuite) Test_getSubscriptionsForEvent_ReturnsMatchingSubscriptions() {
+// Test GetSubscriptionsForEvent - return the right list with subscription with the right code match
+func (suite *LagoBillingUsecaseTestSuite) Test_GetSubscriptionsForEvent_ReturnsMatchingSubscriptions() {
 	usecase := suite.makeUsecase()
 
 	// Create subscriptions with different billable metric codes
@@ -126,7 +126,7 @@ func (suite *LagoBillingUsecaseTestSuite) Test_getSubscriptionsForEvent_ReturnsM
 	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-2").Return(detailedSub2, nil)
 	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-3").Return(detailedSub3, nil)
 
-	result, err := usecase.getSubscriptionsForEvent(suite.ctx, suite.orgId, AI_CASE_REVIEW)
+	result, err := usecase.GetSubscriptionsForEvent(suite.ctx, suite.orgId, AI_CASE_REVIEW)
 
 	suite.NoError(err)
 	suite.Len(result, 2, "should return 2 subscriptions with AI_CASE_REVIEW code")
@@ -135,7 +135,7 @@ func (suite *LagoBillingUsecaseTestSuite) Test_getSubscriptionsForEvent_ReturnsM
 	suite.AssertExpectations()
 }
 
-func (suite *LagoBillingUsecaseTestSuite) Test_getSubscriptionsForEvent_NoMatchingSubscriptions() {
+func (suite *LagoBillingUsecaseTestSuite) Test_GetSubscriptionsForEvent_NoMatchingSubscriptions() {
 	usecase := suite.makeUsecase()
 
 	subscriptions := []models.Subscription{
@@ -165,7 +165,7 @@ func (suite *LagoBillingUsecaseTestSuite) Test_getSubscriptionsForEvent_NoMatchi
 	suite.lagoRepository.On("GetSubscriptions", suite.ctx, suite.orgId).Return(subscriptions, nil)
 	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-1").Return(detailedSub1, nil)
 
-	result, err := usecase.getSubscriptionsForEvent(suite.ctx, suite.orgId, AI_CASE_REVIEW)
+	result, err := usecase.GetSubscriptionsForEvent(suite.ctx, suite.orgId, AI_CASE_REVIEW)
 
 	suite.NoError(err)
 	suite.Empty(result, "should return empty list when no matching subscriptions")
@@ -179,12 +179,11 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_NoWall
 	// Return empty wallet list
 	suite.lagoRepository.On("GetWallets", suite.ctx, suite.orgId).Return([]models.Wallet{}, nil)
 
-	hasEnoughFunds, subscriptionId, err :=
-		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, AI_CASE_REVIEW)
+	hasEnoughFunds, err :=
+		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, "ext-sub-1", AI_CASE_REVIEW)
 
 	suite.NoError(err)
 	suite.False(hasEnoughFunds, "should return false when no wallet exists")
-	suite.Empty(subscriptionId, "should return empty subscription ID")
 	suite.AssertExpectations()
 }
 
@@ -202,147 +201,11 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_NoActi
 
 	suite.lagoRepository.On("GetWallets", suite.ctx, suite.orgId).Return(wallets, nil)
 
-	hasEnoughFunds, subscriptionId, err :=
-		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, AI_CASE_REVIEW)
+	hasEnoughFunds, err :=
+		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, "ext-sub-1", AI_CASE_REVIEW)
 
 	suite.NoError(err)
 	suite.False(hasEnoughFunds, "should return false when no active wallet exists")
-	suite.Empty(subscriptionId, "should return empty subscription ID")
-	suite.AssertExpectations()
-}
-
-// Test CheckIfEnoughFundsInWallet - Case with wallet but no right subscription
-func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_NoMatchingSubscription() {
-	usecase := suite.makeUsecase()
-
-	wallet := []models.Wallet{
-		{
-			Id:           "wallet-1",
-			Status:       "active",
-			BalanceCents: 10000,
-		},
-	}
-
-	subscriptions := []models.Subscription{
-		{
-			Id:         "sub-1",
-			ExternalId: "ext-sub-1",
-			Status:     "active",
-		},
-	}
-
-	detailedSub1 := models.Subscription{
-		Id:         "sub-1",
-		ExternalId: "ext-sub-1",
-		Status:     "active",
-		Plan: models.Plan{
-			Id:   "plan-1",
-			Name: "Basic Plan",
-			Charges: []models.Charge{
-				{
-					Id:                 "charge-1",
-					BillableMetricCode: UNKNOWN.String(), // Different code
-				},
-			},
-		},
-	}
-
-	suite.lagoRepository.On("GetWallets", suite.ctx, suite.orgId).Return(wallet, nil)
-	suite.lagoRepository.On("GetSubscriptions", suite.ctx, suite.orgId).Return(subscriptions, nil)
-	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-1").Return(detailedSub1, nil)
-
-	hasEnoughFunds, subscriptionId, err :=
-		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, AI_CASE_REVIEW)
-
-	suite.NoError(err)
-	suite.False(hasEnoughFunds, "should return false when no matching subscription")
-	suite.Empty(subscriptionId, "should return empty subscription ID")
-	suite.AssertExpectations()
-}
-
-// Test CheckIfEnoughFundsInWallet - Case with several subscriptions and take the first one
-func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_MultipleSubscriptions_TakesFirst() {
-	usecase := suite.makeUsecase()
-
-	wallet := []models.Wallet{
-		{
-			Id:           "wallet-1",
-			Status:       "active",
-			BalanceCents: 10000,
-		},
-	}
-
-	subscriptions := []models.Subscription{
-		{
-			Id:         "sub-1",
-			ExternalId: "ext-sub-1",
-			Status:     "active",
-		},
-		{
-			Id:         "sub-2",
-			ExternalId: "ext-sub-2",
-			Status:     "active",
-		},
-	}
-
-	// Both subscriptions have AI_CASE_REVIEW charge
-	detailedSub1 := models.Subscription{
-		Id:         "sub-1",
-		ExternalId: "ext-sub-1",
-		Status:     "active",
-		Plan: models.Plan{
-			Id:   "plan-1",
-			Name: "Basic Plan",
-			Charges: []models.Charge{
-				{
-					Id:                 "charge-1",
-					BillableMetricCode: AI_CASE_REVIEW.String(),
-				},
-			},
-		},
-	}
-
-	detailedSub2 := models.Subscription{
-		Id:         "sub-2",
-		ExternalId: "ext-sub-2",
-		Status:     "active",
-		Plan: models.Plan{
-			Id:   "plan-2",
-			Name: "Premium Plan",
-			Charges: []models.Charge{
-				{
-					Id:                 "charge-2",
-					BillableMetricCode: AI_CASE_REVIEW.String(),
-				},
-			},
-		},
-	}
-
-	customerUsage := models.CustomerUsage{
-		TotalAmountCents: 5000,
-		ChargesUsage: []models.ChargeUsage{
-			{
-				AmountCents: 5000,
-				BillableMetric: models.BillableMetricInUsage{
-					Code: AI_CASE_REVIEW.String(),
-				},
-			},
-		},
-	}
-
-	suite.lagoRepository.On("GetWallets", suite.ctx, suite.orgId).Return(wallet, nil)
-	suite.lagoRepository.On("GetSubscriptions", suite.ctx, suite.orgId).Return(subscriptions, nil)
-	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-1").Return(detailedSub1, nil)
-	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-2").Return(detailedSub2, nil)
-	// Should only get customer usage for the first subscription
-	suite.lagoRepository.On("GetCustomerUsage", suite.ctx, suite.orgId, "ext-sub-1").Return(customerUsage, nil)
-
-	hasEnoughFunds, subscriptionId, err :=
-		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, AI_CASE_REVIEW)
-
-	suite.NoError(err)
-	suite.True(hasEnoughFunds, "should return true when wallet has enough funds")
-	suite.Equal("ext-sub-1", subscriptionId, "should return the first subscription ID")
 	suite.AssertExpectations()
 }
 
@@ -355,30 +218,6 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_Enough
 			Id:           "wallet-1",
 			Status:       "active",
 			BalanceCents: 10000, // 100.00 in currency
-		},
-	}
-
-	subscriptions := []models.Subscription{
-		{
-			Id:         "sub-1",
-			ExternalId: "ext-sub-1",
-			Status:     "active",
-		},
-	}
-
-	detailedSub1 := models.Subscription{
-		Id:         "sub-1",
-		ExternalId: "ext-sub-1",
-		Status:     "active",
-		Plan: models.Plan{
-			Id:   "plan-1",
-			Name: "Basic Plan",
-			Charges: []models.Charge{
-				{
-					Id:                 "charge-1",
-					BillableMetricCode: AI_CASE_REVIEW.String(),
-				},
-			},
 		},
 	}
 
@@ -395,16 +234,13 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_Enough
 	}
 
 	suite.lagoRepository.On("GetWallets", suite.ctx, suite.orgId).Return(wallet, nil)
-	suite.lagoRepository.On("GetSubscriptions", suite.ctx, suite.orgId).Return(subscriptions, nil)
-	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-1").Return(detailedSub1, nil)
 	suite.lagoRepository.On("GetCustomerUsage", suite.ctx, suite.orgId, "ext-sub-1").Return(customerUsage, nil)
 
-	hasEnoughFunds, subscriptionId, err :=
-		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, AI_CASE_REVIEW)
+	hasEnoughFunds, err :=
+		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, "ext-sub-1", AI_CASE_REVIEW)
 
 	suite.NoError(err)
 	suite.True(hasEnoughFunds, "should return true when wallet balance is greater than usage")
-	suite.Equal("ext-sub-1", subscriptionId, "should return the subscription external ID")
 	suite.AssertExpectations()
 }
 
@@ -417,30 +253,6 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_NotEno
 			Id:           "wallet-1",
 			Status:       "active",
 			BalanceCents: 5000, // 50.00 in currency
-		},
-	}
-
-	subscriptions := []models.Subscription{
-		{
-			Id:         "sub-1",
-			ExternalId: "ext-sub-1",
-			Status:     "active",
-		},
-	}
-
-	detailedSub1 := models.Subscription{
-		Id:         "sub-1",
-		ExternalId: "ext-sub-1",
-		Status:     "active",
-		Plan: models.Plan{
-			Id:   "plan-1",
-			Name: "Basic Plan",
-			Charges: []models.Charge{
-				{
-					Id:                 "charge-1",
-					BillableMetricCode: AI_CASE_REVIEW.String(),
-				},
-			},
 		},
 	}
 
@@ -457,16 +269,13 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_NotEno
 	}
 
 	suite.lagoRepository.On("GetWallets", suite.ctx, suite.orgId).Return(wallet, nil)
-	suite.lagoRepository.On("GetSubscriptions", suite.ctx, suite.orgId).Return(subscriptions, nil)
-	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-1").Return(detailedSub1, nil)
 	suite.lagoRepository.On("GetCustomerUsage", suite.ctx, suite.orgId, "ext-sub-1").Return(customerUsage, nil)
 
-	hasEnoughFunds, subscriptionId, err :=
-		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, AI_CASE_REVIEW)
+	hasEnoughFunds, err :=
+		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, "ext-sub-1", AI_CASE_REVIEW)
 
 	suite.NoError(err)
 	suite.False(hasEnoughFunds, "should return false when usage exceeds wallet balance")
-	suite.Empty(subscriptionId, "should return empty subscription ID when not enough funds")
 	suite.AssertExpectations()
 }
 
@@ -479,30 +288,6 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_Exactl
 			Id:           "wallet-1",
 			Status:       "active",
 			BalanceCents: 5000,
-		},
-	}
-
-	subscriptions := []models.Subscription{
-		{
-			Id:         "sub-1",
-			ExternalId: "ext-sub-1",
-			Status:     "active",
-		},
-	}
-
-	detailedSub1 := models.Subscription{
-		Id:         "sub-1",
-		ExternalId: "ext-sub-1",
-		Status:     "active",
-		Plan: models.Plan{
-			Id:   "plan-1",
-			Name: "Basic Plan",
-			Charges: []models.Charge{
-				{
-					Id:                 "charge-1",
-					BillableMetricCode: AI_CASE_REVIEW.String(),
-				},
-			},
 		},
 	}
 
@@ -519,16 +304,13 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_Exactl
 	}
 
 	suite.lagoRepository.On("GetWallets", suite.ctx, suite.orgId).Return(wallet, nil)
-	suite.lagoRepository.On("GetSubscriptions", suite.ctx, suite.orgId).Return(subscriptions, nil)
-	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-1").Return(detailedSub1, nil)
 	suite.lagoRepository.On("GetCustomerUsage", suite.ctx, suite.orgId, "ext-sub-1").Return(customerUsage, nil)
 
-	hasEnoughFunds, subscriptionId, err :=
-		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, AI_CASE_REVIEW)
+	hasEnoughFunds, err :=
+		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, "ext-sub-1", AI_CASE_REVIEW)
 
 	suite.NoError(err)
 	suite.False(hasEnoughFunds, "should return false when usage equals wallet balance (not strictly greater)")
-	suite.Empty(subscriptionId, "should return empty subscription ID")
 	suite.AssertExpectations()
 }
 
@@ -541,30 +323,6 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_Metric
 			Id:           "wallet-1",
 			Status:       "active",
 			BalanceCents: 5000,
-		},
-	}
-
-	subscriptions := []models.Subscription{
-		{
-			Id:         "sub-1",
-			ExternalId: "ext-sub-1",
-			Status:     "active",
-		},
-	}
-
-	detailedSub1 := models.Subscription{
-		Id:         "sub-1",
-		ExternalId: "ext-sub-1",
-		Status:     "active",
-		Plan: models.Plan{
-			Id:   "plan-1",
-			Name: "Basic Plan",
-			Charges: []models.Charge{
-				{
-					Id:                 "charge-1",
-					BillableMetricCode: AI_CASE_REVIEW.String(),
-				},
-			},
 		},
 	}
 
@@ -582,16 +340,13 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_Metric
 	}
 
 	suite.lagoRepository.On("GetWallets", suite.ctx, suite.orgId).Return(wallet, nil)
-	suite.lagoRepository.On("GetSubscriptions", suite.ctx, suite.orgId).Return(subscriptions, nil)
-	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-1").Return(detailedSub1, nil)
 	suite.lagoRepository.On("GetCustomerUsage", suite.ctx, suite.orgId, "ext-sub-1").Return(customerUsage, nil)
 
-	hasEnoughFunds, subscriptionId, err :=
-		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, AI_CASE_REVIEW)
+	hasEnoughFunds, err :=
+		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, "ext-sub-1", AI_CASE_REVIEW)
 
 	suite.Error(err, "should return an error when metric code is not found in charges usage")
 	suite.False(hasEnoughFunds)
-	suite.Empty(subscriptionId)
 	suite.AssertExpectations()
 }
 
@@ -604,34 +359,6 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_TotalA
 			Id:           "wallet-1",
 			Status:       "active",
 			BalanceCents: 8000,
-		},
-	}
-
-	subscriptions := []models.Subscription{
-		{
-			Id:         "sub-1",
-			ExternalId: "ext-sub-1",
-			Status:     "active",
-		},
-	}
-
-	detailedSub1 := models.Subscription{
-		Id:         "sub-1",
-		ExternalId: "ext-sub-1",
-		Status:     "active",
-		Plan: models.Plan{
-			Id:   "plan-1",
-			Name: "Basic Plan",
-			Charges: []models.Charge{
-				{
-					Id:                 "charge-1",
-					BillableMetricCode: AI_CASE_REVIEW.String(),
-				},
-				{
-					Id:                 "charge-2",
-					BillableMetricCode: UNKNOWN.String(),
-				},
-			},
 		},
 	}
 
@@ -655,16 +382,13 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_TotalA
 	}
 
 	suite.lagoRepository.On("GetWallets", suite.ctx, suite.orgId).Return(wallet, nil)
-	suite.lagoRepository.On("GetSubscriptions", suite.ctx, suite.orgId).Return(subscriptions, nil)
-	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-1").Return(detailedSub1, nil)
 	suite.lagoRepository.On("GetCustomerUsage", suite.ctx, suite.orgId, "ext-sub-1").Return(customerUsage, nil)
 
-	hasEnoughFunds, subscriptionId, err :=
-		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, AI_CASE_REVIEW)
+	hasEnoughFunds, err :=
+		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, "ext-sub-1", AI_CASE_REVIEW)
 
 	suite.NoError(err)
 	suite.True(hasEnoughFunds, "should return true when total exceeds wallet but AI_CASE_REVIEW usage alone is below wallet balance")
-	suite.Equal("ext-sub-1", subscriptionId, "should return the subscription external ID")
 	suite.AssertExpectations()
 }
 
@@ -677,34 +401,6 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_TotalA
 			Id:           "wallet-1",
 			Status:       "active",
 			BalanceCents: 8000,
-		},
-	}
-
-	subscriptions := []models.Subscription{
-		{
-			Id:         "sub-1",
-			ExternalId: "ext-sub-1",
-			Status:     "active",
-		},
-	}
-
-	detailedSub1 := models.Subscription{
-		Id:         "sub-1",
-		ExternalId: "ext-sub-1",
-		Status:     "active",
-		Plan: models.Plan{
-			Id:   "plan-1",
-			Name: "Basic Plan",
-			Charges: []models.Charge{
-				{
-					Id:                 "charge-1",
-					BillableMetricCode: AI_CASE_REVIEW.String(),
-				},
-				{
-					Id:                 "charge-2",
-					BillableMetricCode: UNKNOWN.String(),
-				},
-			},
 		},
 	}
 
@@ -728,15 +424,12 @@ func (suite *LagoBillingUsecaseTestSuite) Test_CheckIfEnoughFundsInWallet_TotalA
 	}
 
 	suite.lagoRepository.On("GetWallets", suite.ctx, suite.orgId).Return(wallet, nil)
-	suite.lagoRepository.On("GetSubscriptions", suite.ctx, suite.orgId).Return(subscriptions, nil)
-	suite.lagoRepository.On("GetSubscription", suite.ctx, "ext-sub-1").Return(detailedSub1, nil)
 	suite.lagoRepository.On("GetCustomerUsage", suite.ctx, suite.orgId, "ext-sub-1").Return(customerUsage, nil)
 
-	hasEnoughFunds, subscriptionId, err :=
-		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, AI_CASE_REVIEW)
+	hasEnoughFunds, err :=
+		usecase.CheckIfEnoughFundsInWallet(suite.ctx, suite.orgId, "ext-sub-1", AI_CASE_REVIEW)
 
 	suite.NoError(err)
 	suite.False(hasEnoughFunds, "should return false when both total and AI_CASE_REVIEW usage exceed wallet balance")
-	suite.Empty(subscriptionId, "should return empty subscription ID when not enough funds")
 	suite.AssertExpectations()
 }
