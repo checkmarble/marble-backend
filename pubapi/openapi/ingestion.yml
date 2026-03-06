@@ -107,6 +107,8 @@ paths:
           application/json:
             schema:
               type: array
+              minItems: 1
+              maxItems: 100
               items:
                 type: object
                 additionalProperties: true
@@ -151,6 +153,8 @@ paths:
           application/json:
             schema:
               type: array
+              minItems: 1
+              maxItems: 100
               items:
                 type: object
                 additionalProperties: true

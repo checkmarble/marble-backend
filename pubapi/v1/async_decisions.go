@@ -3,15 +3,12 @@ package v1
 import (
 	"net/http"
 
-	gdto "github.com/checkmarble/marble-backend/dto"
-	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -38,7 +35,7 @@ func HandleCreateAsyncDecision(uc usecases.Usecases) gin.HandlerFunc {
 		execution, err := asyncUsecase.CreateAsyncDecisionExecution(ctx,
 			orgId, payload.TriggerObjectType, payload.TriggerObject, payload.ScenarioId, payload.Ingest)
 		if err != nil {
-			if presentDecisionCreationError(c, err) {
+			if types.PresentSingleObjectValidationError(c, err) {
 				return
 			}
 
@@ -74,14 +71,7 @@ func HandleCreateAsyncDecisionBatch(uc usecases.Usecases) gin.HandlerFunc {
 		executions, err := asyncUsecase.CreateAsyncDecisionExecutionBatch(ctx,
 			orgId, payload.TriggerObjectType, payload.TriggerObjects, payload.ScenarioId, payload.Ingest)
 		if err != nil {
-			var validationError models.IngestionValidationErrors
-			if errors.As(err, &validationError) {
-				types.NewErrorResponse().
-					WithError(err).
-					WithErrorCode(string(gdto.SchemaMismatchError)).
-					WithErrorMessage("input validation error").
-					WithErrorDetails(validationError).
-					Serve(c)
+			if types.PresentMultipleObjectsValidationError(c, err) {
 				return
 			}
 

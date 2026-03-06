@@ -27,11 +27,11 @@ func (p WebhookEventPayload) ApiVersion() string {
 }
 
 type WebhookEventData struct {
-	Decision            *Decision               `json:"decision,omitzero"`
-	Case                *Case                   `json:"case,omitzero"`
-	Files               *[]CaseFile             `json:"files,omitempty"`
-	Comments            *CaseComment            `json:"comments,omitempty"`
-	FailedAsyncDecision *AsyncDecisionExecution `json:"failed_async_decision,omitzero"`
+	Decision      *Decision               `json:"decision,omitzero"`
+	Case          *Case                   `json:"case,omitzero"`
+	Files         *[]CaseFile             `json:"files,omitempty"`
+	Comments      *CaseComment            `json:"comments,omitempty"`
+	AsyncDecision *AsyncDecisionExecution `json:"async_decision,omitzero"`
 }
 
 func AdaptWebhookEventData(
@@ -87,7 +87,7 @@ func AdaptWebhookEventData(
 					Comment:   c.AdditionalNote,
 				})
 			}),
-			FailedAsyncDecision: applyWebhookEventData(m.Content.AsyncDecisionExecution, AdaptAsyncDecisionExecution),
+			AsyncDecision: applyWebhookEventData(m.Content.AsyncDecisionExecution, AdaptAsyncDecisionExecution),
 		},
 		Timestamp: m.Timestamp,
 	}

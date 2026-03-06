@@ -1,11 +1,9 @@
 package v1beta
 
 import (
-	"errors"
 	"io"
 	"net/http"
 
-	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/pubapi/types"
@@ -65,17 +63,15 @@ func HandleIngestObject(uc usecases.Usecases, batch bool) gin.HandlerFunc {
 		ingestedCount, err := f(ctx, orgId, objectType, object, ingestionOptions,
 			payload_parser.WithAllowedPatch(partial), payload_parser.DisallowUnknownFields())
 		if err != nil {
-			var validationError models.IngestionValidationErrors
-
-			if errors.As(err, &validationError) {
-				types.
-					NewErrorResponse().
-					WithError(err).
-					WithErrorCode(string(dto.SchemaMismatchError)).
-					WithErrorMessage("input validation error").
-					WithErrorDetails(validationError).
-					Serve(c)
-				return
+			switch batch {
+			case true:
+				if types.PresentMultipleObjectsValidationError(c, err) {
+					return
+				}
+			case false:
+				if types.PresentSingleObjectValidationError(c, err) {
+					return
+				}
 			}
 
 			types.NewErrorResponse().WithError(err).Serve(c)
