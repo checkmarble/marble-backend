@@ -20,8 +20,15 @@ func getMockedOpenSanctionsRepository(host, authMethod, apiKey string) OpenSanct
 
 	gock.InterceptClient(client)
 
+	gock.New("https://api.opensanctions.org").
+		Head("/-/version").
+		Reply(http.StatusNotFound)
+	gock.New("https://yente.local").
+		Head("/-/version").
+		Reply(http.StatusNotFound)
+
 	return OpenSanctionsRepository{
-		opensanctions: infra.InitializeOpenSanctions(client, host, authMethod, apiKey),
+		opensanctions: infra.InitializeOpenSanctions(context.TODO(), client, host, authMethod, apiKey),
 	}
 }
 
