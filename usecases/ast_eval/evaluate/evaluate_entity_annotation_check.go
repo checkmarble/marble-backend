@@ -17,11 +17,16 @@ const (
 	maxConcurrentLinkedTableChecks = 10
 )
 
-type MonitoringListCheckRepository interface {
+type EntityAnnotationCheckRepository interface {
 	FindEntityAnnotationsWithRiskTags(
 		ctx context.Context,
 		exec repositories.Executor,
 		filter models.EntityAnnotationRiskTagsFilter,
+	) ([]models.EntityAnnotation, error)
+	FindEntityAnnotationsWithTags(
+		ctx context.Context,
+		exec repositories.Executor,
+		filter models.EntityAnnotationTagsFilter,
 	) ([]models.EntityAnnotation, error)
 	ListPivots(
 		ctx context.Context,
@@ -41,28 +46,30 @@ type ClientDbRepository interface {
 	) ([]models.ConcreteIndex, error)
 }
 
-type MonitoringListCheck struct {
+type EntityAnnotationCheck struct {
 	ExecutorFactory executor_factory.ExecutorFactory
 
 	OrgId              uuid.UUID
 	ClientObject       models.ClientObject
 	DataModel          models.DataModel
-	Repository         MonitoringListCheckRepository
+	Repository         EntityAnnotationCheckRepository
 	IngestedDataReader repositories.IngestedDataReadRepository
 	ClientDbRepository ClientDbRepository // For dry run navigation option validation
 	ReturnFakeValue    bool
+
+	AnnotationType models.EntityAnnotationType
 
 	// precomputedNavDataModel is set once before goroutines launch in dry run mode
 	// to avoid concurrent ListPivots calls on the same executor (e.g. a transaction).
 	precomputedNavDataModel *models.DataModel
 }
 
-func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
+func (mlc EntityAnnotationCheck) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	// Get the configuration from arguments
 	config, configErr := AdaptNamedArgument(
 		arguments.NamedArgs,
 		"config",
-		adaptArgumentToJSONStruct[ast.MonitoringListCheckConfig],
+		adaptArgumentToJSONStruct[ast.EntityAnnotationCheckConfig],
 	)
 	if configErr != nil {
 		return MakeEvaluateError(configErr)
@@ -182,11 +189,11 @@ func (mlc MonitoringListCheck) Evaluate(ctx context.Context, arguments ast.Argum
 
 // checkTargetObjectHasRiskTag checks if the target object has any matching risk tags.
 // It fetches the object_id from the target table using PathToTarget, then queries entity_annotations.
-func (mlc MonitoringListCheck) checkTargetObjectHasRiskTag(
+func (mlc EntityAnnotationCheck) checkTargetObjectHasRiskTag(
 	ctx context.Context,
 	exec repositories.Executor,
 	execDbClient repositories.Executor,
-	config ast.MonitoringListCheckConfig,
+	config ast.EntityAnnotationCheckConfig,
 ) (bool, error) {
 	// Get the object_id from the target table
 	objectId, err := mlc.getTargetObjectId(ctx, execDbClient, config.PathToTarget)
@@ -206,7 +213,7 @@ func (mlc MonitoringListCheck) checkTargetObjectHasRiskTag(
 }
 
 // getTargetObjectId retrieves the object_id from the target table by navigating through PathToTarget.
-func (mlc MonitoringListCheck) getTargetObjectId(
+func (mlc EntityAnnotationCheck) getTargetObjectId(
 	ctx context.Context,
 	execDbClient repositories.Executor,
 	pathToTarget []string,
@@ -266,7 +273,7 @@ func (mlc MonitoringListCheck) getTargetObjectId(
 //   - each linkedTableChecks entry has a non-empty tableName
 //   - each linkedTableChecks entry has exactly one of linkToSingleName or navigationOption
 //   - if navigationOption is present, targetTableName, targetFieldName, sourceTableName, and sourceFieldName are all non-empty
-func (mlc MonitoringListCheck) validateMonitoringListCheckConfig(config ast.MonitoringListCheckConfig) []error {
+func (mlc EntityAnnotationCheck) validateMonitoringListCheckConfig(config ast.EntityAnnotationCheckConfig) []error {
 	errs := make([]error, 0)
 
 	// Validate target table name
@@ -360,11 +367,11 @@ func (mlc MonitoringListCheck) validateMonitoringListCheckConfig(config ast.Moni
 }
 
 // checkLinkedTableViaLinkToSingle checks a linked table using LinkToSingle (single object).
-func (mlc MonitoringListCheck) checkLinkedTableViaLinkToSingle(
+func (mlc EntityAnnotationCheck) checkLinkedTableViaLinkToSingle(
 	ctx context.Context,
 	exec repositories.Executor,
 	execDbClient repositories.Executor,
-	config ast.MonitoringListCheckConfig,
+	config ast.EntityAnnotationCheckConfig,
 	linkedCheck ast.LinkedTableCheck,
 ) (bool, error) {
 	// Build path: PathToTarget + LinkToSingleName
@@ -404,11 +411,11 @@ func (mlc MonitoringListCheck) checkLinkedTableViaLinkToSingle(
 }
 
 // checkLinkedTableViaNavigation checks a linked table using NavigationOption (multiple objects).
-func (mlc MonitoringListCheck) checkLinkedTableViaNavigation(
+func (mlc EntityAnnotationCheck) checkLinkedTableViaNavigation(
 	ctx context.Context,
 	exec repositories.Executor,
 	execDbClient repositories.Executor,
-	config ast.MonitoringListCheckConfig,
+	config ast.EntityAnnotationCheckConfig,
 	linkedCheck ast.LinkedTableCheck,
 ) (bool, error) {
 	nav := linkedCheck.NavigationOption
@@ -488,10 +495,10 @@ func (mlc MonitoringListCheck) checkLinkedTableViaNavigation(
 }
 
 // getSourceFieldValue gets the value of the source field to use for filtering.
-func (mlc MonitoringListCheck) getSourceFieldValue(
+func (mlc EntityAnnotationCheck) getSourceFieldValue(
 	ctx context.Context,
 	execDbClient repositories.Executor,
-	config ast.MonitoringListCheckConfig,
+	config ast.EntityAnnotationCheckConfig,
 	nav ast.NavigationOption,
 ) (any, error) {
 	// If PathToTarget is empty, source is the trigger table itself
@@ -510,31 +517,60 @@ func (mlc MonitoringListCheck) getSourceFieldValue(
 }
 
 // checkObjectIdsHaveRiskTags checks if any of the given object_ids have matching risk tags.
-func (mlc MonitoringListCheck) checkObjectIdsHaveRiskTags(
+func (mlc EntityAnnotationCheck) checkObjectIdsHaveRiskTags(
 	ctx context.Context,
 	exec repositories.Executor,
-	config ast.MonitoringListCheckConfig,
+	config ast.EntityAnnotationCheckConfig,
 	objectType string,
 	objectIds []string,
 ) (bool, error) {
-	filter := models.EntityAnnotationRiskTagsFilter{
-		OrgId:      mlc.OrgId,
-		ObjectType: objectType,
-		ObjectIds:  objectIds,
-	}
+	var (
+		results []models.EntityAnnotation
+		err     error
+	)
 
-	tags := make([]models.RiskTag, 0, len(config.TopicFilters))
-	for _, t := range config.TopicFilters {
-		tag := models.RiskTagFrom(t)
-		if tag != models.RiskTagUnknown {
-			tags = append(tags, tag)
+	switch mlc.AnnotationType {
+	case models.EntityAnnotationRiskTag:
+		filter := models.EntityAnnotationRiskTagsFilter{
+			OrgId:      mlc.OrgId,
+			ObjectType: objectType,
+			ObjectIds:  objectIds,
 		}
-	}
-	filter.Tags = tags
 
-	results, err := mlc.Repository.FindEntityAnnotationsWithRiskTags(ctx, exec, filter)
-	if err != nil {
-		return false, errors.Wrap(err, "failed to find risk tag annotations")
+		tags := make([]models.RiskTag, 0, len(config.TopicFilters))
+		for _, t := range config.TopicFilters {
+			tag := models.RiskTagFrom(t)
+			if tag != models.RiskTagUnknown {
+				tags = append(tags, tag)
+			}
+		}
+		filter.Tags = tags
+
+		results, err = mlc.Repository.FindEntityAnnotationsWithRiskTags(ctx, exec, filter)
+		if err != nil {
+			return false, errors.Wrap(err, "failed to find risk tag annotations")
+		}
+
+	case models.EntityAnnotationTag:
+		filter := models.EntityAnnotationTagsFilter{
+			OrgId:      mlc.OrgId,
+			ObjectType: objectType,
+			ObjectIds:  objectIds,
+		}
+
+		tags := make([]uuid.UUID, 0, len(config.TopicFilters))
+		for _, t := range config.TopicFilters {
+			tagId, err := uuid.Parse(t)
+			if err == nil {
+				tags = append(tags, tagId)
+			}
+		}
+		filter.Tags = tags
+
+		results, err = mlc.Repository.FindEntityAnnotationsWithTags(ctx, exec, filter)
+		if err != nil {
+			return false, errors.Wrap(err, "failed to find risk tag annotations")
+		}
 	}
 
 	return len(results) > 0, nil
@@ -543,7 +579,7 @@ func (mlc MonitoringListCheck) checkObjectIdsHaveRiskTags(
 // buildDataModelWithNavigationOptions builds a data model with navigation options for dry run validation.
 // This fetches pivots and indexes to compute navigation options, similar to DataModelUsecase.GetDataModel
 // with IncludeNavigationOptions: true.
-func (mlc MonitoringListCheck) buildDataModelWithNavigationOptions(
+func (mlc EntityAnnotationCheck) buildDataModelWithNavigationOptions(
 	ctx context.Context,
 	exec repositories.Executor,
 	execDbClient repositories.Executor,
