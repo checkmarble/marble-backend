@@ -46,35 +46,6 @@ func AsyncDecisionExecutionStatusFromString(s string) AsyncDecisionExecutionStat
 	}
 }
 
-type AsyncDecisionExecutionFailureStage int
-
-const (
-	AsyncDecisionExecutionStageUnknown AsyncDecisionExecutionFailureStage = iota
-	AsyncDecisionExecutionStageIngestion
-	AsyncDecisionExecutionStageDecision
-)
-
-func (s AsyncDecisionExecutionFailureStage) String() string {
-	switch s {
-	case AsyncDecisionExecutionStageIngestion:
-		return "ingestion"
-	case AsyncDecisionExecutionStageDecision:
-		return "decision"
-	}
-	return "unknown"
-}
-
-func AsyncDecisionExecutionFailureStageFromString(s string) AsyncDecisionExecutionFailureStage {
-	switch s {
-	case "ingestion":
-		return AsyncDecisionExecutionStageIngestion
-	case "decision":
-		return AsyncDecisionExecutionStageDecision
-	default:
-		return AsyncDecisionExecutionStageUnknown
-	}
-}
-
 type AsyncDecisionExecution struct {
 	Id            uuid.UUID
 	OrgId         uuid.UUID

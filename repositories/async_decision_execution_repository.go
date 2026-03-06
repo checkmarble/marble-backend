@@ -13,9 +13,9 @@ import (
 )
 
 type AsyncDecisionExecutionRepository interface {
-	CreateAsyncDecisionExecution(ctx context.Context, tx Transaction,
+	CreateAsyncDecisionExecution(ctx context.Context, exec Executor,
 		input models.AsyncDecisionExecutionCreate) error
-	CreateAsyncDecisionExecutionBatch(ctx context.Context, tx Transaction,
+	CreateAsyncDecisionExecutionBatch(ctx context.Context, exec Executor,
 		inputs []models.AsyncDecisionExecutionCreate) error
 	GetAsyncDecisionExecution(ctx context.Context, exec Executor, id uuid.UUID) (models.AsyncDecisionExecution, error)
 	UpdateAsyncDecisionExecution(ctx context.Context, exec Executor,
@@ -25,10 +25,10 @@ type AsyncDecisionExecutionRepository interface {
 
 func (repo *MarbleDbRepository) CreateAsyncDecisionExecution(
 	ctx context.Context,
-	tx Transaction,
+	exec Executor,
 	input models.AsyncDecisionExecutionCreate,
 ) error {
-	if err := validateMarbleDbExecutor(tx); err != nil {
+	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
 
@@ -55,7 +55,7 @@ func (repo *MarbleDbRepository) CreateAsyncDecisionExecution(
 		return errors.Wrap(err, "error building query for CreateAsyncDecisionExecution")
 	}
 
-	_, err = tx.Exec(ctx, sql, args...)
+	_, err = exec.Exec(ctx, sql, args...)
 	if err != nil {
 		return errors.Wrap(err, "error creating async decision execution")
 	}
@@ -64,10 +64,10 @@ func (repo *MarbleDbRepository) CreateAsyncDecisionExecution(
 
 func (repo *MarbleDbRepository) CreateAsyncDecisionExecutionBatch(
 	ctx context.Context,
-	tx Transaction,
+	exec Executor,
 	inputs []models.AsyncDecisionExecutionCreate,
 ) error {
-	if err := validateMarbleDbExecutor(tx); err != nil {
+	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
 	if len(inputs) == 0 {
@@ -100,7 +100,7 @@ func (repo *MarbleDbRepository) CreateAsyncDecisionExecutionBatch(
 		return errors.Wrap(err, "error building query for CreateAsyncDecisionExecutionBatch")
 	}
 
-	_, err = tx.Exec(ctx, sql, args...)
+	_, err = exec.Exec(ctx, sql, args...)
 	if err != nil {
 		return errors.Wrap(err, "error batch creating async decision executions")
 	}
@@ -168,6 +168,7 @@ func (repo *MarbleDbRepository) DeleteOldAsyncDecisionExecutionsBatch(
 		Select("id").
 		From(dbmodels.TABLE_ASYNC_DECISION_EXECUTIONS).
 		Where(squirrel.Lt{"created_at": olderThan}).
+		OrderBy("created_at ASC").
 		Limit(uint64(limit))
 
 	query := NewQueryBuilder().

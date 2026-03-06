@@ -20,8 +20,7 @@ type AsyncDecisionExecution struct {
 }
 
 type AsyncDecisionExecutionCreated struct {
-	Id     uuid.UUID `json:"id"`
-	Status string    `json:"status"`
+	Id uuid.UUID `json:"id"`
 }
 
 func AdaptAsyncDecisionExecution(m models.AsyncDecisionExecution) AsyncDecisionExecution {
@@ -43,8 +42,7 @@ func AdaptAsyncDecisionExecution(m models.AsyncDecisionExecution) AsyncDecisionE
 
 func AdaptAsyncDecisionExecutionCreated(m models.AsyncDecisionExecution) AsyncDecisionExecutionCreated {
 	return AsyncDecisionExecutionCreated{
-		Id:     m.Id,
-		Status: m.Status.String(),
+		Id: m.Id,
 	}
 }
 

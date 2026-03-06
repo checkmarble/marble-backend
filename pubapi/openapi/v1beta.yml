@@ -50,6 +50,9 @@ paths:
               type: object
               required:
                 - trigger_object
+              anyOf:
+                - required: [trigger_object_type]
+                - required: [scenario_id]
               properties:
                 trigger_object_type:
                   description: |
@@ -111,6 +114,9 @@ paths:
               type: object
               required:
                 - trigger_objects
+              anyOf:
+                - required: [trigger_object_type]
+                - required: [scenario_id]
               properties:
                 trigger_object_type:
                   description: |
@@ -1657,14 +1663,10 @@ components:
       type: object
       required:
         - id
-        - status
       properties:
         id:
           type: string
           format: uuid
-        status:
-          type: string
-          enum: [pending, ingested, completed, failed]
 
     AsyncDecisionExecution:
       title: Async decision execution

@@ -231,7 +231,7 @@ type TriggeredScoreComputationArgs struct {
 func (TriggeredScoreComputationArgs) Kind() string { return "triggered_score_computation" }
 
 type AsyncDecisionExecutionArgs struct {
-	AsyncDecisionExecutionId string `json:"async_decision_execution_id"`
+	AsyncDecisionExecutionId uuid.UUID `json:"async_decision_execution_id"`
 }
 
 func (AsyncDecisionExecutionArgs) Kind() string { return "async_decision_execution" }

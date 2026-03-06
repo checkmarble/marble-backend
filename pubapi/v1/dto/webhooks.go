@@ -10,7 +10,6 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/google/uuid"
 )
 
 type WebhookEventPayload struct {
@@ -28,20 +27,11 @@ func (p WebhookEventPayload) ApiVersion() string {
 }
 
 type WebhookEventData struct {
-	Decision            *Decision                 `json:"decision,omitzero"`
-	Case                *Case                     `json:"case,omitzero"`
-	Files               *[]CaseFile               `json:"files,omitempty"`
-	Comments            *CaseComment              `json:"comments,omitempty"`
-	FailedAsyncDecision *FailedAsyncDecisionEvent `json:"failed_async_decision,omitzero"`
-}
-
-type FailedAsyncDecisionEvent struct {
-	Id            uuid.UUID       `json:"id"`
-	ObjectType    string          `json:"object_type"`
-	ScenarioId    *string         `json:"scenario_id"`
-	Stage         string          `json:"stage"`
-	TriggerObject json.RawMessage `json:"trigger_object"`
-	ErrorMessage  string          `json:"error_message"`
+	Decision            *Decision               `json:"decision,omitzero"`
+	Case                *Case                   `json:"case,omitzero"`
+	Files               *[]CaseFile             `json:"files,omitempty"`
+	Comments            *CaseComment            `json:"comments,omitempty"`
+	FailedAsyncDecision *AsyncDecisionExecution `json:"failed_async_decision,omitzero"`
 }
 
 func AdaptWebhookEventData(
@@ -97,18 +87,7 @@ func AdaptWebhookEventData(
 					Comment:   c.AdditionalNote,
 				})
 			}),
-			FailedAsyncDecision: applyWebhookEventData(m.Content.FailedAsyncDecision, func(
-				d models.FailedAsyncDecisionEvent,
-			) FailedAsyncDecisionEvent {
-				return FailedAsyncDecisionEvent{
-					Id:            d.AsyncDecisionExecutionId,
-					ObjectType:    d.ObjectType,
-					Stage:         d.Stage.String(),
-					ScenarioId:    d.ScenarioId,
-					TriggerObject: d.TriggerObject,
-					ErrorMessage:  d.ErrorMessage,
-				}
-			}),
+			FailedAsyncDecision: applyWebhookEventData(m.Content.AsyncDecisionExecution, AdaptAsyncDecisionExecution),
 		},
 		Timestamp: m.Timestamp,
 	}

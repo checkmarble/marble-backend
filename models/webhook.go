@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/json"
 	"net/url"
 	"slices"
 	"time"
@@ -66,11 +65,11 @@ type WebhookEventPayload struct {
 }
 
 type WebhookEventData struct {
-	Decision            *DecisionWithRuleExecutions
-	Case                *Case
-	Files               *[]CaseFile
-	Comments            *CaseEvent
-	FailedAsyncDecision *FailedAsyncDecisionEvent
+	Decision               *DecisionWithRuleExecutions
+	Case                   *Case
+	Files                  *[]CaseFile
+	Comments               *CaseEvent
+	AsyncDecisionExecution *AsyncDecisionExecution
 }
 
 type WebhookEvent struct {
@@ -209,21 +208,12 @@ func NewWebhookEventDecisionReviewed(c Case, decision Decision) WebhookEventCont
 	})
 }
 
-type FailedAsyncDecisionEvent struct {
-	AsyncDecisionExecutionId uuid.UUID
-	ObjectType               string
-	Stage                    AsyncDecisionExecutionFailureStage // int enum, serialized as string
-	ScenarioId               *string
-	TriggerObject            json.RawMessage
-	ErrorMessage             string
-}
-
-func NewWebhookEventAsyncDecisionFailed(data FailedAsyncDecisionEvent) WebhookEventContent {
+func NewWebhookEventAsyncDecisionFailed(data AsyncDecisionExecution) WebhookEventContent {
 	return WebhookEventContent{
 		Type: WebhookEventType_AsyncDecisionFailed,
 		Data: WebhookEventPayload{
 			Type:      WebhookEventType_AsyncDecisionFailed,
-			Content:   WebhookEventData{FailedAsyncDecision: &data},
+			Content:   WebhookEventData{AsyncDecisionExecution: &data},
 			Timestamp: time.Now(),
 		},
 	}

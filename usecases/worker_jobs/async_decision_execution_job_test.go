@@ -63,7 +63,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) makeJob(executionId uuid.UUID) *
 			MaxAttempts: 5,
 		},
 		Args: models.AsyncDecisionExecutionArgs{
-			AsyncDecisionExecutionId: executionId.String(),
+			AsyncDecisionExecutionId: executionId,
 		},
 	}
 }

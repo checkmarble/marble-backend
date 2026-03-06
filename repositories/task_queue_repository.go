@@ -580,7 +580,7 @@ func (r riverRepository) EnqueueAsyncDecisionExecution(
 		ctx,
 		tx.RawTx(),
 		models.AsyncDecisionExecutionArgs{
-			AsyncDecisionExecutionId: executionId.String(),
+			AsyncDecisionExecutionId: executionId,
 		},
 		&river.InsertOpts{
 			MaxAttempts: 10,
@@ -611,7 +611,7 @@ func (r riverRepository) EnqueueAsyncDecisionExecutionBatch(
 	for i, executionId := range executionIds {
 		params[i] = river.InsertManyParams{
 			Args: models.AsyncDecisionExecutionArgs{
-				AsyncDecisionExecutionId: executionId.String(),
+				AsyncDecisionExecutionId: executionId,
 			},
 			InsertOpts: &river.InsertOpts{
 				MaxAttempts: 10,
