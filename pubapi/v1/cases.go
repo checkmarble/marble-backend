@@ -548,7 +548,7 @@ func HandleListAiCaseReviews(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		types.
-			NewResponse(pure_utils.Map(result.Items, dto.AdaptCaseReview)).
+			NewResponse(pure_utils.Map(result.Items, dto.AdaptAiCaseReview)).
 			WithPagination(result.HasNextPage, nextPageId).
 			Serve(c)
 	}
@@ -579,7 +579,7 @@ func HandleGetAiCaseReviewById(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		types.NewResponse(dto.AdaptCaseReviewDetail(review)).Serve(c)
+		types.NewResponse(dto.AdaptAiCaseReviewDetail(review)).Serve(c)
 	}
 }
 

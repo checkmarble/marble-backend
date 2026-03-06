@@ -121,7 +121,7 @@ func AdaptCaseFile(f models.CaseFile) CaseFile {
 	return file
 }
 
-type CaseReview struct {
+type CaseAiReview struct {
 	Id        string         `json:"id"`
 	CaseId    string         `json:"case_id"`
 	Status    string         `json:"status"`
@@ -130,23 +130,23 @@ type CaseReview struct {
 	UpdatedAt types.DateTime `json:"updated_at"`
 }
 
-// CaseReviewContent is a marker interface for versioned case review content payloads.
-// Implement this interface on each new version (CaseReviewContentV1, CaseReviewContentV2, …).
-type CaseReviewContent interface {
-	caseReviewContent()
+// CaseAiReviewContent is a marker interface for versioned AI case review content payloads.
+// Implement this interface on each new version (CaseAiReviewContentV1, CaseAiReviewContentV2, …).
+type CaseAiReviewContent interface {
+	caseAiReviewContent()
 }
 
-type CaseReviewDetail struct {
-	Id        string            `json:"id"`
-	CaseId    string            `json:"case_id"`
-	Status    string            `json:"status"`
-	Reaction  *string           `json:"reaction"`
-	CreatedAt types.DateTime    `json:"created_at"`
-	UpdatedAt types.DateTime    `json:"updated_at"`
-	Content   CaseReviewContent `json:"content"`
+type CaseAiReviewDetail struct {
+	Id        string              `json:"id"`
+	CaseId    string              `json:"case_id"`
+	Status    string              `json:"status"`
+	Reaction  *string             `json:"reaction"`
+	CreatedAt types.DateTime      `json:"created_at"`
+	UpdatedAt types.DateTime      `json:"updated_at"`
+	Content   CaseAiReviewContent `json:"content"`
 }
 
-type CaseReviewContentV1 struct {
+type CaseAiReviewContentV1 struct {
 	Version string `json:"version"`
 	Output  string `json:"output"`
 
@@ -156,10 +156,10 @@ type CaseReviewContentV1 struct {
 	SanityCheck *string `json:"sanity_check"`
 }
 
-func (CaseReviewContentV1) caseReviewContent() {}
+func (CaseAiReviewContentV1) caseAiReviewContent() {}
 
-func AdaptCaseReview(r agent_dto.AiCaseReviewListItemDto) CaseReview {
-	return CaseReview{
+func AdaptAiCaseReview(r agent_dto.AiCaseReviewListItemDto) CaseAiReview {
+	return CaseAiReview{
 		Id:        r.Id.String(),
 		CaseId:    r.CaseId.String(),
 		Status:    r.Status,
@@ -169,22 +169,25 @@ func AdaptCaseReview(r agent_dto.AiCaseReviewListItemDto) CaseReview {
 	}
 }
 
-func adaptCaseReviewContent(review agent_dto.AiCaseReviewDto) CaseReviewContent {
+func adaptAiCaseReviewContent(review agent_dto.AiCaseReviewDto) CaseAiReviewContent {
 	switch v := review.(type) {
 	case agent_dto.CaseReviewV1:
-		sanityCheck := v.SanityCheck
-		return CaseReviewContentV1{
+		var sanityCheck *string
+		if v.SanityCheck != "" {
+			sanityCheck = &v.SanityCheck
+		}
+		return CaseAiReviewContentV1{
 			Version:     v.GetVersion(),
 			Output:      v.Output,
-			SanityCheck: &sanityCheck,
+			SanityCheck: sanityCheck,
 		}
 		// future versions: case agent_dto.CaseReviewV2: return CaseReviewContentV2{...}
 	}
 	return nil
 }
 
-func AdaptCaseReviewDetail(r agent_dto.AiCaseReviewOutputDto) CaseReviewDetail {
-	out := CaseReviewDetail{
+func AdaptAiCaseReviewDetail(r agent_dto.AiCaseReviewOutputDto) CaseAiReviewDetail {
+	out := CaseAiReviewDetail{
 		Id:        r.Id.String(),
 		CaseId:    r.CaseId.String(),
 		Status:    r.Status,
@@ -193,7 +196,7 @@ func AdaptCaseReviewDetail(r agent_dto.AiCaseReviewOutputDto) CaseReviewDetail {
 		UpdatedAt: types.DateTime(r.UpdatedAt),
 	}
 	if r.Review != nil {
-		out.Content = adaptCaseReviewContent(r.Review)
+		out.Content = adaptAiCaseReviewContent(r.Review)
 	}
 	return out
 }
