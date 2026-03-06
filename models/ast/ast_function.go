@@ -52,6 +52,7 @@ const (
 	FUNC_STRING_CONCAT
 	FUNC_FUZZY_MATCH_FILTER_OPTIONS
 	FUNC_MONITORING_LIST_CHECK
+	FUNC_RECORD_HAS_TAGS
 
 	FUNC_SCORE_COMPUTATION
 	FUNC_SWITCH
@@ -287,6 +288,13 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_MONITORING_LIST_CHECK: {
 		DebugName: "FUNC_MONITORING_LIST_CHECK",
 		AstName:   "MonitoringListCheck",
+		NamedArguments: []string{
+			"config",
+		},
+	},
+	FUNC_RECORD_HAS_TAGS: {
+		DebugName: "FUNC_RECORD_HAS_TAGS",
+		AstName:   "RecordHasTags",
 		NamedArguments: []string{
 			"config",
 		},
