@@ -82,13 +82,13 @@ type AiAgentUsecaseCustomListUsecase interface {
 
 type AiAgentUsecaseBillingUsecase interface {
 	EnqueueBillingEventTask(ctx context.Context, event models.BillingEvent) error
-	CheckIfEnoughFundsInWallet(ctx context.Context, orgId uuid.UUID, code billing.BillableMetric) (bool, string, error)
+	GetSubscriptionsForEvent(ctx context.Context, orgId uuid.UUID, code billing.BillableMetric) ([]models.Subscription, error)
+	CheckIfEnoughFundsInWallet(ctx context.Context, orgId uuid.UUID, subscriptionExternalId string, code billing.BillableMetric) (bool, error)
 	CheckEntitlement(
 		ctx context.Context,
-		orgId uuid.UUID,
-		code billing.BillableMetric,
+		subscriptionExternalId string,
 		entitlementCode billing.BillingEntitlementCode,
-	) (bool, string, error)
+	) (bool, error)
 }
 
 type AiAgentUsecaseScenarioUsecase interface {
