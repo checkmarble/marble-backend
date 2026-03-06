@@ -296,12 +296,12 @@ func (repo LagoRepository) GetEntitlements(ctx context.Context, subscriptionExte
 
 	resp, err := repo.doRequestWithRetry(ctx, http.MethodGet, baseUrl.String(), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get customer usage")
+		return nil, errors.Wrap(err, "failed to get entitlements")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Newf("failed to get customer usage: %s", resp.Status)
+		return nil, errors.Newf("failed to get entitlements: %s", resp.Status)
 	}
 
 	var result EntitlementsDto
