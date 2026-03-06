@@ -79,11 +79,10 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateField(
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{exec.DatabaseSchema().Schema, tableName})
 
 	builder := strings.Builder{}
-	builder.WriteString(fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s",
-		sanitizedTableName, field.Name, fieldType))
+	fmt.Fprintf(&builder, "ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s", sanitizedTableName, field.Name, fieldType)
 
 	if field.DataType == models.IpAddress || field.DataType == models.Coords {
-		builder.WriteString(fmt.Sprintf(`, ADD COLUMN IF NOT EXISTS "%s.metadata" JSONB`, field.Name))
+		fmt.Fprintf(&builder, `, ADD COLUMN IF NOT EXISTS "%s.metadata" JSONB`, field.Name)
 	}
 
 	_, err := exec.Exec(ctx, builder.String())
@@ -104,11 +103,12 @@ func (repo *OrganizationSchemaRepositoryPostgresql) RenameTable(
 	trimmedName := tableName[:min(len(tableName), 63-padding)]
 
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{exec.DatabaseSchema().Schema, tableName})
-	sanitizeNewFieldName := pgx.Identifier.Sanitize([]string{fmt.Sprintf("old_%s_%s", trimmedName, nonce)})
+	sanitizeNewFieldName := pgx.Identifier.Sanitize([]string{
+		fmt.Sprintf("old_%s_%s", trimmedName, nonce),
+	})
 
 	builder := strings.Builder{}
-	builder.WriteString(fmt.Sprintf("ALTER TABLE %s RENAME TO %s",
-		sanitizedTableName, sanitizeNewFieldName))
+	fmt.Fprintf(&builder, "ALTER TABLE %s RENAME TO %s", sanitizedTableName, sanitizeNewFieldName)
 
 	_, err := exec.Exec(ctx, builder.String())
 	return err
@@ -126,8 +126,7 @@ func (repo *OrganizationSchemaRepositoryPostgresql) DeleteTable(
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{exec.DatabaseSchema().Schema, tableName})
 
 	builder := strings.Builder{}
-	builder.WriteString(fmt.Sprintf("DROP TABLE %s",
-		sanitizedTableName))
+	fmt.Fprintf(&builder, "DROP TABLE %s", sanitizedTableName)
 
 	_, err := exec.Exec(ctx, builder.String())
 	return err
@@ -148,11 +147,13 @@ func (repo *OrganizationSchemaRepositoryPostgresql) RenameField(
 	trimmedName := fieldName[:min(len(fieldName), 63-padding)]
 
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{exec.DatabaseSchema().Schema, tableName})
-	sanitizeNewFieldName := pgx.Identifier.Sanitize([]string{fmt.Sprintf("old_%s_%s", trimmedName, nonce)})
+	sanitizeNewFieldName := pgx.Identifier.Sanitize([]string{
+		fmt.Sprintf("old_%s_%s", trimmedName, nonce),
+	})
 
 	builder := strings.Builder{}
-	builder.WriteString(fmt.Sprintf("ALTER TABLE %s RENAME COLUMN %s TO %s",
-		sanitizedTableName, fieldName, sanitizeNewFieldName))
+	fmt.Fprintf(&builder, "ALTER TABLE %s RENAME COLUMN %s TO %s",
+		sanitizedTableName, fieldName, sanitizeNewFieldName)
 
 	_, err := exec.Exec(ctx, builder.String())
 	if err != nil {
@@ -160,8 +161,8 @@ func (repo *OrganizationSchemaRepositoryPostgresql) RenameField(
 	}
 
 	builder = strings.Builder{}
-	builder.WriteString(fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP NOT NULL",
-		sanitizedTableName, sanitizeNewFieldName))
+	fmt.Fprintf(&builder, "ALTER TABLE %s ALTER COLUMN %s DROP NOT NULL",
+		sanitizedTableName, sanitizeNewFieldName)
 
 	_, err = exec.Exec(ctx, builder.String())
 
@@ -181,8 +182,8 @@ func (repo *OrganizationSchemaRepositoryPostgresql) DeleteField(
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{exec.DatabaseSchema().Schema, tableName})
 
 	builder := strings.Builder{}
-	builder.WriteString(fmt.Sprintf("ALTER TABLE %s DROP COLUMN IF EXISTS %s",
-		sanitizedTableName, fieldName))
+	fmt.Fprintf(&builder, "ALTER TABLE %s DROP COLUMN IF EXISTS %s",
+		sanitizedTableName, fieldName)
 
 	_, err := exec.Exec(ctx, builder.String())
 	return err
