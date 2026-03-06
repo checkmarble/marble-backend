@@ -19,14 +19,41 @@ type scenarioReader interface {
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 }
 
+type asyncDecisionsSecurity interface {
+	ReadScenario(scenario models.Scenario) error
+}
+
 type AsyncDecisionExecutionUsecase struct {
 	executorFactory                  executor_factory.ExecutorFactory
 	transactionFactory               executor_factory.TransactionFactory
-	enforceSecurity                  security.EnforceSecurityDecision
+	enforceSecurityDecisions         security.EnforceSecurityDecision
+	enforceSecurity                  asyncDecisionsSecurity
 	asyncDecisionExecutionRepository repositories.AsyncDecisionExecutionRepository
 	taskQueueRepository              repositories.TaskQueueRepository
 	dataModelRepository              repositories.DataModelRepository
 	scenarioReader                   scenarioReader
+}
+
+func NewAsyncDecisionExecutionUsecase(
+	executorFactory executor_factory.ExecutorFactory,
+	transactionFactory executor_factory.TransactionFactory,
+	enforceSecurityDecisions security.EnforceSecurityDecision,
+	enforceSecurity asyncDecisionsSecurity,
+	asyncDecisionExecutionRepository repositories.AsyncDecisionExecutionRepository,
+	taskQueueRepository repositories.TaskQueueRepository,
+	dataModelRepository repositories.DataModelRepository,
+	scenarioReader scenarioReader,
+) *AsyncDecisionExecutionUsecase {
+	return &AsyncDecisionExecutionUsecase{
+		executorFactory:                  executorFactory,
+		transactionFactory:               transactionFactory,
+		enforceSecurityDecisions:         enforceSecurityDecisions,
+		enforceSecurity:                  enforceSecurity,
+		asyncDecisionExecutionRepository: asyncDecisionExecutionRepository,
+		taskQueueRepository:              taskQueueRepository,
+		dataModelRepository:              dataModelRepository,
+		scenarioReader:                   scenarioReader,
+	}
 }
 
 func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecution(
@@ -37,7 +64,7 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecution(
 	scenarioId *string,
 	shouldIngest bool,
 ) (models.AsyncDecisionExecution, error) {
-	if err := usecase.enforceSecurity.CreateDecision(orgId); err != nil {
+	if err := usecase.enforceSecurityDecisions.CreateDecision(orgId); err != nil {
 		return models.AsyncDecisionExecution{}, err
 	}
 
@@ -111,8 +138,18 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecutionBatch(
 	scenarioId *string,
 	shouldIngest bool,
 ) ([]models.AsyncDecisionExecution, error) {
-	if err := usecase.enforceSecurity.CreateDecision(orgId); err != nil {
+	exec := usecase.executorFactory.NewExecutor()
+	if err := usecase.enforceSecurityDecisions.CreateDecision(orgId); err != nil {
 		return nil, err
+	}
+	if scenarioId != nil {
+		scenario, err := usecase.scenarioReader.GetScenarioById(ctx, exec, *scenarioId)
+		if err != nil {
+			return nil, errors.Wrap(err, "error looking up scenario for batch async decision execution")
+		}
+		if err := usecase.enforceSecurity.ReadScenario(scenario); err != nil {
+			return nil, err
+		}
 	}
 
 	objectType, err := usecase.resolveObjectType(ctx, orgId, objectType, scenarioId)
@@ -120,7 +157,6 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecutionBatch(
 		return nil, err
 	}
 
-	exec := usecase.executorFactory.NewExecutor()
 	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, orgId, false, true)
 	if err != nil {
 		return nil, errors.Wrap(err,
@@ -214,7 +250,7 @@ func (usecase *AsyncDecisionExecutionUsecase) GetAsyncDecisionExecution(
 	}
 
 	// Enforce permission + org ownership (same pattern as GetDecision)
-	if err := usecase.enforceSecurity.ReadDecision(models.Decision{
+	if err := usecase.enforceSecurityDecisions.ReadDecision(models.Decision{
 		OrganizationId: execution.OrgId,
 	}); err != nil {
 		return models.AsyncDecisionExecution{}, err

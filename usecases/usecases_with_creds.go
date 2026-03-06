@@ -199,15 +199,16 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 }
 
 func (usecases *UsecasesWithCreds) NewAsyncDecisionExecutionUsecase() AsyncDecisionExecutionUsecase {
-	return AsyncDecisionExecutionUsecase{
-		executorFactory:                  usecases.NewExecutorFactory(),
-		transactionFactory:               usecases.NewTransactionFactory(),
-		enforceSecurity:                  usecases.NewEnforceDecisionSecurity(),
-		asyncDecisionExecutionRepository: usecases.Repositories.MarbleDbRepository,
-		taskQueueRepository:              usecases.Repositories.TaskQueueRepository,
-		dataModelRepository:              usecases.Repositories.MarbleDbRepository,
-		scenarioReader:                   usecases.Repositories.MarbleDbRepository,
-	}
+	return *NewAsyncDecisionExecutionUsecase(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.NewEnforceDecisionSecurity(),
+		usecases.NewEnforceScenarioSecurity(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.TaskQueueRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+	)
 }
 
 func (usecases *UsecasesWithCreds) NewOffloadedReader() repositories.OffloadedReadWriter {
