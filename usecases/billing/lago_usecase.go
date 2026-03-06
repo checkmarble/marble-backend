@@ -160,10 +160,10 @@ func (u LagoBillingUsecase) CheckEntitlement(
 		return false, "", nil
 	}
 
-	// Suppose have only one subscription for the event
+	// Suppose there is only one subscription for the event
 	subscription := subscriptions[0]
 
-	// Check if in the subscription have the entitlement
+	// Check if the subscription has the entitlement
 	entitlements, err := u.lagoRepository.GetEntitlements(ctx, subscription.ExternalId)
 	if err != nil {
 		return false, "", err
