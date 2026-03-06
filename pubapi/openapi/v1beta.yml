@@ -867,9 +867,9 @@ paths:
                       data:
                         type: object
                         required: 
-                          - review_id
+                          - ai_review_id
                         properties:
-                          review_id:
+                          ai_review_id:
                             type: string
                             format: uuid
         "400":
@@ -1588,10 +1588,10 @@ components:
           type: string
           format: date-time
         review_level:
-          type:
-            - string
-            - "null"
-          enum: [probable_false_positive, investigate, escalate, null]
+          anyOf:
+            - type: string
+              enum: [probable_false_positive, investigate, escalate]
+            - type: "null"
           description: |
             The review level from AI review.
             This field is only filled if the ai case review feature is enabled and did a review on this case, otherwise it is null.
@@ -1624,13 +1624,13 @@ components:
       type: object
       required:
         - id
-        - filename
+        - file_name
         - created_at
       properties:
         id:
           type: string
           format: uuid
-        filename:
+        file_name:
           type: string
         created_at:
           type: string
@@ -1657,8 +1657,10 @@ components:
           type: string
           enum: [pending, completed, failed, insufficient_funds]
         reaction:
-          type: [string, "null"]
-          enum: [ok, ko, null]
+          anyOf:
+            - type: string
+              enum: [ok, ko]
+            - type: "null"
         created_at:
           type: string
           format: date-time
@@ -1676,7 +1678,7 @@ components:
           properties:
             content:
               description: The AI review content. Only present when status is "completed".
-              oneOf:
+              anyOf:
                 - $ref: "#/components/schemas/CaseReviewContentV1"
                 - type: object
                 - type: "null"
@@ -1697,9 +1699,9 @@ components:
           type: string
         sanity_check:
           description: The sanity check result produced by the AI
-          type: 
-            - string
-            - 'null'
+          anyOf:
+            - type: string
+            - type: "null"
 
     ScreeningEntity:
       type: string
