@@ -32,6 +32,18 @@ func (m *mockMonitoringListCheckRepository) FindEntityAnnotationsWithRiskTags(
 	return args.Get(0).([]models.EntityAnnotation), args.Error(1)
 }
 
+func (m *mockMonitoringListCheckRepository) FindEntityAnnotationsWithTags(
+	ctx context.Context,
+	exec repositories.Executor,
+	filter models.EntityAnnotationTagsFilter,
+) ([]models.EntityAnnotation, error) {
+	args := m.Called(ctx, exec, filter)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.EntityAnnotation), args.Error(1)
+}
+
 func (m *mockMonitoringListCheckRepository) ListPivots(
 	ctx context.Context,
 	exec repositories.Executor,
@@ -47,7 +59,7 @@ func (m *mockMonitoringListCheckRepository) ListPivots(
 }
 
 // Helper to build config named args
-func buildMonitoringListCheckArgs(config ast.MonitoringListCheckConfig) ast.Arguments {
+func buildMonitoringListCheckArgs(config ast.EntityAnnotationCheckConfig) ast.Arguments {
 	configMap := map[string]any{
 		"targetTableName": config.TargetTableName,
 		"pathToTarget":    config.PathToTarget,
@@ -87,13 +99,13 @@ func buildMonitoringListCheckArgs(config ast.MonitoringListCheckConfig) ast.Argu
 func TestValidateMonitoringListCheckConfig(t *testing.T) {
 	tests := []struct {
 		name             string
-		config           ast.MonitoringListCheckConfig
+		config           ast.EntityAnnotationCheckConfig
 		expectedErrorLen int
 		expectedErrors   []error
 	}{
 		{
 			name: "happy path with LinkToSingleName",
-			config: ast.MonitoringListCheckConfig{
+			config: ast.EntityAnnotationCheckConfig{
 				TargetTableName: "users",
 				LinkedTableChecks: []ast.LinkedTableCheck{
 					{
@@ -106,7 +118,7 @@ func TestValidateMonitoringListCheckConfig(t *testing.T) {
 		},
 		{
 			name: "happy path with NavigationOption",
-			config: ast.MonitoringListCheckConfig{
+			config: ast.EntityAnnotationCheckConfig{
 				TargetTableName: "users",
 				LinkedTableChecks: []ast.LinkedTableCheck{
 					{
@@ -125,7 +137,7 @@ func TestValidateMonitoringListCheckConfig(t *testing.T) {
 		},
 		{
 			name: "failure case with multiple validation errors",
-			config: ast.MonitoringListCheckConfig{
+			config: ast.EntityAnnotationCheckConfig{
 				TargetTableName: "", // missing
 				LinkedTableChecks: []ast.LinkedTableCheck{
 					{
@@ -173,8 +185,9 @@ func TestValidateMonitoringListCheckConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mlc := MonitoringListCheck{
-				OrgId: uuid.New(),
+			mlc := EntityAnnotationCheck{
+				AnnotationType: models.EntityAnnotationRiskTag,
+				OrgId:          uuid.New(),
 			}
 
 			errs := mlc.validateMonitoringListCheckConfig(tt.config)
@@ -211,7 +224,8 @@ func TestMonitoringListCheck_Evaluate_Step1_ReturnsTrue(t *testing.T) {
 		{Id: uuid.NewString(), ObjectId: "target_object_123"},
 	}, nil)
 
-	mlc := MonitoringListCheck{
+	mlc := EntityAnnotationCheck{
+		AnnotationType:  models.EntityAnnotationRiskTag,
 		ExecutorFactory: execFactory,
 		OrgId:           orgId,
 		ClientObject: models.ClientObject{
@@ -222,7 +236,7 @@ func TestMonitoringListCheck_Evaluate_Step1_ReturnsTrue(t *testing.T) {
 		Repository: repo,
 	}
 
-	args := buildMonitoringListCheckArgs(ast.MonitoringListCheckConfig{
+	args := buildMonitoringListCheckArgs(ast.EntityAnnotationCheckConfig{
 		TargetTableName: utils.DummyTableNameFirst,
 		PathToTarget:    []string{},
 	})
@@ -273,7 +287,8 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingle_ReturnsTrue(t *testing.
 		{Id: uuid.NewString(), ObjectId: "linked_object_456"},
 	}, nil)
 
-	mlc := MonitoringListCheck{
+	mlc := EntityAnnotationCheck{
+		AnnotationType:  models.EntityAnnotationRiskTag,
 		ExecutorFactory: execFactory,
 		OrgId:           orgId,
 		ClientObject: models.ClientObject{
@@ -285,7 +300,7 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingle_ReturnsTrue(t *testing.
 		IngestedDataReader: ingestedDataReader,
 	}
 
-	args := buildMonitoringListCheckArgs(ast.MonitoringListCheckConfig{
+	args := buildMonitoringListCheckArgs(ast.EntityAnnotationCheckConfig{
 		TargetTableName: utils.DummyTableNameFirst,
 		PathToTarget:    []string{},
 		LinkedTableChecks: []ast.LinkedTableCheck{
@@ -328,7 +343,8 @@ func TestMonitoringListCheck_Evaluate_Step2_NavigationNotValid(t *testing.T) {
 	// Data model - using a target table name that doesn't exist
 	dataModel := utils.GetDummyDataModel()
 
-	mlc := MonitoringListCheck{
+	mlc := EntityAnnotationCheck{
+		AnnotationType:  models.EntityAnnotationRiskTag,
 		ExecutorFactory: execFactory,
 		OrgId:           orgId,
 		ClientObject: models.ClientObject{
@@ -339,7 +355,7 @@ func TestMonitoringListCheck_Evaluate_Step2_NavigationNotValid(t *testing.T) {
 		Repository: repo,
 	}
 
-	args := buildMonitoringListCheckArgs(ast.MonitoringListCheckConfig{
+	args := buildMonitoringListCheckArgs(ast.EntityAnnotationCheckConfig{
 		TargetTableName: utils.DummyTableNameFirst,
 		PathToTarget:    []string{},
 		LinkedTableChecks: []ast.LinkedTableCheck{
@@ -420,7 +436,8 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingleFalse_FallbackNavigation
 	}
 	dataModel.Tables[utils.DummyTableNameFirst] = firstTable
 
-	mlc := MonitoringListCheck{
+	mlc := EntityAnnotationCheck{
+		AnnotationType:  models.EntityAnnotationRiskTag,
 		ExecutorFactory: execFactory,
 		OrgId:           orgId,
 		ClientObject: models.ClientObject{
@@ -435,7 +452,7 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingleFalse_FallbackNavigation
 		IngestedDataReader: ingestedDataReader,
 	}
 
-	args := buildMonitoringListCheckArgs(ast.MonitoringListCheckConfig{
+	args := buildMonitoringListCheckArgs(ast.EntityAnnotationCheckConfig{
 		TargetTableName: utils.DummyTableNameFirst,
 		PathToTarget:    []string{},
 		LinkedTableChecks: []ast.LinkedTableCheck{
@@ -522,7 +539,8 @@ func TestMonitoringListCheck_Evaluate_Step2_Navigation_MultipleItems_OneHasTopic
 	}
 	dataModel.Tables[utils.DummyTableNameFirst] = firstTable
 
-	mlc := MonitoringListCheck{
+	mlc := EntityAnnotationCheck{
+		AnnotationType:  models.EntityAnnotationRiskTag,
 		ExecutorFactory: execFactory,
 		OrgId:           orgId,
 		ClientObject: models.ClientObject{
@@ -537,7 +555,7 @@ func TestMonitoringListCheck_Evaluate_Step2_Navigation_MultipleItems_OneHasTopic
 		IngestedDataReader: ingestedDataReader,
 	}
 
-	args := buildMonitoringListCheckArgs(ast.MonitoringListCheckConfig{
+	args := buildMonitoringListCheckArgs(ast.EntityAnnotationCheckConfig{
 		TargetTableName: utils.DummyTableNameFirst,
 		PathToTarget:    []string{},
 		LinkedTableChecks: []ast.LinkedTableCheck{

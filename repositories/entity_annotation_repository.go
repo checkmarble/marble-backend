@@ -268,3 +268,42 @@ func (repo *MarbleDbRepository) FindEntityAnnotationsWithRiskTags(
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptEntityAnnotation)
 }
+
+// FindEntityAnnotationsWithRiskTags finds risk tag annotations matching the filter.
+// This is used by RecordHasTags rule evaluation.
+func (repo *MarbleDbRepository) FindEntityAnnotationsWithTags(
+	ctx context.Context,
+	exec Executor,
+	filter models.EntityAnnotationTagsFilter,
+) ([]models.EntityAnnotation, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	if len(filter.ObjectIds) == 0 {
+		return nil, errors.Wrap(models.BadParameterError, "object IDs filter cannot be empty")
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.EntityAnnotationColumns...).
+		From(dbmodels.TABLE_ENTITY_ANNOTATIONS).
+		Where(squirrel.Eq{
+			"org_id":          filter.OrgId,
+			"object_type":     filter.ObjectType,
+			"annotation_type": models.EntityAnnotationTag.String(),
+			"deleted_at":      nil,
+		}).
+		Where("object_id = ANY(?)", filter.ObjectIds)
+
+	if len(filter.Tags) > 0 {
+		tagStrings := make([]string, len(filter.Tags))
+		for i, t := range filter.Tags {
+			tagStrings[i] = t.String()
+		}
+		query = query.Where("payload->>'tag_id' = ANY(?)", tagStrings)
+	}
+
+	query = query.Limit(1)
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptEntityAnnotation)
+}
