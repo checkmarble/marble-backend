@@ -33,6 +33,7 @@ linters:
         - -QF1002
         - -QF1003
         - -QF1008
+        - -QF1012
   exclusions:
     presets:
       - comments

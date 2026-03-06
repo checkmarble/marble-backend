@@ -151,7 +151,7 @@ func (c CasePivotIngestedData) PrintForAgent() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		stringBuilder.WriteString(fmt.Sprintf("\nData from table \"%s\" as csv:\n <IngestedDataTable>\n%s\n</IngestedDataTable>", key, ingestedDataFormatted))
+		fmt.Fprintf(&stringBuilder, "\nData from table \"%s\" as csv:\n <IngestedDataTable>\n%s\n</IngestedDataTable>", key, ingestedDataFormatted)
 	}
 
 	return stringBuilder.String(), nil
@@ -168,8 +168,8 @@ func (c CaseIngestedDataByPivot) PrintForAgent() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		stringBuilder.WriteString(fmt.Sprintf("\nAll ingested data for customer of type \"%s\" with pivot value \"%s\":\n <IngestedDataForPivot>\n%s\n</IngestedDataForPivot>",
-			pivotObjectType, pivotValue, allTablesFormatted))
+		fmt.Fprintf(&stringBuilder, "\nAll ingested data for customer of type \"%s\" with pivot value \"%s\":\n <IngestedDataForPivot>\n%s\n</IngestedDataForPivot>",
+			pivotObjectType, pivotValue, allTablesFormatted)
 	}
 
 	return stringBuilder.String(), nil

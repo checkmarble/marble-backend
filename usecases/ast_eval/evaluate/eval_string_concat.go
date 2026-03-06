@@ -36,7 +36,7 @@ func (f StringConcat) Evaluate(ctx context.Context, arguments ast.Arguments) (an
 			return nil, []error{errors.New("argument is not supported for StringConcat")}
 		}
 
-		sb.WriteString(fmt.Sprintf("%v", arg))
+		fmt.Fprintf(&sb, "%v", arg)
 
 		if withSeparator && idx < len(arguments.Args)-1 {
 			sb.WriteString(separator)
