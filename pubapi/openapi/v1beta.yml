@@ -15,6 +15,8 @@ x-readme:
 servers:
   - url: https://api.checkmarble.com/v1beta
 tags:
+  - name: Async Decisions
+    description: Routes for asynchronous decision execution
   - name: Cases
     description: Routes for cases
   - name: Tags
@@ -24,6 +26,114 @@ tags:
   - name: Record
     description: Routes for record (data ingested into Marble)
 paths:
+  /decisions/async:
+    post:
+      operationId: createAsyncDecisionBatch
+      tags:
+        - Async Decisions
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Create a batch of async decision executions
+      description: |
+        Enqueue multiple asynchronous decision executions at once.
+
+        When `ingest` is true, the object will be ingested before decisions are created. Note that this endpoint is not compatible with
+        optional side effects of ingestion, such as addition to continuous screening (though if the record is already being monitored, 
+        it will trigger a new screening with the updated data).
+
+        All trigger objects are validated against the data model on reception. If any object fails validation, the entire batch is rejected with per-object error details.
+        Each object is processed independently in the background.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - trigger_objects
+              anyOf:
+                - required: [trigger_object_type]
+                - required: [scenario_id]
+              properties:
+                trigger_object_type:
+                  description: |
+                    Name of the data model table for the trigger objects.
+                    At least one of `trigger_object_type` or `scenario_id` must be provided.
+                    When only `scenario_id` is provided, the trigger object type is derived from the scenario.
+                  type: string
+                trigger_objects:
+                  description: Array of trigger object payloads (1 to 100 objects)
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: object
+                    additionalProperties: true
+                scenario_id:
+                  description: |
+                    Optional scenario ID to restrict execution to a single scenario.
+                    At least one of `trigger_object_type` or `scenario_id` must be provided.
+                  type: string
+                  format: uuid
+                ingest:
+                  description: Whether to ingest each trigger object before creating decisions
+                  type: boolean
+                  default: false
+      responses:
+        "201":
+          description: Async decision executions created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/AsyncDecisionExecutionCreated"
+        "400":
+          $ref: "#/components/responses/400"
+
+  /decisions/async/{executionId}:
+    get:
+      operationId: getAsyncDecisionExecution
+      tags:
+        - Async Decisions
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Get async decision execution status
+      description: |
+        Retrieve the current status and details of an async decision execution.
+        Old executions are kept for 30 days after completion, so the endpoint may 
+        return a 404 status for old executions that have been deleted.
+      parameters:
+        - name: executionId
+          required: true
+          in: path
+          description: ID of the async decision execution
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Async decision execution details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AsyncDecisionExecution"
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+
   /ingest/{objectType}:
     post:
       operationId: ingestObject
@@ -1484,6 +1594,62 @@ components:
             next_page_id:
               description: Value to use in pagination filter to request for the next page
               type: string
+
+    AsyncDecisionExecutionCreated:
+      title: Async decision execution created
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+
+    AsyncDecisionExecution:
+      title: Async decision execution
+      type: object
+      required:
+        - id
+        - object_type
+        - status
+        - decision_ids
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        object_type:
+          description: Name of the data model table for the trigger object
+          type: string
+        scenario_id:
+          description: Scenario ID if execution was restricted to a single scenario
+          type: string
+          format: uuid
+        status:
+          description: |
+            Current status of the execution:
+            - `pending`: enqueued, waiting to be processed
+            - `ingested`: trigger object has been ingested, decisions are being created
+            - `completed`: all decisions have been created successfully
+            - `failed`: execution failed (see `error_message` for details)
+          type: string
+          enum: [pending, ingested, completed, failed]
+        decision_ids:
+          description: IDs of decisions created by this execution (populated on completion)
+          type: array
+          items:
+            type: string
+            format: uuid
+        error_message:
+          description: Error message if the execution failed
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
 
     Error:
       title: Error response

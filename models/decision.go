@@ -209,6 +209,7 @@ type CreateAllDecisionsInput struct {
 	OrganizationId     uuid.UUID
 	PayloadRaw         json.RawMessage
 	TriggerObjectTable string
+	ScenarioId         *string
 }
 
 type DecisionFilters struct {

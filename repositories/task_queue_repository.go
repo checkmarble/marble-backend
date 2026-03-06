@@ -114,6 +114,12 @@ type TaskQueueRepository interface {
 		organizationId uuid.UUID,
 		bucket, key string,
 	) error
+	EnqueueAsyncDecisionExecutions(
+		ctx context.Context,
+		tx Transaction,
+		organizationId uuid.UUID,
+		executionIds []uuid.UUID,
+	) error
 	// New webhook delivery system
 	EnqueueWebhookDispatch(
 		ctx context.Context,
@@ -555,6 +561,39 @@ func (r riverRepository) EnqueueGenerateThumbnailTask(
 
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued thumbnail generation task", "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueAsyncDecisionExecutions(
+	ctx context.Context,
+	tx Transaction,
+	organizationId uuid.UUID,
+	executionIds []uuid.UUID,
+) error {
+	if len(executionIds) == 0 {
+		return nil
+	}
+
+	params := make([]river.InsertManyParams, len(executionIds))
+	for i, executionId := range executionIds {
+		params[i] = river.InsertManyParams{
+			Args: models.AsyncDecisionExecutionArgs{
+				AsyncDecisionExecutionId: executionId,
+			},
+			InsertOpts: &river.InsertOpts{
+				MaxAttempts: 10,
+				Queue:       organizationId.String(),
+			},
+		}
+	}
+
+	res, err := r.client.InsertManyFastTx(ctx, tx.RawTx(), params)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, fmt.Sprintf("Enqueued %d async decision execution tasks", res))
 	return nil
 }
 

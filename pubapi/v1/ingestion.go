@@ -4,14 +4,12 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -41,20 +39,20 @@ func HandleIngestObject(uc usecases.Usecases, batch bool) gin.HandlerFunc {
 		}
 
 		partial := c.Request.Method == http.MethodPatch
-		ingestedCount, err := f(ctx, orgId, objectType, object, models.IngestionOptions{ShouldScreen: true},
+		ingestedCount, err := f(ctx, orgId, objectType, object, models.IngestionOptions{
+			ShouldScreen: true,
+		},
 			payload_parser.WithAllowedPatch(partial), payload_parser.DisallowUnknownFields())
 		if err != nil {
-			var validationError models.IngestionValidationErrors
-
-			if errors.As(err, &validationError) {
-				types.
-					NewErrorResponse().
-					WithError(err).
-					WithErrorCode(string(dto.SchemaMismatchError)).
-					WithErrorMessage("input validation error").
-					WithErrorDetails(validationError).
-					Serve(c)
-				return
+			switch batch {
+			case true:
+				if types.PresentMultipleObjectsValidationError(c, err) {
+					return
+				}
+			case false:
+				if types.PresentSingleObjectValidationError(c, err) {
+					return
+				}
 			}
 
 			types.NewErrorResponse().WithError(err).Serve(c)

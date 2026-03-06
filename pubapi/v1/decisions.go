@@ -153,7 +153,7 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 			},
 		)
 		if err != nil {
-			if presentDecisionCreationError(c, err) {
+			if types.PresentSingleObjectValidationError(c, err) {
 				return
 			}
 
@@ -214,7 +214,7 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
 		decisionsUsecase := uc.NewDecisionUsecase()
 
-		decisions, skipped, err := decisionsUsecase.CreateAllDecisions(
+		decisions, skipped, _, err := decisionsUsecase.CreateAllDecisions(
 			ctx,
 			models.CreateAllDecisionsInput{
 				OrganizationId:     orgId,
@@ -229,7 +229,7 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 			},
 		)
 		if err != nil {
-			if presentDecisionCreationError(c, err) {
+			if types.PresentSingleObjectValidationError(c, err) {
 				return
 			}
 
@@ -286,23 +286,4 @@ func HandleAddDecisionToCase(uc usecases.Usecases) gin.HandlerFunc {
 
 		types.NewResponse(dto.AdaptDecision(false, nil, nil)(decision.Decision)).Serve(c)
 	}
-}
-
-func presentDecisionCreationError(c *gin.Context, err error) bool {
-	var validationError models.IngestionValidationErrors
-
-	if errors.As(err, &validationError) {
-		_, errs := validationError.GetSomeItem()
-
-		types.NewErrorResponse().
-			WithError(errs).
-			WithErrorCode(string(gdto.SchemaMismatchError)).
-			WithErrorMessage("the provided trigger object is invalid").
-			WithErrorDetails(errs).
-			Serve(c)
-
-		return true
-	}
-
-	return false
 }

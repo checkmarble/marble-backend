@@ -131,7 +131,7 @@ func handlePostAllDecisions(uc usecases.Usecases, marbleAppUrl *url.URL) func(c 
 		}
 
 		decisionUsecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
-		decisions, nbSkipped, err := decisionUsecase.CreateAllDecisions(
+		decisions, nbSkipped, _, err := decisionUsecase.CreateAllDecisions(
 			ctx,
 			models.CreateAllDecisionsInput{
 				OrganizationId:     organizationId,

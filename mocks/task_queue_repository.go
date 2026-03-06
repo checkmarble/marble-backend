@@ -156,6 +156,16 @@ func (m *TaskQueueRepository) EnqueueGenerateThumbnailTask(
 	return args.Error(0)
 }
 
+func (m *TaskQueueRepository) EnqueueAsyncDecisionExecutions(
+	ctx context.Context,
+	tx repositories.Transaction,
+	organizationId uuid.UUID,
+	executionIds []uuid.UUID,
+) error {
+	args := m.Called(ctx, tx, organizationId, executionIds)
+	return args.Error(0)
+}
+
 func (m *TaskQueueRepository) EnqueueWebhookDispatch(
 	ctx context.Context,
 	tx repositories.Transaction,

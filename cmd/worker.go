@@ -258,6 +258,9 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	// Webhook cleanup (30 day retention)
 	maps.Copy(nonOrgQueues, usecases.QueueWebhookCleanup())
 	globalPeriodics = append(globalPeriodics, worker_jobs.NewWebhookCleanupPeriodicJob())
+	// Async decision execution cleanup (30 day retention)
+	maps.Copy(nonOrgQueues, usecases.QueueAsyncDecisionCleanup())
+	globalPeriodics = append(globalPeriodics, worker_jobs.NewAsyncDecisionExecutionCleanupPeriodicJob())
 	if !metricCollectionConfig.Disabled {
 		maps.Copy(nonOrgQueues, usecases.QueueMetrics())
 		globalPeriodics = append(globalPeriodics,
@@ -282,7 +285,8 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	)
 
 	// Create demo orgs fetcher for cron monitoring middleware
-	execFactory := executor_factory.NewDbExecutorFactory(appName, repositories.MarbleDbRepository, repositories.ExecutorGetter, uuid.Nil)
+	execFactory := executor_factory.NewDbExecutorFactory(appName,
+		repositories.MarbleDbRepository, repositories.ExecutorGetter, uuid.Nil)
 	demoOrgsFetcher := func(ctx context.Context) (map[uuid.UUID]struct{}, error) {
 		orgs, err := repositories.MarbleDbRepository.AllOrganizations(ctx, execFactory.NewExecutor())
 		if err != nil {
@@ -422,6 +426,9 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	if infra.HasGlobalFeatureFlag(infra.FEATURE_USER_SCORING) {
 		river.AddWorker(workers, adminUc.NewTriggeredScoreComputationWorker())
 	}
+	// Async decision execution system
+	river.AddWorker(workers, adminUc.NewAsyncDecisionExecutionWorker())
+	river.AddWorker(workers, adminUc.NewAsyncDecisionExecutionCleanupWorker())
 
 	if err := riverClient.Start(ctx); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -641,6 +648,12 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "triggered_score_computation":
 		return uc.NewTriggeredScoreComputationWorker().Work(ctx,
 			singleJobCreate[models.TriggeredScoreComputationArgs](ctx, jobArgs))
+	case "async_decision_execution":
+		return uc.NewAsyncDecisionExecutionWorker().Work(ctx,
+			singleJobCreate[models.AsyncDecisionExecutionArgs](ctx, jobArgs))
+	case "async_decision_execution_cleanup":
+		return uc.NewAsyncDecisionExecutionCleanupWorker().Work(ctx,
+			singleJobCreate[models.AsyncDecisionExecutionCleanupArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}

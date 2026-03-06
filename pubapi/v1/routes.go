@@ -60,6 +60,9 @@ func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gi
 
 		root.POST("/decisions/:decisionId/case", HandleAddDecisionToCase(uc))
 
+		root.POST("/decisions/async", HandleCreateAsyncDecisions(uc))
+		root.GET("/decisions/async/:executionId", HandleGetAsyncDecisionExecution(uc))
+
 		root.GET("/cases", HandleListCases(uc))
 		root.GET("/cases/:caseId", HandleGetCase(uc))
 		root.POST("/cases", HandleCreateCase(uc))

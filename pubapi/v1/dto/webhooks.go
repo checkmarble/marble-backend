@@ -27,13 +27,19 @@ func (p WebhookEventPayload) ApiVersion() string {
 }
 
 type WebhookEventData struct {
-	Decision *Decision    `json:"decision,omitzero"`
-	Case     *Case        `json:"case,omitzero"`
-	Files    *[]CaseFile  `json:"files,omitempty"`
-	Comments *CaseComment `json:"comments,omitempty"`
+	Decision      *Decision               `json:"decision,omitzero"`
+	Case          *Case                   `json:"case,omitzero"`
+	Files         *[]CaseFile             `json:"files,omitempty"`
+	Comments      *CaseComment            `json:"comments,omitempty"`
+	AsyncDecision *AsyncDecisionExecution `json:"async_decision,omitzero"`
 }
 
-func AdaptWebhookEventData(ctx context.Context, exec repositories.Executor, adapter types.PublicApiDataAdapter, m models.WebhookEventPayload) (string, json.RawMessage, error) {
+func AdaptWebhookEventData(
+	ctx context.Context,
+	exec repositories.Executor,
+	adapter types.PublicApiDataAdapter,
+	m models.WebhookEventPayload,
+) (string, json.RawMessage, error) {
 	users, err := adapter.ListUsers(ctx, exec)
 	if err != nil {
 		return "", nil, err
@@ -59,8 +65,11 @@ func AdaptWebhookEventData(ctx context.Context, exec repositories.Executor, adap
 	payload := WebhookEventPayload{
 		Type: string(m.Type),
 		Content: WebhookEventData{
-			Decision: applyWebhookEventData(m.Content.Decision, func(d models.DecisionWithRuleExecutions) Decision {
-				return AdaptDecision(true, m.Content.Decision.RuleExecutions, m.Content.Decision.ScreeningExecutions)(m.Content.Decision.Decision)
+			Decision: applyWebhookEventData(m.Content.Decision, func(
+				d models.DecisionWithRuleExecutions,
+			) Decision {
+				return AdaptDecision(true, m.Content.Decision.RuleExecutions,
+					m.Content.Decision.ScreeningExecutions)(m.Content.Decision.Decision)
 			}),
 			Case: applyWebhookEventData(m.Content.Case, func(c models.Case) Case {
 				return AdaptCase(users, tags, refs)(c)
@@ -78,6 +87,7 @@ func AdaptWebhookEventData(ctx context.Context, exec repositories.Executor, adap
 					Comment:   c.AdditionalNote,
 				})
 			}),
+			AsyncDecision: applyWebhookEventData(m.Content.AsyncDecisionExecution, AdaptAsyncDecisionExecution),
 		},
 		Timestamp: m.Timestamp,
 	}

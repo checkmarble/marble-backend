@@ -36,6 +36,7 @@ const (
 	WebhookEventType_CaseRuleSnoozeCreated WebhookEventType = "case.rule_snooze_created"
 	WebhookEventType_CaseDecisionReviewed  WebhookEventType = "case.decision_reviewed"
 	WebhookEventType_DecisionCreated       WebhookEventType = "decision.created"
+	WebhookEventType_AsyncDecisionFailed   WebhookEventType = "async_decision.failed"
 )
 
 var validWebhookEventTypes = []WebhookEventType{
@@ -49,6 +50,7 @@ var validWebhookEventTypes = []WebhookEventType{
 	WebhookEventType_DecisionCreated,
 	WebhookEventType_CaseRuleSnoozeCreated,
 	WebhookEventType_CaseDecisionReviewed,
+	WebhookEventType_AsyncDecisionFailed,
 }
 
 type WebhookEventContent struct {
@@ -63,10 +65,11 @@ type WebhookEventPayload struct {
 }
 
 type WebhookEventData struct {
-	Decision *DecisionWithRuleExecutions
-	Case     *Case
-	Files    *[]CaseFile
-	Comments *CaseEvent
+	Decision               *DecisionWithRuleExecutions
+	Case                   *Case
+	Files                  *[]CaseFile
+	Comments               *CaseEvent
+	AsyncDecisionExecution *AsyncDecisionExecution
 }
 
 type WebhookEvent struct {
@@ -203,6 +206,17 @@ func NewWebhookEventDecisionReviewed(c Case, decision Decision) WebhookEventCont
 	return newWebhookContent(WebhookEventType_CaseDecisionReviewed, WebhookEventData{
 		Case: &c, Decision: &DecisionWithRuleExecutions{Decision: decision},
 	})
+}
+
+func NewWebhookEventAsyncDecisionFailed(data AsyncDecisionExecution) WebhookEventContent {
+	return WebhookEventContent{
+		Type: WebhookEventType_AsyncDecisionFailed,
+		Data: WebhookEventPayload{
+			Type:      WebhookEventType_AsyncDecisionFailed,
+			Content:   WebhookEventData{AsyncDecisionExecution: &data},
+			Timestamp: time.Now(),
+		},
+	}
 }
 
 type Webhook struct {
