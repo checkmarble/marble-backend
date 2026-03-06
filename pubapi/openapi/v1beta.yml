@@ -831,7 +831,7 @@ paths:
                       data:
                         type: array
                         items:
-                          $ref: "#/components/schemas/CaseReview"
+                          $ref: "#/components/schemas/CaseAiReview"
         "400":
           $ref: "#/components/responses/400"
 
@@ -916,7 +916,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/CaseReviewDetail"
+                        $ref: "#/components/schemas/CaseAiReviewDetail"
         "400":
           $ref: "#/components/responses/400"
         "404":
@@ -1636,7 +1636,7 @@ components:
           type: string
           format: date-time
 
-    CaseReview:
+    CaseAiReview:
       title: Case AI review
       type: object
       required:
@@ -1668,10 +1668,10 @@ components:
           type: string
           format: date-time
 
-    CaseReviewDetail:
+    CaseAiReviewDetail:
       title: Case AI review detail
       allOf:
-        - $ref: "#/components/schemas/CaseReview"
+        - $ref: "#/components/schemas/CaseAiReview"
         - type: object
           required:
             - content
@@ -1679,11 +1679,11 @@ components:
             content:
               description: The AI review content. Only present when status is "completed".
               anyOf:
-                - $ref: "#/components/schemas/CaseReviewContentV1"
+                - $ref: "#/components/schemas/CaseAiReviewContentV1"
                 - type: object
                 - type: "null"
 
-    CaseReviewContentV1:
+    CaseAiReviewContentV1:
       title: Case AI review content (v1)
       type: object
       required:
