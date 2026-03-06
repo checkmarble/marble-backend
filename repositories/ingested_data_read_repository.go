@@ -12,11 +12,21 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/jackc/pgx/v5"
+	"github.com/twpayne/go-geos"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 )
+
+// convertGeomValue converts a *geos.Geom (PostGIS GEOMETRY) to a "lat,lng" string,
+// matching the format used during ingestion by models.Location.MarshalJSON.
+func convertGeomValue(value any) any {
+	if g, ok := value.(*geos.Geom); ok && g != nil {
+		return fmt.Sprintf("%f,%f", g.Y(), g.X())
+	}
+	return value
+}
 
 var NAVIGATION_FIELD_STATS_CACHE = expirable.NewLRU[string, []models.FieldStatistics](100, nil, time.Hour)
 
@@ -475,7 +485,7 @@ func queryWithDynamicColumnList(
 
 		objectAsMap := make(map[string]any)
 		for i, columnName := range columnNames {
-			objectAsMap[columnName] = values[i]
+			objectAsMap[columnName] = convertGeomValue(values[i])
 		}
 		output = append(output, objectAsMap)
 	}
@@ -767,7 +777,7 @@ func (repo *IngestedDataReadRepositoryImpl) ListIngestedObjects(
 		ingestedObject := models.DataModelObject{Data: map[string]any{}, Metadata: map[string]any{}}
 		for i, columnName := range columnNames {
 			if slices.Contains(tableColumnNames, columnName) {
-				ingestedObject.Data[columnName] = values[i]
+				ingestedObject.Data[columnName] = convertGeomValue(values[i])
 			} else {
 				ingestedObject.Metadata[columnName] = values[i]
 			}
@@ -925,7 +935,7 @@ func (repo *IngestedDataReadRepositoryImpl) SearchObjects(
 
 		object := make(map[string]any)
 		for i, columnName := range columnNames {
-			object[columnName] = values[i]
+			object[columnName] = convertGeomValue(values[i])
 		}
 
 		ingestedObject := models.DataModelObject{Data: object, Metadata: map[string]any{}}
