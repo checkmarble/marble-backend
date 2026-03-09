@@ -472,6 +472,7 @@ func (usecases *UsecasesWithCreds) NewInboxReader() inboxes.InboxReader {
 func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 	return &CaseUseCase{
 		enforceSecurity:         usecases.NewEnforceCaseSecurity(),
+		enforceSecurityTags:     usecases.NewEnforceTagSecurity(),
 		enforceSecurityDecision: usecases.NewEnforceDecisionSecurity(),
 		transactionFactory:      usecases.NewTransactionFactory(),
 		executorFactory:         usecases.NewExecutorFactory(),
