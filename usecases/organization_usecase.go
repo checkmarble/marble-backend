@@ -13,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/redis/go-redis/v9"
 )
 
 type OrganizationUsecaseFeatureAccessReader interface {
@@ -174,6 +175,18 @@ func (usecase *OrganizationUseCase) UpdateOrganizationFeatureAccess(
 	if err := usecase.enforceSecurity.CreateOrganization(); err != nil {
 		return err
 	}
+
+	cache := usecase.executorFactory.NewExecutor().Cache(ctx).WithOrg(featureAccess.OrganizationId)
+
+	if err := cache.DeletePrefix(ctx, cache.Key("feature-access", "*")); err != nil {
+		return err
+	}
+	if err := cache.Exec(func(c *redis.Client) error {
+		return c.Del(ctx, cache.Key("feature-access")).Err()
+	}); err != nil {
+		return err
+	}
+
 	return usecase.organizationRepository.UpdateOrganizationFeatureAccess(ctx,
 		usecase.executorFactory.NewExecutor(), featureAccess)
 }
