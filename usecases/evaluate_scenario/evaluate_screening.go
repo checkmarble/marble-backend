@@ -163,8 +163,9 @@ func (e ScenarioEvaluator) evaluateScreening(
 			var uniqueCounterpartyIdentifier *string
 
 			query := models.OpenSanctionsQuery{
-				Config:  scc,
-				Queries: queries,
+				Config:         scc,
+				Queries:        queries,
+				UseScopedIndex: true,
 			}
 
 			if !reflect.DeepEqual(queries, queriesBeforeProcessing) {
