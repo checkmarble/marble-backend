@@ -142,6 +142,7 @@ type caseUsecaseAiAgentUsecase interface {
 
 type CaseUseCase struct {
 	enforceSecurity         security.EnforceSecurityCase
+	enforceSecurityTags     security.EnforceSecurityTags
 	enforceSecurityDecision security.EnforceSecurityDecision
 	repository              CaseUseCaseRepository
 	decisionRepository      repositories.DecisionRepository
@@ -1097,7 +1098,9 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 	return updatedCase, nil
 }
 
-func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string,
+func (usecase *CaseUseCase) UpdateCaseTags(
+	ctx context.Context,
+	userId string,
 	caseTagAttributes models.CreateCaseTagsAttributes,
 ) (models.Case, error) {
 	webhookEventId := uuid.New().String()
@@ -1193,14 +1196,18 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string,
 func (usecase *CaseUseCase) createCaseTag(ctx context.Context, exec repositories.Executor, caseId, tagId string) error {
 	tag, err := usecase.repository.GetTagById(ctx, exec, tagId)
 	if err != nil {
-		return err
+		return errors.WithDetail(err, "tag not found for id "+tagId)
+	}
+	if err := usecase.enforceSecurityTags.ReadTag(tag); err != nil {
+		return errors.WithDetail(models.NotFoundError, "tag not found for id "+tagId)
 	}
 
 	if tag.Target != models.TagTargetCase {
-		return errors.Wrap(models.BadParameterError, "provided tag is not targeting cases")
+		return errors.WithDetail(models.BadParameterError, "provided tag is not targeting cases")
 	}
 	if tag.DeletedAt != nil {
-		return fmt.Errorf("tag %s is deleted %w", tag.Id, models.BadParameterError)
+		return errors.WithDetail(models.BadParameterError,
+			fmt.Sprintf("tag '%s' is deleted", tag.Name))
 	}
 
 	if err = usecase.repository.CreateCaseTag(ctx, exec, caseId, tagId); err != nil {

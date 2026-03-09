@@ -385,7 +385,7 @@ func handlePostCaseTags(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		inboxCase, err := usecase.CreateCaseTags(ctx, userId, models.CreateCaseTagsAttributes{
+		inboxCase, err := usecase.UpdateCaseTags(ctx, userId, models.CreateCaseTagsAttributes{
 			CaseId: caseInput.Id,
 			TagIds: data.TagIds,
 		})
