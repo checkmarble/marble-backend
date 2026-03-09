@@ -34,6 +34,8 @@ func TestParseStringValuesToMap(t *testing.T) {
 		LinksToSingle: nil,
 	}
 
+	enricher := payload_parser.NewPayloadEnrichmentUsecase(nil, nil)
+
 	type testCase struct {
 		name    string
 		columns []string
@@ -71,7 +73,7 @@ func TestParseStringValuesToMap(t *testing.T) {
 	}
 
 	for _, c := range OKcases {
-		result, err := parseStringValuesToMap(c.columns, c.values, table)
+		result, err := parseStringValuesToMap(c.columns, c.values, table, enricher)
 		if err != nil {
 			t.Errorf("Error parsing string values to map: %v", err)
 		}
@@ -102,7 +104,7 @@ func TestParseStringValuesToMap(t *testing.T) {
 		},
 	}
 	for _, c := range ErrCases {
-		_, err := parseStringValuesToMap(c.columns, c.values, table)
+		_, err := parseStringValuesToMap(c.columns, c.values, table, enricher)
 		if err == nil {
 			t.Errorf("Expected error parsing string values to map: %v", err)
 		}
