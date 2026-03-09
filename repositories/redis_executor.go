@@ -121,6 +121,33 @@ func (exec *RedisExecutor) SaveModel(ctx context.Context, key string, model any,
 	return exec.client.client.Set(ctx, key, marshalled, ttl).Err()
 }
 
+func (exec *RedisExecutor) DeletePrefix(ctx context.Context, prefix string) error {
+	var cursor uint64
+
+	for {
+		var keys []string
+		var err error
+
+		keys, cursor, err = exec.client.client.Scan(ctx, cursor, prefix, int64(1000)).Result()
+		if err != nil {
+			return err
+		}
+
+		if len(keys) > 0 {
+			_, err := exec.client.client.Del(ctx, keys...).Result()
+			if err != nil {
+				return err
+			}
+		}
+
+		if cursor == 0 {
+			break
+		}
+	}
+
+	return nil
+}
+
 func RedisLoadMap[T comparable](ctx context.Context, exec *RedisExecutor, key string) (T, error) {
 	if exec == nil {
 		return *new(T), models.NotFoundError
