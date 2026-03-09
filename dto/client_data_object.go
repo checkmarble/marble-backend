@@ -2,10 +2,13 @@ package dto
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/twpayne/go-geos"
 )
 
 // This struct is used as a DTO, but instead of using struct tags directly they are set on an anonymous struct below in the MarshalJSON method.
@@ -55,6 +58,19 @@ func (c ClientObjectDetail) MarshalJSON() ([]byte, error) {
 	if c.Data == nil {
 		c.Data = make(map[string]any)
 	}
+
+	for k, v := range c.Data {
+		switch v := v.(type) {
+		case *geos.Geom:
+			c.Data[k] = fmt.Sprintf("%f,%f", v.Y(), v.X())
+		}
+
+		if strings.Contains(k, `"`) {
+			c.Data[strings.ReplaceAll(k, `"`, "")] = c.Data[k]
+			delete(c.Data, k)
+		}
+	}
+
 	return json.Marshal(struct {
 		Metadata       ClientObjectMetadata     `json:"metadata"`
 		Data           map[string]any           `json:"data"`
