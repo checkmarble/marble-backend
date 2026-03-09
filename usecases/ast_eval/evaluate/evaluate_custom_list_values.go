@@ -3,6 +3,7 @@ package evaluate
 import (
 	"context"
 	"fmt"
+	"net/netip"
 
 	"github.com/cockroachdb/errors"
 
@@ -18,17 +19,20 @@ type CustomListValuesAccess struct {
 	CustomListRepository repositories.CustomListRepository
 	EnforceSecurity      security.EnforceSecurity
 	executorFactory      executor_factory.ExecutorFactory
+	ReturnFakeValue      bool
 }
 
 func NewCustomListValuesAccess(
 	clr repositories.CustomListRepository,
 	enforceSecurity security.EnforceSecurity,
 	executorFactory executor_factory.ExecutorFactory,
+	returnFakeValue bool,
 ) CustomListValuesAccess {
 	return CustomListValuesAccess{
 		CustomListRepository: clr,
 		EnforceSecurity:      enforceSecurity,
 		executorFactory:      executorFactory,
+		ReturnFakeValue:      returnFakeValue,
 	}
 }
 
@@ -58,6 +62,15 @@ func (clva CustomListValuesAccess) Evaluate(ctx context.Context, arguments ast.A
 	if err != nil {
 		return MakeEvaluateError(errors.Wrap(err,
 			fmt.Sprintf("Error reading values for list %s", list.Id)))
+	}
+
+	if clva.ReturnFakeValue {
+		switch list.Kind {
+		case models.CustomListText:
+			return []any{"text"}, nil
+		case models.CustomListCidrs:
+			return []any{netip.MustParsePrefix("0.0.0.0/0")}, nil
+		}
 	}
 
 	var valueFromListFn func(v models.CustomListValue) any
