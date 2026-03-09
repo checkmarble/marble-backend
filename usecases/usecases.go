@@ -412,6 +412,7 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 			usecases.Repositories.CustomListRepository,
 			enforceSecurity,
 			usecases.NewExecutorFactory(),
+			params.DatabaseAccessReturnFakeValue,
 		),
 	)
 

@@ -33,7 +33,7 @@ var testCustomListNamedArgs = map[string]any{
 func TestCustomListValuesWrongArg(t *testing.T) {
 	execFactory := new(mocks.ExecutorFactory)
 	execFactory.On("NewExecutor").Return(new(mocks.Executor))
-	customListEval := evaluate.NewCustomListValuesAccess(nil, nil, execFactory)
+	customListEval := evaluate.NewCustomListValuesAccess(nil, nil, execFactory, false)
 	_, errs := customListEval.Evaluate(context.TODO(), ast.Arguments{Args: []any{true}})
 	if assert.Len(t, errs, 1) {
 		assert.ErrorIs(t, errs[0], ast.ErrMissingNamedArgument)
@@ -46,7 +46,7 @@ func TestCustomListValues(t *testing.T) {
 	execFactory := new(mocks.ExecutorFactory)
 	exec := new(mocks.Executor)
 
-	customListEval := evaluate.NewCustomListValuesAccess(clr, er, execFactory)
+	customListEval := evaluate.NewCustomListValuesAccess(clr, er, execFactory, false)
 
 	testCustomListValues := []models.CustomListValue{{Value: utils.Ptr("test")}, {Value: utils.Ptr("test2")}}
 
@@ -74,7 +74,7 @@ func TestCustomListValuesNoAccess(t *testing.T) {
 	execFactory := new(mocks.ExecutorFactory)
 	exec := new(mocks.Executor)
 
-	customListEval := evaluate.NewCustomListValuesAccess(clr, er, execFactory)
+	customListEval := evaluate.NewCustomListValuesAccess(clr, er, execFactory, false)
 
 	execFactory.On("NewExecutor").Return(exec)
 	clr.On("GetCustomListById", exec, testListId, true).Return(testList, nil)
