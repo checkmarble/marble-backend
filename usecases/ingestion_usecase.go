@@ -410,7 +410,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			}
 		}
 
-		_, err = parseStringValuesToMap(headers, row, table)
+		_, err = parseStringValuesToMap(headers, row, table, usecase.payloadEnricher)
 		if err != nil {
 			return models.UploadLog{}, fmt.Errorf("error found at line %d in CSV: %w (%w)",
 				lineNumber, err, models.BadParameterError)
@@ -672,7 +672,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 				}
 			}
 
-			object, err := parseStringValuesToMap(firstRow, record, table)
+			object, err := parseStringValuesToMap(firstRow, record, table, usecase.payloadEnricher)
 			if err != nil {
 				return ingestionResult{
 					numRowsIngested: total,
@@ -798,7 +798,7 @@ func containsString(arr []string, s string) bool {
 	return false
 }
 
-func parseStringValuesToMap(headers []string, values []string, table models.Table) (map[string]any, error) {
+func parseStringValuesToMap(headers []string, values []string, table models.Table, enricher payload_parser.PayloadEnrichementUsecase) (map[string]any, error) {
 	result := make(map[string]any)
 
 	for i, value := range values {
@@ -859,6 +859,12 @@ func parseStringValuesToMap(headers []string, values []string, table models.Tabl
 				return nil, fmt.Errorf("invalid IP address %s", value)
 			}
 			result[fieldName] = val.Unmap()
+
+			if metadata := enricher.EnrichIp(val.Unmap()); metadata != nil {
+				key := fmt.Sprintf(`"%s.metadata"`, field.Name)
+
+				result[key] = metadata
+			}
 		case models.Coords:
 			latS, lngS, ok := strings.Cut(value, ",")
 			if !ok {
@@ -869,7 +875,18 @@ func parseStringValuesToMap(headers []string, values []string, table models.Tabl
 			if errLat != nil || errLng != nil {
 				return nil, fmt.Errorf("invalid coordinates (lat, lng)")
 			}
-			result[fieldName] = models.Location{Geom: geos.NewPoint([]float64{lng, lat}).SetSRID(4326)}
+
+			loc := models.Location{Geom: geos.NewPoint([]float64{lng, lat}).SetSRID(4326)}
+
+			result[fieldName] = loc
+
+			if metadata := enricher.EnrichCoordinates(loc.X(), loc.Y()); metadata != nil {
+				key := fmt.Sprintf(`"%s.metadata"`, field.Name)
+
+				result[key] = map[string]string{
+					"country": metadata.CountryCode2,
+				}
+			}
 		default:
 			return nil, fmt.Errorf("invalid data type %s for field %s", field.DataType, fieldName)
 		}
