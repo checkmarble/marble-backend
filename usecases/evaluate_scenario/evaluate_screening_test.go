@@ -150,6 +150,7 @@ func TestScreeningCalledWhenNameFilterConstant(t *testing.T) {
 				},
 			},
 		},
+		UseScopedIndex: true,
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
@@ -189,6 +190,7 @@ func TestScreeningWithSpecificEntityType(t *testing.T) {
 				},
 			},
 		},
+		UseScopedIndex: true,
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
@@ -231,6 +233,7 @@ func TestScreeningCalledWhenNameFilterConcat(t *testing.T) {
 				},
 			},
 		},
+		UseScopedIndex: true,
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
@@ -293,6 +296,7 @@ func TestScreeningCalledWithNameRecognizedLabel(t *testing.T) {
 				"name": []string{"dinner with joe finnigan"},
 			}},
 		},
+		UseScopedIndex: true,
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
@@ -329,6 +333,7 @@ func TestScreeningCalledWithNameRecognitionDisabled(t *testing.T) {
 				},
 			},
 		},
+		UseScopedIndex: true,
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
@@ -384,6 +389,7 @@ func TestScreeningCalledWithNumbersPreprocessing(t *testing.T) {
 				"name": []string{"din2ner 123 with 4 joe fi4n5n65i8gan"},
 			}},
 		},
+		UseScopedIndex: true,
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
@@ -425,6 +431,7 @@ func TestScreeningWithLengthPreprocessing(t *testing.T) {
 				},
 			},
 		},
+		UseScopedIndex: true,
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
@@ -531,6 +538,7 @@ func TestScreeningWithListPreprocessing(t *testing.T) {
 				"name": []string{"This Contains Forbidden Words"},
 			}},
 		},
+		UseScopedIndex: true,
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
@@ -609,6 +617,7 @@ func TestScreeningWithAllPreprocessing(t *testing.T) {
 		InitialQuery: []models.OpenSanctionsCheckQuery{
 			{Type: "Thing", Filters: models.OpenSanctionsFilter{"name": []string{"original query"}}},
 		},
+		UseScopedIndex: true,
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,
@@ -658,6 +667,7 @@ func TestScreeningWithCounterpartyWhitelist(t *testing.T) {
 			},
 		},
 		WhitelistedEntityIds: []string{"entity-1", "entity-2"},
+		UseScopedIndex:       true,
 	}
 
 	_, err := eval.evaluateScreening(context.TODO(), iteration,

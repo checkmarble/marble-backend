@@ -59,6 +59,7 @@ type OpenSanctionsQuery struct {
 	Scope              string
 	// cf: `exclude_entity_ids` in the OpenSanctions query
 	WhitelistedEntityIds []string
+	UseScopedIndex       bool
 }
 
 type OpenSanctionsCheckQuery struct {

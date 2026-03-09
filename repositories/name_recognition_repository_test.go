@@ -16,7 +16,7 @@ func getMockedNameRecognitionRepository() NameRecognitionRepository {
 	gock.InterceptClient(client)
 
 	gock.New("https://api.opensanctions.org").
-		Head("/-/version").
+		Get("/-/version").
 		Reply(http.StatusNotFound)
 
 	os := infra.InitializeOpenSanctions(context.TODO(), client, "", "", "")
