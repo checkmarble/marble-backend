@@ -51,24 +51,6 @@ func (usecases *UsecasesWithCreds) NewWithRootImpersonatedExecutor(tx repositori
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewExecutorFactory() executor_factory.ExecutorFactory {
-	return executor_factory.NewDbExecutorFactory(
-		usecases.appName,
-		usecases.Repositories.MarbleDbRepository,
-		usecases.Repositories.ExecutorGetter,
-		usecases.Credentials.OrganizationId,
-	)
-}
-
-func (usecases *UsecasesWithCreds) NewTransactionFactory() executor_factory.TransactionFactory {
-	return executor_factory.NewDbExecutorFactory(
-		usecases.appName,
-		usecases.Repositories.MarbleDbRepository,
-		usecases.Repositories.ExecutorGetter,
-		usecases.Credentials.OrganizationId,
-	)
-}
-
 func (usecases *UsecasesWithCreds) NewEnforceSecurity() security.EnforceSecurity {
 	return &security.EnforceSecurityImpl{
 		Credentials: usecases.Credentials,
