@@ -180,7 +180,7 @@ func (repo MarbleDbRepository) GetDataModel(
 		cache.Add(organizationID.String(), dataModel)
 	}
 
-	if err := exec.Cache(ctx).SaveModel(ctx, cacheKey, dataModel, time.Minute); err != nil {
+	if err := exec.Cache(ctx).SaveModel(ctx, nil, cacheKey, dataModel, time.Minute); err != nil {
 		return dataModel, err
 	}
 
