@@ -13,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/cockroachdb/errors"
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/google/uuid"
 	"github.com/tidwall/gjson"
 )
@@ -94,8 +95,7 @@ func (uc EntityAnnotationUsecase) List(ctx context.Context, req models.EntityAnn
 					thumbKey := models.ThumbnailFileName(key)
 					thumbnailUrl, err := uc.blobRepository.GenerateSignedUrl(ctx, uc.bucketUrl, thumbKey)
 
-					annotations[annIdx].FileContentTypes[fileIdx] =
-						uc.blobRepository.GetContentType(ctx, uc.bucketUrl, key)
+					annotations[annIdx].FileContentTypes[fileIdx] = uc.blobRepository.GetContentType(ctx, uc.bucketUrl, key)
 
 					if err == nil {
 						annotations[annIdx].FileThumbnails[fileIdx] = thumbnailUrl
@@ -224,14 +224,16 @@ func (uc EntityAnnotationUsecase) AttachFile(
 	for idx, file := range files {
 		key := fmt.Sprintf("annotations/%s/%s/%s", req.OrgId, req.ObjectType, uuid.NewString())
 
-		if err := uc.writeFileAnnotationToBlobStorage(ctx, file, key); err != nil {
+		mimeType, err := uc.writeFileAnnotationToBlobStorage(ctx, file, key)
+		if err != nil {
 			return nil, err
 		}
 
 		metadata[idx] = models.EntityAnnotationFilePayloadFile{
-			Id:       uuid.NewString(),
-			Key:      key,
-			Filename: file.Filename,
+			Id:          uuid.NewString(),
+			Key:         key,
+			Filename:    file.Filename,
+			ContentType: mimeType,
 		}
 	}
 
@@ -248,9 +250,11 @@ func (uc EntityAnnotationUsecase) AttachFile(
 		for idx, file := range metadata {
 			fileReq := req
 
-			if err := uc.taskQueueRepository.EnqueueGenerateThumbnailTask(ctx, tx,
-				uc.enforceSecurityAnnotation.OrgId(), uc.bucketUrl, file.Key); err != nil {
-				return nil, err
+			if canCreateThumbnail(file.ContentType) {
+				if err := uc.taskQueueRepository.EnqueueGenerateThumbnailTask(ctx, tx,
+					uc.enforceSecurityAnnotation.OrgId(), uc.bucketUrl, file.Key); err != nil {
+					return nil, err
+				}
 			}
 
 			fileReq.Payload = models.EntityAnnotationFilePayload{
@@ -405,27 +409,38 @@ func (uc EntityAnnotationUsecase) findExistingAnnotation(
 	return existing, err
 }
 
-func (uc EntityAnnotationUsecase) writeFileAnnotationToBlobStorage(ctx context.Context, file multipart.FileHeader, key string) error {
+func (uc EntityAnnotationUsecase) writeFileAnnotationToBlobStorage(ctx context.Context, file multipart.FileHeader, key string) (string, error) {
 	writer, err := uc.blobRepository.OpenStream(ctx, uc.bucketUrl, key, file.Filename)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	defer writer.Close()
 
 	r, err := file.Open()
 	if err != nil {
-		return err
+		return "", err
+	}
+
+	mimeType := "application/octet-stream"
+
+	mt, err := mimetype.DetectReader(r)
+	if err == nil {
+		mimeType = mt.String()
+	}
+
+	if _, err := r.Seek(0, io.SeekStart); err != nil {
+		return "", err
 	}
 
 	if _, err := io.Copy(writer, r); err != nil {
-		return err
+		return "", err
 	}
 	if err := writer.Close(); err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return mimeType, nil
 }
 
 // AttachObjectRiskTags adds new risk tag annotations for an object.
@@ -467,4 +482,20 @@ func (uc EntityAnnotationUsecase) AttachObjectRiskTags(
 	}
 
 	return nil
+}
+
+func canCreateThumbnail(mimeType string) bool {
+	mt := mimetype.Lookup(mimeType)
+	if mt == nil {
+		return false
+	}
+
+	switch mt.String() {
+	case "image/jpeg", "image/png", "image/bmp":
+		return true
+	case "application/pdf":
+		return true
+	}
+
+	return false
 }

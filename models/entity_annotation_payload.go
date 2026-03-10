@@ -63,9 +63,10 @@ type EntityAnnotationFilePayload struct {
 }
 
 type EntityAnnotationFilePayloadFile struct {
-	Id       string `json:"id"`
-	Key      string `json:"key"`
-	Filename string `json:"filename"`
+	Id          string `json:"id"`
+	Key         string `json:"key"`
+	Filename    string `json:"filename"`
+	ContentType string `json:"-"`
 }
 
 func (EntityAnnotationFilePayload) entityAnnotationPayload() {}
