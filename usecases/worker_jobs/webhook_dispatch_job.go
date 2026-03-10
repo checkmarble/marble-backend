@@ -70,6 +70,11 @@ func (w *WebhookDispatchWorker) Work(ctx context.Context, job *river.Job[models.
 	exec := w.executorFactory.NewExecutor()
 
 	event, err := w.webhookRepository.GetWebhookEventV2(ctx, exec, job.Args.WebhookEventId)
+	if errors.Is(err, models.NotFoundError) {
+		// This should not happen, but can if the DeleteWebhookEventV2 call below succeeds in deleting the row but still errors out
+		logger.InfoContext(ctx, "Webhook event not found - assuming it has been deleted, skipping")
+		return nil
+	}
 	if err != nil {
 		return errors.Wrap(err, "failed to get webhook event")
 	}
