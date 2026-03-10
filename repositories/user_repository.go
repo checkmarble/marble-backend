@@ -144,7 +144,7 @@ func (repo *MarbleDbRepository) UserById(ctx context.Context, exec Executor, use
 		return user, err
 	}
 
-	_ = exec.Cache(ctx).SaveModel(ctx, exec.Cache(ctx).Key("user", userId), user, time.Hour)
+	_ = exec.Cache(ctx).SaveModel(ctx, exec, exec.Cache(ctx).Key("user", userId), user, time.Hour)
 
 	return user, nil
 }
