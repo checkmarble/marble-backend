@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -19,15 +20,16 @@ type OrgExportUsecase struct {
 	security        security.EnforceSecurityOrgImportImpl
 	apiVersion      string
 
-	orgRepository        repositories.OrganizationRepository
-	dataModelRepository  repositories.DataModelRepository
-	dataModelUsecase     usecase
-	tagRepository        TagUseCaseRepository
-	customListRepository repositories.CustomListRepository
-	scenarioRepository   repositories.ScenarioUsecaseRepository
-	iterationRepository  IterationUsecaseRepository
-	inboxRepository      InboxRepository
-	workflowRepository   workflowRepository
+	orgRepository             repositories.OrganizationRepository
+	dataModelRepository       repositories.DataModelRepository
+	dataModelUsecase          usecase
+	tagRepository             TagUseCaseRepository
+	customListRepository      repositories.CustomListRepository
+	scenarioRepository        repositories.ScenarioUsecaseRepository
+	iterationRepository       IterationUsecaseRepository
+	screeningConfigRepository ScreeningConfigRepository
+	inboxRepository           InboxRepository
+	workflowRepository        workflowRepository
 }
 
 func NewOrgExportUsecase(
@@ -41,22 +43,24 @@ func NewOrgExportUsecase(
 	customListRepository repositories.CustomListRepository,
 	scenarioRepository repositories.ScenarioUsecaseRepository,
 	iterationRepository IterationUsecaseRepository,
+	screeningConfigRepository ScreeningConfigRepository,
 	inboxRepository InboxRepository,
 	workflowRepository workflowRepository,
 ) OrgExportUsecase {
 	return OrgExportUsecase{
-		executorFactory:      executorFactory,
-		security:             security,
-		apiVersion:           apiVersion,
-		orgRepository:        orgRepository,
-		dataModelRepository:  dataModelRepository,
-		dataModelUsecase:     dataModelUsecase,
-		tagRepository:        tagRepository,
-		customListRepository: customListRepository,
-		scenarioRepository:   scenarioRepository,
-		iterationRepository:  iterationRepository,
-		inboxRepository:      inboxRepository,
-		workflowRepository:   workflowRepository,
+		executorFactory:           executorFactory,
+		security:                  security,
+		apiVersion:                apiVersion,
+		orgRepository:             orgRepository,
+		dataModelRepository:       dataModelRepository,
+		dataModelUsecase:          dataModelUsecase,
+		tagRepository:             tagRepository,
+		customListRepository:      customListRepository,
+		scenarioRepository:        scenarioRepository,
+		iterationRepository:       iterationRepository,
+		screeningConfigRepository: screeningConfigRepository,
+		inboxRepository:           inboxRepository,
+		workflowRepository:        workflowRepository,
 	}
 }
 
@@ -143,6 +147,13 @@ func (uc *OrgExportUsecase) Export(ctx context.Context, orgId uuid.UUID) (dto.Or
 				"failed to fetch iteration for scenario %s", scenario.Id)
 		}
 
+		iteration.ScreeningConfigs, err = uc.screeningConfigRepository.ListScreeningConfigs(
+			ctx, exec, iteration.Id, false)
+		if err != nil {
+			return dto.OrgImport{}, errors.Wrapf(err,
+				"failed to fetch screening configs for iteration %s", iteration.Id)
+		}
+
 		iterationWithBody, err := dto.AdaptScenarioIterationWithBodyDto(iteration)
 		if err != nil {
 			return dto.OrgImport{}, errors.Wrapf(err,
@@ -173,10 +184,28 @@ func (uc *OrgExportUsecase) Export(ctx context.Context, orgId uuid.UUID) (dto.Or
 	for i := range importScenarios {
 		exportedScenarioIds[uuid.MustParse(importScenarios[i].Scenario.Id)] = struct{}{}
 	}
-	for _, workflow := range workflows {
-		if _, ok := exportedScenarioIds[workflow.ScenarioId]; ok {
-			filteredWorkflows = append(filteredWorkflows, workflow)
+	// Build set of all exported rule stable IDs (rules + screening configs), to filter out workflow conditions referencing removed rules
+	exportedRuleStableIds := make(map[string]struct{})
+	for _, importScenario := range importScenarios {
+		for _, rule := range importScenario.Iteration.Rules {
+			exportedRuleStableIds[rule.StableId] = struct{}{}
 		}
+		for _, scc := range importScenario.Iteration.ScreeningConfigs {
+			exportedRuleStableIds[scc.StableId] = struct{}{}
+		}
+	}
+	for _, workflow := range workflows {
+		if _, ok := exportedScenarioIds[workflow.ScenarioId]; !ok {
+			continue
+		}
+
+		cleanedConditions, valid := filterWorkflowConditions(ctx, workflow, exportedRuleStableIds)
+		if !valid {
+			continue
+		}
+
+		workflow.Conditions = cleanedConditions
+		filteredWorkflows = append(filteredWorkflows, workflow)
 	}
 
 	return dto.OrgImport{
@@ -191,4 +220,60 @@ func (uc *OrgExportUsecase) Export(ctx context.Context, orgId uuid.UUID) (dto.Or
 		Inboxes:     pure_utils.Map(inboxes, dto.AdaptInboxDto),
 		Workflows:   pure_utils.Map(filteredWorkflows, dto.AdaptImportWorkflowDto),
 	}, nil
+}
+
+// filterWorkflowConditions cleans rule_hit conditions by removing rule stable IDs that are
+// not present in the exported scenarios. Returns the cleaned conditions and whether the
+// workflow should be included in the export.
+func filterWorkflowConditions(
+	ctx context.Context,
+	workflow models.Workflow,
+	exportedRuleStableIds map[string]struct{},
+) ([]models.WorkflowCondition, bool) {
+	logger := utils.LoggerFromContext(ctx)
+	cleaned := make([]models.WorkflowCondition, 0, len(workflow.Conditions))
+
+	for _, cond := range workflow.Conditions {
+		if cond.Function != models.WorkflowConditionRuleHit {
+			cleaned = append(cleaned, cond)
+			continue
+		}
+
+		var p dto.WorkflowConditionRuleHitParams
+		if err := json.Unmarshal(cond.Params, &p); err != nil {
+			logger.InfoContext(ctx, "skipping workflow export: could not parse rule_hit condition params",
+				"workflow_id", workflow.Id, "condition_id", cond.Id)
+			return nil, false
+		}
+
+		validIds := make([]uuid.UUID, 0, len(p.RuleId))
+		for _, ruleId := range p.RuleId {
+			if _, ok := exportedRuleStableIds[ruleId.String()]; ok {
+				validIds = append(validIds, ruleId)
+			}
+		}
+
+		if len(validIds) == 0 {
+			logger.InfoContext(ctx, "skipping workflow export: rule_hit condition references only rules not present in the live iteration",
+				"workflow_id", workflow.Id, "condition_id", cond.Id)
+			return nil, false
+		}
+
+		if len(validIds) < len(p.RuleId) {
+			logger.InfoContext(ctx, "removed some rule_id references from rule_hit condition during export: rules not present in live iteration",
+				"workflow_id", workflow.Id, "condition_id", cond.Id,
+				"original_count", len(p.RuleId), "valid_count", len(validIds))
+			updatedParams, err := json.Marshal(dto.WorkflowConditionRuleHitParams{RuleId: validIds})
+			if err != nil {
+				logger.InfoContext(ctx, "skipping workflow export: could not re-marshal rule_hit condition params",
+					"workflow_id", workflow.Id, "condition_id", cond.Id)
+				return nil, false
+			}
+			cond.Params = updatedParams
+		}
+
+		cleaned = append(cleaned, cond)
+	}
+
+	return cleaned, true
 }
