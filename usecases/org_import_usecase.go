@@ -693,7 +693,13 @@ func (uc *OrgImportUsecase) createScenarios(ctx context.Context, tx repositories
 				forcedOutcome = utils.Ptr(models.OutcomeFrom(*sc.ForcedOutcome))
 			}
 
+			newStableId, _ := uuid.NewV7()
+			if sc.StableId != "" {
+				ids[sc.StableId] = newStableId.String()
+			}
+
 			_, err = uc.screeningRepository.CreateScreeningConfig(ctx, tx, iteration.Id, models.UpdateScreeningConfigInput{
+				StableId:                 utils.Ptr(newStableId.String()),
 				Name:                     sc.Name,
 				Description:              sc.Description,
 				RuleGroup:                sc.RuleGroup,

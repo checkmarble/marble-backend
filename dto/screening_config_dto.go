@@ -12,6 +12,7 @@ import (
 
 type ScreeningConfig struct {
 	Id                       string                               `json:"id"`
+	StableId                 string                               `json:"stable_id"`
 	Name                     *string                              `json:"name"`
 	Description              *string                              `json:"description"`
 	RuleGroup                *string                              `json:"rule_group,omitempty"`
@@ -28,6 +29,7 @@ type ScreeningConfig struct {
 func AdaptScreeningConfig(model models.ScreeningConfig) (ScreeningConfig, error) {
 	config := ScreeningConfig{
 		Id:            model.Id,
+		StableId:      model.StableId,
 		Name:          &model.Name,
 		Description:   &model.Description,
 		RuleGroup:     model.RuleGroup,

@@ -1127,6 +1127,7 @@ func (usecases *UsecasesWithCreds) NewOrgExportUsecase() OrgExportUsecase {
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
 	)
 }
 
