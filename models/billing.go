@@ -78,3 +78,7 @@ type BillingEvent struct {
 	Timestamp              *time.Time
 	Properties             map[string]any
 }
+
+type BillingEntitlement struct {
+	Code string
+}

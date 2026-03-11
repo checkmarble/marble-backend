@@ -108,8 +108,13 @@ func RedisLoadModel[T any](ctx context.Context, exec *RedisExecutor, key string)
 	return model, nil
 }
 
-func (exec *RedisExecutor) SaveModel(ctx context.Context, key string, model any, ttl time.Duration) error {
+func (exec *RedisExecutor) SaveModel(ctx context.Context, dbExec Executor, key string, model any, ttl time.Duration) error {
 	if exec == nil {
+		return nil
+	}
+	// Do not persist cache if we are in a transaction, since it might get rolled
+	// back and we do not want outdated data to be cached.
+	if _, ok := dbExec.(Transaction); ok {
 		return nil
 	}
 
