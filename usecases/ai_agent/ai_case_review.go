@@ -399,7 +399,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	subscriptionId := subscriptions[0].ExternalId
 
 	// Check if the organization has the entitlement to disable pay-as-you-go for AI case review
-	no_pay_as_you_go_entitlement, err := uc.billingUsecase.CheckEntitlement(
+	hasPayInArrearsEntitlement, err := uc.billingUsecase.CheckEntitlement(
 		ctx,
 		subscriptionId,
 		billing.BillingEntitlementAIReviewPayInArrears,
@@ -408,7 +408,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		return nil, errors.Wrap(err, "could not check billing entitlement")
 	}
 	// In case the org needs to pay-as-you-go, check its wallets
-	if !no_pay_as_you_go_entitlement {
+	if !hasPayInArrearsEntitlement {
 		// Check if the organization has enough funds to cover the cost of the case review
 		enoughFunds, err := uc.billingUsecase.CheckIfEnoughFundsInWallet(
 			ctx,
@@ -422,7 +422,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			return nil, billing.ErrInsufficientFunds
 		}
 	} else {
-		logger.InfoContext(ctx, "Organization has entitlement to disable pay-as-you-go for AI case review, skipping wallet check", "subscription_id", subscriptionId)
+		logger.InfoContext(ctx, "Organization has entitlement to pay in arrears for AI case review, skipping wallet check", "subscription_id", subscriptionId)
 	}
 
 	// Get AI setting

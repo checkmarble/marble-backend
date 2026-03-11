@@ -17,8 +17,12 @@ func (u NoOpBillingUsecase) EnqueueBillingEventTask(ctx context.Context, event m
 	return nil
 }
 
+// Returns a dummy subscription to allow the flow to continue
+// Returning an empty list would mean no active subscriptions for the event.
 func (u NoOpBillingUsecase) GetSubscriptionsForEvent(ctx context.Context, orgId uuid.UUID, code BillableMetric) ([]models.Subscription, error) {
-	return []models.Subscription{}, nil
+	return []models.Subscription{
+		{Id: "random_id", ExternalId: "random_external_id", Status: "random_status"},
+	}, nil
 }
 
 func (u NoOpBillingUsecase) CheckIfEnoughFundsInWallet(
