@@ -402,7 +402,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	no_pay_as_you_go_entitlement, err := uc.billingUsecase.CheckEntitlement(
 		ctx,
 		subscriptionId,
-		billing.BillingEntitlementAINoPayAsYouGo,
+		billing.BillingEntitlementAIReviewPayInArrears,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not check billing entitlement")
