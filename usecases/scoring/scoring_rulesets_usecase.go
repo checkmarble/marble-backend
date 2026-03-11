@@ -59,13 +59,13 @@ func (uc ScoringRulesetsUsecase) ListRulesets(ctx context.Context) ([]models.Sco
 	return rulesets, err
 }
 
-func (uc ScoringRulesetsUsecase) GetRuleset(ctx context.Context, recordType string, status models.ScoreRulesetStatus) (models.ScoringRuleset, error) {
+func (uc ScoringRulesetsUsecase) GetRuleset(ctx context.Context, recordType string, status models.ScoreRulesetStatus, version int) (models.ScoringRuleset, error) {
 	ruleset, err := uc.repository.GetScoringRuleset(
 		ctx,
 		uc.executorFactory.NewExecutor(),
 		uc.enforceSecurity.OrgId(),
 		recordType,
-		status)
+		status, version)
 	if err != nil {
 		return models.ScoringRuleset{}, err
 	}
@@ -120,7 +120,7 @@ func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, recor
 		}
 	}
 
-	existingRuleset, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, recordType, models.ScoreRulesetCommitted)
+	existingRuleset, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, recordType, models.ScoreRulesetCommitted, 0)
 	if err != nil && !errors.Is(err, models.NotFoundError) {
 		return models.ScoringRuleset{}, err
 	}
@@ -185,7 +185,7 @@ func (uc ScoringRulesetsUsecase) PreparationStatus(ctx context.Context, recordTy
 		return models.PublicationPreparationStatus{}, err
 	}
 
-	draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, recordType, models.ScoreRulesetDraft)
+	draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, recordType, models.ScoreRulesetDraft, 0)
 	if err != nil {
 		if errors.Is(err, models.NotFoundError) {
 			return models.PublicationPreparationStatus{}, errors.Wrap(err, "no draft version found")
@@ -222,7 +222,7 @@ func (uc ScoringRulesetsUsecase) PrepareRuleset(ctx context.Context, recordType 
 		return err
 	}
 
-	draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, recordType, models.ScoreRulesetDraft)
+	draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, recordType, models.ScoreRulesetDraft, 0)
 	if err != nil {
 		if errors.Is(err, models.NotFoundError) {
 			return errors.Wrap(err, "no draft version found")
@@ -253,7 +253,7 @@ func (uc ScoringRulesetsUsecase) GetDryRun(ctx context.Context, recordType strin
 	orgId := uc.enforceSecurity.OrgId()
 	exec := uc.executorFactory.NewExecutor()
 
-	draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, recordType, models.ScoreRulesetDraft)
+	draft, err := uc.repository.GetScoringRuleset(ctx, exec, orgId, recordType, models.ScoreRulesetDraft, 0)
 	if err != nil {
 		if errors.Is(err, models.NotFoundError) {
 			return models.ScoringDryRun{}, errors.Wrap(err, "no draft version found")
@@ -273,7 +273,7 @@ func (uc ScoringRulesetsUsecase) StartDryRun(ctx context.Context, recordType str
 	orgId := uc.enforceSecurity.OrgId()
 
 	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (models.ScoringDryRun, error) {
-		draft, err := uc.repository.GetScoringRuleset(ctx, tx, orgId, recordType, models.ScoreRulesetDraft)
+		draft, err := uc.repository.GetScoringRuleset(ctx, tx, orgId, recordType, models.ScoreRulesetDraft, 0)
 		if err != nil {
 			if errors.Is(err, models.NotFoundError) {
 				return models.ScoringDryRun{}, errors.Wrap(err, "no draft version found")
@@ -319,7 +319,7 @@ func (uc ScoringRulesetsUsecase) CommitRuleset(ctx context.Context, recordType s
 	}
 
 	ruleset, err := executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (models.ScoringRuleset, error) {
-		draft, err := uc.repository.GetScoringRuleset(ctx, tx, orgId, recordType, models.ScoreRulesetDraft)
+		draft, err := uc.repository.GetScoringRuleset(ctx, tx, orgId, recordType, models.ScoreRulesetDraft, 0)
 		if err != nil {
 			if errors.Is(err, models.NotFoundError) {
 				return models.ScoringRuleset{}, errors.Wrap(err, "no draft version found")

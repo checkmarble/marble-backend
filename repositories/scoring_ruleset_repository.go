@@ -41,20 +41,28 @@ func (repo *MarbleDbRepository) GetScoringRuleset(
 	orgId uuid.UUID,
 	recordType string,
 	status models.ScoreRulesetStatus,
+	version int,
 ) (models.ScoringRuleset, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.ScoringRuleset{}, err
 	}
 
 	cte := WithCtes("ruleset", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
-		return b.
+		q := b.
 			Select(dbmodels.SelectScoringRulesetsColumns...).
 			From(dbmodels.TABLE_SCORING_RULESETS).
 			Where("org_id = ?", orgId).
 			Where("record_type = ?", recordType).
-			Where("status = ?", status).
 			OrderBy("version desc").
 			Limit(1)
+
+		if version > 0 {
+			q = q.Where("version = ?", version)
+		} else {
+			q = q.Where("status = ?", status)
+		}
+
+		return q
 	})
 
 	query := NewQueryBuilder().

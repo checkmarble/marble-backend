@@ -52,7 +52,7 @@ func (w *TriggeredScoreComputationWorker) Work(ctx context.Context, job *river.J
 	}
 
 	err := w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		ruleset, err := w.repository.GetScoringRuleset(ctx, tx, job.Args.OrgId, job.Args.RecordType, models.ScoreRulesetCommitted)
+		ruleset, err := w.repository.GetScoringRuleset(ctx, tx, job.Args.OrgId, job.Args.RecordType, models.ScoreRulesetCommitted, 0)
 		if err != nil {
 			// Not having a ruleset here is okay, it means scoring is not configured
 			// for that table.
