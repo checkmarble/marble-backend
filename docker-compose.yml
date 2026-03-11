@@ -72,9 +72,19 @@ services:
       RIVER_BASIC_AUTH_PASS: ${RIVER_BASIC_AUTH_PASS:-}
     depends_on:
       - db
+  redis:
+    container_name: redis
+    image: redis:8-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 1s
+      retries: 5
   motiva:
     container_name: motiva
-    image: ghcr.io/apognu/motiva:v0.6.0
+    image: ghcr.io/apognu/motiva:v0.7.0
     platform: linux/x86_64
     ports:
       - "8000:8000"
