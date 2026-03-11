@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -108,19 +109,27 @@ func handleScoringGetRuleset(uc usecases.Usecases) gin.HandlerFunc {
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringRulesetsUsecase()
 
-		var status models.ScoreRulesetStatus
+		var (
+			status  models.ScoreRulesetStatus
+			version int
+		)
 
-		switch c.Query("status") {
+		switch c.Query("version") {
 		case "draft":
 			status = models.ScoreRulesetDraft
 		case "committed", "":
 			status = models.ScoreRulesetCommitted
 		default:
-			presentError(ctx, c, errors.Wrapf(models.BadParameterError, "unknown status '%s'", c.Query("status")))
-			return
+			v, err := strconv.Atoi(c.Query("version"))
+			if err != nil {
+				presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+				return
+			}
+
+			version = v
 		}
 
-		ruleset, err := scoringUsecase.GetRuleset(ctx, c.Param("recordType"), status)
+		ruleset, err := scoringUsecase.GetRuleset(ctx, c.Param("recordType"), status, version)
 		if presentError(ctx, c, err) {
 			return
 		}

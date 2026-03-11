@@ -106,7 +106,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_NoRuleset() {
 	s.T().Setenv(fmt.Sprintf("ENABLE_%s", "USER_SCORING"), s.orgId.String())
 
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted, 0).
 		Return(models.ScoringRuleset{}, models.NotFoundError)
 
 	worker := s.makeWorker(scoring.ScoringScoresUsecase{})
@@ -122,7 +122,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_RepoError() {
 
 	repoErr := fmt.Errorf("db connection lost")
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted, 0).
 		Return(models.ScoringRuleset{}, repoErr)
 
 	worker := s.makeWorker(scoring.ScoringScoresUsecase{})
@@ -142,7 +142,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_ScoreIsOverriden() {
 	record := models.ScoringRecordRef{OrgId: s.orgId, RecordType: s.recordType, RecordId: s.recordId}
 
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted, 0).
 		Return(ruleset, nil)
 	s.repository.On("GetActiveScore", s.ctx, s.transaction, record).
 		Return(activeScore, nil)
@@ -169,7 +169,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_NoActiveScore_Comput
 	obj := models.DataModelObject{Data: map[string]any{"id": s.recordId}}
 
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted, 0).
 		Return(ruleset, nil)
 	s.repository.On("GetActiveScore", s.ctx, s.transaction, record).
 		Return((*models.ScoringScore)(nil), models.NotFoundError)
@@ -208,7 +208,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_ActiveScore_Computes
 	obj := models.DataModelObject{Data: map[string]any{"id": s.recordId}}
 
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted, 0).
 		Return(ruleset, nil)
 	s.repository.On("GetActiveScore", s.ctx, s.transaction, record).
 		Return(activeScore, nil)

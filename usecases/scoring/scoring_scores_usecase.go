@@ -61,7 +61,8 @@ func (uc ScoringScoresUsecase) ComputeScore(ctx context.Context, orgId uuid.UUID
 		exec,
 		orgId,
 		recordType,
-		models.ScoreRulesetCommitted)
+		models.ScoreRulesetCommitted,
+		0)
 	if err != nil {
 		if errors.Is(err, models.NotFoundError) {
 			return models.ScoringRuleset{}, nil, errors.Wrap(err, "no committed version of this ruleset")

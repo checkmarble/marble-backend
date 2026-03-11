@@ -31,8 +31,8 @@ func (m *ScoringRepository) ListScoringRulesets(ctx context.Context, exec reposi
 	return args.Get(0).([]models.ScoringRuleset), args.Error(1)
 }
 
-func (m *ScoringRepository) GetScoringRuleset(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, recordType string, status models.ScoreRulesetStatus) (models.ScoringRuleset, error) {
-	args := m.Called(ctx, exec, orgId, recordType, status)
+func (m *ScoringRepository) GetScoringRuleset(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, recordType string, status models.ScoreRulesetStatus, version int) (models.ScoringRuleset, error) {
+	args := m.Called(ctx, exec, orgId, recordType, status, version)
 	return args.Get(0).(models.ScoringRuleset), args.Error(1)
 }
 

@@ -114,7 +114,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_NoScore_BackgroundFallsTh
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted, 0).
 		Return(models.ScoringRuleset{}, computeErr)
 
 	uc := s.makeUsecase()
@@ -155,7 +155,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeError_HasCur
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted, 0).
 		Return(models.ScoringRuleset{}, computeErr)
 
 	uc := s.makeUsecase()
@@ -172,7 +172,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeError_NoCurr
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted, 0).
 		Return(models.ScoringRuleset{}, computeErr)
 
 	uc := s.makeUsecase()
@@ -216,7 +216,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeAndInsert_Ha
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.enforceSecurity.On("ReadOrganization", mock.Anything).Return(nil)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted, 0).
 		Return(ruleset, nil)
 	s.dataModelRepo.On("GetDataModel", s.ctx, s.transaction, s.orgId, false, false).
 		Return(dataModel, nil)
@@ -260,7 +260,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_InsertError_HasCurr
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.enforceSecurity.On("ReadOrganization", mock.Anything).Return(nil)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
-	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted).
+	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted, 0).
 		Return(ruleset, nil)
 	s.dataModelRepo.On("GetDataModel", s.ctx, s.transaction, s.orgId, false, false).
 		Return(dataModel, nil)
