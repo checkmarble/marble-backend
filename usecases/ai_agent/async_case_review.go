@@ -225,8 +225,11 @@ func (w *CaseReviewWorker) handleCreateCaseReviewSyncError(
 	caseReviewContext *CaseReviewContext,
 	err error,
 ) error {
+	// Use a detached context so cleanup operations succeed even if the original context is cancelled/expired.
+	cleanupCtx := context.WithoutCancel(ctx)
+
 	// Store the case review context into a blob
-	stream, errStream := w.blobRepository.OpenStream(ctx, w.bucketUrl,
+	stream, errStream := w.blobRepository.OpenStream(cleanupCtx, w.bucketUrl,
 		aiCaseReview.FileTempReference, aiCaseReview.FileTempReference)
 	if errStream != nil {
 		return errors.Join(err, errors.Wrap(errStream,
@@ -242,7 +245,7 @@ func (w *CaseReviewWorker) handleCreateCaseReviewSyncError(
 		)
 	}
 
-	errUpdate := w.repository.UpdateCaseReviewFile(ctx, w.executorFactory.NewExecutor(),
+	errUpdate := w.repository.UpdateCaseReviewFile(cleanupCtx, w.executorFactory.NewExecutor(),
 		aiCaseReview.Id, models.UpdateAiCaseReview{
 			Status: models.AiCaseReviewStatusFailed,
 		})
