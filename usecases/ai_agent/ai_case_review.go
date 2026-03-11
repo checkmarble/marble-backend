@@ -382,16 +382,47 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		return nil, errors.Wrap(err, "could not get case data")
 	}
 
-	// Check if the organization has enough funds to cover the cost of the case review
-	enoughFunds, subscriptionId, err := uc.billingUsecase.CheckIfEnoughFundsInWallet(
-		ctx,
-		caseData.organizationId,
-		billing.AI_CASE_REVIEW)
+	// Get subscriptions for AI case review billing metric
+	subscriptions, err := uc.billingUsecase.GetSubscriptionsForEvent(ctx,
+		caseData.organizationId, billing.AI_CASE_REVIEW)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not check if enough funds in wallet")
+		return nil, errors.Wrap(err, "could not get subscriptions for billing event")
 	}
-	if !enoughFunds {
+	if len(subscriptions) == 0 {
+		logger.InfoContext(ctx, "no subscription found for AI case review billing event, skipping case review and billing", "orgId", caseData.organizationId)
 		return nil, billing.ErrInsufficientFunds
+	}
+	if len(subscriptions) > 1 {
+		logger.WarnContext(ctx, "multiple subscriptions found for billing event, using the first one",
+			"organization_id", caseData.organizationId, "code", billing.AI_CASE_REVIEW)
+	}
+	subscriptionId := subscriptions[0].ExternalId
+
+	// Check if the organization has the entitlement to disable pay-as-you-go for AI case review
+	hasPayInArrearsEntitlement, err := uc.billingUsecase.CheckEntitlement(
+		ctx,
+		subscriptionId,
+		billing.BillingEntitlementAIReviewPayInArrears,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not check billing entitlement")
+	}
+	// In case the org needs to pay-as-you-go, check its wallets
+	if !hasPayInArrearsEntitlement {
+		// Check if the organization has enough funds to cover the cost of the case review
+		enoughFunds, err := uc.billingUsecase.CheckIfEnoughFundsInWallet(
+			ctx,
+			caseData.organizationId,
+			subscriptionId,
+			billing.AI_CASE_REVIEW)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not check if enough funds in wallet")
+		}
+		if !enoughFunds {
+			return nil, billing.ErrInsufficientFunds
+		}
+	} else {
+		logger.InfoContext(ctx, "Organization has entitlement to pay in arrears for AI case review, skipping wallet check", "subscription_id", subscriptionId)
 	}
 
 	// Get AI setting
@@ -548,7 +579,8 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			"decisions": caseData.decisions,
 		}
 		if aiSetting.CaseReviewSetting.OrgDescription != nil {
-			ruleDefinitionsData["activity_description"] = *aiSetting.CaseReviewSetting.OrgDescription
+			ruleDefinitionsData["activity_description"] =
+				*aiSetting.CaseReviewSetting.OrgDescription
 		}
 		modelRulesDefinitions, promptRulesDefinitions, err := uc.preparePromptWithModel(
 			PROMPT_RULE_DEFINITIONS_PATH,
@@ -654,7 +686,8 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			caseReviewData["org_activity"] = *aiSetting.CaseReviewSetting.OrgDescription
 		}
 		if aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction != nil {
-			caseReviewData["additional_case_review_instruction"] = *aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
+			caseReviewData["additional_case_review_instruction"] =
+				*aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
 		}
 		modelCaseReview, promptCaseReview, err := uc.preparePromptWithModel(
 			PROMPT_CASE_REVIEW_PATH,
@@ -720,7 +753,8 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			sanityCheckData["org_activity"] = *aiSetting.CaseReviewSetting.OrgDescription
 		}
 		if aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction != nil {
-			sanityCheckData["additional_case_review_instruction"] = *aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
+			sanityCheckData["additional_case_review_instruction"] =
+				*aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
 		}
 		modelSanityCheck, promptSanityCheck, err := uc.preparePromptWithModel(
 			PROMPT_SANITY_CHECK_PATH,
@@ -1251,5 +1285,3 @@ func getProofSchema(dataModel models.DataModel) jsonschema.Schema {
 		Properties:  properties,
 	}
 }
-
-
