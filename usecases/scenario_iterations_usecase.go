@@ -147,6 +147,15 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(
 		return models.ScenarioIteration{}, err
 	}
 
+	exec := usecase.executorFactory.NewExecutor()
+	scenario, err := usecase.scenarioFetcher.FetchScenario(ctx, exec, scenarioIteration.ScenarioId)
+	if err != nil {
+		return models.ScenarioIteration{}, err
+	}
+	if err := usecase.enforceSecurity.ReadOrganization(scenario.OrganizationId); err != nil {
+		return models.ScenarioIteration{}, err
+	}
+
 	b := scenarioIteration.Body
 	if b.Schedule != "" {
 		gron := gronx.New()
