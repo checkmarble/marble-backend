@@ -168,6 +168,7 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersion(
 			"record_type",
 			"thresholds",
 			"cooldown_seconds",
+			"scoring_interval_seconds",
 		).
 		Values(
 			uuid.Must(uuid.NewV7()),
@@ -178,6 +179,7 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersion(
 			ruleset.RecordType,
 			ruleset.Thresholds,
 			ruleset.CooldownSeconds,
+			ruleset.ScoringIntervalSeconds,
 		).
 		Suffix(`
 			on conflict (org_id, record_type) where status = 'draft'
@@ -185,7 +187,8 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersion(
 				name = excluded.name,
 				description = excluded.description,
 				thresholds = excluded.thresholds,
-				cooldown_seconds = excluded.cooldown_seconds
+				cooldown_seconds = excluded.cooldown_seconds,
+				scoring_interval_seconds = excluded.scoring_interval_seconds
 		`).
 		Suffix("returning *")
 

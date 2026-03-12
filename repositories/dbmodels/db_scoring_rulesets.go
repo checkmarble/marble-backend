@@ -12,16 +12,17 @@ import (
 )
 
 type DbScoringRuleset struct {
-	Id              uuid.UUID `db:"id"`
-	OrgId           uuid.UUID `db:"org_id"`
-	Version         int       `db:"version"`
-	Status          string    `db:"status"`
-	Name            string    `db:"name"`
-	Description     string    `db:"description"`
-	RecordType      string    `db:"record_type"`
-	Thresholds      []int     `db:"thresholds"`
-	CooldownSeconds int       `db:"cooldown_seconds"`
-	CreatedAt       time.Time `db:"created_at"`
+	Id                     uuid.UUID `db:"id"`
+	OrgId                  uuid.UUID `db:"org_id"`
+	Version                int       `db:"version"`
+	Status                 string    `db:"status"`
+	Name                   string    `db:"name"`
+	Description            string    `db:"description"`
+	RecordType             string    `db:"record_type"`
+	Thresholds             []int     `db:"thresholds"`
+	ScoringIntervalSeconds int       `db:"scoring_interval_seconds"`
+	CooldownSeconds        int       `db:"cooldown_seconds"`
+	CreatedAt              time.Time `db:"created_at"`
 }
 
 // TODO: stable ID is a bit useless and unusable since we commit the whole
@@ -60,7 +61,8 @@ func AdaptScoringRuleset(db DbScoringRuleset) (models.ScoringRuleset, error) {
 		Description:     db.Description,
 		RecordType:      db.RecordType,
 		Thresholds:      db.Thresholds,
-		CooldownSeconds: db.CooldownSeconds,
+		Cooldown:        time.Duration(db.CooldownSeconds) * time.Second,
+		ScoringInterval: time.Duration(db.ScoringIntervalSeconds) * time.Second,
 		CreatedAt:       db.CreatedAt,
 	}, nil
 }

@@ -450,7 +450,8 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 			params.OrganizationId))
 
 	environment.AddEvaluator(ast.FUNC_MONITORING_LIST_CHECK,
-		evaluate.MonitoringListCheck{
+		evaluate.EntityAnnotationCheck{
+			AnnotationType:     models.EntityAnnotationRiskTag,
 			OrgId:              params.OrganizationId,
 			DataModel:          params.DataModel,
 			ClientObject:       params.ClientObject,
@@ -459,6 +460,30 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 			IngestedDataReader: usecases.Repositories.IngestedDataReadRepository,
 			ClientDbRepository: &usecases.Repositories.ClientDbRepository,
 			ReturnFakeValue:    params.DatabaseAccessReturnFakeValue,
+		},
+	)
+
+	environment.AddEvaluator(ast.FUNC_RECORD_HAS_TAGS,
+		evaluate.EntityAnnotationCheck{
+			AnnotationType:     models.EntityAnnotationTag,
+			OrgId:              params.OrganizationId,
+			DataModel:          params.DataModel,
+			ClientObject:       params.ClientObject,
+			ExecutorFactory:    usecases.NewExecutorFactory(),
+			Repository:         usecases.Repositories.MarbleDbRepository,
+			IngestedDataReader: usecases.Repositories.IngestedDataReadRepository,
+			ClientDbRepository: &usecases.Repositories.ClientDbRepository,
+			ReturnFakeValue:    params.DatabaseAccessReturnFakeValue,
+		},
+	)
+
+	environment.AddEvaluator(ast.FUNC_RECORD_HAS_PAST_ALERTS,
+		evaluate.PastAlerts{
+			ExecutorFactory: usecases.NewExecutorFactory(),
+			Repository:      usecases.Repositories.MarbleDbRepository,
+			OrgId:           params.OrganizationId,
+			DataModel:       params.DataModel,
+			ClientObject:    params.ClientObject,
 		},
 	)
 

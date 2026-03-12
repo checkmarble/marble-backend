@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
@@ -136,4 +137,68 @@ func (repo *MarbleDbRepository) GetScoreDistribution(
 		GroupBy("risk_level")
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptScoringScoreDistribution)
+}
+
+func (repo *MarbleDbRepository) GetStaleScoreBatch(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	recordType string,
+	before time.Time,
+	limit int,
+) ([]string, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	// TODO: j'ai mal à mon index
+	query := NewQueryBuilder().
+		Select("record_id").
+		From(dbmodels.TABLE_SCORING_SCORES).
+		Where(squirrel.Eq{
+			"org_id":      orgId,
+			"record_type": recordType,
+			"deleted_at":  nil,
+		}).
+		Where(squirrel.Or{
+			squirrel.And{
+				squirrel.Eq{"source": "ruleset"},
+				squirrel.Expr("created_at < ?", before),
+			},
+			squirrel.And{
+				squirrel.Eq{"source": "override"},
+				squirrel.Expr("stale_at < now()"),
+			},
+		}).
+		OrderBy("created_at asc").
+		Limit(uint64(limit))
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	recordIds := make([]string, 0, limit)
+
+	var tmp string
+
+	for rows.Next() {
+		if err := rows.Scan(&tmp); err != nil {
+			return nil, err
+		}
+
+		recordIds = append(recordIds, tmp)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return recordIds, nil
 }

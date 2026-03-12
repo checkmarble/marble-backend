@@ -16,7 +16,7 @@ type LinkedTableCheck struct {
 	NavigationOption *NavigationOption `mapstructure:"navigationOption"`
 }
 
-type MonitoringListCheckConfig struct {
+type EntityAnnotationCheckConfig struct {
 	TargetTableName   string             `mapstructure:"targetTableName"`
 	PathToTarget      []string           `mapstructure:"pathToTarget"`
 	TopicFilters      []string           `mapstructure:"topicFilters"`
