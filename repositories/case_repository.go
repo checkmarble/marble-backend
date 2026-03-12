@@ -729,6 +729,56 @@ func (repo *MarbleDbRepository) GetCasesRelatedToObject(ctx context.Context, exe
 	return pure_utils.MapErr(cases, dbmodels.AdaptCase)
 }
 
+func (repo *MarbleDbRepository) ObjectHasConfirmedRisks(ctx context.Context, exec Executor, orgId uuid.UUID, objectType, objectId string) (bool, error) {
+	sql := `
+		with
+			link_ids as (
+				select id
+				from data_model_links
+				where parent_table_id = (
+					select id
+					from data_model_tables
+					where organization_id = $1 and name = $2
+				)
+			),
+			pivot_ids as (
+				select p.id
+				from data_model_pivots p
+				inner join link_ids l on path_link_ids[cardinality(path_link_ids)] = l.id
+				where organization_id = $1
+			),
+			decisions as (
+				select distinct case_id
+				from decisions d
+				inner join pivot_ids as p on d.pivot_id = p.id and d.pivot_value = $3
+				where org_id = $1
+			)
+		select exists(
+			select 1
+			from cases c
+			inner join decisions on c.id = decisions.case_id
+			where c.outcome = 'confirmed_risk'
+			limit 1
+		)
+	`
+
+	row := exec.QueryRow(
+		ctx,
+		sql,
+		orgId,
+		objectType,
+		objectId,
+	)
+
+	var hasConfirmedRisks bool
+
+	if err := row.Scan(&hasConfirmedRisks); err != nil {
+		return false, err
+	}
+
+	return hasConfirmedRisks, nil
+}
+
 // Count the number of cases for each organization in the given time range, return a map of orgId to count
 // From date is inclusive, to date is exclusive
 func (repo *MarbleDbRepository) CountCasesByOrg(ctx context.Context, exec Executor,
