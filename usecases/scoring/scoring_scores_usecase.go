@@ -345,7 +345,7 @@ func (uc ScoringScoresUsecase) executeRules(ctx context.Context, env ast_eval.As
 	for idx, rule := range ruleset.Rules {
 		eval, ok := ast_eval.EvaluateAst(ctx, nil, env, rule.Ast)
 		if !ok {
-			return models.ScoringEvaluation{}, errors.New("could not unmarshal AST")
+			return models.ScoringEvaluation{}, errors.New("could not execute AST")
 		}
 
 		scoreComputationResult, ok := eval.ReturnValue.(ast.ScoreComputationResult)
