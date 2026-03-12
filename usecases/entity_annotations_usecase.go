@@ -362,6 +362,12 @@ func (uc EntityAnnotationUsecase) validateAnnotation(ctx context.Context, req mo
 			}
 			return err
 		}
+		if tag.OrganizationId != req.OrgId {
+			return errors.WithDetail(
+				errors.Wrap(models.NotFoundError, "unknown tag"),
+				"unknown tag",
+			)
+		}
 		if tag.Target != models.TagTargetObject {
 			return errors.WithDetail(
 				errors.Wrap(models.UnprocessableEntityError,
