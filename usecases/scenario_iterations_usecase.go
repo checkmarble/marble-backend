@@ -245,6 +245,9 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 			if err != nil {
 				return models.ScenarioIteration{}, err
 			}
+			if err := usecase.enforceSecurity.ReadOrganization(si.OrganizationId); err != nil {
+				return models.ScenarioIteration{}, err
+			}
 
 			screeningConfigs, err := usecase.screeningConfigRepository.ListScreeningConfigs(ctx, tx, si.Id, false)
 			if err != nil {
