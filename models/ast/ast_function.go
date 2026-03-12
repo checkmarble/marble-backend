@@ -53,6 +53,7 @@ const (
 	FUNC_FUZZY_MATCH_FILTER_OPTIONS
 	FUNC_MONITORING_LIST_CHECK
 	FUNC_RECORD_HAS_TAGS
+	FUNC_RECORD_HAS_PAST_ALERTS
 
 	FUNC_SCORE_COMPUTATION
 	FUNC_SWITCH
@@ -299,6 +300,10 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 			"config",
 		},
 	},
+	FUNC_RECORD_HAS_PAST_ALERTS: {
+		DebugName: "FUNC_RECORD_HAS_PAST_ALERTS",
+		AstName:   "RecordHasPastAlerts",
+	},
 	FUNC_SCORE_COMPUTATION: {
 		DebugName:      "FUNC_SCORE_COMPUTATION",
 		AstName:        "ScoreComputation",
@@ -307,6 +312,7 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_SWITCH: {
 		DebugName:           "FUNC_SWITCH",
 		AstName:             "Switch",
+		NamedArguments:      []string{"field"},
 		LazyChildEvaluation: shortCircuitIfScoringTriggered,
 	},
 }
