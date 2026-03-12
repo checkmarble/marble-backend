@@ -22,14 +22,6 @@ func argumentNotNil(argument any) error {
 	return nil
 }
 
-func adaptIdentity(argument any) (any, error) {
-	if err := argumentNotNil(argument); err != nil {
-		return nil, err
-	}
-
-	return argument, nil
-}
-
 func promoteArgumentToInt64(argument any) (int64, error) {
 	if err := argumentNotNil(argument); err != nil {
 		return 0, err
