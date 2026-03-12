@@ -47,6 +47,7 @@ type workflowRepository interface {
 	DeleteWorkflowAction(ctx context.Context, exec repositories.Executor, ruleId, actionId uuid.UUID) error
 	ReorderWorkflowRules(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID, ids []uuid.UUID) error
 	GetTagById(ctx context.Context, exec repositories.Executor, tagId string) (models.Tag, error)
+	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error)
 }
 
 func (uc *WorkflowUsecase) ListWorkflowsForScenario(ctx context.Context, scenarioId uuid.UUID) ([]models.Workflow, error) {
@@ -416,6 +417,17 @@ func (uc *WorkflowUsecase) ValidateWorkflowAction(ctx context.Context, scenario 
 						return e.Error
 					})...),
 					"invalid AST in field 'title_template'")
+			}
+		}
+
+		if !params.AnyInbox {
+			inbox, err := uc.repository.GetInboxById(ctx,
+				uc.executorFactory.NewExecutor(), params.InboxId)
+			if err != nil {
+				return errors.Wrap(models.BadParameterError, err.Error())
+			}
+			if inbox.OrganizationId != scenario.OrganizationId {
+				return errors.Wrap(models.NotFoundError, "inbox not found")
 			}
 		}
 
