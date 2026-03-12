@@ -176,6 +176,20 @@ type ContinuousScreeningUsecaseRepository interface {
 		exec repositories.Executor,
 		input models.CreateContinuousScreeningDeltaTrack,
 	) error
+
+	// Debug endpoints
+	ListContinuousScreeningUpdateJobsByOrgId(
+		ctx context.Context,
+		exec repositories.Executor,
+		orgId uuid.UUID,
+		paginationAndSorting models.PaginationAndSorting,
+	) ([]models.ContinuousScreeningUpdateJobWithProgress, error)
+	ListContinuousScreeningDeltaTracksByOrgId(
+		ctx context.Context,
+		exec repositories.Executor,
+		orgId uuid.UUID,
+		paginationAndSorting models.PaginationAndSorting,
+	) ([]models.ContinuousScreeningDeltaTrackWithFile, error)
 }
 
 type continuousScreeningTaskQueueRepository interface {
