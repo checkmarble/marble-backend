@@ -87,6 +87,7 @@ type decisionUsecaseScreeningWriter interface {
 type DecisionUsecase struct {
 	enforceSecurity           security.EnforceSecurityDecision
 	enforceSecurityScenario   security.EnforceSecurityScenario
+	enforceSecurityTestRun    security.EnforceSecurityTestRun
 	transactionFactory        executor_factory.TransactionFactory
 	executorFactory           executor_factory.ExecutorFactory
 	dataModelRepository       repositories.DataModelRepository
@@ -148,6 +149,10 @@ func (usecase *DecisionUsecase) GetDecisionsByOutcomeAndScore(ctx context.Contex
 	testrun, errTestRun := usecase.scenarioTestRunRepository.GetTestRunByID(ctx, exec, testrunId)
 	if errTestRun != nil {
 		return nil, errTestRun
+	}
+
+	if err := usecase.enforceSecurityTestRun.ReadTestRun(testrun.OrganizationId); err != nil {
+		return nil, err
 	}
 
 	decisions, err := usecase.repository.GetSummarizedDecisionStatForTestRun(ctx, exec, testrun.Id)
