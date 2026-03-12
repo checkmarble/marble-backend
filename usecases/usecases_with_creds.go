@@ -164,6 +164,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
 		enforceSecurity:           usecases.NewEnforceDecisionSecurity(),
 		enforceSecurityScenario:   usecases.NewEnforceScenarioSecurity(),
+		enforceSecurityTestRun:    usecases.NewEnforceTestRunScenarioSecurity(),
 		executorFactory:           usecases.NewExecutorFactory(),
 		transactionFactory:        usecases.NewTransactionFactory(),
 		dataModelRepository:       usecases.Repositories.MarbleDbRepository,
