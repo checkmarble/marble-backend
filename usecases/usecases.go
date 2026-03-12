@@ -477,6 +477,16 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 		},
 	)
 
+	environment.AddEvaluator(ast.FUNC_RECORD_HAS_PAST_ALERTS,
+		evaluate.PastAlerts{
+			ExecutorFactory: usecases.NewExecutorFactory(),
+			Repository:      usecases.Repositories.MarbleDbRepository,
+			OrgId:           params.OrganizationId,
+			DataModel:       params.DataModel,
+			ClientObject:    params.ClientObject,
+		},
+	)
+
 	environment.AddEvaluator(ast.FUNC_HAS_IP_FLAG, evaluate.HasIpFlag{
 		PayloadEnricher: usecases.NewPayloadEnrichmentUsecase(),
 	})
