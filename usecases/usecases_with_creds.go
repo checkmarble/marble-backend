@@ -304,6 +304,7 @@ func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterati
 func (usecases *UsecasesWithCreds) NewRuleUsecase() RuleUsecase {
 	return RuleUsecase{
 		enforceSecurity:           usecases.NewEnforceScenarioSecurity(),
+		enforceSecurityTestRun:    usecases.NewEnforceTestRunScenarioSecurity(),
 		repository:                usecases.Repositories.MarbleDbRepository,
 		scenarioFetcher:           usecases.NewScenarioFetcher(),
 		transactionFactory:        usecases.NewTransactionFactory(),

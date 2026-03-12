@@ -53,6 +53,7 @@ type RuleUsecaseRepository interface {
 
 type RuleUsecase struct {
 	enforceSecurity           security.EnforceSecurityScenario
+	enforceSecurityTestRun    security.EnforceSecurityTestRun
 	repository                RuleUsecaseRepository
 	scenarioFetcher           scenarios.ScenarioFetcher
 	transactionFactory        executor_factory.TransactionFactory
@@ -98,6 +99,10 @@ func (usecase *RuleUsecase) TestRunStatsByRuleExecution(ctx context.Context, tes
 	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		testrun, err := usecase.scenarioTestRunRepository.GetTestRunByID(ctx, tx, testrunId)
 		if err != nil {
+			return err
+		}
+
+		if err := usecase.enforceSecurityTestRun.ReadTestRun(testrun.OrganizationId); err != nil {
 			return err
 		}
 
