@@ -403,6 +403,7 @@ func (usecase *CaseUseCase) CreateCase(
 	if err := usecase.validateContinuousScreenings(
 		ctx,
 		tx,
+		createCaseAttributes.OrganizationId,
 		createCaseAttributes.ContinuousScreeningIds,
 	); err != nil {
 		return models.Case{}, err
@@ -1471,6 +1472,7 @@ func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec reposito
 func (usecase *CaseUseCase) validateContinuousScreenings(
 	ctx context.Context,
 	exec repositories.Executor,
+	orgId uuid.UUID,
 	continuousScreeningIds []uuid.UUID,
 ) error {
 	if len(continuousScreeningIds) == 0 {
@@ -1482,6 +1484,11 @@ func (usecase *CaseUseCase) validateContinuousScreenings(
 		return err
 	}
 	for _, continuousScreening := range continuousScreenings {
+		if continuousScreening.OrgId != orgId {
+			return errors.WithDetail(errors.Wrap(models.NotFoundError,
+				"provided continuous screening not found"),
+				"some of the provided continuous screenings do not exist")
+		}
 		if continuousScreening.CaseId != nil {
 			return fmt.Errorf("continuous screening %s already belongs to a case %s %w",
 				continuousScreening.Id.String(), continuousScreening.CaseId.String(), models.BadParameterError)

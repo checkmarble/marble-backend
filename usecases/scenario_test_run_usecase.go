@@ -48,6 +48,9 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
 	if err != nil {
 		return models.ScenarioTestRun{}, err
 	}
+	if err := usecase.enforceSecurity.ReadOrganization(scenario.OrganizationId); err != nil {
+		return models.ScenarioTestRun{}, err
+	}
 	if scenario.LiveVersionID == nil {
 		return models.ScenarioTestRun{}, models.ErrScenarioHasNoLiveVersion
 	}
@@ -59,6 +62,9 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
 	phantomIteration, err := usecase.scenarioIteratorRepository.GetScenarioIteration(ctx, exec, input.PhantomIterationId, false)
 	if err != nil {
 		return models.ScenarioTestRun{}, models.ErrScenarioIterationNotValid
+	}
+	if err := usecase.enforceSecurity.ReadOrganization(phantomIteration.OrganizationId); err != nil {
+		return models.ScenarioTestRun{}, err
 	}
 	if phantomIteration.Archived {
 		return models.ScenarioTestRun{}, models.ErrScenarioIterationNotValid
