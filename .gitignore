@@ -61,4 +61,7 @@ e2e_test
 .vscode/mise-tools/
 __debug_bin*
 
+# Git worktrees
+.worktrees
+
 prompts
