@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	MaxBatchSizePerIteration = 100
+	MaxBatchSizePerIteration = 50
 )
 
 var AllowedRecordOperations = []models.OpenSanctionsDeltaFileRecordOp{
@@ -158,6 +158,12 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 	logger := utils.LoggerFromContext(ctx)
 	exec := w.executorFactory.NewExecutor()
 
+	// Log error if job has been retried many times
+	if job.Attempt > 100 {
+		logger.ErrorContext(ctx, "Continuous screening apply delta file job has exceeded 100 attempts",
+			"attempt", job.Attempt, "update_id", job.Args.UpdateId, "org_id", job.Args.OrgId)
+	}
+
 	logger.DebugContext(
 		ctx,
 		"Starting continuous screening apply delta file update",
@@ -283,6 +289,11 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 			retry.Context(iterCtx),
 		)
 		if err != nil {
+			// Handle transient screening API errors (408 timeout, 502 bad gateway) gracefully
+			if isTransientScreeningError(err) {
+				iterLogger.WarnContext(iterCtx, "Screening API transient error, rescheduling job", "error", err.Error())
+				return river.JobSnooze(5 * time.Minute)
+			}
 			return err
 		}
 
@@ -485,4 +496,14 @@ func (w *ApplyDeltaFileWorker) handleProcessError(
 	}
 
 	return nil
+}
+
+// isTransientScreeningError checks if an error is a transient screening API error
+// (408, 429, 502, 503, 504) that should trigger a job snooze rather than a permanent failure
+func isTransientScreeningError(err error) bool {
+	var httpErr *repositories.HTTPError
+	if errors.As(err, &httpErr) {
+		return httpErr.IsTransient()
+	}
+	return false
 }
