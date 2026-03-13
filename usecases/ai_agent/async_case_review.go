@@ -3,6 +3,7 @@ package ai_agent
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/dto/agent_dto"
@@ -159,6 +160,11 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 			}
 			return nil
 		}
+		// Check if this is a rate limit error from the LLM provider
+		if isRateLimitError(err) {
+			logger.WarnContext(ctx, "LLM provider rate limited, rescheduling job", "error", err.Error())
+			return river.JobSnooze(30 * time.Second)
+		}
 		return w.handleCreateCaseReviewSyncError(
 			ctx,
 			aiCaseReview,
@@ -280,4 +286,12 @@ func (w *CaseReviewWorker) getPreviousCaseReviewContext(
 	}
 
 	return caseReviewContext, nil
+}
+
+// isRateLimitError checks if the error is a 429 rate limit error from the LLM provider
+func isRateLimitError(err error) bool {
+	errStr := err.Error()
+	return strings.Contains(errStr, "429") ||
+		strings.Contains(errStr, "Resource exhausted") ||
+		strings.Contains(errStr, "RESOURCE_EXHAUSTED")
 }
