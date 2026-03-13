@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_FILE_PATH\" | grep -qE '(usecases/|api/handle_|pubapi/|dto/)'; then echo 'REMINDER: Check that all resource IDs from user input have org ownership validation. Run /auth-review if unsure.'; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
