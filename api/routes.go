@@ -196,7 +196,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		handleEnqueueScreeningHitSuggestion(uc))
 	router.PATCH("/screenings/matches/:id", tom, handleUpdateScreeningMatchStatus(uc))
 	router.POST("/screenings/matches/:id/enrich", tom, handleEnrichScreeningMatch(uc))
-	router.GET("/screenings/matches/:matchId/ai-suggestion", tom, handleGetScreeningHitSuggestion(uc))
+	router.GET("/screenings/:screeningId/ai-suggestions", tom, handleGetScreeningSuggestions(uc))
 	router.POST("/screenings/freeform-search", tom, handleFreeformSearch(uc))
 
 	router.GET("/continuous-screenings/configs", tom, handleListContinuousScreeningConfigs(uc))

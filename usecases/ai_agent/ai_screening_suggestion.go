@@ -10,7 +10,6 @@ import (
 
 	"github.com/checkmarble/llmberjack"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -329,31 +328,39 @@ func (uc *AiAgentUsecase) writeSuggestionToBlob(
 	return nil
 }
 
-// GetScreeningHitSuggestion retrieves a single screening hit suggestion from blob storage.
-func (uc *AiAgentUsecase) GetScreeningHitSuggestion(
+// GetScreeningSuggestions retrieves all screening hit suggestions for a screening from blob storage.
+func (uc *AiAgentUsecase) GetScreeningSuggestions(
 	ctx context.Context,
-	matchId string,
-) (models.AiScreeningHitSuggestion, error) {
+	screeningId string,
+) ([]models.AiScreeningHitSuggestion, error) {
 	exec := uc.executorFactory.NewExecutor()
+	logger := utils.LoggerFromContext(ctx)
 
-	match, err := uc.repository.GetScreeningMatch(ctx, exec, matchId)
+	screening, err := uc.repository.GetScreening(ctx, exec, screeningId)
 	if err != nil {
-		return models.AiScreeningHitSuggestion{},
-			errors.Wrap(err, "could not get screening match")
+		return nil, errors.Wrap(err, "could not get screening")
 	}
 
-	if err := uc.enforceCanReadScreeningHitSuggestion(ctx, exec, match); err != nil {
-		return models.AiScreeningHitSuggestion{}, err
+	if err := uc.enforceCanReadScreeningSuggestions(ctx, exec, screening); err != nil {
+		return nil, err
 	}
 
-	blobPath := screeningHitSuggestionBlobPath(match.ScreeningId, matchId)
-	suggestion, err := uc.loadSuggestionFromBlob(ctx, blobPath)
-	if err != nil {
-		return models.AiScreeningHitSuggestion{},
-			errors.Wrap(err, "could not load suggestion")
+	var suggestions []models.AiScreeningHitSuggestion
+	for _, match := range screening.Matches {
+		blobPath := screeningHitSuggestionBlobPath(screeningId, match.Id)
+		suggestion, err := uc.loadSuggestionFromBlob(ctx, blobPath)
+		if err != nil {
+			if errors.Is(err, models.NotFoundError) {
+				logger.DebugContext(ctx, "No suggestion found for match, skipping",
+					"match_id", match.Id)
+				continue
+			}
+			return nil, errors.Wrapf(err, "could not load suggestion for match %s", match.Id)
+		}
+		suggestions = append(suggestions, suggestion)
 	}
 
-	return suggestion, nil
+	return suggestions, nil
 }
 
 // EnqueueScreeningHitSuggestion validates the screening and enqueues an async job.
@@ -388,39 +395,17 @@ func (uc *AiAgentUsecase) EnqueueScreeningHitSuggestion(
 	return nil
 }
 
-func (uc *AiAgentUsecase) enforceCanReadScreeningHitSuggestion(ctx context.Context,
-	exec repositories.Executor, match models.ScreeningMatch,
+func (uc *AiAgentUsecase) enforceCanReadScreeningSuggestions(ctx context.Context,
+	exec repositories.Executor, screening models.ScreeningWithMatches,
 ) error {
-	screening, err := uc.repository.GetScreeningWithoutMatches(ctx, exec, match.ScreeningId)
-	if err != nil {
-		return errors.Wrap(err, "could not get screening")
-	}
-	decision, err := uc.repository.DecisionsById(ctx, exec, []string{screening.DecisionId})
+	decisions, err := uc.repository.DecisionsById(ctx, exec, []string{screening.DecisionId})
 	if err != nil {
 		return err
 	}
-	if len(decision) == 0 {
+	if len(decisions) == 0 {
 		return errors.Wrap(models.NotFoundError,
 			"could not find the decision linked to the screening")
 	}
-	if decision[0].Case == nil {
-		return errors.Wrap(models.UnprocessableEntityError,
-			"this screening is not linked to a case")
-	}
 
-	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec,
-		decision[0].OrganizationId, false)
-	if err != nil {
-		return errors.Wrap(err, "could not retrieve organization inboxes")
-	}
-
-	inboxIds := pure_utils.Map(inboxes, func(inbox models.Inbox) uuid.UUID {
-		return inbox.Id
-	})
-
-	if err := uc.enforceSecurityCase.ReadOrUpdateCase((*decision[0].Case).GetMetadata(), inboxIds); err != nil {
-		return err
-	}
-
-	return nil
+	return uc.enforceSecurityDecision.ReadDecision(decisions[0])
 }

@@ -469,7 +469,6 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		ingestedDataReader:      usecases.NewIngestedDataReaderUsecase(),
 		taskQueueRepository:     usecases.Repositories.TaskQueueRepository,
 		featureAccessReader:     usecases.NewFeatureAccessReader(),
-		aiAgentUsecase:          utils.Ptr(usecases.NewAiAgentUsecase()),
 		publicApiAdapterUsecase: usecases.NewPublicApiAdapterUsecase(),
 	}
 }
@@ -822,6 +821,7 @@ func (usecases *UsecasesWithCreds) NewEntityAnnotationUsecase() EntityAnnotation
 func (usecases *UsecasesWithCreds) NewAiAgentUsecase() ai_agent.AiAgentUsecase {
 	return ai_agent.NewAiAgentUsecase(
 		usecases.NewEnforceCaseSecurity(),
+		usecases.NewEnforceDecisionSecurity(),
 		usecases.NewEnforceOrganizationSecurity(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewInboxReader(),

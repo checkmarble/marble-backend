@@ -23,17 +23,17 @@ func handleEnqueueScreeningHitSuggestion(uc usecases.Usecases) func(c *gin.Conte
 	}
 }
 
-func handleGetScreeningHitSuggestion(uc usecases.Usecases) func(c *gin.Context) {
+func handleGetScreeningSuggestions(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		matchId := c.Param("matchId")
+		screeningId := c.Param("screeningId")
 
 		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		suggestion, err := usecase.GetScreeningHitSuggestion(ctx, matchId)
+		suggestions, err := usecase.GetScreeningSuggestions(ctx, screeningId)
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.AdaptAiScreeningHitSuggestionDto(suggestion))
+		c.JSON(http.StatusOK, dto.AdaptAiScreeningHitSuggestionDtos(suggestions))
 	}
 }
