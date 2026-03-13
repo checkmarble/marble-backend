@@ -34,6 +34,25 @@ var (
 	OPEN_SANCTIONS_ALGORITHMS_CACHE = expirable.NewLRU[string, models.OpenSanctionAlgorithms](1, nil, time.Hour)
 )
 
+// HTTPError represents an HTTP error from the screening API with the status code
+type HTTPError struct {
+	StatusCode int
+	Message    string
+}
+
+func (e *HTTPError) Error() string {
+	return fmt.Sprintf("screening API returned status %d: %s", e.StatusCode, e.Message)
+}
+
+// IsTransient returns true if this is a transient error that should trigger a retry
+func (e *HTTPError) IsTransient() bool {
+	return e.StatusCode == http.StatusRequestTimeout || // 408
+		e.StatusCode == http.StatusTooManyRequests || // 429
+		e.StatusCode == http.StatusBadGateway || // 502
+		e.StatusCode == http.StatusServiceUnavailable || // 503
+		e.StatusCode == http.StatusGatewayTimeout // 504
+}
+
 type OpenSanctionsRepository struct {
 	opensanctions infra.OpenSanctions
 }
@@ -320,8 +339,10 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return models.ScreeningRawSearchResponseWithMatches{}, fmt.Errorf(
-			"screening API returned status %d", resp.StatusCode)
+		return models.ScreeningRawSearchResponseWithMatches{}, &HTTPError{
+			StatusCode: resp.StatusCode,
+			Message:    "screening API error",
+		}
 	}
 
 	var matches httpmodels.HTTPOpenSanctionsResult
