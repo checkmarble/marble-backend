@@ -167,6 +167,7 @@ type screeningHitSuggestionTaskEnqueuer interface {
 
 type AiAgentUsecase struct {
 	enforceSecurityCase                security.EnforceSecurityCase
+	enforceSecurityDecision            security.EnforceSecurityDecision
 	enforceSecurityOrganization        security.EnforceSecurityOrganization
 	repository                         AiAgentUsecaseRepository
 	inboxReader                        inboxes.InboxReader
@@ -194,6 +195,7 @@ type AiAgentUsecase struct {
 
 func NewAiAgentUsecase(
 	enforceSecurityCase security.EnforceSecurityCase,
+	enforceSecurityDecision security.EnforceSecurityDecision,
 	enforceSecurityOrganization security.EnforceSecurityOrganization,
 	repository AiAgentUsecaseRepository,
 	inboxReader inboxes.InboxReader,
@@ -216,6 +218,7 @@ func NewAiAgentUsecase(
 ) AiAgentUsecase {
 	return AiAgentUsecase{
 		enforceSecurityCase:                enforceSecurityCase,
+		enforceSecurityDecision:            enforceSecurityDecision,
 		enforceSecurityOrganization:        enforceSecurityOrganization,
 		repository:                         repository,
 		inboxReader:                        inboxReader,

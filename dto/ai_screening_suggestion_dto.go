@@ -23,3 +23,11 @@ func AdaptAiScreeningHitSuggestionDto(suggestion models.AiScreeningHitSuggestion
 		CreatedAt:  suggestion.CreatedAt,
 	}
 }
+
+func AdaptAiScreeningHitSuggestionDtos(suggestions []models.AiScreeningHitSuggestion) []AiScreeningHitSuggestionDto {
+	dtos := make([]AiScreeningHitSuggestionDto, len(suggestions))
+	for i, s := range suggestions {
+		dtos[i] = AdaptAiScreeningHitSuggestionDto(s)
+	}
+	return dtos
+}
