@@ -837,6 +837,8 @@ func (usecases *UsecasesWithCreds) NewAiAgentUsecase() ai_agent.AiAgentUsecase {
 		usecases.Repositories.TaskQueueRepository,
 		usecases.NewTransactionFactory(),
 		usecases.NewFeatureAccessReader(),
+		usecases.Repositories.TaskQueueRepository,
+		utils.Ptr(usecases.NewScreeningUsecase()),
 		usecases.aiAgentConfig,
 		usecases.caseManagerBucketUrl, // TODO: I think we could avoid passing the caseManagerBucketURL here only for the creation of the model
 	)
@@ -849,6 +851,14 @@ func (usecases *UsecasesWithCreds) NewCaseReviewWorker(timeout time.Duration) *a
 		utils.Ptr(usecases.NewAiAgentUsecase()),
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.MarbleDbRepository,
+		timeout,
+	)
+	return &w
+}
+
+func (usecases *UsecasesWithCreds) NewScreeningHitSuggestionWorker(timeout time.Duration) *ai_agent.ScreeningHitSuggestionWorker {
+	w := ai_agent.NewScreeningHitSuggestionWorker(
+		utils.Ptr(usecases.NewAiAgentUsecase()),
 		timeout,
 	)
 	return &w
