@@ -88,11 +88,13 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
 	suite.scenarioRepository.On("GetScenarioById",
 		suite.transaction, input.ScenarioId).Return(models.Scenario{
-		LiveVersionID: &liveVersionID,
+		OrganizationId: suite.organizationId,
+		LiveVersionID:  &liveVersionID,
 	}, nil)
 	suite.repository.On("GetTestRunByID", suite.ctx, suite.transaction,
 		mock.Anything).Return(output, nil)
 	suite.enforceSecurity.On("CreateTestRun", suite.organizationId).Return(nil)
+	suite.enforceSecurity.On("ReadOrganization", suite.organizationId).Return(nil)
 	suite.repository.On("CreateTestRun", suite.ctx, suite.transaction, mock.Anything,
 		input.CreateDbInput(liveVersionID)).Return(nil)
 	suite.repository.On("ListRunningTestRun", suite.ctx, suite.transaction,
@@ -100,7 +102,9 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 	suite.screeningConfig.On("ListScreeningConfigs", suite.ctx, suite.transaction,
 		input.PhantomIterationId, mock.Anything).Return(nil, nil)
 	suite.scenarioIteratorRepository.ScenarioIterationReadRepository.On("GetScenarioIteration", suite.ctx, suite.transaction,
-		input.PhantomIterationId, false).Return(models.ScenarioIteration{}, nil)
+		input.PhantomIterationId, false).Return(models.ScenarioIteration{
+		OrganizationId: suite.organizationId,
+	}, nil)
 
 	suite.clientDbIndexEditor.On("CreateIndexesAsyncForScenarioWithCallback", suite.ctx,
 		suite.organizationId, []models.ConcreteIndex{

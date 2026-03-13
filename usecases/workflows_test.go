@@ -1,13 +1,16 @@
 package usecases
 
 import (
+	"context"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -92,8 +95,15 @@ func TestValidateWorkflowAction(t *testing.T) {
 
 	scenario := models.Scenario{TriggerObjectType: "transactions"}
 	exec, astValidator := makeScenarioEvaluator(t, scenario)
+
+	// Mock repository with stubs for methods used in validation
+	mockRepository := &workflowTestRepository{
+		organizationId: scenario.OrganizationId,
+	}
+
 	uc := WorkflowUsecase{
 		executorFactory: exec,
+		repository:      mockRepository,
 		validateScenarioAst: &scenarios.ValidateScenarioAstImpl{
 			AstValidator: astValidator,
 		},
@@ -148,4 +158,80 @@ func makeScenarioEvaluator(t *testing.T, scenario models.Scenario) (executor_fac
 	}
 
 	return executorFactory, &validator
+}
+
+type workflowTestRepository struct {
+	organizationId uuid.UUID
+}
+
+func (r *workflowTestRepository) ListAllOrgWorkflows(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.Workflow, error) {
+	return nil, nil
+}
+
+func (r *workflowTestRepository) ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID) ([]models.Workflow, error) {
+	return nil, nil
+}
+
+func (r *workflowTestRepository) GetWorkflowRule(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.WorkflowRule, error) {
+	return models.WorkflowRule{}, nil
+}
+
+func (r *workflowTestRepository) GetWorkflowRuleDetails(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.Workflow, error) {
+	return models.Workflow{}, nil
+}
+
+func (r *workflowTestRepository) GetWorkflowCondition(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.WorkflowCondition, error) {
+	return models.WorkflowCondition{}, nil
+}
+
+func (r *workflowTestRepository) GetWorkflowAction(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.WorkflowAction, error) {
+	return models.WorkflowAction{}, nil
+}
+
+func (r *workflowTestRepository) InsertWorkflowRule(ctx context.Context, exec repositories.Executor, rule models.WorkflowRule) (models.WorkflowRule, error) {
+	return rule, nil
+}
+
+func (r *workflowTestRepository) UpdateWorkflowRule(ctx context.Context, exec repositories.Executor, rule models.WorkflowRule) (models.WorkflowRule, error) {
+	return rule, nil
+}
+
+func (r *workflowTestRepository) DeleteWorkflowRule(ctx context.Context, exec repositories.Executor, ruleId uuid.UUID) error {
+	return nil
+}
+
+func (r *workflowTestRepository) InsertWorkflowCondition(ctx context.Context, exec repositories.Executor, condition models.WorkflowCondition) (models.WorkflowCondition, error) {
+	return condition, nil
+}
+
+func (r *workflowTestRepository) UpdateWorkflowCondition(ctx context.Context, exec repositories.Executor, condition models.WorkflowCondition) (models.WorkflowCondition, error) {
+	return condition, nil
+}
+
+func (r *workflowTestRepository) DeleteWorkflowCondition(ctx context.Context, exec repositories.Executor, ruleId, conditionId uuid.UUID) error {
+	return nil
+}
+
+func (r *workflowTestRepository) InsertWorkflowAction(ctx context.Context, exec repositories.Executor, action models.WorkflowAction) (models.WorkflowAction, error) {
+	return action, nil
+}
+
+func (r *workflowTestRepository) UpdateWorkflowAction(ctx context.Context, exec repositories.Executor, action models.WorkflowAction) (models.WorkflowAction, error) {
+	return action, nil
+}
+
+func (r *workflowTestRepository) DeleteWorkflowAction(ctx context.Context, exec repositories.Executor, ruleId, actionId uuid.UUID) error {
+	return nil
+}
+
+func (r *workflowTestRepository) ReorderWorkflowRules(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID, ids []uuid.UUID) error {
+	return nil
+}
+
+func (r *workflowTestRepository) GetTagById(ctx context.Context, exec repositories.Executor, tagId string) (models.Tag, error) {
+	return models.Tag{OrganizationId: r.organizationId}, nil
+}
+
+func (r *workflowTestRepository) GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error) {
+	return models.Inbox{OrganizationId: r.organizationId}, nil
 }
