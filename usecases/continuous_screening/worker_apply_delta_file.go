@@ -4,6 +4,7 @@ package continuous_screening
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"slices"
 	"time"
@@ -14,7 +15,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/cockroachdb/errors"
+	cockerroachErr "github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 )
@@ -205,7 +206,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		repositories.WithBeginOffset(initialOffset),
 	)
 	if err != nil {
-		hErr := w.handleProcessError(ctx, exec, job, errors.Wrap(err,
+		hErr := w.handleProcessError(ctx, exec, job, cockerroachErr.Wrap(err,
 			"failed to get blob"), true)
 		if hErr != nil {
 			return hErr
@@ -240,7 +241,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 				break
 			}
 			hErr := w.handleProcessError(ctx, exec, job,
-				errors.Wrap(err, "failed to decode record"), false)
+				cockerroachErr.Wrap(err, "failed to decode record"), false)
 			if hErr != nil {
 				return hErr
 			}
@@ -501,8 +502,8 @@ func (w *ApplyDeltaFileWorker) handleProcessError(
 // isTransientScreeningError checks if an error is a transient screening API error
 // (408, 429, 502, 503, 504) that should trigger a job snooze rather than a permanent failure
 func isTransientScreeningError(err error) bool {
-	httpErr, ok := err.(*repositories.HTTPError)
-	if ok {
+	var httpErr *repositories.HTTPError
+	if errors.As(err, &httpErr) {
 		return httpErr.IsTransient()
 	}
 	return false
