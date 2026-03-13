@@ -4,7 +4,6 @@ package continuous_screening
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"slices"
 	"time"
@@ -15,7 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
-	cockerroachErr "github.com/cockroachdb/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 )
@@ -206,7 +205,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		repositories.WithBeginOffset(initialOffset),
 	)
 	if err != nil {
-		hErr := w.handleProcessError(ctx, exec, job, cockerroachErr.Wrap(err,
+		hErr := w.handleProcessError(ctx, exec, job, errors.Wrap(err,
 			"failed to get blob"), true)
 		if hErr != nil {
 			return hErr
@@ -241,7 +240,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 				break
 			}
 			hErr := w.handleProcessError(ctx, exec, job,
-				cockerroachErr.Wrap(err, "failed to decode record"), false)
+				errors.Wrap(err, "failed to decode record"), false)
 			if hErr != nil {
 				return hErr
 			}
