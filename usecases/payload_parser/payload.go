@@ -303,7 +303,7 @@ func TypedClientObject(ctx context.Context, dataModel models.DataModel, o models
 		return models.ClientObject{}, err
 	}
 
-	parser := NewParser()
+	parser := NewParser(WithAllowedPatch(true))
 
 	clientObject, err := parser.ParsePayload(ctx, dataModel.Tables[o.TableName], payloadJson)
 	if err != nil {
