@@ -86,7 +86,7 @@ func (uc *AiAgentUsecase) AnalyseScreeningHits(
 	}
 
 	// Build static context (same for all hits in this screening)
-	staticContext, err := uc.buildScreeningStaticContext(screening)
+	staticContext, err := uc.buildScreeningStaticContext(ctx, exec, screening)
 	if err != nil {
 		logger.WarnContext(ctx, "could not build screening static context", "error", err)
 		return errors.Wrap(err, "could not build screening static context")
@@ -229,12 +229,17 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 }
 
 type screeningStaticContext struct {
-	triggerObjectData string
-	pivotData         string
+	triggerObjectData map[string]any
+	pivotData         map[string]any
 	screeningQuery    string
 }
 
-func (uc *AiAgentUsecase) buildScreeningStaticContext(screening models.ScreeningWithMatches) (screeningStaticContext, error) {
+func (uc *AiAgentUsecase) buildScreeningStaticContext(
+	ctx context.Context,
+	exec repositories.Executor,
+	screening models.ScreeningWithMatches,
+) (screeningStaticContext, error) {
+	logger := utils.LoggerFromContext(ctx)
 	var result screeningStaticContext
 
 	// SearchInput contains the query that was used for screening
@@ -250,9 +255,40 @@ func (uc *AiAgentUsecase) buildScreeningStaticContext(screening models.Screening
 		}
 	}
 
-	// TODO: In a future iteration, fetch the decision's client object data
-	// and pivot data to provide more context to the LLM.
-	// For now, the screening query and match payload provide sufficient context.
+	// Fetch the decision linked to this screening to get the trigger object and pivot data
+	decisions, err := uc.repository.DecisionsById(ctx, exec, []string{screening.DecisionId})
+	if err != nil {
+		logger.WarnContext(ctx, "could not fetch decision for screening context",
+			"decision_id", screening.DecisionId, "error", err)
+		return result, nil
+	}
+	if len(decisions) == 0 {
+		return result, nil
+	}
+	decision := decisions[0]
+
+	// Trigger object data: the client entity that was evaluated by the decision
+	if len(decision.ClientObject.Data) > 0 {
+		result.triggerObjectData = decision.ClientObject.Data
+	}
+
+	// Pivot data: the related entity (e.g. customer) linked to this decision
+	if decision.PivotId != nil && decision.PivotValue != nil {
+		pivotValues := []models.PivotDataWithCount{{
+			PivotId:    decision.PivotId.String(),
+			PivotValue: *decision.PivotValue,
+		}}
+		pivotObjects, err := uc.ingestedDataReader.ReadPivotObjectsFromValues(
+			ctx, decision.OrganizationId, pivotValues)
+		if err != nil {
+			logger.WarnContext(ctx, "could not fetch pivot data for screening context",
+				"pivot_value", *decision.PivotValue, "error", err)
+			return result, nil
+		}
+		if len(pivotObjects) > 0 && len(pivotObjects[0].PivotObjectData.Data) > 0 {
+			result.pivotData = pivotObjects[0].PivotObjectData.Data
+		}
+	}
 
 	return result, nil
 }
