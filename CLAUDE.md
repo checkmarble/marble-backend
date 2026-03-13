@@ -346,6 +346,27 @@ if err := security.CanRead(ctx, creds, resource); err != nil {
 }
 ```
 
+### Authorization on Referenced Resource IDs
+
+**Critical rule**: when a usecase receives a resource ID from user input (request body, query params, URL params), it **must** validate that the referenced resource belongs to the caller's organization. This applies to **all** IDs in the input, not just the "main" resource.
+
+For example, if creating a case with an `inbox_id` and `decision_ids`, both the inbox and each decision must be validated for org ownership.
+
+**Required pattern**:
+1. Fetch the resource by ID from the repository
+2. Verify it belongs to the caller's organization, using one of:
+   - `enforceSecurity.Read*(resource)` (calls `ReadOrganization` internally)
+   - `enforceSecurity.ReadOrganization(resource.OrganizationId)`
+   - Direct comparison: `resource.OrganizationId != orgId`
+3. Return an appropriate error if the org doesn't match:
+   - **Public API** (`pubapi/`): return `NotFoundError` (404) to avoid leaking resource existence
+   - **Internal API** (`api/`): may return `ForbiddenError` (403)
+
+**Common mistakes to avoid**:
+- Calling `enforceSecurity.Create*(callerOrgId)` (validates the caller's permission) but not checking that IDs in the payload belong to the same org
+- Validating the main resource but not secondary IDs (e.g., `escalation_inbox_id`, `tag_id`, `scenario_id` in a creation payload)
+- Repository `Get*ById` methods do NOT filter by org — they return the resource regardless of org, so the usecase must always check
+
 ### Logging
 
 Uses `log/slog` structured logging:
