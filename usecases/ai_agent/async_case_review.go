@@ -291,7 +291,9 @@ func (w *CaseReviewWorker) getPreviousCaseReviewContext(
 // isRateLimitError checks if the error is a 429 rate limit error from the LLM provider
 func isRateLimitError(err error) bool {
 	errStr := err.Error()
-	return strings.Contains(errStr, "429") ||
+	return strings.Contains(errStr, "Error 429") ||
+		strings.Contains(errStr, "Error 504") ||
 		strings.Contains(errStr, "Resource exhausted") ||
-		strings.Contains(errStr, "RESOURCE_EXHAUSTED")
+		strings.Contains(errStr, "RESOURCE_EXHAUSTED") ||
+		strings.Contains(errStr, "DEADLINE_EXCEEDED")
 }
