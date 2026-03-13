@@ -156,6 +156,11 @@ type TaskQueueRepository interface {
 		orgId uuid.UUID,
 		dryRun models.ScoringDryRun,
 	) error
+	EnqueueScreeningHitSuggestionTask(
+		ctx context.Context,
+		organizationId uuid.UUID,
+		screeningId string,
+	) error
 }
 
 type riverRepository struct {
@@ -778,5 +783,30 @@ func (r riverRepository) EnqueueRulesetDryRun(
 		"dry_run_id", dryRun.Id,
 		"ruleset_id", dryRun.RulesetId)
 
+	return nil
+}
+
+func (r riverRepository) EnqueueScreeningHitSuggestionTask(
+	ctx context.Context,
+	organizationId uuid.UUID,
+	screeningId string,
+) error {
+	res, err := r.client.Insert(
+		ctx,
+		models.ScreeningHitSuggestionArgs{
+			ScreeningId:    screeningId,
+			OrganizationId: organizationId,
+		},
+		&river.InsertOpts{
+			Queue: organizationId.String(),
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued screening hit suggestion task",
+		"screening_id", screeningId, "job_id", res.Job.ID)
 	return nil
 }
