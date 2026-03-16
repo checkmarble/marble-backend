@@ -30,12 +30,13 @@ type CreateRulesetRequest struct {
 	Thresholds             []int               `json:"thresholds" binding:"required"`
 	CooldownSeconds        int                 `json:"cooldown_seconds"`
 	ScoringIntervalSeconds int                 `json:"scoring_interval_seconds"`
-	Rules                  []CreateRuleRequest `json:"rules"`
+	Rules                  []CreateRuleRequest `json:"rules" binding:"omitempty,dive"`
 }
 
 type CreateRuleRequest struct {
 	StableId    uuid.UUID   `json:"stable_id" binding:"required"`
 	Name        string      `json:"name" binding:"required"`
+	RiskType    string      `json:"risk_type" binding:"required,oneof=customer_features service_provided distribution_channels transaction_execution geo_risks other"`
 	Description string      `json:"description"`
 	Ast         dto.NodeDto `json:"ast" binding:"required"`
 }
@@ -46,6 +47,7 @@ type ScoringRule struct {
 	StableId    uuid.UUID   `json:"stable_id"`
 	Name        string      `json:"name"`
 	Description string      `json:"description"`
+	RiskType    string      `json:"risk_type"`
 	Ast         dto.NodeDto `json:"ast"`
 }
 
@@ -77,6 +79,7 @@ func AdaptScoringRuleset(m models.ScoringRuleset) (ScoringRuleset, error) {
 			StableId:    r.StableId,
 			Name:        r.Name,
 			Description: r.Description,
+			RiskType:    string(r.RiskType),
 			Ast:         nodeDto,
 		}
 	}
