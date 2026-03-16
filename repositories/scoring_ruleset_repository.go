@@ -221,6 +221,7 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersionRule(
 			"stable_id",
 			"name",
 			"description",
+			"risk_type",
 			"ast",
 		).
 		Suffix("returning *")
@@ -232,6 +233,7 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersionRule(
 			rule.StableId,
 			rule.Name,
 			rule.Description,
+			rule.RiskType,
 			rule.Ast,
 		)
 	}

@@ -149,10 +149,16 @@ func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, recor
 				return models.ScoringRuleset{}, err
 			}
 
+			riskType := models.ScoringRuleRiskTypeFrom(r.RiskType)
+			if riskType == models.ScoringRiskUnknown {
+				return models.ScoringRuleset{}, errors.Wrapf(models.BadParameterError, "invalid risk type '%s'", r.RiskType)
+			}
+
 			rulesReq[idx] = models.CreateScoringRuleRequest{
 				StableId:    r.StableId,
 				Name:        r.Name,
 				Description: r.Description,
+				RiskType:    riskType,
 				Ast:         ser,
 			}
 		}
