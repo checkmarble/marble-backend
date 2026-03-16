@@ -463,13 +463,14 @@ func (repo OpenSanctionsRepository) buildQueryString(ctx context.Context, cfg *m
 	if !repo.opensanctions.MotivaFeatures(ctx).BodyParams && cfg != nil && len(cfg.Datasets) > 0 {
 		qs["include_dataset"] = cfg.Datasets
 	}
-	if repo.opensanctions.MotivaFeatures(ctx).ScopedIndex && query.UseScopedIndex {
-		qs.Set("index_type", "scoped")
-	}
 
 	qs.Set("algorithm", repo.opensanctions.Algorithm())
 
 	if query != nil {
+		if repo.opensanctions.MotivaFeatures(ctx).ScopedIndex && query.UseScopedIndex {
+			qs.Set("index_type", "scoped")
+		}
+
 		query.EffectiveThreshold = utils.Or(query.Config.Threshold, query.OrgConfig.MatchThreshold)
 
 		// Unless determined otherwise, we do not need those results that are *not*
