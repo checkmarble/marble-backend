@@ -182,8 +182,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	)
 	router.POST("/scenario-iteration-rules/:rule_id/generate",
 		timeoutMiddleware(conf.BatchTimeout), handleGenerateRule(uc))
-	router.POST("/scenario-iteration-rules/:rule_id/generate-ast",
-		timeoutMiddleware(conf.BatchTimeout), handleGenerateAstRule(uc))
 
 	router.GET("/screenings/freshness", tom, handleScreeningDatasetFreshness(uc))
 	router.GET("/screenings/datasets", tom, handleScreeningDatasetCatalog(uc))
@@ -440,7 +438,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		r.GET("/scoring/rulesets/:recordType", tom, handleScoringGetRuleset(uc))
 		r.GET("/scoring/rulesets/:recordType/versions", tom, handleScoringListRulesetVersions(uc))
 		r.POST("/scoring/rulesets/:recordType", tom, handleScoringCreateRulesetVersion(uc))
-		r.GET("/scoring/rulesets/:recordType/prepare", tom, handleScoringGetRulesetPreparationStatus(uc))
+		r.GET("/scoring/rulesets/:recordType/prepare", tom,
+			handleScoringGetRulesetPreparationStatus(uc))
 		r.POST("/scoring/rulesets/:recordType/prepare", tom, handleScoringPrepareRuleset(uc))
 		r.POST("/scoring/rulesets/:recordType/commit", tom, handleScoringCommitRuleset(uc))
 		r.GET("/scoring/risk-levels/:recordType/:recordId", tom, handleScoringGetActiveScore(uc))
