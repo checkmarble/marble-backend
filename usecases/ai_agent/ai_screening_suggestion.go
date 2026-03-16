@@ -1,14 +1,14 @@
 package ai_agent
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
-	"slices"
 	"time"
 
 	"github.com/checkmarble/llmberjack"
+	"github.com/checkmarble/marble-backend/dto/agent_dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/utils"
@@ -19,6 +19,7 @@ import (
 const (
 	PROMPT_SCREENING_HIT_EVALUATE_PATH   = "prompts/screening_hit_suggestion/evaluate_match.md"
 	SCREENING_HIT_SYSTEM_PROMPT_PATH     = "prompts/screening_hit_suggestion/system.md"
+	SCREENING_HIT_CONTEXT_PROMPT_PATH    = "prompts/screening_hit_suggestion/screening_context.md"
 	SCREENING_HIT_SUGGESTION_BLOB_PREFIX = "ai_screening_reviews"
 )
 
@@ -91,6 +92,20 @@ func (uc *AiAgentUsecase) AnalyseScreeningHits(
 		return errors.Wrap(err, "could not build screening static context")
 	}
 
+	// Build the screening context prompt once (static across all hits, enables context caching)
+	language := aiSetting.CaseReviewSetting.Language
+	contextPromptData := map[string]any{
+		"TriggerObjectData": staticContext.triggerObjectData,
+		"PivotData":         staticContext.pivotData,
+		"ScreeningQuery":    staticContext.screeningQuery,
+		"Language":          language,
+	}
+	_, screeningContextPrompt, err := uc.preparePromptWithModel(
+		SCREENING_HIT_CONTEXT_PROMPT_PATH, contextPromptData)
+	if err != nil {
+		return errors.Wrap(err, "could not prepare screening context prompt")
+	}
+
 	// Filter matches to only pending ones
 	var pendingMatches []models.ScreeningMatch
 	for _, match := range screening.Matches {
@@ -108,8 +123,7 @@ func (uc *AiAgentUsecase) AnalyseScreeningHits(
 	suggestionsGenerated := 0
 	for _, match := range pendingMatches {
 		_, err := uc.analyseScreeningMatch(
-			ctx, client, screening.Id, match,
-			staticContext, systemInstruction, aiSetting, logger,
+			ctx, client, screening.Id, match, screeningContextPrompt, systemInstruction,
 		)
 		if err != nil {
 			logger.ErrorContext(ctx, "Failed to analyse screening match, skipping",
@@ -133,12 +147,11 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 	client *llmberjack.Llmberjack,
 	screeningId string,
 	match models.ScreeningMatch,
-	staticContext screeningStaticContext,
+	screeningContextPrompt string,
 	systemInstruction string,
-	aiSetting models.AiSetting,
-	logger *slog.Logger,
-) (models.AiScreeningHitSuggestion, error) {
+) (agent_dto.AiScreeningHitSuggestionDto, error) {
 	blobPath := screeningHitSuggestionBlobPath(screeningId, match.Id)
+	logger := utils.LoggerFromContext(ctx)
 
 	// Check if suggestion already exists (idempotency)
 	existingSuggestion, err := uc.loadSuggestionFromBlob(ctx, blobPath)
@@ -147,8 +160,7 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 		return existingSuggestion, nil
 	}
 	if !errors.Is(err, models.NotFoundError) {
-		return models.AiScreeningHitSuggestion{},
-			errors.Wrap(err, "could not load suggestion from blob")
+		return nil, errors.Wrap(err, "could not load suggestion from blob")
 	}
 
 	// Enrich match if not already enriched
@@ -158,59 +170,51 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 		if err != nil {
 			logger.WarnContext(ctx, "Could not enrich match, using neutral suggestion",
 				"match_id", match.Id, "error", err)
-			return models.AiScreeningHitSuggestion{},
-				errors.Wrap(err, "failed to enrich match")
+			return nil, errors.Wrap(err, "failed to enrich match")
 		}
 		enrichedMatch = enriched
 	}
 
-	// Prepare the per-match prompt data
-	language := aiSetting.CaseReviewSetting.Language
+	// Prepare the per-match prompt data (only variable part)
 	promptData := map[string]any{
-		"TriggerObjectData": staticContext.triggerObjectData,
-		"PivotData":         staticContext.pivotData,
-		"ScreeningQuery":    staticContext.screeningQuery,
-		"MatchPayload":      string(enrichedMatch.Payload),
-		"MatchScore":        fmt.Sprintf("%.2f", enrichedMatch.Score),
-		"Language":          language,
+		"MatchPayload": string(enrichedMatch.Payload),
+		"MatchScore":   fmt.Sprintf("%.2f", enrichedMatch.Score),
 	}
 
-	model, prompt, err := uc.preparePromptWithModel(PROMPT_SCREENING_HIT_EVALUATE_PATH, promptData)
+	model, matchPrompt, err := uc.preparePromptWithModel(PROMPT_SCREENING_HIT_EVALUATE_PATH, promptData)
 	if err != nil {
-		return models.AiScreeningHitSuggestion{},
-			errors.Wrap(err, "could not prepare prompt")
+		return nil, errors.Wrap(err, "could not prepare prompt")
 	}
 
 	logger.DebugContext(ctx, "Screening hit evaluation",
 		"match_id", match.Id, "model", model)
 
-	// Call LLM
+	// Call LLM: static context first (cacheable), then per-match data
 	response, err := llmberjack.NewRequest[screeningHitLlmOutput]().
 		WithInstruction(systemInstruction).
 		WithModel(model).
-		WithText(llmberjack.RoleUser, prompt).
+		WithText(llmberjack.RoleUser, screeningContextPrompt).
+		WithText(llmberjack.RoleUser, matchPrompt).
 		WithThinking(false).
 		Do(ctx, client)
 	if err != nil {
-		return models.AiScreeningHitSuggestion{}, errors.Wrap(err, "LLM call failed")
+		return nil, errors.Wrap(err, "LLM call failed")
 	}
 
 	llmOutput, err := response.Get(0)
 	if err != nil {
-		return models.AiScreeningHitSuggestion{},
-			errors.Wrap(err, "could not get LLM response")
+		return nil, errors.Wrap(err, "could not get LLM response")
 	}
 
 	// Validate confidence level
 	confidence := models.ScreeningHitConfidence(llmOutput.Confidence)
-	validConfidence := slices.Contains(models.ScreeningHitConfidenceLevels, confidence)
-	if !validConfidence {
+	if !confidence.IsValid() {
 		logger.WarnContext(ctx, "Invalid confidence level from LLM, defaulting to neutral",
 			"match_id", match.Id, "confidence", llmOutput.Confidence)
 		confidence = models.ScreeningHitConfidenceNeutral
 	}
 
-	suggestion := models.AiScreeningHitSuggestion{
+	suggestion := agent_dto.ScreeningHitSuggestionV1{
 		MatchId:    match.Id,
 		EntityId:   match.EntityId,
 		Confidence: confidence,
@@ -220,8 +224,7 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 
 	// Write to blob storage
 	if err := uc.writeSuggestionToBlob(ctx, blobPath, suggestion); err != nil {
-		return models.AiScreeningHitSuggestion{},
-			errors.Wrap(err, "could not write suggestion to blob")
+		return nil, errors.Wrap(err, "could not write suggestion to blob")
 	}
 
 	return suggestion, nil
@@ -295,34 +298,39 @@ func (uc *AiAgentUsecase) buildScreeningStaticContext(
 func (uc *AiAgentUsecase) loadSuggestionFromBlob(
 	ctx context.Context,
 	blobPath string,
-) (models.AiScreeningHitSuggestion, error) {
+) (agent_dto.AiScreeningHitSuggestionDto, error) {
 	blob, err := uc.blobRepository.GetBlob(ctx, uc.caseManagerBucketUrl, blobPath)
 	if err != nil {
-		return models.AiScreeningHitSuggestion{}, err
+		return nil, err
 	}
 	defer blob.ReadCloser.Close()
 
-	var suggestion models.AiScreeningHitSuggestion
-	if err := json.NewDecoder(blob.ReadCloser).Decode(&suggestion); err != nil {
-		return models.AiScreeningHitSuggestion{},
-			errors.Wrap(err, "could not decode suggestion")
+	var envelope agent_dto.ScreeningHitSuggestionBlob
+	if err := json.NewDecoder(blob.ReadCloser).Decode(&envelope); err != nil {
+		return nil, errors.Wrap(err, "could not decode suggestion blob")
 	}
 
-	return suggestion, nil
+	return agent_dto.UnmarshalScreeningHitSuggestionDto(
+		envelope.Version, bytes.NewReader(envelope.Content))
 }
 
 func (uc *AiAgentUsecase) writeSuggestionToBlob(
 	ctx context.Context,
 	blobPath string,
-	suggestion models.AiScreeningHitSuggestion,
+	dto agent_dto.AiScreeningHitSuggestionDto,
 ) error {
+	envelope, err := agent_dto.NewScreeningHitSuggestionBlob(dto)
+	if err != nil {
+		return errors.Wrap(err, "could not create suggestion blob")
+	}
+
 	stream, err := uc.blobRepository.OpenStream(ctx, uc.caseManagerBucketUrl, blobPath, blobPath)
 	if err != nil {
 		return errors.Wrap(err, "could not open blob stream")
 	}
 	defer stream.Close()
 
-	if err := json.NewEncoder(stream).Encode(suggestion); err != nil {
+	if err := json.NewEncoder(stream).Encode(envelope); err != nil {
 		return errors.Wrap(err, "could not encode suggestion to blob")
 	}
 	return nil
@@ -332,7 +340,7 @@ func (uc *AiAgentUsecase) writeSuggestionToBlob(
 func (uc *AiAgentUsecase) GetScreeningSuggestions(
 	ctx context.Context,
 	screeningId string,
-) ([]models.AiScreeningHitSuggestion, error) {
+) ([]agent_dto.AiScreeningHitSuggestionDto, error) {
 	exec := uc.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 
@@ -345,7 +353,7 @@ func (uc *AiAgentUsecase) GetScreeningSuggestions(
 		return nil, err
 	}
 
-	var suggestions []models.AiScreeningHitSuggestion
+	suggestions := make([]agent_dto.AiScreeningHitSuggestionDto, 0, len(screening.Matches))
 	for _, match := range screening.Matches {
 		blobPath := screeningHitSuggestionBlobPath(screeningId, match.Id)
 		suggestion, err := uc.loadSuggestionFromBlob(ctx, blobPath)

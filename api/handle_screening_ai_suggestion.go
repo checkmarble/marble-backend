@@ -3,7 +3,6 @@ package api
 import (
 	"net/http"
 
-	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/gin-gonic/gin"
 )
@@ -34,6 +33,6 @@ func handleGetScreeningSuggestions(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.AdaptAiScreeningHitSuggestionDtos(suggestions))
+		c.JSON(http.StatusOK, suggestions)
 	}
 }

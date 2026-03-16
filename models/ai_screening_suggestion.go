@@ -1,7 +1,5 @@
 package models
 
-import "time"
-
 type ScreeningHitConfidence string
 
 const (
@@ -17,10 +15,13 @@ var ScreeningHitConfidenceLevels = []ScreeningHitConfidence{
 	ScreeningHitConfidenceInvestigate,
 }
 
-type AiScreeningHitSuggestion struct {
-	MatchId    string                 `json:"match_id"`
-	EntityId   string                 `json:"entity_id"`
-	Confidence ScreeningHitConfidence `json:"confidence"`
-	Reason     string                 `json:"reason"`
-	CreatedAt  time.Time              `json:"created_at"`
+func (c ScreeningHitConfidence) IsValid() bool {
+	switch c {
+	case ScreeningHitConfidenceProbableFalsePositive,
+		ScreeningHitConfidenceNeutral,
+		ScreeningHitConfidenceInvestigate:
+		return true
+	default:
+		return false
+	}
 }
