@@ -15,7 +15,7 @@ import (
 // ⚠️⚠️⚠️
 
 const (
-	versionScreeningHitSuggestionV1 = "v1"
+	VersionScreeningHitSuggestionV1 = "v1"
 )
 
 type AiScreeningHitSuggestionDto interface {
@@ -30,18 +30,18 @@ type ScreeningHitSuggestionBlob struct {
 }
 
 type ScreeningHitSuggestionV1 struct {
-	MatchId    string                         `json:"match_id"`
-	EntityId   string                         `json:"entity_id"`
-	Confidence models.ScreeningHitConfidence  `json:"confidence"`
-	Reason     string                         `json:"reason"`
-	Version    string                         `json:"version"`
-	CreatedAt  time.Time                      `json:"created_at"`
+	MatchId    string                        `json:"match_id"`
+	EntityId   string                        `json:"entity_id"`
+	Confidence models.ScreeningHitConfidence `json:"confidence"`
+	Reason     string                        `json:"reason"`
+	Version    string                        `json:"version"`
+	CreatedAt  time.Time                     `json:"created_at"`
 }
 
 func (s ScreeningHitSuggestionV1) aiScreeningHitSuggestionDto() {}
 
 func (s ScreeningHitSuggestionV1) GetVersion() string {
-	return versionScreeningHitSuggestionV1
+	return VersionScreeningHitSuggestionV1
 }
 
 func NewScreeningHitSuggestionBlob(dto AiScreeningHitSuggestionDto) (ScreeningHitSuggestionBlob, error) {
@@ -57,10 +57,9 @@ func NewScreeningHitSuggestionBlob(dto AiScreeningHitSuggestionDto) (ScreeningHi
 
 func UnmarshalScreeningHitSuggestionDto(version string, payload io.Reader) (AiScreeningHitSuggestionDto, error) {
 	switch version {
-	case versionScreeningHitSuggestionV1:
+	case VersionScreeningHitSuggestionV1:
 		var dto ScreeningHitSuggestionV1
 		err := json.NewDecoder(payload).Decode(&dto)
-		dto.Version = version
 		return dto, err
 	}
 	return nil, errors.New("unsupported version")

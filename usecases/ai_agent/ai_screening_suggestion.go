@@ -100,6 +100,9 @@ func (uc *AiAgentUsecase) AnalyseScreeningHits(
 		"ScreeningQuery":    staticContext.screeningQuery,
 		"Language":          language,
 	}
+	if len(staticContext.linkedObjects) > 0 {
+		contextPromptData["LinkedObjects"] = staticContext.linkedObjects
+	}
 	_, screeningContextPrompt, err := uc.preparePromptWithModel(
 		SCREENING_HIT_CONTEXT_PROMPT_PATH, contextPromptData)
 	if err != nil {
@@ -189,12 +192,13 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 	logger.DebugContext(ctx, "Screening hit evaluation",
 		"match_id", match.Id, "model", model)
 
-	// Call LLM: static context first (cacheable), then per-match data
+	userMessage := screeningContextPrompt + "\n\n" + matchPrompt
+
+	// Call LLM
 	response, err := llmberjack.NewRequest[screeningHitLlmOutput]().
 		WithInstruction(systemInstruction).
 		WithModel(model).
-		WithText(llmberjack.RoleUser, screeningContextPrompt).
-		WithText(llmberjack.RoleUser, matchPrompt).
+		WithText(llmberjack.RoleUser, userMessage).
 		WithThinking(false).
 		Do(ctx, client)
 	if err != nil {
@@ -205,6 +209,12 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get LLM response")
 	}
+
+	logger.DebugContext(ctx, "####### Screening suggestion LLM input and output ##########")
+	logger.DebugContext(ctx, "System instruction", "instruction", systemInstruction)
+	logger.DebugContext(ctx, "User message", "prompt", userMessage)
+	logger.DebugContext(ctx, "LLM output", "confidence", llmOutput.Confidence, "reason", llmOutput.Reason)
+	logger.DebugContext(ctx, "##############################################################")
 
 	// Validate confidence level
 	confidence := models.ScreeningHitConfidence(llmOutput.Confidence)
@@ -219,6 +229,7 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 		EntityId:   match.EntityId,
 		Confidence: confidence,
 		Reason:     llmOutput.Reason,
+		Version:    agent_dto.VersionScreeningHitSuggestionV1,
 		CreatedAt:  time.Now(),
 	}
 
@@ -234,6 +245,7 @@ type screeningStaticContext struct {
 	triggerObjectData map[string]any
 	pivotData         map[string]any
 	screeningQuery    string
+	linkedObjects     agent_dto.LinkedObjects
 }
 
 func (uc *AiAgentUsecase) buildScreeningStaticContext(
@@ -274,6 +286,19 @@ func (uc *AiAgentUsecase) buildScreeningStaticContext(
 		result.triggerObjectData = decision.ClientObject.Data
 	}
 
+	// Fetch the data model to resolve links from the trigger object and pivot tables
+	dataModel, err := uc.dataModelUsecase.GetDataModel(ctx, decision.OrganizationId,
+		models.DataModelReadOptions{}, true)
+	if err != nil {
+		logger.WarnContext(ctx, "could not fetch data model for screening context", "error", err)
+		return result, nil
+	}
+
+	// Fetch linked objects from the trigger object table via LinksToSingle
+	triggerLinked := uc.fetchLinkedSingleObjects(ctx, decision.OrganizationId,
+		&dataModel, decision.ClientObject.TableName, decision.ClientObject.Data, agent_dto.LinkedObjectSourceTrigger)
+	result.linkedObjects = append(result.linkedObjects, triggerLinked...)
+
 	// Pivot data: the related entity (e.g. customer) linked to this decision
 	if decision.PivotId != nil && decision.PivotValue != nil {
 		pivotValues := []models.PivotDataWithCount{{
@@ -288,11 +313,68 @@ func (uc *AiAgentUsecase) buildScreeningStaticContext(
 			return result, nil
 		}
 		if len(pivotObjects) > 0 && len(pivotObjects[0].PivotObjectData.Data) > 0 {
-			result.pivotData = pivotObjects[0].PivotObjectData.Data
+			pivotObject := pivotObjects[0]
+			result.pivotData = pivotObject.PivotObjectData.Data
+
+			// Fetch linked objects from the pivot table via LinksToSingle
+			pivotLinked := uc.fetchLinkedSingleObjects(ctx, decision.OrganizationId,
+				&dataModel, pivotObject.PivotObjectName, pivotObject.PivotObjectData.Data, agent_dto.LinkedObjectSourcePivot)
+			result.linkedObjects = append(result.linkedObjects, pivotLinked...)
 		}
 	}
 
 	return result, nil
+}
+
+// fetchLinkedSingleObjects follows LinksToSingle from a source table and fetches
+// each linked parent object.
+func (uc *AiAgentUsecase) fetchLinkedSingleObjects(
+	ctx context.Context,
+	orgId uuid.UUID,
+	dataModel *models.DataModel,
+	sourceTableName string,
+	sourceData map[string]any,
+	sourceEntity agent_dto.LinkedObjectSource,
+) agent_dto.LinkedObjects {
+	logger := utils.LoggerFromContext(ctx)
+	table, ok := dataModel.Tables[sourceTableName]
+	if !ok {
+		return nil
+	}
+
+	var result agent_dto.LinkedObjects
+
+	for linkName, link := range table.LinksToSingle {
+		childFieldValue, ok := sourceData[link.ChildFieldName]
+		if !ok {
+			continue
+		}
+		childFieldValueStr, ok := childFieldValue.(string)
+		if !ok {
+			continue
+		}
+
+		objects, err := uc.ingestedDataReader.GetIngestedObject(ctx,
+			orgId, dataModel, link.ParentTableName, childFieldValueStr, link.ParentFieldName)
+		if err != nil {
+			logger.WarnContext(ctx, "could not fetch linked single object",
+				"link_name", linkName,
+				"parent_table", link.ParentTableName,
+				"error", err)
+			continue
+		}
+
+		if len(objects) > 0 {
+			result = append(result, agent_dto.LinkedObject{
+				SourceEntity: sourceEntity,
+				LinkName:     linkName,
+				TableName:    link.ParentTableName,
+				Data:         objects[0].Data,
+			})
+		}
+	}
+
+	return result
 }
 
 func (uc *AiAgentUsecase) loadSuggestionFromBlob(
