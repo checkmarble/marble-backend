@@ -2,6 +2,7 @@ package ai_agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/checkmarble/llmberjack"
@@ -12,7 +13,6 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
-	"github.com/invopop/jsonschema"
 )
 
 const (
@@ -94,51 +94,11 @@ func (uc *AiAgentUsecase) GenerateRule(
 
 	logger.DebugContext(ctx, "Rule generation", "model", model)
 
-	properties := jsonschema.NewProperties()
-	properties.Set("name", &jsonschema.Schema{
-		Type: "string",
-	})
-	properties.Set("constant", &jsonschema.Schema{
-		Type: "string",
-	})
-	properties.Set("children", &jsonschema.Schema{
-		Type: "array",
-		Items: &jsonschema.Schema{
-			Ref: "#/definitions/NodeDto",
-		},
-	})
-	properties.Set("named_children", &jsonschema.Schema{
-		Type: "object",
-		PatternProperties: map[string]*jsonschema.Schema{
-			"^.*$": {
-				Ref: "#/definitions/NodeDto",
-			},
-		},
-		AdditionalProperties: jsonschema.FalseSchema,
-	})
-
-	schema := jsonschema.Schema{
-		Type:       "object",
-		Properties: properties,
-		Definitions: jsonschema.Definitions{
-			"NodeDto": {
-				Type:                 "object",
-				Properties:           properties,
-				AdditionalProperties: jsonschema.FalseSchema,
-				Required:             []string{"name", "constant", "children"},
-			},
-		},
-		AdditionalProperties: jsonschema.FalseSchema,
-		Required:             []string{"name", "constant", "children"},
-	}
-
 	req := llmberjack.NewRequest[string]().
 		WithModel(model).
-		// WithSchemaDescription("NodeDto", "The AST node of the rule").
-		// OverrideResponseSchema(schema).
 		WithText(llmberjack.RoleUser, ruleGenerationPrompt).
 		WithThinking(true)
-	// Do(ctx, client)
+
 	resp1, err := req.CreateThread().Do(ctx, client)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf(
@@ -166,21 +126,26 @@ func (uc *AiAgentUsecase) GenerateRule(
 		return dto.GenerateRuleResponse{}, err
 	}
 
-	req2, err := llmberjack.NewRequest[dto.NodeDto]().
+	req2 := llmberjack.NewRequest[string]().
 		WithModel(model).
-		WithSchemaDescription("NodeDto", "The AST node of the rule").
-		OverrideResponseSchema(schema).
 		WithText(llmberjack.RoleUser, ruleGenerationPrompt).
-		WithThinking(true).
-		Do(ctx, client)
+		WithThinking(true)
+
+	resp2, err := req2.CreateThread().Do(ctx, client)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf(
 			"failed to generate rule from LLM: %w", err)
 	}
 
-	ruleAstDto, err := req2.Get(0)
+	ruleAsStringStep2, err := resp2.Get(0)
 	if err != nil {
-		return dto.GenerateRuleResponse{}, fmt.Errorf("failed to parse LLM response: %w", err)
+		return dto.GenerateRuleResponse{}, fmt.Errorf("failed to get LLM response: %w", err)
+	}
+
+	var ruleAstDto dto.NodeDto
+	err = json.Unmarshal([]byte(ruleAsStringStep2), &ruleAstDto)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, fmt.Errorf("failed to parse LLM response as JSON: %w", err)
 	}
 
 	ruleAst, err := dto.AdaptASTNode(ruleAstDto)
