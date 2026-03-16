@@ -149,6 +149,7 @@ type ScoringRule struct {
 	StableId    uuid.UUID
 	Name        string
 	Description string
+	RiskType    ScoringRiskType
 	Ast         ast.Node
 }
 
@@ -162,10 +163,42 @@ type CreateScoringRulesetRequest struct {
 	ScoringIntervalSeconds int
 }
 
+type ScoringRiskType string
+
+const (
+	ScoringRiskCustomerFeatures     ScoringRiskType = "customer_features"
+	ScoringRiskServiceProvided      ScoringRiskType = "service_provided"
+	ScoringRiskDistributionChannels ScoringRiskType = "distribution_channels"
+	ScoringRiskTransactionExecution ScoringRiskType = "transaction_execution"
+	ScoringRiskGeoRisks             ScoringRiskType = "geo_risks"
+	ScoringRiskOther                ScoringRiskType = "other"
+	ScoringRiskUnknown              ScoringRiskType = "unknown"
+)
+
+func ScoringRuleRiskTypeFrom(s string) ScoringRiskType {
+	switch s {
+	case string(ScoringRiskCustomerFeatures):
+		return ScoringRiskCustomerFeatures
+	case string(ScoringRiskServiceProvided):
+		return ScoringRiskServiceProvided
+	case string(ScoringRiskDistributionChannels):
+		return ScoringRiskDistributionChannels
+	case string(ScoringRiskTransactionExecution):
+		return ScoringRiskTransactionExecution
+	case string(ScoringRiskGeoRisks):
+		return ScoringRiskGeoRisks
+	case string(ScoringRiskOther):
+		return ScoringRiskOther
+	default:
+		return ScoringRiskUnknown
+	}
+}
+
 type CreateScoringRuleRequest struct {
 	StableId    uuid.UUID
 	Name        string
 	Description string
+	RiskType    ScoringRiskType
 	Ast         json.RawMessage
 }
 

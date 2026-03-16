@@ -33,6 +33,7 @@ type DbScoringRule struct {
 	StableId    uuid.UUID       `db:"stable_id"`
 	Name        string          `db:"name"`
 	Description string          `db:"description"`
+	RiskType    string          `db:"risk_type"`
 	Ast         json.RawMessage `db:"ast"`
 }
 
@@ -85,6 +86,7 @@ func AdaptScoringRule(db DbScoringRule) (models.ScoringRule, error) {
 		StableId:    db.StableId,
 		Name:        db.Name,
 		Description: db.Description,
+		RiskType:    models.ScoringRuleRiskTypeFrom(db.RiskType),
 		Ast:         astNode,
 	}, nil
 }
