@@ -2,11 +2,11 @@ package ai_agent
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/cockroachdb/errors"
 	"github.com/riverqueue/river"
 )
 
@@ -31,28 +31,17 @@ func (w *ScreeningHitSuggestionWorker) Timeout(job *river.Job[models.ScreeningHi
 }
 
 func (w *ScreeningHitSuggestionWorker) Work(ctx context.Context, job *river.Job[models.ScreeningHitSuggestionArgs]) error {
-	logger := utils.LoggerFromContext(ctx)
-	logger.InfoContext(ctx, "Starting screening hit suggestion job",
-		"screening_id", job.Args.ScreeningId,
-		"organization_id", job.Args.OrganizationId,
-	)
+	logger := utils.LoggerFromContext(ctx).With(slog.String("screening_id", job.Args.ScreeningId))
+	ctx = utils.StoreLoggerInContext(ctx, logger)
 
-	err := w.aiAgentUsecase.AnalyseScreeningHits(ctx, job.Args.ScreeningId, job.Args.OrganizationId)
+	logger.InfoContext(ctx, "Starting screening hit suggestion job")
+
+	err := w.aiAgentUsecase.AnalyseScreeningHitsWithoutAuthorization(ctx, job.Args.ScreeningId)
 	if err != nil {
-		switch {
-		case errors.Is(err, models.ForbiddenError):
-			logger.WarnContext(ctx, "Skipping screening hit suggestion job due to insufficient permissions",
-				"screening_id", job.Args.ScreeningId,
-				"error", err,
-			)
-			return nil
-		default:
-			logger.ErrorContext(ctx, "Screening hit suggestion job failed",
-				"screening_id", job.Args.ScreeningId,
-				"error", err,
-			)
-			return err
-		}
+		logger.ErrorContext(ctx, "Screening hit suggestion job failed",
+			"error", err,
+		)
+		return err
 	}
 
 	return nil

@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/rivertype"
 )
 
 const (
@@ -794,11 +795,19 @@ func (r riverRepository) EnqueueScreeningHitSuggestionTask(
 	res, err := r.client.Insert(
 		ctx,
 		models.ScreeningHitSuggestionArgs{
-			ScreeningId:    screeningId,
-			OrganizationId: organizationId,
+			ScreeningId: screeningId,
 		},
 		&river.InsertOpts{
 			Queue: organizationId.String(),
+			UniqueOpts: river.UniqueOpts{
+				ByArgs: true,
+				ByState: []rivertype.JobState{
+					rivertype.JobStateAvailable,
+					rivertype.JobStatePending,
+					rivertype.JobStateRunning,
+					rivertype.JobStateRetryable,
+				},
+			},
 		},
 	)
 	if err != nil {

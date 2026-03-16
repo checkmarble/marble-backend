@@ -86,8 +86,7 @@ type CaseReviewArgs struct {
 func (CaseReviewArgs) Kind() string { return "case_review" }
 
 type ScreeningHitSuggestionArgs struct {
-	ScreeningId    string    `json:"screening_id"`
-	OrganizationId uuid.UUID `json:"organization_id"`
+	ScreeningId string `json:"screening_id"`
 }
 
 func (ScreeningHitSuggestionArgs) Kind() string { return "screening_hit_suggestion" }

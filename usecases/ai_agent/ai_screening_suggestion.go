@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/checkmarble/llmberjack"
@@ -19,7 +20,6 @@ import (
 const (
 	PROMPT_SCREENING_HIT_EVALUATE_PATH   = "prompts/screening_hit_suggestion/evaluate_match.md"
 	SCREENING_HIT_SYSTEM_PROMPT_PATH     = "prompts/screening_hit_suggestion/system.md"
-	SCREENING_HIT_CONTEXT_PROMPT_PATH    = "prompts/screening_hit_suggestion/screening_context.md"
 	SCREENING_HIT_SUGGESTION_BLOB_PREFIX = "ai_screening_reviews"
 )
 
@@ -28,11 +28,11 @@ func screeningHitSuggestionBlobPath(screeningId, matchId string) string {
 }
 
 type screeningHitLlmOutput struct {
-	Confidence string `json:"confidence" jsonschema_description:"One of probable_false_positive, neutral, or investigate" jsonschema:"enum=probable_false_positive,enum=neutral,enum=investigate"`
+	Confidence string `json:"confidence" jsonschema_description:"One of probable_false_positive, inconclusive, or investigate" jsonschema:"enum=probable_false_positive,enum=inconclusive,enum=investigate"`
 	Reason     string `json:"reason" jsonschema_description:"Concise explanation of the suggestion (1-3 sentences)"`
 }
 
-func (uc *AiAgentUsecase) HasScreeningHitSuggestionEnabled(ctx context.Context, orgId uuid.UUID) (bool, error) {
+func (uc *AiAgentUsecase) hasScreeningHitSuggestionEnabled(ctx context.Context, orgId uuid.UUID) (bool, error) {
 	featureAccess, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
 	if err != nil {
 		return false, err
@@ -40,31 +40,45 @@ func (uc *AiAgentUsecase) HasScreeningHitSuggestionEnabled(ctx context.Context, 
 	return featureAccess.CaseAiAssist.IsAllowed(), nil
 }
 
-// AnalyseScreeningHits processes all pending matches in a screening, calling the LLM for each
-// match sequentially, and stores results in blob storage.
-func (uc *AiAgentUsecase) AnalyseScreeningHits(
-	ctx context.Context,
-	screeningId string,
-	orgId uuid.UUID,
-) error {
-	// Check feature access
-	enabled, err := uc.HasScreeningHitSuggestionEnabled(ctx, orgId)
-	if err != nil {
-		return errors.Wrap(err, "could not check feature access")
-	}
-	if !enabled {
-		return errors.Wrap(models.ForbiddenError,
-			"AI screening hit suggestion is not enabled")
-	}
-
-	logger := utils.LoggerFromContext(ctx)
+func (uc *AiAgentUsecase) AnalyseScreeningHits(ctx context.Context, screeningId string) error {
 	exec := uc.executorFactory.NewExecutor()
 
-	// Fetch screening with matches
 	screening, err := uc.repository.GetScreening(ctx, exec, screeningId)
 	if err != nil {
 		return errors.Wrap(err, "could not get screening")
 	}
+
+	if err := uc.enforceCanGenerateScreeningSuggestions(ctx, exec, screening.Screening); err != nil {
+		return err
+	}
+
+	// Check feature access
+	enabled, err := uc.hasScreeningHitSuggestionEnabled(ctx, screening.OrgId)
+	if err != nil {
+		return errors.Wrap(err, "could not check feature access")
+	}
+	if !enabled {
+		return errors.Wrap(models.ForbiddenError, "AI screening hit suggestion is not enabled")
+	}
+
+	return uc.AnalyseScreeningHitsWithoutAuthorization(ctx, screeningId)
+}
+
+// AnalyseScreeningHits processes all pending matches in a screening, calling the LLM for each
+// match sequentially, and stores results in blob storage.
+func (uc *AiAgentUsecase) AnalyseScreeningHitsWithoutAuthorization(
+	ctx context.Context,
+	screeningId string,
+) error {
+	logger := utils.LoggerFromContext(ctx)
+	exec := uc.executorFactory.NewExecutor()
+
+	screening, err := uc.repository.GetScreening(ctx, exec, screeningId)
+	if err != nil {
+		return errors.Wrap(err, "could not get screening")
+	}
+
+	orgId := screening.OrgId
 
 	// Get AI setting for language preference
 	aiSetting, err := uc.getAiSetting(ctx, orgId)
@@ -92,21 +106,20 @@ func (uc *AiAgentUsecase) AnalyseScreeningHits(
 		return errors.Wrap(err, "could not build screening static context")
 	}
 
-	// Build the screening context prompt once (static across all hits, enables context caching)
+	// Build prompt data (static context shared across all hits)
 	language := aiSetting.CaseReviewSetting.Language
-	contextPromptData := map[string]any{
-		"TriggerObjectData": staticContext.triggerObjectData,
-		"PivotData":         staticContext.pivotData,
-		"ScreeningQuery":    staticContext.screeningQuery,
-		"Language":          language,
+	promptData := map[string]any{
+		"ScreeningQuery": staticContext.screeningQuery,
+		"Language":       language,
 	}
 	if len(staticContext.linkedObjects) > 0 {
-		contextPromptData["LinkedObjects"] = staticContext.linkedObjects
+		promptData["LinkedObjects"] = staticContext.linkedObjects
 	}
-	_, screeningContextPrompt, err := uc.preparePromptWithModel(
-		SCREENING_HIT_CONTEXT_PROMPT_PATH, contextPromptData)
-	if err != nil {
-		return errors.Wrap(err, "could not prepare screening context prompt")
+	if len(staticContext.triggerObjectData) > 0 {
+		promptData["TriggerObjectData"] = staticContext.triggerObjectData
+	}
+	if len(staticContext.pivotData) > 0 {
+		promptData["PivotData"] = staticContext.pivotData
 	}
 
 	// Filter matches to only pending ones
@@ -122,15 +135,21 @@ func (uc *AiAgentUsecase) AnalyseScreeningHits(
 		return nil
 	}
 
-	// Process each pending match sequentially
+	// Process each pending match sequentially.
+	// On failure, continue processing remaining matches but return an error at the end
+	// so the job is retried. Already-generated suggestions are skipped on retry (idempotent).
 	suggestionsGenerated := 0
+	var firstErr error
 	for _, match := range pendingMatches {
 		_, err := uc.analyseScreeningMatch(
-			ctx, client, screening.Id, match, screeningContextPrompt, systemInstruction,
+			ctx, client, screening.Id, match, promptData, systemInstruction,
 		)
 		if err != nil {
-			logger.ErrorContext(ctx, "Failed to analyse screening match, skipping",
+			logger.ErrorContext(ctx, "Failed to analyse screening match",
 				"match_id", match.Id, "error", err)
+			if firstErr == nil {
+				firstErr = err
+			}
 			continue
 		}
 		suggestionsGenerated++
@@ -142,6 +161,12 @@ func (uc *AiAgentUsecase) AnalyseScreeningHits(
 		"suggestions_generated", suggestionsGenerated,
 	)
 
+	if firstErr != nil {
+		return errors.Wrapf(firstErr,
+			"failed to generate suggestions for some matches (%d/%d succeeded)",
+			suggestionsGenerated, len(pendingMatches))
+	}
+
 	return nil
 }
 
@@ -150,7 +175,7 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 	client *llmberjack.Llmberjack,
 	screeningId string,
 	match models.ScreeningMatch,
-	screeningContextPrompt string,
+	promptData map[string]any,
 	systemInstruction string,
 ) (agent_dto.AiScreeningHitSuggestionDto, error) {
 	blobPath := screeningHitSuggestionBlobPath(screeningId, match.Id)
@@ -171,28 +196,26 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 	if !match.Enriched {
 		enriched, err := uc.screeningUsecase.EnrichMatchWithoutAuthorization(ctx, match.Id)
 		if err != nil {
-			logger.WarnContext(ctx, "Could not enrich match, using neutral suggestion",
+			logger.WarnContext(ctx, "Could not enrich match",
 				"match_id", match.Id, "error", err)
 			return nil, errors.Wrap(err, "failed to enrich match")
 		}
 		enrichedMatch = enriched
 	}
 
-	// Prepare the per-match prompt data (only variable part)
-	promptData := map[string]any{
-		"MatchPayload": string(enrichedMatch.Payload),
-		"MatchScore":   fmt.Sprintf("%.2f", enrichedMatch.Score),
-	}
+	// Add per-match data to the prompt data
+	matchPromptData := make(map[string]any, len(promptData)+2)
+	maps.Copy(matchPromptData, promptData)
+	matchPromptData["MatchPayload"] = enrichedMatch.Payload
+	matchPromptData["MatchScore"] = fmt.Sprintf("%.2f", enrichedMatch.Score)
 
-	model, matchPrompt, err := uc.preparePromptWithModel(PROMPT_SCREENING_HIT_EVALUATE_PATH, promptData)
+	model, userMessage, err := uc.preparePromptWithModel(PROMPT_SCREENING_HIT_EVALUATE_PATH, matchPromptData)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not prepare prompt")
 	}
 
 	logger.DebugContext(ctx, "Screening hit evaluation",
 		"match_id", match.Id, "model", model)
-
-	userMessage := screeningContextPrompt + "\n\n" + matchPrompt
 
 	// Call LLM
 	response, err := llmberjack.NewRequest[screeningHitLlmOutput]().
@@ -219,9 +242,9 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 	// Validate confidence level
 	confidence := models.ScreeningHitConfidence(llmOutput.Confidence)
 	if !confidence.IsValid() {
-		logger.WarnContext(ctx, "Invalid confidence level from LLM, defaulting to neutral",
+		logger.WarnContext(ctx, "Invalid confidence level from LLM, defaulting to inconclusive",
 			"match_id", match.Id, "confidence", llmOutput.Confidence)
-		confidence = models.ScreeningHitConfidenceNeutral
+		confidence = models.ScreeningHitConfidenceInconclusive
 	}
 
 	suggestion := agent_dto.ScreeningHitSuggestionV1{
@@ -259,14 +282,6 @@ func (uc *AiAgentUsecase) buildScreeningStaticContext(
 	// SearchInput contains the query that was used for screening
 	if screening.SearchInput != nil {
 		result.screeningQuery = string(screening.SearchInput)
-	}
-
-	// InitialQuery contains the structured query details
-	if len(screening.InitialQuery) > 0 {
-		queryJSON, err := json.Marshal(screening.InitialQuery)
-		if err == nil {
-			result.screeningQuery = string(queryJSON)
-		}
 	}
 
 	// Fetch the decision linked to this screening to get the trigger object and pivot data
@@ -353,6 +368,9 @@ func (uc *AiAgentUsecase) fetchLinkedSingleObjects(
 		if !ok {
 			continue
 		}
+		if childFieldValueStr == "" {
+			continue
+		}
 
 		objects, err := uc.ingestedDataReader.GetIngestedObject(ctx,
 			orgId, dataModel, link.ParentTableName, childFieldValueStr, link.ParentFieldName)
@@ -431,7 +449,7 @@ func (uc *AiAgentUsecase) GetScreeningSuggestions(
 		return nil, errors.Wrap(err, "could not get screening")
 	}
 
-	if err := uc.enforceCanReadScreeningSuggestions(ctx, exec, screening); err != nil {
+	if err := uc.enforceCanReadScreeningSuggestions(ctx, exec, screening.Screening); err != nil {
 		return nil, err
 	}
 
@@ -460,14 +478,17 @@ func (uc *AiAgentUsecase) EnqueueScreeningHitSuggestion(
 ) error {
 	exec := uc.executorFactory.NewExecutor()
 
-	// Fetch screening to validate it exists and get the org ID
-	screening, err := uc.repository.GetScreening(ctx, exec, screeningId)
+	screening, err := uc.repository.GetScreeningWithoutMatches(ctx, exec, screeningId)
 	if err != nil {
 		return errors.Wrap(err, "could not get screening")
 	}
 
+	if err := uc.enforceCanGenerateScreeningSuggestions(ctx, exec, screening); err != nil {
+		return err
+	}
+
 	// Check feature access
-	enabled, err := uc.HasScreeningHitSuggestionEnabled(ctx, screening.OrgId)
+	enabled, err := uc.hasScreeningHitSuggestionEnabled(ctx, screening.OrgId)
 	if err != nil {
 		return errors.Wrap(err, "could not check feature access")
 	}
@@ -485,8 +506,25 @@ func (uc *AiAgentUsecase) EnqueueScreeningHitSuggestion(
 	return nil
 }
 
+// TODO: For now there is no dedicated permission for screening hit suggestions like case review
+// We only check if the user had read access to decision and in the generation method we check for the feature access.
+func (uc *AiAgentUsecase) enforceCanGenerateScreeningSuggestions(ctx context.Context,
+	exec repositories.Executor, screening models.Screening,
+) error {
+	decisions, err := uc.repository.DecisionsById(ctx, exec, []string{screening.DecisionId})
+	if err != nil {
+		return err
+	}
+	if len(decisions) == 0 {
+		return errors.Wrap(models.NotFoundError,
+			"could not find the decision linked to the screening")
+	}
+
+	return uc.enforceSecurityDecision.ReadDecision(decisions[0])
+}
+
 func (uc *AiAgentUsecase) enforceCanReadScreeningSuggestions(ctx context.Context,
-	exec repositories.Executor, screening models.ScreeningWithMatches,
+	exec repositories.Executor, screening models.Screening,
 ) error {
 	decisions, err := uc.repository.DecisionsById(ctx, exec, []string{screening.DecisionId})
 	if err != nil {

@@ -193,7 +193,9 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/screenings/:screeningId/files/:fileId", tom,
 		handleDownloadScreeningMatchFile(uc))
 	router.GET("/screenings/:screeningId/ai-suggestions", tom, handleGetScreeningSuggestions(uc))
-	router.POST("/screenings/:screeningId/ai-suggestions", tom,
+	router.POST("/screenings/:screeningId/ai-suggestions", timeoutMiddleware(conf.BatchTimeout),
+		handleGenerateScreeningHitSuggestion(uc))
+	router.POST("/screenings/:screeningId/ai-suggestions/enqueue", tom,
 		handleEnqueueScreeningHitSuggestion(uc))
 	router.PATCH("/screenings/matches/:id", tom, handleUpdateScreeningMatchStatus(uc))
 	router.POST("/screenings/matches/:id/enrich", tom, handleEnrichScreeningMatch(uc))

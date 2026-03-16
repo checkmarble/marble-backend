@@ -57,7 +57,6 @@ type AiAgentUsecaseRepository interface {
 		initialOnly bool) ([]models.ScreeningWithMatches, error)
 	GetScreening(ctx context.Context, exec repositories.Executor, id string) (models.ScreeningWithMatches, error)
 	GetScreeningWithoutMatches(ctx context.Context, exec repositories.Executor, id string) (models.Screening, error)
-	GetScreeningMatch(ctx context.Context, exec repositories.Executor, matchId string) (models.ScreeningMatch, error)
 	DecisionsById(ctx context.Context, exec repositories.Executor, ids []string) ([]models.Decision, error)
 	UpdateAiCaseReviewFeedback(
 		ctx context.Context,
