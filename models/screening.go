@@ -213,6 +213,18 @@ type ScreeningMatch struct {
 	Comments                     []ScreeningMatchComment
 }
 
+// Score is stored in the Payload and not in a dedicated column when fetching screening from DB.
+// We can unmarshal the Payload in the `adapt` method of the repository but the attribute is not used in many places.
+func (m ScreeningMatch) GetScoreFromPayload() float64 {
+	var parsed struct {
+		Score float64 `json:"score"`
+	}
+	if err := json.Unmarshal(m.Payload, &parsed); err != nil {
+		return 0
+	}
+	return parsed.Score
+}
+
 type ScreeningMatchUpdate struct {
 	MatchId    string
 	ReviewerId *UserId

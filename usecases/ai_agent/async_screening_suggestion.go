@@ -36,7 +36,7 @@ func (w *ScreeningHitSuggestionWorker) Work(ctx context.Context, job *river.Job[
 
 	logger.InfoContext(ctx, "Starting screening hit suggestion job")
 
-	err := w.aiAgentUsecase.AnalyseScreeningHitsWithoutAuthorization(ctx, job.Args.ScreeningId)
+	err := w.aiAgentUsecase.AnalyseScreeningHits(ctx, job.Args.ScreeningId)
 	if err != nil {
 		logger.ErrorContext(ctx, "Screening hit suggestion job failed",
 			"error", err,

@@ -40,7 +40,10 @@ func (uc *AiAgentUsecase) hasScreeningHitSuggestionEnabled(ctx context.Context, 
 	return featureAccess.CaseAiAssist.IsAllowed(), nil
 }
 
+// AnalyseScreeningHits processes all pending matches in a screening, calling the LLM for each
+// match sequentially, and stores results in blob storage.
 func (uc *AiAgentUsecase) AnalyseScreeningHits(ctx context.Context, screeningId string) error {
+	logger := utils.LoggerFromContext(ctx)
 	exec := uc.executorFactory.NewExecutor()
 
 	screening, err := uc.repository.GetScreening(ctx, exec, screeningId)
@@ -61,24 +64,19 @@ func (uc *AiAgentUsecase) AnalyseScreeningHits(ctx context.Context, screeningId 
 		return errors.Wrap(models.ForbiddenError, "AI screening hit suggestion is not enabled")
 	}
 
-	return uc.AnalyseScreeningHitsWithoutAuthorization(ctx, screeningId)
-}
-
-// AnalyseScreeningHits processes all pending matches in a screening, calling the LLM for each
-// match sequentially, and stores results in blob storage.
-func (uc *AiAgentUsecase) AnalyseScreeningHitsWithoutAuthorization(
-	ctx context.Context,
-	screeningId string,
-) error {
-	logger := utils.LoggerFromContext(ctx)
-	exec := uc.executorFactory.NewExecutor()
-
-	screening, err := uc.repository.GetScreening(ctx, exec, screeningId)
-	if err != nil {
-		return errors.Wrap(err, "could not get screening")
-	}
-
 	orgId := screening.OrgId
+
+	// Filter matches to only pending ones
+	var pendingMatches []models.ScreeningMatch
+	for _, match := range screening.Matches {
+		if match.Status == models.ScreeningMatchStatusPending {
+			pendingMatches = append(pendingMatches, match)
+		}
+	}
+	if len(pendingMatches) == 0 {
+		logger.InfoContext(ctx, "No pending matches to analyse", "screening_id", screeningId)
+		return nil
+	}
 
 	// Get AI setting for language preference
 	aiSetting, err := uc.getAiSetting(ctx, orgId)
@@ -120,19 +118,6 @@ func (uc *AiAgentUsecase) AnalyseScreeningHitsWithoutAuthorization(
 	}
 	if len(staticContext.pivotData) > 0 {
 		promptData["PivotData"] = staticContext.pivotData
-	}
-
-	// Filter matches to only pending ones
-	var pendingMatches []models.ScreeningMatch
-	for _, match := range screening.Matches {
-		if match.Status == models.ScreeningMatchStatusPending {
-			pendingMatches = append(pendingMatches, match)
-		}
-	}
-
-	if len(pendingMatches) == 0 {
-		logger.InfoContext(ctx, "No pending matches to analyse", "screening_id", screeningId)
-		return nil
 	}
 
 	// Process each pending match sequentially.
@@ -206,8 +191,8 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 	// Add per-match data to the prompt data
 	matchPromptData := make(map[string]any, len(promptData)+2)
 	maps.Copy(matchPromptData, promptData)
-	matchPromptData["MatchPayload"] = enrichedMatch.Payload
-	matchPromptData["MatchScore"] = fmt.Sprintf("%.2f", enrichedMatch.Score)
+	matchPromptData["MatchPayload"] = string(enrichedMatch.Payload)
+	matchPromptData["MatchScore"] = fmt.Sprintf("%.2f", enrichedMatch.GetScoreFromPayload())
 
 	model, userMessage, err := uc.preparePromptWithModel(PROMPT_SCREENING_HIT_EVALUATE_PATH, matchPromptData)
 	if err != nil {
@@ -235,7 +220,6 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 
 	logger.DebugContext(ctx, "####### Screening suggestion LLM input and output ##########")
 	logger.DebugContext(ctx, "System instruction", "instruction", systemInstruction)
-	logger.DebugContext(ctx, "User message", "prompt", userMessage)
 	logger.DebugContext(ctx, "LLM output", "confidence", llmOutput.Confidence, "reason", llmOutput.Reason)
 	logger.DebugContext(ctx, "##############################################################")
 
