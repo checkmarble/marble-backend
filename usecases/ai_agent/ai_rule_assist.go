@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	RULE_DESCRIPTION_PROMPT_PATH = "prompts/rule/rule_description.md"
-	RULE_GENERATION_PROMPT_PATH  = "prompts/rule/rule_generation.md"
+	RULE_DESCRIPTION_PROMPT_PATH      = "prompts/rule/rule_description.md"
+	RULE_GENERATION_PROMPT_STEP1_PATH = "prompts/rule/rule_generation_step1.md"
+	RULE_GENERATION_PROMPT_STEP2_PATH = "prompts/rule/rule_generation_step2.md"
 )
 
 // GenerateRule generates a rule AST from a natural language instruction
@@ -78,14 +79,15 @@ func (uc *AiAgentUsecase) GenerateRule(
 		return dto.GenerateRuleResponse{}, err
 	}
 
-	model, ruleGenerationPrompt, err := uc.preparePromptWithModel(RULE_GENERATION_PROMPT_PATH, map[string]any{
-		"data_model":         dataModelDto,
-		"custom_list":        customListsDto,
-		"instruction":        instruction,
-		"trigger_type":       scenarioAndIteration.Scenario.TriggerObjectType,
-		"database_accessors": databaseNodes,
-		"payload_accessors":  payloadNodes,
-	})
+	model, ruleGenerationPrompt, err := uc.preparePromptWithModel(
+		RULE_GENERATION_PROMPT_STEP1_PATH, map[string]any{
+			"data_model":         dataModelDto,
+			"custom_list":        customListsDto,
+			"instruction":        instruction,
+			"trigger_type":       scenarioAndIteration.Scenario.TriggerObjectType,
+			"database_accessors": databaseNodes,
+			"payload_accessors":  payloadNodes,
+		})
 	if err != nil {
 		return dto.GenerateRuleResponse{}, err
 	}
@@ -130,7 +132,41 @@ func (uc *AiAgentUsecase) GenerateRule(
 		Required:             []string{"name", "constant", "children"},
 	}
 
-	req, err := llmberjack.NewRequest[dto.NodeDto]().
+	req := llmberjack.NewRequest[string]().
+		WithModel(model).
+		// WithSchemaDescription("NodeDto", "The AST node of the rule").
+		// OverrideResponseSchema(schema).
+		WithText(llmberjack.RoleUser, ruleGenerationPrompt).
+		WithThinking(true)
+	// Do(ctx, client)
+	resp1, err := req.CreateThread().Do(ctx, client)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, fmt.Errorf(
+			"failed to generate rule from LLM: %w", err)
+	}
+
+	ruleAsString, err := resp1.Get(0)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, fmt.Errorf("failed to get LLM response: %w", err)
+	}
+
+	logger.DebugContext(ctx, fmt.Sprintf("LLM response as string:\n%s\n", ruleAsString))
+
+	model, ruleGenerationPrompt, err = uc.preparePromptWithModel(
+		RULE_GENERATION_PROMPT_STEP2_PATH, map[string]any{
+			"data_model":         dataModelDto,
+			"custom_list":        customListsDto,
+			"instruction":        instruction,
+			"trigger_type":       scenarioAndIteration.Scenario.TriggerObjectType,
+			"database_accessors": databaseNodes,
+			"payload_accessors":  payloadNodes,
+			"rule_plan":          ruleAsString,
+		})
+	if err != nil {
+		return dto.GenerateRuleResponse{}, err
+	}
+
+	req2, err := llmberjack.NewRequest[dto.NodeDto]().
 		WithModel(model).
 		WithSchemaDescription("NodeDto", "The AST node of the rule").
 		OverrideResponseSchema(schema).
@@ -142,7 +178,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 			"failed to generate rule from LLM: %w", err)
 	}
 
-	ruleAstDto, err := req.Get(0)
+	ruleAstDto, err := req2.Get(0)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf("failed to parse LLM response: %w", err)
 	}
