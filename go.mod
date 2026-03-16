@@ -15,7 +15,7 @@ require (
 	github.com/TwiN/deepmerge v0.2.2
 	github.com/adhocore/gronx v1.19.6
 	github.com/adrg/strutil v0.3.1
-	github.com/alicebob/miniredis/v2 v2.36.1
+	github.com/alicebob/miniredis/v2 v2.37.0
 	github.com/authenticvision/rgeo v1.4.0
 	github.com/avast/retry-go/v4 v4.7.0
 	github.com/biter777/countries v1.7.5
