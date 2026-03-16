@@ -399,34 +399,6 @@ func handleAiDescriptionScenarioIteration(uc usecases.Usecases) func(c *gin.Cont
 	}
 }
 
-type PostGenerateAstRuleInputBody struct {
-	Instruction string `json:"instruction"`
-}
-
-func handleGenerateAstRule(uc usecases.Usecases) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
-		ruleId := c.Param("rule_id")
-		var input PostGenerateAstRuleInputBody
-		if err := c.ShouldBindJSON(&input); err != nil {
-			c.Status(http.StatusBadRequest)
-			return
-		}
-		orgId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		err = usecase.GenerateAstRule(ctx, orgId, ruleId, input.Instruction)
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		c.Status(http.StatusNoContent)
-	}
-}
-
 type PostGenerateRuleInputBody struct {
 	Instruction string `json:"instruction" binding:"required"`
 }
