@@ -8,7 +8,7 @@ WORKDIR /go/src/app
 RUN apt update && apt install -y libgeos-dev libgeos3.11.1
 
 COPY go.mod go.sum /go/src/app/
-RUN go mod download -x
+RUN GOPRIVATE=github.com/duckdb/duckdb-go go mod download -x
 
 COPY . .
 
