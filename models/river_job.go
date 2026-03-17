@@ -85,6 +85,12 @@ type CaseReviewArgs struct {
 
 func (CaseReviewArgs) Kind() string { return "case_review" }
 
+type ScreeningHitSuggestionArgs struct {
+	ScreeningId string `json:"screening_id"`
+}
+
+func (ScreeningHitSuggestionArgs) Kind() string { return "screening_hit_suggestion" }
+
 type AutoAssignmentArgs struct {
 	OrgId   uuid.UUID `json:"org_id"`
 	InboxId uuid.UUID `json:"inbox_id"`

@@ -55,6 +55,9 @@ type AiAgentUsecaseRepository interface {
 		useCache bool) (models.ScenarioIteration, error)
 	ListScreeningsForDecision(ctx context.Context, exec repositories.Executor, decisionId string,
 		initialOnly bool) ([]models.ScreeningWithMatches, error)
+	GetScreening(ctx context.Context, exec repositories.Executor, id string) (models.ScreeningWithMatches, error)
+	GetScreeningWithoutMatches(ctx context.Context, exec repositories.Executor, id string) (models.Screening, error)
+	DecisionsById(ctx context.Context, exec repositories.Executor, ids []string) ([]models.Decision, error)
 	UpdateAiCaseReviewFeedback(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -83,7 +86,8 @@ type AiAgentUsecaseCustomListUsecase interface {
 type AiAgentUsecaseBillingUsecase interface {
 	EnqueueBillingEventTask(ctx context.Context, event models.BillingEvent) error
 	GetSubscriptionsForEvent(ctx context.Context, orgId uuid.UUID, code billing.BillableMetric) ([]models.Subscription, error)
-	CheckIfEnoughFundsInWallet(ctx context.Context, orgId uuid.UUID, subscriptionExternalId string, code billing.BillableMetric) (bool, error)
+	CheckIfEnoughFundsInWallet(ctx context.Context, orgId uuid.UUID, subscriptionExternalId string,
+		code billing.BillableMetric) (bool, error)
 	CheckEntitlement(
 		ctx context.Context,
 		subscriptionExternalId string,
@@ -148,25 +152,40 @@ type featureAccessReader interface {
 		models.OrganizationFeatureAccess, error)
 }
 
+type AiAgentScreeningUsecase interface {
+	EnrichMatchWithoutAuthorization(ctx context.Context, matchId string) (models.ScreeningMatch, error)
+}
+
+type screeningHitSuggestionTaskEnqueuer interface {
+	EnqueueScreeningHitSuggestionTask(
+		ctx context.Context,
+		organizationId uuid.UUID,
+		screeningId string,
+	) error
+}
+
 type AiAgentUsecase struct {
-	enforceSecurityCase         security.EnforceSecurityCase
-	enforceSecurityOrganization security.EnforceSecurityOrganization
-	repository                  AiAgentUsecaseRepository
-	inboxReader                 inboxes.InboxReader
-	executorFactory             executor_factory.ExecutorFactory
-	transactionFactory          executor_factory.TransactionFactory
-	ingestedDataReader          AiAgentUsecaseIngestedDataReader
-	dataModelUsecase            AiAgentUsecaseDataModelUsecase
-	ruleUsecase                 AiAgentUsecaseRuleUsecase
-	customListUsecase           AiAgentUsecaseCustomListUsecase
-	scenarioUsecase             AiAgentUsecaseScenarioUsecase
-	billingUsecase              AiAgentUsecaseBillingUsecase
-	caseReviewFileRepository    caseReviewWorkerRepository
-	blobRepository              repositories.BlobRepository
-	caseReviewTaskEnqueuer      caseReviewTaskEnqueuer
-	featureAccessReader         featureAccessReader
-	config                      infra.AIAgentConfiguration
-	caseManagerBucketUrl        string
+	enforceSecurityCase                security.EnforceSecurityCase
+	enforceSecurityDecision            security.EnforceSecurityDecision
+	enforceSecurityOrganization        security.EnforceSecurityOrganization
+	repository                         AiAgentUsecaseRepository
+	inboxReader                        inboxes.InboxReader
+	executorFactory                    executor_factory.ExecutorFactory
+	transactionFactory                 executor_factory.TransactionFactory
+	ingestedDataReader                 AiAgentUsecaseIngestedDataReader
+	dataModelUsecase                   AiAgentUsecaseDataModelUsecase
+	ruleUsecase                        AiAgentUsecaseRuleUsecase
+	customListUsecase                  AiAgentUsecaseCustomListUsecase
+	scenarioUsecase                    AiAgentUsecaseScenarioUsecase
+	billingUsecase                     AiAgentUsecaseBillingUsecase
+	caseReviewFileRepository           caseReviewWorkerRepository
+	blobRepository                     repositories.BlobRepository
+	caseReviewTaskEnqueuer             caseReviewTaskEnqueuer
+	screeningHitSuggestionTaskEnqueuer screeningHitSuggestionTaskEnqueuer
+	screeningUsecase                   AiAgentScreeningUsecase
+	featureAccessReader                featureAccessReader
+	config                             infra.AIAgentConfiguration
+	caseManagerBucketUrl               string
 
 	caseReviewAdapter *llmberjack.Llmberjack
 	enrichmentAdapter *llmberjack.Llmberjack
@@ -175,6 +194,7 @@ type AiAgentUsecase struct {
 
 func NewAiAgentUsecase(
 	enforceSecurityCase security.EnforceSecurityCase,
+	enforceSecurityDecision security.EnforceSecurityDecision,
 	enforceSecurityOrganization security.EnforceSecurityOrganization,
 	repository AiAgentUsecaseRepository,
 	inboxReader inboxes.InboxReader,
@@ -190,28 +210,33 @@ func NewAiAgentUsecase(
 	caseReviewTaskEnqueuer caseReviewTaskEnqueuer,
 	transactionFactory executor_factory.TransactionFactory,
 	featureAccessReader featureAccessReader,
+	screeningHitSuggestionTaskEnqueuer screeningHitSuggestionTaskEnqueuer,
+	screeningUsecase AiAgentScreeningUsecase,
 	config infra.AIAgentConfiguration,
 	caseManagerBucketUrl string,
 ) AiAgentUsecase {
 	return AiAgentUsecase{
-		enforceSecurityCase:         enforceSecurityCase,
-		enforceSecurityOrganization: enforceSecurityOrganization,
-		repository:                  repository,
-		inboxReader:                 inboxReader,
-		executorFactory:             executorFactory,
-		ingestedDataReader:          ingestedDataReader,
-		dataModelUsecase:            dataModelUsecase,
-		ruleUsecase:                 ruleUsecase,
-		customListUsecase:           customListUsecase,
-		scenarioUsecase:             scenarioUsecase,
-		billingUsecase:              billingUsecase,
-		caseReviewFileRepository:    caseReviewFileRepository,
-		blobRepository:              blobRepository,
-		caseReviewTaskEnqueuer:      caseReviewTaskEnqueuer,
-		transactionFactory:          transactionFactory,
-		featureAccessReader:         featureAccessReader,
-		config:                      config,
-		caseManagerBucketUrl:        caseManagerBucketUrl,
+		enforceSecurityCase:                enforceSecurityCase,
+		enforceSecurityDecision:            enforceSecurityDecision,
+		enforceSecurityOrganization:        enforceSecurityOrganization,
+		repository:                         repository,
+		inboxReader:                        inboxReader,
+		executorFactory:                    executorFactory,
+		ingestedDataReader:                 ingestedDataReader,
+		dataModelUsecase:                   dataModelUsecase,
+		ruleUsecase:                        ruleUsecase,
+		customListUsecase:                  customListUsecase,
+		scenarioUsecase:                    scenarioUsecase,
+		billingUsecase:                     billingUsecase,
+		caseReviewFileRepository:           caseReviewFileRepository,
+		blobRepository:                     blobRepository,
+		caseReviewTaskEnqueuer:             caseReviewTaskEnqueuer,
+		screeningHitSuggestionTaskEnqueuer: screeningHitSuggestionTaskEnqueuer,
+		screeningUsecase:                   screeningUsecase,
+		transactionFactory:                 transactionFactory,
+		featureAccessReader:                featureAccessReader,
+		config:                             config,
+		caseManagerBucketUrl:               caseManagerBucketUrl,
 	}
 }
 

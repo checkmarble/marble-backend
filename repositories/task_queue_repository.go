@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/rivertype"
 )
 
 const (
@@ -155,6 +156,11 @@ type TaskQueueRepository interface {
 		tx Transaction,
 		orgId uuid.UUID,
 		dryRun models.ScoringDryRun,
+	) error
+	EnqueueScreeningHitSuggestionTask(
+		ctx context.Context,
+		organizationId uuid.UUID,
+		screeningId string,
 	) error
 }
 
@@ -778,5 +784,38 @@ func (r riverRepository) EnqueueRulesetDryRun(
 		"dry_run_id", dryRun.Id,
 		"ruleset_id", dryRun.RulesetId)
 
+	return nil
+}
+
+func (r riverRepository) EnqueueScreeningHitSuggestionTask(
+	ctx context.Context,
+	organizationId uuid.UUID,
+	screeningId string,
+) error {
+	res, err := r.client.Insert(
+		ctx,
+		models.ScreeningHitSuggestionArgs{
+			ScreeningId: screeningId,
+		},
+		&river.InsertOpts{
+			Queue: organizationId.String(),
+			UniqueOpts: river.UniqueOpts{
+				ByArgs: true,
+				ByState: []rivertype.JobState{
+					rivertype.JobStateAvailable,
+					rivertype.JobStatePending,
+					rivertype.JobStateRunning,
+					rivertype.JobStateRetryable,
+				},
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued screening hit suggestion task",
+		"screening_id", screeningId, "job_id", res.Job.ID)
 	return nil
 }

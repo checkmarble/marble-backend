@@ -192,6 +192,11 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		handleListScreeningMatchFiles(uc))
 	router.GET("/screenings/:screeningId/files/:fileId", tom,
 		handleDownloadScreeningMatchFile(uc))
+	router.GET("/screenings/:screeningId/ai-suggestions", tom, handleGetScreeningSuggestions(uc))
+	router.POST("/screenings/:screeningId/ai-suggestions", timeoutMiddleware(conf.BatchTimeout),
+		handleGenerateScreeningHitSuggestion(uc))
+	router.POST("/screenings/:screeningId/ai-suggestions/enqueue", tom,
+		handleEnqueueScreeningHitSuggestion(uc))
 	router.PATCH("/screenings/matches/:id", tom, handleUpdateScreeningMatchStatus(uc))
 	router.POST("/screenings/matches/:id/enrich", tom, handleEnrichScreeningMatch(uc))
 	router.POST("/screenings/freeform-search", tom, handleFreeformSearch(uc))
@@ -436,7 +441,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		r.GET("/scoring/rulesets/:recordType", tom, handleScoringGetRuleset(uc))
 		r.GET("/scoring/rulesets/:recordType/versions", tom, handleScoringListRulesetVersions(uc))
 		r.POST("/scoring/rulesets/:recordType", tom, handleScoringCreateRulesetVersion(uc))
-		r.GET("/scoring/rulesets/:recordType/prepare", tom, handleScoringGetRulesetPreparationStatus(uc))
+		r.GET("/scoring/rulesets/:recordType/prepare", tom,
+			handleScoringGetRulesetPreparationStatus(uc))
 		r.POST("/scoring/rulesets/:recordType/prepare", tom, handleScoringPrepareRuleset(uc))
 		r.POST("/scoring/rulesets/:recordType/dry-run", tom, handleScoringStartDryRun(uc))
 		r.GET("/scoring/rulesets/:recordType/dry-run", tom, handleScoringGetDryRun(uc))

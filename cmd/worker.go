@@ -394,6 +394,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewTestRunSummaryWorker())
 	river.AddWorker(workers, adminUc.NewMatchEnrichmentWorker())
 	river.AddWorker(workers, adminUc.NewCaseReviewWorker(workerConfig.caseReviewTimeout))
+	river.AddWorker(workers, adminUc.NewScreeningHitSuggestionWorker(workerConfig.caseReviewTimeout))
 	river.AddWorker(workers, adminUc.NewAutoAssignmentWorker())
 	river.AddWorker(workers, adminUc.NewDecisionWorkflowsWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningDoScreeningWorker())
@@ -601,6 +602,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "case_review":
 		return uc.NewCaseReviewWorker(time.Hour).Work(ctx,
 			singleJobCreate[models.CaseReviewArgs](ctx, jobArgs))
+	case "screening_hit_suggestion":
+		return uc.NewScreeningHitSuggestionWorker(time.Hour).Work(ctx,
+			singleJobCreate[models.ScreeningHitSuggestionArgs](ctx, jobArgs))
 	case "decision_workflows":
 		return uc.NewDecisionWorkflowsWorker().Work(ctx,
 			singleJobCreate[models.DecisionWorkflowArgs](ctx, jobArgs))
