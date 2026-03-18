@@ -60,6 +60,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) makeScoreUsecase() scoring.Sc
 		nil,
 		s.executorFactory,
 		nil,
+		scoring.ScoringRulesetsUsecase{}, // TODO :(
 		s.repository,
 		s.dataModelRepo,
 		repositories.OffloadedReadWriter{},

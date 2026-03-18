@@ -11,12 +11,14 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
+	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/utils"
@@ -154,6 +156,7 @@ type CaseUseCase struct {
 	taskQueueRepository     repositories.TaskQueueRepository
 	featureAccessReader     feature_access.FeatureAccessReader
 	publicApiAdapterUsecase PublicApiAdapterUsecase
+	scoringScoreUsecase     scoring.ScoringScoresUsecase
 }
 
 func (usecase *CaseUseCase) ListCases(
@@ -610,9 +613,24 @@ func (usecase *CaseUseCase) UpdateCase(
 				fmt.Sprintf("invalid case status transition from %s to %s", c.Status, updateCaseAttributes.Status))
 		}
 
-		if updateCaseAttributes.Outcome != "" && !slices.Contains(models.ValidCaseOutcomes, updateCaseAttributes.Outcome) {
-			return c, errors.Wrap(models.BadParameterError,
-				fmt.Sprintf("invalid case outcome '%s'", updateCaseAttributes.Outcome))
+		if updateCaseAttributes.Outcome != "" {
+			if !slices.Contains(models.ValidCaseOutcomes, updateCaseAttributes.Outcome) {
+				return c, errors.Wrap(models.BadParameterError,
+					fmt.Sprintf("invalid case outcome '%s'", updateCaseAttributes.Outcome))
+			}
+
+			if infra.HasFeatureFlag(infra.FEATURE_USER_SCORING, c.OrganizationId) {
+				decisions, err := usecase.decisionRepository.DecisionsByCaseId(ctx, tx, c.OrganizationId, c.Id)
+				if err != nil {
+					return models.Case{}, err
+				}
+
+				if err := usecase.scoringScoreUsecase.EnqueueComputationForDecisions(ctx, c.OrganizationId, decisions); err != nil {
+					utils.LoggerFromContext(ctx).ErrorContext(ctx,
+						"could not trigger score computation job",
+						"error", err.Error())
+				}
+			}
 		}
 
 		err = usecase.repository.UpdateCase(ctx, tx, updateCaseAttributes)
@@ -1405,8 +1423,7 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 		c.Decisions = decisions
 
 	case models.CaseTypeContinuousScreening:
-		continuousScreeningsWithMatches, err :=
-			usecase.repository.ListContinuousScreeningsWithMatchesByCaseId(ctx, exec, caseId)
+		continuousScreeningsWithMatches, err := usecase.repository.ListContinuousScreeningsWithMatchesByCaseId(ctx, exec, caseId)
 		if err != nil {
 			return models.Case{}, err
 		}

@@ -131,7 +131,7 @@ type ScoringRuleset struct {
 	Id              uuid.UUID
 	OrgId           uuid.UUID
 	Version         int
-	Status          string
+	Status          ScoreRulesetStatus
 	Name            string
 	Description     string
 	RecordType      string

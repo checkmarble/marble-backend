@@ -56,7 +56,7 @@ func AdaptScoringRuleset(m models.ScoringRuleset) (ScoringRuleset, error) {
 		Id:                     m.Id,
 		OrgId:                  m.OrgId,
 		Version:                m.Version,
-		Status:                 m.Status,
+		Status:                 string(m.Status),
 		Name:                   m.Name,
 		Description:            m.Description,
 		RecordType:             m.RecordType,

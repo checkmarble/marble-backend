@@ -126,6 +126,28 @@ func (exec *RedisExecutor) SaveModel(ctx context.Context, dbExec Executor, key s
 	return exec.client.client.Set(ctx, key, marshalled, ttl).Err()
 }
 
+func (exec *RedisExecutor) SetAdd(ctx context.Context, key, value string) error {
+	if exec == nil {
+		return nil
+	}
+
+	return exec.client.client.SAdd(ctx, key, value).Err()
+}
+
+func (exec *RedisExecutor) IsInSet(ctx context.Context, key, value string) (bool, error) {
+	if exec == nil {
+		return false, models.NotFoundError
+	}
+
+	result := exec.client.client.SIsMember(ctx, key, value)
+
+	if err := result.Err(); err != nil {
+		return false, err
+	}
+
+	return result.Val(), nil
+}
+
 func (exec *RedisExecutor) DeletePrefix(ctx context.Context, prefix string) error {
 	var cursor uint64
 

@@ -396,6 +396,7 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 		enforceSecurity:                     usecases.NewEnforceIngestionSecurity(),
 		transactionFactory:                  usecases.NewTransactionFactory(),
 		executorFactory:                     usecases.NewExecutorFactory(),
+		scoringScoreUsecase:                 usecases.NewScoringScoresUsecase(),
 		ingestionRepository:                 usecases.Repositories.IngestionRepository,
 		blobRepository:                      usecases.Repositories.BlobRepository,
 		dataModelRepository:                 usecases.Repositories.MarbleDbRepository,
@@ -472,6 +473,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		taskQueueRepository:     usecases.Repositories.TaskQueueRepository,
 		featureAccessReader:     usecases.NewFeatureAccessReader(),
 		publicApiAdapterUsecase: usecases.NewPublicApiAdapterUsecase(),
+		scoringScoreUsecase:     usecases.NewScoringScoresUsecase(),
 	}
 }
 
@@ -1187,6 +1189,7 @@ func (usecases *UsecasesWithCreds) NewScoringRulesetsUsecase() scoring.ScoringRu
 		usecases.NewEnforceSecurityScoring(),
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
+		usecases.Repositories.RedisClient,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewClientDbIndexEditor(),
 		usecases.Repositories.TaskQueueRepository,
@@ -1198,6 +1201,7 @@ func (usecases *UsecasesWithCreds) NewScoringScoresUsecase() scoring.ScoringScor
 		usecases.NewEnforceSecurityScoring(),
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
+		usecases.NewScoringRulesetsUsecase(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewOffloadedReader(),
