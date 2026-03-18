@@ -3,6 +3,7 @@ package scoring
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/dto/scoring"
@@ -13,6 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 const RULESET_DRY_RUN_SAMPLE_SIZE = 5000
@@ -21,6 +23,7 @@ type ScoringRulesetsUsecase struct {
 	enforceSecurity     security.EnforceSecurityScoring
 	executorFactory     executor_factory.ExecutorFactory
 	transactionFactory  executor_factory.TransactionFactory
+	redisClient         *repositories.RedisClient
 	repository          ScoringRepository
 	indexEditor         scoringIndexEditor
 	taskQueueRepository repositories.TaskQueueRepository
@@ -30,6 +33,7 @@ func NewScoringRulesetsUsecase(
 	enforceSecurity security.EnforceSecurityScoring,
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
+	redisClient *repositories.RedisClient,
 	repository ScoringRepository,
 	indexEditor scoringIndexEditor,
 	taskQueueRepository repositories.TaskQueueRepository,
@@ -38,10 +42,47 @@ func NewScoringRulesetsUsecase(
 		enforceSecurity:     enforceSecurity,
 		executorFactory:     executorFactory,
 		transactionFactory:  transactionFactory,
+		redisClient:         redisClient,
 		repository:          repository,
 		indexEditor:         indexEditor,
 		taskQueueRepository: taskQueueRepository,
 	}
+}
+
+func (uc ScoringRulesetsUsecase) CommittedRulesetExists(ctx context.Context, orgId uuid.UUID, recordType string) (bool, error) {
+	cache := uc.redisClient.NewExecutor(orgId)
+	cacheKey := cache.Key("scoring_record_types", recordType)
+
+	exists, err := repositories.RedisQuery(cache, func(c *redis.Client) (bool, error) {
+		result := c.Get(ctx, cacheKey)
+
+		if err := result.Err(); err != nil {
+			return false, err
+		}
+
+		return result.Bool()
+	})
+
+	if err == nil {
+		return exists, nil
+	}
+
+	exists = true
+
+	_, err = uc.repository.GetScoringRuleset(ctx, uc.executorFactory.NewExecutor(), orgId, recordType, models.ScoreRulesetCommitted, 0)
+	if err != nil {
+		if !errors.Is(err, models.NotFoundError) {
+			return false, err
+		}
+
+		exists = false
+	}
+
+	_ = cache.Exec(func(c *redis.Client) error {
+		return c.Set(ctx, cacheKey, exists, time.Hour).Err()
+	})
+
+	return exists, nil
 }
 
 func (uc ScoringRulesetsUsecase) ListRulesets(ctx context.Context) ([]models.ScoringRuleset, error) {
@@ -60,6 +101,9 @@ func (uc ScoringRulesetsUsecase) ListRulesets(ctx context.Context) ([]models.Sco
 }
 
 func (uc ScoringRulesetsUsecase) GetRuleset(ctx context.Context, recordType string, status models.ScoreRulesetStatus, version int) (models.ScoringRuleset, error) {
+	exec := uc.redisClient.NewExecutor(uc.enforceSecurity.OrgId())
+	cacheKey := exec.Key("scoring_record_types", recordType)
+
 	ruleset, err := uc.repository.GetScoringRuleset(
 		ctx,
 		uc.executorFactory.NewExecutor(),
@@ -67,11 +111,26 @@ func (uc ScoringRulesetsUsecase) GetRuleset(ctx context.Context, recordType stri
 		recordType,
 		status, version)
 	if err != nil {
+		if errors.Is(err, models.NotFoundError) {
+			_ = exec.Exec(func(c *redis.Client) error {
+				return c.Set(ctx, cacheKey, false, time.Hour).Err()
+			})
+		}
+
 		return models.ScoringRuleset{}, err
 	}
 
 	if err := uc.enforceSecurity.ReadOrganization(ruleset.OrgId); err != nil {
 		return models.ScoringRuleset{}, err
+	}
+
+	if ruleset.Status == models.ScoreRulesetCommitted {
+		exec := uc.redisClient.NewExecutor(uc.enforceSecurity.OrgId())
+		cacheKey := exec.Key("scoring_record_types", ruleset.RecordType)
+
+		_ = exec.Exec(func(c *redis.Client) error {
+			return c.Set(ctx, cacheKey, true, time.Hour).Err()
+		})
 	}
 
 	return ruleset, err
@@ -353,6 +412,13 @@ func (uc ScoringRulesetsUsecase) CommitRuleset(ctx context.Context, recordType s
 
 		return uc.repository.CommitRuleset(ctx, tx, draft)
 	})
+
+	if err == nil {
+		cache := uc.redisClient.NewExecutor(orgId)
+		_ = cache.Exec(func(c *redis.Client) error {
+			return c.Set(ctx, cache.Key("scoring_record_types", recordType), true, time.Hour).Err()
+		})
+	}
 
 	return ruleset, err
 }
