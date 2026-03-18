@@ -2,7 +2,6 @@ package evaluate
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -25,7 +24,6 @@ type PastAlerts struct {
 }
 
 func (pa PastAlerts) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
-	fmt.Printf("%#v\n", pa)
 	hasPastAlerts, err := pa.Repository.ObjectHasConfirmedRisks(
 		ctx,
 		pa.ExecutorFactory.NewExecutor(),
@@ -36,8 +34,6 @@ func (pa PastAlerts) Evaluate(ctx context.Context, arguments ast.Arguments) (any
 	if err != nil {
 		return MakeEvaluateError(err)
 	}
-
-	fmt.Println("!!!!", hasPastAlerts)
 
 	return hasPastAlerts, nil
 }

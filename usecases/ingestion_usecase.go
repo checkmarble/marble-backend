@@ -28,6 +28,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
+	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -104,6 +105,7 @@ type IngestionUseCase struct {
 	transactionFactory                  executor_factory.TransactionFactory
 	executorFactory                     executor_factory.ExecutorFactory
 	enforceSecurity                     security.EnforceSecurityIngestion
+	scoringScoreUsecase                 scoring.ScoringScoresUsecase
 	ingestionRepository                 repositories.IngestionRepository
 	blobRepository                      repositories.BlobRepository
 	dataModelRepository                 repositories.DataModelRepository
@@ -962,20 +964,7 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	}
 
 	if infra.HasFeatureFlag(infra.FEATURE_USER_SCORING, organizationId) {
-		err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-			entities := make([]models.ScoringRecordRef, 0, len(ingestionResults))
-
-			for objectId := range ingestionResults {
-				entities = append(entities, models.ScoringRecordRef{
-					OrgId:      organizationId,
-					RecordType: table.Name,
-					RecordId:   objectId,
-				})
-			}
-
-			return usecase.taskEnqueuer.EnqueueManyTriggerScoreComputation(ctx, tx, entities)
-		})
-		if err != nil {
+		if err := usecase.scoringScoreUsecase.EnqueueComputationForIngestion(ctx, organizationId, table.Name, ingestionResults); err != nil {
 			utils.LoggerFromContext(ctx).WarnContext(ctx,
 				"could not enqueue scoring job for ingestion batch",
 				"error", err.Error())

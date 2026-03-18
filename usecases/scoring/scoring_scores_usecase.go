@@ -18,21 +18,23 @@ import (
 )
 
 type ScoringScoresUsecase struct {
-	enforceSecurity     security.EnforceSecurityScoring
-	executorFactory     executor_factory.ExecutorFactory
-	transactionFactory  executor_factory.TransactionFactory
-	repository          ScoringRepository
-	dataModelRepository repositories.DataModelRepository
-	offloadedReadWriter repositories.OffloadedReadWriter
-	ingestedDataReader  scoringIngestedDataReader
-	taskQueueRepository repositories.TaskQueueRepository
-	evaluateAst         ast_eval.EvaluateAstExpression
+	enforceSecurity        security.EnforceSecurityScoring
+	executorFactory        executor_factory.ExecutorFactory
+	transactionFactory     executor_factory.TransactionFactory
+	scoringRulesetsUsecase ScoringRulesetsUsecase
+	repository             ScoringRepository
+	dataModelRepository    repositories.DataModelRepository
+	offloadedReadWriter    repositories.OffloadedReadWriter
+	ingestedDataReader     scoringIngestedDataReader
+	taskQueueRepository    repositories.TaskQueueRepository
+	evaluateAst            ast_eval.EvaluateAstExpression
 }
 
 func NewScoringScoresUsecase(
 	enforceSecurity security.EnforceSecurityScoring,
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
+	scoringRulesetsUsecase ScoringRulesetsUsecase,
 	repository ScoringRepository,
 	dataModelRepository repositories.DataModelRepository,
 	offloadedReadWriter repositories.OffloadedReadWriter,
@@ -41,15 +43,16 @@ func NewScoringScoresUsecase(
 	evaluateAst ast_eval.EvaluateAstExpression,
 ) ScoringScoresUsecase {
 	return ScoringScoresUsecase{
-		enforceSecurity:     enforceSecurity,
-		executorFactory:     executorFactory,
-		transactionFactory:  transactionFactory,
-		repository:          repository,
-		dataModelRepository: dataModelRepository,
-		offloadedReadWriter: offloadedReadWriter,
-		ingestedDataReader:  ingestedDataReader,
-		taskQueueRepository: taskQueueRepository,
-		evaluateAst:         evaluateAst,
+		enforceSecurity:        enforceSecurity,
+		executorFactory:        executorFactory,
+		transactionFactory:     transactionFactory,
+		scoringRulesetsUsecase: scoringRulesetsUsecase,
+		repository:             repository,
+		dataModelRepository:    dataModelRepository,
+		offloadedReadWriter:    offloadedReadWriter,
+		ingestedDataReader:     ingestedDataReader,
+		taskQueueRepository:    taskQueueRepository,
+		evaluateAst:            evaluateAst,
 	}
 }
 
@@ -310,6 +313,96 @@ func (uc ScoringScoresUsecase) GetScoreDistribution(ctx context.Context, entityT
 	}
 
 	return uc.repository.GetScoreDistribution(ctx, exec, orgId, entityType)
+}
+
+func (uc ScoringScoresUsecase) EnqueueComputationForDecisions(ctx context.Context, orgId uuid.UUID, decisions []models.Decision) error {
+	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		dataModel, err := uc.dataModelRepository.GetDataModel(ctx, tx, orgId, false, false)
+		if err != nil {
+			return err
+		}
+
+		for _, d := range decisions {
+			exists, err := uc.scoringRulesetsUsecase.CommittedRulesetExists(ctx, orgId, d.ClientObject.TableName)
+			if err != nil {
+				utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not check if scoring ruleset exists", "error", err.Error())
+				continue
+			}
+
+			if exists {
+				err = uc.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringRecordRef{
+					OrgId:      orgId,
+					RecordType: d.ClientObject.TableName,
+					RecordId:   d.ClientObject.Data["object_id"].(string),
+				})
+				if err != nil {
+					return err
+				}
+			}
+
+			if d.PivotId == nil || d.PivotValue == nil {
+				continue
+			}
+
+			pivotMeta, err := uc.dataModelRepository.GetPivot(ctx, tx, d.PivotId.String())
+			if err != nil {
+				return err
+			}
+
+			pivot := pivotMeta.Enrich(dataModel)
+
+			exists, err = uc.scoringRulesetsUsecase.CommittedRulesetExists(ctx, orgId, pivot.PivotTable)
+			if err != nil {
+				utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not check if scoring ruleset exists", "error", err.Error())
+				continue
+			}
+
+			if exists {
+				err = uc.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringRecordRef{
+					OrgId:      orgId,
+					RecordType: pivot.PivotTable,
+					RecordId:   *d.PivotValue,
+				})
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+}
+
+func (uc ScoringScoresUsecase) EnqueueComputationForIngestion(ctx context.Context, orgId uuid.UUID, recordType string, records models.IngestionResults) error {
+	if len(records) == 0 {
+		return nil
+	}
+
+	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		exists, err := uc.scoringRulesetsUsecase.CommittedRulesetExists(ctx, orgId, recordType)
+		if err != nil {
+			utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not check if scoring ruleset exists", "error", err.Error())
+			return nil
+		}
+		if !exists {
+			return nil
+		}
+
+		for objectId := range records {
+			err := uc.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringRecordRef{
+				OrgId:      orgId,
+				RecordType: recordType,
+				RecordId:   objectId,
+			})
+			if err != nil {
+				return err
+			}
+
+			// On ingestion, we do not trigger the recomputation of the pivot's score for now.
+		}
+
+		return nil
+	})
 }
 
 func (uc ScoringScoresUsecase) getPayloadObject(ctx context.Context, orgId uuid.UUID, dataModel models.DataModel, recordType, recordId string) (models.ClientObject, error) {

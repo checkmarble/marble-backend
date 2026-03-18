@@ -112,8 +112,6 @@ type EntityAnnotationRiskTagsFilter struct {
 	Tags       []RiskTag // Optional: filter by specific tags, empty means any tags
 }
 
-// EntityAnnotationRiskTagsFilter is used to query risk tag annotations
-// for MonitoringListCheck rule evaluation
 type EntityAnnotationTagsFilter struct {
 	OrgId      uuid.UUID
 	ObjectType string
