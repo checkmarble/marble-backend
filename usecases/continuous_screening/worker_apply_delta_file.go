@@ -17,6 +17,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
+	"github.com/tidwall/gjson"
 )
 
 const (
@@ -159,9 +160,12 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 	exec := w.executorFactory.NewExecutor()
 
 	// Log error if job has been retried many times
-	if job.Attempt > 100 {
-		logger.ErrorContext(ctx, "Continuous screening apply delta file job has exceeded 100 attempts",
-			"attempt", job.Attempt, "update_id", job.Args.UpdateId, "org_id", job.Args.OrgId)
+	if gjson.GetBytes(job.Metadata, "snoozes").Int() > 100 {
+		logger.ErrorContext(ctx,
+			"Continuous screening apply delta file job has exceeded 100 attempts",
+			"attempt", job.Attempt,
+			"update_id", job.Args.UpdateId,
+			"org_id", job.Args.OrgId)
 	}
 
 	logger.DebugContext(
