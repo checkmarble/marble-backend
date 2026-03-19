@@ -805,6 +805,7 @@ func (r riverRepository) EnqueueScreeningHitSuggestionTask(
 					rivertype.JobStateAvailable,
 					rivertype.JobStatePending,
 					rivertype.JobStateRunning,
+					rivertype.JobStateScheduled,
 					rivertype.JobStateRetryable,
 				},
 			},
