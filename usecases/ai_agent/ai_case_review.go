@@ -302,7 +302,7 @@ func (uc *AiAgentUsecase) getOrganizationInstructionsForPrompt(ctx context.Conte
 	}
 	if language != "English" {
 		// If the language is English, ignore this step because the case review is already in English
-		model, customLanguagePrompt, err := uc.preparePromptWithModel(
+		_, model, customLanguagePrompt, err := uc.preparePromptWithModel(
 			INSTRUCTION_LANGUAGE_PATH,
 			map[string]any{
 				"language": language,
@@ -317,7 +317,7 @@ func (uc *AiAgentUsecase) getOrganizationInstructionsForPrompt(ctx context.Conte
 		modelToUse = model
 	}
 	if caseReviewSetting.Structure != nil {
-		model, customStructurePrompt, err := uc.preparePromptWithModel(
+		_, model, customStructurePrompt, err := uc.preparePromptWithModel(
 			INSTRUCTION_STRUCTURE_PATH,
 			map[string]any{
 				"structure": *caseReviewSetting.Structure,
@@ -409,7 +409,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 	if caseReviewContext.DataModelSummary == nil {
 		// Data model summary, create thread because the response will be used in next steps
-		modelDataModelSummary, promptDataModelSummary, err := uc.preparePromptWithModel(
+		providerDataModelSummary, modelDataModelSummary, promptDataModelSummary, err := uc.preparePromptWithModel(
 			PROMPT_DATA_MODEL_SUMMARY_PATH, map[string]any{
 				"data_model": caseData.dataModelDto,
 			})
@@ -419,6 +419,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 		// Create the request with Thread for the next steps which needs the response
 		requestDataModelSummary, err := llmberjack.NewUntypedRequest().
+			WithProvider(providerDataModelSummary).
 			WithModel(modelDataModelSummary).
 			WithThinking(false).
 			WithInstruction(systemInstruction).
@@ -479,7 +480,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 						Properties: props,
 					}
 
-					modelDataModelObjectFieldReadOptions, promptDataModelObjectFieldReadOptions, err := uc.preparePromptWithModel(
+					providerFieldReadOptions, modelDataModelObjectFieldReadOptions, promptDataModelObjectFieldReadOptions, err := uc.preparePromptWithModel(
 						PROMPT_DATA_MODEL_OBJECT_FIELD_READ_OPTIONS_PATH,
 						map[string]any{
 							"data_model_table_names": tableNamesWithLargRowNbs,
@@ -491,6 +492,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 					requestDataModelObjectFieldReadOptions, err := llmberjack.NewRequest[map[string][]string]().
 						OverrideResponseSchema(schema).
+						WithProvider(providerFieldReadOptions).
 						WithModel(modelDataModelObjectFieldReadOptions).
 						WithThinking(false).
 						WithInstruction(systemInstruction).
@@ -550,7 +552,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if aiSetting.CaseReviewSetting.OrgDescription != nil {
 			ruleDefinitionsData["activity_description"] = *aiSetting.CaseReviewSetting.OrgDescription
 		}
-		modelRulesDefinitions, promptRulesDefinitions, err := uc.preparePromptWithModel(
+		providerRulesDefinitions, modelRulesDefinitions, promptRulesDefinitions, err := uc.preparePromptWithModel(
 			PROMPT_RULE_DEFINITIONS_PATH,
 			ruleDefinitionsData,
 		)
@@ -558,6 +560,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			return nil, errors.Wrap(err, "could not prepare rules definitions review request")
 		}
 		requestRulesDefinitionsReview, err := llmberjack.NewUntypedRequest().
+			WithProvider(providerRulesDefinitions).
 			WithModel(modelRulesDefinitions).
 			WithThinking(false).
 			WithInstruction(systemInstruction).
@@ -578,7 +581,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 	// Rule thresholds
 	if caseReviewContext.RuleThresholds == nil {
-		modelRuleThresholds, promptRuleThresholds, err := uc.preparePromptWithModel(
+		providerRuleThresholds, modelRuleThresholds, promptRuleThresholds, err := uc.preparePromptWithModel(
 			PROMPT_RULE_THRESHOLD_VALUES_PATH,
 			map[string]any{
 				"decisions": caseData.decisions,
@@ -588,6 +591,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			return nil, errors.Wrap(err, "could not prepare rule thresholds request")
 		}
 		requestRuleThresholds, err := llmberjack.NewUntypedRequest().
+			WithProvider(providerRuleThresholds).
 			WithModel(modelRuleThresholds).
 			WithThinking(false).
 			WithInstruction(systemInstruction).
@@ -656,7 +660,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction != nil {
 			caseReviewData["additional_case_review_instruction"] = *aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
 		}
-		modelCaseReview, promptCaseReview, err := uc.preparePromptWithModel(
+		providerCaseReview, modelCaseReview, promptCaseReview, err := uc.preparePromptWithModel(
 			PROMPT_CASE_REVIEW_PATH,
 			caseReviewData,
 		)
@@ -667,6 +671,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		schema := getProofSchema(caseData.dataModel)
 		requestCaseReview, err := llmberjack.NewRequest[caseReviewOutput]().
 			OverrideResponseSchema(schema).
+			WithProvider(providerCaseReview).
 			WithModel(modelCaseReview).
 			WithInstruction(systemInstruction).
 			WithText(llmberjack.RoleUser, promptCaseReview).
@@ -722,7 +727,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction != nil {
 			sanityCheckData["additional_case_review_instruction"] = *aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
 		}
-		modelSanityCheck, promptSanityCheck, err := uc.preparePromptWithModel(
+		providerSanityCheck, modelSanityCheck, promptSanityCheck, err := uc.preparePromptWithModel(
 			PROMPT_SANITY_CHECK_PATH,
 			sanityCheckData,
 		)
@@ -730,6 +735,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			return nil, errors.Wrap(err, "could not prepare sanity check request")
 		}
 		requestSanityCheck, err := llmberjack.NewRequest[sanityCheckOutput]().
+			WithProvider(providerSanityCheck).
 			WithModel(modelSanityCheck).
 			WithInstruction(systemInstruction).
 			WithText(llmberjack.RoleUser, promptSanityCheck).
