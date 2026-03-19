@@ -152,7 +152,7 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(
 	if err != nil {
 		return models.ScenarioIteration{}, err
 	}
-	if err := usecase.enforceSecurity.ReadOrganization(scenario.OrganizationId); err != nil {
+	if err := usecase.enforceSecurity.ReadScenario(scenario); err != nil {
 		return models.ScenarioIteration{}, err
 	}
 
