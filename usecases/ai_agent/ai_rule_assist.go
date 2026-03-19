@@ -79,7 +79,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 		return dto.GenerateRuleResponse{}, err
 	}
 
-	model, ruleGenerationPrompt, err := uc.preparePromptWithModel(
+	provider, model, ruleGenerationPrompt, err := uc.preparePromptWithModel(
 		RULE_GENERATION_PROMPT_STEP1_PATH, map[string]any{
 			"data_model":         dataModelDto,
 			"custom_list":        customListsDto,
@@ -92,9 +92,10 @@ func (uc *AiAgentUsecase) GenerateRule(
 		return dto.GenerateRuleResponse{}, err
 	}
 
-	logger.DebugContext(ctx, "Rule generation", "model", model)
+	// logger.DebugContext(ctx, "Rule generation", "model", model)
 
 	req := llmberjack.NewRequest[string]().
+		WithProvider(provider).
 		WithModel(model).
 		WithText(llmberjack.RoleUser, ruleGenerationPrompt).
 		WithThinking(true)
@@ -112,7 +113,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 
 	logger.DebugContext(ctx, fmt.Sprintf("LLM response as string:\n%s\n", ruleAsString))
 
-	model, ruleGenerationPrompt, err = uc.preparePromptWithModel(
+	provider, model, ruleGenerationPrompt, err = uc.preparePromptWithModel(
 		RULE_GENERATION_PROMPT_STEP2_PATH, map[string]any{
 			"data_model":         dataModelDto,
 			"custom_list":        customListsDto,
@@ -126,8 +127,12 @@ func (uc *AiAgentUsecase) GenerateRule(
 		return dto.GenerateRuleResponse{}, err
 	}
 
+	// logger.DebugContext(ctx, ruleGenerationPrompt)
+
 	req2 := llmberjack.NewRequest[string]().
+		WithProvider(provider).
 		WithModel(model).
+		WithSchemaDescription("NodeDto", "The AST node of the rule").
 		WithText(llmberjack.RoleUser, ruleGenerationPrompt).
 		WithThinking(true)
 
@@ -141,11 +146,18 @@ func (uc *AiAgentUsecase) GenerateRule(
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf("failed to get LLM response: %w", err)
 	}
+	// ruleStep2, err := resp2.Get(0)
+	// if err != nil {
+	// 	return dto.GenerateRuleResponse{}, fmt.Errorf("failed to get LLM response: %w", err)
+	// }
+
+	logger.DebugContext(ctx, fmt.Sprintf("LLM response step 2 as string:\n%s\n", ruleAsStringStep2))
 
 	var ruleAstDto dto.NodeDto
 	err = json.Unmarshal([]byte(ruleAsStringStep2), &ruleAstDto)
 	if err != nil {
-		return dto.GenerateRuleResponse{}, fmt.Errorf("failed to parse LLM response as JSON: %w", err)
+		return dto.GenerateRuleResponse{}, fmt.Errorf(
+			"failed to parse LLM response as JSON: %w", err)
 	}
 
 	ruleAst, err := dto.AdaptASTNode(ruleAstDto)
@@ -269,7 +281,7 @@ func (uc *AiAgentUsecase) AiASTDescription(
 	}
 
 	// Execute the LLM prompt and return the result
-	model, ruleDescription, err := uc.preparePromptWithModel(RULE_DESCRIPTION_PROMPT_PATH, map[string]any{
+	provider, model, ruleDescription, err := uc.preparePromptWithModel(RULE_DESCRIPTION_PROMPT_PATH, map[string]any{
 		"data_model":  dataModelDto,
 		"custom_list": customListsDto,
 		"rule":        ruleAST,
@@ -282,6 +294,7 @@ func (uc *AiAgentUsecase) AiASTDescription(
 	// logger.DebugContext(ctx, "Rule description", "prompt", ruleDescription)
 
 	aiStudioRequest, err := llmberjack.NewRequest[aiRuleDescriptionOutput]().
+		WithProvider(provider).
 		WithModel(model).
 		WithText(llmberjack.RoleUser, ruleDescription).
 		WithThinking(false).
