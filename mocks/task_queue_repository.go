@@ -214,3 +214,22 @@ func (m *TaskQueueRepository) EnqueueManyTriggerScoreComputation(
 	args := m.Called(ctx, tx, entities)
 	return args.Error(0)
 }
+
+func (m *TaskQueueRepository) EnqueueRulesetDryRun(
+	ctx context.Context,
+	tx repositories.Transaction,
+	orgId uuid.UUID,
+	dryRun models.ScoringDryRun,
+) error {
+	args := m.Called(ctx, tx, orgId, dryRun)
+	return args.Error(0)
+}
+
+func (m *TaskQueueRepository) EnqueueScreeningHitSuggestionTask(
+	ctx context.Context,
+	organizationId uuid.UUID,
+	screeningId string,
+) error {
+	args := m.Called(ctx, organizationId, screeningId)
+	return args.Error(0)
+}

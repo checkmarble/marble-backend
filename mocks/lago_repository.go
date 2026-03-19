@@ -45,3 +45,8 @@ func (r *LagoRepository) SendEvents(ctx context.Context, events []models.Billing
 	args := r.Called(ctx, events)
 	return args.Error(0)
 }
+
+func (r *LagoRepository) GetEntitlements(ctx context.Context, subscriptionExternalId string) ([]models.BillingEntitlement, error) {
+	args := r.Called(ctx, subscriptionExternalId)
+	return args.Get(0).([]models.BillingEntitlement), args.Error(1)
+}

@@ -339,13 +339,14 @@ func (uc *AiAgentUsecase) getOrganizationInstructionsForPrompt(ctx context.Conte
 // Update this struct during the process and expose this struct to the caller to save the results in case we need to resume it
 // Does not include the custom format output because it's the last step and we don't need to save it.
 type CaseReviewContext struct {
-	DataModelSummary       *string                  `json:"data_model_summary"`
-	FieldsToReadPerTable   map[string][]string      `json:"fields_to_read_per_table"`
-	RulesDefinitionsReview *string                  `json:"rules_definitions_review"`
-	RuleThresholds         *string                  `json:"rule_thresholds"`
-	PivotEnrichments       []models.AiEnrichmentKYC `json:"pivot_enrichments"`
-	CaseReview             *caseReviewOutput        `json:"case_review"`
-	SanityCheck            *sanityCheckOutput       `json:"sanity_check"`
+	DataModelSummary       *string                                 `json:"data_model_summary"`
+	FieldsToReadPerTable   map[string][]string                     `json:"fields_to_read_per_table"`
+	RulesDefinitionsReview *string                                 `json:"rules_definitions_review"`
+	RuleThresholds         *string                                 `json:"rule_thresholds"`
+	PivotEnrichments       []models.AiEnrichmentKYC                `json:"pivot_enrichments"`
+	ScreeningSuggestions   []agent_dto.AiScreeningHitSuggestionDto `json:"screening_suggestions"`
+	CaseReview             *caseReviewOutput                       `json:"case_review"`
+	SanityCheck            *sanityCheckOutput                      `json:"sanity_check"`
 }
 
 // CreateCaseReviewSync performs a comprehensive AI-powered review of a case by analyzing
@@ -382,16 +383,47 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		return nil, errors.Wrap(err, "could not get case data")
 	}
 
-	// Check if the organization has enough funds to cover the cost of the case review
-	enoughFunds, subscriptionId, err := uc.billingUsecase.CheckIfEnoughFundsInWallet(
-		ctx,
-		caseData.organizationId,
-		billing.AI_CASE_REVIEW)
+	// Get subscriptions for AI case review billing metric
+	subscriptions, err := uc.billingUsecase.GetSubscriptionsForEvent(ctx,
+		caseData.organizationId, billing.AI_CASE_REVIEW)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not check if enough funds in wallet")
+		return nil, errors.Wrap(err, "could not get subscriptions for billing event")
 	}
-	if !enoughFunds {
+	if len(subscriptions) == 0 {
+		logger.InfoContext(ctx, "no subscription found for AI case review billing event, skipping case review and billing", "orgId", caseData.organizationId)
 		return nil, billing.ErrInsufficientFunds
+	}
+	if len(subscriptions) > 1 {
+		logger.WarnContext(ctx, "multiple subscriptions found for billing event, using the first one",
+			"organization_id", caseData.organizationId, "code", billing.AI_CASE_REVIEW)
+	}
+	subscriptionId := subscriptions[0].ExternalId
+
+	// Check if the organization has the entitlement to disable pay-as-you-go for AI case review
+	hasPayInArrearsEntitlement, err := uc.billingUsecase.CheckEntitlement(
+		ctx,
+		subscriptionId,
+		billing.BillingEntitlementAIReviewPayInArrears,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not check billing entitlement")
+	}
+	// In case the org needs to pay-as-you-go, check its wallets
+	if !hasPayInArrearsEntitlement {
+		// Check if the organization has enough funds to cover the cost of the case review
+		enoughFunds, err := uc.billingUsecase.CheckIfEnoughFundsInWallet(
+			ctx,
+			caseData.organizationId,
+			subscriptionId,
+			billing.AI_CASE_REVIEW)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not check if enough funds in wallet")
+		}
+		if !enoughFunds {
+			return nil, billing.ErrInsufficientFunds
+		}
+	} else {
+		logger.InfoContext(ctx, "Organization has entitlement to pay in arrears for AI case review, skipping wallet check", "subscription_id", subscriptionId)
 	}
 
 	// Get AI setting
@@ -550,7 +582,8 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			"decisions": caseData.decisions,
 		}
 		if aiSetting.CaseReviewSetting.OrgDescription != nil {
-			ruleDefinitionsData["activity_description"] = *aiSetting.CaseReviewSetting.OrgDescription
+			ruleDefinitionsData["activity_description"] =
+				*aiSetting.CaseReviewSetting.OrgDescription
 		}
 		providerRulesDefinitions, modelRulesDefinitions, promptRulesDefinitions, err := uc.preparePromptWithModel(
 			PROMPT_RULE_DEFINITIONS_PATH,
@@ -625,6 +658,29 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	logger.DebugContext(ctx, "================================ Pivot enrichments ================================")
 	logger.DebugContext(ctx, "Pivot enrichments", "response", caseReviewContext.PivotEnrichments)
 
+	if len(caseReviewContext.ScreeningSuggestions) == 0 && len(caseData.screeningIds) > 0 {
+		var allSuggestions []agent_dto.AiScreeningHitSuggestionDto
+		for _, screeningId := range caseData.screeningIds {
+			// If analysis already exists for the screening, the method will do nothing
+			if err := uc.AnalyseScreeningHits(ctx, screeningId); err != nil {
+				logger.ErrorContext(ctx, "Failed to generate screening suggestions",
+					"screening_id", screeningId, "error", err)
+				return nil, errors.Wrapf(err, "failed to generate screening suggestions for screening id %s", screeningId)
+			}
+			suggestions, err := uc.GetScreeningSuggestions(ctx, screeningId)
+			if err != nil {
+				logger.ErrorContext(ctx, "Failed to load screening suggestions",
+					"screening_id", screeningId, "error", err)
+				return nil, errors.Wrapf(err, "failed to load screening suggestions for screening id %s", screeningId)
+			}
+			allSuggestions = append(allSuggestions, suggestions...)
+		}
+		caseReviewContext.ScreeningSuggestions = allSuggestions
+	}
+
+	logger.DebugContext(ctx, "================================ Screening suggestions ================================")
+	logger.DebugContext(ctx, "Screening suggestions", "screening_suggestions", caseReviewContext.ScreeningSuggestions)
+
 	// Finally, we can generate the case review
 	if caseReviewContext.CaseReview == nil {
 		var astOptions []ast.FuncAttributes
@@ -657,8 +713,12 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if aiSetting.CaseReviewSetting.OrgDescription != nil {
 			caseReviewData["org_activity"] = *aiSetting.CaseReviewSetting.OrgDescription
 		}
+		if len(caseReviewContext.ScreeningSuggestions) > 0 {
+			caseReviewData["screening_suggestions"] = caseReviewContext.ScreeningSuggestions
+		}
 		if aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction != nil {
-			caseReviewData["additional_case_review_instruction"] = *aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
+			caseReviewData["additional_case_review_instruction"] =
+				*aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
 		}
 		providerCaseReview, modelCaseReview, promptCaseReview, err := uc.preparePromptWithModel(
 			PROMPT_CASE_REVIEW_PATH,
@@ -667,6 +727,8 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if err != nil {
 			return nil, errors.Wrap(err, "could not prepare case review request")
 		}
+
+		logger.DebugContext(ctx, "case review prompt", "prompt", promptCaseReview)
 
 		schema := getProofSchema(caseData.dataModel)
 		requestCaseReview, err := llmberjack.NewRequest[caseReviewOutput]().
@@ -724,8 +786,12 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if aiSetting.CaseReviewSetting.OrgDescription != nil {
 			sanityCheckData["org_activity"] = *aiSetting.CaseReviewSetting.OrgDescription
 		}
+		if len(caseReviewContext.ScreeningSuggestions) > 0 {
+			sanityCheckData["screening_suggestions"] = caseReviewContext.ScreeningSuggestions
+		}
 		if aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction != nil {
-			sanityCheckData["additional_case_review_instruction"] = *aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
+			sanityCheckData["additional_case_review_instruction"] =
+				*aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
 		}
 		providerSanityCheck, modelSanityCheck, promptSanityCheck, err := uc.preparePromptWithModel(
 			PROMPT_SANITY_CHECK_PATH,
@@ -913,6 +979,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 	hasMoreDecisions := false
 
 	decisionDtos := make([]agent_dto.Decision, 0, MAX_DECISIONS_REVIEW_PER_CASE)
+	var screeningIds []string
 	for i, decision := range decicionsWithRulesExec {
 		// We take only the MAX_DECISIONS_REVIEW_PER_CASE first decisions, in order not to overload the context for large cases.
 		// The template handles a "has_more_alerts" boolean flag to indicate this in the prompt when it happens.
@@ -936,6 +1003,9 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 		if err != nil {
 			return caseData{}, casePivotDataByPivot{}, errors.Wrapf(err,
 				"could not retrieve screenings for decision %s", decision.DecisionId)
+		}
+		for _, s := range screenings {
+			screeningIds = append(screeningIds, s.Id)
 		}
 		decisionDtos = append(decisionDtos, agent_dto.AdaptDecision(
 			decision.Decision,
@@ -1087,9 +1157,11 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 		dataModel:        dataModel,
 		pivotData:        pivotObjectDtos,
 		organizationId:   c.OrganizationId,
+		screeningIds:     screeningIds,
 	}, relatedDataPerClient, nil
 }
 
+// - ScreeningIds are needed to generate/load screening suggestions and inject them in the context of case review.
 type caseData struct {
 	case_            agent_dto.Case
 	hasMoreDecisions bool
@@ -1099,6 +1171,7 @@ type caseData struct {
 	dataModel        models.DataModel
 	pivotData        []agent_dto.PivotObject
 	organizationId   uuid.UUID
+	screeningIds     []string
 }
 
 func someClientHasManyRowsForTable(relatedDataPerClient agent_dto.CaseIngestedDataByPivot, tableName string) bool {
@@ -1257,5 +1330,3 @@ func getProofSchema(dataModel models.DataModel) jsonschema.Schema {
 		Properties:  properties,
 	}
 }
-
-

@@ -164,6 +164,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
 		enforceSecurity:           usecases.NewEnforceDecisionSecurity(),
 		enforceSecurityScenario:   usecases.NewEnforceScenarioSecurity(),
+		enforceSecurityTestRun:    usecases.NewEnforceTestRunScenarioSecurity(),
 		executorFactory:           usecases.NewExecutorFactory(),
 		transactionFactory:        usecases.NewTransactionFactory(),
 		dataModelRepository:       usecases.Repositories.MarbleDbRepository,
@@ -303,6 +304,7 @@ func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterati
 func (usecases *UsecasesWithCreds) NewRuleUsecase() RuleUsecase {
 	return RuleUsecase{
 		enforceSecurity:           usecases.NewEnforceScenarioSecurity(),
+		enforceSecurityTestRun:    usecases.NewEnforceTestRunScenarioSecurity(),
 		repository:                usecases.Repositories.MarbleDbRepository,
 		scenarioFetcher:           usecases.NewScenarioFetcher(),
 		transactionFactory:        usecases.NewTransactionFactory(),
@@ -469,7 +471,6 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		ingestedDataReader:      usecases.NewIngestedDataReaderUsecase(),
 		taskQueueRepository:     usecases.Repositories.TaskQueueRepository,
 		featureAccessReader:     usecases.NewFeatureAccessReader(),
-		aiAgentUsecase:          utils.Ptr(usecases.NewAiAgentUsecase()),
 		publicApiAdapterUsecase: usecases.NewPublicApiAdapterUsecase(),
 	}
 }
@@ -822,6 +823,7 @@ func (usecases *UsecasesWithCreds) NewEntityAnnotationUsecase() EntityAnnotation
 func (usecases *UsecasesWithCreds) NewAiAgentUsecase() ai_agent.AiAgentUsecase {
 	return ai_agent.NewAiAgentUsecase(
 		usecases.NewEnforceCaseSecurity(),
+		usecases.NewEnforceDecisionSecurity(),
 		usecases.NewEnforceOrganizationSecurity(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewInboxReader(),
@@ -838,6 +840,8 @@ func (usecases *UsecasesWithCreds) NewAiAgentUsecase() ai_agent.AiAgentUsecase {
 		usecases.NewTransactionFactory(),
 		usecases.NewScenarioFetcher(),
 		usecases.NewFeatureAccessReader(),
+		usecases.Repositories.TaskQueueRepository,
+		utils.Ptr(usecases.NewScreeningUsecase()),
 		usecases.aiAgentConfig,
 		usecases.caseManagerBucketUrl, // TODO: I think we could avoid passing the caseManagerBucketURL here only for the creation of the model
 	)
@@ -850,6 +854,14 @@ func (usecases *UsecasesWithCreds) NewCaseReviewWorker(timeout time.Duration) *a
 		utils.Ptr(usecases.NewAiAgentUsecase()),
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.MarbleDbRepository,
+		timeout,
+	)
+	return &w
+}
+
+func (usecases *UsecasesWithCreds) NewScreeningHitSuggestionWorker(timeout time.Duration) *ai_agent.ScreeningHitSuggestionWorker {
+	w := ai_agent.NewScreeningHitSuggestionWorker(
+		utils.Ptr(usecases.NewAiAgentUsecase()),
 		timeout,
 	)
 	return &w
@@ -1037,6 +1049,7 @@ func (usecases UsecasesWithCreds) NewTriggeredScoreComputationWorker() *scoring_
 		usecases.NewScoringRulesetsUsecase(),
 		usecases.NewScoringScoresUsecase(),
 		usecases.Repositories.MarbleDbRepository,
+		usecases.NewOffloadedReader(),
 	)
 }
 
@@ -1057,6 +1070,16 @@ func (usecases UsecasesWithCreds) NewAsyncDecisionExecutionCleanupWorker() *work
 	return worker_jobs.NewAsyncDecisionExecutionCleanupWorker(
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
+	)
+}
+
+func (usecases UsecasesWithCreds) NewRulesetDryRunWorker() *scoring_jobs.RulesetDryRunWorker {
+	return scoring_jobs.NewRulesetDryRunWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewScoringRulesetsUsecase(),
+		usecases.NewScoringScoresUsecase(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.IngestedDataReadRepository,
 	)
 }
 
@@ -1128,6 +1151,7 @@ func (usecases *UsecasesWithCreds) NewOrgExportUsecase() OrgExportUsecase {
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
 	)
 }
 
@@ -1168,6 +1192,7 @@ func (usecases *UsecasesWithCreds) NewScoringScoresUsecase() scoring.ScoringScor
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
+		usecases.NewOffloadedReader(),
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.Repositories.TaskQueueRepository,
 		usecases.NewEvaluateAstExpression(),

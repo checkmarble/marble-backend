@@ -14,6 +14,7 @@ type lagoRepository interface {
 	GetSubscriptions(ctx context.Context, orgId uuid.UUID) ([]models.Subscription, error)
 	GetSubscription(ctx context.Context, subscriptionExternalId string) (models.Subscription, error)
 	GetCustomerUsage(ctx context.Context, orgId uuid.UUID, subscriptionExternalId string) (models.CustomerUsage, error)
+	GetEntitlements(ctx context.Context, subscriptionExternalId string) ([]models.BillingEntitlement, error)
 }
 
 type billingEventTaskEnqueuer interface {
@@ -41,44 +42,28 @@ func (u LagoBillingUsecase) EnqueueBillingEventTask(ctx context.Context, event m
 	return u.billingEventTaskEnqueuer.EnqueueSendBillingEventTask(ctx, event)
 }
 
-// Check if there are enough funds in the wallet to cover the cost of the event
-// Check if the wallet exists and if the balance is enough
-// Suppose there is only one subscription for the event
-func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgId uuid.UUID, code BillableMetric) (bool, string, error) {
+// Check if there are enough funds in the wallet to cover the cost of the event for the given subscription.
+func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgId uuid.UUID, subscriptionExternalId string, code BillableMetric) (bool, error) {
 	logger := utils.LoggerFromContext(ctx)
 
 	wallets, err := u.lagoRepository.GetWallets(ctx, orgId)
 	if err != nil {
-		return false, "", err
+		return false, err
 	}
 	if len(wallets) == 0 {
 		logger.DebugContext(ctx, "no wallet found for the organization", "orgId", orgId)
-		return false, "", nil
+		return false, nil
 	}
 
 	activeWallet, err := selectActiveWallet(wallets)
 	if err != nil {
 		logger.DebugContext(ctx, "no active wallet found", "orgId", orgId, "error", err)
-		return false, "", nil
+		return false, nil
 	}
 
-	// Expect only one subscription for the event, in case of multiple subscriptions, we will use the first one
-	subscriptions, err := u.getSubscriptionsForEvent(ctx, orgId, code)
+	customerUsage, err := u.lagoRepository.GetCustomerUsage(ctx, orgId, subscriptionExternalId)
 	if err != nil {
-		return false, "", err
-	}
-	if len(subscriptions) == 0 {
-		logger.DebugContext(ctx, "no subscription found for the event", "orgId", orgId, "code", code)
-		return false, "", nil
-	} else if len(subscriptions) > 1 {
-		logger.WarnContext(ctx, "multiple subscriptions found for the event", "orgId",
-			orgId, "code", code, "subscriptions", subscriptions)
-	}
-	subscription := subscriptions[0]
-
-	customerUsage, err := u.lagoRepository.GetCustomerUsage(ctx, orgId, subscription.ExternalId)
-	if err != nil {
-		return false, "", err
+		return false, err
 	}
 
 	var chargeUsageForCode *int
@@ -88,15 +73,13 @@ func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgI
 			break
 		}
 	}
-	// It should never happen since we fetch the subscriptions with the code, but we add this check just in case
 	if chargeUsageForCode == nil {
 		logger.DebugContext(ctx, "no charge usage found for the billable metric in customer usage",
 			"orgId", orgId, "code", code, "customerUsage", customerUsage)
-		return false, "", errors.New("no charge usage found for the billable metric in customer usage")
+		return false, errors.New("no charge usage found for the billable metric in customer usage")
 	}
 	logger.InfoContext(ctx, "customer usage for the event", "orgId", orgId, "code", code, "usage", *chargeUsageForCode)
 
-	// For now, suppose there is only one wallet
 	if activeWallet.BalanceCents <= *chargeUsageForCode {
 		logger.DebugContext(ctx, "not enough funds in the wallet",
 			"orgId", orgId,
@@ -104,15 +87,16 @@ func (u LagoBillingUsecase) CheckIfEnoughFundsInWallet(ctx context.Context, orgI
 			"wallet_funds", activeWallet.BalanceCents,
 			"usage", *chargeUsageForCode,
 		)
-		return false, "", nil
+		return false, nil
 	}
 
-	return true, subscription.ExternalId, nil
+	return true, nil
 }
 
-// Get all subscriptions of an organization that have a charge for the given billable metric
-// Need to get first the list of subscriptions, then get the detailed subscription to get the charges
-func (u LagoBillingUsecase) getSubscriptionsForEvent(ctx context.Context, orgId uuid.UUID, code BillableMetric) ([]models.Subscription, error) {
+// GetSubscriptionsForEvent returns all subscriptions of an organization that have a charge
+// for the given billable metric. It fetches the list of subscriptions and then retrieves
+// the detailed subscription to inspect charges.
+func (u LagoBillingUsecase) GetSubscriptionsForEvent(ctx context.Context, orgId uuid.UUID, code BillableMetric) ([]models.Subscription, error) {
 	subscriptionsForEvent := make([]models.Subscription, 0)
 	subscriptions, err := u.lagoRepository.GetSubscriptions(ctx, orgId)
 	if err != nil {
@@ -140,4 +124,27 @@ func selectActiveWallet(wallets []models.Wallet) (models.Wallet, error) {
 		}
 	}
 	return models.Wallet{}, errors.New("no active wallet found")
+}
+
+// CheckEntitlement checks whether the given subscription has a specific billing entitlement.
+func (u LagoBillingUsecase) CheckEntitlement(
+	ctx context.Context,
+	subscriptionExternalId string,
+	entitlementCode BillingEntitlementCode,
+) (bool, error) {
+	logger := utils.LoggerFromContext(ctx)
+
+	entitlements, err := u.lagoRepository.GetEntitlements(ctx, subscriptionExternalId)
+	if err != nil {
+		return false, err
+	}
+	for _, entitlement := range entitlements {
+		if entitlement.Code == entitlementCode.String() {
+			return true, nil
+		}
+	}
+
+	logger.DebugContext(ctx, "entitlement not found for the subscription",
+		"entitlementCode", entitlementCode)
+	return false, nil
 }

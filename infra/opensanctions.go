@@ -1,8 +1,17 @@
 package infra
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync/atomic"
+	"time"
+
+	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
+	"golang.org/x/mod/semver"
+	"golang.org/x/sync/singleflight"
 )
 
 const (
@@ -25,6 +34,9 @@ type OpenSanctions struct {
 	algorithm   string
 	scope       string
 
+	motivaFeatureSemaphore *singleflight.Group
+	motivaFeatures         *atomic.Pointer[MotivaFeatures]
+
 	nameRecognition *NameRecognitionProvider
 }
 
@@ -33,14 +45,23 @@ type NameRecognitionProvider struct {
 	ApiKey string
 }
 
-func InitializeOpenSanctions(client *http.Client, host, authMethod, creds string) OpenSanctions {
+type MotivaFeatures struct {
+	BodyParams  bool
+	ScopedIndex bool
+}
+
+func InitializeOpenSanctions(ctx context.Context, client *http.Client, host, authMethod, creds string) OpenSanctions {
 	os := OpenSanctions{
-		client:      client,
-		host:        host,
-		credentials: creds,
-		algorithm:   "logic-v1",
-		scope:       "default",
+		client:                 client,
+		host:                   host,
+		credentials:            creds,
+		algorithm:              "logic-v1",
+		scope:                  "default",
+		motivaFeatures:         &atomic.Pointer[MotivaFeatures]{},
+		motivaFeatureSemaphore: &singleflight.Group{},
 	}
+
+	os.MotivaFeatures(ctx)
 
 	if os.IsSelfHosted() {
 		switch authMethod {
@@ -124,4 +145,61 @@ func (os OpenSanctions) Algorithm() string {
 
 func (os OpenSanctions) IsNameRecognitionSet() bool {
 	return os.nameRecognition != nil && os.nameRecognition.ApiUrl != ""
+}
+
+func (os *OpenSanctions) MotivaFeatures(ctx context.Context) MotivaFeatures {
+	logger := utils.LoggerFromContext(ctx)
+
+	if isMotiva := os.motivaFeatures.Load(); isMotiva != nil {
+		return *isMotiva
+	}
+
+	type motivaVersionInfo struct {
+		Motiva string `json:"motiva"`
+	}
+
+	// If the initial fingerprint fails, we will need to do it during querying,
+	// that could potentially be a lot of requests, so we singleflight them.
+	motivaFeatures, err, _ := os.motivaFeatureSemaphore.Do("motiva", func() (any, error) {
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/-/version", os.Host()), nil)
+		if err != nil {
+			return false, err
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+
+		if err == nil {
+			defer resp.Body.Close()
+
+			feats := MotivaFeatures{}
+
+			if resp.StatusCode == http.StatusOK {
+				var v motivaVersionInfo
+
+				if err := json.NewDecoder(resp.Body).Decode(&v); err == nil {
+					// Features introduced in motiva v0.7.0
+					//  - transmit unbounded query parameters in request body
+					//  - use scoped index
+					feats.BodyParams = semver.Compare(v.Motiva, "v0.7.0") >= 0
+					feats.ScopedIndex = semver.Compare(v.Motiva, "v0.7.0") >= 0
+				}
+			}
+
+			os.motivaFeatures.Store(&feats)
+
+			return feats, nil
+		}
+
+		return false, errors.Wrapf(err, "could not determine whether motiva is used")
+	})
+	if err != nil {
+		logger.Warn(err.Error())
+
+		return MotivaFeatures{}
+	}
+
+	return motivaFeatures.(MotivaFeatures)
 }

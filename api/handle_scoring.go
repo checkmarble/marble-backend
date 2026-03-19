@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -9,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 )
@@ -60,7 +62,13 @@ func handleScoringComputeScore(uc usecases.Usecases) gin.HandlerFunc {
 
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringScoresUsecase()
-		_, eval, err := scoringUsecase.ComputeScore(ctx, c.Param("recordType"), c.Param("recordId"))
+
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		_, eval, err := scoringUsecase.ComputeScore(ctx, orgId, c.Param("recordType"), c.Param("recordId"))
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -101,19 +109,27 @@ func handleScoringGetRuleset(uc usecases.Usecases) gin.HandlerFunc {
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringRulesetsUsecase()
 
-		var status models.ScoreRulesetStatus
+		var (
+			status  models.ScoreRulesetStatus
+			version int
+		)
 
-		switch c.Query("status") {
+		switch c.Query("version") {
 		case "draft":
 			status = models.ScoreRulesetDraft
 		case "committed", "":
 			status = models.ScoreRulesetCommitted
 		default:
-			presentError(ctx, c, errors.Wrapf(models.BadParameterError, "unknown status '%s'", c.Query("status")))
-			return
+			v, err := strconv.Atoi(c.Query("version"))
+			if err != nil {
+				presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+				return
+			}
+
+			version = v
 		}
 
-		ruleset, err := scoringUsecase.GetRuleset(ctx, c.Param("recordType"), status)
+		ruleset, err := scoringUsecase.GetRuleset(ctx, c.Param("recordType"), status, version)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -208,6 +224,38 @@ func handleScoringPrepareRuleset(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
+func handleScoringStartDryRun(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		uc := usecasesWithCreds(ctx, uc)
+		scoringUsecase := uc.NewScoringRulesetsUsecase()
+
+		dryRun, err := scoringUsecase.StartDryRun(ctx, c.Param("recordType"))
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusAccepted, scoring.AdaptDryRun(dryRun))
+	}
+}
+
+func handleScoringGetDryRun(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		uc := usecasesWithCreds(ctx, uc)
+		scoringUsecase := uc.NewScoringRulesetsUsecase()
+
+		dryRun, err := scoringUsecase.GetDryRun(ctx, c.Param("recordType"))
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, scoring.AdaptDryRun(dryRun))
+	}
+}
+
 func handleScoringCommitRuleset(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -246,7 +294,7 @@ func handleScoringScoreHistory(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, pure_utils.Map(scores, scoring.AdaptScore))
+		c.JSON(http.StatusOK, pure_utils.Map(scores, scoring.AdaptScore(nil)))
 	}
 }
 
@@ -257,7 +305,13 @@ func handleScoringGetActiveScore(uc usecases.Usecases) gin.HandlerFunc {
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringScoresUsecase()
 
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
 		record := models.ScoringRecordRef{
+			OrgId:      orgId,
 			RecordType: c.Param("recordType"),
 			RecordId:   c.Param("recordId"),
 		}
@@ -267,7 +321,7 @@ func handleScoringGetActiveScore(uc usecases.Usecases) gin.HandlerFunc {
 			RefreshInBackground: false,
 		}
 
-		score, err := scoringUsecase.GetActiveScore(ctx, record, opts)
+		score, evals, err := scoringUsecase.GetActiveScore(ctx, record, c.Query("include_evaluation") == "true", opts)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -277,7 +331,7 @@ func handleScoringGetActiveScore(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, scoring.AdaptScore(*score))
+		c.JSON(http.StatusOK, scoring.AdaptScore(evals)(*score))
 	}
 }
 
@@ -308,6 +362,22 @@ func handleOverrideRecordScore(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, scoring.AdaptScore(score))
+		c.JSON(http.StatusCreated, scoring.AdaptScore(nil)(score))
+	}
+}
+
+func handleScoringGetDistribution(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		uc := usecasesWithCreds(ctx, uc)
+		scoringUsecase := uc.NewScoringScoresUsecase()
+
+		scores, err := scoringUsecase.GetScoreDistribution(ctx, c.Param("entityType"))
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(scores, scoring.AdaptScoreDistribution))
 	}
 }

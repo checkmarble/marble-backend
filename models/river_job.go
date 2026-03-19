@@ -85,6 +85,12 @@ type CaseReviewArgs struct {
 
 func (CaseReviewArgs) Kind() string { return "case_review" }
 
+type ScreeningHitSuggestionArgs struct {
+	ScreeningId string `json:"screening_id"`
+}
+
+func (ScreeningHitSuggestionArgs) Kind() string { return "screening_hit_suggestion" }
+
 type AutoAssignmentArgs struct {
 	OrgId   uuid.UUID `json:"org_id"`
 	InboxId uuid.UUID `json:"inbox_id"`
@@ -242,3 +248,11 @@ type AsyncDecisionExecutionCleanupArgs struct{}
 func (AsyncDecisionExecutionCleanupArgs) Kind() string {
 	return "async_decision_execution_cleanup"
 }
+
+type RulesetDryRunArgs struct {
+	OrgId     uuid.UUID `json:"org_id"`
+	RulesetId uuid.UUID `json:"ruleset_id"`
+	DryRunId  uuid.UUID `json:"dry_run_id"`
+}
+
+func (RulesetDryRunArgs) Kind() string { return "ruleset_dry_run" }

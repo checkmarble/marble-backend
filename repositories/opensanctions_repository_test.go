@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -18,10 +19,20 @@ import (
 func getMockedOpenSanctionsRepository(host, authMethod, apiKey string) OpenSanctionsRepository {
 	client := &http.Client{Transport: &http.Transport{}}
 
+	gock.CleanUnmatchedRequest()
 	gock.InterceptClient(client)
 
+	featureDetectionHost := host
+	if host == "" {
+		featureDetectionHost = infra.OPEN_SANCTIONS_API_HOST
+	}
+
+	gock.New(featureDetectionHost).
+		Get("/-/version").
+		Reply(http.StatusNotFound)
+
 	return OpenSanctionsRepository{
-		opensanctions: infra.InitializeOpenSanctions(client, host, authMethod, apiKey),
+		opensanctions: infra.InitializeOpenSanctions(context.TODO(), client, host, authMethod, apiKey),
 	}
 }
 
@@ -298,6 +309,10 @@ func TestOpenSanctionsSuccessfulFullResponseWithThresholdOverride(t *testing.T) 
 		BodyString(string(body))
 
 	matches, err := repo.Search(context.TODO(), query)
+
+	for _, r := range gock.GetUnmatchedRequests() {
+		fmt.Printf("%#v\n", *r)
+	}
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.NoError(t, err)

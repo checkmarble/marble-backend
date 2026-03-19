@@ -280,3 +280,55 @@ func TestParser_ParsePayload(t *testing.T) {
 		})
 	}
 }
+
+// TestTypedClientObject_BackwardCompatibility tests that TypedClientObject allows re-parsing
+// of already-ingested payloads that may be missing fields now marked as required.
+func TestTypedClientObject_BackwardCompatibility(t *testing.T) {
+	// Simulate a table where "new_required_field" is now required,
+	// but an old payload doesn't have it
+	table := models.Table{
+		Name: "transactions",
+		Fields: map[string]models.Field{
+			"object_id": {
+				DataType: models.String,
+				Nullable: false,
+			},
+			"updated_at": {
+				DataType: models.Timestamp,
+				Nullable: false,
+			},
+			"amount": {
+				DataType: models.Float,
+				Nullable: false,
+			},
+			"new_required_field": {
+				DataType: models.String,
+				Nullable: false, // Now required, but old payloads don't have it
+			},
+		},
+	}
+
+	dataModel := models.DataModel{
+		Tables: map[string]models.Table{
+			"transactions": table,
+		},
+	}
+
+	// Old payload missing the new required field
+	oldPayload := models.ClientObject{
+		TableName: "transactions",
+		Data: map[string]any{
+			"object_id":  "123",
+			"updated_at": "2026-03-13T10:00:00Z",
+			"amount":     99.99,
+			// "new_required_field" is missing
+		},
+	}
+
+	// This should NOT fail with TypedClientObject due to the missing field
+	result, err := TypedClientObject(context.Background(), dataModel, oldPayload)
+	assert.NoError(t, err, "TypedClientObject should handle old payloads missing new required fields")
+	assert.Equal(t, "transactions", result.TableName)
+	assert.Equal(t, "123", result.Data["object_id"])
+	assert.Equal(t, 99.99, result.Data["amount"])
+}

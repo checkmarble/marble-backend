@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/rivertype"
 )
 
 const (
@@ -149,6 +150,17 @@ type TaskQueueRepository interface {
 		ctx context.Context,
 		tx Transaction,
 		entities []models.ScoringRecordRef,
+	) error
+	EnqueueRulesetDryRun(
+		ctx context.Context,
+		tx Transaction,
+		orgId uuid.UUID,
+		dryRun models.ScoringDryRun,
+	) error
+	EnqueueScreeningHitSuggestionTask(
+		ctx context.Context,
+		organizationId uuid.UUID,
+		screeningId string,
 	) error
 }
 
@@ -740,5 +752,71 @@ func (r riverRepository) EnqueueManyTriggerScoreComputation(
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued many triggered score computation", "count", count)
 
+	return nil
+}
+
+func (r riverRepository) EnqueueRulesetDryRun(
+	ctx context.Context,
+	tx Transaction,
+	orgId uuid.UUID,
+	dryRun models.ScoringDryRun,
+) error {
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.RulesetDryRunArgs{
+			OrgId:     orgId,
+			RulesetId: dryRun.RulesetId,
+			DryRunId:  dryRun.Id,
+		},
+		&river.InsertOpts{
+			Queue:    orgId.String(),
+			Priority: 4, // Low priority
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued scoring ruleset dry run",
+		"job_id", res.Job.ID,
+		"dry_run_id", dryRun.Id,
+		"ruleset_id", dryRun.RulesetId)
+
+	return nil
+}
+
+func (r riverRepository) EnqueueScreeningHitSuggestionTask(
+	ctx context.Context,
+	organizationId uuid.UUID,
+	screeningId string,
+) error {
+	res, err := r.client.Insert(
+		ctx,
+		models.ScreeningHitSuggestionArgs{
+			ScreeningId: screeningId,
+		},
+		&river.InsertOpts{
+			Queue: organizationId.String(),
+			UniqueOpts: river.UniqueOpts{
+				ByArgs: true,
+				ByState: []rivertype.JobState{
+					rivertype.JobStateAvailable,
+					rivertype.JobStatePending,
+					rivertype.JobStateRunning,
+					rivertype.JobStateScheduled,
+					rivertype.JobStateRetryable,
+				},
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued screening hit suggestion task",
+		"screening_id", screeningId, "job_id", res.Job.ID)
 	return nil
 }

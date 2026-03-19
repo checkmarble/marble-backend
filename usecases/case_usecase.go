@@ -136,10 +136,6 @@ type caseUsecaseIngestedDataReader interface {
 	) ([]models.PivotObject, error)
 }
 
-type caseUsecaseAiAgentUsecase interface {
-	HasAiCaseReviewEnabled(ctx context.Context, orgId uuid.UUID) (bool, error)
-}
-
 type CaseUseCase struct {
 	enforceSecurity         security.EnforceSecurityCase
 	enforceSecurityTags     security.EnforceSecurityTags
@@ -157,7 +153,6 @@ type CaseUseCase struct {
 	ingestedDataReader      caseUsecaseIngestedDataReader
 	taskQueueRepository     repositories.TaskQueueRepository
 	featureAccessReader     feature_access.FeatureAccessReader
-	aiAgentUsecase          caseUsecaseAiAgentUsecase
 	publicApiAdapterUsecase PublicApiAdapterUsecase
 }
 
@@ -403,6 +398,7 @@ func (usecase *CaseUseCase) CreateCase(
 	if err := usecase.validateContinuousScreenings(
 		ctx,
 		tx,
+		createCaseAttributes.OrganizationId,
 		createCaseAttributes.ContinuousScreeningIds,
 	); err != nil {
 		return models.Case{}, err
@@ -1471,6 +1467,7 @@ func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec reposito
 func (usecase *CaseUseCase) validateContinuousScreenings(
 	ctx context.Context,
 	exec repositories.Executor,
+	orgId uuid.UUID,
 	continuousScreeningIds []uuid.UUID,
 ) error {
 	if len(continuousScreeningIds) == 0 {
@@ -1482,6 +1479,11 @@ func (usecase *CaseUseCase) validateContinuousScreenings(
 		return err
 	}
 	for _, continuousScreening := range continuousScreenings {
+		if continuousScreening.OrgId != orgId {
+			return errors.WithDetail(errors.Wrap(models.NotFoundError,
+				"provided continuous screening not found"),
+				"some of the provided continuous screenings do not exist")
+		}
 		if continuousScreening.CaseId != nil {
 			return fmt.Errorf("continuous screening %s already belongs to a case %s %w",
 				continuousScreening.Id.String(), continuousScreening.CaseId.String(), models.BadParameterError)
@@ -2236,11 +2238,11 @@ func (usecase *CaseUseCase) EscalateCase(ctx context.Context, caseId string) err
 			return err
 		}
 
-		hasAiCaseReviewEnabled, err := usecase.aiAgentUsecase.HasAiCaseReviewEnabled(ctx, c.OrganizationId)
+		featureAccess, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, c.OrganizationId, nil)
 		if err != nil {
-			return errors.Wrap(err, "error checking if AI case review is enabled")
+			return errors.Wrap(err, "error checking organization feature access")
 		}
-		if hasAiCaseReviewEnabled {
+		if featureAccess.CaseAiAssist.IsAllowed() {
 			// direct read through repository, because we may not have permission on this inbox in this situation.
 			inbox, err := usecase.repository.GetInboxById(ctx, tx, targetInbox.Id)
 			if err != nil {

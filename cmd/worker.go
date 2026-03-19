@@ -70,16 +70,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
 		RateLimit: utils.GetEnv("CONVOY_RATE_LIMIT", 50),
 	}
-	openSanctionsConfig := infra.InitializeOpenSanctions(
-		http.DefaultClient,
-		utils.GetEnv("OPENSANCTIONS_API_HOST", ""),
-		utils.GetEnv("OPENSANCTIONS_AUTH_METHOD", ""),
-		utils.GetEnv("OPENSANCTIONS_API_KEY", ""),
-	)
-	if apiUrl := utils.GetEnv("NAME_RECOGNITION_API_URL", ""); apiUrl != "" {
-		openSanctionsConfig.WithNameRecognition(apiUrl,
-			utils.GetEnv("NAME_RECOGNITION_API_KEY", ""))
-	}
 
 	licenseConfig := models.LicenseConfiguration{
 		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
@@ -108,6 +98,18 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	logger := utils.NewLogger(workerConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
+
+	openSanctionsConfig := infra.InitializeOpenSanctions(
+		ctx,
+		http.DefaultClient,
+		utils.GetEnv("OPENSANCTIONS_API_HOST", ""),
+		utils.GetEnv("OPENSANCTIONS_AUTH_METHOD", ""),
+		utils.GetEnv("OPENSANCTIONS_API_KEY", ""),
+	)
+	if apiUrl := utils.GetEnv("NAME_RECOGNITION_API_URL", ""); apiUrl != "" {
+		openSanctionsConfig.WithNameRecognition(apiUrl,
+			utils.GetEnv("NAME_RECOGNITION_API_KEY", ""))
+	}
 
 	gcpConfig, ok := infra.NewGcpConfig(ctx, utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""), false)
 	if !ok {
@@ -355,6 +357,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithAppName(appName),
 		usecases.WithIngestionBucketUrl(workerConfig.ingestionBucketUrl),
+		usecases.WithOffloadingBucketUrl(offloadingConfig.BucketUrl),
 		usecases.WithOffloading(offloadingConfig),
 		usecases.WithFailedWebhooksRetryPageSize(workerConfig.failedWebhooksRetryPageSize),
 		usecases.WithLicense(license),
@@ -391,6 +394,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewTestRunSummaryWorker())
 	river.AddWorker(workers, adminUc.NewMatchEnrichmentWorker())
 	river.AddWorker(workers, adminUc.NewCaseReviewWorker(workerConfig.caseReviewTimeout))
+	river.AddWorker(workers, adminUc.NewScreeningHitSuggestionWorker(workerConfig.caseReviewTimeout))
 	river.AddWorker(workers, adminUc.NewAutoAssignmentWorker())
 	river.AddWorker(workers, adminUc.NewDecisionWorkflowsWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningDoScreeningWorker())
@@ -425,6 +429,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	if infra.HasGlobalFeatureFlag(infra.FEATURE_USER_SCORING) {
 		river.AddWorker(workers, adminUc.NewTriggeredScoreComputationWorker())
+		river.AddWorker(workers, adminUc.NewRulesetDryRunWorker())
 	}
 	// Async decision execution system
 	river.AddWorker(workers, adminUc.NewAsyncDecisionExecutionWorker())
@@ -597,6 +602,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, j
 	case "case_review":
 		return uc.NewCaseReviewWorker(time.Hour).Work(ctx,
 			singleJobCreate[models.CaseReviewArgs](ctx, jobArgs))
+	case "screening_hit_suggestion":
+		return uc.NewScreeningHitSuggestionWorker(time.Hour).Work(ctx,
+			singleJobCreate[models.ScreeningHitSuggestionArgs](ctx, jobArgs))
 	case "decision_workflows":
 		return uc.NewDecisionWorkflowsWorker().Work(ctx,
 			singleJobCreate[models.DecisionWorkflowArgs](ctx, jobArgs))

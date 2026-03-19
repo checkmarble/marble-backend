@@ -115,6 +115,8 @@ type InsertScoreRequest struct {
 	OverriddenBy *uuid.UUID
 	RulesetId    *uuid.UUID
 	StaleAt      *time.Time
+
+	IgnoredByCooldown bool
 }
 
 func (r InsertScoreRequest) ToRecordRef() ScoringRecordRef {
@@ -168,6 +170,29 @@ type CreateScoringRuleRequest struct {
 type ScoringEvaluation struct {
 	Modifier   int
 	Floor      int
-	Score      int
+	RiskLevel  int
 	Evaluation []ast.NodeEvaluation
+}
+
+type ScoreDistribution struct {
+	RiskLevel int
+	Count     int
+}
+
+type DryRunStatus string
+
+const (
+	DryRunPending   DryRunStatus = "pending"
+	DryRunRunning   DryRunStatus = "running"
+	DryRunCompleted DryRunStatus = "completed"
+	DryRunCancelled DryRunStatus = "cancelled"
+)
+
+type ScoringDryRun struct {
+	Id          uuid.UUID
+	RulesetId   uuid.UUID
+	Status      DryRunStatus
+	RecordCount int
+	Results     map[int]int
+	CreatedAt   time.Time
 }

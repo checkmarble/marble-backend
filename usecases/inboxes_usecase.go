@@ -105,6 +105,16 @@ func (usecase *InboxUsecase) CreateInboxWithExecutor(
 		return models.Inbox{}, err
 	}
 
+	if input.EscalationInboxId != nil {
+		escalationInbox, err := usecase.inboxRepository.GetInboxById(ctx, exec, *input.EscalationInboxId)
+		if err != nil {
+			return models.Inbox{}, err
+		}
+		if err := usecase.enforceSecurity.ReadInbox(escalationInbox); err != nil {
+			return models.Inbox{}, err
+		}
+	}
+
 	newInboxIdStr := pure_utils.NewPrimaryKey(input.OrganizationId)
 	newInboxUUID, err := uuid.Parse(newInboxIdStr)
 	if err != nil {
@@ -143,6 +153,16 @@ func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId uuid.UUID,
 
 			if err := usecase.enforceSecurity.UpdateInbox(inbox); err != nil {
 				return models.Inbox{}, err
+			}
+
+			if input.EscalationInboxId.Set && input.EscalationInboxId.Valid {
+				escalationInbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, input.EscalationInboxId.Value())
+				if err != nil {
+					return models.Inbox{}, err
+				}
+				if err := usecase.enforceSecurity.ReadInbox(escalationInbox); err != nil {
+					return models.Inbox{}, err
+				}
 			}
 
 			if err := usecase.inboxRepository.UpdateInbox(ctx, tx, inboxId, input); err != nil {

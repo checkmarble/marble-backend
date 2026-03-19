@@ -41,20 +41,28 @@ func (repo *MarbleDbRepository) GetScoringRuleset(
 	orgId uuid.UUID,
 	recordType string,
 	status models.ScoreRulesetStatus,
+	version int,
 ) (models.ScoringRuleset, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.ScoringRuleset{}, err
 	}
 
 	cte := WithCtes("ruleset", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
-		return b.
+		q := b.
 			Select(dbmodels.SelectScoringRulesetsColumns...).
 			From(dbmodels.TABLE_SCORING_RULESETS).
 			Where("org_id = ?", orgId).
 			Where("record_type = ?", recordType).
-			Where("status = ?", status).
 			OrderBy("version desc").
 			Limit(1)
+
+		if version > 0 {
+			q = q.Where("version = ?", version)
+		} else {
+			q = q.Where("status = ?", status)
+		}
+
+		return q
 	})
 
 	query := NewQueryBuilder().
@@ -81,24 +89,6 @@ func (repo *MarbleDbRepository) GetScoringRuleset(
 	return *ruleset, nil
 }
 
-func (repo *MarbleDbRepository) GetScoringRulesetById(
-	ctx context.Context,
-	exec Executor,
-	orgId, id uuid.UUID,
-) (models.ScoringRuleset, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.ScoringRuleset{}, err
-	}
-
-	query := NewQueryBuilder().
-		Select(dbmodels.SelectScoringRulesetsColumns...).
-		From(dbmodels.TABLE_SCORING_RULESETS).
-		Where("org_id = ?", orgId).
-		Where("id = ?", id)
-
-	return SqlToModel(ctx, exec, query, dbmodels.AdaptScoringRuleset)
-}
-
 func (repo *MarbleDbRepository) ListScoringRulesetVersions(
 	ctx context.Context,
 	exec Executor,
@@ -122,6 +112,39 @@ func (repo *MarbleDbRepository) ListScoringRulesetVersions(
 	}
 
 	return rulesets, nil
+}
+
+func (repo *MarbleDbRepository) GetScoringRulesetById(
+	ctx context.Context,
+	exec Executor,
+	orgId, id uuid.UUID,
+) (models.ScoringRuleset, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ScoringRuleset{}, err
+	}
+
+	cte := WithCtes("ruleset", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
+		return b.
+			Select(dbmodels.SelectScoringRulesetsColumns...).
+			From(dbmodels.TABLE_SCORING_RULESETS).
+			Where("org_id = ?", orgId).
+			Where("id = ?", id).
+			Limit(1)
+	})
+
+	query := NewQueryBuilder().
+		Select(
+			fmt.Sprintf("any_value(row(%s)) as ruleset",
+				strings.Join(columnsNames("rs", dbmodels.SelectScoringRulesetsColumns), ",")),
+			fmt.Sprintf("array_agg(row(%s)) filter (where r.id is not null) as rules",
+				strings.Join(columnsNames("r", dbmodels.SelectScoringRulesColumns), ",")),
+		).
+		From("ruleset rs").
+		LeftJoin(dbmodels.TABLE_SCORING_RULES + " r on r.ruleset_id = rs.id").
+		GroupBy("rs.id").
+		PrefixExpr(cte)
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptScoringRulesetAndRules)
 }
 
 func (repo *MarbleDbRepository) InsertScoringRulesetVersion(

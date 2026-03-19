@@ -147,6 +147,15 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(
 		return models.ScenarioIteration{}, err
 	}
 
+	exec := usecase.executorFactory.NewExecutor()
+	scenario, err := usecase.scenarioFetcher.FetchScenario(ctx, exec, scenarioIteration.ScenarioId)
+	if err != nil {
+		return models.ScenarioIteration{}, err
+	}
+	if err := usecase.enforceSecurity.ReadScenario(scenario); err != nil {
+		return models.ScenarioIteration{}, err
+	}
+
 	b := scenarioIteration.Body
 	if b.Schedule != "" {
 		gron := gronx.New()
@@ -234,6 +243,9 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 		func(tx repositories.Transaction) (models.ScenarioIteration, error) {
 			si, err := usecase.repository.GetScenarioIteration(ctx, tx, scenarioIterationId, false)
 			if err != nil {
+				return models.ScenarioIteration{}, err
+			}
+			if err := usecase.enforceSecurity.ReadOrganization(si.OrganizationId); err != nil {
 				return models.ScenarioIteration{}, err
 			}
 
