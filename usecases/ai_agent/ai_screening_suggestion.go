@@ -194,7 +194,7 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 	matchPromptData["MatchPayload"] = string(enrichedMatch.Payload)
 	matchPromptData["MatchScore"] = fmt.Sprintf("%.2f", enrichedMatch.GetScoreFromPayload())
 
-	model, userMessage, err := uc.preparePromptWithModel(PROMPT_SCREENING_HIT_EVALUATE_PATH, matchPromptData)
+	_, model, userMessage, err := uc.preparePromptWithModel(PROMPT_SCREENING_HIT_EVALUATE_PATH, matchPromptData)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not prepare prompt")
 	}

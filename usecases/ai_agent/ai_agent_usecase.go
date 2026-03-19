@@ -188,27 +188,9 @@ type AiAgentUsecase struct {
 	featureAccessReader                featureAccessReader
 	config                             infra.AIAgentConfiguration
 	caseManagerBucketUrl               string
-	enforceSecurityCase                security.EnforceSecurityCase
 	enforceSecurityDecision            security.EnforceSecurityDecision
-	enforceSecurityOrganization        security.EnforceSecurityOrganization
-	repository                         AiAgentUsecaseRepository
-	inboxReader                        inboxes.InboxReader
-	executorFactory                    executor_factory.ExecutorFactory
-	transactionFactory                 executor_factory.TransactionFactory
-	ingestedDataReader                 AiAgentUsecaseIngestedDataReader
-	dataModelUsecase                   AiAgentUsecaseDataModelUsecase
-	ruleUsecase                        AiAgentUsecaseRuleUsecase
-	customListUsecase                  AiAgentUsecaseCustomListUsecase
-	scenarioUsecase                    AiAgentUsecaseScenarioUsecase
-	billingUsecase                     AiAgentUsecaseBillingUsecase
-	caseReviewFileRepository           caseReviewWorkerRepository
-	blobRepository                     repositories.BlobRepository
-	caseReviewTaskEnqueuer             caseReviewTaskEnqueuer
 	screeningHitSuggestionTaskEnqueuer screeningHitSuggestionTaskEnqueuer
 	screeningUsecase                   AiAgentScreeningUsecase
-	featureAccessReader                featureAccessReader
-	config                             infra.AIAgentConfiguration
-	caseManagerBucketUrl               string
 
 	caseReviewAdapter *llmberjack.Llmberjack
 	enrichmentAdapter *llmberjack.Llmberjack
@@ -259,27 +241,9 @@ func NewAiAgentUsecase(
 		featureAccessReader:                featureAccessReader,
 		config:                             config,
 		caseManagerBucketUrl:               caseManagerBucketUrl,
-		enforceSecurityCase:                enforceSecurityCase,
 		enforceSecurityDecision:            enforceSecurityDecision,
-		enforceSecurityOrganization:        enforceSecurityOrganization,
-		repository:                         repository,
-		inboxReader:                        inboxReader,
-		executorFactory:                    executorFactory,
-		ingestedDataReader:                 ingestedDataReader,
-		dataModelUsecase:                   dataModelUsecase,
-		ruleUsecase:                        ruleUsecase,
-		customListUsecase:                  customListUsecase,
-		scenarioUsecase:                    scenarioUsecase,
-		billingUsecase:                     billingUsecase,
-		caseReviewFileRepository:           caseReviewFileRepository,
-		blobRepository:                     blobRepository,
-		caseReviewTaskEnqueuer:             caseReviewTaskEnqueuer,
 		screeningHitSuggestionTaskEnqueuer: screeningHitSuggestionTaskEnqueuer,
 		screeningUsecase:                   screeningUsecase,
-		transactionFactory:                 transactionFactory,
-		featureAccessReader:                featureAccessReader,
-		config:                             config,
-		caseManagerBucketUrl:               caseManagerBucketUrl,
 	}
 }
 
