@@ -274,7 +274,7 @@ func (uc *OrgImportUsecase) createOrganizationResources(ctx context.Context,
 // Create from scratch the organization and all resources defined in the spec.
 // This function is used to created a new organization and not for an existing one
 func (uc *OrgImportUsecase) createOrganization(ctx context.Context, tx repositories.Transaction, spec dto.OrgImport) (uuid.UUID, error) {
-	orgId, _ := uuid.NewV7()
+	orgId := pure_utils.NewId()
 
 	if err := uc.orgRepository.CreateOrganization(ctx, tx, orgId, models.CreateOrganizationInput{
 		Name: spec.Org.Name,
@@ -366,7 +366,7 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 	}
 
 	for _, table := range dataModel.Tables {
-		tableId, _ := uuid.NewV7()
+		tableId := pure_utils.NewId()
 		ids[table.ID] = tableId.String()
 
 		if err := uc.schemaRepository.CreateTable(ctx, clientDbExec, table.Name); err != nil {
@@ -379,7 +379,7 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 		}
 
 		for name, field := range table.Fields {
-			fieldId, _ := uuid.NewV7()
+			fieldId := pure_utils.NewId()
 			ids[field.ID] = fieldId.String()
 
 			field := models.CreateFieldInput{
@@ -404,7 +404,7 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 	}
 
 	for _, link := range dataModel.Links {
-		linkId, _ := uuid.NewV7()
+		linkId := pure_utils.NewId()
 		ids[link.Id] = linkId.String()
 
 		err := uc.dataModelRepository.CreateDataModelLink(ctx, tx, linkId.String(), models.DataModelLinkCreateInput{
@@ -421,7 +421,7 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 	}
 
 	for _, pivot := range dataModel.Pivots {
-		pivotId, _ := uuid.NewV7()
+		pivotId := pure_utils.NewId()
 		ids[pivot.Id.String()] = pivotId.String()
 
 		var field *string
@@ -468,7 +468,7 @@ func (uc *OrgImportUsecase) createTags(ctx context.Context, tx repositories.Tran
 	orgId uuid.UUID, ids map[string]string, tags []dto.ImportTag,
 ) error {
 	for _, tag := range tags {
-		tagId, _ := uuid.NewV7()
+		tagId := pure_utils.NewId()
 		ids[tag.Id] = tagId.String()
 
 		// Use a subtransaction (savepoint) so that a unique violation doesn't abort the outer transaction
@@ -508,7 +508,7 @@ func (uc *OrgImportUsecase) createCustomLists(ctx context.Context, tx repositori
 	orgId uuid.UUID, ids map[string]string, lists []dto.ImportCustomList,
 ) error {
 	for _, list := range lists {
-		listId, _ := uuid.NewV7()
+		listId := pure_utils.NewId()
 		ids[list.Id] = listId.String()
 
 		kind := models.CustomListKindFromString(list.Kind)
@@ -551,7 +551,7 @@ func (uc *OrgImportUsecase) createCustomLists(ctx context.Context, tx repositori
 		err = uc.customListRepository.BatchInsertCustomListValues(ctx, tx,
 			kind, listId.String(), pure_utils.Map(
 				list.Values, func(v string) models.BatchInsertCustomListValue {
-					valueId, _ := uuid.NewV7()
+					valueId := pure_utils.NewId()
 					return models.BatchInsertCustomListValue{Id: valueId.String(), Value: v}
 				}), nil)
 		if err != nil {
@@ -566,7 +566,7 @@ func (uc *OrgImportUsecase) createScenarios(ctx context.Context, tx repositories
 	orgId uuid.UUID, ids map[string]string, scenarios []dto.ImportScenario,
 ) error {
 	for _, scenario := range scenarios {
-		scenarioId, _ := uuid.NewV7()
+		scenarioId := pure_utils.NewId()
 		ids[scenario.Scenario.Id] = scenarioId.String()
 
 		err := uc.scenarioRepository.CreateScenario(ctx, tx, orgId, models.CreateScenarioInput{
@@ -596,7 +596,7 @@ func (uc *OrgImportUsecase) createScenarios(ctx context.Context, tx repositories
 		rules := make([]models.CreateRuleInput, len(scenario.Iteration.Rules))
 
 		for idx, rule := range scenario.Iteration.Rules {
-			stableId, _ := uuid.NewV7()
+			stableId := pure_utils.NewId()
 			ids[rule.StableId] = stableId.String()
 
 			var ruleAst *ast.Node
@@ -693,7 +693,7 @@ func (uc *OrgImportUsecase) createScenarios(ctx context.Context, tx repositories
 				forcedOutcome = utils.Ptr(models.OutcomeFrom(*sc.ForcedOutcome))
 			}
 
-			newStableId, _ := uuid.NewV7()
+			newStableId := pure_utils.NewId()
 			if sc.StableId != "" {
 				ids[sc.StableId] = newStableId.String()
 			}
@@ -748,7 +748,7 @@ func (uc *OrgImportUsecase) createInboxes(ctx context.Context, tx repositories.T
 	orgId uuid.UUID, ids map[string]string, inboxes []dto.InboxDto,
 ) error {
 	for _, inbox := range inboxes {
-		inboxId, _ := uuid.NewV7()
+		inboxId := pure_utils.NewId()
 		ids[inbox.Id.String()] = inboxId.String()
 
 		err := uc.inboxRepository.CreateInbox(ctx, tx, models.CreateInboxInput{

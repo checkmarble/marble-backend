@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
@@ -159,10 +160,7 @@ func (usecase WebhookEventsUsecase) createWebhookQueueItem(
 	}
 
 	// Generate UUID v7 for the event
-	eventId, err := uuid.NewV7()
-	if err != nil {
-		return errors.Wrap(err, "error generating webhook event ID")
-	}
+	eventId := pure_utils.NewId()
 
 	// Create webhook event v2
 	event := models.WebhookEventV2{
