@@ -237,8 +237,6 @@ func (uc *AiAgentUsecase) AiASTDescription(
 	scenarioId string,
 	ruleAST *ast.Node,
 ) (models.AiRuleDescription, error) {
-	// logger := utils.LoggerFromContext(ctx)
-
 	// Check if the rule is valid before calling LLM
 	astValidation, err := uc.scenarioUsecase.ValidateScenarioAst(ctx, scenarioId, ruleAST)
 	if err != nil {
@@ -285,9 +283,6 @@ func (uc *AiAgentUsecase) AiASTDescription(
 		return models.AiRuleDescription{}, err
 	}
 
-	// logger.DebugContext(ctx, "Rule description", "model", model)
-	// logger.DebugContext(ctx, "Rule description", "prompt", ruleDescription)
-
 	aiStudioRequest, err := llmberjack.NewRequest[aiRuleDescriptionOutput]().
 		WithProvider(provider).
 		WithModel(model).
@@ -302,8 +297,6 @@ func (uc *AiAgentUsecase) AiASTDescription(
 	if err != nil {
 		return models.AiRuleDescription{}, err
 	}
-
-	// logger.DebugContext(ctx, "Rule description", "response", ruleDescriptionResponse)
 
 	return models.AiRuleDescription{
 		Description: ruleDescriptionResponse.Description,
