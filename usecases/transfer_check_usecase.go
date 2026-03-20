@@ -12,6 +12,7 @@ import (
 	"github.com/guregu/null/v5"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
@@ -128,7 +129,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	if len(transferMappings) > 0 {
 		transferMappingId = transferMappings[0].Id
 	} else {
-		transferMappingId = uuid.Must(uuid.NewV7()).String()
+		transferMappingId = pure_utils.NewId().String()
 		err = usecase.transferMappingsRepository.CreateTransferMapping(ctx, exec,
 			transferMappingId, models.TransferMappingCreateInput{
 				ClientTransferId: createBody.TransferId,

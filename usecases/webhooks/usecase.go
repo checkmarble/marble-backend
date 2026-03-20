@@ -206,7 +206,7 @@ func (usecase WebhooksUsecase) registerWebhookNew(
 		return models.Webhook{}, errors.Wrap(err, "webhook endpoint unreachable")
 	}
 
-	webhookId := uuid.Must(uuid.NewV7())
+	webhookId := pure_utils.NewId()
 	httpTimeout := 30 // default
 	if input.HttpTimeout != nil {
 		httpTimeout = *input.HttpTimeout
@@ -232,7 +232,7 @@ func (usecase WebhooksUsecase) registerWebhookNew(
 	}
 
 	secret := models.NewWebhookSecret{
-		Id:        uuid.Must(uuid.NewV7()),
+		Id:        pure_utils.NewId(),
 		WebhookId: webhookId,
 		Value:     secretValue,
 		CreatedAt: time.Now(),
@@ -435,7 +435,8 @@ func (usecase WebhooksUsecase) CreateWebhookSecret(
 	expireExistingInDays *int,
 ) (models.Secret, error) {
 	if !usecase.webhookSystemMigrated {
-		return models.Secret{}, errors.Wrap(models.BadParameterError, "secret rotation only available for migrated webhooks")
+		return models.Secret{}, errors.Wrap(models.BadParameterError,
+			"secret rotation only available for migrated webhooks")
 	}
 
 	exec := usecase.executorFactory.NewExecutor()
@@ -458,7 +459,7 @@ func (usecase WebhooksUsecase) CreateWebhookSecret(
 	}
 
 	newSecret := models.NewWebhookSecret{
-		Id:        uuid.Must(uuid.NewV7()),
+		Id:        pure_utils.NewId(),
 		WebhookId: webhookId,
 		Value:     secretValue,
 		CreatedAt: time.Now(),
@@ -495,7 +496,8 @@ func (usecase WebhooksUsecase) RevokeWebhookSecret(
 	secretId uuid.UUID,
 ) error {
 	if !usecase.webhookSystemMigrated {
-		return errors.Wrap(models.BadParameterError, "secret revocation only available for migrated webhooks")
+		return errors.Wrap(models.BadParameterError,
+			"secret revocation only available for migrated webhooks")
 	}
 
 	exec := usecase.executorFactory.NewExecutor()

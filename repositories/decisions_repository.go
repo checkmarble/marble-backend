@@ -602,7 +602,7 @@ func (repo *MarbleDbRepository) StoreDecision(
 
 		builderForRules = builderForRules.
 			Values(
-				uuid.Must(uuid.NewV7()).String(),
+				pure_utils.NewId().String(),
 				organizationId,
 				newDecisionId,
 				ruleExecution.ResultScoreModifier,
@@ -624,12 +624,16 @@ func (repo *MarbleDbRepository) StoreDecision(
 
 			err := retry.Do(
 				func() error {
-					serializedRuleEvaluation, err := dbmodels.SerializeDecisionEvaluationDto(pure_utils.Map(decision.RuleExecutions, func(e models.RuleExecution) *ast.NodeEvaluationDto { return e.Evaluation }))
+					serializedRuleEvaluation, err := dbmodels.SerializeDecisionEvaluationDto(
+						pure_utils.Map(decision.RuleExecutions, func(e models.RuleExecution) *ast.NodeEvaluationDto {
+							return e.Evaluation
+						}))
 					if err != nil {
 						return err
 					}
 
-					if err := offloadedWriter.OffloadRuleExecutions(ctx, organizationId, decision.Decision, serializedRuleEvaluation); err != nil {
+					if err := offloadedWriter.OffloadRuleExecutions(ctx,
+						organizationId, decision.Decision, serializedRuleEvaluation); err != nil {
 						return err
 					}
 

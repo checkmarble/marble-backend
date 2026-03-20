@@ -28,7 +28,7 @@ type PhantomDecision struct {
 }
 
 func AdaptScenarExecToPhantomDecision(scenarioExecution ScenarioExecution) PhantomDecision {
-	decisionId := uuid.Must(uuid.NewV7())
+	decisionId := pure_utils.NewId()
 	return PhantomDecision{
 		PhantomDecisionId:   decisionId.String(),
 		CreatedAt:           time.Now(),

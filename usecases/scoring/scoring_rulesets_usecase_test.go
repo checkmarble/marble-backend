@@ -9,6 +9,7 @@ import (
 	dtoScoring "github.com/checkmarble/marble-backend/dto/scoring"
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -104,7 +105,7 @@ func (s *ScoringRulesetsUsecaseTestSuite) SetupTest() {
 	s.indexEditor = new(mocks.ClientDbIndexEditor)
 	s.enforceSecurity = new(mocks.EnforceSecurity)
 
-	s.orgId = uuid.Must(uuid.NewV7())
+	s.orgId = pure_utils.NewId()
 	s.recordType = "account"
 	s.ctx = context.Background()
 }
@@ -121,7 +122,7 @@ func (s *ScoringRulesetsUsecaseTestSuite) makeUsecase() ScoringRulesetsUsecase {
 }
 
 func (s *ScoringRulesetsUsecaseTestSuite) TestCreateRulesetVersion_InsertsRulesetAndRules() {
-	stableId := uuid.Must(uuid.NewV7())
+	stableId := pure_utils.NewId()
 	req := dtoScoring.CreateRulesetRequest{
 		Name:        "my ruleset",
 		Description: "desc",
@@ -137,8 +138,8 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCreateRulesetVersion_InsertsRulese
 		},
 	}
 
-	insertedRuleset := models.ScoringRuleset{Id: uuid.Must(uuid.NewV7()), RecordType: s.recordType, Version: 1}
-	insertedRule := models.ScoringRule{Id: uuid.Must(uuid.NewV7()), StableId: stableId, Name: "rule 1"}
+	insertedRuleset := models.ScoringRuleset{Id: pure_utils.NewId(), RecordType: s.recordType, Version: 1}
+	insertedRule := models.ScoringRule{Id: pure_utils.NewId(), StableId: stableId, Name: "rule 1"}
 
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
@@ -165,8 +166,8 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCreateRulesetVersion_InsertsRulese
 	s.Equal(insertedRuleset.Id, result.Id)
 	s.Equal(1, result.Version)
 
-	updatedRuleset := models.ScoringRuleset{Id: uuid.Must(uuid.NewV7()), RecordType: s.recordType, Version: 2}
-	updatedRule := models.ScoringRule{Id: uuid.Must(uuid.NewV7()), StableId: stableId, Name: "rule 1"}
+	updatedRuleset := models.ScoringRuleset{Id: pure_utils.NewId(), RecordType: s.recordType, Version: 2}
+	updatedRule := models.ScoringRule{Id: pure_utils.NewId(), StableId: stableId, Name: "rule 1"}
 
 	s.repository.On("GetScoringSettings", s.ctx, s.transaction, s.orgId).
 		Return(&models.ScoringSettings{MaxRiskLevel: 3}, nil).Once()
@@ -221,7 +222,7 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCommitRuleset_NoDraft() {
 }
 
 func (s *ScoringRulesetsUsecaseTestSuite) TestCommitRuleset_IndexesPending() {
-	draft := models.ScoringRuleset{Id: uuid.Must(uuid.NewV7()), RecordType: s.recordType, Status: models.ScoreRulesetDraft}
+	draft := models.ScoringRuleset{Id: pure_utils.NewId(), RecordType: s.recordType, Status: models.ScoreRulesetDraft}
 
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
@@ -239,7 +240,7 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCommitRuleset_IndexesPending() {
 }
 
 func (s *ScoringRulesetsUsecaseTestSuite) TestCommitRuleset_IndexesNotCreated() {
-	draft := models.ScoringRuleset{Id: uuid.Must(uuid.NewV7()), RecordType: s.recordType, Status: models.ScoreRulesetDraft}
+	draft := models.ScoringRuleset{Id: pure_utils.NewId(), RecordType: s.recordType, Status: models.ScoreRulesetDraft}
 	pendingIndex := models.ConcreteIndex{}
 
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
@@ -258,7 +259,7 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCommitRuleset_IndexesNotCreated() 
 }
 
 func (s *ScoringRulesetsUsecaseTestSuite) TestCommitRuleset_HappyPath() {
-	draft := models.ScoringRuleset{Id: uuid.Must(uuid.NewV7()), RecordType: s.recordType, Status: models.ScoreRulesetDraft}
+	draft := models.ScoringRuleset{Id: pure_utils.NewId(), RecordType: s.recordType, Status: models.ScoreRulesetDraft}
 	committed := models.ScoringRuleset{Id: draft.Id, RecordType: s.recordType, Status: models.ScoreRulesetCommitted}
 
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
@@ -303,7 +304,7 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestPrepareRuleset_NoDraft() {
 }
 
 func (s *ScoringRulesetsUsecaseTestSuite) TestPrepareRuleset_IndexesPending() {
-	draft := models.ScoringRuleset{Id: uuid.Must(uuid.NewV7()), RecordType: s.recordType, Status: models.ScoreRulesetDraft}
+	draft := models.ScoringRuleset{Id: pure_utils.NewId(), RecordType: s.recordType, Status: models.ScoreRulesetDraft}
 
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
@@ -320,7 +321,7 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestPrepareRuleset_IndexesPending() {
 }
 
 func (s *ScoringRulesetsUsecaseTestSuite) TestPrepareRuleset_EnqueuesIndexCreation() {
-	draft := models.ScoringRuleset{Id: uuid.Must(uuid.NewV7()), RecordType: s.recordType, Status: models.ScoreRulesetDraft}
+	draft := models.ScoringRuleset{Id: pure_utils.NewId(), RecordType: s.recordType, Status: models.ScoreRulesetDraft}
 	idx := models.ConcreteIndex{}
 
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
@@ -339,7 +340,7 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestPrepareRuleset_EnqueuesIndexCreati
 }
 
 func (s *ScoringRulesetsUsecaseTestSuite) TestPrepareRuleset_AlreadyReady() {
-	draft := models.ScoringRuleset{Id: uuid.Must(uuid.NewV7()), RecordType: s.recordType, Status: models.ScoreRulesetDraft}
+	draft := models.ScoringRuleset{Id: pure_utils.NewId(), RecordType: s.recordType, Status: models.ScoreRulesetDraft}
 
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/checkmarble/marble-backend/pure_utils"
-	"github.com/google/uuid"
 	"github.com/hashicorp/go-set/v2"
 )
 
@@ -111,7 +110,7 @@ func (i *ConcreteIndex) setName() {
 
 	indexedNames := strings.Join(i.Indexed, "-")
 	out := fmt.Sprintf("%s_%s_%s", prefix, i.TableName, indexedNames)
-	randomId := uuid.Must(uuid.NewV7()).String()
+	randomId := pure_utils.NewId().String()
 	length := min(len(out), MAX_INDEX_NAME_LENGTH_BEFORE_SUFFIX)
 
 	withRandomSuffix := out[:length] + "_" + randomId

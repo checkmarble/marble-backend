@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
@@ -71,8 +72,8 @@ func TestContinuousScreeningCollector_Collect_Success(t *testing.T) {
 	}
 
 	// Mock config stable IDs
-	config1 := uuid.Must(uuid.NewV7())
-	config2 := uuid.Must(uuid.NewV7())
+	config1 := pure_utils.NewId()
+	config2 := pure_utils.NewId()
 	configStableIdsByOrg := map[string][]uuid.UUID{
 		org1Id.String(): {config1},
 		org2Id.String(): {config2},

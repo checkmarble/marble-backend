@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
@@ -30,7 +31,7 @@ func (suite *MatchEnrichmentWorkerTestSuite) SetupTest() {
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 
 	suite.ctx = context.Background()
-	suite.continuousScreeningId = uuid.Must(uuid.NewV7())
+	suite.continuousScreeningId = pure_utils.NewId()
 	suite.orgId = uuid.MustParse("12345678-1234-1234-1234-123456789012")
 }
 
@@ -101,8 +102,8 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_DatasetTriggered_EnrichesO
 	}
 
 	entityId := "entity-123"
-	match1Id := uuid.Must(uuid.NewV7())
-	match2Id := uuid.Must(uuid.NewV7())
+	match1Id := pure_utils.NewId()
+	match2Id := pure_utils.NewId()
 
 	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
@@ -166,7 +167,7 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_ObjectTriggered_EnrichesOn
 		},
 	}
 
-	match1Id := uuid.Must(uuid.NewV7())
+	match1Id := pure_utils.NewId()
 
 	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{

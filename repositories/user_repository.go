@@ -6,6 +6,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/redis/go-redis/v9"
 
@@ -24,7 +25,7 @@ type UserRepository interface {
 }
 
 func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (string, error) {
-	userId := uuid.Must(uuid.NewV7()).String()
+	userId := pure_utils.NewId().String()
 
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return "", err

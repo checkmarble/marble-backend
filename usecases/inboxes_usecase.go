@@ -115,7 +115,7 @@ func (usecase *InboxUsecase) CreateInboxWithExecutor(
 		}
 	}
 
-	newInboxId := uuid.Must(uuid.NewV7())
+	newInboxId := pure_utils.NewId()
 	if err := usecase.inboxRepository.CreateInbox(ctx, exec, input, newInboxId); err != nil {
 		return models.Inbox{}, err
 	}

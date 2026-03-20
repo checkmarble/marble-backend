@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
@@ -107,7 +108,7 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecution(
 	// Generate IDs for all executions
 	executionIds := make([]uuid.UUID, len(objects))
 	for i := range objects {
-		executionIds[i] = uuid.Must(uuid.NewV7())
+		executionIds[i] = pure_utils.NewId()
 	}
 
 	executions, err := executor_factory.TransactionReturnValue(

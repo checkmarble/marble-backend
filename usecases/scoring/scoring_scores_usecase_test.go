@@ -8,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
@@ -51,7 +52,7 @@ func (s *TryRefreshScoreTestSuite) SetupTest() {
 	s.dataModelRepo = new(mocks.DataModelRepository)
 	s.ingestedDataReader = new(mocks.IngestedDataReader)
 
-	s.orgId = uuid.Must(uuid.NewV7())
+	s.orgId = pure_utils.NewId()
 	s.recordType = "account"
 	s.recordId = "entity-123"
 	s.record = models.ScoringRecordRef{OrgId: s.orgId, RecordType: s.recordType, RecordId: s.recordId}
@@ -196,7 +197,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeAndInsert_Ha
 	opts := models.RefreshScoreOptions{RefreshOlderThan: time.Hour}
 
 	ruleset := models.ScoringRuleset{
-		Id:         uuid.Must(uuid.NewV7()),
+		Id:         pure_utils.NewId(),
 		RecordType: s.recordType,
 		Thresholds: []int{10},
 	}
@@ -251,7 +252,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_InsertError_HasCurr
 	insertErr := fmt.Errorf("insert failed")
 
 	ruleset := models.ScoringRuleset{
-		Id:         uuid.Must(uuid.NewV7()),
+		Id:         pure_utils.NewId(),
 		RecordType: s.recordType,
 		Thresholds: []int{10},
 	}

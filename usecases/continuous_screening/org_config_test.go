@@ -6,6 +6,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
@@ -48,9 +49,9 @@ func (suite *OrgConfigTestSuite) SetupTest() {
 
 	suite.ctx = context.Background()
 	suite.orgId = uuid.MustParse("12345678-1234-1234-1234-123456789012")
-	suite.configId = uuid.Must(uuid.NewV7())
-	suite.stableId = uuid.Must(uuid.NewV7())
-	suite.inboxId = uuid.Must(uuid.NewV7())
+	suite.configId = pure_utils.NewId()
+	suite.stableId = pure_utils.NewId()
+	suite.inboxId = pure_utils.NewId()
 }
 
 func (suite *OrgConfigTestSuite) makeUsecase() *ContinuousScreeningUsecase {
@@ -598,8 +599,8 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_PreservesSt
 
 	// Expected result - new config with same stable ID but new ID
 	updatedConfig := models.ContinuousScreeningConfig{
-		Id:             uuid.Must(uuid.NewV7()), // New ID
-		StableId:       suite.stableId,          // Same stable ID
+		Id:             pure_utils.NewId(), // New ID
+		StableId:       suite.stableId,     // Same stable ID
 		OrgId:          suite.orgId,
 		InboxId:        suite.inboxId,
 		Name:           "updated name",

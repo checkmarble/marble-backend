@@ -6,6 +6,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/google/uuid"
 )
@@ -99,7 +100,7 @@ func (repo *MarbleDbRepository) InsertScore(
 			"deleted_at",
 		).
 		Values(
-			uuid.Must(uuid.NewV7()),
+			pure_utils.NewId(),
 			req.OrgId,
 			req.RecordType,
 			req.RecordId,

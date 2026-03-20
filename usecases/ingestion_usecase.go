@@ -435,7 +435,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 
 	return executor_factory.TransactionReturnValue(ctx,
 		usecase.transactionFactory, func(tx repositories.Transaction) (models.UploadLog, error) {
-			newUploadListId := uuid.Must(uuid.NewV7()).String()
+			newUploadListId := pure_utils.NewId().String()
 			newUploadLoad := models.UploadLog{
 				Id:             newUploadListId,
 				UploadStatus:   models.UploadPending,

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/google/uuid"
 )
@@ -68,7 +69,7 @@ func (repo *MarbleDbRepository) InsertRulesetDryRun(
 		Insert(dbmodels.TABLE_SCORING_DRY_RUNS).
 		Columns("id", "ruleset_id", "record_count").
 		Values(
-			uuid.Must(uuid.NewV7()),
+			pure_utils.NewId(),
 			ruleset.Id,
 			objectCount,
 		).

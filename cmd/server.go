@@ -14,11 +14,11 @@ import (
 	"github.com/checkmarble/marble-backend/api"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -233,7 +233,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	}
 
 	if apiConfig.ScreeningIndexerToken == "" {
-		apiConfig.ScreeningIndexerToken = uuid.Must(uuid.NewV7()).String()
+		apiConfig.ScreeningIndexerToken = pure_utils.NewId().String()
 		logger.Info("SCREENING_INDEXER_TOKEN is not set, setting it to a random token")
 	}
 

@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
-	"github.com/google/uuid"
 )
 
 type partnersRepository interface {
@@ -64,7 +64,7 @@ func (usecase *PartnerUsecase) CreatePartner(
 	partner, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.Partner, error) {
-		partnerId := uuid.Must(uuid.NewV7()).String()
+		partnerId := pure_utils.NewId().String()
 		partnerCreateInput.Bic = strings.TrimSpace(strings.ToUpper(partnerCreateInput.Bic))
 		if err := usecase.partnersRepository.CreatePartner(ctx, tx, partnerId, partnerCreateInput); err != nil {
 			return models.Partner{}, err

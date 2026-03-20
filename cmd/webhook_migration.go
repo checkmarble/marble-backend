@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -124,7 +125,7 @@ func migrateWebhook(
 	tx repositories.Transaction,
 	webhook models.Webhook,
 ) error {
-	webhookId := uuid.Must(uuid.NewV7())
+	webhookId := pure_utils.NewId()
 	now := time.Now()
 
 	// Convert timeout
@@ -177,7 +178,7 @@ func migrateWebhook(
 		}
 
 		newSecret := models.NewWebhookSecret{
-			Id:        uuid.Must(uuid.NewV7()),
+			Id:        pure_utils.NewId(),
 			WebhookId: webhookId,
 			Value:     secret.Value,
 			CreatedAt: now,
@@ -196,7 +197,7 @@ func migrateWebhook(
 // Used within a transaction.
 func createMigrationMetadata(ctx context.Context, repos repositories.Repositories, tx repositories.Transaction) error {
 	metadata := models.Metadata{
-		ID:        uuid.Must(uuid.NewV7()),
+		ID:        pure_utils.NewId(),
 		CreatedAt: time.Now(),
 		Key:       models.MetadataKeyWebhookSystemMigrated,
 		Value:     "true",

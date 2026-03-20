@@ -6,12 +6,12 @@ import (
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	ops "github.com/go-faker/faker/v4/pkg/options"
-	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -44,7 +44,7 @@ func buildScreeningUsecaseMock() (ScreeningUsecase, executor_factory.ExecutorFac
 
 func TestListScreeningOnDecision(t *testing.T) {
 	uc, exec := buildScreeningUsecaseMock()
-	sccId := uuid.Must(uuid.NewV7()).String()
+	sccId := pure_utils.NewId().String()
 
 	mockSc, mockScRow := utils.FakeStruct[dbmodels.DBScreeningWithMatches](
 		ops.WithRandomMapAndSliceMinSize(1),
@@ -103,7 +103,7 @@ func TestListScreeningOnDecision(t *testing.T) {
 
 func TestUpdateMatchStatus(t *testing.T) {
 	uc, exec := buildScreeningUsecaseMock()
-	userId := models.UserId(uuid.Must(uuid.NewV7()).String())
+	userId := models.UserId(pure_utils.NewId().String())
 
 	_, mockScmRow := utils.FakeStruct[dbmodels.DBScreeningMatch](ops.WithCustomFieldProvider(
 		"ScreeningId", func() (interface{}, error) {

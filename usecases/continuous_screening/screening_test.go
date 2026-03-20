@@ -6,6 +6,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
@@ -53,9 +54,9 @@ func (suite *ScreeningTestSuite) SetupTest() {
 
 	suite.ctx = context.Background()
 	suite.orgId = uuid.MustParse("12345678-1234-1234-1234-123456789012")
-	suite.caseId = uuid.Must(uuid.NewV7())
-	suite.matchId = uuid.Must(uuid.NewV7())
-	suite.screeningId = uuid.Must(uuid.NewV7())
+	suite.caseId = pure_utils.NewId()
+	suite.matchId = pure_utils.NewId()
+	suite.screeningId = pure_utils.NewId()
 	suite.userId = models.UserId("12345678-1234-1234-1234-123456789012")
 }
 
@@ -153,13 +154,13 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 		OpenSanctionEntityId:  "test-entity-id-1",
 	}
 	continuousScreeningMatch2 := models.ContinuousScreeningMatch{
-		Id:                    uuid.Must(uuid.NewV7()),
+		Id:                    pure_utils.NewId(),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusPending,
 		OpenSanctionEntityId:  "test-entity-id-2",
 	}
 	continuousScreeningMatch3 := models.ContinuousScreeningMatch{
-		Id:                    uuid.Must(uuid.NewV7()),
+		Id:                    pure_utils.NewId(),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusPending,
 		OpenSanctionEntityId:  "test-entity-id-3",
@@ -594,7 +595,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 		OpenSanctionEntityId:  "test-entity-id-1",
 	}
 	continuousScreeningMatch2 := models.ContinuousScreeningMatch{
-		Id:                    uuid.Must(uuid.NewV7()),
+		Id:                    pure_utils.NewId(),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusPending,
 		OpenSanctionEntityId:  "test-entity-id-2",
@@ -973,17 +974,17 @@ func (suite *ScreeningTestSuite) TestDismissContinuousScreening_InsufficientPerm
 func (suite *ScreeningTestSuite) TestDismissContinuousScreening_NoHitChangesOthersToSkipped() {
 	// Setup
 	match1 := models.ContinuousScreeningMatch{
-		Id:                    uuid.Must(uuid.NewV7()),
+		Id:                    pure_utils.NewId(),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusNoHit,
 	}
 	match2 := models.ContinuousScreeningMatch{
-		Id:                    uuid.Must(uuid.NewV7()),
+		Id:                    pure_utils.NewId(),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusPending,
 	}
 	match3 := models.ContinuousScreeningMatch{
-		Id:                    uuid.Must(uuid.NewV7()),
+		Id:                    pure_utils.NewId(),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusPending,
 	}
@@ -1078,17 +1079,17 @@ func (suite *ScreeningTestSuite) TestDismissContinuousScreening_NoHitChangesOthe
 func (suite *ScreeningTestSuite) TestDismissContinuousScreening_ConfirmedHit_NoUpdates() {
 	// Setup
 	match1 := models.ContinuousScreeningMatch{
-		Id:                    uuid.Must(uuid.NewV7()),
+		Id:                    pure_utils.NewId(),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusConfirmedHit,
 	}
 	match2 := models.ContinuousScreeningMatch{
-		Id:                    uuid.Must(uuid.NewV7()),
+		Id:                    pure_utils.NewId(),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusSkipped,
 	}
 	match3 := models.ContinuousScreeningMatch{
-		Id:                    uuid.Must(uuid.NewV7()),
+		Id:                    pure_utils.NewId(),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusSkipped,
 	}
@@ -1191,8 +1192,8 @@ func (suite *ScreeningTestSuite) TestDismissContinuousScreening_NotInReview() {
 
 func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches() {
 	// Setup
-	configId := uuid.Must(uuid.NewV7())
-	stableId := uuid.Must(uuid.NewV7())
+	configId := pure_utils.NewId()
+	stableId := pure_utils.NewId()
 
 	ftmEntityValue := models.FollowTheMoneyEntityPerson
 	ftmPropertyValue := models.FollowTheMoneyPropertyName
@@ -1388,8 +1389,8 @@ func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches_NotParti
 
 func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches_NoNewMatches() {
 	// Setup
-	configId := uuid.Must(uuid.NewV7())
-	stableId := uuid.Must(uuid.NewV7())
+	configId := pure_utils.NewId()
+	stableId := pure_utils.NewId()
 
 	ftmEntityValue := models.FollowTheMoneyEntityPerson
 	ftmPropertyValue := models.FollowTheMoneyPropertyName
@@ -1532,7 +1533,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 		},
 	}
 	continuousScreeningMatch2 := models.ContinuousScreeningMatch{
-		Id:                    uuid.Must(uuid.NewV7()),
+		Id:                    pure_utils.NewId(),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusPending,
 		OpenSanctionEntityId:  "marble-entity-456",
@@ -1708,7 +1709,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 		OpenSanctionEntityId:  "marble-entity-123",
 	}
 	continuousScreeningMatch2 := models.ContinuousScreeningMatch{
-		Id:                    uuid.Must(uuid.NewV7()),
+		Id:                    pure_utils.NewId(),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusPending,
 		OpenSanctionEntityId:  "marble-entity-456",
@@ -1880,7 +1881,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	}
 
 	confirmedMatch := models.ContinuousScreeningMatch{
-		Id:                    uuid.Must(uuid.NewV7()),
+		Id:                    pure_utils.NewId(),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusConfirmedHit,
 		OpenSanctionEntityId:  "marble-entity-111",

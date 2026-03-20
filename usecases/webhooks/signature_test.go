@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/google/uuid"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,8 +19,8 @@ func TestWebhookSignatureService_Sign(t *testing.T) {
 		payload := []byte(`{"event": "test"}`)
 		secrets := []models.NewWebhookSecret{
 			{
-				Id:        uuid.Must(uuid.NewV7()),
-				WebhookId: uuid.Must(uuid.NewV7()),
+				Id:        pure_utils.NewId(),
+				WebhookId: pure_utils.NewId(),
 				Value:     "test-secret-key",
 				CreatedAt: time.Now(),
 			},
@@ -38,14 +38,14 @@ func TestWebhookSignatureService_Sign(t *testing.T) {
 		payload := []byte(`{"event": "test"}`)
 		secrets := []models.NewWebhookSecret{
 			{
-				Id:        uuid.Must(uuid.NewV7()),
-				WebhookId: uuid.Must(uuid.NewV7()),
+				Id:        pure_utils.NewId(),
+				WebhookId: pure_utils.NewId(),
 				Value:     "secret-key-1",
 				CreatedAt: time.Now(),
 			},
 			{
-				Id:        uuid.Must(uuid.NewV7()),
-				WebhookId: uuid.Must(uuid.NewV7()),
+				Id:        pure_utils.NewId(),
+				WebhookId: pure_utils.NewId(),
 				Value:     "secret-key-2",
 				CreatedAt: time.Now().Add(-time.Hour),
 			},
@@ -74,8 +74,8 @@ func TestWebhookSignatureService_Sign(t *testing.T) {
 		payload := []byte(`{"event": "test"}`)
 		secrets := []models.NewWebhookSecret{
 			{
-				Id:        uuid.Must(uuid.NewV7()),
-				WebhookId: uuid.Must(uuid.NewV7()),
+				Id:        pure_utils.NewId(),
+				WebhookId: pure_utils.NewId(),
 				Value:     "consistent-secret",
 				CreatedAt: time.Now(),
 			},
@@ -91,8 +91,8 @@ func TestWebhookSignatureService_Sign(t *testing.T) {
 	t.Run("different payloads produce different signatures", func(t *testing.T) {
 		secrets := []models.NewWebhookSecret{
 			{
-				Id:        uuid.Must(uuid.NewV7()),
-				WebhookId: uuid.Must(uuid.NewV7()),
+				Id:        pure_utils.NewId(),
+				WebhookId: pure_utils.NewId(),
 				Value:     "test-secret",
 				CreatedAt: time.Now(),
 			},
@@ -109,8 +109,8 @@ func TestWebhookSignatureService_Sign(t *testing.T) {
 		payload := []byte(`{"event": "test"}`)
 		secrets := []models.NewWebhookSecret{
 			{
-				Id:        uuid.Must(uuid.NewV7()),
-				WebhookId: uuid.Must(uuid.NewV7()),
+				Id:        pure_utils.NewId(),
+				WebhookId: pure_utils.NewId(),
 				Value:     "test-secret",
 				CreatedAt: time.Now(),
 			},
@@ -130,8 +130,8 @@ func TestWebhookSignatureService_SignatureFormat(t *testing.T) {
 		payload := []byte(`{"event": "test"}`)
 		secrets := []models.NewWebhookSecret{
 			{
-				Id:        uuid.Must(uuid.NewV7()),
-				WebhookId: uuid.Must(uuid.NewV7()),
+				Id:        pure_utils.NewId(),
+				WebhookId: pure_utils.NewId(),
 				Value:     "test-secret-key",
 				CreatedAt: time.Now(),
 			},
@@ -156,14 +156,14 @@ func TestWebhookSignatureService_SignatureFormat(t *testing.T) {
 		payload := []byte(`{"event": "test"}`)
 		secrets := []models.NewWebhookSecret{
 			{
-				Id:        uuid.Must(uuid.NewV7()),
-				WebhookId: uuid.Must(uuid.NewV7()),
+				Id:        pure_utils.NewId(),
+				WebhookId: pure_utils.NewId(),
 				Value:     "secret1",
 				CreatedAt: time.Now(),
 			},
 			{
-				Id:        uuid.Must(uuid.NewV7()),
-				WebhookId: uuid.Must(uuid.NewV7()),
+				Id:        pure_utils.NewId(),
+				WebhookId: pure_utils.NewId(),
 				Value:     "secret2",
 				CreatedAt: time.Now().Add(-time.Hour),
 			},

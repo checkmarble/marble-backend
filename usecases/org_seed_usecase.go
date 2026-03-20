@@ -9,6 +9,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/cockroachdb/errors"
 	"github.com/go-faker/faker/v4"
 	fakeropts "github.com/go-faker/faker/v4/pkg/options"
@@ -112,7 +113,7 @@ func (uc OrgImportUsecase) Seed(ctx context.Context, spec dto.OrgImport, orgId u
 }
 
 func (uc *OrgImportUsecase) generateObject(table string, spec dto.ImportSeedsIngestion, ids map[string][]string) (json.RawMessage, error) {
-	objectId := uuid.Must(uuid.NewV7()).String()
+	objectId := pure_utils.NewId().String()
 
 	object := map[string]any{
 		"object_id":  objectId,

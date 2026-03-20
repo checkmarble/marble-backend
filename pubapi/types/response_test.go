@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,7 +33,7 @@ func TestErrorMessagesPublicVsPrivate(t *testing.T) {
 	}
 
 	for _, tt := range tts {
-		path := fmt.Sprintf("/%s", uuid.Must(uuid.NewV7()).String())
+		path := fmt.Sprintf("/%s", pure_utils.NewId().String())
 
 		g.GET(path, func(c *gin.Context) {
 			err := errors.WithDetail(

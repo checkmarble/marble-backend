@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
@@ -135,7 +136,7 @@ func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.Cre
 					fmt.Sprintf("can't update rule as iteration %s is not in draft", scenarioAndIteration.Iteration.Id))
 			}
 
-			ruleInput.Id = uuid.Must(uuid.NewV7()).String()
+			ruleInput.Id = pure_utils.NewId().String()
 			_, err = usecase.repository.CreateRule(ctx, tx, ruleInput)
 			if err != nil {
 				return models.Rule{}, err

@@ -15,6 +15,7 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -183,7 +184,7 @@ func getRulesForBatchTest() []models.CreateRuleInput {
 			ScoreModifier: 100,
 			Name:          "Rule that hits",
 			Description:   "Rule that hits",
-			StableRuleId:  uuid.Must(uuid.NewV7()).String(),
+			StableRuleId:  pure_utils.NewId().String(),
 		},
 	}
 }

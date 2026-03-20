@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/google/uuid"
 
@@ -55,7 +56,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(
 			"schedule",
 		).
 		Values(
-			uuid.Must(uuid.NewV7()),
+			pure_utils.NewId(),
 			organizationId,
 			scenarioIteration.ScenarioId,
 			scenarioIteration.Body.ScoreReviewThreshold,
@@ -78,7 +79,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(
 
 	if len(scenarioIteration.Body.Rules) > 0 {
 		for i := range scenarioIteration.Body.Rules {
-			scenarioIteration.Body.Rules[i].Id = uuid.Must(uuid.NewV7()).String()
+			scenarioIteration.Body.Rules[i].Id = pure_utils.NewId().String()
 			scenarioIteration.Body.Rules[i].OrganizationId = organizationId
 			scenarioIteration.Body.Rules[i].ScenarioIterationId = createdIteration.Id
 		}

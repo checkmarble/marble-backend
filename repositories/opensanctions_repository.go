@@ -13,10 +13,10 @@ import (
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
-	"github.com/google/uuid"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 )
 
@@ -441,7 +441,7 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 	}
 
 	for _, subquery := range query.Queries {
-		q.Queries[uuid.Must(uuid.NewV7()).String()] = openSanctionsRequestQuery{
+		q.Queries[pure_utils.NewId().String()] = openSanctionsRequestQuery{
 			Schema:     subquery.Type,
 			Properties: subquery.Filters,
 		}
