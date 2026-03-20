@@ -30,6 +30,15 @@ func (uc *AiAgentUsecase) GenerateRule(
 	instruction string,
 ) (dto.GenerateRuleResponse, error) {
 	logger := utils.LoggerFromContext(ctx)
+
+	featureAccess, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, err
+	}
+	if !featureAccess.AiRuleBuilding.IsAllowed() {
+		return dto.GenerateRuleResponse{}, models.ForbiddenError
+	}
+
 	exec := uc.executorFactory.NewExecutor()
 
 	rule, err := uc.ruleUsecase.GetRule(ctx, ruleId)

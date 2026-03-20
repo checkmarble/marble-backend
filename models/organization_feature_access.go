@@ -20,6 +20,7 @@ type OrganizationFeatureAccess struct {
 	CaseAutoAssign      FeatureAccess `redis:"case_auto_assign"`
 	CaseAiAssist        FeatureAccess `redis:"case_ai_assis"`
 	ContinuousScreening FeatureAccess `redis:"continuous_screening"`
+	AiRuleBuilding      FeatureAccess `redis:"ai_rule_building"`
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 
@@ -35,6 +36,7 @@ type DbStoredOrganizationFeatureAccess struct {
 	CaseAutoAssign      FeatureAccess
 	CaseAiAssist        FeatureAccess
 	ContinuousScreening FeatureAccess
+	AiRuleBuilding      FeatureAccess
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }
@@ -46,6 +48,7 @@ type UpdateOrganizationFeatureAccessInput struct {
 	CaseAiAssist        *FeatureAccess
 	CaseAutoAssign      *FeatureAccess
 	ContinuousScreening *FeatureAccess
+	AiRuleBuilding      *FeatureAccess
 }
 
 type FeaturesConfiguration struct {
@@ -69,6 +72,7 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 		CaseAutoAssign:      f.CaseAutoAssign,
 		CaseAiAssist:        f.CaseAiAssist,
 		ContinuousScreening: f.ContinuousScreening,
+		AiRuleBuilding:      f.AiRuleBuilding,
 		CreatedAt:           f.CreatedAt,
 		UpdatedAt:           f.UpdatedAt,
 	}
