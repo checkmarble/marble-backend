@@ -8,6 +8,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -151,7 +152,7 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Cont
 			"object_types",
 		).
 		Values(
-			uuid.Must(uuid.NewV7()),
+			pure_utils.NewId(),
 			input.OrgId,
 			input.StableId,
 			input.InboxId,
@@ -244,7 +245,7 @@ func (repo *MarbleDbRepository) InsertContinuousScreening(
 		return models.ContinuousScreeningWithMatches{}, err
 	}
 
-	id := uuid.Must(uuid.NewV7())
+	id := pure_utils.NewId()
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
@@ -890,7 +891,7 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningDeltaTrack(
 			"operation",
 		).
 		Values(
-			uuid.Must(uuid.NewV7()),
+			pure_utils.NewId(),
 			input.OrgId,
 			input.ObjectType,
 			input.ObjectId,

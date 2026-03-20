@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
@@ -125,7 +126,7 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 				return models.InboxUser{}, err
 			}
 
-			newInboxUserUUID := uuid.Must(uuid.NewV7())
+			newInboxUserUUID := pure_utils.NewId()
 			if err := usecase.InboxUserRepository.CreateInboxUser(ctx, tx, input, newInboxUserUUID); err != nil {
 				if repositories.IsUniqueViolationError(err) {
 					return models.InboxUser{}, errors.Wrap(models.ConflictError,

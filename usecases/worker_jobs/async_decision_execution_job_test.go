@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
@@ -82,7 +83,7 @@ func TestAsyncDecisionExecutionWorker(t *testing.T) {
 
 // Test 1: Completed status is a no-op
 func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_CompletedStatus_Noop() {
-	executionId := uuid.Must(uuid.NewV7())
+	executionId := pure_utils.NewId()
 	job := s.makeJob(executionId)
 
 	s.executionRepo.On("GetAsyncDecisionExecution", mock.Anything, mock.Anything, executionId).
@@ -103,7 +104,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_CompletedStatus_Noop() 
 
 // Test 2: Failed status is a no-op
 func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_FailedStatus_Noop() {
-	executionId := uuid.Must(uuid.NewV7())
+	executionId := pure_utils.NewId()
 	job := s.makeJob(executionId)
 
 	s.executionRepo.On("GetAsyncDecisionExecution", mock.Anything, mock.Anything, executionId).
@@ -124,10 +125,10 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_FailedStatus_Noop() {
 
 // Test 3: Pending with ShouldIngest → ingests then creates decisions
 func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_PendingWithIngestion_IngestsThenCreatesDecisions() {
-	executionId := uuid.Must(uuid.NewV7())
+	executionId := pure_utils.NewId()
 	job := s.makeJob(executionId)
 	triggerObject := json.RawMessage(`{"object_id": "obj-1","updated_at":"2000-01-01T00:00:00Z"}`)
-	decisionId := uuid.Must(uuid.NewV7())
+	decisionId := pure_utils.NewId()
 
 	execution := models.AsyncDecisionExecution{
 		Id:            executionId,
@@ -175,10 +176,10 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_PendingWithIngestion_In
 
 // Test 4: Ingested status → skips ingestion, creates decisions
 func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_IngestedStatus_SkipsIngestion() {
-	executionId := uuid.Must(uuid.NewV7())
+	executionId := pure_utils.NewId()
 	job := s.makeJob(executionId)
 	triggerObject := json.RawMessage(`{"object_id": "obj-1","updated_at":"2000-01-01T00:00:00Z"}`)
-	decisionId := uuid.Must(uuid.NewV7())
+	decisionId := pure_utils.NewId()
 
 	execution := models.AsyncDecisionExecution{
 		Id:            executionId,
@@ -217,7 +218,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_IngestedStatus_SkipsIng
 
 // Test 5: Non-retryable error (NotFoundError) → marks failed and sends webhook
 func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_NonRetryableError_MarksFailed() {
-	executionId := uuid.Must(uuid.NewV7())
+	executionId := pure_utils.NewId()
 	job := s.makeJob(executionId)
 	triggerObject := json.RawMessage(`{"object_id": "obj-1","updated_at":"2000-01-01T00:00:00Z"}`)
 
@@ -264,7 +265,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_NonRetryableError_Marks
 
 // Test 6: Last attempt with retryable error → marks failed
 func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_LastAttempt_MarksFailed() {
-	executionId := uuid.Must(uuid.NewV7())
+	executionId := pure_utils.NewId()
 	job := s.makeJob(executionId)
 	// Set to last attempt
 	job.JobRow.Attempt = 5
@@ -314,7 +315,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_LastAttempt_MarksFailed
 
 // Test 7: Retryable error on non-last attempt → returns error for River to retry
 func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_RetryableError_ReturnsError() {
-	executionId := uuid.Must(uuid.NewV7())
+	executionId := pure_utils.NewId()
 	job := s.makeJob(executionId)
 	// Not last attempt
 	job.JobRow.Attempt = 2
@@ -355,10 +356,10 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_RetryableError_ReturnsE
 
 // Test 8: Pending without ShouldIngest → skips ingestion, creates decisions
 func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_PendingNoIngestion_SkipsIngestion() {
-	executionId := uuid.Must(uuid.NewV7())
+	executionId := pure_utils.NewId()
 	job := s.makeJob(executionId)
 	triggerObject := json.RawMessage(`{"object_id": "obj-1","updated_at":"2000-01-01T00:00:00Z"}`)
-	decisionId := uuid.Must(uuid.NewV7())
+	decisionId := pure_utils.NewId()
 
 	execution := models.AsyncDecisionExecution{
 		Id:            executionId,

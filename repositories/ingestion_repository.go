@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 type IngestionRepository interface {
@@ -294,7 +295,7 @@ func (repo *IngestionRepositoryImpl) batchInsertPayloads(ctx context.Context, ex
 
 	for _, payload := range payloads {
 		objectId := payload.Data["object_id"].(string)
-		internalId := uuid.Must(uuid.NewV7()).String()
+		internalId := pure_utils.NewId().String()
 		mapObjectIdToInternalId[objectId] = internalId
 
 		insertValues := generateInsertValues(payload, columnNames)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -137,7 +138,7 @@ func (repo *ClientDbRepository) InsertContinuousScreeningObject(
 		sanitizedTableName(exec, dbmodels.TABLE_CONTINUOUS_SCREENING_MONITORED_OBJECTS),
 	)
 
-	_, err := exec.Exec(ctx, query, uuid.Must(uuid.NewV7()), objectType, objectId, configStableId)
+	_, err := exec.Exec(ctx, query, pure_utils.NewId(), objectType, objectId, configStableId)
 	return err
 }
 
@@ -245,7 +246,7 @@ func (repo *ClientDbRepository) InsertContinuousScreeningAudit(
 	`, sanitizedTableName(exec, dbmodels.TABLE_CONTINUOUS_SCREENING_AUDIT))
 
 	_, err := exec.Exec(ctx, sql,
-		uuid.Must(uuid.NewV7()),
+		pure_utils.NewId(),
 		audit.ObjectType,
 		audit.ObjectId,
 		audit.ConfigStableId,

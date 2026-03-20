@@ -10,6 +10,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -61,12 +62,12 @@ func (suite *ContinuousScreeningUsecaseTestSuite) SetupTest() {
 	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)
 
 	suite.ctx = context.Background()
-	suite.configId = uuid.Must(uuid.NewV7())
-	suite.configStableId = uuid.Must(uuid.NewV7())
+	suite.configId = pure_utils.NewId()
+	suite.configStableId = pure_utils.NewId()
 	suite.orgId = uuid.MustParse("12345678-1234-1234-1234-123456789012")
 	suite.objectType = "transactions"
 	suite.objectId = "test-object-id"
-	suite.caseId = uuid.Must(uuid.NewV7())
+	suite.caseId = pure_utils.NewId()
 }
 
 func (suite *ContinuousScreeningUsecaseTestSuite) makeUsecase() *ContinuousScreeningUsecase {
@@ -135,7 +136,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 	}
 
-	objectInternalId := uuid.Must(uuid.NewV7())
+	objectInternalId := pure_utils.NewId()
 	ingestedObjects := []models.DataModelObject{
 		{
 			Data: map[string]any{
@@ -179,7 +180,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		{},
 	}, nil)
 
-	continuousScreeningId := uuid.Must(uuid.NewV7())
+	continuousScreeningId := pure_utils.NewId()
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
 		mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
@@ -359,7 +360,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 	}
 
-	objectInternalId := uuid.Must(uuid.NewV7())
+	objectInternalId := pure_utils.NewId()
 	ingestedObjects := []models.DataModelObject{
 		{
 			Data: map[string]any{
@@ -446,8 +447,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_WithMatches_CreatesCase() {
 	// Setup test data with config that has inbox
-	inboxId := uuid.Must(uuid.NewV7())
-	continuousScreeningId := uuid.Must(uuid.NewV7())
+	inboxId := pure_utils.NewId()
+	continuousScreeningId := pure_utils.NewId()
 	config := models.ContinuousScreeningConfig{
 		Id:          suite.configId,
 		StableId:    suite.configStableId,
@@ -475,7 +476,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 	}
 
-	objectInternalId := uuid.Must(uuid.NewV7())
+	objectInternalId := pure_utils.NewId()
 	ingestedObjects := []models.DataModelObject{
 		{
 			Data: map[string]any{
@@ -550,7 +551,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		})).Return(nil)
 
 	// Mock case creation
-	caseId := uuid.Must(uuid.NewV7())
+	caseId := pure_utils.NewId()
 	expectedCase := models.Case{
 		Id:             caseId.String(), // Case ID is a string
 		Name:           suite.objectId,  // Case name is extracted from FTM properties
@@ -587,7 +588,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_WithMatches_CaseCreationFails() {
 	// Setup test data with config that has inbox
-	inboxId := uuid.Must(uuid.NewV7())
+	inboxId := pure_utils.NewId()
 	config := models.ContinuousScreeningConfig{
 		Id:          suite.configId,
 		StableId:    suite.configStableId,
@@ -615,7 +616,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 	}
 
-	objectInternalId := uuid.Must(uuid.NewV7())
+	objectInternalId := pure_utils.NewId()
 	ingestedObjects := []models.DataModelObject{
 		{
 			Data: map[string]any{
@@ -664,7 +665,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		{},
 	}, nil)
 
-	continuousScreeningId := uuid.Must(uuid.NewV7())
+	continuousScreeningId := pure_utils.NewId()
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
 		mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
@@ -1184,7 +1185,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 	}
 
-	objectInternalId := uuid.Must(uuid.NewV7())
+	objectInternalId := pure_utils.NewId()
 	ingestedObjects := []models.DataModelObject{
 		{
 			Data: map[string]any{
@@ -1245,7 +1246,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		{},
 	}, nil)
 
-	continuousScreeningId := uuid.Must(uuid.NewV7())
+	continuousScreeningId := pure_utils.NewId()
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
 		mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
@@ -1283,7 +1284,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 
 func (suite *ContinuousScreeningUsecaseTestSuite) TestDeleteContinuousScreeningObject_ConfigNotLinkedToOrganization() {
 	// Setup test data - config with different org ID
-	differentOrgId := uuid.Must(uuid.NewV7())
+	differentOrgId := pure_utils.NewId()
 	config := models.ContinuousScreeningConfig{
 		Id:          suite.configId,
 		StableId:    suite.configStableId,
@@ -1438,7 +1439,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 	}
 
-	objectInternalId := uuid.Must(uuid.NewV7())
+	objectInternalId := pure_utils.NewId()
 	ingestedObjects := []models.DataModelObject{
 		{
 			Data: map[string]any{
@@ -1479,7 +1480,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
 		{}, {},
 	}, nil)
-	continuousScreeningId := uuid.Must(uuid.NewV7())
+	continuousScreeningId := pure_utils.NewId()
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
 		mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
@@ -1541,7 +1542,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 	}
 
-	objectInternalId := uuid.Must(uuid.NewV7())
+	objectInternalId := pure_utils.NewId()
 	ingestedObjects := []models.DataModelObject{
 		{
 			Data: map[string]any{

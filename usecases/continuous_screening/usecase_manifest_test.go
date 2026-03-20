@@ -7,8 +7,8 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -49,8 +49,8 @@ func TestContinuousScreeningManifestTestSuite(t *testing.T) {
 
 func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningCatalog() {
 	// Setup
-	org1Id := uuid.Must(uuid.NewV7())
-	org2Id := uuid.Must(uuid.NewV7())
+	org1Id := pure_utils.NewId()
+	org2Id := pure_utils.NewId()
 
 	datasetFiles := []models.ContinuousScreeningDatasetFile{
 		{
@@ -103,10 +103,10 @@ func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningCat
 
 func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningDeltaList() {
 	// Setup
-	orgId := uuid.Must(uuid.NewV7())
+	orgId := pure_utils.NewId()
 
-	delta1Id := uuid.Must(uuid.NewV7())
-	delta2Id := uuid.Must(uuid.NewV7())
+	delta1Id := pure_utils.NewId()
+	delta2Id := pure_utils.NewId()
 	deltas := []models.ContinuousScreeningDatasetFile{
 		{
 			Id:      delta1Id,
@@ -153,7 +153,7 @@ func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningCat
 
 func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningDeltaList_Empty() {
 	// Setup
-	orgId := uuid.Must(uuid.NewV7())
+	orgId := pure_utils.NewId()
 
 	suite.repository.On("ListContinuousScreeningLatestDeltaFiles", suite.ctx,
 		suite.executorFactory.NewExecutor(), orgId, uint64(LatestDeltaFilesLimit)).
@@ -170,7 +170,7 @@ func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningDel
 
 func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningDeltaList_Error() {
 	// Setup
-	orgId := uuid.Must(uuid.NewV7())
+	orgId := pure_utils.NewId()
 
 	suite.repository.On("ListContinuousScreeningLatestDeltaFiles", suite.ctx,
 		suite.executorFactory.NewExecutor(), orgId, uint64(LatestDeltaFilesLimit)).

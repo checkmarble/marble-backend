@@ -15,6 +15,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
@@ -129,7 +130,7 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models
 
 	// Create a new admin user on the organization
 	adminUser, err := userUsecase.AddUser(ctx, models.CreateUser{
-		Email:          uuid.Must(uuid.NewV7()).String() + "@testmarble.com",
+		Email:          pure_utils.NewId().String() + "@testmarble.com",
 		OrganizationId: organizationId,
 		Role:           models.ADMIN,
 	})
@@ -737,7 +738,7 @@ func getRulesForFullApiTest() []models.CreateRuleInput {
 			ScoreModifier: 100,
 			Name:          "Check on account name",
 			Description:   "Check on account name",
-			StableRuleId:  uuid.Must(uuid.NewV7()).String(),
+			StableRuleId:  pure_utils.NewId().String(),
 		},
 		{
 			FormulaAstExpression: &ast.Node{
@@ -777,7 +778,7 @@ func getRulesForFullApiTest() []models.CreateRuleInput {
 			ScoreModifier: 10,
 			Name:          "Check on aggregated value",
 			Description:   "Check on aggregated value",
-			StableRuleId:  uuid.Must(uuid.NewV7()).String(),
+			StableRuleId:  pure_utils.NewId().String(),
 		},
 		{
 			FormulaAstExpression: &ast.Node{
@@ -799,7 +800,7 @@ func getRulesForFullApiTest() []models.CreateRuleInput {
 			ScoreModifier: 1,
 			Name:          "Fuzzy match on name",
 			Description:   "Fuzzy match on name",
-			StableRuleId:  uuid.Must(uuid.NewV7()).String(),
+			StableRuleId:  pure_utils.NewId().String(),
 		},
 	}
 }

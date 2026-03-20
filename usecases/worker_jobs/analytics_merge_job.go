@@ -9,6 +9,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
@@ -214,7 +215,7 @@ func (w AnalyticsMergeWorker) merge(
 
 	if err := w.repository.SaveWatermark(ctx, dbExec, &orgId,
 		models.SpecializedWatermark(watermarkType, tableName),
-		utils.Ptr(uuid.Must(uuid.NewV7()).String()), lhs, nil); err != nil {
+		utils.Ptr(pure_utils.NewId().String()), lhs, nil); err != nil {
 		return errors.Wrap(err, "failed to save watermark")
 	}
 

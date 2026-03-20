@@ -4,6 +4,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 	"github.com/pkg/errors"
@@ -54,7 +55,7 @@ func (b TransferAlertCreateBody) WithBeneficiaryPartnerAndDefaults(beneficiaryPa
 		return TransferAlert{}, errors.Wrapf(BadParameterError, "beneficiary_partner_id is required")
 	}
 	out := TransferAlert{
-		Id:                   uuid.Must(uuid.NewV7()).String(),
+		Id:                   pure_utils.NewId().String(),
 		TransferId:           b.TransferId,
 		OrganizationId:       b.OrganizationId,
 		SenderPartnerId:      b.SenderPartnerId,

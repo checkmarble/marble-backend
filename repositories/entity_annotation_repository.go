@@ -5,9 +5,9 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/cockroachdb/errors"
-	"github.com/google/uuid"
 )
 
 func (repo *MarbleDbRepository) GetEntityAnnotationById(
@@ -147,7 +147,7 @@ func (repo *MarbleDbRepository) CreateEntityAnnotation(
 		Insert(dbmodels.TABLE_ENTITY_ANNOTATIONS).
 		Columns("id", "org_id", "object_type", "object_id", "case_id", "annotation_type", "payload", "annotated_by").
 		Values(
-			uuid.Must(uuid.NewV7()),
+			pure_utils.NewId(),
 			req.OrgId,
 			req.ObjectType,
 			req.ObjectId,

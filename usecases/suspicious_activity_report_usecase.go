@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -87,7 +88,7 @@ func (uc SuspiciousActivityReportUsecase) CreateReport(
 	}
 
 	if req.File != nil {
-		blobKey := fmt.Sprintf("%s/%s/sar/%s", orgId, req.CaseId, uuid.Must(uuid.NewV7()).String())
+		blobKey := fmt.Sprintf("%s/%s/sar/%s", orgId, req.CaseId, pure_utils.NewId().String())
 
 		if err := uc.writeToBlobStorage(ctx, *req.File, blobKey); err != nil {
 			return models.SuspiciousActivityReport{}, err
@@ -171,7 +172,7 @@ func (uc SuspiciousActivityReportUsecase) UpdateReport(
 	}
 
 	if req.File != nil {
-		blobKey := fmt.Sprintf("%s/%s/sar/%s", orgId, req.CaseId, uuid.Must(uuid.NewV7()).String())
+		blobKey := fmt.Sprintf("%s/%s/sar/%s", orgId, req.CaseId, pure_utils.NewId().String())
 
 		if err := uc.writeToBlobStorage(ctx, *req.File, blobKey); err != nil {
 			return models.SuspiciousActivityReport{}, err

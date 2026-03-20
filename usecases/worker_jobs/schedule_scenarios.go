@@ -7,9 +7,9 @@ import (
 
 	"github.com/adhocore/gronx"
 	"github.com/cockroachdb/errors"
-	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -59,7 +59,7 @@ func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context,
 		fmt.Sprintf(`Version %d of scenario "%s" is due and will be scheduled`,
 			publishedVersion.Version, scenario.Name))
 
-	scheduledExecutionId := uuid.Must(uuid.NewV7()).String()
+	scheduledExecutionId := pure_utils.NewId().String()
 	return true, usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := usecase.repository.CreateScheduledExecution(ctx, tx, models.CreateScheduledExecutionInput{
 			OrganizationId:      scenario.OrganizationId,

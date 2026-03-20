@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -223,7 +224,7 @@ func (uc EntityAnnotationUsecase) AttachFile(
 	metadata := make([]models.EntityAnnotationFilePayloadFile, len(files))
 
 	for idx, file := range files {
-		key := fmt.Sprintf("annotations/%s/%s/%s", req.OrgId, req.ObjectType, uuid.Must(uuid.NewV7()).String())
+		key := fmt.Sprintf("annotations/%s/%s/%s", req.OrgId, req.ObjectType, pure_utils.NewId().String())
 
 		mimeType, err := uc.writeFileAnnotationToBlobStorage(ctx, file, key)
 		if err != nil {
@@ -231,7 +232,7 @@ func (uc EntityAnnotationUsecase) AttachFile(
 		}
 
 		metadata[idx] = models.EntityAnnotationFilePayloadFile{
-			Id:          uuid.Must(uuid.NewV7()).String(),
+			Id:          pure_utils.NewId().String(),
 			Key:         key,
 			Filename:    file.Filename,
 			ContentType: mimeType,

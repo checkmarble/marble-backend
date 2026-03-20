@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/scoring"
@@ -49,7 +50,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) SetupTest() {
 	s.dataModelRepo = new(mocks.DataModelRepository)
 	s.ingestedDataReader = new(mocks.IngestedDataReader)
 
-	s.orgId = uuid.Must(uuid.NewV7())
+	s.orgId = pure_utils.NewId()
 	s.recordType = "account"
 	s.recordId = "entity-123"
 	s.ctx = context.Background()
@@ -138,7 +139,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_RepoError() {
 func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_ScoreIsOverriden() {
 	s.T().Setenv(fmt.Sprintf("ENABLE_%s", "USER_SCORING"), s.orgId.String())
 
-	ruleset := models.ScoringRuleset{Id: uuid.Must(uuid.NewV7()), RecordType: s.recordType}
+	ruleset := models.ScoringRuleset{Id: pure_utils.NewId(), RecordType: s.recordType}
 	activeScore := &models.ScoringScore{
 		Source: models.ScoreSourceOverride,
 	}
@@ -161,7 +162,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_ScoreIsOverriden() {
 func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_NoActiveScore_ComputesAndInserts() {
 	s.T().Setenv(fmt.Sprintf("ENABLE_%s", "USER_SCORING"), s.orgId.String())
 
-	ruleset := models.ScoringRuleset{Id: uuid.Must(uuid.NewV7()), RecordType: s.recordType, Thresholds: []int{10}}
+	ruleset := models.ScoringRuleset{Id: pure_utils.NewId(), RecordType: s.recordType, Thresholds: []int{10}}
 	record := models.ScoringRecordRef{OrgId: s.orgId, RecordType: s.recordType, RecordId: s.recordId}
 	dataModel := models.DataModel{
 		Tables: map[string]models.Table{
@@ -200,7 +201,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_NoActiveScore_Comput
 func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_ActiveScore_ComputesAndInserts() {
 	s.T().Setenv(fmt.Sprintf("ENABLE_%s", "USER_SCORING"), s.orgId.String())
 
-	ruleset := models.ScoringRuleset{Id: uuid.Must(uuid.NewV7()), RecordType: s.recordType, Thresholds: []int{10}}
+	ruleset := models.ScoringRuleset{Id: pure_utils.NewId(), RecordType: s.recordType, Thresholds: []int{10}}
 	record := models.ScoringRecordRef{OrgId: s.orgId, RecordType: s.recordType, RecordId: s.recordId}
 	activeScore := &models.ScoringScore{Source: models.ScoreSourceRuleset, RiskLevel: 3}
 	dataModel := models.DataModel{

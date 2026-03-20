@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
@@ -86,7 +87,7 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 	for _, ruleExecution := range decision.RuleExecutions {
 		builderForRules = builderForRules.
 			Values(
-				uuid.Must(uuid.NewV7()).String(),
+				pure_utils.NewId().String(),
 				organizationId,
 				newPhantomDecisionId,
 				ruleExecution.ResultScoreModifier,

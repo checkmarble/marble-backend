@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
 )
@@ -122,7 +123,7 @@ func (publisher ScenarioPublisher) unpublishOldIteration(
 		return []models.ScenarioPublication{}, nil
 	}
 
-	newScenarioPublicationId := uuid.Must(uuid.NewV7()).String()
+	newScenarioPublicationId := pure_utils.NewId().String()
 	if err := publisher.ScenarioPublicationsRepository.CreateScenarioPublication(ctx, tx, models.CreateScenarioPublicationInput{
 		OrganizationId:      organizationId,
 		ScenarioIterationId: *liveVersionId,
@@ -146,7 +147,7 @@ func (publisher ScenarioPublisher) unpublishOldIteration(
 func (publisher ScenarioPublisher) publishNewIteration(ctx context.Context,
 	tx repositories.Transaction, organizationId uuid.UUID, scenarioId, scenarioIterationId string,
 ) (models.ScenarioPublication, error) {
-	newScenarioPublicationId := uuid.Must(uuid.NewV7()).String()
+	newScenarioPublicationId := pure_utils.NewId().String()
 	if err := publisher.ScenarioPublicationsRepository.CreateScenarioPublication(ctx, tx, models.CreateScenarioPublicationInput{
 		OrganizationId:      organizationId,
 		ScenarioIterationId: scenarioIterationId,
@@ -179,5 +180,5 @@ func (publisher ScenarioPublisher) SaveScenarioPreparationAction(ctx context.Con
 		ScenarioId:          scenarioId,
 		ScenarioIterationId: iterationId,
 		PublicationAction:   models.Prepare,
-	}, uuid.Must(uuid.NewV7()).String())
+	}, pure_utils.NewId().String())
 }

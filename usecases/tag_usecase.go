@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -85,7 +86,7 @@ func (usecase *TagUseCase) CreateTag(ctx context.Context, attributes models.Crea
 
 	tag, err := executor_factory.TransactionReturnValue(ctx,
 		usecase.transactionFactory, func(tx repositories.Transaction) (models.Tag, error) {
-			newTagId := uuid.Must(uuid.NewV7()).String()
+			newTagId := pure_utils.NewId().String()
 			if err := usecase.repository.CreateTag(ctx, tx, attributes, newTagId); err != nil {
 				if repositories.IsUniqueViolationError(err) {
 					return models.Tag{}, errors.Wrap(models.ConflictError, "There is already a tag by this name")

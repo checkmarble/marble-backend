@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
@@ -78,7 +79,7 @@ func (c Collectors) CollectMetrics(ctx context.Context, from time.Time, to time.
 	}
 
 	payload := models.MetricsCollection{
-		CollectionID: uuid.Must(uuid.NewV7()),
+		CollectionID: pure_utils.NewId(),
 		Timestamp:    time.Now(),
 		Metrics:      metrics,
 		Version:      c.version,

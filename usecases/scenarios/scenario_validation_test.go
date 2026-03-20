@@ -5,13 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -19,16 +19,16 @@ import (
 func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	scenario := models.Scenario{
-		Id:                uuid.Must(uuid.NewV7()).String(),
-		OrganizationId:    uuid.Must(uuid.NewV7()),
+		Id:                pure_utils.NewId().String(),
+		OrganizationId:    pure_utils.NewId(),
 		Name:              "scenario_name",
 		Description:       "description",
 		TriggerObjectType: "object_type",
 		CreatedAt:         time.Now(),
-		LiveVersionID:     utils.Ptr(uuid.Must(uuid.NewV7()).String()),
+		LiveVersionID:     utils.Ptr(pure_utils.NewId().String()),
 	}
 
-	scenarioIterationID := uuid.Must(uuid.NewV7()).String()
+	scenarioIterationID := pure_utils.NewId().String()
 	scenarioIteration := models.ScenarioIteration{
 		Id:             scenarioIterationID,
 		OrganizationId: scenario.OrganizationId,
@@ -111,16 +111,16 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 func TestValidateScenarioIterationImpl_Validate_notBool(t *testing.T) {
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	scenario := models.Scenario{
-		Id:                uuid.Must(uuid.NewV7()).String(),
-		OrganizationId:    uuid.Must(uuid.NewV7()),
+		Id:                pure_utils.NewId().String(),
+		OrganizationId:    pure_utils.NewId(),
 		Name:              "scenario_name",
 		Description:       "description",
 		TriggerObjectType: "object_type",
 		CreatedAt:         time.Now(),
-		LiveVersionID:     utils.Ptr(uuid.Must(uuid.NewV7()).String()),
+		LiveVersionID:     utils.Ptr(pure_utils.NewId().String()),
 	}
 
-	scenarioIterationID := uuid.Must(uuid.NewV7()).String()
+	scenarioIterationID := pure_utils.NewId().String()
 	scenarioIteration := models.ScenarioIteration{
 		Id:             scenarioIterationID,
 		OrganizationId: scenario.OrganizationId,
@@ -203,16 +203,16 @@ func TestValidateScenarioIterationImpl_Validate_notBool(t *testing.T) {
 func TestValidationShouldBypassCircuitBreaking(t *testing.T) {
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	scenario := models.Scenario{
-		Id:                uuid.Must(uuid.NewV7()).String(),
-		OrganizationId:    uuid.Must(uuid.NewV7()),
+		Id:                pure_utils.NewId().String(),
+		OrganizationId:    pure_utils.NewId(),
 		Name:              "scenario_name",
 		Description:       "description",
 		TriggerObjectType: "object_type",
 		CreatedAt:         time.Now(),
-		LiveVersionID:     utils.Ptr(uuid.Must(uuid.NewV7()).String()),
+		LiveVersionID:     utils.Ptr(pure_utils.NewId().String()),
 	}
 
-	scenarioIterationID := uuid.Must(uuid.NewV7()).String()
+	scenarioIterationID := pure_utils.NewId().String()
 	scenarioIteration := models.ScenarioIteration{
 		Id:             scenarioIterationID,
 		OrganizationId: scenario.OrganizationId,

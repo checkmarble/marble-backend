@@ -8,8 +8,8 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
-	"github.com/google/uuid"
 	"github.com/h2non/gock"
 	"github.com/riverqueue/river"
 	"github.com/stretchr/testify/mock"
@@ -239,7 +239,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_NewDataset_CreatesRecor
 	// Setup mocks
 	suite.screeningProvider.On("GetRawCatalog", suite.ctx).Return(catalog, nil)
 	suite.repository.On("ListContinuousScreeningConfigs", mock.Anything, mock.Anything).Return([]models.ContinuousScreeningConfig{
-		{Id: uuid.Must(uuid.NewV7()), OrgId: uuid.Must(uuid.NewV7()), Enabled: true},
+		{Id: pure_utils.NewId(), OrgId: pure_utils.NewId(), Enabled: true},
 	}, nil)
 	// GetLastProcessedVersion returns NotFoundError for new dataset
 	suite.repository.On("GetLastProcessedVersion", suite.ctx, mock.Anything, datasetName).Return(
@@ -250,7 +250,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_NewDataset_CreatesRecor
 		Version:     version,
 	}
 	expectedUpdate := models.ContinuousScreeningDatasetUpdate{
-		Id:          uuid.Must(uuid.NewV7()),
+		Id:          pure_utils.NewId(),
 		DatasetName: datasetName,
 		Version:     version,
 	}
@@ -299,7 +299,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_DatasetWithoutDeltaUrl_
 	// Setup mocks
 	suite.screeningProvider.On("GetRawCatalog", suite.ctx).Return(catalog, nil)
 	suite.repository.On("ListContinuousScreeningConfigs", mock.Anything, mock.Anything).Return([]models.ContinuousScreeningConfig{
-		{Id: uuid.Must(uuid.NewV7()), OrgId: uuid.Must(uuid.NewV7()), Enabled: true},
+		{Id: pure_utils.NewId(), OrgId: pure_utils.NewId(), Enabled: true},
 	}, nil)
 
 	// Dataset1: DB has newer version than catalog - should be ignored
@@ -350,7 +350,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_NoNewVersions_NoProcess
 	// Setup mocks
 	suite.screeningProvider.On("GetRawCatalog", suite.ctx).Return(catalog, nil)
 	suite.repository.On("ListContinuousScreeningConfigs", mock.Anything, mock.Anything).Return([]models.ContinuousScreeningConfig{
-		{Id: uuid.Must(uuid.NewV7()), OrgId: uuid.Must(uuid.NewV7()), Enabled: true},
+		{Id: pure_utils.NewId(), OrgId: pure_utils.NewId(), Enabled: true},
 	}, nil)
 
 	// Both datasets have the same version as in DB - no updates
@@ -400,10 +400,10 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 	}`
 
 	// Mock continuous screening configs
-	config1Id := uuid.Must(uuid.NewV7())
-	config2Id := uuid.Must(uuid.NewV7())
-	org1Id := uuid.Must(uuid.NewV7())
-	org2Id := uuid.Must(uuid.NewV7())
+	config1Id := pure_utils.NewId()
+	config2Id := pure_utils.NewId()
+	org1Id := pure_utils.NewId()
+	org2Id := pure_utils.NewId()
 	configs := []models.ContinuousScreeningConfig{
 		{Id: config1Id, OrgId: org1Id, Enabled: true},
 		{Id: config2Id, OrgId: org2Id, Enabled: true},
@@ -416,7 +416,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 	for i, version := range versionsToProcess {
 		blobKey := fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, datasetName, version)
 		expectedDatasetUpdates[i] = models.ContinuousScreeningDatasetUpdate{
-			Id:            uuid.Must(uuid.NewV7()),
+			Id:            pure_utils.NewId(),
 			DatasetName:   datasetName,
 			Version:       version,
 			DeltaFilePath: blobKey,
@@ -425,13 +425,13 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 
 		// Create jobs for each config for this dataset update
 		expectedUpdateJobs[i*2] = models.ContinuousScreeningUpdateJob{
-			Id:              uuid.Must(uuid.NewV7()),
+			Id:              pure_utils.NewId(),
 			DatasetUpdateId: expectedDatasetUpdates[i].Id,
 			ConfigId:        config1Id,
 			OrgId:           org1Id,
 		}
 		expectedUpdateJobs[i*2+1] = models.ContinuousScreeningUpdateJob{
-			Id:              uuid.Must(uuid.NewV7()),
+			Id:              pure_utils.NewId(),
 			DatasetUpdateId: expectedDatasetUpdates[i].Id,
 			ConfigId:        config2Id,
 			OrgId:           org2Id,
@@ -558,10 +558,10 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_OrgMissingFeature_Skips
 		}
 	}`
 
-	config1Id := uuid.Must(uuid.NewV7())
-	config2Id := uuid.Must(uuid.NewV7())
-	org1Id := uuid.Must(uuid.NewV7())
-	org2Id := uuid.Must(uuid.NewV7()) // This org does NOT have the feature
+	config1Id := pure_utils.NewId()
+	config2Id := pure_utils.NewId()
+	org1Id := pure_utils.NewId()
+	org2Id := pure_utils.NewId() // This org does NOT have the feature
 	configs := []models.ContinuousScreeningConfig{
 		{Id: config1Id, OrgId: org1Id, Enabled: true},
 		{Id: config2Id, OrgId: org2Id, Enabled: true},
@@ -570,7 +570,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_OrgMissingFeature_Skips
 	// Expected dataset update
 	blobKey := fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, datasetName, newVersion)
 	expectedDatasetUpdate := models.ContinuousScreeningDatasetUpdate{
-		Id:            uuid.Must(uuid.NewV7()),
+		Id:            pure_utils.NewId(),
 		DatasetName:   datasetName,
 		Version:       newVersion,
 		DeltaFilePath: blobKey,
@@ -579,7 +579,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_OrgMissingFeature_Skips
 
 	// Expected update job - only for org1 (org2 is skipped due to missing feature)
 	expectedUpdateJob := models.ContinuousScreeningUpdateJob{
-		Id:              uuid.Must(uuid.NewV7()),
+		Id:              pure_utils.NewId(),
 		DatasetUpdateId: expectedDatasetUpdate.Id,
 		ConfigId:        config1Id,
 		OrgId:           org1Id,

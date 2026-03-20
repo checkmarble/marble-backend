@@ -422,7 +422,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		}
 
 		if params.WithDecisionWebhooks {
-			webhookEventId := uuid.Must(uuid.NewV7()).String()
+			webhookEventId := pure_utils.NewId().String()
 			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
 				OrganizationId: decision.OrganizationId,
@@ -669,7 +669,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			decisions[i] = item.decision
 
 			if params.WithDecisionWebhooks {
-				webhookEventId := uuid.Must(uuid.NewV7()).String()
+				webhookEventId := pure_utils.NewId().String()
 				err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 					Id:             webhookEventId,
 					OrganizationId: item.decision.OrganizationId,

@@ -262,7 +262,7 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 		return uuid.UUID{}, false, errors.Wrap(err, "could not parse case id")
 	}
 
-	caseReviewId := uuid.Must(uuid.NewV7())
+	caseReviewId := pure_utils.NewId()
 	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		hasPending, err := uc.caseReviewFileRepository.HasPendingCaseReview(ctx, tx, caseIdUuid)
 		if err != nil {
@@ -870,7 +870,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 	// Send billing event
 	err = uc.billingUsecase.EnqueueBillingEventTask(ctx, models.BillingEvent{
-		TransactionId:          uuid.Must(uuid.NewV7()).String(),
+		TransactionId:          pure_utils.NewId().String(),
 		ExternalSubscriptionId: subscriptionId,
 		Code:                   billing.AI_CASE_REVIEW.String(),
 	})

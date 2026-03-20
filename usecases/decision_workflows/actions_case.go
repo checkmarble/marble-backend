@@ -26,7 +26,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	action models.WorkflowActionSpec[dto.WorkflowActionCaseParams],
 ) (models.WorkflowExecution, error) {
 	logger := utils.LoggerFromContext(ctx)
-	webhookEventId := uuid.Must(uuid.NewV7()).String()
+	webhookEventId := pure_utils.NewId().String()
 	orgId := evalParams.Scenario.OrganizationId
 
 	createNewCaseForDecision := func(ctx context.Context) (models.WorkflowExecution, error) {
@@ -103,7 +103,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 				return models.WorkflowExecution{}, errors.Wrap(err, "error getting inbox")
 			}
 			if inbox.CaseReviewOnCaseCreated {
-				caseReviewId := uuid.Must(uuid.NewV7())
+				caseReviewId := pure_utils.NewId()
 				err = d.caseReviewTaskEnqueuer.EnqueueCaseReviewTask(ctx, tx, orgId, caseId, caseReviewId)
 				if err != nil {
 					return models.WorkflowExecution{}, errors.Wrap(err, "error enqueuing case review task")

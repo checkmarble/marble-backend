@@ -14,6 +14,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 // Mock for enforceSecurityWebhook interface
@@ -62,8 +63,8 @@ func (suite *WebhooksUsecaseTestSuite) SetupTest() {
 	suite.executorFactory = new(mocks.ExecutorFactory)
 
 	suite.organizationId = uuid.MustParse("25ab6323-1657-4a52-923a-ef6983fe4532")
-	suite.webhookId = uuid.Must(uuid.NewV7())
-	suite.secretId = uuid.Must(uuid.NewV7())
+	suite.webhookId = pure_utils.NewId()
+	suite.secretId = pure_utils.NewId()
 
 	suite.repositoryError = errors.New("some repository error")
 	suite.securityError = errors.New("some security error")
@@ -99,7 +100,8 @@ func (suite *WebhooksUsecaseTestSuite) Test_CreateWebhookSecret_nominal() {
 
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
 	suite.webhookRepository.On("GetWebhook", suite.ctx, suite.exec, suite.webhookId).Return(webhook, nil)
-	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx, mock.AnythingOfType("models.Webhook")).Return(nil)
+	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx,
+		mock.AnythingOfType("models.Webhook")).Return(nil)
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.webhookRepository.On("AddWebhookSecret", suite.ctx, suite.transaction,
 		mock.AnythingOfType("models.NewWebhookSecret")).Return(nil)
@@ -123,7 +125,8 @@ func (suite *WebhooksUsecaseTestSuite) Test_CreateWebhookSecret_with_expiration(
 
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
 	suite.webhookRepository.On("GetWebhook", suite.ctx, suite.exec, suite.webhookId).Return(webhook, nil)
-	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx, mock.AnythingOfType("models.Webhook")).Return(nil)
+	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx,
+		mock.AnythingOfType("models.Webhook")).Return(nil)
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.webhookRepository.On("ExpireWebhookSecrets", suite.ctx, suite.transaction,
 		suite.webhookId, mock.AnythingOfType("time.Time")).Return(nil)
@@ -200,7 +203,8 @@ func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_nominal() {
 
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
 	suite.webhookRepository.On("GetWebhook", suite.ctx, suite.exec, suite.webhookId).Return(webhook, nil)
-	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx, mock.AnythingOfType("models.Webhook")).Return(nil)
+	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx,
+		mock.AnythingOfType("models.Webhook")).Return(nil)
 	suite.webhookRepository.On("GetWebhookSecret", suite.ctx, suite.exec, suite.secretId).Return(secret, nil)
 	suite.webhookRepository.On("CountPermanentWebhookSecrets", suite.ctx, suite.exec, suite.webhookId).Return(2, nil)
 	suite.webhookRepository.On("RevokeWebhookSecret", suite.ctx, suite.exec, suite.secretId).Return(nil)
@@ -229,7 +233,8 @@ func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_expiring_with_on
 
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
 	suite.webhookRepository.On("GetWebhook", suite.ctx, suite.exec, suite.webhookId).Return(webhook, nil)
-	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx, mock.AnythingOfType("models.Webhook")).Return(nil)
+	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx,
+		mock.AnythingOfType("models.Webhook")).Return(nil)
 	suite.webhookRepository.On("GetWebhookSecret", suite.ctx, suite.exec, suite.secretId).Return(secret, nil)
 	suite.webhookRepository.On("CountPermanentWebhookSecrets", suite.ctx, suite.exec, suite.webhookId).Return(1, nil)
 	suite.webhookRepository.On("RevokeWebhookSecret", suite.ctx, suite.exec, suite.secretId).Return(nil)
@@ -257,7 +262,8 @@ func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_fails_last_perma
 
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
 	suite.webhookRepository.On("GetWebhook", suite.ctx, suite.exec, suite.webhookId).Return(webhook, nil)
-	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx, mock.AnythingOfType("models.Webhook")).Return(nil)
+	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx,
+		mock.AnythingOfType("models.Webhook")).Return(nil)
 	suite.webhookRepository.On("GetWebhookSecret", suite.ctx, suite.exec, suite.secretId).Return(secret, nil)
 	suite.webhookRepository.On("CountPermanentWebhookSecrets", suite.ctx, suite.exec, suite.webhookId).Return(1, nil)
 
@@ -286,7 +292,8 @@ func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_fails_expiring_w
 
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
 	suite.webhookRepository.On("GetWebhook", suite.ctx, suite.exec, suite.webhookId).Return(webhook, nil)
-	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx, mock.AnythingOfType("models.Webhook")).Return(nil)
+	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx,
+		mock.AnythingOfType("models.Webhook")).Return(nil)
 	suite.webhookRepository.On("GetWebhookSecret", suite.ctx, suite.exec, suite.secretId).Return(secret, nil)
 	suite.webhookRepository.On("CountPermanentWebhookSecrets", suite.ctx, suite.exec, suite.webhookId).Return(0, nil)
 
@@ -315,7 +322,7 @@ func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_secret_wrong_web
 		OrganizationId: suite.organizationId,
 		Url:            "https://example.com/webhook",
 	}
-	otherWebhookId := uuid.Must(uuid.NewV7())
+	otherWebhookId := pure_utils.NewId()
 	secret := models.NewWebhookSecret{
 		Id:        suite.secretId,
 		WebhookId: otherWebhookId, // belongs to different webhook
@@ -324,7 +331,8 @@ func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_secret_wrong_web
 
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
 	suite.webhookRepository.On("GetWebhook", suite.ctx, suite.exec, suite.webhookId).Return(webhook, nil)
-	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx, mock.AnythingOfType("models.Webhook")).Return(nil)
+	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx,
+		mock.AnythingOfType("models.Webhook")).Return(nil)
 	suite.webhookRepository.On("GetWebhookSecret", suite.ctx, suite.exec, suite.secretId).Return(secret, nil)
 
 	err := suite.makeUsecase().RevokeWebhookSecret(suite.ctx, suite.webhookId, suite.secretId)
@@ -351,7 +359,8 @@ func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_already_revoked(
 
 	suite.executorFactory.On("NewExecutor").Return(suite.exec)
 	suite.webhookRepository.On("GetWebhook", suite.ctx, suite.exec, suite.webhookId).Return(webhook, nil)
-	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx, mock.AnythingOfType("models.Webhook")).Return(nil)
+	suite.enforceSecurity.On("CanModifyWebhook", suite.ctx,
+		mock.AnythingOfType("models.Webhook")).Return(nil)
 	suite.webhookRepository.On("GetWebhookSecret", suite.ctx, suite.exec, suite.secretId).Return(secret, nil)
 
 	err := suite.makeUsecase().RevokeWebhookSecret(suite.ctx, suite.webhookId, suite.secretId)

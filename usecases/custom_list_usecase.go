@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -52,7 +53,7 @@ func (usecase *CustomListUseCase) CreateCustomList(
 	list, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.CustomList, error) {
-		newCustomListId := uuid.Must(uuid.NewV7()).String()
+		newCustomListId := pure_utils.NewId().String()
 
 		err := usecase.CustomListRepository.CreateCustomList(ctx, tx, createCustomList, newCustomListId)
 		if repositories.IsUniqueViolationError(err) {
@@ -170,7 +171,7 @@ func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context,
 		if err := usecase.enforceSecurity.ModifyCustomList(customList); err != nil {
 			return models.CustomListValue{}, err
 		}
-		newCustomListValueId := uuid.Must(uuid.NewV7()).String()
+		newCustomListValueId := pure_utils.NewId().String()
 
 		switch customList.Kind {
 		case models.CustomListText:
@@ -294,7 +295,7 @@ func (usecase *CustomListUseCase) ReplaceCustomListValuesFromCSV(ctx context.Con
 		newCustomListValuesInput := make([]models.BatchInsertCustomListValue, len(newCustomListValuesToAdd))
 		for i, customListValue := range newCustomListValuesToAdd {
 			newCustomListValuesInput[i] = models.BatchInsertCustomListValue{
-				Id:    uuid.Must(uuid.NewV7()).String(),
+				Id:    pure_utils.NewId().String(),
 				Value: customListValue,
 			}
 		}

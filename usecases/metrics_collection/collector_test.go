@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
@@ -153,7 +154,7 @@ func TestCollectors_CollectMetrics_Success(t *testing.T) {
 	mockOrgCollector.On("Collect", ctx, orgs, from, to).Return([]models.MetricData{
 		org1Metrics[0], org2Metrics[0],
 	}, nil)
-	deploymentID := uuid.Must(uuid.NewV7())
+	deploymentID := pure_utils.NewId()
 	mockCollectorRepository.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
 		models.MetadataKeyDeploymentID).Return(&models.Metadata{
 		Value: deploymentID.String(),
@@ -217,7 +218,7 @@ func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
 	}, nil)
 	mockCollectorRepository.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
 		models.MetadataKeyDeploymentID).Return(&models.Metadata{
-		Value: uuid.Must(uuid.NewV7()).String(),
+		Value: pure_utils.NewId().String(),
 	}, nil)
 
 	collectors := Collectors{
@@ -306,7 +307,7 @@ func TestCollectors_CollectMetrics_NoOrganizations(t *testing.T) {
 	mockOrgCollector.On("Collect", ctx, []models.Organization{}, from, to).Return([]models.MetricData{}, nil)
 	mockCollectorRepository.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
 		models.MetadataKeyDeploymentID).Return(&models.Metadata{
-		Value: uuid.Must(uuid.NewV7()).String(),
+		Value: pure_utils.NewId().String(),
 	}, nil)
 	// mockOrgCollector should not be called since there are no organizations
 
@@ -354,7 +355,7 @@ func TestCollectors_CollectMetrics_EmptyResults(t *testing.T) {
 	mockOrgCollector.On("Collect", ctx, orgs, from, to).Return([]models.MetricData{}, nil)
 	mockCollectorRepository.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
 		models.MetadataKeyDeploymentID).Return(&models.Metadata{
-		Value: uuid.Must(uuid.NewV7()).String(),
+		Value: pure_utils.NewId().String(),
 	}, nil)
 
 	collectors := Collectors{

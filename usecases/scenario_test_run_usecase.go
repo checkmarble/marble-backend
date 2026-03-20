@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -112,7 +113,7 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
 
 	// keep track of the live version associated to the current testrun
 	repoInput := input.CreateDbInput(*scenario.LiveVersionID)
-	testRunId := uuid.Must(uuid.NewV7()).String()
+	testRunId := pure_utils.NewId().String()
 
 	tr, err := executor_factory.TransactionReturnValue(
 		ctx,

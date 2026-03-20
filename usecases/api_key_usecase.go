@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
@@ -49,7 +50,7 @@ func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context, organizationId uu
 }
 
 func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.CreateApiKeyInput) (models.CreatedApiKey, error) {
-	apiKeyId := uuid.Must(uuid.NewV7()).String()
+	apiKeyId := pure_utils.NewId().String()
 	key := generateAPiKey()
 	hash := sha256.Sum256([]byte(key))
 	apiKey := models.ApiKey{

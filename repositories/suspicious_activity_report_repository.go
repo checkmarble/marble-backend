@@ -6,9 +6,9 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/google/uuid"
 )
 
 func (repo *MarbleDbRepository) ListSuspiciousActivityReportsByCaseId(ctx context.Context, exec Executor,
@@ -64,7 +64,7 @@ func (repo *MarbleDbRepository) CreateSuspiciousActivityReport(ctx context.Conte
 
 	reportId := req.ReportId
 	if reportId == nil {
-		reportId = utils.Ptr(uuid.Must(uuid.NewV7()).String())
+		reportId = utils.Ptr(pure_utils.NewId().String())
 	}
 
 	sql := NewQueryBuilder().

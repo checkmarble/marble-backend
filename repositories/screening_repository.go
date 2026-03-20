@@ -8,8 +8,8 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
-	"github.com/google/uuid"
 )
 
 func (*MarbleDbRepository) GetActiveScreeningForDecision(
@@ -282,7 +282,7 @@ func (*MarbleDbRepository) InsertScreening(
 		Columns("id", "screening_id", "opensanction_entity_id", "query_ids", "payload", "counterparty_id")
 
 	for _, match := range screening.Matches {
-		matchSql = matchSql.Values(uuid.Must(uuid.NewV7()), screening.Id, match.EntityId, match.QueryIds,
+		matchSql = matchSql.Values(pure_utils.NewId(), screening.Id, match.EntityId, match.QueryIds,
 			match.Payload, match.UniqueCounterpartyIdentifier)
 	}
 
@@ -308,7 +308,7 @@ func (*MarbleDbRepository) AddScreeningMatchComment(ctx context.Context,
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SCREENING_MATCH_COMMENTS).
 		Columns("id", "screening_match_id", "commented_by", "comment").
-		Values(uuid.Must(uuid.NewV7()), comment.MatchId, comment.CommenterId, comment.Comment).
+		Values(pure_utils.NewId(), comment.MatchId, comment.CommenterId, comment.Comment).
 		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScreeningMatchCommentsColumn, ",")))
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningMatchComment)
@@ -333,7 +333,7 @@ func (repo *MarbleDbRepository) CreateScreeningFile(ctx context.Context, exec Ex
 				"file_reference",
 			).
 			Values(
-				uuid.Must(uuid.NewV7()),
+				pure_utils.NewId(),
 				input.BucketName,
 				input.ScreeningId,
 				input.FileName,

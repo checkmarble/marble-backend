@@ -17,6 +17,7 @@ import (
 	"github.com/checkmarble/marble-backend/dto/agent_dto"
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/billing"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -126,8 +127,8 @@ func (suite *CaseReviewWorkerTestSuite) AssertExpectations() {
 
 // Test helper to create test data
 func createTestCaseReviewData() (models.CaseReviewArgs, models.Case, models.Organization, models.AiCaseReview) {
-	caseId := uuid.Must(uuid.NewV7())
-	aiCaseReviewId := uuid.Must(uuid.NewV7())
+	caseId := pure_utils.NewId()
+	aiCaseReviewId := pure_utils.NewId()
 
 	args := models.CaseReviewArgs{
 		CaseId:         caseId,

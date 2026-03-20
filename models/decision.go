@@ -123,7 +123,7 @@ func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject
 		reviewStatus = &val
 	}
 
-	decisionId := uuid.Must(uuid.NewV7())
+	decisionId := pure_utils.NewId()
 	return DecisionWithRuleExecutions{
 		Decision: Decision{
 			DecisionId:           decisionId,
@@ -151,7 +151,7 @@ func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject
 func MergeScreeningExecWithDefaults(decisionId, orgId uuid.UUID, counterpartyIdentifier *string) func(se ScreeningWithMatches) ScreeningWithMatches {
 	return func(se ScreeningWithMatches) ScreeningWithMatches {
 		if se.Id == "" {
-			se.Id = uuid.Must(uuid.NewV7()).String()
+			se.Id = pure_utils.NewId().String()
 		}
 		se.DecisionId = decisionId.String()
 		se.OrgId = orgId

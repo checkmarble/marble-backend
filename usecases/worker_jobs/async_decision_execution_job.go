@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
@@ -240,7 +241,7 @@ func (w *AsyncDecisionExecutionWorker) handleError(
 		execution.ErrorMessage = &safeMessage
 
 		// Create webhook event for the failure
-		webhookEventId = uuid.Must(uuid.NewV7()).String()
+		webhookEventId = pure_utils.NewId().String()
 		if err := w.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
 			OrganizationId: execution.OrgId,

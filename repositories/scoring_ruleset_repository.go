@@ -7,6 +7,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/google/uuid"
 )
@@ -171,7 +172,7 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersion(
 			"scoring_interval_seconds",
 		).
 		Values(
-			uuid.Must(uuid.NewV7()),
+			pure_utils.NewId(),
 			orgId,
 			ruleset.Version,
 			ruleset.Name,
@@ -228,7 +229,7 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersionRule(
 
 	for _, rule := range rules {
 		query = query.Values(
-			uuid.Must(uuid.NewV7()),
+			pure_utils.NewId(),
 			ruleset.Id,
 			rule.StableId,
 			rule.Name,
@@ -241,7 +242,9 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersionRule(
 	return SqlToListOfModels(ctx, tx, query, dbmodels.AdaptScoringRule)
 }
 
-func (repo *MarbleDbRepository) CommitRuleset(ctx context.Context, exec Executor, ruleset models.ScoringRuleset) (models.ScoringRuleset, error) {
+func (repo *MarbleDbRepository) CommitRuleset(ctx context.Context, exec Executor,
+	ruleset models.ScoringRuleset,
+) (models.ScoringRuleset, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.ScoringRuleset{}, err
 	}

@@ -133,7 +133,7 @@ func (usecase *usecase) CreateDataModelTable(ctx context.Context,
 			"table name must only contain lower case alphanumeric characters and underscores, and start by a letter")
 	}
 
-	tableId := uuid.Must(uuid.NewV7()).String()
+	tableId := pure_utils.NewId().String()
 
 	defaultFields := []models.CreateFieldInput{
 		{
@@ -159,7 +159,7 @@ func (usecase *usecase) CreateDataModelTable(ctx context.Context,
 		}
 
 		for _, field := range defaultFields {
-			fieldId := uuid.Must(uuid.NewV7()).String()
+			fieldId := pure_utils.NewId().String()
 			err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, organizationId, fieldId, field)
 			if err != nil {
 				return err
@@ -255,7 +255,7 @@ func (usecase *usecase) CreateDataModelField(ctx context.Context, field models.C
 			"field name must only contain lower case alphanumeric characters and underscores, and start by a letter")
 	}
 
-	fieldId := uuid.Must(uuid.NewV7()).String()
+	fieldId := pure_utils.NewId().String()
 	var tableName string
 	var organizationId uuid.UUID
 	err := usecase.transactionFactory.Transaction(
@@ -528,7 +528,7 @@ func (usecase *usecase) CreateDataModelLink(ctx context.Context, link models.Dat
 			fmt.Sprintf("child field must be a string, field %s is %s", childFieldMeta.Name, childFieldMeta.DataType.String()))
 	}
 
-	linkId := uuid.Must(uuid.NewV7()).String()
+	linkId := pure_utils.NewId().String()
 	return linkId, usecase.dataModelRepository.CreateDataModelLink(ctx, exec, linkId, link)
 }
 
@@ -568,7 +568,7 @@ func (usecase *usecase) CreatePivot(ctx context.Context, input models.CreatePivo
 		return models.Pivot{}, err
 	}
 
-	id := uuid.Must(uuid.NewV7()).String()
+	id := pure_utils.NewId().String()
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,

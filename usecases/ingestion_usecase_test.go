@@ -8,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
@@ -671,15 +672,15 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		Return([]models.ContinuousScreeningConfig{{}}, nil) // Return one config to enable feature
 
 	// Setup continuous screening mocks - only objects "1" and "3" are monitored out of 5 total
-	monitoringId1 := uuid.Must(uuid.NewV7())
-	monitoringId3 := uuid.Must(uuid.NewV7())
-	configStableId := uuid.Must(uuid.NewV7())
+	monitoringId1 := pure_utils.NewId()
+	monitoringId3 := pure_utils.NewId()
+	configStableId := pure_utils.NewId()
 
-	rowId1 := uuid.Must(uuid.NewV7())
-	rowId2 := uuid.Must(uuid.NewV7())
-	rowId3 := uuid.Must(uuid.NewV7())
-	rowId4 := uuid.Must(uuid.NewV7())
-	rowId5 := uuid.Must(uuid.NewV7())
+	rowId1 := pure_utils.NewId()
+	rowId2 := pure_utils.NewId()
+	rowId3 := pure_utils.NewId()
+	rowId4 := pure_utils.NewId()
+	rowId5 := pure_utils.NewId()
 
 	monitoredObjects := []models.ContinuousScreeningMonitoredObject{
 		{

@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
@@ -45,12 +46,12 @@ func (suite *DoScreeningWorkerTestSuite) SetupTest() {
 	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)
 
 	suite.ctx = context.Background()
-	suite.configId = uuid.Must(uuid.NewV7())
-	suite.configStableId = uuid.Must(uuid.NewV7())
+	suite.configId = pure_utils.NewId()
+	suite.configStableId = pure_utils.NewId()
 	suite.orgId = uuid.MustParse("12345678-1234-1234-1234-123456789012")
 	suite.objectType = "transactions"
 	suite.objectId = "test-object-id"
-	suite.monitoringId = uuid.Must(uuid.NewV7())
+	suite.monitoringId = pure_utils.NewId()
 }
 
 func (suite *DoScreeningWorkerTestSuite) makeWorker() *DoScreeningWorker {
@@ -90,7 +91,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 	}
 
 	monitoredObject := models.ContinuousScreeningMonitoredObject{
-		Id:             uuid.Must(uuid.NewV7()),
+		Id:             pure_utils.NewId(),
 		ObjectId:       suite.objectId,
 		ConfigStableId: suite.configStableId,
 	}
@@ -130,8 +131,8 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 		},
 	}
 
-	ingestedObjectInternalId := uuid.Must(uuid.NewV7())
-	previousObjectInternalId := uuid.Must(uuid.NewV7())
+	ingestedObjectInternalId := pure_utils.NewId()
+	previousObjectInternalId := pure_utils.NewId()
 
 	// Same matches as existing screening
 	matches := []models.ScreeningMatch{
@@ -152,7 +153,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 
 	existingContinuousScreening := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
-			Id: uuid.Must(uuid.NewV7()),
+			Id: pure_utils.NewId(),
 		},
 		Matches: []models.ContinuousScreeningMatch{
 			{
@@ -163,7 +164,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 
 	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
-			Id: uuid.Must(uuid.NewV7()),
+			Id: pure_utils.NewId(),
 		},
 		Matches: []models.ContinuousScreeningMatch{
 			{
@@ -243,7 +244,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 	}
 
 	monitoredObject := models.ContinuousScreeningMonitoredObject{
-		Id:             uuid.Must(uuid.NewV7()),
+		Id:             pure_utils.NewId(),
 		ObjectId:       suite.objectId,
 		ConfigStableId: suite.configStableId,
 	}
@@ -285,8 +286,8 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 		},
 	}
 
-	ingestedObjectInternalId := uuid.Must(uuid.NewV7())
-	previousObjectInternalId := uuid.Must(uuid.NewV7())
+	ingestedObjectInternalId := pure_utils.NewId()
+	previousObjectInternalId := pure_utils.NewId()
 
 	// Different matches from existing screening
 	newMatches := []models.ScreeningMatch{
@@ -307,7 +308,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 
 	existingContinuousScreening := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
-			Id: uuid.Must(uuid.NewV7()),
+			Id: pure_utils.NewId(),
 		},
 		Matches: []models.ContinuousScreeningMatch{
 			{
@@ -318,7 +319,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 
 	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
-			Id: uuid.Must(uuid.NewV7()),
+			Id: pure_utils.NewId(),
 		},
 		Matches: []models.ContinuousScreeningMatch{
 			{
@@ -398,7 +399,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_IngestedObjectBeforeLatestScre
 	}
 
 	monitoredObject := models.ContinuousScreeningMonitoredObject{
-		Id:             uuid.Must(uuid.NewV7()),
+		Id:             pure_utils.NewId(),
 		ObjectId:       suite.objectId,
 		ConfigStableId: suite.configStableId,
 	}
@@ -440,13 +441,13 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_IngestedObjectBeforeLatestScre
 		},
 	}
 
-	ingestedObjectInternalId := uuid.Must(uuid.NewV7())
-	previousObjectInternalId := uuid.Must(uuid.NewV7())
+	ingestedObjectInternalId := pure_utils.NewId()
+	previousObjectInternalId := pure_utils.NewId()
 
 	// Existing screening created more recently than the ingested object
 	existingContinuousScreening := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
-			Id:        uuid.Must(uuid.NewV7()),
+			Id:        pure_utils.NewId(),
 			CreatedAt: time.Now(),
 		},
 		Matches: []models.ContinuousScreeningMatch{
@@ -514,7 +515,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_DataUnchanged_Sk
 	}
 
 	monitoredObject := models.ContinuousScreeningMonitoredObject{
-		Id:             uuid.Must(uuid.NewV7()),
+		Id:             pure_utils.NewId(),
 		ObjectId:       suite.objectId,
 		ConfigStableId: suite.configStableId,
 	}
@@ -545,8 +546,8 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_DataUnchanged_Sk
 		},
 	}
 
-	ingestedObjectInternalId := uuid.Must(uuid.NewV7())
-	previousObjectInternalId := uuid.Must(uuid.NewV7())
+	ingestedObjectInternalId := pure_utils.NewId()
+	previousObjectInternalId := pure_utils.NewId()
 
 	job := &river.Job[models.ContinuousScreeningDoScreeningArgs]{
 		Args: models.ContinuousScreeningDoScreeningArgs{

@@ -377,7 +377,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		}
 	}
 
-	webhookEventId := uuid.Must(uuid.NewV7()).String()
+	webhookEventId := pure_utils.NewId().String()
 	err = w.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 		Id:             webhookEventId,
 		OrganizationId: decision.OrganizationId,

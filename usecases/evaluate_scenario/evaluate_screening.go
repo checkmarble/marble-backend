@@ -13,7 +13,6 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
-	"github.com/google/uuid"
 	"github.com/mohae/deepcopy"
 )
 
@@ -78,7 +77,7 @@ func (e ScenarioEvaluator) evaluateScreening(
 				wg.Done()
 			}()
 
-			scId := uuid.Must(uuid.NewV7()).String()
+			scId := pure_utils.NewId().String()
 			start := time.Now()
 
 			if scc.TriggerRule != nil {

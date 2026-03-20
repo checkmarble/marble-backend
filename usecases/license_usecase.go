@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/metrics_collection"
@@ -70,7 +71,7 @@ func (usecase *ProtectedLicenseUseCase) CreateLicense(ctx context.Context, input
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.License, error) {
-		licenseId := uuid.Must(uuid.NewV7()).String()
+		licenseId := pure_utils.NewId().String()
 		err := usecase.licenseRepository.CreateLicense(
 			ctx,
 			tx,
@@ -173,7 +174,7 @@ func (usecase *PublicLicenseUseCase) ValidateLicense(ctx context.Context, licens
 			ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 			defer cancel()
 			err := usecase.metricsRepository.SendMetrics(ctx, models.MetricsCollection{
-				CollectionID: uuid.Must(uuid.NewV7()),
+				CollectionID: pure_utils.NewId(),
 				DeploymentID: deploymentId,
 				LicenseKey:   &license.Key,
 				LicenseName:  &license.OrganizationName,

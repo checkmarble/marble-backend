@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
@@ -187,7 +188,7 @@ func TestValidateMonitoringListCheckConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mlc := EntityAnnotationCheck{
 				AnnotationType: models.EntityAnnotationRiskTag,
-				OrgId:          uuid.Must(uuid.NewV7()),
+				OrgId:          pure_utils.NewId(),
 			}
 
 			errs := mlc.validateMonitoringListCheckConfig(tt.config)
@@ -203,7 +204,7 @@ func TestValidateMonitoringListCheckConfig(t *testing.T) {
 func TestMonitoringListCheck_Evaluate_Step1_ReturnsTrue(t *testing.T) {
 	// Test: Step 1 returns true when target object has risk topic
 	ctx := context.Background()
-	orgId := uuid.Must(uuid.NewV7())
+	orgId := pure_utils.NewId()
 
 	// Setup mocks
 	execFactory := &mocks.ExecutorFactory{}
@@ -221,7 +222,7 @@ func TestMonitoringListCheck_Evaluate_Step1_ReturnsTrue(t *testing.T) {
 		return filter.ObjectType == utils.DummyTableNameFirst && len(filter.ObjectIds) == 1 &&
 			filter.ObjectIds[0] == "target_object_123"
 	})).Return([]models.EntityAnnotation{
-		{Id: uuid.Must(uuid.NewV7()).String(), ObjectId: "target_object_123"},
+		{Id: pure_utils.NewId().String(), ObjectId: "target_object_123"},
 	}, nil)
 
 	mlc := EntityAnnotationCheck{
@@ -252,7 +253,7 @@ func TestMonitoringListCheck_Evaluate_Step1_ReturnsTrue(t *testing.T) {
 func TestMonitoringListCheck_Evaluate_Step2_LinkToSingle_ReturnsTrue(t *testing.T) {
 	// Test: Step 2 LinkToSingle returns true when linked object has risk topic
 	ctx := context.Background()
-	orgId := uuid.Must(uuid.NewV7())
+	orgId := pure_utils.NewId()
 
 	// Setup mocks
 	execFactory := &mocks.ExecutorFactory{}
@@ -284,7 +285,7 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingle_ReturnsTrue(t *testing.
 		return filter.ObjectType == utils.DummyTableNameSecond &&
 			len(filter.ObjectIds) == 1 && filter.ObjectIds[0] == "linked_object_456"
 	})).Return([]models.EntityAnnotation{
-		{Id: uuid.Must(uuid.NewV7()).String(), ObjectId: "linked_object_456"},
+		{Id: pure_utils.NewId().String(), ObjectId: "linked_object_456"},
 	}, nil)
 
 	mlc := EntityAnnotationCheck{
@@ -323,7 +324,7 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingle_ReturnsTrue(t *testing.
 func TestMonitoringListCheck_Evaluate_Step2_NavigationNotValid(t *testing.T) {
 	// Test: Step 2 Navigation option is not valid (target table not found in data model)
 	ctx := context.Background()
-	orgId := uuid.Must(uuid.NewV7())
+	orgId := pure_utils.NewId()
 
 	// Setup mocks
 	execFactory := &mocks.ExecutorFactory{}
@@ -384,7 +385,7 @@ func TestMonitoringListCheck_Evaluate_Step2_NavigationNotValid(t *testing.T) {
 func TestMonitoringListCheck_Evaluate_Step2_LinkToSingleFalse_FallbackNavigation_ReturnsFalse(t *testing.T) {
 	// Test: LinkToSingle returns false, fallback to Navigation, returns false
 	ctx := context.Background()
-	orgId := uuid.Must(uuid.NewV7())
+	orgId := pure_utils.NewId()
 
 	// Setup mocks
 	execFactory := &mocks.ExecutorFactory{}
@@ -485,7 +486,7 @@ func TestMonitoringListCheck_Evaluate_Step2_LinkToSingleFalse_FallbackNavigation
 func TestMonitoringListCheck_Evaluate_Step2_Navigation_MultipleItems_OneHasTopic_ReturnsTrue(t *testing.T) {
 	// Test: Navigation returns multiple objects, one has a risk topic, returns true
 	ctx := context.Background()
-	orgId := uuid.Must(uuid.NewV7())
+	orgId := pure_utils.NewId()
 
 	// Setup mocks
 	execFactory := &mocks.ExecutorFactory{}
@@ -523,7 +524,7 @@ func TestMonitoringListCheck_Evaluate_Step2_Navigation_MultipleItems_OneHasTopic
 			filter.ObjectIds[1] == "nav_object_002" &&
 			filter.ObjectIds[2] == "nav_object_003"
 	})).Return([]models.EntityAnnotation{
-		{Id: uuid.Must(uuid.NewV7()).String(), ObjectId: "nav_object_002"}, // Second object has a topic
+		{Id: pure_utils.NewId().String(), ObjectId: "nav_object_002"}, // Second object has a topic
 	}, nil)
 
 	// Build data model with navigation option for the test

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
@@ -237,13 +238,13 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 		}
 	}
 
-	webhookEventId := uuid.Must(uuid.NewV7()).String()
+	webhookEventId := pure_utils.NewId().String()
 	snoozes, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) ([]models.RuleSnooze, error) {
 			if snoozeGroupId == nil {
-				val := uuid.Must(uuid.NewV7()).String()
+				val := pure_utils.NewId().String()
 				snoozeGroupId = &val
 				snoozeGroupIds = append(snoozeGroupIds, *snoozeGroupId)
 				err := usecase.ruleSnoozeRepository.CreateSnoozeGroup(ctx, tx, val, input.OrganizationId)
@@ -261,7 +262,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 				// update it here rather than re-reading it from the DB
 				it.Rules[ruleIdx].SnoozeGroupId = snoozeGroupId
 			}
-			snoozeId := uuid.Must(uuid.NewV7()).String()
+			snoozeId := pure_utils.NewId().String()
 			err = usecase.ruleSnoozeRepository.CreateRuleSnooze(ctx, tx, models.RuleSnoozeCreateInput{
 				Id:                    snoozeId,
 				CreatedByUserId:       input.UserId,
@@ -384,13 +385,13 @@ func (usecase RuleSnoozeUsecase) SnoozeDecisionWithoutCase(
 		}
 	}
 
-	webhookEventId := uuid.Must(uuid.NewV7()).String()
+	webhookEventId := pure_utils.NewId().String()
 	snoozes, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) ([]models.RuleSnooze, error) {
 			if snoozeGroupId == nil {
-				val := uuid.Must(uuid.NewV7()).String()
+				val := pure_utils.NewId().String()
 				snoozeGroupId = &val
 				snoozeGroupIds = append(snoozeGroupIds, *snoozeGroupId)
 				err := usecase.ruleSnoozeRepository.CreateSnoozeGroup(ctx, tx, val, input.OrganizationId)
@@ -408,7 +409,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecisionWithoutCase(
 				// update it here rather than re-reading it from the DB
 				it.Rules[ruleIdx].SnoozeGroupId = snoozeGroupId
 			}
-			snoozeId := uuid.Must(uuid.NewV7()).String()
+			snoozeId := pure_utils.NewId().String()
 			err = usecase.ruleSnoozeRepository.CreateRuleSnooze(ctx, tx, models.RuleSnoozeCreateInput{
 				Id:                    snoozeId,
 				CreatedByUserId:       input.UserId,
