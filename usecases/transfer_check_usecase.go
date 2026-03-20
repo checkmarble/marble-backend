@@ -128,7 +128,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	if len(transferMappings) > 0 {
 		transferMappingId = transferMappings[0].Id
 	} else {
-		transferMappingId = uuid.New().String()
+		transferMappingId = uuid.Must(uuid.NewV7()).String()
 		err = usecase.transferMappingsRepository.CreateTransferMapping(ctx, exec,
 			transferMappingId, models.TransferMappingCreateInput{
 				ClientTransferId: createBody.TransferId,

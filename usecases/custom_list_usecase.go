@@ -52,7 +52,7 @@ func (usecase *CustomListUseCase) CreateCustomList(
 	list, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.CustomList, error) {
-		newCustomListId := uuid.NewString()
+		newCustomListId := uuid.Must(uuid.NewV7()).String()
 
 		err := usecase.CustomListRepository.CreateCustomList(ctx, tx, createCustomList, newCustomListId)
 		if repositories.IsUniqueViolationError(err) {
@@ -170,19 +170,21 @@ func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context,
 		if err := usecase.enforceSecurity.ModifyCustomList(customList); err != nil {
 			return models.CustomListValue{}, err
 		}
-		newCustomListValueId := uuid.NewString()
+		newCustomListValueId := uuid.Must(uuid.NewV7()).String()
 
 		switch customList.Kind {
 		case models.CustomListText:
 		case models.CustomListCidrs:
 			if _, err := netip.ParsePrefix(addCustomListValue.Value); err != nil {
-				return models.CustomListValue{}, errors.Wrap(models.BadParameterError, "could not parse value to IP address")
+				return models.CustomListValue{}, errors.Wrap(
+					models.BadParameterError, "could not parse value to IP address")
 			}
 		default:
 			return models.CustomListValue{}, errors.Wrap(models.BadParameterError, "unknown custom list kind")
 		}
 
-		err = usecase.CustomListRepository.AddCustomListValue(ctx, tx, customList.Kind, addCustomListValue, newCustomListValueId, userId)
+		err = usecase.CustomListRepository.AddCustomListValue(ctx, tx, customList.Kind,
+			addCustomListValue, newCustomListValueId, userId)
 		if err != nil {
 			return models.CustomListValue{}, err
 		}
@@ -292,7 +294,7 @@ func (usecase *CustomListUseCase) ReplaceCustomListValuesFromCSV(ctx context.Con
 		newCustomListValuesInput := make([]models.BatchInsertCustomListValue, len(newCustomListValuesToAdd))
 		for i, customListValue := range newCustomListValuesToAdd {
 			newCustomListValuesInput[i] = models.BatchInsertCustomListValue{
-				Id:    uuid.NewString(),
+				Id:    uuid.Must(uuid.NewV7()).String(),
 				Value: customListValue,
 			}
 		}

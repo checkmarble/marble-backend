@@ -111,7 +111,7 @@ func (i *ConcreteIndex) setName() {
 
 	indexedNames := strings.Join(i.Indexed, "-")
 	out := fmt.Sprintf("%s_%s_%s", prefix, i.TableName, indexedNames)
-	randomId := uuid.NewString()
+	randomId := uuid.Must(uuid.NewV7()).String()
 	length := min(len(out), MAX_INDEX_NAME_LENGTH_BEFORE_SUFFIX)
 
 	withRandomSuffix := out[:length] + "_" + randomId

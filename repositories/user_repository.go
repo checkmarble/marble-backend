@@ -24,7 +24,7 @@ type UserRepository interface {
 }
 
 func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (string, error) {
-	userId := uuid.NewString()
+	userId := uuid.Must(uuid.NewV7()).String()
 
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return "", err
@@ -121,7 +121,8 @@ func (repo *MarbleDbRepository) DeleteUsersOfOrganization(ctx context.Context, e
 }
 
 func (repo *MarbleDbRepository) UserById(ctx context.Context, exec Executor, userId string) (models.User, error) {
-	if user, err := RedisLoadModel[models.User](ctx, exec.Cache(ctx), exec.Cache(ctx).Key("user", userId)); err == nil {
+	if user, err := RedisLoadModel[models.User](ctx, exec.Cache(ctx),
+		exec.Cache(ctx).Key("user", userId)); err == nil {
 		return user, nil
 	}
 

@@ -95,7 +95,8 @@ func (uc EntityAnnotationUsecase) List(ctx context.Context, req models.EntityAnn
 					thumbKey := models.ThumbnailFileName(key)
 					thumbnailUrl, err := uc.blobRepository.GenerateSignedUrl(ctx, uc.bucketUrl, thumbKey)
 
-					annotations[annIdx].FileContentTypes[fileIdx] = uc.blobRepository.GetContentType(ctx, uc.bucketUrl, key)
+					annotations[annIdx].FileContentTypes[fileIdx] =
+						uc.blobRepository.GetContentType(ctx, uc.bucketUrl, key)
 
 					if err == nil {
 						annotations[annIdx].FileThumbnails[fileIdx] = thumbnailUrl
@@ -222,7 +223,7 @@ func (uc EntityAnnotationUsecase) AttachFile(
 	metadata := make([]models.EntityAnnotationFilePayloadFile, len(files))
 
 	for idx, file := range files {
-		key := fmt.Sprintf("annotations/%s/%s/%s", req.OrgId, req.ObjectType, uuid.NewString())
+		key := fmt.Sprintf("annotations/%s/%s/%s", req.OrgId, req.ObjectType, uuid.Must(uuid.NewV7()).String())
 
 		mimeType, err := uc.writeFileAnnotationToBlobStorage(ctx, file, key)
 		if err != nil {
@@ -230,7 +231,7 @@ func (uc EntityAnnotationUsecase) AttachFile(
 		}
 
 		metadata[idx] = models.EntityAnnotationFilePayloadFile{
-			Id:          uuid.NewString(),
+			Id:          uuid.Must(uuid.NewV7()).String(),
 			Key:         key,
 			Filename:    file.Filename,
 			ContentType: mimeType,

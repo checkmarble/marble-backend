@@ -64,7 +64,7 @@ func (repo *MarbleDbRepository) CreateSuspiciousActivityReport(ctx context.Conte
 
 	reportId := req.ReportId
 	if reportId == nil {
-		reportId = utils.Ptr(uuid.NewString())
+		reportId = utils.Ptr(uuid.Must(uuid.NewV7()).String())
 	}
 
 	sql := NewQueryBuilder().

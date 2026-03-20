@@ -129,7 +129,7 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models
 
 	// Create a new admin user on the organization
 	adminUser, err := userUsecase.AddUser(ctx, models.CreateUser{
-		Email:          uuid.NewString() + "@testmarble.com",
+		Email:          uuid.Must(uuid.NewV7()).String() + "@testmarble.com",
 		OrganizationId: organizationId,
 		Role:           models.ADMIN,
 	})
@@ -470,15 +470,21 @@ func ingestAccounts(
 		"updated_at": "2020-01-01T00:00:00Z"
 	}`)
 
-	_, err := ingestionUsecase.IngestObject(ctx, organizationId, tableName, accountPayloadJson1, models.IngestionOptions{ShouldScreen: true})
+	_, err := ingestionUsecase.IngestObject(ctx, organizationId, tableName, accountPayloadJson1, models.IngestionOptions{
+		ShouldScreen: true,
+	})
 	if err != nil {
 		assert.FailNow(t, "Could not ingest data", err)
 	}
-	_, err = ingestionUsecase.IngestObject(ctx, organizationId, tableName, accountPayloadJson2, models.IngestionOptions{ShouldScreen: true})
+	_, err = ingestionUsecase.IngestObject(ctx, organizationId, tableName, accountPayloadJson2, models.IngestionOptions{
+		ShouldScreen: true,
+	})
 	if err != nil {
 		assert.FailNow(t, "Could not ingest data", err)
 	}
-	_, err = ingestionUsecase.IngestObject(ctx, organizationId, tableName, accountPayloadJson3, models.IngestionOptions{ShouldScreen: true})
+	_, err = ingestionUsecase.IngestObject(ctx, organizationId, tableName, accountPayloadJson3, models.IngestionOptions{
+		ShouldScreen: true,
+	})
 	if err != nil {
 		assert.FailNow(t, "Could not ingest data", err)
 	}
@@ -731,7 +737,7 @@ func getRulesForFullApiTest() []models.CreateRuleInput {
 			ScoreModifier: 100,
 			Name:          "Check on account name",
 			Description:   "Check on account name",
-			StableRuleId:  uuid.NewString(),
+			StableRuleId:  uuid.Must(uuid.NewV7()).String(),
 		},
 		{
 			FormulaAstExpression: &ast.Node{
@@ -771,7 +777,7 @@ func getRulesForFullApiTest() []models.CreateRuleInput {
 			ScoreModifier: 10,
 			Name:          "Check on aggregated value",
 			Description:   "Check on aggregated value",
-			StableRuleId:  uuid.NewString(),
+			StableRuleId:  uuid.Must(uuid.NewV7()).String(),
 		},
 		{
 			FormulaAstExpression: &ast.Node{
@@ -793,7 +799,7 @@ func getRulesForFullApiTest() []models.CreateRuleInput {
 			ScoreModifier: 1,
 			Name:          "Fuzzy match on name",
 			Description:   "Fuzzy match on name",
-			StableRuleId:  uuid.NewString(),
+			StableRuleId:  uuid.Must(uuid.NewV7()).String(),
 		},
 	}
 }

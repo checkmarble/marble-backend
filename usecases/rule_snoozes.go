@@ -237,13 +237,13 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 		}
 	}
 
-	webhookEventId := uuid.NewString()
+	webhookEventId := uuid.Must(uuid.NewV7()).String()
 	snoozes, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) ([]models.RuleSnooze, error) {
 			if snoozeGroupId == nil {
-				val := uuid.NewString()
+				val := uuid.Must(uuid.NewV7()).String()
 				snoozeGroupId = &val
 				snoozeGroupIds = append(snoozeGroupIds, *snoozeGroupId)
 				err := usecase.ruleSnoozeRepository.CreateSnoozeGroup(ctx, tx, val, input.OrganizationId)
@@ -261,7 +261,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 				// update it here rather than re-reading it from the DB
 				it.Rules[ruleIdx].SnoozeGroupId = snoozeGroupId
 			}
-			snoozeId := uuid.NewString()
+			snoozeId := uuid.Must(uuid.NewV7()).String()
 			err = usecase.ruleSnoozeRepository.CreateRuleSnooze(ctx, tx, models.RuleSnoozeCreateInput{
 				Id:                    snoozeId,
 				CreatedByUserId:       input.UserId,
@@ -384,13 +384,13 @@ func (usecase RuleSnoozeUsecase) SnoozeDecisionWithoutCase(
 		}
 	}
 
-	webhookEventId := uuid.NewString()
+	webhookEventId := uuid.Must(uuid.NewV7()).String()
 	snoozes, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) ([]models.RuleSnooze, error) {
 			if snoozeGroupId == nil {
-				val := uuid.NewString()
+				val := uuid.Must(uuid.NewV7()).String()
 				snoozeGroupId = &val
 				snoozeGroupIds = append(snoozeGroupIds, *snoozeGroupId)
 				err := usecase.ruleSnoozeRepository.CreateSnoozeGroup(ctx, tx, val, input.OrganizationId)
@@ -408,7 +408,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecisionWithoutCase(
 				// update it here rather than re-reading it from the DB
 				it.Rules[ruleIdx].SnoozeGroupId = snoozeGroupId
 			}
-			snoozeId := uuid.NewString()
+			snoozeId := uuid.Must(uuid.NewV7()).String()
 			err = usecase.ruleSnoozeRepository.CreateRuleSnooze(ctx, tx, models.RuleSnoozeCreateInput{
 				Id:                    snoozeId,
 				CreatedByUserId:       input.UserId,

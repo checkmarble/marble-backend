@@ -118,7 +118,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 	}
 
 	// Set a default stable ID, we don't allow to pass a stable ID in the input
-	input.StableId = uuid.New()
+	input.StableId = uuid.Must(uuid.NewV7())
 
 	return executor_factory.TransactionReturnValue(
 		ctx,

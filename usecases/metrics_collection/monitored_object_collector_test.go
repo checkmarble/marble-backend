@@ -71,8 +71,8 @@ func TestContinuousScreeningCollector_Collect_Success(t *testing.T) {
 	}
 
 	// Mock config stable IDs
-	config1 := uuid.New()
-	config2 := uuid.New()
+	config1 := uuid.Must(uuid.NewV7())
+	config2 := uuid.Must(uuid.NewV7())
 	configStableIdsByOrg := map[string][]uuid.UUID{
 		org1Id.String(): {config1},
 		org2Id.String(): {config2},

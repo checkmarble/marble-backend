@@ -242,7 +242,7 @@ func (repo *MarbleDbRepository) InsertContinuousScreening(
 		return models.ContinuousScreeningWithMatches{}, err
 	}
 
-	id := uuid.New()
+	id := uuid.Must(uuid.NewV7())
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_CONTINUOUS_SCREENINGS).

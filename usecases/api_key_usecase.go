@@ -49,7 +49,7 @@ func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context, organizationId uu
 }
 
 func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.CreateApiKeyInput) (models.CreatedApiKey, error) {
-	apiKeyId := uuid.NewString()
+	apiKeyId := uuid.Must(uuid.NewV7()).String()
 	key := generateAPiKey()
 	hash := sha256.Sum256([]byte(key))
 	apiKey := models.ApiKey{

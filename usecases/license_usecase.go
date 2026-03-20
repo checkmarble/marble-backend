@@ -70,7 +70,7 @@ func (usecase *ProtectedLicenseUseCase) CreateLicense(ctx context.Context, input
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.License, error) {
-		licenseId := uuid.NewString()
+		licenseId := uuid.Must(uuid.NewV7()).String()
 		err := usecase.licenseRepository.CreateLicense(
 			ctx,
 			tx,
@@ -173,7 +173,7 @@ func (usecase *PublicLicenseUseCase) ValidateLicense(ctx context.Context, licens
 			ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 			defer cancel()
 			err := usecase.metricsRepository.SendMetrics(ctx, models.MetricsCollection{
-				CollectionID: uuid.New(),
+				CollectionID: uuid.Must(uuid.NewV7()),
 				DeploymentID: deploymentId,
 				LicenseKey:   &license.Key,
 				LicenseName:  &license.OrganizationName,

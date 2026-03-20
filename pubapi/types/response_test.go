@@ -33,7 +33,7 @@ func TestErrorMessagesPublicVsPrivate(t *testing.T) {
 	}
 
 	for _, tt := range tts {
-		path := fmt.Sprintf("/%s", uuid.NewString())
+		path := fmt.Sprintf("/%s", uuid.Must(uuid.NewV7()).String())
 
 		g.GET(path, func(c *gin.Context) {
 			err := errors.WithDetail(

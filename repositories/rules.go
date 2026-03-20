@@ -274,7 +274,7 @@ func (repo *MarbleDbRepository) CreateRules(ctx context.Context, exec Executor, 
 
 	for i := range rules {
 		if rules[i].StableRuleId == "" {
-			rules[i].StableRuleId = uuid.NewString()
+			rules[i].StableRuleId = uuid.Must(uuid.NewV7()).String()
 		}
 	}
 

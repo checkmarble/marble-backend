@@ -112,7 +112,7 @@ func (uc OrgImportUsecase) Seed(ctx context.Context, spec dto.OrgImport, orgId u
 }
 
 func (uc *OrgImportUsecase) generateObject(table string, spec dto.ImportSeedsIngestion, ids map[string][]string) (json.RawMessage, error) {
-	objectId := uuid.NewString()
+	objectId := uuid.Must(uuid.NewV7()).String()
 
 	object := map[string]any{
 		"object_id":  objectId,

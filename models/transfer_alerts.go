@@ -54,7 +54,7 @@ func (b TransferAlertCreateBody) WithBeneficiaryPartnerAndDefaults(beneficiaryPa
 		return TransferAlert{}, errors.Wrapf(BadParameterError, "beneficiary_partner_id is required")
 	}
 	out := TransferAlert{
-		Id:                   uuid.New().String(),
+		Id:                   uuid.Must(uuid.NewV7()).String(),
 		TransferId:           b.TransferId,
 		OrganizationId:       b.OrganizationId,
 		SenderPartnerId:      b.SenderPartnerId,

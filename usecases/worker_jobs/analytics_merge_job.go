@@ -213,7 +213,8 @@ func (w AnalyticsMergeWorker) merge(
 	}
 
 	if err := w.repository.SaveWatermark(ctx, dbExec, &orgId,
-		models.SpecializedWatermark(watermarkType, tableName), utils.Ptr(uuid.NewString()), lhs, nil); err != nil {
+		models.SpecializedWatermark(watermarkType, tableName),
+		utils.Ptr(uuid.Must(uuid.NewV7()).String()), lhs, nil); err != nil {
 		return errors.Wrap(err, "failed to save watermark")
 	}
 
