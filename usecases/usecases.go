@@ -407,6 +407,11 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 		},
 	}
 
+	adminUc := UsecasesWithCreds{
+		Usecases:    *usecases,
+		Credentials: enforceSecurity.Credentials,
+	}
+
 	environment.AddEvaluator(ast.FUNC_CUSTOM_LIST_ACCESS,
 		evaluate.NewCustomListValuesAccess(
 			usecases.Repositories.CustomListRepository,
@@ -485,6 +490,19 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 			DataModel:       params.DataModel,
 			ClientObject:    params.ClientObject,
 		},
+	)
+
+	environment.AddEvaluator(ast.FUNC_RECORD_RISK_LEVEL,
+		evaluate.NewRecordRiskLevelEvaluator(
+			params.OrganizationId,
+			usecases.NewExecutorFactory(),
+			usecases.NewTransactionFactory(),
+			adminUc.NewScoringRulesetsUsecase(),
+			adminUc.NewScoringScoresUsecase(),
+			usecases.Repositories.MarbleDbRepository,
+			params.DataModel,
+			params.ClientObject,
+		),
 	)
 
 	environment.AddEvaluator(ast.FUNC_HAS_IP_FLAG, evaluate.HasIpFlag{
