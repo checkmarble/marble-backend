@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/google/uuid"
 )
@@ -455,7 +456,8 @@ func (d DataModel) AddNavigationOptionsToDataModel(indexes []ConcreteIndex, pivo
 			if _, ok := navigationOptions[link.ParentTableName]; !ok {
 				navigationOptions[link.ParentTableName] = []NavigationOption{}
 			}
-			navigationOptions[link.ParentTableName] = append(navigationOptions[link.ParentTableName], navOption)
+			navigationOptions[link.ParentTableName] =
+				append(navigationOptions[link.ParentTableName], navOption)
 		}
 
 		for _, pivot := range pivots {
@@ -483,7 +485,8 @@ func (d DataModel) AddNavigationOptionsToDataModel(indexes []ConcreteIndex, pivo
 			if _, ok := navigationOptions[pivot.BaseTable]; !ok {
 				navigationOptions[pivot.BaseTable] = []NavigationOption{}
 			}
-			navigationOptions[pivot.BaseTable] = append(navigationOptions[pivot.BaseTable], navOption)
+			navigationOptions[pivot.BaseTable] = append(
+				navigationOptions[pivot.BaseTable], navOption)
 		}
 	}
 
@@ -544,4 +547,92 @@ type CreateNavigationOptionInput struct {
 	TargetTableId   string
 	FilterFieldId   string
 	OrderingFieldId string
+}
+
+func GetLinkedDatabaseIdentifiers(scenario Scenario, dataModel DataModel) ([]ast.Node, error) {
+	dataAccessors := []ast.Node{}
+	var recursiveDatabaseAccessor func(
+		baseTable string,
+		path []string,
+		links map[string]LinkToSingle,
+		visited []string,
+	) error
+
+	triggerObjectTable, found := dataModel.Tables[scenario.TriggerObjectType]
+	if !found {
+		return nil, fmt.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)
+	}
+
+	recursiveDatabaseAccessor = func(
+		baseTable string,
+		path []string,
+		links map[string]LinkToSingle,
+		visited []string,
+	) error {
+		visited = append(visited, baseTable)
+		for linkName, link := range links {
+			table, found := dataModel.Tables[link.ParentTableName]
+			if !found {
+				return fmt.Errorf("table %s not found in data model", scenario.TriggerObjectType)
+			}
+			if slices.Contains(visited, table.Name) {
+				continue
+			}
+			visitedDeepCp := append(make([]string, 0, len(visited)+1), visited...)
+			visitedDeepCp = append(visitedDeepCp, table.Name)
+
+			// deepcopy so that different identifiers don't collide
+			pathForLink := append(make([]string, 0, len(path)+1), path...)
+			pathForLink = append(pathForLink, linkName)
+
+			for fieldName := range table.Fields {
+				dataAccessors = append(dataAccessors,
+					ast.NewNodeDatabaseAccess(
+						scenario.TriggerObjectType,
+						fieldName,
+						pathForLink,
+					),
+				)
+			}
+
+			if err := recursiveDatabaseAccessor(
+				table.Name, pathForLink,
+				table.LinksToSingle, visitedDeepCp); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	if err := recursiveDatabaseAccessor(
+		triggerObjectTable.Name,
+		[]string{},
+		triggerObjectTable.LinksToSingle,
+		[]string{},
+	); err != nil {
+		return nil, err
+	}
+	return dataAccessors, nil
+}
+
+func GetPayloadIdentifiers(scenario Scenario, dataModel DataModel) ([]ast.Node, error) {
+	dataAccessors := []ast.Node{}
+
+	triggerObjectTable, found := dataModel.Tables[scenario.TriggerObjectType]
+	if !found {
+		// unexpected error: must be a valid table
+		return nil, fmt.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)
+	}
+	for fieldName := range triggerObjectTable.Fields {
+		dataAccessors = append(dataAccessors,
+			ast.Node{
+				Function: ast.FUNC_PAYLOAD,
+				Constant: nil,
+				Children: []ast.Node{
+					ast.NewNodeConstant(fieldName),
+				},
+			},
+		)
+	}
+	return dataAccessors, nil
 }

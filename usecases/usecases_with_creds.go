@@ -825,6 +825,7 @@ func (usecases *UsecasesWithCreds) NewAiAgentUsecase() ai_agent.AiAgentUsecase {
 		usecases.NewEnforceCaseSecurity(),
 		usecases.NewEnforceDecisionSecurity(),
 		usecases.NewEnforceOrganizationSecurity(),
+		usecases.NewEnforceScenarioSecurity(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewInboxReader(),
 		usecases.NewExecutorFactory(),

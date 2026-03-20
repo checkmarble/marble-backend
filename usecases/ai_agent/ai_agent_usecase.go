@@ -170,6 +170,8 @@ type screeningHitSuggestionTaskEnqueuer interface {
 
 type AiAgentUsecase struct {
 	enforceSecurityCase                security.EnforceSecurityCase
+	enforceSecurityDecision            security.EnforceSecurityDecision
+	enforceSecurityScenario            security.EnforceSecurityScenario
 	enforceSecurityOrganization        security.EnforceSecurityOrganization
 	repository                         AiAgentUsecaseRepository
 	inboxReader                        inboxes.InboxReader
@@ -184,13 +186,12 @@ type AiAgentUsecase struct {
 	caseReviewFileRepository           caseReviewWorkerRepository
 	blobRepository                     repositories.BlobRepository
 	caseReviewTaskEnqueuer             caseReviewTaskEnqueuer
-	scenarioFetcher                    scenarios.ScenarioFetcher
+	screeningHitSuggestionTaskEnqueuer screeningHitSuggestionTaskEnqueuer
+	screeningUsecase                   AiAgentScreeningUsecase
 	featureAccessReader                featureAccessReader
 	config                             infra.AIAgentConfiguration
 	caseManagerBucketUrl               string
-	enforceSecurityDecision            security.EnforceSecurityDecision
-	screeningHitSuggestionTaskEnqueuer screeningHitSuggestionTaskEnqueuer
-	screeningUsecase                   AiAgentScreeningUsecase
+	scenarioFetcher                    scenarios.ScenarioFetcher
 
 	caseReviewAdapter *llmberjack.Llmberjack
 	enrichmentAdapter *llmberjack.Llmberjack
@@ -201,6 +202,7 @@ func NewAiAgentUsecase(
 	enforceSecurityCase security.EnforceSecurityCase,
 	enforceSecurityDecision security.EnforceSecurityDecision,
 	enforceSecurityOrganization security.EnforceSecurityOrganization,
+	enforceSecurityScenario security.EnforceSecurityScenario,
 	repository AiAgentUsecaseRepository,
 	inboxReader inboxes.InboxReader,
 	executorFactory executor_factory.ExecutorFactory,
@@ -223,7 +225,9 @@ func NewAiAgentUsecase(
 ) AiAgentUsecase {
 	return AiAgentUsecase{
 		enforceSecurityCase:                enforceSecurityCase,
+		enforceSecurityDecision:            enforceSecurityDecision,
 		enforceSecurityOrganization:        enforceSecurityOrganization,
+		enforceSecurityScenario:            enforceSecurityScenario,
 		repository:                         repository,
 		inboxReader:                        inboxReader,
 		executorFactory:                    executorFactory,
@@ -236,14 +240,13 @@ func NewAiAgentUsecase(
 		caseReviewFileRepository:           caseReviewFileRepository,
 		blobRepository:                     blobRepository,
 		caseReviewTaskEnqueuer:             caseReviewTaskEnqueuer,
+		screeningHitSuggestionTaskEnqueuer: screeningHitSuggestionTaskEnqueuer,
+		screeningUsecase:                   screeningUsecase,
 		transactionFactory:                 transactionFactory,
-		scenarioFetcher:                    scenarioFetcher,
 		featureAccessReader:                featureAccessReader,
 		config:                             config,
 		caseManagerBucketUrl:               caseManagerBucketUrl,
-		enforceSecurityDecision:            enforceSecurityDecision,
-		screeningHitSuggestionTaskEnqueuer: screeningHitSuggestionTaskEnqueuer,
-		screeningUsecase:                   screeningUsecase,
+		scenarioFetcher:                    scenarioFetcher,
 	}
 }
 
