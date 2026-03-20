@@ -18,6 +18,7 @@ type APIOrganizationFeatureAccess struct {
 	CaseAutoAssign      string `json:"case_auto_assign"`
 	CaseAiAssist        string `json:"case_ai_assist"`
 	ContinuousScreening string `json:"continuous_screening"`
+	AiRuleBuilding      string `json:"ai_rule_building"`
 
 	// user-scoped
 	// Currently only used to control display of the AI assist button in the UI - DO NOT use for anything else as it will be removed
@@ -37,6 +38,7 @@ func AdaptOrganizationFeatureAccessDto(f models.OrganizationFeatureAccess) APIOr
 		CaseAutoAssign:      f.CaseAutoAssign.String(),
 		CaseAiAssist:        f.CaseAiAssist.String(),
 		ContinuousScreening: f.ContinuousScreening.String(),
+		AiRuleBuilding:      f.AiRuleBuilding.String(),
 		AiAssist:            f.AiAssist.String(),
 	}
 }
@@ -47,12 +49,13 @@ type UpdateOrganizationFeatureAccessBodyDto struct {
 	CaseAutoAssign      *string `json:"case_auto_assign"`
 	CaseAiAssist        *string `json:"case_ai_assist"`
 	ContinuousScreening *string `json:"continuous_screening"`
+	AiRuleBuilding      *string `json:"ai_rule_building"`
 }
 
 func AdaptUpdateOrganizationFeatureAccessInput(f UpdateOrganizationFeatureAccessBodyDto,
 	orgId uuid.UUID,
 ) models.UpdateOrganizationFeatureAccessInput {
-	var testRun, sanctions, caseAutoAssign, caseAiAssist, continuousScreening *models.FeatureAccess
+	var testRun, sanctions, caseAutoAssign, caseAiAssist, continuousScreening, aiRuleBuilding *models.FeatureAccess
 	if f.TestRun != nil {
 		testRun = utils.Ptr(models.FeatureAccessFrom(*f.TestRun))
 	}
@@ -68,6 +71,9 @@ func AdaptUpdateOrganizationFeatureAccessInput(f UpdateOrganizationFeatureAccess
 	if f.ContinuousScreening != nil {
 		continuousScreening = utils.Ptr(models.FeatureAccessFrom(*f.ContinuousScreening))
 	}
+	if f.AiRuleBuilding != nil {
+		aiRuleBuilding = utils.Ptr(models.FeatureAccessFrom(*f.AiRuleBuilding))
+	}
 	return models.UpdateOrganizationFeatureAccessInput{
 		OrganizationId:      orgId,
 		TestRun:             testRun,
@@ -75,5 +81,6 @@ func AdaptUpdateOrganizationFeatureAccessInput(f UpdateOrganizationFeatureAccess
 		CaseAutoAssign:      caseAutoAssign,
 		CaseAiAssist:        caseAiAssist,
 		ContinuousScreening: continuousScreening,
+		AiRuleBuilding:      aiRuleBuilding,
 	}
 }
