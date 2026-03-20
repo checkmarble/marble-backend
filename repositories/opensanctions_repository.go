@@ -441,7 +441,7 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 	}
 
 	for _, subquery := range query.Queries {
-		q.Queries[uuid.NewString()] = openSanctionsRequestQuery{
+		q.Queries[uuid.Must(uuid.NewV7()).String()] = openSanctionsRequestQuery{
 			Schema:     subquery.Type,
 			Properties: subquery.Filters,
 		}
@@ -473,7 +473,9 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
 	return req, rawQuery.Bytes(), err
 }
 
-func (repo OpenSanctionsRepository) buildQueryString(ctx context.Context, cfg *models.ScreeningConfig, query *models.OpenSanctionsQuery) url.Values {
+func (repo OpenSanctionsRepository) buildQueryString(ctx context.Context,
+	cfg *models.ScreeningConfig, query *models.OpenSanctionsQuery,
+) url.Values {
 	qs := url.Values{}
 
 	if repo.opensanctions.AuthMethod() == infra.OPEN_SANCTIONS_AUTH_SAAS &&

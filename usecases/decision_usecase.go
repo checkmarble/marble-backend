@@ -361,7 +361,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 		ConcurrentRules: params.ConcurrentRules,
 	}
 
-	triggerPassed, scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+	triggerPassed, scenarioExecution, err :=
+		usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 	if err != nil {
 		return false, models.DecisionWithRuleExecutions{},
 			fmt.Errorf("error evaluating scenario: %w", err)
@@ -421,7 +422,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		}
 
 		if params.WithDecisionWebhooks {
-			webhookEventId := uuid.NewString()
+			webhookEventId := uuid.Must(uuid.NewV7()).String()
 			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
 				OrganizationId: decision.OrganizationId,
@@ -579,7 +580,8 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		)
 		defer span.End()
 
-		triggerPassed, scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+		triggerPassed, scenarioExecution, err :=
+			usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 		switch {
 		case err != nil:
 			return nil, 0, nil, errors.Wrapf(err, `error evaluating scenario "%s" in CreateAllDecisions`, scenario.Name)
@@ -667,7 +669,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			decisions[i] = item.decision
 
 			if params.WithDecisionWebhooks {
-				webhookEventId := uuid.NewString()
+				webhookEventId := uuid.Must(uuid.NewV7()).String()
 				err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 					Id:             webhookEventId,
 					OrganizationId: item.decision.OrganizationId,
@@ -817,7 +819,8 @@ func (usecase DecisionUsecase) validatePayload(
 	parser := payload_parser.NewParser(payload_parser.WithEnricher(usecase.payloadEnricher))
 
 	if disallowUnknownFields {
-		parser = payload_parser.NewParser(payload_parser.DisallowUnknownFields(), payload_parser.WithEnricher(usecase.payloadEnricher))
+		parser = payload_parser.NewParser(payload_parser.DisallowUnknownFields(),
+			payload_parser.WithEnricher(usecase.payloadEnricher))
 	}
 
 	payload, err = parser.ParsePayload(ctx, table, rawPayload)

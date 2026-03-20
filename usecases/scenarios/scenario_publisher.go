@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
 )
@@ -19,7 +18,8 @@ type ScenarioPublisherRepository interface {
 		filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error)
 	UpdateScenarioIterationVersion(ctx context.Context, exec repositories.Executor,
 		scenarioIterationId string, newVersion int) error
-	ListAllRulesAndScreenings(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) ([]models.RulesAndScreenings, error)
+	ListAllRulesAndScreenings(ctx context.Context, exec repositories.Executor,
+		organizationId uuid.UUID) ([]models.RulesAndScreenings, error)
 	ArchiveScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) error
 }
 
@@ -122,7 +122,7 @@ func (publisher ScenarioPublisher) unpublishOldIteration(
 		return []models.ScenarioPublication{}, nil
 	}
 
-	newScenarioPublicationId := pure_utils.NewPrimaryKey(organizationId)
+	newScenarioPublicationId := uuid.Must(uuid.NewV7()).String()
 	if err := publisher.ScenarioPublicationsRepository.CreateScenarioPublication(ctx, tx, models.CreateScenarioPublicationInput{
 		OrganizationId:      organizationId,
 		ScenarioIterationId: *liveVersionId,
@@ -146,7 +146,7 @@ func (publisher ScenarioPublisher) unpublishOldIteration(
 func (publisher ScenarioPublisher) publishNewIteration(ctx context.Context,
 	tx repositories.Transaction, organizationId uuid.UUID, scenarioId, scenarioIterationId string,
 ) (models.ScenarioPublication, error) {
-	newScenarioPublicationId := pure_utils.NewPrimaryKey(organizationId)
+	newScenarioPublicationId := uuid.Must(uuid.NewV7()).String()
 	if err := publisher.ScenarioPublicationsRepository.CreateScenarioPublication(ctx, tx, models.CreateScenarioPublicationInput{
 		OrganizationId:      organizationId,
 		ScenarioIterationId: scenarioIterationId,
@@ -179,5 +179,5 @@ func (publisher ScenarioPublisher) SaveScenarioPreparationAction(ctx context.Con
 		ScenarioId:          scenarioId,
 		ScenarioIterationId: iterationId,
 		PublicationAction:   models.Prepare,
-	}, uuid.NewString())
+	}, uuid.Must(uuid.NewV7()).String())
 }

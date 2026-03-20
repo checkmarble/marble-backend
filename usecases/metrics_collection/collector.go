@@ -78,7 +78,7 @@ func (c Collectors) CollectMetrics(ctx context.Context, from time.Time, to time.
 	}
 
 	payload := models.MetricsCollection{
-		CollectionID: uuid.New(),
+		CollectionID: uuid.Must(uuid.NewV7()),
 		Timestamp:    time.Now(),
 		Metrics:      metrics,
 		Version:      c.version,

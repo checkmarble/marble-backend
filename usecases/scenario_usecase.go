@@ -5,7 +5,6 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
@@ -114,7 +113,7 @@ func (usecase *ScenarioUsecase) CreateScenario(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.Scenario, error) {
-			newScenarioId := pure_utils.NewPrimaryKey(scenario.OrganizationId)
+			newScenarioId := uuid.Must(uuid.NewV7()).String()
 			if err := usecase.repository.CreateScenario(ctx, tx, scenario.OrganizationId, scenario, newScenarioId); err != nil {
 				return models.Scenario{}, err
 			}
@@ -233,7 +232,7 @@ func (usecase *ScenarioUsecase) CopyScenario(
 			}
 
 			// Create the new scenario
-			newScenarioId := pure_utils.NewPrimaryKey(sourceScenario.OrganizationId)
+			newScenarioId := uuid.Must(uuid.NewV7()).String()
 			createScenarioInput := models.CreateScenarioInput{
 				Description:       sourceScenario.Description,
 				Name:              scenarioName,
@@ -241,7 +240,8 @@ func (usecase *ScenarioUsecase) CopyScenario(
 				OrganizationId:    sourceScenario.OrganizationId,
 			}
 
-			if err := usecase.repository.CreateScenario(ctx, tx, sourceScenario.OrganizationId, createScenarioInput, newScenarioId); err != nil {
+			if err := usecase.repository.CreateScenario(ctx, tx, sourceScenario.OrganizationId,
+				createScenarioInput, newScenarioId); err != nil {
 				return models.Scenario{}, errors.Wrap(err, "failed to create new scenario")
 			}
 

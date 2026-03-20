@@ -53,9 +53,9 @@ func (suite *ScreeningTestSuite) SetupTest() {
 
 	suite.ctx = context.Background()
 	suite.orgId = uuid.MustParse("12345678-1234-1234-1234-123456789012")
-	suite.caseId = uuid.New()
-	suite.matchId = uuid.New()
-	suite.screeningId = uuid.New()
+	suite.caseId = uuid.Must(uuid.NewV7())
+	suite.matchId = uuid.Must(uuid.NewV7())
+	suite.screeningId = uuid.Must(uuid.NewV7())
 	suite.userId = models.UserId("12345678-1234-1234-1234-123456789012")
 }
 
@@ -75,7 +75,7 @@ func (suite *ScreeningTestSuite) makeUsecase() *ContinuousScreeningUsecase {
 		screeningProvider:            suite.screeningProvider,
 		caseEditor:                   suite.caseEditor,
 		inboxReader:                  suite.repository,
-		objectRiskTagWriter:        suite.objectRiskTag,
+		objectRiskTagWriter:          suite.objectRiskTag,
 	}
 }
 
@@ -153,13 +153,13 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 		OpenSanctionEntityId:  "test-entity-id-1",
 	}
 	continuousScreeningMatch2 := models.ContinuousScreeningMatch{
-		Id:                    uuid.New(),
+		Id:                    uuid.Must(uuid.NewV7()),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusPending,
 		OpenSanctionEntityId:  "test-entity-id-2",
 	}
 	continuousScreeningMatch3 := models.ContinuousScreeningMatch{
-		Id:                    uuid.New(),
+		Id:                    uuid.Must(uuid.NewV7()),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusPending,
 		OpenSanctionEntityId:  "test-entity-id-3",
@@ -594,7 +594,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 		OpenSanctionEntityId:  "test-entity-id-1",
 	}
 	continuousScreeningMatch2 := models.ContinuousScreeningMatch{
-		Id:                    uuid.New(),
+		Id:                    uuid.Must(uuid.NewV7()),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusPending,
 		OpenSanctionEntityId:  "test-entity-id-2",
@@ -973,17 +973,17 @@ func (suite *ScreeningTestSuite) TestDismissContinuousScreening_InsufficientPerm
 func (suite *ScreeningTestSuite) TestDismissContinuousScreening_NoHitChangesOthersToSkipped() {
 	// Setup
 	match1 := models.ContinuousScreeningMatch{
-		Id:                    uuid.New(),
+		Id:                    uuid.Must(uuid.NewV7()),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusNoHit,
 	}
 	match2 := models.ContinuousScreeningMatch{
-		Id:                    uuid.New(),
+		Id:                    uuid.Must(uuid.NewV7()),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusPending,
 	}
 	match3 := models.ContinuousScreeningMatch{
-		Id:                    uuid.New(),
+		Id:                    uuid.Must(uuid.NewV7()),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusPending,
 	}
@@ -1078,17 +1078,17 @@ func (suite *ScreeningTestSuite) TestDismissContinuousScreening_NoHitChangesOthe
 func (suite *ScreeningTestSuite) TestDismissContinuousScreening_ConfirmedHit_NoUpdates() {
 	// Setup
 	match1 := models.ContinuousScreeningMatch{
-		Id:                    uuid.New(),
+		Id:                    uuid.Must(uuid.NewV7()),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusConfirmedHit,
 	}
 	match2 := models.ContinuousScreeningMatch{
-		Id:                    uuid.New(),
+		Id:                    uuid.Must(uuid.NewV7()),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusSkipped,
 	}
 	match3 := models.ContinuousScreeningMatch{
-		Id:                    uuid.New(),
+		Id:                    uuid.Must(uuid.NewV7()),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusSkipped,
 	}
@@ -1191,8 +1191,8 @@ func (suite *ScreeningTestSuite) TestDismissContinuousScreening_NotInReview() {
 
 func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches() {
 	// Setup
-	configId := uuid.New()
-	stableId := uuid.New()
+	configId := uuid.Must(uuid.NewV7())
+	stableId := uuid.Must(uuid.NewV7())
 
 	ftmEntityValue := models.FollowTheMoneyEntityPerson
 	ftmPropertyValue := models.FollowTheMoneyPropertyName
@@ -1388,8 +1388,8 @@ func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches_NotParti
 
 func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches_NoNewMatches() {
 	// Setup
-	configId := uuid.New()
-	stableId := uuid.New()
+	configId := uuid.Must(uuid.NewV7())
+	stableId := uuid.Must(uuid.NewV7())
 
 	ftmEntityValue := models.FollowTheMoneyEntityPerson
 	ftmPropertyValue := models.FollowTheMoneyPropertyName
@@ -1532,7 +1532,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 		},
 	}
 	continuousScreeningMatch2 := models.ContinuousScreeningMatch{
-		Id:                    uuid.New(),
+		Id:                    uuid.Must(uuid.NewV7()),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusPending,
 		OpenSanctionEntityId:  "marble-entity-456",
@@ -1708,7 +1708,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 		OpenSanctionEntityId:  "marble-entity-123",
 	}
 	continuousScreeningMatch2 := models.ContinuousScreeningMatch{
-		Id:                    uuid.New(),
+		Id:                    uuid.Must(uuid.NewV7()),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusPending,
 		OpenSanctionEntityId:  "marble-entity-456",
@@ -1880,7 +1880,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	}
 
 	confirmedMatch := models.ContinuousScreeningMatch{
-		Id:                    uuid.New(),
+		Id:                    uuid.Must(uuid.NewV7()),
 		ContinuousScreeningId: suite.screeningId,
 		Status:                models.ScreeningMatchStatusConfirmedHit,
 		OpenSanctionEntityId:  "marble-entity-111",

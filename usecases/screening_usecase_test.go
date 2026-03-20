@@ -44,7 +44,7 @@ func buildScreeningUsecaseMock() (ScreeningUsecase, executor_factory.ExecutorFac
 
 func TestListScreeningOnDecision(t *testing.T) {
 	uc, exec := buildScreeningUsecaseMock()
-	sccId := uuid.NewString()
+	sccId := uuid.Must(uuid.NewV7()).String()
 
 	mockSc, mockScRow := utils.FakeStruct[dbmodels.DBScreeningWithMatches](
 		ops.WithRandomMapAndSliceMinSize(1),
@@ -103,7 +103,7 @@ func TestListScreeningOnDecision(t *testing.T) {
 
 func TestUpdateMatchStatus(t *testing.T) {
 	uc, exec := buildScreeningUsecaseMock()
-	userId := models.UserId(uuid.NewString())
+	userId := models.UserId(uuid.Must(uuid.NewV7()).String())
 
 	_, mockScmRow := utils.FakeStruct[dbmodels.DBScreeningMatch](ops.WithCustomFieldProvider(
 		"ScreeningId", func() (interface{}, error) {

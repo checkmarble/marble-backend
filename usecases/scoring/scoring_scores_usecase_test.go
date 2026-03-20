@@ -51,7 +51,7 @@ func (s *TryRefreshScoreTestSuite) SetupTest() {
 	s.dataModelRepo = new(mocks.DataModelRepository)
 	s.ingestedDataReader = new(mocks.IngestedDataReader)
 
-	s.orgId = uuid.New()
+	s.orgId = uuid.Must(uuid.NewV7())
 	s.recordType = "account"
 	s.recordId = "entity-123"
 	s.record = models.ScoringRecordRef{OrgId: s.orgId, RecordType: s.recordType, RecordId: s.recordId}
@@ -79,7 +79,10 @@ func (s *TryRefreshScoreTestSuite) makeUsecaseWithCompute() ScoringScoresUsecase
 }
 
 func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_BackgroundRefresh_EnqueuesAndReturnsCurrentScore() {
-	current := &models.ScoringScore{RiskLevel: 3, Source: models.ScoreSourceRuleset, CreatedAt: time.Now().Add(2 * -time.Hour)}
+	current := &models.ScoringScore{
+		RiskLevel: 3, Source: models.ScoreSourceRuleset,
+		CreatedAt: time.Now().Add(2 * -time.Hour),
+	}
 	opts := models.RefreshScoreOptions{RefreshInBackground: true, RefreshOlderThan: time.Hour}
 
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
@@ -94,7 +97,10 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_BackgroundRefresh_Enqueue
 }
 
 func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_BackgroundRefresh_EnqueueError() {
-	current := &models.ScoringScore{RiskLevel: 3, Source: models.ScoreSourceRuleset, CreatedAt: time.Now().Add(2 * -time.Hour)}
+	current := &models.ScoringScore{
+		RiskLevel: 3, Source: models.ScoreSourceRuleset,
+		CreatedAt: time.Now().Add(2 * -time.Hour),
+	}
 	opts := models.RefreshScoreOptions{RefreshInBackground: true, RefreshOlderThan: time.Hour}
 	enqueueErr := fmt.Errorf("queue full")
 
@@ -190,7 +196,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeAndInsert_Ha
 	opts := models.RefreshScoreOptions{RefreshOlderThan: time.Hour}
 
 	ruleset := models.ScoringRuleset{
-		Id:         uuid.New(),
+		Id:         uuid.Must(uuid.NewV7()),
 		RecordType: s.recordType,
 		Thresholds: []int{10},
 	}
@@ -221,7 +227,8 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeAndInsert_Ha
 	s.dataModelRepo.On("GetDataModel", s.ctx, s.transaction, s.orgId, false, false).
 		Return(dataModel, nil)
 	s.executorFactory.On("NewClientDbExecutor", s.ctx, s.orgId).Return(clientExec, nil)
-	s.ingestedDataReader.On("QueryIngestedObject", s.ctx, clientExec, dataModel.Tables[s.recordType], s.recordId, []string(nil)).
+	s.ingestedDataReader.On("QueryIngestedObject", s.ctx, clientExec,
+		dataModel.Tables[s.recordType], s.recordId, []string(nil)).
 		Return([]models.DataModelObject{obj}, nil)
 	s.repository.On("InsertScore", s.ctx, s.transaction, expectedReq).
 		Return(inserted, nil)
@@ -244,7 +251,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_InsertError_HasCurr
 	insertErr := fmt.Errorf("insert failed")
 
 	ruleset := models.ScoringRuleset{
-		Id:         uuid.New(),
+		Id:         uuid.Must(uuid.NewV7()),
 		RecordType: s.recordType,
 		Thresholds: []int{10},
 	}
@@ -265,7 +272,8 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_InsertError_HasCurr
 	s.dataModelRepo.On("GetDataModel", s.ctx, s.transaction, s.orgId, false, false).
 		Return(dataModel, nil)
 	s.executorFactory.On("NewClientDbExecutor", s.ctx, s.orgId).Return(clientExec, nil)
-	s.ingestedDataReader.On("QueryIngestedObject", s.ctx, clientExec, dataModel.Tables[s.recordType], s.recordId, []string(nil)).
+	s.ingestedDataReader.On("QueryIngestedObject", s.ctx, clientExec,
+		dataModel.Tables[s.recordType], s.recordId, []string(nil)).
 		Return([]models.DataModelObject{obj}, nil)
 	s.repository.On("InsertScore", s.ctx, s.transaction, mock.Anything).Return(models.ScoringScore{}, insertErr)
 

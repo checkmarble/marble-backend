@@ -45,12 +45,12 @@ func (suite *DoScreeningWorkerTestSuite) SetupTest() {
 	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)
 
 	suite.ctx = context.Background()
-	suite.configId = uuid.New()
-	suite.configStableId = uuid.New()
+	suite.configId = uuid.Must(uuid.NewV7())
+	suite.configStableId = uuid.Must(uuid.NewV7())
 	suite.orgId = uuid.MustParse("12345678-1234-1234-1234-123456789012")
 	suite.objectType = "transactions"
 	suite.objectId = "test-object-id"
-	suite.monitoringId = uuid.New()
+	suite.monitoringId = uuid.Must(uuid.NewV7())
 }
 
 func (suite *DoScreeningWorkerTestSuite) makeWorker() *DoScreeningWorker {
@@ -90,7 +90,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 	}
 
 	monitoredObject := models.ContinuousScreeningMonitoredObject{
-		Id:             uuid.New(),
+		Id:             uuid.Must(uuid.NewV7()),
 		ObjectId:       suite.objectId,
 		ConfigStableId: suite.configStableId,
 	}
@@ -130,8 +130,8 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 		},
 	}
 
-	ingestedObjectInternalId := uuid.New()
-	previousObjectInternalId := uuid.New()
+	ingestedObjectInternalId := uuid.Must(uuid.NewV7())
+	previousObjectInternalId := uuid.Must(uuid.NewV7())
 
 	// Same matches as existing screening
 	matches := []models.ScreeningMatch{
@@ -152,7 +152,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 
 	existingContinuousScreening := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
-			Id: uuid.New(),
+			Id: uuid.Must(uuid.NewV7()),
 		},
 		Matches: []models.ContinuousScreeningMatch{
 			{
@@ -163,7 +163,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultU
 
 	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
-			Id: uuid.New(),
+			Id: uuid.Must(uuid.NewV7()),
 		},
 		Matches: []models.ContinuousScreeningMatch{
 			{
@@ -243,7 +243,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 	}
 
 	monitoredObject := models.ContinuousScreeningMonitoredObject{
-		Id:             uuid.New(),
+		Id:             uuid.Must(uuid.NewV7()),
 		ObjectId:       suite.objectId,
 		ConfigStableId: suite.configStableId,
 	}
@@ -285,8 +285,8 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 		},
 	}
 
-	ingestedObjectInternalId := uuid.New()
-	previousObjectInternalId := uuid.New()
+	ingestedObjectInternalId := uuid.Must(uuid.NewV7())
+	previousObjectInternalId := uuid.Must(uuid.NewV7())
 
 	// Different matches from existing screening
 	newMatches := []models.ScreeningMatch{
@@ -307,7 +307,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 
 	existingContinuousScreening := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
-			Id: uuid.New(),
+			Id: uuid.Must(uuid.NewV7()),
 		},
 		Matches: []models.ContinuousScreeningMatch{
 			{
@@ -318,7 +318,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 
 	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
-			Id: uuid.New(),
+			Id: uuid.Must(uuid.NewV7()),
 		},
 		Matches: []models.ContinuousScreeningMatch{
 			{
@@ -398,7 +398,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_IngestedObjectBeforeLatestScre
 	}
 
 	monitoredObject := models.ContinuousScreeningMonitoredObject{
-		Id:             uuid.New(),
+		Id:             uuid.Must(uuid.NewV7()),
 		ObjectId:       suite.objectId,
 		ConfigStableId: suite.configStableId,
 	}
@@ -440,13 +440,13 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_IngestedObjectBeforeLatestScre
 		},
 	}
 
-	ingestedObjectInternalId := uuid.New()
-	previousObjectInternalId := uuid.New()
+	ingestedObjectInternalId := uuid.Must(uuid.NewV7())
+	previousObjectInternalId := uuid.Must(uuid.NewV7())
 
 	// Existing screening created more recently than the ingested object
 	existingContinuousScreening := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
-			Id:        uuid.New(),
+			Id:        uuid.Must(uuid.NewV7()),
 			CreatedAt: time.Now(),
 		},
 		Matches: []models.ContinuousScreeningMatch{
@@ -514,7 +514,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_DataUnchanged_Sk
 	}
 
 	monitoredObject := models.ContinuousScreeningMonitoredObject{
-		Id:             uuid.New(),
+		Id:             uuid.Must(uuid.NewV7()),
 		ObjectId:       suite.objectId,
 		ConfigStableId: suite.configStableId,
 	}
@@ -545,8 +545,8 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_DataUnchanged_Sk
 		},
 	}
 
-	ingestedObjectInternalId := uuid.New()
-	previousObjectInternalId := uuid.New()
+	ingestedObjectInternalId := uuid.Must(uuid.NewV7())
+	previousObjectInternalId := uuid.Must(uuid.NewV7())
 
 	job := &river.Job[models.ContinuousScreeningDoScreeningArgs]{
 		Args: models.ContinuousScreeningDoScreeningArgs{

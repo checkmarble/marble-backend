@@ -16,12 +16,12 @@ import (
 
 func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_nominal(t *testing.T) {
 	Iteration := models.ScenarioIteration{
-		Id: uuid.New().String(),
+		Id: uuid.Must(uuid.NewV7()).String(),
 	}
 
 	scenario := models.Scenario{
-		OrganizationId: uuid.New(),
-		Id:             uuid.New().String(),
+		OrganizationId: uuid.Must(uuid.NewV7()),
+		Id:             uuid.Must(uuid.NewV7()).String(),
 		LiveVersionID:  utils.Ptr(Iteration.Id),
 	}
 
@@ -38,10 +38,10 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_nominal(t *test
 	}
 
 	scenarioPublication := models.ScenarioPublication{
-		Id:                  uuid.New().String(),
-		OrganizationId:      uuid.New(),
-		ScenarioId:          uuid.New().String(),
-		ScenarioIterationId: uuid.New().String(),
+		Id:                  uuid.Must(uuid.NewV7()).String(),
+		OrganizationId:      uuid.Must(uuid.NewV7()),
+		ScenarioId:          uuid.Must(uuid.NewV7()).String(),
+		ScenarioIterationId: uuid.Must(uuid.NewV7()).String(),
 		PublicationAction:   0,
 		CreatedAt:           time.Now(),
 	}
@@ -82,12 +82,12 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_nominal(t *test
 
 func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_CreateScenarioPublication_error(t *testing.T) {
 	Iteration := models.ScenarioIteration{
-		Id: uuid.New().String(),
+		Id: uuid.Must(uuid.NewV7()).String(),
 	}
 
 	scenario := models.Scenario{
-		OrganizationId: uuid.New(),
-		Id:             uuid.New().String(),
+		OrganizationId: uuid.Must(uuid.NewV7()),
+		Id:             uuid.Must(uuid.NewV7()).String(),
 		LiveVersionID:  utils.Ptr(Iteration.Id),
 	}
 

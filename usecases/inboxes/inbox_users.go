@@ -18,7 +18,8 @@ type InboxUserRepository interface {
 		filters models.InboxUserFilterInput) ([]models.InboxUser, error)
 	CreateInboxUser(ctx context.Context, exec repositories.Executor,
 		createInboxUserAttributes models.CreateInboxUserInput, newInboxUserId uuid.UUID) error
-	UpdateInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId uuid.UUID, role *models.InboxUserRole, autoAssignable *bool) error
+	UpdateInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId uuid.UUID,
+		role *models.InboxUserRole, autoAssignable *bool) error
 	DeleteInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId uuid.UUID) error
 }
 
@@ -124,7 +125,7 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 				return models.InboxUser{}, err
 			}
 
-			newInboxUserUUID := uuid.New()
+			newInboxUserUUID := uuid.Must(uuid.NewV7())
 			if err := usecase.InboxUserRepository.CreateInboxUser(ctx, tx, input, newInboxUserUUID); err != nil {
 				if repositories.IsUniqueViolationError(err) {
 					return models.InboxUser{}, errors.Wrap(models.ConflictError,
@@ -147,7 +148,9 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 	return inboxUser, nil
 }
 
-func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId uuid.UUID, role *models.InboxUserRole, autoAssignable *bool) (models.InboxUser, error) {
+func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId uuid.UUID,
+	role *models.InboxUserRole, autoAssignable *bool,
+) (models.InboxUser, error) {
 	inboxUser, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.TransactionFactory,

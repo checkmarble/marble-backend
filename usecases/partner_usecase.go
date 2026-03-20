@@ -64,7 +64,7 @@ func (usecase *PartnerUsecase) CreatePartner(
 	partner, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.Partner, error) {
-		partnerId := uuid.New().String()
+		partnerId := uuid.Must(uuid.NewV7()).String()
 		partnerCreateInput.Bic = strings.TrimSpace(strings.ToUpper(partnerCreateInput.Bic))
 		if err := usecase.partnersRepository.CreatePartner(ctx, tx, partnerId, partnerCreateInput); err != nil {
 			return models.Partner{}, err

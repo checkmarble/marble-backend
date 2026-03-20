@@ -78,7 +78,7 @@ func (e ScenarioEvaluator) evaluateScreening(
 				wg.Done()
 			}()
 
-			scId := uuid.NewString()
+			scId := uuid.Must(uuid.NewV7()).String()
 			start := time.Now()
 
 			if scc.TriggerRule != nil {

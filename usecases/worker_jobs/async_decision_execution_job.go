@@ -240,7 +240,7 @@ func (w *AsyncDecisionExecutionWorker) handleError(
 		execution.ErrorMessage = &safeMessage
 
 		// Create webhook event for the failure
-		webhookEventId = uuid.NewString()
+		webhookEventId = uuid.Must(uuid.NewV7()).String()
 		if err := w.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
 			OrganizationId: execution.OrgId,

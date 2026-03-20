@@ -153,7 +153,7 @@ func TestCollectors_CollectMetrics_Success(t *testing.T) {
 	mockOrgCollector.On("Collect", ctx, orgs, from, to).Return([]models.MetricData{
 		org1Metrics[0], org2Metrics[0],
 	}, nil)
-	deploymentID := uuid.New()
+	deploymentID := uuid.Must(uuid.NewV7())
 	mockCollectorRepository.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
 		models.MetadataKeyDeploymentID).Return(&models.Metadata{
 		Value: deploymentID.String(),
@@ -217,7 +217,7 @@ func TestCollectors_CollectMetrics_GlobalCollectorError(t *testing.T) {
 	}, nil)
 	mockCollectorRepository.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
 		models.MetadataKeyDeploymentID).Return(&models.Metadata{
-		Value: uuid.New().String(),
+		Value: uuid.Must(uuid.NewV7()).String(),
 	}, nil)
 
 	collectors := Collectors{
@@ -306,7 +306,7 @@ func TestCollectors_CollectMetrics_NoOrganizations(t *testing.T) {
 	mockOrgCollector.On("Collect", ctx, []models.Organization{}, from, to).Return([]models.MetricData{}, nil)
 	mockCollectorRepository.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
 		models.MetadataKeyDeploymentID).Return(&models.Metadata{
-		Value: uuid.New().String(),
+		Value: uuid.Must(uuid.NewV7()).String(),
 	}, nil)
 	// mockOrgCollector should not be called since there are no organizations
 
@@ -354,7 +354,7 @@ func TestCollectors_CollectMetrics_EmptyResults(t *testing.T) {
 	mockOrgCollector.On("Collect", ctx, orgs, from, to).Return([]models.MetricData{}, nil)
 	mockCollectorRepository.On("GetMetadata", ctx, mock.Anything, (*uuid.UUID)(nil),
 		models.MetadataKeyDeploymentID).Return(&models.Metadata{
-		Value: uuid.New().String(),
+		Value: uuid.Must(uuid.NewV7()).String(),
 	}, nil)
 
 	collectors := Collectors{

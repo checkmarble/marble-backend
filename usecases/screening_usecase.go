@@ -693,7 +693,7 @@ func (uc ScreeningUsecase) CreateFiles(ctx context.Context, creds models.Credent
 	metadata := make([]uploadedFileMetadata, 0, len(files))
 
 	for _, fileHeader := range files {
-		newFileReference := fmt.Sprintf("%s/%s/%s", creds.OrganizationId, sc.Id, uuid.NewString())
+		newFileReference := fmt.Sprintf("%s/%s/%s", creds.OrganizationId, sc.Id, uuid.Must(uuid.NewV7()).String())
 		err = writeScreeningFileToBlobStorage(ctx, uc.blobRepository, uc.blobBucketUrl, fileHeader, newFileReference)
 		if err != nil {
 			break

@@ -20,7 +20,7 @@ type OrganizationCreator struct {
 func (creator *OrganizationCreator) CreateOrganization(ctx context.Context,
 	input models.CreateOrganizationInput,
 ) (models.Organization, error) {
-	newOrganizationId := uuid.New()
+	newOrganizationId := uuid.Must(uuid.NewV7())
 	organization, err := executor_factory.TransactionReturnValue(ctx,
 		creator.TransactionFactory, func(tx repositories.Transaction) (models.Organization, error) {
 			if err := creator.OrganizationRepository.CreateOrganization(
@@ -46,7 +46,7 @@ func (creator *OrganizationCreator) CreateOrganization(ctx context.Context,
 func (creator *OrganizationCreator) seedDefaultList(ctx context.Context, organizationId uuid.UUID) error {
 	logger := utils.LoggerFromContext(ctx)
 	exec := creator.ExecutorFactory.NewExecutor()
-	newCustomListId := uuid.NewString()
+	newCustomListId := uuid.Must(uuid.NewV7()).String()
 
 	err := creator.CustomListRepository.CreateCustomList(ctx, exec, models.CreateCustomListInput{
 		Name:           "Welcome to Marble",
@@ -62,11 +62,14 @@ func (creator *OrganizationCreator) seedDefaultList(ctx context.Context, organiz
 		CustomListId: newCustomListId,
 		Value:        "Welcome",
 	}
-	_ = creator.CustomListRepository.AddCustomListValue(ctx, exec, models.CustomListText, addCustomListValueInput, uuid.NewString(), nil)
+	_ = creator.CustomListRepository.AddCustomListValue(ctx, exec, models.CustomListText,
+		addCustomListValueInput, uuid.Must(uuid.NewV7()).String(), nil)
 	addCustomListValueInput.Value = "to"
-	_ = creator.CustomListRepository.AddCustomListValue(ctx, exec, models.CustomListText, addCustomListValueInput, uuid.NewString(), nil)
+	_ = creator.CustomListRepository.AddCustomListValue(ctx, exec, models.CustomListText,
+		addCustomListValueInput, uuid.Must(uuid.NewV7()).String(), nil)
 	addCustomListValueInput.Value = "marble"
-	_ = creator.CustomListRepository.AddCustomListValue(ctx, exec, models.CustomListText, addCustomListValueInput, uuid.NewString(), nil)
+	_ = creator.CustomListRepository.AddCustomListValue(ctx, exec, models.CustomListText,
+		addCustomListValueInput, uuid.Must(uuid.NewV7()).String(), nil)
 
 	logger.InfoContext(ctx, "Finish to create the default custom list for the organization")
 	return nil

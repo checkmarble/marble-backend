@@ -30,7 +30,7 @@ func (suite *MatchEnrichmentWorkerTestSuite) SetupTest() {
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 
 	suite.ctx = context.Background()
-	suite.continuousScreeningId = uuid.New()
+	suite.continuousScreeningId = uuid.Must(uuid.NewV7())
 	suite.orgId = uuid.MustParse("12345678-1234-1234-1234-123456789012")
 }
 
@@ -101,8 +101,8 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_DatasetTriggered_EnrichesO
 	}
 
 	entityId := "entity-123"
-	match1Id := uuid.New()
-	match2Id := uuid.New()
+	match1Id := uuid.Must(uuid.NewV7())
+	match2Id := uuid.Must(uuid.NewV7())
 
 	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
@@ -166,7 +166,7 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_ObjectTriggered_EnrichesOn
 		},
 	}
 
-	match1Id := uuid.New()
+	match1Id := uuid.Must(uuid.NewV7())
 
 	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{

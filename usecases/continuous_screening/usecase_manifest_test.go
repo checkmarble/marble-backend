@@ -49,8 +49,8 @@ func TestContinuousScreeningManifestTestSuite(t *testing.T) {
 
 func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningCatalog() {
 	// Setup
-	org1Id := uuid.New()
-	org2Id := uuid.New()
+	org1Id := uuid.Must(uuid.NewV7())
+	org2Id := uuid.Must(uuid.NewV7())
 
 	datasetFiles := []models.ContinuousScreeningDatasetFile{
 		{
@@ -103,10 +103,10 @@ func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningCat
 
 func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningDeltaList() {
 	// Setup
-	orgId := uuid.New()
+	orgId := uuid.Must(uuid.NewV7())
 
-	delta1Id := uuid.New()
-	delta2Id := uuid.New()
+	delta1Id := uuid.Must(uuid.NewV7())
+	delta2Id := uuid.Must(uuid.NewV7())
 	deltas := []models.ContinuousScreeningDatasetFile{
 		{
 			Id:      delta1Id,
@@ -153,7 +153,7 @@ func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningCat
 
 func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningDeltaList_Empty() {
 	// Setup
-	orgId := uuid.New()
+	orgId := uuid.Must(uuid.NewV7())
 
 	suite.repository.On("ListContinuousScreeningLatestDeltaFiles", suite.ctx,
 		suite.executorFactory.NewExecutor(), orgId, uint64(LatestDeltaFilesLimit)).
@@ -170,7 +170,7 @@ func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningDel
 
 func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningDeltaList_Error() {
 	// Setup
-	orgId := uuid.New()
+	orgId := uuid.Must(uuid.NewV7())
 
 	suite.repository.On("ListContinuousScreeningLatestDeltaFiles", suite.ctx,
 		suite.executorFactory.NewExecutor(), orgId, uint64(LatestDeltaFilesLimit)).

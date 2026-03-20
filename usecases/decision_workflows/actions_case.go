@@ -26,7 +26,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	action models.WorkflowActionSpec[dto.WorkflowActionCaseParams],
 ) (models.WorkflowExecution, error) {
 	logger := utils.LoggerFromContext(ctx)
-	webhookEventId := uuid.NewString()
+	webhookEventId := uuid.Must(uuid.NewV7()).String()
 	orgId := evalParams.Scenario.OrganizationId
 
 	createNewCaseForDecision := func(ctx context.Context) (models.WorkflowExecution, error) {

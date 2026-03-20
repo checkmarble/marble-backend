@@ -115,16 +115,12 @@ func (usecase *InboxUsecase) CreateInboxWithExecutor(
 		}
 	}
 
-	newInboxIdStr := pure_utils.NewPrimaryKey(input.OrganizationId)
-	newInboxUUID, err := uuid.Parse(newInboxIdStr)
-	if err != nil {
-		return models.Inbox{}, errors.Wrap(err, "failed to parse new inbox ID")
-	}
-	if err := usecase.inboxRepository.CreateInbox(ctx, exec, input, newInboxUUID); err != nil {
+	newInboxId := uuid.Must(uuid.NewV7())
+	if err := usecase.inboxRepository.CreateInbox(ctx, exec, input, newInboxId); err != nil {
 		return models.Inbox{}, err
 	}
 
-	inbox, err := usecase.inboxRepository.GetInboxById(ctx, exec, newInboxUUID)
+	inbox, err := usecase.inboxRepository.GetInboxById(ctx, exec, newInboxId)
 	if err != nil {
 		return models.Inbox{}, err
 	}

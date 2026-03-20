@@ -73,7 +73,8 @@ func ingestAccountsBatch(
 a8ca9ad7-1581-44f8-89d0-1f00500f2d02,2024-08-11T22:47:00Z,7b7ffdbc-cf98-48cb-a468-7695122d74d6,france,germany,"some tx description",validated,"some tx title",4200
 `
 	reader := csv.NewReader(strings.NewReader(fileContent))
-	log, err := ingestionUsecase.ValidateAndUploadIngestionCsv(ctx, organizationId, userId, "transactions", reader, models.IngestionOptions{})
+	log, err := ingestionUsecase.ValidateAndUploadIngestionCsv(ctx, organizationId, userId,
+		"transactions", reader, models.IngestionOptions{})
 	if err != nil {
 		assert.FailNow(t, "failed to validate and upload ingestion csv", err)
 	}
@@ -182,7 +183,7 @@ func getRulesForBatchTest() []models.CreateRuleInput {
 			ScoreModifier: 100,
 			Name:          "Rule that hits",
 			Description:   "Rule that hits",
-			StableRuleId:  uuid.NewString(),
+			StableRuleId:  uuid.Must(uuid.NewV7()).String(),
 		},
 	}
 }

@@ -49,7 +49,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) SetupTest() {
 	s.dataModelRepo = new(mocks.DataModelRepository)
 	s.ingestedDataReader = new(mocks.IngestedDataReader)
 
-	s.orgId = uuid.New()
+	s.orgId = uuid.Must(uuid.NewV7())
 	s.recordType = "account"
 	s.recordId = "entity-123"
 	s.ctx = context.Background()
@@ -82,7 +82,9 @@ func (s *TriggeredScoreComputationWorkerTestSuite) makeJob() *river.Job[models.T
 	}
 }
 
-func (s *TriggeredScoreComputationWorkerTestSuite) makeWorker(scoreUsecase scoring.ScoringScoresUsecase) *TriggeredScoreComputationWorker {
+func (s *TriggeredScoreComputationWorkerTestSuite) makeWorker(
+	scoreUsecase scoring.ScoringScoresUsecase,
+) *TriggeredScoreComputationWorker {
 	return NewTriggeredScoreComputationWorker(
 		nil,
 		s.transactionFactory,
@@ -136,7 +138,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_RepoError() {
 func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_ScoreIsOverriden() {
 	s.T().Setenv(fmt.Sprintf("ENABLE_%s", "USER_SCORING"), s.orgId.String())
 
-	ruleset := models.ScoringRuleset{Id: uuid.New(), RecordType: s.recordType}
+	ruleset := models.ScoringRuleset{Id: uuid.Must(uuid.NewV7()), RecordType: s.recordType}
 	activeScore := &models.ScoringScore{
 		Source: models.ScoreSourceOverride,
 	}
@@ -159,7 +161,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_ScoreIsOverriden() {
 func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_NoActiveScore_ComputesAndInserts() {
 	s.T().Setenv(fmt.Sprintf("ENABLE_%s", "USER_SCORING"), s.orgId.String())
 
-	ruleset := models.ScoringRuleset{Id: uuid.New(), RecordType: s.recordType, Thresholds: []int{10}}
+	ruleset := models.ScoringRuleset{Id: uuid.Must(uuid.NewV7()), RecordType: s.recordType, Thresholds: []int{10}}
 	record := models.ScoringRecordRef{OrgId: s.orgId, RecordType: s.recordType, RecordId: s.recordId}
 	dataModel := models.DataModel{
 		Tables: map[string]models.Table{
@@ -177,7 +179,8 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_NoActiveScore_Comput
 	s.dataModelRepo.On("GetDataModel", s.ctx, s.transaction, s.orgId, false, false).
 		Return(dataModel, nil)
 	s.executorFactory.On("NewClientDbExecutor", s.ctx, s.orgId).Return(clientExec, nil)
-	s.ingestedDataReader.On("QueryIngestedObject", s.ctx, clientExec, dataModel.Tables[s.recordType], s.recordId, []string(nil)).
+	s.ingestedDataReader.On("QueryIngestedObject", s.ctx, clientExec,
+		dataModel.Tables[s.recordType], s.recordId, []string(nil)).
 		Return([]models.DataModelObject{obj}, nil)
 	s.repository.On("InsertScore", s.ctx, s.transaction, mock.MatchedBy(func(r models.InsertScoreRequest) bool {
 		return r.OrgId == s.orgId &&
@@ -197,7 +200,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_NoActiveScore_Comput
 func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_ActiveScore_ComputesAndInserts() {
 	s.T().Setenv(fmt.Sprintf("ENABLE_%s", "USER_SCORING"), s.orgId.String())
 
-	ruleset := models.ScoringRuleset{Id: uuid.New(), RecordType: s.recordType, Thresholds: []int{10}}
+	ruleset := models.ScoringRuleset{Id: uuid.Must(uuid.NewV7()), RecordType: s.recordType, Thresholds: []int{10}}
 	record := models.ScoringRecordRef{OrgId: s.orgId, RecordType: s.recordType, RecordId: s.recordId}
 	activeScore := &models.ScoringScore{Source: models.ScoreSourceRuleset, RiskLevel: 3}
 	dataModel := models.DataModel{
@@ -216,7 +219,8 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_ActiveScore_Computes
 	s.dataModelRepo.On("GetDataModel", s.ctx, s.transaction, s.orgId, false, false).
 		Return(dataModel, nil)
 	s.executorFactory.On("NewClientDbExecutor", s.ctx, s.orgId).Return(clientExec, nil)
-	s.ingestedDataReader.On("QueryIngestedObject", s.ctx, clientExec, dataModel.Tables[s.recordType], s.recordId, []string(nil)).
+	s.ingestedDataReader.On("QueryIngestedObject", s.ctx, clientExec,
+		dataModel.Tables[s.recordType], s.recordId, []string(nil)).
 		Return([]models.DataModelObject{obj}, nil)
 	s.repository.On("InsertScore", s.ctx, s.transaction, mock.MatchedBy(func(r models.InsertScoreRequest) bool {
 		return r.OrgId == s.orgId &&

@@ -233,7 +233,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	}
 
 	if apiConfig.ScreeningIndexerToken == "" {
-		apiConfig.ScreeningIndexerToken = uuid.NewString()
+		apiConfig.ScreeningIndexerToken = uuid.Must(uuid.NewV7()).String()
 		logger.Info("SCREENING_INDEXER_TOKEN is not set, setting it to a random token")
 	}
 

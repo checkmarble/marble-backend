@@ -85,7 +85,7 @@ func (usecase *TagUseCase) CreateTag(ctx context.Context, attributes models.Crea
 
 	tag, err := executor_factory.TransactionReturnValue(ctx,
 		usecase.transactionFactory, func(tx repositories.Transaction) (models.Tag, error) {
-			newTagId := uuid.NewString()
+			newTagId := uuid.Must(uuid.NewV7()).String()
 			if err := usecase.repository.CreateTag(ctx, tx, attributes, newTagId); err != nil {
 				if repositories.IsUniqueViolationError(err) {
 					return models.Tag{}, errors.Wrap(models.ConflictError, "There is already a tag by this name")

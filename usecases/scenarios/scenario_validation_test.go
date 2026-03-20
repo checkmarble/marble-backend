@@ -19,16 +19,16 @@ import (
 func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	scenario := models.Scenario{
-		Id:                uuid.New().String(),
-		OrganizationId:    uuid.New(),
+		Id:                uuid.Must(uuid.NewV7()).String(),
+		OrganizationId:    uuid.Must(uuid.NewV7()),
 		Name:              "scenario_name",
 		Description:       "description",
 		TriggerObjectType: "object_type",
 		CreatedAt:         time.Now(),
-		LiveVersionID:     utils.Ptr(uuid.New().String()),
+		LiveVersionID:     utils.Ptr(uuid.Must(uuid.NewV7()).String()),
 	}
 
-	scenarioIterationID := uuid.New().String()
+	scenarioIterationID := uuid.Must(uuid.NewV7()).String()
 	scenarioIteration := models.ScenarioIteration{
 		Id:             scenarioIterationID,
 		OrganizationId: scenario.OrganizationId,
@@ -111,16 +111,16 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 func TestValidateScenarioIterationImpl_Validate_notBool(t *testing.T) {
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	scenario := models.Scenario{
-		Id:                uuid.New().String(),
-		OrganizationId:    uuid.New(),
+		Id:                uuid.Must(uuid.NewV7()).String(),
+		OrganizationId:    uuid.Must(uuid.NewV7()),
 		Name:              "scenario_name",
 		Description:       "description",
 		TriggerObjectType: "object_type",
 		CreatedAt:         time.Now(),
-		LiveVersionID:     utils.Ptr(uuid.New().String()),
+		LiveVersionID:     utils.Ptr(uuid.Must(uuid.NewV7()).String()),
 	}
 
-	scenarioIterationID := uuid.New().String()
+	scenarioIterationID := uuid.Must(uuid.NewV7()).String()
 	scenarioIteration := models.ScenarioIteration{
 		Id:             scenarioIterationID,
 		OrganizationId: scenario.OrganizationId,
@@ -203,16 +203,16 @@ func TestValidateScenarioIterationImpl_Validate_notBool(t *testing.T) {
 func TestValidationShouldBypassCircuitBreaking(t *testing.T) {
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	scenario := models.Scenario{
-		Id:                uuid.New().String(),
-		OrganizationId:    uuid.New(),
+		Id:                uuid.Must(uuid.NewV7()).String(),
+		OrganizationId:    uuid.Must(uuid.NewV7()),
 		Name:              "scenario_name",
 		Description:       "description",
 		TriggerObjectType: "object_type",
 		CreatedAt:         time.Now(),
-		LiveVersionID:     utils.Ptr(uuid.New().String()),
+		LiveVersionID:     utils.Ptr(uuid.Must(uuid.NewV7()).String()),
 	}
 
-	scenarioIterationID := uuid.New().String()
+	scenarioIterationID := uuid.Must(uuid.NewV7()).String()
 	scenarioIteration := models.ScenarioIteration{
 		Id:             scenarioIterationID,
 		OrganizationId: scenario.OrganizationId,

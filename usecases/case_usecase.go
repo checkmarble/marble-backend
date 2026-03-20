@@ -407,7 +407,7 @@ func (usecase *CaseUseCase) CreateCase(
 		return models.Case{}, err
 	}
 
-	newCaseId := uuid.NewString()
+	newCaseId := uuid.Must(uuid.NewV7()).String()
 	err := usecase.repository.CreateCase(ctx, tx, createCaseAttributes, newCaseId)
 	if err != nil {
 		return models.Case{}, err
@@ -477,7 +477,7 @@ func (usecase *CaseUseCase) CreateCaseAsUser(
 	createCaseAttributes models.CreateCaseAttributes,
 ) (models.Case, error) {
 	exec := usecase.executorFactory.NewExecutor()
-	webhookEventId := uuid.NewString()
+	webhookEventId := uuid.Must(uuid.NewV7()).String()
 	c, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.Case, error) {
 			// permission check on the inbox as end user
@@ -523,7 +523,7 @@ func (usecase *CaseUseCase) CreateCaseAsApiClient(
 	orgId uuid.UUID,
 	createCaseAttributes models.CreateCaseAttributes,
 ) (models.Case, error) {
-	webhookEventId := uuid.NewString()
+	webhookEventId := uuid.Must(uuid.NewV7()).String()
 	c, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.Case, error) {
 			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, orgId)
@@ -568,7 +568,7 @@ func (usecase *CaseUseCase) UpdateCase(
 	userId string,
 	updateCaseAttributes models.UpdateCaseAttributes,
 ) (models.Case, error) {
-	webhookEventId := uuid.New().String()
+	webhookEventId := uuid.Must(uuid.NewV7()).String()
 	updateDone := false
 
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
@@ -979,7 +979,7 @@ func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec rep
 }
 
 func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, caseId string, decisionIds []string) (models.Case, error) {
-	webhookEventId := uuid.New().String()
+	webhookEventId := uuid.Must(uuid.NewV7()).String()
 
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
@@ -1051,7 +1051,7 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string,
 	caseCommentAttributes models.CreateCaseCommentAttributes,
 ) (models.Case, error) {
-	webhookEventId := uuid.New().String()
+	webhookEventId := uuid.Must(uuid.NewV7()).String()
 
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
@@ -1117,7 +1117,7 @@ func (usecase *CaseUseCase) UpdateCaseTags(
 	userId string,
 	caseTagAttributes models.CreateCaseTagsAttributes,
 ) (models.Case, error) {
-	webhookEventId := uuid.New().String()
+	webhookEventId := uuid.Must(uuid.NewV7()).String()
 
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
@@ -1232,7 +1232,7 @@ func (usecase *CaseUseCase) createCaseTag(ctx context.Context, exec repositories
 }
 
 func (usecase *CaseUseCase) AddCaseTags(ctx context.Context, caseId string, tagIds []string) (models.Case, error) {
-	webhookEventId := uuid.New().String()
+	webhookEventId := uuid.Must(uuid.NewV7()).String()
 
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
@@ -1321,7 +1321,7 @@ func (usecase *CaseUseCase) AddCaseTags(ctx context.Context, caseId string, tagI
 }
 
 func (usecase *CaseUseCase) RemoveCaseTag(ctx context.Context, caseId string, tagId string) error {
-	webhookEventId := uuid.New().String()
+	webhookEventId := uuid.Must(uuid.NewV7()).String()
 
 	var updatedCase models.Case
 	err := executor_factory.TransactionFactory.Transaction(usecase.transactionFactory, ctx, func(
@@ -1648,7 +1648,7 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 	}
 	uploadedFilesMetadata := make([]uploadedFileMetadata, 0, len(input.Files))
 	for _, fileHeader := range input.Files {
-		newFileReference := fmt.Sprintf("%s/%s/%s", creds.OrganizationId, input.CaseId, uuid.NewString())
+		newFileReference := fmt.Sprintf("%s/%s/%s", creds.OrganizationId, input.CaseId, uuid.Must(uuid.NewV7()).String())
 		err = writeToBlobStorage(ctx, usecase, fileHeader, newFileReference)
 		if err != nil {
 			break
@@ -1674,12 +1674,12 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 
 	caseFiles := make([]models.CaseFile, len(input.Files))
 
-	webhookEventId := uuid.NewString()
+	webhookEventId := uuid.Must(uuid.NewV7()).String()
 	err = usecase.transactionFactory.Transaction(ctx, func(
 		tx repositories.Transaction,
 	) error {
 		for idx, uploadedFile := range uploadedFilesMetadata {
-			newCaseFileId := uuid.NewString()
+			newCaseFileId := uuid.Must(uuid.NewV7()).String()
 			caseFile, err := usecase.repository.CreateDbCaseFile(
 				ctx,
 				tx,
@@ -1802,7 +1802,7 @@ func (usecase *CaseUseCase) AttachAnnotationFiles(ctx context.Context, tx reposi
 	}
 
 	for _, file := range files {
-		newFileUuid := uuid.NewString()
+		newFileUuid := uuid.Must(uuid.NewV7()).String()
 
 		_, err := usecase.repository.CreateDbCaseFile(ctx, tx, models.CreateDbCaseFileInput{
 			Id:            newFileUuid,
@@ -1992,7 +1992,7 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 		)
 	}
 
-	webhookEventId := uuid.NewString()
+	webhookEventId := uuid.Must(uuid.NewV7()).String()
 	c, err = executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,

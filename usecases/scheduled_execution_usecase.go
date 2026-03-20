@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -137,7 +136,7 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.C
 		}
 	}
 
-	id := pure_utils.NewPrimaryKey(input.OrganizationId)
+	id := uuid.Must(uuid.NewV7()).String()
 	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := usecase.repository.CreateScheduledExecution(ctx, tx, models.CreateScheduledExecutionInput{
 			OrganizationId:      input.OrganizationId,

@@ -48,9 +48,9 @@ func (suite *OrgConfigTestSuite) SetupTest() {
 
 	suite.ctx = context.Background()
 	suite.orgId = uuid.MustParse("12345678-1234-1234-1234-123456789012")
-	suite.configId = uuid.New()
-	suite.stableId = uuid.New()
-	suite.inboxId = uuid.New()
+	suite.configId = uuid.Must(uuid.NewV7())
+	suite.stableId = uuid.Must(uuid.NewV7())
+	suite.inboxId = uuid.Must(uuid.NewV7())
 }
 
 func (suite *OrgConfigTestSuite) makeUsecase() *ContinuousScreeningUsecase {
@@ -598,8 +598,8 @@ func (suite *OrgConfigTestSuite) TestUpdateContinuousScreeningConfig_PreservesSt
 
 	// Expected result - new config with same stable ID but new ID
 	updatedConfig := models.ContinuousScreeningConfig{
-		Id:             uuid.New(),     // New ID
-		StableId:       suite.stableId, // Same stable ID
+		Id:             uuid.Must(uuid.NewV7()), // New ID
+		StableId:       suite.stableId,          // Same stable ID
 		OrgId:          suite.orgId,
 		InboxId:        suite.inboxId,
 		Name:           "updated name",

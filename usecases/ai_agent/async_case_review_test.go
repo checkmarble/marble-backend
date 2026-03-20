@@ -126,8 +126,8 @@ func (suite *CaseReviewWorkerTestSuite) AssertExpectations() {
 
 // Test helper to create test data
 func createTestCaseReviewData() (models.CaseReviewArgs, models.Case, models.Organization, models.AiCaseReview) {
-	caseId := uuid.New()
-	aiCaseReviewId := uuid.New()
+	caseId := uuid.Must(uuid.NewV7())
+	aiCaseReviewId := uuid.Must(uuid.NewV7())
 
 	args := models.CaseReviewArgs{
 		CaseId:         caseId,
