@@ -1194,6 +1194,7 @@ func (usecases *UsecasesWithCreds) NewScoringRulesetsUsecase() scoring.ScoringRu
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewClientDbIndexEditor(),
 		usecases.Repositories.TaskQueueRepository,
+		usecases.NewValidateScenarioAst(),
 	)
 }
 
