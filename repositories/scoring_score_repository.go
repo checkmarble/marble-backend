@@ -151,7 +151,6 @@ func (repo *MarbleDbRepository) GetStaleScoreBatch(
 		return nil, err
 	}
 
-	// TODO: j'ai mal à mon index
 	query := NewQueryBuilder().
 		Select("record_id").
 		From(dbmodels.TABLE_SCORING_SCORES).

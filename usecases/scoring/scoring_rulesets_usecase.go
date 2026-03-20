@@ -125,7 +125,6 @@ func (uc ScoringRulesetsUsecase) GetRuleset(ctx context.Context, recordType stri
 	}
 
 	if ruleset.Status == models.ScoreRulesetCommitted {
-		exec := uc.redisClient.NewExecutor(uc.enforceSecurity.OrgId())
 		cacheKey := exec.Key("scoring_record_types", ruleset.RecordType)
 
 		_ = exec.Exec(func(c *redis.Client) error {
