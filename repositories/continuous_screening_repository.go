@@ -151,7 +151,7 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Cont
 			"object_types",
 		).
 		Values(
-			uuid.Must(uuid.NewV7()).String(),
+			uuid.Must(uuid.NewV7()),
 			input.OrgId,
 			input.StableId,
 			input.InboxId,

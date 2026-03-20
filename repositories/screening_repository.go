@@ -108,7 +108,8 @@ func selectScreeningsWithMatches() squirrel.SelectBuilder {
 		LeftJoin(dbmodels.TABLE_SCREENING_MATCHES + " AS scm ON (sc.id = scm.screening_id)").
 		// TODO: revert to "group by id" once the view/table renaming has been done - currently the "screenings" table is a view on the actual table called "sanction_checks" which is not compatible with the "group by id" syntax
 		// GroupBy("sc.id").
-		GroupBy(append(columnsNames("sc", dbmodels.SelectScreeningColumn), "config_id", "stable_id", "name", "scc.datasets")...).
+		GroupBy(append(columnsNames("sc", dbmodels.SelectScreeningColumn), "config_id",
+			"stable_id", "name", "scc.datasets")...).
 		OrderBy("sc.created_at")
 }
 
@@ -281,7 +282,7 @@ func (*MarbleDbRepository) InsertScreening(
 		Columns("id", "screening_id", "opensanction_entity_id", "query_ids", "payload", "counterparty_id")
 
 	for _, match := range screening.Matches {
-		matchSql = matchSql.Values(uuid.Must(uuid.NewV7()).String(), screening.Id, match.EntityId, match.QueryIds,
+		matchSql = matchSql.Values(uuid.Must(uuid.NewV7()), screening.Id, match.EntityId, match.QueryIds,
 			match.Payload, match.UniqueCounterpartyIdentifier)
 	}
 
@@ -307,7 +308,7 @@ func (*MarbleDbRepository) AddScreeningMatchComment(ctx context.Context,
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SCREENING_MATCH_COMMENTS).
 		Columns("id", "screening_match_id", "commented_by", "comment").
-		Values(uuid.Must(uuid.NewV7()).String(), comment.MatchId, comment.CommenterId, comment.Comment).
+		Values(uuid.Must(uuid.NewV7()), comment.MatchId, comment.CommenterId, comment.Comment).
 		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScreeningMatchCommentsColumn, ",")))
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningMatchComment)
@@ -332,7 +333,7 @@ func (repo *MarbleDbRepository) CreateScreeningFile(ctx context.Context, exec Ex
 				"file_reference",
 			).
 			Values(
-				uuid.Must(uuid.NewV7()).String(),
+				uuid.Must(uuid.NewV7()),
 				input.BucketName,
 				input.ScreeningId,
 				input.FileName,
