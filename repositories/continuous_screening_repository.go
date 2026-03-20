@@ -138,6 +138,7 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Cont
 		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
 		Suffix("RETURNING *").
 		Columns(
+			"id",
 			"org_id",
 			"stable_id",
 			"inbox_id",
@@ -150,6 +151,7 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Cont
 			"object_types",
 		).
 		Values(
+			uuid.Must(uuid.NewV7()).String(),
 			input.OrgId,
 			input.StableId,
 			input.InboxId,

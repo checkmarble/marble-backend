@@ -7,6 +7,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -143,6 +144,7 @@ func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, exec 
 
 	query := NewQueryBuilder().Insert(dbmodels.TABLE_CASE_EVENTS).
 		Columns(
+			"id",
 			"org_id",
 			"case_id",
 			"user_id",
@@ -164,6 +166,7 @@ func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, exec 
 			userId = pgtype.Text{Valid: false}
 		}
 		query = query.Values(
+			uuid.Must(uuid.NewV7()).String(),
 			createCaseEventAttribute.OrgId,
 			createCaseEventAttribute.CaseId,
 			userId,
