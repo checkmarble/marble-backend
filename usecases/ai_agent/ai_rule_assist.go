@@ -41,6 +41,9 @@ func (uc *AiAgentUsecase) GenerateRule(
 	if err != nil {
 		return dto.GenerateRuleResponse{}, err
 	}
+	if err := uc.enforceSecurityScenario.ReadScenario(scenarioAndIteration.Scenario); err != nil {
+		return dto.GenerateRuleResponse{}, err
+	}
 
 	customLists, err := uc.customListUsecase.GetCustomLists(ctx, orgId)
 	if err != nil {
@@ -61,7 +64,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 		return dto.GenerateRuleResponse{}, err
 	}
 
-	databaseAccessors, err := getLinkedDatabaseIdentifiers(scenarioAndIteration.Scenario, dataModel)
+	databaseAccessors, err := models.GetLinkedDatabaseIdentifiers(scenarioAndIteration.Scenario, dataModel)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, err
 	}
@@ -70,7 +73,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 		return dto.GenerateRuleResponse{}, err
 	}
 
-	payloadAccessors, err := getPayloadIdentifiers(scenarioAndIteration.Scenario, dataModel)
+	payloadAccessors, err := models.GetPayloadIdentifiers(scenarioAndIteration.Scenario, dataModel)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, err
 	}
@@ -92,21 +95,19 @@ func (uc *AiAgentUsecase) GenerateRule(
 		return dto.GenerateRuleResponse{}, err
 	}
 
-	// logger.DebugContext(ctx, "Rule generation", "model", model)
-
 	req := llmberjack.NewRequest[string]().
 		WithProvider(provider).
 		WithModel(model).
 		WithText(llmberjack.RoleUser, ruleGenerationPrompt).
 		WithThinking(true)
 
-	resp1, err := req.CreateThread().Do(ctx, client)
+	resp, err := req.CreateThread().Do(ctx, client)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf(
 			"failed to generate rule from LLM: %w", err)
 	}
 
-	ruleAsString, err := resp1.Get(0)
+	ruleAsString, err := resp.Get(0)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf("failed to get LLM response: %w", err)
 	}
@@ -127,31 +128,24 @@ func (uc *AiAgentUsecase) GenerateRule(
 		return dto.GenerateRuleResponse{}, err
 	}
 
-	// logger.DebugContext(ctx, ruleGenerationPrompt)
-
-	req2 := llmberjack.NewRequest[string]().
+	req = llmberjack.NewRequest[string]().
 		WithProvider(provider).
 		WithModel(model).
 		WithSchemaDescription("NodeDto", "The AST node of the rule").
-		WithText(llmberjack.RoleUser, ruleGenerationPrompt).
-		WithThinking(true)
+		WithText(llmberjack.RoleUser, ruleGenerationPrompt)
 
-	resp2, err := req2.CreateThread().Do(ctx, client)
+	resp, err = req.CreateThread().Do(ctx, client)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf(
 			"failed to generate rule from LLM: %w", err)
 	}
 
-	ruleAsStringStep2, err := resp2.Get(0)
+	ruleAsStringStep2, err := resp.Get(0)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf("failed to get LLM response: %w", err)
 	}
-	// ruleStep2, err := resp2.Get(0)
-	// if err != nil {
-	// 	return dto.GenerateRuleResponse{}, fmt.Errorf("failed to get LLM response: %w", err)
-	// }
 
-	logger.DebugContext(ctx, fmt.Sprintf("LLM response step 2 as string:\n%s\n", ruleAsStringStep2))
+	logger.DebugContext(ctx, fmt.Sprintf("LLM response step 2 as json string:\n%s\n", ruleAsStringStep2))
 
 	var ruleAstDto dto.NodeDto
 	err = json.Unmarshal([]byte(ruleAsStringStep2), &ruleAstDto)
@@ -281,11 +275,12 @@ func (uc *AiAgentUsecase) AiASTDescription(
 	}
 
 	// Execute the LLM prompt and return the result
-	provider, model, ruleDescription, err := uc.preparePromptWithModel(RULE_DESCRIPTION_PROMPT_PATH, map[string]any{
-		"data_model":  dataModelDto,
-		"custom_list": customListsDto,
-		"rule":        ruleAST,
-	})
+	provider, model, ruleDescription, err := uc.preparePromptWithModel(
+		RULE_DESCRIPTION_PROMPT_PATH, map[string]any{
+			"data_model":  dataModelDto,
+			"custom_list": customListsDto,
+			"rule":        ruleAST,
+		})
 	if err != nil {
 		return models.AiRuleDescription{}, err
 	}

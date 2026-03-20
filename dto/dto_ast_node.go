@@ -8,10 +8,10 @@ import (
 )
 
 type NodeDto struct {
-	Name          string             `json:"name,omitempty" jsonschema_description:"Name of the AST node" jsonschema:"required"`
-	Constant      any                `json:"constant,omitempty" jsonschema_description:"Constant value of the node, if the node is a constant"`
-	Children      []NodeDto          `json:"children,omitempty" jsonschema_description:"Positional arguments to the current function"`
-	NamedChildren map[string]NodeDto `json:"named_children,omitempty" jsonschema_description:"Name arguments to the current function"`
+	Name          string             `json:"name,omitempty"`
+	Constant      any                `json:"constant,omitempty"`
+	Children      []NodeDto          `json:"children,omitempty"`
+	NamedChildren map[string]NodeDto `json:"named_children,omitempty"`
 }
 
 func AdaptNodeDto(node ast.Node) (NodeDto, error) {
@@ -87,11 +87,6 @@ func adaptFunctionName(f string) (ast.Function, error) {
 	return ast.FUNC_UNKNOWN, fmt.Errorf("unknown function: %v", f)
 }
 
-// GenerateRuleRequest is the request payload for generating a rule
-type GenerateRuleRequest struct {
-	Instruction string `json:"instruction" binding:"required"`
-}
-
 // ASTValidationDetail represents validation errors/warnings
 type ASTValidationDetail struct {
 	IsValid  bool     `json:"is_valid"`
@@ -101,6 +96,6 @@ type ASTValidationDetail struct {
 
 // GenerateRuleResponse is the response payload with generated AST and validation
 type GenerateRuleResponse struct {
-	RuleAST    *NodeDto               `json:"rule_ast"`
-	Validation ASTValidationDetail    `json:"validation"`
+	RuleAST    *NodeDto            `json:"rule_ast"`
+	Validation ASTValidationDetail `json:"validation"`
 }
