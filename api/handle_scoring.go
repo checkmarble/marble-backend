@@ -1,6 +1,7 @@
 package api
 
 import (
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -189,6 +190,36 @@ func handleScoringCreateRulesetVersion(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, out)
+	}
+}
+
+func handleScoringValidateAst(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var input dto.NodeDto
+
+		if err := c.ShouldBindJSON(&input); err != nil && err != io.EOF { //nolint:errorlint
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		astNode, err := dto.AdaptASTNode(input)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewScoringRulesetsUsecase()
+		astValidation, err := usecase.ValidateAst(ctx, c.Param("recordType"), &astNode)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"ast_validation": dto.AdaptAstValidationDto(astValidation),
+		})
 	}
 }
 

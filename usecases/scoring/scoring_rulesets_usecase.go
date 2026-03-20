@@ -9,8 +9,10 @@ import (
 	"github.com/checkmarble/marble-backend/dto/scoring"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -27,6 +29,7 @@ type ScoringRulesetsUsecase struct {
 	repository          ScoringRepository
 	indexEditor         scoringIndexEditor
 	taskQueueRepository repositories.TaskQueueRepository
+	validateScenarioAst scenarios.ValidateScenarioAst
 }
 
 func NewScoringRulesetsUsecase(
@@ -37,6 +40,7 @@ func NewScoringRulesetsUsecase(
 	repository ScoringRepository,
 	indexEditor scoringIndexEditor,
 	taskQueueRepository repositories.TaskQueueRepository,
+	validateScenarioAst scenarios.ValidateScenarioAst,
 ) ScoringRulesetsUsecase {
 	return ScoringRulesetsUsecase{
 		enforceSecurity:     enforceSecurity,
@@ -46,6 +50,7 @@ func NewScoringRulesetsUsecase(
 		repository:          repository,
 		indexEditor:         indexEditor,
 		taskQueueRepository: taskQueueRepository,
+		validateScenarioAst: validateScenarioAst,
 	}
 }
 
@@ -175,6 +180,23 @@ func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, recor
 	for _, rule := range req.Rules {
 		if err := uc.validateScoringRuleAst(rule.Ast); err != nil {
 			return models.ScoringRuleset{}, errors.Wrap(models.BadParameterError, err.Error())
+		}
+
+		astNode, err := dto.AdaptASTNode(rule.Ast)
+		if err != nil {
+			return models.ScoringRuleset{}, err
+		}
+
+		astValidation, err := uc.ValidateAst(ctx, recordType, &astNode)
+		if err != nil {
+			return models.ScoringRuleset{}, err
+		}
+		if len(astValidation.Errors) > 0 {
+			errs := pure_utils.Map(astValidation.Errors, func(e models.ScenarioValidationError) error {
+				return e.Error
+			})
+
+			return models.ScoringRuleset{}, errors.Wrap(models.BadParameterError, errors.Join(errs...).Error())
 		}
 	}
 
@@ -422,27 +444,25 @@ func (uc ScoringRulesetsUsecase) CommitRuleset(ctx context.Context, recordType s
 	return ruleset, err
 }
 
-func (uc ScoringRulesetsUsecase) validateScoringRuleAst(tree dto.NodeDto) error {
-	if tree.Name == ast.FuncAttributesMap[ast.FUNC_SCORE_COMPUTATION].AstName {
-		return nil
+func (uc ScoringRulesetsUsecase) ValidateAst(ctx context.Context, recordType string, node *ast.Node) (models.AstValidation, error) {
+	scenario := models.Scenario{
+		OrganizationId:    uc.enforceSecurity.OrgId(),
+		TriggerObjectType: recordType,
 	}
 
-	if tree.Name == ast.FuncAttributesMap[ast.FUNC_SWITCH].AstName {
-		if len(tree.Children) == 0 {
-			return errors.New("invalid root AST node for user scoring: `Switch` must contain at least one child")
-		}
-		if _, ok := tree.NamedChildren["field"]; !ok {
-			return errors.New("invalid root AST node for user scoring: `Switch` must contain the evaluated field in a `field` named children")
-		}
+	validation := uc.validateScenarioAst.Validate(ctx, scenario, node, "score_computation_result")
 
+	return validation, nil
+}
+
+func (uc ScoringRulesetsUsecase) validateScoringRuleAst(tree dto.NodeDto) error {
+	if tree.Name == ast.FuncAttributesMap[ast.FUNC_SWITCH].AstName {
 		for _, child := range tree.Children {
 			if child.Name != ast.FuncAttributesMap[ast.FUNC_SCORE_COMPUTATION].AstName {
 				return errors.New("invalid root AST node for user scoring: all `Switch` children must be `ScoreComputation`")
 			}
 		}
-
-		return nil
 	}
 
-	return errors.New("invalid AST root node for user scoring: must be `ScoreComputation` or `Switch`")
+	return nil
 }
