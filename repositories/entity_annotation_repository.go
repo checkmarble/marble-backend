@@ -147,7 +147,7 @@ func (repo *MarbleDbRepository) CreateEntityAnnotation(
 		Insert(dbmodels.TABLE_ENTITY_ANNOTATIONS).
 		Columns("id", "org_id", "object_type", "object_id", "case_id", "annotation_type", "payload", "annotated_by").
 		Values(
-			uuid.Must(uuid.NewV7()).String(),
+			uuid.Must(uuid.NewV7()),
 			req.OrgId,
 			req.ObjectType,
 			req.ObjectId,
