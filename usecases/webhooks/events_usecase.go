@@ -159,7 +159,6 @@ func (usecase WebhookEventsUsecase) createWebhookQueueItem(
 		return errors.Wrap(err, "error adapting webhook event data")
 	}
 
-	// Generate UUID v7 for the event
 	eventId := pure_utils.NewId()
 
 	// Create webhook event v2
