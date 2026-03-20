@@ -21,7 +21,6 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/billing"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
-	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
 
@@ -57,6 +56,7 @@ type AiAgentUsecaseRepository interface {
 		target models.TagTarget, withCaseCount bool, pagination *models.PaginationAndSorting) ([]models.Tag, error)
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string,
 		useCache bool) (models.ScenarioIteration, error)
+	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 	ListScreeningsForDecision(ctx context.Context, exec repositories.Executor, decisionId string,
 		initialOnly bool) ([]models.ScreeningWithMatches, error)
 	GetScreening(ctx context.Context, exec repositories.Executor, id string) (models.ScreeningWithMatches, error)
@@ -191,7 +191,6 @@ type AiAgentUsecase struct {
 	featureAccessReader                featureAccessReader
 	config                             infra.AIAgentConfiguration
 	caseManagerBucketUrl               string
-	scenarioFetcher                    scenarios.ScenarioFetcher
 
 	caseReviewAdapter *llmberjack.Llmberjack
 	enrichmentAdapter *llmberjack.Llmberjack
@@ -216,7 +215,6 @@ func NewAiAgentUsecase(
 	blobRepository repositories.BlobRepository,
 	caseReviewTaskEnqueuer caseReviewTaskEnqueuer,
 	transactionFactory executor_factory.TransactionFactory,
-	scenarioFetcher scenarios.ScenarioFetcher,
 	featureAccessReader featureAccessReader,
 	screeningHitSuggestionTaskEnqueuer screeningHitSuggestionTaskEnqueuer,
 	screeningUsecase AiAgentScreeningUsecase,
@@ -246,7 +244,6 @@ func NewAiAgentUsecase(
 		featureAccessReader:                featureAccessReader,
 		config:                             config,
 		caseManagerBucketUrl:               caseManagerBucketUrl,
-		scenarioFetcher:                    scenarioFetcher,
 	}
 }
 

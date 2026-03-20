@@ -26,7 +26,7 @@ const (
 func (uc *AiAgentUsecase) GenerateRule(
 	ctx context.Context,
 	orgId uuid.UUID,
-	ruleId string,
+	scenarioId string,
 	instruction string,
 ) (dto.GenerateRuleResponse, error) {
 	logger := utils.LoggerFromContext(ctx)
@@ -41,16 +41,11 @@ func (uc *AiAgentUsecase) GenerateRule(
 
 	exec := uc.executorFactory.NewExecutor()
 
-	rule, err := uc.ruleUsecase.GetRule(ctx, ruleId)
+	scenario, err := uc.repository.GetScenarioById(ctx, exec, scenarioId)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, err
 	}
-
-	scenarioAndIteration, err := uc.scenarioFetcher.FetchScenarioAndIteration(ctx, exec, rule.ScenarioIterationId)
-	if err != nil {
-		return dto.GenerateRuleResponse{}, err
-	}
-	if err := uc.enforceSecurityScenario.ReadScenario(scenarioAndIteration.Scenario); err != nil {
+	if err := uc.enforceSecurityScenario.ReadScenario(scenario); err != nil {
 		return dto.GenerateRuleResponse{}, err
 	}
 
@@ -73,7 +68,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 		return dto.GenerateRuleResponse{}, err
 	}
 
-	databaseAccessors, err := models.GetLinkedDatabaseIdentifiers(scenarioAndIteration.Scenario, dataModel)
+	databaseAccessors, err := models.GetLinkedDatabaseIdentifiers(scenario, dataModel)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, err
 	}
@@ -82,7 +77,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 		return dto.GenerateRuleResponse{}, err
 	}
 
-	payloadAccessors, err := models.GetPayloadIdentifiers(scenarioAndIteration.Scenario, dataModel)
+	payloadAccessors, err := models.GetPayloadIdentifiers(scenario, dataModel)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, err
 	}
@@ -96,7 +91,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 			"data_model":         dataModelDto,
 			"custom_list":        customListsDto,
 			"instruction":        instruction,
-			"trigger_type":       scenarioAndIteration.Scenario.TriggerObjectType,
+			"trigger_type":       scenario.TriggerObjectType,
 			"database_accessors": databaseNodes,
 			"payload_accessors":  payloadNodes,
 		})
@@ -128,7 +123,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 			"data_model":         dataModelDto,
 			"custom_list":        customListsDto,
 			"instruction":        instruction,
-			"trigger_type":       scenarioAndIteration.Scenario.TriggerObjectType,
+			"trigger_type":       scenario.TriggerObjectType,
 			"database_accessors": databaseNodes,
 			"payload_accessors":  payloadNodes,
 			"rule_plan":          ruleAsString,
@@ -169,7 +164,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 	}
 
 	astValidation, err := uc.scenarioUsecase.ValidateScenarioAst(ctx,
-		scenarioAndIteration.Scenario.Id, &ruleAst)
+		scenario.Id, &ruleAst)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf(
 			"failed to validate generated AST: %w", err)

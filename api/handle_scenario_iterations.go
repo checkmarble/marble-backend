@@ -406,7 +406,7 @@ type PostGenerateRuleInputBody struct {
 func handleGenerateRule(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		ruleId := c.Param("rule_id")
+		scenarioId := c.Param("scenario_id")
 
 		var input PostGenerateRuleInputBody
 		if err := c.ShouldBindJSON(&input); err != nil {
@@ -425,7 +425,7 @@ func handleGenerateRule(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		aiAgentUsecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		response, err := aiAgentUsecase.GenerateRule(ctx, orgId, ruleId, input.Instruction)
+		response, err := aiAgentUsecase.GenerateRule(ctx, orgId, scenarioId, input.Instruction)
 		if presentError(ctx, c, err) {
 			return
 		}
