@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
@@ -107,10 +108,7 @@ func (w *WebhookDispatchWorker) Work(ctx context.Context, job *river.Job[models.
 				continue
 			}
 
-			deliveryId, err := uuid.NewV7()
-			if err != nil {
-				return err
-			}
+			deliveryId := pure_utils.NewId()
 
 			delivery := models.WebhookDelivery{
 				Id:             deliveryId,
