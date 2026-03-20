@@ -841,7 +841,6 @@ func (usecases *UsecasesWithCreds) NewAiAgentUsecase() ai_agent.AiAgentUsecase {
 		usecases.Repositories.BlobRepository,
 		usecases.Repositories.TaskQueueRepository,
 		usecases.NewTransactionFactory(),
-		usecases.NewScenarioFetcher(),
 		usecases.NewFeatureAccessReader(),
 		usecases.Repositories.TaskQueueRepository,
 		utils.Ptr(usecases.NewScreeningUsecase()),
