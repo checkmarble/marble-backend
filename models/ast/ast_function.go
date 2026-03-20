@@ -312,7 +312,7 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_SWITCH: {
 		DebugName:           "FUNC_SWITCH",
 		AstName:             "Switch",
-		NamedArguments:      []string{"field"},
+		NamedArguments:      []string{"field", "type"},
 		LazyChildEvaluation: shortCircuitIfScoringTriggered,
 	},
 }

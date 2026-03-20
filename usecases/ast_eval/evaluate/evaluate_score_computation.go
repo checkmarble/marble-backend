@@ -11,9 +11,12 @@ type ScoreComputation struct{}
 func (p ScoreComputation) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	modifier, modifierErr := AdaptNamedArgument(arguments.NamedArgs, "modifier", promoteArgumentToFloat64)
 	floor, floorErr := AdaptNamedArgument(arguments.NamedArgs, "floor", promoteArgumentToFloat64)
+	if floorErr != nil {
+		floor = 0
+	}
 	result, resultErr := adaptArgumentToBool(arguments.Args[0])
 
-	errs := filterNilErrors(modifierErr, floorErr, resultErr)
+	errs := filterNilErrors(modifierErr, resultErr)
 	if len(errs) > 0 {
 		return nil, errs
 	}

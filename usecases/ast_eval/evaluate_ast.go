@@ -93,12 +93,18 @@ func EvaluateAst(ctx context.Context, cache *EvaluationCache,
 		evaluated = true
 		weightedNodes := NewWeightedNodes(environment, node, node.Children)
 
+		// Named children should aways be evaluated, regardless of circuit-breaking
+		namedChildren := pure_utils.MapValues(node.NamedChildren, func(node ast.Node) ast.NodeEvaluation {
+			v, _ := evalChild(node)
+			return v
+		})
+
 		// eval each child
 		evaluation := ast.NodeEvaluation{
 			Index:         node.Index,
 			Function:      node.Function,
 			Children:      weightedNodes.Reorder(pure_utils.MapWhile(weightedNodes.Sorted(), evalChild)),
-			NamedChildren: pure_utils.MapValuesWhile(node.NamedChildren, evalChild),
+			NamedChildren: namedChildren,
 		}
 
 		if childEvaluationFail {
