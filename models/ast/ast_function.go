@@ -55,6 +55,7 @@ const (
 	FUNC_RECORD_HAS_TAGS
 	FUNC_RECORD_HAS_PAST_ALERTS
 
+	FUNC_RECORD_RISK_LEVEL
 	FUNC_SCORE_COMPUTATION
 	FUNC_SWITCH
 
@@ -299,6 +300,10 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		NamedArguments: []string{
 			"config",
 		},
+	},
+	FUNC_RECORD_RISK_LEVEL: {
+		DebugName: "FUNC_RECORD_RISK_LEVEL",
+		AstName:   "RecordRiskLevel",
 	},
 	FUNC_RECORD_HAS_PAST_ALERTS: {
 		DebugName: "FUNC_RECORD_HAS_PAST_ALERTS",
