@@ -399,6 +399,47 @@ func handleAiDescriptionScenarioIteration(uc usecases.Usecases) func(c *gin.Cont
 	}
 }
 
+type PostGenerateRuleInputBody struct {
+	Instruction string `json:"instruction" binding:"required"`
+}
+
+func handleGenerateRule(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		scenarioId := c.Param("scenario_id")
+
+		var input PostGenerateRuleInputBody
+		if err := c.ShouldBindJSON(&input); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "instruction is required"})
+			return
+		}
+
+		if input.Instruction == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "instruction cannot be empty"})
+			return
+		}
+
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		aiAgentUsecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
+		response, err := aiAgentUsecase.GenerateRule(ctx, orgId, scenarioId, input.Instruction)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		// Return 200 if valid, 400 if validation errors
+		statusCode := http.StatusOK
+		if !response.Validation.IsValid {
+			statusCode = http.StatusBadRequest
+		}
+
+		c.JSON(statusCode, response)
+	}
+}
+
 func handleAiDescriptionAST(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()

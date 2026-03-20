@@ -248,6 +248,10 @@ func (repo *MarbleDbRepository) UpdateOrganizationFeatureAccess(
 		query = query.Set("continuous_screening", *updateFeatureAccess.ContinuousScreening)
 		nbUpdated++
 	}
+	if updateFeatureAccess.AiRuleBuilding != nil {
+		query = query.Set("ai_rule_building", *updateFeatureAccess.AiRuleBuilding)
+		nbUpdated++
+	}
 
 	if nbUpdated == 0 {
 		return nil

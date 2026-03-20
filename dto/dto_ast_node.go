@@ -86,3 +86,16 @@ func adaptFunctionName(f string) (ast.Function, error) {
 
 	return ast.FUNC_UNKNOWN, fmt.Errorf("unknown function: %v", f)
 }
+
+// ASTValidationDetail represents validation errors/warnings
+type ASTValidationDetail struct {
+	IsValid  bool     `json:"is_valid"`
+	Errors   []string `json:"errors"`
+	Warnings []string `json:"warnings"`
+}
+
+// GenerateRuleResponse is the response payload with generated AST and validation
+type GenerateRuleResponse struct {
+	RuleAST    *NodeDto            `json:"rule_ast"`
+	Validation ASTValidationDetail `json:"validation"`
+}

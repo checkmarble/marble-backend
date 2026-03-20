@@ -16,10 +16,11 @@ require (
 	github.com/adhocore/gronx v1.19.6
 	github.com/adrg/strutil v0.3.1
 	github.com/alicebob/miniredis/v2 v2.37.0
+	github.com/anthropics/anthropic-sdk-go v1.27.0
 	github.com/authenticvision/rgeo v1.4.0
 	github.com/avast/retry-go/v4 v4.7.0
 	github.com/biter777/countries v1.7.5
-	github.com/checkmarble/llmberjack v0.0.0-20250918140151-35a7e6d6fe5a
+	github.com/checkmarble/llmberjack v0.0.0-20260319170918-c26826916a26
 	github.com/cockroachdb/errors v1.12.0
 	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/disintegration/imaging v1.6.2

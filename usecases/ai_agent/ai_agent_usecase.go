@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"io"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/checkmarble/marble-backend/dto/agent_dto"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/checkmarble/llmberjack"
 	"github.com/checkmarble/llmberjack/llms/aistudio"
+	llmanthropic "github.com/checkmarble/llmberjack/llms/anthropic"
 	"github.com/checkmarble/llmberjack/llms/openai"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -35,6 +37,7 @@ type AiAgentUsecaseRepository interface {
 	ListCaseEvents(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseEvent, error)
 	GetRuleById(ctx context.Context, exec repositories.Executor, ruleId string) (models.Rule, error)
 	ListRulesByIterationId(ctx context.Context, exec repositories.Executor, iterationId string) ([]models.Rule, error)
+	UpdateRule(ctx context.Context, exec repositories.Executor, rule models.UpdateRuleInput) error
 	ListUsers(ctx context.Context, exec repositories.Executor, organizationIDFilter *uuid.UUID) ([]models.User, error)
 	DecisionsByCaseIdFromCursor(
 		ctx context.Context,
@@ -53,6 +56,7 @@ type AiAgentUsecaseRepository interface {
 		target models.TagTarget, withCaseCount bool, pagination *models.PaginationAndSorting) ([]models.Tag, error)
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string,
 		useCache bool) (models.ScenarioIteration, error)
+	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 	ListScreeningsForDecision(ctx context.Context, exec repositories.Executor, decisionId string,
 		initialOnly bool) ([]models.ScreeningWithMatches, error)
 	GetScreening(ctx context.Context, exec repositories.Executor, id string) (models.ScreeningWithMatches, error)
@@ -167,6 +171,7 @@ type screeningHitSuggestionTaskEnqueuer interface {
 type AiAgentUsecase struct {
 	enforceSecurityCase                security.EnforceSecurityCase
 	enforceSecurityDecision            security.EnforceSecurityDecision
+	enforceSecurityScenario            security.EnforceSecurityScenario
 	enforceSecurityOrganization        security.EnforceSecurityOrganization
 	repository                         AiAgentUsecaseRepository
 	inboxReader                        inboxes.InboxReader
@@ -196,6 +201,7 @@ func NewAiAgentUsecase(
 	enforceSecurityCase security.EnforceSecurityCase,
 	enforceSecurityDecision security.EnforceSecurityDecision,
 	enforceSecurityOrganization security.EnforceSecurityOrganization,
+	enforceSecurityScenario security.EnforceSecurityScenario,
 	repository AiAgentUsecaseRepository,
 	inboxReader inboxes.InboxReader,
 	executorFactory executor_factory.ExecutorFactory,
@@ -219,6 +225,7 @@ func NewAiAgentUsecase(
 		enforceSecurityCase:                enforceSecurityCase,
 		enforceSecurityDecision:            enforceSecurityDecision,
 		enforceSecurityOrganization:        enforceSecurityOrganization,
+		enforceSecurityScenario:            enforceSecurityScenario,
 		repository:                         repository,
 		inboxReader:                        inboxReader,
 		executorFactory:                    executorFactory,
@@ -278,6 +285,24 @@ func (uc *AiAgentUsecase) createAIStudioProvider() (llmberjack.Llm, error) {
 	return provider, nil
 }
 
+func (uc *AiAgentUsecase) createAnthropicVertexAIProvider() (llmberjack.Llm, error) {
+	opts := []llmanthropic.Opt{
+		llmanthropic.WithBackend(llmanthropic.BackendVertexAI),
+	}
+	if uc.config.MainAgentProject != "" {
+		opts = append(opts, llmanthropic.WithProject(uc.config.MainAgentProject))
+	}
+	if uc.config.MainAgentLocation != "" {
+		opts = append(opts, llmanthropic.WithRegion(uc.config.MainAgentLocation))
+	}
+
+	provider, err := llmanthropic.New(opts...)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create Anthropic VertexAI provider")
+	}
+	return provider, nil
+}
+
 func (uc *AiAgentUsecase) GetClient(ctx context.Context) (*llmberjack.Llmberjack, error) {
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
@@ -286,26 +311,39 @@ func (uc *AiAgentUsecase) GetClient(ctx context.Context) (*llmberjack.Llmberjack
 		return uc.caseReviewAdapter, nil
 	}
 
-	// Create provider based on config
-	var mainProvider llmberjack.Llm
-	var err error
+	var adapter *llmberjack.Llmberjack
 
 	switch uc.config.MainAgentProviderType {
 	case infra.AIAgentProviderTypeOpenAI:
-		mainProvider, err = uc.createOpenAIProvider()
+		mainProvider, err := uc.createOpenAIProvider()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create OpenAI provider")
+		}
+		adapter, err = llmberjack.New(llmberjack.WithProvider("main", mainProvider))
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create LLM adapter")
+		}
+
 	case infra.AIAgentProviderTypeAIStudio:
-		mainProvider, err = uc.createAIStudioProvider()
+		mainProvider, err := uc.createAIStudioProvider()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create AI Studio provider")
+		}
+		// Also register an Anthropic provider for Claude models on VertexAI
+		anthropicProvider, err := uc.createAnthropicVertexAIProvider()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create Anthropic VertexAI provider")
+		}
+		adapter, err = llmberjack.New(
+			llmberjack.WithProvider("main", mainProvider),
+			llmberjack.WithProvider("anthropic", anthropicProvider),
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create LLM adapter")
+		}
+
 	default:
 		return nil, errors.Errorf("unsupported provider type: %s", uc.config.MainAgentProviderType)
-	}
-
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create LLM provider")
-	}
-
-	adapter, err := llmberjack.New(llmberjack.WithProvider("main", mainProvider))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create LLM adapter")
 	}
 
 	uc.caseReviewAdapter = adapter
@@ -463,23 +501,34 @@ func preparePrompt(promptPath string, data map[string]any) (prompt string, err e
 	return prompt, nil
 }
 
+// providerForModel returns the llmberjack provider name to use for a given model.
+// Claude models are routed to the "anthropic" provider (only relevant when using VertexAI);
+// all other models use the default "main" provider.
+func providerForModel(model string) string {
+	if strings.HasPrefix(model, "claude") {
+		return "anthropic"
+	}
+	return "main"
+}
+
 // Call preparePrompt and complete the model with the model configuration
-func (uc *AiAgentUsecase) preparePromptWithModel(promptPath string, data map[string]any) (model string, prompt string, err error) {
+func (uc *AiAgentUsecase) preparePromptWithModel(promptPath string, data map[string]any) (provider string, model string, prompt string, err error) {
 	// Load model configuration on each call
 	// Give the possibility to change the prompt without reloading the application
 	modelConfig, err := models.LoadAiAgentModelConfig("prompts/ai_agent_models.json", uc.config.MainAgentDefaultModel)
 	if err != nil {
-		return "", "", errors.Wrap(err, "could not load AI agent model configuration")
+		return "", "", "", errors.Wrap(err, "could not load AI agent model configuration")
 	}
 
 	model = modelConfig.GetModelForPrompt(promptPath)
+	provider = providerForModel(model)
 
 	prompt, err = preparePrompt(promptPath, data)
 	if err != nil {
-		return "", "", errors.Wrap(err, "could not prepare prompt")
+		return "", "", "", errors.Wrap(err, "could not prepare prompt")
 	}
 
-	return model, prompt, nil
+	return provider, model, prompt, nil
 }
 
 func (uc *AiAgentUsecase) getCaseWithPermissions(ctx context.Context, caseId string) (models.Case, error) {
