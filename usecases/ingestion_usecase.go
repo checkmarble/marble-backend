@@ -28,7 +28,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
-	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -101,11 +100,16 @@ type taskEnqueuer interface {
 	) error
 }
 
+type scoreComputationUsecase interface {
+	EnqueueComputationForDecisions(ctx context.Context, orgId uuid.UUID, decisions []models.Decision) error
+	EnqueueComputationForIngestion(ctx context.Context, orgId uuid.UUID, recordType string, records models.IngestionResults) error
+}
+
 type IngestionUseCase struct {
 	transactionFactory                  executor_factory.TransactionFactory
 	executorFactory                     executor_factory.ExecutorFactory
 	enforceSecurity                     security.EnforceSecurityIngestion
-	scoringScoreUsecase                 scoring.ScoringScoresUsecase
+	scoringScoreUsecase                 scoreComputationUsecase
 	ingestionRepository                 repositories.IngestionRepository
 	blobRepository                      repositories.BlobRepository
 	dataModelRepository                 repositories.DataModelRepository

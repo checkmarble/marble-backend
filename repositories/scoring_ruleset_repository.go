@@ -190,7 +190,7 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersion(
 				cooldown_seconds = excluded.cooldown_seconds,
 				scoring_interval_seconds = excluded.scoring_interval_seconds
 		`).
-		Suffix("returning *")
+		Suffix(fmt.Sprintf("returning %s", strings.Join(dbmodels.SelectScoringRulesetsColumns, ",")))
 
 	return SqlToModel(ctx, tx, query, dbmodels.AdaptScoringRuleset)
 }

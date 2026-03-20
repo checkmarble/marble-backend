@@ -729,6 +729,11 @@ func (repo *MarbleDbRepository) GetCasesRelatedToObject(ctx context.Context, exe
 	return pure_utils.MapErr(cases, dbmodels.AdaptCase)
 }
 
+// This query does the following:
+//  1. Find all links where this table is the arrival table
+//  2. Find all pivots whose path end with one of those links, effectively finding the pivots to that table
+//  3. Find all decisions whose pivot ID is one of those pivots, and whose pivot value is the record under evaluation
+//  4. Check whether we have a case with one of those decisions that was classified as a confirmed risk
 func (repo *MarbleDbRepository) ObjectHasConfirmedRisks(ctx context.Context, exec Executor, orgId uuid.UUID, objectType, objectId string) (bool, error) {
 	sql := `
 		with
@@ -748,7 +753,7 @@ func (repo *MarbleDbRepository) ObjectHasConfirmedRisks(ctx context.Context, exe
 				where organization_id = $1
 			),
 			decisions as (
-				select distinct case_id
+				select case_id
 				from decisions d
 				inner join pivot_ids as p on d.pivot_id = p.id and d.pivot_value = $3
 				where org_id = $1
@@ -758,7 +763,6 @@ func (repo *MarbleDbRepository) ObjectHasConfirmedRisks(ctx context.Context, exe
 			from cases c
 			inner join decisions on c.id = decisions.case_id
 			where c.outcome = 'confirmed_risk'
-			limit 1
 		)
 	`
 
