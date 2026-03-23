@@ -675,7 +675,6 @@ func createAndTestDecision(
 			TriggerObjectTable: table.Name,
 		},
 		models.CreateDecisionParams{
-			WithRuleExecutionDetails:    true,
 			WithScenarioPermissionCheck: true,
 		},
 	)

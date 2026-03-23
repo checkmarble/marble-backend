@@ -211,7 +211,6 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 			TriggerObjectTable: models.TransferCheckTable,
 		},
 		models.CreateDecisionParams{
-			WithRuleExecutionDetails:    false,
 			WithScenarioPermissionCheck: false,
 		},
 	)
@@ -510,7 +509,6 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 			TriggerObjectTable: models.TransferCheckTable,
 		},
 		models.CreateDecisionParams{
-			WithRuleExecutionDetails:    false,
 			WithScenarioPermissionCheck: false,
 		},
 	)
