@@ -94,9 +94,7 @@ func handlePostDecision(uc usecases.Usecases, marbleAppUrl *url.URL) func(c *gin
 				ScenarioId:         requestData.ScenarioId,
 				TriggerObjectTable: requestData.ObjectType,
 			},
-			models.CreateDecisionParams{
-				WithScenarioPermissionCheck: true,
-			},
+			models.CreateDecisionParams{},
 		)
 		if presentIngestionValidationError(c, err) || presentError(ctx, c, err) {
 			return

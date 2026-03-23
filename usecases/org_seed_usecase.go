@@ -91,9 +91,8 @@ func (uc OrgImportUsecase) Seed(ctx context.Context, spec dto.OrgImport, orgId u
 					TriggerObjectTable: table,
 				},
 				models.CreateDecisionParams{
-					WithScenarioPermissionCheck: false,
-					WithDisallowUnknownFields:   false,
-					ConcurrentRules:             1,
+					WithDisallowUnknownFields: false,
+					ConcurrentRules:           1,
 				},
 			)
 			if err != nil {

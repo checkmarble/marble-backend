@@ -674,9 +674,7 @@ func createAndTestDecision(
 			OrganizationId:     organizationId,
 			TriggerObjectTable: table.Name,
 		},
-		models.CreateDecisionParams{
-			WithScenarioPermissionCheck: true,
-		},
+		models.CreateDecisionParams{},
 	)
 	if err != nil {
 		fmt.Println(err)

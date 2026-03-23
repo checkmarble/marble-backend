@@ -329,10 +329,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 		scenario = s
 	}
 
-	if params.WithScenarioPermissionCheck {
-		if err := usecase.enforceSecurityScenario.ReadScenario(scenario); err != nil {
-			return false, models.DecisionWithRuleExecutions{}, err
-		}
+	if err := usecase.enforceSecurityScenario.ReadScenario(scenario); err != nil {
+		return false, models.DecisionWithRuleExecutions{}, err
 	}
 
 	payload, dataModel, err := usecase.validatePayload(
