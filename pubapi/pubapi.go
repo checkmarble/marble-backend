@@ -10,16 +10,12 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
-	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
 
-var (
-	//go:embed openapi/*
-	OPENAPI_SOURCES embed.FS
-	OPENAPI_SPECS   = expirable.NewLRU[string, *openapi3.T](10, nil, 0)
-)
+//go:embed openapi/*
+var OPENAPI_SOURCES embed.FS
 
 type Config struct {
 	DefaultTimeout  time.Duration
@@ -33,10 +29,6 @@ func InitPublicApi() {
 }
 
 func GetOpenApiForVersion(version string) (*openapi3.T, error) {
-	if spec, ok := OPENAPI_SPECS.Get(version); ok {
-		return spec, nil
-	}
-
 	var yamlSpec map[string]any
 
 	b, err := OPENAPI_SOURCES.ReadFile("openapi/" + version + ".yml")
@@ -58,8 +50,6 @@ func GetOpenApiForVersion(version string) (*openapi3.T, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	OPENAPI_SPECS.Add(version, spec)
 
 	return spec, nil
 }
