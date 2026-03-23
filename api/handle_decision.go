@@ -96,7 +96,6 @@ func handlePostDecision(uc usecases.Usecases, marbleAppUrl *url.URL) func(c *gin
 			},
 			models.CreateDecisionParams{
 				WithScenarioPermissionCheck: true,
-				WithDecisionWebhooks:        true,
 				WithRuleExecutionDetails:    true,
 			},
 		)

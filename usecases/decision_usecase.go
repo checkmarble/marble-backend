@@ -15,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -421,18 +422,29 @@ func (usecase *DecisionUsecase) CreateDecision(
 			}
 		}
 
-		if params.WithDecisionWebhooks {
-			webhookEventId := pure_utils.NewId().String()
-			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-				Id:             webhookEventId,
-				OrganizationId: decision.OrganizationId,
-				EventContent:   models.NewWebhookEventDecisionCreated(decision),
+		if infra.HasFeatureFlag(infra.FEATURE_USER_SCORING, scenario.OrganizationId) {
+			err := usecase.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringRecordRef{
+				OrgId:      scenario.OrganizationId,
+				RecordType: scenario.TriggerObjectType,
+				RecordId:   payload.Data["object_id"].(string),
 			})
 			if err != nil {
-				return models.DecisionWithRuleExecutions{}, err
+				logger.ErrorContext(ctx,
+					"could not trigger score computation job",
+					"error", err.Error())
 			}
-			sendWebhookEventId = append(sendWebhookEventId, webhookEventId)
 		}
+
+		webhookEventId := uuid.NewString()
+		err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+			Id:             webhookEventId,
+			OrganizationId: decision.OrganizationId,
+			EventContent:   models.NewWebhookEventDecisionCreated(decision),
+		})
+		if err != nil {
+			return models.DecisionWithRuleExecutions{}, err
+		}
+		sendWebhookEventId = append(sendWebhookEventId, webhookEventId)
 
 		err = usecase.taskQueueRepository.EnqueueDecisionWorkflowTask(
 			ctx,
@@ -668,18 +680,16 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			}
 			decisions[i] = item.decision
 
-			if params.WithDecisionWebhooks {
-				webhookEventId := pure_utils.NewId().String()
-				err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-					Id:             webhookEventId,
-					OrganizationId: item.decision.OrganizationId,
-					EventContent:   models.NewWebhookEventDecisionCreated(item.decision),
-				})
-				if err != nil {
-					return err
-				}
-				sendWebhookEventIds = append(sendWebhookEventIds, webhookEventId)
+			webhookEventId := uuid.NewString()
+			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+				Id:             webhookEventId,
+				OrganizationId: item.decision.OrganizationId,
+				EventContent:   models.NewWebhookEventDecisionCreated(item.decision),
+			})
+			if err != nil {
+				return err
 			}
+			sendWebhookEventIds = append(sendWebhookEventIds, webhookEventId)
 
 			err = usecase.taskQueueRepository.EnqueueDecisionWorkflowTask(
 				ctx,
