@@ -119,7 +119,6 @@ func (w *AsyncDecisionExecutionWorker) Work(ctx context.Context, job *river.Job[
 				ScenarioId:         execution.ScenarioId,
 			},
 			models.CreateDecisionParams{
-				WithRuleExecutionDetails:    true,
 				WithScenarioPermissionCheck: false,
 				WithDisallowUnknownFields:   false,
 			},

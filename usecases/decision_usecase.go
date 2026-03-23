@@ -374,11 +374,6 @@ func (usecase *DecisionUsecase) CreateDecision(
 	}
 
 	decision := models.AdaptScenarExecToDecision(scenarioExecution, payload, nil)
-	if !params.WithRuleExecutionDetails {
-		for i := range decision.RuleExecutions {
-			decision.RuleExecutions[i].Evaluation = nil
-		}
-	}
 
 	ctx, span = tracer.Start(
 		ctx,
