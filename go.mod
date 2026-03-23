@@ -16,11 +16,10 @@ require (
 	github.com/adhocore/gronx v1.19.6
 	github.com/adrg/strutil v0.3.1
 	github.com/alicebob/miniredis/v2 v2.37.0
-	github.com/anthropics/anthropic-sdk-go v1.27.0
 	github.com/authenticvision/rgeo v1.4.0
 	github.com/avast/retry-go/v4 v4.7.0
 	github.com/biter777/countries v1.7.5
-	github.com/checkmarble/llmberjack v0.0.0-20260319170918-c26826916a26
+	github.com/checkmarble/llmberjack v0.0.0-20260323165140-09e47d6a061e
 	github.com/cockroachdb/errors v1.12.0
 	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/disintegration/imaging v1.6.2
@@ -121,6 +120,7 @@ require (
 	github.com/TylerBrock/colorjson v0.0.0-20200706003622-8a50f05110d2 // indirect
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
+	github.com/anthropics/anthropic-sdk-go v1.27.0 // indirect
 	github.com/apache/arrow-go/v18 v18.5.1 // indirect
 	github.com/apache/arrow/go/v15 v15.0.2 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect

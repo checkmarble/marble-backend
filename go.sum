@@ -178,8 +178,8 @@ github.com/cenkalti/backoff/v5 v5.0.3 h1:ZN+IMa753KfX5hd8vVaMixjnqRZ3y8CuJKRKj1x
 github.com/cenkalti/backoff/v5 v5.0.3/go.mod h1:rkhZdG3JZukswDf7f0cwqPNk4K0sa+F97BxZthm/crw=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
-github.com/checkmarble/llmberjack v0.0.0-20260319170918-c26826916a26 h1:3pziYTjShn4AbML/aoQfrNrO0Nb6on5AkEbItMbna+c=
-github.com/checkmarble/llmberjack v0.0.0-20260319170918-c26826916a26/go.mod h1:vMqXATuYyXR5LWhTDEu0W2lJSJxGGq5xJThBlgUFlrU=
+github.com/checkmarble/llmberjack v0.0.0-20260323165140-09e47d6a061e h1:HLWULSIj+q5tBtxke4vEBRt4Y7ciFCnEe2i43ODRalE=
+github.com/checkmarble/llmberjack v0.0.0-20260323165140-09e47d6a061e/go.mod h1:vMqXATuYyXR5LWhTDEu0W2lJSJxGGq5xJThBlgUFlrU=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMnBNeIyt5eFwwo7qiLfzFZmjNmxjkiQlU=
