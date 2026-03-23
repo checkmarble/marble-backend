@@ -91,7 +91,6 @@ func (uc OrgImportUsecase) Seed(ctx context.Context, spec dto.OrgImport, orgId u
 					TriggerObjectTable: table,
 				},
 				models.CreateDecisionParams{
-					WithDecisionWebhooks:        false,
 					WithRuleExecutionDetails:    true,
 					WithScenarioPermissionCheck: false,
 					WithDisallowUnknownFields:   false,

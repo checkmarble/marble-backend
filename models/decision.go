@@ -198,7 +198,6 @@ type CreateDecisionInput struct {
 }
 
 type CreateDecisionParams struct {
-	WithDecisionWebhooks        bool
 	WithRuleExecutionDetails    bool
 	WithScenarioPermissionCheck bool
 	WithDisallowUnknownFields   bool

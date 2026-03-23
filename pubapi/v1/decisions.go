@@ -147,7 +147,6 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 			},
 			models.CreateDecisionParams{
 				WithScenarioPermissionCheck: true,
-				WithDecisionWebhooks:        true,
 				WithRuleExecutionDetails:    true,
 				WithDisallowUnknownFields:   true,
 			},
@@ -223,7 +222,6 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 			},
 			models.CreateDecisionParams{
 				WithScenarioPermissionCheck: true,
-				WithDecisionWebhooks:        true,
 				WithRuleExecutionDetails:    true,
 				WithDisallowUnknownFields:   true,
 			},
