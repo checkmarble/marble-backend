@@ -186,7 +186,6 @@ type AiAgentUsecase struct {
 	caseReviewFileRepository           caseReviewWorkerRepository
 	blobRepository                     repositories.BlobRepository
 	caseReviewTaskEnqueuer             caseReviewTaskEnqueuer
-	scenarioFetcher                    scenarios.ScenarioFetcher
 	screeningHitSuggestionTaskEnqueuer screeningHitSuggestionTaskEnqueuer
 	screeningUsecase                   AiAgentScreeningUsecase
 	featureAccessReader                featureAccessReader
@@ -240,7 +239,6 @@ func NewAiAgentUsecase(
 		blobRepository:                     blobRepository,
 		caseReviewTaskEnqueuer:             caseReviewTaskEnqueuer,
 		transactionFactory:                 transactionFactory,
-		scenarioFetcher:                    scenarioFetcher,
 		screeningHitSuggestionTaskEnqueuer: screeningHitSuggestionTaskEnqueuer,
 		screeningUsecase:                   screeningUsecase,
 		featureAccessReader:                featureAccessReader,
