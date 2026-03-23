@@ -146,8 +146,7 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 				PayloadRaw:         payload.TriggerObject,
 			},
 			models.CreateDecisionParams{
-				WithScenarioPermissionCheck: true,
-				WithDisallowUnknownFields:   true,
+				WithDisallowUnknownFields: true,
 			},
 		)
 		if err != nil {
@@ -220,8 +219,7 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 				PayloadRaw:         payload.TriggerObject,
 			},
 			models.CreateDecisionParams{
-				WithScenarioPermissionCheck: true,
-				WithDisallowUnknownFields:   true,
+				WithDisallowUnknownFields: true,
 			},
 		)
 		if err != nil {

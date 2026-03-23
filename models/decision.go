@@ -198,9 +198,8 @@ type CreateDecisionInput struct {
 }
 
 type CreateDecisionParams struct {
-	WithScenarioPermissionCheck bool
-	WithDisallowUnknownFields   bool
-	ConcurrentRules             int
+	WithDisallowUnknownFields bool
+	ConcurrentRules           int
 }
 
 type CreateAllDecisionsInput struct {

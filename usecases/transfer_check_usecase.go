@@ -210,9 +210,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 			OrganizationId:     organizationId,
 			TriggerObjectTable: models.TransferCheckTable,
 		},
-		models.CreateDecisionParams{
-			WithScenarioPermissionCheck: false,
-		},
+		models.CreateDecisionParams{},
 	)
 	if err != nil {
 		return models.Transfer{}, handleTransferCheckDecisionError(err)
@@ -508,9 +506,7 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 			OrganizationId:     organizationId,
 			TriggerObjectTable: models.TransferCheckTable,
 		},
-		models.CreateDecisionParams{
-			WithScenarioPermissionCheck: false,
-		},
+		models.CreateDecisionParams{},
 	)
 	if err != nil {
 		return models.Transfer{}, handleTransferCheckDecisionError(err)
