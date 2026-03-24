@@ -16,8 +16,8 @@ const (
 	ADMIN
 	API_CLIENT
 	MARBLE_ADMIN
-	TRANSFER_CHECK_API_CLIENT
-	TRANSFER_CHECK_USER
+	DEPREC_ROLE_1 // used in an old product
+	DEPREC_ROLE_2 // used in an old product
 	ANALYST
 )
 
@@ -28,14 +28,7 @@ func GetValidUserRoles() []Role {
 		PUBLISHER,
 		ADMIN,
 		MARBLE_ADMIN,
-		TRANSFER_CHECK_USER,
 		ANALYST,
-	}
-}
-
-func GetValidTransfercheckUserRoles() []Role {
-	return []Role{
-		TRANSFER_CHECK_USER,
 	}
 }
 
@@ -57,10 +50,6 @@ func (r Role) String() string {
 		return "API_CLIENT"
 	case MARBLE_ADMIN:
 		return "MARBLE_ADMIN"
-	case TRANSFER_CHECK_API_CLIENT:
-		return "TRANSFER_CHECK_API_CLIENT"
-	case TRANSFER_CHECK_USER:
-		return "TRANSFER_CHECK_USER"
 	default:
 		return "UNKNOWN_ROLE"
 	}
@@ -94,10 +83,6 @@ func RoleFromString(s string) Role {
 		return API_CLIENT
 	case "MARBLE_ADMIN":
 		return MARBLE_ADMIN
-	case "TRANSFER_CHECK_API_CLIENT":
-		return TRANSFER_CHECK_API_CLIENT
-	case "TRANSFER_CHECK_USER":
-		return TRANSFER_CHECK_USER
 	}
 	return NO_ROLE
 }

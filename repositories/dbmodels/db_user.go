@@ -12,7 +12,6 @@ type DBUserResult struct {
 	Email           string             `db:"email"`
 	Role            int                `db:"role"`
 	OrganizationId  *uuid.UUID         `db:"organization_id"`
-	PartnerId       *string            `db:"partner_id"`
 	FirstName       pgtype.Text        `db:"first_name"`
 	LastName        pgtype.Text        `db:"last_name"`
 	DeletedAt       pgtype.Timestamptz `db:"deleted_at"`
@@ -29,7 +28,6 @@ func AdaptUser(db DBUserResult) (models.User, error) {
 		UserId:          models.UserId(db.Id),
 		Email:           db.Email,
 		Role:            models.Role(db.Role),
-		PartnerId:       db.PartnerId,
 		AiAssistEnabled: db.AiAssistEnabled,
 		Picture:         db.Picture,
 	}

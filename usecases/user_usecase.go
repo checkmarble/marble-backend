@@ -26,10 +26,6 @@ type UserUseCase struct {
 }
 
 func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.CreateUser) (models.User, error) {
-	if err := validateUserCreate(createUser); err != nil {
-		return models.User{}, err
-	}
-
 	if err := usecase.enforceUserSecurity.CreateUser(createUser); err != nil {
 		return models.User{}, err
 	}
@@ -68,27 +64,6 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 	})
 
 	return createdUser, nil
-}
-
-func validateUserCreate(createUser models.CreateUser) error {
-	switch {
-	case slices.Contains(models.GetValidTransfercheckUserRoles(), createUser.Role):
-		if createUser.PartnerId == nil {
-			return errors.Wrap(models.BadParameterError,
-				"PartnerId is required for transfercheck users")
-		}
-
-		return nil
-	case slices.Contains(models.GetValidUserRoles(), createUser.Role):
-		if createUser.PartnerId != nil {
-			return errors.Wrap(models.BadParameterError,
-				"Partner Id is only allowed for transfercheck users")
-		}
-
-		return nil
-	default:
-		return errors.Wrap(models.BadParameterError, "Invalid role received")
-	}
 }
 
 func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.UpdateUser) (models.User, error) {

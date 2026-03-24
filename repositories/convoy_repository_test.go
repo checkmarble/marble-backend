@@ -29,10 +29,8 @@ func TestGetOwnerId(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := getOwnerId(tt.args.organizationId)
 			if !reflect.DeepEqual(got, tt.want) {
-				partnerId := "nil"
-
-				t.Errorf("getOwnerId(%s, %s) got = %v, want %v",
-					tt.args.organizationId, partnerId, got, tt.want)
+				t.Errorf("getOwnerId(%s) got = %v, want %v",
+					tt.args.organizationId, got, tt.want)
 			}
 		})
 	}

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/guregu/null/v5"
 	"github.com/pkg/errors"
 )
 
@@ -79,14 +78,12 @@ type WebhookEvent struct {
 	RetryCount     int
 	DeliveryStatus WebhookEventDeliveryStatus
 	OrganizationId uuid.UUID
-	PartnerId      null.String
 	EventContent   WebhookEventContent
 }
 
 type WebhookEventCreate struct {
 	Id             string
 	OrganizationId uuid.UUID
-	PartnerId      null.String
 	EventContent   WebhookEventContent
 }
 
@@ -222,7 +219,6 @@ func NewWebhookEventAsyncDecisionFailed(data AsyncDecisionExecution) WebhookEven
 type Webhook struct {
 	Id                string
 	OrganizationId    uuid.UUID
-	PartnerId         null.String
 	EventTypes        []string
 	Secrets           []Secret
 	Url               string
@@ -360,7 +356,6 @@ func MergeWebhookWithUpdate(w Webhook, update WebhookUpdate) Webhook {
 	result := Webhook{
 		Id:                w.Id,
 		OrganizationId:    w.OrganizationId,
-		PartnerId:         w.PartnerId,
 		EventTypes:        w.EventTypes,
 		Url:               w.Url,
 		HttpTimeout:       w.HttpTimeout,

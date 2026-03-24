@@ -81,7 +81,6 @@ func (repo MarbleDbRepository) CreateWebhookEvent(
 				"id",
 				"delivery_status",
 				"organization_id",
-				"partner_id",
 				"event_type",
 				"event_data",
 			).
@@ -89,7 +88,6 @@ func (repo MarbleDbRepository) CreateWebhookEvent(
 				input.Id,
 				models.Scheduled,
 				input.OrganizationId,
-				input.PartnerId.Ptr(),
 				input.EventContent.Type,
 				input.EventContent.Data,
 			),

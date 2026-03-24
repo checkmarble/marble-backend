@@ -17,7 +17,6 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/checkmarble/marble-backend/usecases/scoring/scoring_jobs"
 	"github.com/checkmarble/marble-backend/usecases/security"
-	"github.com/checkmarble/marble-backend/usecases/transfers_data_read"
 	"github.com/checkmarble/marble-backend/usecases/webhooks"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 	"github.com/checkmarble/marble-backend/utils"
@@ -542,54 +541,6 @@ func (usecases *UsecasesWithCreds) NewAnalyticsUseCase() AnalyticsUseCase {
 			Credentials:     usecases.Credentials,
 		},
 		analyticsRepository: &usecases.Repositories.MarbleAnalyticsRepository,
-	}
-}
-
-func (usecases *UsecasesWithCreds) NewTransferCheckUsecase() TransferCheckUsecase {
-	return TransferCheckUsecase{
-		dataModelRepository:               usecases.Repositories.MarbleDbRepository,
-		decisionUseCase:                   usecases.NewDecisionUsecase(),
-		decisionRepository:                usecases.Repositories.MarbleDbRepository,
-		enforceSecurity:                   security.NewEnforceSecurity(usecases.Credentials),
-		executorFactory:                   usecases.NewExecutorFactory(),
-		ingestionRepository:               usecases.Repositories.IngestionRepository,
-		organizationRepository:            usecases.Repositories.MarbleDbRepository,
-		transactionFactory:                usecases.NewTransactionFactory(),
-		transferMappingsRepository:        usecases.Repositories.MarbleDbRepository,
-		transferCheckEnrichmentRepository: usecases.Repositories.TransferCheckEnrichmentRepository,
-		transferDataReader:                usecases.NewTransferDataReader(),
-		partnersRepository:                usecases.Repositories.MarbleDbRepository,
-	}
-}
-
-func (usecases *UsecasesWithCreds) NewTransferAlertsUsecase() TransferAlertsUsecase {
-	return NewTransferAlertsUsecase(
-		security.NewEnforceSecurity(usecases.Credentials),
-		usecases.NewExecutorFactory(),
-		usecases.Repositories.MarbleDbRepository,
-		usecases.NewTransactionFactory(),
-		usecases.Repositories.MarbleDbRepository,
-		usecases.Repositories.MarbleDbRepository,
-		usecases.Repositories.MarbleDbRepository,
-		usecases.NewTransferDataReader(),
-	)
-}
-
-func (usecases *UsecasesWithCreds) NewTransferDataReader() transfers_data_read.TransferDataReader {
-	return transfers_data_read.NewTransferDataReader(
-		security.NewEnforceSecurity(usecases.Credentials),
-		usecases.NewExecutorFactory(),
-		usecases.Repositories.IngestedDataReadRepository,
-		usecases.Repositories.MarbleDbRepository,
-	)
-}
-
-func (usecases *UsecasesWithCreds) NewPartnerUsecase() PartnerUsecase {
-	return PartnerUsecase{
-		enforceSecurity:    security.NewEnforceSecurity(usecases.Credentials),
-		transactionFactory: usecases.NewTransactionFactory(),
-		executorFactory:    usecases.NewExecutorFactory(),
-		partnersRepository: usecases.Repositories.MarbleDbRepository,
 	}
 }
 

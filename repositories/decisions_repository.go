@@ -44,10 +44,6 @@ type DecisionRepository interface {
 		caseId string,
 	) ([]models.Decision, error)
 
-	// DEPRECATED: Do not use, see warning comment below next to the implementation
-	DEPRECATED_DecisionsByObjectId(ctx context.Context, exec Executor, organizationId uuid.UUID,
-		objectId string) ([]models.DecisionMetadata, error)
-
 	StoreDecision(
 		ctx context.Context,
 		exec Executor,
@@ -349,36 +345,6 @@ func (repo *MarbleDbRepository) DecisionsByCaseId(
 	})
 }
 
-// DEPRECATED: Do not use, see warning comment below
-func (repo *MarbleDbRepository) DEPRECATED_DecisionsByObjectId(
-	ctx context.Context,
-	exec Executor,
-	organizationId uuid.UUID,
-	objectId string,
-) ([]models.DecisionMetadata, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return nil, err
-	}
-
-	// WARNING: This query is broken with the change in which this comment is introduced.. Anyway, it's deprecated and only used in
-	// the transfercheck usecase.
-	// To be removed but in another follow-up PR. I am only not doing it in the same PR because there is a LOT of code to remove
-	// which would be a distraction.
-	query := selectDecisionAndCase().
-		Where(squirrel.Eq{"d.org_id": organizationId}).
-		Where(squirrel.Eq{"d.trigger_object->>'object_id'": objectId}).
-		OrderBy("d.created_at DESC")
-
-	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.DecisionMetadata, error) {
-		db, err := pgx.RowToStructByPos[dbmodels.DbCoreDecision](row)
-		if err != nil {
-			return models.DecisionMetadata{}, err
-		}
-
-		return dbmodels.AdaptDecisionMetadata(db), nil
-	})
-}
-
 func (repo *MarbleDbRepository) DecisionsOfOrganization(
 	ctx context.Context,
 	exec Executor,
@@ -625,7 +591,9 @@ func (repo *MarbleDbRepository) StoreDecision(
 			err := retry.Do(
 				func() error {
 					serializedRuleEvaluation, err := dbmodels.SerializeDecisionEvaluationDto(
-						pure_utils.Map(decision.RuleExecutions, func(e models.RuleExecution) *ast.NodeEvaluationDto {
+						pure_utils.Map(decision.RuleExecutions, func(
+							e models.RuleExecution,
+						) *ast.NodeEvaluationDto {
 							return e.Evaluation
 						}))
 					if err != nil {

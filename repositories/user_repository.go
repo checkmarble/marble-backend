@@ -40,7 +40,6 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 				"email",
 				"role",
 				"organization_id",
-				"partner_id",
 				"first_name",
 				"last_name",
 			).
@@ -49,7 +48,6 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 				createUser.Email,
 				int(createUser.Role),
 				createUser.OrganizationId,
-				createUser.PartnerId,
 				createUser.FirstName,
 				createUser.LastName,
 			),

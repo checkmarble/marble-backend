@@ -5,36 +5,35 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/guregu/null/v5"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func (e *EnforceSecurityImpl) SendWebhookEvent(ctx context.Context, organizationId uuid.UUID, partnerId null.String) error {
+func (e *EnforceSecurityImpl) SendWebhookEvent(ctx context.Context, organizationId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.WEBHOOK_EVENT),
-		utils.EnforceOrganizationAndPartnerAccess(e.Credentials, organizationId, partnerId),
+		utils.EnforceOrganizationAccess(e.Credentials, organizationId),
 	)
 }
 
-func (e *EnforceSecurityImpl) CanCreateWebhook(ctx context.Context, organizationId uuid.UUID, partnerId null.String) error {
+func (e *EnforceSecurityImpl) CanCreateWebhook(ctx context.Context, organizationId uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.WEBHOOK),
-		utils.EnforceOrganizationAndPartnerAccess(e.Credentials, organizationId, partnerId),
+		utils.EnforceOrganizationAccess(e.Credentials, organizationId),
 	)
 }
 
 func (e *EnforceSecurityImpl) CanReadWebhook(ctx context.Context, webhook models.Webhook) error {
 	return errors.Join(
 		e.Permission(models.WEBHOOK),
-		utils.EnforceOrganizationAndPartnerAccess(e.Credentials, webhook.OrganizationId, webhook.PartnerId),
+		utils.EnforceOrganizationAccess(e.Credentials, webhook.OrganizationId),
 	)
 }
 
 func (e *EnforceSecurityImpl) CanModifyWebhook(ctx context.Context, webhook models.Webhook) error {
 	return errors.Join(
 		e.Permission(models.WEBHOOK),
-		utils.EnforceOrganizationAndPartnerAccess(e.Credentials, webhook.OrganizationId, webhook.PartnerId),
+		utils.EnforceOrganizationAccess(e.Credentials, webhook.OrganizationId),
 	)
 }

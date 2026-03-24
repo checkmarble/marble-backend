@@ -11,7 +11,6 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/guregu/null/v5"
 	"golang.org/x/time/rate"
 )
 
@@ -57,10 +56,7 @@ func getOwnerId(organizationId uuid.UUID) string {
 }
 
 func parseOwnerId(ownerId string) uuid.UUID {
-	parts := strings.Split(ownerId, "-partner:")
-	if len(parts) == 2 {
-		return uuid.MustParse(parts[0][4:])
-	}
+	// for historical reasons, the owner ids are stored as: "org:..." instead of just the uuid. We can forget about this soon when we deprecate convoy completely.
 	return uuid.MustParse(ownerId[4:])
 }
 
@@ -124,7 +120,6 @@ func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent 
 func (repo ConvoyRepository) RegisterWebhook(
 	ctx context.Context,
 	organizationId uuid.UUID,
-	partnerId null.String,
 	input models.WebhookRegister,
 ) (models.Webhook, error) {
 	projectId := repo.convoyClientProvider.GetProjectID()
@@ -181,7 +176,7 @@ func checkPerPageLimit(ctx context.Context, count int) {
 	}
 }
 
-func (repo ConvoyRepository) ListWebhooks(ctx context.Context, organizationId uuid.UUID, partnerId null.String) ([]models.Webhook, error) {
+func (repo ConvoyRepository) ListWebhooks(ctx context.Context, organizationId uuid.UUID) ([]models.Webhook, error) {
 	projectId := repo.convoyClientProvider.GetProjectID()
 	convoyClient, err := repo.convoyClientProvider.GetClient()
 	if err != nil {

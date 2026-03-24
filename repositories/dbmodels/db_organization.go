@@ -14,7 +14,6 @@ type DBOrganizationResult struct {
 	DeletedAt               *int        `db:"deleted_at"`
 	Name                    string      `db:"name"`
 	AllowedNetworks         []net.IPNet `db:"allowed_networks"`
-	TransferCheckScenarioId *string     `db:"transfer_check_scenario_id"`
 	AiCaseReviewEnabled     bool        `db:"ai_case_review_enabled"`
 	DefaultScenarioTimezone *string     `db:"default_scenario_timezone"`
 	ScreeningThreshold      int         `db:"sanctions_threshold"`
@@ -34,7 +33,6 @@ func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
 		PublicId:                db.PublicId,
 		Name:                    db.Name,
 		WhitelistedSubnets:      db.AllowedNetworks,
-		TransferCheckScenarioId: db.TransferCheckScenarioId,
 		AiCaseReviewEnabled:     db.AiCaseReviewEnabled,
 		DefaultScenarioTimezone: db.DefaultScenarioTimezone,
 		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{

@@ -12,7 +12,6 @@ type ApiKey struct {
 	Description    string
 	Hash           []byte
 	OrganizationId uuid.UUID
-	PartnerId      *string
 	Prefix         string
 	Role           Role
 

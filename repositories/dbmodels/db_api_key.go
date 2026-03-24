@@ -17,7 +17,6 @@ type DBApiKey struct {
 	Description    string             `db:"description"`
 	Hash           []byte             `db:"key_hash"`
 	Prefix         string             `db:"prefix"`
-	PartnerId      pgtype.Text        `db:"partner_id"`
 	OrganizationId uuid.UUID          `db:"org_id"`
 	Role           int                `db:"role"`
 }
@@ -35,9 +34,6 @@ func AdaptApikey(db DBApiKey) (models.ApiKey, error) {
 		OrganizationId: db.OrganizationId,
 		Prefix:         db.Prefix,
 		Role:           models.Role(db.Role),
-	}
-	if db.PartnerId.Valid {
-		out.PartnerId = &db.PartnerId.String
 	}
 
 	return out, nil

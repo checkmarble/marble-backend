@@ -11,7 +11,6 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/guregu/null/v5"
 )
 
 // MigrateConvoyWebhooks migrates webhooks from Convoy to the internal webhook system.
@@ -73,7 +72,7 @@ func MigrateConvoyWebhooks(ctx context.Context, repos repositories.Repositories,
 	var totalSkipped int
 
 	for _, org := range orgs {
-		convoyWebhooks, err := repos.ConvoyRepository.ListWebhooks(convoyCtx, org.Id, null.String{})
+		convoyWebhooks, err := repos.ConvoyRepository.ListWebhooks(convoyCtx, org.Id)
 		if err != nil {
 			return errors.Wrapf(err, "failed to fetch Convoy webhooks for organization %s", org.Id)
 		}
