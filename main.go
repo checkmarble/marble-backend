@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"log/slog"
+	"os"
 
 	"github.com/checkmarble/marble-backend/api"
 	"github.com/checkmarble/marble-backend/cmd"
@@ -36,7 +37,7 @@ func main() {
 		workerOnlyArgs = utils.Ptr("")
 	)
 
-	if apiVersion == "dev" {
+	if apiVersion == "dev" || os.Getenv("ENABLE_WORKER_ONESHOT") == "1" {
 		workerOnly = flag.String("worker-only", "", "only run a specific job to completion")
 		workerOnlyArgs = flag.String("worker-args", "", "JSON-encoded arguments to the worker")
 	}
