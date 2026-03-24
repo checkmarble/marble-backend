@@ -214,6 +214,10 @@ func (repo *MarbleDbRepository) InsertScoringRulesetVersionRule(
 		return nil, err
 	}
 
+	if len(rules) == 0 {
+		return []models.ScoringRule{}, nil
+	}
+
 	query := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SCORING_RULES).
 		Columns(
