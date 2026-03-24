@@ -14,11 +14,19 @@ func (p ScoreComputation) Evaluate(ctx context.Context, arguments ast.Arguments)
 	if floorErr != nil {
 		floor = 0
 	}
+
+	if modifierErr != nil {
+		return MakeEvaluateError(modifierErr)
+	}
+
+	if arguments.Args[0] == nil {
+		return ast.ScoreComputationResult{}, nil
+	}
+
 	result, resultErr := adaptArgumentToBool(arguments.Args[0])
 
-	errs := filterNilErrors(modifierErr, resultErr)
-	if len(errs) > 0 {
-		return nil, errs
+	if resultErr != nil {
+		return MakeEvaluateError(resultErr)
 	}
 
 	if !result {
