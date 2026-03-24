@@ -11,20 +11,19 @@ type CompiledConfig struct {
 }
 
 type ServerConfig struct {
-	batchIngestionMaxSize            int
-	caseManagerBucket                string
-	ingestionBucketUrl               string
-	offloadingBucketUrl              string
-	analyticsBucketUrl               string
-	jwtSigningKey                    string
-	jwtSigningKeyFile                string
-	sentryDsn                        string
-	transferCheckEnrichmentBucketUrl string
-	telemetryExporter                string
-	otelSamplingRates                string
-	similarityThreshold              float64
-	enableTracing                    bool
-	continuousScreeningBucketUrl     string
+	batchIngestionMaxSize        int
+	caseManagerBucket            string
+	ingestionBucketUrl           string
+	offloadingBucketUrl          string
+	analyticsBucketUrl           string
+	jwtSigningKey                string
+	jwtSigningKeyFile            string
+	sentryDsn                    string
+	telemetryExporter            string
+	otelSamplingRates            string
+	similarityThreshold          float64
+	enableTracing                bool
+	continuousScreeningBucketUrl string
 }
 
 func (config ServerConfig) Validate() error {

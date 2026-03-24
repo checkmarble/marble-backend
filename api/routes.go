@@ -283,11 +283,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.PATCH("/organizations/:organization_id/feature_access", tom,
 		handlePatchOrganizationFeatureAccess(uc))
 
-	router.GET("/partners", tom, handleListPartners(uc))
-	router.POST("/partners", tom, handleCreatePartner(uc))
-	router.GET("/partners/:partner_id", tom, handleGetPartner(uc))
-	router.PATCH("/partners/:partner_id", tom, handleUpdatePartner(uc))
-
 	router.GET("/cases", tom, handleListCases(uc))
 	router.POST("/cases", tom, handlePostCase(uc))
 	router.POST("/cases/mass-update", tom, handleCaseMassUpdate(uc))
@@ -369,22 +364,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.DELETE("/data-model/fields/:fieldID", tom, handleDeleteDataModelField(uc))
 	router.DELETE("/data-model/links/:linkID", tom, handleDeleteDataModelLink(uc))
 	router.DELETE("/data-model/pivots/:pivotID", tom, handleDeleteDataModelPivot(uc))
-
-	router.POST("/transfers", tom, handleCreateTransfer(uc))
-	router.GET("/transfers", tom, handleQueryTransfers(uc))
-	router.PATCH("/transfers/:transfer_id", tom, handleUpdateTransfer(uc))
-	router.GET("/transfers/:transfer_id", tom, handleGetTransfer(uc))
-	router.POST("/transfers/:transfer_id/score", tom, handleScoreTransfer(uc))
-
-	router.POST("/transfer/alerts", tom, handleCreateTransferAlert(uc))
-	router.GET("/transfer/sent/alerts/:alert_id", tom, handleGetTransferAlertSender(uc))
-	router.GET("/transfer/received/alerts/:alert_id", tom, handleGetTransferAlertBeneficiary(uc))
-	router.GET("/transfer/sent/alerts", tom, handleListTransferAlertsSender(uc))
-	router.GET("/transfer/received/alerts", tom, handleListTransferAlertsBeneficiary(uc))
-	router.PATCH("/transfer/sent/alerts/:alert_id", tom, handleUpdateTransferAlertSender(uc))
-	router.PATCH("/transfer/received/alerts/:alert_id",
-		tom,
-		handleUpdateTransferAlertBeneficiary(uc))
 
 	router.GET("/licenses", tom, handleListLicenses(uc))
 	router.POST("/licenses", tom, handleCreateLicense(uc))

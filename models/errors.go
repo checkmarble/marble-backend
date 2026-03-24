@@ -1,8 +1,6 @@
 package models
 
 import (
-	"fmt"
-
 	"github.com/cockroachdb/errors"
 )
 
@@ -68,13 +66,6 @@ var (
 
 // ingestion and decision creating payload related errors
 var FormatValidationError = errors.New("The input object is not valid")
-
-// transfercheck errors
-type FieldValidationError map[string]string
-
-func (e FieldValidationError) Error() string {
-	return fmt.Sprintf("%v", map[string]string(e))
-}
 
 type (
 	RequirementError       string

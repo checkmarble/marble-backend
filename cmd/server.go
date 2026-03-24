@@ -212,20 +212,19 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	}
 
 	serverConfig := ServerConfig{
-		batchIngestionMaxSize:            utils.GetEnv("BATCH_INGESTION_MAX_SIZE", 0),
-		caseManagerBucket:                utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
-		ingestionBucketUrl:               utils.GetEnv("INGESTION_BUCKET_URL", ""),
-		offloadingBucketUrl:              utils.GetEnv("OFFLOADING_BUCKET_URL", ""),
-		analyticsBucketUrl:               utils.GetEnv("ANALYTICS_BUCKET_URL", ""),
-		jwtSigningKey:                    utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
-		jwtSigningKeyFile:                utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY_FILE", ""),
-		sentryDsn:                        utils.GetEnv("SENTRY_DSN", ""),
-		transferCheckEnrichmentBucketUrl: utils.GetEnv("TRANSFER_CHECK_ENRICHMENT_BUCKET_URL", ""), // required for transfercheck
-		telemetryExporter:                utils.GetEnv("TRACING_EXPORTER", "otlp"),
-		otelSamplingRates:                utils.GetEnv("TRACING_SAMPLING_RATES", ""),
-		similarityThreshold:              utils.GetEnv("SIMILARITY_THRESHOLD", models.DEFAULT_SIMILARITY_THRESHOLD),
-		enableTracing:                    utils.GetEnv("ENABLE_TRACING", false),
-		continuousScreeningBucketUrl:     utils.GetEnv("CONTINUOUS_SCREENING_BUCKET_URL", ""),
+		batchIngestionMaxSize:        utils.GetEnv("BATCH_INGESTION_MAX_SIZE", 0),
+		caseManagerBucket:            utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
+		ingestionBucketUrl:           utils.GetEnv("INGESTION_BUCKET_URL", ""),
+		offloadingBucketUrl:          utils.GetEnv("OFFLOADING_BUCKET_URL", ""),
+		analyticsBucketUrl:           utils.GetEnv("ANALYTICS_BUCKET_URL", ""),
+		jwtSigningKey:                utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
+		jwtSigningKeyFile:            utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY_FILE", ""),
+		sentryDsn:                    utils.GetEnv("SENTRY_DSN", ""),
+		telemetryExporter:            utils.GetEnv("TRACING_EXPORTER", "otlp"),
+		otelSamplingRates:            utils.GetEnv("TRACING_SAMPLING_RATES", ""),
+		similarityThreshold:          utils.GetEnv("SIMILARITY_THRESHOLD", models.DEFAULT_SIMILARITY_THRESHOLD),
+		enableTracing:                utils.GetEnv("ENABLE_TRACING", false),
+		continuousScreeningBucketUrl: utils.GetEnv("CONTINUOUS_SCREENING_BUCKET_URL", ""),
 	}
 	if err := serverConfig.Validate(); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -340,7 +339,6 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		gcpConfig,
 		repositories.WithRedisClient(redisClient),
 		repositories.WithMetabase(infra.InitializeMetabase(apiConfig.MetabaseConfig)),
-		repositories.WithTransferCheckEnrichmentBucket(serverConfig.transferCheckEnrichmentBucketUrl),
 		repositories.WithConvoyClientProvider(
 			infra.InitializeConvoyRessources(convoyConfiguration),
 			convoyConfiguration.RateLimit,

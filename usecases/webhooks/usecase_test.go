@@ -7,7 +7,6 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/guregu/null/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -22,8 +21,8 @@ type mockEnforceSecurityWebhook struct {
 	mock.Mock
 }
 
-func (m *mockEnforceSecurityWebhook) CanCreateWebhook(ctx context.Context, organizationId uuid.UUID, partnerId null.String) error {
-	args := m.Called(ctx, organizationId, partnerId)
+func (m *mockEnforceSecurityWebhook) CanCreateWebhook(ctx context.Context, organizationId uuid.UUID) error {
+	args := m.Called(ctx, organizationId)
 	return args.Error(0)
 }
 

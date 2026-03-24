@@ -11,15 +11,13 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/google/uuid"
-	"github.com/guregu/null/v5"
 	"github.com/pkg/errors"
 )
 
 type convoyWebhooksRepository interface {
 	GetWebhook(ctx context.Context, webhookId string) (models.Webhook, error)
-	ListWebhooks(ctx context.Context, organizationId uuid.UUID, partnerId null.String) ([]models.Webhook, error)
-	RegisterWebhook(ctx context.Context, organizationId uuid.UUID, partnerId null.String,
-		input models.WebhookRegister) (models.Webhook, error)
+	ListWebhooks(ctx context.Context, organizationId uuid.UUID) ([]models.Webhook, error)
+	RegisterWebhook(ctx context.Context, organizationId uuid.UUID, input models.WebhookRegister) (models.Webhook, error)
 	UpdateWebhook(ctx context.Context, input models.Webhook) (models.Webhook, error)
 	DeleteWebhook(ctx context.Context, webhookId string) error
 }
@@ -40,7 +38,7 @@ type webhooksRepository interface {
 }
 
 type enforceSecurityWebhook interface {
-	CanCreateWebhook(ctx context.Context, organizationId uuid.UUID, partnerId null.String) error
+	CanCreateWebhook(ctx context.Context, organizationId uuid.UUID) error
 	CanReadWebhook(ctx context.Context, webhook models.Webhook) error
 	CanModifyWebhook(ctx context.Context, webhook models.Webhook) error
 }
@@ -90,7 +88,6 @@ func adaptNewWebhookToLegacy(nw models.NewWebhook) models.Webhook {
 	return models.Webhook{
 		Id:                nw.Id.String(),
 		OrganizationId:    nw.OrganizationId,
-		PartnerId:         null.String{}, // New system doesn't use partners
 		EventTypes:        nw.EventTypes,
 		Url:               nw.Url,
 		HttpTimeout:       httpTimeout,
@@ -125,15 +122,15 @@ func generateSecretValue() (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-func (usecase WebhooksUsecase) ListWebhooks(ctx context.Context, organizationId uuid.UUID, partnerId null.String) ([]models.Webhook, error) {
+func (usecase WebhooksUsecase) ListWebhooks(ctx context.Context, organizationId uuid.UUID) ([]models.Webhook, error) {
 	if usecase.webhookSystemMigrated {
 		return usecase.listWebhooksNew(ctx, organizationId)
 	}
-	return usecase.listWebhooksConvoy(ctx, organizationId, partnerId)
+	return usecase.listWebhooksConvoy(ctx, organizationId)
 }
 
-func (usecase WebhooksUsecase) listWebhooksConvoy(ctx context.Context, organizationId uuid.UUID, partnerId null.String) ([]models.Webhook, error) {
-	webhooks, err := usecase.convoyRepository.ListWebhooks(ctx, organizationId, partnerId)
+func (usecase WebhooksUsecase) listWebhooksConvoy(ctx context.Context, organizationId uuid.UUID) ([]models.Webhook, error) {
+	webhooks, err := usecase.convoyRepository.ListWebhooks(ctx, organizationId)
 	if err != nil {
 		return nil, errors.Wrap(err, "error listing webhooks")
 	}
@@ -176,10 +173,9 @@ func (usecase WebhooksUsecase) listWebhooksNew(ctx context.Context, organization
 func (usecase WebhooksUsecase) RegisterWebhook(
 	ctx context.Context,
 	organizationId uuid.UUID,
-	partnerId null.String,
 	input models.WebhookRegister,
 ) (models.Webhook, error) {
-	err := usecase.enforceSecurity.CanCreateWebhook(ctx, organizationId, partnerId)
+	err := usecase.enforceSecurity.CanCreateWebhook(ctx, organizationId)
 	if err != nil {
 		return models.Webhook{}, err
 	}
@@ -192,7 +188,7 @@ func (usecase WebhooksUsecase) RegisterWebhook(
 		return usecase.registerWebhookNew(ctx, organizationId, input)
 	}
 
-	webhook, err := usecase.convoyRepository.RegisterWebhook(ctx, organizationId, partnerId, input)
+	webhook, err := usecase.convoyRepository.RegisterWebhook(ctx, organizationId, input)
 	return webhook, errors.Wrap(err, "error registering webhook")
 }
 
@@ -256,9 +252,7 @@ func (usecase WebhooksUsecase) registerWebhookNew(
 	return adaptNewWebhookToLegacy(newWebhook), nil
 }
 
-func (usecase WebhooksUsecase) GetWebhook(
-	ctx context.Context, organizationId uuid.UUID, partnerId null.String, webhookId string,
-) (models.Webhook, error) {
+func (usecase WebhooksUsecase) GetWebhook(ctx context.Context, organizationId uuid.UUID, webhookId string) (models.Webhook, error) {
 	if usecase.webhookSystemMigrated {
 		return usecase.getWebhookNew(ctx, webhookId)
 	}
@@ -300,9 +294,7 @@ func (usecase WebhooksUsecase) getWebhookNew(ctx context.Context, webhookId stri
 	return webhook, nil
 }
 
-func (usecase WebhooksUsecase) DeleteWebhook(
-	ctx context.Context, organizationId uuid.UUID, partnerId null.String, webhookId string,
-) error {
+func (usecase WebhooksUsecase) DeleteWebhook(ctx context.Context, organizationId uuid.UUID, webhookId string) error {
 	if usecase.webhookSystemMigrated {
 		return usecase.deleteWebhookNew(ctx, webhookId)
 	}
@@ -341,8 +333,8 @@ func (usecase WebhooksUsecase) deleteWebhookNew(ctx context.Context, webhookId s
 	return errors.Wrap(err, "error deleting webhook")
 }
 
-func (usecase WebhooksUsecase) UpdateWebhook(
-	ctx context.Context, organizationId uuid.UUID, partnerId null.String, webhookId string, input models.WebhookUpdate,
+func (usecase WebhooksUsecase) UpdateWebhook(ctx context.Context, organizationId uuid.UUID,
+	webhookId string, input models.WebhookUpdate,
 ) (models.Webhook, error) {
 	if err := input.Validate(); err != nil {
 		return models.Webhook{}, err

@@ -14,7 +14,6 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
-	"github.com/guregu/null/v5"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 )
@@ -50,7 +49,7 @@ type webhookEventsRepository interface {
 }
 
 type enforceSecurityWebhookEvents interface {
-	SendWebhookEvent(ctx context.Context, organizationId uuid.UUID, partnerId null.String) error
+	SendWebhookEvent(ctx context.Context, organizationId uuid.UUID) error
 }
 
 // webhookEventV2Repository is the interface for the new webhook event system.
@@ -129,7 +128,7 @@ func (usecase WebhookEventsUsecase) CreateWebhookEvent(
 		return nil
 	}
 
-	err := usecase.enforceSecurity.SendWebhookEvent(ctx, input.OrganizationId, input.PartnerId)
+	err := usecase.enforceSecurity.SendWebhookEvent(ctx, input.OrganizationId)
 	if err != nil {
 		return err
 	}
@@ -321,7 +320,7 @@ func (usecase WebhookEventsUsecase) _sendWebhookEvent(ctx context.Context, webho
 		return webhookEvent.DeliveryStatus, nil
 	}
 
-	err = usecase.enforceSecurity.SendWebhookEvent(ctx, webhookEvent.OrganizationId, webhookEvent.PartnerId)
+	err = usecase.enforceSecurity.SendWebhookEvent(ctx, webhookEvent.OrganizationId)
 	if err != nil {
 		return models.Scheduled, err
 	}

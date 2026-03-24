@@ -14,19 +14,18 @@ import (
 )
 
 type options struct {
-	metabase                      Metabase
-	transfercheckEnrichmentBucket string
-	clientDbConfig                map[string]infra.ClientDbConfig
-	redisClient                   *RedisClient
-	convoyClientProvider          ConvoyClientProvider
-	convoyRateLimit               int
-	openSanctions                 infra.OpenSanctions
-	riverClient                   *river.Client[pgx.Tx]
-	tp                            trace.TracerProvider
-	bigQueryInfra                 *infra.BigQueryInfra
-	withCache                     bool
-	similarityThreshold           float64
-	lagoConfig                    infra.LagoConfig
+	metabase             Metabase
+	clientDbConfig       map[string]infra.ClientDbConfig
+	redisClient          *RedisClient
+	convoyClientProvider ConvoyClientProvider
+	convoyRateLimit      int
+	openSanctions        infra.OpenSanctions
+	riverClient          *river.Client[pgx.Tx]
+	tp                   trace.TracerProvider
+	bigQueryInfra        *infra.BigQueryInfra
+	withCache            bool
+	similarityThreshold  float64
+	lagoConfig           infra.LagoConfig
 }
 
 type Option func(*options)
@@ -48,12 +47,6 @@ func WithRedisClient(client *RedisClient) Option {
 func WithMetabase(metabase Metabase) Option {
 	return func(o *options) {
 		o.metabase = metabase
-	}
-}
-
-func WithTransferCheckEnrichmentBucket(bucket string) Option {
-	return func(o *options) {
-		o.transfercheckEnrichmentBucket = bucket
 	}
 }
 
@@ -113,25 +106,24 @@ func WithLagoConfig(lagoConfig infra.LagoConfig) Option {
 }
 
 type Repositories struct {
-	ExecutorGetter                    ExecutorGetter
-	RedisClient                       *RedisClient
-	ConvoyRepository                  ConvoyRepository
-	IngestionRepository               IngestionRepository
-	IngestedDataReadRepository        IngestedDataReadRepository
-	MarbleDbRepository                *MarbleDbRepository
-	ClientDbRepository                ClientDbRepository
-	ScenarioPublicationRepository     ScenarioPublicationRepository
-	OrganizationSchemaRepository      OrganizationSchemaRepository
-	BlobRepository                    BlobRepository
-	CustomListRepository              CustomListRepository
-	UploadLogRepository               UploadLogRepository
-	MarbleAnalyticsRepository         MarbleAnalyticsRepository
-	OpenSanctionsRepository           OpenSanctionsRepository
-	NameRecognitionRepository         NameRecognitionRepository
-	TransferCheckEnrichmentRepository *TransferCheckEnrichmentRepository
-	TaskQueueRepository               TaskQueueRepository
-	MetricsIngestionRepository        MetricsIngestionRepository
-	LagoRepository                    lago_repository.LagoRepository
+	ExecutorGetter                ExecutorGetter
+	RedisClient                   *RedisClient
+	ConvoyRepository              ConvoyRepository
+	IngestionRepository           IngestionRepository
+	IngestedDataReadRepository    IngestedDataReadRepository
+	MarbleDbRepository            *MarbleDbRepository
+	ClientDbRepository            ClientDbRepository
+	ScenarioPublicationRepository ScenarioPublicationRepository
+	OrganizationSchemaRepository  OrganizationSchemaRepository
+	BlobRepository                BlobRepository
+	CustomListRepository          CustomListRepository
+	UploadLogRepository           UploadLogRepository
+	MarbleAnalyticsRepository     MarbleAnalyticsRepository
+	OpenSanctionsRepository       OpenSanctionsRepository
+	NameRecognitionRepository     NameRecognitionRepository
+	TaskQueueRepository           TaskQueueRepository
+	MetricsIngestionRepository    MetricsIngestionRepository
+	LagoRepository                lago_repository.LagoRepository
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
@@ -180,10 +172,6 @@ func NewRepositories(
 			NameRecognitionProvider: options.openSanctions.NameRecognition(),
 			Client:                  http.DefaultClient,
 		},
-		TransferCheckEnrichmentRepository: NewTransferCheckEnrichmentRepository(
-			blobRepository,
-			options.transfercheckEnrichmentBucket,
-		),
 		TaskQueueRepository:        NewTaskQueueRepository(options.riverClient),
 		MetricsIngestionRepository: NewMetricsIngestionRepository(options.bigQueryInfra),
 		LagoRepository:             lago_repository.NewLagoRepository(http.DefaultClient, options.lagoConfig),

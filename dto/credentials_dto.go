@@ -17,7 +17,6 @@ type Identity struct {
 type Credentials struct {
 	ActorIdentity  Identity  `json:"actor_identity"`
 	OrganizationId uuid.UUID `json:"organization_id"`
-	PartnerId      *string   `json:"partner_id,omitempty"`
 	Permissions    []string  `json:"permissions"`
 	Role           string    `json:"role"`
 }
@@ -40,7 +39,6 @@ func AdaptCredentialDto(creds models.Credentials) (Credentials, error) {
 			ApiKeyName: creds.ActorIdentity.ApiKeyName,
 		},
 		OrganizationId: creds.OrganizationId,
-		PartnerId:      creds.PartnerId,
 		Permissions:    permissions,
 		Role:           creds.Role.String(),
 	}, nil
@@ -56,7 +54,6 @@ func AdaptCredential(dto Credentials) models.Credentials {
 			ApiKeyName: dto.ActorIdentity.ApiKeyName,
 		},
 		OrganizationId: dto.OrganizationId,
-		PartnerId:      dto.PartnerId,
 		Role:           models.RoleFromString(dto.Role),
 	}
 }

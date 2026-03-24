@@ -24,9 +24,6 @@ func SetupSentry(dsn, env, apiVersion string) {
 			if ctx.Span.Name == "GET /token" {
 				return 0.05
 			}
-			if ctx.Span.Name == "POST /transfers" {
-				return 0.01
-			}
 			if ctx.Span.Name == "async_decision" {
 				return 0.01
 			}

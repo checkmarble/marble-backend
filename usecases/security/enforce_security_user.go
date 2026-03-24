@@ -38,13 +38,6 @@ func (e *EnforceSecurityUserImpl) CreateUser(input models.CreateUser) error {
 		)
 	}
 
-	if input.Role == models.TRANSFER_CHECK_USER && e.Credentials.Role != models.MARBLE_ADMIN {
-		return errors.Wrap(
-			models.ForbiddenError,
-			"only marble admins can create transfer check users",
-		)
-	}
-
 	// should already be handled by the fact that only the ADMIN & MARBLE_ADMIN roles have the
 	// MARBLE_USER_CREATE permission, but make double sure
 	if input.Role == models.ADMIN &&
@@ -75,13 +68,6 @@ func (e *EnforceSecurityUserImpl) UpdateUser(targetUser models.User, updateUser 
 	if updateUser.Role != nil && e.Credentials.Role != models.ADMIN &&
 		e.Credentials.Role != models.MARBLE_ADMIN {
 		return errors.Wrap(models.UnAuthorizedError, "only admins can change a user's role")
-	}
-
-	if updateUser.Role != nil &&
-		*updateUser.Role == models.TRANSFER_CHECK_USER {
-		return errors.Wrap(
-			models.BadParameterError,
-			"cannot update an existing user to TRANSFER_CHECK_USER")
 	}
 
 	// An admin cannot strip their own ADMIN role.

@@ -46,9 +46,6 @@ type Organization struct {
 
 	WhitelistedSubnets []net.IPNet
 
-	// Scenario id user for transfercheck. Internal marble use only. On a regular org, this should be null.
-	TransferCheckScenarioId *string
-
 	// Default timezone used during scenario execution to interpret timestamps, e.g. when extracting a date/time part from a timestamp.
 	// Uses a IANA timezone validated with the go time std lib. "UTC" is used if not set.
 	DefaultScenarioTimezone *string

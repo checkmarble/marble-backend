@@ -10,7 +10,6 @@ import (
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
-	"github.com/guregu/null/v5"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,7 +25,7 @@ func handleListWebhooks(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewWebhooksUsecase()
 
-		webhooks, err := usecase.ListWebhooks(ctx, creds.OrganizationId, null.StringFromPtr(creds.PartnerId))
+		webhooks, err := usecase.ListWebhooks(ctx, creds.OrganizationId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -56,7 +55,6 @@ func handleRegisterWebhook(uc usecases.Usecases) func(c *gin.Context) {
 
 		webhook, err := usecase.RegisterWebhook(ctx,
 			creds.OrganizationId,
-			null.StringFromPtr(creds.PartnerId),
 			models.WebhookRegister{
 				EventTypes:        data.EventTypes,
 				Url:               data.Url,
@@ -87,7 +85,6 @@ func handleGetWebhook(uc usecases.Usecases) func(c *gin.Context) {
 
 		webhook, err := usecase.GetWebhook(ctx,
 			creds.OrganizationId,
-			null.StringFromPtr(creds.PartnerId),
 			webhookId)
 		if presentError(ctx, c, err) {
 			return
@@ -110,10 +107,7 @@ func handleDeleteWebhook(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewWebhooksUsecase()
 
-		err := usecase.DeleteWebhook(ctx,
-			creds.OrganizationId,
-			null.StringFromPtr(creds.PartnerId),
-			webhookId)
+		err := usecase.DeleteWebhook(ctx, creds.OrganizationId, webhookId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -143,7 +137,6 @@ func handleUpdateWebhook(uc usecases.Usecases) func(c *gin.Context) {
 
 		webhook, err := usecase.UpdateWebhook(ctx,
 			creds.OrganizationId,
-			null.StringFromPtr(creds.PartnerId),
 			webhookId,
 			models.WebhookUpdate{
 				EventTypes:        data.EventTypes,
