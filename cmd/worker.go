@@ -378,7 +378,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 
 	if only != "" {
-		if err := singleJobRun(ctx, adminUc, only, onlyArgs); err != nil {
+		if err := singleJobRun(ctx, adminUc, apiVersion, workerConfig, gcpConfig, only, onlyArgs); err != nil {
 			logger.Error(err.Error())
 		}
 
@@ -443,28 +443,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	// run a non-blocking basic http server to respond to Cloud Run http probes, to respect the Cloud Run contract
 	if workerConfig.cloudRunProbePort != "" {
-		go func() {
-			gin.SetMode(gin.ReleaseMode)
-
-			r := gin.New()
-
-			r.GET("/", func(c *gin.Context) {
-				c.String(http.StatusOK, "OK")
-			})
-			r.GET("/liveness", api.HandleLivenessProbe(uc))
-
-			if workerConfig.enablePrometheus {
-				r.GET("/metrics", gin.WrapH(promhttp.Handler()))
-			}
-
-			if os.Getenv("DEBUG_ENABLE_PROFILING") == "1" {
-				utils.SetupProfilerEndpoints(r, "marble-worker", apiVersion, gcpConfig.ProjectId)
-			}
-
-			if err := r.Run(":" + workerConfig.cloudRunProbePort); err != nil {
-				utils.LogAndReportSentryError(ctx, err)
-			}
-		}()
+		runHealthcheckServer(ctx, uc, apiVersion, gcpConfig, workerConfig)
 	}
 
 	logger.InfoContext(ctx, "starting worker", slog.String("version", apiVersion))
@@ -485,6 +464,31 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	logger.InfoContext(ctx, "River client stopped")
 
 	return nil
+}
+
+func runHealthcheckServer(ctx context.Context, uc usecases.Usecases, apiVersion string, gcpConfig infra.GcpConfig, workerConfig WorkerConfig) {
+	go func() {
+		gin.SetMode(gin.ReleaseMode)
+
+		r := gin.New()
+
+		r.GET("/", func(c *gin.Context) {
+			c.String(http.StatusOK, "OK")
+		})
+		r.GET("/liveness", api.HandleLivenessProbe(uc))
+
+		if workerConfig.enablePrometheus {
+			r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+		}
+
+		if os.Getenv("DEBUG_ENABLE_PROFILING") == "1" {
+			utils.SetupProfilerEndpoints(r, "marble-worker", apiVersion, gcpConfig.ProjectId)
+		}
+
+		if err := r.Run(":" + workerConfig.cloudRunProbePort); err != nil {
+			utils.LogAndReportSentryError(ctx, err)
+		}
+	}()
 }
 
 // This stop goroutine waits for SIGINT/SIGTERM and when received, tries to stop
@@ -568,7 +572,11 @@ func ensureGlobalQueuesAreActive(ctx context.Context, riverClient *river.Client[
 	return nil
 }
 
-func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, jobName, jobArgs string) error {
+func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion string, workerConfig WorkerConfig, gcpConfig infra.GcpConfig, jobName, jobArgs string) error {
+	if workerConfig.cloudRunProbePort != "" {
+		runHealthcheckServer(ctx, uc.Usecases, apiVersion, gcpConfig, workerConfig)
+	}
+
 	switch jobName {
 	case "async_decision":
 		return uc.NewAsyncDecisionWorker().Work(ctx,
