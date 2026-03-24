@@ -227,14 +227,12 @@ func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, recor
 			}
 		}
 
-		if len(rulesReq) > 0 {
-			rules, err := uc.repository.InsertScoringRulesetVersionRule(ctx, tx, ruleset, rulesReq)
-			if err != nil {
-				return models.ScoringRuleset{}, err
-			}
-
-			ruleset.Rules = rules
+		rules, err := uc.repository.InsertScoringRulesetVersionRule(ctx, tx, ruleset, rulesReq)
+		if err != nil {
+			return models.ScoringRuleset{}, err
 		}
+
+		ruleset.Rules = rules
 
 		return ruleset, nil
 	})
