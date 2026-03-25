@@ -129,6 +129,17 @@ func adaptArgumentToDuration(argument any) (time.Duration, error) {
 		fmt.Sprintf("can't promote argument %v to duration", argument))
 }
 
+func adaptArgumentToThing[T any](argument any) (T, error) {
+	var zero T
+
+	if thing, ok := argument.(T); ok {
+		return thing, nil
+	}
+
+	return zero, errors.Wrap(ast.ErrArgumentInvalidType,
+		fmt.Sprintf("can't promote argument %v to %T", argument, zero))
+}
+
 func adaptArgumentToListOfThings[T any](argument any) ([]T, error) {
 	var zero T
 
