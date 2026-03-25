@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/mocks"
@@ -321,11 +322,16 @@ func (suite *DatamodelUsecaseTestSuite) TestGetDataModel_repository_error() {
 func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_nominal() {
 	usecase := suite.makeUsecase()
 	tableName := "name"
+	input := models.CreateTableInput{
+		Name:         tableName,
+		Description:  "description",
+		SemanticType: models.SemanticTypeOther,
+	}
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("CreateDataModelTable",
 		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), "name",
-		"description", (*models.FollowTheMoneyEntity)(nil)).
+		"description", "", models.SemanticTypeOther, (*models.FollowTheMoneyEntity)(nil), mock.Anything).
 		Return(nil)
 	suite.dataModelRepository.On("CreateDataModelField",
 		suite.ctx,
@@ -351,7 +357,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_nominal() {
 		}).
 		Return(nil)
 
-	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, tableName, "description", nil)
+	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, input)
 	suite.Require().NoError(err, "no error expected")
 
 	suite.AssertExpectations()
@@ -360,14 +366,19 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_nominal() {
 func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_repository_error() {
 	usecase := suite.makeUsecase()
 	tableName := "name"
+	input := models.CreateTableInput{
+		Name:         tableName,
+		Description:  "description",
+		SemanticType: models.SemanticTypeOther,
+	}
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("CreateDataModelTable",
 		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), "name",
-		"description", (*models.FollowTheMoneyEntity)(nil)).
+		"description", "", models.SemanticTypeOther, (*models.FollowTheMoneyEntity)(nil), mock.Anything).
 		Return(suite.repositoryError)
 
-	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, tableName, "description", nil)
+	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, input)
 	suite.Require().Error(err, "error expected")
 	suite.Require().Equal(suite.repositoryError, err, "expected error should be returned")
 
@@ -377,11 +388,16 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_repository_erro
 func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_org_repository_error() {
 	usecase := suite.makeUsecase()
 	tableName := "name"
+	input := models.CreateTableInput{
+		Name:         tableName,
+		Description:  "description",
+		SemanticType: models.SemanticTypeOther,
+	}
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("CreateDataModelTable",
 		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), "name",
-		"description", (*models.FollowTheMoneyEntity)(nil)).
+		"description", "", models.SemanticTypeOther, (*models.FollowTheMoneyEntity)(nil), mock.Anything).
 		Return(nil)
 	suite.dataModelRepository.On("CreateDataModelField",
 		suite.ctx,
@@ -395,7 +411,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_org_repository_
 	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, suite.transaction).
 		Return(suite.repositoryError)
 
-	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, tableName, "description", nil)
+	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, input)
 	suite.Require().Error(err, "error expected")
 	suite.Require().Equal(suite.repositoryError, err, "expected error should be returned")
 
@@ -404,12 +420,34 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_org_repository_
 
 func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_security_error() {
 	usecase := suite.makeUsecase()
-	tableName := "name"
+	input := models.CreateTableInput{
+		Name:         "name",
+		Description:  "description",
+		SemanticType: models.SemanticTypeOther,
+	}
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(suite.securityError)
 
-	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, tableName, "description", nil)
+	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, input)
 	suite.Require().Error(err, "error expected")
 	suite.Require().Equal(suite.securityError, err, "expected error should be returned")
+
+	suite.AssertExpectations()
+}
+
+func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_tableNameTooLong() {
+	usecase := suite.makeUsecase()
+	name := strings.Repeat("a", 64)
+	input := models.CreateTableInput{
+		Name:         name,
+		Description:  "description",
+		SemanticType: models.SemanticTypeOther,
+	}
+	// WriteDataModel may still be called before validation, but we don't care if validation fails first.
+	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+
+	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, input)
+	suite.Require().Error(err, "error expected")
+	suite.Assert().ErrorIs(err, models.BadParameterError)
 
 	suite.AssertExpectations()
 }
