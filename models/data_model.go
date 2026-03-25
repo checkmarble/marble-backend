@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 
@@ -68,20 +69,49 @@ func DataTypeFrom(s string) DataType {
 type SemanticType string
 
 const (
-	SemanticTypeUnknown SemanticType = "unknown"
-	SemanticPerson      SemanticType = "person"
-	SemanticCompany     SemanticType = "company"
+	SemanticTypeUnset       SemanticType = ""
+	SemanticTypeUnknown     SemanticType = "unknown"
+	SemanticTypePerson      SemanticType = "person"
+	SemanticTypeCompany     SemanticType = "company"
+	SemanticTypeAccount     SemanticType = "account"
+	SemanticTypeTransaction SemanticType = "transaction"
+	SemanticTypeEvent       SemanticType = "event"
+	SemanticTypePartner     SemanticType = "partner"
+	SemanticTypeOther       SemanticType = "other"
 )
 
+var validSemanticTypes = map[SemanticType]bool{
+	SemanticTypePerson:      true,
+	SemanticTypeCompany:     true,
+	SemanticTypeAccount:     true,
+	SemanticTypeTransaction: true,
+	SemanticTypeEvent:       true,
+	SemanticTypePartner:     true,
+	SemanticTypeOther:       true,
+}
+
+func (s SemanticType) IsValid() bool {
+	return validSemanticTypes[s]
+}
+
 func SemanticTypeFrom(s string) SemanticType {
-	switch s {
-	case "person":
-		return SemanticPerson
-	case "company":
-		return SemanticCompany
-	default:
-		return SemanticTypeUnknown
+	if s == "" {
+		return SemanticTypeUnset
 	}
+	st := SemanticType(s)
+	if validSemanticTypes[st] {
+		return st
+	}
+	return SemanticTypeUnknown
+}
+
+// TODO: TBD, don't know if we keep Person/Company or natural_person/moral_person
+func (s SemanticType) IsPersonLike() bool {
+	return s == SemanticTypePerson || s == SemanticTypeCompany
+}
+
+func (s SemanticType) RequiresPersonLink() bool {
+	return s == SemanticTypeTransaction || s == SemanticTypeEvent || s == SemanticTypeAccount
 }
 
 ///////////////////////////////
@@ -251,6 +281,7 @@ type Field struct {
 	ID                string
 	DataType          DataType
 	Description       string
+	Alias             string
 	IsEnum            bool
 	Name              string
 	Nullable          bool
@@ -259,6 +290,7 @@ type Field struct {
 	FieldStatistics   FieldStatistics
 	UnicityConstraint UnicityConstraint
 	FTMProperty       *FollowTheMoneyProperty
+	Metadata          json.RawMessage
 	Archived          bool
 }
 
@@ -266,11 +298,13 @@ type FieldMetadata struct {
 	ID          string
 	DataType    DataType
 	Description string
+	Alias       string
 	IsEnum      bool
 	Name        string
 	Nullable    bool
 	TableId     string
 	FTMProperty *FollowTheMoneyProperty
+	Metadata    json.RawMessage
 	Archived    bool
 }
 
@@ -310,11 +344,13 @@ type CreateFieldInput struct {
 	TableId     string
 	Name        string
 	Description string
+	Alias       string
 	DataType    DataType
 	Nullable    bool
 	IsEnum      bool
 	IsUnique    bool
 	FTMProperty *FollowTheMoneyProperty
+	Metadata    json.RawMessage
 }
 
 type UpdateFieldInput struct {
@@ -366,6 +402,24 @@ type DataModelLinkCreateInput struct {
 type DataModelObject struct {
 	Data     map[string]any
 	Metadata map[string]any
+}
+
+type CreateTableInput struct {
+	Name         string
+	Description  string
+	Alias        string
+	SemanticType SemanticType
+	FTMEntity    *FollowTheMoneyEntity
+	Metadata     json.RawMessage
+	Fields       []CreateFieldInput
+	Links        []CreateTableLinkInput
+}
+
+type CreateTableLinkInput struct {
+	Name           string
+	ChildFieldName string
+	ParentTableID  string
+	ParentFieldID  string
 }
 
 // Utility methods on data model
