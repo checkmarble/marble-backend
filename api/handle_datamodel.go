@@ -53,22 +53,23 @@ func handleCreateTable(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		var ftmEntity *models.FollowTheMoneyEntity
-		if input.FTMEntity != nil {
-			entity := models.FollowTheMoneyEntityFrom(*input.FTMEntity)
-			if entity == models.FollowTheMoneyEntityUnknown {
-				presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid FTM entity"))
-				return
-			}
-			ftmEntity = &entity
+		// TODO: Do we allow table without field?
+		if len(input.Fields) == 0 {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "table must have at least one field"))
+			return
 		}
 
-		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		tableID, err := usecase.CreateDataModelTable(ctx, organizationID, input.Name, input.Description, ftmEntity)
+		modelInput, err := input.AdaptToModel()
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{
+
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
+		tableID, err := usecase.CreateDataModelTable(ctx, organizationID, modelInput)
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.JSON(http.StatusCreated, gin.H{
 			"id": tableID,
 		})
 	}
@@ -114,7 +115,15 @@ func handleUpdateDataModelTable(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		err := usecase.UpdateDataModelTable(ctx, tableID, input.Description, ftmEntity, input.Alias, semanticType, input.CaptionField)
+		err := usecase.UpdateDataModelTable(
+			ctx,
+			tableID,
+			input.Description,
+			ftmEntity,
+			input.Alias,
+			semanticType,
+			input.CaptionField,
+		)
 		if presentError(ctx, c, err) {
 			return
 		}

@@ -123,18 +123,18 @@ func setupOrgAndUser(e *httpexpect.Expect) (authOrgAdmin *httpexpect.Expect, aut
 
 func setupDataModel(auth *httpexpect.Expect, authOrgViewer *httpexpect.Expect) {
 	authOrgViewer.POST("/data-model/tables").
-		WithJSON(map[string]any{"name": "transactions", "description": "the transactions table"}).
+		WithJSON(map[string]any{"name": "transactions", "description": "the transactions table", "semantic_type": "other"}).
 		Expect().Status(http.StatusForbidden)
 
 	transactionsTableId := auth.POST("/data-model/tables").
-		WithJSON(map[string]any{"name": "transactions", "description": "the transactions table"}).
-		Expect().Status(http.StatusOK).
+		WithJSON(map[string]any{"name": "transactions", "description": "the transactions table", "semantic_type": "other"}).
+		Expect().Status(http.StatusCreated).
 		JSON().Object().
 		Value("id").String().NotEmpty().Raw()
 
 	accountsTableId := auth.POST("/data-model/tables").
-		WithJSON(map[string]any{"name": "accounts", "description": "the accounts table"}).
-		Expect().Status(http.StatusOK).
+		WithJSON(map[string]any{"name": "accounts", "description": "the accounts table", "semantic_type": "other"}).
+		Expect().Status(http.StatusCreated).
 		JSON().Object().
 		Value("id").String().NotEmpty().Raw()
 
