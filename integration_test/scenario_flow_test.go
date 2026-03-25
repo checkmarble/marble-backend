@@ -166,57 +166,51 @@ func createDataModelAndSetupCaseManager(
 	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases)
 
 	usecase := testAdminUsecase.NewDataModelUseCase()
-	transactionsTableId, err := usecase.CreateDataModelTable(ctx, organizationId, "transactions", "description", nil)
+	transactionsTableId, err := usecase.CreateDataModelTable(ctx, organizationId, models.CreateTableInput{
+		Name:         "transactions",
+		Description:  "description",
+		SemanticType: models.SemanticTypeOther,
+		Fields: []models.CreateFieldInput{
+			{Name: "account_id", DataType: models.String, Nullable: true},
+			{Name: "bic_country", DataType: models.String, Nullable: true},
+			{Name: "country", DataType: models.String, Nullable: true},
+			{Name: "description", DataType: models.String, Nullable: true},
+			{Name: "direction", DataType: models.String, Nullable: true},
+			{Name: "status", DataType: models.String, Nullable: true},
+			{Name: "title", DataType: models.String, Nullable: true},
+			{Name: "amount", DataType: models.Float, Nullable: true},
+		},
+	})
 	if err != nil {
 		assert.FailNow(t, "Could not create table", err)
-	}
-	transactionsFields := []models.CreateFieldInput{
-		{TableId: transactionsTableId, Name: "account_id", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableId, Name: "bic_country", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableId, Name: "country", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableId, Name: "description", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableId, Name: "direction", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableId, Name: "status", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableId, Name: "title", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableId, Name: "amount", DataType: models.Float, Nullable: true},
-	}
-	for _, field := range transactionsFields {
-		_, err = usecase.CreateDataModelField(ctx, field)
-		if err != nil {
-			assert.FailNow(t, "Could not create field", err)
-		}
 	}
 
-	accountsTableId, err := usecase.CreateDataModelTable(ctx, organizationId, "accounts", "description", nil)
+	accountsTableId, err := usecase.CreateDataModelTable(ctx, organizationId, models.CreateTableInput{
+		Name:         "accounts",
+		Description:  "description",
+		SemanticType: models.SemanticTypeOther,
+		Fields: []models.CreateFieldInput{
+			{Name: "balance", DataType: models.Float, Nullable: true},
+			{Name: "company_id", DataType: models.String, Nullable: true},
+			{Name: "name", DataType: models.String, Nullable: true},
+			{Name: "currency", DataType: models.String, Nullable: true},
+			{Name: "is_frozen", DataType: models.Bool, Nullable: true},
+		},
+	})
 	if err != nil {
 		assert.FailNow(t, "Could not create table", err)
-	}
-	accountsFields := []models.CreateFieldInput{
-		{TableId: accountsTableId, Name: "balance", DataType: models.Float, Nullable: true},
-		{TableId: accountsTableId, Name: "company_id", DataType: models.String, Nullable: true},
-		{TableId: accountsTableId, Name: "name", DataType: models.String, Nullable: true},
-		{TableId: accountsTableId, Name: "currency", DataType: models.String, Nullable: true},
-		{TableId: accountsTableId, Name: "is_frozen", DataType: models.Bool, Nullable: true},
-	}
-	for _, field := range accountsFields {
-		_, err = usecase.CreateDataModelField(ctx, field)
-		if err != nil {
-			assert.FailNow(t, "Could not create field", err)
-		}
 	}
 
-	companiesTableId, err := usecase.CreateDataModelTable(ctx, organizationId, "companies", "description", nil)
+	companiesTableId, err := usecase.CreateDataModelTable(ctx, organizationId, models.CreateTableInput{
+		Name:         "companies",
+		Description:  "description",
+		SemanticType: models.SemanticTypeOther,
+		Fields: []models.CreateFieldInput{
+			{Name: "name", DataType: models.Float, Nullable: true},
+		},
+	})
 	if err != nil {
 		assert.FailNow(t, "Could not create table", err)
-	}
-	companiesFields := []models.CreateFieldInput{
-		{TableId: companiesTableId, Name: "name", DataType: models.Float, Nullable: true},
-	}
-	for _, field := range companiesFields {
-		_, err = usecase.CreateDataModelField(ctx, field)
-		if err != nil {
-			assert.FailNow(t, "Could not create field", err)
-		}
 	}
 
 	dm, err = usecase.GetDataModel(ctx, organizationId, models.DataModelReadOptions{

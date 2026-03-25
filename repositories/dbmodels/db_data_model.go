@@ -1,6 +1,8 @@
 package dbmodels
 
 import (
+	"encoding/json"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
@@ -44,22 +46,24 @@ func AdaptTableMetadata(dbDataModelTable DbDataModelTable) (models.TableMetadata
 }
 
 type DbDataModelTableJoinField struct {
-	TableID           string    `db:"data_model_tables.id"`
-	OrganizationID    uuid.UUID `db:"data_model_tables.organization_id"`
-	TableName         string    `db:"data_model_tables.name"`
-	TableDescription  string    `db:"data_model_tables.description"`
-	TableFTMEntity    *string   `db:"data_model_tables.ftm_entity"`
-	TableAlias        string    `db:"data_model_tables.alias"`
-	TableSemanticType string    `db:"data_model_tables.semantic_type"`
-	TableCaptionField string    `db:"data_model_tables.caption_field"`
-	FieldID           string    `db:"data_model_fields.id"`
-	FieldName         string    `db:"data_model_fields.name"`
-	FieldType         string    `db:"data_model_fields.type"`
-	FieldNullable     bool      `db:"data_model_fields.nullable"`
-	FieldDescription  string    `db:"data_model_fields.description"`
-	FieldIsEnum       bool      `db:"data_model_fields.is_enum"`
-	FieldFTMProperty  *string   `db:"data_model_fields.ftm_property"`
-	FieldArchived     bool      `db:"data_model_fields.archived"`
+	TableID           string          `db:"data_model_tables.id"`
+	OrganizationID    uuid.UUID       `db:"data_model_tables.organization_id"`
+	TableName         string          `db:"data_model_tables.name"`
+	TableDescription  string          `db:"data_model_tables.description"`
+	TableFTMEntity    *string         `db:"data_model_tables.ftm_entity"`
+	TableAlias        string          `db:"data_model_tables.alias"`
+	TableSemanticType string          `db:"data_model_tables.semantic_type"`
+	TableCaptionField string          `db:"data_model_tables.caption_field"`
+	FieldID           string          `db:"data_model_fields.id"`
+	FieldName         string          `db:"data_model_fields.name"`
+	FieldType         string          `db:"data_model_fields.type"`
+	FieldNullable     bool            `db:"data_model_fields.nullable"`
+	FieldDescription  string          `db:"data_model_fields.description"`
+	FieldAlias        string          `db:"data_model_fields.alias"`
+	FieldIsEnum       bool            `db:"data_model_fields.is_enum"`
+	FieldFTMProperty  *string         `db:"data_model_fields.ftm_property"`
+	FieldMetadata     json.RawMessage `db:"data_model_fields.metadata"`
+	FieldArchived     bool            `db:"data_model_fields.archived"`
 }
 
 var SelectDataModelTableJoinFieldColumns = utils.ColumnList[DbDataModelTableJoinField]()
