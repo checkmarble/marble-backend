@@ -438,7 +438,12 @@ func (uc ScoringScoresUsecase) executeRules(ctx context.Context, env ast_eval.As
 	for idx, rule := range ruleset.Rules {
 		eval, ok := ast_eval.EvaluateAst(ctx, nil, env, rule.Ast)
 		if !ok {
-			return models.ScoringEvaluation{}, errors.New("could not execute AST")
+			switch err := errors.Join(eval.Errors...); err {
+			case nil:
+				return models.ScoringEvaluation{}, errors.New("could not execute AST")
+			default:
+				return models.ScoringEvaluation{}, errors.Wrap(err, "could not execute AST")
+			}
 		}
 
 		scoreComputationResult, ok := eval.ReturnValue.(ast.ScoreComputationResult)
