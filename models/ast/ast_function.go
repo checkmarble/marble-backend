@@ -86,6 +86,10 @@ type ScoreComputationResult struct {
 	Triggered bool `json:"triggered"`
 	Modifier  int  `json:"modifier"`
 	Floor     int  `json:"floor"`
+
+	Branch   *int `json:"branch,omitempty"`
+	Fallback bool `json:"fallback"`
+	Default  bool `json:"default"`
 }
 
 // If number of arguments -1 the function can take any number of arguments
