@@ -35,7 +35,15 @@ func (f StringInList) Evaluate(ctx context.Context, arguments ast.Arguments) (an
 		return MakeEvaluateError(errors.Wrap(errList, "right argument is not a list"))
 	}
 	if len(anyList) == 0 {
-		return false, nil
+		switch f.Function {
+		case ast.FUNC_IS_IN_LIST:
+			return false, nil
+		case ast.FUNC_IS_NOT_IN_LIST:
+			return true, nil
+		default:
+			return MakeEvaluateError(errors.New(fmt.Sprintf(
+				"StringInList does not support %s function", f.Function.DebugString())))
+		}
 	}
 
 	switch anyList[0].(type) {
