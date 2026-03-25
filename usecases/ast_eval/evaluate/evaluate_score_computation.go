@@ -21,10 +21,13 @@ func (p ScoreComputation) Evaluate(ctx context.Context, arguments ast.Arguments)
 	if len(arguments.Args) != 1 {
 		childrenErr = errors.Wrap(ast.ErrWrongNumberOfArgument, "ScoreComputation must have exactly one child")
 	}
-
 	errs := filterNilErrors(childrenErr, modifierErr)
 	if len(errs) > 0 {
 		return nil, errs
+	}
+
+	if arguments.Args[0] == nil {
+		return ast.ScoreComputationResult{}, nil
 	}
 
 	result, err := adaptArgumentToBool(arguments.Args[0])
