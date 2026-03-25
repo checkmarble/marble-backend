@@ -229,6 +229,10 @@ func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, recor
 
 		rules, err := uc.repository.InsertScoringRulesetVersionRule(ctx, tx, ruleset, rulesReq)
 		if err != nil {
+			if repositories.IsUniqueViolationError(err) {
+				return models.ScoringRuleset{}, errors.Wrap(models.BadParameterError, "duplicate rule IDs")
+			}
+
 			return models.ScoringRuleset{}, err
 		}
 
