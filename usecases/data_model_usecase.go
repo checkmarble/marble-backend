@@ -141,9 +141,14 @@ func (usecase *usecase) CreateDataModelTable(
 	}
 
 	// Validate field names and types
-	fieldNames := map[string]bool{"object_id": true, "updated_at": true}
+	// - Not a reserved name
+	// - Valid name
+	// - No duplicates
+	// - Supported data type
+	// - If FTM property is set, it must be valid for the FTM entity defined in the table
+	fieldNames := make(map[string]bool, len(input.Fields))
 	for _, f := range input.Fields {
-		if f.Name == "id" || f.Name == "object_id" || f.Name == "updated_at" {
+		if models.DataModelReservedFieldNames[f.Name] {
 			return "", errors.Wrapf(models.BadParameterError,
 				"field name %q is reserved", f.Name)
 		}
@@ -169,6 +174,10 @@ func (usecase *usecase) CreateDataModelTable(
 	}
 
 	// Validate link names and child field references
+	// - Valid name
+	// - Child field exists
+	// - Not a reserved field name
+	// - Child field is String type
 	for _, l := range input.Links {
 		if !validNameRegex.MatchString(l.Name) {
 			return "", errors.Wrapf(models.BadParameterError,
@@ -178,8 +187,7 @@ func (usecase *usecase) CreateDataModelTable(
 			return "", errors.Wrapf(models.BadParameterError,
 				"link %q references unknown child field %q", l.Name, l.ChildFieldName)
 		}
-		// The previous check ensures that the child field exists, but we also want to explicitly disallow linking to the built-in fields `object_id` and `updated_at`
-		if l.ChildFieldName == "object_id" || l.ChildFieldName == "updated_at" {
+		if models.DataModelReservedFieldNames[l.ChildFieldName] {
 			return "", errors.Wrapf(models.BadParameterError,
 				"link %q: child field %q is a built-in field and cannot be used as a link child field", l.Name, l.ChildFieldName)
 		}
