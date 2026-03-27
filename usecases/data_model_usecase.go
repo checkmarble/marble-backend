@@ -159,6 +159,12 @@ func (usecase *usecase) CreateDataModelTable(
 			return "", errors.Wrapf(models.BadParameterError,
 				"invalid data type for field %q", f.Name)
 		}
+		if err := validateFTMProperty(
+			models.TableMetadata{Name: input.Name, FTMEntity: input.FTMEntity},
+			pure_utils.NullFromPtr(f.FTMProperty),
+		); err != nil {
+			return "", errors.Wrap(models.BadParameterError, err.Error())
+		}
 		fieldNames[f.Name] = true
 	}
 
@@ -171,6 +177,11 @@ func (usecase *usecase) CreateDataModelTable(
 		if !fieldNames[l.ChildFieldName] {
 			return "", errors.Wrapf(models.BadParameterError,
 				"link %q references unknown child field %q", l.Name, l.ChildFieldName)
+		}
+		// The previous check ensures that the child field exists, but we also want to explicitly disallow linking to the built-in fields `object_id` and `updated_at`
+		if l.ChildFieldName == "object_id" || l.ChildFieldName == "updated_at" {
+			return "", errors.Wrapf(models.BadParameterError,
+				"link %q: child field %q is a built-in field and cannot be used as a link child field", l.Name, l.ChildFieldName)
 		}
 		// Child field must be String type
 		childFieldType := models.UnknownDataType
@@ -271,6 +282,7 @@ func (usecase *usecase) CreateDataModelTable(
 				Nullable:    f.Nullable,
 				IsEnum:      f.IsEnum,
 				IsUnique:    f.IsUnique,
+				FTMProperty: f.FTMProperty,
 				Metadata:    f.Metadata,
 			},
 		}

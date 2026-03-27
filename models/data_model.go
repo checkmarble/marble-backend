@@ -193,6 +193,7 @@ type Table struct {
 	Alias             string
 	SemanticType      SemanticType
 	CaptionField      string
+	Metadata          json.RawMessage
 }
 
 func (t Table) FieldNames() []string {
@@ -246,6 +247,7 @@ type TableMetadata struct {
 	Alias          string
 	SemanticType   SemanticType
 	CaptionField   string
+	Metadata       json.RawMessage
 }
 
 func ColumnNames(table Table) []string {

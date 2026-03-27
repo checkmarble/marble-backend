@@ -9,14 +9,15 @@ import (
 )
 
 type DbDataModelTable struct {
-	ID             string    `db:"id"`
-	OrganizationID uuid.UUID `db:"organization_id"`
-	Name           string    `db:"name"`
-	Description    string    `db:"description"`
-	FTMEntity      *string   `db:"ftm_entity"`
-	Alias          string    `db:"alias"`
-	SemanticType   string    `db:"semantic_type"`
-	CaptionField   string    `db:"caption_field"`
+	ID             string          `db:"id"`
+	OrganizationID uuid.UUID       `db:"organization_id"`
+	Name           string          `db:"name"`
+	Description    string          `db:"description"`
+	FTMEntity      *string         `db:"ftm_entity"`
+	Alias          string          `db:"alias"`
+	SemanticType   string          `db:"semantic_type"`
+	CaptionField   string          `db:"caption_field"`
+	Metadata       json.RawMessage `db:"metadata"`
 }
 
 const (
@@ -42,6 +43,7 @@ func AdaptTableMetadata(dbDataModelTable DbDataModelTable) (models.TableMetadata
 		Alias:          dbDataModelTable.Alias,
 		SemanticType:   models.SemanticType(dbDataModelTable.SemanticType),
 		CaptionField:   dbDataModelTable.CaptionField,
+		Metadata:       dbDataModelTable.Metadata,
 	}, nil
 }
 
@@ -54,6 +56,7 @@ type DbDataModelTableJoinField struct {
 	TableAlias        string          `db:"data_model_tables.alias"`
 	TableSemanticType string          `db:"data_model_tables.semantic_type"`
 	TableCaptionField string          `db:"data_model_tables.caption_field"`
+	TableMetadata     json.RawMessage `db:"data_model_tables.metadata"`
 	FieldID           string          `db:"data_model_fields.id"`
 	FieldName         string          `db:"data_model_fields.name"`
 	FieldType         string          `db:"data_model_fields.type"`
