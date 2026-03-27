@@ -10,6 +10,16 @@ import (
 	"github.com/google/uuid"
 )
 
+// Reserved field names in client data model
+// Those fields are created when creating the table in org database
+var DataModelReservedFieldNames = map[string]bool{
+	"id":          true,
+	"object_id":   true,
+	"updated_at":  true,
+	"valid_from":  true,
+	"valid_until": true,
+}
+
 // ///////////////////////////////
 // Data Type
 // ///////////////////////////////
