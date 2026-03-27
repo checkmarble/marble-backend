@@ -206,7 +206,7 @@ func createDataModelAndSetupCaseManager(
 		Description:  "description",
 		SemanticType: models.SemanticTypeOther,
 		Fields: []models.CreateFieldInput{
-			{Name: "name", DataType: models.Float, Nullable: true},
+			{Name: "name", DataType: models.String, Nullable: true},
 		},
 	})
 	if err != nil {

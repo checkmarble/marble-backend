@@ -62,6 +62,7 @@ type Table struct {
 	Alias             string                  `json:"alias"`
 	SemanticType      models.SemanticType     `json:"semantic_type"`
 	CaptionField      string                  `json:"caption_field"`
+	Metadata          json.RawMessage         `json:"metadata,omitempty"`
 }
 
 type DataModel struct {
@@ -84,6 +85,7 @@ func AdaptTableDto(table models.Table) Table {
 		Alias:             table.Alias,
 		SemanticType:      table.SemanticType,
 		CaptionField:      table.CaptionField,
+		Metadata:          table.Metadata,
 	}
 }
 

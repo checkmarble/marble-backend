@@ -160,6 +160,7 @@ func (repo MarbleDbRepository) GetDataModel(
 				Alias:         field.TableAlias,
 				SemanticType:  models.SemanticType(field.TableSemanticType),
 				CaptionField:  field.TableCaptionField,
+				Metadata:      field.TableMetadata,
 			}
 		}
 		dataModel.Tables[field.TableName].Fields[field.FieldName] = models.Field{
@@ -450,7 +451,8 @@ func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Exec
 		dbmodels.DbDataModelTableJoinField, error,
 	) {
 		var dbModel dbmodels.DbDataModelTableJoinField
-		if err := rows.Scan(&dbModel.TableID,
+		if err := rows.Scan(
+			&dbModel.TableID,
 			&dbModel.OrganizationID,
 			&dbModel.TableName,
 			&dbModel.TableDescription,
@@ -458,6 +460,7 @@ func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Exec
 			&dbModel.TableAlias,
 			&dbModel.TableSemanticType,
 			&dbModel.TableCaptionField,
+			&dbModel.TableMetadata,
 			&dbModel.FieldID,
 			&dbModel.FieldName,
 			&dbModel.FieldType,
