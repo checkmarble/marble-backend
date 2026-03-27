@@ -1342,6 +1342,76 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_with_invalid_ft
 	suite.AssertExpectations()
 }
 
+// CreateDataModelField with semantic type
+func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_with_semantic_type_nominal() {
+	tableId := "tableId"
+	field := models.CreateFieldInput{
+		Name:         "email",
+		DataType:     models.String,
+		Nullable:     false,
+		TableId:      tableId,
+		SemanticType: models.FieldSemanticTypeEmail,
+	}
+	table := models.TableMetadata{
+		ID:             tableId,
+		Name:           "accounts",
+		Description:    "description",
+		OrganizationID: suite.organizationId,
+	}
+	usecase := suite.makeUsecase()
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
+	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
+		Return(table, nil)
+	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+	// GetDataModel is called to fetch existing fields for semantic type validation
+	suite.enforceSecurity.On("ReadDataModel").Return(nil)
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.dataModelRepository.On("GetDataModel",
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
+		Return(suite.dataModel, nil)
+	suite.dataModelRepository.On("CreateDataModelField",
+		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), field).
+		Return(nil)
+	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
+	suite.organizationSchemaRepository.On("CreateField", suite.ctx, suite.transaction, table.Name, field).
+		Return(nil)
+
+	_, err := usecase.CreateDataModelField(suite.ctx, field)
+	suite.Require().NoError(err, "no error expected")
+
+	suite.AssertExpectations()
+}
+
+func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_repository_conflict() {
+	tableId := "tableId"
+	field := models.CreateFieldInput{
+		Name:     "name",
+		DataType: models.String,
+		Nullable: false,
+		TableId:  tableId,
+	}
+	table := models.TableMetadata{
+		ID:             tableId,
+		Name:           "accounts",
+		Description:    "description",
+		OrganizationID: suite.organizationId,
+	}
+	usecase := suite.makeUsecase()
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
+	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
+		Return(table, nil)
+	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+	suite.dataModelRepository.On("CreateDataModelField",
+		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), field).
+		Return(models.ConflictError)
+
+	_, err := usecase.CreateDataModelField(suite.ctx, field)
+	suite.Require().Error(err, "error expected")
+	suite.Require().ErrorIs(err, models.ConflictError)
+
+	suite.AssertExpectations()
+}
+
 // UpdateDataModelField with invalid FTM property for entity
 // CageCode is invalid for Person entity (only valid for Company)
 func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_with_invalid_ftm_property_for_entity() {

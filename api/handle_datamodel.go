@@ -150,16 +150,24 @@ func handleCreateField(uc usecases.Usecases) func(c *gin.Context) {
 			ftmProperty = &property
 		}
 
+		semanticType := models.FieldSemanticType(input.SemanticType)
+		if !semanticType.IsValid() {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid field semantic type"))
+			return
+		}
+
 		tableID := c.Param("tableID")
 		field := models.CreateFieldInput{
-			TableId:     tableID,
-			Name:        input.Name,
-			Description: input.Description,
-			DataType:    models.DataTypeFrom(input.Type),
-			Nullable:    input.Nullable,
-			IsEnum:      input.IsEnum,
-			IsUnique:    input.IsUnique,
-			FTMProperty: ftmProperty,
+			TableId:           tableID,
+			Name:              input.Name,
+			Description:       input.Description,
+			DataType:          models.DataTypeFrom(input.Type),
+			Nullable:          input.Nullable,
+			IsEnum:            input.IsEnum,
+			IsUnique:          input.IsUnique,
+			FTMProperty:       ftmProperty,
+			SemanticType:      semanticType,
+			IsPrimaryOrdering: input.IsPrimaryOrdering,
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
@@ -197,13 +205,25 @@ func handleUpdateDataModelField(uc usecases.Usecases) func(c *gin.Context) {
 			}
 		}
 
+		var fieldSemanticType *string
+		if input.SemanticType != nil {
+			st := models.FieldSemanticType(*input.SemanticType)
+			if !st.IsValid() {
+				presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid field semantic type"))
+				return
+			}
+			fieldSemanticType = utils.Ptr(string(st))
+		}
+
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
 		err := usecase.UpdateDataModelField(ctx, fieldID, models.UpdateFieldInput{
-			Description: input.Description,
-			IsEnum:      input.IsEnum,
-			IsUnique:    input.IsUnique,
-			IsNullable:  input.IsNullable,
-			FTMProperty: ftmProperty,
+			Description:       input.Description,
+			IsEnum:            input.IsEnum,
+			IsUnique:          input.IsUnique,
+			IsNullable:        input.IsNullable,
+			FTMProperty:       ftmProperty,
+			SemanticType:      fieldSemanticType,
+			IsPrimaryOrdering: input.IsPrimaryOrdering,
 		})
 		if presentError(ctx, c, err) {
 			return

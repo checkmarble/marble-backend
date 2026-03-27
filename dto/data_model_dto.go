@@ -35,6 +35,8 @@ type Field struct {
 	UnicityConstraint string          `json:"unicity_constraint"`
 	FTMProperty       *string         `json:"ftm_property,omitempty"`
 	Metadata          json.RawMessage `json:"metadata,omitempty"`
+	SemanticType      string          `json:"semantic_type,omitempty"`
+	IsPrimaryOrdering bool            `json:"is_primary_ordering"`
 }
 
 type NavigationOption struct {
@@ -107,6 +109,8 @@ func adaptDataModelField(field models.Field) Field {
 		UnicityConstraint: field.UnicityConstraint.String(),
 		FTMProperty:       ftmProperty,
 		Metadata:          field.Metadata,
+		SemanticType:      string(field.SemanticType),
+		IsPrimaryOrdering: field.IsPrimaryOrdering,
 	}
 }
 
@@ -175,16 +179,22 @@ func (input CreateTableInput) AdaptToModel() (models.CreateTableInput, error) {
 			}
 			ftmProperty = &p
 		}
+		semanticType := models.FieldSemanticType(f.SemanticType)
+		if !semanticType.IsValid() {
+			return models.CreateTableInput{}, errors.Wrap(models.BadParameterError, "invalid field semantic type")
+		}
 		fields[i] = models.CreateFieldInput{
-			Name:        f.Name,
-			Description: f.Description,
-			Alias:       f.Alias,
-			DataType:    dataType,
-			Nullable:    f.Nullable,
-			IsEnum:      f.IsEnum,
-			IsUnique:    f.IsUnique,
-			FTMProperty: ftmProperty,
-			Metadata:    f.Metadata,
+			Name:              f.Name,
+			Description:       f.Description,
+			Alias:             f.Alias,
+			DataType:          dataType,
+			Nullable:          f.Nullable,
+			IsEnum:            f.IsEnum,
+			IsUnique:          f.IsUnique,
+			FTMProperty:       ftmProperty,
+			Metadata:          f.Metadata,
+			SemanticType:      semanticType,
+			IsPrimaryOrdering: f.IsPrimaryOrdering,
 		}
 	}
 
@@ -252,23 +262,27 @@ type CreateLinkInput struct {
 }
 
 type UpdateFieldInput struct {
-	Description *string                 `json:"description"`
-	IsEnum      *bool                   `json:"is_enum"`
-	IsUnique    *bool                   `json:"is_unique"`
-	IsNullable  *bool                   `json:"is_nullable"`
-	FTMProperty pure_utils.Null[string] `json:"ftm_property"`
+	Description       *string                 `json:"description"`
+	IsEnum            *bool                   `json:"is_enum"`
+	IsUnique          *bool                   `json:"is_unique"`
+	IsNullable        *bool                   `json:"is_nullable"`
+	FTMProperty       pure_utils.Null[string] `json:"ftm_property"`
+	SemanticType      *string                 `json:"semantic_type"`
+	IsPrimaryOrdering *bool                   `json:"is_primary_ordering"`
 }
 
 type CreateFieldInput struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	Type        string          `json:"type"`
-	Alias       string          `json:"alias"`
-	Nullable    bool            `json:"nullable"`
-	IsEnum      bool            `json:"is_enum"`
-	IsUnique    bool            `json:"is_unique"`
-	FTMProperty *string         `json:"ftm_property"`
-	Metadata    json.RawMessage `json:"metadata"`
+	Name              string          `json:"name"`
+	Description       string          `json:"description"`
+	Type              string          `json:"type"`
+	Alias             string          `json:"alias"`
+	Nullable          bool            `json:"nullable"`
+	IsEnum            bool            `json:"is_enum"`
+	IsUnique          bool            `json:"is_unique"`
+	FTMProperty       *string         `json:"ftm_property"`
+	Metadata          json.RawMessage `json:"metadata"`
+	SemanticType      string          `json:"semantic_type"`
+	IsPrimaryOrdering bool            `json:"is_primary_ordering"`
 }
 
 type DataModelObject struct {

@@ -282,19 +282,37 @@ func (usecase *usecase) CreateDataModelTable(
 		userFields[i] = fieldWithId{
 			id: fid,
 			field: models.CreateFieldInput{
-				TableId:     tableId,
-				Name:        f.Name,
-				Description: f.Description,
-				Alias:       f.Alias,
-				DataType:    f.DataType,
-				Nullable:    f.Nullable,
-				IsEnum:      f.IsEnum,
-				IsUnique:    f.IsUnique,
-				FTMProperty: f.FTMProperty,
-				Metadata:    f.Metadata,
+				TableId:           tableId,
+				Name:              f.Name,
+				Description:       f.Description,
+				Alias:             f.Alias,
+				DataType:          f.DataType,
+				Nullable:          f.Nullable,
+				IsEnum:            f.IsEnum,
+				IsUnique:          f.IsUnique,
+				FTMProperty:       f.FTMProperty,
+				Metadata:          f.Metadata,
+				SemanticType:      f.SemanticType,
+				IsPrimaryOrdering: f.IsPrimaryOrdering,
 			},
 		}
 		fieldIdsByName[f.Name] = fid
+	}
+
+	// Validate semantic types and primary ordering across all user-defined fields
+	allFieldsForValidation := make([]models.Field, len(userFields))
+	for i, uf := range userFields {
+		allFieldsForValidation[i] = models.Field{
+			ID:                uf.id,
+			DataType:          uf.field.DataType,
+			SemanticType:      uf.field.SemanticType,
+			IsPrimaryOrdering: uf.field.IsPrimaryOrdering,
+		}
+	}
+	for _, f := range allFieldsForValidation {
+		if err := models.ValidateField(f, allFieldsForValidation); err != nil {
+			return "", err
+		}
 	}
 
 	// Transaction: create everything in marble DB + org schema
@@ -448,9 +466,10 @@ func (usecase *usecase) UpdateDataModelTable(
 }
 
 func (usecase *usecase) CreateDataModelField(ctx context.Context, field models.CreateFieldInput) (string, error) {
-	if field.Name == "id" {
-		return "", errors.Wrap(models.BadParameterError, "field name 'id' is reserved")
+	if models.DataModelReservedFieldNames[field.Name] {
+		return "", errors.Wrap(models.BadParameterError, "field name is reserved")
 	}
+
 	// NB: even if we decide in the future to be more permissive on allowed field names, for instance if we escape them and allow special characters
 	// (which I don't think we should), they MUST still remain lower case, unless we first migrate all non escaped fields&tables in data_model_fields/data_model_tables
 	// to lower case and change logic in models/concrete_index.go ConcreteIndex.Covers()
@@ -479,6 +498,31 @@ func (usecase *usecase) CreateDataModelField(ctx context.Context, field models.C
 			}
 
 			tableName = table.Name
+
+			newField := models.Field{
+				ID:                fieldId,
+				DataType:          field.DataType,
+				SemanticType:      field.SemanticType,
+				IsPrimaryOrdering: field.IsPrimaryOrdering,
+			}
+			existingFields := make([]models.Field, 0)
+			// Only fetch existing fields when needed for cross-field validation
+			if field.SemanticType != models.FieldSemanticTypeUnset || field.IsPrimaryOrdering {
+				dataModel, err := usecase.GetDataModel(ctx, organizationId, models.DataModelReadOptions{}, false)
+				if err != nil {
+					return err
+				}
+				existingTable, ok := dataModel.Tables[table.Name]
+				if ok {
+					for _, f := range existingTable.Fields {
+						existingFields = append(existingFields, f)
+					}
+				}
+			}
+			allFields := append(existingFields, newField)
+			if err := models.ValidateField(newField, allFields); err != nil {
+				return err
+			}
 
 			if err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, organizationId, fieldId, field); err != nil {
 				return err
@@ -558,6 +602,43 @@ func (usecase *usecase) UpdateDataModelField(ctx context.Context, fieldID string
 	// Check if the FTM property is valid and supported by the FTM entity defined in the table
 	if err := validateFTMProperty(table, input.FTMProperty); err != nil {
 		return err
+	}
+
+	// Validate semantic type and primary ordering against all fields in the table
+	if input.SemanticType != nil || input.IsPrimaryOrdering != nil {
+		existingTable, ok := dataModel.Tables[table.Name]
+		if !ok {
+			return errors.Wrapf(models.NotFoundError,
+				"table %s not found in data model", table.Name)
+		}
+
+		// Build the updated field and the full list with this field replaced.
+		updatedField := models.Field{
+			ID:                field.ID,
+			DataType:          field.DataType,
+			SemanticType:      field.SemanticType,
+			IsPrimaryOrdering: field.IsPrimaryOrdering,
+		}
+		if input.SemanticType != nil {
+			updatedField.SemanticType = models.FieldSemanticType(*input.SemanticType)
+		}
+		if input.IsPrimaryOrdering != nil {
+			updatedField.IsPrimaryOrdering = *input.IsPrimaryOrdering
+		}
+
+		allFields := make([]models.Field, 0, len(existingTable.Fields))
+		for _, f := range existingTable.Fields {
+			if f.ID == field.ID {
+				// Should occur only once since we check the field existence at the beginning of the function
+				allFields = append(allFields, updatedField)
+				continue
+			}
+			allFields = append(allFields, f)
+		}
+
+		if err := models.ValidateField(updatedField, allFields); err != nil {
+			return err
+		}
 	}
 
 	// update the field (data_model_field row)
