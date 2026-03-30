@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -20,6 +21,10 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+const (
+	uniqueConstraintIsPrimaryOrdering = "data_model_fields_one_primary_ordering_per_table"
+)
+
 type DataModelRepository interface {
 	GetDataModel(ctx context.Context, exec Executor, organizationID uuid.UUID, fetchEnumValues bool,
 		useCache bool) (models.DataModel, error)
@@ -27,8 +32,10 @@ type DataModelRepository interface {
 		ctx context.Context,
 		exec Executor,
 		organizationID uuid.UUID,
-		tableID, name, description string,
+		tableID, name, description, alias string,
+		semanticType models.SemanticType,
 		ftmEntity *models.FollowTheMoneyEntity,
+		metadata json.RawMessage,
 	) error
 	UpdateDataModelTable(
 		ctx context.Context,
@@ -157,18 +164,23 @@ func (repo MarbleDbRepository) GetDataModel(
 				Alias:         field.TableAlias,
 				SemanticType:  models.SemanticType(field.TableSemanticType),
 				CaptionField:  field.TableCaptionField,
+				Metadata:      field.TableMetadata,
 			}
 		}
 		dataModel.Tables[field.TableName].Fields[field.FieldName] = models.Field{
-			ID:          field.FieldID,
-			DataType:    models.DataTypeFrom(field.FieldType),
-			Description: field.FieldDescription,
-			Name:        field.FieldName,
-			Nullable:    field.FieldNullable,
-			IsEnum:      field.FieldIsEnum,
-			TableId:     field.TableID,
-			Values:      values,
-			FTMProperty: ftmProperty,
+			ID:                field.FieldID,
+			DataType:          models.DataTypeFrom(field.FieldType),
+			Description:       field.FieldDescription,
+			Alias:             field.FieldAlias,
+			Name:              field.FieldName,
+			Nullable:          field.FieldNullable,
+			IsEnum:            field.FieldIsEnum,
+			TableId:           field.TableID,
+			Values:            values,
+			FTMProperty:       ftmProperty,
+			Metadata:          field.FieldMetadata,
+			SemanticType:      models.FieldSemanticType(field.FieldSemanticType),
+			IsPrimaryOrdering: field.FieldIsPrimaryOrdering,
 		}
 	}
 
@@ -191,18 +203,21 @@ func (repo MarbleDbRepository) CreateDataModelTable(
 	ctx context.Context,
 	exec Executor,
 	organizationId uuid.UUID,
-	tableID, name, description string,
+	tableID, name, description, alias string,
+	semanticType models.SemanticType,
 	ftmEntity *models.FollowTheMoneyEntity,
+	metadata json.RawMessage,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
 
 	query := `
-		INSERT INTO data_model_tables (id, organization_id, name, description, ftm_entity)
-		VALUES ($1, $2, $3, $4, $5)`
+		INSERT INTO data_model_tables (id, organization_id, name, description, alias, semantic_type, ftm_entity, metadata)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
 
-	_, err := exec.Exec(ctx, query, tableID, organizationId, name, description, ftmEntity)
+	_, err := exec.Exec(ctx, query, tableID, organizationId, name, description, alias,
+		string(semanticType), ftmEntity, metadata)
 	if err != nil {
 		if IsUniqueViolationError(err) {
 			return models.ConflictError
@@ -299,8 +314,8 @@ func (repo MarbleDbRepository) CreateDataModelField(
 	}
 
 	query := `
-		INSERT INTO data_model_fields (id, table_id, name, type, nullable, description, is_enum, ftm_property)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO data_model_fields (id, table_id, name, type, nullable, description, alias, is_enum, ftm_property, metadata, semantic_type, is_primary_ordering)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id`
 
 	_, err := exec.Exec(ctx,
@@ -311,8 +326,12 @@ func (repo MarbleDbRepository) CreateDataModelField(
 		field.DataType.String(),
 		field.Nullable,
 		field.Description,
+		field.Alias,
 		field.IsEnum,
 		field.FTMProperty,
+		field.Metadata,
+		field.SemanticType,
+		field.IsPrimaryOrdering,
 	)
 	if IsUniqueViolationError(err) {
 		return models.ConflictError
@@ -359,6 +378,14 @@ func (repo MarbleDbRepository) UpdateDataModelField(
 		query = query.Set("ftm_property", input.FTMProperty.Ptr())
 		nbUpdates++
 	}
+	if input.SemanticType != nil {
+		query = query.Set("semantic_type", *input.SemanticType)
+		nbUpdates++
+	}
+	if input.IsPrimaryOrdering != nil {
+		query = query.Set("is_primary_ordering", *input.IsPrimaryOrdering)
+		nbUpdates++
+	}
 
 	if nbUpdates == 0 {
 		return nil
@@ -369,6 +396,10 @@ func (repo MarbleDbRepository) UpdateDataModelField(
 		query,
 	)
 	if err != nil {
+		if IsUniqueViolationOnConstraintError(err, uniqueConstraintIsPrimaryOrdering) {
+			return errors.Wrap(models.ConflictError,
+				"a field is already set as primary ordering for this table")
+		}
 		return err
 	}
 
@@ -440,7 +471,8 @@ func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Exec
 		dbmodels.DbDataModelTableJoinField, error,
 	) {
 		var dbModel dbmodels.DbDataModelTableJoinField
-		if err := rows.Scan(&dbModel.TableID,
+		if err := rows.Scan(
+			&dbModel.TableID,
 			&dbModel.OrganizationID,
 			&dbModel.TableName,
 			&dbModel.TableDescription,
@@ -448,14 +480,19 @@ func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Exec
 			&dbModel.TableAlias,
 			&dbModel.TableSemanticType,
 			&dbModel.TableCaptionField,
+			&dbModel.TableMetadata,
 			&dbModel.FieldID,
 			&dbModel.FieldName,
 			&dbModel.FieldType,
 			&dbModel.FieldNullable,
 			&dbModel.FieldDescription,
+			&dbModel.FieldAlias,
 			&dbModel.FieldIsEnum,
 			&dbModel.FieldFTMProperty,
+			&dbModel.FieldMetadata,
 			&dbModel.FieldArchived,
+			&dbModel.FieldSemanticType,
+			&dbModel.FieldIsPrimaryOrdering,
 		); err != nil {
 			return dbmodels.DbDataModelTableJoinField{}, err
 		}
@@ -573,13 +610,17 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 	query := `
 		SELECT
 			data_model_fields.description,
+			data_model_fields.alias,
 			data_model_fields.is_enum,
 			data_model_fields.name,
 			data_model_fields.nullable,
 			data_model_fields.table_id,
 			data_model_fields.type,
 			data_model_fields.ftm_property,
-			data_model_fields.archived
+			data_model_fields.metadata,
+			data_model_fields.archived,
+			data_model_fields.semantic_type,
+			data_model_fields.is_primary_ordering
 		FROM data_model_fields
 		WHERE id = $1 and archived is false
 	`
@@ -589,15 +630,20 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 	var field models.FieldMetadata
 	var dataType string
 	var ftmProperty *string
+	var fieldSemanticType string
 	if err := row.Scan(
 		&field.Description,
+		&field.Alias,
 		&field.IsEnum,
 		&field.Name,
 		&field.Nullable,
 		&field.TableId,
 		&dataType,
 		&ftmProperty,
+		&field.Metadata,
 		&field.Archived,
+		&fieldSemanticType,
+		&field.IsPrimaryOrdering,
 	); errors.Is(err, pgx.ErrNoRows) {
 		return models.FieldMetadata{}, fmt.Errorf("error in GetDataModelField: %w", models.NotFoundError)
 	} else if err != nil {
@@ -605,6 +651,7 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 	}
 	field.ID = fieldId
 	field.DataType = models.DataTypeFrom(dataType)
+	field.SemanticType = models.FieldSemanticType(fieldSemanticType)
 	if ftmProperty != nil {
 		property := models.FollowTheMoneyPropertyFrom(*ftmProperty)
 		field.FTMProperty = &property

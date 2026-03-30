@@ -53,22 +53,23 @@ func handleCreateTable(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		var ftmEntity *models.FollowTheMoneyEntity
-		if input.FTMEntity != nil {
-			entity := models.FollowTheMoneyEntityFrom(*input.FTMEntity)
-			if entity == models.FollowTheMoneyEntityUnknown {
-				presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid FTM entity"))
-				return
-			}
-			ftmEntity = &entity
+		// TODO: Do we allow table without field?
+		if len(input.Fields) == 0 {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "table must have at least one field"))
+			return
 		}
 
-		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		tableID, err := usecase.CreateDataModelTable(ctx, organizationID, input.Name, input.Description, ftmEntity)
+		modelInput, err := input.AdaptToModel()
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{
+
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
+		tableID, err := usecase.CreateDataModelTable(ctx, organizationID, modelInput)
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.JSON(http.StatusCreated, gin.H{
 			"id": tableID,
 		})
 	}
@@ -114,7 +115,15 @@ func handleUpdateDataModelTable(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		err := usecase.UpdateDataModelTable(ctx, tableID, input.Description, ftmEntity, input.Alias, semanticType, input.CaptionField)
+		err := usecase.UpdateDataModelTable(
+			ctx,
+			tableID,
+			input.Description,
+			ftmEntity,
+			input.Alias,
+			semanticType,
+			input.CaptionField,
+		)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -141,16 +150,24 @@ func handleCreateField(uc usecases.Usecases) func(c *gin.Context) {
 			ftmProperty = &property
 		}
 
+		semanticType := models.FieldSemanticType(input.SemanticType)
+		if !semanticType.IsValid() {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid field semantic type"))
+			return
+		}
+
 		tableID := c.Param("tableID")
 		field := models.CreateFieldInput{
-			TableId:     tableID,
-			Name:        input.Name,
-			Description: input.Description,
-			DataType:    models.DataTypeFrom(input.Type),
-			Nullable:    input.Nullable,
-			IsEnum:      input.IsEnum,
-			IsUnique:    input.IsUnique,
-			FTMProperty: ftmProperty,
+			TableId:           tableID,
+			Name:              input.Name,
+			Description:       input.Description,
+			DataType:          models.DataTypeFrom(input.Type),
+			Nullable:          input.Nullable,
+			IsEnum:            input.IsEnum,
+			IsUnique:          input.IsUnique,
+			FTMProperty:       ftmProperty,
+			SemanticType:      semanticType,
+			IsPrimaryOrdering: input.IsPrimaryOrdering,
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
@@ -188,13 +205,25 @@ func handleUpdateDataModelField(uc usecases.Usecases) func(c *gin.Context) {
 			}
 		}
 
+		var fieldSemanticType *string
+		if input.SemanticType != nil {
+			st := models.FieldSemanticType(*input.SemanticType)
+			if !st.IsValid() {
+				presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid field semantic type"))
+				return
+			}
+			fieldSemanticType = utils.Ptr(string(st))
+		}
+
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
 		err := usecase.UpdateDataModelField(ctx, fieldID, models.UpdateFieldInput{
-			Description: input.Description,
-			IsEnum:      input.IsEnum,
-			IsUnique:    input.IsUnique,
-			IsNullable:  input.IsNullable,
-			FTMProperty: ftmProperty,
+			Description:       input.Description,
+			IsEnum:            input.IsEnum,
+			IsUnique:          input.IsUnique,
+			IsNullable:        input.IsNullable,
+			FTMProperty:       ftmProperty,
+			SemanticType:      fieldSemanticType,
+			IsPrimaryOrdering: input.IsPrimaryOrdering,
 		})
 		if presentError(ctx, c, err) {
 			return

@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
@@ -35,10 +36,12 @@ func (d *DataModelRepository) CreateDataModelTable(
 	ctx context.Context,
 	exec repositories.Executor,
 	organizationId uuid.UUID,
-	tableID, name, description string,
+	tableID, name, description, alias string,
+	semanticType models.SemanticType,
 	ftmEntity *models.FollowTheMoneyEntity,
+	metadata json.RawMessage,
 ) error {
-	args := d.Called(ctx, exec, organizationId, tableID, name, description, ftmEntity)
+	args := d.Called(ctx, exec, organizationId, tableID, name, description, alias, semanticType, ftmEntity, metadata)
 	return args.Error(0)
 }
 

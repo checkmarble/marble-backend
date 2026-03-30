@@ -1,13 +1,25 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
+
+// Reserved field names in client data model
+// Those fields are created when creating the table in org database
+var DataModelReservedFieldNames = map[string]bool{
+	"id":          true,
+	"object_id":   true,
+	"updated_at":  true,
+	"valid_from":  true,
+	"valid_until": true,
+}
 
 // ///////////////////////////////
 // Data Type
@@ -68,20 +80,176 @@ func DataTypeFrom(s string) DataType {
 type SemanticType string
 
 const (
-	SemanticTypeUnknown SemanticType = "unknown"
-	SemanticPerson      SemanticType = "person"
-	SemanticCompany     SemanticType = "company"
+	SemanticTypeUnset       SemanticType = ""
+	SemanticTypeUnknown     SemanticType = "unknown"
+	SemanticTypePerson      SemanticType = "person"
+	SemanticTypeCompany     SemanticType = "company"
+	SemanticTypeAccount     SemanticType = "account"
+	SemanticTypeTransaction SemanticType = "transaction"
+	SemanticTypeEvent       SemanticType = "event"
+	SemanticTypePartner     SemanticType = "partner"
+	SemanticTypeOther       SemanticType = "other"
 )
 
+var validSemanticTypes = map[SemanticType]bool{
+	SemanticTypePerson:      true,
+	SemanticTypeCompany:     true,
+	SemanticTypeAccount:     true,
+	SemanticTypeTransaction: true,
+	SemanticTypeEvent:       true,
+	SemanticTypePartner:     true,
+	SemanticTypeOther:       true,
+}
+
+func (s SemanticType) IsValid() bool {
+	return validSemanticTypes[s]
+}
+
 func SemanticTypeFrom(s string) SemanticType {
-	switch s {
-	case "person":
-		return SemanticPerson
-	case "company":
-		return SemanticCompany
-	default:
-		return SemanticTypeUnknown
+	if s == "" {
+		return SemanticTypeUnset
 	}
+	st := SemanticType(s)
+	if validSemanticTypes[st] {
+		return st
+	}
+	return SemanticTypeUnknown
+}
+
+// TODO: TBD, don't know if we keep Person/Company or natural_person/moral_person
+func (s SemanticType) IsPersonLike() bool {
+	return s == SemanticTypePerson || s == SemanticTypeCompany
+}
+
+func (s SemanticType) RequiresPersonLink() bool {
+	return s == SemanticTypeTransaction || s == SemanticTypeEvent || s == SemanticTypeAccount
+}
+
+///////////////////////////////
+// Field Semantic Type
+///////////////////////////////
+
+type FieldSemanticType string
+
+const (
+	FieldSemanticTypeUnset FieldSemanticType = ""
+
+	// Name family
+	FieldSemanticTypeName       FieldSemanticType = "name"
+	FieldSemanticTypeFirstName  FieldSemanticType = "first_name"
+	FieldSemanticTypeMiddleName FieldSemanticType = "middle_name"
+	FieldSemanticTypeLastName   FieldSemanticType = "last_name"
+
+	// Unique ID family
+	FieldSemanticTypeRegistrationNumber FieldSemanticType = "registration_number"
+	FieldSemanticTypeTaxId              FieldSemanticType = "tax_id"
+	FieldSemanticTypeOpaqueId           FieldSemanticType = "opaque_id"
+	FieldSemanticTypeIban               FieldSemanticType = "iban"
+	FieldSemanticTypeAccountNumber      FieldSemanticType = "account_number"
+	FieldSemanticTypeBic                FieldSemanticType = "bic"
+
+	// URL family
+	FieldSemanticTypeEmail       FieldSemanticType = "email"
+	FieldSemanticTypeUrl         FieldSemanticType = "url"
+	FieldSemanticTypePhoneNumber FieldSemanticType = "phone_number"
+
+	// Time family
+	FieldSemanticTypeBirthDate FieldSemanticType = "birth_date"
+	FieldSemanticTypeCreatedAt FieldSemanticType = "created_at"
+	FieldSemanticTypeUpdatedAt FieldSemanticType = "updated_at"
+	FieldSemanticTypeDeletedAt FieldSemanticType = "deleted_at"
+
+	// Enum family
+	FieldSemanticTypeCurrency FieldSemanticType = "currency"
+	FieldSemanticTypeCountry  FieldSemanticType = "country"
+	FieldSemanticTypeMccCode  FieldSemanticType = "mcc_code"
+
+	// Number family
+	FieldSemanticTypeAmount     FieldSemanticType = "amount"
+	FieldSemanticTypePercentage FieldSemanticType = "percentage"
+	FieldSemanticTypeQuantity   FieldSemanticType = "quantity"
+)
+
+type fieldSemanticTypeValidator interface {
+	AllowedDataTypes() []DataType
+}
+
+type stringSemanticType struct{}
+
+func (stringSemanticType) AllowedDataTypes() []DataType { return []DataType{String} }
+
+type numberSemanticType struct{}
+
+func (numberSemanticType) AllowedDataTypes() []DataType { return []DataType{Int, Float} }
+
+type timestampSemanticType struct{}
+
+func (timestampSemanticType) AllowedDataTypes() []DataType { return []DataType{Timestamp} }
+
+var fieldSemanticTypeRegistry = map[FieldSemanticType]fieldSemanticTypeValidator{
+	// Name family
+	FieldSemanticTypeName:       stringSemanticType{},
+	FieldSemanticTypeFirstName:  stringSemanticType{},
+	FieldSemanticTypeMiddleName: stringSemanticType{},
+	FieldSemanticTypeLastName:   stringSemanticType{},
+
+	// Unique ID family
+	FieldSemanticTypeRegistrationNumber: stringSemanticType{},
+	FieldSemanticTypeTaxId:              stringSemanticType{},
+	FieldSemanticTypeOpaqueId:           stringSemanticType{},
+	FieldSemanticTypeIban:               stringSemanticType{},
+	FieldSemanticTypeAccountNumber:      stringSemanticType{},
+	FieldSemanticTypeBic:                stringSemanticType{},
+
+	// URL family
+	FieldSemanticTypeEmail:       stringSemanticType{},
+	FieldSemanticTypeUrl:         stringSemanticType{},
+	FieldSemanticTypePhoneNumber: stringSemanticType{},
+
+	// Time family
+	FieldSemanticTypeBirthDate: timestampSemanticType{},
+	FieldSemanticTypeCreatedAt: timestampSemanticType{},
+	FieldSemanticTypeUpdatedAt: timestampSemanticType{},
+	FieldSemanticTypeDeletedAt: timestampSemanticType{},
+
+	// Enum family
+	FieldSemanticTypeCurrency: stringSemanticType{},
+	FieldSemanticTypeCountry:  stringSemanticType{},
+	FieldSemanticTypeMccCode:  stringSemanticType{},
+
+	// Number family
+	FieldSemanticTypeAmount:     numberSemanticType{},
+	FieldSemanticTypePercentage: numberSemanticType{},
+	FieldSemanticTypeQuantity:   numberSemanticType{},
+}
+
+// Use for input validation when creating/updating fields.
+func (f FieldSemanticType) IsValid() bool {
+	if f == FieldSemanticTypeUnset {
+		return true
+	}
+	_, ok := fieldSemanticTypeRegistry[f]
+	return ok
+}
+
+// ValidateField checks semantic type compatibility and cross-field constraints (primary ordering
+// uniqueness). fields is the full list of fields for the table after the create/update is applied.
+func ValidateField(field Field, fields []Field) error {
+	if field.SemanticType == FieldSemanticTypeUnset {
+		return nil
+	}
+
+	validator, ok := fieldSemanticTypeRegistry[field.SemanticType]
+	if !ok {
+		return errors.Wrap(BadParameterError, "unknown field semantic type")
+	}
+	if !slices.Contains(validator.AllowedDataTypes(), field.DataType) {
+		return errors.Wrap(BadParameterError,
+			fmt.Sprintf("field semantic type %q is not compatible with data type %s",
+				field.SemanticType, field.DataType))
+	}
+
+	return nil
 }
 
 ///////////////////////////////
@@ -163,6 +331,7 @@ type Table struct {
 	Alias             string
 	SemanticType      SemanticType
 	CaptionField      string
+	Metadata          json.RawMessage
 }
 
 func (t Table) FieldNames() []string {
@@ -216,6 +385,7 @@ type TableMetadata struct {
 	Alias          string
 	SemanticType   SemanticType
 	CaptionField   string
+	Metadata       json.RawMessage
 }
 
 func ColumnNames(table Table) []string {
@@ -251,6 +421,7 @@ type Field struct {
 	ID                string
 	DataType          DataType
 	Description       string
+	Alias             string
 	IsEnum            bool
 	Name              string
 	Nullable          bool
@@ -259,19 +430,26 @@ type Field struct {
 	FieldStatistics   FieldStatistics
 	UnicityConstraint UnicityConstraint
 	FTMProperty       *FollowTheMoneyProperty
+	Metadata          json.RawMessage
 	Archived          bool
+	SemanticType      FieldSemanticType
+	IsPrimaryOrdering bool
 }
 
 type FieldMetadata struct {
-	ID          string
-	DataType    DataType
-	Description string
-	IsEnum      bool
-	Name        string
-	Nullable    bool
-	TableId     string
-	FTMProperty *FollowTheMoneyProperty
-	Archived    bool
+	ID                string
+	DataType          DataType
+	Description       string
+	Alias             string
+	IsEnum            bool
+	Name              string
+	Nullable          bool
+	TableId           string
+	FTMProperty       *FollowTheMoneyProperty
+	Metadata          json.RawMessage
+	Archived          bool
+	SemanticType      FieldSemanticType
+	IsPrimaryOrdering bool
 }
 
 type UnicityConstraint int
@@ -307,22 +485,28 @@ func UnicityConstraintFromString(s string) UnicityConstraint {
 }
 
 type CreateFieldInput struct {
-	TableId     string
-	Name        string
-	Description string
-	DataType    DataType
-	Nullable    bool
-	IsEnum      bool
-	IsUnique    bool
-	FTMProperty *FollowTheMoneyProperty
+	TableId           string
+	Name              string
+	Description       string
+	Alias             string
+	DataType          DataType
+	Nullable          bool
+	IsEnum            bool
+	IsUnique          bool
+	FTMProperty       *FollowTheMoneyProperty
+	Metadata          json.RawMessage
+	SemanticType      FieldSemanticType
+	IsPrimaryOrdering bool
 }
 
 type UpdateFieldInput struct {
-	Description *string
-	IsEnum      *bool
-	IsUnique    *bool
-	IsNullable  *bool
-	FTMProperty pure_utils.Null[FollowTheMoneyProperty]
+	Description       *string
+	IsEnum            *bool
+	IsUnique          *bool
+	IsNullable        *bool
+	FTMProperty       pure_utils.Null[FollowTheMoneyProperty]
+	SemanticType      *string
+	IsPrimaryOrdering *bool
 }
 
 type EnumValues map[string]map[any]struct{}
@@ -366,6 +550,24 @@ type DataModelLinkCreateInput struct {
 type DataModelObject struct {
 	Data     map[string]any
 	Metadata map[string]any
+}
+
+type CreateTableInput struct {
+	Name         string
+	Description  string
+	Alias        string
+	SemanticType SemanticType
+	FTMEntity    *FollowTheMoneyEntity
+	Metadata     json.RawMessage
+	Fields       []CreateFieldInput
+	Links        []CreateTableLinkInput
+}
+
+type CreateTableLinkInput struct {
+	Name           string
+	ChildFieldName string
+	ParentTableID  string
+	ParentFieldID  string
 }
 
 // Utility methods on data model

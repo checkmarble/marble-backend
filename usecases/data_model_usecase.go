@@ -60,7 +60,7 @@ type usecase struct {
 var (
 	uniqTypes      = []models.DataType{models.String, models.Int, models.Float}
 	enumTypes      = []models.DataType{models.String, models.Int, models.Float}
-	validNameRegex = regexp.MustCompile(`^[a-z]+[a-z0-9_]+$`)
+	validNameRegex = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)
 )
 
 func (usecase usecase) GetDataModel(
@@ -122,68 +122,290 @@ func (usecase usecase) GetDataModel(
 	return dataModel, nil
 }
 
-func (usecase *usecase) CreateDataModelTable(ctx context.Context,
-	organizationId uuid.UUID, name, description string, ftmEntity *models.FollowTheMoneyEntity,
+func (usecase *usecase) CreateDataModelTable(
+	ctx context.Context,
+	organizationId uuid.UUID,
+	input models.CreateTableInput,
 ) (string, error) {
 	if err := usecase.enforceSecurity.WriteDataModel(organizationId); err != nil {
 		return "", err
 	}
-	if !validNameRegex.MatchString(name) {
+	// Validate table name
+	if !validNameRegex.MatchString(input.Name) {
 		return "", errors.Wrap(models.BadParameterError,
 			"table name must only contain lower case alphanumeric characters and underscores, and start by a letter")
 	}
 
+	if !input.SemanticType.IsValid() {
+		return "", errors.Wrap(models.BadParameterError, "invalid semantic type")
+	}
+
+	// Validate field names and types
+	// - Not a reserved name
+	// - Valid name
+	// - No duplicates
+	// - Supported data type
+	// - If FTM property is set, it must be valid for the FTM entity defined in the table
+	fieldNames := make(map[string]bool, len(input.Fields))
+	for _, f := range input.Fields {
+		if models.DataModelReservedFieldNames[f.Name] {
+			return "", errors.Wrapf(models.BadParameterError,
+				"field name %q is reserved", f.Name)
+		}
+		if !validNameRegex.MatchString(f.Name) {
+			return "", errors.Wrapf(models.BadParameterError,
+				"field name %q must only contain lower case alphanumeric characters and underscores, and start by a letter", f.Name)
+		}
+		if fieldNames[f.Name] {
+			return "", errors.Wrapf(models.BadParameterError,
+				"duplicate field name %q", f.Name)
+		}
+		if f.DataType == models.UnknownDataType {
+			return "", errors.Wrapf(models.BadParameterError,
+				"invalid data type for field %q", f.Name)
+		}
+		if err := validateFTMProperty(
+			models.TableMetadata{Name: input.Name, FTMEntity: input.FTMEntity},
+			pure_utils.NullFromPtr(f.FTMProperty),
+		); err != nil {
+			return "", errors.Wrap(models.BadParameterError, err.Error())
+		}
+		fieldNames[f.Name] = true
+	}
+
+	// Validate link names and child field references
+	// - Valid name
+	// - Child field exists
+	// - Not a reserved field name
+	// - Child field is String type
+	for _, l := range input.Links {
+		if !validNameRegex.MatchString(l.Name) {
+			return "", errors.Wrapf(models.BadParameterError,
+				"link name %q must only contain lower case alphanumeric characters and underscores, and start by a letter", l.Name)
+		}
+		if !fieldNames[l.ChildFieldName] {
+			return "", errors.Wrapf(models.BadParameterError,
+				"link %q references unknown child field %q", l.Name, l.ChildFieldName)
+		}
+		if models.DataModelReservedFieldNames[l.ChildFieldName] {
+			return "", errors.Wrapf(models.BadParameterError,
+				"link %q: child field %q is a built-in field and cannot be used as a link child field", l.Name, l.ChildFieldName)
+		}
+		// Child field must be String type
+		childFieldType := models.UnknownDataType
+		for _, f := range input.Fields {
+			if f.Name == l.ChildFieldName {
+				childFieldType = f.DataType
+				break
+			}
+		}
+		if childFieldType != models.String {
+			return "", errors.Wrapf(models.BadParameterError,
+				"link %q: child field %q must be of type String", l.Name, l.ChildFieldName)
+		}
+	}
+
+	// Validate links: parent table/field exist, belong to same org, parent field is string + unique
+	hasPersonLink := false
+	if len(input.Links) > 0 {
+		dataModel, err := usecase.GetDataModel(ctx, organizationId, models.DataModelReadOptions{
+			IncludeUnicityConstraints: true,
+		}, false)
+		if err != nil {
+			return "", err
+		}
+		tablesById := dataModel.AllTablesAsMap()
+
+		for _, l := range input.Links {
+			parentTable, ok := tablesById[l.ParentTableID]
+			if !ok {
+				return "", errors.Wrapf(models.BadParameterError,
+					"link %q: parent table not found", l.Name)
+			}
+
+			parentField, ok := parentTable.GetFieldById(l.ParentFieldID)
+			if !ok {
+				return "", errors.Wrapf(models.BadParameterError,
+					"link %q: parent field not found", l.Name)
+			}
+			if parentField.DataType != models.String {
+				return "", errors.Wrapf(models.BadParameterError,
+					"link %q: parent field %q must be of type String", l.Name, parentField.Name)
+			}
+			if parentField.UnicityConstraint != models.ActiveUniqueConstraint {
+				return "", errors.Wrapf(models.BadParameterError,
+					"link %q: parent field %q must have an active unique constraint", l.Name, parentField.Name)
+			}
+
+			if parentTable.SemanticType.IsPersonLike() {
+				hasPersonLink = true
+			}
+		}
+	}
+
+	// Enforce: transaction/event/account types must link to a person-like table
+	if input.SemanticType.RequiresPersonLink() && !hasPersonLink {
+		return "", errors.Wrapf(models.BadParameterError,
+			"tables with semantic type %q must have at least one link to a person-like table",
+			input.SemanticType)
+	}
+
+	// Generate IDs
 	tableId := pure_utils.NewId().String()
 
 	defaultFields := []models.CreateFieldInput{
 		{
 			TableId:     tableId,
 			DataType:    models.String,
-			Description: fmt.Sprintf("required id on all objects in the %s table", name),
+			Description: fmt.Sprintf("required id on all objects in the %s table", input.Name),
 			Name:        "object_id",
 			Nullable:    false,
 		},
 		{
 			TableId:     tableId,
 			DataType:    models.Timestamp,
-			Description: fmt.Sprintf("required timestamp on all objects in the %s table", name),
+			Description: fmt.Sprintf("required timestamp on all objects in the %s table", input.Name),
 			Name:        "updated_at",
 			Nullable:    false,
 		},
 	}
 
+	// Prepare user-defined fields with generated IDs
+	type fieldWithId struct {
+		id    string
+		field models.CreateFieldInput
+	}
+	userFields := make([]fieldWithId, len(input.Fields))
+	fieldIdsByName := make(map[string]string)
+	for i, f := range input.Fields {
+		fid := pure_utils.NewId().String()
+		userFields[i] = fieldWithId{
+			id: fid,
+			field: models.CreateFieldInput{
+				TableId:           tableId,
+				Name:              f.Name,
+				Description:       f.Description,
+				Alias:             f.Alias,
+				DataType:          f.DataType,
+				Nullable:          f.Nullable,
+				IsEnum:            f.IsEnum,
+				IsUnique:          f.IsUnique,
+				FTMProperty:       f.FTMProperty,
+				Metadata:          f.Metadata,
+				SemanticType:      f.SemanticType,
+				IsPrimaryOrdering: f.IsPrimaryOrdering,
+			},
+		}
+		fieldIdsByName[f.Name] = fid
+	}
+
+	// Validate semantic types and primary ordering across all user-defined fields
+	allFieldsForValidation := make([]models.Field, len(userFields))
+	for i, uf := range userFields {
+		allFieldsForValidation[i] = models.Field{
+			ID:                uf.id,
+			DataType:          uf.field.DataType,
+			SemanticType:      uf.field.SemanticType,
+			IsPrimaryOrdering: uf.field.IsPrimaryOrdering,
+		}
+	}
+	for _, f := range allFieldsForValidation {
+		if err := models.ValidateField(f, allFieldsForValidation); err != nil {
+			return "", err
+		}
+	}
+
+	// Transaction: create everything in marble DB + org schema
 	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		err := usecase.dataModelRepository.CreateDataModelTable(ctx, tx, organizationId, tableId, name, description, ftmEntity)
-		if err != nil {
+		if err := usecase.dataModelRepository.CreateDataModelTable(
+			ctx, tx,
+			organizationId,
+			tableId,
+			input.Name,
+			input.Description,
+			input.Alias,
+			input.SemanticType,
+			input.FTMEntity,
+			input.Metadata,
+		); err != nil {
 			return err
 		}
 
+		// Create default fields
 		for _, field := range defaultFields {
 			fieldId := pure_utils.NewId().String()
-			err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, organizationId, fieldId, field)
-			if err != nil {
+			if err := usecase.dataModelRepository.CreateDataModelField(ctx, tx,
+				organizationId, fieldId, field); err != nil {
 				return err
 			}
 		}
 
-		// if it returns an error, rolls back the other transaction
+		// Create user-defined fields
+		for _, userField := range userFields {
+			if err := usecase.dataModelRepository.CreateDataModelField(ctx, tx,
+				organizationId, userField.id, userField.field); err != nil {
+				return err
+			}
+		}
+
+		// Create links
+		for _, l := range input.Links {
+			childFieldId := fieldIdsByName[l.ChildFieldName]
+			linkId := pure_utils.NewId().String()
+			if err := usecase.dataModelRepository.CreateDataModelLink(ctx, tx, linkId, models.DataModelLinkCreateInput{
+				OrganizationID: organizationId,
+				Name:           l.Name,
+				ParentTableID:  l.ParentTableID,
+				ParentFieldID:  l.ParentFieldID,
+				ChildTableID:   tableId,
+				ChildFieldID:   childFieldId,
+			}); err != nil {
+				return err
+			}
+		}
+
+		// Create org schema table + columns
 		return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(orgTx repositories.Transaction) error {
 			if err := usecase.organizationSchemaRepository.CreateSchemaIfNotExists(ctx, orgTx); err != nil {
 				return err
 			}
-			if err := usecase.organizationSchemaRepository.CreateTable(ctx, orgTx, name); err != nil {
+			if err := usecase.organizationSchemaRepository.CreateTable(ctx, orgTx, input.Name); err != nil {
 				return err
 			}
-			// the unique index on object_id will serve both to enforce unicity and to speed up ingestion queries
+
+			// Create columns for user-defined fields
+			for _, userField := range userFields {
+				if err := usecase.organizationSchemaRepository.CreateField(ctx,
+					orgTx, input.Name, userField.field); err != nil {
+					return err
+				}
+			}
+
+			// Create unique index on object_id
 			return usecase.clientDbIndexEditor.CreateUniqueIndex(
 				ctx,
 				orgTx,
 				organizationId,
-				getFieldUniqueIndex(name, "object_id"),
+				getFieldUniqueIndex(input.Name, "object_id"),
 			)
 		})
 	})
-	return tableId, err
+	if err != nil {
+		return "", err
+	}
+
+	// Post-transaction: async unique index creation for fields with IsUnique
+	for _, userField := range userFields {
+		if userField.field.IsUnique {
+			if err := usecase.clientDbIndexEditor.CreateUniqueIndexAsync(
+				ctx, organizationId, getFieldUniqueIndex(input.Name, userField.field.Name),
+			); err != nil {
+				return "", err
+			}
+		}
+	}
+
+	return tableId, nil
 }
 
 func (usecase *usecase) UpdateDataModelTable(
@@ -244,9 +466,10 @@ func (usecase *usecase) UpdateDataModelTable(
 }
 
 func (usecase *usecase) CreateDataModelField(ctx context.Context, field models.CreateFieldInput) (string, error) {
-	if field.Name == "id" {
-		return "", errors.Wrap(models.BadParameterError, "field name 'id' is reserved")
+	if models.DataModelReservedFieldNames[field.Name] {
+		return "", errors.Wrap(models.BadParameterError, "field name is reserved")
 	}
+
 	// NB: even if we decide in the future to be more permissive on allowed field names, for instance if we escape them and allow special characters
 	// (which I don't think we should), they MUST still remain lower case, unless we first migrate all non escaped fields&tables in data_model_fields/data_model_tables
 	// to lower case and change logic in models/concrete_index.go ConcreteIndex.Covers()
@@ -275,6 +498,31 @@ func (usecase *usecase) CreateDataModelField(ctx context.Context, field models.C
 			}
 
 			tableName = table.Name
+
+			newField := models.Field{
+				ID:                fieldId,
+				DataType:          field.DataType,
+				SemanticType:      field.SemanticType,
+				IsPrimaryOrdering: field.IsPrimaryOrdering,
+			}
+			existingFields := make([]models.Field, 0)
+			// Only fetch existing fields when needed for cross-field validation
+			if field.SemanticType != models.FieldSemanticTypeUnset || field.IsPrimaryOrdering {
+				dataModel, err := usecase.GetDataModel(ctx, organizationId, models.DataModelReadOptions{}, false)
+				if err != nil {
+					return err
+				}
+				existingTable, ok := dataModel.Tables[table.Name]
+				if ok {
+					for _, f := range existingTable.Fields {
+						existingFields = append(existingFields, f)
+					}
+				}
+			}
+			allFields := append(existingFields, newField)
+			if err := models.ValidateField(newField, allFields); err != nil {
+				return err
+			}
 
 			if err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, organizationId, fieldId, field); err != nil {
 				return err
@@ -354,6 +602,43 @@ func (usecase *usecase) UpdateDataModelField(ctx context.Context, fieldID string
 	// Check if the FTM property is valid and supported by the FTM entity defined in the table
 	if err := validateFTMProperty(table, input.FTMProperty); err != nil {
 		return err
+	}
+
+	// Validate semantic type and primary ordering against all fields in the table
+	if input.SemanticType != nil || input.IsPrimaryOrdering != nil {
+		existingTable, ok := dataModel.Tables[table.Name]
+		if !ok {
+			return errors.Wrapf(models.NotFoundError,
+				"table %s not found in data model", table.Name)
+		}
+
+		// Build the updated field and the full list with this field replaced.
+		updatedField := models.Field{
+			ID:                field.ID,
+			DataType:          field.DataType,
+			SemanticType:      field.SemanticType,
+			IsPrimaryOrdering: field.IsPrimaryOrdering,
+		}
+		if input.SemanticType != nil {
+			updatedField.SemanticType = models.FieldSemanticType(*input.SemanticType)
+		}
+		if input.IsPrimaryOrdering != nil {
+			updatedField.IsPrimaryOrdering = *input.IsPrimaryOrdering
+		}
+
+		allFields := make([]models.Field, 0, len(existingTable.Fields))
+		for _, f := range existingTable.Fields {
+			if f.ID == field.ID {
+				// Should occur only once since we check the field existence at the beginning of the function
+				allFields = append(allFields, updatedField)
+				continue
+			}
+			allFields = append(allFields, f)
+		}
+
+		if err := models.ValidateField(updatedField, allFields); err != nil {
+			return err
+		}
 	}
 
 	// update the field (data_model_field row)
