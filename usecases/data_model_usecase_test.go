@@ -50,32 +50,45 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 	suite.dataModel = models.DataModel{
 		Tables: map[string]models.Table{
 			"transactions": {
+				ID:   "transactions-table-id",
 				Name: "transactions",
 				Fields: map[string]models.Field{
 					"object_id": {
+						ID:       "transactions-object-id-field-id",
+						TableId:  "transactions-table-id",
 						DataType: models.String,
 						Name:     "object_id",
 						Nullable: false,
 					},
 					"value": {
+						ID:       "transactions-value-field-id",
+						TableId:  "transactions-table-id",
 						DataType: models.Float,
 						Name:     "value",
 						Nullable: false,
 					},
 					"account_id": {
+						ID:       "transactions-account-id-field-id",
+						TableId:  "transactions-table-id",
 						DataType: models.String,
 						Name:     "account_id",
 						Nullable: false,
 					},
 					"reference_id": {
+						ID:      "transactions-reference-id-field-id",
+						TableId: "transactions-table-id",
 						DataType: models.String,
 						Name:     "reference_id",
 					},
 					"not_yet_unique_id": {
+						ID:      "transactions-not-yet-unique-id-field-id",
+						TableId: "transactions-table-id",
 						DataType: models.String,
 						Name:     "not_yet_unique_id",
 					},
 					"unique_id": {
+						ID:      "transactions-unique-id-field-id",
+						TableId: "transactions-table-id",
 						DataType: models.String,
 						Name:     "unique_id",
 					},
@@ -90,20 +103,27 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 				},
 			},
 			"accounts": {
+				ID:   "accounts-table-id",
 				Name: "accounts",
 				Fields: map[string]models.Field{
 					"object_id": {
+						ID:       "accounts-object-id-field-id",
+						TableId:  "accounts-table-id",
 						DataType: models.String,
 						Name:     "object_id",
 						Nullable: false,
 					},
 					"status": {
+						ID:       "accounts-status-field-id",
+						TableId:  "accounts-table-id",
 						DataType: models.String,
 						Name:     "status",
 						Nullable: false,
 						IsEnum:   true,
 					},
 					"balance": {
+						ID:       "accounts-balance-field-id",
+						TableId:  "accounts-table-id",
 						DataType: models.Int,
 						Name:     "balance",
 					},
@@ -115,34 +135,47 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 	suite.dataModelWithUnique = models.DataModel{
 		Tables: map[string]models.Table{
 			"transactions": {
+				ID:   "transactions-table-id",
 				Name: "transactions",
 				Fields: map[string]models.Field{
 					"object_id": {
+						ID:                "transactions-object-id-field-id",
+						TableId:           "transactions-table-id",
 						DataType:          models.String,
 						Name:              "object_id",
 						Nullable:          false,
 						UnicityConstraint: models.ActiveUniqueConstraint,
 					},
 					"value": {
+						ID:       "transactions-value-field-id",
+						TableId:  "transactions-table-id",
 						DataType: models.Float,
 						Name:     "value",
 						Nullable: false,
 					},
 					"account_id": {
+						ID:       "transactions-account-id-field-id",
+						TableId:  "transactions-table-id",
 						DataType: models.String,
 						Name:     "account_id",
 						Nullable: false,
 					},
 					"reference_id": {
+						ID:                "transactions-reference-id-field-id",
+						TableId:           "transactions-table-id",
 						DataType:          models.String,
 						Name:              "reference_id",
 						UnicityConstraint: models.PendingUniqueConstraint,
 					},
 					"not_yet_unique_id": {
+						ID:      "transactions-not-yet-unique-id-field-id",
+						TableId: "transactions-table-id",
 						DataType: models.String,
 						Name:     "not_yet_unique_id",
 					},
 					"unique_id": {
+						ID:                "transactions-unique-id-field-id",
+						TableId:           "transactions-table-id",
 						DataType:          models.String,
 						Name:              "unique_id",
 						UnicityConstraint: models.ActiveUniqueConstraint,
@@ -158,21 +191,28 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 				},
 			},
 			"accounts": {
+				ID:   "accounts-table-id",
 				Name: "accounts",
 				Fields: map[string]models.Field{
 					"object_id": {
+						ID:                "accounts-object-id-field-id",
+						TableId:           "accounts-table-id",
 						DataType:          models.String,
 						Name:              "object_id",
 						Nullable:          false,
 						UnicityConstraint: models.ActiveUniqueConstraint,
 					},
 					"status": {
+						ID:       "accounts-status-field-id",
+						TableId:  "accounts-table-id",
 						DataType: models.String,
 						Name:     "status",
 						Nullable: false,
 						IsEnum:   true,
 					},
 					"balance": {
+						ID:       "accounts-balance-field-id",
+						TableId:  "accounts-table-id",
 						DataType: models.Int,
 						Name:     "balance",
 					},
@@ -797,41 +837,26 @@ func (suite *DatamodelUsecaseTestSuite) TestDeleteDataModel_client_schema_reposi
 
 // CreateDataModelLink
 func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_nominal() {
-	parentTableName := "accounts"
-	parentFieldName := "object_id"
-	childTableName := "transactions"
-	childFieldName := "account_id"
 	link := models.DataModelLinkCreateInput{
 		OrganizationID: suite.organizationId,
 		Name:           "name",
-		ParentTableID:  "parentTableId",
-		ChildTableID:   "childTableId",
-		ParentFieldID:  "parentFieldId",
-		ChildFieldID:   "childFieldId",
+		LinkType:       models.LinkTypeRelated,
+		ParentTableID:  "accounts-table-id",
+		ChildTableID:   "transactions-table-id",
+		ParentFieldID:  "accounts-object-id-field-id",
+		ChildFieldID:   "transactions-account-id-field-id",
 	}
 	usecase := suite.makeUsecase()
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
-	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, link.ChildTableID).
-		Return(models.TableMetadata{Name: childTableName}, nil)
-	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, link.ParentTableID).
-		Return(models.TableMetadata{Name: parentTableName}, nil)
-	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, link.ParentFieldID).
-		Return(models.FieldMetadata{Name: parentFieldName}, nil)
-	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, link.ChildFieldID).
-		Return(models.FieldMetadata{Name: childFieldName}, nil)
 	suite.dataModelRepository.On("CreateDataModelLink", suite.ctx, suite.transaction, mock.AnythingOfType("string"), link).
 		Return(nil)
-	// for GetDataModel (reused in CreateDataModelLink), copied from TestGetDataModel_nominal_with_unique
+	// for GetDataModel (reused in CreateDataModelLink)
 	suite.enforceSecurity.On("ReadDataModel").Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
-	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
-		Return(nil, nil)
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
-	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
-		Return(suite.uniqueIndexes, nil)
 
 	_, err := usecase.CreateDataModelLink(suite.ctx, link)
 	suite.Require().NoError(err, "no error expected")
@@ -839,124 +864,52 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_nominal() {
 	suite.AssertExpectations()
 }
 
-func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_parent_field_not_unique() {
-	parentTableName := "accounts"
-	parentFieldName := "object_id"
-	childTableName := "transactions"
-	childFieldName := "account_id"
+func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_parent_field_not_object_id() {
 	link := models.DataModelLinkCreateInput{
 		OrganizationID: suite.organizationId,
 		Name:           "name",
-		ParentTableID:  "parentTableId",
-		ChildTableID:   "childTableId",
-		ParentFieldID:  "parentFieldId",
-		ChildFieldID:   "childFieldId",
+		LinkType:       models.LinkTypeRelated,
+		ParentTableID:  "accounts-table-id",
+		ChildTableID:   "transactions-table-id",
+		ParentFieldID:  "accounts-balance-field-id", // balance, not object_id
+		ChildFieldID:   "transactions-account-id-field-id",
 	}
 	usecase := suite.makeUsecase()
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
-	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, link.ChildTableID).
-		Return(models.TableMetadata{Name: childTableName}, nil)
-	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, link.ParentTableID).
-		Return(models.TableMetadata{Name: parentTableName}, nil)
-	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, link.ParentFieldID).
-		Return(models.FieldMetadata{Name: parentFieldName}, nil)
-	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, link.ChildFieldID).
-		Return(models.FieldMetadata{Name: childFieldName}, nil)
-	// for GetDataModel (reused in CreateDataModelLink), copied from TestGetDataModel_nominal_no_unique
+	// for GetDataModel (reused in CreateDataModelLink)
 	suite.enforceSecurity.On("ReadDataModel").Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
-	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
-		Return(nil, nil)
-	suite.dataModelRepository.On("GetDataModel",
-		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
-		Return(suite.dataModel, nil)
-	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
-		Return([]models.UnicityIndex{}, nil)
-
-	_, err := usecase.CreateDataModelLink(suite.ctx, link)
-	suite.Require().Error(err, "error expected")
-	suite.Require().ErrorContains(err, "parent field must be unique", "expected error should be returned")
-
-	suite.AssertExpectations()
-}
-
-func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_parent_field_not_string() {
-	parentTableName := "accounts"
-	parentFieldName := "balance"
-	childTableName := "transactions"
-	childFieldName := "account_id"
-	link := models.DataModelLinkCreateInput{
-		OrganizationID: suite.organizationId,
-		Name:           "name",
-		ParentTableID:  "parentTableId",
-		ChildTableID:   "childTableId",
-		ParentFieldID:  "parentFieldId",
-		ChildFieldID:   "childFieldId",
-	}
-	usecase := suite.makeUsecase()
-	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
-	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, link.ChildTableID).
-		Return(models.TableMetadata{Name: childTableName}, nil)
-	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, link.ParentTableID).
-		Return(models.TableMetadata{Name: parentTableName}, nil)
-	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, link.ParentFieldID).
-		Return(models.FieldMetadata{Name: parentFieldName}, nil)
-	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, link.ChildFieldID).
-		Return(models.FieldMetadata{Name: childFieldName}, nil)
-	// for GetDataModel (reused in CreateDataModelLink), copied from TestGetDataModel_nominal_no_unique
-	suite.enforceSecurity.On("ReadDataModel").Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
-	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
-		Return(nil, nil)
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
-	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
-		Return([]models.UnicityIndex{}, nil)
 
 	_, err := usecase.CreateDataModelLink(suite.ctx, link)
 	suite.Require().Error(err, "error expected")
-	suite.Require().ErrorContains(err, "parent field must be a string", "expected error should be returned")
+	suite.Require().ErrorContains(err, "parent field must be the object_id field", "expected error should be returned")
 
 	suite.AssertExpectations()
 }
 
 func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_child_field_not_string() {
-	parentTableName := "accounts"
-	parentFieldName := "object_id"
-	childTableName := "transactions"
-	childFieldName := "value"
 	link := models.DataModelLinkCreateInput{
 		OrganizationID: suite.organizationId,
 		Name:           "name",
-		ParentTableID:  "parentTableId",
-		ChildTableID:   "childTableId",
-		ParentFieldID:  "parentFieldId",
-		ChildFieldID:   "childFieldId",
+		LinkType:       models.LinkTypeRelated,
+		ParentTableID:  "accounts-table-id",
+		ChildTableID:   "transactions-table-id",
+		ParentFieldID:  "accounts-object-id-field-id",
+		ChildFieldID:   "transactions-value-field-id", // value is Float, not String
 	}
 	usecase := suite.makeUsecase()
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
-	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, link.ChildTableID).
-		Return(models.TableMetadata{Name: childTableName}, nil)
-	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, link.ParentTableID).
-		Return(models.TableMetadata{Name: parentTableName}, nil)
-	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, link.ParentFieldID).
-		Return(models.FieldMetadata{Name: parentFieldName}, nil)
-	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, link.ChildFieldID).
-		Return(models.FieldMetadata{Name: childFieldName}, nil)
-	// for GetDataModel (reused in CreateDataModelLink), copied from TestGetDataModel_nominal_no_unique
+	// for GetDataModel (reused in CreateDataModelLink)
 	suite.enforceSecurity.On("ReadDataModel").Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
-	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
-		Return(nil, nil)
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
-	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
-		Return(suite.uniqueIndexes, nil)
 
 	_, err := usecase.CreateDataModelLink(suite.ctx, link)
 	suite.Require().Error(err, "error expected")
@@ -978,16 +931,15 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_security_error()
 }
 
 func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_repository_error() {
-	link := models.DataModelLinkCreateInput{OrganizationID: suite.organizationId, Name: "name"}
+	link := models.DataModelLinkCreateInput{OrganizationID: suite.organizationId, Name: "name", LinkType: models.LinkTypeRelated}
 	usecase := suite.makeUsecase()
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
-	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, link.ChildTableID).
-		Return(models.TableMetadata{}, nil)
-	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, link.ParentTableID).
-		Return(models.TableMetadata{}, nil)
-	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, link.ChildFieldID).
-		Return(models.FieldMetadata{}, suite.repositoryError)
+	suite.enforceSecurity.On("ReadDataModel").Return(nil)
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.dataModelRepository.On("GetDataModel",
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
+		Return(models.DataModel{}, suite.repositoryError)
 
 	_, err := usecase.CreateDataModelLink(suite.ctx, link)
 	suite.Require().Error(err, "error expected")
