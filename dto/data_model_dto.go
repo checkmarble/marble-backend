@@ -7,11 +7,13 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 type LinkToSingle struct {
 	Id              string `json:"id"`
 	Name            string `json:"name"`
+	LinkType        string `json:"link_type"`
 	ParentTableName string `json:"parent_table_name"`
 	ParentTableId   string `json:"parent_table_id"`
 	ParentFieldName string `json:"parent_field_name"`
@@ -114,6 +116,7 @@ func adaptDataModelLink(linkToSingle models.LinkToSingle) LinkToSingle {
 	return LinkToSingle{
 		Id:              linkToSingle.Id,
 		Name:            linkToSingle.Name,
+		LinkType:        string(linkToSingle.LinkType),
 		ParentTableName: linkToSingle.ParentTableName,
 		ParentTableId:   linkToSingle.ParentTableId,
 		ParentFieldName: linkToSingle.ParentFieldName,
@@ -191,11 +194,16 @@ func (input CreateTableInput) AdaptToModel() (models.CreateTableInput, error) {
 	// Convert DTO links to model links
 	links := make([]models.CreateTableLinkInput, len(input.Links))
 	for i, l := range input.Links {
+		linkType := models.LinkType(l.LinkType)
+		if !linkType.IsValid() {
+			return models.CreateTableInput{}, errors.Wrap(models.BadParameterError, "invalid link type")
+		}
 		links[i] = models.CreateTableLinkInput{
 			Name:           l.Name,
 			ChildFieldName: l.ChildFieldName,
 			ParentTableID:  l.ParentTableId,
 			ParentFieldID:  l.ParentFieldId,
+			LinkType:       linkType,
 		}
 	}
 
@@ -229,6 +237,7 @@ func (input CreateTableInput) AdaptToModel() (models.CreateTableInput, error) {
 // creating the table with fields and links at the same time.
 type CreateTableLinkInput struct {
 	Name           string `json:"name"`
+	LinkType       string `json:"link_type"`
 	ChildFieldName string `json:"child_field_name"`
 	ParentTableId  string `json:"parent_table_id"`
 	ParentFieldId  string `json:"parent_field_id"`
@@ -245,10 +254,29 @@ type UpdateTableInput struct {
 // Create link input outside the context of creating a table.
 type CreateLinkInput struct {
 	Name          string `json:"name"`
+	LinkType      string `json:"link_type"`
 	ParentTableId string `json:"parent_table_id"`
 	ParentFieldId string `json:"parent_field_id"`
 	ChildTableId  string `json:"child_table_id"`
 	ChildFieldId  string `json:"child_field_id"`
+}
+
+func (input CreateLinkInput) AdaptToModel(organizationID uuid.UUID) (models.DataModelLinkCreateInput, error) {
+	linkType := models.LinkType(input.LinkType)
+	if !linkType.IsValid() {
+		return models.DataModelLinkCreateInput{},
+			errors.Wrap(models.BadParameterError, "invalid link type")
+	}
+
+	return models.DataModelLinkCreateInput{
+		OrganizationID: organizationID,
+		Name:           input.Name,
+		LinkType:       linkType,
+		ParentTableID:  input.ParentTableId,
+		ParentFieldID:  input.ParentFieldId,
+		ChildTableID:   input.ChildTableId,
+		ChildFieldID:   input.ChildFieldId,
+	}, nil
 }
 
 type UpdateFieldInput struct {
