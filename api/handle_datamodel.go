@@ -226,13 +226,9 @@ func handleCreateLink(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		link := models.DataModelLinkCreateInput{
-			OrganizationID: organizationID,
-			Name:           input.Name,
-			ParentTableID:  input.ParentTableId,
-			ParentFieldID:  input.ParentFieldId,
-			ChildTableID:   input.ChildTableId,
-			ChildFieldID:   input.ChildFieldId,
+		link, err := input.AdaptToModel(organizationID)
+		if presentError(ctx, c, err) {
+			return
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
