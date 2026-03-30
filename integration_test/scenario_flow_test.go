@@ -223,6 +223,7 @@ func createDataModelAndSetupCaseManager(
 
 	txToAccountLinkId, err := usecase.CreateDataModelLink(ctx, models.DataModelLinkCreateInput{
 		Name:           "account",
+		LinkType:       models.LinkTypeRelated,
 		OrganizationID: organizationId,
 		ParentTableID:  accountsTableId,
 		ParentFieldID:  dm.Tables["accounts"].Fields["object_id"].ID,
@@ -235,6 +236,7 @@ func createDataModelAndSetupCaseManager(
 
 	_, err = usecase.CreateDataModelLink(ctx, models.DataModelLinkCreateInput{
 		Name:           "company",
+		LinkType:       models.LinkTypeRelated,
 		OrganizationID: organizationId,
 		ParentTableID:  companiesTableId,
 		ParentFieldID:  dm.Tables["companies"].Fields["object_id"].ID,

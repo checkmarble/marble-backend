@@ -75,6 +75,7 @@ type DbDataModelLink struct {
 	Id              string
 	OrganizationId  uuid.UUID
 	Name            string
+	LinkType        string
 	ParentTableName string
 	ParentTableId   string
 	ParentFieldName string
@@ -90,6 +91,7 @@ func AdaptLinkToSingle(dbDataModelLink DbDataModelLink) models.LinkToSingle {
 		Id:              dbDataModelLink.Id,
 		OrganizationId:  dbDataModelLink.OrganizationId,
 		Name:            dbDataModelLink.Name,
+		LinkType:        models.LinkType(dbDataModelLink.LinkType),
 		ParentTableName: dbDataModelLink.ParentTableName,
 		ParentTableId:   dbDataModelLink.ParentTableId,
 		ParentFieldName: dbDataModelLink.ParentFieldName,

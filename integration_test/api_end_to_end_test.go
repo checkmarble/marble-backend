@@ -151,18 +151,24 @@ func setupDataModel(auth *httpexpect.Expect, authOrgViewer *httpexpect.Expect) {
 		Expect().Status(http.StatusOK).
 		JSON().Object().Value("id").String().NotEmpty()
 
-	accountIdParentFieldId := auth.POST("/data-model/tables/{table_id}/fields", accountsTableId).
-		WithJSON(map[string]any{"name": "account_id", "type": "String", "is_unique": true}).
+	// get the object_id field ID of the accounts table (auto-created with the table)
+	accountsObjectIdFieldId := auth.GET("/data-model").
 		Expect().Status(http.StatusOK).
-		JSON().Object().Value("id").String().NotEmpty().Raw()
+		JSON().Object().Value("data_model").
+		Object().Value("tables").
+		Object().Value("accounts").
+		Object().Value("fields").
+		Object().Value("object_id").
+		Object().Value("id").String().NotEmpty().Raw()
 
 	// create a link between the tables
 	auth.POST("/data-model/links").
 		WithJSON(map[string]any{
 			"name":            "account",
+			"link_type":       "related",
 			"parent_table_id": accountsTableId,
 			"child_table_id":  transactionsTableId,
-			"parent_field_id": accountIdParentFieldId,
+			"parent_field_id": accountsObjectIdFieldId,
 			"child_field_id":  accountIdFieldId,
 		}).
 		Expect().Status(http.StatusNoContent)

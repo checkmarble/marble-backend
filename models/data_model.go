@@ -76,54 +76,6 @@ func DataTypeFrom(s string) DataType {
 	return UnknownDataType
 }
 
-type SemanticType string
-
-const (
-	SemanticTypeUnset       SemanticType = ""
-	SemanticTypeUnknown     SemanticType = "unknown"
-	SemanticTypePerson      SemanticType = "person"
-	SemanticTypeCompany     SemanticType = "company"
-	SemanticTypeAccount     SemanticType = "account"
-	SemanticTypeTransaction SemanticType = "transaction"
-	SemanticTypeEvent       SemanticType = "event"
-	SemanticTypePartner     SemanticType = "partner"
-	SemanticTypeOther       SemanticType = "other"
-)
-
-var validSemanticTypes = map[SemanticType]bool{
-	SemanticTypePerson:      true,
-	SemanticTypeCompany:     true,
-	SemanticTypeAccount:     true,
-	SemanticTypeTransaction: true,
-	SemanticTypeEvent:       true,
-	SemanticTypePartner:     true,
-	SemanticTypeOther:       true,
-}
-
-func (s SemanticType) IsValid() bool {
-	return validSemanticTypes[s]
-}
-
-func SemanticTypeFrom(s string) SemanticType {
-	if s == "" {
-		return SemanticTypeUnset
-	}
-	st := SemanticType(s)
-	if validSemanticTypes[st] {
-		return st
-	}
-	return SemanticTypeUnknown
-}
-
-// TODO: TBD, don't know if we keep Person/Company or natural_person/moral_person
-func (s SemanticType) IsPersonLike() bool {
-	return s == SemanticTypePerson || s == SemanticTypeCompany
-}
-
-func (s SemanticType) RequiresPersonLink() bool {
-	return s == SemanticTypeTransaction || s == SemanticTypeEvent || s == SemanticTypeAccount
-}
-
 ///////////////////////////////
 // Data Model
 ///////////////////////////////
@@ -388,10 +340,23 @@ func (enumValues EnumValues) CollectEnumValues(payload ClientObject) {
 // ///////////////////////////////
 // Data Model Link
 // ///////////////////////////////
+
+type LinkType string
+
+const (
+	LinkTypeRelated   LinkType = "related"
+	LinkTypeBelongsTo LinkType = "belongs_to"
+)
+
+func (l LinkType) IsValid() bool {
+	return l == LinkTypeRelated || l == LinkTypeBelongsTo
+}
+
 type LinkToSingle struct {
 	Id              string
 	OrganizationId  uuid.UUID
 	Name            string
+	LinkType        LinkType
 	ParentTableName string
 	ParentTableId   string
 	ParentFieldName string
@@ -405,6 +370,7 @@ type LinkToSingle struct {
 type DataModelLinkCreateInput struct {
 	OrganizationID uuid.UUID
 	Name           string
+	LinkType       LinkType
 	ParentTableID  string
 	ParentFieldID  string
 	ChildTableID   string
@@ -429,6 +395,7 @@ type CreateTableInput struct {
 
 type CreateTableLinkInput struct {
 	Name           string
+	LinkType       LinkType
 	ChildFieldName string
 	ParentTableID  string
 	ParentFieldID  string

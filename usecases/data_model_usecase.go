@@ -14,6 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
@@ -63,8 +64,9 @@ var (
 	validNameRegex = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)
 )
 
-func (usecase usecase) GetDataModel(
+func (usecase usecase) getDataModelWithExec(
 	ctx context.Context,
+	exec repositories.Executor,
 	organizationID uuid.UUID,
 	options models.DataModelReadOptions,
 	useCache bool,
@@ -72,7 +74,6 @@ func (usecase usecase) GetDataModel(
 	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
 		return models.DataModel{}, err
 	}
-	exec := usecase.executorFactory.NewExecutor()
 
 	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationID, options.IncludeEnums, useCache)
 	if err != nil {
@@ -122,6 +123,16 @@ func (usecase usecase) GetDataModel(
 	return dataModel, nil
 }
 
+func (usecase usecase) GetDataModel(
+	ctx context.Context,
+	organizationID uuid.UUID,
+	options models.DataModelReadOptions,
+	useCache bool,
+) (models.DataModel, error) {
+	exec := usecase.executorFactory.NewExecutor()
+	return usecase.getDataModelWithExec(ctx, exec, organizationID, options, useCache)
+}
+
 func (usecase *usecase) CreateDataModelTable(
 	ctx context.Context,
 	organizationId uuid.UUID,
@@ -130,172 +141,19 @@ func (usecase *usecase) CreateDataModelTable(
 	if err := usecase.enforceSecurity.WriteDataModel(organizationId); err != nil {
 		return "", err
 	}
+
+	if !input.SemanticType.IsValid() {
+		return "", errors.Wrap(models.BadParameterError, "invalid semantic type")
+	}
+
 	// Validate table name
 	if !validNameRegex.MatchString(input.Name) {
 		return "", errors.Wrap(models.BadParameterError,
 			"table name must only contain lower case alphanumeric characters and underscores, and start by a letter")
 	}
 
-	if !input.SemanticType.IsValid() {
-		return "", errors.Wrap(models.BadParameterError, "invalid semantic type")
-	}
-
-	// Validate field names and types
-	// - Not a reserved name
-	// - Valid name
-	// - No duplicates
-	// - Supported data type
-	// - If FTM property is set, it must be valid for the FTM entity defined in the table
-	fieldNames := make(map[string]bool, len(input.Fields))
-	for _, f := range input.Fields {
-		if models.DataModelReservedFieldNames[f.Name] {
-			return "", errors.Wrapf(models.BadParameterError,
-				"field name %q is reserved", f.Name)
-		}
-		if !validNameRegex.MatchString(f.Name) {
-			return "", errors.Wrapf(models.BadParameterError,
-				"field name %q must only contain lower case alphanumeric characters and underscores, and start by a letter", f.Name)
-		}
-		if fieldNames[f.Name] {
-			return "", errors.Wrapf(models.BadParameterError,
-				"duplicate field name %q", f.Name)
-		}
-		if f.DataType == models.UnknownDataType {
-			return "", errors.Wrapf(models.BadParameterError,
-				"invalid data type for field %q", f.Name)
-		}
-		if err := validateFTMProperty(
-			models.TableMetadata{Name: input.Name, FTMEntity: input.FTMEntity},
-			pure_utils.NullFromPtr(f.FTMProperty),
-		); err != nil {
-			return "", errors.Wrap(models.BadParameterError, err.Error())
-		}
-		fieldNames[f.Name] = true
-	}
-
-	// Validate link names and child field references
-	// - Valid name
-	// - Child field exists
-	// - Not a reserved field name
-	// - Child field is String type
-	for _, l := range input.Links {
-		if !validNameRegex.MatchString(l.Name) {
-			return "", errors.Wrapf(models.BadParameterError,
-				"link name %q must only contain lower case alphanumeric characters and underscores, and start by a letter", l.Name)
-		}
-		if !fieldNames[l.ChildFieldName] {
-			return "", errors.Wrapf(models.BadParameterError,
-				"link %q references unknown child field %q", l.Name, l.ChildFieldName)
-		}
-		if models.DataModelReservedFieldNames[l.ChildFieldName] {
-			return "", errors.Wrapf(models.BadParameterError,
-				"link %q: child field %q is a built-in field and cannot be used as a link child field", l.Name, l.ChildFieldName)
-		}
-		// Child field must be String type
-		childFieldType := models.UnknownDataType
-		for _, f := range input.Fields {
-			if f.Name == l.ChildFieldName {
-				childFieldType = f.DataType
-				break
-			}
-		}
-		if childFieldType != models.String {
-			return "", errors.Wrapf(models.BadParameterError,
-				"link %q: child field %q must be of type String", l.Name, l.ChildFieldName)
-		}
-	}
-
-	// Validate links: parent table/field exist, belong to same org, parent field is string + unique
-	hasPersonLink := false
-	if len(input.Links) > 0 {
-		dataModel, err := usecase.GetDataModel(ctx, organizationId, models.DataModelReadOptions{
-			IncludeUnicityConstraints: true,
-		}, false)
-		if err != nil {
-			return "", err
-		}
-		tablesById := dataModel.AllTablesAsMap()
-
-		for _, l := range input.Links {
-			parentTable, ok := tablesById[l.ParentTableID]
-			if !ok {
-				return "", errors.Wrapf(models.BadParameterError,
-					"link %q: parent table not found", l.Name)
-			}
-
-			parentField, ok := parentTable.GetFieldById(l.ParentFieldID)
-			if !ok {
-				return "", errors.Wrapf(models.BadParameterError,
-					"link %q: parent field not found", l.Name)
-			}
-			if parentField.DataType != models.String {
-				return "", errors.Wrapf(models.BadParameterError,
-					"link %q: parent field %q must be of type String", l.Name, parentField.Name)
-			}
-			if parentField.UnicityConstraint != models.ActiveUniqueConstraint {
-				return "", errors.Wrapf(models.BadParameterError,
-					"link %q: parent field %q must have an active unique constraint", l.Name, parentField.Name)
-			}
-
-			if parentTable.SemanticType.IsPersonLike() {
-				hasPersonLink = true
-			}
-		}
-	}
-
-	// Enforce: transaction/event/account types must link to a person-like table
-	if input.SemanticType.RequiresPersonLink() && !hasPersonLink {
-		return "", errors.Wrapf(models.BadParameterError,
-			"tables with semantic type %q must have at least one link to a person-like table",
-			input.SemanticType)
-	}
-
 	// Generate IDs
 	tableId := pure_utils.NewId().String()
-
-	defaultFields := []models.CreateFieldInput{
-		{
-			TableId:     tableId,
-			DataType:    models.String,
-			Description: fmt.Sprintf("required id on all objects in the %s table", input.Name),
-			Name:        "object_id",
-			Nullable:    false,
-		},
-		{
-			TableId:     tableId,
-			DataType:    models.Timestamp,
-			Description: fmt.Sprintf("required timestamp on all objects in the %s table", input.Name),
-			Name:        "updated_at",
-			Nullable:    false,
-		},
-	}
-
-	// Prepare user-defined fields with generated IDs
-	type fieldWithId struct {
-		id    string
-		field models.CreateFieldInput
-	}
-	userFields := make([]fieldWithId, len(input.Fields))
-	fieldIdsByName := make(map[string]string)
-	for i, f := range input.Fields {
-		fid := pure_utils.NewId().String()
-		userFields[i] = fieldWithId{
-			id: fid,
-			field: models.CreateFieldInput{
-				TableId:     tableId,
-				Name:        f.Name,
-				Description: f.Description,
-				Alias:       f.Alias,
-				DataType:    f.DataType,
-				Nullable:    f.Nullable,
-				IsEnum:      f.IsEnum,
-				IsUnique:    f.IsUnique,
-				FTMProperty: f.FTMProperty,
-				Metadata:    f.Metadata,
-			},
-		}
-		fieldIdsByName[f.Name] = fid
-	}
 
 	// Transaction: create everything in marble DB + org schema
 	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
@@ -313,35 +171,84 @@ func (usecase *usecase) CreateDataModelTable(
 			return err
 		}
 
-		// Create default fields
-		for _, field := range defaultFields {
-			fieldId := pure_utils.NewId().String()
-			if err := usecase.dataModelRepository.CreateDataModelField(ctx, tx,
-				organizationId, fieldId, field); err != nil {
-				return err
+		newTableMetadata, err := usecase.dataModelRepository.GetDataModelTable(ctx, tx, tableId)
+		if err != nil {
+			return err
+		}
+
+		fieldsToCreate := make([]models.CreateFieldInput, len(input.Fields))
+		fieldIdsByName := make(map[string]string)
+		for i, f := range input.Fields {
+			fieldsToCreate[i] = models.CreateFieldInput{
+				TableId:     tableId,
+				Name:        f.Name,
+				Description: f.Description,
+				Alias:       f.Alias,
+				DataType:    f.DataType,
+				Nullable:    f.Nullable,
+				IsEnum:      f.IsEnum,
+				IsUnique:    f.IsUnique,
+				FTMProperty: f.FTMProperty,
+				Metadata:    f.Metadata,
 			}
 		}
 
-		// Create user-defined fields
-		for _, userField := range userFields {
-			if err := usecase.dataModelRepository.CreateDataModelField(ctx, tx,
-				organizationId, userField.id, userField.field); err != nil {
+		for _, field := range fieldsToCreate {
+			fieldId, err := usecase.createDataModelFieldWithExec(
+				ctx, tx, newTableMetadata, field,
+			)
+			if err != nil {
 				return err
 			}
+			fieldIdsByName[field.Name] = fieldId
 		}
 
 		// Create links
 		for _, l := range input.Links {
-			childFieldId := fieldIdsByName[l.ChildFieldName]
-			linkId := pure_utils.NewId().String()
-			if err := usecase.dataModelRepository.CreateDataModelLink(ctx, tx, linkId, models.DataModelLinkCreateInput{
+			childFieldId, ok := fieldIdsByName[l.ChildFieldName]
+			if !ok {
+				return errors.Wrap(models.BadParameterError,
+					"child field not found in data model when creating link")
+			}
+			if _, err := usecase.createDataModelLinkWithExec(ctx, tx, models.DataModelLinkCreateInput{
 				OrganizationID: organizationId,
 				Name:           l.Name,
+				LinkType:       l.LinkType,
 				ParentTableID:  l.ParentTableID,
 				ParentFieldID:  l.ParentFieldID,
 				ChildTableID:   tableId,
 				ChildFieldID:   childFieldId,
 			}); err != nil {
+				return err
+			}
+		}
+
+		datamodel, err := usecase.getDataModelWithExec(ctx, tx, organizationId, models.DataModelReadOptions{}, false)
+		if err != nil {
+			return err
+		}
+		if err := TableSemanticTypeValidationFunctions[input.SemanticType](input.Name, datamodel); err != nil {
+			return err
+		}
+
+		// Check if the table has a Pivot value. By default, the pivot field is "object_id" of the same table
+		pivots, err := usecase.dataModelRepository.ListPivots(ctx, tx, organizationId, utils.Ptr(tableId), false)
+		if err != nil {
+			return err
+		}
+		if len(pivots) > 1 {
+			return errors.Wrap(models.BadParameterError,
+				"a table cannot have more than one pivot")
+		}
+		if len(pivots) == 0 {
+			if _, err := usecase.CreatePivotWithExec(
+				ctx,
+				tx,
+				models.CreatePivotInput{
+					BaseTableId:    tableId,
+					OrganizationId: organizationId,
+					FieldId:        utils.Ptr(fieldIdsByName["object_id"]),
+				}); err != nil {
 				return err
 			}
 		}
@@ -355,10 +262,23 @@ func (usecase *usecase) CreateDataModelTable(
 				return err
 			}
 
-			// Create columns for user-defined fields
-			for _, userField := range userFields {
+			for _, fieldName := range []string{"valid_from", "valid_until"} {
+				if err := usecase.organizationSchemaRepository.CreateField(
+					ctx,
+					orgTx,
+					input.Name,
+					models.CreateFieldInput{
+						Name:     fieldName,
+						DataType: models.String,
+					},
+				); err != nil {
+					return err
+				}
+			}
+
+			for _, field := range fieldsToCreate {
 				if err := usecase.organizationSchemaRepository.CreateField(ctx,
-					orgTx, input.Name, userField.field); err != nil {
+					orgTx, input.Name, field); err != nil {
 					return err
 				}
 			}
@@ -374,17 +294,6 @@ func (usecase *usecase) CreateDataModelTable(
 	})
 	if err != nil {
 		return "", err
-	}
-
-	// Post-transaction: async unique index creation for fields with IsUnique
-	for _, userField := range userFields {
-		if userField.field.IsUnique {
-			if err := usecase.clientDbIndexEditor.CreateUniqueIndexAsync(
-				ctx, organizationId, getFieldUniqueIndex(input.Name, userField.field.Name),
-			); err != nil {
-				return "", err
-			}
-		}
 	}
 
 	return tableId, nil
@@ -447,44 +356,52 @@ func (usecase *usecase) UpdateDataModelTable(
 		ftmEntity, alias, semanticType, captionField)
 }
 
-func (usecase *usecase) CreateDataModelField(ctx context.Context, field models.CreateFieldInput) (string, error) {
-	if field.Name == "id" {
-		return "", errors.Wrap(models.BadParameterError, "field name 'id' is reserved")
-	}
-	// NB: even if we decide in the future to be more permissive on allowed field names, for instance if we escape them and allow special characters
-	// (which I don't think we should), they MUST still remain lower case, unless we first migrate all non escaped fields&tables in data_model_fields/data_model_tables
-	// to lower case and change logic in models/concrete_index.go ConcreteIndex.Covers()
+func (usecase *usecase) createDataModelFieldWithExec(ctx context.Context,
+	exec repositories.Executor, table models.TableMetadata, field models.CreateFieldInput,
+) (string, error) {
+	fieldId := pure_utils.NewId().String()
+
 	if !validNameRegex.MatchString(field.Name) {
-		return "", errors.Wrap(models.BadParameterError,
-			"field name must only contain lower case alphanumeric characters and underscores, and start by a letter")
+		return "", errors.Wrapf(models.BadParameterError,
+			"field name %q must only contain lower case alphanumeric characters and underscores, and start by a letter", field.Name)
+	}
+	if field.DataType == models.UnknownDataType {
+		return "", errors.Wrapf(models.BadParameterError,
+			"invalid data type for field %q", field.Name)
+	}
+	if err := validateFTMProperty(table, pure_utils.NullFromPtr(field.FTMProperty)); err != nil {
+		return "", errors.Wrap(models.BadParameterError, err.Error())
 	}
 
-	fieldId := pure_utils.NewId().String()
-	var tableName string
-	var organizationId uuid.UUID
+	if err := usecase.dataModelRepository.CreateDataModelField(ctx, exec, table.OrganizationID, fieldId, field); err != nil {
+		return "", err
+	}
+
+	return fieldId, nil
+}
+
+func (usecase *usecase) CreateDataModelField(ctx context.Context, field models.CreateFieldInput) (string, error) {
+	var fieldId string
 	err := usecase.transactionFactory.Transaction(
 		ctx,
 		func(tx repositories.Transaction) error {
+			var err error
 			table, err := usecase.dataModelRepository.GetDataModelTable(ctx, tx, field.TableId)
 			if err != nil {
 				return err
 			}
-			organizationId = table.OrganizationID
 			if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
 				return err
 			}
 
-			if err := validateFTMProperty(table, pure_utils.NullFromPtr(field.FTMProperty)); err != nil {
+			fieldId, err = usecase.createDataModelFieldWithExec(
+				ctx, tx, table, field,
+			)
+			if err != nil {
 				return err
 			}
 
-			tableName = table.Name
-
-			if err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, organizationId, fieldId, field); err != nil {
-				return err
-			}
-
-			db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
+			db, err := usecase.executorFactory.NewClientDbExecutor(ctx, table.OrganizationID)
 			if err != nil {
 				return err
 			}
@@ -494,17 +411,6 @@ func (usecase *usecase) CreateDataModelField(ctx context.Context, field models.C
 	)
 	if err != nil {
 		return "", err
-	}
-
-	if field.IsUnique {
-		err := usecase.clientDbIndexEditor.CreateUniqueIndexAsync(
-			ctx,
-			organizationId,
-			getFieldUniqueIndex(tableName, field.Name),
-		)
-		if err != nil {
-			return "", err
-		}
 	}
 
 	return fieldId, nil
@@ -683,64 +589,119 @@ func validateFTMProperty(table models.TableMetadata, property pure_utils.Null[mo
 	return nil
 }
 
-func (usecase *usecase) CreateDataModelLink(ctx context.Context, link models.DataModelLinkCreateInput) (string, error) {
-	if err := usecase.enforceSecurity.WriteDataModel(link.OrganizationID); err != nil {
+func (usecase *usecase) createDataModelLinkWithExec(ctx context.Context, exec repositories.Executor, link models.DataModelLinkCreateInput) (string, error) {
+	dataModel, err := usecase.getDataModelWithExec(ctx, exec, link.OrganizationID, models.DataModelReadOptions{}, false)
+	if err != nil {
 		return "", err
 	}
+	allTables := dataModel.AllTablesAsMap()
+	allFields := dataModel.AllFieldsAsMap()
+
+	// BelongsTo with same parent and child table: create only a field-based pivot, no link
+	if link.LinkType == models.LinkTypeBelongsTo && link.ParentTableID == link.ChildTableID {
+		childField, ok := allFields[link.ChildFieldID]
+		if !ok {
+			return "", errors.Wrap(models.NotFoundError,
+				fmt.Sprintf("child field %s not found", link.ChildFieldID))
+		}
+		if childField.TableId != link.ChildTableID {
+			// Should not occur if the ID is correct, but just in case
+			return "", errors.Wrap(models.BadParameterError,
+				fmt.Sprintf("child field %s does not belong to child table %s", link.ChildFieldID, link.ChildTableID))
+		}
+		if childField.DataType != models.String {
+			return "", errors.Wrap(models.BadParameterError,
+				fmt.Sprintf("child field must be a string, field %s is %s",
+					childField.Name, childField.DataType.String()))
+		}
+		_, err = usecase.CreatePivotWithExec(ctx, exec, models.CreatePivotInput{
+			OrganizationId: link.OrganizationID,
+			BaseTableId:    link.ChildTableID,
+			FieldId:        &link.ChildFieldID,
+		})
+		return "", err
+	}
+
 	if !validNameRegex.MatchString(link.Name) {
 		return "", errors.Wrap(models.BadParameterError,
 			"field name must only contain lower case alphanumeric characters and underscores, and start by a letter")
 	}
-	exec := usecase.executorFactory.NewExecutor()
 
-	// check existence of tables
-	childTableMeta, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, link.ChildTableID)
-	if err != nil {
-		return "", err
+	// check existence of tables and fields
+	if _, ok := allTables[link.ChildTableID]; !ok {
+		return "", errors.Wrap(models.NotFoundError,
+			fmt.Sprintf("child table %s not found", link.ChildTableID))
 	}
-	parentTableMeta, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, link.ParentTableID)
-	if err != nil {
-		return "", err
+	if _, ok := allTables[link.ParentTableID]; !ok {
+		return "", errors.Wrap(models.NotFoundError,
+			fmt.Sprintf("parent table %s not found", link.ParentTableID))
 	}
-
-	// check existence of fields
-	childFieldMeta, err := usecase.dataModelRepository.GetDataModelField(ctx, exec, link.ChildFieldID)
-	if err != nil {
-		return "", err
+	childField, ok := allFields[link.ChildFieldID]
+	if !ok {
+		return "", errors.Wrap(models.NotFoundError,
+			fmt.Sprintf("child field %s not found", link.ChildFieldID))
 	}
-	parentFieldMeta, err := usecase.dataModelRepository.GetDataModelField(ctx, exec, link.ParentFieldID)
-	if err != nil {
-		return "", err
-	}
-
-	// Check that the parent field is unique by getting the full data model
-	dataModel, err := usecase.GetDataModel(ctx, link.OrganizationID, models.DataModelReadOptions{
-		IncludeUnicityConstraints: true,
-	}, false)
-	if err != nil {
-		return "", err
-	}
-	parentTable := dataModel.Tables[parentTableMeta.Name]
-	childTable := dataModel.Tables[childTableMeta.Name]
-	parentField := parentTable.Fields[parentFieldMeta.Name]
-	childField := childTable.Fields[childFieldMeta.Name]
-
-	if parentField.DataType != models.String {
+	if childField.TableId != link.ChildTableID {
+		// Should not occur if the ID is correct, but just in case
 		return "", errors.Wrap(models.BadParameterError,
-			fmt.Sprintf("parent field must be a string, field %s is %s", parentFieldMeta.Name, parentFieldMeta.DataType.String()))
+			fmt.Sprintf("child field %s does not belong to child table %s", link.ChildFieldID, link.ChildTableID))
 	}
-	if parentField.UnicityConstraint != models.ActiveUniqueConstraint {
+	parentField, ok := allFields[link.ParentFieldID]
+	if !ok {
+		return "", errors.Wrap(models.NotFoundError,
+			fmt.Sprintf("parent field %s not found", link.ParentFieldID))
+	}
+	if parentField.TableId != link.ParentTableID {
+		// Should not occur if the ID is correct, but just in case
 		return "", errors.Wrap(models.BadParameterError,
-			fmt.Sprintf("parent field must be unique: field %s is not", parentFieldMeta.Name))
+			fmt.Sprintf("parent field %s does not belong to parent table %s",
+				link.ParentFieldID, link.ParentTableID))
 	}
 
+	if parentField.Name != "object_id" {
+		return "", errors.Wrap(models.BadParameterError,
+			"parent field must be the object_id field")
+	}
+
+	if models.DataModelReservedFieldNames[childField.Name] {
+		return "", errors.Wrapf(models.BadParameterError,
+			"link %q: child field %q is a built-in field and cannot be used as a link child field", link.Name, childField.Name)
+	}
 	if childField.DataType != models.String {
 		return "", errors.Wrap(models.BadParameterError,
-			fmt.Sprintf("child field must be a string, field %s is %s", childFieldMeta.Name, childFieldMeta.DataType.String()))
+			fmt.Sprintf("child field must be a string, field %s is %s", childField.Name, childField.DataType.String()))
 	}
 
 	linkId := pure_utils.NewId().String()
-	return linkId, usecase.dataModelRepository.CreateDataModelLink(ctx, exec, linkId, link)
+	if err := usecase.dataModelRepository.CreateDataModelLink(ctx, exec, linkId, link); err != nil {
+		return "", err
+	}
+
+	// BelongsTo with different tables: also create a path-based pivot
+	if link.LinkType == models.LinkTypeBelongsTo {
+		_, err = usecase.CreatePivotWithExec(ctx, exec, models.CreatePivotInput{
+			OrganizationId: link.OrganizationID,
+			BaseTableId:    link.ChildTableID,
+			PathLinkIds:    []string{linkId},
+		})
+		if err != nil {
+			return linkId, err
+		}
+	}
+
+	return linkId, nil
+}
+
+// This method handles links between data model tables.
+// A link can be between different tables or a self-link.
+// `related` type will create a link without creating a pivot, while `belongs_to` will create a pivot and a link if the
+// link is between different tables. For self-links, only a field-based pivot is created, without a link, and the child field must be named "object_id"
+func (usecase *usecase) CreateDataModelLink(ctx context.Context, link models.DataModelLinkCreateInput) (string, error) {
+	exec := usecase.executorFactory.NewExecutor()
+	if err := usecase.enforceSecurity.WriteDataModel(link.OrganizationID); err != nil {
+		return "", err
+	}
+	return usecase.createDataModelLinkWithExec(ctx, exec, link)
 }
 
 func (usecase *usecase) DeleteDataModel(ctx context.Context, organizationID uuid.UUID) error {
@@ -764,12 +725,11 @@ func (usecase *usecase) DeleteDataModel(ctx context.Context, organizationID uuid
 
 // data model pivot methods
 
-func (usecase *usecase) CreatePivot(ctx context.Context, input models.CreatePivotInput) (models.Pivot, error) {
+func (usecase *usecase) CreatePivotWithExec(ctx context.Context, exec repositories.Executor, input models.CreatePivotInput) (models.Pivot, error) {
 	if err := usecase.enforceSecurity.WriteDataModel(input.OrganizationId); err != nil {
 		return models.Pivot{}, err
 	}
 
-	exec := usecase.executorFactory.NewExecutor()
 	dm, err := usecase.dataModelRepository.GetDataModel(ctx, exec, input.OrganizationId, false, false)
 	if err != nil {
 		return models.Pivot{}, err
@@ -780,16 +740,20 @@ func (usecase *usecase) CreatePivot(ctx context.Context, input models.CreatePivo
 	}
 
 	id := pure_utils.NewId().String()
+	err = usecase.dataModelRepository.CreatePivot(ctx, exec, id, input)
+	if err != nil {
+		return models.Pivot{}, err
+	}
+	pivotMeta, err := usecase.dataModelRepository.GetPivot(ctx, exec, id)
+	return pivotMeta.Enrich(dm), err
+}
+
+func (usecase *usecase) CreatePivot(ctx context.Context, input models.CreatePivotInput) (models.Pivot, error) {
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.Pivot, error) {
-			err := usecase.dataModelRepository.CreatePivot(ctx, tx, id, input)
-			if err != nil {
-				return models.Pivot{}, err
-			}
-			pivotMeta, err := usecase.dataModelRepository.GetPivot(ctx, tx, id)
-			return pivotMeta.Enrich(dm), err
+			return usecase.CreatePivotWithExec(ctx, tx, input)
 		},
 	)
 }
