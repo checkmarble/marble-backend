@@ -10,6 +10,10 @@ import (
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval"
+	"github.com/checkmarble/marble-backend/usecases/scenarios"
+	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -17,53 +21,90 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func validateScoringAst(ctx context.Context, nodeDto dto.NodeDto) error {
+	orgId := uuid.New()
+
+	sec := &security.EnforceSecurityScoringImpl{
+		EnforceSecurity: &security.EnforceSecurityImpl{
+			Credentials: models.Credentials{OrganizationId: orgId},
+		},
+	}
+
+	exec := new(mocks.Executor)
+	execFactory := new(mocks.ExecutorFactory)
+	dataModelRepository := new(mocks.DataModelRepository)
+	dataModel := models.DataModel{
+		Tables: map[string]models.Table{
+			"any": {},
+		},
+	}
+
+	execFactory.On("NewExecutor").Return(exec)
+	dataModelRepository.On("GetDataModel", mock.Anything, exec, orgId, false, false).Return(dataModel, nil)
+
+	uc := ScoringRulesetsUsecase{
+		enforceSecurity: sec,
+		validateScenarioAst: &scenarios.ValidateScenarioAstImpl{
+			AstValidator: &scenarios.AstValidatorImpl{
+				ExecutorFactory:     execFactory,
+				DataModelRepository: dataModelRepository,
+				AstEvaluationEnvironmentFactory: func(p ast_eval.EvaluationEnvironmentFactoryParams) ast_eval.AstEvaluationEnvironment {
+					return ast_eval.NewAstEvaluationEnvironment()
+				},
+			},
+		},
+	}
+
+	node, _ := dto.AdaptASTNode(nodeDto)
+
+	if validation, _ := uc.ValidateAst(ctx, "any", &node); len(validation.Errors) > 0 {
+		return errors.Join(pure_utils.Map(validation.Errors, func(e models.ScenarioValidationError) error { return e.Error })...)
+	}
+	if err := uc.validateScoringRuleAst(nodeDto); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func TestValidateAst_ScoreComputation(t *testing.T) {
-	uc := ScoringRulesetsUsecase{}
-	tree := dto.NodeDto{Name: "ScoreComputation"}
-	assert.NoError(t, uc.validateScoringRuleAst(tree))
+	tree := dto.NodeDto{
+		Name:     "ScoreComputation",
+		Children: []dto.NodeDto{{Constant: true}},
+		NamedChildren: map[string]dto.NodeDto{
+			"modifier": {Constant: 1.0},
+		},
+	}
+
+	assert.NoError(t, validateScoringAst(t.Context(), tree))
 }
 
 func TestValidateAst_InvalidRoot(t *testing.T) {
-	uc := ScoringRulesetsUsecase{}
-	tree := dto.NodeDto{Name: "And"}
-	err := uc.validateScoringRuleAst(tree)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "must be `ScoreComputation` or `Switch`")
-}
+	tree := dto.NodeDto{Constant: 42}
+	err := validateScoringAst(t.Context(), tree)
 
-func TestValidateAst_Switch_Empty(t *testing.T) {
-	uc := ScoringRulesetsUsecase{}
-	tree := dto.NodeDto{
-		Name:     "Switch",
-		Children: []dto.NodeDto{},
-	}
-	err := uc.validateScoringRuleAst(tree)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "must contain at least one child")
+	assert.Contains(t, err.Error(), "ast node does not return a [score_computation_result]")
 }
 
 func TestValidateAst_Switch_WithScoreComputationChildren(t *testing.T) {
-	uc := ScoringRulesetsUsecase{}
-
 	tree := dto.NodeDto{
 		Name: "Switch",
 		Children: []dto.NodeDto{
-			{Name: "ScoreComputation"},
-			{Name: "ScoreComputation"},
+			{Name: "ScoreComputation", Children: []dto.NodeDto{{Constant: true}}, NamedChildren: map[string]dto.NodeDto{"modifier": {Constant: 2}}},
+			{Name: "ScoreComputation", Children: []dto.NodeDto{{Constant: true}}, NamedChildren: map[string]dto.NodeDto{"modifier": {Constant: 3}}},
 		},
 		NamedChildren: map[string]dto.NodeDto{
 			"field": {Constant: "Hello, world"},
 		},
 	}
 
-	err := uc.validateScoringRuleAst(tree)
+	err := validateScoringAst(t.Context(), tree)
 
 	require.NoError(t, err)
 }
 
 func TestValidateAst_Switch_WrongChildType(t *testing.T) {
-	uc := ScoringRulesetsUsecase{}
-
 	tree := dto.NodeDto{
 		Name: "Switch",
 		Children: []dto.NodeDto{
@@ -74,22 +115,23 @@ func TestValidateAst_Switch_WrongChildType(t *testing.T) {
 		},
 	}
 
-	err := uc.validateScoringRuleAst(tree)
+	err := validateScoringAst(t.Context(), tree)
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "all `Switch` children must be `ScoreComputation`")
+	assert.Contains(t, err.Error(), "ast node does not return a [score_computation_result]")
 }
 
 type ScoringRulesetsUsecaseTestSuite struct {
 	suite.Suite
 
-	transaction        *mocks.Transaction
-	transactionFactory *mocks.TransactionFactory
-	executorFactory    *mocks.ExecutorFactory
-	repository         *mocks.ScoringRepository
-	taskQueue          *mocks.TaskQueueRepository
-	indexEditor        *mocks.ClientDbIndexEditor
-	enforceSecurity    *mocks.EnforceSecurity
+	transaction         *mocks.Transaction
+	transactionFactory  *mocks.TransactionFactory
+	executorFactory     *mocks.ExecutorFactory
+	repository          *mocks.ScoringRepository
+	dataModelRepository *mocks.DataModelRepository
+	taskQueue           *mocks.TaskQueueRepository
+	indexEditor         *mocks.ClientDbIndexEditor
+	enforceSecurity     *mocks.EnforceSecurity
 
 	orgId      uuid.UUID
 	recordType string
@@ -101,13 +143,21 @@ func (s *ScoringRulesetsUsecaseTestSuite) SetupTest() {
 	s.transactionFactory = &mocks.TransactionFactory{TxMock: s.transaction}
 	s.executorFactory = new(mocks.ExecutorFactory)
 	s.repository = new(mocks.ScoringRepository)
+	s.dataModelRepository = new(mocks.DataModelRepository)
 	s.taskQueue = new(mocks.TaskQueueRepository)
 	s.indexEditor = new(mocks.ClientDbIndexEditor)
 	s.enforceSecurity = new(mocks.EnforceSecurity)
-
 	s.orgId = pure_utils.NewId()
+
+	dataModel := models.DataModel{
+		Tables: map[string]models.Table{
+			"account": {},
+		},
+	}
+
 	s.recordType = "account"
 	s.ctx = context.Background()
+	s.dataModelRepository.On("GetDataModel", mock.Anything, mock.Anything, s.orgId, false, false).Return(dataModel, nil)
 }
 
 func (s *ScoringRulesetsUsecaseTestSuite) makeUsecase() ScoringRulesetsUsecase {
@@ -118,6 +168,15 @@ func (s *ScoringRulesetsUsecaseTestSuite) makeUsecase() ScoringRulesetsUsecase {
 		repository:          s.repository,
 		indexEditor:         s.indexEditor,
 		taskQueueRepository: s.taskQueue,
+		validateScenarioAst: &scenarios.ValidateScenarioAstImpl{
+			AstValidator: &scenarios.AstValidatorImpl{
+				ExecutorFactory:     s.executorFactory,
+				DataModelRepository: s.dataModelRepository,
+				AstEvaluationEnvironmentFactory: func(p ast_eval.EvaluationEnvironmentFactoryParams) ast_eval.AstEvaluationEnvironment {
+					return ast_eval.NewAstEvaluationEnvironment()
+				},
+			},
+		},
 	}
 }
 
@@ -133,7 +192,11 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCreateRulesetVersion_InsertsRulese
 				Name:        "rule 1",
 				RiskType:    "customer_features",
 				Description: "rule desc",
-				Ast:         dto.NodeDto{Name: "ScoreComputation"},
+				Ast: dto.NodeDto{
+					Name:          "ScoreComputation",
+					Children:      []dto.NodeDto{{Constant: true}},
+					NamedChildren: map[string]dto.NodeDto{"modifier": {Constant: 2}},
+				},
 			},
 		},
 	}

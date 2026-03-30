@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/cockroachdb/errors"
 )
 
 type ScoreComputation struct{}
@@ -15,18 +16,23 @@ func (p ScoreComputation) Evaluate(ctx context.Context, arguments ast.Arguments)
 		floor = 0
 	}
 
-	if modifierErr != nil {
-		return MakeEvaluateError(modifierErr)
+	var childrenErr error
+
+	if len(arguments.Args) != 1 {
+		childrenErr = errors.Wrap(ast.ErrWrongNumberOfArgument, "ScoreComputation must have exactly one child")
+	}
+	errs := filterNilErrors(childrenErr, modifierErr)
+	if len(errs) > 0 {
+		return nil, errs
 	}
 
 	if arguments.Args[0] == nil {
 		return ast.ScoreComputationResult{}, nil
 	}
 
-	result, resultErr := adaptArgumentToBool(arguments.Args[0])
-
-	if resultErr != nil {
-		return MakeEvaluateError(resultErr)
+	result, err := adaptArgumentToBool(arguments.Args[0])
+	if err != nil {
+		return MakeEvaluateError(err)
 	}
 
 	if !result {

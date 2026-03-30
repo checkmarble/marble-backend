@@ -55,6 +55,7 @@ const (
 	FUNC_RECORD_HAS_TAGS
 	FUNC_RECORD_HAS_PAST_ALERTS
 
+	FUNC_RECORD_RISK_LEVEL
 	FUNC_SCORE_COMPUTATION
 	FUNC_SWITCH
 
@@ -85,6 +86,10 @@ type ScoreComputationResult struct {
 	Triggered bool `json:"triggered"`
 	Modifier  int  `json:"modifier"`
 	Floor     int  `json:"floor"`
+
+	Branch   *int `json:"branch,omitempty"`
+	Fallback bool `json:"fallback"`
+	Default  bool `json:"default"`
 }
 
 // If number of arguments -1 the function can take any number of arguments
@@ -299,6 +304,10 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		NamedArguments: []string{
 			"config",
 		},
+	},
+	FUNC_RECORD_RISK_LEVEL: {
+		DebugName: "FUNC_RECORD_RISK_LEVEL",
+		AstName:   "RecordRiskLevel",
 	},
 	FUNC_RECORD_HAS_PAST_ALERTS: {
 		DebugName: "FUNC_RECORD_HAS_PAST_ALERTS",
