@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -27,8 +28,10 @@ type DataModelRepository interface {
 		ctx context.Context,
 		exec Executor,
 		organizationID uuid.UUID,
-		tableID, name, description string,
+		tableID, name, description, alias string,
+		semanticType models.SemanticType,
 		ftmEntity *models.FollowTheMoneyEntity,
+		metadata json.RawMessage,
 	) error
 	UpdateDataModelTable(
 		ctx context.Context,
@@ -157,18 +160,21 @@ func (repo MarbleDbRepository) GetDataModel(
 				Alias:         field.TableAlias,
 				SemanticType:  models.SemanticType(field.TableSemanticType),
 				CaptionField:  field.TableCaptionField,
+				Metadata:      field.TableMetadata,
 			}
 		}
 		dataModel.Tables[field.TableName].Fields[field.FieldName] = models.Field{
 			ID:          field.FieldID,
 			DataType:    models.DataTypeFrom(field.FieldType),
 			Description: field.FieldDescription,
+			Alias:       field.FieldAlias,
 			Name:        field.FieldName,
 			Nullable:    field.FieldNullable,
 			IsEnum:      field.FieldIsEnum,
 			TableId:     field.TableID,
 			Values:      values,
 			FTMProperty: ftmProperty,
+			Metadata:    field.FieldMetadata,
 		}
 	}
 
@@ -191,18 +197,21 @@ func (repo MarbleDbRepository) CreateDataModelTable(
 	ctx context.Context,
 	exec Executor,
 	organizationId uuid.UUID,
-	tableID, name, description string,
+	tableID, name, description, alias string,
+	semanticType models.SemanticType,
 	ftmEntity *models.FollowTheMoneyEntity,
+	metadata json.RawMessage,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
 
 	query := `
-		INSERT INTO data_model_tables (id, organization_id, name, description, ftm_entity)
-		VALUES ($1, $2, $3, $4, $5)`
+		INSERT INTO data_model_tables (id, organization_id, name, description, alias, semantic_type, ftm_entity, metadata)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
 
-	_, err := exec.Exec(ctx, query, tableID, organizationId, name, description, ftmEntity)
+	_, err := exec.Exec(ctx, query, tableID, organizationId, name, description, alias,
+		string(semanticType), ftmEntity, metadata)
 	if err != nil {
 		if IsUniqueViolationError(err) {
 			return models.ConflictError
@@ -299,8 +308,8 @@ func (repo MarbleDbRepository) CreateDataModelField(
 	}
 
 	query := `
-		INSERT INTO data_model_fields (id, table_id, name, type, nullable, description, is_enum, ftm_property)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO data_model_fields (id, table_id, name, type, nullable, description, alias, is_enum, ftm_property, metadata)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id`
 
 	_, err := exec.Exec(ctx,
@@ -311,8 +320,10 @@ func (repo MarbleDbRepository) CreateDataModelField(
 		field.DataType.String(),
 		field.Nullable,
 		field.Description,
+		field.Alias,
 		field.IsEnum,
 		field.FTMProperty,
+		field.Metadata,
 	)
 	if IsUniqueViolationError(err) {
 		return models.ConflictError
@@ -440,7 +451,8 @@ func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Exec
 		dbmodels.DbDataModelTableJoinField, error,
 	) {
 		var dbModel dbmodels.DbDataModelTableJoinField
-		if err := rows.Scan(&dbModel.TableID,
+		if err := rows.Scan(
+			&dbModel.TableID,
 			&dbModel.OrganizationID,
 			&dbModel.TableName,
 			&dbModel.TableDescription,
@@ -448,13 +460,16 @@ func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Exec
 			&dbModel.TableAlias,
 			&dbModel.TableSemanticType,
 			&dbModel.TableCaptionField,
+			&dbModel.TableMetadata,
 			&dbModel.FieldID,
 			&dbModel.FieldName,
 			&dbModel.FieldType,
 			&dbModel.FieldNullable,
 			&dbModel.FieldDescription,
+			&dbModel.FieldAlias,
 			&dbModel.FieldIsEnum,
 			&dbModel.FieldFTMProperty,
+			&dbModel.FieldMetadata,
 			&dbModel.FieldArchived,
 		); err != nil {
 			return dbmodels.DbDataModelTableJoinField{}, err
@@ -573,12 +588,14 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 	query := `
 		SELECT
 			data_model_fields.description,
+			data_model_fields.alias,
 			data_model_fields.is_enum,
 			data_model_fields.name,
 			data_model_fields.nullable,
 			data_model_fields.table_id,
 			data_model_fields.type,
 			data_model_fields.ftm_property,
+			data_model_fields.metadata,
 			data_model_fields.archived
 		FROM data_model_fields
 		WHERE id = $1 and archived is false
@@ -591,12 +608,14 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 	var ftmProperty *string
 	if err := row.Scan(
 		&field.Description,
+		&field.Alias,
 		&field.IsEnum,
 		&field.Name,
 		&field.Nullable,
 		&field.TableId,
 		&dataType,
 		&ftmProperty,
+		&field.Metadata,
 		&field.Archived,
 	); errors.Is(err, pgx.ErrNoRows) {
 		return models.FieldMetadata{}, fmt.Errorf("error in GetDataModelField: %w", models.NotFoundError)

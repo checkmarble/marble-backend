@@ -1,9 +1,12 @@
 package dto
 
 import (
+	"encoding/json"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 )
 
 type LinkToSingle struct {
@@ -20,16 +23,18 @@ type LinkToSingle struct {
 }
 
 type Field struct {
-	ID                string  `json:"id"`
-	DataType          string  `json:"data_type"`
-	Description       string  `json:"description"`
-	IsEnum            bool    `json:"is_enum"`
-	Name              string  `json:"name"`
-	Nullable          bool    `json:"nullable"`
-	TableId           string  `json:"table_id"`
-	Values            []any   `json:"values,omitempty"`
-	UnicityConstraint string  `json:"unicity_constraint"`
-	FTMProperty       *string `json:"ftm_property,omitempty"`
+	ID                string          `json:"id"`
+	DataType          string          `json:"data_type"`
+	Description       string          `json:"description"`
+	Alias             string          `json:"alias"`
+	IsEnum            bool            `json:"is_enum"`
+	Name              string          `json:"name"`
+	Nullable          bool            `json:"nullable"`
+	TableId           string          `json:"table_id"`
+	Values            []any           `json:"values,omitempty"`
+	UnicityConstraint string          `json:"unicity_constraint"`
+	FTMProperty       *string         `json:"ftm_property,omitempty"`
+	Metadata          json.RawMessage `json:"metadata,omitempty"`
 }
 
 type NavigationOption struct {
@@ -57,6 +62,7 @@ type Table struct {
 	Alias             string                  `json:"alias"`
 	SemanticType      models.SemanticType     `json:"semantic_type"`
 	CaptionField      string                  `json:"caption_field"`
+	Metadata          json.RawMessage         `json:"metadata,omitempty"`
 }
 
 type DataModel struct {
@@ -79,6 +85,7 @@ func AdaptTableDto(table models.Table) Table {
 		Alias:             table.Alias,
 		SemanticType:      table.SemanticType,
 		CaptionField:      table.CaptionField,
+		Metadata:          table.Metadata,
 	}
 }
 
@@ -91,6 +98,7 @@ func adaptDataModelField(field models.Field) Field {
 		ID:                field.ID,
 		DataType:          field.DataType.String(),
 		Description:       field.Description,
+		Alias:             field.Alias,
 		IsEnum:            field.IsEnum,
 		Name:              field.Name,
 		Nullable:          field.Nullable,
@@ -98,6 +106,7 @@ func adaptDataModelField(field models.Field) Field {
 		Values:            field.Values,
 		UnicityConstraint: field.UnicityConstraint.String(),
 		FTMProperty:       ftmProperty,
+		Metadata:          field.Metadata,
 	}
 }
 
@@ -139,9 +148,90 @@ func AdaptDataModelDto(dataModel models.DataModel) DataModel {
 }
 
 type CreateTableInput struct {
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	FTMEntity   *string `json:"ftm_entity"`
+	Name         string                 `json:"name"`
+	Description  string                 `json:"description"`
+	Alias        string                 `json:"alias"`
+	SemanticType string                 `json:"semantic_type"`
+	FTMEntity    *string                `json:"ftm_entity"`
+	Metadata     json.RawMessage        `json:"metadata"`
+	Fields       []CreateFieldInput     `json:"fields"`
+	Links        []CreateTableLinkInput `json:"links"`
+}
+
+func (input CreateTableInput) AdaptToModel() (models.CreateTableInput, error) {
+	// Convert DTO fields to model fields
+	fields := make([]models.CreateFieldInput, len(input.Fields))
+	for i, f := range input.Fields {
+		dataType := models.DataTypeFrom(f.Type)
+		if dataType == models.UnknownDataType {
+			return models.CreateTableInput{}, errors.Wrap(models.BadParameterError, "invalid field data type")
+		}
+		ftmProperty := (*models.FollowTheMoneyProperty)(nil)
+		if f.FTMProperty != nil {
+			p := models.FollowTheMoneyPropertyFrom(*f.FTMProperty)
+			if p == models.FollowTheMoneyPropertyUnknown {
+				return models.CreateTableInput{}, errors.Wrap(
+					models.BadParameterError, "invalid FollowTheMoney property")
+			}
+			ftmProperty = &p
+		}
+		fields[i] = models.CreateFieldInput{
+			Name:        f.Name,
+			Description: f.Description,
+			Alias:       f.Alias,
+			DataType:    dataType,
+			Nullable:    f.Nullable,
+			IsEnum:      f.IsEnum,
+			IsUnique:    f.IsUnique,
+			FTMProperty: ftmProperty,
+			Metadata:    f.Metadata,
+		}
+	}
+
+	// Convert DTO links to model links
+	links := make([]models.CreateTableLinkInput, len(input.Links))
+	for i, l := range input.Links {
+		links[i] = models.CreateTableLinkInput{
+			Name:           l.Name,
+			ChildFieldName: l.ChildFieldName,
+			ParentTableID:  l.ParentTableId,
+			ParentFieldID:  l.ParentFieldId,
+		}
+	}
+
+	semanticType := models.SemanticTypeFrom(input.SemanticType)
+	if !semanticType.IsValid() {
+		return models.CreateTableInput{}, errors.Wrap(models.BadParameterError, "invalid semantic type")
+	}
+
+	ftmEntity := (*models.FollowTheMoneyEntity)(nil)
+	if input.FTMEntity != nil {
+		e := models.FollowTheMoneyEntityFrom(*input.FTMEntity)
+		if e == models.FollowTheMoneyEntityUnknown {
+			return models.CreateTableInput{}, errors.Wrap(models.BadParameterError, "invalid FollowTheMoney entity")
+		}
+		ftmEntity = &e
+	}
+
+	return models.CreateTableInput{
+		Name:         input.Name,
+		Description:  input.Description,
+		Alias:        input.Alias,
+		SemanticType: semanticType,
+		FTMEntity:    ftmEntity,
+		Metadata:     input.Metadata,
+		Fields:       fields,
+		Links:        links,
+	}, nil
+}
+
+// Different than CreateLinkInput because we only have the name of the child field since the field is not created when
+// creating the table with fields and links at the same time.
+type CreateTableLinkInput struct {
+	Name           string `json:"name"`
+	ChildFieldName string `json:"child_field_name"`
+	ParentTableId  string `json:"parent_table_id"`
+	ParentFieldId  string `json:"parent_field_id"`
 }
 
 type UpdateTableInput struct {
@@ -152,6 +242,7 @@ type UpdateTableInput struct {
 	CaptionField pure_utils.Null[string] `json:"caption_field"`
 }
 
+// Create link input outside the context of creating a table.
 type CreateLinkInput struct {
 	Name          string `json:"name"`
 	ParentTableId string `json:"parent_table_id"`
@@ -169,13 +260,15 @@ type UpdateFieldInput struct {
 }
 
 type CreateFieldInput struct {
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Type        string  `json:"type"`
-	Nullable    bool    `json:"nullable"`
-	IsEnum      bool    `json:"is_enum"`
-	IsUnique    bool    `json:"is_unique"`
-	FTMProperty *string `json:"ftm_property"`
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Type        string          `json:"type"`
+	Alias       string          `json:"alias"`
+	Nullable    bool            `json:"nullable"`
+	IsEnum      bool            `json:"is_enum"`
+	IsUnique    bool            `json:"is_unique"`
+	FTMProperty *string         `json:"ftm_property"`
+	Metadata    json.RawMessage `json:"metadata"`
 }
 
 type DataModelObject struct {
