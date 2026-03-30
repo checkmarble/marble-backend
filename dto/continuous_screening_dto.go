@@ -89,3 +89,96 @@ func AdaptContinuousScreeningMatchDto(m models.ContinuousScreeningMatch) Continu
 		UpdatedAt:             m.UpdatedAt,
 	}
 }
+
+// Debug endpoints DTOs
+
+type ContinuousScreeningUpdateJobDto struct {
+	Id              uuid.UUID `json:"id"`
+	DatasetUpdateId uuid.UUID `json:"dataset_update_id"`
+	ConfigId        uuid.UUID `json:"config_id"`
+	OrgId           uuid.UUID `json:"org_id"`
+	Status          string    `json:"status"`
+	DatasetName     string    `json:"dataset_name"`
+	DatasetVersion  string    `json:"dataset_version"`
+	TotalItems      int       `json:"total_items"`
+	ItemsProcessed  int       `json:"items_processed"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+func AdaptContinuousScreeningUpdateJobDto(
+	m models.ContinuousScreeningUpdateJobWithProgress,
+) ContinuousScreeningUpdateJobDto {
+	return ContinuousScreeningUpdateJobDto{
+		Id:              m.Id,
+		DatasetUpdateId: m.DatasetUpdateId,
+		ConfigId:        m.ConfigId,
+		OrgId:           m.OrgId,
+		Status:          m.Status.String(),
+		DatasetName:     m.DatasetName,
+		DatasetVersion:  m.DatasetVersion,
+		TotalItems:      m.TotalItems,
+		ItemsProcessed:  m.ItemsProcessed,
+		CreatedAt:       m.CreatedAt,
+		UpdatedAt:       m.UpdatedAt,
+	}
+}
+
+type PaginatedContinuousScreeningUpdateJobs struct {
+	HasNextPage bool                               `json:"has_next_page"`
+	Items       []ContinuousScreeningUpdateJobDto  `json:"items"`
+}
+
+type ContinuousScreeningDatasetFileDto struct {
+	Id        uuid.UUID `json:"id"`
+	FileType  string    `json:"file_type"`
+	Version   string    `json:"version"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type ContinuousScreeningDeltaTrackDto struct {
+	Id               uuid.UUID                          `json:"id"`
+	OrgId            uuid.UUID                          `json:"org_id"`
+	ObjectType       string                             `json:"object_type"`
+	ObjectId         string                             `json:"object_id"`
+	ObjectInternalId *uuid.UUID                         `json:"object_internal_id,omitempty"`
+	EntityId         string                             `json:"entity_id"`
+	Operation        string                             `json:"operation"`
+	Processed        bool                               `json:"processed"`
+	DatasetFile      *ContinuousScreeningDatasetFileDto `json:"dataset_file,omitempty"`
+	CreatedAt        time.Time                          `json:"created_at"`
+	UpdatedAt        time.Time                          `json:"updated_at"`
+}
+
+func AdaptContinuousScreeningDeltaTrackDto(
+	m models.ContinuousScreeningDeltaTrackWithFile,
+) ContinuousScreeningDeltaTrackDto {
+	var datasetFileDto *ContinuousScreeningDatasetFileDto
+	if m.DatasetFile != nil {
+		datasetFileDto = &ContinuousScreeningDatasetFileDto{
+			Id:        m.DatasetFile.Id,
+			FileType:  m.DatasetFile.FileType.String(),
+			Version:   m.DatasetFile.Version,
+			CreatedAt: m.DatasetFile.CreatedAt,
+		}
+	}
+
+	return ContinuousScreeningDeltaTrackDto{
+		Id:               m.Id,
+		OrgId:            m.OrgId,
+		ObjectType:       m.ObjectType,
+		ObjectId:         m.ObjectId,
+		ObjectInternalId: m.ObjectInternalId,
+		EntityId:         m.EntityId,
+		Operation:        m.Operation.String(),
+		Processed:        m.DatasetFileId != nil,
+		DatasetFile:      datasetFileDto,
+		CreatedAt:        m.CreatedAt,
+		UpdatedAt:        m.UpdatedAt,
+	}
+}
+
+type PaginatedContinuousScreeningDeltaTracks struct {
+	HasNextPage bool                               `json:"has_next_page"`
+	Items       []ContinuousScreeningDeltaTrackDto `json:"items"`
+}

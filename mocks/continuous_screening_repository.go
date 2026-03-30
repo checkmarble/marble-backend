@@ -402,6 +402,26 @@ func (m *ContinuousScreeningRepository) GetContinuousScreeningLatestDatasetFileB
 	return args.Get(0).(*models.ContinuousScreeningDatasetFile), args.Error(1)
 }
 
+func (m *ContinuousScreeningRepository) ListContinuousScreeningUpdateJobsByOrgId(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	paginationAndSorting models.PaginationAndSorting,
+) ([]models.ContinuousScreeningUpdateJobWithProgress, error) {
+	args := m.Called(ctx, exec, orgId, paginationAndSorting)
+	return args.Get(0).([]models.ContinuousScreeningUpdateJobWithProgress), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) ListContinuousScreeningDeltaTracksByOrgId(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	paginationAndSorting models.PaginationAndSorting,
+) ([]models.ContinuousScreeningDeltaTrackWithFile, error) {
+	args := m.Called(ctx, exec, orgId, paginationAndSorting)
+	return args.Get(0).([]models.ContinuousScreeningDeltaTrackWithFile), args.Error(1)
+}
+
 func (m *ContinuousScreeningRepository) UpdateContinuousScreeningEntityEnrichedPayload(
 	ctx context.Context,
 	exec repositories.Executor,
