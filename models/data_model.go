@@ -14,8 +14,6 @@ import (
 // Those fields are created when creating the table in org database
 var DataModelReservedFieldNames = map[string]bool{
 	"id":          true,
-	"object_id":   true,
-	"updated_at":  true,
 	"valid_from":  true,
 	"valid_until": true,
 }
@@ -82,7 +80,7 @@ func DataTypeFrom(s string) DataType {
 
 type DataModel struct {
 	Version string
-	Tables  map[string]Table
+	Tables  map[string]Table // Map key is the table name
 }
 
 func (d DataModel) Copy() DataModel {
@@ -145,17 +143,18 @@ func (d DataModel) FindField(table Table, path []string, field string) (Field, b
 // ///////////////////////////////
 
 type Table struct {
-	ID                string
-	Name              string
-	Description       string
-	Fields            map[string]Field
-	LinksToSingle     map[string]LinkToSingle
-	NavigationOptions []NavigationOption
-	FTMEntity         *FollowTheMoneyEntity
-	Alias             string
-	SemanticType      SemanticType
-	CaptionField      string
-	Metadata          json.RawMessage
+	ID                   string
+	Name                 string
+	Description          string
+	Fields               map[string]Field        // Map key is the field name
+	LinksToSingle        map[string]LinkToSingle // Map key is the link name
+	NavigationOptions    []NavigationOption
+	FTMEntity            *FollowTheMoneyEntity
+	Alias                string
+	SemanticType         SemanticType
+	CaptionField         string
+	PrimaryOrderingField string
+	Metadata             json.RawMessage
 }
 
 func (t Table) FieldNames() []string {
@@ -201,15 +200,16 @@ func (t Table) GetFieldsWithFTMProperty() []Field {
 }
 
 type TableMetadata struct {
-	ID             string
-	Description    string
-	Name           string
-	OrganizationID uuid.UUID
-	FTMEntity      *FollowTheMoneyEntity
-	Alias          string
-	SemanticType   SemanticType
-	CaptionField   string
-	Metadata       json.RawMessage
+	ID                   string
+	Description          string
+	Name                 string
+	OrganizationID       uuid.UUID
+	FTMEntity            *FollowTheMoneyEntity
+	Alias                string
+	SemanticType         SemanticType
+	CaptionField         string
+	PrimaryOrderingField string
+	Metadata             json.RawMessage
 }
 
 func ColumnNames(table Table) []string {
@@ -323,6 +323,8 @@ type UpdateFieldInput struct {
 	IsUnique    *bool
 	IsNullable  *bool
 	FTMProperty pure_utils.Null[FollowTheMoneyProperty]
+	Alias       *string
+	Metadata    *json.RawMessage
 }
 
 type EnumValues map[string]map[any]struct{}
@@ -383,14 +385,15 @@ type DataModelObject struct {
 }
 
 type CreateTableInput struct {
-	Name         string
-	Description  string
-	Alias        string
-	SemanticType SemanticType
-	FTMEntity    *FollowTheMoneyEntity
-	Metadata     json.RawMessage
-	Fields       []CreateFieldInput
-	Links        []CreateTableLinkInput
+	Name                 string
+	Description          string
+	Alias                string
+	SemanticType         SemanticType
+	FTMEntity            *FollowTheMoneyEntity
+	Metadata             json.RawMessage
+	PrimaryOrderingField string
+	Fields               []CreateFieldInput
+	Links                []CreateTableLinkInput
 }
 
 type CreateTableLinkInput struct {

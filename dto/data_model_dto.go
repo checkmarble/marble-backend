@@ -54,17 +54,18 @@ type NavigationOption struct {
 }
 
 type Table struct {
-	ID                string                  `json:"id"`
-	Name              string                  `json:"name"`
-	Description       string                  `json:"description"`
-	Fields            map[string]Field        `json:"fields"`
-	LinksToSingle     map[string]LinkToSingle `json:"links_to_single,omitempty"`
-	NavigationOptions []NavigationOption      `json:"navigation_options,omitempty"`
-	FTMEntity         *string                 `json:"ftm_entity,omitempty"`
-	Alias             string                  `json:"alias"`
-	SemanticType      models.SemanticType     `json:"semantic_type"`
-	CaptionField      string                  `json:"caption_field"`
-	Metadata          json.RawMessage         `json:"metadata,omitempty"`
+	ID                   string                  `json:"id"`
+	Name                 string                  `json:"name"`
+	Description          string                  `json:"description"`
+	Fields               map[string]Field        `json:"fields"`
+	LinksToSingle        map[string]LinkToSingle `json:"links_to_single,omitempty"`
+	NavigationOptions    []NavigationOption      `json:"navigation_options,omitempty"`
+	FTMEntity            *string                 `json:"ftm_entity,omitempty"`
+	Alias                string                  `json:"alias"`
+	SemanticType         models.SemanticType     `json:"semantic_type"`
+	CaptionField         string                  `json:"caption_field"`
+	PrimaryOrderingField string                  `json:"primary_ordering_field"`
+	Metadata             json.RawMessage         `json:"metadata,omitempty"`
 }
 
 type DataModel struct {
@@ -77,17 +78,18 @@ func AdaptTableDto(table models.Table) Table {
 		ftmEntity = utils.Ptr(table.FTMEntity.String())
 	}
 	return Table{
-		Name:              table.Name,
-		ID:                table.ID,
-		Fields:            pure_utils.MapValues(table.Fields, adaptDataModelField),
-		LinksToSingle:     pure_utils.MapValues(table.LinksToSingle, adaptDataModelLink),
-		NavigationOptions: pure_utils.Map(table.NavigationOptions, adaptDataModelNavigationOption),
-		Description:       table.Description,
-		FTMEntity:         ftmEntity,
-		Alias:             table.Alias,
-		SemanticType:      table.SemanticType,
-		CaptionField:      table.CaptionField,
-		Metadata:          table.Metadata,
+		Name:                 table.Name,
+		ID:                   table.ID,
+		Fields:               pure_utils.MapValues(table.Fields, adaptDataModelField),
+		LinksToSingle:        pure_utils.MapValues(table.LinksToSingle, adaptDataModelLink),
+		NavigationOptions:    pure_utils.Map(table.NavigationOptions, adaptDataModelNavigationOption),
+		Description:          table.Description,
+		FTMEntity:            ftmEntity,
+		Alias:                table.Alias,
+		SemanticType:         table.SemanticType,
+		CaptionField:         table.CaptionField,
+		PrimaryOrderingField: table.PrimaryOrderingField,
+		Metadata:             table.Metadata,
 	}
 }
 
@@ -151,14 +153,15 @@ func AdaptDataModelDto(dataModel models.DataModel) DataModel {
 }
 
 type CreateTableInput struct {
-	Name         string                 `json:"name"`
-	Description  string                 `json:"description"`
-	Alias        string                 `json:"alias"`
-	SemanticType string                 `json:"semantic_type"`
-	FTMEntity    *string                `json:"ftm_entity"`
-	Metadata     json.RawMessage        `json:"metadata"`
-	Fields       []CreateFieldInput     `json:"fields"`
-	Links        []CreateTableLinkInput `json:"links"`
+	Name                 string                 `json:"name"`
+	Description          string                 `json:"description"`
+	Alias                string                 `json:"alias"`
+	SemanticType         string                 `json:"semantic_type"`
+	FTMEntity            *string                `json:"ftm_entity"`
+	Metadata             json.RawMessage        `json:"metadata"`
+	PrimaryOrderingField string                 `json:"primary_ordering_field"`
+	Fields               []CreateFieldInput     `json:"fields"`
+	Links                []CreateTableLinkInput `json:"links"`
 }
 
 func (input CreateTableInput) AdaptToModel() (models.CreateTableInput, error) {
@@ -202,7 +205,6 @@ func (input CreateTableInput) AdaptToModel() (models.CreateTableInput, error) {
 			Name:           l.Name,
 			ChildFieldName: l.ChildFieldName,
 			ParentTableID:  l.ParentTableId,
-			ParentFieldID:  l.ParentFieldId,
 			LinkType:       linkType,
 		}
 	}
@@ -222,14 +224,15 @@ func (input CreateTableInput) AdaptToModel() (models.CreateTableInput, error) {
 	}
 
 	return models.CreateTableInput{
-		Name:         input.Name,
-		Description:  input.Description,
-		Alias:        input.Alias,
-		SemanticType: semanticType,
-		FTMEntity:    ftmEntity,
-		Metadata:     input.Metadata,
-		Fields:       fields,
-		Links:        links,
+		Name:                 input.Name,
+		Description:          input.Description,
+		Alias:                input.Alias,
+		SemanticType:         semanticType,
+		FTMEntity:            ftmEntity,
+		Metadata:             input.Metadata,
+		Fields:               fields,
+		Links:                links,
+		PrimaryOrderingField: input.PrimaryOrderingField,
 	}, nil
 }
 
@@ -240,15 +243,15 @@ type CreateTableLinkInput struct {
 	LinkType       string `json:"link_type"`
 	ChildFieldName string `json:"child_field_name"`
 	ParentTableId  string `json:"parent_table_id"`
-	ParentFieldId  string `json:"parent_field_id"`
 }
 
 type UpdateTableInput struct {
-	Description  *string                 `json:"description"`
-	FTMEntity    pure_utils.Null[string] `json:"ftm_entity"`
-	Alias        pure_utils.Null[string] `json:"alias"`
-	SemanticType pure_utils.Null[string] `json:"semantic_type"`
-	CaptionField pure_utils.Null[string] `json:"caption_field"`
+	Description          *string                 `json:"description"`
+	FTMEntity            pure_utils.Null[string] `json:"ftm_entity"`
+	Alias                pure_utils.Null[string] `json:"alias"`
+	SemanticType         pure_utils.Null[string] `json:"semantic_type"`
+	CaptionField         pure_utils.Null[string] `json:"caption_field"`
+	PrimaryOrderingField pure_utils.Null[string] `json:"primary_ordering_field"`
 }
 
 // Create link input outside the context of creating a table.
@@ -285,6 +288,7 @@ type UpdateFieldInput struct {
 	IsUnique    *bool                   `json:"is_unique"`
 	IsNullable  *bool                   `json:"is_nullable"`
 	FTMProperty pure_utils.Null[string] `json:"ftm_property"`
+	Metadata    *json.RawMessage        `json:"metadata"`
 }
 
 type CreateFieldInput struct {

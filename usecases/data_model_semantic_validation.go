@@ -11,16 +11,23 @@ import (
 var TableSemanticTypeValidationFunctions = map[models.SemanticType](func(tableName string, datamodel models.DataModel) error){
 	models.SemanticTypePerson:      partyTableSemanticTypeValidation,
 	models.SemanticTypeCompany:     partyTableSemanticTypeValidation,
-	models.SemanticTypeAccount:     belongsToPartyTableSemanticTypeValidation,
-	models.SemanticTypeTransaction: belongsToPartyTableSemanticTypeValidation,
-	models.SemanticTypeEvent:       belongsToPartyTableSemanticTypeValidation,
+	models.SemanticTypeAccount:     transactionTableSemanticTypeValidation,
+	models.SemanticTypeTransaction: transactionTableSemanticTypeValidation,
+	models.SemanticTypeEvent:       transactionTableSemanticTypeValidation,
 	models.SemanticTypePartner:     basicTableSemanticTypeValidation,
 	models.SemanticTypeOther:       basicTableSemanticTypeValidation,
+	models.SemanticTypeUnset:       noOpValidation,
+}
+
+func noOpValidation(tableName string, datamodel models.DataModel) error {
+	return nil
 }
 
 // Pre-validation function
-// Basic validation function, check only if the required fields are present
-func basicTableSemanticTypeValidation(tableName string, datamodel models.DataModel) error {
+// Basic validation function:
+//   - check only if the required fields are present
+//   - check if the primary ordering field is valid and point to a Timestamp field if specified
+func commonFieldValidation(tableName string, datamodel models.DataModel) error {
 	table, ok := datamodel.Tables[tableName]
 	if !ok {
 		return errors.Wrap(models.BadParameterError, "table not found in data model")
@@ -60,12 +67,34 @@ func basicTableSemanticTypeValidation(tableName string, datamodel models.DataMod
 			"field updated_at must not be an enum")
 	}
 
+	if table.PrimaryOrderingField != "" {
+		field, ok := table.Fields[table.PrimaryOrderingField]
+		if !ok {
+			return errors.Wrap(models.BadParameterError,
+				"PrimaryOrderingField must be a valid field in the table")
+		}
+		if field.DataType != models.Timestamp {
+			return errors.Wrap(models.BadParameterError,
+				"PrimaryOrderingField must be of type Timestamp")
+		}
+	}
+
+	// Check that we don't have several belongsTo links
+
+	return nil
+}
+
+func basicTableSemanticTypeValidation(tableName string, datamodel models.DataModel) error {
+	if err := commonFieldValidation(tableName, datamodel); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // Check if the table has at least one "Name" field
 func partyTableSemanticTypeValidation(tableName string, datamodel models.DataModel) error {
-	if err := basicTableSemanticTypeValidation(tableName, datamodel); err != nil {
+	if err := commonFieldValidation(tableName, datamodel); err != nil {
 		return err
 	}
 
@@ -74,8 +103,11 @@ func partyTableSemanticTypeValidation(tableName string, datamodel models.DataMod
 	return nil
 }
 
-func belongsToPartyTableSemanticTypeValidation(tableName string, datamodel models.DataModel) error {
-	if err := basicTableSemanticTypeValidation(tableName, datamodel); err != nil {
+// Check if the table:
+//   - has a BelongsTo link to a Party semantic type table
+//   - has PrimaryOrderingField on a Timestamp field
+func transactionTableSemanticTypeValidation(tableName string, datamodel models.DataModel) error {
+	if err := commonFieldValidation(tableName, datamodel); err != nil {
 		return err
 	}
 	table := datamodel.Tables[tableName]
@@ -105,6 +137,11 @@ func belongsToPartyTableSemanticTypeValidation(tableName string, datamodel model
 	if !linkedTable.SemanticType.IsParty() {
 		return errors.Wrap(models.BadParameterError,
 			"transaction table must have a BelongsTo link to a Party table")
+	}
+
+	if table.PrimaryOrderingField == "" {
+		return errors.Wrap(models.BadParameterError,
+			"table must have a PrimaryOrderingField defined")
 	}
 
 	return nil

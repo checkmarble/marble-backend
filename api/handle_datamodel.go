@@ -53,12 +53,6 @@ func handleCreateTable(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		// TODO: Do we allow table without field?
-		if len(input.Fields) == 0 {
-			presentError(ctx, c, errors.Wrap(models.BadParameterError, "table must have at least one field"))
-			return
-		}
-
 		modelInput, err := input.AdaptToModel()
 		if presentError(ctx, c, err) {
 			return
@@ -123,6 +117,7 @@ func handleUpdateDataModelTable(uc usecases.Usecases) func(c *gin.Context) {
 			input.Alias,
 			semanticType,
 			input.CaptionField,
+			input.PrimaryOrderingField,
 		)
 		if presentError(ctx, c, err) {
 			return
