@@ -339,6 +339,13 @@ func (usecase *usecase) UpdateDataModelField(ctx context.Context, fieldID string
 	} else if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
 		return err
 	}
+
+	if field.Name == "object_id" || field.Name == "updated_at" {
+		if input.IsEnum != nil || input.IsNullable != nil || input.IsUnique != nil || input.FTMProperty.Set {
+			return errors.Wrap(models.BadParameterError, "only the description of the `object_id` and `updated_at` fields can be updated")
+		}
+	}
+
 	dataModel, err := usecase.GetDataModel(ctx, table.OrganizationID, models.DataModelReadOptions{
 		IncludeUnicityConstraints: true,
 	}, false)
