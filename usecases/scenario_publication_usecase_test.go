@@ -491,6 +491,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparati
 	suite.taskQueueRepository.On(
 		"EnqueueCreateIndexTask",
 		suite.ctx,
+		suite.transaction,
 		suite.organizationId,
 		[]models.ConcreteIndex{{Indexed: []string{"a", "b"}, Included: []string{"c", "d"}}},
 	).Return(nil)
