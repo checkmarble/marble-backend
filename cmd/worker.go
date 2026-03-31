@@ -432,6 +432,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		river.AddWorker(workers, adminUc.NewScoreComputationWorker())
 		river.AddWorker(workers, adminUc.NewTriggeredScoreComputationWorker())
 		river.AddWorker(workers, adminUc.NewRulesetDryRunWorker())
+		river.AddWorker(workers, adminUc.NewInitialInsertionWorker())
 	}
 	// Async decision execution system
 	river.AddWorker(workers, adminUc.NewAsyncDecisionExecutionWorker())
