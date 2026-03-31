@@ -116,6 +116,46 @@ func (repo *MarbleDbRepository) InsertScore(
 	return SqlToModel(ctx, tx, insert, dbmodels.AdaptScoringScore)
 }
 
+func (repo *MarbleDbRepository) InsertEmptyScore(
+	ctx context.Context,
+	exec Executor,
+	req models.InsertScoreRequest,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	insert := NewQueryBuilder().
+		Insert(dbmodels.TABLE_SCORING_SCORES).
+		Columns(
+			"id",
+			"org_id",
+			"record_type",
+			"record_id",
+			"risk_level",
+			"source",
+			"ruleset_id",
+			"overridden_by",
+			"stale_at",
+			"deleted_at",
+		).
+		Values(
+			pure_utils.NewId(),
+			req.OrgId,
+			req.RecordType,
+			req.RecordId,
+			0,
+			models.ScoreSourceInitial,
+			req.RulesetId,
+			nil,
+			nil,
+			nil,
+		).
+		Suffix("on conflict do nothing")
+
+	return ExecBuilder(ctx, exec, insert)
+}
+
 func (repo *MarbleDbRepository) GetScoreDistribution(
 	ctx context.Context,
 	exec Executor,

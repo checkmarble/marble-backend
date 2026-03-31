@@ -241,7 +241,15 @@ type TriggeredScoreComputationArgs struct {
 	RecordId   string    `json:"record_id"`
 }
 
-func (TriggeredScoreComputationArgs) Kind() string { return "triggered_score_computation" }
+func (ScoringInitialInsertionArgs) Kind() string { return "triggered_score_computation" }
+
+type ScoringInitialInsertionArgs struct {
+	OrgId      uuid.UUID `json:"org_id"`
+	RecordType string    `json:"record_type"`
+	RecordId   string    `json:"record_id"`
+}
+
+func (TriggeredScoreComputationArgs) Kind() string { return "scoring_initial_insertion" }
 
 type AsyncDecisionExecutionArgs struct {
 	AsyncDecisionExecutionId uuid.UUID `json:"async_decision_execution_id"`

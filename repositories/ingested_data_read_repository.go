@@ -94,6 +94,19 @@ type IngestedDataReadRepository interface {
 		recordType string,
 		size int,
 	) ([]string, error)
+
+	LastInternalId(
+		ctx context.Context,
+		exec Executor,
+		recordType string,
+	) (uuid.UUID, error)
+	GetObjectsBetweenInternalIds(
+		ctx context.Context,
+		exec Executor,
+		recordType string,
+		from uuid.UUID,
+		limit int,
+	) ([]uuid.UUID, []string, error)
 }
 
 type IngestedDataReadRepositoryImpl struct{}
@@ -993,4 +1006,103 @@ func (repo *IngestedDataReadRepositoryImpl) SampleObjectIds(
 	}
 
 	return recordIds, nil
+}
+
+func (repo *IngestedDataReadRepositoryImpl) LastInternalId(
+	ctx context.Context,
+	exec Executor,
+	recordType string,
+) (uuid.UUID, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return uuid.Nil, err
+	}
+
+	tableName := pgIdentifierWithSchema(exec, recordType)
+
+	query := NewQueryBuilder().
+		Select("id").
+		From(tableName).
+		OrderBy("id desc").
+		Limit(1)
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	defer rows.Close()
+
+	var recordId string
+
+	for rows.Next() {
+		if err := rows.Scan(&recordId); err != nil {
+			return uuid.Nil, err
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return uuid.Nil, fmt.Errorf("error while iterating over rows: %w", err)
+	}
+
+	return uuid.Parse(recordId)
+}
+
+func (repo *IngestedDataReadRepositoryImpl) GetObjectsBetweenInternalIds(
+	ctx context.Context,
+	exec Executor,
+	recordType string,
+	from uuid.UUID,
+	limit int,
+) ([]uuid.UUID, []string, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, nil, err
+	}
+
+	tableName := pgIdentifierWithSchema(exec, recordType)
+
+	query := NewQueryBuilder().
+		Select("id", "object_id").
+		From(tableName).
+		Where("valid_until = 'infinity'").
+		Where("id > ?", from).
+		OrderBy("id asc").
+		Limit(uint64(limit))
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	ids := make([]uuid.UUID, 0, limit)
+	recordIds := make([]string, 0, limit)
+
+	var (
+		tmpId       uuid.UUID
+		tmpObjectId string
+	)
+
+	for rows.Next() {
+		if err := rows.Scan(&tmpId, &tmpObjectId); err != nil {
+			return nil, nil, err
+		}
+
+		ids = append(ids, tmpId)
+		recordIds = append(recordIds, tmpObjectId)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("error while iterating over rows: %w", err)
+	}
+
+	return ids, recordIds, nil
 }

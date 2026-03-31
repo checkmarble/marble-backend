@@ -1,6 +1,7 @@
 package models
 
 import (
+	"strings"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -12,6 +13,7 @@ type MetadataKey string
 const (
 	MetadataKeyDeploymentID          MetadataKey = "deployment_id"
 	MetadataKeyWebhookSystemMigrated MetadataKey = "webhook_system_migrated"
+	ScoringInitialInsertionDone      MetadataKey = "scoring_initial_insertion_done"
 )
 
 type Metadata struct {
@@ -23,11 +25,15 @@ type Metadata struct {
 }
 
 func MetadataKeyFromString(key string) (MetadataKey, error) {
-	switch key {
+	base, _, _ := strings.Cut(key, ":")
+
+	switch base {
 	case "deployment_id":
 		return MetadataKeyDeploymentID, nil
 	case "webhook_system_migrated":
 		return MetadataKeyWebhookSystemMigrated, nil
+	case "scoring_initial_insertion_done":
+		return ScoringInitialInsertionDone, nil
 	default:
 		return "", errors.Newf("invalid metadata key: %s", key)
 	}

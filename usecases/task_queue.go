@@ -214,6 +214,7 @@ func listOrgPeriodics(
 
 	if infra.HasGlobalFeatureFlag(infra.FEATURE_USER_SCORING) {
 		periodics = append(periodics, scoring_jobs.NewScoreComputationJob(org.Id, time.Hour))
+		periodics = append(periodics, scoring_jobs.NewInitialInsertionJob(org.Id, time.Hour))
 	}
 
 	return periodics
