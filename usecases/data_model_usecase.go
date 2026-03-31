@@ -71,10 +71,6 @@ func (usecase usecase) getDataModelWithExec(
 	options models.DataModelReadOptions,
 	useCache bool,
 ) (models.DataModel, error) {
-	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
-		return models.DataModel{}, err
-	}
-
 	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationID, options.IncludeEnums, useCache)
 	if err != nil {
 		return models.DataModel{}, err
@@ -129,8 +125,99 @@ func (usecase usecase) GetDataModel(
 	options models.DataModelReadOptions,
 	useCache bool,
 ) (models.DataModel, error) {
+	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
+		return models.DataModel{}, err
+	}
+
 	exec := usecase.executorFactory.NewExecutor()
 	return usecase.getDataModelWithExec(ctx, exec, organizationID, options, useCache)
+}
+
+// Better to use this method by providing the tableName instead of tableID to avoid using `AllTablesAsMap`
+// which make a map of all tables for lookup by ID
+func (usecase *usecase) validateTableSemanticType(
+	ctx context.Context,
+	exec repositories.Executor,
+	organizationID uuid.UUID,
+	tableName *string,
+	tableID *string,
+) error {
+	if tableID == nil && tableName == nil {
+		return errors.Wrap(models.BadParameterError, "table ID or table name is required")
+	}
+
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationID, false, false)
+	if err != nil {
+		return err
+	}
+
+	var table models.Table
+	if tableID != nil {
+		allTablesByID := dataModel.AllTablesAsMap()
+		var ok bool
+		table, ok = allTablesByID[*tableID]
+		if !ok {
+			return errors.Wrap(models.NotFoundError, "table not found in data model")
+		}
+	} else {
+		var ok bool
+		table, ok = dataModel.Tables[*tableName]
+		if !ok {
+			return errors.Wrap(models.NotFoundError, "table not found in data model")
+		}
+	}
+
+	validationFunc, ok := TableSemanticTypeValidationFunctions[table.SemanticType]
+	if !ok {
+		return errors.Wrap(models.BadParameterError,
+			"semantic type validation function not found")
+	}
+
+	return validationFunc(table.Name, dataModel)
+}
+
+func retrieveParentFieldIdForLink(parentTableId string, TablesById map[string]models.Table) (string, error) {
+	parentTable, ok := TablesById[parentTableId]
+	if !ok {
+		return "", errors.Wrap(models.BadParameterError,
+			"parent table not found in data model pointed by the link")
+	}
+	parentFieldId, ok := parentTable.Fields["object_id"]
+	if !ok {
+		// Should never happen since the `object_id` is a mandatory field for every table
+		return "", errors.Wrap(models.BadParameterError,
+			"parent field 'object_id' not found in parent table")
+	}
+	return parentFieldId.ID, nil
+}
+
+// Table can have only one pivot because of the unique index on `organization_id + base_table_id`
+func (usecase *usecase) ensureTableHasPivot(
+	ctx context.Context,
+	exec repositories.Executor,
+	organizationId uuid.UUID,
+	tableId string,
+	fieldIdsByName map[string]string,
+) error {
+	pivots, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationId, utils.Ptr(tableId), false)
+	if err != nil {
+		return err
+	}
+	if len(pivots) == 0 {
+		pathLinkEmpty := make([]string, 0)
+		if _, err := usecase.CreatePivotWithExec(
+			ctx,
+			exec,
+			models.CreatePivotInput{
+				BaseTableId:    tableId,
+				OrganizationId: organizationId,
+				FieldId:        utils.Ptr(fieldIdsByName["object_id"]),
+				PathLinkIds:    pathLinkEmpty,
+			}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (usecase *usecase) CreateDataModelTable(
@@ -152,21 +239,31 @@ func (usecase *usecase) CreateDataModelTable(
 			"table name must only contain lower case alphanumeric characters and underscores, and start by a letter")
 	}
 
+	oldDatamodel, err := usecase.GetDataModel(ctx, organizationId, models.DataModelReadOptions{}, false)
+	if err != nil {
+		return "", err
+	}
+	// input.Links miss the ParentFieldID since we automatically use the `object_id` field of the parent table. Need to retrieve the ID before creating the links
+	tablesById := oldDatamodel.AllTablesAsMap()
+	for i := range input.Links {
+		parentFieldId, err := retrieveParentFieldIdForLink(
+			input.Links[i].ParentTableID, tablesById)
+		if err != nil {
+			return "", err
+		}
+		input.Links[i].ParentFieldID = parentFieldId
+	}
+
 	// Generate IDs
 	tableId := pure_utils.NewId().String()
 
-	// Transaction: create everything in marble DB + org schema
-	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+	// Transaction: create everything in marble DB -> Validate -> org schema
+	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := usecase.dataModelRepository.CreateDataModelTable(
 			ctx, tx,
 			organizationId,
 			tableId,
-			input.Name,
-			input.Description,
-			input.Alias,
-			input.SemanticType,
-			input.FTMEntity,
-			input.Metadata,
+			input,
 		); err != nil {
 			return err
 		}
@@ -191,16 +288,14 @@ func (usecase *usecase) CreateDataModelTable(
 				FTMProperty: f.FTMProperty,
 				Metadata:    f.Metadata,
 			}
-		}
 
-		for _, field := range fieldsToCreate {
 			fieldId, err := usecase.createDataModelFieldWithExec(
-				ctx, tx, newTableMetadata, field,
+				ctx, tx, newTableMetadata, fieldsToCreate[i],
 			)
 			if err != nil {
 				return err
 			}
-			fieldIdsByName[field.Name] = fieldId
+			fieldIdsByName[fieldsToCreate[i].Name] = fieldId
 		}
 
 		// Create links
@@ -223,34 +318,13 @@ func (usecase *usecase) CreateDataModelTable(
 			}
 		}
 
-		datamodel, err := usecase.getDataModelWithExec(ctx, tx, organizationId, models.DataModelReadOptions{}, false)
-		if err != nil {
-			return err
-		}
-		if err := TableSemanticTypeValidationFunctions[input.SemanticType](input.Name, datamodel); err != nil {
+		if err := usecase.validateTableSemanticType(ctx, tx, organizationId, &input.Name, nil); err != nil {
 			return err
 		}
 
-		// Check if the table has a Pivot value. By default, the pivot field is "object_id" of the same table
-		pivots, err := usecase.dataModelRepository.ListPivots(ctx, tx, organizationId, utils.Ptr(tableId), false)
-		if err != nil {
+		// Ensure the table has a pivot (default object_id pivot when none exist)
+		if err := usecase.ensureTableHasPivot(ctx, tx, organizationId, tableId, fieldIdsByName); err != nil {
 			return err
-		}
-		if len(pivots) > 1 {
-			return errors.Wrap(models.BadParameterError,
-				"a table cannot have more than one pivot")
-		}
-		if len(pivots) == 0 {
-			if _, err := usecase.CreatePivotWithExec(
-				ctx,
-				tx,
-				models.CreatePivotInput{
-					BaseTableId:    tableId,
-					OrganizationId: organizationId,
-					FieldId:        utils.Ptr(fieldIdsByName["object_id"]),
-				}); err != nil {
-				return err
-			}
 		}
 
 		// Create org schema table + columns
@@ -299,6 +373,7 @@ func (usecase *usecase) CreateDataModelTable(
 	return tableId, nil
 }
 
+// TODO: Change this method to accept all modification by batch (including fields and links)
 func (usecase *usecase) UpdateDataModelTable(
 	ctx context.Context,
 	tableID string,
@@ -307,53 +382,81 @@ func (usecase *usecase) UpdateDataModelTable(
 	alias pure_utils.Null[string],
 	semanticType pure_utils.Null[models.SemanticType],
 	captionField pure_utils.Null[string],
+	primaryOrderingField pure_utils.Null[string],
 ) error {
-	exec := usecase.executorFactory.NewExecutor()
-
-	table, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, tableID)
-	if err != nil {
-		return err
-	}
-	if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
-		return err
-	}
-
-	if captionField.Set && captionField.Valid {
-		dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, table.OrganizationID, false, false)
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		table, err := usecase.dataModelRepository.GetDataModelTable(ctx, tx, tableID)
 		if err != nil {
 			return err
 		}
-
-		if _, ok := dataModel.Tables[table.Name].Fields[captionField.Value()]; !ok {
-			return errors.Wrapf(models.BadParameterError,
-				"field %s not found on table %s", captionField.Value(), table.Name)
-		}
-		if dataModel.Tables[table.Name].Fields[captionField.Value()].DataType != models.String {
-			return errors.Wrap(models.BadParameterError,
-				"a table caption field must be a string field")
-		}
-
-		indexExists, err := usecase.indexEditor.IngestedObjectsSearchIndexExists(ctx,
-			usecase.enforceSecurity.OrgId(), table.Name, captionField.Value())
-		if err != nil {
+		if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
 			return err
 		}
-		if !indexExists {
-			index := models.ConcreteIndex{
-				Type:      models.IndexTypeIngestedObjectsSearch,
-				TableName: table.Name,
-				Indexed:   []string{captionField.Value()},
-			}
 
-			if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(ctx,
-				usecase.enforceSecurity.OrgId(), []models.ConcreteIndex{index}); err != nil {
+		if captionField.Set && captionField.Valid {
+			dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, tx, table.OrganizationID, false, false)
+			if err != nil {
 				return err
 			}
-		}
-	}
 
-	return usecase.dataModelRepository.UpdateDataModelTable(ctx, exec, tableID, description,
-		ftmEntity, alias, semanticType, captionField)
+			if _, ok := dataModel.Tables[table.Name].Fields[captionField.Value()]; !ok {
+				return errors.Wrapf(models.BadParameterError,
+					"field %s not found on table %s", captionField.Value(), table.Name)
+			}
+			if dataModel.Tables[table.Name].Fields[captionField.Value()].DataType != models.String {
+				return errors.Wrap(models.BadParameterError,
+					"a table caption field must be a string field")
+			}
+
+			indexExists, err := usecase.indexEditor.IngestedObjectsSearchIndexExists(ctx,
+				usecase.enforceSecurity.OrgId(), table.Name, captionField.Value())
+			if err != nil {
+				return err
+			}
+			if !indexExists {
+				index := models.ConcreteIndex{
+					Type:      models.IndexTypeIngestedObjectsSearch,
+					TableName: table.Name,
+					Indexed:   []string{captionField.Value()},
+				}
+
+				if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(ctx, tx,
+					usecase.enforceSecurity.OrgId(), []models.ConcreteIndex{index}); err != nil {
+					return err
+				}
+			}
+		}
+
+		if primaryOrderingField.Set && primaryOrderingField.Valid {
+			dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, tx, table.OrganizationID, false, false)
+			if err != nil {
+				return err
+			}
+
+			field, ok := dataModel.Tables[table.Name].Fields[primaryOrderingField.Value()]
+			if !ok {
+				return errors.Wrapf(models.BadParameterError,
+					"field %s not found on table %s", primaryOrderingField.Value(), table.Name)
+			}
+			if field.DataType != models.Timestamp {
+				return errors.Wrap(models.BadParameterError,
+					"primary ordering field must be a timestamp field")
+			}
+		}
+
+		err = usecase.dataModelRepository.UpdateDataModelTable(ctx, tx, tableID, description,
+			ftmEntity, alias, semanticType, captionField, primaryOrderingField)
+		if err != nil {
+			return err
+		}
+
+		// Validation after update
+		if err := usecase.validateTableSemanticType(ctx, tx, table.OrganizationID, &table.Name, nil); err != nil {
+			return err
+		}
+		return nil
+	})
+	return err
 }
 
 func (usecase *usecase) createDataModelFieldWithExec(ctx context.Context,
@@ -364,6 +467,10 @@ func (usecase *usecase) createDataModelFieldWithExec(ctx context.Context,
 	if !validNameRegex.MatchString(field.Name) {
 		return "", errors.Wrapf(models.BadParameterError,
 			"field name %q must only contain lower case alphanumeric characters and underscores, and start by a letter", field.Name)
+	}
+	if models.DataModelReservedFieldNames[field.Name] {
+		return "", errors.Wrap(models.BadParameterError,
+			"field name is reserved and cannot be used")
 	}
 	if field.DataType == models.UnknownDataType {
 		return "", errors.Wrapf(models.BadParameterError,
@@ -398,6 +505,11 @@ func (usecase *usecase) CreateDataModelField(ctx context.Context, field models.C
 				ctx, tx, table, field,
 			)
 			if err != nil {
+				return err
+			}
+
+			// validation before creating field in org schema
+			if err := usecase.validateTableSemanticType(ctx, tx, table.OrganizationID, &table.Name, nil); err != nil {
 				return err
 			}
 
@@ -437,66 +549,75 @@ func (usecase *usecase) UpdateDataModelField(ctx context.Context, fieldID string
 	// that removes the constraint on the DB if it exists, for backwards compatibility.
 	// We currently no longer add those constraints on fields marked as required and their value is only enforced at ingestion time
 	// in our code, as of early dec 2024.
-	exec := usecase.executorFactory.NewExecutor()
-	// permission and input validation
-	field, err := usecase.dataModelRepository.GetDataModelField(ctx, exec, fieldID)
-	if err != nil {
-		return err
-	}
-	table, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, field.TableId)
-	if err != nil {
-		return err
-	} else if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
-		return err
-	}
-
-	if field.Name == "object_id" || field.Name == "updated_at" {
-		if input.IsEnum != nil || input.IsNullable != nil || input.IsUnique != nil || input.FTMProperty.Set {
-			return errors.Wrap(models.BadParameterError, "only the description of the `object_id` and `updated_at` fields can be updated")
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		// permission and input validation
+		field, err := usecase.dataModelRepository.GetDataModelField(ctx, tx, fieldID)
+		if err != nil {
+			return err
 		}
-	}
+		table, err := usecase.dataModelRepository.GetDataModelTable(ctx, tx, field.TableId)
+		if err != nil {
+			return err
+		} else if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
+			return err
+		}
+		if field.Name == "object_id" || field.Name == "updated_at" {
+			if input.IsEnum != nil || input.IsNullable != nil || input.IsUnique != nil || input.FTMProperty.Set {
+				return errors.Wrap(models.BadParameterError,
+					"only the description of the `object_id` and `updated_at` fields can be updated")
+			}
+		}
+		dataModel, err := usecase.getDataModelWithExec(ctx, tx, table.OrganizationID,
+			models.DataModelReadOptions{IncludeUnicityConstraints: true}, false)
+		if err != nil {
+			return err
+		}
 
-	dataModel, err := usecase.GetDataModel(ctx, table.OrganizationID, models.DataModelReadOptions{
-		IncludeUnicityConstraints: true,
-	}, false)
-	if err != nil {
-		return err
-	}
+		makeUnique, makeNotUnique, err := validateFieldUpdateRules(dataModel, field, table, input)
+		if err != nil {
+			return err
+		}
 
-	makeUnique, makeNotUnique, err := validateFieldUpdateRules(dataModel, field, table, input)
-	if err != nil {
-		return err
-	}
+		// Check if the FTM property is valid and supported by the FTM entity defined in the table
+		if err := validateFTMProperty(table, input.FTMProperty); err != nil {
+			return err
+		}
 
-	// Check if the FTM property is valid and supported by the FTM entity defined in the table
-	if err := validateFTMProperty(table, input.FTMProperty); err != nil {
-		return err
-	}
+		// update the field (data_model_field row)
+		if err := usecase.dataModelRepository.UpdateDataModelField(ctx, tx, fieldID, input); err != nil {
+			return err
+		}
 
-	// update the field (data_model_field row)
-	if err := usecase.dataModelRepository.UpdateDataModelField(ctx, exec, fieldID, input); err != nil {
-		return err
-	}
+		// Validation after update
+		if err := usecase.validateTableSemanticType(ctx, tx, table.OrganizationID, &table.Name, nil); err != nil {
+			return err
+		}
 
-	// asynchronously create the unique index if required
-	if makeUnique {
-		return usecase.clientDbIndexEditor.CreateUniqueIndexAsync(
-			ctx,
-			table.OrganizationID,
-			getFieldUniqueIndex(table.Name, field.Name),
-		)
-	}
+		// NOTE: I decided to not touch the Unique index management here, but I think we can at least remove the `makeUnique` part
+		// since we don't allow the user to create unique field anymore.
+		// We could keep the `makeNotUnique` part for older fields that were unique before this change and want to remove the unicity constraint
+		//
+		// asynchronously create the unique index if required
+		if makeUnique {
+			return usecase.clientDbIndexEditor.CreateUniqueIndexAsync(
+				ctx,
+				table.OrganizationID,
+				getFieldUniqueIndex(table.Name, field.Name),
+			)
+		}
 
-	// delete the unique index if required
-	if makeNotUnique {
-		return usecase.clientDbIndexEditor.DeleteUniqueIndex(
-			ctx,
-			table.OrganizationID,
-			getFieldUniqueIndex(table.Name, field.Name),
-		)
-	}
+		// delete the unique index if required
+		if makeNotUnique {
+			return usecase.clientDbIndexEditor.DeleteUniqueIndex(
+				ctx,
+				table.OrganizationID,
+				getFieldUniqueIndex(table.Name, field.Name),
+			)
+		}
 
-	return nil
+		return nil
+	})
+	return err
 }
 
 func validateFieldUpdateRules(
@@ -597,34 +718,9 @@ func (usecase *usecase) createDataModelLinkWithExec(ctx context.Context, exec re
 	allTables := dataModel.AllTablesAsMap()
 	allFields := dataModel.AllFieldsAsMap()
 
-	// BelongsTo with same parent and child table: create only a field-based pivot, no link
-	if link.LinkType == models.LinkTypeBelongsTo && link.ParentTableID == link.ChildTableID {
-		childField, ok := allFields[link.ChildFieldID]
-		if !ok {
-			return "", errors.Wrap(models.NotFoundError,
-				fmt.Sprintf("child field %s not found", link.ChildFieldID))
-		}
-		if childField.TableId != link.ChildTableID {
-			// Should not occur if the ID is correct, but just in case
-			return "", errors.Wrap(models.BadParameterError,
-				fmt.Sprintf("child field %s does not belong to child table %s", link.ChildFieldID, link.ChildTableID))
-		}
-		if childField.DataType != models.String {
-			return "", errors.Wrap(models.BadParameterError,
-				fmt.Sprintf("child field must be a string, field %s is %s",
-					childField.Name, childField.DataType.String()))
-		}
-		_, err = usecase.CreatePivotWithExec(ctx, exec, models.CreatePivotInput{
-			OrganizationId: link.OrganizationID,
-			BaseTableId:    link.ChildTableID,
-			FieldId:        &link.ChildFieldID,
-		})
-		return "", err
-	}
-
 	if !validNameRegex.MatchString(link.Name) {
 		return "", errors.Wrap(models.BadParameterError,
-			"field name must only contain lower case alphanumeric characters and underscores, and start by a letter")
+			"link name must only contain lower case alphanumeric characters and underscores, and start by a letter")
 	}
 
 	// check existence of tables and fields
@@ -663,13 +759,38 @@ func (usecase *usecase) createDataModelLinkWithExec(ctx context.Context, exec re
 			"parent field must be the object_id field")
 	}
 
-	if models.DataModelReservedFieldNames[childField.Name] {
-		return "", errors.Wrapf(models.BadParameterError,
-			"link %q: child field %q is a built-in field and cannot be used as a link child field", link.Name, childField.Name)
-	}
 	if childField.DataType != models.String {
 		return "", errors.Wrap(models.BadParameterError,
 			fmt.Sprintf("child field must be a string, field %s is %s", childField.Name, childField.DataType.String()))
+	}
+	if childField.Name == "object_id" {
+		return "", errors.Wrap(models.BadParameterError,
+			"child field cannot be object_id")
+	}
+
+	// Can only have one BelongsTo link on the child Table
+	if link.LinkType == models.LinkTypeBelongsTo {
+		for _, l := range allTables[link.ChildTableID].LinksToSingle {
+			if l.LinkType == models.LinkTypeBelongsTo {
+				return "", errors.Wrap(models.BadParameterError,
+					fmt.Sprintf("child table %s already has a belongs_to link", allTables[link.ChildTableID].Name))
+			}
+		}
+
+		// Delete the existing pivot if exists, as we will create a new one
+		// Can have a pivot without a belongs_to link because we create a default pivot for every table which refer to
+		// itself
+		pivots, err := usecase.dataModelRepository.ListPivots(ctx, exec,
+			link.OrganizationID, utils.Ptr(link.ChildTableID), false)
+		if err != nil {
+			return "", err
+		}
+		// Use loop to not handle the empty pivot case differently. But in practice can have only 0 or 1 pivot on the table
+		for _, pivot := range pivots {
+			if err := usecase.dataModelRepository.DeleteDataModelPivot(ctx, exec, pivot.Id.String()); err != nil {
+				return "", err
+			}
+		}
 	}
 
 	linkId := pure_utils.NewId().String()
@@ -695,13 +816,27 @@ func (usecase *usecase) createDataModelLinkWithExec(ctx context.Context, exec re
 // This method handles links between data model tables.
 // A link can be between different tables or a self-link.
 // `related` type will create a link without creating a pivot, while `belongs_to` will create a pivot and a link if the
-// link is between different tables. For self-links, only a field-based pivot is created, without a link, and the child field must be named "object_id"
+// link is between different tables.
 func (usecase *usecase) CreateDataModelLink(ctx context.Context, link models.DataModelLinkCreateInput) (string, error) {
-	exec := usecase.executorFactory.NewExecutor()
 	if err := usecase.enforceSecurity.WriteDataModel(link.OrganizationID); err != nil {
 		return "", err
 	}
-	return usecase.createDataModelLinkWithExec(ctx, exec, link)
+	return executor_factory.TransactionReturnValue(
+		ctx,
+		usecase.transactionFactory,
+		func(tx repositories.Transaction) (string, error) {
+			linkId, err := usecase.createDataModelLinkWithExec(ctx, tx, link)
+			if err != nil {
+				return "", err
+			}
+
+			if err := usecase.validateTableSemanticType(ctx, tx, link.OrganizationID, nil, &link.ChildTableID); err != nil {
+				return "", err
+			}
+
+			return linkId, nil
+		},
+	)
 }
 
 func (usecase *usecase) DeleteDataModel(ctx context.Context, organizationID uuid.UUID) error {
@@ -1026,6 +1161,8 @@ func (usecase *usecase) CreateNavigationOption(ctx context.Context, input models
 	return nil
 }
 
+// TODO: We should probably remove the DataModelOptions since the frontend use the table/field metadata for
+// display setting like hidden and field order
 func (usecase usecase) GetDataModelOptions(ctx context.Context, orgId uuid.UUID, tableId string) (models.DataModelOptions, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
@@ -1063,6 +1200,8 @@ func (usecase usecase) GetDataModelOptions(ctx context.Context, orgId uuid.UUID,
 	return *opts, nil
 }
 
+// TODO: DataModelOptions is deprecated since the options will be moved to the table/field metadata.
+// Confirm with the frontend team
 func (usecase usecase) UpdateDataModelOptions(ctx context.Context,
 	orgId uuid.UUID,
 	req models.UpdateDataModelOptionsRequest,

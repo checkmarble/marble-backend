@@ -308,7 +308,9 @@ func (uc ScoringRulesetsUsecase) PrepareRuleset(ctx context.Context, recordType 
 	}
 
 	if len(indexes) > 0 {
-		if err := uc.taskQueueRepository.EnqueueCreateIndexTask(ctx, orgId, indexes); err != nil {
+		if err := uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+			return uc.taskQueueRepository.EnqueueCreateIndexTask(ctx, tx, orgId, indexes)
+		}); err != nil {
 			return err
 		}
 	}

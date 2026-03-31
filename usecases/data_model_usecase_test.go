@@ -511,6 +511,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal() {
 		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[models.SemanticType](nil),
 		pure_utils.NullFromPtr[string](nil),
+		pure_utils.NullFromPtr[string](nil),
 	).
 		Return(nil)
 
@@ -519,6 +520,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal() {
 		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
 		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[models.SemanticType](nil),
+		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[string](nil),
 	)
 	suite.Require().NoError(err, "no error expected")
@@ -543,6 +545,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_security_error(
 		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
 		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[models.SemanticType](nil),
+		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[string](nil),
 	)
 	suite.Require().Error(err, "error expected")
@@ -569,6 +572,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_repository_erro
 		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[models.SemanticType](nil),
 		pure_utils.NullFromPtr[string](nil),
+		pure_utils.NullFromPtr[string](nil),
 	).
 		Return(suite.repositoryError)
 
@@ -577,6 +581,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_repository_erro
 		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
 		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[models.SemanticType](nil),
+		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[string](nil),
 	)
 	suite.Require().Error(err, "error expected")
@@ -605,6 +610,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal_set_ftm
 		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[models.SemanticType](nil),
 		pure_utils.NullFromPtr[string](nil),
+		pure_utils.NullFromPtr[string](nil),
 	).
 		Return(nil)
 
@@ -612,6 +618,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal_set_ftm
 		pure_utils.NullFrom(ftmEntity),
 		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[models.SemanticType](nil),
+		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[string](nil),
 	)
 	suite.Require().NoError(err, "no error expected when setting FTM entity on table without one")
