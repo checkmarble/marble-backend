@@ -102,3 +102,23 @@ func (m *IngestedDataReader) SampleObjectIds(
 	args := m.Called(ctx, exec, recordType, size)
 	return args.Get(0).([]string), args.Error(1)
 }
+
+func (m *IngestedDataReader) LastInternalId(
+	ctx context.Context,
+	exec repositories.Executor,
+	recordType string,
+) (uuid.UUID, error) {
+	args := m.Called(ctx, exec, recordType)
+	return args.Get(0).(uuid.UUID), args.Error(1)
+}
+
+func (m *IngestedDataReader) GetObjectsBetweenInternalIds(
+	ctx context.Context,
+	exec repositories.Executor,
+	recordType string,
+	from uuid.UUID,
+	limit int,
+) ([]uuid.UUID, []string, error) {
+	args := m.Called(ctx, exec, recordType, from, limit)
+	return args.Get(0).([]uuid.UUID), args.Get(1).([]string), args.Error(2)
+}

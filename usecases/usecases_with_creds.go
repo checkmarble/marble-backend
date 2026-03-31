@@ -1045,6 +1045,16 @@ func (usecases UsecasesWithCreds) NewRulesetDryRunWorker() *scoring_jobs.Ruleset
 	)
 }
 
+func (usecases UsecasesWithCreds) NewInitialInsertionWorker() *scoring_jobs.InitialInsertionWorker {
+	return scoring_jobs.NewInitialInsertionWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewScoringRulesetsUsecase(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.IngestedDataReadRepository,
+	)
+}
+
 func (usecases *UsecasesWithCreds) NewDataModelDestroyUsecase() DataModelDestroyUsecase {
 	return NewDataModelDestroyUsecase(
 		usecases.NewExecutorFactory(),

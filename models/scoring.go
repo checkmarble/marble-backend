@@ -13,6 +13,7 @@ type ScoreSource string
 const (
 	ScoreSourceRuleset  ScoreSource = "ruleset"
 	ScoreSourceOverride ScoreSource = "override"
+	ScoreSourceInitial  ScoreSource = "initial"
 	ScoreSourceUnknown  ScoreSource = "unknown"
 )
 
@@ -22,6 +23,8 @@ func ScoreSourceFrom(s string) ScoreSource {
 		return ScoreSourceRuleset
 	case string(ScoreSourceOverride):
 		return ScoreSourceOverride
+	case string(ScoreSourceInitial):
+		return ScoreSourceInitial
 	default:
 		return ScoreSourceUnknown
 	}
