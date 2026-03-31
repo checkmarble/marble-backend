@@ -44,6 +44,7 @@ type TaskQueueRepository interface {
 	) error
 	EnqueueCreateIndexTask(
 		ctx context.Context,
+		tx Transaction,
 		organizationId uuid.UUID,
 		indices []models.ConcreteIndex,
 	) error
@@ -267,11 +268,13 @@ func (r riverRepository) EnqueueScheduledExecStatusTask(
 
 func (r riverRepository) EnqueueCreateIndexTask(
 	ctx context.Context,
+	tx Transaction,
 	organizationId uuid.UUID,
 	indices []models.ConcreteIndex,
 ) error {
-	_, err := r.client.Insert(
+	_, err := r.client.InsertTx(
 		ctx,
+		tx.RawTx(),
 		models.IndexCreationArgs{
 			OrgId:   organizationId,
 			Indices: indices,

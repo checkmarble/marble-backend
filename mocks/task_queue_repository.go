@@ -45,10 +45,11 @@ func (m *TaskQueueRepository) EnqueueScheduledExecStatusTask(
 
 func (m *TaskQueueRepository) EnqueueCreateIndexTask(
 	ctx context.Context,
+	tx repositories.Transaction,
 	orgId uuid.UUID,
 	indices []models.ConcreteIndex,
 ) error {
-	return m.Called(ctx, orgId, indices).Error(0)
+	return m.Called(ctx, tx, orgId, indices).Error(0)
 }
 
 func (m *TaskQueueRepository) EnqueueMatchEnrichmentTask(
