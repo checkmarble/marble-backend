@@ -163,17 +163,18 @@ func (repo MarbleDbRepository) GetDataModel(
 			}
 		}
 		dataModel.Tables[field.TableName].Fields[field.FieldName] = models.Field{
-			ID:          field.FieldID,
-			DataType:    models.DataTypeFrom(field.FieldType),
-			Description: field.FieldDescription,
-			Alias:       field.FieldAlias,
-			Name:        field.FieldName,
-			Nullable:    field.FieldNullable,
-			IsEnum:      field.FieldIsEnum,
-			TableId:     field.TableID,
-			Values:      values,
-			FTMProperty: ftmProperty,
-			Metadata:    field.FieldMetadata,
+			ID:           field.FieldID,
+			DataType:     models.DataTypeFrom(field.FieldType),
+			Description:  field.FieldDescription,
+			Alias:        field.FieldAlias,
+			SemanticType: models.FieldSemanticType(field.FieldSemanticType),
+			Name:         field.FieldName,
+			Nullable:     field.FieldNullable,
+			IsEnum:       field.FieldIsEnum,
+			TableId:      field.TableID,
+			Values:       values,
+			FTMProperty:  ftmProperty,
+			Metadata:     field.FieldMetadata,
 		}
 	}
 
@@ -310,8 +311,8 @@ func (repo MarbleDbRepository) CreateDataModelField(
 	}
 
 	query := `
-		INSERT INTO data_model_fields (id, table_id, name, type, nullable, description, alias, is_enum, ftm_property, metadata)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		INSERT INTO data_model_fields (id, table_id, name, type, nullable, description, alias, semantic_type, is_enum, ftm_property, metadata)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id`
 
 	_, err := exec.Exec(ctx,
@@ -323,6 +324,7 @@ func (repo MarbleDbRepository) CreateDataModelField(
 		field.Nullable,
 		field.Description,
 		field.Alias,
+		string(field.SemanticType),
 		field.IsEnum,
 		field.FTMProperty,
 		field.Metadata,
@@ -370,6 +372,14 @@ func (repo MarbleDbRepository) UpdateDataModelField(
 	}
 	if input.FTMProperty.Set {
 		query = query.Set("ftm_property", input.FTMProperty.Ptr())
+		nbUpdates++
+	}
+	if input.Alias != nil {
+		query = query.Set("alias", *input.Alias)
+		nbUpdates++
+	}
+	if input.SemanticType.Set {
+		query = query.Set("semantic_type", input.SemanticType.Ptr())
 		nbUpdates++
 	}
 	if input.Metadata != nil {
@@ -476,6 +486,7 @@ func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Exec
 			&dbModel.FieldNullable,
 			&dbModel.FieldDescription,
 			&dbModel.FieldAlias,
+			&dbModel.FieldSemanticType,
 			&dbModel.FieldIsEnum,
 			&dbModel.FieldFTMProperty,
 			&dbModel.FieldMetadata,
@@ -600,6 +611,7 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 		SELECT
 			data_model_fields.description,
 			data_model_fields.alias,
+			data_model_fields.semantic_type,
 			data_model_fields.is_enum,
 			data_model_fields.name,
 			data_model_fields.nullable,
@@ -617,9 +629,11 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 	var field models.FieldMetadata
 	var dataType string
 	var ftmProperty *string
+	var semanticType string
 	if err := row.Scan(
 		&field.Description,
 		&field.Alias,
+		&semanticType,
 		&field.IsEnum,
 		&field.Name,
 		&field.Nullable,
@@ -635,6 +649,7 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 	}
 	field.ID = fieldId
 	field.DataType = models.DataTypeFrom(dataType)
+	field.SemanticType = models.FieldSemanticType(semanticType)
 	if ftmProperty != nil {
 		property := models.FollowTheMoneyPropertyFrom(*ftmProperty)
 		field.FTMProperty = &property
