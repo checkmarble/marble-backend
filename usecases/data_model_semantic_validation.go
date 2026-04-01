@@ -79,8 +79,6 @@ func commonFieldValidation(tableName string, datamodel models.DataModel) error {
 		}
 	}
 
-	// Check that we don't have several belongsTo links
-
 	return nil
 }
 
@@ -92,13 +90,24 @@ func basicTableSemanticTypeValidation(tableName string, datamodel models.DataMod
 	return nil
 }
 
-// Check if the table has at least one "Name" field
+// Check if the table has at least one "Name" type field
 func partyTableSemanticTypeValidation(tableName string, datamodel models.DataModel) error {
 	if err := commonFieldValidation(tableName, datamodel); err != nil {
 		return err
 	}
 
-	// TODO: in next PR, when dealing with field semantic, add the check on field semantic type
+	table := datamodel.Tables[tableName]
+	hasNameField := false
+	for _, field := range table.Fields {
+		if field.SemanticType.IsName() {
+			hasNameField = true
+			break
+		}
+	}
+	if !hasNameField {
+		return errors.Wrap(models.BadParameterError,
+			"table must have at least one Name semantic type field")
+	}
 
 	return nil
 }

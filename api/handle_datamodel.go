@@ -145,16 +145,28 @@ func handleCreateField(uc usecases.Usecases) func(c *gin.Context) {
 			ftmProperty = &property
 		}
 
+		var fieldSemanticType models.FieldSemanticType
+		if input.SemanticType != nil {
+			fieldSemanticType = models.FieldSemanticType(*input.SemanticType)
+			if !fieldSemanticType.IsValid() {
+				presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid field semantic type"))
+				return
+			}
+		}
+
 		tableID := c.Param("tableID")
 		field := models.CreateFieldInput{
-			TableId:     tableID,
-			Name:        input.Name,
-			Description: input.Description,
-			DataType:    models.DataTypeFrom(input.Type),
-			Nullable:    input.Nullable,
-			IsEnum:      input.IsEnum,
-			IsUnique:    input.IsUnique,
-			FTMProperty: ftmProperty,
+			TableId:      tableID,
+			Name:         input.Name,
+			Description:  input.Description,
+			Alias:        input.Alias,
+			SemanticType: fieldSemanticType,
+			DataType:     models.DataTypeFrom(input.Type),
+			Nullable:     input.Nullable,
+			IsEnum:       input.IsEnum,
+			IsUnique:     input.IsUnique,
+			FTMProperty:  ftmProperty,
+			Metadata:     input.Metadata,
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
@@ -192,13 +204,30 @@ func handleUpdateDataModelField(uc usecases.Usecases) func(c *gin.Context) {
 			}
 		}
 
+		var fieldSemanticType pure_utils.Null[models.FieldSemanticType]
+		if input.SemanticType.Set {
+			if input.SemanticType.Valid {
+				semanticType := models.FieldSemanticType(input.SemanticType.Value())
+				if !semanticType.IsValid() {
+					presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid field semantic type"))
+					return
+				}
+				fieldSemanticType = pure_utils.NullFrom(semanticType)
+			} else {
+				fieldSemanticType = pure_utils.NullFromPtr[models.FieldSemanticType](nil)
+			}
+		}
+
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
 		err := usecase.UpdateDataModelField(ctx, fieldID, models.UpdateFieldInput{
-			Description: input.Description,
-			IsEnum:      input.IsEnum,
-			IsUnique:    input.IsUnique,
-			IsNullable:  input.IsNullable,
-			FTMProperty: ftmProperty,
+			Description:  input.Description,
+			IsEnum:       input.IsEnum,
+			IsUnique:     input.IsUnique,
+			IsNullable:   input.IsNullable,
+			FTMProperty:  ftmProperty,
+			Alias:        input.Alias,
+			SemanticType: fieldSemanticType,
+			Metadata:     input.Metadata,
 		})
 		if presentError(ctx, c, err) {
 			return
