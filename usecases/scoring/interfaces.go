@@ -76,6 +76,14 @@ type ScoringRepository interface {
 		before time.Time,
 		limit int,
 	) ([]string, error)
+
+	GetUnscoredBatch(
+		ctx context.Context,
+		exec repositories.Executor,
+		orgId uuid.UUID,
+		recordType string,
+		limit int,
+	) ([]string, error)
 }
 
 type scoringIngestedDataReader interface {

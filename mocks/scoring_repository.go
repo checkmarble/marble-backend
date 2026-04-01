@@ -157,3 +157,14 @@ func (m *ScoringRepository) GetStaleScoreBatch(
 	args := m.Called(ctx, exec, orgId, recordType, before, limit)
 	return args.Get(0).([]string), args.Error(1)
 }
+
+func (m *ScoringRepository) GetUnscoredBatch(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	recordType string,
+	limit int,
+) ([]string, error) {
+	args := m.Called(ctx, exec, orgId, recordType, limit)
+	return args.Get(0).([]string), args.Error(1)
+}
