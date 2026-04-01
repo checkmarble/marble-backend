@@ -75,3 +75,8 @@ type CaseStatusByInbox struct {
 	Closed        int    `json:"closed"`
 	Snoozed       int    `json:"snoozed"`
 }
+
+type CasesCreated struct {
+	Date  time.Time `json:"date"`
+	Count int       `json:"count"`
+}

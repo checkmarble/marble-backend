@@ -436,6 +436,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		r.GET("/scoring/distribution/:entityType", tom, handleScoringGetDistribution(uc))
 	})
 
+	addCaseAnalyticsRoutes(router, conf, uc)
+
 	if conf.AnalyticsProxyApiUrl == "" {
 		addAnalyticsRoutes(router, conf, uc)
 	} else {
@@ -452,7 +454,14 @@ func runStandaloneAnalyticsRoutes(router gin.IRoutes, conf Configuration, uc use
 	router = router.Use(auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey),
 		allowedNetworksGuard.Guard(usecases.AllowedNetworksOther))
 
+	addCaseAnalyticsRoutes(router, conf, uc)
 	addAnalyticsRoutes(router, conf, uc)
+}
+
+func addCaseAnalyticsRoutes(router gin.IRoutes, conf Configuration, uc usecases.Usecases) {
+	tom := timeoutMiddleware(conf.AnalyticsTimeout)
+
+	router.POST("/analytics/cases/:query", tom, handleCaseAnalyticsQuery(uc))
 }
 
 func addAnalyticsRoutes(router gin.IRoutes, conf Configuration, uc usecases.Usecases) {

@@ -840,6 +840,15 @@ func (usecases *UsecasesWithCreds) NewDecisionWorkflowsWorker() *decision_workfl
 	)
 }
 
+func (usecases *UsecasesWithCreds) NewCaseAnalyticsUsecase() CaseAnalyticsUsecase {
+	return CaseAnalyticsUsecase{
+		executorFactory: usecases.NewExecutorFactory(),
+		inboxReader:     usecases.NewInboxReader(),
+		license:         usecases.license,
+		repository:      repositories.CaseAnalyticsRepository{},
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewAnalyticsQueryUsecase() AnalyticsQueryUsecase {
 	return AnalyticsQueryUsecase{
 		enforceSecurity:    usecases.NewEnforceScenarioSecurity(),
