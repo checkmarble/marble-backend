@@ -432,6 +432,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		river.AddWorker(workers, adminUc.NewScoreComputationWorker())
 		river.AddWorker(workers, adminUc.NewTriggeredScoreComputationWorker())
 		river.AddWorker(workers, adminUc.NewRulesetDryRunWorker())
+		river.AddWorker(workers, adminUc.NewInitialComputationWorker())
 		river.AddWorker(workers, adminUc.NewInitialInsertionWorker())
 	}
 	// Async decision execution system
@@ -679,6 +680,12 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion
 	case "score_computation":
 		return uc.NewScoreComputationWorker().Work(ctx,
 			singleJobCreate[models.ScoreComputationArgs](ctx, jobArgs))
+	case "scoring_initial_insertion":
+		return uc.NewInitialInsertionWorker().Work(ctx,
+			singleJobCreate[models.ScoringInitialInsertionArgs](ctx, jobArgs))
+	case "scoring_initial_computation":
+		return uc.NewInitialComputationWorker().Work(ctx,
+			singleJobCreate[models.ScoringInitialComputationArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}
