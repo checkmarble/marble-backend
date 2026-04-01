@@ -277,16 +277,17 @@ func (usecase *usecase) CreateDataModelTable(
 		fieldIdsByName := make(map[string]string)
 		for i, f := range input.Fields {
 			fieldsToCreate[i] = models.CreateFieldInput{
-				TableId:     tableId,
-				Name:        f.Name,
-				Description: f.Description,
-				Alias:       f.Alias,
-				DataType:    f.DataType,
-				Nullable:    f.Nullable,
-				IsEnum:      f.IsEnum,
-				IsUnique:    f.IsUnique,
-				FTMProperty: f.FTMProperty,
-				Metadata:    f.Metadata,
+				TableId:      tableId,
+				Name:         f.Name,
+				Description:  f.Description,
+				Alias:        f.Alias,
+				DataType:     f.DataType,
+				Nullable:     f.Nullable,
+				IsEnum:       f.IsEnum,
+				IsUnique:     f.IsUnique,
+				FTMProperty:  f.FTMProperty,
+				Metadata:     f.Metadata,
+				SemanticType: f.SemanticType,
 			}
 
 			fieldId, err := usecase.createDataModelFieldWithExec(
@@ -478,6 +479,19 @@ func (usecase *usecase) createDataModelFieldWithExec(ctx context.Context,
 	}
 	if err := validateFTMProperty(table, pure_utils.NullFromPtr(field.FTMProperty)); err != nil {
 		return "", errors.Wrap(models.BadParameterError, err.Error())
+	}
+	if err := models.ValidateField(models.Field{
+		Name:         field.Name,
+		Description:  field.Description,
+		Alias:        field.Alias,
+		DataType:     field.DataType,
+		Nullable:     field.Nullable,
+		IsEnum:       field.IsEnum,
+		FTMProperty:  field.FTMProperty,
+		SemanticType: field.SemanticType,
+	}); err != nil {
+		return "", errors.Wrap(models.BadParameterError,
+			fmt.Sprintf("invalid field %q: %s", field.Name, err.Error()))
 	}
 
 	if err := usecase.dataModelRepository.CreateDataModelField(ctx, exec, table.OrganizationID, fieldId, field); err != nil {
