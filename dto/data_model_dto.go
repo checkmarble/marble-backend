@@ -29,6 +29,7 @@ type Field struct {
 	DataType          string          `json:"data_type"`
 	Description       string          `json:"description"`
 	Alias             string          `json:"alias"`
+	SemanticType      string          `json:"semantic_type,omitempty"`
 	IsEnum            bool            `json:"is_enum"`
 	Name              string          `json:"name"`
 	Nullable          bool            `json:"nullable"`
@@ -103,6 +104,7 @@ func adaptDataModelField(field models.Field) Field {
 		DataType:          field.DataType.String(),
 		Description:       field.Description,
 		Alias:             field.Alias,
+		SemanticType:      string(field.SemanticType),
 		IsEnum:            field.IsEnum,
 		Name:              field.Name,
 		Nullable:          field.Nullable,
@@ -181,16 +183,25 @@ func (input CreateTableInput) AdaptToModel() (models.CreateTableInput, error) {
 			}
 			ftmProperty = &p
 		}
+		var fieldSemanticType models.FieldSemanticType
+		if f.SemanticType != nil {
+			fieldSemanticType = models.FieldSemanticType(*f.SemanticType)
+			if !fieldSemanticType.IsValid() {
+				return models.CreateTableInput{}, errors.Wrap(
+					models.BadParameterError, "invalid field semantic type")
+			}
+		}
 		fields[i] = models.CreateFieldInput{
-			Name:        f.Name,
-			Description: f.Description,
-			Alias:       f.Alias,
-			DataType:    dataType,
-			Nullable:    f.Nullable,
-			IsEnum:      f.IsEnum,
-			IsUnique:    f.IsUnique,
-			FTMProperty: ftmProperty,
-			Metadata:    f.Metadata,
+			Name:         f.Name,
+			Description:  f.Description,
+			Alias:        f.Alias,
+			SemanticType: fieldSemanticType,
+			DataType:     dataType,
+			Nullable:     f.Nullable,
+			IsEnum:       f.IsEnum,
+			IsUnique:     f.IsUnique,
+			FTMProperty:  ftmProperty,
+			Metadata:     f.Metadata,
 		}
 	}
 
@@ -283,24 +294,27 @@ func (input CreateLinkInput) AdaptToModel(organizationID uuid.UUID) (models.Data
 }
 
 type UpdateFieldInput struct {
-	Description *string                 `json:"description"`
-	IsEnum      *bool                   `json:"is_enum"`
-	IsUnique    *bool                   `json:"is_unique"`
-	IsNullable  *bool                   `json:"is_nullable"`
-	FTMProperty pure_utils.Null[string] `json:"ftm_property"`
-	Metadata    *json.RawMessage        `json:"metadata"`
+	Description  *string                 `json:"description"`
+	IsEnum       *bool                   `json:"is_enum"`
+	IsUnique     *bool                   `json:"is_unique"`
+	IsNullable   *bool                   `json:"is_nullable"`
+	FTMProperty  pure_utils.Null[string] `json:"ftm_property"`
+	Alias        *string                 `json:"alias"`
+	SemanticType pure_utils.Null[string] `json:"semantic_type"`
+	Metadata     *json.RawMessage        `json:"metadata"`
 }
 
 type CreateFieldInput struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	Type        string          `json:"type"`
-	Alias       string          `json:"alias"`
-	Nullable    bool            `json:"nullable"`
-	IsEnum      bool            `json:"is_enum"`
-	IsUnique    bool            `json:"is_unique"`
-	FTMProperty *string         `json:"ftm_property"`
-	Metadata    json.RawMessage `json:"metadata"`
+	Name         string          `json:"name"`
+	Description  string          `json:"description"`
+	Type         string          `json:"type"`
+	Alias        string          `json:"alias"`
+	SemanticType *string         `json:"semantic_type"`
+	Nullable     bool            `json:"nullable"`
+	IsEnum       bool            `json:"is_enum"`
+	IsUnique     bool            `json:"is_unique"`
+	FTMProperty  *string         `json:"ftm_property"`
+	Metadata     json.RawMessage `json:"metadata"`
 }
 
 type DataModelObject struct {

@@ -246,6 +246,7 @@ type Field struct {
 	DataType          DataType
 	Description       string
 	Alias             string
+	SemanticType      FieldSemanticType
 	IsEnum            bool
 	Name              string
 	Nullable          bool
@@ -259,17 +260,18 @@ type Field struct {
 }
 
 type FieldMetadata struct {
-	ID          string
-	DataType    DataType
-	Description string
-	Alias       string
-	IsEnum      bool
-	Name        string
-	Nullable    bool
-	TableId     string
-	FTMProperty *FollowTheMoneyProperty
-	Metadata    json.RawMessage
-	Archived    bool
+	ID           string
+	DataType     DataType
+	Description  string
+	Alias        string
+	SemanticType FieldSemanticType
+	IsEnum       bool
+	Name         string
+	Nullable     bool
+	TableId      string
+	FTMProperty  *FollowTheMoneyProperty
+	Metadata     json.RawMessage
+	Archived     bool
 }
 
 type UnicityConstraint int
@@ -305,26 +307,28 @@ func UnicityConstraintFromString(s string) UnicityConstraint {
 }
 
 type CreateFieldInput struct {
-	TableId     string
-	Name        string
-	Description string
-	Alias       string
-	DataType    DataType
-	Nullable    bool
-	IsEnum      bool
-	IsUnique    bool
-	FTMProperty *FollowTheMoneyProperty
-	Metadata    json.RawMessage
+	TableId      string
+	Name         string
+	Description  string
+	Alias        string
+	SemanticType FieldSemanticType
+	DataType     DataType
+	Nullable     bool
+	IsEnum       bool
+	IsUnique     bool
+	FTMProperty  *FollowTheMoneyProperty
+	Metadata     json.RawMessage
 }
 
 type UpdateFieldInput struct {
-	Description *string
-	IsEnum      *bool
-	IsUnique    *bool
-	IsNullable  *bool
-	FTMProperty pure_utils.Null[FollowTheMoneyProperty]
-	Alias       *string
-	Metadata    *json.RawMessage
+	Description  *string
+	IsEnum       *bool
+	IsUnique     *bool
+	IsNullable   *bool
+	FTMProperty  pure_utils.Null[FollowTheMoneyProperty]
+	Alias        *string
+	SemanticType pure_utils.Null[FieldSemanticType]
+	Metadata     *json.RawMessage
 }
 
 type EnumValues map[string]map[any]struct{}

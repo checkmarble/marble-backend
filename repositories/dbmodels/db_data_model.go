@@ -66,6 +66,7 @@ type DbDataModelTableJoinField struct {
 	FieldNullable             bool            `db:"data_model_fields.nullable"`
 	FieldDescription          string          `db:"data_model_fields.description"`
 	FieldAlias                string          `db:"data_model_fields.alias"`
+	FieldSemanticType         string          `db:"data_model_fields.semantic_type"`
 	FieldIsEnum               bool            `db:"data_model_fields.is_enum"`
 	FieldFTMProperty          *string         `db:"data_model_fields.ftm_property"`
 	FieldMetadata             json.RawMessage `db:"data_model_fields.metadata"`
