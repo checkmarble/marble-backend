@@ -1045,6 +1045,14 @@ func (usecases UsecasesWithCreds) NewRulesetDryRunWorker() *scoring_jobs.Ruleset
 	)
 }
 
+func (usecases UsecasesWithCreds) NewInitialComputationWorker() *scoring_jobs.InitialComputationWorker {
+	return scoring_jobs.NewInitialComputationWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewScoringScoresUsecase(),
+		usecases.Repositories.MarbleDbRepository,
+	)
+}
+
 func (usecases UsecasesWithCreds) NewInitialInsertionWorker() *scoring_jobs.InitialInsertionWorker {
 	return scoring_jobs.NewInitialInsertionWorker(
 		usecases.NewExecutorFactory(),

@@ -270,3 +270,9 @@ type ScoreComputationArgs struct {
 }
 
 func (ScoreComputationArgs) Kind() string { return "score_computation" }
+
+type ScoringInitialComputationArgs struct {
+	OrgId uuid.UUID `json:"org_id"`
+}
+
+func (ScoringInitialComputationArgs) Kind() string { return "scoring_initial_computation" }
