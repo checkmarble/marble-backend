@@ -44,6 +44,8 @@ func handleCaseAnalyticsQuery(uc usecases.Usecases) func(c *gin.Context) {
 			results, err = uc.CasesDurationByTimeStats(ctx, filters)
 		case "sar_completed":
 			results, err = uc.SarCompletedCount(ctx, filters)
+		case "open_cases_by_age":
+			results, err = uc.OpenCasesByAge(ctx, filters)
 		default:
 			c.Status(http.StatusNotFound)
 			return

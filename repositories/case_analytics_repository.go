@@ -170,3 +170,37 @@ func (repo MarbleDbRepository) SarCompletedCount(
 	err = exec.QueryRow(ctx, sql, args...).Scan(&res.Count)
 	return res, err
 }
+
+func (repo MarbleDbRepository) OpenCasesByAge(
+	ctx context.Context,
+	exec Executor,
+	filters analytics.CaseAnalyticsFilter,
+) ([]analytics.OpenCasesByAge, error) {
+	query := NewQueryBuilder().
+		Select(
+			`case
+				when now() - created_at < interval '3 days' then '0-2'
+				when now() - created_at < interval '10 days' then '3-10'
+				when now() - created_at < interval '30 days' then '11-30'
+				else '31+'
+			end as bracket`,
+			"count(*) as count",
+		).
+		From(dbmodels.TABLE_CASES).
+		Where(squirrel.Eq{
+			"inbox_id": filters.InboxIds,
+			"org_id":   filters.OrgId,
+		}).
+		Where(squirrel.NotEq{"status": "closed"}).
+		GroupBy("1")
+
+	if filters.AssignedUserId != nil {
+		query = query.Where(squirrel.Eq{"assigned_to": *filters.AssignedUserId})
+	}
+
+	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (analytics.OpenCasesByAge, error) {
+		var res analytics.OpenCasesByAge
+		err := row.Scan(&res.Bracket, &res.Count)
+		return res, err
+	})
+}

@@ -35,6 +35,11 @@ type CaseAnalyticsRepository interface {
 		exec repositories.Executor,
 		filters analytics.CaseAnalyticsFilter,
 	) (analytics.SarCompletedCount, error)
+	OpenCasesByAge(
+		ctx context.Context,
+		exec repositories.Executor,
+		filters analytics.CaseAnalyticsFilter,
+	) ([]analytics.OpenCasesByAge, error)
 }
 
 type CaseAnalyticsUsecase struct {
@@ -158,6 +163,31 @@ func (uc CaseAnalyticsUsecase) SarCompletedCount(
 		AssignedUserId: filters.AssignedUserId,
 		Start:          filters.Start,
 		End:            filters.End,
+	})
+}
+
+func (uc CaseAnalyticsUsecase) OpenCasesByAge(
+	ctx context.Context,
+	filters dto.CaseAnalyticsFilters,
+) ([]analytics.OpenCasesByAge, error) {
+	if !uc.license.Analytics {
+		return []analytics.OpenCasesByAge{}, nil
+	}
+
+	exec := uc.executorFactory.NewExecutor()
+
+	inboxIds, err := uc.getFilteredInboxIds(ctx, exec, filters)
+	if err != nil {
+		return nil, err
+	}
+	if len(inboxIds) == 0 {
+		return []analytics.OpenCasesByAge{}, nil
+	}
+
+	return uc.repository.OpenCasesByAge(ctx, exec, analytics.CaseAnalyticsFilter{
+		OrgId:          filters.OrgId,
+		InboxIds:       inboxIds,
+		AssignedUserId: filters.AssignedUserId,
 	})
 }
 
