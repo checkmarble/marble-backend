@@ -3,7 +3,6 @@ package usecases
 import (
 	"context"
 	"slices"
-	"time"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -19,13 +18,13 @@ type CaseAnalyticsRepository interface {
 	CasesCreatedByTimeStats(
 		ctx context.Context,
 		exec repositories.Executor,
-		orgId uuid.UUID,
-		inboxIds []uuid.UUID,
-		assignedUserId *string,
-		start time.Time,
-		end time.Time,
-		tzOffsetSeconds int,
+		filters analytics.CaseAnalyticsFilter,
 	) ([]analytics.CasesCreated, error)
+	CasesFalsePositiveRateByTimeStats(
+		ctx context.Context,
+		exec repositories.Executor,
+		filters analytics.CaseAnalyticsFilter,
+	) ([]analytics.CasesFalsePositiveRate, error)
 }
 
 type CaseAnalyticsUsecase struct {
@@ -55,9 +54,44 @@ func (uc CaseAnalyticsUsecase) CasesCreatedByTimeStats(
 
 	_, tzOffset := filters.End.In(filters.Timezone).Zone()
 
-	return uc.repository.CasesCreatedByTimeStats(ctx, exec,
-		filters.OrgId, inboxIds, filters.AssignedUserId,
-		filters.Start, filters.End, tzOffset)
+	return uc.repository.CasesCreatedByTimeStats(ctx, exec, analytics.CaseAnalyticsFilter{
+		OrgId:           filters.OrgId,
+		InboxIds:        inboxIds,
+		AssignedUserId:  filters.AssignedUserId,
+		Start:           filters.Start,
+		End:             filters.End,
+		TzOffsetSeconds: tzOffset,
+	})
+}
+
+func (uc CaseAnalyticsUsecase) CasesFalsePositiveRateByTimeStats(
+	ctx context.Context,
+	filters dto.CaseAnalyticsFilters,
+) ([]analytics.CasesFalsePositiveRate, error) {
+	if !uc.license.Analytics {
+		return []analytics.CasesFalsePositiveRate{}, nil
+	}
+
+	exec := uc.executorFactory.NewExecutor()
+
+	inboxIds, err := uc.getFilteredInboxIds(ctx, exec, filters)
+	if err != nil {
+		return nil, err
+	}
+	if len(inboxIds) == 0 {
+		return []analytics.CasesFalsePositiveRate{}, nil
+	}
+
+	_, tzOffset := filters.End.In(filters.Timezone).Zone()
+
+	return uc.repository.CasesFalsePositiveRateByTimeStats(ctx, exec, analytics.CaseAnalyticsFilter{
+		OrgId:           filters.OrgId,
+		InboxIds:        inboxIds,
+		AssignedUserId:  filters.AssignedUserId,
+		Start:           filters.Start,
+		End:             filters.End,
+		TzOffsetSeconds: tzOffset,
+	})
 }
 
 func (uc CaseAnalyticsUsecase) getFilteredInboxIds(

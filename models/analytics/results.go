@@ -80,3 +80,9 @@ type CasesCreated struct {
 	Date  time.Time `json:"date"`
 	Count int       `json:"count"`
 }
+
+type CasesFalsePositiveRate struct {
+	Date           time.Time `json:"date"`
+	TotalClosed    int       `json:"total_closed"`
+	FalsePositives int       `json:"false_positives"`
+}
