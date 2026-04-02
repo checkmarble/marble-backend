@@ -36,16 +36,18 @@ func SarStatusFromString(s string) SarStatus {
 }
 
 type SuspiciousActivityReport struct {
-	Id         string
-	ReportId   string
-	CaseId     string
-	Status     SarStatus
-	Bucket     *string
-	BlobKey    *string
-	CreatedBy  string
-	UploadedBy *string
-	CreatedAt  time.Time
-	DeletedAt  *time.Time
+	Id          string
+	ReportId    string
+	CaseId      string
+	Status      SarStatus
+	Bucket      *string
+	BlobKey     *string
+	CreatedBy   string
+	UploadedBy  *string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	CompletedAt *time.Time
+	DeletedAt   *time.Time
 }
 
 type SuspiciousActivityReportRequest struct {
