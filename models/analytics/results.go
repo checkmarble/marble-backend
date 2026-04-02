@@ -97,3 +97,8 @@ type CasesDuration struct {
 type SarCompletedCount struct {
 	Count int `json:"count"`
 }
+
+type OpenCasesByAge struct {
+	Bracket string `json:"bracket"`
+	Count   int    `json:"count"`
+}
