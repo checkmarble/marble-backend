@@ -137,7 +137,6 @@ func (repo MarbleDbRepository) CasesDurationByTimeStats(
 	})
 }
 
-// TODO: Pascal: this is not finished yet, we really want the metric to be displayed by SAR completion date, not case creation. But need to do some work to have that information available.
 func (repo MarbleDbRepository) SarCompletedCount(
 	ctx context.Context,
 	exec Executor,
@@ -153,8 +152,8 @@ func (repo MarbleDbRepository) SarCompletedCount(
 			"sar.status": "completed",
 		}).
 		Where(squirrel.And{
-			squirrel.GtOrEq{"c.created_at": filters.Start},
-			squirrel.Lt{"c.created_at": filters.End},
+			squirrel.GtOrEq{"sar.completed_at": filters.Start},
+			squirrel.Lt{"sar.completed_at": filters.End},
 		})
 
 	if filters.AssignedUserId != nil {
@@ -200,6 +199,85 @@ func (repo MarbleDbRepository) OpenCasesByAge(
 
 	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (analytics.OpenCasesByAge, error) {
 		var res analytics.OpenCasesByAge
+		err := row.Scan(&res.Bracket, &res.Count)
+		return res, err
+	})
+}
+
+func (repo MarbleDbRepository) SarDelayByTimeStats(
+	ctx context.Context,
+	exec Executor,
+	filters analytics.CaseAnalyticsFilter,
+) ([]analytics.SarDelay, error) {
+	query := NewQueryBuilder().
+		Select(
+			fmt.Sprintf("(sar.completed_at + interval '%d s')::date as date", filters.TzOffsetSeconds),
+			"sum(extract(epoch from (sar.completed_at - c.created_at)) / 86400) as sum_days",
+			"max(extract(epoch from (sar.completed_at - c.created_at)) / 86400) as max_days",
+			"count(*) as count_sars",
+		).
+		From(dbmodels.TABLE_SUSPICIOUS_ACTIVITY_REPORTS + " sar").
+		Join(dbmodels.TABLE_CASES + " c on c.id = sar.case_id").
+		Where(squirrel.Eq{
+			"c.inbox_id": filters.InboxIds,
+			"c.org_id":   filters.OrgId,
+			"sar.status": "completed",
+		}).
+		Where(squirrel.And{
+			squirrel.GtOrEq{"sar.completed_at": filters.Start},
+			squirrel.Lt{"sar.completed_at": filters.End},
+		}).
+		GroupBy("date").
+		OrderBy("date")
+
+	if filters.AssignedUserId != nil {
+		query = query.Where(squirrel.Eq{"c.assigned_to": *filters.AssignedUserId})
+	}
+
+	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (analytics.SarDelay, error) {
+		var res analytics.SarDelay
+		err := row.Scan(&res.Date, &res.SumDays, &res.MaxDays, &res.CountSars)
+		return res, err
+	})
+}
+
+func (repo MarbleDbRepository) SarDelayDistribution(
+	ctx context.Context,
+	exec Executor,
+	filters analytics.CaseAnalyticsFilter,
+) ([]analytics.SarDelayDistribution, error) {
+	query := NewQueryBuilder().
+		Select(
+			`case
+				when extract(epoch from (sar.completed_at - c.created_at)) / 86400 < 3 then '0-2'
+				when extract(epoch from (sar.completed_at - c.created_at)) / 86400 < 10 then '3-10'
+				when extract(epoch from (sar.completed_at - c.created_at)) / 86400 < 30 then '11-30'
+				else '31+'
+			end as bracket`,
+			"count(*) as count",
+		).
+		From(dbmodels.TABLE_SUSPICIOUS_ACTIVITY_REPORTS + " sar").
+		Join(dbmodels.TABLE_CASES + " c on c.id = sar.case_id").
+		Where(squirrel.Eq{
+			"c.inbox_id": filters.InboxIds,
+			"c.org_id":   filters.OrgId,
+			"sar.status": "completed",
+		}).
+		Where(squirrel.NotEq{"sar.completed_at": nil}).
+		Where(squirrel.And{
+			squirrel.GtOrEq{"sar.completed_at": filters.Start},
+			squirrel.Lt{"sar.completed_at": filters.End},
+		}).
+		GroupBy("1")
+
+	if filters.AssignedUserId != nil {
+		query = query.Where(squirrel.Eq{"c.assigned_to": *filters.AssignedUserId})
+	}
+
+	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (
+		analytics.SarDelayDistribution, error,
+	) {
+		var res analytics.SarDelayDistribution
 		err := row.Scan(&res.Bracket, &res.Count)
 		return res, err
 	})

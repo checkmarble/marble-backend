@@ -40,6 +40,16 @@ type CaseAnalyticsRepository interface {
 		exec repositories.Executor,
 		filters analytics.CaseAnalyticsFilter,
 	) ([]analytics.OpenCasesByAge, error)
+	SarDelayByTimeStats(
+		ctx context.Context,
+		exec repositories.Executor,
+		filters analytics.CaseAnalyticsFilter,
+	) ([]analytics.SarDelay, error)
+	SarDelayDistribution(
+		ctx context.Context,
+		exec repositories.Executor,
+		filters analytics.CaseAnalyticsFilter,
+	) ([]analytics.SarDelayDistribution, error)
 }
 
 type CaseAnalyticsUsecase struct {
@@ -188,6 +198,63 @@ func (uc CaseAnalyticsUsecase) OpenCasesByAge(
 		OrgId:          filters.OrgId,
 		InboxIds:       inboxIds,
 		AssignedUserId: filters.AssignedUserId,
+	})
+}
+
+func (uc CaseAnalyticsUsecase) SarDelayByTimeStats(
+	ctx context.Context,
+	filters dto.CaseAnalyticsFilters,
+) ([]analytics.SarDelay, error) {
+	if !uc.license.Analytics {
+		return []analytics.SarDelay{}, nil
+	}
+
+	exec := uc.executorFactory.NewExecutor()
+
+	inboxIds, err := uc.getFilteredInboxIds(ctx, exec, filters)
+	if err != nil {
+		return nil, err
+	}
+	if len(inboxIds) == 0 {
+		return []analytics.SarDelay{}, nil
+	}
+
+	_, tzOffset := filters.End.In(filters.Timezone).Zone()
+
+	return uc.repository.SarDelayByTimeStats(ctx, exec, analytics.CaseAnalyticsFilter{
+		OrgId:           filters.OrgId,
+		InboxIds:        inboxIds,
+		AssignedUserId:  filters.AssignedUserId,
+		Start:           filters.Start,
+		End:             filters.End,
+		TzOffsetSeconds: tzOffset,
+	})
+}
+
+func (uc CaseAnalyticsUsecase) SarDelayDistribution(
+	ctx context.Context,
+	filters dto.CaseAnalyticsFilters,
+) ([]analytics.SarDelayDistribution, error) {
+	if !uc.license.Analytics {
+		return []analytics.SarDelayDistribution{}, nil
+	}
+
+	exec := uc.executorFactory.NewExecutor()
+
+	inboxIds, err := uc.getFilteredInboxIds(ctx, exec, filters)
+	if err != nil {
+		return nil, err
+	}
+	if len(inboxIds) == 0 {
+		return []analytics.SarDelayDistribution{}, nil
+	}
+
+	return uc.repository.SarDelayDistribution(ctx, exec, analytics.CaseAnalyticsFilter{
+		OrgId:          filters.OrgId,
+		InboxIds:       inboxIds,
+		AssignedUserId: filters.AssignedUserId,
+		Start:          filters.Start,
+		End:            filters.End,
 	})
 }
 
