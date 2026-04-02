@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -15,9 +16,15 @@ import (
 )
 
 type CaseAnalyticsRepository interface {
-	CasesCreated(ctx context.Context, exec repositories.Executor,
-		orgId uuid.UUID, inboxIds []uuid.UUID, assignedUserId *string,
-		start, end time.Time, tzOffsetSeconds int,
+	CasesCreatedByTimeStats(
+		ctx context.Context,
+		exec repositories.Executor,
+		orgId uuid.UUID,
+		inboxIds []uuid.UUID,
+		assignedUserId *string,
+		start time.Time,
+		end time.Time,
+		tzOffsetSeconds int,
 	) ([]analytics.CasesCreated, error)
 }
 
@@ -28,7 +35,8 @@ type CaseAnalyticsUsecase struct {
 	repository      CaseAnalyticsRepository
 }
 
-func (uc CaseAnalyticsUsecase) CasesCreated(ctx context.Context,
+func (uc CaseAnalyticsUsecase) CasesCreatedByTimeStats(
+	ctx context.Context,
 	filters dto.CaseAnalyticsFilters,
 ) ([]analytics.CasesCreated, error) {
 	if !uc.license.Analytics {
@@ -47,13 +55,15 @@ func (uc CaseAnalyticsUsecase) CasesCreated(ctx context.Context,
 
 	_, tzOffset := filters.End.In(filters.Timezone).Zone()
 
-	return uc.repository.CasesCreated(ctx, exec,
+	return uc.repository.CasesCreatedByTimeStats(ctx, exec,
 		filters.OrgId, inboxIds, filters.AssignedUserId,
 		filters.Start, filters.End, tzOffset)
 }
 
-func (uc CaseAnalyticsUsecase) getFilteredInboxIds(ctx context.Context,
-	exec repositories.Executor, filters dto.CaseAnalyticsFilters,
+func (uc CaseAnalyticsUsecase) getFilteredInboxIds(
+	ctx context.Context,
+	exec repositories.Executor,
+	filters dto.CaseAnalyticsFilters,
 ) ([]uuid.UUID, error) {
 	allInboxes, err := uc.inboxReader.ListInboxes(ctx, exec, filters.OrgId, false)
 	if err != nil {
@@ -66,12 +76,9 @@ func (uc CaseAnalyticsUsecase) getFilteredInboxIds(ctx context.Context,
 	}
 
 	if filters.InboxId != nil {
-		for _, id := range availableIds {
-			if id == *filters.InboxId {
-				return []uuid.UUID{*filters.InboxId}, nil
-			}
+		if slices.Contains(availableIds, *filters.InboxId) {
+			return []uuid.UUID{*filters.InboxId}, nil
 		}
-		return []uuid.UUID{}, nil
 	}
 
 	return availableIds, nil
