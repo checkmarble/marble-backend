@@ -1,8 +1,10 @@
 package usecases
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -207,6 +209,15 @@ func (uc *OrgExportUsecase) Export(ctx context.Context, orgId uuid.UUID) (dto.Or
 		workflow.Conditions = cleanedConditions
 		filteredWorkflows = append(filteredWorkflows, workflow)
 	}
+
+	// Sort workflows rules by priority to keep the same order as in the original workflow
+	// It is not necessary to sort by scenario ID but it makes the exported file easier to read and debug since workflows will be grouped by scenario then priority
+	slices.SortFunc(filteredWorkflows, func(a, b models.Workflow) int {
+		if cmp := bytes.Compare(a.ScenarioId[:], b.ScenarioId[:]); cmp != 0 {
+			return cmp
+		}
+		return a.Priority - b.Priority
+	})
 
 	return dto.OrgImport{
 		Metadata: dto.OrgImportMetadata{
