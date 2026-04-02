@@ -102,3 +102,15 @@ type OpenCasesByAge struct {
 	Bracket string `json:"bracket"`
 	Count   int    `json:"count"`
 }
+
+type SarDelay struct {
+	Date       time.Time `json:"date"`
+	SumDays    float64   `json:"sum_days"`
+	MaxDays    float64   `json:"max_days"`
+	CountSars  int       `json:"count_sars"`
+}
+
+type SarDelayDistribution struct {
+	Bracket string `json:"bracket"`
+	Count   int    `json:"count"`
+}
