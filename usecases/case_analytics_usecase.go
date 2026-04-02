@@ -25,6 +25,11 @@ type CaseAnalyticsRepository interface {
 		exec repositories.Executor,
 		filters analytics.CaseAnalyticsFilter,
 	) ([]analytics.CasesFalsePositiveRate, error)
+	CasesDurationByTimeStats(
+		ctx context.Context,
+		exec repositories.Executor,
+		filters analytics.CaseAnalyticsFilter,
+	) ([]analytics.CasesDuration, error)
 }
 
 type CaseAnalyticsUsecase struct {
@@ -85,6 +90,36 @@ func (uc CaseAnalyticsUsecase) CasesFalsePositiveRateByTimeStats(
 	_, tzOffset := filters.End.In(filters.Timezone).Zone()
 
 	return uc.repository.CasesFalsePositiveRateByTimeStats(ctx, exec, analytics.CaseAnalyticsFilter{
+		OrgId:           filters.OrgId,
+		InboxIds:        inboxIds,
+		AssignedUserId:  filters.AssignedUserId,
+		Start:           filters.Start,
+		End:             filters.End,
+		TzOffsetSeconds: tzOffset,
+	})
+}
+
+func (uc CaseAnalyticsUsecase) CasesDurationByTimeStats(
+	ctx context.Context,
+	filters dto.CaseAnalyticsFilters,
+) ([]analytics.CasesDuration, error) {
+	if !uc.license.Analytics {
+		return []analytics.CasesDuration{}, nil
+	}
+
+	exec := uc.executorFactory.NewExecutor()
+
+	inboxIds, err := uc.getFilteredInboxIds(ctx, exec, filters)
+	if err != nil {
+		return nil, err
+	}
+	if len(inboxIds) == 0 {
+		return []analytics.CasesDuration{}, nil
+	}
+
+	_, tzOffset := filters.End.In(filters.Timezone).Zone()
+
+	return uc.repository.CasesDurationByTimeStats(ctx, exec, analytics.CaseAnalyticsFilter{
 		OrgId:           filters.OrgId,
 		InboxIds:        inboxIds,
 		AssignedUserId:  filters.AssignedUserId,

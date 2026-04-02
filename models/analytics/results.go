@@ -86,3 +86,10 @@ type CasesFalsePositiveRate struct {
 	TotalClosed    int       `json:"total_closed"`
 	FalsePositives int       `json:"false_positives"`
 }
+
+type CasesDuration struct {
+	Date       time.Time `json:"date"`
+	SumDays    float64   `json:"sum_days"`
+	MaxDays    float64   `json:"max_days"`
+	CountCases int       `json:"count_cases"`
+}
