@@ -331,7 +331,8 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestPrepareRuleset_EnqueuesIndexCreati
 		Return(draft, nil)
 	s.indexEditor.On("GetIndexesToCreateForScoringRuleset", s.ctx, s.orgId, draft).
 		Return([]models.ConcreteIndex{idx}, 0, nil)
-	s.taskQueue.On("EnqueueCreateIndexTask", s.ctx, s.orgId, []models.ConcreteIndex{idx}).Return(nil)
+	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
+	s.taskQueue.On("EnqueueCreateIndexTask", s.ctx, s.transaction, s.orgId, []models.ConcreteIndex{idx}).Return(nil)
 
 	err := s.makeUsecase().PrepareRuleset(s.ctx, s.recordType)
 
