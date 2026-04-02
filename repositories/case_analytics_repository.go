@@ -12,11 +12,15 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type CaseAnalyticsRepository struct{}
-
-func (repo CaseAnalyticsRepository) CasesCreated(ctx context.Context, exec Executor,
-	orgId uuid.UUID, inboxIds []uuid.UUID, assignedUserId *string,
-	start, end time.Time, tzOffsetSeconds int,
+func (repo MarbleDbRepository) CasesCreatedByTimeStats(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	inboxIds []uuid.UUID,
+	assignedUserId *string,
+	start time.Time,
+	end time.Time,
+	tzOffsetSeconds int,
 ) ([]analytics.CasesCreated, error) {
 	query := NewQueryBuilder().
 		Select(

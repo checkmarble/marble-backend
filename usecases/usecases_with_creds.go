@@ -845,7 +845,7 @@ func (usecases *UsecasesWithCreds) NewCaseAnalyticsUsecase() CaseAnalyticsUsecas
 		executorFactory: usecases.NewExecutorFactory(),
 		inboxReader:     usecases.NewInboxReader(),
 		license:         usecases.license,
-		repository:      repositories.CaseAnalyticsRepository{},
+		repository:      usecases.Repositories.MarbleDbRepository,
 	}
 }
 
