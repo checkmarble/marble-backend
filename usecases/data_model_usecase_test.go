@@ -367,19 +367,41 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_nominal() {
 		Description:  "description",
 		SemanticType: models.SemanticTypeOther,
 	}
+	// DataModel with required fields for SemanticTypeOther validation
+	nameTableDataModel := models.DataModel{
+		Tables: map[string]models.Table{
+			"name": {
+				Name: "name",
+				Fields: map[string]models.Field{
+					"object_id":  {DataType: models.String, Nullable: false},
+					"updated_at": {DataType: models.Timestamp, Nullable: false},
+				},
+				LinksToSingle: map[string]models.LinkToSingle{},
+			},
+		},
+	}
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+	// Pre-transaction GetDataModel call (line 242): register Once() first (FIFO, used first, then exhausted).
+	// Then unlimited nameTableDataModel for validateTableSemanticType inside the transaction.
+	suite.enforceSecurity.On("ReadDataModel").Return(nil)
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	// Pre-transaction call returns empty DataModel (no links to resolve) - used first via FIFO
+	suite.dataModelRepository.On("GetDataModel", suite.ctx, suite.transaction, suite.organizationId, false, false).
+		Once().Return(models.DataModel{}, nil)
+	// validateTableSemanticType call (SemanticTypeOther requires object_id + updated_at) - unlimited fallback
+	suite.dataModelRepository.On("GetDataModel", suite.ctx, suite.transaction, suite.organizationId, false, false).
+		Return(nameTableDataModel, nil)
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("CreateDataModelTable",
-		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), "name",
-		"description", "", models.SemanticTypeOther, (*models.FollowTheMoneyEntity)(nil), mock.Anything).
+		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"),
+		mock.AnythingOfType("models.CreateTableInput")).
 		Return(nil)
-	suite.dataModelRepository.On("CreateDataModelField",
-		suite.ctx,
-		suite.transaction,
-		suite.organizationId,
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("models.CreateFieldInput")).
-		Return(nil)
+	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, mock.AnythingOfType("string")).
+		Return(models.TableMetadata{Name: tableName, OrganizationID: suite.organizationId}, nil)
+	// ensureTableHasPivot: return non-empty pivots so no pivot creation needed
+	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId,
+		mock.AnythingOfType("*string"), false).
+		Return([]models.PivotMetadata{{Id: uuid.New()}}, nil)
 	suite.transactionFactory.On("TransactionInOrgSchema", suite.ctx, suite.organizationId, mock.Anything).
 		Return(nil)
 	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, suite.transaction).
@@ -412,10 +434,15 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_repository_erro
 		SemanticType: models.SemanticTypeOther,
 	}
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+	// Pre-transaction GetDataModel call (line 242)
+	suite.enforceSecurity.On("ReadDataModel").Return(nil)
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.dataModelRepository.On("GetDataModel", suite.ctx, suite.transaction, suite.organizationId, false, false).
+		Return(models.DataModel{}, nil)
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("CreateDataModelTable",
-		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), "name",
-		"description", "", models.SemanticTypeOther, (*models.FollowTheMoneyEntity)(nil), mock.Anything).
+		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"),
+		mock.AnythingOfType("models.CreateTableInput")).
 		Return(suite.repositoryError)
 
 	_, err := usecase.CreateDataModelTable(suite.ctx, suite.organizationId, input)
@@ -433,19 +460,41 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_org_repository_
 		Description:  "description",
 		SemanticType: models.SemanticTypeOther,
 	}
+	// DataModel with required fields for SemanticTypeOther validation
+	nameTableDataModel := models.DataModel{
+		Tables: map[string]models.Table{
+			"name": {
+				Name: "name",
+				Fields: map[string]models.Field{
+					"object_id":  {DataType: models.String, Nullable: false},
+					"updated_at": {DataType: models.Timestamp, Nullable: false},
+				},
+				LinksToSingle: map[string]models.LinkToSingle{},
+			},
+		},
+	}
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+	// Pre-transaction GetDataModel call (line 242): register Once() first (FIFO, used first, then exhausted).
+	// Then unlimited nameTableDataModel for validateTableSemanticType inside the transaction.
+	suite.enforceSecurity.On("ReadDataModel").Return(nil)
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	// Pre-transaction call returns empty DataModel (no links to resolve) - used first via FIFO
+	suite.dataModelRepository.On("GetDataModel", suite.ctx, suite.transaction, suite.organizationId, false, false).
+		Once().Return(models.DataModel{}, nil)
+	// validateTableSemanticType call (SemanticTypeOther requires object_id + updated_at) - unlimited fallback
+	suite.dataModelRepository.On("GetDataModel", suite.ctx, suite.transaction, suite.organizationId, false, false).
+		Return(nameTableDataModel, nil)
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("CreateDataModelTable",
-		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), "name",
-		"description", "", models.SemanticTypeOther, (*models.FollowTheMoneyEntity)(nil), mock.Anything).
+		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"),
+		mock.AnythingOfType("models.CreateTableInput")).
 		Return(nil)
-	suite.dataModelRepository.On("CreateDataModelField",
-		suite.ctx,
-		suite.transaction,
-		suite.organizationId,
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("models.CreateFieldInput")).
-		Return(nil)
+	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, mock.AnythingOfType("string")).
+		Return(models.TableMetadata{Name: tableName, OrganizationID: suite.organizationId}, nil)
+	// ensureTableHasPivot: return non-empty pivots so no pivot creation needed
+	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId,
+		mock.AnythingOfType("*string"), false).
+		Return([]models.PivotMetadata{{Id: uuid.New()}}, nil)
 	suite.transactionFactory.On("TransactionInOrgSchema", suite.ctx, suite.organizationId, mock.Anything).
 		Return(nil)
 	suite.organizationSchemaRepository.On("CreateSchemaIfNotExists", suite.ctx, suite.transaction).
@@ -501,7 +550,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal() {
 		OrganizationID: suite.organizationId,
 	}
 	usecase := suite.makeUsecase()
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
@@ -514,6 +563,9 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal() {
 		pure_utils.NullFromPtr[string](nil),
 	).
 		Return(nil)
+	// validateTableSemanticType: table "name" has SemanticTypeUnset → noOpValidation
+	suite.dataModelRepository.On("GetDataModel", suite.ctx, suite.transaction, suite.organizationId, false, false).
+		Return(models.DataModel{Tables: map[string]models.Table{"name": {Name: "name"}}}, nil)
 
 	err := usecase.UpdateDataModelTable(suite.ctx, tableId,
 		utils.Ptr("description"),
@@ -536,7 +588,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_security_error(
 		OrganizationID: suite.organizationId,
 	}
 	usecase := suite.makeUsecase()
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(suite.securityError)
@@ -562,7 +614,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_repository_erro
 		OrganizationID: suite.organizationId,
 	}
 	usecase := suite.makeUsecase()
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
@@ -600,7 +652,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal_set_ftm
 	}
 	ftmEntity := models.FollowTheMoneyEntityPerson
 	usecase := suite.makeUsecase()
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
@@ -613,6 +665,9 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal_set_ftm
 		pure_utils.NullFromPtr[string](nil),
 	).
 		Return(nil)
+	// validateTableSemanticType: table "name" has SemanticTypeUnset → noOpValidation
+	suite.dataModelRepository.On("GetDataModel", suite.ctx, suite.transaction, suite.organizationId, false, false).
+		Return(models.DataModel{Tables: map[string]models.Table{"name": {Name: "name"}}}, nil)
 
 	err := usecase.UpdateDataModelTable(suite.ctx, tableId, utils.Ptr("description"),
 		pure_utils.NullFrom(ftmEntity),
@@ -649,6 +704,9 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_nominal_not_uni
 	suite.dataModelRepository.On("CreateDataModelField",
 		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), field).
 		Return(nil)
+	// validateTableSemanticType: table "name" has SemanticTypeUnset → noOpValidation
+	suite.dataModelRepository.On("GetDataModel", suite.ctx, suite.transaction, suite.organizationId, false, false).
+		Return(models.DataModel{Tables: map[string]models.Table{"name": {Name: "name"}}}, nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.organizationSchemaRepository.On("CreateField", suite.ctx, suite.transaction, table.Name, field).
 		Return(nil)
@@ -682,13 +740,12 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_nominal_unique(
 	suite.dataModelRepository.On("CreateDataModelField",
 		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), field).
 		Return(nil)
+	// validateTableSemanticType: table "name" has SemanticTypeUnset → noOpValidation
+	suite.dataModelRepository.On("GetDataModel", suite.ctx, suite.transaction, suite.organizationId, false, false).
+		Return(models.DataModel{Tables: map[string]models.Table{"name": {Name: "name"}}}, nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.organizationSchemaRepository.On("CreateField", suite.ctx, suite.transaction, table.Name, field).
 		Return(nil)
-	suite.clientDbIndexEditor.On("CreateUniqueIndexAsync", suite.ctx, suite.organizationId, models.UnicityIndex{
-		TableName: table.Name,
-		Fields:    []string{field.Name},
-	}).Return(nil)
 
 	_, err := usecase.CreateDataModelField(suite.ctx, field)
 	suite.Require().NoError(err, "no error expected")
@@ -775,6 +832,9 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_client_schema_r
 	suite.dataModelRepository.On("CreateDataModelField",
 		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), field).
 		Return(nil)
+	// validateTableSemanticType: table "name" has SemanticTypeUnset → noOpValidation
+	suite.dataModelRepository.On("GetDataModel", suite.ctx, suite.transaction, suite.organizationId, false, false).
+		Return(models.DataModel{Tables: map[string]models.Table{"name": {Name: "name"}}}, nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.organizationSchemaRepository.On("CreateField", suite.ctx, suite.transaction, table.Name, field).
 		Return(suite.repositoryError)
@@ -855,15 +915,13 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_nominal() {
 	}
 	usecase := suite.makeUsecase()
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
-	suite.dataModelRepository.On("CreateDataModelLink", suite.ctx, suite.transaction, mock.AnythingOfType("string"), link).
-		Return(nil)
-	// for GetDataModel (reused in CreateDataModelLink)
-	suite.enforceSecurity.On("ReadDataModel").Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
+	// getDataModelWithExec inside createDataModelLinkWithExec, and validateTableSemanticType both call GetDataModel
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
+	suite.dataModelRepository.On("CreateDataModelLink", suite.ctx, suite.transaction, mock.AnythingOfType("string"), link).
+		Return(nil)
 
 	_, err := usecase.CreateDataModelLink(suite.ctx, link)
 	suite.Require().NoError(err, "no error expected")
@@ -883,10 +941,8 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_parent_field_not
 	}
 	usecase := suite.makeUsecase()
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
-	// for GetDataModel (reused in CreateDataModelLink)
-	suite.enforceSecurity.On("ReadDataModel").Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
+	// getDataModelWithExec inside createDataModelLinkWithExec
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
@@ -910,10 +966,8 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_child_field_not_
 	}
 	usecase := suite.makeUsecase()
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
-	// for GetDataModel (reused in CreateDataModelLink)
-	suite.enforceSecurity.On("ReadDataModel").Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
+	// getDataModelWithExec inside createDataModelLinkWithExec
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
@@ -941,9 +995,8 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_repository_error
 	link := models.DataModelLinkCreateInput{OrganizationID: suite.organizationId, Name: "name", LinkType: models.LinkTypeRelated}
 	usecase := suite.makeUsecase()
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
-	suite.enforceSecurity.On("ReadDataModel").Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
+	// getDataModelWithExec inside createDataModelLinkWithExec fails
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(models.DataModel{}, suite.repositoryError)
@@ -962,7 +1015,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	newDesc := "new description"
 	input := models.UpdateFieldInput{Description: &newDesc}
 	usecase := suite.makeUsecase()
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, fieldId).
 		Return(models.FieldMetadata{Name: "value", DataType: models.Float, ID: fieldId, IsEnum: false, TableId: tableId}, nil)
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
@@ -971,11 +1024,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 			OrganizationID: suite.organizationId,
 		}, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
-	// for GetDataModel (reused in UpdateDataModelField), copied from TestGetDataModel_nominal_with_unique
-	suite.enforceSecurity.On("ReadDataModel").Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
-	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
-		Return(nil, nil)
+	// getDataModelWithExec (IncludeUnicityConstraints: true) and validateTableSemanticType both call GetDataModel
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
@@ -996,7 +1045,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	newIsEnum := true
 	input := models.UpdateFieldInput{IsEnum: &newIsEnum}
 	usecase := suite.makeUsecase()
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, fieldId).
 		Return(models.FieldMetadata{Name: "value", DataType: models.Float, ID: fieldId, IsEnum: false, TableId: tableId}, nil)
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
@@ -1005,11 +1054,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 			OrganizationID: suite.organizationId,
 		}, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
-	// for GetDataModel (reused in UpdateDataModelField), copied from TestGetDataModel_nominal_with_unique
-	suite.enforceSecurity.On("ReadDataModel").Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
-	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
-		Return(nil, nil)
+	// getDataModelWithExec (IncludeUnicityConstraints: true) and validateTableSemanticType both call GetDataModel
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
@@ -1031,7 +1076,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	newIsUnique := true
 	input := models.UpdateFieldInput{IsUnique: &newIsUnique}
 	usecase := suite.makeUsecase()
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, fieldId).
 		Return(models.FieldMetadata{
 			Name:     "not_yet_unique_id",
@@ -1046,11 +1091,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 			OrganizationID: suite.organizationId,
 		}, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
-	// for GetDataModel (reused in UpdateDataModelField), copied from TestGetDataModel_nominal_with_unique
-	suite.enforceSecurity.On("ReadDataModel").Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
-	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
-		Return(nil, nil)
+	// getDataModelWithExec (IncludeUnicityConstraints: true) and validateTableSemanticType both call GetDataModel
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
@@ -1075,7 +1116,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	newIsUnique := false
 	input := models.UpdateFieldInput{IsUnique: &newIsUnique}
 	usecase := suite.makeUsecase()
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, fieldId).
 		Return(models.FieldMetadata{
 			Name:     "unique_id",
@@ -1095,11 +1136,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 		TableName: "transactions",
 		Fields:    []string{"unique_id"},
 	}).Return(nil)
-	// for GetDataModel (reused in UpdateDataModelField), copied from TestGetDataModel_nominal_with_unique
-	suite.enforceSecurity.On("ReadDataModel").Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
-	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
-		Return(nil, nil)
+	// getDataModelWithExec (IncludeUnicityConstraints: true) and validateTableSemanticType both call GetDataModel
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
@@ -1116,7 +1153,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_security_error(
 	fieldId := "fieldId"
 	input := models.UpdateFieldInput{}
 	usecase := suite.makeUsecase()
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, fieldId).
 		Return(models.FieldMetadata{}, nil)
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, mock.Anything).
@@ -1134,7 +1171,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_repository_erro
 	fieldId := "fieldId"
 	input := models.UpdateFieldInput{}
 	usecase := suite.makeUsecase()
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, fieldId).
 		Return(models.FieldMetadata{}, suite.repositoryError)
 
@@ -1171,6 +1208,9 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_with_ftm_proper
 	suite.dataModelRepository.On("CreateDataModelField",
 		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"), field).
 		Return(nil)
+	// validateTableSemanticType: table "name" has SemanticTypeUnset → noOpValidation
+	suite.dataModelRepository.On("GetDataModel", suite.ctx, suite.transaction, suite.organizationId, false, false).
+		Return(models.DataModel{Tables: map[string]models.Table{"name": {Name: "name"}}}, nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.organizationSchemaRepository.On("CreateField", suite.ctx, suite.transaction, table.Name, field).
 		Return(nil)
@@ -1191,7 +1231,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_with_ftm_proper
 		FTMProperty: pure_utils.NullFrom(ftmProperty),
 	}
 	usecase := suite.makeUsecase()
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, fieldId).
 		Return(models.FieldMetadata{Name: "email", DataType: models.String, ID: fieldId, IsEnum: false, TableId: tableId}, nil)
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
@@ -1201,15 +1241,12 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_with_ftm_proper
 			FTMEntity:      &ftmEntity,
 		}, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
-	suite.enforceSecurity.On("ReadDataModel").Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
-	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
-		Return(nil, nil)
 	dataModelWithFTM := suite.dataModel
 	dataModelWithFTM.Tables["customers"] = models.Table{
 		Name:      "customers",
 		FTMEntity: &ftmEntity,
 	}
+	// getDataModelWithExec (IncludeUnicityConstraints: true) and validateTableSemanticType both call GetDataModel
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(dataModelWithFTM, nil)
@@ -1232,7 +1269,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_clear_ftm_prope
 		FTMProperty: pure_utils.NullFromPtr[models.FollowTheMoneyProperty](nil),
 	}
 	usecase := suite.makeUsecase()
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, fieldId).
 		Return(models.FieldMetadata{
 			Name:        "email",
@@ -1248,14 +1285,13 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_clear_ftm_prope
 			OrganizationID: suite.organizationId,
 		}, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
-	// for GetDataModel (reused in UpdateDataModelField)
-	suite.enforceSecurity.On("ReadDataModel").Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
-	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
-		Return(nil, nil)
+	// DataModel must include "customers" table for validateTableSemanticType
+	dataModelWithCustomers := suite.dataModel
+	dataModelWithCustomers.Tables["customers"] = models.Table{Name: "customers"}
+	// getDataModelWithExec (IncludeUnicityConstraints: true) and validateTableSemanticType both call GetDataModel
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
-		Return(suite.dataModel, nil)
+		Return(dataModelWithCustomers, nil)
 	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return(suite.uniqueIndexes, nil)
 	suite.dataModelRepository.On("UpdateDataModelField", suite.ctx, suite.transaction, fieldId, input).
@@ -1312,7 +1348,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_with_invalid_ft
 		FTMProperty: pure_utils.NullFrom(ftmProperty),
 	}
 	usecase := suite.makeUsecase()
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, fieldId).
 		Return(models.FieldMetadata{Name: "cage_code", DataType: models.String, ID: fieldId, IsEnum: false, TableId: tableId}, nil)
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
@@ -1322,11 +1358,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_with_invalid_ft
 			FTMEntity:      &ftmEntity,
 		}, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
-	// Mock GetDataModel which is called before FTM validation in UpdateDataModelField
-	suite.enforceSecurity.On("ReadDataModel").Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
-	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
-		Return(nil, nil)
+	// getDataModelWithExec (IncludeUnicityConstraints: true)
 	dataModelWithPeople := suite.dataModel
 	dataModelWithPeople.Tables["people"] = models.Table{
 		Name:      "people",
@@ -1356,7 +1388,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_with_ftm_proper
 		FTMProperty: pure_utils.NullFrom(ftmProperty),
 	}
 	usecase := suite.makeUsecase()
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, fieldId).
 		Return(models.FieldMetadata{Name: "email", DataType: models.String, ID: fieldId, IsEnum: false, TableId: tableId}, nil)
 	// Table has NO FTM entity defined
@@ -1367,11 +1399,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_with_ftm_proper
 			FTMEntity:      nil,
 		}, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
-	// Mock GetDataModel which is called before FTM validation in UpdateDataModelField
-	suite.enforceSecurity.On("ReadDataModel").Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
-	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
-		Return(nil, nil)
+	// getDataModelWithExec (IncludeUnicityConstraints: true)
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
@@ -1397,7 +1425,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_with_invalid_pa
 		FTMProperty: pure_utils.NullFrom(ftmProperty),
 	}
 	usecase := suite.makeUsecase()
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, fieldId).
 		Return(models.FieldMetadata{Name: "passport_num", DataType: models.String, ID: fieldId, IsEnum: false, TableId: tableId}, nil)
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
@@ -1407,11 +1435,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_with_invalid_pa
 			FTMEntity:      &ftmEntity,
 		}, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
-	// Mock GetDataModel which is called before FTM validation in UpdateDataModelField
-	suite.enforceSecurity.On("ReadDataModel").Return(nil)
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
-	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
-		Return(nil, nil)
+	// getDataModelWithExec (IncludeUnicityConstraints: true)
 	dataModelWithOrganizations := suite.dataModel
 	dataModelWithOrganizations.Tables["organizations"] = models.Table{
 		Name:          "organizations",

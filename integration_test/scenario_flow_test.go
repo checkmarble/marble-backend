@@ -171,6 +171,8 @@ func createDataModelAndSetupCaseManager(
 		Description:  "description",
 		SemanticType: models.SemanticTypeOther,
 		Fields: []models.CreateFieldInput{
+			{Name: "object_id", DataType: models.String, Nullable: false},
+			{Name: "updated_at", DataType: models.Timestamp, Nullable: false},
 			{Name: "account_id", DataType: models.String, Nullable: true},
 			{Name: "bic_country", DataType: models.String, Nullable: true},
 			{Name: "country", DataType: models.String, Nullable: true},
@@ -190,6 +192,8 @@ func createDataModelAndSetupCaseManager(
 		Description:  "description",
 		SemanticType: models.SemanticTypeOther,
 		Fields: []models.CreateFieldInput{
+			{Name: "object_id", DataType: models.String, Nullable: false},
+			{Name: "updated_at", DataType: models.Timestamp, Nullable: false},
 			{Name: "balance", DataType: models.Float, Nullable: true},
 			{Name: "company_id", DataType: models.String, Nullable: true},
 			{Name: "name", DataType: models.String, Nullable: true},
@@ -206,6 +210,8 @@ func createDataModelAndSetupCaseManager(
 		Description:  "description",
 		SemanticType: models.SemanticTypeOther,
 		Fields: []models.CreateFieldInput{
+			{Name: "object_id", DataType: models.String, Nullable: false},
+			{Name: "updated_at", DataType: models.Timestamp, Nullable: false},
 			{Name: "name", DataType: models.String, Nullable: true},
 		},
 	})
@@ -221,9 +227,9 @@ func createDataModelAndSetupCaseManager(
 		assert.FailNow(t, "Could not get data model", err)
 	}
 
-	txToAccountLinkId, err := usecase.CreateDataModelLink(ctx, models.DataModelLinkCreateInput{
+	accountLinkId, err := usecase.CreateDataModelLink(ctx, models.DataModelLinkCreateInput{
 		Name:           "account",
-		LinkType:       models.LinkTypeRelated,
+		LinkType:       models.LinkTypeBelongsTo,
 		OrganizationID: organizationId,
 		ParentTableID:  accountsTableId,
 		ParentFieldID:  dm.Tables["accounts"].Fields["object_id"].ID,
@@ -247,15 +253,19 @@ func createDataModelAndSetupCaseManager(
 		assert.FailNow(t, "Could not create data model link", err)
 	}
 
-	pivot, err := usecase.CreatePivot(ctx, models.CreatePivotInput{
-		BaseTableId:    transactionsTableId,
-		OrganizationId: organizationId,
-		PathLinkIds:    []string{txToAccountLinkId},
-	})
-	if err != nil {
-		assert.FailNow(t, "Failed to create pivot value", err)
+	// The BelongsTo link (transactions → accounts) should have auto-created a pivot
+	pivots, err := usecase.ListPivots(ctx, organizationId, utils.Ptr(transactionsTableId))
+	if assert.NoError(t, err, "Could not list pivots") &&
+		assert.Len(t, pivots, 1, "Expected exactly 1 pivot auto-created for transactions table") {
+		pivot := pivots[0]
+		assert.Equal(t, "transactions", pivot.BaseTable,
+			"Expected pivot base table to be transactions")
+		assert.Equal(t, "accounts", pivot.PivotTable, "Expected pivot table to be accounts")
+		assert.Equal(t, []string{"account"}, pivot.PathLinks,
+			"Expected pivot path links to be [account]")
+		assert.Equal(t, []string{accountLinkId}, pivot.PathLinkIds,
+			"Expected pivot path link IDs to be [accountLinkId]")
 	}
-	fmt.Printf("Created pivot %s\n", pivot.Id)
 
 	time.Sleep(1 * time.Second)
 

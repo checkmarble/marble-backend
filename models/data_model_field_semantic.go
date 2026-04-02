@@ -45,6 +45,7 @@ const (
 	FieldSemanticTypeCurrency FieldSemanticType = "currency"
 	FieldSemanticTypeCountry  FieldSemanticType = "country"
 	FieldSemanticTypeMccCode  FieldSemanticType = "mcc_code"
+	FieldSemanticTypeEnum     FieldSemanticType = "enum"
 
 	// Number family
 	FieldSemanticTypeAmount     FieldSemanticType = "amount"
@@ -98,6 +99,7 @@ var fieldSemanticTypeRegistry = map[FieldSemanticType]fieldSemanticTypeValidator
 	FieldSemanticTypeCurrency: stringSemanticType{},
 	FieldSemanticTypeCountry:  stringSemanticType{},
 	FieldSemanticTypeMccCode:  stringSemanticType{},
+	FieldSemanticTypeEnum:     stringSemanticType{},
 
 	// Number family
 	FieldSemanticTypeAmount:     numberSemanticType{},
