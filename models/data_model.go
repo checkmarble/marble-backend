@@ -350,6 +350,7 @@ func (enumValues EnumValues) CollectEnumValues(payload ClientObject) {
 type LinkType string
 
 const (
+	LinkTypeUnset     LinkType = ""
 	LinkTypeRelated   LinkType = "related"
 	LinkTypeBelongsTo LinkType = "belongs_to"
 )

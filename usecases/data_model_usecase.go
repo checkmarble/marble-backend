@@ -322,7 +322,6 @@ func (usecase *usecase) CreateDataModelTable(
 		if err := usecase.validateTableSemanticType(ctx, tx, organizationId, &input.Name, nil); err != nil {
 			return err
 		}
-
 		// Ensure the table has a pivot (default object_id pivot when none exist)
 		if err := usecase.ensureTableHasPivot(ctx, tx, organizationId, tableId, fieldIdsByName); err != nil {
 			return err
@@ -337,21 +336,11 @@ func (usecase *usecase) CreateDataModelTable(
 				return err
 			}
 
-			for _, fieldName := range []string{"valid_from", "valid_until"} {
-				if err := usecase.organizationSchemaRepository.CreateField(
-					ctx,
-					orgTx,
-					input.Name,
-					models.CreateFieldInput{
-						Name:     fieldName,
-						DataType: models.Timestamp,
-					},
-				); err != nil {
-					return err
-				}
-			}
-
 			for _, field := range fieldsToCreate {
+				// Those fields are automatically created in the org schema
+				if field.Name == "object_id" || field.Name == "updated_at" {
+					continue
+				}
 				if err := usecase.organizationSchemaRepository.CreateField(ctx,
 					orgTx, input.Name, field); err != nil {
 					return err
