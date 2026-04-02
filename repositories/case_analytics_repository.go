@@ -18,31 +18,30 @@ func (repo CaseAnalyticsRepository) CasesCreated(ctx context.Context, exec Execu
 	orgId uuid.UUID, inboxIds []uuid.UUID, assignedUserId *string,
 	start, end time.Time, tzOffsetSeconds int,
 ) ([]analytics.CasesCreated, error) {
-	query := squirrel.
+	query := NewQueryBuilder().
 		Select(
 			fmt.Sprintf("(created_at + interval '%d s')::date as date", tzOffsetSeconds),
 			"count(*) as count",
 		).
 		From(dbmodels.TABLE_CASES).
-		Where("org_id = ?", orgId).
-		Where(squirrel.Eq{"inbox_id": inboxIds}).
-		Where("created_at >= ? and created_at < ?", start, end).
+		Where(squirrel.Eq{
+			"inbox_id": inboxIds,
+			"org_id":   orgId,
+		}).
+		Where(squirrel.And{
+			squirrel.GtOrEq{"created_at": start},
+			squirrel.Lt{"created_at": end},
+		}).
 		GroupBy("date").
 		OrderBy("date")
 
 	if assignedUserId != nil {
-		query = query.Where("assigned_to = ?", *assignedUserId)
+		query = query.Where(squirrel.Eq{"assigned_to": *assignedUserId})
 	}
 
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := exec.Query(ctx, sql, args...)
-	if err != nil {
-		return nil, err
-	}
-
-	return pgx.CollectRows[analytics.CasesCreated](rows, pgx.RowToStructByName)
+	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (analytics.CasesCreated, error) {
+		var res analytics.CasesCreated
+		err := row.Scan(&res.Date, &res.Count)
+		return res, err
+	})
 }
