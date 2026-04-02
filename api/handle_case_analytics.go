@@ -40,6 +40,8 @@ func handleCaseAnalyticsQuery(uc usecases.Usecases) func(c *gin.Context) {
 			results, err = uc.CasesCreatedByTimeStats(ctx, filters)
 		case "cases_false_positive_rate":
 			results, err = uc.CasesFalsePositiveRateByTimeStats(ctx, filters)
+		case "cases_duration":
+			results, err = uc.CasesDurationByTimeStats(ctx, filters)
 		default:
 			c.Status(http.StatusNotFound)
 			return
