@@ -30,6 +30,11 @@ type CaseAnalyticsRepository interface {
 		exec repositories.Executor,
 		filters analytics.CaseAnalyticsFilter,
 	) ([]analytics.CasesDuration, error)
+	SarCompletedCount(
+		ctx context.Context,
+		exec repositories.Executor,
+		filters analytics.CaseAnalyticsFilter,
+	) (analytics.SarCompletedCount, error)
 }
 
 type CaseAnalyticsUsecase struct {
@@ -126,6 +131,33 @@ func (uc CaseAnalyticsUsecase) CasesDurationByTimeStats(
 		Start:           filters.Start,
 		End:             filters.End,
 		TzOffsetSeconds: tzOffset,
+	})
+}
+
+func (uc CaseAnalyticsUsecase) SarCompletedCount(
+	ctx context.Context,
+	filters dto.CaseAnalyticsFilters,
+) (analytics.SarCompletedCount, error) {
+	if !uc.license.Analytics {
+		return analytics.SarCompletedCount{}, nil
+	}
+
+	exec := uc.executorFactory.NewExecutor()
+
+	inboxIds, err := uc.getFilteredInboxIds(ctx, exec, filters)
+	if err != nil {
+		return analytics.SarCompletedCount{}, err
+	}
+	if len(inboxIds) == 0 {
+		return analytics.SarCompletedCount{}, nil
+	}
+
+	return uc.repository.SarCompletedCount(ctx, exec, analytics.CaseAnalyticsFilter{
+		OrgId:          filters.OrgId,
+		InboxIds:       inboxIds,
+		AssignedUserId: filters.AssignedUserId,
+		Start:          filters.Start,
+		End:            filters.End,
 	})
 }
 

@@ -136,3 +136,37 @@ func (repo MarbleDbRepository) CasesDurationByTimeStats(
 		return res, err
 	})
 }
+
+// TODO: Pascal: this is not finished yet, we really want the metric to be displayed by SAR completion date, not case creation. But need to do some work to have that information available.
+func (repo MarbleDbRepository) SarCompletedCount(
+	ctx context.Context,
+	exec Executor,
+	filters analytics.CaseAnalyticsFilter,
+) (analytics.SarCompletedCount, error) {
+	query := NewQueryBuilder().
+		Select("count(*) as count").
+		From(dbmodels.TABLE_SUSPICIOUS_ACTIVITY_REPORTS + " sar").
+		Join(dbmodels.TABLE_CASES + " c on c.id = sar.case_id").
+		Where(squirrel.Eq{
+			"c.inbox_id": filters.InboxIds,
+			"c.org_id":   filters.OrgId,
+			"sar.status": "completed",
+		}).
+		Where(squirrel.And{
+			squirrel.GtOrEq{"c.created_at": filters.Start},
+			squirrel.Lt{"c.created_at": filters.End},
+		})
+
+	if filters.AssignedUserId != nil {
+		query = query.Where(squirrel.Eq{"c.assigned_to": *filters.AssignedUserId})
+	}
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return analytics.SarCompletedCount{}, err
+	}
+
+	var res analytics.SarCompletedCount
+	err = exec.QueryRow(ctx, sql, args...).Scan(&res.Count)
+	return res, err
+}
