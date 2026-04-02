@@ -344,7 +344,7 @@ func (usecase *usecase) CreateDataModelTable(
 					input.Name,
 					models.CreateFieldInput{
 						Name:     fieldName,
-						DataType: models.String,
+						DataType: models.Timestamp,
 					},
 				); err != nil {
 					return err
