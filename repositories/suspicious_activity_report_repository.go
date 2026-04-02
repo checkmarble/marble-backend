@@ -67,9 +67,14 @@ func (repo *MarbleDbRepository) CreateSuspiciousActivityReport(ctx context.Conte
 		reportId = utils.Ptr(pure_utils.NewId().String())
 	}
 
+	var completedAt *time.Time
+	if req.Status != nil && *req.Status == models.SarCompleted {
+		completedAt = utils.Ptr(time.Now())
+	}
+
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SUSPICIOUS_ACTIVITY_REPORTS).
-		Columns("report_id", "case_id", "status", "bucket", "blob_key", "created_by", "uploaded_by").
+		Columns("report_id", "case_id", "status", "bucket", "blob_key", "created_by", "uploaded_by", "completed_at").
 		Values(
 			reportId,
 			req.CaseId,
@@ -78,6 +83,7 @@ func (repo *MarbleDbRepository) CreateSuspiciousActivityReport(ctx context.Conte
 			req.BlobKey,
 			req.CreatedBy,
 			req.UploadedBy,
+			completedAt,
 		).
 		Suffix("returning *")
 
@@ -92,10 +98,15 @@ func (repo *MarbleDbRepository) UpdateSuspiciousActivityReport(ctx context.Conte
 		return models.SuspiciousActivityReport{}, err
 	}
 
-	values := map[string]any{}
+	values := map[string]any{
+		"updated_at": time.Now(),
+	}
 
 	if req.Status != nil {
 		values["status"] = req.Status
+		if *req.Status == models.SarCompleted {
+			values["completed_at"] = time.Now()
+		}
 	}
 	if req.DeletedAt != nil {
 		values["deleted_at"] = utils.Ptr(time.Now())
@@ -126,12 +137,17 @@ func (repo *MarbleDbRepository) UploadSuspiciousActivityReport(ctx context.Conte
 			Set("bucket", req.Bucket).
 			Set("blob_key", req.BlobKey).
 			Set("uploaded_by", req.UploadedBy).
+			Set("updated_at", time.Now()).
 			Where(squirrel.Eq{
 				"case_id":    req.CaseId,
 				"report_id":  req.ReportId,
 				"deleted_at": nil,
 			}).
 			Suffix("returning *")
+
+		if req.Status != nil && *req.Status == models.SarCompleted {
+			sql = sql.Set("completed_at", time.Now())
+		}
 
 		return SqlToModel(ctx, tx, sql, dbmodels.AdaptSuspiciousActivityReport)
 	}
@@ -166,9 +182,11 @@ func (repo *MarbleDbRepository) DeleteSuspiciousActivityReport(ctx context.Conte
 		return err
 	}
 
+	now := time.Now()
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_SUSPICIOUS_ACTIVITY_REPORTS).
-		Set("deleted_at", time.Now()).
+		Set("deleted_at", now).
+		Set("updated_at", now).
 		Where(squirrel.Eq{
 			"case_id":    req.CaseId,
 			"report_id":  req.ReportId,

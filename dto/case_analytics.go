@@ -10,7 +10,7 @@ import (
 type CaseAnalyticsFilters struct {
 	OrgId uuid.UUID `json:"-"`
 
-	TimezoneName string `json:"timezone"`
+	TimezoneName string `json:"timezone"` //nolint:tagliatelle
 	Timezone     *time.Location
 
 	Start          time.Time  `json:"start" binding:"required"`
