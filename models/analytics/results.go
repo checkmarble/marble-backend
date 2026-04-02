@@ -93,3 +93,7 @@ type CasesDuration struct {
 	MaxDays    float64   `json:"max_days"`
 	CountCases int       `json:"count_cases"`
 }
+
+type SarCompletedCount struct {
+	Count int `json:"count"`
+}
