@@ -8,12 +8,14 @@ import (
 )
 
 type SuspiciousActivityReportDto struct {
-	ReportId   string    `json:"id"` //nolint:tagliatelle
-	Status     string    `json:"status"`
-	HasFile    bool      `json:"has_file"`
-	CreatedBy  string    `json:"created_by"`
-	UploadedBy *string   `json:"uploaded_by,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
+	ReportId    string     `json:"id"` //nolint:tagliatelle
+	Status      string     `json:"status"`
+	HasFile     bool       `json:"has_file"`
+	CreatedBy   string     `json:"created_by"`
+	UploadedBy  *string    `json:"uploaded_by,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
 }
 
 type SuspiciousActivityReportParams struct {
@@ -23,11 +25,13 @@ type SuspiciousActivityReportParams struct {
 
 func AdaptSuspiciousActivityReportDto(model models.SuspiciousActivityReport) SuspiciousActivityReportDto {
 	return SuspiciousActivityReportDto{
-		ReportId:   model.ReportId,
-		Status:     model.Status.String(),
-		HasFile:    model.UploadedBy != nil,
-		CreatedBy:  model.CreatedBy,
-		UploadedBy: model.UploadedBy,
-		CreatedAt:  model.CreatedAt,
+		ReportId:    model.ReportId,
+		Status:      model.Status.String(),
+		HasFile:     model.UploadedBy != nil,
+		CreatedBy:   model.CreatedBy,
+		UploadedBy:  model.UploadedBy,
+		CreatedAt:   model.CreatedAt,
+		UpdatedAt:   model.UpdatedAt,
+		CompletedAt: model.CompletedAt,
 	}
 }

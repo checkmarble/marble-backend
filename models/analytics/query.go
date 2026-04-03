@@ -3,9 +3,11 @@ package analytics
 import (
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -73,4 +75,13 @@ func (f QueryObjectFilter) ToPredicate(aliases ...string) (string, []any, error)
 	}
 
 	return "", nil, errors.Newf("unknown filter operator %s", f.Op)
+}
+
+type CaseAnalyticsFilter struct {
+	OrgId           uuid.UUID
+	InboxIds        []uuid.UUID
+	AssignedUserId  *string
+	Start           time.Time
+	End             time.Time
+	TzOffsetSeconds int
 }

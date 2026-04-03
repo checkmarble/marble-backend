@@ -75,3 +75,52 @@ type CaseStatusByInbox struct {
 	Closed        int    `json:"closed"`
 	Snoozed       int    `json:"snoozed"`
 }
+
+type CasesCreated struct {
+	Date  time.Time `json:"date"`
+	Count int       `json:"count"`
+}
+
+type CasesFalsePositiveRate struct {
+	Date           time.Time `json:"date"`
+	TotalClosed    int       `json:"total_closed"`
+	FalsePositives int       `json:"false_positives"`
+}
+
+type CasesDuration struct {
+	Date       time.Time `json:"date"`
+	SumDays    float64   `json:"sum_days"`
+	MaxDays    float64   `json:"max_days"`
+	CountCases int       `json:"count_cases"`
+}
+
+type SarCompletedCount struct {
+	Count int `json:"count"`
+}
+
+type OpenCasesByAge struct {
+	Bracket string `json:"bracket"`
+	Count   int    `json:"count"`
+}
+
+type SarDelay struct {
+	Date       time.Time `json:"date"`
+	SumDays    float64   `json:"sum_days"`
+	MaxDays    float64   `json:"max_days"`
+	CountSars  int       `json:"count_sars"`
+}
+
+type SarDelayDistribution struct {
+	Bracket string `json:"bracket"`
+	Count   int    `json:"count"`
+}
+
+// Dated is implemented by time-series analytics result types for cache merging.
+type Dated interface {
+	GetDate() time.Time
+}
+
+func (r CasesCreated) GetDate() time.Time          { return r.Date }
+func (r CasesFalsePositiveRate) GetDate() time.Time { return r.Date }
+func (r CasesDuration) GetDate() time.Time          { return r.Date }
+func (r SarDelay) GetDate() time.Time               { return r.Date }
