@@ -91,7 +91,7 @@ func cachedTimeSeriesQuery[T analytics.Dated](
 		OrgId:           filters.OrgId,
 		InboxIds:        inboxIds,
 		AssignedUserId:  filters.AssignedUserId,
-		TzOffsetSeconds: int(tzOffset),
+		TzOffsetSeconds: tzOffset,
 	}
 
 	// Fetch missing ranges from DB
