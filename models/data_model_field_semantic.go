@@ -22,35 +22,39 @@ const (
 	FieldSemanticTypeMiddleName FieldSemanticType = "middle_name"
 	FieldSemanticTypeLastName   FieldSemanticType = "last_name"
 
+	// Enum family
+	FieldSemanticTypeEnum     FieldSemanticType = "enum"
+	FieldSemanticTypeCurrency FieldSemanticType = "currency"
+	FieldSemanticTypeCountry  FieldSemanticType = "country"
+
+	// Address family
+	FieldSemanticTypeAddress FieldSemanticType = "address"
+
 	// Unique ID family
+	FieldSemanticTypeId                 FieldSemanticType = "id"
 	FieldSemanticTypeRegistrationNumber FieldSemanticType = "registration_number"
 	FieldSemanticTypeTaxId              FieldSemanticType = "tax_id"
-	FieldSemanticTypeOpaqueId           FieldSemanticType = "opaque_id"
-	FieldSemanticTypeIban               FieldSemanticType = "iban"
 	FieldSemanticTypeAccountNumber      FieldSemanticType = "account_number"
+	FieldSemanticTypeIban               FieldSemanticType = "iban"
 	FieldSemanticTypeBic                FieldSemanticType = "bic"
+	FieldSemanticTypeForeignKey         FieldSemanticType = "foreign_key"
 
 	// URL family
-	FieldSemanticTypeEmail       FieldSemanticType = "email"
 	FieldSemanticTypeUrl         FieldSemanticType = "url"
+	FieldSemanticTypeEmail       FieldSemanticType = "email"
 	FieldSemanticTypePhoneNumber FieldSemanticType = "phone_number"
 
 	// Time family
-	FieldSemanticTypeBirthDate FieldSemanticType = "birth_date"
-	FieldSemanticTypeCreatedAt FieldSemanticType = "created_at"
-	FieldSemanticTypeUpdatedAt FieldSemanticType = "updated_at"
-	FieldSemanticTypeDeletedAt FieldSemanticType = "deleted_at"
-
-	// Enum family
-	FieldSemanticTypeCurrency FieldSemanticType = "currency"
-	FieldSemanticTypeCountry  FieldSemanticType = "country"
-	FieldSemanticTypeMccCode  FieldSemanticType = "mcc_code"
-	FieldSemanticTypeEnum     FieldSemanticType = "enum"
+	FieldSemanticTypeDateOfBirth    FieldSemanticType = "date_of_birth"
+	FieldSemanticTypeLastUpdate     FieldSemanticType = "last_update"
+	FieldSemanticTypeCreationDate   FieldSemanticType = "creation_date"
+	FieldSemanticTypeDeletionDate   FieldSemanticType = "deletion_date"
+	FieldSemanticTypeInitiationDate FieldSemanticType = "initiation_date"
+	FieldSemanticTypeValidationDate FieldSemanticType = "validation_date"
 
 	// Number family
-	FieldSemanticTypeAmount     FieldSemanticType = "amount"
-	FieldSemanticTypePercentage FieldSemanticType = "percentage"
-	FieldSemanticTypeQuantity   FieldSemanticType = "quantity"
+	FieldSemanticTypeMonetaryAmount FieldSemanticType = "monetary_amount"
+	FieldSemanticTypePercentage     FieldSemanticType = "percentage"
 )
 
 type fieldSemanticTypeValidator interface {
@@ -76,35 +80,39 @@ var fieldSemanticTypeRegistry = map[FieldSemanticType]fieldSemanticTypeValidator
 	FieldSemanticTypeMiddleName: stringSemanticType{},
 	FieldSemanticTypeLastName:   stringSemanticType{},
 
+	// Enum family
+	FieldSemanticTypeEnum:     stringSemanticType{},
+	FieldSemanticTypeCurrency: stringSemanticType{},
+	FieldSemanticTypeCountry:  stringSemanticType{},
+
+	// Address family
+	FieldSemanticTypeAddress: stringSemanticType{},
+
 	// Unique ID family
+	FieldSemanticTypeId:                 stringSemanticType{},
 	FieldSemanticTypeRegistrationNumber: stringSemanticType{},
 	FieldSemanticTypeTaxId:              stringSemanticType{},
-	FieldSemanticTypeOpaqueId:           stringSemanticType{},
-	FieldSemanticTypeIban:               stringSemanticType{},
 	FieldSemanticTypeAccountNumber:      stringSemanticType{},
+	FieldSemanticTypeIban:               stringSemanticType{},
 	FieldSemanticTypeBic:                stringSemanticType{},
+	FieldSemanticTypeForeignKey:         stringSemanticType{},
 
 	// URL family
-	FieldSemanticTypeEmail:       stringSemanticType{},
 	FieldSemanticTypeUrl:         stringSemanticType{},
+	FieldSemanticTypeEmail:       stringSemanticType{},
 	FieldSemanticTypePhoneNumber: stringSemanticType{},
 
 	// Time family
-	FieldSemanticTypeBirthDate: timestampSemanticType{},
-	FieldSemanticTypeCreatedAt: timestampSemanticType{},
-	FieldSemanticTypeUpdatedAt: timestampSemanticType{},
-	FieldSemanticTypeDeletedAt: timestampSemanticType{},
-
-	// Enum family
-	FieldSemanticTypeCurrency: stringSemanticType{},
-	FieldSemanticTypeCountry:  stringSemanticType{},
-	FieldSemanticTypeMccCode:  stringSemanticType{},
-	FieldSemanticTypeEnum:     stringSemanticType{},
+	FieldSemanticTypeDateOfBirth:    timestampSemanticType{},
+	FieldSemanticTypeLastUpdate:     timestampSemanticType{},
+	FieldSemanticTypeCreationDate:   timestampSemanticType{},
+	FieldSemanticTypeDeletionDate:   timestampSemanticType{},
+	FieldSemanticTypeInitiationDate: timestampSemanticType{},
+	FieldSemanticTypeValidationDate: timestampSemanticType{},
 
 	// Number family
-	FieldSemanticTypeAmount:     numberSemanticType{},
-	FieldSemanticTypePercentage: numberSemanticType{},
-	FieldSemanticTypeQuantity:   numberSemanticType{},
+	FieldSemanticTypeMonetaryAmount: numberSemanticType{},
+	FieldSemanticTypePercentage:     numberSemanticType{},
 }
 
 // Use for input validation when creating/updating fields.
