@@ -379,6 +379,7 @@ func (usecases *UsecasesWithCreds) NewDataModelUseCase() usecase {
 		dataModelIngestedDataReadRepo: usecases.Repositories.IngestedDataReadRepository,
 		indexEditor:                   usecases.NewClientDbIndexEditor(),
 		taskQueueRepository:           usecases.Repositories.TaskQueueRepository,
+		destroyUsecase:                usecases.NewDataModelDestroyUsecase(),
 	}
 }
 

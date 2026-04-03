@@ -56,6 +56,7 @@ type usecase struct {
 	dataModelIngestedDataReadRepo dataModelUsecaseIngestedDataReadRepo
 	indexEditor                   indexes.ClientDbIndexEditor
 	taskQueueRepository           repositories.TaskQueueRepository
+	destroyUsecase                DataModelDestroyUsecase
 }
 
 var (
@@ -447,6 +448,272 @@ func (usecase *usecase) UpdateDataModelTable(
 		return nil
 	})
 	return err
+}
+
+func (usecase *usecase) UpdateDataModelTableComposite(
+	ctx context.Context,
+	tableID string,
+	input models.UpdateTableCompositeInput,
+) (models.DataModelDeleteFieldReport, error) {
+	conflictReport := models.NewDataModelDeleteFieldReport()
+
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		// 1. Get table metadata and enforce security
+		table, err := usecase.dataModelRepository.GetDataModelTable(ctx, tx, tableID)
+		if err != nil {
+			return err
+		}
+		if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
+			return err
+		}
+
+		// 2. Conflict checking for link deletions
+		for _, linkId := range input.LinksToDelete {
+			canDelete, report, err := usecase.destroyUsecase.canDeleteLink(
+				ctx, table.OrganizationID, tx, linkId)
+			if err != nil {
+				return err
+			}
+			if !canDelete || report.ArchivedIterations.Size() > 0 {
+				conflictReport = report
+				return errors.Wrap(models.ConflictError,
+					fmt.Sprintf("link %s has conflicts and cannot be deleted", linkId))
+			}
+		}
+
+		// 3. Conflict checking for field deletions
+		// Also collect field metadata before deleting (needed for org schema operations later)
+		deletedFields := make([]models.FieldMetadata, 0, len(input.FieldsToDelete))
+		for _, fieldId := range input.FieldsToDelete {
+			field, err := usecase.dataModelRepository.GetDataModelField(ctx, tx, fieldId)
+			if err != nil {
+				return err
+			}
+			if field.Name == "object_id" || field.Name == "updated_at" {
+				return errors.Wrap(models.BadParameterError,
+					"cannot delete reserved fields object_id and updated_at")
+			}
+			canDelete, report, err := usecase.destroyUsecase.canDeleteRef(
+				ctx, table.OrganizationID, tx, table, &field)
+			if err != nil {
+				return err
+			}
+			if !canDelete || report.ArchivedIterations.Size() > 0 {
+				conflictReport = report
+				return errors.Wrap(models.ConflictError,
+					fmt.Sprintf("field %s has conflicts and cannot be deleted", fieldId))
+			}
+			deletedFields = append(deletedFields, field)
+		}
+
+		// 4. Execute link deletions (cascade pivot for BelongsTo)
+		links, err := usecase.dataModelRepository.GetLinks(ctx, tx, table.OrganizationID)
+		if err != nil {
+			return err
+		}
+		for _, linkId := range input.LinksToDelete {
+			// Find the link to determine its type
+			var linkType models.LinkType
+			for _, l := range links {
+				if l.Id == linkId {
+					linkType = l.LinkType
+					break
+				}
+			}
+
+			// For BelongsTo links, cascade-delete associated pivot(s) found via PathLinkIds
+			if linkType == models.LinkTypeBelongsTo {
+				pivots, err := usecase.dataModelRepository.ListPivots(
+					ctx, tx, table.OrganizationID, nil, false)
+				if err != nil {
+					return err
+				}
+				for _, pivot := range pivots {
+					for _, pathLinkId := range pivot.PathLinkIds {
+						if pathLinkId == linkId {
+							if err := usecase.dataModelRepository.DeleteDataModelPivot(
+								ctx, tx, pivot.Id.String()); err != nil {
+								return err
+							}
+							break
+						}
+					}
+				}
+			}
+
+			if err := usecase.dataModelRepository.DeleteDataModelLink(ctx, tx, linkId); err != nil {
+				return err
+			}
+		}
+
+		// 5. Execute field deletions (metadata only — org schema handled in step 11)
+		for _, field := range deletedFields {
+			if err := usecase.dataModelRepository.DeleteDataModelField(ctx, tx, table, field); err != nil {
+				return err
+			}
+		}
+
+		// 6. Add new fields
+		// Refresh table metadata after deletions (FTMEntity may have changed for validation)
+		table, err = usecase.dataModelRepository.GetDataModelTable(ctx, tx, tableID)
+		if err != nil {
+			return err
+		}
+
+		dataModel, err := usecase.dataModelRepository.GetDataModel(
+			ctx, tx, table.OrganizationID, false, false)
+		if err != nil {
+			return err
+		}
+		fieldIdsByName := make(map[string]string)
+		for name, field := range dataModel.Tables[table.Name].Fields {
+			fieldIdsByName[name] = field.ID
+		}
+
+		for _, f := range input.FieldsToAdd {
+			f.TableId = tableID
+			fieldId, err := usecase.createDataModelFieldWithExec(ctx, tx, table, f)
+			if err != nil {
+				return err
+			}
+			fieldIdsByName[f.Name] = fieldId
+		}
+
+		// 7. Add new links
+		tablesById := dataModel.AllTablesAsMap()
+		for _, l := range input.LinksToAdd {
+			parentFieldId, err := retrieveParentFieldIdForLink(l.ParentTableID, tablesById)
+			if err != nil {
+				return err
+			}
+
+			childFieldId, ok := fieldIdsByName[l.ChildFieldName]
+			if !ok {
+				return errors.Wrap(models.BadParameterError,
+					fmt.Sprintf("child field %q not found when creating link", l.ChildFieldName))
+			}
+
+			if _, err := usecase.createDataModelLinkWithExec(ctx, tx, models.DataModelLinkCreateInput{
+				OrganizationID: table.OrganizationID,
+				Name:           l.Name,
+				LinkType:       l.LinkType,
+				ParentTableID:  l.ParentTableID,
+				ParentFieldID:  parentFieldId,
+				ChildTableID:   tableID,
+				ChildFieldID:   childFieldId,
+			}); err != nil {
+				return errors.Wrap(err, "failed to create link")
+			}
+		}
+
+		// 8. Modify existing fields
+		for _, f := range input.FieldsToUpdate {
+			field, err := usecase.dataModelRepository.GetDataModelField(ctx, tx, f.ID)
+			if err != nil {
+				return err
+			}
+
+			if field.Name == "object_id" || field.Name == "updated_at" {
+				if f.IsEnum != nil || f.IsNullable != nil || f.IsUnique != nil || f.FTMProperty.Set {
+					return errors.Wrap(models.BadParameterError,
+						"only the description of the `object_id` and `updated_at` fields can be updated")
+				}
+			}
+
+			if err := validateFTMProperty(table, f.FTMProperty); err != nil {
+				return err
+			}
+
+			if err := usecase.dataModelRepository.UpdateDataModelField(
+				ctx, tx, f.ID, f.UpdateFieldInput); err != nil {
+				return err
+			}
+		}
+
+		// 9. Update table properties
+		if input.CaptionField.Set && input.CaptionField.Valid {
+			// Re-fetch data model to include fields added/updated in steps 6-8
+			freshDataModel, err := usecase.dataModelRepository.GetDataModel(
+				ctx, tx, table.OrganizationID, false, false)
+			if err != nil {
+				return err
+			}
+
+			if _, ok := freshDataModel.Tables[table.Name].Fields[input.CaptionField.Value()]; !ok {
+				return errors.Wrapf(models.BadParameterError,
+					"field %s not found on table %s", input.CaptionField.Value(), table.Name)
+			}
+			if freshDataModel.Tables[table.Name].Fields[input.CaptionField.Value()].DataType != models.String {
+				return errors.Wrap(models.BadParameterError,
+					"a table caption field must be a string field")
+			}
+
+			indexExists, err := usecase.indexEditor.IngestedObjectsSearchIndexExists(ctx,
+				usecase.enforceSecurity.OrgId(), table.Name, input.CaptionField.Value())
+			if err != nil {
+				return err
+			}
+			if !indexExists {
+				index := models.ConcreteIndex{
+					Type:      models.IndexTypeIngestedObjectsSearch,
+					TableName: table.Name,
+					Indexed:   []string{input.CaptionField.Value()},
+				}
+
+				if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(ctx, tx,
+					usecase.enforceSecurity.OrgId(), []models.ConcreteIndex{index}); err != nil {
+					return err
+				}
+			}
+		}
+
+		if err := usecase.dataModelRepository.UpdateDataModelTable(ctx, tx, tableID,
+			input.Description, input.FTMEntity, input.Alias, input.SemanticType,
+			input.CaptionField, input.PrimaryOrderingField); err != nil {
+			return err
+		}
+
+		// 10. Semantic validation (single check at the end, after all mutations)
+		if err := usecase.validateTableSemanticType(
+			ctx, tx, table.OrganizationID, &table.Name, nil); err != nil {
+			return err
+		}
+
+		// Ensure the table has a pivot (default object_id pivot when none exist)
+		if err := usecase.ensureTableHasPivot(
+			ctx, tx, table.OrganizationID, tableID, fieldIdsByName); err != nil {
+			return err
+		}
+
+		// 11. Org schema mutations (add/delete physical columns)
+		return usecase.transactionFactory.TransactionInOrgSchema(
+			ctx, table.OrganizationID, func(orgTx repositories.Transaction) error {
+				for _, f := range input.FieldsToAdd {
+					if f.Name == "object_id" || f.Name == "updated_at" {
+						continue
+					}
+					if err := usecase.organizationSchemaRepository.CreateField(
+						ctx, orgTx, table.Name, f); err != nil {
+						return err
+					}
+				}
+
+				for _, field := range deletedFields {
+					if err := usecase.organizationSchemaRepository.DeleteField(
+						ctx, orgTx, table.Name, field.Name); err != nil {
+						return err
+					}
+				}
+
+				return nil
+			},
+		)
+	})
+	if err != nil {
+		return conflictReport, err
+	}
+
+	return models.DataModelDeleteFieldReport{Performed: true}, nil
 }
 
 func (usecase *usecase) createDataModelFieldWithExec(ctx context.Context,

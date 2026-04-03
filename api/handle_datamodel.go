@@ -79,49 +79,21 @@ func handleUpdateDataModelTable(uc usecases.Usecases) func(c *gin.Context) {
 		}
 		tableID := c.Param("tableID")
 
-		var ftmEntity pure_utils.Null[models.FollowTheMoneyEntity]
-		var semanticType pure_utils.Null[models.SemanticType]
-
-		if input.FTMEntity.Set {
-			if input.FTMEntity.Valid {
-				entity := models.FollowTheMoneyEntityFrom(input.FTMEntity.Value())
-				if entity == models.FollowTheMoneyEntityUnknown {
-					presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid FTM entity"))
-					return
-				}
-				ftmEntity = pure_utils.NullFrom(entity)
-			} else {
-				ftmEntity = pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil)
-			}
-		}
-		if input.SemanticType.Set {
-			switch {
-			case input.SemanticType.Valid:
-				t := models.SemanticTypeFrom(input.SemanticType.Value())
-				if t == models.SemanticTypeUnknown {
-					presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid table semantic type"))
-					return
-				}
-				semanticType = pure_utils.NullFrom(t)
-			default:
-				semanticType = pure_utils.NullFromPtr[models.SemanticType](nil)
-			}
-		}
-
-		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		err := usecase.UpdateDataModelTable(
-			ctx,
-			tableID,
-			input.Description,
-			ftmEntity,
-			input.Alias,
-			semanticType,
-			input.CaptionField,
-			input.PrimaryOrderingField,
-		)
+		modelInput, err := input.AdaptToUpdateTableCompositeInput()
 		if presentError(ctx, c, err) {
 			return
 		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
+		report, err := usecase.UpdateDataModelTableComposite(ctx, tableID, modelInput)
+		if errors.Is(err, models.ConflictError) {
+			c.JSON(http.StatusConflict, dto.AdaptDataModelDeleteFieldReport(report, err))
+			return
+		}
+		if presentError(ctx, c, err) {
+			return
+		}
+
 		c.Status(http.StatusNoContent)
 	}
 }

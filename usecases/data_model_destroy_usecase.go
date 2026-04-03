@@ -620,16 +620,28 @@ func (uc DataModelDestroyUsecase) canDeleteLink(
 		}
 	}
 
-	pivots, err := uc.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false)
-	if err != nil {
-		return false, models.DataModelDeleteFieldReport{}, err
+	// For BelongsTo links, the pivot is tightly coupled and will be cascade-deleted,
+	// so we skip pivot conflict checks. For Related links, pivot conflicts still apply.
+	var linkType models.LinkType
+	for _, link := range links {
+		if link.Id == linkId {
+			linkType = link.LinkType
+			break
+		}
 	}
 
-	for _, pivot := range pivots {
-		for _, pathLinkId := range pivot.PathLinkIds {
-			if pathLinkId == linkId {
-				canDelete = false
-				report.Conflicts.Pivots.Insert(pivot.Id.String())
+	if linkType != models.LinkTypeBelongsTo {
+		pivots, err := uc.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false)
+		if err != nil {
+			return false, models.DataModelDeleteFieldReport{}, err
+		}
+
+		for _, pivot := range pivots {
+			for _, pathLinkId := range pivot.PathLinkIds {
+				if pathLinkId == linkId {
+					canDelete = false
+					report.Conflicts.Pivots.Insert(pivot.Id.String())
+				}
 			}
 		}
 	}
