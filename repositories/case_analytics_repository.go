@@ -149,7 +149,8 @@ func (repo MarbleDbRepository) SarCompletedCount(
 		Where(squirrel.Eq{
 			"c.inbox_id": filters.InboxIds,
 			"c.org_id":   filters.OrgId,
-			"sar.status": "completed",
+			"sar.status":     "completed",
+			"sar.deleted_at": nil,
 		}).
 		Where(squirrel.And{
 			squirrel.GtOrEq{"sar.completed_at": filters.Start},
@@ -221,7 +222,8 @@ func (repo MarbleDbRepository) SarDelayByTimeStats(
 		Where(squirrel.Eq{
 			"c.inbox_id": filters.InboxIds,
 			"c.org_id":   filters.OrgId,
-			"sar.status": "completed",
+			"sar.status":     "completed",
+			"sar.deleted_at": nil,
 		}).
 		Where(squirrel.And{
 			squirrel.GtOrEq{"sar.completed_at": filters.Start},
@@ -259,11 +261,11 @@ func (repo MarbleDbRepository) SarDelayDistribution(
 		From(dbmodels.TABLE_SUSPICIOUS_ACTIVITY_REPORTS + " sar").
 		Join(dbmodels.TABLE_CASES + " c on c.id = sar.case_id").
 		Where(squirrel.Eq{
-			"c.inbox_id": filters.InboxIds,
-			"c.org_id":   filters.OrgId,
-			"sar.status": "completed",
+			"c.inbox_id":     filters.InboxIds,
+			"c.org_id":       filters.OrgId,
+			"sar.status":     "completed",
+			"sar.deleted_at": nil,
 		}).
-		Where(squirrel.NotEq{"sar.completed_at": nil}).
 		Where(squirrel.And{
 			squirrel.GtOrEq{"sar.completed_at": filters.Start},
 			squirrel.Lt{"sar.completed_at": filters.End},

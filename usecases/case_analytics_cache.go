@@ -31,7 +31,7 @@ func cachedTimeSeriesQuery[T analytics.Dated](
 
 	exec := uc.executorFactory.NewExecutor()
 	cache := exec.Cache(ctx)
-	cacheKey, cacheEnabled := buildCaseAnalyticsCacheKey(ctx, cache, queryName, filters)
+	cacheKey, cacheEnabled := buildCaseAnalyticsCacheKey(ctx, cache, queryName, filters, false)
 
 	// Try to load cached data
 	var cached []T
@@ -140,7 +140,7 @@ func cachedScalarQuery[T any](
 
 	exec := uc.executorFactory.NewExecutor()
 	cache := exec.Cache(ctx)
-	cacheKey, cacheEnabled := buildCaseAnalyticsCacheKey(ctx, cache, queryName, filters)
+	cacheKey, cacheEnabled := buildCaseAnalyticsCacheKey(ctx, cache, queryName, filters, true)
 
 	// Try cache first
 	if cacheEnabled {
@@ -178,11 +178,15 @@ func cachedScalarQuery[T any](
 
 // buildCaseAnalyticsCacheKey returns the cache key and whether caching is enabled.
 // Returns ("", false) if no cache is available or no user is in context.
+// For time-series queries, the key does not include start/end since the cache
+// accumulates data across range expansions. For scalar queries, start/end are
+// included since the result depends on the exact range.
 func buildCaseAnalyticsCacheKey(
 	ctx context.Context,
 	cache *repositories.RedisExecutor,
 	queryName string,
 	filters dto.CaseAnalyticsFilters,
+	includeRange bool,
 ) (string, bool) {
 	if cache == nil {
 		return "", false
@@ -203,15 +207,23 @@ func buildCaseAnalyticsCacheKey(
 		assignedPart = *filters.AssignedUserId
 	}
 
-	key := cache.Key(
+	parts := []string{
 		"case-analytics",
 		string(creds.ActorIdentity.UserId),
 		filters.Timezone.String(),
 		inboxPart,
 		assignedPart,
 		queryName,
-	)
-	return key, true
+	}
+
+	if includeRange {
+		parts = append(parts,
+			filters.Start.Truncate(24*time.Hour).Format("2006-01-02"),
+			filters.End.Truncate(24*time.Hour).Format("2006-01-02"),
+		)
+	}
+
+	return cache.Key(parts...), true
 }
 
 type dateRange struct {
