@@ -114,3 +114,13 @@ type SarDelayDistribution struct {
 	Bracket string `json:"bracket"`
 	Count   int    `json:"count"`
 }
+
+// Dated is implemented by time-series analytics result types for cache merging.
+type Dated interface {
+	GetDate() time.Time
+}
+
+func (r CasesCreated) GetDate() time.Time          { return r.Date }
+func (r CasesFalsePositiveRate) GetDate() time.Time { return r.Date }
+func (r CasesDuration) GetDate() time.Time          { return r.Date }
+func (r SarDelay) GetDate() time.Time               { return r.Date }
