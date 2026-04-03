@@ -116,6 +116,46 @@ func (repo *MarbleDbRepository) InsertScore(
 	return SqlToModel(ctx, tx, insert, dbmodels.AdaptScoringScore)
 }
 
+func (repo *MarbleDbRepository) InsertEmptyScore(
+	ctx context.Context,
+	exec Executor,
+	req models.InsertScoreRequest,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	insert := NewQueryBuilder().
+		Insert(dbmodels.TABLE_SCORING_SCORES).
+		Columns(
+			"id",
+			"org_id",
+			"record_type",
+			"record_id",
+			"risk_level",
+			"source",
+			"ruleset_id",
+			"overridden_by",
+			"stale_at",
+			"deleted_at",
+		).
+		Values(
+			pure_utils.NewId(),
+			req.OrgId,
+			req.RecordType,
+			req.RecordId,
+			0,
+			models.ScoreSourceInitial,
+			req.RulesetId,
+			nil,
+			nil,
+			nil,
+		).
+		Suffix("on conflict do nothing")
+
+	return ExecBuilder(ctx, exec, insert)
+}
+
 func (repo *MarbleDbRepository) GetScoreDistribution(
 	ctx context.Context,
 	exec Executor,
@@ -138,6 +178,59 @@ func (repo *MarbleDbRepository) GetScoreDistribution(
 		GroupBy("risk_level")
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptScoringScoreDistribution)
+}
+
+func (repo *MarbleDbRepository) GetUnscoredBatch(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	recordType string,
+	limit int,
+) ([]string, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("record_id").
+		From(dbmodels.TABLE_SCORING_SCORES).
+		Where(squirrel.Eq{
+			"org_id":      orgId,
+			"record_type": recordType,
+			"source":      models.ScoreSourceInitial,
+			"deleted_at":  nil,
+		}).
+		OrderBy("created_at asc").
+		Limit(uint64(limit))
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	recordIds := make([]string, 0, limit)
+
+	var tmp string
+
+	for rows.Next() {
+		if err := rows.Scan(&tmp); err != nil {
+			return nil, err
+		}
+
+		recordIds = append(recordIds, tmp)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return recordIds, nil
 }
 
 func (repo *MarbleDbRepository) GetStaleScoreBatch(

@@ -11,6 +11,7 @@ import (
 type ScoreSource string
 
 const (
+	ScoreSourceInitial  ScoreSource = "initial"
 	ScoreSourceRuleset  ScoreSource = "ruleset"
 	ScoreSourceOverride ScoreSource = "override"
 	ScoreSourceUnknown  ScoreSource = "unknown"
@@ -18,6 +19,8 @@ const (
 
 func ScoreSourceFrom(s string) ScoreSource {
 	switch s {
+	case string(ScoreSourceInitial):
+		return ScoreSourceInitial
 	case string(ScoreSourceRuleset):
 		return ScoreSourceRuleset
 	case string(ScoreSourceOverride):
@@ -72,6 +75,9 @@ type ScoringScore struct {
 
 func (s *ScoringScore) IsStale(maxAge time.Duration) bool {
 	if s == nil {
+		return true
+	}
+	if s.Source == ScoreSourceInitial {
 		return true
 	}
 	if s.IsOverridden() {

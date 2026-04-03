@@ -88,6 +88,11 @@ func (m *ScoringRepository) InsertScore(ctx context.Context, tx repositories.Tra
 	return args.Get(0).(models.ScoringScore), args.Error(1)
 }
 
+func (m *ScoringRepository) InsertEmptyScore(ctx context.Context, exec repositories.Executor, req models.InsertScoreRequest) error {
+	args := m.Called(ctx, exec, req)
+	return args.Error(0)
+}
+
 func (m *ScoringRepository) GetScoreDistribution(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, entityType string) ([]models.ScoreDistribution, error) {
 	args := m.Called(ctx, exec, orgId, entityType)
 	return args.Get(0).([]models.ScoreDistribution), args.Error(1)
@@ -150,5 +155,16 @@ func (m *ScoringRepository) GetStaleScoreBatch(
 	limit int,
 ) ([]string, error) {
 	args := m.Called(ctx, exec, orgId, recordType, before, limit)
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *ScoringRepository) GetUnscoredBatch(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	recordType string,
+	limit int,
+) ([]string, error) {
+	args := m.Called(ctx, exec, orgId, recordType, limit)
 	return args.Get(0).([]string), args.Error(1)
 }

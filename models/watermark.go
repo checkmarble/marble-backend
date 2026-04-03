@@ -60,3 +60,8 @@ type Watermark struct {
 	UpdatedAt     time.Time
 	Params        json.RawMessage
 }
+
+type InitialInsertionWatermarkParams struct {
+	Done          bool   `json:"done"`
+	UpperObjectId string `json:"upper_object_id"`
+}
