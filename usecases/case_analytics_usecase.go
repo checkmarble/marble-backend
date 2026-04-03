@@ -63,199 +63,50 @@ func (uc CaseAnalyticsUsecase) CasesCreatedByTimeStats(
 	ctx context.Context,
 	filters dto.CaseAnalyticsFilters,
 ) ([]analytics.CasesCreated, error) {
-	if !uc.license.Analytics {
-		return []analytics.CasesCreated{}, nil
-	}
-
-	exec := uc.executorFactory.NewExecutor()
-
-	inboxIds, err := uc.getFilteredInboxIds(ctx, exec, filters)
-	if err != nil {
-		return nil, err
-	}
-	if len(inboxIds) == 0 {
-		return []analytics.CasesCreated{}, nil
-	}
-
-	_, tzOffset := filters.End.In(filters.Timezone).Zone()
-
-	return uc.repository.CasesCreatedByTimeStats(ctx, exec, analytics.CaseAnalyticsFilter{
-		OrgId:           filters.OrgId,
-		InboxIds:        inboxIds,
-		AssignedUserId:  filters.AssignedUserId,
-		Start:           filters.Start,
-		End:             filters.End,
-		TzOffsetSeconds: tzOffset,
-	})
+	return cachedTimeSeriesQuery(ctx, uc, filters, "cases_created", uc.repository.CasesCreatedByTimeStats)
 }
 
 func (uc CaseAnalyticsUsecase) CasesFalsePositiveRateByTimeStats(
 	ctx context.Context,
 	filters dto.CaseAnalyticsFilters,
 ) ([]analytics.CasesFalsePositiveRate, error) {
-	if !uc.license.Analytics {
-		return []analytics.CasesFalsePositiveRate{}, nil
-	}
-
-	exec := uc.executorFactory.NewExecutor()
-
-	inboxIds, err := uc.getFilteredInboxIds(ctx, exec, filters)
-	if err != nil {
-		return nil, err
-	}
-	if len(inboxIds) == 0 {
-		return []analytics.CasesFalsePositiveRate{}, nil
-	}
-
-	_, tzOffset := filters.End.In(filters.Timezone).Zone()
-
-	return uc.repository.CasesFalsePositiveRateByTimeStats(ctx, exec, analytics.CaseAnalyticsFilter{
-		OrgId:           filters.OrgId,
-		InboxIds:        inboxIds,
-		AssignedUserId:  filters.AssignedUserId,
-		Start:           filters.Start,
-		End:             filters.End,
-		TzOffsetSeconds: tzOffset,
-	})
+	return cachedTimeSeriesQuery(ctx, uc, filters, "cases_false_positive_rate",
+		uc.repository.CasesFalsePositiveRateByTimeStats)
 }
 
 func (uc CaseAnalyticsUsecase) CasesDurationByTimeStats(
 	ctx context.Context,
 	filters dto.CaseAnalyticsFilters,
 ) ([]analytics.CasesDuration, error) {
-	if !uc.license.Analytics {
-		return []analytics.CasesDuration{}, nil
-	}
-
-	exec := uc.executorFactory.NewExecutor()
-
-	inboxIds, err := uc.getFilteredInboxIds(ctx, exec, filters)
-	if err != nil {
-		return nil, err
-	}
-	if len(inboxIds) == 0 {
-		return []analytics.CasesDuration{}, nil
-	}
-
-	_, tzOffset := filters.End.In(filters.Timezone).Zone()
-
-	return uc.repository.CasesDurationByTimeStats(ctx, exec, analytics.CaseAnalyticsFilter{
-		OrgId:           filters.OrgId,
-		InboxIds:        inboxIds,
-		AssignedUserId:  filters.AssignedUserId,
-		Start:           filters.Start,
-		End:             filters.End,
-		TzOffsetSeconds: tzOffset,
-	})
-}
-
-func (uc CaseAnalyticsUsecase) SarCompletedCount(
-	ctx context.Context,
-	filters dto.CaseAnalyticsFilters,
-) (analytics.SarCompletedCount, error) {
-	if !uc.license.Analytics {
-		return analytics.SarCompletedCount{}, nil
-	}
-
-	exec := uc.executorFactory.NewExecutor()
-
-	inboxIds, err := uc.getFilteredInboxIds(ctx, exec, filters)
-	if err != nil {
-		return analytics.SarCompletedCount{}, err
-	}
-	if len(inboxIds) == 0 {
-		return analytics.SarCompletedCount{}, nil
-	}
-
-	return uc.repository.SarCompletedCount(ctx, exec, analytics.CaseAnalyticsFilter{
-		OrgId:          filters.OrgId,
-		InboxIds:       inboxIds,
-		AssignedUserId: filters.AssignedUserId,
-		Start:          filters.Start,
-		End:            filters.End,
-	})
-}
-
-func (uc CaseAnalyticsUsecase) OpenCasesByAge(
-	ctx context.Context,
-	filters dto.CaseAnalyticsFilters,
-) ([]analytics.OpenCasesByAge, error) {
-	if !uc.license.Analytics {
-		return []analytics.OpenCasesByAge{}, nil
-	}
-
-	exec := uc.executorFactory.NewExecutor()
-
-	inboxIds, err := uc.getFilteredInboxIds(ctx, exec, filters)
-	if err != nil {
-		return nil, err
-	}
-	if len(inboxIds) == 0 {
-		return []analytics.OpenCasesByAge{}, nil
-	}
-
-	return uc.repository.OpenCasesByAge(ctx, exec, analytics.CaseAnalyticsFilter{
-		OrgId:          filters.OrgId,
-		InboxIds:       inboxIds,
-		AssignedUserId: filters.AssignedUserId,
-	})
+	return cachedTimeSeriesQuery(ctx, uc, filters, "cases_duration", uc.repository.CasesDurationByTimeStats)
 }
 
 func (uc CaseAnalyticsUsecase) SarDelayByTimeStats(
 	ctx context.Context,
 	filters dto.CaseAnalyticsFilters,
 ) ([]analytics.SarDelay, error) {
-	if !uc.license.Analytics {
-		return []analytics.SarDelay{}, nil
-	}
+	return cachedTimeSeriesQuery(ctx, uc, filters, "sar_delay", uc.repository.SarDelayByTimeStats)
+}
 
-	exec := uc.executorFactory.NewExecutor()
+func (uc CaseAnalyticsUsecase) SarCompletedCount(
+	ctx context.Context,
+	filters dto.CaseAnalyticsFilters,
+) (analytics.SarCompletedCount, error) {
+	return cachedScalarQuery(ctx, uc, filters, "sar_completed", uc.repository.SarCompletedCount)
+}
 
-	inboxIds, err := uc.getFilteredInboxIds(ctx, exec, filters)
-	if err != nil {
-		return nil, err
-	}
-	if len(inboxIds) == 0 {
-		return []analytics.SarDelay{}, nil
-	}
-
-	_, tzOffset := filters.End.In(filters.Timezone).Zone()
-
-	return uc.repository.SarDelayByTimeStats(ctx, exec, analytics.CaseAnalyticsFilter{
-		OrgId:           filters.OrgId,
-		InboxIds:        inboxIds,
-		AssignedUserId:  filters.AssignedUserId,
-		Start:           filters.Start,
-		End:             filters.End,
-		TzOffsetSeconds: tzOffset,
-	})
+func (uc CaseAnalyticsUsecase) OpenCasesByAge(
+	ctx context.Context,
+	filters dto.CaseAnalyticsFilters,
+) ([]analytics.OpenCasesByAge, error) {
+	return cachedScalarQuery(ctx, uc, filters, "open_cases_by_age", uc.repository.OpenCasesByAge)
 }
 
 func (uc CaseAnalyticsUsecase) SarDelayDistribution(
 	ctx context.Context,
 	filters dto.CaseAnalyticsFilters,
 ) ([]analytics.SarDelayDistribution, error) {
-	if !uc.license.Analytics {
-		return []analytics.SarDelayDistribution{}, nil
-	}
-
-	exec := uc.executorFactory.NewExecutor()
-
-	inboxIds, err := uc.getFilteredInboxIds(ctx, exec, filters)
-	if err != nil {
-		return nil, err
-	}
-	if len(inboxIds) == 0 {
-		return []analytics.SarDelayDistribution{}, nil
-	}
-
-	return uc.repository.SarDelayDistribution(ctx, exec, analytics.CaseAnalyticsFilter{
-		OrgId:          filters.OrgId,
-		InboxIds:       inboxIds,
-		AssignedUserId: filters.AssignedUserId,
-		Start:          filters.Start,
-		End:            filters.End,
-	})
+	return cachedScalarQuery(ctx, uc, filters, "sar_delay_distribution", uc.repository.SarDelayDistribution)
 }
 
 func (uc CaseAnalyticsUsecase) getFilteredInboxIds(
