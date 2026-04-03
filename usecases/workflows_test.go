@@ -164,11 +164,15 @@ type workflowTestRepository struct {
 	organizationId uuid.UUID
 }
 
-func (r *workflowTestRepository) ListAllOrgWorkflows(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.Workflow, error) {
+func (r *workflowTestRepository) ListAllOrgWorkflows(ctx context.Context,
+	exec repositories.Executor, orgId uuid.UUID,
+) ([]models.Workflow, error) {
 	return nil, nil
 }
 
-func (r *workflowTestRepository) ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID) ([]models.Workflow, error) {
+func (r *workflowTestRepository) ListWorkflowsForScenario(ctx context.Context,
+	exec repositories.Executor, scenarioId uuid.UUID,
+) ([]models.Workflow, error) {
 	return nil, nil
 }
 
@@ -176,11 +180,15 @@ func (r *workflowTestRepository) GetWorkflowRule(ctx context.Context, exec repos
 	return models.WorkflowRule{}, nil
 }
 
-func (r *workflowTestRepository) GetWorkflowRuleDetails(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.Workflow, error) {
+func (r *workflowTestRepository) GetWorkflowRuleDetails(ctx context.Context,
+	exec repositories.Executor, id uuid.UUID,
+) (models.Workflow, error) {
 	return models.Workflow{}, nil
 }
 
-func (r *workflowTestRepository) GetWorkflowCondition(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.WorkflowCondition, error) {
+func (r *workflowTestRepository) GetWorkflowCondition(ctx context.Context,
+	exec repositories.Executor, id uuid.UUID,
+) (models.WorkflowCondition, error) {
 	return models.WorkflowCondition{}, nil
 }
 
@@ -200,31 +208,45 @@ func (r *workflowTestRepository) DeleteWorkflowRule(ctx context.Context, exec re
 	return nil
 }
 
-func (r *workflowTestRepository) InsertWorkflowCondition(ctx context.Context, exec repositories.Executor, condition models.WorkflowCondition) (models.WorkflowCondition, error) {
+func (r *workflowTestRepository) InsertWorkflowCondition(ctx context.Context,
+	exec repositories.Executor, condition models.WorkflowCondition,
+) (models.WorkflowCondition, error) {
 	return condition, nil
 }
 
-func (r *workflowTestRepository) UpdateWorkflowCondition(ctx context.Context, exec repositories.Executor, condition models.WorkflowCondition) (models.WorkflowCondition, error) {
+func (r *workflowTestRepository) UpdateWorkflowCondition(ctx context.Context,
+	exec repositories.Executor, condition models.WorkflowCondition,
+) (models.WorkflowCondition, error) {
 	return condition, nil
 }
 
-func (r *workflowTestRepository) DeleteWorkflowCondition(ctx context.Context, exec repositories.Executor, ruleId, conditionId uuid.UUID) error {
+func (r *workflowTestRepository) DeleteWorkflowCondition(ctx context.Context,
+	exec repositories.Executor, ruleId, conditionId uuid.UUID,
+) error {
 	return nil
 }
 
-func (r *workflowTestRepository) InsertWorkflowAction(ctx context.Context, exec repositories.Executor, action models.WorkflowAction) (models.WorkflowAction, error) {
+func (r *workflowTestRepository) InsertWorkflowAction(ctx context.Context,
+	exec repositories.Executor, action models.WorkflowAction,
+) (models.WorkflowAction, error) {
 	return action, nil
 }
 
-func (r *workflowTestRepository) UpdateWorkflowAction(ctx context.Context, exec repositories.Executor, action models.WorkflowAction) (models.WorkflowAction, error) {
+func (r *workflowTestRepository) UpdateWorkflowAction(ctx context.Context,
+	exec repositories.Executor, action models.WorkflowAction,
+) (models.WorkflowAction, error) {
 	return action, nil
 }
 
-func (r *workflowTestRepository) DeleteWorkflowAction(ctx context.Context, exec repositories.Executor, ruleId, actionId uuid.UUID) error {
+func (r *workflowTestRepository) DeleteWorkflowAction(ctx context.Context,
+	exec repositories.Executor, ruleId, actionId uuid.UUID,
+) error {
 	return nil
 }
 
-func (r *workflowTestRepository) ReorderWorkflowRules(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID, ids []uuid.UUID) error {
+func (r *workflowTestRepository) ReorderWorkflowRules(ctx context.Context,
+	exec repositories.Executor, scenarioId uuid.UUID, ids []uuid.UUID,
+) error {
 	return nil
 }
 

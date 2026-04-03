@@ -53,22 +53,17 @@ func handleCreateTable(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		var ftmEntity *models.FollowTheMoneyEntity
-		if input.FTMEntity != nil {
-			entity := models.FollowTheMoneyEntityFrom(*input.FTMEntity)
-			if entity == models.FollowTheMoneyEntityUnknown {
-				presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid FTM entity"))
-				return
-			}
-			ftmEntity = &entity
-		}
-
-		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		tableID, err := usecase.CreateDataModelTable(ctx, organizationID, input.Name, input.Description, ftmEntity)
+		modelInput, err := input.AdaptToModel()
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{
+
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
+		tableID, err := usecase.CreateDataModelTable(ctx, organizationID, modelInput)
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.JSON(http.StatusCreated, gin.H{
 			"id": tableID,
 		})
 	}
@@ -114,7 +109,16 @@ func handleUpdateDataModelTable(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		err := usecase.UpdateDataModelTable(ctx, tableID, input.Description, ftmEntity, input.Alias, semanticType, input.CaptionField)
+		err := usecase.UpdateDataModelTable(
+			ctx,
+			tableID,
+			input.Description,
+			ftmEntity,
+			input.Alias,
+			semanticType,
+			input.CaptionField,
+			input.PrimaryOrderingField,
+		)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -141,16 +145,28 @@ func handleCreateField(uc usecases.Usecases) func(c *gin.Context) {
 			ftmProperty = &property
 		}
 
+		var fieldSemanticType models.FieldSemanticType
+		if input.SemanticType != nil {
+			fieldSemanticType = models.FieldSemanticType(*input.SemanticType)
+			if !fieldSemanticType.IsValid() {
+				presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid field semantic type"))
+				return
+			}
+		}
+
 		tableID := c.Param("tableID")
 		field := models.CreateFieldInput{
-			TableId:     tableID,
-			Name:        input.Name,
-			Description: input.Description,
-			DataType:    models.DataTypeFrom(input.Type),
-			Nullable:    input.Nullable,
-			IsEnum:      input.IsEnum,
-			IsUnique:    input.IsUnique,
-			FTMProperty: ftmProperty,
+			TableId:      tableID,
+			Name:         input.Name,
+			Description:  input.Description,
+			Alias:        input.Alias,
+			SemanticType: fieldSemanticType,
+			DataType:     models.DataTypeFrom(input.Type),
+			Nullable:     input.Nullable,
+			IsEnum:       input.IsEnum,
+			IsUnique:     input.IsUnique,
+			FTMProperty:  ftmProperty,
+			Metadata:     input.Metadata,
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
@@ -188,13 +204,30 @@ func handleUpdateDataModelField(uc usecases.Usecases) func(c *gin.Context) {
 			}
 		}
 
+		var fieldSemanticType pure_utils.Null[models.FieldSemanticType]
+		if input.SemanticType.Set {
+			if input.SemanticType.Valid {
+				semanticType := models.FieldSemanticType(input.SemanticType.Value())
+				if !semanticType.IsValid() {
+					presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid field semantic type"))
+					return
+				}
+				fieldSemanticType = pure_utils.NullFrom(semanticType)
+			} else {
+				fieldSemanticType = pure_utils.NullFromPtr[models.FieldSemanticType](nil)
+			}
+		}
+
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
 		err := usecase.UpdateDataModelField(ctx, fieldID, models.UpdateFieldInput{
-			Description: input.Description,
-			IsEnum:      input.IsEnum,
-			IsUnique:    input.IsUnique,
-			IsNullable:  input.IsNullable,
-			FTMProperty: ftmProperty,
+			Description:  input.Description,
+			IsEnum:       input.IsEnum,
+			IsUnique:     input.IsUnique,
+			IsNullable:   input.IsNullable,
+			FTMProperty:  ftmProperty,
+			Alias:        input.Alias,
+			SemanticType: fieldSemanticType,
+			Metadata:     input.Metadata,
 		})
 		if presentError(ctx, c, err) {
 			return
@@ -217,13 +250,9 @@ func handleCreateLink(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		link := models.DataModelLinkCreateInput{
-			OrganizationID: organizationID,
-			Name:           input.Name,
-			ParentTableID:  input.ParentTableId,
-			ParentFieldID:  input.ParentFieldId,
-			ChildTableID:   input.ChildTableId,
-			ChildFieldID:   input.ChildFieldId,
+		link, err := input.AdaptToModel(organizationID)
+		if presentError(ctx, c, err) {
+			return
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()

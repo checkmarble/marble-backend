@@ -245,15 +245,19 @@ func (usecase *ScenarioPublicationUsecase) StartPublicationPreparation(
 		return models.ErrDataPreparationServiceUnavailable
 	}
 
-	if err := usecase.scenarioPublisher.SaveScenarioPreparationAction(ctx, exec,
-		organizationId, scenarioAndIteration.Scenario.Id, scenarioIterationId); err != nil {
-		return err
-	}
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		if err := usecase.scenarioPublisher.SaveScenarioPreparationAction(ctx, tx,
+			organizationId, scenarioAndIteration.Scenario.Id, scenarioIterationId); err != nil {
+			return err
+		}
 
-	if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(ctx,
-		organizationId, indexesToCreate); err != nil {
-		return err
-	}
+		if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(ctx,
+			tx,
+			organizationId, indexesToCreate); err != nil {
+			return err
+		}
 
-	return err
+		return nil
+	})
 }
+

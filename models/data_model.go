@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 
@@ -8,6 +9,14 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/google/uuid"
 )
+
+// Reserved field names in client data model
+// Those fields are created when creating the table in org database
+var DataModelReservedFieldNames = map[string]bool{
+	"id":          true,
+	"valid_from":  true,
+	"valid_until": true,
+}
 
 // ///////////////////////////////
 // Data Type
@@ -65,32 +74,13 @@ func DataTypeFrom(s string) DataType {
 	return UnknownDataType
 }
 
-type SemanticType string
-
-const (
-	SemanticTypeUnknown SemanticType = "unknown"
-	SemanticPerson      SemanticType = "person"
-	SemanticCompany     SemanticType = "company"
-)
-
-func SemanticTypeFrom(s string) SemanticType {
-	switch s {
-	case "person":
-		return SemanticPerson
-	case "company":
-		return SemanticCompany
-	default:
-		return SemanticTypeUnknown
-	}
-}
-
 ///////////////////////////////
 // Data Model
 ///////////////////////////////
 
 type DataModel struct {
 	Version string
-	Tables  map[string]Table
+	Tables  map[string]Table // Map key is the table name
 }
 
 func (d DataModel) Copy() DataModel {
@@ -153,16 +143,18 @@ func (d DataModel) FindField(table Table, path []string, field string) (Field, b
 // ///////////////////////////////
 
 type Table struct {
-	ID                string
-	Name              string
-	Description       string
-	Fields            map[string]Field
-	LinksToSingle     map[string]LinkToSingle
-	NavigationOptions []NavigationOption
-	FTMEntity         *FollowTheMoneyEntity
-	Alias             string
-	SemanticType      SemanticType
-	CaptionField      string
+	ID                   string
+	Name                 string
+	Description          string
+	Fields               map[string]Field        // Map key is the field name
+	LinksToSingle        map[string]LinkToSingle // Map key is the link name
+	NavigationOptions    []NavigationOption
+	FTMEntity            *FollowTheMoneyEntity
+	Alias                string
+	SemanticType         SemanticType
+	CaptionField         string
+	PrimaryOrderingField string
+	Metadata             json.RawMessage
 }
 
 func (t Table) FieldNames() []string {
@@ -208,14 +200,16 @@ func (t Table) GetFieldsWithFTMProperty() []Field {
 }
 
 type TableMetadata struct {
-	ID             string
-	Description    string
-	Name           string
-	OrganizationID uuid.UUID
-	FTMEntity      *FollowTheMoneyEntity
-	Alias          string
-	SemanticType   SemanticType
-	CaptionField   string
+	ID                   string
+	Description          string
+	Name                 string
+	OrganizationID       uuid.UUID
+	FTMEntity            *FollowTheMoneyEntity
+	Alias                string
+	SemanticType         SemanticType
+	CaptionField         string
+	PrimaryOrderingField string
+	Metadata             json.RawMessage
 }
 
 func ColumnNames(table Table) []string {
@@ -251,6 +245,8 @@ type Field struct {
 	ID                string
 	DataType          DataType
 	Description       string
+	Alias             string
+	SemanticType      FieldSemanticType
 	IsEnum            bool
 	Name              string
 	Nullable          bool
@@ -259,19 +255,23 @@ type Field struct {
 	FieldStatistics   FieldStatistics
 	UnicityConstraint UnicityConstraint
 	FTMProperty       *FollowTheMoneyProperty
+	Metadata          json.RawMessage
 	Archived          bool
 }
 
 type FieldMetadata struct {
-	ID          string
-	DataType    DataType
-	Description string
-	IsEnum      bool
-	Name        string
-	Nullable    bool
-	TableId     string
-	FTMProperty *FollowTheMoneyProperty
-	Archived    bool
+	ID           string
+	DataType     DataType
+	Description  string
+	Alias        string
+	SemanticType FieldSemanticType
+	IsEnum       bool
+	Name         string
+	Nullable     bool
+	TableId      string
+	FTMProperty  *FollowTheMoneyProperty
+	Metadata     json.RawMessage
+	Archived     bool
 }
 
 type UnicityConstraint int
@@ -307,22 +307,28 @@ func UnicityConstraintFromString(s string) UnicityConstraint {
 }
 
 type CreateFieldInput struct {
-	TableId     string
-	Name        string
-	Description string
-	DataType    DataType
-	Nullable    bool
-	IsEnum      bool
-	IsUnique    bool
-	FTMProperty *FollowTheMoneyProperty
+	TableId      string
+	Name         string
+	Description  string
+	Alias        string
+	SemanticType FieldSemanticType
+	DataType     DataType
+	Nullable     bool
+	IsEnum       bool
+	IsUnique     bool
+	FTMProperty  *FollowTheMoneyProperty
+	Metadata     json.RawMessage
 }
 
 type UpdateFieldInput struct {
-	Description *string
-	IsEnum      *bool
-	IsUnique    *bool
-	IsNullable  *bool
-	FTMProperty pure_utils.Null[FollowTheMoneyProperty]
+	Description  *string
+	IsEnum       *bool
+	IsUnique     *bool
+	IsNullable   *bool
+	FTMProperty  pure_utils.Null[FollowTheMoneyProperty]
+	Alias        *string
+	SemanticType pure_utils.Null[FieldSemanticType]
+	Metadata     *json.RawMessage
 }
 
 type EnumValues map[string]map[any]struct{}
@@ -340,10 +346,24 @@ func (enumValues EnumValues) CollectEnumValues(payload ClientObject) {
 // ///////////////////////////////
 // Data Model Link
 // ///////////////////////////////
+
+type LinkType string
+
+const (
+	LinkTypeUnset     LinkType = ""
+	LinkTypeRelated   LinkType = "related"
+	LinkTypeBelongsTo LinkType = "belongs_to"
+)
+
+func (l LinkType) IsValid() bool {
+	return l == LinkTypeRelated || l == LinkTypeBelongsTo
+}
+
 type LinkToSingle struct {
 	Id              string
 	OrganizationId  uuid.UUID
 	Name            string
+	LinkType        LinkType
 	ParentTableName string
 	ParentTableId   string
 	ParentFieldName string
@@ -357,6 +377,7 @@ type LinkToSingle struct {
 type DataModelLinkCreateInput struct {
 	OrganizationID uuid.UUID
 	Name           string
+	LinkType       LinkType
 	ParentTableID  string
 	ParentFieldID  string
 	ChildTableID   string
@@ -366,6 +387,26 @@ type DataModelLinkCreateInput struct {
 type DataModelObject struct {
 	Data     map[string]any
 	Metadata map[string]any
+}
+
+type CreateTableInput struct {
+	Name                 string
+	Description          string
+	Alias                string
+	SemanticType         SemanticType
+	FTMEntity            *FollowTheMoneyEntity
+	Metadata             json.RawMessage
+	PrimaryOrderingField string
+	Fields               []CreateFieldInput
+	Links                []CreateTableLinkInput
+}
+
+type CreateTableLinkInput struct {
+	Name           string
+	LinkType       LinkType
+	ChildFieldName string
+	ParentTableID  string
+	ParentFieldID  string
 }
 
 // Utility methods on data model

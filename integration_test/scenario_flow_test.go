@@ -166,57 +166,57 @@ func createDataModelAndSetupCaseManager(
 	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases)
 
 	usecase := testAdminUsecase.NewDataModelUseCase()
-	transactionsTableId, err := usecase.CreateDataModelTable(ctx, organizationId, "transactions", "description", nil)
+	transactionsTableId, err := usecase.CreateDataModelTable(ctx, organizationId, models.CreateTableInput{
+		Name:         "transactions",
+		Description:  "description",
+		SemanticType: models.SemanticTypeOther,
+		Fields: []models.CreateFieldInput{
+			{Name: "object_id", DataType: models.String, Nullable: false},
+			{Name: "updated_at", DataType: models.Timestamp, Nullable: false},
+			{Name: "account_id", DataType: models.String, Nullable: true},
+			{Name: "bic_country", DataType: models.String, Nullable: true},
+			{Name: "country", DataType: models.String, Nullable: true},
+			{Name: "description", DataType: models.String, Nullable: true},
+			{Name: "direction", DataType: models.String, Nullable: true},
+			{Name: "status", DataType: models.String, Nullable: true},
+			{Name: "title", DataType: models.String, Nullable: true},
+			{Name: "amount", DataType: models.Float, Nullable: true},
+		},
+	})
 	if err != nil {
 		assert.FailNow(t, "Could not create table", err)
-	}
-	transactionsFields := []models.CreateFieldInput{
-		{TableId: transactionsTableId, Name: "account_id", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableId, Name: "bic_country", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableId, Name: "country", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableId, Name: "description", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableId, Name: "direction", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableId, Name: "status", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableId, Name: "title", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableId, Name: "amount", DataType: models.Float, Nullable: true},
-	}
-	for _, field := range transactionsFields {
-		_, err = usecase.CreateDataModelField(ctx, field)
-		if err != nil {
-			assert.FailNow(t, "Could not create field", err)
-		}
 	}
 
-	accountsTableId, err := usecase.CreateDataModelTable(ctx, organizationId, "accounts", "description", nil)
+	accountsTableId, err := usecase.CreateDataModelTable(ctx, organizationId, models.CreateTableInput{
+		Name:         "accounts",
+		Description:  "description",
+		SemanticType: models.SemanticTypeOther,
+		Fields: []models.CreateFieldInput{
+			{Name: "object_id", DataType: models.String, Nullable: false},
+			{Name: "updated_at", DataType: models.Timestamp, Nullable: false},
+			{Name: "balance", DataType: models.Float, Nullable: true},
+			{Name: "company_id", DataType: models.String, Nullable: true},
+			{Name: "name", DataType: models.String, Nullable: true},
+			{Name: "currency", DataType: models.String, Nullable: true},
+			{Name: "is_frozen", DataType: models.Bool, Nullable: true},
+		},
+	})
 	if err != nil {
 		assert.FailNow(t, "Could not create table", err)
-	}
-	accountsFields := []models.CreateFieldInput{
-		{TableId: accountsTableId, Name: "balance", DataType: models.Float, Nullable: true},
-		{TableId: accountsTableId, Name: "company_id", DataType: models.String, Nullable: true},
-		{TableId: accountsTableId, Name: "name", DataType: models.String, Nullable: true},
-		{TableId: accountsTableId, Name: "currency", DataType: models.String, Nullable: true},
-		{TableId: accountsTableId, Name: "is_frozen", DataType: models.Bool, Nullable: true},
-	}
-	for _, field := range accountsFields {
-		_, err = usecase.CreateDataModelField(ctx, field)
-		if err != nil {
-			assert.FailNow(t, "Could not create field", err)
-		}
 	}
 
-	companiesTableId, err := usecase.CreateDataModelTable(ctx, organizationId, "companies", "description", nil)
+	companiesTableId, err := usecase.CreateDataModelTable(ctx, organizationId, models.CreateTableInput{
+		Name:         "companies",
+		Description:  "description",
+		SemanticType: models.SemanticTypeOther,
+		Fields: []models.CreateFieldInput{
+			{Name: "object_id", DataType: models.String, Nullable: false},
+			{Name: "updated_at", DataType: models.Timestamp, Nullable: false},
+			{Name: "name", DataType: models.String, Nullable: true},
+		},
+	})
 	if err != nil {
 		assert.FailNow(t, "Could not create table", err)
-	}
-	companiesFields := []models.CreateFieldInput{
-		{TableId: companiesTableId, Name: "name", DataType: models.Float, Nullable: true},
-	}
-	for _, field := range companiesFields {
-		_, err = usecase.CreateDataModelField(ctx, field)
-		if err != nil {
-			assert.FailNow(t, "Could not create field", err)
-		}
 	}
 
 	dm, err = usecase.GetDataModel(ctx, organizationId, models.DataModelReadOptions{
@@ -227,8 +227,9 @@ func createDataModelAndSetupCaseManager(
 		assert.FailNow(t, "Could not get data model", err)
 	}
 
-	txToAccountLinkId, err := usecase.CreateDataModelLink(ctx, models.DataModelLinkCreateInput{
+	accountLinkId, err := usecase.CreateDataModelLink(ctx, models.DataModelLinkCreateInput{
 		Name:           "account",
+		LinkType:       models.LinkTypeBelongsTo,
 		OrganizationID: organizationId,
 		ParentTableID:  accountsTableId,
 		ParentFieldID:  dm.Tables["accounts"].Fields["object_id"].ID,
@@ -241,6 +242,7 @@ func createDataModelAndSetupCaseManager(
 
 	_, err = usecase.CreateDataModelLink(ctx, models.DataModelLinkCreateInput{
 		Name:           "company",
+		LinkType:       models.LinkTypeRelated,
 		OrganizationID: organizationId,
 		ParentTableID:  companiesTableId,
 		ParentFieldID:  dm.Tables["companies"].Fields["object_id"].ID,
@@ -251,15 +253,19 @@ func createDataModelAndSetupCaseManager(
 		assert.FailNow(t, "Could not create data model link", err)
 	}
 
-	pivot, err := usecase.CreatePivot(ctx, models.CreatePivotInput{
-		BaseTableId:    transactionsTableId,
-		OrganizationId: organizationId,
-		PathLinkIds:    []string{txToAccountLinkId},
-	})
-	if err != nil {
-		assert.FailNow(t, "Failed to create pivot value", err)
+	// The BelongsTo link (transactions → accounts) should have auto-created a pivot
+	pivots, err := usecase.ListPivots(ctx, organizationId, utils.Ptr(transactionsTableId))
+	if assert.NoError(t, err, "Could not list pivots") &&
+		assert.Len(t, pivots, 1, "Expected exactly 1 pivot auto-created for transactions table") {
+		pivot := pivots[0]
+		assert.Equal(t, "transactions", pivot.BaseTable,
+			"Expected pivot base table to be transactions")
+		assert.Equal(t, "accounts", pivot.PivotTable, "Expected pivot table to be accounts")
+		assert.Equal(t, []string{"account"}, pivot.PathLinks,
+			"Expected pivot path links to be [account]")
+		assert.Equal(t, []string{accountLinkId}, pivot.PathLinkIds,
+			"Expected pivot path link IDs to be [accountLinkId]")
 	}
-	fmt.Printf("Created pivot %s\n", pivot.Id)
 
 	time.Sleep(1 * time.Second)
 
