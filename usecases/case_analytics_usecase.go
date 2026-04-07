@@ -145,9 +145,9 @@ func (uc CaseAnalyticsUsecase) CaseStatusByDate(
 	ctx context.Context,
 	filters dto.CaseAnalyticsFilters,
 ) ([]analytics.CaseStatusByDate, error) {
-	if !uc.license.Analytics {
-		return nil, nil
-	}
+	// NB: no protected by a license, because we use those in the "overview" page of the case manager which is there
+	// for open-source users. If we want to enforce a license on this later, we will need to do it with more granularity.
+
 	return cachedTimeSeriesQuery(ctx, uc, filters, "case_status_by_date", uc.repository.CaseStatusByDate)
 }
 
@@ -155,9 +155,9 @@ func (uc CaseAnalyticsUsecase) CaseStatusByInbox(
 	ctx context.Context,
 	filters dto.CaseAnalyticsFilters,
 ) ([]analytics.CaseStatusByInbox, error) {
-	if !uc.license.Analytics {
-		return nil, nil
-	}
+	// NB: no protected by a license, because we use those in the "overview" page of the case manager which is there
+	// for open-source users. If we want to enforce a license on this later, we will need to do it with more granularity.
+
 	return cachedScalarQuery(ctx, uc, filters, "case_status_by_inbox", uc.repository.CaseStatusByInbox)
 }
 
