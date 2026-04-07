@@ -422,7 +422,7 @@ func HandleListCaseComments(uc usecases.Usecases) gin.HandlerFunc {
 }
 
 type CreateCommentParams struct {
-	Comment string `json:"comment" binding:"required,lte=2048"`
+	Comment string `json:"comment" binding:"required,lte=16384"`
 }
 
 func HandleCreateComment(uc usecases.Usecases) gin.HandlerFunc {
