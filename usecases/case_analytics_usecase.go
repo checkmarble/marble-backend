@@ -63,6 +63,9 @@ func (uc CaseAnalyticsUsecase) CasesCreatedByTimeStats(
 	ctx context.Context,
 	filters dto.CaseAnalyticsFilters,
 ) ([]analytics.CasesCreated, error) {
+	if !uc.license.Analytics {
+		return nil, nil
+	}
 	return cachedTimeSeriesQuery(ctx, uc, filters, "cases_created", uc.repository.CasesCreatedByTimeStats)
 }
 
@@ -70,6 +73,9 @@ func (uc CaseAnalyticsUsecase) CasesFalsePositiveRateByTimeStats(
 	ctx context.Context,
 	filters dto.CaseAnalyticsFilters,
 ) ([]analytics.CasesFalsePositiveRate, error) {
+	if !uc.license.Analytics {
+		return nil, nil
+	}
 	return cachedTimeSeriesQuery(ctx, uc, filters, "cases_false_positive_rate",
 		uc.repository.CasesFalsePositiveRateByTimeStats)
 }
@@ -78,6 +84,9 @@ func (uc CaseAnalyticsUsecase) CasesDurationByTimeStats(
 	ctx context.Context,
 	filters dto.CaseAnalyticsFilters,
 ) ([]analytics.CasesDuration, error) {
+	if !uc.license.Analytics {
+		return nil, nil
+	}
 	return cachedTimeSeriesQuery(ctx, uc, filters, "cases_duration", uc.repository.CasesDurationByTimeStats)
 }
 
@@ -85,6 +94,9 @@ func (uc CaseAnalyticsUsecase) SarDelayByTimeStats(
 	ctx context.Context,
 	filters dto.CaseAnalyticsFilters,
 ) ([]analytics.SarDelay, error) {
+	if !uc.license.Analytics {
+		return nil, nil
+	}
 	return cachedTimeSeriesQuery(ctx, uc, filters, "sar_delay", uc.repository.SarDelayByTimeStats)
 }
 
@@ -92,6 +104,9 @@ func (uc CaseAnalyticsUsecase) SarCompletedCount(
 	ctx context.Context,
 	filters dto.CaseAnalyticsFilters,
 ) (analytics.SarCompletedCount, error) {
+	if !uc.license.Analytics {
+		return analytics.SarCompletedCount{}, nil
+	}
 	return cachedScalarQuery(ctx, uc, filters, "sar_completed", uc.repository.SarCompletedCount)
 }
 
@@ -99,6 +114,9 @@ func (uc CaseAnalyticsUsecase) OpenCasesByAge(
 	ctx context.Context,
 	filters dto.CaseAnalyticsFilters,
 ) ([]analytics.OpenCasesByAge, error) {
+	if !uc.license.Analytics {
+		return nil, nil
+	}
 	return cachedScalarQuery(ctx, uc, filters, "open_cases_by_age", uc.repository.OpenCasesByAge)
 }
 
@@ -106,6 +124,10 @@ func (uc CaseAnalyticsUsecase) SarDelayDistribution(
 	ctx context.Context,
 	filters dto.CaseAnalyticsFilters,
 ) ([]analytics.SarDelayDistribution, error) {
+	if !uc.license.Analytics {
+		return nil, nil
+	}
+
 	return cachedScalarQuery(ctx, uc, filters, "sar_delay_distribution", uc.repository.SarDelayDistribution)
 }
 
