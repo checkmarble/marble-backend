@@ -162,7 +162,8 @@ func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, screeningId
 	performed := false
 
 	for _, query := range queries {
-		nerCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		nerCtx, cancel := context.WithTimeout(ctx,
+			utils.GetEnvDuration("NER_TIMEOUT", 2*time.Second))
 		defer cancel()
 
 		matches, err := e.nameRecognizer.PerformNameRecognition(nerCtx, query.GetName())
