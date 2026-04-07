@@ -292,6 +292,7 @@ func (uc AnalyticsQueryUsecase) ScreeningHits(ctx context.Context,
 	return repositories.AnalyticsScanStruct[analytics.ScreeningHits](ctx, exec, query)
 }
 
+// Todo: deprecated, have been merged into CaseAnalyticsUsecase. Should be removed after frontend migration.
 func (uc AnalyticsQueryUsecase) CaseStatusByDate(ctx context.Context,
 	filters dto.AnalyticsQueryFilters,
 ) ([]analytics.CaseStatusByDate, error) {
@@ -366,6 +367,7 @@ func (uc AnalyticsQueryUsecase) CaseStatusByDate(ctx context.Context,
 	return output, nil
 }
 
+// Todo: deprecated, have been merged into CaseAnalyticsUsecase. Should be removed after frontend migration.
 func (uc AnalyticsQueryUsecase) CaseStatusByInbox(ctx context.Context,
 	filters dto.AnalyticsQueryFilters,
 ) ([]analytics.CaseStatusByInbox, error) {

@@ -52,6 +52,10 @@ func handleCaseAnalyticsQuery(uc usecases.Usecases) func(c *gin.Context) {
 			results, err = uc.SarDelayByTimeStats(ctx, filters)
 		case "sar_delay_distribution":
 			results, err = uc.SarDelayDistribution(ctx, filters)
+		case "case_status_by_date":
+			results, err = uc.CaseStatusByDate(ctx, filters)
+		case "case_status_by_inbox":
+			results, err = uc.CaseStatusByInbox(ctx, filters)
 		default:
 			c.Status(http.StatusNotFound)
 			return

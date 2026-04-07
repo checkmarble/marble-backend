@@ -50,6 +50,16 @@ type CaseAnalyticsRepository interface {
 		exec repositories.Executor,
 		filters analytics.CaseAnalyticsFilter,
 	) ([]analytics.SarDelayDistribution, error)
+	CaseStatusByDate(
+		ctx context.Context,
+		exec repositories.Executor,
+		filters analytics.CaseAnalyticsFilter,
+	) ([]analytics.CaseStatusByDate, error)
+	CaseStatusByInbox(
+		ctx context.Context,
+		exec repositories.Executor,
+		filters analytics.CaseAnalyticsFilter,
+	) ([]analytics.CaseStatusByInbox, error)
 }
 
 type CaseAnalyticsUsecase struct {
@@ -129,6 +139,26 @@ func (uc CaseAnalyticsUsecase) SarDelayDistribution(
 	}
 
 	return cachedScalarQuery(ctx, uc, filters, "sar_delay_distribution", uc.repository.SarDelayDistribution)
+}
+
+func (uc CaseAnalyticsUsecase) CaseStatusByDate(
+	ctx context.Context,
+	filters dto.CaseAnalyticsFilters,
+) ([]analytics.CaseStatusByDate, error) {
+	if !uc.license.Analytics {
+		return nil, nil
+	}
+	return cachedTimeSeriesQuery(ctx, uc, filters, "case_status_by_date", uc.repository.CaseStatusByDate)
+}
+
+func (uc CaseAnalyticsUsecase) CaseStatusByInbox(
+	ctx context.Context,
+	filters dto.CaseAnalyticsFilters,
+) ([]analytics.CaseStatusByInbox, error) {
+	if !uc.license.Analytics {
+		return nil, nil
+	}
+	return cachedScalarQuery(ctx, uc, filters, "case_status_by_inbox", uc.repository.CaseStatusByInbox)
 }
 
 func (uc CaseAnalyticsUsecase) getFilteredInboxIds(

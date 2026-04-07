@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models/analytics"
@@ -281,6 +282,114 @@ func (repo MarbleDbRepository) SarDelayDistribution(
 	) {
 		var res analytics.SarDelayDistribution
 		err := row.Scan(&res.Bracket, &res.Count)
+		return res, err
+	})
+}
+
+func (repo MarbleDbRepository) CaseStatusByDate(
+	ctx context.Context,
+	exec Executor,
+	filters analytics.CaseAnalyticsFilter,
+) ([]analytics.CaseStatusByDate, error) {
+	cte := WithCtes("case_statuses", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
+		q := b.Select(
+			fmt.Sprintf("created_at + interval '%d s' as created_at", filters.TzOffsetSeconds),
+			"status",
+			"snoozed_until is not null and snoozed_until > now() as snoozed",
+		).
+			From(dbmodels.TABLE_CASES).
+			Where(squirrel.Eq{
+				"org_id":   filters.OrgId,
+				"inbox_id": filters.InboxIds,
+			}).
+			Where(squirrel.And{
+				squirrel.GtOrEq{"created_at": filters.Start},
+				squirrel.Lt{"created_at": filters.End},
+			})
+
+		if filters.AssignedUserId != nil {
+			q = q.Where(squirrel.Eq{"assigned_to": *filters.AssignedUserId})
+		}
+		return q
+	})
+
+	cte = cte.With("data", func(b squirrel.StatementBuilderType) squirrel.SelectBuilder {
+		return b.
+			Select(
+				"created_at::date as date",
+				"count(*) filter (where snoozed) as snoozed",
+				"count(*) filter (where not snoozed and status = 'pending') as pending",
+				"count(*) filter (where not snoozed and status = 'investigating') as investigating",
+				"count(*) filter (where not snoozed and status = 'closed') as closed",
+			).
+			From("case_statuses").
+			GroupBy("created_at::date").
+			OrderBy("created_at::date")
+	})
+
+	query := squirrel.
+		Select(
+			"days::date as date",
+			"coalesce(data.snoozed, 0) as snoozed",
+			"coalesce(data.pending, 0) as pending",
+			"coalesce(data.investigating, 0) as investigating",
+			"coalesce(data.closed, 0) as closed",
+		).
+		PrefixExpr(cte).
+		From(fmt.Sprintf(
+			"generate_series(('%s')::date, ('%s')::date, '1 day') as days",
+			filters.Start.Add(time.Duration(filters.TzOffsetSeconds)*time.Second).Format("2006-01-02"),
+			filters.End.Add(time.Duration(filters.TzOffsetSeconds)*time.Second).Format("2006-01-02"),
+		)).
+		LeftJoin("data on data.date = days::date").
+		OrderBy("date")
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return pgx.CollectRows[analytics.CaseStatusByDate](rows, pgx.RowToStructByName)
+}
+
+func (repo MarbleDbRepository) CaseStatusByInbox(
+	ctx context.Context,
+	exec Executor,
+	filters analytics.CaseAnalyticsFilter,
+) ([]analytics.CaseStatusByInbox, error) {
+	sql := NewQueryBuilder().
+		Select(
+			"i.name as inbox",
+			"count(*) filter (where snoozed_until is not null and snoozed_until > now()) as snoozed",
+			"count(*) filter (where not (snoozed_until is not null and snoozed_until > now()) and c.status = 'pending') as pending",
+			"count(*) filter (where not (snoozed_until is not null and snoozed_until > now()) and c.status = 'investigating') as investigating",
+			"count(*) filter (where not (snoozed_until is not null and snoozed_until > now()) and c.status = 'closed') as closed",
+		).
+		From(dbmodels.TABLE_CASES+" c").
+		Join("inboxes i on i.id = c.inbox_id").
+		Where(squirrel.Eq{
+			"c.org_id":   filters.OrgId,
+			"c.inbox_id": filters.InboxIds,
+		}).
+		Where(squirrel.And{
+			squirrel.GtOrEq{"c.created_at": filters.Start},
+			squirrel.Lt{"c.created_at": filters.End},
+		}).
+		GroupBy("i.name").
+		OrderBy("count(*) desc", "i.name")
+
+	if filters.AssignedUserId != nil {
+		sql = sql.Where(squirrel.Eq{"c.assigned_to": *filters.AssignedUserId})
+	}
+
+	return SqlToListOfRow(ctx, exec, sql, func(row pgx.CollectableRow) (analytics.CaseStatusByInbox, error) {
+		var res analytics.CaseStatusByInbox
+		err := row.Scan(&res.Inbox, &res.Snoozed, &res.Pending, &res.Investigating, &res.Closed)
 		return res, err
 	})
 }

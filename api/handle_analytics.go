@@ -86,6 +86,7 @@ func handleAnalyticsQuery(uc usecases.Usecases) func(c *gin.Context) {
 
 		// The following endpoint use Postgres, for now, instead of DuckDB.
 
+		// Todo: deprecated, have been merged into CaseAnalyticsUsecase. Should be removed after frontend migration.
 		case "case_status_by_date":
 			results, err = uc.CaseStatusByDate(c.Request.Context(), filters)
 		case "case_status_by_inbox":
