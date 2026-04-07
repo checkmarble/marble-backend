@@ -437,9 +437,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		r.GET("/scoring/distribution/:entityType", tom, handleScoringGetDistribution(uc))
 	})
 
-	addCaseAnalyticsRoutes(router, conf, uc)
-
 	if conf.AnalyticsProxyApiUrl == "" {
+		addCaseAnalyticsRoutes(router, conf, uc)
 		addAnalyticsRoutes(router, conf, uc)
 	} else {
 		addAnalyticsProxyRoutes(router, conf)
