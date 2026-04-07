@@ -124,3 +124,4 @@ func (r CasesCreated) GetDate() time.Time          { return r.Date }
 func (r CasesFalsePositiveRate) GetDate() time.Time { return r.Date }
 func (r CasesDuration) GetDate() time.Time          { return r.Date }
 func (r SarDelay) GetDate() time.Time               { return r.Date }
+func (r CaseStatusByDate) GetDate() time.Time       { return r.Date }
