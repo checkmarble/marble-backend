@@ -781,9 +781,9 @@ paths:
                   description: |
                     Body of the comment.
 
-                    You can format the comment with markdown markup. The comment must be up to 2048 characters.
+                    You can format the comment with markdown markup. The comment must be up to 16384 characters.
                   type: string
-                  maxLength: 2048
+                  maxLength: 16384
       responses:
         "201":
           description: Comment created
