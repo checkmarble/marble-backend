@@ -46,10 +46,12 @@ func cachedTimeSeriesQuery[T analytics.Dated](
 	requestedEnd := filters.End
 
 	_, tzOffset := filters.End.In(filters.Timezone).Zone()
+	// nb: Truncate() works on utc timestamps, which is why we apply .Add() rather than converting time.Now() to the timezone passed.
 	today := time.Now().Add(time.Duration(tzOffset) * time.Second).Truncate(24 * time.Hour)
 
 	// Strip today from cached data — it must always be re-fetched
 	cached = slices.DeleteFunc(cached, func(r T) bool {
+		// nb: r.GetDate() returns timestamps coming from postgres dates, so utc.
 		return !r.GetDate().Truncate(24 * time.Hour).Before(today)
 	})
 

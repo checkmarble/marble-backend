@@ -3,9 +3,11 @@ package api
 import (
 	"net/http"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -16,17 +18,17 @@ func handleCaseAnalyticsQuery(uc usecases.Usecases) func(c *gin.Context) {
 
 		var filters dto.CaseAnalyticsFilters
 		if err := c.ShouldBindJSON(&filters); err != nil {
-			c.Status(http.StatusBadRequest)
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 		if err := filters.Validate(); err != nil {
-			c.Status(http.StatusBadRequest)
+			presentError(ctx, c, err)
 			return
 		}
 
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
-			c.Status(http.StatusUnauthorized)
+			presentError(ctx, c, errors.Wrap(models.UnAuthorizedError, err.Error()))
 			return
 		}
 		filters.OrgId = orgId
