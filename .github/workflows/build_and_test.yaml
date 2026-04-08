@@ -46,6 +46,8 @@ jobs:
 
       - name: Cache Go tools only
         uses: actions/cache@v4
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-go-bin-${{ hashFiles('**/go.mod') }}
