@@ -22,8 +22,8 @@ func (repo *ClientDbRepository) IsContinuousScreeningSetup(ctx context.Context, 
 		return false, err
 	}
 
-	sql := `select exists(select 1 from information_schema.tables where table_name = '_monitored_objects')`
-	row := exec.QueryRow(ctx, sql)
+	sql := `select exists(select 1 from information_schema.tables where table_name = '_monitored_objects' and table_schema = $1)`
+	row := exec.QueryRow(ctx, sql, exec.DatabaseSchema().Schema)
 
 	var exists bool
 
