@@ -263,6 +263,7 @@ type UpdateTableInput struct {
 	SemanticType         pure_utils.Null[string] `json:"semantic_type"`
 	CaptionField         pure_utils.Null[string] `json:"caption_field"`
 	PrimaryOrderingField pure_utils.Null[string] `json:"primary_ordering_field"`
+	Metadata             *json.RawMessage        `json:"metadata"`
 	Fields               []FieldOperation        `json:"fields"`
 	Links                []LinkOperation         `json:"links"`
 }
@@ -270,6 +271,7 @@ type UpdateTableInput struct {
 func (input UpdateTableInput) AdaptToUpdateTableCompositeInput() (models.UpdateTableCompositeInput, error) {
 	result := models.UpdateTableCompositeInput{
 		Description: input.Description,
+		Metadata:    input.Metadata,
 	}
 
 	// Table-level optional fields

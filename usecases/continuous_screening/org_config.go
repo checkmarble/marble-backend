@@ -374,6 +374,7 @@ func (uc *ContinuousScreeningUsecase) applyMappingConfiguration(
 				pure_utils.Null[models.SemanticType]{},
 				pure_utils.Null[string]{},
 				pure_utils.Null[string]{},
+				nil,
 			)
 			if err != nil {
 				return err

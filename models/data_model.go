@@ -434,6 +434,7 @@ type UpdateTableCompositeInput struct {
 	SemanticType         pure_utils.Null[SemanticType]
 	CaptionField         pure_utils.Null[string]
 	PrimaryOrderingField pure_utils.Null[string]
+	Metadata             *json.RawMessage
 
 	// Field operations
 	FieldsToAdd    []CreateFieldInput

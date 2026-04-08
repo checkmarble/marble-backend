@@ -457,7 +457,7 @@ func (usecase *usecase) UpdateDataModelTable(
 		}
 
 		err = usecase.dataModelRepository.UpdateDataModelTable(ctx, tx, tableID, description,
-			ftmEntity, alias, semanticType, captionField, primaryOrderingField)
+			ftmEntity, alias, semanticType, captionField, primaryOrderingField, nil)
 		if err != nil {
 			return err
 		}
@@ -690,7 +690,7 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 
 		if err := usecase.dataModelRepository.UpdateDataModelTable(ctx, tx, tableID,
 			input.Description, input.FTMEntity, input.Alias, input.SemanticType,
-			input.CaptionField, input.PrimaryOrderingField); err != nil {
+			input.CaptionField, input.PrimaryOrderingField, input.Metadata); err != nil {
 			return err
 		}
 

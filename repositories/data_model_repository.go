@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -40,6 +41,7 @@ type DataModelRepository interface {
 		semanticType pure_utils.Null[models.SemanticType],
 		captionField pure_utils.Null[string],
 		primaryOrderingField pure_utils.Null[string],
+		metadata *json.RawMessage,
 	) error
 	GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error)
 	CreateDataModelField(ctx context.Context, exec Executor, organizationId uuid.UUID, fieldId string, field models.CreateFieldInput) error
@@ -252,6 +254,7 @@ func (repo MarbleDbRepository) UpdateDataModelTable(
 	semanticType pure_utils.Null[models.SemanticType],
 	captionField pure_utils.Null[string],
 	primaryOrderingField pure_utils.Null[string],
+	metadata *json.RawMessage,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -286,6 +289,10 @@ func (repo MarbleDbRepository) UpdateDataModelTable(
 	if primaryOrderingField.Set {
 		updated = true
 		query = query.Set("primary_ordering_field", primaryOrderingField.Value())
+	}
+	if metadata != nil {
+		updated = true
+		query = query.Set("metadata", *metadata)
 	}
 
 	if !updated {
