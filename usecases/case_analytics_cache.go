@@ -12,7 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-const caseAnalyticsCacheTTL = time.Hour
+const caseAnalyticsCacheTTL = 1 * time.Hour
 
 // cachedTimeSeriesQuery handles the full cache flow for time-series analytics queries.
 // It loads cached data from Redis, queries the DB only for missing date ranges,
@@ -24,6 +24,7 @@ func cachedTimeSeriesQuery[T analytics.Dated](
 	filters dto.CaseAnalyticsFilters,
 	queryName string,
 	dbQuery func(ctx context.Context, exec repositories.Executor, f analytics.CaseAnalyticsFilter) ([]T, error),
+	zeroForDate func(time.Time) T,
 ) ([]T, error) {
 	if !uc.license.Analytics {
 		return []T{}, nil
@@ -123,7 +124,8 @@ func cachedTimeSeriesQuery[T analytics.Dated](
 		}
 	}
 
-	return filterByDateRange(merged, requestedStart, requestedEnd), nil
+	filtered := filterByDateRange(merged, requestedStart, requestedEnd)
+	return fillMissingDates(filtered, requestedStart, requestedEnd, zeroForDate), nil
 }
 
 // cachedScalarQuery handles simple cache for non-time-series queries.
@@ -257,6 +259,28 @@ func mergeTimeSeries[T analytics.Dated](cached, fresh []T) []T {
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].GetDate().Before(result[j].GetDate())
 	})
+	return result
+}
+
+// fillMissingDates ensures every date in [start, end) has an entry,
+// inserting zero-value records for any missing dates.
+func fillMissingDates[T analytics.Dated](data []T, start, end time.Time, zero func(time.Time) T) []T {
+	startDate := start.Truncate(24 * time.Hour)
+	endDate := end.Truncate(24 * time.Hour)
+
+	existing := make(map[time.Time]T, len(data))
+	for _, r := range data {
+		existing[r.GetDate().Truncate(24*time.Hour)] = r
+	}
+
+	result := make([]T, 0, int(endDate.Sub(startDate).Hours()/24))
+	for d := startDate; d.Before(endDate); d = d.AddDate(0, 0, 1) {
+		if r, ok := existing[d]; ok {
+			result = append(result, r)
+		} else {
+			result = append(result, zero(d))
+		}
+	}
 	return result
 }
 
