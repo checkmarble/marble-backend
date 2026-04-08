@@ -36,7 +36,7 @@ jobs:
       contents: read
     steps:
       - name: Download OpenAPI specification artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: marble-api-openapi
           path: /tmp/openapis
@@ -44,6 +44,7 @@ jobs:
       - name: Publish Marble API OpenAPI
         uses: readmeio/rdme@v10
         env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
           README_API_KEY: ${{ secrets.README_API_KEY }}
         with:
           rdme: openapi upload --version=v1.0.0 --slug=marble-api /tmp/openapis/marble-api-v1.yml
@@ -51,6 +52,7 @@ jobs:
       - name: Publish Marble API OpenAPI beta endpoints
         uses: readmeio/rdme@v10
         env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
           README_API_KEY: ${{ secrets.README_API_KEY }}
         with:
           rdme: openapi upload --version=v1.0.0 --slug=marble-api-beta /tmp/openapis/marble-api-v1beta.yml

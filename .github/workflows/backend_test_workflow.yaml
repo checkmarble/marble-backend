@@ -34,7 +34,7 @@ jobs:
           cp pubapi/openapi/v1beta.yml /tmp/marble-api-v1beta.yml
 
       - name: Upload OpenAPI specifications as artifacts, to be downloaded and used in the production deployment workflow
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: marble-api-openapi
           path: /tmp/marble-api-*.yml
