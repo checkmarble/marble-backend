@@ -97,12 +97,18 @@ func cachedTimeSeriesQuery[T analytics.Dated](
 		TzOffsetSeconds: tzOffset,
 	}
 
-	// Fetch missing ranges from DB
+	// Fetch missing ranges from DB.
+	// The toFetch ranges use UTC-midnight dates (matching cache keys and fillMissingDates),
+	// but the DB queries bucket by local date: (created_at + tz_offset)::date.
+	// We shift the WHERE bounds back by the tz offset so the filter covers exactly
+	// the UTC timestamps that map to local dates in the requested range.
+	// e.g. for UTC+2, local midnight Jan 1 = Dec 31 22:00 UTC, so we subtract 2h.
+	tzShift := -time.Duration(tzOffset) * time.Second
 	var fresh []T
 	for _, r := range toFetch {
 		f := baseFilter
-		f.Start = r.start
-		f.End = r.end
+		f.Start = r.start.Add(tzShift)
+		f.End = r.end.Add(tzShift)
 
 		rows, err := dbQuery(ctx, exec, f)
 		if err != nil {
