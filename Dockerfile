@@ -22,7 +22,7 @@ COPY --from=build /usr/local/go/lib/time/zoneinfo.zip /
 COPY --from=build /usr/lib/x86_64-linux-gnu/libgeos* /usr/lib/x86_64-linux-gnu/
 
 ENV ZONEINFO=/zoneinfo.zip
-ENV PORT=${PORT:-8080}
+ENV PORT=8080
 
 EXPOSE $PORT
 
