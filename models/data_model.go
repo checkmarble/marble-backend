@@ -401,6 +401,11 @@ type DataModelLinkCreateInput struct {
 	ChildFieldID   string
 }
 
+type UpdateLinkWithID struct {
+	ID       string
+	LinkType LinkType
+}
+
 type DataModelObject struct {
 	Data     map[string]any
 	Metadata map[string]any
@@ -443,6 +448,7 @@ type UpdateTableCompositeInput struct {
 
 	// Link operations
 	LinksToAdd    []CreateTableLinkInput
+	LinksToUpdate []UpdateLinkWithID
 	LinksToDelete []string // link IDs
 }
 

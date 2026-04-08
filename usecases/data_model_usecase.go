@@ -566,6 +566,107 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 				return err
 			}
 		}
+		// Remove deleted links from the in-memory slice so step 4b sees the correct state
+		links = slices.DeleteFunc(links, func(l models.LinkToSingle) bool {
+			return slices.Contains(input.LinksToDelete, l.Id)
+		})
+
+		// 4b. Update existing links (type change with pivot management)
+		// Process "belongs_to → related" demotions first, so that
+		// "related → belongs_to" promotions don't fail the uniqueness check.
+		slices.SortFunc(input.LinksToUpdate, func(a, b models.UpdateLinkWithID) int {
+			if a.LinkType == models.LinkTypeRelated &&
+				b.LinkType == models.LinkTypeBelongsTo {
+				return -1
+			}
+			if a.LinkType == models.LinkTypeBelongsTo && b.LinkType == models.LinkTypeRelated {
+				return 1
+			}
+			return 0
+		})
+		for _, linkUpdate := range input.LinksToUpdate {
+			// Find the existing link
+			var existingLink *models.LinkToSingle
+			for i := range links {
+				if links[i].Id == linkUpdate.ID {
+					existingLink = &links[i]
+					break
+				}
+			}
+			if existingLink == nil {
+				return errors.Wrapf(models.NotFoundError,
+					"link %s not found", linkUpdate.ID)
+			}
+
+			// Skip if the type is the same
+			if existingLink.LinkType == linkUpdate.LinkType {
+				continue
+			}
+
+			pivots, err := usecase.dataModelRepository.ListPivots(
+				ctx, tx, table.OrganizationID, nil, false)
+			if err != nil {
+				return err
+			}
+
+			if linkUpdate.LinkType == models.LinkTypeRelated {
+				// Changing to "related": delete the path-based pivot that references this link.
+				// The child table is always tableID, and ensureTableHasPivot at the end of
+				// the transaction will recreate a default pivot if none remain.
+				for _, pivot := range pivots {
+					for _, pathLinkId := range pivot.PathLinkIds {
+						if pathLinkId == linkUpdate.ID {
+							if err := usecase.dataModelRepository.DeleteDataModelPivot(
+								ctx, tx, pivot.Id.String()); err != nil {
+								return err
+							}
+							break
+						}
+					}
+				}
+			}
+
+			if linkUpdate.LinkType == models.LinkTypeBelongsTo {
+				// Changing to "belongs_to": validate no other belongs_to link on child table
+				for _, l := range links {
+					if l.Id != linkUpdate.ID && l.ChildTableId == tableID &&
+						l.LinkType == models.LinkTypeBelongsTo {
+						return errors.Wrap(models.BadParameterError,
+							fmt.Sprintf("child table %s already has a belongs_to link",
+								existingLink.ChildTableName))
+					}
+				}
+
+				// Delete the default pivot (field_id-based) on the child table, not path-based
+				// pivots that rely on another belongs_to link
+				for _, pivot := range pivots {
+					if pivot.BaseTableId == existingLink.ChildTableId && pivot.FieldId != nil {
+						if err := usecase.dataModelRepository.DeleteDataModelPivot(
+							ctx, tx, pivot.Id.String()); err != nil {
+							return err
+						}
+					}
+				}
+
+				// Create a path-based pivot for the belongs_to link (including self-links)
+				if _, err := usecase.CreatePivotWithExec(ctx, tx, models.CreatePivotInput{
+					OrganizationId: table.OrganizationID,
+					BaseTableId:    existingLink.ChildTableId,
+					PathLinkIds:    []string{existingLink.Id},
+				}); err != nil {
+					return err
+				}
+			}
+
+			if err := usecase.dataModelRepository.UpdateDataModelLink(
+				ctx, tx, linkUpdate.ID, linkUpdate.LinkType); err != nil {
+				return err
+			}
+
+			// Update the in-memory link so subsequent iterations in the same batch
+			// see the updated type (e.g. for belongs_to uniqueness check)
+			existingLink.LinkType = linkUpdate.LinkType
+		}
 
 		// 5. Execute field deletions (metadata only — org schema handled in step 11)
 		for _, field := range deletedFields {
@@ -575,7 +676,7 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 		}
 
 		// 6. Add new fields
-		// Refresh table metadata after deletions (FTMEntity may have changed for validation)
+		// Refresh table metadata and data model after deletions (FTMEntity may have changed for validation)
 		table, err = usecase.dataModelRepository.GetDataModelTable(ctx, tx, tableID)
 		if err != nil {
 			return err
@@ -1070,18 +1171,18 @@ func (usecase *usecase) createDataModelLinkWithExec(ctx context.Context, exec re
 			}
 		}
 
-		// Delete the existing pivot if exists, as we will create a new one
-		// Can have a pivot without a belongs_to link because we create a default pivot for every table which refer to
-		// itself
+		// Delete the default pivot (field_id-based) to replace it with a path-based one.
+		// Do not delete path-based pivots that rely on another belongs_to link.
 		pivots, err := usecase.dataModelRepository.ListPivots(ctx, exec,
 			link.OrganizationID, utils.Ptr(link.ChildTableID), false)
 		if err != nil {
 			return "", err
 		}
-		// Use loop to not handle the empty pivot case differently. But in practice can have only 0 or 1 pivot on the table
 		for _, pivot := range pivots {
-			if err := usecase.dataModelRepository.DeleteDataModelPivot(ctx, exec, pivot.Id.String()); err != nil {
-				return "", err
+			if pivot.FieldId != nil {
+				if err := usecase.dataModelRepository.DeleteDataModelPivot(ctx, exec, pivot.Id.String()); err != nil {
+					return "", err
+				}
 			}
 		}
 	}
@@ -1091,7 +1192,7 @@ func (usecase *usecase) createDataModelLinkWithExec(ctx context.Context, exec re
 		return "", err
 	}
 
-	// BelongsTo with different tables: also create a path-based pivot
+	// BelongsTo: create a path-based pivot (including self-links)
 	if link.LinkType == models.LinkTypeBelongsTo {
 		_, err = usecase.CreatePivotWithExec(ctx, exec, models.CreatePivotInput{
 			OrganizationId: link.OrganizationID,

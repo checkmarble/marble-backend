@@ -75,6 +75,7 @@ type DataModelRepository interface {
 	DeleteDataModelTable(ctx context.Context, exec Executor, table models.TableMetadata) error
 	ArchiveDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata) error
 	DeleteDataModelField(ctx context.Context, exec Executor, table models.TableMetadata, field models.FieldMetadata) error
+	UpdateDataModelLink(ctx context.Context, exec Executor, id string, linkType models.LinkType) error
 	DeleteDataModelLink(ctx context.Context, exec Executor, id string) error
 	DeleteDataModelPivot(ctx context.Context, exec Executor, id string) error
 }
@@ -874,6 +875,23 @@ func (repo MarbleDbRepository) DeleteDataModelField(ctx context.Context, exec Ex
 	query := NewQueryBuilder().
 		Delete(dbmodels.TableDataModelFields).
 		Where("table_id = ? and id = ?", table.ID, field.ID)
+
+	if err := ExecBuilder(ctx, exec, query); err != nil {
+		return err
+	}
+
+	return repo.DeleteDataModelCache(ctx, exec)
+}
+
+func (repo MarbleDbRepository) UpdateDataModelLink(ctx context.Context, exec Executor, id string, linkType models.LinkType) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update("data_model_links").
+		Set("link_type", string(linkType)).
+		Where("id = ?", id)
 
 	if err := ExecBuilder(ctx, exec, query); err != nil {
 		return err

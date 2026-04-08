@@ -425,6 +425,23 @@ func (input UpdateTableInput) AdaptToUpdateTableCompositeInput() (models.UpdateT
 				ParentTableID:  data.ParentTableId,
 			})
 
+		case OpMod:
+			var data ModLinkOperationData
+			if err := json.Unmarshal(linkOp.Data, &data); err != nil {
+				return result, errors.Wrap(models.BadParameterError, "invalid MOD link data: "+err.Error())
+			}
+			if data.ID == "" {
+				return result, errors.Wrap(models.BadParameterError, "MOD link operation requires an id")
+			}
+			linkType := models.LinkType(data.LinkType)
+			if !linkType.IsValid() {
+				return result, errors.Wrap(models.BadParameterError, "invalid link type")
+			}
+			result.LinksToUpdate = append(result.LinksToUpdate, models.UpdateLinkWithID{
+				ID:       data.ID,
+				LinkType: linkType,
+			})
+
 		case OpDel:
 			var data DeleteOperationData
 			if err := json.Unmarshal(linkOp.Data, &data); err != nil {
@@ -437,7 +454,7 @@ func (input UpdateTableInput) AdaptToUpdateTableCompositeInput() (models.UpdateT
 
 		default:
 			return result, errors.Wrapf(models.BadParameterError,
-				"invalid link operation: %s (only ADD and DEL supported)", linkOp.Op)
+				"invalid link operation: %s", linkOp.Op)
 		}
 	}
 
@@ -476,6 +493,11 @@ type ModFieldOperationData struct {
 	Alias        *string                 `json:"alias"`
 	SemanticType pure_utils.Null[string] `json:"semantic_type"`
 	Metadata     *json.RawMessage        `json:"metadata"`
+}
+
+type ModLinkOperationData struct {
+	ID       string `json:"id"`
+	LinkType string `json:"link_type"`
 }
 
 // Create link input outside the context of creating a table.
