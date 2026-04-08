@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -39,6 +39,8 @@ jobs:
       - name: auth github actions to GCP
         id: auth
         uses: google-github-actions/auth@v3
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
           token_format: access_token
           project_id: ${{ vars.GCP_PROJECT_ID }}
@@ -72,6 +74,8 @@ jobs:
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
       - name: Deploy migration job
         run: |
