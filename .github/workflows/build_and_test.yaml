@@ -33,7 +33,7 @@ jobs:
 
     steps:
       - name: Checkout main branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -45,9 +45,7 @@ jobs:
           cache-dependency-path: go.mod
 
       - name: Cache Go tools only
-        uses: actions/cache@v4
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+        uses: actions/cache@v5
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-go-bin-${{ hashFiles('**/go.mod') }}
@@ -66,7 +64,7 @@ jobs:
         run: goose -dir repositories/migrations up
 
       - name: Checkout PR branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
