@@ -139,10 +139,14 @@ func (f Filter) ToSql() (sql string, args []any) {
 			return "", nil
 		}
 		// apply NULLIF to protect against division by zero
-		if f.Operator == ast.FUNC_DIVIDE {
+		switch f.Operator {
+		case ast.FUNC_DIVIDE:
 			sql = fmt.Sprintf("%s %s NULLIF(%s, 0)",
 				left, attrs.AstName, right)
-		} else {
+		case ast.FUNC_NOT_EQUAL:
+			// AstName for NOT_EQUAL is "≠" (Unicode), which is not valid SQL
+			sql = fmt.Sprintf("%s <> %s", left, right)
+		default:
 			sql = fmt.Sprintf("%s %s %s", left,
 				attrs.AstName, right)
 		}
