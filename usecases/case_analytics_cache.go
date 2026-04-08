@@ -78,7 +78,8 @@ func cachedTimeSeriesQuery[T analytics.Dated](
 
 	// If nothing to fetch, return cached data filtered to range
 	if len(toFetch) == 0 {
-		return filterByDateRange(cached, requestedStart, requestedEnd), nil
+		filtered := filterByDateRange(cached, requestedStart, requestedEnd)
+		return fillMissingDates(filtered, requestedStart, requestedEnd, zeroForDate), nil
 	}
 
 	// We need to query the DB — resolve inboxes now
