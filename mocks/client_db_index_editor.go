@@ -105,6 +105,19 @@ func (editor *ClientDbIndexEditor) DeleteUniqueIndex(ctx context.Context, organi
 	return args.Error(0)
 }
 
+func (editor *ClientDbIndexEditor) FindNavigationIndexNames(
+	ctx context.Context,
+	organizationId uuid.UUID,
+	tableName string,
+	filterFieldName string,
+) ([]string, error) {
+	args := editor.Called(ctx, organizationId, tableName, filterFieldName)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+
 func (editor *ClientDbIndexEditor) GetRequiredIndices(ctx context.Context, organizationId uuid.UUID) (required []models.AggregateQueryFamily, err error) {
 	args := editor.Called(ctx, organizationId)
 	return []models.AggregateQueryFamily{}, args.Error(1)

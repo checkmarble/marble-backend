@@ -391,6 +391,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewIndexCreationStatusWorker())
 	river.AddWorker(workers, adminUc.NewIndexCleanupWorker())
 	river.AddWorker(workers, adminUc.NewIndexDeletionWorker())
+	river.AddWorker(workers, adminUc.NewIndexDeletionByNameWorker())
 	river.AddWorker(workers, adminUc.NewTestRunSummaryWorker())
 	river.AddWorker(workers, adminUc.NewMatchEnrichmentWorker())
 	river.AddWorker(workers, adminUc.NewCaseReviewWorker(workerConfig.caseReviewTimeout))
@@ -599,6 +600,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion
 	case "index_deletion":
 		return uc.NewIndexDeletionWorker().Work(ctx,
 			singleJobCreate[models.IndexDeletionArgs](ctx, jobArgs))
+	case "index_deletion_by_name":
+		return uc.NewIndexDeletionByNameWorker().Work(ctx,
+			singleJobCreate[models.IndexDeletionByNameArgs](ctx, jobArgs))
 	case "match_enrichment":
 		return uc.NewMatchEnrichmentWorker().Work(ctx,
 			singleJobCreate[models.MatchEnrichmentArgs](ctx, jobArgs))

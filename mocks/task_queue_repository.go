@@ -234,3 +234,13 @@ func (m *TaskQueueRepository) EnqueueScreeningHitSuggestionTask(
 	args := m.Called(ctx, organizationId, screeningId)
 	return args.Error(0)
 }
+
+func (m *TaskQueueRepository) EnqueueDeleteIndexByNameTask(
+	ctx context.Context,
+	tx repositories.Transaction,
+	organizationId uuid.UUID,
+	indexNames []string,
+) error {
+	args := m.Called(ctx, tx, organizationId, indexNames)
+	return args.Error(0)
+}
