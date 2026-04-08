@@ -46,7 +46,7 @@ jobs:
           service_account: ${{ vars.SERVICE_ACCOUNT_EMAIL }}
 
       - name: Login to Google Artifact Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: europe-west1-docker.pkg.dev
           username: oauth2accesstoken
