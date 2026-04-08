@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"slices"
+	"time"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -76,7 +77,8 @@ func (uc CaseAnalyticsUsecase) CasesCreatedByTimeStats(
 	if !uc.license.Analytics {
 		return nil, nil
 	}
-	return cachedTimeSeriesQuery(ctx, uc, filters, "cases_created", uc.repository.CasesCreatedByTimeStats)
+	return cachedTimeSeriesQuery(ctx, uc, filters, "cases_created", uc.repository.CasesCreatedByTimeStats,
+		func(d time.Time) analytics.CasesCreated { return analytics.CasesCreated{Date: d} })
 }
 
 func (uc CaseAnalyticsUsecase) CasesFalsePositiveRateByTimeStats(
@@ -87,7 +89,10 @@ func (uc CaseAnalyticsUsecase) CasesFalsePositiveRateByTimeStats(
 		return nil, nil
 	}
 	return cachedTimeSeriesQuery(ctx, uc, filters, "cases_false_positive_rate",
-		uc.repository.CasesFalsePositiveRateByTimeStats)
+		uc.repository.CasesFalsePositiveRateByTimeStats,
+		func(d time.Time) analytics.CasesFalsePositiveRate {
+			return analytics.CasesFalsePositiveRate{Date: d}
+		})
 }
 
 func (uc CaseAnalyticsUsecase) CasesDurationByTimeStats(
@@ -97,7 +102,8 @@ func (uc CaseAnalyticsUsecase) CasesDurationByTimeStats(
 	if !uc.license.Analytics {
 		return nil, nil
 	}
-	return cachedTimeSeriesQuery(ctx, uc, filters, "cases_duration", uc.repository.CasesDurationByTimeStats)
+	return cachedTimeSeriesQuery(ctx, uc, filters, "cases_duration", uc.repository.CasesDurationByTimeStats,
+		func(d time.Time) analytics.CasesDuration { return analytics.CasesDuration{Date: d} })
 }
 
 func (uc CaseAnalyticsUsecase) SarDelayByTimeStats(
@@ -107,7 +113,8 @@ func (uc CaseAnalyticsUsecase) SarDelayByTimeStats(
 	if !uc.license.Analytics {
 		return nil, nil
 	}
-	return cachedTimeSeriesQuery(ctx, uc, filters, "sar_delay", uc.repository.SarDelayByTimeStats)
+	return cachedTimeSeriesQuery(ctx, uc, filters, "sar_delay", uc.repository.SarDelayByTimeStats,
+		func(d time.Time) analytics.SarDelay { return analytics.SarDelay{Date: d} })
 }
 
 func (uc CaseAnalyticsUsecase) SarCompletedCount(
@@ -145,17 +152,20 @@ func (uc CaseAnalyticsUsecase) CaseStatusByDate(
 	ctx context.Context,
 	filters dto.CaseAnalyticsFilters,
 ) ([]analytics.CaseStatusByDate, error) {
-	// NB: no protected by a license, because we use those in the "overview" page of the case manager which is there
+	// NB: not protected by a license, because we use those in the "overview" page of the case manager which is there
 	// for open-source users. If we want to enforce a license on this later, we will need to do it with more granularity.
 
-	return cachedTimeSeriesQuery(ctx, uc, filters, "case_status_by_date", uc.repository.CaseStatusByDate)
+	return cachedTimeSeriesQuery(ctx, uc, filters, "case_status_by_date", uc.repository.CaseStatusByDate,
+		func(d time.Time) analytics.CaseStatusByDate {
+			return analytics.CaseStatusByDate{Date: d}
+		})
 }
 
 func (uc CaseAnalyticsUsecase) CaseStatusByInbox(
 	ctx context.Context,
 	filters dto.CaseAnalyticsFilters,
 ) ([]analytics.CaseStatusByInbox, error) {
-	// NB: no protected by a license, because we use those in the "overview" page of the case manager which is there
+	// NB: not protected by a license, because we use those in the "overview" page of the case manager which is there
 	// for open-source users. If we want to enforce a license on this later, we will need to do it with more granularity.
 
 	return cachedScalarQuery(ctx, uc, filters, "case_status_by_inbox", uc.repository.CaseStatusByInbox)
