@@ -167,11 +167,6 @@ func (d *DataModelRepository) DeleteDataModelField(ctx context.Context, exec rep
 	return args.Error(0)
 }
 
-func (d *DataModelRepository) UpdateDataModelLink(ctx context.Context, exec repositories.Executor, id string, linkType models.LinkType) error {
-	args := d.Called(ctx, exec, id, linkType)
-	return args.Error(0)
-}
-
 func (d *DataModelRepository) DeleteDataModelLink(ctx context.Context, exec repositories.Executor, id string) error {
 	args := d.Called(ctx, exec, id)
 	return args.Error(0)

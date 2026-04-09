@@ -670,11 +670,6 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 				}
 			}
 
-			if err := usecase.dataModelRepository.UpdateDataModelLink(
-				ctx, tx, linkUpdate.ID, linkUpdate.LinkType); err != nil {
-				return err
-			}
-
 			// Update the in-memory link so subsequent iterations in the same batch
 			// see the updated type (e.g. for belongs_to uniqueness check)
 			existingLink.LinkType = linkUpdate.LinkType
