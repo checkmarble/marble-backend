@@ -366,6 +366,10 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_nominal() {
 		Name:         tableName,
 		Description:  "description",
 		SemanticType: models.SemanticTypeOther,
+		Fields: []models.CreateFieldInput{
+			{Name: "object_id", DataType: models.String, Nullable: false},
+			{Name: "updated_at", DataType: models.Timestamp, Nullable: false},
+		},
 	}
 	// DataModel with required fields for SemanticTypeOther validation
 	nameTableDataModel := models.DataModel{
@@ -398,6 +402,10 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_nominal() {
 		Return(nil)
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, mock.AnythingOfType("string")).
 		Return(models.TableMetadata{Name: tableName, OrganizationID: suite.organizationId}, nil)
+	suite.dataModelRepository.On("CreateDataModelField",
+		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"),
+		mock.AnythingOfType("models.CreateFieldInput")).
+		Return(nil)
 	// ensureTableHasPivot: return non-empty pivots so no pivot creation needed
 	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId,
 		mock.AnythingOfType("*string"), false).
@@ -459,6 +467,10 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_org_repository_
 		Name:         tableName,
 		Description:  "description",
 		SemanticType: models.SemanticTypeOther,
+		Fields: []models.CreateFieldInput{
+			{Name: "object_id", DataType: models.String, Nullable: false},
+			{Name: "updated_at", DataType: models.Timestamp, Nullable: false},
+		},
 	}
 	// DataModel with required fields for SemanticTypeOther validation
 	nameTableDataModel := models.DataModel{
@@ -491,6 +503,10 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_org_repository_
 		Return(nil)
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, mock.AnythingOfType("string")).
 		Return(models.TableMetadata{Name: tableName, OrganizationID: suite.organizationId}, nil)
+	suite.dataModelRepository.On("CreateDataModelField",
+		suite.ctx, suite.transaction, suite.organizationId, mock.AnythingOfType("string"),
+		mock.AnythingOfType("models.CreateFieldInput")).
+		Return(nil)
 	// ensureTableHasPivot: return non-empty pivots so no pivot creation needed
 	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId,
 		mock.AnythingOfType("*string"), false).
