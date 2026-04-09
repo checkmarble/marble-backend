@@ -3,9 +3,6 @@
       "gopls": {
             "formatting.gofumpt": true
       },
-      "go.toolsEnvVars": {
-            "GOFUMPT_SPLIT_LONG_LINES": "on"
-      },
       "go.lintOnSave": "package",
       "search.exclude": {
             "go.sum": true,
