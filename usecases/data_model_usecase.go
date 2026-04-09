@@ -299,6 +299,27 @@ func (usecase *usecase) CreateDataModelTable(
 			fieldIdsByName[fieldsToCreate[i].Name] = fieldId
 		}
 
+		// Validate required fields before they're used by ensureTableHasPivot and org schema creation
+		for _, req := range []string{
+			"object_id",
+			"updated_at",
+		} {
+			if _, ok := fieldIdsByName[req]; !ok {
+				return errors.Wrapf(models.BadParameterError,
+					"required field %q is missing from the table fields", req)
+			}
+		}
+		for _, f := range fieldsToCreate {
+			if f.Name == "object_id" && (f.DataType != models.String || f.Nullable) {
+				return errors.Wrap(models.BadParameterError,
+					"field \"object_id\" must be of type String and non-nullable")
+			}
+			if f.Name == "updated_at" && (f.DataType != models.Timestamp || f.Nullable) {
+				return errors.Wrap(models.BadParameterError,
+					"field \"updated_at\" must be of type Timestamp and non-nullable")
+			}
+		}
+
 		// Create links
 		for _, l := range input.Links {
 			childFieldId, ok := fieldIdsByName[l.ChildFieldName]
