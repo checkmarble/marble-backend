@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -20,8 +22,9 @@ import (
 func (repo *MarbleDbRepository) FindAutoAssignableUsers(ctx context.Context, exec Executor,
 	orgId uuid.UUID, limit int,
 ) ([]models.UserWithCaseCount, error) {
-	sql := `
-		select u.*, count(distinct c.id) as case_count
+	userColumns := strings.Join(columnsNames("u", dbmodels.UserFields), ", ")
+	sql := fmt.Sprintf(`
+		select %s, count(distinct c.id) as case_count
 		from inbox_users iu
 		inner join users u on
 		  u.organization_id = $1 and
@@ -50,7 +53,7 @@ func (repo *MarbleDbRepository) FindAutoAssignableUsers(ctx context.Context, exe
 		group by u.id
 		having count(distinct c.id) < $2
 		order by case_count
-	`
+	`, userColumns)
 
 	rows, err := exec.Query(ctx, sql, orgId, limit)
 	if err != nil {
@@ -75,8 +78,9 @@ func (repo *MarbleDbRepository) FindAutoAssignableUsers(ctx context.Context, exe
 func (repo *MarbleDbRepository) FindNextAutoAssignableUserForInbox(ctx context.Context,
 	exec Executor, orgId uuid.UUID, inboxId uuid.UUID, limit int,
 ) (*models.User, error) {
-	sql := `
-		select u.*, count(distinct c.id) as case_count
+	userColumns := strings.Join(columnsNames("u", dbmodels.UserFields), ", ")
+	sql := fmt.Sprintf(`
+		select %s, count(distinct c.id) as case_count
 		from inbox_users iu
 		inner join users u on
 		  u.organization_id = $1 and
@@ -107,7 +111,7 @@ func (repo *MarbleDbRepository) FindNextAutoAssignableUserForInbox(ctx context.C
 		having count(distinct c.id) < $3
 		order by case_count, id asc
 		limit 1
-	`
+	`, userColumns)
 
 	rows, err := exec.Query(ctx, sql, orgId, inboxId, limit)
 	if err != nil {
@@ -132,7 +136,8 @@ func (repo *MarbleDbRepository) FindNextAutoAssignableUserForInbox(ctx context.C
 }
 
 func (repo *MarbleDbRepository) FindAutoAssignableCases(ctx context.Context, exec Executor, orgId uuid.UUID, limit int) ([]models.Case, error) {
-	sql := `
+	caseColumns := strings.Join(columnsNames("c", dbmodels.SelectCaseColumn), ", ")
+	sql := fmt.Sprintf(`
 		with assignable_inboxes as (
 		  select distinct iu.inbox_id
 		  from inbox_users iu
@@ -163,11 +168,11 @@ func (repo *MarbleDbRepository) FindAutoAssignableCases(ctx context.Context, exe
 		  group by iu.inbox_id, u.id
 		  having count(distinct c.id) < $2
 		)
-		select c.*
+		select %s
 		from assignable_inboxes ai
 		inner join inboxes i on i.id = ai.inbox_id and i.auto_assign_enabled
 		inner join lateral(
-		  select c.*
+		  select %s
 		  from cases c
 		  where
 		    c.inbox_id = i.id and
@@ -177,7 +182,7 @@ func (repo *MarbleDbRepository) FindAutoAssignableCases(ctx context.Context, exe
 		  limit $2
 		) c on true
 		order by c.created_at asc
-	`
+	`, caseColumns, caseColumns)
 
 	rows, err := exec.Query(ctx, sql, orgId, limit)
 	if err != nil {
