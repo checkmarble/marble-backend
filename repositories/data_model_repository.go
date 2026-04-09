@@ -122,6 +122,12 @@ func (repo MarbleDbRepository) GetDataModel(
 		return models.DataModel{}, err
 	}
 
+	pivots, err := repo.ListPivots(ctx, exec, organizationID, nil, useCache)
+	if err != nil {
+		return models.DataModel{}, err
+	}
+	models.EnrichLinksWithPivotTypes(links, pivots)
+
 	dataModel := models.DataModel{
 		Tables: make(map[string]models.Table),
 	}
@@ -416,7 +422,6 @@ func (repo MarbleDbRepository) CreateDataModelLink(ctx context.Context, exec Exe
 				"id",
 				"organization_id",
 				"name",
-				"link_type",
 				"parent_table_id",
 				"parent_field_id",
 				"child_table_id",
@@ -426,7 +431,6 @@ func (repo MarbleDbRepository) CreateDataModelLink(ctx context.Context, exec Exe
 				id,
 				link.OrganizationID,
 				strings.ToLower(link.Name),
-				string(link.LinkType),
 				link.ParentTableID,
 				link.ParentFieldID,
 				link.ChildTableID,
@@ -509,7 +513,6 @@ func (repo MarbleDbRepository) GetLinks(ctx context.Context, exec Executor, orga
 		links.id,
 		links.organization_id,
 		links.name,
-		links.link_type,
 		parent_table.name,
 		parent_table.id,
 		parent_field.name,
@@ -536,7 +539,6 @@ func (repo MarbleDbRepository) GetLinks(ctx context.Context, exec Executor, orga
 			&dbLinks.Id,
 			&dbLinks.OrganizationId,
 			&dbLinks.Name,
-			&dbLinks.LinkType,
 			&dbLinks.ParentTableName,
 			&dbLinks.ParentTableId,
 			&dbLinks.ParentFieldName,
