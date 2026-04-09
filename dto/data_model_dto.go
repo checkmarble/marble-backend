@@ -597,7 +597,8 @@ type DataModelDeleteFieldConflicts struct {
 	EmptyScenarios      []DataModelDeleteFieldRef                         `json:"empty_scenarios"`
 	ScenarioIterations  map[string]*DataModelDeleteFieldConflictIteration `json:"scenario_iterations"`
 	Workflows           []DataModelDeleteFieldRef                         `json:"workflows"`
-	TestRuns            bool                                              `json:"test_runs"`
+	TestRuns             bool                                              `json:"test_runs"`
+	PrimaryOrderingField bool                                              `json:"primary_ordering_field"`
 }
 
 type DataModelDeleteFieldRef struct {
@@ -640,7 +641,8 @@ func AdaptDataModelDeleteFieldReport(m models.DataModelDeleteFieldReport, errs .
 				return AdaptDataModelDeleteFieldReportRef(m, id)
 			}),
 			ScenarioIterations: map[string]*DataModelDeleteFieldConflictIteration{},
-			TestRuns:           m.Conflicts.TestRuns,
+			TestRuns:             m.Conflicts.TestRuns,
+			PrimaryOrderingField: m.Conflicts.PrimaryOrderingField,
 		},
 		ArchivedIterations: pure_utils.Map(m.ArchivedIterations.Slice(), func(id string) DataModelDeleteFieldRef {
 			return AdaptDataModelDeleteFieldReportRef(m, id)

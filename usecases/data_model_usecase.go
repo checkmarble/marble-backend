@@ -488,7 +488,19 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			return err
 		}
 
-		// 2. Conflict checking for link deletions
+		// 2. Update table properties early so that conflict checks (e.g. PrimaryOrderingField)
+		// see the intended final state of the table.
+		if err := usecase.dataModelRepository.UpdateDataModelTable(ctx, tx, tableID,
+			input.Description, input.FTMEntity, input.Alias, input.SemanticType,
+			input.CaptionField, input.PrimaryOrderingField, input.Metadata); err != nil {
+			return err
+		}
+		table, err = usecase.dataModelRepository.GetDataModelTable(ctx, tx, tableID)
+		if err != nil {
+			return err
+		}
+
+		// 3. Conflict checking for link deletions
 		for _, linkId := range input.LinksToDelete {
 			canDelete, report, err := usecase.destroyUsecase.canDeleteLink(
 				ctx, table.OrganizationID, tx, linkId)
@@ -752,7 +764,7 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			}
 		}
 
-		// 9. Update table properties
+		// 9. Validate caption field (table properties were already persisted in step 2)
 		if input.CaptionField.Set && input.CaptionField.Valid {
 			// Re-fetch data model to include fields added/updated in steps 6-8
 			freshDataModel, err := usecase.dataModelRepository.GetDataModel(
@@ -787,12 +799,6 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 					return err
 				}
 			}
-		}
-
-		if err := usecase.dataModelRepository.UpdateDataModelTable(ctx, tx, tableID,
-			input.Description, input.FTMEntity, input.Alias, input.SemanticType,
-			input.CaptionField, input.PrimaryOrderingField, input.Metadata); err != nil {
-			return err
 		}
 
 		// 10. Semantic validation (single check at the end, after all mutations)

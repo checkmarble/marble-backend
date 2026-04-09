@@ -289,6 +289,10 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 			report.Conflicts.ContinuousScreening = true
 			canDelete = false
 		}
+		if table.PrimaryOrderingField == field.Name {
+			report.Conflicts.PrimaryOrderingField = true
+			canDelete = false
+		}
 	}
 
 	analyticsSettings, err := uc.analyticsSettingsRepository.GetAnalyticsSettings(ctx, exec, orgId)
