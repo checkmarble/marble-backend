@@ -374,6 +374,24 @@ type LinkToSingle struct {
 	ChildFieldId    string
 }
 
+// EnrichLinksWithPivotTypes computes the LinkType for each link based on pivot data.
+// A link is "belongs_to" if its ID appears in any pivot's PathLinkIds, otherwise it is "related".
+func EnrichLinksWithPivotTypes(links []LinkToSingle, pivots []PivotMetadata) {
+	belongsToLinkIds := make(map[string]struct{})
+	for _, pivot := range pivots {
+		for _, linkId := range pivot.PathLinkIds {
+			belongsToLinkIds[linkId] = struct{}{}
+		}
+	}
+	for i := range links {
+		if _, ok := belongsToLinkIds[links[i].Id]; ok {
+			links[i].LinkType = LinkTypeBelongsTo
+		} else {
+			links[i].LinkType = LinkTypeRelated
+		}
+	}
+}
+
 type DataModelLinkCreateInput struct {
 	OrganizationID uuid.UUID
 	Name           string
