@@ -65,6 +65,10 @@ type stringSemanticType struct{}
 
 func (stringSemanticType) AllowedDataTypes() []DataType { return []DataType{String} }
 
+type stringOrNumberSemanticType struct{}
+
+func (stringOrNumberSemanticType) AllowedDataTypes() []DataType { return []DataType{String, Int, Float} }
+
 type numberSemanticType struct{}
 
 func (numberSemanticType) AllowedDataTypes() []DataType { return []DataType{Int, Float} }
@@ -81,7 +85,7 @@ var fieldSemanticTypeRegistry = map[FieldSemanticType]fieldSemanticTypeValidator
 	FieldSemanticTypeLastName:   stringSemanticType{},
 
 	// Enum family
-	FieldSemanticTypeEnum:     stringSemanticType{},
+	FieldSemanticTypeEnum:     stringOrNumberSemanticType{},
 	FieldSemanticTypeCurrency: stringSemanticType{},
 	FieldSemanticTypeCountry:  stringSemanticType{},
 
