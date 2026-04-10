@@ -661,6 +661,13 @@ func (usecases UsecasesWithCreds) NewIndexDeletionWorker() *worker_jobs.IndexDel
 	return &w
 }
 
+func (usecases UsecasesWithCreds) NewIndexDeletionByNameWorker() *worker_jobs.IndexDeletionByNameWorker {
+	return worker_jobs.NewIndexDeletionByNameWorker(
+		usecases.NewExecutorFactory(),
+		&usecases.Repositories.ClientDbRepository,
+	)
+}
+
 func (usecases UsecasesWithCreds) NewTestRunSummaryWorker() *worker_jobs.TestRunSummaryWorker {
 	w := worker_jobs.NewTestRunSummaryWorker(
 		usecases.NewExecutorFactory(),

@@ -163,6 +163,12 @@ type TaskQueueRepository interface {
 		organizationId uuid.UUID,
 		screeningId string,
 	) error
+	EnqueueDeleteIndexByNameTask(
+		ctx context.Context,
+		tx Transaction,
+		organizationId uuid.UUID,
+		indexNames []string,
+	) error
 }
 
 type riverRepository struct {
@@ -272,6 +278,9 @@ func (r riverRepository) EnqueueCreateIndexTask(
 	organizationId uuid.UUID,
 	indices []models.ConcreteIndex,
 ) error {
+	if len(indices) == 0 {
+		return nil
+	}
 	_, err := r.client.InsertTx(
 		ctx,
 		tx.RawTx(),
@@ -287,6 +296,28 @@ func (r riverRepository) EnqueueCreateIndexTask(
 	}
 
 	return nil
+}
+
+func (r riverRepository) EnqueueDeleteIndexByNameTask(
+	ctx context.Context,
+	tx Transaction,
+	organizationId uuid.UUID,
+	indexNames []string,
+) error {
+	if len(indexNames) == 0 {
+		return nil
+	}
+	_, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.IndexDeletionByNameArgs{
+			OrgId:      organizationId,
+			IndexNames: indexNames,
+		},
+		&river.InsertOpts{
+			Queue: organizationId.String(),
+		})
+	return err
 }
 
 func (r riverRepository) EnqueueMatchEnrichmentTask(
