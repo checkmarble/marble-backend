@@ -564,7 +564,28 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 		}
 
 		// 3. Conflict checking for link deletions
+		// Fetch links early so we can verify each link belongs to this table before deletion.
+		links, err := usecase.dataModelRepository.GetLinks(ctx, tx, table.OrganizationID)
+		if err != nil {
+			return err
+		}
 		for _, linkId := range input.LinksToDelete {
+			// Verify the link exists and belongs to the table being updated (child table)
+			linkFound := false
+			for _, l := range links {
+				if l.Id == linkId {
+					if l.ChildTableId != tableID {
+						return errors.Wrapf(models.NotFoundError,
+							"link %s does not belong to table %s", linkId, tableID)
+					}
+					linkFound = true
+					break
+				}
+			}
+			if !linkFound {
+				return errors.Wrapf(models.NotFoundError, "link %s not found", linkId)
+			}
+
 			canDelete, report, err := usecase.destroyUsecase.canDeleteLink(
 				ctx, table.OrganizationID, tx, linkId)
 			if err != nil {
@@ -585,6 +606,10 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			if err != nil {
 				return err
 			}
+			if field.TableId != tableID {
+				return errors.Wrapf(models.NotFoundError,
+					"field %s does not belong to table %s", fieldId, tableID)
+			}
 			if field.Name == "object_id" || field.Name == "updated_at" {
 				return errors.Wrap(models.BadParameterError,
 					"cannot delete reserved fields object_id and updated_at")
@@ -603,10 +628,6 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 		}
 
 		// 4. Execute link deletions (cascade pivot for BelongsTo)
-		links, err := usecase.dataModelRepository.GetLinks(ctx, tx, table.OrganizationID)
-		if err != nil {
-			return err
-		}
 		var navIndexNamesToDelete []string
 		var navIndexesToCreate []models.ConcreteIndex
 		for _, linkId := range input.LinksToDelete {
@@ -680,6 +701,10 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			if existingLink == nil {
 				return errors.Wrapf(models.NotFoundError,
 					"link %s not found", linkUpdate.ID)
+			}
+			if existingLink.ChildTableId != tableID {
+				return errors.Wrapf(models.NotFoundError,
+					"link %s does not belong to table %s", linkUpdate.ID, tableID)
 			}
 
 			// Skip if the type is the same
@@ -761,8 +786,9 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			return err
 		}
 
-		dataModel, err := usecase.dataModelRepository.GetDataModel(
-			ctx, tx, table.OrganizationID, false, false)
+		dataModel, err := usecase.getDataModelWithExec(
+			ctx, tx, table.OrganizationID,
+			models.DataModelReadOptions{IncludeUnicityConstraints: true}, false)
 		if err != nil {
 			return err
 		}
@@ -817,12 +843,21 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			if err != nil {
 				return err
 			}
+			if field.TableId != tableID {
+				return errors.Wrapf(models.NotFoundError,
+					"field %s does not belong to table %s", f.ID, tableID)
+			}
 
 			if field.Name == "object_id" || field.Name == "updated_at" {
 				if f.IsEnum != nil || f.IsNullable != nil || f.IsUnique != nil || f.FTMProperty.Set {
 					return errors.Wrap(models.BadParameterError,
 						"only the description of the `object_id` and `updated_at` fields can be updated")
 				}
+			}
+
+			// Only validate; unicity index management is intentionally skipped (slated for removal)
+			if _, _, err := validateFieldUpdateRules(dataModel, field, table, f.UpdateFieldInput); err != nil {
+				return err
 			}
 
 			if err := validateFTMProperty(table, f.FTMProperty); err != nil {
