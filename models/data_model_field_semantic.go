@@ -131,8 +131,6 @@ func (f FieldSemanticType) IsName() bool {
 		f == FieldSemanticTypeLastName
 }
 
-// ValidateField checks semantic type compatibility and cross-field constraints (primary ordering
-// uniqueness). fields is the full list of fields for the table after the create/update is applied.
 func ValidateField(field Field) error {
 	if field.SemanticType == FieldSemanticTypeUnset {
 		return nil
