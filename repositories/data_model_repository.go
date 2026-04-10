@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -40,6 +41,7 @@ type DataModelRepository interface {
 		semanticType pure_utils.Null[models.SemanticType],
 		captionField pure_utils.Null[string],
 		primaryOrderingField pure_utils.Null[string],
+		metadata *json.RawMessage,
 	) error
 	GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error)
 	CreateDataModelField(ctx context.Context, exec Executor, organizationId uuid.UUID, fieldId string, field models.CreateFieldInput) error
@@ -121,12 +123,6 @@ func (repo MarbleDbRepository) GetDataModel(
 	if err != nil {
 		return models.DataModel{}, err
 	}
-
-	pivots, err := repo.ListPivots(ctx, exec, organizationID, nil, useCache)
-	if err != nil {
-		return models.DataModel{}, err
-	}
-	models.EnrichLinksWithPivotTypes(links, pivots)
 
 	dataModel := models.DataModel{
 		Tables: make(map[string]models.Table),
@@ -252,6 +248,7 @@ func (repo MarbleDbRepository) UpdateDataModelTable(
 	semanticType pure_utils.Null[models.SemanticType],
 	captionField pure_utils.Null[string],
 	primaryOrderingField pure_utils.Null[string],
+	metadata *json.RawMessage,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -286,6 +283,10 @@ func (repo MarbleDbRepository) UpdateDataModelTable(
 	if primaryOrderingField.Set {
 		updated = true
 		query = query.Set("primary_ordering_field", primaryOrderingField.Value())
+	}
+	if metadata != nil {
+		updated = true
+		query = query.Set("metadata", *metadata)
 	}
 
 	if !updated {
@@ -520,7 +521,12 @@ func (repo MarbleDbRepository) GetLinks(ctx context.Context, exec Executor, orga
 		child_table.name,
 		child_table.id,
 		child_field.name,
-		child_field.id
+		child_field.id,
+		EXISTS (
+			SELECT 1 FROM data_model_pivots p
+			WHERE p.organization_id = links.organization_id
+			AND links.id = ANY(p.path_link_ids)
+		) AS is_belongs_to
 	FROM data_model_links AS links
     	JOIN data_model_tables AS parent_table ON (links.parent_table_id = parent_table.id)
     	JOIN data_model_fields AS parent_field ON (links.parent_field_id = parent_field.id)
@@ -533,7 +539,7 @@ func (repo MarbleDbRepository) GetLinks(ctx context.Context, exec Executor, orga
 		return nil, err
 	}
 
-	links, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.LinkToSingle, error) {
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.LinkToSingle, error) {
 		var dbLinks dbmodels.DbDataModelLink
 		if err := rows.Scan(
 			&dbLinks.Id,
@@ -547,12 +553,12 @@ func (repo MarbleDbRepository) GetLinks(ctx context.Context, exec Executor, orga
 			&dbLinks.ChildTableId,
 			&dbLinks.ChildFieldName,
 			&dbLinks.ChildFieldId,
+			&dbLinks.IsBelongsTo,
 		); err != nil {
 			return models.LinkToSingle{}, err
 		}
 		return dbmodels.AdaptLinkToSingle(dbLinks), err
 	})
-	return links, nil
 }
 
 func (repo MarbleDbRepository) DeleteDataModel(ctx context.Context, exec Executor, organizationID uuid.UUID) error {

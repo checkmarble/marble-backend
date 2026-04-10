@@ -379,6 +379,7 @@ func (usecases *UsecasesWithCreds) NewDataModelUseCase() usecase {
 		dataModelIngestedDataReadRepo: usecases.Repositories.IngestedDataReadRepository,
 		indexEditor:                   usecases.NewClientDbIndexEditor(),
 		taskQueueRepository:           usecases.Repositories.TaskQueueRepository,
+		destroyUsecase:                usecases.NewDataModelDestroyUsecase(),
 	}
 }
 
@@ -658,6 +659,13 @@ func (usecases UsecasesWithCreds) NewIndexDeletionWorker() *worker_jobs.IndexDel
 		usecases.NewClientDbIndexEditor(),
 	)
 	return &w
+}
+
+func (usecases UsecasesWithCreds) NewIndexDeletionByNameWorker() *worker_jobs.IndexDeletionByNameWorker {
+	return worker_jobs.NewIndexDeletionByNameWorker(
+		usecases.NewExecutorFactory(),
+		&usecases.Repositories.ClientDbRepository,
+	)
 }
 
 func (usecases UsecasesWithCreds) NewTestRunSummaryWorker() *worker_jobs.TestRunSummaryWorker {

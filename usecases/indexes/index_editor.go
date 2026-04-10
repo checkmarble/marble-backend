@@ -386,6 +386,39 @@ func (editor ClientDbIndexEditor) DeleteUniqueIndex(
 	return nil
 }
 
+func (editor ClientDbIndexEditor) FindNavigationIndexNames(
+	ctx context.Context,
+	organizationId uuid.UUID,
+	tableName string,
+	filterFieldName string,
+) ([]string, error) {
+	if err := editor.enforceSecurityDataModel.ReadDataModel(); err != nil {
+		return nil, err
+	}
+
+	db, err := editor.executorFactory.NewClientDbExecutor(ctx, organizationId)
+	if err != nil {
+		return nil, errors.Wrap(err,
+			"Error while creating client schema executor in FindNavigationIndexNames")
+	}
+
+	allIndexes, err := editor.ingestedDataIndexesRepository.ListAllIndexes(ctx, db, models.IndexTypeNavigation)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error while listing indexes in FindNavigationIndexNames")
+	}
+
+	var names []string
+	for _, index := range allIndexes {
+		// Navigation indexes are always created with Indexed[0] as the filter field name
+		// and Indexed[1] as the ordering field name (see data_model_usecase.go createLink/CreateNavigationIndex)
+		if index.TableName == tableName && len(index.Indexed) > 0 && index.Indexed[0] == filterFieldName {
+			names = append(names, index.Name())
+		}
+	}
+
+	return names, nil
+}
+
 func (editor ClientDbIndexEditor) IngestedObjectsSearchIndexExists(ctx context.Context, orgId uuid.UUID, tableName, fieldName string) (bool, error) {
 	exec, err := editor.executorFactory.NewClientDbExecutor(ctx, editor.enforceSecurity.OrgId())
 	if err != nil {

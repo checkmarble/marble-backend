@@ -87,9 +87,15 @@ type DbDataModelLink struct {
 	ChildTableId    string
 	ChildFieldName  string
 	ChildFieldId    string
+	IsBelongsTo     bool
 }
 
 func AdaptLinkToSingle(dbDataModelLink DbDataModelLink) models.LinkToSingle {
+	linkType := models.LinkTypeRelated
+	if dbDataModelLink.IsBelongsTo {
+		linkType = models.LinkTypeBelongsTo
+	}
+
 	return models.LinkToSingle{
 		Id:              dbDataModelLink.Id,
 		OrganizationId:  dbDataModelLink.OrganizationId,
@@ -102,5 +108,6 @@ func AdaptLinkToSingle(dbDataModelLink DbDataModelLink) models.LinkToSingle {
 		ChildTableId:    dbDataModelLink.ChildTableId,
 		ChildFieldName:  dbDataModelLink.ChildFieldName,
 		ChildFieldId:    dbDataModelLink.ChildFieldId,
+		LinkType:        linkType,
 	}
 }

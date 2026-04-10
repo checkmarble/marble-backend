@@ -39,6 +39,12 @@ type dataModelUsecaseIndexEditor interface {
 		organizationId uuid.UUID,
 		indexes []models.ConcreteIndex,
 	) error
+	FindNavigationIndexNames(
+		ctx context.Context,
+		organizationId uuid.UUID,
+		tableName string,
+		filterFieldName string,
+	) ([]string, error)
 }
 
 type dataModelUsecaseIngestedDataReadRepo interface {
@@ -56,6 +62,7 @@ type usecase struct {
 	dataModelIngestedDataReadRepo dataModelUsecaseIngestedDataReadRepo
 	indexEditor                   indexes.ClientDbIndexEditor
 	taskQueueRepository           repositories.TaskQueueRepository
+	destroyUsecase                DataModelDestroyUsecase
 }
 
 var (
@@ -321,13 +328,14 @@ func (usecase *usecase) CreateDataModelTable(
 		}
 
 		// Create links
+		var navIndexes []models.ConcreteIndex
 		for _, l := range input.Links {
 			childFieldId, ok := fieldIdsByName[l.ChildFieldName]
 			if !ok {
 				return errors.Wrap(models.BadParameterError,
 					"child field not found in data model when creating link")
 			}
-			if _, err := usecase.createDataModelLinkWithExec(ctx, tx, models.DataModelLinkCreateInput{
+			_, navIndex, err := usecase.createDataModelLinkWithExec(ctx, tx, models.DataModelLinkCreateInput{
 				OrganizationID: organizationId,
 				Name:           l.Name,
 				LinkType:       l.LinkType,
@@ -335,7 +343,19 @@ func (usecase *usecase) CreateDataModelTable(
 				ParentFieldID:  l.ParentFieldID,
 				ChildTableID:   tableId,
 				ChildFieldID:   childFieldId,
-			}); err != nil {
+			})
+			if err != nil {
+				return err
+			}
+			if navIndex != nil {
+				navIndexes = append(navIndexes, *navIndex)
+			}
+		}
+
+		// Enqueue navigation index creation within the transaction
+		if len(navIndexes) > 0 {
+			if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(
+				ctx, tx, organizationId, navIndexes); err != nil {
 				return err
 			}
 		}
@@ -384,7 +404,7 @@ func (usecase *usecase) CreateDataModelTable(
 	return tableId, nil
 }
 
-// TODO: Change this method to accept all modification by batch (including fields and links)
+// TODO: This method will be removed in favor of UpdateDataModelTableComposite
 func (usecase *usecase) UpdateDataModelTable(
 	ctx context.Context,
 	tableID string,
@@ -404,12 +424,18 @@ func (usecase *usecase) UpdateDataModelTable(
 			return err
 		}
 
-		if captionField.Set && captionField.Valid {
-			dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, tx, table.OrganizationID, false, false)
+		// Fetch data model once for field validation (caption + primary ordering)
+		var dataModel models.DataModel
+		if (captionField.Set && captionField.Valid) ||
+			(primaryOrderingField.Set && primaryOrderingField.Valid) {
+			var err error
+			dataModel, err = usecase.dataModelRepository.GetDataModel(ctx, tx, table.OrganizationID, false, false)
 			if err != nil {
 				return err
 			}
+		}
 
+		if captionField.Set && captionField.Valid {
 			if _, ok := dataModel.Tables[table.Name].Fields[captionField.Value()]; !ok {
 				return errors.Wrapf(models.BadParameterError,
 					"field %s not found on table %s", captionField.Value(), table.Name)
@@ -439,11 +465,6 @@ func (usecase *usecase) UpdateDataModelTable(
 		}
 
 		if primaryOrderingField.Set && primaryOrderingField.Valid {
-			dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, tx, table.OrganizationID, false, false)
-			if err != nil {
-				return err
-			}
-
 			field, ok := dataModel.Tables[table.Name].Fields[primaryOrderingField.Value()]
 			if !ok {
 				return errors.Wrapf(models.BadParameterError,
@@ -453,10 +474,50 @@ func (usecase *usecase) UpdateDataModelTable(
 				return errors.Wrap(models.BadParameterError,
 					"primary ordering field must be a timestamp field")
 			}
+
+			// When the ordering field changes, rebuild navigation indexes
+			oldOrderingField := cmp.Or(table.PrimaryOrderingField, "updated_at")
+			newOrderingField := primaryOrderingField.Value()
+			if oldOrderingField != newOrderingField {
+				links, err := usecase.dataModelRepository.GetLinks(ctx, tx, table.OrganizationID)
+				if err != nil {
+					return err
+				}
+				var navIndexNamesToDelete []string
+				var navIndexesToCreate []models.ConcreteIndex
+				for _, l := range links {
+					if l.ChildTableId != tableID {
+						continue
+					}
+					names, err := usecase.clientDbIndexEditor.FindNavigationIndexNames(
+						ctx, table.OrganizationID, table.Name, l.ChildFieldName)
+					if err != nil {
+						return err
+					}
+					navIndexNamesToDelete = append(navIndexNamesToDelete, names...)
+					navIndexesToCreate = append(navIndexesToCreate, models.ConcreteIndex{
+						Type:      models.IndexTypeNavigation,
+						TableName: table.Name,
+						Indexed:   []string{l.ChildFieldName, newOrderingField},
+					})
+				}
+				if len(navIndexNamesToDelete) > 0 {
+					if err := usecase.taskQueueRepository.EnqueueDeleteIndexByNameTask(
+						ctx, tx, table.OrganizationID, navIndexNamesToDelete); err != nil {
+						return err
+					}
+				}
+				if len(navIndexesToCreate) > 0 {
+					if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(
+						ctx, tx, table.OrganizationID, navIndexesToCreate); err != nil {
+						return err
+					}
+				}
+			}
 		}
 
 		err = usecase.dataModelRepository.UpdateDataModelTable(ctx, tx, tableID, description,
-			ftmEntity, alias, semanticType, captionField, primaryOrderingField)
+			ftmEntity, alias, semanticType, captionField, primaryOrderingField, nil)
 		if err != nil {
 			return err
 		}
@@ -468,6 +529,482 @@ func (usecase *usecase) UpdateDataModelTable(
 		return nil
 	})
 	return err
+}
+
+func (usecase *usecase) UpdateDataModelTableComposite(
+	ctx context.Context,
+	tableID string,
+	input models.UpdateTableCompositeInput,
+) (models.DataModelDeleteFieldReport, error) {
+	conflictReport := models.NewDataModelDeleteFieldReport()
+
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		// 1. Get table metadata and enforce security
+		table, err := usecase.dataModelRepository.GetDataModelTable(ctx, tx, tableID)
+		if err != nil {
+			return err
+		}
+		if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
+			return err
+		}
+
+		// 2. Update table properties early so that conflict checks (e.g. PrimaryOrderingField)
+		// see the intended final state of the table.
+		// Save the old ordering field before the update for navigation index rebuild in step 10.
+		// The `updated_at` is the default ordering field
+		oldOrderingField := cmp.Or(table.PrimaryOrderingField, "updated_at")
+		if err := usecase.dataModelRepository.UpdateDataModelTable(ctx, tx, tableID,
+			input.Description, input.FTMEntity, input.Alias, input.SemanticType,
+			input.CaptionField, input.PrimaryOrderingField, input.Metadata); err != nil {
+			return err
+		}
+		table, err = usecase.dataModelRepository.GetDataModelTable(ctx, tx, tableID)
+		if err != nil {
+			return err
+		}
+
+		// 3. Conflict checking for link deletions
+		// Fetch links early so we can verify each link belongs to this table before deletion.
+		links, err := usecase.dataModelRepository.GetLinks(ctx, tx, table.OrganizationID)
+		if err != nil {
+			return err
+		}
+		for _, linkId := range input.LinksToDelete {
+			// Verify the link exists and belongs to the table being updated (child table)
+			linkFound := false
+			for _, l := range links {
+				if l.Id == linkId {
+					if l.ChildTableId != tableID {
+						return errors.Wrapf(models.NotFoundError,
+							"link %s does not belong to table %s", linkId, tableID)
+					}
+					linkFound = true
+					break
+				}
+			}
+			if !linkFound {
+				return errors.Wrapf(models.NotFoundError, "link %s not found", linkId)
+			}
+
+			canDelete, report, err := usecase.destroyUsecase.canDeleteLink(
+				ctx, table.OrganizationID, tx, linkId)
+			if err != nil {
+				return err
+			}
+			if !canDelete || report.ArchivedIterations.Size() > 0 {
+				conflictReport = report
+				return errors.Wrap(models.ConflictError,
+					fmt.Sprintf("link %s has conflicts and cannot be deleted", linkId))
+			}
+		}
+
+		// 3. Conflict checking for field deletions
+		// Also collect field metadata before deleting (needed for org schema operations later)
+		deletedFields := make([]models.FieldMetadata, 0, len(input.FieldsToDelete))
+		for _, fieldId := range input.FieldsToDelete {
+			field, err := usecase.dataModelRepository.GetDataModelField(ctx, tx, fieldId)
+			if err != nil {
+				return err
+			}
+			if field.TableId != tableID {
+				return errors.Wrapf(models.NotFoundError,
+					"field %s does not belong to table %s", fieldId, tableID)
+			}
+			if field.Name == "object_id" || field.Name == "updated_at" {
+				return errors.Wrap(models.BadParameterError,
+					"cannot delete reserved fields object_id and updated_at")
+			}
+			canDelete, report, err := usecase.destroyUsecase.canDeleteRef(
+				ctx, table.OrganizationID, tx, table, &field)
+			if err != nil {
+				return err
+			}
+			if !canDelete || report.ArchivedIterations.Size() > 0 {
+				conflictReport = report
+				return errors.Wrap(models.ConflictError,
+					fmt.Sprintf("field %s has conflicts and cannot be deleted", fieldId))
+			}
+			deletedFields = append(deletedFields, field)
+		}
+
+		// 4. Execute link deletions (cascade pivot for BelongsTo)
+		var navIndexNamesToDelete []string
+		var navIndexesToCreate []models.ConcreteIndex
+		for _, linkId := range input.LinksToDelete {
+			// Find the link to determine its type and collect info for nav index cleanup
+			var linkType models.LinkType
+			for _, l := range links {
+				if l.Id == linkId {
+					linkType = l.LinkType
+					// Collect navigation index names to delete
+					names, err := usecase.clientDbIndexEditor.FindNavigationIndexNames(
+						ctx, table.OrganizationID, l.ChildTableName, l.ChildFieldName)
+					if err != nil {
+						return err
+					}
+					navIndexNamesToDelete = append(navIndexNamesToDelete, names...)
+					break
+				}
+			}
+
+			// For BelongsTo links, cascade-delete associated pivot(s) found via PathLinkIds
+			if linkType == models.LinkTypeBelongsTo {
+				pivots, err := usecase.dataModelRepository.ListPivots(
+					ctx, tx, table.OrganizationID, nil, false)
+				if err != nil {
+					return err
+				}
+				for _, pivot := range pivots {
+					for _, pathLinkId := range pivot.PathLinkIds {
+						if pathLinkId == linkId {
+							if err := usecase.dataModelRepository.DeleteDataModelPivot(
+								ctx, tx, pivot.Id.String()); err != nil {
+								return err
+							}
+							break
+						}
+					}
+				}
+			}
+
+			if err := usecase.dataModelRepository.DeleteDataModelLink(ctx, tx, linkId); err != nil {
+				return err
+			}
+		}
+		// Remove deleted links from the in-memory slice so step 4b sees the correct state
+		links = slices.DeleteFunc(links, func(l models.LinkToSingle) bool {
+			return slices.Contains(input.LinksToDelete, l.Id)
+		})
+
+		// 4b. Update existing links (type change with pivot management)
+		// Process "belongs_to → related" demotions first, so that
+		// "related → belongs_to" promotions don't fail the uniqueness check.
+		slices.SortFunc(input.LinksToUpdate, func(a, b models.UpdateLinkWithID) int {
+			if a.LinkType == models.LinkTypeRelated &&
+				b.LinkType == models.LinkTypeBelongsTo {
+				return -1
+			}
+			if a.LinkType == models.LinkTypeBelongsTo && b.LinkType == models.LinkTypeRelated {
+				return 1
+			}
+			return 0
+		})
+		for _, linkUpdate := range input.LinksToUpdate {
+			// Find the existing link
+			var existingLink *models.LinkToSingle
+			for i := range links {
+				if links[i].Id == linkUpdate.ID {
+					existingLink = &links[i]
+					break
+				}
+			}
+			if existingLink == nil {
+				return errors.Wrapf(models.NotFoundError,
+					"link %s not found", linkUpdate.ID)
+			}
+			if existingLink.ChildTableId != tableID {
+				return errors.Wrapf(models.NotFoundError,
+					"link %s does not belong to table %s", linkUpdate.ID, tableID)
+			}
+
+			// Skip if the type is the same
+			if existingLink.LinkType == linkUpdate.LinkType {
+				continue
+			}
+
+			pivots, err := usecase.dataModelRepository.ListPivots(
+				ctx, tx, table.OrganizationID, nil, false)
+			if err != nil {
+				return err
+			}
+
+			if linkUpdate.LinkType == models.LinkTypeRelated {
+				// Changing to "related": delete the path-based pivot that references this link.
+				// The child table is always tableID, and ensureTableHasPivot at the end of
+				// the transaction will recreate a default pivot if none remain.
+				for _, pivot := range pivots {
+					for _, pathLinkId := range pivot.PathLinkIds {
+						if pathLinkId == linkUpdate.ID {
+							if err := usecase.dataModelRepository.DeleteDataModelPivot(
+								ctx, tx, pivot.Id.String()); err != nil {
+								return err
+							}
+							break
+						}
+					}
+				}
+			}
+
+			if linkUpdate.LinkType == models.LinkTypeBelongsTo {
+				// Changing to "belongs_to": validate no other belongs_to link on child table
+				for _, l := range links {
+					if l.Id != linkUpdate.ID && l.ChildTableId == tableID &&
+						l.LinkType == models.LinkTypeBelongsTo {
+						return errors.Wrap(models.BadParameterError,
+							fmt.Sprintf("child table %s already has a belongs_to link",
+								existingLink.ChildTableName))
+					}
+				}
+
+				// Delete the default pivot (field_id-based) on the child table, not path-based
+				// pivots that rely on another belongs_to link
+				for _, pivot := range pivots {
+					if pivot.BaseTableId == existingLink.ChildTableId && pivot.FieldId != nil {
+						if err := usecase.dataModelRepository.DeleteDataModelPivot(
+							ctx, tx, pivot.Id.String()); err != nil {
+							return err
+						}
+					}
+				}
+
+				// Create a path-based pivot for the belongs_to link (including self-links)
+				if _, err := usecase.CreatePivotWithExec(ctx, tx, models.CreatePivotInput{
+					OrganizationId: table.OrganizationID,
+					BaseTableId:    existingLink.ChildTableId,
+					PathLinkIds:    []string{existingLink.Id},
+				}); err != nil {
+					return err
+				}
+			}
+
+			// Update the in-memory link so subsequent iterations in the same batch
+			// see the updated type (e.g. for belongs_to uniqueness check)
+			existingLink.LinkType = linkUpdate.LinkType
+		}
+
+		// 5. Execute field deletions (metadata only — org schema handled in step 11)
+		for _, field := range deletedFields {
+			if err := usecase.dataModelRepository.DeleteDataModelField(ctx, tx, table, field); err != nil {
+				return err
+			}
+		}
+
+		// 6. Add new fields
+		// Refresh table metadata and data model after deletions (FTMEntity may have changed for validation)
+		table, err = usecase.dataModelRepository.GetDataModelTable(ctx, tx, tableID)
+		if err != nil {
+			return err
+		}
+
+		dataModel, err := usecase.getDataModelWithExec(
+			ctx, tx, table.OrganizationID,
+			models.DataModelReadOptions{IncludeUnicityConstraints: true}, false)
+		if err != nil {
+			return err
+		}
+		fieldIdsByName := make(map[string]string)
+		for name, field := range dataModel.Tables[table.Name].Fields {
+			fieldIdsByName[name] = field.ID
+		}
+
+		for _, f := range input.FieldsToAdd {
+			f.TableId = tableID
+			fieldId, err := usecase.createDataModelFieldWithExec(ctx, tx, table, f)
+			if err != nil {
+				return err
+			}
+			fieldIdsByName[f.Name] = fieldId
+		}
+
+		// 7. Add new links
+		tablesById := dataModel.AllTablesAsMap()
+		for _, l := range input.LinksToAdd {
+			parentFieldId, err := retrieveParentFieldIdForLink(l.ParentTableID, tablesById)
+			if err != nil {
+				return err
+			}
+
+			childFieldId, ok := fieldIdsByName[l.ChildFieldName]
+			if !ok {
+				return errors.Wrap(models.BadParameterError,
+					fmt.Sprintf("child field %q not found when creating link", l.ChildFieldName))
+			}
+
+			_, navIndex, err := usecase.createDataModelLinkWithExec(ctx, tx, models.DataModelLinkCreateInput{
+				OrganizationID: table.OrganizationID,
+				Name:           l.Name,
+				LinkType:       l.LinkType,
+				ParentTableID:  l.ParentTableID,
+				ParentFieldID:  parentFieldId,
+				ChildTableID:   tableID,
+				ChildFieldID:   childFieldId,
+			})
+			if err != nil {
+				return errors.Wrap(err, "failed to create link")
+			}
+			if navIndex != nil {
+				navIndexesToCreate = append(navIndexesToCreate, *navIndex)
+			}
+		}
+
+		// 8. Modify existing fields
+		for _, f := range input.FieldsToUpdate {
+			field, err := usecase.dataModelRepository.GetDataModelField(ctx, tx, f.ID)
+			if err != nil {
+				return err
+			}
+			if field.TableId != tableID {
+				return errors.Wrapf(models.NotFoundError,
+					"field %s does not belong to table %s", f.ID, tableID)
+			}
+
+			if field.Name == "object_id" || field.Name == "updated_at" {
+				if f.IsEnum != nil || f.IsNullable != nil || f.IsUnique != nil || f.FTMProperty.Set {
+					return errors.Wrap(models.BadParameterError,
+						"only the description of the `object_id` and `updated_at` fields can be updated")
+				}
+			}
+
+			// Only validate; unicity index management is intentionally skipped (slated for removal)
+			if _, _, err := validateFieldUpdateRules(dataModel, field, table, f.UpdateFieldInput); err != nil {
+				return err
+			}
+
+			if err := validateFTMProperty(table, f.FTMProperty); err != nil {
+				return err
+			}
+
+			if err := usecase.dataModelRepository.UpdateDataModelField(
+				ctx, tx, f.ID, f.UpdateFieldInput); err != nil {
+				return err
+			}
+		}
+
+		// 9. Validate caption field (table properties were already persisted in step 2)
+		if input.CaptionField.Set && input.CaptionField.Valid {
+			// Re-fetch data model to include fields added/updated in steps 6-8
+			freshDataModel, err := usecase.dataModelRepository.GetDataModel(
+				ctx, tx, table.OrganizationID, false, false)
+			if err != nil {
+				return err
+			}
+
+			if _, ok := freshDataModel.Tables[table.Name].Fields[input.CaptionField.Value()]; !ok {
+				return errors.Wrapf(models.BadParameterError,
+					"field %s not found on table %s", input.CaptionField.Value(), table.Name)
+			}
+			if freshDataModel.Tables[table.Name].Fields[input.CaptionField.Value()].DataType != models.String {
+				return errors.Wrap(models.BadParameterError,
+					"a table caption field must be a string field")
+			}
+
+			indexExists, err := usecase.indexEditor.IngestedObjectsSearchIndexExists(ctx,
+				usecase.enforceSecurity.OrgId(), table.Name, input.CaptionField.Value())
+			if err != nil {
+				return err
+			}
+			if !indexExists {
+				index := models.ConcreteIndex{
+					Type:      models.IndexTypeIngestedObjectsSearch,
+					TableName: table.Name,
+					Indexed:   []string{input.CaptionField.Value()},
+				}
+
+				if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(ctx, tx,
+					usecase.enforceSecurity.OrgId(), []models.ConcreteIndex{index}); err != nil {
+					return err
+				}
+			}
+		}
+
+		// 10. Validate and handle primary ordering field change
+		if input.PrimaryOrderingField.Set && input.PrimaryOrderingField.Valid {
+			fieldId, ok := fieldIdsByName[input.PrimaryOrderingField.Value()]
+			if !ok {
+				return errors.Wrapf(models.BadParameterError,
+					"field %s not found on table %s", input.PrimaryOrderingField.Value(), table.Name)
+			}
+			field, err := usecase.dataModelRepository.GetDataModelField(ctx, tx, fieldId)
+			if err != nil {
+				return err
+			}
+			if field.DataType != models.Timestamp {
+				return errors.Wrap(models.BadParameterError,
+					"primary ordering field must be a timestamp field")
+			}
+
+			// When the ordering field changes, rebuild navigation indexes for all links
+			// pointing to this table as child (oldOrderingField was captured before step 2)
+			newOrderingField := input.PrimaryOrderingField.Value()
+			if oldOrderingField != newOrderingField {
+				for _, l := range links {
+					if l.ChildTableId != tableID {
+						continue
+					}
+					// Delete old navigation indexes for this link
+					names, err := usecase.clientDbIndexEditor.FindNavigationIndexNames(
+						ctx, table.OrganizationID, table.Name, l.ChildFieldName)
+					if err != nil {
+						return err
+					}
+					navIndexNamesToDelete = append(navIndexNamesToDelete, names...)
+
+					// Create new navigation indexes with the new ordering field
+					navIndexesToCreate = append(navIndexesToCreate, models.ConcreteIndex{
+						Type:      models.IndexTypeNavigation,
+						TableName: table.Name,
+						Indexed:   []string{l.ChildFieldName, newOrderingField},
+					})
+				}
+			}
+		}
+
+		// Enqueue navigation index deletion for deleted links
+		if len(navIndexNamesToDelete) > 0 {
+			if err := usecase.taskQueueRepository.EnqueueDeleteIndexByNameTask(
+				ctx, tx, table.OrganizationID, navIndexNamesToDelete); err != nil {
+				return err
+			}
+		}
+		// Enqueue navigation index creation for new links
+		if len(navIndexesToCreate) > 0 {
+			if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(
+				ctx, tx, table.OrganizationID, navIndexesToCreate); err != nil {
+				return err
+			}
+		}
+
+		// 11. Semantic validation (single check at the end, after all mutations)
+		if err := usecase.validateTableSemanticType(
+			ctx, tx, table.OrganizationID, &table.Name, nil); err != nil {
+			return err
+		}
+
+		// Ensure the table has a pivot (default object_id pivot when none exist)
+		if err := usecase.ensureTableHasPivot(
+			ctx, tx, table.OrganizationID, tableID, fieldIdsByName); err != nil {
+			return err
+		}
+
+		// 11. Org schema mutations (add/delete physical columns)
+		return usecase.transactionFactory.TransactionInOrgSchema(
+			ctx, table.OrganizationID, func(orgTx repositories.Transaction) error {
+				for _, f := range input.FieldsToAdd {
+					if f.Name == "object_id" || f.Name == "updated_at" {
+						continue
+					}
+					if err := usecase.organizationSchemaRepository.CreateField(
+						ctx, orgTx, table.Name, f); err != nil {
+						return err
+					}
+				}
+
+				for _, field := range deletedFields {
+					if err := usecase.organizationSchemaRepository.DeleteField(
+						ctx, orgTx, table.Name, field.Name); err != nil {
+						return err
+					}
+				}
+
+				return nil
+			},
+		)
+	})
+	if err != nil {
+		return conflictReport, err
+	}
+
+	return models.DataModelDeleteFieldReport{Performed: true}, nil
 }
 
 func (usecase *usecase) createDataModelFieldWithExec(ctx context.Context,
@@ -736,61 +1273,63 @@ func validateFTMProperty(table models.TableMetadata, property pure_utils.Null[mo
 	return nil
 }
 
-func (usecase *usecase) createDataModelLinkWithExec(ctx context.Context, exec repositories.Executor, link models.DataModelLinkCreateInput) (string, error) {
+func (usecase *usecase) createDataModelLinkWithExec(ctx context.Context, exec repositories.Executor,
+	link models.DataModelLinkCreateInput,
+) (string, *models.ConcreteIndex, error) {
 	dataModel, err := usecase.getDataModelWithExec(ctx, exec, link.OrganizationID, models.DataModelReadOptions{}, false)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	allTables := dataModel.AllTablesAsMap()
 	allFields := dataModel.AllFieldsAsMap()
 
 	if !validNameRegex.MatchString(link.Name) {
-		return "", errors.Wrap(models.BadParameterError,
+		return "", nil, errors.Wrap(models.BadParameterError,
 			"link name must only contain lower case alphanumeric characters and underscores, and start by a letter")
 	}
 
 	// check existence of tables and fields
 	if _, ok := allTables[link.ChildTableID]; !ok {
-		return "", errors.Wrap(models.NotFoundError,
+		return "", nil, errors.Wrap(models.NotFoundError,
 			fmt.Sprintf("child table %s not found", link.ChildTableID))
 	}
 	if _, ok := allTables[link.ParentTableID]; !ok {
-		return "", errors.Wrap(models.NotFoundError,
+		return "", nil, errors.Wrap(models.NotFoundError,
 			fmt.Sprintf("parent table %s not found", link.ParentTableID))
 	}
 	childField, ok := allFields[link.ChildFieldID]
 	if !ok {
-		return "", errors.Wrap(models.NotFoundError,
+		return "", nil, errors.Wrap(models.NotFoundError,
 			fmt.Sprintf("child field %s not found", link.ChildFieldID))
 	}
 	if childField.TableId != link.ChildTableID {
 		// Should not occur if the ID is correct, but just in case
-		return "", errors.Wrap(models.BadParameterError,
+		return "", nil, errors.Wrap(models.BadParameterError,
 			fmt.Sprintf("child field %s does not belong to child table %s", link.ChildFieldID, link.ChildTableID))
 	}
 	parentField, ok := allFields[link.ParentFieldID]
 	if !ok {
-		return "", errors.Wrap(models.NotFoundError,
+		return "", nil, errors.Wrap(models.NotFoundError,
 			fmt.Sprintf("parent field %s not found", link.ParentFieldID))
 	}
 	if parentField.TableId != link.ParentTableID {
 		// Should not occur if the ID is correct, but just in case
-		return "", errors.Wrap(models.BadParameterError,
+		return "", nil, errors.Wrap(models.BadParameterError,
 			fmt.Sprintf("parent field %s does not belong to parent table %s",
 				link.ParentFieldID, link.ParentTableID))
 	}
 
 	if parentField.Name != "object_id" {
-		return "", errors.Wrap(models.BadParameterError,
+		return "", nil, errors.Wrap(models.BadParameterError,
 			"parent field must be the object_id field")
 	}
 
 	if childField.DataType != models.String {
-		return "", errors.Wrap(models.BadParameterError,
+		return "", nil, errors.Wrap(models.BadParameterError,
 			fmt.Sprintf("child field must be a string, field %s is %s", childField.Name, childField.DataType.String()))
 	}
 	if childField.Name == "object_id" {
-		return "", errors.Wrap(models.BadParameterError,
+		return "", nil, errors.Wrap(models.BadParameterError,
 			"child field cannot be object_id")
 	}
 
@@ -798,33 +1337,33 @@ func (usecase *usecase) createDataModelLinkWithExec(ctx context.Context, exec re
 	if link.LinkType == models.LinkTypeBelongsTo {
 		for _, l := range allTables[link.ChildTableID].LinksToSingle {
 			if l.LinkType == models.LinkTypeBelongsTo {
-				return "", errors.Wrap(models.BadParameterError,
+				return "", nil, errors.Wrap(models.BadParameterError,
 					fmt.Sprintf("child table %s already has a belongs_to link", allTables[link.ChildTableID].Name))
 			}
 		}
 
-		// Delete the existing pivot if exists, as we will create a new one
-		// Can have a pivot without a belongs_to link because we create a default pivot for every table which refer to
-		// itself
+		// Delete the default pivot (field_id-based) to replace it with a path-based one.
+		// Do not delete path-based pivots that rely on another belongs_to link.
 		pivots, err := usecase.dataModelRepository.ListPivots(ctx, exec,
 			link.OrganizationID, utils.Ptr(link.ChildTableID), false)
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
-		// Use loop to not handle the empty pivot case differently. But in practice can have only 0 or 1 pivot on the table
 		for _, pivot := range pivots {
-			if err := usecase.dataModelRepository.DeleteDataModelPivot(ctx, exec, pivot.Id.String()); err != nil {
-				return "", err
+			if pivot.FieldId != nil {
+				if err := usecase.dataModelRepository.DeleteDataModelPivot(ctx, exec, pivot.Id.String()); err != nil {
+					return "", nil, err
+				}
 			}
 		}
 	}
 
 	linkId := pure_utils.NewId().String()
 	if err := usecase.dataModelRepository.CreateDataModelLink(ctx, exec, linkId, link); err != nil {
-		return "", err
+		return "", nil, err
 	}
 
-	// BelongsTo with different tables: also create a path-based pivot
+	// BelongsTo: create a path-based pivot (including self-links)
 	if link.LinkType == models.LinkTypeBelongsTo {
 		_, err = usecase.CreatePivotWithExec(ctx, exec, models.CreatePivotInput{
 			OrganizationId: link.OrganizationID,
@@ -832,11 +1371,20 @@ func (usecase *usecase) createDataModelLinkWithExec(ctx context.Context, exec re
 			PathLinkIds:    []string{linkId},
 		})
 		if err != nil {
-			return linkId, err
+			return "", nil, err
 		}
 	}
 
-	return linkId, nil
+	// Compute navigation index for this link
+	childTable := allTables[link.ChildTableID]
+	orderingFieldName := cmp.Or(childTable.PrimaryOrderingField, "updated_at")
+	navIndex := &models.ConcreteIndex{
+		Type:      models.IndexTypeNavigation,
+		TableName: childTable.Name,
+		Indexed:   []string{childField.Name, orderingFieldName},
+	}
+
+	return linkId, navIndex, nil
 }
 
 // This method handles links between data model tables.
@@ -851,7 +1399,7 @@ func (usecase *usecase) CreateDataModelLink(ctx context.Context, link models.Dat
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (string, error) {
-			linkId, err := usecase.createDataModelLinkWithExec(ctx, tx, link)
+			linkId, _, err := usecase.createDataModelLinkWithExec(ctx, tx, link)
 			if err != nil {
 				return "", err
 			}

@@ -163,6 +163,7 @@ type ContinuousScreeningUsecaseRepository interface {
 		semanticType pure_utils.Null[models.SemanticType],
 		captionField pure_utils.Null[string],
 		primaryOrderingField pure_utils.Null[string],
+		metadata *json.RawMessage,
 	) error
 	UpdateDataModelField(
 		ctx context.Context,

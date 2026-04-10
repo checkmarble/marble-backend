@@ -96,14 +96,11 @@ func (uc *OrgExportUsecase) Export(ctx context.Context, orgId uuid.UUID) (dto.Or
 		return dto.OrgImport{}, errors.Wrap(err, "failed to fetch links")
 	}
 
-	// Fetch pivots and enrich them
+	// Fetch pivots
 	pivotMetadatas, err := uc.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false)
 	if err != nil {
 		return dto.OrgImport{}, errors.Wrap(err, "failed to fetch pivots")
 	}
-
-	// Compute link types from pivots (link_type is not stored, it's derived from pivot path_link_ids)
-	models.EnrichLinksWithPivotTypes(links, pivotMetadatas)
 
 	// Fetch tags (both case and object targets)
 	caseTags, err := uc.tagRepository.ListOrganizationTags(ctx, exec, orgId, models.TagTargetCase, false, nil)

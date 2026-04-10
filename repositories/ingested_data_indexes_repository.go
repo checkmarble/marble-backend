@@ -523,7 +523,7 @@ func (repo *ClientDbRepository) DeleteIndex(ctx context.Context, exec Executor, 
 		return err
 	}
 
-	sql := fmt.Sprintf(`drop index concurrently %s`,
+	sql := fmt.Sprintf(`drop index concurrently if exists %s`,
 		pgx.Identifier.Sanitize([]string{exec.DatabaseSchema().Schema, indexName}))
 
 	_, err := exec.Exec(ctx, sql)

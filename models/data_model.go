@@ -350,7 +350,6 @@ func (enumValues EnumValues) CollectEnumValues(payload ClientObject) {
 type LinkType string
 
 const (
-	LinkTypeUnset     LinkType = ""
 	LinkTypeRelated   LinkType = "related"
 	LinkTypeBelongsTo LinkType = "belongs_to"
 )
@@ -402,6 +401,11 @@ type DataModelLinkCreateInput struct {
 	ChildFieldID   string
 }
 
+type UpdateLinkWithID struct {
+	ID       string
+	LinkType LinkType
+}
+
 type DataModelObject struct {
 	Data     map[string]any
 	Metadata map[string]any
@@ -425,6 +429,32 @@ type CreateTableLinkInput struct {
 	ChildFieldName string
 	ParentTableID  string
 	ParentFieldID  string
+}
+
+type UpdateTableCompositeInput struct {
+	// Table-level updates (all optional)
+	Description          *string
+	FTMEntity            pure_utils.Null[FollowTheMoneyEntity]
+	Alias                pure_utils.Null[string]
+	SemanticType         pure_utils.Null[SemanticType]
+	CaptionField         pure_utils.Null[string]
+	PrimaryOrderingField pure_utils.Null[string]
+	Metadata             *json.RawMessage
+
+	// Field operations
+	FieldsToAdd    []CreateFieldInput
+	FieldsToUpdate []UpdateFieldWithID
+	FieldsToDelete []string // field IDs
+
+	// Link operations
+	LinksToAdd    []CreateTableLinkInput
+	LinksToUpdate []UpdateLinkWithID
+	LinksToDelete []string // link IDs
+}
+
+type UpdateFieldWithID struct {
+	ID string
+	UpdateFieldInput
 }
 
 // Utility methods on data model
