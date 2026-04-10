@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -577,6 +578,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal() {
 		pure_utils.NullFromPtr[models.SemanticType](nil),
 		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[string](nil),
+		(*json.RawMessage)(nil),
 	).
 		Return(nil)
 	// validateTableSemanticType: table "name" has SemanticTypeUnset → noOpValidation
@@ -641,6 +643,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_repository_erro
 		pure_utils.NullFromPtr[models.SemanticType](nil),
 		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[string](nil),
+		(*json.RawMessage)(nil),
 	).
 		Return(suite.repositoryError)
 
@@ -679,6 +682,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal_set_ftm
 		pure_utils.NullFromPtr[models.SemanticType](nil),
 		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[string](nil),
+		(*json.RawMessage)(nil),
 	).
 		Return(nil)
 	// validateTableSemanticType: table "name" has SemanticTypeUnset → noOpValidation

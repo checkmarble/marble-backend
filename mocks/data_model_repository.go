@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
@@ -52,8 +53,9 @@ func (d *DataModelRepository) UpdateDataModelTable(
 	semanticType pure_utils.Null[models.SemanticType],
 	captionField pure_utils.Null[string],
 	primaryOrderingField pure_utils.Null[string],
+	metadata *json.RawMessage,
 ) error {
-	args := d.Called(ctx, exec, tableID, description, ftmEntity, alias, semanticType, captionField, primaryOrderingField)
+	args := d.Called(ctx, exec, tableID, description, ftmEntity, alias, semanticType, captionField, primaryOrderingField, metadata)
 	return args.Error(0)
 }
 

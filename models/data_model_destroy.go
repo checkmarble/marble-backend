@@ -34,7 +34,8 @@ type DataModelDeleteFieldConflicts struct {
 	Scenario            *set.Set[string]
 	ScenarioIterations  map[string]*DataModelDeleteFieldConflictIteration
 	Workflows           *set.Set[string]
-	TestRuns            bool
+	TestRuns             bool
+	PrimaryOrderingField bool
 }
 
 type DataModelDeleteFieldConflictIteration struct {
