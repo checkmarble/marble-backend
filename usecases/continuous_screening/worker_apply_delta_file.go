@@ -157,6 +157,14 @@ func (w *ApplyDeltaFileWorker) Timeout(job *river.Job[models.ContinuousScreening
 // Could be slow, need to monitor the time process and see if we need to parallelize it
 func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.ContinuousScreeningApplyDeltaFileArgs]) error {
 	logger := utils.LoggerFromContext(ctx)
+
+	if utils.GetEnv("DISABLE_CONTINUOUS_SCREENING_APPLY_DELTA_FILE", false) {
+		logger.InfoContext(ctx, "Continuous screening apply delta file is disabled, skipping job",
+			"update_id", job.Args.UpdateId,
+			"org_id", job.Args.OrgId)
+		return nil
+	}
+
 	exec := w.executorFactory.NewExecutor()
 
 	// Log error if job has been retried many times
