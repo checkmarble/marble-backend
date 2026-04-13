@@ -46,14 +46,16 @@ func AdaptImportDataModelDto(
 
 		// Build table without LinksToSingle and NavigationOptions (those go at top level)
 		tables = append(tables, Table{
-			ID:           table.ID,
-			Name:         table.Name,
-			Description:  table.Description,
-			Fields:       pure_utils.MapValues(table.Fields, adaptDataModelField),
-			FTMEntity:    ftmEntity,
-			Alias:        table.Alias,
-			SemanticType: table.SemanticType,
-			CaptionField: table.CaptionField,
+			ID:                   table.ID,
+			Name:                 table.Name,
+			Description:          table.Description,
+			Fields:               pure_utils.MapValues(table.Fields, adaptDataModelField),
+			FTMEntity:            ftmEntity,
+			Alias:                table.Alias,
+			SemanticType:         table.SemanticType,
+			CaptionField:         table.CaptionField,
+			PrimaryOrderingField: table.PrimaryOrderingField,
+			Metadata:             table.Metadata,
 		})
 	}
 

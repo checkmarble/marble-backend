@@ -22,12 +22,10 @@ import (
 
 type OrgImportUsecase struct {
 	transactionWrapper UsecaseTransactionWrapper
-	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
 	security           security.EnforceSecurityOrgImportImpl
 
 	orgRepository        repositories.OrganizationRepository
-	schemaRepository     repositories.OrganizationSchemaRepository
 	userRepository       repositories.UserRepository
 	firebaseAdminer      idp.Adminer
 	dataModelRepository  repositories.DataModelRepository
@@ -48,11 +46,9 @@ type OrgImportUsecase struct {
 
 func NewOrgImportUsecase(
 	wrapper UsecaseTransactionWrapper,
-	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
 	security security.EnforceSecurityOrgImportImpl,
 	organizationRepository repositories.OrganizationRepository,
-	schemaRepository repositories.OrganizationSchemaRepository,
 	userRepository repositories.UserRepository,
 	firebaseAdminer idp.Adminer,
 	dataModelRepository repositories.DataModelRepository,
@@ -71,11 +67,9 @@ func NewOrgImportUsecase(
 ) OrgImportUsecase {
 	return OrgImportUsecase{
 		transactionWrapper:   wrapper,
-		executorFactory:      executorFactory,
 		transactionFactory:   transactionFactory,
 		security:             security,
 		orgRepository:        organizationRepository,
-		schemaRepository:     schemaRepository,
 		userRepository:       userRepository,
 		firebaseAdminer:      firebaseAdminer,
 		dataModelRepository:  dataModelRepository,
@@ -356,66 +350,96 @@ func (uc *OrgImportUsecase) createAdmins(ctx context.Context, tx repositories.Tr
 func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories.Transaction,
 	orgId uuid.UUID, ids map[string]string, dataModel dto.ImportDataModel,
 ) error {
-	clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, orgId)
+	logger := utils.LoggerFromContext(ctx)
+
+	// Step A: Prepare link classification
+	fieldIdToName := buildFieldIdToNameMap(dataModel.Tables)
+	includedLinks, separateLinks := classifyLinks(dataModel.Links, fieldIdToName)
+	includedLinksByChild := groupLinksByChildTable(includedLinks)
+	linkTypes := resolveLinkTypes(dataModel.Links, dataModel.Pivots)
+
+	// Step B: Topologically sort tables based on link dependencies
+	// Only use includedLinks (object_id links created with their table in Step C).
+	// separateLinks are created independently in Step E after all tables exist,
+	// so they must not participate in the sort — they can introduce false cycles.
+	sortedTables, err := topSortTables(dataModel.Tables, includedLinks)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to sort tables by dependency order")
 	}
 
-	if err := uc.schemaRepository.CreateSchemaIfNotExists(ctx, clientDbExec); err != nil {
-		return err
+	// Step C: Create each table via CreateDataModelTable (with fields + object_id links)
+	for _, table := range sortedTables {
+		fields := buildCreateFieldInputs(table)
+		links := buildCreateTableLinkInputs(includedLinksByChild[table.ID], fieldIdToName, linkTypes, ids)
+
+		semanticType := table.SemanticType
+		if semanticType == "" || semanticType == models.SemanticTypeUnset {
+			semanticType = models.SemanticTypeOther
+		}
+
+		var ftmEntity *models.FollowTheMoneyEntity
+		if table.FTMEntity != nil {
+			e := models.FollowTheMoneyEntityFrom(*table.FTMEntity)
+			if e != models.FollowTheMoneyEntityUnknown {
+				ftmEntity = &e
+			}
+		}
+
+		tableId, err := uc.dataModelUsecase.CreateDataModelTable(ctx, orgId, models.CreateTableInput{
+			Name:                 table.Name,
+			Description:          table.Description,
+			Alias:                table.Alias,
+			SemanticType:         semanticType,
+			FTMEntity:            ftmEntity,
+			Metadata:             table.Metadata,
+			PrimaryOrderingField: table.PrimaryOrderingField,
+			Fields:               fields,
+			Links:                links,
+		})
+		if err != nil {
+			return errors.Wrapf(err, "failed to create table %s", table.Name)
+		}
+		ids[table.ID] = tableId
 	}
 
-	for _, table := range dataModel.Tables {
-		tableId := pure_utils.NewId()
-		ids[table.ID] = tableId.String()
-
-		if err := uc.schemaRepository.CreateTable(ctx, clientDbExec, table.Name); err != nil {
-			return err
+	// Step D: Populate field and link IDs in the ids map
+	createdDataModel, err := uc.dataModelRepository.GetDataModel(ctx, tx, orgId, false, false)
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch data model after table creation")
+	}
+	for _, importTable := range dataModel.Tables {
+		createdTable, ok := createdDataModel.Tables[importTable.Name]
+		if !ok {
+			continue
 		}
-
-		if err := uc.dataModelRepository.CreateDataModelTable(
-			ctx, tx, orgId,
-			tableId.String(),
-			models.CreateTableInput{
-				Name:         table.Name,
-				Description:  table.Description,
-				Alias:        "",
-				SemanticType: table.SemanticType, // TODO: Check if it is correct
-				FTMEntity:    nil,
-				Metadata:     nil,
-			},
-		); err != nil {
-			return err
-		}
-
-		for name, field := range table.Fields {
-			fieldId := pure_utils.NewId()
-			ids[field.ID] = fieldId.String()
-
-			field := models.CreateFieldInput{
-				TableId:     tableId.String(),
-				Name:        name,
-				Description: field.Description,
-				DataType:    models.DataTypeFrom(field.DataType),
-				Nullable:    field.Nullable,
-				IsEnum:      field.IsEnum,
-				IsUnique:    field.UnicityConstraint != "",
-				FTMProperty: nil, /* TODO */
-			}
-
-			if err := uc.schemaRepository.CreateField(ctx, clientDbExec, table.Name, field); err != nil {
-				return err
-			}
-
-			if err := uc.dataModelRepository.CreateDataModelField(ctx, tx, orgId, fieldId.String(), field); err != nil {
-				return err
+		for fieldName, importField := range importTable.Fields {
+			if createdField, ok := createdTable.Fields[fieldName]; ok {
+				ids[importField.ID] = createdField.ID
 			}
 		}
 	}
 
-	for _, link := range dataModel.Links {
+	createdLinks, err := uc.dataModelRepository.GetLinks(ctx, tx, orgId)
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch links after table creation")
+	}
+	createdLinksByName := make(map[string]models.LinkToSingle, len(createdLinks))
+	for _, link := range createdLinks {
+		createdLinksByName[link.Name] = link
+	}
+	for _, importLink := range includedLinks {
+		if createdLink, ok := createdLinksByName[importLink.Name]; ok {
+			ids[importLink.Id] = createdLink.Id
+		}
+	}
+
+	// Step E: Create non-object_id links (repository level, preserving original parent field)
+	for _, link := range separateLinks {
 		linkId := pure_utils.NewId()
 		ids[link.Id] = linkId.String()
+
+		logger.DebugContext(ctx, "creating link with non-object_id parent field via repository",
+			"link_name", link.Name, "parent_field_name", link.ParentFieldName)
 
 		err := uc.dataModelRepository.CreateDataModelLink(ctx, tx, linkId.String(), models.DataModelLinkCreateInput{
 			OrganizationID: orgId,
@@ -426,32 +450,51 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 			ChildFieldID:   ids[link.ChildFieldId],
 		})
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed to create link %s", link.Name)
 		}
+	}
+
+	// Step F: Create additional pivots not auto-created by CreateDataModelTable
+	// Handle pivots with multi-link paths
+	existingPivots, err := uc.dataModelRepository.ListPivots(ctx, tx, orgId, nil, false)
+	if err != nil {
+		return errors.Wrap(err, "failed to list existing pivots")
+	}
+	existingPivotSignatures := make(map[string]struct{}, len(existingPivots))
+	for _, p := range existingPivots {
+		existingPivotSignatures[pivotSignature(p.BaseTableId, p.FieldId, p.PathLinkIds)] = struct{}{}
 	}
 
 	for _, pivot := range dataModel.Pivots {
+		var fieldId *string
+		if pivot.FieldId != nil {
+			fieldId = utils.Ptr(ids[*pivot.FieldId])
+		}
+		pathLinkIds := pure_utils.Map(pivot.PathLinkIds, func(id string) string {
+			return ids[id]
+		})
+		baseTableId := ids[pivot.BaseTableId]
+
+		sig := pivotSignature(baseTableId, fieldId, pathLinkIds)
+		if _, exists := existingPivotSignatures[sig]; exists {
+			continue // Already created by CreateDataModelTable
+		}
+
 		pivotId := pure_utils.NewId()
 		ids[pivot.Id.String()] = pivotId.String()
 
-		var field *string
-		if pivot.FieldId != nil {
-			field = utils.Ptr(ids[*pivot.FieldId])
-		}
-
 		err := uc.dataModelRepository.CreatePivot(ctx, tx, pivotId.String(), models.CreatePivotInput{
 			OrganizationId: orgId,
-			BaseTableId:    ids[pivot.BaseTableId],
-			FieldId:        field,
-			PathLinkIds: pure_utils.Map(pivot.PathLinkIds, func(id string) string {
-				return ids[id]
-			}),
+			BaseTableId:    baseTableId,
+			FieldId:        fieldId,
+			PathLinkIds:    pathLinkIds,
 		})
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed to create pivot for table %s", baseTableId)
 		}
 	}
 
+	// Step G: Create navigation options
 	for navTableId, navOptionsList := range dataModel.NavigationOptions {
 		for _, navOption := range navOptionsList {
 			err := uc.dataModelUsecase.CreateNavigationOption(ctx, models.CreateNavigationOptionInput{
@@ -472,6 +515,185 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 	}
 
 	return nil
+}
+
+// buildFieldIdToNameMap creates a mapping from field IDs to field names across all import tables.
+func buildFieldIdToNameMap(tables []dto.Table) map[string]string {
+	m := make(map[string]string)
+	for _, table := range tables {
+		for name, field := range table.Fields {
+			m[field.ID] = name
+		}
+	}
+	return m
+}
+
+// classifyLinks splits links into two groups: those with object_id as parent field
+// (which can be included in CreateDataModelTable) and those with other parent fields
+// (which must be created separately via the repository).
+func classifyLinks(links []dto.LinkToSingle, fieldIdToName map[string]string) (objectIdLinks, otherLinks []dto.LinkToSingle) {
+	for _, link := range links {
+		parentFieldName := fieldIdToName[link.ParentFieldId]
+		if parentFieldName == "object_id" {
+			objectIdLinks = append(objectIdLinks, link)
+		} else {
+			otherLinks = append(otherLinks, link)
+		}
+	}
+	return
+}
+
+func groupLinksByChildTable(links []dto.LinkToSingle) map[string][]dto.LinkToSingle {
+	m := make(map[string][]dto.LinkToSingle)
+	for _, link := range links {
+		m[link.ChildTableId] = append(m[link.ChildTableId], link)
+	}
+	return m
+}
+
+// resolveLinkTypes determines the LinkType for each link, determine by computing based on pivots.
+// The link type will determine the pivot creation behavior in CreateDataModelTable.
+// Only use pivot with one item in path link. Multi-link pivot will be created separately after table creation
+func resolveLinkTypes(links []dto.LinkToSingle, pivots []dto.PivotMetadata) map[string]models.LinkType {
+	// Build set of link IDs that appear in pivot paths (these are belongs_to)
+	belongsToLinkIds := make(map[string]struct{})
+	for _, pivot := range pivots {
+		if len(pivot.PathLinkIds) != 1 {
+			continue
+		}
+		for _, linkId := range pivot.PathLinkIds {
+			belongsToLinkIds[linkId] = struct{}{}
+		}
+	}
+
+	result := make(map[string]models.LinkType, len(links))
+	for _, link := range links {
+		if _, ok := belongsToLinkIds[link.Id]; ok {
+			result[link.Id] = models.LinkTypeBelongsTo
+		} else {
+			result[link.Id] = models.LinkTypeRelated
+		}
+	}
+	return result
+}
+
+// topSortTables performs a topological sort of tables based on link dependencies.
+// A child table depends on its parent table (from links) being created first.
+func topSortTables(tables []dto.Table, links []dto.LinkToSingle) ([]dto.Table, error) {
+	tableById := make(map[string]dto.Table, len(tables))
+	for _, t := range tables {
+		tableById[t.ID] = t
+	}
+
+	// Build adjacency: deps[childTableId] = set of parentTableIds
+	deps := make(map[string]map[string]struct{})
+	for _, link := range links {
+		// Only add dependency if parent table is in the import (it might reference an external table)
+		if _, ok := tableById[link.ParentTableId]; !ok {
+			continue
+		}
+		// Skip self-links
+		if link.ChildTableId == link.ParentTableId {
+			continue
+		}
+		if deps[link.ChildTableId] == nil {
+			deps[link.ChildTableId] = make(map[string]struct{})
+		}
+		deps[link.ChildTableId][link.ParentTableId] = struct{}{}
+	}
+
+	// Kahn's algorithm
+	inDegree := make(map[string]int, len(tables))
+	for _, t := range tables {
+		inDegree[t.ID] = len(deps[t.ID])
+	}
+
+	var queue []string
+	for _, t := range tables {
+		if inDegree[t.ID] == 0 {
+			queue = append(queue, t.ID)
+		}
+	}
+
+	var sorted []dto.Table
+	for len(queue) > 0 {
+		id := queue[0]
+		queue = queue[1:]
+		sorted = append(sorted, tableById[id])
+
+		// For each table that depends on this one, decrement in-degree
+		for childId, parentIds := range deps {
+			if _, ok := parentIds[id]; ok {
+				inDegree[childId]--
+				if inDegree[childId] == 0 {
+					queue = append(queue, childId)
+				}
+			}
+		}
+	}
+
+	if len(sorted) != len(tables) {
+		return nil, errors.New("circular dependency detected among tables")
+	}
+
+	return sorted, nil
+}
+
+func buildCreateFieldInputs(table dto.Table) []models.CreateFieldInput {
+	fields := make([]models.CreateFieldInput, 0, len(table.Fields))
+	for name, field := range table.Fields {
+		var ftmProperty *models.FollowTheMoneyProperty
+		if field.FTMProperty != nil {
+			p := models.FollowTheMoneyPropertyFrom(*field.FTMProperty)
+			if p != models.FollowTheMoneyPropertyUnknown {
+				ftmProperty = &p
+			}
+		}
+
+		fields = append(fields, models.CreateFieldInput{
+			Name:         name,
+			Description:  field.Description,
+			Alias:        field.Alias,
+			SemanticType: models.FieldSemanticType(field.SemanticType),
+			DataType:     models.DataTypeFrom(field.DataType),
+			Nullable:     field.Nullable,
+			IsEnum:       field.IsEnum,
+			FTMProperty:  ftmProperty,
+			Metadata:     field.Metadata,
+		})
+	}
+	return fields
+}
+
+func buildCreateTableLinkInputs(
+	links []dto.LinkToSingle,
+	fieldIdToName map[string]string,
+	linkTypes map[string]models.LinkType,
+	ids map[string]string,
+) []models.CreateTableLinkInput {
+	result := make([]models.CreateTableLinkInput, 0, len(links))
+	for _, link := range links {
+		result = append(result, models.CreateTableLinkInput{
+			Name:           link.Name,
+			LinkType:       linkTypes[link.Id],
+			ChildFieldName: fieldIdToName[link.ChildFieldId],
+			ParentTableID:  ids[link.ParentTableId],
+		})
+	}
+	return result
+}
+
+// pivotSignature creates a string key to identify a pivot by its structure.
+func pivotSignature(baseTableId string, fieldId *string, pathLinkIds []string) string {
+	fid := ""
+	if fieldId != nil {
+		fid = *fieldId
+	}
+	sig := baseTableId + "|" + fid
+	for _, id := range pathLinkIds {
+		sig += "|" + id
+	}
+	return sig
 }
 
 func (uc *OrgImportUsecase) createTags(ctx context.Context, tx repositories.Transaction,
