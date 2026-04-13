@@ -259,6 +259,23 @@ type Field struct {
 	Archived          bool
 }
 
+func (f Field) ToMetadata() FieldMetadata {
+	return FieldMetadata{
+		ID:           f.ID,
+		DataType:     f.DataType,
+		Description:  f.Description,
+		Alias:        f.Alias,
+		SemanticType: f.SemanticType,
+		IsEnum:       f.IsEnum,
+		Name:         f.Name,
+		Nullable:     f.Nullable,
+		TableId:      f.TableId,
+		FTMProperty:  f.FTMProperty,
+		Metadata:     f.Metadata,
+		Archived:     f.Archived,
+	}
+}
+
 type FieldMetadata struct {
 	ID           string
 	DataType     DataType
@@ -545,8 +562,7 @@ func (d DataModel) AddNavigationOptionsToDataModel(indexes []ConcreteIndex, pivo
 			if _, ok := navigationOptions[link.ParentTableName]; !ok {
 				navigationOptions[link.ParentTableName] = []NavigationOption{}
 			}
-			navigationOptions[link.ParentTableName] =
-				append(navigationOptions[link.ParentTableName], navOption)
+			navigationOptions[link.ParentTableName] = append(navigationOptions[link.ParentTableName], navOption)
 		}
 
 		for _, pivot := range pivots {
