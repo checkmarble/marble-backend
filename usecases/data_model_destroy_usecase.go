@@ -59,7 +59,16 @@ func NewDataModelDestroyUsecase(
 	}
 }
 
-func (uc DataModelDestroyUsecase) RenameField(ctx context.Context, dryRun bool, fieldId string) error {
+func (uc DataModelDestroyUsecase) ArchiveIterations(
+	ctx context.Context,
+	exec repositories.Executor,
+	archivedIterations *set.Set[string],
+) error {
+	for _, it := range archivedIterations.Slice() {
+		if err := uc.iterationsRepository.ArchiveScenarioIteration(ctx, exec, it); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

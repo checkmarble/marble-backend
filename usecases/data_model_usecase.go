@@ -591,16 +591,24 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			if err != nil {
 				return err
 			}
-			if !canDelete || report.ArchivedIterations.Size() > 0 {
+			if !canDelete {
 				conflictReport = report
 				return errors.Wrap(models.ConflictError,
 					fmt.Sprintf("link %s has conflicts and cannot be deleted", linkId))
+			}
+			if report.ArchivedIterations.Size() > 0 {
+				if err := usecase.destroyUsecase.ArchiveIterations(
+					ctx, tx, report.ArchivedIterations); err != nil {
+					return err
+				}
 			}
 		}
 
 		// 3. Conflict checking for field deletions
 		// Also collect field metadata before deleting (needed for org schema operations later)
+		// Fields used in archived iterations are archived+renamed instead of fully deleted
 		deletedFields := make([]models.FieldMetadata, 0, len(input.FieldsToDelete))
+		archivedFields := make([]models.FieldMetadata, 0)
 		for _, fieldId := range input.FieldsToDelete {
 			field, err := usecase.dataModelRepository.GetDataModelField(ctx, tx, fieldId)
 			if err != nil {
@@ -619,12 +627,20 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			if err != nil {
 				return err
 			}
-			if !canDelete || report.ArchivedIterations.Size() > 0 {
+			if !canDelete {
 				conflictReport = report
 				return errors.Wrap(models.ConflictError,
 					fmt.Sprintf("field %s has conflicts and cannot be deleted", fieldId))
 			}
-			deletedFields = append(deletedFields, field)
+			if report.ArchivedIterations.Size() > 0 {
+				if err := usecase.destroyUsecase.ArchiveIterations(
+					ctx, tx, report.ArchivedIterations); err != nil {
+					return err
+				}
+				archivedFields = append(archivedFields, field)
+			} else {
+				deletedFields = append(deletedFields, field)
+			}
 		}
 
 		// 4. Execute link deletions (cascade pivot for BelongsTo)
@@ -772,9 +788,14 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			existingLink.LinkType = linkUpdate.LinkType
 		}
 
-		// 5. Execute field deletions (metadata only — org schema handled in step 11)
+		// 5. Execute field deletions/archival (metadata only — org schema handled in step 11)
 		for _, field := range deletedFields {
 			if err := usecase.dataModelRepository.DeleteDataModelField(ctx, tx, table, field); err != nil {
+				return err
+			}
+		}
+		for _, field := range archivedFields {
+			if err := usecase.dataModelRepository.ArchiveDataModelField(ctx, tx, table, field); err != nil {
 				return err
 			}
 		}
@@ -991,6 +1012,13 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 
 				for _, field := range deletedFields {
 					if err := usecase.organizationSchemaRepository.DeleteField(
+						ctx, orgTx, table.Name, field.Name); err != nil {
+						return err
+					}
+				}
+
+				for _, field := range archivedFields {
+					if err := usecase.organizationSchemaRepository.RenameField(
 						ctx, orgTx, table.Name, field.Name); err != nil {
 						return err
 					}
