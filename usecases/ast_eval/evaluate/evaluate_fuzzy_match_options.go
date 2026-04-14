@@ -17,6 +17,13 @@ var allowedFuzzyMatchAlgorithms = []string{
 }
 
 func (f FuzzyMatchOptionsEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
+	// "value" input comes from payload or DB, can be null and should not fail.
+	// Bubble up nil so the parent Filter evaluator can handle it (returns Filter{Value: nil},
+	// which the Aggregator then treats as a no-op filter and returns the default value).
+	if arguments.NamedArgs["value"] == nil {
+		return nil, nil
+	}
+
 	algorithm, err := AdaptNamedArgument(arguments.NamedArgs, "algorithm", adaptArgumentToString)
 	if err != nil {
 		return nil, []error{err}
