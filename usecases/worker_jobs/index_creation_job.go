@@ -101,7 +101,8 @@ func (w *IndexCreationStatusWorker) Work(ctx context.Context, job *river.Job[mod
 		return river.JobSnooze(1 * time.Second)
 	}
 
-	validIndices, err := w.indexEditor.ListAllValidIndexes(ctx, db, models.IndexTypeAggregation, models.IndexTypeIngestedObjectsSearch)
+	validIndices, err := w.indexEditor.ListAllValidIndexes(ctx, db,
+		models.IndexTypeAggregation, models.IndexTypeIngestedObjectsSearch, models.IndexTypeNavigation)
 	if err != nil {
 		return err
 	}

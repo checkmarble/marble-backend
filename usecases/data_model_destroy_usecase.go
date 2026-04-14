@@ -59,7 +59,16 @@ func NewDataModelDestroyUsecase(
 	}
 }
 
-func (uc DataModelDestroyUsecase) RenameField(ctx context.Context, dryRun bool, fieldId string) error {
+func (uc DataModelDestroyUsecase) ArchiveIterations(
+	ctx context.Context,
+	exec repositories.Executor,
+	archivedIterations *set.Set[string],
+) error {
+	for _, it := range archivedIterations.Slice() {
+		if err := uc.iterationsRepository.ArchiveScenarioIteration(ctx, exec, it); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -91,11 +100,42 @@ func (uc DataModelDestroyUsecase) DeleteTable(ctx context.Context, dryRun bool, 
 	}
 
 	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		// Get list of items to delete with the table (links, fields, pivots) and delete them in the same transaction
+		// On client DB side, delete table is enough to clean up everything
+		dataModel, err := uc.dataModelRepository.GetDataModel(ctx, tx, table.OrganizationID, false, false)
+		if err != nil {
+			return err
+		}
+		tableWithDetails, ok := dataModel.Tables[table.Name]
+		if !ok {
+			// Should not occur since the table was fetched successfully before
+			return errors.New("table not found in data model")
+		}
+		pivotsToDelete, err := uc.dataModelRepository.ListPivots(ctx, tx, table.OrganizationID, &table.ID, false)
+		if err != nil {
+			return err
+		}
+
 		clientDbExec, err := uc.executorFactory.NewClientDbExecutor(ctx, table.OrganizationID)
 		if err != nil {
 			return err
 		}
 
+		for _, pivot := range pivotsToDelete {
+			if err := uc.dataModelRepository.DeleteDataModelPivot(ctx, tx, pivot.Id.String()); err != nil {
+				return err
+			}
+		}
+		for _, field := range tableWithDetails.Fields {
+			if err := uc.dataModelRepository.DeleteDataModelField(ctx, tx, table, field.ToMetadata()); err != nil {
+				return err
+			}
+		}
+		for _, link := range tableWithDetails.LinksToSingle {
+			if err := uc.dataModelRepository.DeleteDataModelLink(ctx, tx, link.Id); err != nil {
+				return err
+			}
+		}
 		if err := uc.dataModelRepository.DeleteDataModelTable(ctx, tx, table); err != nil {
 			return err
 		}
@@ -124,7 +164,8 @@ func (uc DataModelDestroyUsecase) DeleteField(ctx context.Context, dryRun bool, 
 	}
 
 	if field.Name == "object_id" || field.Name == "updated_at" {
-		return models.DataModelDeleteFieldReport{}, errors.Wrap(models.BadParameterError, "cannot delete internal fields object_id and updated_at")
+		return models.DataModelDeleteFieldReport{},
+			errors.Wrap(models.BadParameterError, "cannot delete internal fields object_id and updated_at")
 	}
 
 	table, err := uc.dataModelRepository.GetDataModelTable(ctx, exec, field.TableId)
@@ -288,6 +329,10 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 			report.Conflicts.ContinuousScreening = true
 			canDelete = false
 		}
+		if table.PrimaryOrderingField == field.Name {
+			report.Conflicts.PrimaryOrderingField = true
+			canDelete = false
+		}
 	}
 
 	analyticsSettings, err := uc.analyticsSettingsRepository.GetAnalyticsSettings(ctx, exec, orgId)
@@ -316,20 +361,21 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 		return false, models.DataModelDeleteFieldReport{}, err
 	}
 
-	// If any link starts or ends with the field we want to delete, or,
-	// When deleting a table, if any link path contains the table.
+	// If any link starts or ends with the field we want to delete, it is a conflict.
+	// When deleting a table, links where the table is the child side are allowed to be
+	// cascade-deleted (no conflict). Since we introduced the table semantic, some types have restriction
+	// on links like `Transaction` which needs to have a `BelongsTo` link to `Party` table, without cascade deletion,
+	// we can not delete the table
 	for _, link := range links {
 		switch field {
 		case nil:
+			// The case link.FieldTableId == table.ID will not create a conflict because when deleting a table, we will allow
+			// cascade deletion of all links.
+			// TODO: TBD what if the link is part of a pivot with multi links?
 			if link.ParentTableId == table.ID {
 				canDelete = false
 				report.Conflicts.Links.Insert(link.Id)
 			}
-			if link.ChildTableId == table.ID {
-				canDelete = false
-				report.Conflicts.Links.Insert(link.Id)
-			}
-
 		default:
 			if link.ParentTableId == table.ID && link.ParentFieldName == field.Name {
 				canDelete = false
@@ -367,22 +413,20 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 		}
 	}
 
-	pivots, err := uc.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false)
-	if err != nil {
-		return false, models.DataModelDeleteFieldReport{}, err
-	}
-
 	// This only covers table referencing themselves, pivots to other tables are covered by the check on links.
-	for _, pivot := range pivots {
-		if pivot.BaseTableId == table.ID {
-			switch field {
-			case nil:
+	// When deleting a table (field == nil), we don't need to check if a pivot was referencing itself because
+	// the deletion will not break anything since the table will be deleted
+	// TODO: TBD What if the pivot has multi links?
+	if field != nil {
+		pivots, err := uc.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false)
+		if err != nil {
+			return false, models.DataModelDeleteFieldReport{}, err
+		}
+
+		for _, pivot := range pivots {
+			if pivot.BaseTableId == table.ID && pivot.FieldId != nil && *pivot.FieldId == field.ID {
 				canDelete = false
-			default:
-				if pivot.FieldId != nil && *pivot.FieldId == field.ID {
-					canDelete = false
-					report.Conflicts.Pivots.Insert(pivot.Id.String())
-				}
+				report.Conflicts.Pivots.Insert(pivot.Id.String())
 			}
 		}
 	}
@@ -436,7 +480,8 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 
 		scenarioConflicts[scenario.Id].allIterations.Insert(it.ScenarioIterationId.String())
 
-		if it.Version == nil || (scenario.LiveVersionID != nil && it.ScenarioIterationId.String() == *scenario.LiveVersionID) {
+		if it.Version == nil || (scenario.LiveVersionID != nil &&
+			it.ScenarioIterationId.String() == *scenario.LiveVersionID) {
 			scenarioConflicts[scenario.Id].hasDraftOrLive = true
 		}
 
@@ -476,7 +521,8 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 			}
 		}
 		if it.ScreeningCounterpartyAst != nil {
-			if uc.isRefUsedInAst(it.ScreeningCounterpartyAst, scenario.TriggerObjectType, links, table, field) {
+			if uc.isRefUsedInAst(it.ScreeningCounterpartyAst,
+				scenario.TriggerObjectType, links, table, field) {
 				iterationReport.Screening.Insert(it.RuleId.String())
 				found = true
 			}
@@ -490,7 +536,8 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 
 		if found {
 			// We cannot delete a field if it is used in a draft or a live scenario iteration
-			if it.Version == nil || (scenario.LiveVersionID != nil && it.ScenarioIterationId.String() == *scenario.LiveVersionID) {
+			if it.Version == nil || (scenario.LiveVersionID != nil &&
+				it.ScenarioIterationId.String() == *scenario.LiveVersionID) {
 				canDelete = false
 				report.Conflicts.ScenarioIterations[it.ScenarioIterationId.String()] = &iterationReport
 				continue
@@ -503,7 +550,8 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 	}
 
 	for scenarioId, sc := range scenarioConflicts {
-		if !sc.hasDraftOrLive && scenarioConflicts[scenarioId].allIterations.Equal(scenarioConflicts[scenarioId].archivedIterations) {
+		if !sc.hasDraftOrLive && scenarioConflicts[scenarioId].allIterations.Equal(
+			scenarioConflicts[scenarioId].archivedIterations) {
 			canDelete = false
 			report.Conflicts.EmptyScenarios.Insert(scenarioId)
 		}
@@ -548,7 +596,8 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 					if err != nil {
 						return false, models.DataModelDeleteFieldReport{}, err
 					}
-					if uc.isRefUsedInAst(&titleTemplateAst, scenario.TriggerObjectType, links, table, field) {
+					if uc.isRefUsedInAst(&titleTemplateAst,
+						scenario.TriggerObjectType, links, table, field) {
 						canDelete = false
 						report.Conflicts.Workflows.Insert(wk.ScenarioId.String())
 					}
@@ -564,7 +613,8 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 
 	// We don't want to delete a table or field used by a running test run
 	for _, testRun := range testRuns {
-		if report.ArchivedIterations.Contains(testRun.ScenarioIterationId) || report.ArchivedIterations.Contains(testRun.ScenarioLiveIterationId) {
+		if report.ArchivedIterations.Contains(testRun.ScenarioIterationId) ||
+			report.ArchivedIterations.Contains(testRun.ScenarioLiveIterationId) {
 			canDelete = false
 			report.Conflicts.TestRuns = true
 		}
@@ -620,16 +670,28 @@ func (uc DataModelDestroyUsecase) canDeleteLink(
 		}
 	}
 
-	pivots, err := uc.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false)
-	if err != nil {
-		return false, models.DataModelDeleteFieldReport{}, err
+	// For BelongsTo links, the pivot is tightly coupled and will be cascade-deleted,
+	// so we skip pivot conflict checks. For Related links, pivot conflicts still apply.
+	var linkType models.LinkType
+	for _, link := range links {
+		if link.Id == linkId {
+			linkType = link.LinkType
+			break
+		}
 	}
 
-	for _, pivot := range pivots {
-		for _, pathLinkId := range pivot.PathLinkIds {
-			if pathLinkId == linkId {
-				canDelete = false
-				report.Conflicts.Pivots.Insert(pivot.Id.String())
+	if linkType != models.LinkTypeBelongsTo {
+		pivots, err := uc.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false)
+		if err != nil {
+			return false, models.DataModelDeleteFieldReport{}, err
+		}
+
+		for _, pivot := range pivots {
+			for _, pathLinkId := range pivot.PathLinkIds {
+				if pathLinkId == linkId {
+					canDelete = false
+					report.Conflicts.Pivots.Insert(pivot.Id.String())
+				}
 			}
 		}
 	}
@@ -676,7 +738,8 @@ func (uc DataModelDestroyUsecase) canDeleteLink(
 
 		scenarioConflicts[scenario.Id].allIterations.Insert(it.ScenarioIterationId.String())
 
-		if it.Version == nil || (scenario.LiveVersionID != nil && it.ScenarioIterationId.String() == *scenario.LiveVersionID) {
+		if it.Version == nil || (scenario.LiveVersionID != nil &&
+			it.ScenarioIterationId.String() == *scenario.LiveVersionID) {
 			scenarioConflicts[scenario.Id].hasDraftOrLive = true
 		}
 
@@ -730,7 +793,8 @@ func (uc DataModelDestroyUsecase) canDeleteLink(
 
 		if found {
 			// We cannot delete a field if it is used in a draft or a live scenario iteration
-			if it.Version == nil || (scenario.LiveVersionID != nil && it.ScenarioIterationId.String() == *scenario.LiveVersionID) {
+			if it.Version == nil || (scenario.LiveVersionID != nil &&
+				it.ScenarioIterationId.String() == *scenario.LiveVersionID) {
 				canDelete = false
 				report.Conflicts.ScenarioIterations[it.ScenarioIterationId.String()] = &iterationReport
 				continue
@@ -743,7 +807,8 @@ func (uc DataModelDestroyUsecase) canDeleteLink(
 	}
 
 	for scenarioId, sc := range scenarioConflicts {
-		if !sc.hasDraftOrLive && scenarioConflicts[scenarioId].allIterations.Equal(scenarioConflicts[scenarioId].archivedIterations) {
+		if !sc.hasDraftOrLive && scenarioConflicts[scenarioId].allIterations.Equal(
+			scenarioConflicts[scenarioId].archivedIterations) {
 			report.Conflicts.EmptyScenarios.Insert(scenarioId)
 		}
 	}
@@ -797,7 +862,9 @@ func (uc DataModelDestroyUsecase) canDeleteLink(
 	return canDelete, report, nil
 }
 
-func (uc DataModelDestroyUsecase) isRefUsedInAst(tree *ast.Node, triggerObjectType string, links []models.LinkToSingle, table models.TableMetadata, field *models.FieldMetadata) bool {
+func (uc DataModelDestroyUsecase) isRefUsedInAst(tree *ast.Node, triggerObjectType string,
+	links []models.LinkToSingle, table models.TableMetadata, field *models.FieldMetadata,
+) bool {
 	if tree == nil {
 		return false
 	}

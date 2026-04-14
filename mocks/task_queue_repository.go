@@ -45,10 +45,11 @@ func (m *TaskQueueRepository) EnqueueScheduledExecStatusTask(
 
 func (m *TaskQueueRepository) EnqueueCreateIndexTask(
 	ctx context.Context,
+	tx repositories.Transaction,
 	orgId uuid.UUID,
 	indices []models.ConcreteIndex,
 ) error {
-	return m.Called(ctx, orgId, indices).Error(0)
+	return m.Called(ctx, tx, orgId, indices).Error(0)
 }
 
 func (m *TaskQueueRepository) EnqueueMatchEnrichmentTask(
@@ -231,5 +232,15 @@ func (m *TaskQueueRepository) EnqueueScreeningHitSuggestionTask(
 	screeningId string,
 ) error {
 	args := m.Called(ctx, organizationId, screeningId)
+	return args.Error(0)
+}
+
+func (m *TaskQueueRepository) EnqueueDeleteIndexByNameTask(
+	ctx context.Context,
+	tx repositories.Transaction,
+	organizationId uuid.UUID,
+	indexNames []string,
+) error {
+	args := m.Called(ctx, tx, organizationId, indexNames)
 	return args.Error(0)
 }

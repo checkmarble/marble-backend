@@ -373,8 +373,18 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 			return err
 		}
 
-		if err := uc.dataModelRepository.CreateDataModelTable(ctx, tx, orgId,
-			tableId.String(), table.Name, table.Description /* TODO */, nil); err != nil {
+		if err := uc.dataModelRepository.CreateDataModelTable(
+			ctx, tx, orgId,
+			tableId.String(),
+			models.CreateTableInput{
+				Name:         table.Name,
+				Description:  table.Description,
+				Alias:        "",
+				SemanticType: table.SemanticType, // TODO: Check if it is correct
+				FTMEntity:    nil,
+				Metadata:     nil,
+			},
+		); err != nil {
 			return err
 		}
 

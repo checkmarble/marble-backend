@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 
@@ -8,6 +9,14 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/google/uuid"
 )
+
+// Reserved field names in client data model
+// Those fields are created when creating the table in org database
+var DataModelReservedFieldNames = map[string]bool{
+	"id":          true,
+	"valid_from":  true,
+	"valid_until": true,
+}
 
 // ///////////////////////////////
 // Data Type
@@ -65,32 +74,13 @@ func DataTypeFrom(s string) DataType {
 	return UnknownDataType
 }
 
-type SemanticType string
-
-const (
-	SemanticTypeUnknown SemanticType = "unknown"
-	SemanticPerson      SemanticType = "person"
-	SemanticCompany     SemanticType = "company"
-)
-
-func SemanticTypeFrom(s string) SemanticType {
-	switch s {
-	case "person":
-		return SemanticPerson
-	case "company":
-		return SemanticCompany
-	default:
-		return SemanticTypeUnknown
-	}
-}
-
 ///////////////////////////////
 // Data Model
 ///////////////////////////////
 
 type DataModel struct {
 	Version string
-	Tables  map[string]Table
+	Tables  map[string]Table // Map key is the table name
 }
 
 func (d DataModel) Copy() DataModel {
@@ -153,16 +143,18 @@ func (d DataModel) FindField(table Table, path []string, field string) (Field, b
 // ///////////////////////////////
 
 type Table struct {
-	ID                string
-	Name              string
-	Description       string
-	Fields            map[string]Field
-	LinksToSingle     map[string]LinkToSingle
-	NavigationOptions []NavigationOption
-	FTMEntity         *FollowTheMoneyEntity
-	Alias             string
-	SemanticType      SemanticType
-	CaptionField      string
+	ID                   string
+	Name                 string
+	Description          string
+	Fields               map[string]Field        // Map key is the field name
+	LinksToSingle        map[string]LinkToSingle // Map key is the link name
+	NavigationOptions    []NavigationOption
+	FTMEntity            *FollowTheMoneyEntity
+	Alias                string
+	SemanticType         SemanticType
+	CaptionField         string
+	PrimaryOrderingField string
+	Metadata             json.RawMessage
 }
 
 func (t Table) FieldNames() []string {
@@ -208,14 +200,16 @@ func (t Table) GetFieldsWithFTMProperty() []Field {
 }
 
 type TableMetadata struct {
-	ID             string
-	Description    string
-	Name           string
-	OrganizationID uuid.UUID
-	FTMEntity      *FollowTheMoneyEntity
-	Alias          string
-	SemanticType   SemanticType
-	CaptionField   string
+	ID                   string
+	Description          string
+	Name                 string
+	OrganizationID       uuid.UUID
+	FTMEntity            *FollowTheMoneyEntity
+	Alias                string
+	SemanticType         SemanticType
+	CaptionField         string
+	PrimaryOrderingField string
+	Metadata             json.RawMessage
 }
 
 func ColumnNames(table Table) []string {
@@ -251,6 +245,8 @@ type Field struct {
 	ID                string
 	DataType          DataType
 	Description       string
+	Alias             string
+	SemanticType      FieldSemanticType
 	IsEnum            bool
 	Name              string
 	Nullable          bool
@@ -259,19 +255,40 @@ type Field struct {
 	FieldStatistics   FieldStatistics
 	UnicityConstraint UnicityConstraint
 	FTMProperty       *FollowTheMoneyProperty
+	Metadata          json.RawMessage
 	Archived          bool
 }
 
+func (f Field) ToMetadata() FieldMetadata {
+	return FieldMetadata{
+		ID:           f.ID,
+		DataType:     f.DataType,
+		Description:  f.Description,
+		Alias:        f.Alias,
+		SemanticType: f.SemanticType,
+		IsEnum:       f.IsEnum,
+		Name:         f.Name,
+		Nullable:     f.Nullable,
+		TableId:      f.TableId,
+		FTMProperty:  f.FTMProperty,
+		Metadata:     f.Metadata,
+		Archived:     f.Archived,
+	}
+}
+
 type FieldMetadata struct {
-	ID          string
-	DataType    DataType
-	Description string
-	IsEnum      bool
-	Name        string
-	Nullable    bool
-	TableId     string
-	FTMProperty *FollowTheMoneyProperty
-	Archived    bool
+	ID           string
+	DataType     DataType
+	Description  string
+	Alias        string
+	SemanticType FieldSemanticType
+	IsEnum       bool
+	Name         string
+	Nullable     bool
+	TableId      string
+	FTMProperty  *FollowTheMoneyProperty
+	Metadata     json.RawMessage
+	Archived     bool
 }
 
 type UnicityConstraint int
@@ -307,22 +324,28 @@ func UnicityConstraintFromString(s string) UnicityConstraint {
 }
 
 type CreateFieldInput struct {
-	TableId     string
-	Name        string
-	Description string
-	DataType    DataType
-	Nullable    bool
-	IsEnum      bool
-	IsUnique    bool
-	FTMProperty *FollowTheMoneyProperty
+	TableId      string
+	Name         string
+	Description  string
+	Alias        string
+	SemanticType FieldSemanticType
+	DataType     DataType
+	Nullable     bool
+	IsEnum       bool
+	IsUnique     bool
+	FTMProperty  *FollowTheMoneyProperty
+	Metadata     json.RawMessage
 }
 
 type UpdateFieldInput struct {
-	Description *string
-	IsEnum      *bool
-	IsUnique    *bool
-	IsNullable  *bool
-	FTMProperty pure_utils.Null[FollowTheMoneyProperty]
+	Description  *string
+	IsEnum       *bool
+	IsUnique     *bool
+	IsNullable   *bool
+	FTMProperty  pure_utils.Null[FollowTheMoneyProperty]
+	Alias        *string
+	SemanticType pure_utils.Null[FieldSemanticType]
+	Metadata     *json.RawMessage
 }
 
 type EnumValues map[string]map[any]struct{}
@@ -340,10 +363,23 @@ func (enumValues EnumValues) CollectEnumValues(payload ClientObject) {
 // ///////////////////////////////
 // Data Model Link
 // ///////////////////////////////
+
+type LinkType string
+
+const (
+	LinkTypeRelated   LinkType = "related"
+	LinkTypeBelongsTo LinkType = "belongs_to"
+)
+
+func (l LinkType) IsValid() bool {
+	return l == LinkTypeRelated || l == LinkTypeBelongsTo
+}
+
 type LinkToSingle struct {
 	Id              string
 	OrganizationId  uuid.UUID
 	Name            string
+	LinkType        LinkType
 	ParentTableName string
 	ParentTableId   string
 	ParentFieldName string
@@ -354,18 +390,88 @@ type LinkToSingle struct {
 	ChildFieldId    string
 }
 
+// EnrichLinksWithPivotTypes computes the LinkType for each link based on pivot data.
+// A link is "belongs_to" if its ID appears in any pivot's PathLinkIds, otherwise it is "related".
+func EnrichLinksWithPivotTypes(links []LinkToSingle, pivots []PivotMetadata) {
+	belongsToLinkIds := make(map[string]struct{})
+	for _, pivot := range pivots {
+		for _, linkId := range pivot.PathLinkIds {
+			belongsToLinkIds[linkId] = struct{}{}
+		}
+	}
+	for i := range links {
+		if _, ok := belongsToLinkIds[links[i].Id]; ok {
+			links[i].LinkType = LinkTypeBelongsTo
+		} else {
+			links[i].LinkType = LinkTypeRelated
+		}
+	}
+}
+
 type DataModelLinkCreateInput struct {
 	OrganizationID uuid.UUID
 	Name           string
+	LinkType       LinkType
 	ParentTableID  string
 	ParentFieldID  string
 	ChildTableID   string
 	ChildFieldID   string
 }
 
+type UpdateLinkWithID struct {
+	ID       string
+	LinkType LinkType
+}
+
 type DataModelObject struct {
 	Data     map[string]any
 	Metadata map[string]any
+}
+
+type CreateTableInput struct {
+	Name                 string
+	Description          string
+	Alias                string
+	SemanticType         SemanticType
+	FTMEntity            *FollowTheMoneyEntity
+	Metadata             json.RawMessage
+	PrimaryOrderingField string
+	Fields               []CreateFieldInput
+	Links                []CreateTableLinkInput
+}
+
+type CreateTableLinkInput struct {
+	Name           string
+	LinkType       LinkType
+	ChildFieldName string
+	ParentTableID  string
+	ParentFieldID  string
+}
+
+type UpdateTableCompositeInput struct {
+	// Table-level updates (all optional)
+	Description          *string
+	FTMEntity            pure_utils.Null[FollowTheMoneyEntity]
+	Alias                pure_utils.Null[string]
+	SemanticType         pure_utils.Null[SemanticType]
+	CaptionField         pure_utils.Null[string]
+	PrimaryOrderingField pure_utils.Null[string]
+	Metadata             *json.RawMessage
+
+	// Field operations
+	FieldsToAdd    []CreateFieldInput
+	FieldsToUpdate []UpdateFieldWithID
+	FieldsToDelete []string // field IDs
+
+	// Link operations
+	LinksToAdd    []CreateTableLinkInput
+	LinksToUpdate []UpdateLinkWithID
+	LinksToDelete []string // link IDs
+}
+
+type UpdateFieldWithID struct {
+	ID string
+	UpdateFieldInput
 }
 
 // Utility methods on data model
@@ -456,8 +562,7 @@ func (d DataModel) AddNavigationOptionsToDataModel(indexes []ConcreteIndex, pivo
 			if _, ok := navigationOptions[link.ParentTableName]; !ok {
 				navigationOptions[link.ParentTableName] = []NavigationOption{}
 			}
-			navigationOptions[link.ParentTableName] =
-				append(navigationOptions[link.ParentTableName], navOption)
+			navigationOptions[link.ParentTableName] = append(navigationOptions[link.ParentTableName], navOption)
 		}
 
 		for _, pivot := range pivots {

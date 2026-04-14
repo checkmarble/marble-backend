@@ -487,10 +487,12 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparati
 		suite.iterationId).Return([]models.ConcreteIndex{
 		{Indexed: []string{"a", "b"}, Included: []string{"c", "d"}},
 	}, 0, nil)
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 
 	suite.taskQueueRepository.On(
 		"EnqueueCreateIndexTask",
 		suite.ctx,
+		suite.transaction,
 		suite.organizationId,
 		[]models.ConcreteIndex{{Indexed: []string{"a", "b"}, Included: []string{"c", "d"}}},
 	).Return(nil)

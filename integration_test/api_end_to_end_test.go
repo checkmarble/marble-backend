@@ -123,25 +123,29 @@ func setupOrgAndUser(e *httpexpect.Expect) (authOrgAdmin *httpexpect.Expect, aut
 
 func setupDataModel(auth *httpexpect.Expect, authOrgViewer *httpexpect.Expect) {
 	authOrgViewer.POST("/data-model/tables").
-		WithJSON(map[string]any{"name": "transactions", "description": "the transactions table"}).
+		WithJSON(map[string]any{"name": "transactions", "description": "the transactions table", "semantic_type": "other", "fields": []map[string]any{{"name": "amount", "type": "Float"}}}).
 		Expect().Status(http.StatusForbidden)
 
 	transactionsTableId := auth.POST("/data-model/tables").
-		WithJSON(map[string]any{"name": "transactions", "description": "the transactions table"}).
-		Expect().Status(http.StatusOK).
+		WithJSON(map[string]any{"name": "transactions", "description": "the transactions table", "semantic_type": "other", "fields": []map[string]any{
+			{"name": "object_id", "type": "String", "nullable": false},
+			{"name": "updated_at", "type": "Timestamp", "nullable": false},
+			{"name": "amount", "type": "Float"},
+		}}).
+		Expect().Status(http.StatusCreated).
 		JSON().Object().
 		Value("id").String().NotEmpty().Raw()
 
 	accountsTableId := auth.POST("/data-model/tables").
-		WithJSON(map[string]any{"name": "accounts", "description": "the accounts table"}).
-		Expect().Status(http.StatusOK).
+		WithJSON(map[string]any{"name": "accounts", "description": "the accounts table", "semantic_type": "other", "fields": []map[string]any{
+			{"name": "object_id", "type": "String", "nullable": false},
+			{"name": "updated_at", "type": "Timestamp", "nullable": false},
+			{"name": "status", "type": "String"},
+		}}).
+		Expect().Status(http.StatusCreated).
 		JSON().Object().
 		Value("id").String().NotEmpty().Raw()
 
-	auth.POST("/data-model/tables/{table_id}/fields", transactionsTableId).
-		WithJSON(map[string]any{"name": "amount", "type": "Float"}).
-		Expect().Status(http.StatusOK).
-		JSON().Object().Value("id").String().NotEmpty()
 	accountIdFieldId := auth.POST("/data-model/tables/{table_id}/fields", transactionsTableId).
 		WithJSON(map[string]any{"name": "account_id", "type": "String"}).
 		Expect().Status(http.StatusOK).
@@ -155,45 +159,27 @@ func setupDataModel(auth *httpexpect.Expect, authOrgViewer *httpexpect.Expect) {
 		Expect().Status(http.StatusOK).
 		JSON().Object().Value("id").String().NotEmpty()
 
-	auth.POST("/data-model/tables/{table_id}/fields", accountsTableId).
-		WithJSON(map[string]any{"name": "status", "type": "String"}).
+	// get the object_id field ID of the accounts table (auto-created with the table)
+	accountsObjectIdFieldId := auth.GET("/data-model").
 		Expect().Status(http.StatusOK).
-		JSON().Object().Value("id").String().NotEmpty()
-	accountIdParentFieldId := auth.POST("/data-model/tables/{table_id}/fields", accountsTableId).
-		WithJSON(map[string]any{"name": "account_id", "type": "String", "is_unique": true}).
-		Expect().Status(http.StatusOK).
-		JSON().Object().Value("id").String().NotEmpty().Raw()
+		JSON().Object().Value("data_model").
+		Object().Value("tables").
+		Object().Value("accounts").
+		Object().Value("fields").
+		Object().Value("object_id").
+		Object().Value("id").String().NotEmpty().Raw()
 
-	// create a link between the tables
+	// create a link between the tables (belongs_to automatically creates a pivot)
 	auth.POST("/data-model/links").
 		WithJSON(map[string]any{
 			"name":            "account",
+			"link_type":       "belongs_to",
 			"parent_table_id": accountsTableId,
 			"child_table_id":  transactionsTableId,
-			"parent_field_id": accountIdParentFieldId,
+			"parent_field_id": accountsObjectIdFieldId,
 			"child_field_id":  accountIdFieldId,
 		}).
 		Expect().Status(http.StatusNoContent)
-
-	// Read the data model to get the link id
-	linkId := authOrgViewer.GET("/data-model").
-		Expect().Status(http.StatusOK).
-		JSON().
-		Object().Value("data_model").
-		Object().Value("tables").
-		Object().Value("transactions").
-		Object().Value("links_to_single").
-		Object().Value("account").
-		Object().Value("id").String().NotEmpty().
-		Raw()
-
-	// Finally, create a pivot value
-	auth.POST("/data-model/pivots").
-		WithJSON(map[string]any{
-			"base_table_id": transactionsTableId,
-			"path_link_ids": []string{linkId},
-		}).
-		Expect().Status(http.StatusOK)
 }
 
 func setupTestScenarioAndPublish(authOrgAdmin *httpexpect.Expect, authOrgViewer *httpexpect.Expect) string {

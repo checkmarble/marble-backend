@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
@@ -35,10 +36,10 @@ func (d *DataModelRepository) CreateDataModelTable(
 	ctx context.Context,
 	exec repositories.Executor,
 	organizationId uuid.UUID,
-	tableID, name, description string,
-	ftmEntity *models.FollowTheMoneyEntity,
+	tableID string,
+	input models.CreateTableInput,
 ) error {
-	args := d.Called(ctx, exec, organizationId, tableID, name, description, ftmEntity)
+	args := d.Called(ctx, exec, organizationId, tableID, input)
 	return args.Error(0)
 }
 
@@ -51,8 +52,10 @@ func (d *DataModelRepository) UpdateDataModelTable(
 	alias pure_utils.Null[string],
 	semanticType pure_utils.Null[models.SemanticType],
 	captionField pure_utils.Null[string],
+	primaryOrderingField pure_utils.Null[string],
+	metadata *json.RawMessage,
 ) error {
-	args := d.Called(ctx, exec, tableID, description, ftmEntity, alias, semanticType, captionField)
+	args := d.Called(ctx, exec, tableID, description, ftmEntity, alias, semanticType, captionField, primaryOrderingField, metadata)
 	return args.Error(0)
 }
 
@@ -150,12 +153,16 @@ func (d *DataModelRepository) DeleteDataModelTable(ctx context.Context, exec rep
 	return args.Error(0)
 }
 
-func (d *DataModelRepository) ArchiveDataModelField(ctx context.Context, exec repositories.Executor, table models.TableMetadata, field models.FieldMetadata) error {
+func (d *DataModelRepository) ArchiveDataModelField(ctx context.Context, exec repositories.Executor,
+	table models.TableMetadata, field models.FieldMetadata,
+) error {
 	args := d.Called(ctx, exec, table, field)
 	return args.Error(1)
 }
 
-func (d *DataModelRepository) DeleteDataModelField(ctx context.Context, exec repositories.Executor, table models.TableMetadata, field models.FieldMetadata) error {
+func (d *DataModelRepository) DeleteDataModelField(ctx context.Context, exec repositories.Executor,
+	table models.TableMetadata, field models.FieldMetadata,
+) error {
 	args := d.Called(ctx, exec, table, field)
 	return args.Error(0)
 }

@@ -47,6 +47,13 @@ type IndexDeletionArgs struct {
 
 func (IndexDeletionArgs) Kind() string { return "index_deletion" }
 
+type IndexDeletionByNameArgs struct {
+	OrgId      uuid.UUID `json:"org_id"`
+	IndexNames []string  `json:"index_names"`
+}
+
+func (IndexDeletionByNameArgs) Kind() string { return "index_deletion_by_name" }
+
 type TestRunSummaryArgs struct {
 	OrgId uuid.UUID `json:"org_id"`
 }
