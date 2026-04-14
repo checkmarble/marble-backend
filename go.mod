@@ -29,8 +29,8 @@ require (
 	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/gen2brain/go-fitz v1.24.15
 	github.com/getkin/kin-openapi v0.134.0
-	github.com/getsentry/sentry-go v0.43.0
-	github.com/getsentry/sentry-go/gin v0.43.0
+	github.com/getsentry/sentry-go v0.44.1
+	github.com/getsentry/sentry-go/gin v0.44.1
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-contrib/size v1.0.2
 	github.com/gin-gonic/gin v1.12.0

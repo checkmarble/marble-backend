@@ -170,7 +170,7 @@ func (m SentryMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInn
 	if err := json.Unmarshal(job.EncodedArgs, &args); err != nil {
 		scope.SetTag("payload", "error decoding payload")
 	} else {
-		scope.SetExtra("payload", args)
+		scope.SetContext("payload", args)
 	}
 
 	transaction := sentry.StartTransaction(ctx,
