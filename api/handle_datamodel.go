@@ -190,6 +190,11 @@ func handleUpdateDataModelField(uc usecases.Usecases) func(c *gin.Context) {
 			}
 		}
 
+		if input.Alias != nil && *input.Alias == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "field alias cannot be empty"))
+			return
+		}
+
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
 		err := usecase.UpdateDataModelField(ctx, fieldID, models.UpdateFieldInput{
 			Description:  input.Description,

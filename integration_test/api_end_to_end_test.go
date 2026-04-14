@@ -123,39 +123,39 @@ func setupOrgAndUser(e *httpexpect.Expect) (authOrgAdmin *httpexpect.Expect, aut
 
 func setupDataModel(auth *httpexpect.Expect, authOrgViewer *httpexpect.Expect) {
 	authOrgViewer.POST("/data-model/tables").
-		WithJSON(map[string]any{"name": "transactions", "description": "the transactions table", "semantic_type": "other", "fields": []map[string]any{{"name": "amount", "type": "Float"}}}).
+		WithJSON(map[string]any{"name": "transactions", "description": "the transactions table", "alias": "Transactions", "semantic_type": "other", "fields": []map[string]any{{"name": "amount", "alias": "Amount", "type": "Float"}}}).
 		Expect().Status(http.StatusForbidden)
 
 	transactionsTableId := auth.POST("/data-model/tables").
-		WithJSON(map[string]any{"name": "transactions", "description": "the transactions table", "semantic_type": "other", "fields": []map[string]any{
-			{"name": "object_id", "type": "String", "nullable": false},
-			{"name": "updated_at", "type": "Timestamp", "nullable": false},
-			{"name": "amount", "type": "Float"},
+		WithJSON(map[string]any{"name": "transactions", "description": "the transactions table", "alias": "Transactions", "semantic_type": "other", "fields": []map[string]any{
+			{"name": "object_id", "alias": "Object ID", "type": "String", "nullable": false},
+			{"name": "updated_at", "alias": "Updated At", "type": "Timestamp", "nullable": false},
+			{"name": "amount", "alias": "Amount", "type": "Float"},
 		}}).
 		Expect().Status(http.StatusCreated).
 		JSON().Object().
 		Value("id").String().NotEmpty().Raw()
 
 	accountsTableId := auth.POST("/data-model/tables").
-		WithJSON(map[string]any{"name": "accounts", "description": "the accounts table", "semantic_type": "other", "fields": []map[string]any{
-			{"name": "object_id", "type": "String", "nullable": false},
-			{"name": "updated_at", "type": "Timestamp", "nullable": false},
-			{"name": "status", "type": "String"},
+		WithJSON(map[string]any{"name": "accounts", "description": "the accounts table", "alias": "Accounts", "semantic_type": "other", "fields": []map[string]any{
+			{"name": "object_id", "alias": "Object ID", "type": "String", "nullable": false},
+			{"name": "updated_at", "alias": "Updated At", "type": "Timestamp", "nullable": false},
+			{"name": "status", "alias": "Status", "type": "String"},
 		}}).
 		Expect().Status(http.StatusCreated).
 		JSON().Object().
 		Value("id").String().NotEmpty().Raw()
 
 	accountIdFieldId := auth.POST("/data-model/tables/{table_id}/fields", transactionsTableId).
-		WithJSON(map[string]any{"name": "account_id", "type": "String"}).
+		WithJSON(map[string]any{"name": "account_id", "alias": "Account ID", "type": "String"}).
 		Expect().Status(http.StatusOK).
 		JSON().Object().Value("id").String().NotEmpty().Raw()
 	auth.POST("/data-model/tables/{table_id}/fields", transactionsTableId).
-		WithJSON(map[string]any{"name": "status", "type": "String"}).
+		WithJSON(map[string]any{"name": "status", "alias": "Status", "type": "String"}).
 		Expect().Status(http.StatusOK).
 		JSON().Object().Value("id").String().NotEmpty()
 	auth.POST("/data-model/tables/{table_id}/fields", transactionsTableId).
-		WithJSON(map[string]any{"name": "transaction_at", "type": "Timestamp"}).
+		WithJSON(map[string]any{"name": "transaction_at", "alias": "Transaction At", "type": "Timestamp"}).
 		Expect().Status(http.StatusOK).
 		JSON().Object().Value("id").String().NotEmpty()
 
