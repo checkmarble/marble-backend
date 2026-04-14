@@ -1087,14 +1087,12 @@ func (usecases *UsecasesWithCreds) NewPublicApiAdapterUsecase() PublicApiAdapter
 func (usecases *UsecasesWithCreds) NewOrgImportUsecase() OrgImportUsecase {
 	return NewOrgImportUsecase(
 		usecases.NewWithRootImpersonatedExecutor,
-		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		security.EnforceSecurityOrgImportImpl{
 			EnforceSecurity: usecases.NewEnforceSecurity(),
 			Credentials:     usecases.Credentials,
 		},
 		usecases.Repositories.MarbleDbRepository,
-		usecases.Repositories.OrganizationSchemaRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.firebaseAdmin,
 		usecases.Repositories.MarbleDbRepository,
