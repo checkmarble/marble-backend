@@ -168,56 +168,14 @@ type CreateTableInput struct {
 
 func (input CreateTableInput) AdaptToModel() (models.CreateTableInput, error) {
 	// Convert DTO fields to model fields
-	fields := make([]models.CreateFieldInput, len(input.Fields))
-	for i, f := range input.Fields {
-		dataType := models.DataTypeFrom(f.Type)
-		if dataType == models.UnknownDataType {
-			return models.CreateTableInput{}, errors.Wrap(models.BadParameterError, "invalid field data type")
-		}
-		ftmProperty := (*models.FollowTheMoneyProperty)(nil)
-		if f.FTMProperty != nil {
-			p := models.FollowTheMoneyPropertyFrom(*f.FTMProperty)
-			if p == models.FollowTheMoneyPropertyUnknown {
-				return models.CreateTableInput{}, errors.Wrap(
-					models.BadParameterError, "invalid FollowTheMoney property")
-			}
-			ftmProperty = &p
-		}
-		var fieldSemanticType models.FieldSemanticType
-		if f.SemanticType != nil {
-			fieldSemanticType = models.FieldSemanticType(*f.SemanticType)
-			if !fieldSemanticType.IsValid() {
-				return models.CreateTableInput{}, errors.Wrap(
-					models.BadParameterError, "invalid field semantic type")
-			}
-		}
-		fields[i] = models.CreateFieldInput{
-			Name:         f.Name,
-			Description:  f.Description,
-			Alias:        f.Alias,
-			SemanticType: fieldSemanticType,
-			DataType:     dataType,
-			Nullable:     f.Nullable,
-			IsEnum:       f.IsEnum,
-			IsUnique:     f.IsUnique,
-			FTMProperty:  ftmProperty,
-			Metadata:     f.Metadata,
-		}
+	fields, err := pure_utils.MapErr(input.Fields, AdaptCreateFieldInputToModel)
+	if err != nil {
+		return models.CreateTableInput{}, err
 	}
-
 	// Convert DTO links to model links
-	links := make([]models.CreateTableLinkInput, len(input.Links))
-	for i, l := range input.Links {
-		linkType := models.LinkType(l.LinkType)
-		if !linkType.IsValid() {
-			return models.CreateTableInput{}, errors.Wrap(models.BadParameterError, "invalid link type")
-		}
-		links[i] = models.CreateTableLinkInput{
-			Name:           l.Name,
-			ChildFieldName: l.ChildFieldName,
-			ParentTableID:  l.ParentTableId,
-			LinkType:       linkType,
-		}
+	links, err := pure_utils.MapErr(input.Links, AdaptCreateTableLinkInputToModel)
+	if err != nil {
+		return models.CreateTableInput{}, err
 	}
 
 	semanticType := models.SemanticTypeFrom(input.SemanticType)
@@ -232,6 +190,10 @@ func (input CreateTableInput) AdaptToModel() (models.CreateTableInput, error) {
 			return models.CreateTableInput{}, errors.Wrap(models.BadParameterError, "invalid FollowTheMoney entity")
 		}
 		ftmEntity = &e
+	}
+
+	if input.Alias == "" {
+		return models.CreateTableInput{}, errors.Wrap(models.BadParameterError, "table alias cannot be empty")
 	}
 
 	return models.CreateTableInput{
@@ -254,6 +216,19 @@ type CreateTableLinkInput struct {
 	LinkType       string `json:"link_type"`
 	ChildFieldName string `json:"child_field_name"`
 	ParentTableId  string `json:"parent_table_id"`
+}
+
+func AdaptCreateTableLinkInputToModel(input CreateTableLinkInput) (models.CreateTableLinkInput, error) {
+	linkType := models.LinkType(input.LinkType)
+	if !linkType.IsValid() {
+		return models.CreateTableLinkInput{}, errors.Wrap(models.BadParameterError, "invalid link type")
+	}
+	return models.CreateTableLinkInput{
+		Name:           input.Name,
+		ChildFieldName: input.ChildFieldName,
+		ParentTableID:  input.ParentTableId,
+		LinkType:       linkType,
+	}, nil
 }
 
 type UpdateTableInput struct {
@@ -287,6 +262,9 @@ func (input UpdateTableInput) AdaptToUpdateTableCompositeInput() (models.UpdateT
 		}
 	}
 	if input.Alias.Set {
+		if input.Alias.Valid && input.Alias.Value() == "" {
+			return result, errors.Wrap(models.BadParameterError, "table alias cannot be empty")
+		}
 		result.Alias = input.Alias
 	}
 	if input.SemanticType.Set {
@@ -315,37 +293,11 @@ func (input UpdateTableInput) AdaptToUpdateTableCompositeInput() (models.UpdateT
 			if err := json.Unmarshal(fieldOp.Data, &data); err != nil {
 				return result, errors.Wrap(models.BadParameterError, "invalid ADD field data: "+err.Error())
 			}
-			dataType := models.DataTypeFrom(data.Type)
-			if dataType == models.UnknownDataType {
-				return result, errors.Wrap(models.BadParameterError, "invalid field data type")
+			fieldInput, err := AdaptCreateFieldInputToModel(data)
+			if err != nil {
+				return result, err
 			}
-			var ftmProperty *models.FollowTheMoneyProperty
-			if data.FTMProperty != nil {
-				p := models.FollowTheMoneyPropertyFrom(*data.FTMProperty)
-				if p == models.FollowTheMoneyPropertyUnknown {
-					return result, errors.Wrap(models.BadParameterError, "invalid FollowTheMoney property")
-				}
-				ftmProperty = &p
-			}
-			var fieldSemanticType models.FieldSemanticType
-			if data.SemanticType != nil {
-				fieldSemanticType = models.FieldSemanticType(*data.SemanticType)
-				if !fieldSemanticType.IsValid() {
-					return result, errors.Wrap(models.BadParameterError, "invalid field semantic type")
-				}
-			}
-			result.FieldsToAdd = append(result.FieldsToAdd, models.CreateFieldInput{
-				Name:         data.Name,
-				Description:  data.Description,
-				Alias:        data.Alias,
-				SemanticType: fieldSemanticType,
-				DataType:     dataType,
-				Nullable:     data.Nullable,
-				IsEnum:       data.IsEnum,
-				IsUnique:     data.IsUnique,
-				FTMProperty:  ftmProperty,
-				Metadata:     data.Metadata,
-			})
+			result.FieldsToAdd = append(result.FieldsToAdd, fieldInput)
 
 		case OpMod:
 			var data ModFieldOperationData
@@ -354,6 +306,9 @@ func (input UpdateTableInput) AdaptToUpdateTableCompositeInput() (models.UpdateT
 			}
 			if data.ID == "" {
 				return result, errors.Wrap(models.BadParameterError, "MOD field operation requires an id")
+			}
+			if data.Alias != nil && *data.Alias == "" {
+				return result, errors.Wrap(models.BadParameterError, "field alias cannot be empty")
 			}
 			updateInput := models.UpdateFieldInput{
 				Description: data.Description,
@@ -414,16 +369,11 @@ func (input UpdateTableInput) AdaptToUpdateTableCompositeInput() (models.UpdateT
 			if err := json.Unmarshal(linkOp.Data, &data); err != nil {
 				return result, errors.Wrap(models.BadParameterError, "invalid ADD link data: "+err.Error())
 			}
-			linkType := models.LinkType(data.LinkType)
-			if !linkType.IsValid() {
-				return result, errors.Wrap(models.BadParameterError, "invalid link type")
+			linkInput, err := AdaptCreateTableLinkInputToModel(data)
+			if err != nil {
+				return result, err
 			}
-			result.LinksToAdd = append(result.LinksToAdd, models.CreateTableLinkInput{
-				Name:           data.Name,
-				LinkType:       linkType,
-				ChildFieldName: data.ChildFieldName,
-				ParentTableID:  data.ParentTableId,
-			})
+			result.LinksToAdd = append(result.LinksToAdd, linkInput)
 
 		case OpMod:
 			var data ModLinkOperationData
@@ -552,6 +502,46 @@ type CreateFieldInput struct {
 	Metadata     json.RawMessage `json:"metadata"`
 }
 
+func AdaptCreateFieldInputToModel(input CreateFieldInput) (models.CreateFieldInput, error) {
+	dataType := models.DataTypeFrom(input.Type)
+	if dataType == models.UnknownDataType {
+		return models.CreateFieldInput{}, errors.Wrap(models.BadParameterError, "invalid field data type")
+	}
+	ftmProperty := (*models.FollowTheMoneyProperty)(nil)
+	if input.FTMProperty != nil {
+		p := models.FollowTheMoneyPropertyFrom(*input.FTMProperty)
+		if p == models.FollowTheMoneyPropertyUnknown {
+			return models.CreateFieldInput{}, errors.Wrap(
+				models.BadParameterError, "invalid FollowTheMoney property")
+		}
+		ftmProperty = &p
+	}
+	var fieldSemanticType models.FieldSemanticType
+	if input.SemanticType != nil {
+		fieldSemanticType = models.FieldSemanticType(*input.SemanticType)
+		if !fieldSemanticType.IsValid() {
+			return models.CreateFieldInput{}, errors.Wrap(
+				models.BadParameterError, "invalid field semantic type")
+		}
+	}
+	if input.Alias == "" {
+		return models.CreateFieldInput{}, errors.Wrap(models.BadParameterError, "field alias cannot be empty")
+	}
+
+	return models.CreateFieldInput{
+		Name:         input.Name,
+		Description:  input.Description,
+		Alias:        input.Alias,
+		SemanticType: fieldSemanticType,
+		DataType:     dataType,
+		Nullable:     input.Nullable,
+		IsEnum:       input.IsEnum,
+		IsUnique:     input.IsUnique,
+		FTMProperty:  ftmProperty,
+		Metadata:     input.Metadata,
+	}, nil
+}
+
 type DataModelObject struct {
 	Data     map[string]any `json:"data"`
 	Metadata map[string]any `json:"metadata"`
@@ -589,14 +579,14 @@ type DataModelDeleteFieldReport struct {
 }
 
 type DataModelDeleteFieldConflicts struct {
-	ContinuousScreening bool                                              `json:"continuous_screening"`
-	Links               []string                                          `json:"links"`
-	Pivots              []string                                          `json:"pivots"`
-	AnalyticsSettings   int                                               `json:"analytics_settings"`
-	Scenarios           []DataModelDeleteFieldRef                         `json:"scenarios"`
-	EmptyScenarios      []DataModelDeleteFieldRef                         `json:"empty_scenarios"`
-	ScenarioIterations  map[string]*DataModelDeleteFieldConflictIteration `json:"scenario_iterations"`
-	Workflows           []DataModelDeleteFieldRef                         `json:"workflows"`
+	ContinuousScreening  bool                                              `json:"continuous_screening"`
+	Links                []string                                          `json:"links"`
+	Pivots               []string                                          `json:"pivots"`
+	AnalyticsSettings    int                                               `json:"analytics_settings"`
+	Scenarios            []DataModelDeleteFieldRef                         `json:"scenarios"`
+	EmptyScenarios       []DataModelDeleteFieldRef                         `json:"empty_scenarios"`
+	ScenarioIterations   map[string]*DataModelDeleteFieldConflictIteration `json:"scenario_iterations"`
+	Workflows            []DataModelDeleteFieldRef                         `json:"workflows"`
 	TestRuns             bool                                              `json:"test_runs"`
 	PrimaryOrderingField bool                                              `json:"primary_ordering_field"`
 }
@@ -640,7 +630,7 @@ func AdaptDataModelDeleteFieldReport(m models.DataModelDeleteFieldReport, errs .
 			EmptyScenarios: pure_utils.Map(m.Conflicts.EmptyScenarios.Slice(), func(id string) DataModelDeleteFieldRef {
 				return AdaptDataModelDeleteFieldReportRef(m, id)
 			}),
-			ScenarioIterations: map[string]*DataModelDeleteFieldConflictIteration{},
+			ScenarioIterations:   map[string]*DataModelDeleteFieldConflictIteration{},
 			TestRuns:             m.Conflicts.TestRuns,
 			PrimaryOrderingField: m.Conflicts.PrimaryOrderingField,
 		},
