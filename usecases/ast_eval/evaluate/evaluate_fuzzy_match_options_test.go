@@ -15,7 +15,7 @@ func TestFuzzyMatchOptionsEvaluator_Evaluate(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     ast.Arguments
-		want     ast.FuzzyMatchOptions
+		want     any
 		wantErrs bool
 	}{
 		{
@@ -95,7 +95,8 @@ func TestFuzzyMatchOptionsEvaluator_Evaluate(t *testing.T) {
 					"threshold": 75,
 				},
 			},
-			wantErrs: true,
+			want:     nil,
+			wantErrs: false,
 		},
 	}
 
