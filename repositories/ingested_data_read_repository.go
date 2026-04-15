@@ -95,12 +95,7 @@ type IngestedDataReadRepository interface {
 		size int,
 	) ([]string, error)
 
-	LastInternalId(
-		ctx context.Context,
-		exec Executor,
-		recordType string,
-	) (uuid.UUID, error)
-	GetObjectsBetweenInternalIds(
+	GetObjectsFromInternalId(
 		ctx context.Context,
 		exec Executor,
 		recordType string,
@@ -1008,50 +1003,7 @@ func (repo *IngestedDataReadRepositoryImpl) SampleObjectIds(
 	return recordIds, nil
 }
 
-func (repo *IngestedDataReadRepositoryImpl) LastInternalId(
-	ctx context.Context,
-	exec Executor,
-	recordType string,
-) (uuid.UUID, error) {
-	if err := validateClientDbExecutor(exec); err != nil {
-		return uuid.Nil, err
-	}
-
-	tableName := pgIdentifierWithSchema(exec, recordType)
-
-	query := NewQueryBuilder().
-		Select("id").
-		From(tableName).
-		OrderBy("id desc").
-		Limit(1)
-
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return uuid.Nil, err
-	}
-
-	rows, err := exec.Query(ctx, sql, args...)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	defer rows.Close()
-
-	var recordId string
-
-	for rows.Next() {
-		if err := rows.Scan(&recordId); err != nil {
-			return uuid.Nil, err
-		}
-	}
-
-	if err := rows.Err(); err != nil {
-		return uuid.Nil, fmt.Errorf("error while iterating over rows: %w", err)
-	}
-
-	return uuid.Parse(recordId)
-}
-
-func (repo *IngestedDataReadRepositoryImpl) GetObjectsBetweenInternalIds(
+func (repo *IngestedDataReadRepositoryImpl) GetObjectsFromInternalId(
 	ctx context.Context,
 	exec Executor,
 	recordType string,

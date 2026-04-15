@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 )
@@ -29,7 +30,7 @@ func NewInitialInsertionJob(orgId uuid.UUID, interval time.Duration) *river.Peri
 					Queue: orgId.String(),
 					UniqueOpts: river.UniqueOpts{
 						ByQueue:  true,
-						ByPeriod: 10 * time.Second,
+						ByPeriod: interval,
 					},
 				}
 		},
@@ -81,14 +82,17 @@ func (w *InitialInsertionWorker) Work(ctx context.Context, job *river.Job[models
 
 	for _, ruleset := range rulesets {
 		metadata, err := w.initialScoringRepository.GetMetadata(ctx, exec, &job.Args.OrgId, buildMetadataKey(ruleset.RecordType))
-		if err == nil && metadata != nil && metadata.Value == "true" {
+		if err != nil {
+			return errors.Wrap(err, "could not retrieve initial scoring status metadata")
+		}
+		if metadata != nil && metadata.Value == "true" {
 			continue
 		}
 
 		wm := uuid.Nil
 
 		for {
-			internalIds, objectIds, err := w.ingestedDataReader.GetObjectsBetweenInternalIds(ctx, clientDbExec, ruleset.RecordType, wm, 1000)
+			internalIds, objectIds, err := w.ingestedDataReader.GetObjectsFromInternalId(ctx, clientDbExec, ruleset.RecordType, wm, 1000)
 			if err != nil {
 				return err
 			}
