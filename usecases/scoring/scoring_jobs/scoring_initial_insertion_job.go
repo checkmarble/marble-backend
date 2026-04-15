@@ -17,7 +17,7 @@ import (
 
 type initialScoringRepository interface {
 	GetMetadata(ctx context.Context, exec repositories.Executor, orgID *uuid.UUID, key models.MetadataKey) (*models.Metadata, error)
-	CreateMetadata(ctx context.Context, exec repositories.Executor, metadata models.Metadata) error
+	UpsertMetadata(ctx context.Context, exec repositories.Executor, metadata models.Metadata) error
 }
 
 func NewInitialInsertionJob(orgId uuid.UUID, interval time.Duration) *river.PeriodicJob {
@@ -120,7 +120,7 @@ func (w *InitialInsertionWorker) Work(ctx context.Context, job *river.Job[models
 			}
 		}
 
-		err = w.initialScoringRepository.CreateMetadata(ctx, exec, models.Metadata{
+		err = w.initialScoringRepository.UpsertMetadata(ctx, exec, models.Metadata{
 			OrgID: &job.Args.OrgId,
 			Key:   buildMetadataKey(ruleset.RecordType),
 			Value: "true",
