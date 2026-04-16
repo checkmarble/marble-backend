@@ -258,36 +258,8 @@ func handleDeleteDataModel(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func legacy_handleGetOpenAPI(uc usecases.Usecases) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
-		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		dataModel, err := usecase.GetDataModel(ctx, organizationID, models.DataModelReadOptions{
-			IncludeEnums:              false,
-			IncludeNavigationOptions:  false,
-			IncludeUnicityConstraints: false,
-		}, false)
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		openapi := dto.LegacyOpenAPIFromDataModel(dataModel)
-		c.JSON(http.StatusOK, openapi)
-	}
-}
-
 func handleGetOpenAPI(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		if c.Param("version") == "" || c.Param("version") == "v0" {
-			legacy_handleGetOpenAPI(uc)(c)
-			return
-		}
-
 		ctx := c.Request.Context()
 
 		if !regexp.MustCompile(`^v[0-9\.]+$`).Match([]byte(c.Param("version"))) {
