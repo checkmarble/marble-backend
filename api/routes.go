@@ -110,20 +110,10 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/decisions",
 		timeoutMiddleware(conf.DecisionTimeout),
 		handleListDecisions(uc, parsedAppUrl))
-	router.POST("/decisions", timeoutMiddleware(conf.DecisionTimeout),
-		handlePostDecision(uc, parsedAppUrl))
-	router.POST("/decisions/all",
-		timeoutMiddleware(3*conf.DecisionTimeout),
-		handlePostAllDecisions(uc, parsedAppUrl))
 	router.GET("/decisions/:decision_id", tom, handleGetDecision(uc, parsedAppUrl))
 	router.GET("/decisions/:decision_id/active-snoozes", tom, handleSnoozesOfDecision(uc))
 	router.POST("/decisions/:decision_id/snooze", tom, handleSnoozeDecision(uc))
 
-	router.POST("/ingestion/:object_type", tom, handleIngestion(uc))
-	router.PATCH("/ingestion/:object_type", tom, handleIngestionPartialUpsert(uc))
-	router.POST("/ingestion/:object_type/multiple", tom, handleIngestionMultiple(uc))
-	router.PATCH("/ingestion/:object_type/multiple", tom,
-		handleIngestionMultiplePartialUpsert(uc))
 	router.POST("/ingestion/:object_type/batch", timeoutMiddleware(conf.BatchTimeout), handlePostCsvIngestion(uc))
 	router.GET("/ingestion/:object_type/upload-logs", tom, handleListUploadLogs(uc))
 
@@ -349,7 +339,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/data-model/tables/:tableID/fields", tom, handleCreateField(uc))
 	router.PATCH("/data-model/fields/:fieldID", tom, handleUpdateDataModelField(uc))
 	router.DELETE("/data-model", tom, handleDeleteDataModel(uc))
-	router.GET("/data-model/openapi", tom, handleGetOpenAPI(uc))
 	router.GET("/data-model/openapi/:version", tom, handleGetOpenAPI(uc))
 	router.POST("/data-model/pivots", tom, handleCreateDataModelPivot(uc))
 	router.GET("/data-model/pivots", tom, handleListDataModelPivots(uc))

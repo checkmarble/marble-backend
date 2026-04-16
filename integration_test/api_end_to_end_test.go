@@ -274,7 +274,7 @@ func setupApiKey(e *httpexpect.Expect, authOrgAdmin *httpexpect.Expect) *httpexp
 }
 
 func ingestAndCreateDecision(authApiKey *httpexpect.Expect, scenarioId string) {
-	authApiKey.POST("/ingestion/transactions").
+	authApiKey.POST("/v1/ingest/transactions").
 		WithBytes([]byte(`{
   "object_id": "my-unique-id",
   "updated_at": "2024-01-01T00:00:00Z",
@@ -286,7 +286,7 @@ func ingestAndCreateDecision(authApiKey *httpexpect.Expect, scenarioId string) {
 		Expect().Status(http.StatusCreated)
 
 	// also do some batch ingestion
-	authApiKey.POST("/ingestion/transactions/multiple").
+	authApiKey.POST("/v1/ingest/transactions/batch").
 		WithBytes([]byte(`
 		[
 			{
@@ -316,20 +316,20 @@ func ingestAndCreateDecision(authApiKey *httpexpect.Expect, scenarioId string) {
 		"status":         "validated",
 		"transaction_at": "2024-01-01T00:00:00Z",
 	}
-	dec := authApiKey.POST("/decisions").
+	dec := authApiKey.POST("/v1/decisions").
 		WithJSON(map[string]any{"scenario_id": scenarioId, "object_type": "transactions", "trigger_object": objectMap}).
 		Expect().Status(http.StatusOK).JSON()
-	dec.Object().Value("rules").Array().Length().IsEqual(1)
-	dec.Object().Value("outcome").String().IsEqual("approve")
-	dec.Object().Value("score").Number().IsEqual(2)
-	dec.Object().Value("pivot_values").Array().Length().IsEqual(1)
+	data := dec.Object().Value("data").Array().Value(0).Object()
+	data.Value("rules").Array().Length().IsEqual(1)
+	data.Value("outcome").String().IsEqual("approve")
+	data.Value("score").Number().IsEqual(2)
 
-	authApiKey.POST("/decisions/all").
+	authApiKey.POST("/v1/decisions/all").
 		WithJSON(map[string]any{
-			"object_type":    "transactions",
-			"trigger_object": objectMap,
+			"trigger_object_type": "transactions",
+			"trigger_object":      objectMap,
 		}).
 		Expect().Status(http.StatusOK).JSON().
-		Object().Value("decisions").
+		Object().Value("data").
 		Array().Length().IsEqual(1)
 }

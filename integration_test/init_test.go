@@ -92,6 +92,7 @@ func TestMain(m *testing.M) {
 	pool.MaxWait = testDbLifetime * time.Second
 
 	hostAndPort := resource.GetHostPort("5432/tcp") // docker container will bind to another port than 5432 if already taken
+
 	connectionString := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", testUser, testPassword, hostAndPort, testDbName)
 	testDbPool, err := pgxpool.New(context.Background(), connectionString)
 	if err != nil {
