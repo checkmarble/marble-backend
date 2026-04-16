@@ -28,40 +28,10 @@ func Routes(conf pubapi.Config, version string, unauthed *gin.RouterGroup, authM
 		root.GET("/decisions/:decisionId", HandleGetDecision(uc))
 		root.POST("/decisions/:decisionId/snooze", HandleSnoozeRule(uc))
 		root.GET("/decisions/:decisionId/screenings", HandleListScreenings(uc))
+		root.POST("/decisions/:decisionId/case", HandleAddDecisionToCase(uc))
 
 		decision.POST("/decisions", HandleCreateDecision(uc))
 		decision.POST("/decisions/all", HandleCreateAllDecisions(uc))
-
-		root.GET("/batch-executions", HandleListBatchExecutions(uc))
-
-		root.POST("/screening/:screeningId/refine", HandleRefineScreening(uc, true))
-		root.POST("/screening/:screeningId/search", HandleRefineScreening(uc, false))
-		root.POST("/screening/search", HandleScreeningFreeformSearch(uc))
-
-		root.GET("/screening/entities/:entityId", HandleGetScreeningEntity(uc))
-		root.POST("/screening/matches/:matchId", HandleUpdateScreeningMatchStatus(uc))
-
-		root.POST("/screening/whitelists/search", HandleSearchWhitelist(uc))
-		root.POST("/screening/whitelists", HandleAddWhitelist(uc))
-		root.DELETE("/screening/whitelists", HandleDeleteWhitelist(uc))
-	}
-}
-
-func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usecases) {
-	authed := unauthed.Group("/", authMiddleware, middleware.PrometheusMiddleware)
-
-	{
-		root := authed.Group("/", pubapi.TimeoutMiddleware(conf.DefaultTimeout))
-
-		root.POST("/ingest/:objectType", v1beta.HandleIngestObject(uc, false))
-		root.PATCH("/ingest/:objectType", v1beta.HandleIngestObject(uc, false))
-		root.POST("/ingest/:objectType/batch", v1beta.HandleIngestObject(uc, true))
-		root.PATCH("/ingest/:objectType/batch", v1beta.HandleIngestObject(uc, true))
-
-		root.POST("/decisions/:decisionId/case", HandleAddDecisionToCase(uc))
-
-		root.POST("/decisions/async", HandleCreateAsyncDecisions(uc))
-		root.GET("/decisions/async/:executionId", HandleGetAsyncDecisionExecution(uc))
 
 		root.GET("/cases", HandleListCases(uc))
 		root.GET("/cases/:caseId", HandleGetCase(uc))
@@ -75,9 +45,77 @@ func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gi
 		root.GET("/cases/:caseId/files", HandleListCaseFiles(uc))
 		root.POST("/cases/:caseId/files", HandleCreateCaseFile(uc))
 		root.GET("/cases/:caseId/files/:fileId/download", HandleDownloadCaseFile(uc))
+
+		root.GET("/tags", HandleListTags(uc))
+		root.POST("/cases/:caseId/tags", HandleAddCaseTags(uc))
+		root.DELETE("/cases/:caseId/tags/:tagId", HandleRemoveCaseTag(uc))
+
+		root.GET("/batch-executions", HandleListBatchExecutions(uc))
+
+		root.POST("/screening/:screeningId/refine", HandleRefineScreening(uc, true))
+		root.POST("/screening/:screeningId/search", HandleRefineScreening(uc, false))
+		root.POST("/screening/search", HandleScreeningFreeformSearch(uc))
+
+		root.GET("/screening/entities/:entityId", HandleGetScreeningEntity(uc))
+		root.POST("/screening/matches/:matchId", HandleUpdateScreeningMatchStatus(uc))
+
+		root.POST("/screening/whitelists/search", HandleSearchWhitelist(uc))
+		root.POST("/screening/whitelists", HandleAddWhitelist(uc))
+		root.DELETE("/screening/whitelists", HandleDeleteWhitelist(uc))
+
+		root.POST("/continuous-screenings/objects",
+			HandleCreateContinuousScreeningObject(uc))
+		root.DELETE("/continuous-screenings/objects",
+			HandleDeleteContinuousScreeningObject(uc))
+
+		root.GET("/records/:recordType/:recordId/annotations",
+			v1beta.HandleGetRecordAnnotations(uc))
+		root.POST("/records/:recordType/:recordId/annotations",
+			v1beta.HandleAttachRecordAnnotation(uc))
+		root.POST("/records/:recordType/:recordId/annotations/files",
+			v1beta.HandleCreateEntityFileAnnotation(uc))
+		root.GET("/records/annotations/:id/files/:partId/download",
+			v1beta.HandleGetEntityFileAnnotation(uc))
+		root.DELETE("/records/annotations", v1beta.HandleDeleteEntityAnnotations(uc))
+	}
+}
+
+func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gin.HandlerFunc, uc usecases.Usecases) {
+	authed := unauthed.Group("/", authMiddleware, middleware.PrometheusMiddleware)
+
+	{
+		root := authed.Group("/", pubapi.TimeoutMiddleware(conf.DefaultTimeout))
+
+		// v1beta only
+
+		root.POST("/decisions/async", HandleCreateAsyncDecisions(uc))
+		root.GET("/decisions/async/:executionId", HandleGetAsyncDecisionExecution(uc))
+
 		root.GET("/cases/:caseId/ai_reviews", HandleListAiCaseReviews(uc))
 		root.POST("/cases/:caseId/ai_reviews", HandleEnqueueAiCaseReview(uc))
 		root.GET("/cases/:caseId/ai_reviews/:aiReviewId", HandleGetAiCaseReviewById(uc))
+
+		// Graduated
+
+		root.POST("/ingest/:objectType", v1beta.HandleIngestObject(uc, false))
+		root.PATCH("/ingest/:objectType", v1beta.HandleIngestObject(uc, false))
+		root.POST("/ingest/:objectType/batch", v1beta.HandleIngestObject(uc, true))
+		root.PATCH("/ingest/:objectType/batch", v1beta.HandleIngestObject(uc, true))
+
+		root.POST("/decisions/:decisionId/case", HandleAddDecisionToCase(uc))
+
+		root.GET("/cases", HandleListCases(uc))
+		root.GET("/cases/:caseId", HandleGetCase(uc))
+		root.POST("/cases", HandleCreateCase(uc))
+		root.PATCH("/cases/:caseId", HandleUpdateCase(uc))
+		root.POST("/cases/:caseId/close", HandleSetCaseStatus(uc, models.CaseClosed))
+		root.POST("/cases/:caseId/reopen", HandleSetCaseStatus(uc, models.CaseInvestigating))
+		root.POST("/cases/:caseId/escalate", HandleEscalateCase(uc))
+		root.GET("/cases/:caseId/comments", HandleListCaseComments(uc))
+		root.POST("/cases/:caseId/comments", HandleCreateComment(uc))
+		root.GET("/cases/:caseId/files", HandleListCaseFiles(uc))
+		root.POST("/cases/:caseId/files", HandleCreateCaseFile(uc))
+		root.GET("/cases/:caseId/files/:fileId/download", HandleDownloadCaseFile(uc))
 
 		root.GET("/tags", HandleListTags(uc))
 		root.POST("/cases/:caseId/tags", HandleAddCaseTags(uc))
