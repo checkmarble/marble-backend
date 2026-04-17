@@ -99,7 +99,6 @@ type ScreeningMatchDto struct {
 	Status                       string                     `json:"status"`
 	ReviewedBy                   *string                    `json:"reviewer_id,omitempty"` //nolint:tagliatelle
 	Datasets                     []string                   `json:"datasets"`
-	UniqueCounterpartyIdentifier *string                    `json:"unique_counterparty_identifier"`
 	Payload                      json.RawMessage            `json:"payload"`
 	Enriched                     bool                       `json:"enriched"`
 	Comments                     []ScreeningMatchCommentDto `json:"comments"`
@@ -116,7 +115,6 @@ func AdaptScreeningMatchDto(m models.ScreeningMatch) ScreeningMatchDto {
 		Datasets:                     make([]string, 0),
 		Payload:                      m.Payload,
 		Enriched:                     m.Enriched,
-		UniqueCounterpartyIdentifier: m.UniqueCounterpartyIdentifier,
 		Comments:                     pure_utils.Map(m.Comments, AdaptScreeningMatchCommentDto),
 	}
 

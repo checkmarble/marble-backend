@@ -114,10 +114,6 @@ type Screening struct {
 	ErrorCodes                   []string
 	ErrorDetail                  error
 
-	// This field is newly stored in DB, but is not filled for all old screenings.
-	// The "GetDecisionById" and "ListScreeningsByDecision" endpoints override it with the actual number of matches if it is 0 in DB,
-	// but not all instances of models.Screening have it.
-	// It should be backfilled in a future release, once all new screenings have it written.
 	NumberOfMatches int
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
@@ -205,7 +201,6 @@ type ScreeningMatch struct {
 	Referents                    []string
 	Status                       ScreeningMatchStatus
 	QueryIds                     []string
-	UniqueCounterpartyIdentifier *string
 	Payload                      []byte
 	Enriched                     bool
 	ReviewedBy                   *string

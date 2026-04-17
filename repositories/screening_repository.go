@@ -279,11 +279,11 @@ func (*MarbleDbRepository) InsertScreening(
 
 	matchSql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SCREENING_MATCHES).
-		Columns("id", "screening_id", "opensanction_entity_id", "query_ids", "payload", "counterparty_id")
+		Columns("id", "screening_id", "opensanction_entity_id", "query_ids", "payload")
 
 	for _, match := range screening.Matches {
 		matchSql = matchSql.Values(pure_utils.NewId(), screening.Id, match.EntityId, match.QueryIds,
-			match.Payload, match.UniqueCounterpartyIdentifier)
+			match.Payload)
 	}
 
 	return ExecBuilder(ctx, exec, matchSql)
