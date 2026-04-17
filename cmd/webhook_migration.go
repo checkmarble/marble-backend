@@ -21,7 +21,6 @@ import (
 // The migration:
 // - Checks if already migrated (via metadata flag)
 // - If convoy is NOT configured, marks as migrated immediately (no feature flag needed)
-// - If Convoy IS configured, waits for feature flag before migrating
 // - Fetches all webhooks from Convoy for all organizations
 // - Creates them in the internal system with their secrets (in a transaction)
 // - Skips non-HTTPS endpoints (logs a warning)
@@ -38,12 +37,11 @@ func MigrateConvoyWebhooks(ctx context.Context, repos repositories.Repositories,
 	// If Convoy is NOT configured, mark as migrated immediately (no feature flag needed)
 	if !hasConvoyServerSetup {
 		logger.InfoContext(ctx, "Convoy not configured, marking webhook system as migrated")
-		return markWebhookSystemMigratedWithTx(ctx, repos)
-	}
-
-	// Convoy IS configured: wait for feature flag before migrating
-	if !utils.GetEnv("ENABLE_WEBHOOK_MIGRATION", false) {
-		return nil
+		return repos.ExecutorGetter.Transaction(ctx, models.DATABASE_SCHEMA_TYPE_MARBLE, nil,
+			func(tx repositories.Transaction) error {
+				return createMigrationMetadata(ctx, repos, tx)
+			},
+		)
 	}
 
 	logger.InfoContext(ctx, "Starting webhook migration from Convoy to internal system")
@@ -202,14 +200,4 @@ func createMigrationMetadata(ctx context.Context, repos repositories.Repositorie
 		Value:     "true",
 	}
 	return repos.MarbleDbRepository.CreateMetadata(ctx, tx, metadata)
-}
-
-// markWebhookSystemMigratedWithTx marks the webhook system as migrated in its own transaction.
-// Used when Convoy is not configured.
-func markWebhookSystemMigratedWithTx(ctx context.Context, repos repositories.Repositories) error {
-	return repos.ExecutorGetter.Transaction(ctx, models.DATABASE_SCHEMA_TYPE_MARBLE, nil,
-		func(tx repositories.Transaction) error {
-			return createMigrationMetadata(ctx, repos, tx)
-		},
-	)
 }
