@@ -245,8 +245,10 @@ type UpdateTableInput struct {
 
 func (input UpdateTableInput) AdaptToUpdateTableCompositeInput() (models.UpdateTableCompositeInput, error) {
 	result := models.UpdateTableCompositeInput{
-		Description: input.Description,
-		Metadata:    input.Metadata,
+		Description:          input.Description,
+		Metadata:             input.Metadata,
+		CaptionField:         input.CaptionField,
+		PrimaryOrderingField: input.PrimaryOrderingField,
 	}
 
 	// Table-level optional fields
@@ -277,12 +279,6 @@ func (input UpdateTableInput) AdaptToUpdateTableCompositeInput() (models.UpdateT
 		} else {
 			result.SemanticType = pure_utils.NullFromPtr[models.SemanticType](nil)
 		}
-	}
-	if input.CaptionField.Set {
-		result.CaptionField = input.CaptionField
-	}
-	if input.PrimaryOrderingField.Set {
-		result.PrimaryOrderingField = input.PrimaryOrderingField
 	}
 
 	// Parse field operations
