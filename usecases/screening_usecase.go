@@ -208,10 +208,6 @@ func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string
 	matchIdToMatch := make(map[string]*models.ScreeningMatch)
 
 	for sidx, sc := range scs {
-		if sc.NumberOfMatches == 0 && len(sc.Matches) > 0 {
-			sc.NumberOfMatches = len(sc.Matches)
-		}
-
 		for midx, match := range sc.Matches {
 			matchIds.Insert(match.Id)
 			matchIdToMatch[match.Id] = &scs[sidx].Matches[midx]
@@ -541,10 +537,10 @@ func (uc ScreeningUsecase) UpdateMatchStatus(
 			}
 
 			if update.Status == models.ScreeningMatchStatusNoHit && update.Whitelist &&
-				data.match.UniqueCounterpartyIdentifier != nil {
+				data.sanction.UniqueCounterpartyIdentifier != nil {
 				if err := uc.CreateWhitelist(ctx, tx,
 					data.decision.OrganizationId,
-					*data.match.UniqueCounterpartyIdentifier,
+					*data.sanction.UniqueCounterpartyIdentifier,
 					data.match.EntityId, update.ReviewerId); err != nil {
 					return errors.Wrap(err, "could not whitelist match")
 				}
@@ -968,13 +964,5 @@ func mergePayloads(originalRaw, newRaw []byte) ([]byte, error) {
 }
 
 func getScreeningCounterpartyIdentifier(screening models.ScreeningWithMatches) *string {
-	// TODO: finish this migration by migrating values from Matches to the new column UniqueCounterpartyIdentifier, then remove the fallback to Matches
-	// New rows have it on the screening; old rows (pre-backfill) fall back to first match
-	if screening.UniqueCounterpartyIdentifier != nil {
-		return screening.UniqueCounterpartyIdentifier
-	}
-	if len(screening.Matches) == 0 {
-		return nil
-	}
-	return screening.Matches[0].UniqueCounterpartyIdentifier
+	return screening.UniqueCounterpartyIdentifier
 }

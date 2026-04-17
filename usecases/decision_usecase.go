@@ -133,9 +133,6 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 	decision.ScreeningExecutions = make([]models.ScreeningWithMatches, len(scs))
 
 	for idx, sc := range scs {
-		if sc.NumberOfMatches == 0 && len(sc.Matches) > 0 {
-			sc.NumberOfMatches = len(sc.Matches)
-		}
 		decision.ScreeningExecutions[idx] = sc
 	}
 

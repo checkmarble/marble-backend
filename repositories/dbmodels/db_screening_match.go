@@ -18,7 +18,6 @@ type DBScreeningMatch struct {
 	OpenSanctionEntityId string          `db:"opensanction_entity_id"`
 	Status               string          `db:"status"`
 	QueryIds             []string        `db:"query_ids"`
-	CounterpartyId       *string         `db:"counterparty_id"`
 	Payload              json.RawMessage `db:"payload"`
 	Enriched             bool            `db:"enriched"`
 	ReviewedBy           *string         `db:"reviewed_by"`
@@ -36,7 +35,6 @@ func AdaptScreeningMatch(dto DBScreeningMatch) (models.ScreeningMatch, error) {
 		Status:                       models.ScreeningMatchStatusFrom(dto.Status),
 		ReviewedBy:                   dto.ReviewedBy,
 		QueryIds:                     dto.QueryIds,
-		UniqueCounterpartyIdentifier: dto.CounterpartyId,
 		Payload:                      dto.Payload,
 		Enriched:                     dto.Enriched,
 	}
