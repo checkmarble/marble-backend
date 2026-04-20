@@ -35,6 +35,13 @@ SET DEFAULT 0;
 ALTER TABLE screening_matches
 ADD COLUMN counterparty_id text;
 
+-- Copy counterparty_id back from screenings to screening_matches
+UPDATE screening_matches sm
+SET counterparty_id = s.counterparty_id
+FROM screenings s
+WHERE sm.screening_id = s.id
+  AND s.counterparty_id IS NOT NULL;
+
 ALTER TABLE screenings
 ALTER COLUMN number_of_matches
 DROP DEFAULT;
