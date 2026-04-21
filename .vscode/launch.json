@@ -92,7 +92,13 @@
         "webhook_retry",
         "webhook_dispatch",
         "webhook_delivery",
-        "webhook_cleanup"
+        "webhook_cleanup",
+        "triggered_score_computation",
+        "async_decision_execution",
+        "async_decision_execution_cleanup",
+        "score_computation",
+        "scoring_initial_insertion",
+        "scoring_initial_computation"
       ]
     },
     {
