@@ -4,10 +4,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -24,6 +24,7 @@ type RulesetDryRunWorker struct {
 	river.WorkerDefaults[models.RulesetDryRunArgs]
 
 	executorFactory            executor_factory.ExecutorFactory
+	featureAccessReader        feature_access.FeatureAccessReader
 	rulesetUsecase             scoring.ScoringRulesetsUsecase
 	scoreUsecase               scoring.ScoringScoresUsecase
 	repository                 scoring.ScoringRepository
@@ -32,6 +33,7 @@ type RulesetDryRunWorker struct {
 
 func NewRulesetDryRunWorker(
 	executorFactory executor_factory.ExecutorFactory,
+	featureAccessReader feature_access.FeatureAccessReader,
 	rulesetUsecase scoring.ScoringRulesetsUsecase,
 	scoreUsecase scoring.ScoringScoresUsecase,
 	repository scoring.ScoringRepository,
@@ -39,6 +41,7 @@ func NewRulesetDryRunWorker(
 ) *RulesetDryRunWorker {
 	return &RulesetDryRunWorker{
 		executorFactory:            executorFactory,
+		featureAccessReader:        featureAccessReader,
 		rulesetUsecase:             rulesetUsecase,
 		scoreUsecase:               scoreUsecase,
 		repository:                 repository,
@@ -47,7 +50,11 @@ func NewRulesetDryRunWorker(
 }
 
 func (w *RulesetDryRunWorker) Work(ctx context.Context, job *river.Job[models.RulesetDryRunArgs]) error {
-	if !infra.HasFeatureFlag(infra.FEATURE_USER_SCORING, job.Args.OrgId) {
+	featureAccess, err := w.featureAccessReader.GetOrganizationFeatureAccess(ctx, job.Args.OrgId, nil)
+	if err != nil {
+		return err
+	}
+	if !featureAccess.UserScoring.IsAllowed() {
 		return nil
 	}
 

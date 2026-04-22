@@ -22,14 +22,15 @@ func noopAstEvaluationEnvironmentFactory(params ast_eval.EvaluationEnvironmentFa
 type TryRefreshScoreTestSuite struct {
 	suite.Suite
 
-	transaction        *mocks.Transaction
-	transactionFactory *mocks.TransactionFactory
-	executorFactory    *mocks.ExecutorFactory
-	repository         *mocks.ScoringRepository
-	taskQueue          *mocks.TaskQueueRepository
-	enforceSecurity    *mocks.EnforceSecurity
-	dataModelRepo      *mocks.DataModelRepository
-	ingestedDataReader *mocks.IngestedDataReader
+	transaction         *mocks.Transaction
+	transactionFactory  *mocks.TransactionFactory
+	executorFactory     *mocks.ExecutorFactory
+	repository          *mocks.ScoringRepository
+	taskQueue           *mocks.TaskQueueRepository
+	enforceSecurity     *mocks.EnforceSecurity
+	dataModelRepo       *mocks.DataModelRepository
+	ingestedDataReader  *mocks.IngestedDataReader
+	featureAccessReader *mocks.FeatureAccessReader
 
 	orgId      uuid.UUID
 	recordType string
@@ -51,12 +52,16 @@ func (s *TryRefreshScoreTestSuite) SetupTest() {
 	s.enforceSecurity = new(mocks.EnforceSecurity)
 	s.dataModelRepo = new(mocks.DataModelRepository)
 	s.ingestedDataReader = new(mocks.IngestedDataReader)
+	s.featureAccessReader = new(mocks.FeatureAccessReader)
 
 	s.orgId = pure_utils.NewId()
 	s.recordType = "account"
 	s.recordId = "entity-123"
 	s.record = models.ScoringRecordRef{OrgId: s.orgId, RecordType: s.recordType, RecordId: s.recordId}
 	s.ctx = context.Background()
+
+	s.featureAccessReader.On("GetOrganizationFeatureAccess", s.ctx, s.orgId, (*models.UserId)(nil)).
+		Return(models.OrganizationFeatureAccess{UserScoring: models.Allowed}, nil)
 }
 
 func (s *TryRefreshScoreTestSuite) makeUsecase() ScoringScoresUsecase {
@@ -66,6 +71,7 @@ func (s *TryRefreshScoreTestSuite) makeUsecase() ScoringScoresUsecase {
 		transactionFactory:  s.transactionFactory,
 		repository:          s.repository,
 		taskQueueRepository: s.taskQueue,
+		featureAccessReader: s.featureAccessReader,
 	}
 }
 

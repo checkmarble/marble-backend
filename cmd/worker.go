@@ -428,13 +428,12 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewWebhookDeliveryWorker())
 	river.AddWorker(workers, adminUc.NewWebhookCleanupWorker())
 
-	if infra.HasGlobalFeatureFlag(infra.FEATURE_USER_SCORING) {
-		river.AddWorker(workers, adminUc.NewScoreComputationWorker())
-		river.AddWorker(workers, adminUc.NewTriggeredScoreComputationWorker())
-		river.AddWorker(workers, adminUc.NewRulesetDryRunWorker())
-		river.AddWorker(workers, adminUc.NewInitialComputationWorker())
-		river.AddWorker(workers, adminUc.NewInitialInsertionWorker())
-	}
+	river.AddWorker(workers, adminUc.NewScoreComputationWorker())
+	river.AddWorker(workers, adminUc.NewTriggeredScoreComputationWorker())
+	river.AddWorker(workers, adminUc.NewRulesetDryRunWorker())
+	river.AddWorker(workers, adminUc.NewInitialComputationWorker())
+	river.AddWorker(workers, adminUc.NewInitialInsertionWorker())
+
 	// Async decision execution system
 	river.AddWorker(workers, adminUc.NewAsyncDecisionExecutionWorker())
 	river.AddWorker(workers, adminUc.NewAsyncDecisionExecutionCleanupWorker())

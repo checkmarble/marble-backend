@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/dto"
-	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -619,7 +618,12 @@ func (usecase *CaseUseCase) UpdateCase(
 					fmt.Sprintf("invalid case outcome '%s'", updateCaseAttributes.Outcome))
 			}
 
-			if infra.HasFeatureFlag(infra.FEATURE_USER_SCORING, c.OrganizationId) {
+			featureAccess, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, c.OrganizationId, nil)
+			if err != nil {
+				return models.Case{}, err
+			}
+
+			if featureAccess.UserScoring.IsAllowed() {
 				decisions, err := usecase.decisionRepository.DecisionsByCaseId(ctx, tx, c.OrganizationId, c.Id)
 				if err != nil {
 					return models.Case{}, err

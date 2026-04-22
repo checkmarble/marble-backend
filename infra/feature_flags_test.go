@@ -14,43 +14,43 @@ func setFeatureFlagEnv(t *testing.T, flag featureFlag, value string) {
 }
 
 func TestHasGlobalFeatureFlag_NotSet(t *testing.T) {
-	t.Setenv(fmt.Sprintf("ENABLE_%s", string(FEATURE_USER_SCORING)), "")
+	t.Setenv(fmt.Sprintf("ENABLE_%s", string(TEST_UNUSED_FEATURE_FLAG)), "")
 
-	assert.False(t, HasGlobalFeatureFlag(FEATURE_USER_SCORING))
+	assert.False(t, HasGlobalFeatureFlag(TEST_UNUSED_FEATURE_FLAG))
 }
 
 func TestHasGlobalFeatureFlag_Set(t *testing.T) {
-	setFeatureFlagEnv(t, FEATURE_USER_SCORING, "all")
+	setFeatureFlagEnv(t, TEST_UNUSED_FEATURE_FLAG, "all")
 
-	assert.True(t, HasGlobalFeatureFlag(FEATURE_USER_SCORING))
+	assert.True(t, HasGlobalFeatureFlag(TEST_UNUSED_FEATURE_FLAG))
 }
 
 func TestHasFeatureFlag_EnvNotSet(t *testing.T) {
-	t.Setenv(fmt.Sprintf("ENABLE_%s", string(FEATURE_USER_SCORING)), "")
+	t.Setenv(fmt.Sprintf("ENABLE_%s", string(TEST_UNUSED_FEATURE_FLAG)), "")
 
 	orgId := pure_utils.NewId()
 
-	assert.False(t, HasFeatureFlag(FEATURE_USER_SCORING, orgId))
+	assert.False(t, HasFeatureFlag(TEST_UNUSED_FEATURE_FLAG, orgId))
 }
 
 func TestHasFeatureFlag_All(t *testing.T) {
-	setFeatureFlagEnv(t, FEATURE_USER_SCORING, "all")
+	setFeatureFlagEnv(t, TEST_UNUSED_FEATURE_FLAG, "all")
 
-	assert.True(t, HasFeatureFlag(FEATURE_USER_SCORING, pure_utils.NewId()))
+	assert.True(t, HasFeatureFlag(TEST_UNUSED_FEATURE_FLAG, pure_utils.NewId()))
 }
 
 func TestHasFeatureFlag_SpecificOrg_Match(t *testing.T) {
 	orgId := pure_utils.NewId()
 
-	setFeatureFlagEnv(t, FEATURE_USER_SCORING, orgId.String())
+	setFeatureFlagEnv(t, TEST_UNUSED_FEATURE_FLAG, orgId.String())
 
-	assert.True(t, HasFeatureFlag(FEATURE_USER_SCORING, orgId))
+	assert.True(t, HasFeatureFlag(TEST_UNUSED_FEATURE_FLAG, orgId))
 }
 
 func TestHasFeatureFlag_SpecificOrg_NoMatch(t *testing.T) {
-	setFeatureFlagEnv(t, FEATURE_USER_SCORING, pure_utils.NewId().String())
+	setFeatureFlagEnv(t, TEST_UNUSED_FEATURE_FLAG, pure_utils.NewId().String())
 
-	assert.False(t, HasFeatureFlag(FEATURE_USER_SCORING, pure_utils.NewId()))
+	assert.False(t, HasFeatureFlag(TEST_UNUSED_FEATURE_FLAG, pure_utils.NewId()))
 }
 
 func TestHasFeatureFlag_MultipleOrgs(t *testing.T) {
@@ -58,9 +58,9 @@ func TestHasFeatureFlag_MultipleOrgs(t *testing.T) {
 	org2 := pure_utils.NewId()
 	org3 := pure_utils.NewId()
 
-	setFeatureFlagEnv(t, FEATURE_USER_SCORING, fmt.Sprintf("%s,%s", org1.String(), org2.String()))
+	setFeatureFlagEnv(t, TEST_UNUSED_FEATURE_FLAG, fmt.Sprintf("%s,%s", org1.String(), org2.String()))
 
-	assert.True(t, HasFeatureFlag(FEATURE_USER_SCORING, org1))
-	assert.True(t, HasFeatureFlag(FEATURE_USER_SCORING, org2))
-	assert.False(t, HasFeatureFlag(FEATURE_USER_SCORING, org3))
+	assert.True(t, HasFeatureFlag(TEST_UNUSED_FEATURE_FLAG, org1))
+	assert.True(t, HasFeatureFlag(TEST_UNUSED_FEATURE_FLAG, org2))
+	assert.False(t, HasFeatureFlag(TEST_UNUSED_FEATURE_FLAG, org3))
 }

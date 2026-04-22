@@ -42,8 +42,13 @@ func validateScoringAst(ctx context.Context, nodeDto dto.NodeDto) error {
 	execFactory.On("NewExecutor").Return(exec)
 	dataModelRepository.On("GetDataModel", mock.Anything, exec, orgId, false, false).Return(dataModel, nil)
 
+	featureAccessReader := new(mocks.FeatureAccessReader)
+	featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, orgId, (*models.UserId)(nil)).
+		Return(models.OrganizationFeatureAccess{UserScoring: models.Allowed}, nil)
+
 	uc := ScoringRulesetsUsecase{
-		enforceSecurity: sec,
+		enforceSecurity:     sec,
+		featureAccessReader: featureAccessReader,
 		validateScenarioAst: &scenarios.ValidateScenarioAstImpl{
 			AstValidator: &scenarios.AstValidatorImpl{
 				ExecutorFactory:     execFactory,
@@ -132,6 +137,7 @@ type ScoringRulesetsUsecaseTestSuite struct {
 	taskQueue           *mocks.TaskQueueRepository
 	indexEditor         *mocks.ClientDbIndexEditor
 	enforceSecurity     *mocks.EnforceSecurity
+	featureAccessReader *mocks.FeatureAccessReader
 
 	orgId      uuid.UUID
 	recordType string
@@ -148,6 +154,7 @@ func (s *ScoringRulesetsUsecaseTestSuite) SetupTest() {
 	s.indexEditor = new(mocks.ClientDbIndexEditor)
 	s.enforceSecurity = new(mocks.EnforceSecurity)
 	s.orgId = pure_utils.NewId()
+	s.featureAccessReader = new(mocks.FeatureAccessReader)
 
 	dataModel := models.DataModel{
 		Tables: map[string]models.Table{
@@ -158,6 +165,9 @@ func (s *ScoringRulesetsUsecaseTestSuite) SetupTest() {
 	s.recordType = "account"
 	s.ctx = context.Background()
 	s.dataModelRepository.On("GetDataModel", mock.Anything, mock.Anything, s.orgId, false, false).Return(dataModel, nil)
+
+	s.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, s.orgId, (*models.UserId)(nil)).
+		Return(models.OrganizationFeatureAccess{UserScoring: models.Allowed}, nil)
 }
 
 func (s *ScoringRulesetsUsecaseTestSuite) makeUsecase() ScoringRulesetsUsecase {
@@ -177,6 +187,7 @@ func (s *ScoringRulesetsUsecaseTestSuite) makeUsecase() ScoringRulesetsUsecase {
 				},
 			},
 		},
+		featureAccessReader: s.featureAccessReader,
 	}
 }
 

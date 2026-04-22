@@ -23,6 +23,7 @@ type LicenseEntitlements struct {
 	CaseAutoAssign      bool `json:"auto_assignment"` //nolint:tagliatelle
 	CaseAiAssist        bool `json:"case_ai_assist"`
 	ContinuousScreening bool `json:"continuous_screening"`
+	UserScoring         bool `json:"user_scoring"`
 }
 
 func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) LicenseEntitlements {
@@ -122,8 +123,7 @@ func AdaptUpdateLicenseInput(licenseId string, body UpdateLicenseBody) models.Up
 		Description:      body.Description,
 	}
 	if body.LicenseEntitlements.Valid {
-		updateLicenseInput.LicenseEntitlements =
-			null.ValueFrom(models.LicenseEntitlements(body.LicenseEntitlements.V))
+		updateLicenseInput.LicenseEntitlements = null.ValueFrom(models.LicenseEntitlements(body.LicenseEntitlements.V))
 	}
 
 	return updateLicenseInput

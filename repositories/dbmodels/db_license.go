@@ -29,6 +29,7 @@ type DBLicense struct {
 	AutoAssignment       bool               `db:"auto_assignment"`
 	CaseAiAssist         bool               `db:"case_ai_assist"`
 	ContinuousScreening  bool               `db:"continuous_screening"`
+	UserScoring          bool               `db:"user_scoring"`
 }
 
 const TABLE_LICENSES = "licenses"
@@ -57,6 +58,7 @@ func AdaptLicense(db DBLicense) (models.License, error) {
 			CaseAutoAssign:      db.AutoAssignment,
 			CaseAiAssist:        db.CaseAiAssist,
 			ContinuousScreening: db.ContinuousScreening,
+			UserScoring:         db.UserScoring,
 		},
 	}, nil
 }

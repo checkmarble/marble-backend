@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 	"github.com/checkmarble/marble-backend/utils"
@@ -38,23 +38,26 @@ func NewScoreComputationJob(orgId uuid.UUID, interval time.Duration) *river.Peri
 type ScoreComputationWorker struct {
 	river.WorkerDefaults[models.ScoreComputationArgs]
 
-	executorFactory    executor_factory.ExecutorFactory
-	transactionFactory executor_factory.TransactionFactory
-	scoreUsecase       scoring.ScoringScoresUsecase
-	repository         scoring.ScoringRepository
+	executorFactory     executor_factory.ExecutorFactory
+	transactionFactory  executor_factory.TransactionFactory
+	featureAccessReader feature_access.FeatureAccessReader
+	scoreUsecase        scoring.ScoringScoresUsecase
+	repository          scoring.ScoringRepository
 }
 
 func NewScoreComputationWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
+	featureAccessReader feature_access.FeatureAccessReader,
 	scoreUsecase scoring.ScoringScoresUsecase,
 	repository scoring.ScoringRepository,
 ) *ScoreComputationWorker {
 	return &ScoreComputationWorker{
-		executorFactory:    executorFactory,
-		transactionFactory: transactionFactory,
-		scoreUsecase:       scoreUsecase,
-		repository:         repository,
+		executorFactory:     executorFactory,
+		transactionFactory:  transactionFactory,
+		featureAccessReader: featureAccessReader,
+		scoreUsecase:        scoreUsecase,
+		repository:          repository,
 	}
 }
 
@@ -63,7 +66,11 @@ func (w *ScoreComputationWorker) Timeout(job *river.Job[models.ScoreComputationA
 }
 
 func (w *ScoreComputationWorker) Work(ctx context.Context, job *river.Job[models.ScoreComputationArgs]) error {
-	if !infra.HasFeatureFlag(infra.FEATURE_USER_SCORING, job.Args.OrgId) {
+	featureAccess, err := w.featureAccessReader.GetOrganizationFeatureAccess(ctx, job.Args.OrgId, nil)
+	if err != nil {
+		return err
+	}
+	if !featureAccess.UserScoring.IsAllowed() {
 		return nil
 	}
 

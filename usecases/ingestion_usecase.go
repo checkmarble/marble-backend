@@ -22,7 +22,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -971,12 +970,10 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 			"error", err.Error())
 	}
 
-	if infra.HasFeatureFlag(infra.FEATURE_USER_SCORING, organizationId) {
-		if err := usecase.scoringScoreUsecase.EnqueueComputationForIngestion(ctx, organizationId, table.Name, ingestionResults); err != nil {
-			utils.LoggerFromContext(ctx).WarnContext(ctx,
-				"could not enqueue scoring job for ingestion batch",
-				"error", err.Error())
-		}
+	if err := usecase.scoringScoreUsecase.EnqueueComputationForIngestion(ctx, organizationId, table.Name, ingestionResults); err != nil {
+		utils.LoggerFromContext(ctx).WarnContext(ctx,
+			"could not enqueue scoring job for ingestion batch",
+			"error", err.Error())
 	}
 
 	utils.MetricIngestionCount.

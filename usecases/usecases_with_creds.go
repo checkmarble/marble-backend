@@ -1016,6 +1016,7 @@ func (usecases UsecasesWithCreds) NewScoreComputationWorker() *scoring_jobs.Scor
 	return scoring_jobs.NewScoreComputationWorker(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
+		usecases.NewFeatureAccessReader(),
 		usecases.NewScoringScoresUsecase(),
 		usecases.Repositories.MarbleDbRepository,
 	)
@@ -1025,6 +1026,7 @@ func (usecases UsecasesWithCreds) NewTriggeredScoreComputationWorker() *scoring_
 	return scoring_jobs.NewTriggeredScoreComputationWorker(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
+		usecases.NewFeatureAccessReader(),
 		usecases.NewScoringRulesetsUsecase(),
 		usecases.NewScoringScoresUsecase(),
 		usecases.Repositories.MarbleDbRepository,
@@ -1055,6 +1057,7 @@ func (usecases UsecasesWithCreds) NewAsyncDecisionExecutionCleanupWorker() *work
 func (usecases UsecasesWithCreds) NewRulesetDryRunWorker() *scoring_jobs.RulesetDryRunWorker {
 	return scoring_jobs.NewRulesetDryRunWorker(
 		usecases.NewExecutorFactory(),
+		usecases.NewFeatureAccessReader(),
 		usecases.NewScoringRulesetsUsecase(),
 		usecases.NewScoringScoresUsecase(),
 		usecases.Repositories.MarbleDbRepository,
@@ -1065,6 +1068,7 @@ func (usecases UsecasesWithCreds) NewRulesetDryRunWorker() *scoring_jobs.Ruleset
 func (usecases UsecasesWithCreds) NewInitialComputationWorker() *scoring_jobs.InitialComputationWorker {
 	return scoring_jobs.NewInitialComputationWorker(
 		usecases.NewExecutorFactory(),
+		usecases.NewFeatureAccessReader(),
 		usecases.NewScoringScoresUsecase(),
 		usecases.Repositories.MarbleDbRepository,
 	)
@@ -1073,6 +1077,7 @@ func (usecases UsecasesWithCreds) NewInitialComputationWorker() *scoring_jobs.In
 func (usecases UsecasesWithCreds) NewInitialInsertionWorker() *scoring_jobs.InitialInsertionWorker {
 	return scoring_jobs.NewInitialInsertionWorker(
 		usecases.NewExecutorFactory(),
+		usecases.NewFeatureAccessReader(),
 		usecases.NewScoringRulesetsUsecase(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
@@ -1174,6 +1179,7 @@ func (usecases *UsecasesWithCreds) NewScoringRulesetsUsecase() scoring.ScoringRu
 		usecases.NewEnforceSecurityScoring(),
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
+		usecases.NewFeatureAccessReader(),
 		usecases.Repositories.RedisClient,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewClientDbIndexEditor(),
@@ -1187,6 +1193,7 @@ func (usecases *UsecasesWithCreds) NewScoringScoresUsecase() scoring.ScoringScor
 		usecases.NewEnforceSecurityScoring(),
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
+		usecases.NewFeatureAccessReader(),
 		usecases.NewScoringRulesetsUsecase(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,

@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/cockroachdb/errors"
@@ -25,6 +26,7 @@ type ScoringRulesetsUsecase struct {
 	enforceSecurity     security.EnforceSecurityScoring
 	executorFactory     executor_factory.ExecutorFactory
 	transactionFactory  executor_factory.TransactionFactory
+	featureAccessReader featureAccessReader
 	redisClient         *repositories.RedisClient
 	repository          ScoringRepository
 	indexEditor         scoringIndexEditor
@@ -36,6 +38,7 @@ func NewScoringRulesetsUsecase(
 	enforceSecurity security.EnforceSecurityScoring,
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
+	featureAccessReader feature_access.FeatureAccessReader,
 	redisClient *repositories.RedisClient,
 	repository ScoringRepository,
 	indexEditor scoringIndexEditor,
@@ -46,6 +49,7 @@ func NewScoringRulesetsUsecase(
 		enforceSecurity:     enforceSecurity,
 		executorFactory:     executorFactory,
 		transactionFactory:  transactionFactory,
+		featureAccessReader: featureAccessReader,
 		redisClient:         redisClient,
 		repository:          repository,
 		indexEditor:         indexEditor,
@@ -155,6 +159,11 @@ func (uc ScoringRulesetsUsecase) ListRulesetVersions(ctx context.Context, record
 
 func (uc ScoringRulesetsUsecase) CreateRulesetVersion(ctx context.Context, recordType string, req scoring.CreateRulesetRequest) (models.ScoringRuleset, error) {
 	orgId := uc.enforceSecurity.OrgId()
+
+	if err := uc.isScoringEnabled(ctx, orgId); err != nil {
+		return models.ScoringRuleset{}, err
+	}
+
 	exec := uc.executorFactory.NewExecutor()
 
 	if err := uc.enforceSecurity.UpdateRuleset(orgId); err != nil {
@@ -405,6 +414,10 @@ func (uc ScoringRulesetsUsecase) StartDryRun(ctx context.Context, recordType str
 func (uc ScoringRulesetsUsecase) CommitRuleset(ctx context.Context, recordType string) (models.ScoringRuleset, error) {
 	orgId := uc.enforceSecurity.OrgId()
 
+	if err := uc.isScoringEnabled(ctx, orgId); err != nil {
+		return models.ScoringRuleset{}, err
+	}
+
 	if err := uc.enforceSecurity.UpdateRuleset(orgId); err != nil {
 		return models.ScoringRuleset{}, err
 	}
@@ -468,5 +481,16 @@ func (uc ScoringRulesetsUsecase) validateScoringRuleAst(tree dto.NodeDto) error 
 		}
 	}
 
+	return nil
+}
+
+func (uc ScoringRulesetsUsecase) isScoringEnabled(ctx context.Context, orgId uuid.UUID) error {
+	featureAccess, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
+	if err != nil {
+		return err
+	}
+	if !featureAccess.UserScoring.IsAllowed() {
+		return errors.Wrap(models.ForbiddenError, "cannot access user scoring feature")
+	}
 	return nil
 }
