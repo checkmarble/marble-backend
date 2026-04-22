@@ -174,13 +174,65 @@ func (usecase *usecase) validateTableSemanticType(
 		}
 	}
 
+	return runTableSemanticValidation(table, dataModel)
+}
+
+func runTableSemanticValidation(table models.Table, dataModel models.DataModel) error {
 	validationFunc, ok := TableSemanticTypeValidationFunctions[table.SemanticType]
 	if !ok {
 		return errors.Wrap(models.BadParameterError,
 			"semantic type validation function not found")
 	}
-
 	return validationFunc(table.Name, dataModel)
+}
+
+// validateTableAndDependentsSemanticType validates the semantic type of the given
+// table AND of every table that has a link (related or belongs_to) pointing to it.
+// Changing a table's semantic type can invalidate its dependents (for example, a
+// Transaction table with a belongs_to link to a Person table becomes invalid if
+// the Person table's semantic type is changed to Other, since transactions require
+// a belongs_to link to a Party table).
+func (usecase *usecase) validateTableAndDependentsSemanticType(
+	ctx context.Context,
+	exec repositories.Executor,
+	organizationID uuid.UUID,
+	tableName string,
+) error {
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationID, false, false)
+	if err != nil {
+		return err
+	}
+
+	table, ok := dataModel.Tables[tableName]
+	if !ok {
+		return errors.Wrap(models.NotFoundError, "table not found in data model")
+	}
+
+	if err := runTableSemanticValidation(table, dataModel); err != nil {
+		return err
+	}
+
+	for _, otherTable := range dataModel.Tables {
+		if otherTable.Name == tableName {
+			continue
+		}
+		hasLinkToTarget := false
+		for _, link := range otherTable.LinksToSingle {
+			if link.ParentTableName == tableName {
+				hasLinkToTarget = true
+				break
+			}
+		}
+		if !hasLinkToTarget {
+			continue
+		}
+		if err := runTableSemanticValidation(otherTable, dataModel); err != nil {
+			return errors.Wrapf(err,
+				"table %q is invalidated by the change on table %q", otherTable.Name, tableName)
+		}
+	}
+
+	return nil
 }
 
 func retrieveParentFieldIdForLink(parentTableId string, TablesById map[string]models.Table) (string, error) {
@@ -522,8 +574,10 @@ func (usecase *usecase) UpdateDataModelTable(
 			return err
 		}
 
-		// Validation after update
-		if err := usecase.validateTableSemanticType(ctx, tx, table.OrganizationID, &table.Name, nil); err != nil {
+		// Validation after update (also revalidates tables that link to this one,
+		// since a semantic type change here can invalidate dependents).
+		if err := usecase.validateTableAndDependentsSemanticType(
+			ctx, tx, table.OrganizationID, table.Name); err != nil {
 			return err
 		}
 		return nil
@@ -985,9 +1039,11 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			}
 		}
 
-		// 11. Semantic validation (single check at the end, after all mutations)
-		if err := usecase.validateTableSemanticType(
-			ctx, tx, table.OrganizationID, &table.Name, nil); err != nil {
+		// 11. Semantic validation (single check at the end, after all mutations).
+		// Also revalidates tables that link to this one, since a semantic type
+		// change here can invalidate dependents.
+		if err := usecase.validateTableAndDependentsSemanticType(
+			ctx, tx, table.OrganizationID, table.Name); err != nil {
 			return err
 		}
 
@@ -997,7 +1053,7 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			return err
 		}
 
-		// 11. Org schema mutations (add/delete physical columns)
+		// 12. Org schema mutations (add/delete physical columns)
 		return usecase.transactionFactory.TransactionInOrgSchema(
 			ctx, table.OrganizationID, func(orgTx repositories.Transaction) error {
 				for _, f := range input.FieldsToAdd {
