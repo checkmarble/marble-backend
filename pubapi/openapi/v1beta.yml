@@ -161,8 +161,10 @@ paths:
           in: query
           description: If monitoring the object, which configuration to use. Can be repeated multiple times.
           schema:
-            type: string
-            format: uuid
+            type: array
+            items:
+              type: string
+              format: uuid
         - name: skip_screening
           in: query
           description: If monitoring, whether to skip the initial screening of the ingested object.
@@ -219,8 +221,10 @@ paths:
           in: query
           description: If monitoring the object, which configuration to use. Can be repeated multiple times.
           schema:
-            type: string
-            format: uuid
+            type: array
+            items:
+              type: string
+              format: uuid
         - name: skip_screening
           in: query
           description: If monitoring, whether to skip the initial screening of the ingested object.
@@ -278,8 +282,10 @@ paths:
           in: query
           description: If monitoring the object, which configuration to use. Can be repeated multiple times.
           schema:
-            type: string
-            format: uuid
+            type: array
+            items:
+              type: string
+              format: uuid
         - name: skip_screening
           in: query
           description: If monitoring, whether to skip the initial screening of the ingested object.
@@ -338,8 +344,10 @@ paths:
           in: query
           description: If monitoring the object, which configuration to use. Can be repeated multiple times.
           schema:
-            type: string
-            format: uuid
+            type: array
+            items:
+              type: string
+              format: uuid
         - name: skip_screening
           in: query
           description: If monitoring, whether to skip the initial screening of the ingested object.
