@@ -679,36 +679,56 @@ func (repo *MarbleDbRepository) GetNextCase(ctx context.Context, exec Executor, 
 	return nextCaseId, nil
 }
 
+// casesRelatedToObjectCTE defines the CTE prefix shared by queries that find cases
+// related to an ingested object. The CTE chain:
+//  1. Find all links where this table is the arrival table
+//  2. Find all pivots whose path ends with one of those links, effectively finding the pivots to that table,
+//     plus pivots defined directly on a field of that table (no belongs_to link, pivot uses field_id instead of a path)
+//  3. Find all decisions whose pivot ID is one of those pivots, and whose pivot value is the record under evaluation
+//
+// Parameters: $1 = orgId, $2 = objectType (table name), $3 = objectId (pivot value).
+// Exposes a `decisions(case_id)` CTE for the caller to join against.
+const casesRelatedToObjectCTE = `
+	with
+		target_table_id as (
+			select id
+			from data_model_tables
+			where organization_id = $1 and name = $2
+		),
+		link_ids as (
+			select id
+			from data_model_links
+			where parent_table_id = (select id from target_table_id)
+		),
+		pivot_ids as (
+			select p.id
+			from data_model_pivots p
+			inner join link_ids l on p.path_link_ids[cardinality(p.path_link_ids)] = l.id
+			where p.organization_id = $1
+			union
+			select p.id
+			from data_model_pivots p
+			where p.organization_id = $1
+				and p.field_id is not null
+				and p.base_table_id = (select id from target_table_id)
+		),
+		decisions as (
+			select distinct case_id
+			from decisions d
+			inner join pivot_ids as p on d.pivot_id = p.id and d.pivot_value = $3
+			where org_id = $1
+		)
+`
+
 func (repo *MarbleDbRepository) GetCasesRelatedToObject(ctx context.Context, exec Executor, orgId uuid.UUID, objectType, objectId string) ([]models.Case, error) {
 	sql := fmt.Sprintf(`
-		with
-			link_ids as (
-				select id
-				from data_model_links
-				where parent_table_id = (
-					select id
-					from data_model_tables
-					where organization_id = $1 and name = $2
-				)
-			),
-			pivot_ids as (
-				select p.id
-				from data_model_pivots p
-				inner join link_ids l on path_link_ids[cardinality(path_link_ids)] = l.id
-				where organization_id = $1
-			),
-			decisions as (
-				select distinct case_id
-				from decisions d
-				inner join pivot_ids as p on d.pivot_id = p.id and d.pivot_value = $3
-				where org_id = $1
-			)
+		%s
 		select %s
 		from cases c
 		inner join decisions on c.id = decisions.case_id
 		order by c.created_at desc
 		limit %d
-	`, strings.Join(dbmodels.SelectCaseColumn, ","), 200)
+	`, casesRelatedToObjectCTE, strings.Join(dbmodels.SelectCaseColumn, ","), 200)
 
 	rows, err := exec.Query(
 		ctx,
@@ -729,43 +749,8 @@ func (repo *MarbleDbRepository) GetCasesRelatedToObject(ctx context.Context, exe
 	return pure_utils.MapErr(cases, dbmodels.AdaptCase)
 }
 
-// This query does the following:
-//  1. Find all links where this table is the arrival table
-//  2. Find all pivots whose path end with one of those links, effectively finding the pivots to that table,
-//     plus pivots defined directly on a field of that table (no belongs_to link, pivot uses field_id instead of a path)
-//  3. Find all decisions whose pivot ID is one of those pivots, and whose pivot value is the record under evaluation
-//  4. Check whether we have a case with one of those decisions that was classified as a confirmed risk
 func (repo *MarbleDbRepository) ObjectHasConfirmedRisks(ctx context.Context, exec Executor, orgId uuid.UUID, objectType, objectId string) (bool, error) {
-	sql := `
-		with
-			target_table_id as (
-				select id
-				from data_model_tables
-				where organization_id = $1 and name = $2
-			),
-			link_ids as (
-				select id
-				from data_model_links
-				where parent_table_id = (select id from target_table_id)
-			),
-			pivot_ids as (
-				select p.id
-				from data_model_pivots p
-				inner join link_ids l on p.path_link_ids[cardinality(p.path_link_ids)] = l.id
-				where p.organization_id = $1
-				union
-				select p.id
-				from data_model_pivots p
-				where p.organization_id = $1
-					and p.field_id is not null
-					and p.base_table_id = (select id from target_table_id)
-			),
-			decisions as (
-				select case_id
-				from decisions d
-				inner join pivot_ids as p on d.pivot_id = p.id and d.pivot_value = $3
-				where org_id = $1
-			)
+	sql := casesRelatedToObjectCTE + `
 		select exists(
 			select 1
 			from cases c
