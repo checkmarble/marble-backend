@@ -100,7 +100,6 @@ type taskEnqueuer interface {
 }
 
 type scoreComputationUsecase interface {
-	EnqueueComputationForDecisions(ctx context.Context, orgId uuid.UUID, decisions []models.Decision) error
 	EnqueueComputationForIngestion(ctx context.Context, orgId uuid.UUID, recordType string, records models.IngestionResults) error
 }
 

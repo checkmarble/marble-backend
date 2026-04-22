@@ -629,7 +629,7 @@ func (usecase *CaseUseCase) UpdateCase(
 					return models.Case{}, err
 				}
 
-				if err := usecase.scoringScoreUsecase.EnqueueComputationForDecisions(ctx, c.OrganizationId, decisions); err != nil {
+				if err := usecase.scoringScoreUsecase.EnqueueComputationForDecisions(ctx, tx, c.OrganizationId, decisions); err != nil {
 					utils.LoggerFromContext(ctx).ErrorContext(ctx,
 						"could not trigger score computation job",
 						"error", err.Error())

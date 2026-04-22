@@ -342,62 +342,60 @@ func (uc ScoringScoresUsecase) GetScoreDistribution(ctx context.Context, entityT
 	return uc.repository.GetScoreDistribution(ctx, exec, orgId, entityType)
 }
 
-func (uc ScoringScoresUsecase) EnqueueComputationForDecisions(ctx context.Context, orgId uuid.UUID, decisions []models.Decision) error {
-	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		dataModel, err := uc.dataModelRepository.GetDataModel(ctx, tx, orgId, false, false)
+func (uc ScoringScoresUsecase) EnqueueComputationForDecisions(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, decisions []models.Decision) error {
+	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, tx, orgId, false, false)
+	if err != nil {
+		return err
+	}
+
+	for _, d := range decisions {
+		exists, err := uc.scoringRulesetsUsecase.CommittedRulesetExists(ctx, orgId, d.ClientObject.TableName)
+		if err != nil {
+			utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not check if scoring ruleset exists", "error", err.Error())
+			continue
+		}
+
+		if exists {
+			err = uc.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringRecordRef{
+				OrgId:      orgId,
+				RecordType: d.ClientObject.TableName,
+				RecordId:   d.ClientObject.Data["object_id"].(string),
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		if d.PivotId == nil || d.PivotValue == nil {
+			continue
+		}
+
+		pivotMeta, err := uc.dataModelRepository.GetPivot(ctx, tx, d.PivotId.String())
 		if err != nil {
 			return err
 		}
 
-		for _, d := range decisions {
-			exists, err := uc.scoringRulesetsUsecase.CommittedRulesetExists(ctx, orgId, d.ClientObject.TableName)
-			if err != nil {
-				utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not check if scoring ruleset exists", "error", err.Error())
-				continue
-			}
+		pivot := pivotMeta.Enrich(dataModel)
 
-			if exists {
-				err = uc.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringRecordRef{
-					OrgId:      orgId,
-					RecordType: d.ClientObject.TableName,
-					RecordId:   d.ClientObject.Data["object_id"].(string),
-				})
-				if err != nil {
-					return err
-				}
-			}
+		exists, err = uc.scoringRulesetsUsecase.CommittedRulesetExists(ctx, orgId, pivot.PivotTable)
+		if err != nil {
+			utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not check if scoring ruleset exists", "error", err.Error())
+			continue
+		}
 
-			if d.PivotId == nil || d.PivotValue == nil {
-				continue
-			}
-
-			pivotMeta, err := uc.dataModelRepository.GetPivot(ctx, tx, d.PivotId.String())
+		if exists {
+			err = uc.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringRecordRef{
+				OrgId:      orgId,
+				RecordType: pivot.PivotTable,
+				RecordId:   *d.PivotValue,
+			})
 			if err != nil {
 				return err
 			}
-
-			pivot := pivotMeta.Enrich(dataModel)
-
-			exists, err = uc.scoringRulesetsUsecase.CommittedRulesetExists(ctx, orgId, pivot.PivotTable)
-			if err != nil {
-				utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not check if scoring ruleset exists", "error", err.Error())
-				continue
-			}
-
-			if exists {
-				err = uc.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringRecordRef{
-					OrgId:      orgId,
-					RecordType: pivot.PivotTable,
-					RecordId:   *d.PivotValue,
-				})
-				if err != nil {
-					return err
-				}
-			}
 		}
+	}
 
-		return nil
-	})
+	return nil
 }
 
 func (uc ScoringScoresUsecase) EnqueueComputationForIngestion(ctx context.Context, orgId uuid.UUID, recordType string, records models.IngestionResults) error {
