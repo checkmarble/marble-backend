@@ -14,7 +14,7 @@ import (
 type featureFlag string
 
 const (
-	FEATURE_USER_SCORING featureFlag = "USER_SCORING"
+	TEST_UNUSED_FEATURE_FLAG featureFlag = "TEST_UNUSED_FEATURE_FLAG"
 )
 
 func HasGlobalFeatureFlag(flag featureFlag) bool {

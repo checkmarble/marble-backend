@@ -21,6 +21,7 @@ type OrganizationFeatureAccess struct {
 	CaseAiAssist        FeatureAccess `redis:"case_ai_assis"`
 	ContinuousScreening FeatureAccess `redis:"continuous_screening"`
 	AiRuleBuilding      FeatureAccess `redis:"ai_rule_building"`
+	UserScoring         FeatureAccess `redis:"user_scoring"`
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 
@@ -37,6 +38,7 @@ type DbStoredOrganizationFeatureAccess struct {
 	CaseAiAssist        FeatureAccess
 	ContinuousScreening FeatureAccess
 	AiRuleBuilding      FeatureAccess
+	UserScoring         FeatureAccess
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }
@@ -49,6 +51,7 @@ type UpdateOrganizationFeatureAccessInput struct {
 	CaseAutoAssign      *FeatureAccess
 	ContinuousScreening *FeatureAccess
 	AiRuleBuilding      *FeatureAccess
+	UserScoring         *FeatureAccess
 }
 
 type FeaturesConfiguration struct {
@@ -73,6 +76,7 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 		CaseAiAssist:        f.CaseAiAssist,
 		ContinuousScreening: f.ContinuousScreening,
 		AiRuleBuilding:      f.AiRuleBuilding,
+		UserScoring:         f.UserScoring,
 		CreatedAt:           f.CreatedAt,
 		UpdatedAt:           f.UpdatedAt,
 	}
@@ -110,6 +114,9 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 	}
 	if !l.CaseAiAssist {
 		o.CaseAiAssist = Restricted
+	}
+	if !l.UserScoring {
+		o.UserScoring = Restricted
 	}
 
 	// remove the feature accesses that are not allowed by the configuration

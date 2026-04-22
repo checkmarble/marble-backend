@@ -121,6 +121,7 @@ type IngestionUsecaseTestSuite struct {
 	continuousScreeningRepository       *mocks.ContinuousScreeningRepository
 	continuousScreeningClientRepository *mocks.ContinuousScreeningClientDbRepository
 	taskQueueRepository                 *mocks.TaskQueueRepository
+	scoringRulesetsUsecase              *mocks.ScoringRulesetsUsecase
 	scoringScoreUsecase                 *mocks.ScoringScoreUsecase
 
 	organizationId uuid.UUID
@@ -153,6 +154,7 @@ func (suite *IngestionUsecaseTestSuite) SetupTest() {
 	suite.continuousScreeningClientRepository = new(mocks.ContinuousScreeningClientDbRepository)
 	suite.taskQueueRepository = new(mocks.TaskQueueRepository)
 	suite.scoringScoreUsecase = new(mocks.ScoringScoreUsecase)
+	suite.scoringRulesetsUsecase = new(mocks.ScoringRulesetsUsecase)
 
 	suite.organizationId = uuid.MustParse("12345678-1234-5678-9012-345678901234")
 	suite.dataModel = models.DataModel{
@@ -171,6 +173,9 @@ func (suite *IngestionUsecaseTestSuite) SetupTest() {
 			},
 		},
 	}
+
+	// suite.scoringRulesetsUsecase.On("CommittedRulesetExists", mock.Anything, suite.organizationId, "transactions").
+	// 	Return(false, nil)
 
 	suite.ctx = utils.StoreOpenTelemetryTracerInContext(
 		utils.StoreLoggerInContext(context.TODO(), utils.NewLogger("text")),

@@ -21,6 +21,7 @@ type DBOrganizationFeatureAccess struct {
 	CaseAiAssist        string    `db:"case_ai_assist"`
 	ContinuousScreening string    `db:"continuous_screening"`
 	AiRuleBuilding      string    `db:"ai_rule_building"`
+	UserScoring         string    `db:"user_scoring"`
 	CreatedAt           time.Time `db:"created_at"`
 	UpdatedAt           time.Time `db:"updated_at"`
 }
@@ -35,6 +36,7 @@ func AdaptOrganizationFeatureAccess(db DBOrganizationFeatureAccess) (models.DbSt
 		CaseAiAssist:        models.FeatureAccessFrom(db.CaseAiAssist),
 		ContinuousScreening: models.FeatureAccessFrom(db.ContinuousScreening),
 		AiRuleBuilding:      models.FeatureAccessFrom(db.AiRuleBuilding),
+		UserScoring:         models.FeatureAccessFrom(db.UserScoring),
 		CreatedAt:           db.CreatedAt,
 		UpdatedAt:           db.UpdatedAt,
 	}, nil

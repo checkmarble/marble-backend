@@ -15,7 +15,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/checkmarble/marble-backend/dto"
-	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -357,8 +356,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		ConcurrentRules: params.ConcurrentRules,
 	}
 
-	triggerPassed, scenarioExecution, err :=
-		usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+	triggerPassed, scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 	if err != nil {
 		return false, models.DecisionWithRuleExecutions{},
 			fmt.Errorf("error evaluating scenario: %w", err)
@@ -412,17 +410,14 @@ func (usecase *DecisionUsecase) CreateDecision(
 			}
 		}
 
-		if infra.HasFeatureFlag(infra.FEATURE_USER_SCORING, scenario.OrganizationId) {
-			err := usecase.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringRecordRef{
-				OrgId:      scenario.OrganizationId,
-				RecordType: scenario.TriggerObjectType,
-				RecordId:   payload.Data["object_id"].(string),
-			})
-			if err != nil {
-				logger.ErrorContext(ctx,
-					"could not trigger score computation job",
-					"error", err.Error())
-			}
+		if err := usecase.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringRecordRef{
+			OrgId:      scenario.OrganizationId,
+			RecordType: scenario.TriggerObjectType,
+			RecordId:   payload.Data["object_id"].(string),
+		}); err != nil {
+			logger.ErrorContext(ctx,
+				"could not trigger score computation job",
+				"error", err.Error())
 		}
 
 		webhookEventId := uuid.NewString()
@@ -582,8 +577,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		)
 		defer span.End()
 
-		triggerPassed, scenarioExecution, err :=
-			usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+		triggerPassed, scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 		switch {
 		case err != nil:
 			return nil, 0, nil, errors.Wrapf(err, `error evaluating scenario "%s" in CreateAllDecisions`, scenario.Name)

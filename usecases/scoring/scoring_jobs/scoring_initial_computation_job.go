@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 	"github.com/checkmarble/marble-backend/utils"
@@ -41,20 +41,23 @@ func NewInitialComputationJob(orgId uuid.UUID, interval time.Duration) *river.Pe
 type InitialComputationWorker struct {
 	river.WorkerDefaults[models.ScoringInitialComputationArgs]
 
-	executorFactory executor_factory.ExecutorFactory
-	scoreUsecase    scoring.ScoringScoresUsecase
-	repository      scoring.ScoringRepository
+	executorFactory     executor_factory.ExecutorFactory
+	featureAccessReader feature_access.FeatureAccessReader
+	scoreUsecase        scoring.ScoringScoresUsecase
+	repository          scoring.ScoringRepository
 }
 
 func NewInitialComputationWorker(
 	executorFactory executor_factory.ExecutorFactory,
+	featureAccessReader feature_access.FeatureAccessReader,
 	scoreUsecase scoring.ScoringScoresUsecase,
 	repository scoring.ScoringRepository,
 ) *InitialComputationWorker {
 	return &InitialComputationWorker{
-		executorFactory: executorFactory,
-		scoreUsecase:    scoreUsecase,
-		repository:      repository,
+		executorFactory:     executorFactory,
+		featureAccessReader: featureAccessReader,
+		scoreUsecase:        scoreUsecase,
+		repository:          repository,
 	}
 }
 
@@ -63,7 +66,11 @@ func (w *InitialComputationWorker) Timeout(job *river.Job[models.ScoringInitialC
 }
 
 func (w *InitialComputationWorker) Work(ctx context.Context, job *river.Job[models.ScoringInitialComputationArgs]) error {
-	if !infra.HasFeatureFlag(infra.FEATURE_USER_SCORING, job.Args.OrgId) {
+	featureAccess, err := w.featureAccessReader.GetOrganizationFeatureAccess(ctx, job.Args.OrgId, nil)
+	if err != nil {
+		return err
+	}
+	if !featureAccess.UserScoring.IsAllowed() {
 		return nil
 	}
 

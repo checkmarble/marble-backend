@@ -17,10 +17,19 @@ import (
 	"github.com/google/uuid"
 )
 
+type featureAccessReader interface {
+	GetOrganizationFeatureAccess(
+		ctx context.Context,
+		organizationId uuid.UUID,
+		userId *models.UserId,
+	) (models.OrganizationFeatureAccess, error)
+}
+
 type ScoringScoresUsecase struct {
 	enforceSecurity        security.EnforceSecurityScoring
 	executorFactory        executor_factory.ExecutorFactory
 	transactionFactory     executor_factory.TransactionFactory
+	featureAccessReader    featureAccessReader
 	scoringRulesetsUsecase ScoringRulesetsUsecase
 	repository             ScoringRepository
 	dataModelRepository    repositories.DataModelRepository
@@ -34,6 +43,7 @@ func NewScoringScoresUsecase(
 	enforceSecurity security.EnforceSecurityScoring,
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
+	featureAccessReader featureAccessReader,
 	scoringRulesetsUsecase ScoringRulesetsUsecase,
 	repository ScoringRepository,
 	dataModelRepository repositories.DataModelRepository,
@@ -46,6 +56,7 @@ func NewScoringScoresUsecase(
 		enforceSecurity:        enforceSecurity,
 		executorFactory:        executorFactory,
 		transactionFactory:     transactionFactory,
+		featureAccessReader:    featureAccessReader,
 		scoringRulesetsUsecase: scoringRulesetsUsecase,
 		repository:             repository,
 		dataModelRepository:    dataModelRepository,
@@ -57,6 +68,10 @@ func NewScoringScoresUsecase(
 }
 
 func (uc ScoringScoresUsecase) ComputeScore(ctx context.Context, orgId uuid.UUID, recordType, recordId string) (models.ScoringRuleset, *models.ScoringEvaluation, error) {
+	if err := uc.isScoringEnabled(ctx, orgId); err != nil {
+		return models.ScoringRuleset{}, nil, err
+	}
+
 	exec := uc.executorFactory.NewExecutor()
 
 	ruleset, err := uc.repository.GetScoringRuleset(
@@ -117,6 +132,10 @@ func (uc ScoringScoresUsecase) InternalComputeScore(ctx context.Context, exec re
 }
 
 func (uc ScoringScoresUsecase) GetScoreHistory(ctx context.Context, record models.ScoringRecordRef) ([]models.ScoringScore, error) {
+	if err := uc.isScoringEnabled(ctx, record.OrgId); err != nil {
+		return nil, err
+	}
+
 	record.OrgId = uc.enforceSecurity.OrgId()
 
 	scores, err := uc.repository.GetScoreHistory(ctx, uc.executorFactory.NewExecutor(), record)
@@ -134,6 +153,10 @@ func (uc ScoringScoresUsecase) GetScoreHistory(ctx context.Context, record model
 }
 
 func (uc ScoringScoresUsecase) GetActiveScore(ctx context.Context, record models.ScoringRecordRef, withEvaluation bool, opts models.RefreshScoreOptions) (*models.ScoringScore, []*ast.NodeEvaluationDto, error) {
+	if err := uc.isScoringEnabled(ctx, record.OrgId); err != nil {
+		return nil, nil, err
+	}
+
 	exec := uc.executorFactory.NewExecutor()
 
 	score, err := uc.repository.GetActiveScore(ctx, exec, record)
@@ -262,6 +285,10 @@ func (uc ScoringScoresUsecase) OverrideScore(ctx context.Context, req models.Ins
 	exec := uc.executorFactory.NewExecutor()
 
 	req.OrgId = uc.enforceSecurity.OrgId()
+
+	if err := uc.isScoringEnabled(ctx, req.OrgId); err != nil {
+		return models.ScoringScore{}, err
+	}
 
 	if err := uc.enforceSecurity.OverrideScore(req.ToRecordRef()); err != nil {
 		return models.ScoringScore{}, err
@@ -475,4 +502,15 @@ func (uc ScoringScoresUsecase) scoreToRiskLevel(ruleset models.ScoringRuleset, e
 	}
 
 	return max(riskLevel, eval.Floor)
+}
+
+func (uc ScoringScoresUsecase) isScoringEnabled(ctx context.Context, orgId uuid.UUID) error {
+	featureAccess, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
+	if err != nil {
+		return err
+	}
+	if !featureAccess.UserScoring.IsAllowed() {
+		return errors.Wrap(models.ForbiddenError, "cannot access user scoring feature")
+	}
+	return nil
 }

@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 	"github.com/cockroachdb/errors"
@@ -41,6 +41,7 @@ type InitialInsertionWorker struct {
 	river.WorkerDefaults[models.ScoringInitialInsertionArgs]
 
 	executorFactory          executor_factory.ExecutorFactory
+	featureAccessReader      feature_access.FeatureAccessReader
 	rulesetUsecase           scoring.ScoringRulesetsUsecase
 	repository               scoring.ScoringRepository
 	initialScoringRepository initialScoringRepository
@@ -49,6 +50,7 @@ type InitialInsertionWorker struct {
 
 func NewInitialInsertionWorker(
 	executorFactory executor_factory.ExecutorFactory,
+	featureAccessReader feature_access.FeatureAccessReader,
 	rulesetUsecase scoring.ScoringRulesetsUsecase,
 	repository scoring.ScoringRepository,
 	initialScoringRepository initialScoringRepository,
@@ -56,6 +58,7 @@ func NewInitialInsertionWorker(
 ) *InitialInsertionWorker {
 	return &InitialInsertionWorker{
 		executorFactory:          executorFactory,
+		featureAccessReader:      featureAccessReader,
 		rulesetUsecase:           rulesetUsecase,
 		repository:               repository,
 		initialScoringRepository: initialScoringRepository,
@@ -64,7 +67,11 @@ func NewInitialInsertionWorker(
 }
 
 func (w *InitialInsertionWorker) Work(ctx context.Context, job *river.Job[models.ScoringInitialInsertionArgs]) error {
-	if !infra.HasFeatureFlag(infra.FEATURE_USER_SCORING, job.Args.OrgId) {
+	featureAccess, err := w.featureAccessReader.GetOrganizationFeatureAccess(ctx, job.Args.OrgId, nil)
+	if err != nil {
+		return err
+	}
+	if !featureAccess.UserScoring.IsAllowed() {
 		return nil
 	}
 

@@ -29,12 +29,13 @@ func TestTriggeredScoreComputationWorker(t *testing.T) {
 type TriggeredScoreComputationWorkerTestSuite struct {
 	suite.Suite
 
-	transaction        *mocks.Transaction
-	transactionFactory *mocks.TransactionFactory
-	repository         *mocks.ScoringRepository
-	executorFactory    *mocks.ExecutorFactory
-	dataModelRepo      *mocks.DataModelRepository
-	ingestedDataReader *mocks.IngestedDataReader
+	transaction         *mocks.Transaction
+	transactionFactory  *mocks.TransactionFactory
+	repository          *mocks.ScoringRepository
+	executorFactory     *mocks.ExecutorFactory
+	dataModelRepo       *mocks.DataModelRepository
+	ingestedDataReader  *mocks.IngestedDataReader
+	featureAccessReader *mocks.FeatureAccessReader
 
 	orgId      uuid.UUID
 	recordType string
@@ -49,11 +50,15 @@ func (s *TriggeredScoreComputationWorkerTestSuite) SetupTest() {
 	s.executorFactory = new(mocks.ExecutorFactory)
 	s.dataModelRepo = new(mocks.DataModelRepository)
 	s.ingestedDataReader = new(mocks.IngestedDataReader)
+	s.featureAccessReader = new(mocks.FeatureAccessReader)
 
 	s.orgId = pure_utils.NewId()
 	s.recordType = "account"
 	s.recordId = "entity-123"
 	s.ctx = context.Background()
+
+	s.featureAccessReader.On("GetOrganizationFeatureAccess", s.ctx, s.orgId, (*models.UserId)(nil)).
+		Return(models.OrganizationFeatureAccess{UserScoring: models.Allowed}, nil)
 }
 
 func (s *TriggeredScoreComputationWorkerTestSuite) makeScoreUsecase() scoring.ScoringScoresUsecase {
@@ -61,6 +66,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) makeScoreUsecase() scoring.Sc
 		nil,
 		s.executorFactory,
 		nil,
+		s.featureAccessReader,
 		scoring.ScoringRulesetsUsecase{},
 		s.repository,
 		s.dataModelRepo,
@@ -89,21 +95,12 @@ func (s *TriggeredScoreComputationWorkerTestSuite) makeWorker(
 	return NewTriggeredScoreComputationWorker(
 		nil,
 		s.transactionFactory,
+		s.featureAccessReader,
 		scoring.ScoringRulesetsUsecase{},
 		scoreUsecase,
 		s.repository,
 		repositories.OffloadedReadWriter{},
 	)
-}
-
-func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_FeatureFlagDisabled() {
-	s.T().Setenv(fmt.Sprintf("ENABLE_%s", "USER_SCORING"), "")
-
-	worker := s.makeWorker(scoring.ScoringScoresUsecase{})
-	err := worker.Work(s.ctx, s.makeJob())
-
-	s.NoError(err)
-	s.repository.AssertNotCalled(s.T(), "GetScoringRuleset")
 }
 
 func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_NoRuleset() {

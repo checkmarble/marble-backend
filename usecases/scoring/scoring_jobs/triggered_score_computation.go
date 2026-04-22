@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -14,14 +13,24 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 )
+
+type featureAccessReader interface {
+	GetOrganizationFeatureAccess(
+		ctx context.Context,
+		organizationId uuid.UUID,
+		userId *models.UserId,
+	) (models.OrganizationFeatureAccess, error)
+}
 
 type TriggeredScoreComputationWorker struct {
 	river.WorkerDefaults[models.TriggeredScoreComputationArgs]
 
 	executorFactory     executor_factory.ExecutorFactory
 	transactionFactory  executor_factory.TransactionFactory
+	featureAccessReader featureAccessReader
 	rulesetUsecase      scoring.ScoringRulesetsUsecase
 	scoreUsecase        scoring.ScoringScoresUsecase
 	repository          scoring.ScoringRepository
@@ -31,6 +40,7 @@ type TriggeredScoreComputationWorker struct {
 func NewTriggeredScoreComputationWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
+	featureAccessReader featureAccessReader,
 	rulesetUsecase scoring.ScoringRulesetsUsecase,
 	scoreUsecase scoring.ScoringScoresUsecase,
 	repository scoring.ScoringRepository,
@@ -39,6 +49,7 @@ func NewTriggeredScoreComputationWorker(
 	return &TriggeredScoreComputationWorker{
 		executorFactory:     executorFactory,
 		transactionFactory:  transactionFactory,
+		featureAccessReader: featureAccessReader,
 		rulesetUsecase:      rulesetUsecase,
 		scoreUsecase:        scoreUsecase,
 		repository:          repository,
@@ -47,11 +58,15 @@ func NewTriggeredScoreComputationWorker(
 }
 
 func (w *TriggeredScoreComputationWorker) Work(ctx context.Context, job *river.Job[models.TriggeredScoreComputationArgs]) error {
-	if !infra.HasFeatureFlag(infra.FEATURE_USER_SCORING, job.Args.OrgId) {
+	featureAccess, err := w.featureAccessReader.GetOrganizationFeatureAccess(ctx, job.Args.OrgId, nil)
+	if err != nil {
+		return err
+	}
+	if !featureAccess.UserScoring.IsAllowed() {
 		return nil
 	}
 
-	err := w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+	err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		ruleset, err := w.repository.GetScoringRuleset(ctx, tx, job.Args.OrgId, job.Args.RecordType, models.ScoreRulesetCommitted, 0)
 		if err != nil {
 			// Not having a ruleset here is okay, it means scoring is not configured
