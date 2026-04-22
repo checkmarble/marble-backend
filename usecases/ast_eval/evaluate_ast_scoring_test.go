@@ -188,7 +188,7 @@ func TestSwitchErrorOnNoCaseExecuted(t *testing.T) {
 		Children: []ast.Node{
 			{
 				Function: ast.FUNC_SCORE_COMPUTATION,
-				Children: []ast.Node{{Constant: false}},
+				Children: []ast.Node{},
 				NamedChildren: map[string]ast.Node{
 					"modifier": {Constant: 42},
 					"floor":    {Constant: 9000},
