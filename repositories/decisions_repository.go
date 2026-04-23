@@ -372,7 +372,7 @@ func (repo *MarbleDbRepository) DecisionsOfOrganization(
 		query = query.Where(squirrel.Eq{"d.scenario_id": filters.ScenarioIds})
 	}
 	if len(filters.Outcomes) > 0 {
-		query = query.Where(squirrel.Eq{"d.outcome": filters.Outcomes})
+		query = query.Where(squirrel.Eq{"d.outcome": pure_utils.Map(filters.Outcomes, func(o models.Outcome) string { return o.String() })})
 	}
 	if len(filters.TriggerObjects) > 0 {
 		query = query.Where(squirrel.Eq{"d.trigger_object_type": filters.TriggerObjects})

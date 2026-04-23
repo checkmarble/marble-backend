@@ -162,14 +162,14 @@ func TestUpdateMatchStatus(t *testing.T) {
 			AddRows(mockOtherScmRows...),
 		)
 	exec.Mock.ExpectQuery(`UPDATE screening_matches SET reviewed_by = \$1, status = \$2, updated_at = \$3 WHERE id = \$4 RETURNING id,screening_id,opensanction_entity_id,status,query_ids,payload,enriched,reviewed_by,created_at,updated_at`).
-		WithArgs(&userId, models.ScreeningMatchStatusConfirmedHit, "NOW()", "matchid").
+		WithArgs(&userId, models.ScreeningMatchStatusConfirmedHit.String(), "NOW()", "matchid").
 		WillReturnRows(pgxmock.NewRows(dbmodels.SelectScreeningMatchesColumn).
 			AddRow(mockScmRow...),
 		)
 
 	for i := range 3 {
 		exec.Mock.ExpectQuery(`UPDATE screening_matches SET reviewed_by = \$1, status = \$2, updated_at = \$3 WHERE id = \$4 RETURNING id,screening_id,opensanction_entity_id,status,query_ids,payload,enriched,reviewed_by,created_at,updated_at`).
-			WithArgs(&userId, models.ScreeningMatchStatusSkipped, "NOW()", mockOtherScms[i].Id).
+			WithArgs(&userId, models.ScreeningMatchStatusSkipped.String(), "NOW()", mockOtherScms[i].Id).
 			WillReturnRows(pgxmock.NewRows(dbmodels.SelectScreeningMatchesColumn).
 				AddRow(mockOtherScmRows[i]...),
 			)

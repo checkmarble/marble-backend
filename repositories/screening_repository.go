@@ -210,7 +210,7 @@ func (*MarbleDbRepository) UpdateScreeningMatchStatus(
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_SCREENING_MATCHES).
 		SetMap(map[string]any{
-			"status":      update.Status,
+			"status":      update.Status.String(),
 			"reviewed_by": update.ReviewerId,
 			"updated_at":  "NOW()",
 		}).
