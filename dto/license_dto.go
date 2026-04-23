@@ -40,6 +40,7 @@ func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) Li
 		CaseAutoAssign:      licenseEntitlements.CaseAutoAssign,
 		CaseAiAssist:        licenseEntitlements.CaseAiAssist,
 		ContinuousScreening: licenseEntitlements.ContinuousScreening,
+		UserScoring:         licenseEntitlements.UserScoring,
 	}
 }
 
