@@ -542,7 +542,7 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningMatchStatus(
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES).
 		Where(squirrel.Eq{"id": id}).
-		Set("status", newStatus).
+		Set("status", newStatus.String()).
 		Set("reviewed_by", reviewedBy).
 		Set("updated_at", squirrel.Expr("NOW()")).
 		Suffix("RETURNING *")
@@ -568,7 +568,7 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningMatchStatusByBatch(
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES).
 		Where(squirrel.Eq{"id": ids}).
-		Set("status", newStatus).
+		Set("status", newStatus.String()).
 		Set("reviewed_by", reviewedBy).
 		Set("updated_at", squirrel.Expr("NOW()")).
 		Suffix("RETURNING *")
@@ -589,7 +589,7 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningStatus(
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
 		Where(squirrel.Eq{"id": id}).
-		Set("status", newStatus).
+		Set("status", newStatus.String()).
 		Set("updated_at", squirrel.Expr("NOW()")).
 		Suffix("RETURNING *")
 
@@ -614,7 +614,7 @@ func (repo *MarbleDbRepository) UpdateContinuousScreening(
 		Suffix("RETURNING *")
 
 	if input.Status != nil {
-		sql = sql.Set("status", *input.Status)
+		sql = sql.Set("status", input.Status.String())
 		updated = true
 	}
 	if input.IsPartial != nil {
