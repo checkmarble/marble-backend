@@ -110,12 +110,8 @@ type applyDeltaFileWorkerUsecase interface {
 		config models.ContinuousScreeningConfig,
 		objectId string,
 		continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
-	) (models.Case, string, error)
+	) (models.Case, error)
 	CheckFeatureAccess(ctx context.Context, orgId uuid.UUID) error
-}
-
-type applyDeltaFileWorkerWebhookSender interface {
-	SendWebhookEventAsync(ctx context.Context, webhookEventId string)
 }
 
 type ApplyDeltaFileWorker struct {
@@ -128,7 +124,6 @@ type ApplyDeltaFileWorker struct {
 	blobRepository     repositories.BlobRepository
 	screeningProvider  applyDeltaFileWorkerScreeningProvider
 	usecase            applyDeltaFileWorkerUsecase
-	webhookSender      applyDeltaFileWorkerWebhookSender
 	bucketUrl          string
 }
 
@@ -141,7 +136,6 @@ func NewApplyDeltaFileWorker(
 	screeningProvider applyDeltaFileWorkerScreeningProvider,
 	bucketUrl string,
 	usecase applyDeltaFileWorkerUsecase,
-	webhookSender applyDeltaFileWorkerWebhookSender,
 ) *ApplyDeltaFileWorker {
 	return &ApplyDeltaFileWorker{
 		executorFactory:    executorFactory,
@@ -152,7 +146,6 @@ func NewApplyDeltaFileWorker(
 		screeningProvider:  screeningProvider,
 		bucketUrl:          bucketUrl,
 		usecase:            usecase,
-		webhookSender:      webhookSender,
 	}
 }
 
@@ -325,7 +318,6 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 			continue
 		}
 
-		var caseCreatedWebhookId string
 		err = w.transactionFactory.Transaction(iterCtx, func(tx repositories.Transaction) error {
 			entityPayload, err := json.Marshal(record.Entity)
 			if err != nil {
@@ -346,7 +338,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 				return err
 			}
 
-			_, createdWebhookId, err := w.usecase.HandleCaseCreation(
+			_, err = w.usecase.HandleCaseCreation(
 				iterCtx,
 				tx,
 				updateJob.Config,
@@ -356,7 +348,6 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 			if err != nil {
 				return err
 			}
-			caseCreatedWebhookId = createdWebhookId
 
 			// Enqueue enrichment task for entity payload and matches
 			if err := w.taskQueueRepo.EnqueueContinuousScreeningMatchEnrichmentTask(
@@ -372,9 +363,6 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		})
 		if err != nil {
 			return err
-		}
-		if caseCreatedWebhookId != "" {
-			w.webhookSender.SendWebhookEventAsync(iterCtx, caseCreatedWebhookId)
 		}
 	}
 
