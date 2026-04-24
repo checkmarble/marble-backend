@@ -60,6 +60,7 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			"invalid status received for screening match, should be 'confirmed_hit' or 'no_hit'")
 	}
 
+	var webhookEventId string
 	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		// Fetch continuous screening match and continuous screening object
 		continuousScreeningMatch, err := uc.repository.GetContinuousScreeningMatch(ctx, tx, requestedMatchId)
@@ -180,10 +181,37 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			}
 		}
 
-		return nil
-	})
+		// Refresh screening and case so the webhook payload reflects post-review state
+		// (screening status may have flipped, pending matches may have been skipped,
+		// case status may have changed via PerformCaseActionSideEffects).
+		refreshedScreening, err := uc.repository.GetContinuousScreeningWithMatchesById(
+			ctx, tx, continuousScreeningMatch.ContinuousScreeningId,
+		)
+		if err != nil {
+			return err
+		}
+		refreshedCase, err := uc.repository.GetCaseById(ctx, tx, refreshedScreening.CaseId.String())
+		if err != nil {
+			return err
+		}
 
-	return updatedMatch, err
+		webhookEventId = pure_utils.NewId().String()
+		return uc.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+			Id:             webhookEventId,
+			OrganizationId: refreshedScreening.OrgId,
+			EventContent: models.NewWebhookEventCaseContinuousScreeningMatchReviewed(
+				refreshedCase, refreshedScreening, updatedMatch,
+			),
+		})
+	})
+	if err != nil {
+		return models.ContinuousScreeningMatch{}, err
+	}
+	if webhookEventId != "" {
+		uc.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
+	}
+
+	return updatedMatch, nil
 }
 
 // Check if the user has permission to change continuous screening and match status

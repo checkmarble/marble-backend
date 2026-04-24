@@ -26,6 +26,7 @@ type ScreeningTestSuite struct {
 	screeningProvider            *mocks.OpenSanctionsRepository
 	caseEditor                   *mocks.CaseEditor
 	objectRiskTag                *mocks.ObjectRiskTagWriter
+	webhookEventsUsecase         *mocks.WebhookEventsUsecase
 	executorFactory              executor_factory.ExecutorFactoryStub
 	transactionFactory           executor_factory.TransactionFactoryStub
 
@@ -48,6 +49,7 @@ func (suite *ScreeningTestSuite) SetupTest() {
 	suite.screeningProvider = new(mocks.OpenSanctionsRepository)
 	suite.caseEditor = new(mocks.CaseEditor)
 	suite.objectRiskTag = new(mocks.ObjectRiskTagWriter)
+	suite.webhookEventsUsecase = new(mocks.WebhookEventsUsecase)
 
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)
@@ -77,7 +79,16 @@ func (suite *ScreeningTestSuite) makeUsecase() *ContinuousScreeningUsecase {
 		caseEditor:                   suite.caseEditor,
 		inboxReader:                  suite.repository,
 		objectRiskTagWriter:          suite.objectRiskTag,
+		webhookEventsUsecase:         suite.webhookEventsUsecase,
 	}
+}
+
+func (suite *ScreeningTestSuite) expectMatchReviewedWebhook() {
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+		})).Return(nil)
+	suite.webhookEventsUsecase.On("SendWebhookEventAsync", mock.Anything, mock.Anything).Return()
 }
 
 func (suite *ScreeningTestSuite) AssertExpectations() {
@@ -91,6 +102,7 @@ func (suite *ScreeningTestSuite) AssertExpectations() {
 	suite.screeningProvider.AssertExpectations(t)
 	suite.caseEditor.AssertExpectations(t)
 	suite.objectRiskTag.AssertExpectations(t)
+	suite.webhookEventsUsecase.AssertExpectations(t)
 }
 
 func TestScreeningTestSuite(t *testing.T) {
@@ -271,6 +283,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 
 	// Execute
 	uc := suite.makeUsecase()
+	suite.expectMatchReviewedWebhook()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
 
 	// Assert
@@ -363,6 +376,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 
 	// Execute
 	uc := suite.makeUsecase()
+	suite.expectMatchReviewedWebhook()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
 
 	// Assert
@@ -464,6 +478,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 
 	// Execute
 	uc := suite.makeUsecase()
+	suite.expectMatchReviewedWebhook()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
 
 	// Assert
@@ -571,6 +586,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 
 	// Execute
 	uc := suite.makeUsecase()
+	suite.expectMatchReviewedWebhook()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
 
 	// Assert
@@ -655,6 +671,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 
 	// Execute
 	uc := suite.makeUsecase()
+	suite.expectMatchReviewedWebhook()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
 
 	// Assert
@@ -747,6 +764,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 			models.ScreeningStatusInReview.String()
 	})).Return(models.CaseEvent{}, nil)
 	uc := suite.makeUsecase()
+	suite.expectMatchReviewedWebhook()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
 
 	// Assert
@@ -839,6 +857,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 
 	// Execute
 	uc := suite.makeUsecase()
+	suite.expectMatchReviewedWebhook()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
 
 	// Assert
@@ -921,6 +940,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 
 	// Execute
 	uc := suite.makeUsecase()
+	suite.expectMatchReviewedWebhook()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
 
 	// Assert
@@ -1590,6 +1610,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 
 	// Execute
 	uc := suite.makeUsecase()
+	suite.expectMatchReviewedWebhook()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
 
 	// Assert
@@ -1686,6 +1707,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 
 	// Execute
 	uc := suite.makeUsecase()
+	suite.expectMatchReviewedWebhook()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
 
 	// Assert
@@ -1769,6 +1791,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 
 	// Execute
 	uc := suite.makeUsecase()
+	suite.expectMatchReviewedWebhook()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
 
 	// Assert
@@ -1864,6 +1887,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 
 	// Execute
 	uc := suite.makeUsecase()
+	suite.expectMatchReviewedWebhook()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
 
 	// Assert
@@ -1957,6 +1981,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 
 	// Execute
 	uc := suite.makeUsecase()
+	suite.expectMatchReviewedWebhook()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
 
 	// Assert
@@ -2035,6 +2060,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 
 	// Execute
 	uc := suite.makeUsecase()
+	suite.expectMatchReviewedWebhook()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
 
 	// Assert
@@ -2113,6 +2139,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 
 	// Execute
 	uc := suite.makeUsecase()
+	suite.expectMatchReviewedWebhook()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
 
 	// Assert

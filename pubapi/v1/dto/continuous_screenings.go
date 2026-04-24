@@ -6,6 +6,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 )
 
@@ -16,7 +17,9 @@ type ContinuousScreeningRequest struct {
 type ContinuousScreeningMatch struct {
 	Id                    uuid.UUID       `json:"id"`
 	ContinuousScreeningId uuid.UUID       `json:"continuous_screening_id"`
-	OpenSanctionEntityId  string          `json:"opensanction_entity_id"` //nolint:tagliatelle
+	OpenSanctionEntityId  *string         `json:"opensanction_entity_id"` //nolint:tagliatelle
+	ObjectType            *string         `json:"object_type"`
+	ObjectId              *string         `json:"object_id"`
 	Status                string          `json:"status"`
 	Payload               json.RawMessage `json:"payload"`
 	ReviewedBy            *uuid.UUID      `json:"reviewed_by"`
@@ -24,17 +27,31 @@ type ContinuousScreeningMatch struct {
 	UpdatedAt             types.DateTime  `json:"updated_at"`
 }
 
-func AdaptContinuousScreeningMatch(m models.ContinuousScreeningMatch) ContinuousScreeningMatch {
-	return ContinuousScreeningMatch{
+func AdaptContinuousScreeningMatch(
+	triggerType models.ContinuousScreeningTriggerType,
+	m models.ContinuousScreeningMatch,
+) ContinuousScreeningMatch {
+	dto := ContinuousScreeningMatch{
 		Id:                    m.Id,
 		ContinuousScreeningId: m.ContinuousScreeningId,
-		OpenSanctionEntityId:  m.OpenSanctionEntityId,
 		Status:                m.Status.String(),
 		Payload:               m.Payload,
 		ReviewedBy:            m.ReviewedBy,
 		CreatedAt:             types.DateTime(m.CreatedAt),
 		UpdatedAt:             types.DateTime(m.UpdatedAt),
 	}
+
+	switch triggerType {
+	case models.ContinuousScreeningTriggerTypeObjectAdded, models.ContinuousScreeningTriggerTypeObjectUpdated:
+		dto.OpenSanctionEntityId = utils.Ptr(m.OpenSanctionEntityId)
+	case models.ContinuousScreeningTriggerTypeDatasetUpdated:
+		if m.Metadata != nil {
+			dto.ObjectType = utils.Ptr(m.Metadata.ObjectType)
+			dto.ObjectId = utils.Ptr(m.Metadata.ObjectId)
+		}
+	}
+
+	return dto
 }
 
 type ContinuousScreening struct {
@@ -46,6 +63,7 @@ type ContinuousScreening struct {
 	ObjectType                        *string                    `json:"object_type"`
 	ObjectId                          *string                    `json:"object_id"`
 	ObjectInternalId                  *uuid.UUID                 `json:"object_internal_id"`
+	OpenSanctionEntityId              *string                    `json:"opensanction_entity_id"` //nolint:tagliatelle
 	Status                            string                     `json:"status"`
 	TriggerType                       string                     `json:"trigger_type"`
 	Request                           ContinuousScreeningRequest `json:"request"`
@@ -57,7 +75,7 @@ type ContinuousScreening struct {
 }
 
 func (ContinuousScreening) ApiVersion() string {
-	return "v1beta"
+	return "v1"
 }
 
 func AdaptContinuousScreening(m models.ContinuousScreeningWithMatches) ContinuousScreening {
@@ -70,6 +88,7 @@ func AdaptContinuousScreening(m models.ContinuousScreeningWithMatches) Continuou
 		ObjectType:                        m.ObjectType,
 		ObjectId:                          m.ObjectId,
 		ObjectInternalId:                  m.ObjectInternalId,
+		OpenSanctionEntityId:              m.OpenSanctionEntityId,
 		Status:                            m.Status.String(),
 		TriggerType:                       m.TriggerType.String(),
 		Request: ContinuousScreeningRequest{
@@ -77,8 +96,10 @@ func AdaptContinuousScreening(m models.ContinuousScreeningWithMatches) Continuou
 		},
 		Partial:         m.IsPartial,
 		NumberOfMatches: m.NumberOfMatches,
-		Matches:         pure_utils.Map(m.Matches, AdaptContinuousScreeningMatch),
-		CreatedAt:       types.DateTime(m.CreatedAt),
-		UpdatedAt:       types.DateTime(m.UpdatedAt),
+		Matches: pure_utils.Map(m.Matches, func(match models.ContinuousScreeningMatch) ContinuousScreeningMatch {
+			return AdaptContinuousScreeningMatch(m.TriggerType, match)
+		}),
+		CreatedAt: types.DateTime(m.CreatedAt),
+		UpdatedAt: types.DateTime(m.UpdatedAt),
 	}
 }

@@ -25,23 +25,26 @@ const (
 type WebhookEventType string
 
 const (
-	WebhookEventType_CaseUpdated           WebhookEventType = "case.updated"
-	WebhookEventType_CaseCreatedManually   WebhookEventType = "case.created_manually"
-	WebhookEventType_CaseCreatedWorkflow   WebhookEventType = "case.created_from_workflow"
-	WebhookEventType_CaseDecisionsUpdated  WebhookEventType = "case.decisions_updated"
-	WebhookEventType_CaseTagsUpdated       WebhookEventType = "case.tags_updated"
-	WebhookEventType_CaseCommentCreated    WebhookEventType = "case.comment_created"
-	WebhookEventType_CaseFileCreated       WebhookEventType = "case.file_created"
-	WebhookEventType_CaseRuleSnoozeCreated WebhookEventType = "case.rule_snooze_created"
-	WebhookEventType_CaseDecisionReviewed  WebhookEventType = "case.decision_reviewed"
-	WebhookEventType_DecisionCreated       WebhookEventType = "decision.created"
-	WebhookEventType_AsyncDecisionFailed   WebhookEventType = "async_decision.failed"
+	WebhookEventType_CaseUpdated                          WebhookEventType = "case.updated"
+	WebhookEventType_CaseCreatedManually                  WebhookEventType = "case.created_manually"
+	WebhookEventType_CaseCreatedWorkflow                  WebhookEventType = "case.created_from_workflow"
+	WebhookEventType_CaseCreatedFromContinuousScreening   WebhookEventType = "case.created_from_continuous_screening"
+	WebhookEventType_CaseDecisionsUpdated                 WebhookEventType = "case.decisions_updated"
+	WebhookEventType_CaseTagsUpdated                      WebhookEventType = "case.tags_updated"
+	WebhookEventType_CaseCommentCreated                   WebhookEventType = "case.comment_created"
+	WebhookEventType_CaseFileCreated                      WebhookEventType = "case.file_created"
+	WebhookEventType_CaseRuleSnoozeCreated                WebhookEventType = "case.rule_snooze_created"
+	WebhookEventType_CaseDecisionReviewed                 WebhookEventType = "case.decision_reviewed"
+	WebhookEventType_CaseContinuousScreeningMatchReviewed WebhookEventType = "case.continuous_screening_match_reviewed"
+	WebhookEventType_DecisionCreated                      WebhookEventType = "decision.created"
+	WebhookEventType_AsyncDecisionFailed                  WebhookEventType = "async_decision.failed"
 )
 
 var validWebhookEventTypes = []WebhookEventType{
 	WebhookEventType_CaseUpdated,
 	WebhookEventType_CaseCreatedManually,
 	WebhookEventType_CaseCreatedWorkflow,
+	WebhookEventType_CaseCreatedFromContinuousScreening,
 	WebhookEventType_CaseDecisionsUpdated,
 	WebhookEventType_CaseTagsUpdated,
 	WebhookEventType_CaseCommentCreated,
@@ -49,6 +52,7 @@ var validWebhookEventTypes = []WebhookEventType{
 	WebhookEventType_DecisionCreated,
 	WebhookEventType_CaseRuleSnoozeCreated,
 	WebhookEventType_CaseDecisionReviewed,
+	WebhookEventType_CaseContinuousScreeningMatchReviewed,
 	WebhookEventType_AsyncDecisionFailed,
 }
 
@@ -64,11 +68,13 @@ type WebhookEventPayload struct {
 }
 
 type WebhookEventData struct {
-	Decision               *DecisionWithRuleExecutions
-	Case                   *Case
-	Files                  *[]CaseFile
-	Comments               *CaseEvent
-	AsyncDecisionExecution *AsyncDecisionExecution
+	Decision                 *DecisionWithRuleExecutions
+	Case                     *Case
+	Files                    *[]CaseFile
+	Comments                 *CaseEvent
+	AsyncDecisionExecution   *AsyncDecisionExecution
+	ContinuousScreening      *ContinuousScreeningWithMatches
+	ContinuousScreeningMatch *ContinuousScreeningMatch
 }
 
 type WebhookEvent struct {
@@ -173,6 +179,24 @@ func NewWebhookEventCaseCreatedManually(c Case) WebhookEventContent {
 
 func NewWebhookEventCaseCreatedWorkflow(c Case) WebhookEventContent {
 	return newWebhookContent(WebhookEventType_CaseCreatedWorkflow, WebhookEventData{Case: &c})
+}
+
+func NewWebhookEventCaseCreatedFromContinuousScreening(
+	c Case, cs ContinuousScreeningWithMatches,
+) WebhookEventContent {
+	return newWebhookContent(
+		WebhookEventType_CaseCreatedFromContinuousScreening,
+		WebhookEventData{Case: &c, ContinuousScreening: &cs},
+	)
+}
+
+func NewWebhookEventCaseContinuousScreeningMatchReviewed(
+	c Case, cs ContinuousScreeningWithMatches, m ContinuousScreeningMatch,
+) WebhookEventContent {
+	return newWebhookContent(
+		WebhookEventType_CaseContinuousScreeningMatchReviewed,
+		WebhookEventData{Case: &c, ContinuousScreening: &cs, ContinuousScreeningMatch: &m},
+	)
 }
 
 func NewWebhookEventCaseDecisionsUpdated(c Case) WebhookEventContent {
