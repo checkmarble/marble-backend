@@ -576,7 +576,6 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			return in.OrganizationId == suite.orgId &&
 				in.EventContent.Type == models.WebhookEventType_CaseCreatedFromContinuousScreening
 		})).Return(nil)
-	suite.webhookEventsUsecase.On("SendWebhookEventAsync", mock.Anything, mock.Anything).Return()
 
 	// Execute
 	uc := suite.makeUsecase()
