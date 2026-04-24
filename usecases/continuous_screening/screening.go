@@ -187,20 +187,24 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			ctx, tx, continuousScreeningMatch.ContinuousScreeningId,
 		)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "fetching refreshed screening %s",
+				continuousScreeningMatch.ContinuousScreeningId)
 		}
 		refreshedCase, err := uc.repository.GetCaseById(ctx, tx, refreshedScreening.CaseId.String())
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "fetching refreshed case %s", refreshedScreening.CaseId)
 		}
 
-		return uc.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+		if err := uc.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             pure_utils.NewId().String(),
 			OrganizationId: refreshedScreening.OrgId,
 			EventContent: models.NewWebhookEventCaseContinuousScreeningMatchReviewed(
 				refreshedCase, refreshedScreening, updatedMatch,
 			),
-		})
+		}); err != nil {
+			return errors.Wrap(err, "creating webhook event")
+		}
+		return nil
 	})
 	if err != nil {
 		return models.ContinuousScreeningMatch{}, err
