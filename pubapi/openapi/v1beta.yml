@@ -1937,7 +1937,6 @@ components:
       required:
         - id
         - continuous_screening_id
-        - opensanction_entity_id
         - status
         - payload
         - created_at
@@ -1950,7 +1949,28 @@ components:
           type: string
           format: uuid
         opensanction_entity_id:
-          type: string
+          description: |
+            The OpenSanctions entity matched. Set when the screening was triggered
+            by an object creation or update (`object_added`, `object_updated`).
+            Null for `dataset_updated` (in that case, the entity is on the parent
+            `ContinuousScreening`).
+          anyOf:
+            - type: string
+            - type: "null"
+        object_type:
+          description: |
+            The monitored object's type. Set when the screening was triggered by
+            a dataset update (`dataset_updated`). Null otherwise.
+          anyOf:
+            - type: string
+            - type: "null"
+        object_id:
+          description: |
+            The monitored object's ID. Set when the screening was triggered by a
+            dataset update (`dataset_updated`). Null otherwise.
+          anyOf:
+            - type: string
+            - type: "null"
         status:
           type: string
           enum:
@@ -2011,6 +2031,14 @@ components:
         object_internal_id:
           type: string
           format: uuid
+        opensanction_entity_id:
+          description: |
+            The OpenSanctions entity that triggered the screening. Set when the
+            screening was triggered by a dataset update (`dataset_updated`). Null
+            otherwise (in that case, the entity is on each match).
+          anyOf:
+            - type: string
+            - type: "null"
         status:
           type: string
           enum:

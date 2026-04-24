@@ -23,6 +23,7 @@ type DoScreeningWorkerTestSuite struct {
 	clientDbRepository *mocks.ContinuousScreeningClientDbRepository
 	ingestedDataReader *mocks.IngestedDataReader
 	usecase            *mocks.ContinuousScreeningUsecase
+	webhookSender      *mocks.WebhookEventsUsecase
 	executorFactory    executor_factory.ExecutorFactoryStub
 	transactionFactory executor_factory.TransactionFactoryStub
 
@@ -41,6 +42,7 @@ func (suite *DoScreeningWorkerTestSuite) SetupTest() {
 	suite.clientDbRepository = new(mocks.ContinuousScreeningClientDbRepository)
 	suite.ingestedDataReader = new(mocks.IngestedDataReader)
 	suite.usecase = new(mocks.ContinuousScreeningUsecase)
+	suite.webhookSender = new(mocks.WebhookEventsUsecase)
 
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)
@@ -63,6 +65,7 @@ func (suite *DoScreeningWorkerTestSuite) makeWorker() *DoScreeningWorker {
 		suite.clientDbRepository,
 		suite.ingestedDataReader,
 		suite.usecase,
+		suite.webhookSender,
 	)
 }
 
@@ -73,6 +76,7 @@ func (suite *DoScreeningWorkerTestSuite) AssertExpectations() {
 	suite.clientDbRepository.AssertExpectations(t)
 	suite.ingestedDataReader.AssertExpectations(t)
 	suite.usecase.AssertExpectations(t)
+	suite.webhookSender.AssertExpectations(t)
 }
 
 func TestDoScreeningWorker(t *testing.T) {
@@ -370,7 +374,7 @@ func (suite *DoScreeningWorkerTestSuite) TestWork_ObjectUpdated_ScreeningResultC
 	})).Return(continuousScreeningWithMatches, nil)
 	// Return empty case for simplicity because it is not used for this test
 	suite.usecase.On("HandleCaseCreation", suite.ctx, mock.Anything, config, suite.objectId,
-		continuousScreeningWithMatches).Return(models.Case{}, nil)
+		continuousScreeningWithMatches).Return(models.Case{}, "", nil)
 	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
 		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
 			return input.Operation == models.DeltaTrackOperationUpdate
