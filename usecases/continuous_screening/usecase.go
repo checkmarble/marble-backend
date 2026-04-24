@@ -235,7 +235,6 @@ type webhookEventsUsecase interface {
 		tx repositories.Transaction,
 		input models.WebhookEventCreate,
 	) error
-	SendWebhookEventAsync(ctx context.Context, webhookEventId string)
 }
 
 type ContinuousScreeningClientDbRepository interface {

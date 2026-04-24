@@ -90,12 +90,8 @@ type doScreeningWorkerCSUsecase interface {
 		config models.ContinuousScreeningConfig,
 		caseName string,
 		continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
-	) (models.Case, string, error)
+	) (models.Case, error)
 	CheckFeatureAccess(ctx context.Context, orgId uuid.UUID) error
-}
-
-type doScreeningWorkerWebhookSender interface {
-	SendWebhookEventAsync(ctx context.Context, webhookEventId string)
 }
 
 // Worker to do the screening for a specific monitored object
@@ -109,7 +105,6 @@ type DoScreeningWorker struct {
 	clientDbRepo       doScreeningWorkerClientDbRepository
 	ingestedDataReader doScreeningWorkerIngestedDataReader
 	usecase            doScreeningWorkerCSUsecase
-	webhookSender      doScreeningWorkerWebhookSender
 }
 
 func NewDoScreeningWorker(
@@ -120,7 +115,6 @@ func NewDoScreeningWorker(
 	clientDbRepo doScreeningWorkerClientDbRepository,
 	ingestedDataReader doScreeningWorkerIngestedDataReader,
 	uc doScreeningWorkerCSUsecase,
-	webhookSender doScreeningWorkerWebhookSender,
 ) *DoScreeningWorker {
 	return &DoScreeningWorker{
 		executorFactory:    executorFactory,
@@ -130,7 +124,6 @@ func NewDoScreeningWorker(
 		clientDbRepo:       clientDbRepo,
 		ingestedDataReader: ingestedDataReader,
 		usecase:            uc,
-		webhookSender:      webhookSender,
 	}
 }
 
@@ -308,8 +301,7 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 		}
 	}
 
-	var caseCreatedWebhookId string
-	err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+	return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		// Insert the continuous screening result
 		continuousScreeningWithMatches, err := w.repo.InsertContinuousScreening(
 			ctx,
@@ -345,7 +337,7 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 				logger.WarnContext(ctx, "Continuous Screening - error building case name, falling back to object_id", "error", err)
 				caseName = monitoredObject.ObjectId
 			}
-			_, createdWebhookId, err := w.usecase.HandleCaseCreation(
+			_, err = w.usecase.HandleCaseCreation(
 				ctx,
 				tx,
 				config,
@@ -355,7 +347,6 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 			if err != nil {
 				return err
 			}
-			caseCreatedWebhookId = createdWebhookId
 		}
 
 		// Enqueue enrichment task for matches
@@ -370,13 +361,6 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-	if caseCreatedWebhookId != "" {
-		w.webhookSender.SendWebhookEventAsync(ctx, caseCreatedWebhookId)
-	}
-	return nil
 }
 
 // Compare matches of the existing and new screening results

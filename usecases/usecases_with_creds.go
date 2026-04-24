@@ -909,7 +909,6 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningDoScreeningWorker() *co
 		&usecases.Repositories.ClientDbRepository,
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.NewContinuousScreeningUsecase(),
-		usecases.NewWebhookEventsUsecase(),
 	)
 }
 
@@ -923,7 +922,6 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningApplyDeltaFileWorker() 
 		usecases.Repositories.OpenSanctionsRepository,
 		usecases.continuousScreeningBucketUrl,
 		usecases.NewContinuousScreeningUsecase(),
-		usecases.NewWebhookEventsUsecase(),
 	)
 }
 

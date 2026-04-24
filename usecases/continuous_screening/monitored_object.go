@@ -181,8 +181,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 		}
 	}
 
-	var caseCreatedWebhookId string
-	result, err := executor_factory.TransactionReturnValue(
+	return executor_factory.TransactionReturnValue(
 		ctx,
 		uc.transactionFactory,
 		func(tx repositories.Transaction) (models.ContinuousScreeningWithMatches, error) {
@@ -246,7 +245,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 						logger.WarnContext(ctx, "Continuous Screening - error building case name, falling back to object_id", "error", err)
 						caseName = objectId
 					}
-					caseCreated, createdWebhookId, err := uc.HandleCaseCreation(
+					caseCreated, err := uc.HandleCaseCreation(
 						ctx,
 						tx,
 						config,
@@ -261,20 +260,13 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 						return models.ContinuousScreeningWithMatches{}, err
 					}
 					continuousScreeningWithMatches.CaseId = utils.Ptr(caseUuid)
-					caseCreatedWebhookId = createdWebhookId
 				}
 
 				return continuousScreeningWithMatches, nil
 			}
 			return models.ContinuousScreeningWithMatches{}, nil
-		})
-	if err != nil {
-		return models.ContinuousScreeningWithMatches{}, err
-	}
-	if caseCreatedWebhookId != "" {
-		uc.webhookEventsUsecase.SendWebhookEventAsync(ctx, caseCreatedWebhookId)
-	}
-	return result, nil
+		},
+	)
 }
 
 type payloadObjectID struct {
@@ -535,19 +527,13 @@ func (uc *ContinuousScreeningUsecase) DoScreeningForEntity(
 	return uc.executeScreeningWithRetry(ctx, query)
 }
 
-// SendWebhookEventAsync dispatches a previously-created webhook event outside of a transaction.
-// Exposed so workers can trigger delivery once their own transaction commits.
-func (uc *ContinuousScreeningUsecase) SendWebhookEventAsync(ctx context.Context, webhookEventId string) {
-	uc.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
-}
-
 func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 	ctx context.Context,
 	tx repositories.Transaction,
 	config models.ContinuousScreeningConfig,
 	caseName string,
 	continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
-) (models.Case, string, error) {
+) (models.Case, error) {
 	newCase, err := uc.caseEditor.CreateCase(
 		ctx,
 		tx,
@@ -562,22 +548,21 @@ func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 		false,
 	)
 	if err != nil {
-		return models.Case{}, "", err
+		return models.Case{}, err
 	}
 
-	webhookEventId := pure_utils.NewId().String()
 	if err := uc.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-		Id:             webhookEventId,
+		Id:             pure_utils.NewId().String(),
 		OrganizationId: newCase.OrganizationId,
 		EventContent: models.NewWebhookEventCaseCreatedFromContinuousScreening(
 			newCase,
 			continuousScreeningWithMatches,
 		),
 	}); err != nil {
-		return models.Case{}, "", err
+		return models.Case{}, err
 	}
 
-	return newCase, webhookEventId, nil
+	return newCase, nil
 }
 
 func (uc *ContinuousScreeningUsecase) DeleteContinuousScreeningObject(
