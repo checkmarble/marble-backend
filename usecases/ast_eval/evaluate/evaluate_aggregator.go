@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type AggregatorEvaluator struct {
@@ -124,6 +125,21 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 		if err != nil {
 			return MakeEvaluateError(errors.Wrap(ast.NewNamedArgumentError("percentile"),
 				"missing or invalid value for percentile"))
+		}
+
+		if a.ReturnFakeValue {
+			// Dry-run / scenario validation: reject out-of-range so the builder surfaces a clear error.
+			if arg < 0 || arg > 1 {
+				return MakeEvaluateError(errors.Wrapf(ast.NewNamedArgumentError("percentile"),
+					"percentile value %v must be between 0 and 1", arg))
+			}
+		} else if arg < 0 {
+			logger := utils.LoggerFromContext(ctx)
+			logger.WarnContext(ctx, fmt.Sprintf("percentile value %v is less than 0, setting to 0", arg))
+			arg = 0
+		} else if arg > 1 {
+			// Production runtime: auto-normalize legacy values stored on a 0-100 scale.
+			arg /= 100
 		}
 
 		options["percentile"] = arg
