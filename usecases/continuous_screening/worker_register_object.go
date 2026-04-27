@@ -158,8 +158,7 @@ func (w *RegisterObjectWorker) Work(ctx context.Context, job *river.Job[models.C
 	if job.Args.UserId != nil {
 		parsed, err := uuid.Parse(*job.Args.UserId)
 		if err != nil {
-			logger.WarnContext(ctx, "could not parse user_id", "user_id", *job.Args.UserId)
-			return nil
+			return river.JobCancel(errors.New("could not parse user_id"))
 		}
 		userId = &parsed
 	}
@@ -167,8 +166,7 @@ func (w *RegisterObjectWorker) Work(ctx context.Context, job *river.Job[models.C
 	if job.Args.ApiKeyId != nil {
 		parsed, err := uuid.Parse(*job.Args.ApiKeyId)
 		if err != nil {
-			logger.WarnContext(ctx, "could not parse api_key_id", "api_key", *job.Args.ApiKeyId)
-			return nil
+			return river.JobCancel(errors.New("could not parse api_key_id"))
 		}
 		apiKeyId = &parsed
 	}
@@ -180,8 +178,7 @@ func (w *RegisterObjectWorker) Work(ctx context.Context, job *river.Job[models.C
 
 	newObjectInternalId, err := uuid.Parse(job.Args.NewInternalId)
 	if err != nil {
-		logger.WarnContext(ctx, "Continuous Screening - could not parse new internal id, skipping registration", "error", err)
-		return nil
+		return river.JobCancel(errors.New("could not parse new internal id"))
 	}
 
 	config, err := w.repo.GetContinuousScreeningConfigByStableId(ctx, exec, job.Args.ConfigStableId)
