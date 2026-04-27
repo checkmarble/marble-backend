@@ -176,9 +176,10 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
 	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
-		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
-		{},
-	}, nil)
+		suite.objectType, []string{suite.objectId}).Return(
+		[]models.ContinuousScreeningMonitoredObject{}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask",
+		mock.Anything, mock.Anything).Return(nil)
 
 	continuousScreeningId := pure_utils.NewId()
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
@@ -386,6 +387,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId, false, false).Return(dataModel, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
+	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
+		suite.objectType, []string{suite.objectId}).Return(
+		[]models.ContinuousScreeningMonitoredObject{}, nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
 		suite.objectType, suite.objectId, suite.configStableId).Return(uuid.Nil, &pgconn.PgError{
 		Code: pgerrcode.UniqueViolation,
@@ -521,9 +525,10 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
 	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
-		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
-		{},
-	}, nil)
+		suite.objectType, []string{suite.objectId}).Return(
+		[]models.ContinuousScreeningMonitoredObject{}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask",
+		mock.Anything, mock.Anything).Return(nil)
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
 		mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
@@ -661,9 +666,10 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
 	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
-		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
-		{},
-	}, nil)
+		suite.objectType, []string{suite.objectId}).Return(
+		[]models.ContinuousScreeningMonitoredObject{}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask",
+		mock.Anything, mock.Anything).Return(nil)
 
 	continuousScreeningId := pure_utils.NewId()
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
@@ -1242,9 +1248,10 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
 	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
-		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
-		{},
-	}, nil)
+		suite.objectType, []string{suite.objectId}).Return(
+		[]models.ContinuousScreeningMonitoredObject{}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask",
+		mock.Anything, mock.Anything).Return(nil)
 
 	continuousScreeningId := pure_utils.NewId()
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
@@ -1576,9 +1583,10 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
 	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
-		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
-		{},
-	}, nil)
+		suite.objectType, []string{suite.objectId}).Return(
+		[]models.ContinuousScreeningMonitoredObject{}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask",
+		mock.Anything, mock.Anything).Return(nil)
 
 	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
 		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {

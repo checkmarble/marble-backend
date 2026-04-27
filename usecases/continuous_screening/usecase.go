@@ -187,6 +187,10 @@ type continuousScreeningTaskQueueRepository interface {
 		organizationId uuid.UUID,
 		continuousScreeningId uuid.UUID,
 	) error
+	EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask(
+		ctx context.Context,
+		args models.ContinuousScreeningVerifyDeltaTrackExistenceArgs,
+	) error
 }
 
 type inboxReader interface {
