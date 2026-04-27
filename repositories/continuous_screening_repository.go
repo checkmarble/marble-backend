@@ -898,7 +898,8 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningDeltaTrack(
 			input.ObjectInternalId,
 			input.EntityId,
 			input.Operation.String(),
-		)
+		).
+		Suffix("ON CONFLICT DO NOTHING")
 
 	return ExecBuilder(ctx, exec, query)
 }

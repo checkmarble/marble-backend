@@ -104,21 +104,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 		return models.ContinuousScreeningWithMatches{}, err
 	}
 
-	var skipDeltaTrack bool
 	err = uc.transactionFactory.TransactionInOrgSchema(ctx, config.OrgId, func(tx repositories.Transaction) error {
-		// Check if the object is monitored in other configs
-		// If yes, don't create the ADD track
-		monitoredObjects, err := uc.clientDbRepository.ListMonitoredObjectsByObjectIds(
-			ctx,
-			tx,
-			table.Name,
-			[]string{objectId},
-		)
-		if err != nil {
-			return err
-		}
-		skipDeltaTrack = len(monitoredObjects) > 0
-
 		monitoredObjectId, err := uc.clientDbRepository.InsertContinuousScreeningObject(
 			ctx,
 			tx,
@@ -130,7 +116,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 			return err
 		}
 
-		err = uc.clientDbRepository.InsertContinuousScreeningAudit(
+		if err = uc.clientDbRepository.InsertContinuousScreeningAudit(
 			ctx,
 			tx,
 			models.CreateContinuousScreeningAudit{
@@ -141,32 +127,24 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 				UserId:         userId,
 				ApiKeyId:       apiKeyId,
 			},
-		)
-		if err != nil {
+		); err != nil {
 			return err
 		}
 
-		// Enqueue verify ONLY when a delta track is owed for this fresh registration.
-		// The enqueue runs against the marble pool; calling it before this client-DB tx
-		// commits gives us atomicity-on-success: a failed enqueue rolls back the registration
-		// and the caller sees an error.
-		if !skipDeltaTrack {
-			if err := uc.taskQueueRepository.EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask(
-				ctx,
-				models.ContinuousScreeningVerifyDeltaTrackExistenceArgs{
-					OrgId:             config.OrgId,
-					ObjectType:        input.ObjectType,
-					ObjectId:          objectId,
-					ObjectInternalId:  ingestedObjectInternalId,
-					EntityId:          pure_utils.MarbleEntityIdBuilder(input.ObjectType, objectId),
-					MonitoredObjectId: monitoredObjectId,
-					Operation:         models.DeltaTrackOperationAdd,
-				},
-			); err != nil {
-				return err
-			}
-		}
-		return nil
+		// Enqueue a delayed verification job as a safety net: if the delta track insert below
+		// commits but the client-DB tx rolled back (or vice versa), the verify worker repairs it.
+		return uc.taskQueueRepository.EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask(
+			ctx,
+			models.ContinuousScreeningVerifyDeltaTrackExistenceArgs{
+				OrgId:             config.OrgId,
+				ObjectType:        input.ObjectType,
+				ObjectId:          objectId,
+				ObjectInternalId:  ingestedObjectInternalId,
+				EntityId:          pure_utils.MarbleEntityIdBuilder(input.ObjectType, objectId),
+				MonitoredObjectId: monitoredObjectId,
+				Operation:         models.DeltaTrackOperationAdd,
+			},
+		)
 	})
 	if err != nil {
 		if repositories.IsUniqueViolationError(err) {
@@ -177,6 +155,22 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 				"object is already monitored with this configuration",
 			)
 		}
+		return models.ContinuousScreeningWithMatches{}, err
+	}
+
+	// ON CONFLICT DO NOTHING — idempotent if the object is already tracked by another config.
+	if err := uc.repository.CreateContinuousScreeningDeltaTrack(
+		ctx,
+		exec,
+		models.CreateContinuousScreeningDeltaTrack{
+			OrgId:            config.OrgId,
+			ObjectType:       input.ObjectType,
+			ObjectId:         objectId,
+			ObjectInternalId: &ingestedObjectInternalId,
+			EntityId:         pure_utils.MarbleEntityIdBuilder(input.ObjectType, objectId),
+			Operation:        models.DeltaTrackOperationAdd,
+		},
+	); err != nil {
 		return models.ContinuousScreeningWithMatches{}, err
 	}
 
@@ -193,26 +187,6 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 		ctx,
 		uc.transactionFactory,
 		func(tx repositories.Transaction) (models.ContinuousScreeningWithMatches, error) {
-			// Skip the Add delta track when the object is already tracked by another config
-			// (the indexer already knows about this entity).
-			if !skipDeltaTrack {
-				err = uc.repository.CreateContinuousScreeningDeltaTrack(
-					ctx,
-					tx,
-					models.CreateContinuousScreeningDeltaTrack{
-						OrgId:            config.OrgId,
-						ObjectType:       input.ObjectType,
-						ObjectId:         objectId,
-						ObjectInternalId: &ingestedObjectInternalId,
-						EntityId:         pure_utils.MarbleEntityIdBuilder(input.ObjectType, objectId),
-						Operation:        models.DeltaTrackOperationAdd,
-					},
-				)
-				if err != nil {
-					return models.ContinuousScreeningWithMatches{}, err
-				}
-			}
-
 			if !input.SkipScreen {
 				continuousScreeningWithMatches, err := uc.repository.InsertContinuousScreening(
 					ctx,

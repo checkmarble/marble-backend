@@ -39,10 +39,6 @@ type registerObjectWorkerTaskQueueRepository interface {
 		organizationId uuid.UUID,
 		continuousScreeningId uuid.UUID,
 	) error
-	EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask(
-		ctx context.Context,
-		args models.ContinuousScreeningVerifyDeltaTrackExistenceArgs,
-	) error
 }
 
 type registerObjectWorkerClientDbRepository interface {
@@ -142,17 +138,13 @@ func (w *RegisterObjectWorker) Timeout(_ *river.Job[models.ContinuousScreeningRe
 }
 
 // Work registers a newly ingested object under continuous screening monitoring.
-// The flow has three independent steps, each of which is safe to retry:
+// The flow has two independent steps, each of which is safe to retry:
 //  1. Registration (client DB transaction): if the (objectId, configId) pair is not already
-//     in the monitoring table, insert it and create an audit entry. The same client-DB
-//     transaction also enqueues a delayed verification job (against the marble pool) — see
-//     VerifyDeltaTrackExistenceWorker — so a failure of step 2 below can be self-healed.
-//     The verify enqueue runs before the client-DB commit: if the enqueue fails, the
-//     monitored_object insertion is rolled back and the worker errors for River to retry.
+//     in the monitoring table, insert it and create an audit entry.
 //  2. Delta track (marble DB): record an Add operation so the object is included in the next
-//     dataset rebuild. Skipped on retry (alreadyRegistered) and skipped when the object is
-//     already tracked by another config (no new entry needed in the index). If this step
-//     fails, the queued verify job (5 min later) creates the missing track.
+//     dataset rebuild. Always attempted — ON CONFLICT DO NOTHING makes it idempotent, so
+//     retries and concurrent jobs for the same object are handled by the unique constraint on
+//     (org_id, object_type, object_id, object_internal_id) for add/update operations.
 //  3. Screening (marble DB transaction, only if ShouldScreen): query OpenSanctions, persist
 //     the result, enqueue match enrichment, and create a case if the result is in-review.
 //     This step is always attempted — even on retry — so a failed screening transaction does
@@ -214,14 +206,7 @@ func (w *RegisterObjectWorker) Work(ctx context.Context, job *river.Job[models.C
 		return err
 	}
 
-	// Check if already registered, insert if not, create audit, and determine whether an Add
-	// delta track is needed (skip if object is already monitored under another config).
-	// In the same transaction (before commit), enqueue a delayed verification job — this
-	// gives atomicity-on-success: a failed enqueue rolls back the registration so River retries.
-	var (
-		alreadyRegistered             bool
-		objectMonitoredInOtherConfigs bool
-	)
+	// Check if already registered, insert if not, create audit.
 	err = w.transactionFactory.TransactionInOrgSchema(ctx, job.Args.OrgId, func(tx repositories.Transaction) error {
 		monitoredObjects, err := w.clientDbRepo.ListMonitoredObjectsByObjectIds(
 			ctx, tx, table.Name, []string{job.Args.ObjectId},
@@ -230,79 +215,42 @@ func (w *RegisterObjectWorker) Work(ctx context.Context, job *river.Job[models.C
 			return err
 		}
 
-		// Any existing entry means this object is already tracked (by another config, or by
-		// us on retry). When we reach the enqueue step below we know we're in a fresh-insert
-		// path — the alreadyRegistered branch returns early — so this flag specifically
-		// distinguishes "first registration overall" (false → enqueue verify, owe a delta
-		// track) from "first registration under this config but another already covers the
-		// indexer" (true → no delta track owed, no verify needed).
-		objectMonitoredInOtherConfigs = len(monitoredObjects) > 0
-
-		// If the object is already monitored with the same configuration, don't insert it again.
 		for _, mo := range monitoredObjects {
 			if mo.ConfigStableId == job.Args.ConfigStableId {
-				alreadyRegistered = true
 				return nil
 			}
 		}
 
-		monitoredObjectId, err := w.clientDbRepo.InsertContinuousScreeningObject(
+		if _, err := w.clientDbRepo.InsertContinuousScreeningObject(
 			ctx, tx, table.Name, job.Args.ObjectId, job.Args.ConfigStableId,
-		)
-		if err != nil {
+		); err != nil {
 			return err
 		}
 
-		if err := w.clientDbRepo.InsertContinuousScreeningAudit(ctx, tx, models.CreateContinuousScreeningAudit{
+		return w.clientDbRepo.InsertContinuousScreeningAudit(ctx, tx, models.CreateContinuousScreeningAudit{
 			ObjectType:     table.Name,
 			ObjectId:       job.Args.ObjectId,
 			ConfigStableId: job.Args.ConfigStableId,
 			Action:         models.ContinuousScreeningAuditActionAdd,
 			UserId:         userId,
 			ApiKeyId:       apiKeyId,
-		}); err != nil {
-			return err
-		}
-
-		// Enqueue verify ONLY when a delta track is owed for this fresh registration.
-		// The enqueue runs against the marble pool; calling it before this client-DB tx
-		// commits gives us atomicity-on-success: a failed enqueue rolls back the registration
-		// and the worker retries from scratch.
-		if !objectMonitoredInOtherConfigs {
-			if err := w.taskQueueRepo.EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask(
-				ctx,
-				models.ContinuousScreeningVerifyDeltaTrackExistenceArgs{
-					OrgId:             config.OrgId,
-					ObjectType:        job.Args.ObjectType,
-					ObjectId:          job.Args.ObjectId,
-					ObjectInternalId:  newObjectInternalId,
-					EntityId:          pure_utils.MarbleEntityIdBuilder(job.Args.ObjectType, job.Args.ObjectId),
-					MonitoredObjectId: monitoredObjectId,
-					Operation:         models.DeltaTrackOperationAdd,
-				},
-			); err != nil {
-				return err
-			}
-		}
-		return nil
+		})
 	})
 	if err != nil {
 		return err
 	}
 
-	// Create the delta track independently of screening — only on first registration.
-	// On retry (alreadyRegistered=true), this is skipped since it was committed on the first attempt.
-	if !alreadyRegistered && !objectMonitoredInOtherConfigs {
-		if err := w.repo.CreateContinuousScreeningDeltaTrack(ctx, exec, models.CreateContinuousScreeningDeltaTrack{
-			OrgId:            config.OrgId,
-			ObjectType:       job.Args.ObjectType,
-			ObjectId:         job.Args.ObjectId,
-			ObjectInternalId: &newObjectInternalId,
-			EntityId:         pure_utils.MarbleEntityIdBuilder(job.Args.ObjectType, job.Args.ObjectId),
-			Operation:        models.DeltaTrackOperationAdd,
-		}); err != nil {
-			return err
-		}
+	// Always attempt the delta track insert — ON CONFLICT DO NOTHING makes it idempotent.
+	// This handles retries (alreadyRegistered) and concurrent jobs for the same object.
+	if err := w.repo.CreateContinuousScreeningDeltaTrack(ctx, exec, models.CreateContinuousScreeningDeltaTrack{
+		OrgId:            config.OrgId,
+		ObjectType:       job.Args.ObjectType,
+		ObjectId:         job.Args.ObjectId,
+		ObjectInternalId: &newObjectInternalId,
+		EntityId:         pure_utils.MarbleEntityIdBuilder(job.Args.ObjectType, job.Args.ObjectId),
+		Operation:        models.DeltaTrackOperationAdd,
+	}); err != nil {
+		return err
 	}
 
 	if !job.Args.ShouldScreen {
