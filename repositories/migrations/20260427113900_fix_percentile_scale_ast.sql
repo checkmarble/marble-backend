@@ -1,4 +1,5 @@
 -- +goose Up
+-- +goose StatementBegin
 DO $$
 DECLARE
     row_record RECORD;
@@ -61,4 +62,5 @@ BEGIN
     END LOOP;
 END $$;
 
+-- +goose StatementEnd
 -- +goose Down
