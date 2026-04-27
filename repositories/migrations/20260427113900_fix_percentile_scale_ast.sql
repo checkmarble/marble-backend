@@ -14,7 +14,7 @@ BEGIN
     FOR row_record IN
         SELECT id, formula_ast_expression::text AS ast_text
         FROM scenario_iteration_rules
-        WHERE formula_ast_expression::text ~ '"percentile":\{\s*"constant":[0-9]+'
+        WHERE formula_ast_expression::text ~ '"percentile":\{"constant":[0-9]+'
     LOOP
         -- Initialize our working text with the original JSON string
         modified_text := row_record.ast_text;
