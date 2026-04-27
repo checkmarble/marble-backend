@@ -54,8 +54,6 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 		apiKeyId = &parsed
 	}
 
-	triggerType := models.ContinuousScreeningTriggerTypeObjectAdded
-
 	// Check if the config exists
 	config, err := uc.repository.GetContinuousScreeningConfigByStableId(ctx, exec, input.ConfigStableId)
 	if err != nil {
@@ -95,10 +93,6 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 	}
 
 	objectId := input.ObjectId
-	// Ignore the unique violation error in case of ingestion.
-	// The payload can be an updated object and we will force the screening again on the updated object.
-	// Without recording the object ID in the continuous screening table.
-	ignoreUniqueViolationError := false
 
 	ingestedObject, ingestedObjectInternalId, err := uc.GetIngestedObject(
 		ctx,
@@ -110,20 +104,19 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 		return models.ContinuousScreeningWithMatches{}, err
 	}
 
-	var objectMonitoredInOtherConfigs bool
 	err = uc.transactionFactory.TransactionInOrgSchema(ctx, config.OrgId, func(tx repositories.Transaction) error {
-		if err := uc.clientDbRepository.InsertContinuousScreeningObject(
+		monitoredObjectId, err := uc.clientDbRepository.InsertContinuousScreeningObject(
 			ctx,
 			tx,
 			table.Name,
 			objectId,
 			input.ConfigStableId,
-			false,
-		); err != nil {
+		)
+		if err != nil {
 			return err
 		}
 
-		err = uc.clientDbRepository.InsertContinuousScreeningAudit(
+		if err = uc.clientDbRepository.InsertContinuousScreeningAudit(
 			ctx,
 			tx,
 			models.CreateContinuousScreeningAudit{
@@ -134,42 +127,51 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 				UserId:         userId,
 				ApiKeyId:       apiKeyId,
 			},
-		)
-		if err != nil {
+		); err != nil {
 			return err
 		}
 
-		// Check if the object is monitored in other configs
-		// If yes, don't create the ADD track
-		monitoredObjects, err := uc.clientDbRepository.ListMonitoredObjectsByObjectIds(
+		// Enqueue a delayed verification job as a safety net: if the delta track insert below
+		// commits but the client-DB tx rolled back (or vice versa), the verify worker repairs it.
+		return uc.taskQueueRepository.EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask(
 			ctx,
-			tx,
-			table.Name,
-			[]string{objectId},
+			models.ContinuousScreeningVerifyDeltaTrackExistenceArgs{
+				OrgId:             config.OrgId,
+				ObjectType:        input.ObjectType,
+				ObjectId:          objectId,
+				ObjectInternalId:  ingestedObjectInternalId,
+				EntityId:          pure_utils.MarbleEntityIdBuilder(input.ObjectType, objectId),
+				MonitoredObjectId: monitoredObjectId,
+				Operation:         models.DeltaTrackOperationAdd,
+			},
 		)
-		if err != nil {
-			return err
-		}
-		// > 1 because the object is already monitored in this config, check if it is monitored in other configs
-		objectMonitoredInOtherConfigs = len(monitoredObjects) > 1
-		return nil
 	})
-	// Unique violation error is handled below
 	if err != nil {
-		if repositories.IsUniqueViolationError(err) && ignoreUniqueViolationError {
-			// Do nothing, normal case
-			// That means the object is already in monitoring list and we updated the object data
-			triggerType = models.ContinuousScreeningTriggerTypeObjectUpdated
-		} else if repositories.IsUniqueViolationError(err) {
+		if repositories.IsUniqueViolationError(err) {
 			return models.ContinuousScreeningWithMatches{}, errors.WithDetail(errors.Wrap(
 				models.ConflictError,
 				"object is already monitored with this configuration",
 			),
 				"object is already monitored with this configuration",
 			)
-		} else {
-			return models.ContinuousScreeningWithMatches{}, err
 		}
+		return models.ContinuousScreeningWithMatches{}, err
+	}
+
+	// ON CONFLICT DO NOTHING — idempotent if the object is already tracked by another config.
+	if err := uc.repository.CreateContinuousScreeningDeltaTrack(
+		ctx,
+		exec,
+		models.CreateContinuousScreeningDeltaTrack{
+			OrgId:            config.OrgId,
+			ObjectType:       input.ObjectType,
+			ObjectId:         objectId,
+			ObjectInternalId: &ingestedObjectInternalId,
+			EntityId:         pure_utils.MarbleEntityIdBuilder(input.ObjectType, objectId),
+			Operation:        models.DeltaTrackOperationAdd,
+		},
+	); err != nil {
+		return models.ContinuousScreeningWithMatches{}, err
 	}
 
 	var screeningWithMatches models.ScreeningWithMatches
@@ -185,32 +187,6 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 		ctx,
 		uc.transactionFactory,
 		func(tx repositories.Transaction) (models.ContinuousScreeningWithMatches, error) {
-			deltaTrackOperation := models.DeltaTrackOperationAdd
-			if triggerType == models.ContinuousScreeningTriggerTypeObjectUpdated {
-				deltaTrackOperation = models.DeltaTrackOperationUpdate
-			}
-
-			// Check if we should record this activity in the delta tracks
-			isNewMonitoring := deltaTrackOperation == models.DeltaTrackOperationAdd && !objectMonitoredInOtherConfigs
-			isUpdate := deltaTrackOperation == models.DeltaTrackOperationUpdate
-			if isNewMonitoring || isUpdate {
-				err = uc.repository.CreateContinuousScreeningDeltaTrack(
-					ctx,
-					tx,
-					models.CreateContinuousScreeningDeltaTrack{
-						OrgId:            config.OrgId,
-						ObjectType:       input.ObjectType,
-						ObjectId:         objectId,
-						ObjectInternalId: &ingestedObjectInternalId,
-						EntityId:         pure_utils.MarbleEntityIdBuilder(input.ObjectType, objectId),
-						Operation:        deltaTrackOperation,
-					},
-				)
-				if err != nil {
-					return models.ContinuousScreeningWithMatches{}, err
-				}
-			}
-
 			if !input.SkipScreen {
 				continuousScreeningWithMatches, err := uc.repository.InsertContinuousScreening(
 					ctx,
@@ -221,7 +197,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 						ObjectType:       &input.ObjectType,
 						ObjectId:         &objectId,
 						ObjectInternalId: &ingestedObjectInternalId,
-						TriggerType:      triggerType,
+						TriggerType:      models.ContinuousScreeningTriggerTypeObjectAdded,
 					},
 				)
 				if err != nil {

@@ -187,6 +187,10 @@ type continuousScreeningTaskQueueRepository interface {
 		organizationId uuid.UUID,
 		continuousScreeningId uuid.UUID,
 	) error
+	EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask(
+		ctx context.Context,
+		args models.ContinuousScreeningVerifyDeltaTrackExistenceArgs,
+	) error
 }
 
 type inboxReader interface {
@@ -238,8 +242,7 @@ type ContinuousScreeningClientDbRepository interface {
 		objectType string,
 		objectId string,
 		configStableId uuid.UUID,
-		ignoreConflicts bool,
-	) error
+	) (uuid.UUID, error)
 	InsertContinuousScreeningAudit(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -312,7 +315,7 @@ type ContinuousScreeningUsecase struct {
 	inboxReader                  inboxReader
 	inboxEditor                  inboxEditor
 	featureAccessReader          featureAccessReader
-	objectRiskTagWriter        objectRiskTagWriter
+	objectRiskTagWriter          objectRiskTagWriter
 }
 
 func NewContinuousScreeningUsecase(
@@ -351,6 +354,6 @@ func NewContinuousScreeningUsecase(
 		inboxReader:                  inboxReader,
 		inboxEditor:                  inboxEditor,
 		featureAccessReader:          featureAccessReader,
-		objectRiskTagWriter:        objectRiskTagWriter,
+		objectRiskTagWriter:          objectRiskTagWriter,
 	}
 }
