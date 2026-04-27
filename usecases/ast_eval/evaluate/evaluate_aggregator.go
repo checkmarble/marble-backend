@@ -137,9 +137,6 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 			logger := utils.LoggerFromContext(ctx)
 			logger.WarnContext(ctx, fmt.Sprintf("percentile value %v is less than 0, setting to 0", arg))
 			arg = 0
-		} else if arg > 1 {
-			// Production runtime: auto-normalize legacy values stored on a 0-100 scale.
-			arg /= 100
 		}
 
 		options["percentile"] = arg
