@@ -262,6 +262,14 @@ type ContinuousScreeningEnqueueObjectUpdateTask struct {
 	NewInternalId      string
 }
 
+type ContinuousScreeningRegisterObjectTask struct {
+	ObjectId       string
+	ConfigStableId uuid.UUID
+	NewInternalId  string
+	UserId         *string
+	ApiKeyId       *string
+}
+
 type DeltaTrackOperation int
 
 const (

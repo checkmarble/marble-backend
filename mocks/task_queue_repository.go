@@ -108,6 +108,18 @@ func (m *TaskQueueRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
 	return args.Error(0)
 }
 
+func (m *TaskQueueRepository) EnqueueContinuousScreeningRegisterObjectTaskMany(
+	ctx context.Context,
+	tx repositories.Transaction,
+	orgId uuid.UUID,
+	objectType string,
+	tasks []models.ContinuousScreeningRegisterObjectTask,
+	shouldScreen bool,
+) error {
+	args := m.Called(ctx, tx, orgId, objectType, tasks, shouldScreen)
+	return args.Error(0)
+}
+
 func (m *TaskQueueRepository) EnqueueContinuousScreeningMatchEnrichmentTask(
 	ctx context.Context,
 	tx repositories.Transaction,
