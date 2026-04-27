@@ -923,6 +923,15 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningRegisterObjectWorker() 
 	)
 }
 
+func (usecases *UsecasesWithCreds) NewContinuousScreeningVerifyDeltaTrackExistenceWorker() *continuous_screening.VerifyDeltaTrackExistenceWorker {
+	return continuous_screening.NewVerifyDeltaTrackExistenceWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		&usecases.Repositories.ClientDbRepository,
+	)
+}
+
 func (usecases *UsecasesWithCreds) NewContinuousScreeningApplyDeltaFileWorker() *continuous_screening.ApplyDeltaFileWorker {
 	return continuous_screening.NewApplyDeltaFileWorker(
 		usecases.NewExecutorFactory(),

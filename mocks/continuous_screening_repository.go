@@ -451,10 +451,12 @@ func (m *ContinuousScreeningClientDbRepository) InsertContinuousScreeningObject(
 	tableName string,
 	objectId string,
 	configStableId uuid.UUID,
-	ignoreConflicts bool,
-) error {
-	args := m.Called(ctx, exec, tableName, objectId, configStableId, ignoreConflicts)
-	return args.Error(0)
+) (uuid.UUID, error) {
+	args := m.Called(ctx, exec, tableName, objectId, configStableId)
+	if id, ok := args.Get(0).(uuid.UUID); ok {
+		return id, args.Error(1)
+	}
+	return uuid.Nil, args.Error(1)
 }
 
 func (m *ContinuousScreeningClientDbRepository) InsertContinuousScreeningAudit(

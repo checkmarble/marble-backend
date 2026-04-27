@@ -112,13 +112,12 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 
 	var objectMonitoredInOtherConfigs bool
 	err = uc.transactionFactory.TransactionInOrgSchema(ctx, config.OrgId, func(tx repositories.Transaction) error {
-		if err := uc.clientDbRepository.InsertContinuousScreeningObject(
+		if _, err := uc.clientDbRepository.InsertContinuousScreeningObject(
 			ctx,
 			tx,
 			table.Name,
 			objectId,
 			input.ConfigStableId,
-			false,
 		); err != nil {
 			return err
 		}

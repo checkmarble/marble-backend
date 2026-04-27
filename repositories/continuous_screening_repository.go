@@ -903,6 +903,29 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningDeltaTrack(
 	return ExecBuilder(ctx, exec, query)
 }
 
+// Returns the most recent delta track for (orgId, objectType, objectId), or nil if none exists.
+func (repo *MarbleDbRepository) GetLatestContinuousScreeningDeltaTrack(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	objectType, objectId string,
+) (*models.ContinuousScreeningDeltaTrack, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningDeltaTrackColumn...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DELTA_TRACKS).
+		Where(squirrel.Eq{"org_id": orgId}).
+		Where(squirrel.Eq{"object_type": objectType}).
+		Where(squirrel.Eq{"object_id": objectId}).
+		OrderBy("created_at DESC").
+		Limit(1)
+
+	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningDeltaTrack)
+}
+
 // Fetch entity IDs which have been changed and not processed yet.
 // Only fetch the last change for each entity ID, and consider previous changes have been processed in the same version.
 // CursorEntityId is the entity ID of the last change that has been processed.
