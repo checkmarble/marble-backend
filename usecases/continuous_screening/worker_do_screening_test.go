@@ -23,6 +23,7 @@ type DoScreeningWorkerTestSuite struct {
 	clientDbRepository *mocks.ContinuousScreeningClientDbRepository
 	ingestedDataReader *mocks.IngestedDataReader
 	usecase            *mocks.ContinuousScreeningUsecase
+	webhookSender      *mocks.WebhookEventsUsecase
 	executorFactory    executor_factory.ExecutorFactoryStub
 	transactionFactory executor_factory.TransactionFactoryStub
 
@@ -41,6 +42,7 @@ func (suite *DoScreeningWorkerTestSuite) SetupTest() {
 	suite.clientDbRepository = new(mocks.ContinuousScreeningClientDbRepository)
 	suite.ingestedDataReader = new(mocks.IngestedDataReader)
 	suite.usecase = new(mocks.ContinuousScreeningUsecase)
+	suite.webhookSender = new(mocks.WebhookEventsUsecase)
 
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)
@@ -73,6 +75,7 @@ func (suite *DoScreeningWorkerTestSuite) AssertExpectations() {
 	suite.clientDbRepository.AssertExpectations(t)
 	suite.ingestedDataReader.AssertExpectations(t)
 	suite.usecase.AssertExpectations(t)
+	suite.webhookSender.AssertExpectations(t)
 }
 
 func TestDoScreeningWorker(t *testing.T) {

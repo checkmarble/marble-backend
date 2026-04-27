@@ -34,6 +34,7 @@ type ContinuousScreeningUsecaseTestSuite struct {
 	caseEditor                   *mocks.CaseEditor
 	featureAccessReader          *mocks.FeatureAccessReader
 	taskQueueRepository          *mocks.TaskQueueRepository
+	webhookEventsUsecase         *mocks.WebhookEventsUsecase
 	executorFactory              executor_factory.ExecutorFactoryStub
 	transactionFactory           executor_factory.TransactionFactoryStub
 
@@ -57,6 +58,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) SetupTest() {
 	suite.caseEditor = new(mocks.CaseEditor)
 	suite.featureAccessReader = new(mocks.FeatureAccessReader)
 	suite.taskQueueRepository = new(mocks.TaskQueueRepository)
+	suite.webhookEventsUsecase = new(mocks.WebhookEventsUsecase)
 
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)
@@ -87,6 +89,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) makeUsecase() *ContinuousScree
 		caseEditor:                   suite.caseEditor,
 		inboxReader:                  suite.repository,
 		featureAccessReader:          suite.featureAccessReader,
+		webhookEventsUsecase:         suite.webhookEventsUsecase,
 	}
 }
 
@@ -102,6 +105,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) AssertExpectations() {
 	suite.caseEditor.AssertExpectations(t)
 	suite.featureAccessReader.AssertExpectations(t)
 	suite.taskQueueRepository.AssertExpectations(t)
+	suite.webhookEventsUsecase.AssertExpectations(t)
 }
 
 func TestContinuousScreeningUsecase(t *testing.T) {
@@ -567,6 +571,11 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 			len(attrs.ContinuousScreeningIds) == 1 &&
 			attrs.Type == models.CaseTypeContinuousScreening
 	}), false).Return(expectedCase, nil)
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.OrganizationId == suite.orgId &&
+				in.EventContent.Type == models.WebhookEventType_CaseCreatedFromContinuousScreening
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()

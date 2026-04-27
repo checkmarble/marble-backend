@@ -26,6 +26,7 @@ type ScreeningTestSuite struct {
 	screeningProvider            *mocks.OpenSanctionsRepository
 	caseEditor                   *mocks.CaseEditor
 	objectRiskTag                *mocks.ObjectRiskTagWriter
+	webhookEventsUsecase         *mocks.WebhookEventsUsecase
 	executorFactory              executor_factory.ExecutorFactoryStub
 	transactionFactory           executor_factory.TransactionFactoryStub
 
@@ -48,6 +49,7 @@ func (suite *ScreeningTestSuite) SetupTest() {
 	suite.screeningProvider = new(mocks.OpenSanctionsRepository)
 	suite.caseEditor = new(mocks.CaseEditor)
 	suite.objectRiskTag = new(mocks.ObjectRiskTagWriter)
+	suite.webhookEventsUsecase = new(mocks.WebhookEventsUsecase)
 
 	suite.executorFactory = executor_factory.NewExecutorFactoryStub()
 	suite.transactionFactory = executor_factory.NewTransactionFactoryStub(suite.executorFactory)
@@ -77,6 +79,7 @@ func (suite *ScreeningTestSuite) makeUsecase() *ContinuousScreeningUsecase {
 		caseEditor:                   suite.caseEditor,
 		inboxReader:                  suite.repository,
 		objectRiskTagWriter:          suite.objectRiskTag,
+		webhookEventsUsecase:         suite.webhookEventsUsecase,
 	}
 }
 
@@ -91,6 +94,7 @@ func (suite *ScreeningTestSuite) AssertExpectations() {
 	suite.screeningProvider.AssertExpectations(t)
 	suite.caseEditor.AssertExpectations(t)
 	suite.objectRiskTag.AssertExpectations(t)
+	suite.webhookEventsUsecase.AssertExpectations(t)
 }
 
 func TestScreeningTestSuite(t *testing.T) {
@@ -268,6 +272,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 				events[1].PreviousValue != nil && *events[1].PreviousValue ==
 				continuousScreeningMatch3.Status.String()
 		})).Return([]models.CaseEvent{}, nil)
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -360,6 +368,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningStatusInReview.String()
 	})).Return(models.CaseEvent{}, nil)
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -460,6 +472,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 				}
 			}
 			return hasSanctions && hasPEPs
+		})).Return(nil)
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
 		})).Return(nil)
 
 	// Execute
@@ -568,6 +584,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			}
 			return hasPEPs && hasAdverseMedia
 		})).Return(nil)
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -652,6 +672,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
 	})).Return(models.CaseEvent{}, nil)
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -746,6 +770,11 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningStatusInReview.String()
 	})).Return(models.CaseEvent{}, nil)
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+		})).Return(nil)
+
 	uc := suite.makeUsecase()
 	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
 
@@ -836,6 +865,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningStatusInReview.String()
 	})).Return(models.CaseEvent{}, nil)
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -916,6 +949,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
 	})).Return(models.CaseEvent{}, nil)
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+		})).Return(nil)
 	// Note: No UpdateContinuousScreeningStatus call expected because IsPartial is true
 	// Note: No ScreeningReviewed event expected because IsPartial prevents status change
 
@@ -1587,6 +1624,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
 	})).Return(models.CaseEvent{}, nil)
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -1683,6 +1724,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningStatusInReview.String()
 	})).Return(models.CaseEvent{}, nil)
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -1766,6 +1811,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
 	})).Return(models.CaseEvent{}, nil)
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -1861,6 +1910,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningStatusInReview.String()
 	})).Return(models.CaseEvent{}, nil)
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -1954,6 +2007,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			attrs.NewValue != nil && *attrs.NewValue ==
 			models.ScreeningStatusConfirmedHit.String()
 	})).Return(models.CaseEvent{}, nil)
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -2032,6 +2089,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
 	})).Return(models.CaseEvent{}, nil)
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -2110,6 +2171,10 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 			attrs.PreviousValue != nil && *attrs.PreviousValue ==
 			models.ScreeningMatchStatusPending.String()
 	})).Return(models.CaseEvent{}, nil)
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()

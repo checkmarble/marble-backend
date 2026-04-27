@@ -896,6 +896,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() *continuous_s
 		utils.Ptr(usecases.NewInboxUsecase()),
 		usecases.NewFeatureAccessReader(),
 		usecases.NewEntityAnnotationUsecase(),
+		usecases.NewWebhookEventsUsecase(),
 	)
 }
 

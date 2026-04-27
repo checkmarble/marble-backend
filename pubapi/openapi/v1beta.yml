@@ -52,8 +52,8 @@ paths:
               required:
                 - trigger_objects
               anyOf:
-                - required: [trigger_object_type]
-                - required: [scenario_id]
+                - required: [ trigger_object_type ]
+                - required: [ scenario_id ]
               properties:
                 trigger_object_type:
                   description: |
@@ -159,13 +159,15 @@ paths:
             type: boolean
         - name: monitoring_config_id
           in: query
-          description: If monitoring the object, which configuration to use. Can be repeated multiple times.
+          description: If monitoring the object, which configuration to use. Can be
+            repeated multiple times.
           schema:
             type: string
             format: uuid
         - name: skip_screening
           in: query
-          description: If monitoring, whether to skip the initial screening of the ingested object.
+          description: If monitoring, whether to skip the initial screening of the
+            ingested object.
           schema:
             type: boolean
       requestBody:
@@ -217,13 +219,15 @@ paths:
             type: boolean
         - name: monitoring_config_id
           in: query
-          description: If monitoring the object, which configuration to use. Can be repeated multiple times.
+          description: If monitoring the object, which configuration to use. Can be
+            repeated multiple times.
           schema:
             type: string
             format: uuid
         - name: skip_screening
           in: query
-          description: If monitoring, whether to skip the initial screening of the ingested object.
+          description: If monitoring, whether to skip the initial screening of the
+            ingested object.
           schema:
             type: boolean
       requestBody:
@@ -276,13 +280,15 @@ paths:
             type: boolean
         - name: monitoring_config_id
           in: query
-          description: If monitoring the object, which configuration to use. Can be repeated multiple times.
+          description: If monitoring the object, which configuration to use. Can be
+            repeated multiple times.
           schema:
             type: string
             format: uuid
         - name: skip_screening
           in: query
-          description: If monitoring, whether to skip the initial screening of the ingested object.
+          description: If monitoring, whether to skip the initial screening of the
+            ingested object.
           schema:
             type: boolean
       requestBody:
@@ -336,13 +342,15 @@ paths:
             type: boolean
         - name: monitoring_config_id
           in: query
-          description: If monitoring the object, which configuration to use. Can be repeated multiple times.
+          description: If monitoring the object, which configuration to use. Can be
+            repeated multiple times.
           schema:
             type: string
             format: uuid
         - name: skip_screening
           in: query
-          description: If monitoring, whether to skip the initial screening of the ingested object.
+          description: If monitoring, whether to skip the initial screening of the
+            ingested object.
           schema:
             type: boolean
       requestBody:
@@ -403,7 +411,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [pending, investigating, closed]
+            enum: [ pending, investigating, closed ]
         - name: assigned_to
           description: List cases assigned to the specified user
           in: query
@@ -478,7 +486,8 @@ paths:
                   type: string
                   format: email
                 decisions:
-                  description: List of decision_ids to attach to this case. Must not already be assigned to a case.
+                  description: List of decision_ids to attach to this case. Must not already be
+                    assigned to a case.
                   type: array
                   items:
                     type: string
@@ -568,7 +577,7 @@ paths:
                 outcome:
                   description: Outcome of the case
                   type: string
-                  enum: [unset confirmed_risk valuable_alert false_positive]
+                  enum: [ unset confirmed_risk valuable_alert false_positive ]
 
       responses:
         "200":
@@ -616,7 +625,7 @@ paths:
                 outcome:
                   description: Final outcome of the case
                   type: string
-                  enum: [unset confirmed_risk valuable_alert false_positive]
+                  enum: [ unset confirmed_risk valuable_alert false_positive ]
                   default: unset
       responses:
         "200":
@@ -976,7 +985,7 @@ paths:
                     properties:
                       data:
                         type: object
-                        required: 
+                        required:
                           - ai_review_id
                         properties:
                           ai_review_id:
@@ -1051,7 +1060,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [case, object]
+            enum: [ case, object ]
         - $ref: "#/components/parameters/limit"
         - $ref: "#/components/parameters/order"
         - $ref: "#/components/parameters/after"
@@ -1188,10 +1197,17 @@ paths:
                 skip_screen:
                   type: boolean
                   default: false
-                  description: Whether to skip screening the object immediately. If true, the API returns 201 Created without data.
+                  description: Whether to skip screening the object immediately. If true, the API
+                    returns 201 Created without data.
       responses:
+        "200":
+          description: Monitored object created and screened.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContinuousScreening"
         "201":
-          description: Monitored object created or updated. Returns screening result if screening was performed, or empty response if screening was skipped.
+          description: Monitored object created. Empty response if screening was skipped.
         "400":
           $ref: "#/components/responses/400"
         "403":
@@ -1461,7 +1477,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [ids]
+              required: [ ids ]
               properties:
                 ids:
                   type: array
@@ -1494,15 +1510,17 @@ components:
           schema:
             type: string
             format: url
-            description: The download URL of the file. If your HTTP client follows redirects, it will be downloaded directly.
+            description: The download URL of the file. If your HTTP client follows
+              redirects, it will be downloaded directly.
       content:
         application/json:
           schema:
             type: object
-            required: [redirect_to]
+            required: [ redirect_to ]
             properties:
               redirect_to:
-                description: The download URL of the file. Can be used if your HTTP client does not follows redirects.
+                description: The download URL of the file. Can be used if your HTTP client does
+                  not follows redirects.
                 type: string
                 format: url
     "400":
@@ -1514,8 +1532,7 @@ components:
     "401":
       description: Credentials are missing or invalid
     "403":
-      description:
-        The provided credentials are missing the required permissions for
+      description: The provided credentials are missing the required permissions for
         the requested action
     "404":
       description: The requested resource does not exist
@@ -1558,7 +1575,7 @@ components:
       in: query
       schema:
         type: string
-        enum: ["ASC", "DESC"]
+        enum: [ "ASC", "DESC" ]
     after:
       name: after
       description: |
@@ -1634,7 +1651,7 @@ components:
             - `completed`: all decisions have been created successfully
             - `failed`: execution failed (see `error_message` for details)
           type: string
-          enum: [pending, ingested, completed, failed]
+          enum: [ pending, ingested, completed, failed ]
         decision_ids:
           description: IDs of decisions created by this execution (populated on completion)
           type: array
@@ -1694,7 +1711,8 @@ components:
           format: uuid
         name:
           type: string
-          description: Optional name for the referenced object, not all references will have it.
+          description: Optional name for the referenced object, not all references will
+            have it.
 
     Tag:
       title: Tag
@@ -1711,7 +1729,7 @@ components:
           type: string
         target:
           type: string
-          enum: [case, object]
+          enum: [ case, object ]
 
     Case:
       title: Case
@@ -1738,10 +1756,10 @@ components:
           $ref: "#/components/schemas/Ref"
         status:
           type: string
-          enum: [pending, investigating, closed]
+          enum: [ pending, investigating, closed ]
         outcome:
           type: string
-          enum: [unset, confirmed_risk, valuable_alert, false_positive]
+          enum: [ unset, confirmed_risk, valuable_alert, false_positive ]
         contributors:
           type: array
           items:
@@ -1756,7 +1774,7 @@ components:
         review_level:
           anyOf:
             - type: string
-              enum: [probable_false_positive, investigate, escalate]
+              enum: [ probable_false_positive, investigate, escalate ]
             - type: "null"
           description: |
             The review level from AI review.
@@ -1821,11 +1839,11 @@ components:
           format: uuid
         status:
           type: string
-          enum: [pending, completed, failed, insufficient_funds]
+          enum: [ pending, completed, failed, insufficient_funds ]
         reaction:
           anyOf:
             - type: string
-              enum: [ok, ko]
+              enum: [ ok, ko ]
             - type: "null"
         created_at:
           type: string
@@ -1859,7 +1877,7 @@ components:
       properties:
         version:
           type: string
-          enum: [v1]
+          enum: [ v1 ]
         output:
           description: The main case review text produced by the AI
           type: string
@@ -1937,7 +1955,6 @@ components:
       required:
         - id
         - continuous_screening_id
-        - opensanction_entity_id
         - status
         - payload
         - created_at
@@ -1950,7 +1967,28 @@ components:
           type: string
           format: uuid
         opensanction_entity_id:
-          type: string
+          description: |
+            The OpenSanctions entity matched. Set when the screening was triggered
+            by an object creation or update (`object_added`, `object_updated`).
+            Null for `dataset_updated` (in that case, the entity is on the parent
+            `ContinuousScreening`).
+          anyOf:
+            - type: string
+            - type: "null"
+        object_type:
+          description: |
+            The monitored object's type. Set when the screening was triggered by
+            a dataset update (`dataset_updated`). Null otherwise.
+          anyOf:
+            - type: string
+            - type: "null"
+        object_id:
+          description: |
+            The monitored object's ID. Set when the screening was triggered by a
+            dataset update (`dataset_updated`). Null otherwise.
+          anyOf:
+            - type: string
+            - type: "null"
         status:
           type: string
           enum:
@@ -2005,12 +2043,26 @@ components:
           type: string
           format: uuid
         object_type:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         object_id:
-          type: string
+          anyOf:
+            - type: string
+            - type: "null"
         object_internal_id:
-          type: string
-          format: uuid
+          anyOf:
+            - type: string
+              format: uuid
+            - type: "null"
+        opensanction_entity_id:
+          description: |
+            The OpenSanctions entity that triggered the screening. Set when the
+            screening was triggered by a dataset update (`dataset_updated`). Null
+            otherwise (in that case, the entity is on each match).
+          anyOf:
+            - type: string
+            - type: "null"
         status:
           type: string
           enum:
@@ -2063,7 +2115,7 @@ components:
           description: Client-side ID of the annotated object
         annotation_type:
           type: string
-          enum: [comment, tag, risk_tag, file]
+          enum: [ comment, tag, risk_tag, file ]
         payload:
           type: object
           description: |
@@ -2093,7 +2145,7 @@ components:
         - $ref: "#/components/schemas/CreateAnnotationBase"
         - properties:
             type:
-              enum: [comment]
+              enum: [ comment ]
             payload:
               required:
                 - text
@@ -2108,7 +2160,7 @@ components:
         - $ref: "#/components/schemas/CreateAnnotationBase"
         - properties:
             type:
-              enum: [tag]
+              enum: [ tag ]
             payload:
               required:
                 - tag_id
@@ -2124,7 +2176,7 @@ components:
         - $ref: "#/components/schemas/CreateAnnotationBase"
         - properties:
             type:
-              enum: [risk_tag]
+              enum: [ risk_tag ]
             payload:
               required:
                 - tag
@@ -2132,7 +2184,7 @@ components:
                 tag:
                   type: string
                   description: Risk tag identifier
-                  enum: [sanctions, peps, adverse-media, third-parties]
+                  enum: [ sanctions, peps, adverse-media, third-parties ]
                 reason:
                   type: string
                   description: Human-readable reason for applying the risk tag
