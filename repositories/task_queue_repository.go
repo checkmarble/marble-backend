@@ -93,6 +93,10 @@ type TaskQueueRepository interface {
 		tasks []models.ContinuousScreeningRegisterObjectTask,
 		shouldScreen bool,
 	) error
+	EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask(
+		ctx context.Context,
+		args models.ContinuousScreeningVerifyDeltaTrackExistenceArgs,
+	) error
 	EnqueueContinuousScreeningApplyDeltaFileTask(
 		ctx context.Context,
 		tx Transaction,
@@ -540,6 +544,30 @@ func (r riverRepository) EnqueueContinuousScreeningRegisterObjectTaskMany(
 
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued continuous screening register object tasks", "nb_tasks", res)
+	return nil
+}
+
+// EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask enqueues a delayed verification job
+// that re-creates a missing Add delta track if the original RegisterObjectWorker failed to
+// commit it. The enqueue runs against the marble pool directly (no client tx participation):
+// callers should invoke it inside the client-DB tx that creates the monitored_object so a
+// failed enqueue rolls back the registration.
+func (r riverRepository) EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask(
+	ctx context.Context,
+	args models.ContinuousScreeningVerifyDeltaTrackExistenceArgs,
+) error {
+	res, err := r.client.Insert(ctx, args, &river.InsertOpts{
+		Queue:       args.OrgId.String(),
+		Priority:    4,
+		ScheduledAt: time.Now().Add(5 * time.Minute),
+	})
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued continuous screening verify delta track existence task",
+		"job_id", res.Job.ID, "monitored_object_id", args.MonitoredObjectId)
 	return nil
 }
 

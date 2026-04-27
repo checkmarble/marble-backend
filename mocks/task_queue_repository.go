@@ -120,6 +120,13 @@ func (m *TaskQueueRepository) EnqueueContinuousScreeningRegisterObjectTaskMany(
 	return args.Error(0)
 }
 
+func (m *TaskQueueRepository) EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask(
+	ctx context.Context,
+	args models.ContinuousScreeningVerifyDeltaTrackExistenceArgs,
+) error {
+	return m.Called(ctx, args).Error(0)
+}
+
 func (m *TaskQueueRepository) EnqueueContinuousScreeningMatchEnrichmentTask(
 	ctx context.Context,
 	tx repositories.Transaction,
