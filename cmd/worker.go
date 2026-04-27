@@ -399,6 +399,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewAutoAssignmentWorker())
 	river.AddWorker(workers, adminUc.NewDecisionWorkflowsWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningDoScreeningWorker())
+	river.AddWorker(workers, adminUc.NewContinuousScreeningRegisterObjectWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningApplyDeltaFileWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningScanDatasetUpdatesWorker())
 	river.AddWorker(workers, adminUc.NewCsvIngestionWorker())
@@ -634,6 +635,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion
 	case "continuous_screening_do_screening":
 		return uc.NewContinuousScreeningDoScreeningWorker().Work(ctx,
 			singleJobCreate[models.ContinuousScreeningDoScreeningArgs](ctx, jobArgs))
+	case "continuous_screening_register_object":
+		return uc.NewContinuousScreeningRegisterObjectWorker().Work(ctx,
+			singleJobCreate[models.ContinuousScreeningRegisterObjectArgs](ctx, jobArgs))
 	case "continuous_screening_scan_dataset_updates":
 		return uc.NewContinuousScreeningScanDatasetUpdatesWorker().Work(ctx,
 			singleJobCreate[models.ContinuousScreeningScanDatasetUpdatesArgs](ctx, jobArgs))

@@ -60,14 +60,6 @@ type continuousScreeningClientDbRepository interface {
 		objectType string,
 		objectIds []string,
 	) ([]models.ContinuousScreeningMonitoredObject, error)
-	InsertContinuousScreeningObject(
-		ctx context.Context,
-		exec repositories.Executor,
-		objectType string,
-		objectId string,
-		configStableId uuid.UUID,
-		ignoreConflicts bool,
-	) error
 	IsContinuousScreeningSetup(ctx context.Context, exec repositories.Executor) (bool, error)
 }
 
@@ -79,6 +71,14 @@ type taskEnqueuer interface {
 		objectType string,
 		enqueueObjectUpdateTasks []models.ContinuousScreeningEnqueueObjectUpdateTask,
 		triggerType models.ContinuousScreeningTriggerType,
+	) error
+	EnqueueContinuousScreeningRegisterObjectTaskMany(
+		ctx context.Context,
+		tx repositories.Transaction,
+		orgId uuid.UUID,
+		objectType string,
+		tasks []models.ContinuousScreeningRegisterObjectTask,
+		shouldScreen bool,
 	) error
 	EnqueueCsvIngestionTask(
 		ctx context.Context,
@@ -379,7 +379,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 
 	for name, field := range table.Fields {
 		if !field.Nullable {
-			if !containsString(headers, name) {
+			if !slices.Contains(headers, name) {
 				if len(headers) == 1 && strings.Contains(headers[0], ";") {
 					return models.UploadLog{}, fmt.Errorf("missing required field %s in CSV (%w), you might be using semicolons (;) instead of commas (,)", name, models.BadParameterError)
 				}
@@ -630,7 +630,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 	// first, check presence of all required fields in the csv
 	for name, field := range table.Fields {
 		if !field.Nullable {
-			if !containsString(firstRow, name) {
+			if !slices.Contains(firstRow, name) {
 				return ingestionResult{
 					err: fmt.Errorf("missing required field %s in CSV", name),
 				}
@@ -723,11 +723,14 @@ func (usecase *IngestionUseCase) enqueueObjectsNeedScreeningTaskIfNeeded(
 		return err
 	}
 
+	// Get all ingested object IDs to check which ones need to be monitored or re-screened.
 	objectIds := make([]string, 0, len(ingestionResults))
 	for objectId := range ingestionResults {
 		objectIds = append(objectIds, objectId)
 	}
 
+	// Fetch objects already under monitoring (across all configs).
+	// If CS tables don't exist yet and we're not asked to monitor, nothing to do.
 	continuousScreeningSetup, err := usecase.continuousScreeningClientRepository.IsContinuousScreeningSetup(ctx, clientDbExec)
 	if err != nil {
 		return err
@@ -746,14 +749,14 @@ func (usecase *IngestionUseCase) enqueueObjectsNeedScreeningTaskIfNeeded(
 		return err
 	}
 
-	if len(monitoredObjects) == 0 {
-		// No monitored objects found, no need to enqueue the task
+	// If no ingested object are currently under monitoring and no new object needs to be monitored, we can exit early
+	if len(monitoredObjects) == 0 && !ingestionOptions.ShouldMonitor {
 		return nil
 	}
 
-	enqueueAddedObjectUpdateTasks := make([]models.ContinuousScreeningEnqueueObjectUpdateTask, 0, len(monitoredObjects))
+	// Update path: already-monitored objects that have a new version need re-screening.
+	// PreviousInternalId indicates the ingested object has been updated
 	enqueueUpdatedObjectUpdateTasks := make([]models.ContinuousScreeningEnqueueObjectUpdateTask, 0, len(monitoredObjects))
-
 	for _, monitoredObject := range monitoredObjects {
 		if ingestionResults[monitoredObject.ObjectId].PreviousInternalId != "" {
 			enqueueUpdatedObjectUpdateTasks = append(enqueueUpdatedObjectUpdateTasks, models.ContinuousScreeningEnqueueObjectUpdateTask{
@@ -762,46 +765,48 @@ func (usecase *IngestionUseCase) enqueueObjectsNeedScreeningTaskIfNeeded(
 				NewInternalId:      ingestionResults[monitoredObject.ObjectId].NewInternalId,
 			})
 		}
+	}
 
-		if ingestionResults[monitoredObject.ObjectId].PreviousInternalId == "" && ingestionOptions.ShouldScreen {
-			enqueueAddedObjectUpdateTasks = append(enqueueAddedObjectUpdateTasks, models.ContinuousScreeningEnqueueObjectUpdateTask{
-				MonitoringId:       monitoredObject.Id,
-				PreviousInternalId: ingestionResults[monitoredObject.ObjectId].PreviousInternalId,
-				NewInternalId:      ingestionResults[monitoredObject.ObjectId].NewInternalId,
-			})
+	// Register path: (objectId, configId) pairs not yet in the monitoring table.
+	var enqueueRegisterTasks []models.ContinuousScreeningRegisterObjectTask
+	if ingestionOptions.ShouldMonitor {
+		type monitoredKey struct {
+			objectId       string
+			configStableId uuid.UUID
+		}
+		monitoredSet := make(map[monitoredKey]struct{}, len(monitoredObjects))
+		for _, mo := range monitoredObjects {
+			monitoredSet[monitoredKey{mo.ObjectId, mo.ConfigStableId}] = struct{}{}
+		}
+
+		for objectId, result := range ingestionResults {
+			for _, configId := range ingestionOptions.ContinuousScreeningIds {
+				if _, alreadyMonitored := monitoredSet[monitoredKey{objectId, configId}]; !alreadyMonitored {
+					enqueueRegisterTasks = append(enqueueRegisterTasks, models.ContinuousScreeningRegisterObjectTask{
+						ObjectId:       objectId,
+						ConfigStableId: configId,
+						NewInternalId:  result.NewInternalId,
+						UserId:         usecase.enforceSecurity.UserId(),
+						ApiKeyId:       usecase.enforceSecurity.ApiKeyId(),
+					})
+				}
+			}
 		}
 	}
 
 	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		errUpdated := usecase.taskEnqueuer.EnqueueContinuousScreeningDoScreeningTaskMany(
-			ctx,
-			tx,
-			organizationId,
-			table.Name,
+			ctx, tx, organizationId, table.Name,
 			enqueueUpdatedObjectUpdateTasks,
 			models.ContinuousScreeningTriggerTypeObjectUpdated,
 		)
-
-		errAdded := usecase.taskEnqueuer.EnqueueContinuousScreeningDoScreeningTaskMany(
-			ctx,
-			tx,
-			organizationId,
-			table.Name,
-			enqueueAddedObjectUpdateTasks,
-			models.ContinuousScreeningTriggerTypeObjectAdded,
+		errRegister := usecase.taskEnqueuer.EnqueueContinuousScreeningRegisterObjectTaskMany(
+			ctx, tx, organizationId, table.Name,
+			enqueueRegisterTasks,
+			ingestionOptions.ShouldScreen,
 		)
-
-		return errors.Join(errUpdated, errAdded)
+		return errors.Join(errUpdated, errRegister)
 	})
-}
-
-func containsString(arr []string, s string) bool {
-	for _, a := range arr {
-		if a == s {
-			return true
-		}
-	}
-	return false
 }
 
 func parseStringValuesToMap(headers []string, values []string, table models.Table,
@@ -934,28 +939,7 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	var err error
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
 		ingestionResults, err = usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table)
-		if err != nil {
-			return err
-		}
-
-		if ingestionOptions.ShouldMonitor {
-			for _, object := range payloads {
-				for _, configId := range ingestionOptions.ContinuousScreeningIds {
-					if err := usecase.continuousScreeningClientRepository.InsertContinuousScreeningObject(
-						ctx,
-						tx,
-						table.Name,
-						object.Data["object_id"].(string),
-						configId,
-						true,
-					); err != nil {
-						return err
-					}
-				}
-			}
-		}
-
-		return nil
+		return err
 	})
 	if err != nil {
 		return nil, err

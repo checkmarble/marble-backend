@@ -85,6 +85,14 @@ type TaskQueueRepository interface {
 		enqueueObjectUpdateTasks []models.ContinuousScreeningEnqueueObjectUpdateTask,
 		triggerType models.ContinuousScreeningTriggerType,
 	) error
+	EnqueueContinuousScreeningRegisterObjectTaskMany(
+		ctx context.Context,
+		tx Transaction,
+		orgId uuid.UUID,
+		objectType string,
+		tasks []models.ContinuousScreeningRegisterObjectTask,
+		shouldScreen bool,
+	) error
 	EnqueueContinuousScreeningApplyDeltaFileTask(
 		ctx context.Context,
 		tx Transaction,
@@ -490,6 +498,48 @@ func (r riverRepository) EnqueueContinuousScreeningDoScreeningTaskMany(
 
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued continuous screening do screening tasks", "nb_tasks", res)
+	return nil
+}
+
+func (r riverRepository) EnqueueContinuousScreeningRegisterObjectTaskMany(
+	ctx context.Context,
+	tx Transaction,
+	orgId uuid.UUID,
+	objectType string,
+	tasks []models.ContinuousScreeningRegisterObjectTask,
+	shouldScreen bool,
+) error {
+	if len(tasks) == 0 {
+		return nil
+	}
+
+	params := make([]river.InsertManyParams, len(tasks))
+	for i, task := range tasks {
+		params[i] = river.InsertManyParams{
+			Args: models.ContinuousScreeningRegisterObjectArgs{
+				OrgId:          orgId,
+				ObjectType:     objectType,
+				ObjectId:       task.ObjectId,
+				ConfigStableId: task.ConfigStableId,
+				NewInternalId:  task.NewInternalId,
+				ShouldScreen:   shouldScreen,
+				UserId:         task.UserId,
+				ApiKeyId:       task.ApiKeyId,
+			},
+			InsertOpts: &river.InsertOpts{
+				Queue:    orgId.String(),
+				Priority: 4,
+			},
+		}
+	}
+
+	res, err := r.client.InsertManyFastTx(ctx, tx.RawTx(), params)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued continuous screening register object tasks", "nb_tasks", res)
 	return nil
 }
 

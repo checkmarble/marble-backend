@@ -145,6 +145,21 @@ func (ContinuousScreeningDoScreeningArgs) Kind() string {
 	return "continuous_screening_do_screening"
 }
 
+type ContinuousScreeningRegisterObjectArgs struct {
+	OrgId          uuid.UUID `json:"org_id"`
+	ObjectType     string    `json:"object_type"`
+	ObjectId       string    `json:"object_id"`
+	ConfigStableId uuid.UUID `json:"config_stable_id"`
+	NewInternalId  string    `json:"new_internal_id"`
+	ShouldScreen   bool      `json:"should_screen"`
+	UserId         *string   `json:"user_id,omitempty"`
+	ApiKeyId       *string   `json:"api_key_id,omitempty"`
+}
+
+func (ContinuousScreeningRegisterObjectArgs) Kind() string {
+	return "continuous_screening_register_object"
+}
+
 type ContinuousScreeningEvaluateNeedArgs struct {
 	OrgId      uuid.UUID `json:"org_id"`
 	ObjectType string    `json:"object_type"`
