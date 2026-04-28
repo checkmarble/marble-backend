@@ -165,9 +165,8 @@ func (usecase *IngestionUseCase) IngestObject(
 			return 0, err
 		}
 
-		if len(continuousScreeningConfigs) != len(ingestionOptions.ContinuousScreeningIds) {
-			return 0, errors.WithDetail(models.BadParameterError,
-				"not all provided continuous screening IDs exist")
+		if err := validateContinuousScreeningConfigs(continuousScreeningConfigs, ingestionOptions.ContinuousScreeningIds, table.Name); err != nil {
+			return 0, err
 		}
 	}
 
@@ -259,9 +258,8 @@ func (usecase *IngestionUseCase) IngestObjects(
 			return 0, err
 		}
 
-		if len(continuousScreeningConfigs) != len(ingestionOptions.ContinuousScreeningIds) {
-			return 0, errors.WithDetail(models.BadParameterError,
-				"not all provided continuous screening IDs exist")
+		if err := validateContinuousScreeningConfigs(continuousScreeningConfigs, ingestionOptions.ContinuousScreeningIds, table.Name); err != nil {
+			return 0, err
 		}
 	}
 
@@ -649,11 +647,8 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 			}
 		}
 
-		if len(continuousScreeningConfigs) != len(ingestionOptions.ContinuousScreeningIds) {
-			return ingestionResult{
-				err: errors.WithDetail(models.BadParameterError,
-					"not all provided continuous screening IDs exist"),
-			}
+		if err := validateContinuousScreeningConfigs(continuousScreeningConfigs, ingestionOptions.ContinuousScreeningIds, table.Name); err != nil {
+			return ingestionResult{err: err}
 		}
 	}
 
@@ -988,6 +983,20 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	}()
 
 	return ingestionResults, nil
+}
+
+func validateContinuousScreeningConfigs(configs []models.ContinuousScreeningConfig, configRequestedIds []uuid.UUID, objectType string) error {
+	if len(configs) != len(configRequestedIds) {
+		return errors.WithDetail(models.BadParameterError, "not all provided continuous screening IDs exist")
+	}
+	for _, cfg := range configs {
+		if !slices.Contains(cfg.ObjectTypes, objectType) {
+			return errors.WithDetailf(models.BadParameterError,
+				"continuous screening config %s is not configured for object type %s",
+				cfg.StableId, objectType)
+		}
+	}
+	return nil
 }
 
 func buildEnumValuesContainersFromTable(table models.Table) models.EnumValues {

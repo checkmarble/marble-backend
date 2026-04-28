@@ -2,6 +2,7 @@ package continuous_screening
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -183,6 +184,12 @@ func (w *RegisterObjectWorker) Work(ctx context.Context, job *river.Job[models.C
 	config, err := w.repo.GetContinuousScreeningConfigByStableId(ctx, exec, job.Args.ConfigStableId)
 	if err != nil {
 		return err
+	}
+
+	if !slices.Contains(config.ObjectTypes, job.Args.ObjectType) {
+		return river.JobCancel(errors.Newf(
+			"continuous screening config %s is not configured for object type %s",
+			job.Args.ConfigStableId, job.Args.ObjectType))
 	}
 
 	table, mapping, err := w.usecase.GetDataModelTableAndMapping(ctx, exec, config, job.Args.ObjectType)
