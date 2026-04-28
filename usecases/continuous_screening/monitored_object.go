@@ -551,6 +551,12 @@ func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 		return models.Case{}, err
 	}
 
+	caseUuid, err := uuid.Parse(newCase.Id)
+	if err != nil {
+		return models.Case{}, err
+	}
+	continuousScreeningWithMatches.CaseId = utils.Ptr(caseUuid)
+
 	if err := uc.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 		Id:             pure_utils.NewId().String(),
 		OrganizationId: newCase.OrganizationId,
