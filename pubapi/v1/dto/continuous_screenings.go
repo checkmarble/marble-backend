@@ -75,7 +75,7 @@ type ContinuousScreening struct {
 }
 
 func (ContinuousScreening) ApiVersion() string {
-	return "v1"
+	return "v1beta"
 }
 
 func AdaptContinuousScreening(m models.ContinuousScreeningWithMatches) ContinuousScreening {

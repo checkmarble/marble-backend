@@ -26,7 +26,7 @@ type Case struct {
 }
 
 func (Case) ApiVersion() string {
-	return "v1"
+	return "v1beta"
 }
 
 type CaseComment struct {
