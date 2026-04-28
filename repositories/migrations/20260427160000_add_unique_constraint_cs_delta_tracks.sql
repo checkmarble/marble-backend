@@ -1,5 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
+LOCK TABLE continuous_screening_delta_tracks IN SHARE MODE;
+
 DELETE FROM continuous_screening_delta_tracks a
 USING continuous_screening_delta_tracks b
 WHERE a.operation IN ('add', 'update')
