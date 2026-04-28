@@ -146,31 +146,9 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 			},
 		)
 	})
-	if err != nil {
-		if repositories.IsUniqueViolationError(err) {
-			return models.ContinuousScreeningWithMatches{}, errors.WithDetail(errors.Wrap(
-				models.ConflictError,
-				"object is already monitored with this configuration",
-			),
-				"object is already monitored with this configuration",
-			)
-		}
-		return models.ContinuousScreeningWithMatches{}, err
-	}
-
-	// ON CONFLICT DO NOTHING — idempotent if the object is already tracked by another config.
-	if err := uc.repository.CreateContinuousScreeningDeltaTrack(
-		ctx,
-		exec,
-		models.CreateContinuousScreeningDeltaTrack{
-			OrgId:            config.OrgId,
-			ObjectType:       input.ObjectType,
-			ObjectId:         objectId,
-			ObjectInternalId: &ingestedObjectInternalId,
-			EntityId:         pure_utils.MarbleEntityIdBuilder(input.ObjectType, objectId),
-			Operation:        models.DeltaTrackOperationAdd,
-		},
-	); err != nil {
+	// Ignore unique violation errors, let the screening proceed
+	// Multiple call to this function is idempotent
+	if err != nil && !repositories.IsUniqueViolationError(err) {
 		return models.ContinuousScreeningWithMatches{}, err
 	}
 
