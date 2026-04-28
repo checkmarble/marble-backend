@@ -18,14 +18,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// Before inserting an object into continuous screening table, we need to check if the table exists, create if not exists the continuous screening table and index
-// then insert the object into the list with the monitoring config ID.
-// 2 modes:
-//   - Provide the object ID of an ingested object and add it into the continuous screening list
-//   - Provide the object payload and ingest the object first then add it into the continuous screening list
-//
-// If the object already ingested and it is a new version, we will ignore the conflict error and consider the object as a new one and force the screening on the updated object.
-// The updated object should be ingested, we check if the object has been ingested before resume the continuous screening operation.
+// Add an already-ingested object to continuous screening under the given config (idempotent).
+// Registers it in the monitoring list within a client-DB transaction. An EnsureDeltaTrack job is enqueued in the same
+// transaction as a safety net against partial state between the two databases. Optionally runs an
+// immediate OpenSanctions screening
 func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 	ctx context.Context,
 	input models.CreateContinuousScreeningObject,
