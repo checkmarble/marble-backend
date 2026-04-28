@@ -147,7 +147,7 @@ func testContinuousScreeningAddAndDelete(t *testing.T, e *httpexpect.Expect) {
 
 	matches := resp.Value("matches").Array()
 	matches.Length().IsEqual(1)
-	matches.Value(0).Object().Value("opensanction_entity_id").IsEqual("sanctioned-entity-001")
+	matches.Value(0).Object().Value("screening_provider_entity_id").IsEqual("sanctioned-entity-001")
 
 	// Delete object from continuous screening monitoring
 	e.DELETE("/continuous-screenings/objects").

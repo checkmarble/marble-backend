@@ -274,7 +274,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 		})).Return([]models.CaseEvent{}, nil)
 	suite.webhookEventsUsecase.
 		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
-			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+			return in.EventContent.Type == models.WebhookEventType_ContinuousScreeningMatchReviewed
 		})).Return(nil)
 
 	// Execute
@@ -370,7 +370,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 	})).Return(models.CaseEvent{}, nil)
 	suite.webhookEventsUsecase.
 		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
-			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+			return in.EventContent.Type == models.WebhookEventType_ContinuousScreeningMatchReviewed
 		})).Return(nil)
 
 	// Execute
@@ -475,7 +475,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 		})).Return(nil)
 	suite.webhookEventsUsecase.
 		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
-			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+			return in.EventContent.Type == models.WebhookEventType_ContinuousScreeningMatchReviewed
 		})).Return(nil)
 
 	// Execute
@@ -586,7 +586,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 		})).Return(nil)
 	suite.webhookEventsUsecase.
 		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
-			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+			return in.EventContent.Type == models.WebhookEventType_ContinuousScreeningMatchReviewed
 		})).Return(nil)
 
 	// Execute
@@ -674,7 +674,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 	})).Return(models.CaseEvent{}, nil)
 	suite.webhookEventsUsecase.
 		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
-			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+			return in.EventContent.Type == models.WebhookEventType_ContinuousScreeningMatchReviewed
 		})).Return(nil)
 
 	// Execute
@@ -772,7 +772,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 	})).Return(models.CaseEvent{}, nil)
 	suite.webhookEventsUsecase.
 		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
-			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+			return in.EventContent.Type == models.WebhookEventType_ContinuousScreeningMatchReviewed
 		})).Return(nil)
 
 	uc := suite.makeUsecase()
@@ -867,7 +867,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 	})).Return(models.CaseEvent{}, nil)
 	suite.webhookEventsUsecase.
 		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
-			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+			return in.EventContent.Type == models.WebhookEventType_ContinuousScreeningMatchReviewed
 		})).Return(nil)
 
 	// Execute
@@ -951,7 +951,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 	})).Return(models.CaseEvent{}, nil)
 	suite.webhookEventsUsecase.
 		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
-			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+			return in.EventContent.Type == models.WebhookEventType_ContinuousScreeningMatchReviewed
 		})).Return(nil)
 	// Note: No UpdateContinuousScreeningStatus call expected because IsPartial is true
 	// Note: No ScreeningReviewed event expected because IsPartial prevents status change
@@ -1626,7 +1626,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	})).Return(models.CaseEvent{}, nil)
 	suite.webhookEventsUsecase.
 		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
-			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+			return in.EventContent.Type == models.WebhookEventType_ContinuousScreeningMatchReviewed
 		})).Return(nil)
 
 	// Execute
@@ -1726,7 +1726,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	})).Return(models.CaseEvent{}, nil)
 	suite.webhookEventsUsecase.
 		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
-			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+			return in.EventContent.Type == models.WebhookEventType_ContinuousScreeningMatchReviewed
 		})).Return(nil)
 
 	// Execute
@@ -1813,7 +1813,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	})).Return(models.CaseEvent{}, nil)
 	suite.webhookEventsUsecase.
 		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
-			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+			return in.EventContent.Type == models.WebhookEventType_ContinuousScreeningMatchReviewed
 		})).Return(nil)
 
 	// Execute
@@ -1912,7 +1912,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	})).Return(models.CaseEvent{}, nil)
 	suite.webhookEventsUsecase.
 		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
-			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+			return in.EventContent.Type == models.WebhookEventType_ContinuousScreeningMatchReviewed
 		})).Return(nil)
 
 	// Execute
@@ -2009,7 +2009,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	})).Return(models.CaseEvent{}, nil)
 	suite.webhookEventsUsecase.
 		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
-			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+			return in.EventContent.Type == models.WebhookEventType_ContinuousScreeningMatchReviewed
 		})).Return(nil)
 
 	// Execute
@@ -2091,7 +2091,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	})).Return(models.CaseEvent{}, nil)
 	suite.webhookEventsUsecase.
 		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
-			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+			return in.EventContent.Type == models.WebhookEventType_ContinuousScreeningMatchReviewed
 		})).Return(nil)
 
 	// Execute
@@ -2173,7 +2173,7 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	})).Return(models.CaseEvent{}, nil)
 	suite.webhookEventsUsecase.
 		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
-			return in.EventContent.Type == models.WebhookEventType_CaseContinuousScreeningMatchReviewed
+			return in.EventContent.Type == models.WebhookEventType_ContinuousScreeningMatchReviewed
 		})).Return(nil)
 
 	// Execute

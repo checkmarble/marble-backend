@@ -555,7 +555,6 @@ func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 		Id:             pure_utils.NewId().String(),
 		OrganizationId: newCase.OrganizationId,
 		EventContent: models.NewWebhookEventCaseCreatedFromContinuousScreening(
-			newCase,
 			continuousScreeningWithMatches,
 		),
 	}); err != nil {

@@ -22,6 +22,9 @@ func (p WebhookEventPayload) ApiVersion() string {
 	if p.Content.Case != nil {
 		return p.Content.Case.ApiVersion()
 	}
+	if p.Content.ContinuousScreening != nil {
+		return p.Content.ContinuousScreening.ApiVersion()
+	}
 
 	return "v1"
 }

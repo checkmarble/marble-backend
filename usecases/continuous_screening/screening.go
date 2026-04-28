@@ -180,9 +180,8 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			}
 		}
 
-		// Refresh screening and case so the webhook payload reflects post-review state
-		// (screening status may have flipped, pending matches may have been skipped,
-		// case status may have changed via PerformCaseActionSideEffects).
+		// Refresh screening so the webhook payload reflects post-review state
+		// (screening status may have flipped, pending matches may have been skipped).
 		refreshedScreening, err := uc.repository.GetContinuousScreeningWithMatchesById(
 			ctx, tx, continuousScreeningMatch.ContinuousScreeningId,
 		)
@@ -190,16 +189,12 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			return errors.Wrapf(err, "fetching refreshed screening %s",
 				continuousScreeningMatch.ContinuousScreeningId)
 		}
-		refreshedCase, err := uc.repository.GetCaseById(ctx, tx, refreshedScreening.CaseId.String())
-		if err != nil {
-			return errors.Wrapf(err, "fetching refreshed case %s", refreshedScreening.CaseId)
-		}
 
 		if err := uc.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             pure_utils.NewId().String(),
 			OrganizationId: refreshedScreening.OrgId,
 			EventContent: models.NewWebhookEventCaseContinuousScreeningMatchReviewed(
-				refreshedCase, refreshedScreening, updatedMatch,
+				refreshedScreening, updatedMatch,
 			),
 		}); err != nil {
 			return errors.Wrap(err, "creating webhook event")
