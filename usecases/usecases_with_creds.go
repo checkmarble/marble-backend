@@ -924,8 +924,8 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningRegisterObjectWorker() 
 	)
 }
 
-func (usecases *UsecasesWithCreds) NewContinuousScreeningVerifyDeltaTrackExistenceWorker() *continuous_screening.VerifyDeltaTrackExistenceWorker {
-	return continuous_screening.NewVerifyDeltaTrackExistenceWorker(
+func (usecases *UsecasesWithCreds) NewContinuousScreeningEnsureDeltaTrackWorker() *continuous_screening.EnsureDeltaTrackWorker {
+	return continuous_screening.NewEnsureDeltaTrackWorker(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.MarbleDbRepository,

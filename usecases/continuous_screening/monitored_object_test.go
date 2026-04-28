@@ -179,7 +179,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, suite.objectId, suite.configStableId).Return(uuid.New(), nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask",
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEnsureDeltaTrackTask",
 		mock.Anything, mock.Anything).Return(nil)
 
 	continuousScreeningId := pure_utils.NewId()
@@ -388,7 +388,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, suite.objectId, suite.configStableId).Return(uuid.Nil, &pgconn.PgError{
 		Code: pgerrcode.UniqueViolation,
 	})
-	// InsertContinuousScreeningAudit and EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask
+	// InsertContinuousScreeningAudit and EnqueueContinuousScreeningEnsureDeltaTrackTask
 	// are NOT called because the transaction fails at InsertContinuousScreeningObject.
 	suite.repository.On("SearchScreeningMatchWhitelist", mock.Anything, mock.Anything,
 		suite.orgId, mock.Anything, mock.Anything).Return([]models.ScreeningWhitelist{}, nil)
@@ -545,7 +545,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, suite.objectId, suite.configStableId).Return(uuid.New(), nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask",
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEnsureDeltaTrackTask",
 		mock.Anything, mock.Anything).Return(nil)
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
 		mock.Anything).Return(models.ContinuousScreeningWithMatches{
@@ -684,7 +684,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, suite.objectId, suite.configStableId).Return(uuid.New(), nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask",
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEnsureDeltaTrackTask",
 		mock.Anything, mock.Anything).Return(nil)
 
 	continuousScreeningId := pure_utils.NewId()
@@ -1262,7 +1262,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
 		suite.objectType, []string{suite.objectId}).Return(
 		[]models.ContinuousScreeningMonitoredObject{}, nil)
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask",
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEnsureDeltaTrackTask",
 		mock.Anything, mock.Anything).Return(nil)
 
 	continuousScreeningId := pure_utils.NewId()
@@ -1495,7 +1495,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, suite.objectId, suite.configStableId).Return(uuid.New(), nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask",
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEnsureDeltaTrackTask",
 		mock.Anything, mock.Anything).Return(nil)
 	continuousScreeningId := pure_utils.NewId()
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
@@ -1592,7 +1592,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectType, suite.objectId, suite.configStableId).Return(uuid.New(), nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
-	suite.taskQueueRepository.On("EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask",
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEnsureDeltaTrackTask",
 		mock.Anything, mock.Anything).Return(nil)
 
 	// Execute

@@ -133,9 +133,9 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 
 		// Enqueue a delayed verification job as a safety net: if the delta track insert below
 		// commits but the client-DB tx rolled back (or vice versa), the verify worker repairs it.
-		return uc.taskQueueRepository.EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask(
+		return uc.taskQueueRepository.EnqueueContinuousScreeningEnsureDeltaTrackTask(
 			ctx,
-			models.ContinuousScreeningVerifyDeltaTrackExistenceArgs{
+			models.ContinuousScreeningEnsureDeltaTrackArgs{
 				OrgId:             config.OrgId,
 				ObjectType:        input.ObjectType,
 				ObjectId:          objectId,

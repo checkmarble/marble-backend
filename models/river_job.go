@@ -160,7 +160,7 @@ func (ContinuousScreeningRegisterObjectArgs) Kind() string {
 	return "continuous_screening_register_object"
 }
 
-type ContinuousScreeningVerifyDeltaTrackExistenceArgs struct {
+type ContinuousScreeningEnsureDeltaTrackArgs struct {
 	OrgId             uuid.UUID           `json:"org_id"`
 	ObjectType        string              `json:"object_type"`
 	ObjectId          string              `json:"object_id"`
@@ -170,8 +170,8 @@ type ContinuousScreeningVerifyDeltaTrackExistenceArgs struct {
 	Operation         DeltaTrackOperation `json:"operation"`
 }
 
-func (ContinuousScreeningVerifyDeltaTrackExistenceArgs) Kind() string {
-	return "continuous_screening_verify_delta_track_existence"
+func (ContinuousScreeningEnsureDeltaTrackArgs) Kind() string {
+	return "continuous_screening_ensure_delta_track"
 }
 
 type ContinuousScreeningEvaluateNeedArgs struct {

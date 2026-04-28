@@ -120,9 +120,9 @@ func (m *TaskQueueRepository) EnqueueContinuousScreeningRegisterObjectTaskMany(
 	return args.Error(0)
 }
 
-func (m *TaskQueueRepository) EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask(
+func (m *TaskQueueRepository) EnqueueContinuousScreeningEnsureDeltaTrackTask(
 	ctx context.Context,
-	args models.ContinuousScreeningVerifyDeltaTrackExistenceArgs,
+	args models.ContinuousScreeningEnsureDeltaTrackArgs,
 ) error {
 	return m.Called(ctx, args).Error(0)
 }

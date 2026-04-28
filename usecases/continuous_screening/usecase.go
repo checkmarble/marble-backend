@@ -187,9 +187,9 @@ type continuousScreeningTaskQueueRepository interface {
 		organizationId uuid.UUID,
 		continuousScreeningId uuid.UUID,
 	) error
-	EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask(
+	EnqueueContinuousScreeningEnsureDeltaTrackTask(
 		ctx context.Context,
-		args models.ContinuousScreeningVerifyDeltaTrackExistenceArgs,
+		args models.ContinuousScreeningEnsureDeltaTrackArgs,
 	) error
 }
 

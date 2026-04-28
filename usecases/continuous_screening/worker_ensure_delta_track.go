@@ -13,7 +13,7 @@ import (
 	"github.com/riverqueue/river"
 )
 
-type verifyDeltaTrackExistenceWorkerRepository interface {
+type ensureDeltaTrackWorkerRepository interface {
 	GetLatestContinuousScreeningDeltaTrack(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -27,7 +27,7 @@ type verifyDeltaTrackExistenceWorkerRepository interface {
 	) error
 }
 
-type verifyDeltaTrackExistenceWorkerClientDbRepository interface {
+type ensureDeltaTrackWorkerClientDbRepository interface {
 	GetMonitoredObject(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -35,27 +35,27 @@ type verifyDeltaTrackExistenceWorkerClientDbRepository interface {
 	) (models.ContinuousScreeningMonitoredObject, error)
 }
 
-// VerifyDeltaTrackExistenceWorker is the safety net for RegisterObjectWorker. It runs ~5 min
-// after a registration and re-creates the Add delta track if the original cross-DB sequence
+// EnsureDeltaTrackWorker is the safety net for RegisterObjectWorker. It runs ~5 min
+// after a registration and creates the Add delta track if the original cross-DB sequence
 // (client-DB monitored_object insert + marble-DB delta track insert) committed the first half
 // but failed the second half. The marble-DB read of the latest delta track and the recovery
 // insert run in a single transaction so a concurrent writer can't slip in between.
-type VerifyDeltaTrackExistenceWorker struct {
-	river.WorkerDefaults[models.ContinuousScreeningVerifyDeltaTrackExistenceArgs]
+type EnsureDeltaTrackWorker struct {
+	river.WorkerDefaults[models.ContinuousScreeningEnsureDeltaTrackArgs]
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
 
-	repo         verifyDeltaTrackExistenceWorkerRepository
-	clientDbRepo verifyDeltaTrackExistenceWorkerClientDbRepository
+	repo         ensureDeltaTrackWorkerRepository
+	clientDbRepo ensureDeltaTrackWorkerClientDbRepository
 }
 
-func NewVerifyDeltaTrackExistenceWorker(
+func NewEnsureDeltaTrackWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
-	repo verifyDeltaTrackExistenceWorkerRepository,
-	clientDbRepo verifyDeltaTrackExistenceWorkerClientDbRepository,
-) *VerifyDeltaTrackExistenceWorker {
-	return &VerifyDeltaTrackExistenceWorker{
+	repo ensureDeltaTrackWorkerRepository,
+	clientDbRepo ensureDeltaTrackWorkerClientDbRepository,
+) *EnsureDeltaTrackWorker {
+	return &EnsureDeltaTrackWorker{
 		executorFactory:    executorFactory,
 		transactionFactory: transactionFactory,
 		repo:               repo,
@@ -63,13 +63,13 @@ func NewVerifyDeltaTrackExistenceWorker(
 	}
 }
 
-func (w *VerifyDeltaTrackExistenceWorker) Timeout(_ *river.Job[models.ContinuousScreeningVerifyDeltaTrackExistenceArgs]) time.Duration {
+func (w *EnsureDeltaTrackWorker) Timeout(_ *river.Job[models.ContinuousScreeningEnsureDeltaTrackArgs]) time.Duration {
 	return time.Minute
 }
 
-func (w *VerifyDeltaTrackExistenceWorker) Work(
+func (w *EnsureDeltaTrackWorker) Work(
 	ctx context.Context,
-	job *river.Job[models.ContinuousScreeningVerifyDeltaTrackExistenceArgs],
+	job *river.Job[models.ContinuousScreeningEnsureDeltaTrackArgs],
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 
@@ -106,7 +106,7 @@ func (w *VerifyDeltaTrackExistenceWorker) Work(
 			return nil
 		}
 
-		logger.WarnContext(ctx, "Continuous Screening - verify: delta track missing, recreating",
+		logger.DebugContext(ctx, "Continuous Screening - verify: delta track missing, recreating",
 			"org_id", job.Args.OrgId,
 			"object_type", job.Args.ObjectType,
 			"object_id", job.Args.ObjectId,

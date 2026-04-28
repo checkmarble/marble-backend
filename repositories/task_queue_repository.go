@@ -93,9 +93,9 @@ type TaskQueueRepository interface {
 		tasks []models.ContinuousScreeningRegisterObjectTask,
 		shouldScreen bool,
 	) error
-	EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask(
+	EnqueueContinuousScreeningEnsureDeltaTrackTask(
 		ctx context.Context,
-		args models.ContinuousScreeningVerifyDeltaTrackExistenceArgs,
+		args models.ContinuousScreeningEnsureDeltaTrackArgs,
 	) error
 	EnqueueContinuousScreeningApplyDeltaFileTask(
 		ctx context.Context,
@@ -547,14 +547,13 @@ func (r riverRepository) EnqueueContinuousScreeningRegisterObjectTaskMany(
 	return nil
 }
 
-// EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask enqueues a delayed verification job
-// that re-creates a missing Add delta track if the original RegisterObjectWorker failed to
-// commit it. The enqueue runs against the marble pool directly (no client tx participation):
-// callers should invoke it inside the client-DB tx that creates the monitored_object so a
-// failed enqueue rolls back the registration.
-func (r riverRepository) EnqueueContinuousScreeningVerifyDeltaTrackExistenceTask(
+// EnqueueContinuousScreeningEnsureDeltaTrackTask enqueues a delayed job that creates a missing
+// Add delta track if the original RegisterObjectWorker failed to commit it. The enqueue runs
+// against the marble pool directly (no client tx participation): callers should invoke it inside
+// the client-DB tx that creates the monitored_object so a failed enqueue rolls back the registration.
+func (r riverRepository) EnqueueContinuousScreeningEnsureDeltaTrackTask(
 	ctx context.Context,
-	args models.ContinuousScreeningVerifyDeltaTrackExistenceArgs,
+	args models.ContinuousScreeningEnsureDeltaTrackArgs,
 ) error {
 	res, err := r.client.Insert(ctx, args, &river.InsertOpts{
 		Queue:       args.OrgId.String(),
