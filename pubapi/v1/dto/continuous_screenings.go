@@ -35,15 +35,15 @@ func filterMatchPayload(raw json.RawMessage) json.RawMessage {
 }
 
 type ContinuousScreeningMatch struct {
-	Id                        uuid.UUID       `json:"id"`
-	ScreeningProviderEntityId *string         `json:"screening_provider_entity_id"`
-	ObjectType                *string         `json:"object_type"`
-	ObjectId                  *string         `json:"object_id"`
-	Status                    string          `json:"status"`
-	Payload                   json.RawMessage `json:"payload"`
-	ReviewedBy                *uuid.UUID      `json:"reviewed_by,omitempty"`
-	CreatedAt                 types.DateTime  `json:"created_at"`
-	UpdatedAt                 types.DateTime  `json:"updated_at"`
+	Id                   uuid.UUID       `json:"id"`
+	ListProviderEntityId *string         `json:"list_provider_entity_id"`
+	ObjectType           *string         `json:"object_type"`
+	ObjectId             *string         `json:"object_id"`
+	Status               string          `json:"status"`
+	Payload              json.RawMessage `json:"payload"`
+	ReviewedBy           *uuid.UUID      `json:"reviewed_by,omitempty"`
+	CreatedAt            types.DateTime  `json:"created_at"`
+	UpdatedAt            types.DateTime  `json:"updated_at"`
 }
 
 func AdaptContinuousScreeningMatch(
@@ -61,7 +61,7 @@ func AdaptContinuousScreeningMatch(
 
 	switch triggerType {
 	case models.ContinuousScreeningTriggerTypeObjectAdded, models.ContinuousScreeningTriggerTypeObjectUpdated:
-		dto.ScreeningProviderEntityId = utils.Ptr(m.OpenSanctionEntityId)
+		dto.ListProviderEntityId = utils.Ptr(m.OpenSanctionEntityId)
 	case models.ContinuousScreeningTriggerTypeDatasetUpdated:
 		if m.Metadata != nil {
 			dto.ObjectType = utils.Ptr(m.Metadata.ObjectType)
@@ -78,7 +78,7 @@ type ContinuousScreening struct {
 	CaseId                            *uuid.UUID                 `json:"case_id"`
 	ObjectType                        *string                    `json:"object_type"`
 	ObjectId                          *string                    `json:"object_id"`
-	ScreeningProviderEntityId         *string                    `json:"screening_provider_entity_id"`
+	ListProviderEntityId              *string                    `json:"list_provider_entity_id"`
 	Status                            string                     `json:"status"`
 	TriggerType                       string                     `json:"trigger_type"`
 	Partial                           bool                       `json:"partial"`
@@ -99,7 +99,7 @@ func AdaptContinuousScreening(m models.ContinuousScreeningWithMatches) Continuou
 		CaseId:                            m.CaseId,
 		ObjectType:                        m.ObjectType,
 		ObjectId:                          m.ObjectId,
-		ScreeningProviderEntityId:         m.OpenSanctionEntityId,
+		ListProviderEntityId:              m.OpenSanctionEntityId,
 		Status:                            m.Status.String(),
 		TriggerType:                       m.TriggerType.String(),
 		Partial:                           m.IsPartial,
