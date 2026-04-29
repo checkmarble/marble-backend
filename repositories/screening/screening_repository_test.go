@@ -1,4 +1,4 @@
-package repositories
+package screening
 
 import (
 	"context"
@@ -32,7 +32,7 @@ func getMockedOpenSanctionsRepository(host, authMethod, apiKey string) OpenSanct
 		Reply(http.StatusNotFound)
 
 	return OpenSanctionsRepository{
-		opensanctions: infra.InitializeOpenSanctions(context.TODO(), client, host, authMethod, apiKey),
+		Config: infra.InitializeScreening(context.TODO(), client, host, authMethod, apiKey),
 	}
 }
 
