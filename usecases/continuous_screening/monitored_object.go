@@ -548,12 +548,12 @@ func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 		false,
 	)
 	if err != nil {
-		return models.Case{}, err
+		return models.Case{}, errors.Wrap(err, "create case")
 	}
 
 	caseUuid, err := uuid.Parse(newCase.Id)
 	if err != nil {
-		return models.Case{}, err
+		return models.Case{}, errors.Wrap(err, "parse case UUID")
 	}
 	continuousScreeningWithMatches.CaseId = utils.Ptr(caseUuid)
 
@@ -564,7 +564,7 @@ func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 			continuousScreeningWithMatches,
 		),
 	}); err != nil {
-		return models.Case{}, err
+		return models.Case{}, errors.Wrap(err, "send webhook event for case")
 	}
 
 	return newCase, nil
