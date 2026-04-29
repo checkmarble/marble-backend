@@ -36,6 +36,11 @@ func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
 			q.Params.ExcludeEntityIds = query.WhitelistedEntityIds
 		}
 
+		// Lexis Nexis needs its datasets as a programId filter.
+		if len(query.Config.Datasets) > 0 {
+			q.Params.Filters["programId"] = [][]string{query.Config.Datasets}
+		}
+
 		for field, predicates := range query.Filters {
 			q.Params.Filters[field] = make([][]string, len(predicates))
 
