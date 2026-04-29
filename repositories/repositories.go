@@ -7,6 +7,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/infra"
 	lago_repository "github.com/checkmarble/marble-backend/repositories/lago"
+	"github.com/checkmarble/marble-backend/repositories/screening"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
@@ -19,7 +20,7 @@ type options struct {
 	redisClient          *RedisClient
 	convoyClientProvider ConvoyClientProvider
 	convoyRateLimit      int
-	openSanctions        infra.OpenSanctions
+	openSanctions        infra.Screening
 	riverClient          *river.Client[pgx.Tx]
 	tp                   trace.TracerProvider
 	bigQueryInfra        *infra.BigQueryInfra
@@ -57,7 +58,7 @@ func WithConvoyClientProvider(convoyResources ConvoyClientProvider, convoyRateLi
 	}
 }
 
-func WithOpenSanctions(openSanctionsConfig infra.OpenSanctions) Option {
+func WithOpenSanctions(openSanctionsConfig infra.Screening) Option {
 	return func(o *options) {
 		o.openSanctions = openSanctionsConfig
 	}
@@ -119,7 +120,7 @@ type Repositories struct {
 	CustomListRepository          CustomListRepository
 	UploadLogRepository           UploadLogRepository
 	MarbleAnalyticsRepository     MarbleAnalyticsRepository
-	OpenSanctionsRepository       OpenSanctionsRepository
+	OpenSanctionsRepository       screening.OpenSanctionsRepository
 	NameRecognitionRepository     NameRecognitionRepository
 	TaskQueueRepository           TaskQueueRepository
 	MetricsIngestionRepository    MetricsIngestionRepository
@@ -165,8 +166,8 @@ func NewRepositories(
 		MarbleAnalyticsRepository: MarbleAnalyticsRepository{
 			metabase: options.metabase,
 		},
-		OpenSanctionsRepository: OpenSanctionsRepository{
-			opensanctions: options.openSanctions,
+		OpenSanctionsRepository: screening.OpenSanctionsRepository{
+			Config: options.openSanctions,
 		},
 		NameRecognitionRepository: NameRecognitionRepository{
 			NameRecognitionProvider: options.openSanctions.NameRecognition(),

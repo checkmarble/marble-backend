@@ -19,6 +19,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/repositories/screening"
 	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -97,7 +98,7 @@ type DecisionUsecase struct {
 	webhookEventsSender       webhookEventsUsecase
 	phantomUseCase            decision_phantom.PhantomDecisionUsecase
 	scenarioEvaluator         ScenarioEvaluator
-	openSanctionsRepository   repositories.OpenSanctionsRepository
+	openSanctionsRepository   screening.OpenSanctionsRepository
 	taskQueueRepository       repositories.TaskQueueRepository
 	payloadEnricher           payload_parser.PayloadEnrichementUsecase
 }

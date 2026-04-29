@@ -60,6 +60,7 @@ type OpenSanctionsQuery struct {
 	// cf: `exclude_entity_ids` in the OpenSanctions query
 	WhitelistedEntityIds []string
 	UseScopedIndex       bool
+	Filters              map[string][][]string
 }
 
 type OpenSanctionsCheckQuery struct {

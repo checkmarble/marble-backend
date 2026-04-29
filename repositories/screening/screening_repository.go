@@ -1,11 +1,9 @@
-package repositories
+package screening
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -13,7 +11,6 @@ import (
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -40,6 +37,11 @@ type HTTPError struct {
 	Message    string
 }
 
+type ScreeningProvider interface {
+	BuildQueryString(ctx context.Context, cfg *models.ScreeningConfig, query *models.OpenSanctionsQuery) url.Values
+	SearchRequest(ctx context.Context, query *models.OpenSanctionsQuery) (*http.Request, []byte, error)
+}
+
 func (e *HTTPError) Error() string {
 	return fmt.Sprintf("screening API returned status %d: %s", e.StatusCode, e.Message)
 }
@@ -54,7 +56,7 @@ func (e *HTTPError) IsTransient() bool {
 }
 
 type OpenSanctionsRepository struct {
-	opensanctions infra.OpenSanctions
+	Config infra.Screening
 }
 
 type openSanctionsRequest struct {
@@ -63,9 +65,10 @@ type openSanctionsRequest struct {
 }
 
 type motivaRequestParams struct {
-	IncludeDatasets  []string `json:"include_datasets"`
-	ExcludeDatasets  []string `json:"exclude_datasets"`
-	ExcludeEntityIds []string `json:"exclude_entity_ids"`
+	IncludeDatasets  []string              `json:"include_datasets"`
+	ExcludeDatasets  []string              `json:"exclude_datasets"`
+	ExcludeEntityIds []string              `json:"exclude_entity_ids"`
+	Filters          map[string][][]string `json:"filters"`
 }
 
 type openSanctionsRequestQuery struct {
@@ -74,11 +77,11 @@ type openSanctionsRequestQuery struct {
 }
 
 func (repo OpenSanctionsRepository) IsSelfHosted(ctx context.Context) bool {
-	return repo.opensanctions.IsSelfHosted()
+	return repo.Config.IsSelfHosted("opensanctions")
 }
 
 func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, error) {
-	if ok, err := repo.opensanctions.IsConfigured(); !ok {
+	if ok, err := repo.Config.IsConfigured(); !ok {
 		utils.LoggerFromContext(ctx).WarnContext(ctx,
 			"open sanction is not misconfigured", "error", err)
 
@@ -89,7 +92,7 @@ func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, err
 		}
 	}
 
-	catalogUrl := fmt.Sprintf("%s/readyz", repo.opensanctions.Host())
+	catalogUrl := fmt.Sprintf("%s/readyz", repo.Config.Host("opensanctions"))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
 	if err != nil {
@@ -103,7 +106,7 @@ func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, err
 		}
 	}
 
-	resp, err := repo.opensanctions.Client().Do(req)
+	resp, err := repo.Config.Client().Do(req)
 	if err != nil {
 		utils.LoggerFromContext(ctx).WarnContext(ctx,
 			"OpenSanctions healthcheck returned an error", "error", err)
@@ -130,13 +133,13 @@ func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, err
 }
 
 func (repo OpenSanctionsRepository) GetRawCatalog(ctx context.Context) (models.OpenSanctionsRawCatalog, error) {
-	catalogUrl := fmt.Sprintf("%s/catalog", repo.opensanctions.Host())
+	catalogUrl := fmt.Sprintf("%s/catalog", repo.Config.Host("opensanctions"))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
 	if err != nil {
 		return models.OpenSanctionsRawCatalog{}, err
 	}
-	resp, err := repo.opensanctions.Client().Do(req)
+	resp, err := repo.Config.Client().Do(req)
 	if err != nil {
 		return models.OpenSanctionsRawCatalog{}, err
 	}
@@ -159,14 +162,14 @@ func (repo OpenSanctionsRepository) GetCatalog(ctx context.Context) (models.Open
 		return cached, nil
 	}
 
-	catalogUrl := fmt.Sprintf("%s/catalog", repo.opensanctions.Host())
+	catalogUrl := fmt.Sprintf("%s/catalog", repo.Config.Host("opensanctions"))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
 	if err != nil {
 		return models.OpenSanctionsCatalog{}, err
 	}
 
-	resp, err := repo.opensanctions.Client().Do(req)
+	resp, err := repo.Config.Client().Do(req)
 	if err != nil {
 		return models.OpenSanctionsCatalog{}, err
 	}
@@ -198,7 +201,7 @@ func (repo OpenSanctionsRepository) GetLatestUpstreamDatasetFreshness(ctx contex
 		return models.OpenSanctionsUpstreamDatasetFreshness{}, err
 	}
 
-	resp, err := repo.opensanctions.Client().Do(req)
+	resp, err := repo.Config.Client().Do(req)
 	if err != nil {
 		return models.OpenSanctionsUpstreamDatasetFreshness{}, err
 	}
@@ -224,7 +227,7 @@ func (repo OpenSanctionsRepository) GatherTags(ctx context.Context) error {
 		return err
 	}
 
-	resp, err := repo.opensanctions.Client().Do(req)
+	resp, err := repo.Config.Client().Do(req)
 	if err != nil {
 		return err
 	}
@@ -251,13 +254,13 @@ func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context) (
 			errors.Wrap(err, "could not retrieve upstream dataset")
 	}
 
-	u := fmt.Sprintf("%s/catalog", repo.opensanctions.Host())
+	u := fmt.Sprintf("%s/catalog", repo.Config.Host("opensanctions"))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return models.OpenSanctionsDatasetFreshness{}, err
 	}
 
-	resp, err := repo.opensanctions.Client().Do(req)
+	resp, err := repo.Config.Client().Do(req)
 	if err != nil {
 		return models.OpenSanctionsDatasetFreshness{}, err
 	}
@@ -290,12 +293,12 @@ func (repo OpenSanctionsRepository) GetAlgorithms(ctx context.Context) (models.O
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		fmt.Sprintf("%s/algorithms", repo.opensanctions.Host()), nil)
+		fmt.Sprintf("%s/algorithms", repo.Config.Host("opensanctions")), nil)
 	if err != nil {
 		return models.OpenSanctionAlgorithms{}, err
 	}
 
-	resp, err := repo.opensanctions.Client().Do(req)
+	resp, err := repo.Config.Client().Do(req)
 	if err != nil {
 		return models.OpenSanctionAlgorithms{}, err
 	}
@@ -316,18 +319,28 @@ func (repo OpenSanctionsRepository) GetAlgorithms(ctx context.Context) (models.O
 	return modelAlgorithms, nil
 }
 
+func (repo OpenSanctionsRepository) GetProvider() ScreeningProvider {
+	// TODO: return depending on configuration
+	// return ScreeningOpenSanctionsProvider{Config: repo.Config}
+	return ScreeningLexisNexisProvider{Config: repo.Config}
+}
+
 func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.OpenSanctionsQuery) (models.ScreeningRawSearchResponseWithMatches, error) {
+	provider := repo.GetProvider()
+
 	ctx, span := utils.OpenTelemetryTracerFromContext(ctx).Start(ctx, "yente-request")
 	defer span.End()
 
-	req, rawQuery, err := repo.searchRequest(ctx, &query)
+	req, rawQuery, err := provider.SearchRequest(ctx, &query)
 	if err != nil {
 		return models.ScreeningRawSearchResponseWithMatches{}, err
 	}
 
+	repo.authenticateRequest(req)
+
 	startedAt := time.Now()
 
-	resp, err := repo.opensanctions.Client().Do(req)
+	resp, err := repo.Config.Client().Do(req)
 
 	span.End()
 
@@ -369,9 +382,10 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, query models.Ope
 }
 
 func (repo OpenSanctionsRepository) EnrichMatch(ctx context.Context, match models.ScreeningMatch) ([]byte, error) {
-	requestUrl := fmt.Sprintf("%s/entities/%s", repo.opensanctions.Host(), match.EntityId)
+	provider := repo.GetProvider()
+	requestUrl := fmt.Sprintf("%s/entities/%s", repo.Config.Host("opensanctions"), match.EntityId)
 
-	if qs := repo.buildQueryString(ctx, nil, nil); len(qs) > 0 {
+	if qs := provider.BuildQueryString(ctx, nil, nil); len(qs) > 0 {
 		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())
 	}
 
@@ -382,7 +396,7 @@ func (repo OpenSanctionsRepository) EnrichMatch(ctx context.Context, match model
 
 	repo.authenticateRequest(req)
 
-	resp, err := repo.opensanctions.Client().Do(req)
+	resp, err := repo.Config.Client().Do(req)
 	if err != nil {
 		return nil,
 			errors.Wrap(err, "could not enrich screening match")
@@ -409,113 +423,15 @@ func (repo OpenSanctionsRepository) EnrichMatch(ctx context.Context, match model
 	return newMatch, nil
 }
 
-func (repo OpenSanctionsRepository) authenticateRequest(req *http.Request) {
-	if repo.opensanctions.IsSelfHosted() {
-		switch repo.opensanctions.AuthMethod() {
-		case infra.OPEN_SANCTIONS_AUTH_BEARER:
-			req.Header.Set("authorization", "Bearer "+repo.opensanctions.Credentials())
-		case infra.OPEN_SANCTIONS_AUTH_BASIC:
-			u, p, _ := strings.Cut(repo.opensanctions.Credentials(), ":")
+func (p OpenSanctionsRepository) authenticateRequest(req *http.Request) {
+	if p.Config.IsSelfHosted("opensanctions") {
+		switch p.Config.AuthMethod() {
+		case infra.SCREENING_AUTH_BEARER:
+			req.Header.Set("authorization", "Bearer "+p.Config.Credentials())
+		case infra.SCREENING_AUTH_BASIC:
+			u, p, _ := strings.Cut(p.Config.Credentials(), ":")
 
 			req.SetBasicAuth(u, p)
 		}
 	}
-}
-
-func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
-	query *models.OpenSanctionsQuery,
-) (*http.Request, []byte, error) {
-	q := openSanctionsRequest{
-		Queries: make(map[string]openSanctionsRequestQuery, len(query.Queries)),
-	}
-
-	if repo.opensanctions.MotivaFeatures(ctx).BodyParams {
-		q.Params = &motivaRequestParams{}
-
-		if len(query.Config.Datasets) > 0 {
-			q.Params.IncludeDatasets = query.Config.Datasets
-		}
-		if len(query.WhitelistedEntityIds) > 0 {
-			q.Params.ExcludeEntityIds = query.WhitelistedEntityIds
-		}
-	}
-
-	for _, subquery := range query.Queries {
-		q.Queries[pure_utils.NewId().String()] = openSanctionsRequestQuery{
-			Schema:     subquery.Type,
-			Properties: subquery.Filters,
-		}
-	}
-
-	scope := repo.opensanctions.Scope()
-	if query.Scope != "" {
-		scope = query.Scope
-	}
-
-	var body, rawQuery bytes.Buffer
-
-	if err := json.NewEncoder(io.MultiWriter(&body, &rawQuery)).Encode(q); err != nil {
-		return nil, nil, errors.Wrap(err,
-			"could not parse OpenSanctions response")
-	}
-
-	requestUrl := fmt.Sprintf("%s/match/%s", repo.opensanctions.Host(), scope)
-
-	if qs := repo.buildQueryString(ctx, &query.Config, query); len(qs) > 0 {
-		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestUrl, &body)
-	req.Header.Set("content-type", "application/json")
-
-	repo.authenticateRequest(req)
-
-	return req, rawQuery.Bytes(), err
-}
-
-func (repo OpenSanctionsRepository) buildQueryString(ctx context.Context,
-	cfg *models.ScreeningConfig, query *models.OpenSanctionsQuery,
-) url.Values {
-	qs := url.Values{}
-
-	if repo.opensanctions.AuthMethod() == infra.OPEN_SANCTIONS_AUTH_SAAS &&
-		len(repo.opensanctions.Credentials()) > 0 {
-		qs.Set("api_key", repo.opensanctions.Credentials())
-	}
-
-	if !repo.opensanctions.MotivaFeatures(ctx).BodyParams && cfg != nil && len(cfg.Datasets) > 0 {
-		qs["include_dataset"] = cfg.Datasets
-	}
-
-	qs.Set("algorithm", repo.opensanctions.Algorithm())
-
-	if query != nil {
-		if repo.opensanctions.MotivaFeatures(ctx).ScopedIndex && query.UseScopedIndex {
-			qs.Set("index_type", "scoped")
-		}
-
-		query.EffectiveThreshold = utils.Or(query.Config.Threshold, query.OrgConfig.MatchThreshold)
-
-		// Unless determined otherwise, we do not need those results that are *not*
-		// matches. They could still be filtered further down the chain, but we do not need them returned.
-		qs.Set("threshold", fmt.Sprintf("%.2f", float64(query.EffectiveThreshold)/100))
-		qs.Set("cutoff", fmt.Sprintf("%.2f", float64(query.EffectiveThreshold)/100))
-
-		if query.LimitOverride != nil {
-			qs.Set("limit", fmt.Sprintf("%d", *query.LimitOverride))
-		} else {
-			qs.Set("limit", fmt.Sprintf("%d", query.OrgConfig.MatchLimit))
-		}
-
-		// cf: `exclude_entity_ids` in the OpenSanctions query
-		// cf: https://api.opensanctions.org/#tag/Matching/operation/match_match__dataset__post
-		// exclude_entity_ids is a global filter that is applied to all queries and the list is limited to 50 elements.
-		// For our use, we think this is enough, in case we need to add more, we need to think about how to handle it.
-		if !repo.opensanctions.MotivaFeatures(ctx).BodyParams && len(query.WhitelistedEntityIds) > 0 {
-			qs["exclude_entity_ids"] = query.WhitelistedEntityIds[:min(
-				OPEN_SANCTIONS_MAX_EXCLUDE_ENTITY_IDS, len(query.WhitelistedEntityIds))]
-		}
-	}
-
-	return qs
 }

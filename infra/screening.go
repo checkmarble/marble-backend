@@ -18,26 +18,32 @@ const (
 	OPEN_SANCTIONS_API_HOST = "https://api.opensanctions.org"
 )
 
-type OpenSanctionsAuthMethod int
+type ScreeningAuthMethod int
 
 const (
-	OPEN_SANCTIONS_AUTH_SAAS OpenSanctionsAuthMethod = iota
-	OPEN_SANCTIONS_AUTH_BEARER
-	OPEN_SANCTIONS_AUTH_BASIC
+	SCREENING_AUTH_SAAS ScreeningAuthMethod = iota
+	SCREENING_AUTH_BEARER
+	SCREENING_AUTH_BASIC
 )
 
-type OpenSanctions struct {
-	client      *http.Client
-	host        string
-	authMethod  OpenSanctionsAuthMethod
+type Screening struct {
+	client *http.Client
+
+	providers map[string]*ScreeningProvider
+
+	authMethod  ScreeningAuthMethod
 	credentials string
 	algorithm   string
-	scope       string
 
 	motivaFeatureSemaphore *singleflight.Group
 	motivaFeatures         *atomic.Pointer[MotivaFeatures]
 
 	nameRecognition *NameRecognitionProvider
+}
+
+type ScreeningProvider struct {
+	host  string
+	scope string
 }
 
 type NameRecognitionProvider struct {
@@ -50,44 +56,59 @@ type MotivaFeatures struct {
 	ScopedIndex bool
 }
 
-func InitializeOpenSanctions(ctx context.Context, client *http.Client, host, authMethod, creds string) OpenSanctions {
-	os := OpenSanctions{
+func InitializeScreening(ctx context.Context, client *http.Client, host, authMethod, creds string) Screening {
+	os := Screening{
 		client:                 client,
-		host:                   host,
+		providers:              map[string]*ScreeningProvider{},
 		credentials:            creds,
 		algorithm:              "logic-v1",
-		scope:                  "default",
 		motivaFeatures:         &atomic.Pointer[MotivaFeatures]{},
 		motivaFeatureSemaphore: &singleflight.Group{},
 	}
 
+	if host != "" {
+		os.providers["opensanctions"] = &ScreeningProvider{
+			host:  host,
+			scope: "default",
+		}
+	}
+
 	os.MotivaFeatures(ctx)
 
-	if os.IsSelfHosted() {
+	if os.IsSelfHosted("opensanctions") {
 		switch authMethod {
 		case "bearer":
-			os.authMethod = OPEN_SANCTIONS_AUTH_BEARER
+			os.authMethod = SCREENING_AUTH_BEARER
 		case "basic":
-			os.authMethod = OPEN_SANCTIONS_AUTH_BASIC
+			os.authMethod = SCREENING_AUTH_BASIC
 		}
 	}
 
 	return os
 }
 
-func (os *OpenSanctions) WithAlgorithm(algo string) *OpenSanctions {
+func (os *Screening) WithAlgorithm(algo string) *Screening {
 	os.algorithm = algo
 
 	return os
 }
 
-func (os *OpenSanctions) WithScope(scope string) *OpenSanctions {
-	os.scope = scope
+func (os *Screening) WithScope(scope string) *Screening {
+	os.providers["opensanctions"].scope = scope
 
 	return os
 }
 
-func (os *OpenSanctions) WithNameRecognition(apiUrl, apiKey string) *OpenSanctions {
+func (os *Screening) WithLexisNexisHost(host string) *Screening {
+	os.providers["lexisnexis"] = &ScreeningProvider{
+		host:  host,
+		scope: "lexisnexis",
+	}
+
+	return os
+}
+
+func (os *Screening) WithNameRecognition(apiUrl, apiKey string) *Screening {
 	os.nameRecognition = &NameRecognitionProvider{
 		ApiUrl: apiUrl,
 		ApiKey: apiKey,
@@ -96,58 +117,67 @@ func (os *OpenSanctions) WithNameRecognition(apiUrl, apiKey string) *OpenSanctio
 	return os
 }
 
-func (os OpenSanctions) Client() *http.Client {
+func (os Screening) Client() *http.Client {
 	return os.client
 }
 
-func (os OpenSanctions) IsConfigured() (bool, error) {
-	if !os.IsSelfHosted() && len(os.credentials) == 0 {
+func (os Screening) IsConfigured() (bool, error) {
+	if !os.IsSelfHosted("opensanctions") && len(os.credentials) == 0 {
 		return false, fmt.Errorf("missing API key for SaaS Open Sanctions configuration")
 	}
 	return true, nil
 }
 
-func (os OpenSanctions) IsSelfHosted() bool {
-	return len(os.host) > 0
+func (os Screening) IsSelfHosted(provider string) bool {
+	if p, ok := os.providers[provider]; ok {
+		return len(p.host) > 0
+	}
+	return false
 }
 
-func (os OpenSanctions) Host() string {
-	if os.IsSelfHosted() {
-		return os.host
+func (os Screening) Host(provider string) string {
+	if os.IsSelfHosted(provider) {
+		if p, ok := os.providers[provider]; ok {
+			return p.host
+		}
+		return ""
 	}
 
 	return OPEN_SANCTIONS_API_HOST
 }
 
-func (os OpenSanctions) IsSet() bool {
-	return os.IsSelfHosted() || os.Credentials() != ""
+func (os Screening) IsSet() bool {
+	return os.IsSelfHosted("opensanctions") || os.Credentials() != ""
 }
 
-func (os OpenSanctions) AuthMethod() OpenSanctionsAuthMethod {
+func (os Screening) AuthMethod() ScreeningAuthMethod {
 	return os.authMethod
 }
 
-func (os OpenSanctions) Credentials() string {
+func (os Screening) Credentials() string {
 	return os.credentials
 }
 
-func (os OpenSanctions) NameRecognition() *NameRecognitionProvider {
+func (os Screening) NameRecognition() *NameRecognitionProvider {
 	return os.nameRecognition
 }
 
-func (os OpenSanctions) Scope() string {
-	return os.scope
+func (os Screening) Scope(provider string) string {
+	if p, ok := os.providers[provider]; ok {
+		return p.scope
+	}
+	return "default"
 }
 
-func (os OpenSanctions) Algorithm() string {
+func (os Screening) Algorithm() string {
 	return os.algorithm
 }
 
-func (os OpenSanctions) IsNameRecognitionSet() bool {
+func (os Screening) IsNameRecognitionSet() bool {
 	return os.nameRecognition != nil && os.nameRecognition.ApiUrl != ""
 }
 
-func (os *OpenSanctions) MotivaFeatures(ctx context.Context) MotivaFeatures {
+func (os *Screening) MotivaFeatures(ctx context.Context) MotivaFeatures {
 	logger := utils.LoggerFromContext(ctx)
 
 	if isMotiva := os.motivaFeatures.Load(); isMotiva != nil {
@@ -164,7 +194,7 @@ func (os *OpenSanctions) MotivaFeatures(ctx context.Context) MotivaFeatures {
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/-/version", os.Host()), nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/-/version", os.Host("opensanctions")), nil)
 		if err != nil {
 			return false, err
 		}
