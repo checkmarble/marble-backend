@@ -12,15 +12,16 @@ type OpenSanctionsRepository struct {
 }
 
 func (m *OpenSanctionsRepository) GetRawCatalog(ctx context.Context, provider string) (models.OpenSanctionsRawCatalog, error) {
-	args := m.Called(ctx)
+	args := m.Called(ctx, provider)
 	return args.Get(0).(models.OpenSanctionsRawCatalog), args.Error(1)
 }
 
 func (m *OpenSanctionsRepository) Search(
 	ctx context.Context,
+	providerName string,
 	query models.OpenSanctionsQuery,
 ) (models.ScreeningRawSearchResponseWithMatches, error) {
-	args := m.Called(ctx, query)
+	args := m.Called(ctx, providerName, query)
 	if args.Get(0) == nil {
 		return models.ScreeningRawSearchResponseWithMatches{}, args.Error(1)
 	}
@@ -32,8 +33,8 @@ func (m *OpenSanctionsRepository) GetAlgorithms(ctx context.Context) (models.Ope
 	return args.Get(0).(models.OpenSanctionAlgorithms), args.Error(1)
 }
 
-func (m *OpenSanctionsRepository) EnrichMatch(ctx context.Context, match models.ScreeningMatch) ([]byte, error) {
-	args := m.Called(ctx, match)
+func (m *OpenSanctionsRepository) EnrichMatch(ctx context.Context, providerName string, match models.ScreeningMatch) ([]byte, error) {
+	args := m.Called(ctx, providerName, match)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

@@ -383,7 +383,7 @@ func (uc *ContinuousScreeningUsecase) executeScreeningWithRetry(
 	var err error
 	err = retry.Do(
 		func() error {
-			screeningResponse, err = uc.screeningProvider.Search(ctx, query)
+			screeningResponse, err = uc.screeningProvider.Search(ctx, "opensanctions", query)
 			return err
 		},
 		retry.Attempts(3),

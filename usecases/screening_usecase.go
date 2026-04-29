@@ -40,10 +40,10 @@ type ScreeningEnforceSecurity interface {
 
 type ScreeningProvider interface {
 	IsSelfHosted(ctx context.Context) bool
-	GetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error)
+	GetCatalog(ctx context.Context, provider string) (models.OpenSanctionsCatalog, error)
 	GetLatestLocalDataset(context.Context) (models.OpenSanctionsDatasetFreshness, error)
-	Search(context.Context, models.OpenSanctionsQuery) (models.ScreeningRawSearchResponseWithMatches, error)
-	EnrichMatch(ctx context.Context, match models.ScreeningMatch) ([]byte, error)
+	Search(context.Context, string, models.OpenSanctionsQuery) (models.ScreeningRawSearchResponseWithMatches, error)
+	EnrichMatch(ctx context.Context, providerName string, match models.ScreeningMatch) ([]byte, error)
 	IsConfigured(ctx context.Context) (bool, error)
 }
 
@@ -147,7 +147,8 @@ func (uc ScreeningUsecase) CheckDatasetFreshness(ctx context.Context) (models.Op
 }
 
 func (uc ScreeningUsecase) GetDatasetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error) {
-	return uc.openSanctionsProvider.GetCatalog(ctx)
+	// TODO: request the right provider
+	return uc.openSanctionsProvider.GetCatalog(ctx, "opensanctions")
 }
 
 func (uc ScreeningUsecase) GetScreening(ctx context.Context, id string) (models.ScreeningWithMatches, error) {
@@ -224,8 +225,7 @@ func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string
 
 	for _, comment := range comments {
 		if _, ok := matchIdToMatch[comment.MatchId]; ok {
-			matchIdToMatch[comment.MatchId].Comments =
-				append(matchIdToMatch[comment.MatchId].Comments, comment)
+			matchIdToMatch[comment.MatchId].Comments = append(matchIdToMatch[comment.MatchId].Comments, comment)
 		}
 	}
 
@@ -246,7 +246,7 @@ func (uc ScreeningUsecase) Execute(
 
 	query.OrgConfig = org.OpenSanctionsConfig
 
-	matches, err := uc.openSanctionsProvider.Search(ctx, query)
+	matches, err := uc.openSanctionsProvider.Search(ctx, "opensanctions", query)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
@@ -690,7 +690,7 @@ func (uc ScreeningUsecase) EnrichMatchWithoutAuthorization(ctx context.Context, 
 			"this screening match was already enriched")
 	}
 
-	newPayload, err := uc.openSanctionsProvider.EnrichMatch(ctx, match)
+	newPayload, err := uc.openSanctionsProvider.EnrichMatch(ctx, "opensanctions", match)
 	if err != nil {
 		return models.ScreeningMatch{}, err
 	}
@@ -711,7 +711,7 @@ func (uc ScreeningUsecase) EnrichMatchWithoutAuthorization(ctx context.Context, 
 }
 
 func (uc ScreeningUsecase) GetEntity(ctx context.Context, entityId string) ([]byte, error) {
-	return uc.openSanctionsProvider.EnrichMatch(ctx, models.ScreeningMatch{EntityId: entityId})
+	return uc.openSanctionsProvider.EnrichMatch(ctx, "opensanctions", models.ScreeningMatch{EntityId: entityId})
 }
 
 func (uc ScreeningUsecase) CreateFiles(ctx context.Context, creds models.Credentials,
