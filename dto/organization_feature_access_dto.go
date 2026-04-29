@@ -20,6 +20,7 @@ type APIOrganizationFeatureAccess struct {
 	ContinuousScreening string `json:"continuous_screening"`
 	AiRuleBuilding      string `json:"ai_rule_building"`
 	UserScoring         string `json:"user_scoring"`
+	LexisNexis          string `json:"lexisnexis"` //nolint:tagliatelle
 
 	// user-scoped
 	// Currently only used to control display of the AI assist button in the UI - DO NOT use for anything else as it will be removed
@@ -42,6 +43,7 @@ func AdaptOrganizationFeatureAccessDto(f models.OrganizationFeatureAccess) APIOr
 		AiRuleBuilding:      f.AiRuleBuilding.String(),
 		AiAssist:            f.AiAssist.String(),
 		UserScoring:         f.UserScoring.String(),
+		LexisNexis:          f.LexisNexis.String(),
 	}
 }
 
@@ -52,12 +54,13 @@ type UpdateOrganizationFeatureAccessBodyDto struct {
 	CaseAiAssist        *string `json:"case_ai_assist"`
 	ContinuousScreening *string `json:"continuous_screening"`
 	AiRuleBuilding      *string `json:"ai_rule_building"`
+	LexisNexis          *string `json:"lexisnexis"` //nolint:tagliatelle
 }
 
 func AdaptUpdateOrganizationFeatureAccessInput(f UpdateOrganizationFeatureAccessBodyDto,
 	orgId uuid.UUID,
 ) models.UpdateOrganizationFeatureAccessInput {
-	var testRun, sanctions, caseAutoAssign, caseAiAssist, continuousScreening, aiRuleBuilding *models.FeatureAccess
+	var testRun, sanctions, caseAutoAssign, caseAiAssist, continuousScreening, aiRuleBuilding, lexisNexis *models.FeatureAccess
 	if f.TestRun != nil {
 		testRun = utils.Ptr(models.FeatureAccessFrom(*f.TestRun))
 	}
@@ -76,6 +79,9 @@ func AdaptUpdateOrganizationFeatureAccessInput(f UpdateOrganizationFeatureAccess
 	if f.AiRuleBuilding != nil {
 		aiRuleBuilding = utils.Ptr(models.FeatureAccessFrom(*f.AiRuleBuilding))
 	}
+	if f.LexisNexis != nil {
+		lexisNexis = utils.Ptr(models.FeatureAccessFrom(*f.LexisNexis))
+	}
 	return models.UpdateOrganizationFeatureAccessInput{
 		OrganizationId:      orgId,
 		TestRun:             testRun,
@@ -84,5 +90,6 @@ func AdaptUpdateOrganizationFeatureAccessInput(f UpdateOrganizationFeatureAccess
 		CaseAiAssist:        caseAiAssist,
 		ContinuousScreening: continuousScreening,
 		AiRuleBuilding:      aiRuleBuilding,
+		LexisNexis:          lexisNexis,
 	}
 }

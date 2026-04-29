@@ -299,10 +299,11 @@ type ContinuousScreeningIngestionUsecase interface {
 type ContinuousScreeningScreeningProvider interface {
 	Search(
 		ctx context.Context,
+		providerName string,
 		query models.OpenSanctionsQuery,
 	) (models.ScreeningRawSearchResponseWithMatches, error)
 	GetAlgorithms(ctx context.Context) (models.OpenSanctionAlgorithms, error)
-	EnrichMatch(ctx context.Context, match models.ScreeningMatch) ([]byte, error)
+	EnrichMatch(ctx context.Context, providerName string, match models.ScreeningMatch) ([]byte, error)
 }
 
 type ContinuousScreeningUsecase struct {

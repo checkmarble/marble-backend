@@ -100,6 +100,7 @@ type applyDeltaFileWorkerTaskQueueRepository interface {
 type applyDeltaFileWorkerScreeningProvider interface {
 	Search(
 		ctx context.Context,
+		providerName string,
 		query models.OpenSanctionsQuery,
 	) (models.ScreeningRawSearchResponseWithMatches, error)
 }
@@ -292,7 +293,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		iterLogger.DebugContext(iterCtx, "Performing screening for record")
 		err = retry.Do(
 			func() error {
-				screeningResponse, err = w.screeningProvider.Search(iterCtx, query)
+				screeningResponse, err = w.screeningProvider.Search(iterCtx, "opensanctions", query)
 				return err
 			},
 			retry.Attempts(3),
