@@ -1100,10 +1100,17 @@ func (uc *OrgImportUsecase) adaptAstNodeIds(ctx context.Context, ids map[string]
 		node.NamedChildren["customListId"] = ast.Node{Constant: ids[args]}
 	}
 
-	for _, child := range node.Children {
-		if err := uc.adaptAstNodeIds(ctx, ids, &child); err != nil {
+	for i := range node.Children {
+		if err := uc.adaptAstNodeIds(ctx, ids, &node.Children[i]); err != nil {
 			return err
 		}
+	}
+
+	for key, namedChild := range node.NamedChildren {
+		if err := uc.adaptAstNodeIds(ctx, ids, &namedChild); err != nil {
+			return err
+		}
+		node.NamedChildren[key] = namedChild
 	}
 
 	return nil
