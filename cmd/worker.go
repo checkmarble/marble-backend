@@ -99,12 +99,12 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	logger := utils.NewLogger(workerConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 
-	openSanctionsConfig := infra.InitializeOpenSanctions(
+	openSanctionsConfig := infra.InitializeScreening(
 		ctx,
 		http.DefaultClient,
-		utils.GetEnv("OPENSANCTIONS_API_HOST", ""),
-		utils.GetEnv("OPENSANCTIONS_AUTH_METHOD", ""),
-		utils.GetEnv("OPENSANCTIONS_API_KEY", ""),
+		utils.GetEnv("SCREENING_OPENSANCTIONS_API_HOST", ""),
+		utils.GetEnv("SCREENING_OPENSANCTIONS_AUTH_METHOD", ""),
+		utils.GetEnv("SCREENING_OPENSANCTIONS_API_KEY", ""),
 	)
 	if apiUrl := utils.GetEnv("NAME_RECOGNITION_API_URL", ""); apiUrl != "" {
 		openSanctionsConfig.WithNameRecognition(apiUrl,
