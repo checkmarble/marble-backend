@@ -276,6 +276,22 @@ func handleEnrichScreeningMatch(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
+func handleGetScreeningEntity(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		entityId := c.Param("entityId")
+
+		screeningUsecase := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
+
+		entity, err := screeningUsecase.GetEntity(ctx, entityId)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, json.RawMessage(entity))
+	}
+}
+
 const SCREENING_FREEFORM_SEARCH_LIMIT_MAX = 50
 
 func handleFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
