@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -454,15 +455,18 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 		}
 	}
 
-	// Step F: Create additional pivots not auto-created by CreateDataModelTable
-	// Handle pivots with multi-link paths
+	// Step F: Reconcile pivots with the import spec.
+	// Each table has at most one pivot (unique index on organization_id + base_table_id).
+	// CreateDataModelTable may have auto-created a default pivot (object_id field-based or
+	// belongs_to path-based). If the import spec defines a different pivot for the same
+	// table, replace the auto-created one; if it matches, keep it.
 	existingPivots, err := uc.dataModelRepository.ListPivots(ctx, tx, orgId, nil, false)
 	if err != nil {
 		return errors.Wrap(err, "failed to list existing pivots")
 	}
-	existingPivotSignatures := make(map[string]struct{}, len(existingPivots))
+	existingPivotByBaseTable := make(map[string]models.PivotMetadata, len(existingPivots))
 	for _, p := range existingPivots {
-		existingPivotSignatures[pivotSignature(p.BaseTableId, p.FieldId, p.PathLinkIds)] = struct{}{}
+		existingPivotByBaseTable[p.BaseTableId] = p
 	}
 
 	for _, pivot := range dataModel.Pivots {
@@ -475,9 +479,19 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 		})
 		baseTableId := ids[pivot.BaseTableId]
 
-		sig := pivotSignature(baseTableId, fieldId, pathLinkIds)
-		if _, exists := existingPivotSignatures[sig]; exists {
-			continue // Already created by CreateDataModelTable
+		newSig := pivotSignature(baseTableId, fieldId, pathLinkIds)
+		if existing, ok := existingPivotByBaseTable[baseTableId]; ok {
+			if pivotSignature(existing.BaseTableId, existing.FieldId, existing.PathLinkIds) == newSig {
+				// Auto-created pivot already matches the spec; keep it but record
+				// the ID mapping so downstream references resolve correctly.
+				ids[pivot.Id.String()] = existing.Id.String()
+				continue
+			}
+			// Auto-created pivot differs from the spec; delete it before creating the
+			// imported one to avoid the unique-constraint conflict on (org, base_table).
+			if err := uc.dataModelRepository.DeleteDataModelPivot(ctx, tx, existing.Id.String()); err != nil {
+				return errors.Wrapf(err, "failed to delete auto-created pivot for table %s", baseTableId)
+			}
 		}
 
 		pivotId := pure_utils.NewId()
@@ -689,11 +703,10 @@ func pivotSignature(baseTableId string, fieldId *string, pathLinkIds []string) s
 	if fieldId != nil {
 		fid = *fieldId
 	}
-	sig := baseTableId + "|" + fid
-	for _, id := range pathLinkIds {
-		sig += "|" + id
-	}
-	return sig
+	parts := make([]string, 0, 2+len(pathLinkIds))
+	parts = append(parts, baseTableId, fid)
+	parts = append(parts, pathLinkIds...)
+	return strings.Join(parts, "|")
 }
 
 func (uc *OrgImportUsecase) createTags(ctx context.Context, tx repositories.Transaction,
