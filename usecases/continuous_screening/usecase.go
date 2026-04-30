@@ -178,6 +178,8 @@ type ContinuousScreeningUsecaseRepository interface {
 		exec repositories.Executor,
 		input models.CreateContinuousScreeningDeltaTrack,
 	) error
+
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) (models.Organization, error)
 }
 
 type continuousScreeningTaskQueueRepository interface {

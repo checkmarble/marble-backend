@@ -22,6 +22,8 @@ type matchEnrichmentWorkerOpenSanctionsProvider interface {
 }
 
 type matchEnrichmentWorkerRepository interface {
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) (models.Organization, error)
+
 	GetContinuousScreeningWithMatchesById(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -89,14 +91,22 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) Work(
 
 	var errs error
 
+	exec := w.executorFactory.NewExecutor()
+
 	continuousScreeningWithMatches, err := w.repository.GetContinuousScreeningWithMatchesById(
 		ctx,
-		w.executorFactory.NewExecutor(),
+		exec,
 		job.Args.ContinuousScreeningId,
 	)
 	if err != nil {
 		return err
 	}
+
+	org, err := w.repository.GetOrganizationById(ctx, exec, continuousScreeningWithMatches.OrgId)
+	if err != nil {
+		return errors.Wrap(err, "could not retrieve organization")
+	}
+	provider := org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring)
 
 	// For DatasetTriggered screenings:
 	// - Enrich the OpenSanctions entity (external data from dataset)
@@ -104,7 +114,7 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) Work(
 	if continuousScreeningWithMatches.IsDatasetTriggered() {
 		if !continuousScreeningWithMatches.OpenSanctionEntityEnriched &&
 			continuousScreeningWithMatches.OpenSanctionEntityId != nil {
-			if err := w.enrichEntity(ctx, continuousScreeningWithMatches); err != nil {
+			if err := w.enrichEntity(ctx, provider, continuousScreeningWithMatches); err != nil {
 				errs = errors.Join(errs, err)
 			}
 		}
@@ -117,7 +127,7 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) Work(
 				continue
 			}
 
-			if err := w.enrichMatch(ctx, match); err != nil {
+			if err := w.enrichMatch(ctx, provider, match); err != nil {
 				errs = errors.Join(errs, err)
 			}
 		}
@@ -128,6 +138,7 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) Work(
 
 func (w *ContinuousScreeningMatchEnrichmentWorker) enrichEntity(
 	ctx context.Context,
+	providerName string,
 	screening models.ContinuousScreeningWithMatches,
 ) error {
 	if screening.OpenSanctionEntityEnriched {
@@ -145,7 +156,7 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) enrichEntity(
 		EntityId: *screening.OpenSanctionEntityId,
 	}
 
-	newPayload, err := w.openSanctionsConfig.EnrichMatch(ctx, "opensanctions", fakeMatch)
+	newPayload, err := w.openSanctionsConfig.EnrichMatch(ctx, providerName, fakeMatch)
 	if err != nil {
 		return err
 	}
@@ -168,6 +179,7 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) enrichEntity(
 
 func (w *ContinuousScreeningMatchEnrichmentWorker) enrichMatch(
 	ctx context.Context,
+	providerName string,
 	match models.ContinuousScreeningMatch,
 ) error {
 	if match.Enriched {
@@ -183,7 +195,7 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) enrichMatch(
 		EntityId: match.OpenSanctionEntityId,
 	}
 
-	newPayload, err := w.openSanctionsConfig.EnrichMatch(ctx, "opensanctions", fakeMatch)
+	newPayload, err := w.openSanctionsConfig.EnrichMatch(ctx, providerName, fakeMatch)
 	if err != nil {
 		return err
 	}
