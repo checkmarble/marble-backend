@@ -132,8 +132,8 @@ func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, err
 	return true, nil
 }
 
-func (repo OpenSanctionsRepository) GetRawCatalog(ctx context.Context) (models.OpenSanctionsRawCatalog, error) {
-	catalogUrl := fmt.Sprintf("%s/catalog", repo.Config.Host("opensanctions"))
+func (repo OpenSanctionsRepository) GetRawCatalog(ctx context.Context, provider string) (models.OpenSanctionsRawCatalog, error) {
+	catalogUrl := fmt.Sprintf("%s/catalog", repo.Config.Host(provider))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
 	if err != nil {

@@ -88,7 +88,9 @@ type ScreeningConfig struct {
 	Name                     string
 	Description              string
 	RuleGroup                *string
+	Provider                 string
 	Datasets                 []string
+	Filters                  map[string][][]string
 	TriggerRule              *ast.Node
 	EntityType               string
 	Query                    map[string]ast.Node

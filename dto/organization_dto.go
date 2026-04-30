@@ -3,6 +3,7 @@ package dto
 import (
 	"encoding/json"
 	"net"
+	"slices"
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -11,15 +12,16 @@ import (
 )
 
 type APIOrganization struct {
-	Id                      string      `json:"id"`
-	Name                    string      `json:"name"`
-	DefaultScenarioTimezone *string     `json:"default_scenario_timezone"`
-	SanctionsThreshold      int         `json:"sanctions_threshold"`
-	SanctionsLimit          int         `json:"sanctions_limit"`
-	AutoAssignQueueLimit    int         `json:"auto_assign_queue_limit"`
-	AllowedNetworks         []SubnetDto `json:"allowed_networks"`
-	SentryReplayEnabled     bool        `json:"sentry_replay_enabled"`
-	Environment             string      `json:"environment"`
+	Id                      string            `json:"id"`
+	Name                    string            `json:"name"`
+	DefaultScenarioTimezone *string           `json:"default_scenario_timezone"`
+	ScreeningProviders      map[string]string `json:"screening_providers"`
+	SanctionsThreshold      int               `json:"sanctions_threshold"`
+	SanctionsLimit          int               `json:"sanctions_limit"`
+	AutoAssignQueueLimit    int               `json:"auto_assign_queue_limit"`
+	AllowedNetworks         []SubnetDto       `json:"allowed_networks"`
+	SentryReplayEnabled     bool              `json:"sentry_replay_enabled"`
+	Environment             string            `json:"environment"`
 }
 
 func AdaptOrganizationDto(org models.Organization) APIOrganization {
@@ -27,6 +29,7 @@ func AdaptOrganizationDto(org models.Organization) APIOrganization {
 		Id:                      org.Id.String(),
 		Name:                    org.Name,
 		DefaultScenarioTimezone: org.DefaultScenarioTimezone,
+		ScreeningProviders:      org.OpenSanctionsConfig.Providers,
 		SanctionsThreshold:      org.OpenSanctionsConfig.MatchThreshold,
 		SanctionsLimit:          org.OpenSanctionsConfig.MatchLimit,
 		AutoAssignQueueLimit:    org.AutoAssignQueueLimit,
@@ -61,23 +64,38 @@ func AdaptCreateOrganizationInput(dto CreateOrganizationBodyDto) (models.CreateO
 }
 
 type UpdateOrganizationBodyDto struct {
-	DefaultScenarioTimezone *string `json:"default_scenario_timezone,omitempty"`
-	SanctionsThreshold      *int    `json:"sanctions_threshold,omitempty"`
-	SanctionsLimit          *int    `json:"sanctions_limit,omitempty"`
-	AutoAssignQueueLimit    *int    `json:"auto_assign_queue_limit,omitempty"`
-	SentryReplayEnabled     *bool   `json:"sentry_replay_enabled"`
-	Environment             *string `json:"environment"`
+	DefaultScenarioTimezone *string           `json:"default_scenario_timezone,omitempty"`
+	SanctionsThreshold      *int              `json:"sanctions_threshold,omitempty"`
+	SanctionsLimit          *int              `json:"sanctions_limit,omitempty"`
+	ScreeningProviders      map[string]string `json:"screening_providers,omitempty"`
+	AutoAssignQueueLimit    *int              `json:"auto_assign_queue_limit,omitempty"`
+	SentryReplayEnabled     *bool             `json:"sentry_replay_enabled"`
+	Environment             *string           `json:"environment"`
 }
 
 func AdaptUpdateOrganizationInput(dto UpdateOrganizationBodyDto) (models.UpdateOrganizationInput, error) {
 	out := models.UpdateOrganizationInput{
 		DefaultScenarioTimezone: dto.DefaultScenarioTimezone,
 		ScreeningConfig: models.OrganizationOpenSanctionsConfigUpdateInput{
+			Providers:      dto.ScreeningProviders,
 			MatchThreshold: dto.SanctionsThreshold,
 			MatchLimit:     dto.SanctionsLimit,
 		},
 		AutoAssignQueueLimit: dto.AutoAssignQueueLimit,
 		SentryReplayEnabled:  dto.SentryReplayEnabled,
+	}
+
+	if dto.ScreeningProviders != nil {
+		for feature, provider := range dto.ScreeningProviders {
+			if !slices.Contains(models.ValidScreeningProviderFeature, models.ScreeningFeature(feature)) {
+				return models.UpdateOrganizationInput{}, errors.Wrapf(models.BadParameterError,
+					"invalid screening provider feature %s", feature)
+			}
+			if !slices.Contains(models.ValidScreeningProviders, provider) {
+				return models.UpdateOrganizationInput{}, errors.Wrapf(models.BadParameterError,
+					"invalid screening provider %s", provider)
+			}
+		}
 	}
 
 	if dto.Environment != nil {

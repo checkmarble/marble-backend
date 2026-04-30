@@ -22,6 +22,7 @@ type DBOrganizationFeatureAccess struct {
 	ContinuousScreening string    `db:"continuous_screening"`
 	AiRuleBuilding      string    `db:"ai_rule_building"`
 	UserScoring         string    `db:"user_scoring"`
+	LexisNexis          string    `db:"lexisnexis"`
 	CreatedAt           time.Time `db:"created_at"`
 	UpdatedAt           time.Time `db:"updated_at"`
 }
@@ -37,6 +38,7 @@ func AdaptOrganizationFeatureAccess(db DBOrganizationFeatureAccess) (models.DbSt
 		ContinuousScreening: models.FeatureAccessFrom(db.ContinuousScreening),
 		AiRuleBuilding:      models.FeatureAccessFrom(db.AiRuleBuilding),
 		UserScoring:         models.FeatureAccessFrom(db.UserScoring),
+		LexisNexis:          models.FeatureAccessFrom(db.LexisNexis),
 		CreatedAt:           db.CreatedAt,
 		UpdatedAt:           db.UpdatedAt,
 	}, nil

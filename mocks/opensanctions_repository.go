@@ -11,7 +11,7 @@ type OpenSanctionsRepository struct {
 	mock.Mock
 }
 
-func (m *OpenSanctionsRepository) GetRawCatalog(ctx context.Context) (models.OpenSanctionsRawCatalog, error) {
+func (m *OpenSanctionsRepository) GetRawCatalog(ctx context.Context, provider string) (models.OpenSanctionsRawCatalog, error) {
 	args := m.Called(ctx)
 	return args.Get(0).(models.OpenSanctionsRawCatalog), args.Error(1)
 }
