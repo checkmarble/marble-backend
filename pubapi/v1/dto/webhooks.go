@@ -22,16 +22,21 @@ func (p WebhookEventPayload) ApiVersion() string {
 	if p.Content.Case != nil {
 		return p.Content.Case.ApiVersion()
 	}
+	if p.Content.ContinuousScreening != nil {
+		return p.Content.ContinuousScreening.ApiVersion()
+	}
 
 	return "v1"
 }
 
 type WebhookEventData struct {
-	Decision      *Decision               `json:"decision,omitzero"`
-	Case          *Case                   `json:"case,omitzero"`
-	Files         *[]CaseFile             `json:"files,omitempty"`
-	Comments      *CaseComment            `json:"comments,omitempty"`
-	AsyncDecision *AsyncDecisionExecution `json:"async_decision,omitzero"`
+	Decision            *Decision                 `json:"decision,omitzero"`
+	Case                *Case                     `json:"case,omitzero"`
+	Files               *[]CaseFile               `json:"files,omitempty"`
+	Comments            *CaseComment              `json:"comments,omitempty"`
+	AsyncDecision       *AsyncDecisionExecution   `json:"async_decision,omitzero"`
+	ContinuousScreening *ContinuousScreening      `json:"continuous_screening,omitzero"`
+	Match               *ContinuousScreeningMatch `json:"match,omitzero"`
 }
 
 func AdaptWebhookEventData(
@@ -62,6 +67,11 @@ func AdaptWebhookEventData(
 		}
 	}
 
+	var matchTriggerType models.ContinuousScreeningTriggerType
+	if m.Content.ContinuousScreening != nil {
+		matchTriggerType = m.Content.ContinuousScreening.TriggerType
+	}
+
 	payload := WebhookEventPayload{
 		Type: string(m.Type),
 		Content: WebhookEventData{
@@ -87,7 +97,11 @@ func AdaptWebhookEventData(
 					Comment:   c.AdditionalNote,
 				})
 			}),
-			AsyncDecision: applyWebhookEventData(m.Content.AsyncDecisionExecution, AdaptAsyncDecisionExecution),
+			AsyncDecision:       applyWebhookEventData(m.Content.AsyncDecisionExecution, AdaptAsyncDecisionExecution),
+			ContinuousScreening: applyWebhookEventData(m.Content.ContinuousScreening, AdaptContinuousScreening),
+			Match: applyWebhookEventData(m.Content.ContinuousScreeningMatch, func(match models.ContinuousScreeningMatch) ContinuousScreeningMatch {
+				return AdaptContinuousScreeningMatch(matchTriggerType, match)
+			}),
 		},
 		Timestamp: m.Timestamp,
 	}

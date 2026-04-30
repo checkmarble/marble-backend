@@ -229,6 +229,14 @@ type caseEditor interface {
 	PerformCaseActionSideEffects(ctx context.Context, tx repositories.Transaction, caseModel models.Case) error
 }
 
+type webhookEventsUsecase interface {
+	CreateWebhookEvent(
+		ctx context.Context,
+		tx repositories.Transaction,
+		input models.WebhookEventCreate,
+	) error
+}
+
 type ContinuousScreeningClientDbRepository interface {
 	CreateInternalContinuousScreeningTable(ctx context.Context, exec repositories.Executor) error
 	CreateInternalContinuousScreeningAuditTable(ctx context.Context, exec repositories.Executor) error
@@ -312,7 +320,8 @@ type ContinuousScreeningUsecase struct {
 	inboxReader                  inboxReader
 	inboxEditor                  inboxEditor
 	featureAccessReader          featureAccessReader
-	objectRiskTagWriter        objectRiskTagWriter
+	objectRiskTagWriter          objectRiskTagWriter
+	webhookEventsUsecase         webhookEventsUsecase
 }
 
 func NewContinuousScreeningUsecase(
@@ -333,6 +342,7 @@ func NewContinuousScreeningUsecase(
 	inboxEditor inboxEditor,
 	featureAccessReader featureAccessReader,
 	objectRiskTagWriter objectRiskTagWriter,
+	webhookEventsUsecase webhookEventsUsecase,
 ) *ContinuousScreeningUsecase {
 	return &ContinuousScreeningUsecase{
 		executorFactory:              executorFactory,
@@ -351,6 +361,7 @@ func NewContinuousScreeningUsecase(
 		inboxReader:                  inboxReader,
 		inboxEditor:                  inboxEditor,
 		featureAccessReader:          featureAccessReader,
-		objectRiskTagWriter:        objectRiskTagWriter,
+		objectRiskTagWriter:          objectRiskTagWriter,
+		webhookEventsUsecase:         webhookEventsUsecase,
 	}
 }

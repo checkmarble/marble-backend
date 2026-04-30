@@ -265,7 +265,8 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 				return continuousScreeningWithMatches, nil
 			}
 			return models.ContinuousScreeningWithMatches{}, nil
-		})
+		},
+	)
 }
 
 type payloadObjectID struct {
@@ -533,7 +534,7 @@ func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 	caseName string,
 	continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
 ) (models.Case, error) {
-	return uc.caseEditor.CreateCase(
+	newCase, err := uc.caseEditor.CreateCase(
 		ctx,
 		tx,
 		pure_utils.PtrValueOrDefault(uc.enforceSecurity.UserId(), ""),
@@ -546,6 +547,27 @@ func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 		},
 		false,
 	)
+	if err != nil {
+		return models.Case{}, errors.Wrap(err, "create case")
+	}
+
+	caseUuid, err := uuid.Parse(newCase.Id)
+	if err != nil {
+		return models.Case{}, errors.Wrap(err, "parse case UUID")
+	}
+	continuousScreeningWithMatches.CaseId = utils.Ptr(caseUuid)
+
+	if err := uc.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+		Id:             pure_utils.NewId().String(),
+		OrganizationId: newCase.OrganizationId,
+		EventContent: models.NewWebhookEventCaseCreatedFromContinuousScreening(
+			continuousScreeningWithMatches,
+		),
+	}); err != nil {
+		return models.Case{}, errors.Wrap(err, "send webhook event for case")
+	}
+
+	return newCase, nil
 }
 
 func (uc *ContinuousScreeningUsecase) DeleteContinuousScreeningObject(
