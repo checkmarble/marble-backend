@@ -41,10 +41,26 @@ func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
 			q.Params.Filters["programId"] = [][]string{query.Config.Datasets}
 		}
 
-		for field, predicates := range query.Filters {
-			q.Params.Filters[field] = make([][]string, len(predicates))
+		if query.Config.Filters.Peps != nil && len(query.Config.Filters.Peps.Topics) > 0 {
+			if q.Params.Filters == nil {
+				q.Params.Filters = make(map[string][][]string)
+				q.Params.Filters["topics"] = [][]string{}
+			}
 
-			copy(q.Params.Filters[field], predicates)
+			for _, topics := range query.Config.Filters.Peps.Topics {
+				q.Params.Filters["topics"] = append(q.Params.Filters["topics"], topics)
+			}
+		}
+
+		if query.Config.Filters.AdverseMedia != nil && len(query.Config.Filters.AdverseMedia.Topics) > 0 {
+			if q.Params.Filters == nil {
+				q.Params.Filters = make(map[string][][]string)
+				q.Params.Filters["topics"] = [][]string{}
+			}
+
+			for _, topics := range query.Config.Filters.AdverseMedia.Topics {
+				q.Params.Filters["topics"] = append(q.Params.Filters["topics"], topics)
+			}
 		}
 	}
 
