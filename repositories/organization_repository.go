@@ -144,6 +144,11 @@ func (repo *MarbleDbRepository) UpdateOrganization(
 			*updateOrganization.ScreeningConfig.MatchLimit)
 		hasUpdates = true
 	}
+	if updateOrganization.ScreeningConfig.Providers != nil {
+		updateRequest = updateRequest.Set("screening_providers",
+			updateOrganization.ScreeningConfig.Providers)
+		hasUpdates = true
+	}
 	if updateOrganization.AutoAssignQueueLimit != nil {
 		updateRequest = updateRequest.Set("auto_assign_queue_limit",
 			updateOrganization.AutoAssignQueueLimit)

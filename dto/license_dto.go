@@ -24,6 +24,7 @@ type LicenseEntitlements struct {
 	CaseAiAssist        bool `json:"case_ai_assist"`
 	ContinuousScreening bool `json:"continuous_screening"`
 	UserScoring         bool `json:"user_scoring"`
+	LexisNexis          bool `json:"lexisnexis"` //nolint:tagliatelle
 }
 
 func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) LicenseEntitlements {
@@ -41,6 +42,7 @@ func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) Li
 		CaseAiAssist:        licenseEntitlements.CaseAiAssist,
 		ContinuousScreening: licenseEntitlements.ContinuousScreening,
 		UserScoring:         licenseEntitlements.UserScoring,
+		LexisNexis:          licenseEntitlements.LexisNexis,
 	}
 }
 

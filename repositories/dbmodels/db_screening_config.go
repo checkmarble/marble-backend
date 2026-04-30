@@ -20,7 +20,9 @@ type DBScreeningConfigs struct {
 	Name                string                              `db:"name"`
 	Description         string                              `db:"description"`
 	RuleGroup           string                              `db:"rule_group"`
+	Provider            string                              `db:"provider"`
 	Datasets            []string                            `db:"datasets"`
+	Filters             json.RawMessage                     `db:"filters"`
 	TriggerRule         []byte                              `db:"trigger_rule"`
 	EntityType          string                              `db:"entity_type"`
 	Query               json.RawMessage                     `db:"query"`
@@ -43,6 +45,7 @@ func AdaptScreeningConfig(db DBScreeningConfigs) (models.ScreeningConfig, error)
 		Description:         db.Description,
 		RuleGroup:           &db.RuleGroup,
 		EntityType:          db.EntityType,
+		Provider:            db.Provider,
 		Datasets:            db.Datasets,
 		Threshold:           db.Threshold,
 		ForcedOutcome:       models.OutcomeFrom(db.ForcedOutcome),
@@ -77,6 +80,12 @@ func AdaptScreeningConfig(db DBScreeningConfigs) (models.ScreeningConfig, error)
 		}
 
 		scc.CounterpartyIdExpression = field
+	}
+
+	var filters map[string][][]string
+
+	if err := json.Unmarshal(db.Filters, &filters); err == nil {
+		scc.Filters = filters
 	}
 
 	return scc, nil

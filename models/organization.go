@@ -64,13 +64,22 @@ type Organization struct {
 	Environment OrganizationEnvironment
 }
 
+func (org Organization) GetScreeningProviderFor(feature ScreeningFeature) string {
+	if p, ok := org.OpenSanctionsConfig.Providers[string(feature)]; ok {
+		return p
+	}
+	return "opensanctions"
+}
+
 // TODO: Add other organization-level configuration options
 type OrganizationOpenSanctionsConfig struct {
+	Providers      map[string]string
 	MatchThreshold int
 	MatchLimit     int
 }
 
 type OrganizationOpenSanctionsConfigUpdateInput struct {
+	Providers      map[string]string
 	MatchThreshold *int
 	MatchLimit     *int
 }

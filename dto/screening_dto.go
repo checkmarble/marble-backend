@@ -92,30 +92,30 @@ func AdaptScreeningRefineDto(dto ScreeningRefineDto) models.ScreeningRefineReque
 }
 
 type ScreeningMatchDto struct {
-	Id                           string                     `json:"id"`
-	EntityId                     string                     `json:"entity_id"`
-	Referents                    []string                   `json:"referents"`
-	QueryIds                     []string                   `json:"query_ids"`
-	Status                       string                     `json:"status"`
-	ReviewedBy                   *string                    `json:"reviewer_id,omitempty"` //nolint:tagliatelle
-	Datasets                     []string                   `json:"datasets"`
-	Payload                      json.RawMessage            `json:"payload"`
-	Enriched                     bool                       `json:"enriched"`
-	Comments                     []ScreeningMatchCommentDto `json:"comments"`
+	Id         string                     `json:"id"`
+	EntityId   string                     `json:"entity_id"`
+	Referents  []string                   `json:"referents"`
+	QueryIds   []string                   `json:"query_ids"`
+	Status     string                     `json:"status"`
+	ReviewedBy *string                    `json:"reviewer_id,omitempty"` //nolint:tagliatelle
+	Datasets   []string                   `json:"datasets"`
+	Payload    json.RawMessage            `json:"payload"`
+	Enriched   bool                       `json:"enriched"`
+	Comments   []ScreeningMatchCommentDto `json:"comments"`
 }
 
 func AdaptScreeningMatchDto(m models.ScreeningMatch) ScreeningMatchDto {
 	match := ScreeningMatchDto{
-		Id:                           m.Id,
-		EntityId:                     m.EntityId,
-		Referents:                    m.Referents,
-		Status:                       m.Status.String(),
-		ReviewedBy:                   m.ReviewedBy,
-		QueryIds:                     m.QueryIds,
-		Datasets:                     make([]string, 0),
-		Payload:                      m.Payload,
-		Enriched:                     m.Enriched,
-		Comments:                     pure_utils.Map(m.Comments, AdaptScreeningMatchCommentDto),
+		Id:         m.Id,
+		EntityId:   m.EntityId,
+		Referents:  m.Referents,
+		Status:     m.Status.String(),
+		ReviewedBy: m.ReviewedBy,
+		QueryIds:   m.QueryIds,
+		Datasets:   make([]string, 0),
+		Payload:    m.Payload,
+		Enriched:   m.Enriched,
+		Comments:   pure_utils.Map(m.Comments, AdaptScreeningMatchCommentDto),
 	}
 
 	return match

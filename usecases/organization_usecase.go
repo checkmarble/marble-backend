@@ -24,6 +24,11 @@ type OrganizationUsecaseFeatureAccessReader interface {
 	) (models.OrganizationFeatureAccess, error)
 }
 
+type organizationUsecaseScreeningChecksRepository interface {
+	HasScreeningConfigs(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (bool, error)
+	GetContinuousScreeningConfigsByOrgId(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.ContinuousScreeningConfig, error)
+}
+
 type OrganizationUseCase struct {
 	enforceSecurity              security.EnforceSecurityOrganization
 	transactionFactory           executor_factory.TransactionFactory
@@ -34,6 +39,7 @@ type OrganizationUseCase struct {
 	organizationSchemaRepository repositories.OrganizationSchemaRepository
 	executorFactory              executor_factory.ExecutorFactory
 	featureAccessReader          OrganizationUsecaseFeatureAccessReader
+	screeningConfigRepository    organizationUsecaseScreeningChecksRepository
 }
 
 func NewOrganizationUseCase(
@@ -46,6 +52,7 @@ func NewOrganizationUseCase(
 	organizationSchemaRepository repositories.OrganizationSchemaRepository,
 	executorFactory executor_factory.ExecutorFactory,
 	featureAccessReader OrganizationUsecaseFeatureAccessReader,
+	screeningConfigRepository organizationUsecaseScreeningChecksRepository,
 ) OrganizationUseCase {
 	return OrganizationUseCase{
 		enforceSecurity:              enforceSecurity,
@@ -57,6 +64,7 @@ func NewOrganizationUseCase(
 		organizationSchemaRepository: organizationSchemaRepository,
 		executorFactory:              executorFactory,
 		featureAccessReader:          featureAccessReader,
+		screeningConfigRepository:    screeningConfigRepository,
 	}
 }
 
@@ -106,6 +114,22 @@ func (usecase *OrganizationUseCase) UpdateOrganization(
 		}
 	}
 
+	if organization.ScreeningConfig.Providers != nil {
+		featureAccess, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
+		if err != nil {
+			return models.Organization{}, err
+		}
+
+		for _, provider := range organization.ScreeningConfig.Providers {
+			if provider == "lexisnexis" {
+				if !featureAccess.LexisNexis.IsAllowed() {
+					return models.Organization{}, errors.Wrap(models.ForbiddenError,
+						"organization does not have access to the Lexis Nexis screening provider")
+				}
+			}
+		}
+	}
+
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.Organization, error) {
@@ -116,6 +140,35 @@ func (usecase *OrganizationUseCase) UpdateOrganization(
 
 		if err := usecase.enforceSecurity.EditOrganization(org); err != nil {
 			return models.Organization{}, err
+		}
+
+		for feature, provider := range organization.ScreeningConfig.Providers {
+			if org.GetScreeningProviderFor(models.ScreeningFeature(feature)) != provider {
+				switch feature {
+				case string(models.ScreeningFeatureTransactionMonitoring):
+					configExists, err := usecase.screeningConfigRepository.HasScreeningConfigs(ctx, tx, org.Id)
+					if err != nil {
+						return models.Organization{}, err
+					}
+					if configExists {
+						return models.Organization{}, errors.Wrap(models.UnprocessableEntityError,
+							"cannot change transaction monitoring screening provider because a scenario already uses screening")
+					}
+
+				case string(models.ScreeningFeatureContinuousMonitoring):
+					configs, err := usecase.screeningConfigRepository.GetContinuousScreeningConfigsByOrgId(ctx, tx, org.Id)
+					if err != nil {
+						return models.Organization{}, err
+					}
+					if len(configs) > 0 {
+						return models.Organization{}, errors.Wrap(models.UnprocessableEntityError,
+							"cannot change continuous monitoring screening provider because a scenario already uses screening")
+					}
+
+				default:
+					// Other features can change their provider whenever required.
+				}
+			}
 		}
 
 		err = usecase.organizationRepository.UpdateOrganization(ctx, tx, orgId, organization)
