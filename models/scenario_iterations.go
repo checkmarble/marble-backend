@@ -90,7 +90,7 @@ type ScreeningConfig struct {
 	RuleGroup                *string
 	Provider                 string
 	Datasets                 []string
-	Filters                  map[string][][]string
+	Filters                  *ScreeningConfigFilters
 	TriggerRule              *ast.Node
 	EntityType               string
 	Query                    map[string]ast.Node
@@ -99,6 +99,25 @@ type ScreeningConfig struct {
 	CounterpartyIdExpression *ast.Node
 	Preprocessing            ScreeningConfigPreprocessing
 	ConfigVersion            string
+}
+
+type ScreeningConfigFilters struct {
+	Sanctions    *ScreeningConfigFilter `json:"sanctions,omitempty"`
+	Peps         *ScreeningConfigFilter `json:"peps,omitempty"`
+	AdverseMedia *ScreeningConfigFilter `json:"adverse_media,omitempty"`
+}
+
+func (scf *ScreeningConfigFilters) IsEmpty() bool {
+	if scf == nil {
+		return true
+	}
+
+	return scf.Sanctions == nil && scf.Peps == nil && scf.AdverseMedia == nil && scf.Other == nil
+}
+
+type ScreeningConfigFilter struct {
+	Datasets []string   `json:"datasets"`
+	Topics   [][]string `json:"topics"`
 }
 
 type ScreeningConfigPreprocessing struct {
@@ -201,6 +220,7 @@ type UpdateScreeningConfigInput struct {
 	Description              *string
 	RuleGroup                *string
 	Datasets                 []string
+	Filters                  *ScreeningConfigFilters
 	Threshold                *int
 	TriggerRule              *ast.Node
 	EntityType               *string
