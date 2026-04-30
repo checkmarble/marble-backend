@@ -18,14 +18,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// Before inserting an object into continuous screening table, we need to check if the table exists, create if not exists the continuous screening table and index
-// then insert the object into the list with the monitoring config ID.
-// 2 modes:
-//   - Provide the object ID of an ingested object and add it into the continuous screening list
-//   - Provide the object payload and ingest the object first then add it into the continuous screening list
-//
-// If the object already ingested and it is a new version, we will ignore the conflict error and consider the object as a new one and force the screening on the updated object.
-// The updated object should be ingested, we check if the object has been ingested before resume the continuous screening operation.
+// Add an already-ingested object to continuous screening under the given config (idempotent).
+// Registers it in the monitoring list within a client-DB transaction. An EnsureDeltaTrack job is enqueued in the same
+// transaction as a safety net against partial state between the two databases. Optionally runs an
+// immediate OpenSanctions screening
 func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 	ctx context.Context,
 	input models.CreateContinuousScreeningObject,
@@ -53,8 +49,6 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 		}
 		apiKeyId = &parsed
 	}
-
-	triggerType := models.ContinuousScreeningTriggerTypeObjectAdded
 
 	// Check if the config exists
 	config, err := uc.repository.GetContinuousScreeningConfigByStableId(ctx, exec, input.ConfigStableId)
@@ -95,10 +89,6 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 	}
 
 	objectId := input.ObjectId
-	// Ignore the unique violation error in case of ingestion.
-	// The payload can be an updated object and we will force the screening again on the updated object.
-	// Without recording the object ID in the continuous screening table.
-	ignoreUniqueViolationError := false
 
 	ingestedObject, ingestedObjectInternalId, err := uc.GetIngestedObject(
 		ctx,
@@ -110,20 +100,19 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 		return models.ContinuousScreeningWithMatches{}, err
 	}
 
-	var objectMonitoredInOtherConfigs bool
 	err = uc.transactionFactory.TransactionInOrgSchema(ctx, config.OrgId, func(tx repositories.Transaction) error {
-		if err := uc.clientDbRepository.InsertContinuousScreeningObject(
+		monitoredObjectId, err := uc.clientDbRepository.InsertContinuousScreeningObject(
 			ctx,
 			tx,
 			table.Name,
 			objectId,
 			input.ConfigStableId,
-			false,
-		); err != nil {
+		)
+		if err != nil {
 			return err
 		}
 
-		err = uc.clientDbRepository.InsertContinuousScreeningAudit(
+		if err = uc.clientDbRepository.InsertContinuousScreeningAudit(
 			ctx,
 			tx,
 			models.CreateContinuousScreeningAudit{
@@ -134,42 +123,29 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 				UserId:         userId,
 				ApiKeyId:       apiKeyId,
 			},
-		)
-		if err != nil {
+		); err != nil {
 			return err
 		}
 
-		// Check if the object is monitored in other configs
-		// If yes, don't create the ADD track
-		monitoredObjects, err := uc.clientDbRepository.ListMonitoredObjectsByObjectIds(
+		// Enqueue a delayed verification job as a safety net: if the delta track insert below
+		// commits but the client-DB tx rolled back (or vice versa), the verify worker repairs it.
+		return uc.taskQueueRepository.EnqueueContinuousScreeningEnsureDeltaTrackTask(
 			ctx,
-			tx,
-			table.Name,
-			[]string{objectId},
+			models.ContinuousScreeningEnsureDeltaTrackArgs{
+				OrgId:             config.OrgId,
+				ObjectType:        input.ObjectType,
+				ObjectId:          objectId,
+				ObjectInternalId:  ingestedObjectInternalId,
+				EntityId:          pure_utils.MarbleEntityIdBuilder(input.ObjectType, objectId),
+				MonitoredObjectId: monitoredObjectId,
+				Operation:         models.DeltaTrackOperationAdd,
+			},
 		)
-		if err != nil {
-			return err
-		}
-		// > 1 because the object is already monitored in this config, check if it is monitored in other configs
-		objectMonitoredInOtherConfigs = len(monitoredObjects) > 1
-		return nil
 	})
-	// Unique violation error is handled below
-	if err != nil {
-		if repositories.IsUniqueViolationError(err) && ignoreUniqueViolationError {
-			// Do nothing, normal case
-			// That means the object is already in monitoring list and we updated the object data
-			triggerType = models.ContinuousScreeningTriggerTypeObjectUpdated
-		} else if repositories.IsUniqueViolationError(err) {
-			return models.ContinuousScreeningWithMatches{}, errors.WithDetail(errors.Wrap(
-				models.ConflictError,
-				"object is already monitored with this configuration",
-			),
-				"object is already monitored with this configuration",
-			)
-		} else {
-			return models.ContinuousScreeningWithMatches{}, err
-		}
+	// Ignore unique violation errors, let the screening proceed
+	// Multiple call to this function is idempotent
+	if err != nil && !repositories.IsUniqueViolationError(err) {
+		return models.ContinuousScreeningWithMatches{}, err
 	}
 
 	var screeningWithMatches models.ScreeningWithMatches
@@ -185,32 +161,6 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 		ctx,
 		uc.transactionFactory,
 		func(tx repositories.Transaction) (models.ContinuousScreeningWithMatches, error) {
-			deltaTrackOperation := models.DeltaTrackOperationAdd
-			if triggerType == models.ContinuousScreeningTriggerTypeObjectUpdated {
-				deltaTrackOperation = models.DeltaTrackOperationUpdate
-			}
-
-			// Check if we should record this activity in the delta tracks
-			isNewMonitoring := deltaTrackOperation == models.DeltaTrackOperationAdd && !objectMonitoredInOtherConfigs
-			isUpdate := deltaTrackOperation == models.DeltaTrackOperationUpdate
-			if isNewMonitoring || isUpdate {
-				err = uc.repository.CreateContinuousScreeningDeltaTrack(
-					ctx,
-					tx,
-					models.CreateContinuousScreeningDeltaTrack{
-						OrgId:            config.OrgId,
-						ObjectType:       input.ObjectType,
-						ObjectId:         objectId,
-						ObjectInternalId: &ingestedObjectInternalId,
-						EntityId:         pure_utils.MarbleEntityIdBuilder(input.ObjectType, objectId),
-						Operation:        deltaTrackOperation,
-					},
-				)
-				if err != nil {
-					return models.ContinuousScreeningWithMatches{}, err
-				}
-			}
-
 			if !input.SkipScreen {
 				continuousScreeningWithMatches, err := uc.repository.InsertContinuousScreening(
 					ctx,
@@ -221,7 +171,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 						ObjectType:       &input.ObjectType,
 						ObjectId:         &objectId,
 						ObjectInternalId: &ingestedObjectInternalId,
-						TriggerType:      triggerType,
+						TriggerType:      models.ContinuousScreeningTriggerTypeObjectAdded,
 					},
 				)
 				if err != nil {

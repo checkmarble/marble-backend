@@ -172,13 +172,11 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		Matches:           []models.ScreeningMatch{},
 	}, nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
-		suite.objectType, suite.objectId, suite.configStableId, false).Return(nil)
+		suite.objectType, suite.objectId, suite.configStableId).Return(uuid.New(), nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
-	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
-		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
-		{},
-	}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEnsureDeltaTrackTask",
+		mock.Anything, mock.Anything).Return(nil)
 
 	continuousScreeningId := pure_utils.NewId()
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
@@ -195,10 +193,6 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}, nil)
 	suite.taskQueueRepository.On("EnqueueContinuousScreeningMatchEnrichmentTask", mock.Anything, mock.Anything,
 		suite.orgId, continuousScreeningId).Return(nil)
-	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
-		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
-			return input.Operation == models.DeltaTrackOperationAdd
-		})).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -332,8 +326,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.AssertExpectations()
 }
 
-func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_UniqueViolationWithoutIgnoreConflictError() {
-	// Setup test data - object ID, which will NOT set ignoreConflictError
+func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningObject_UniqueViolation_IgnoredAndScreeningProceeds() {
+	// Setup test data - unique violation on insert is ignored and screening proceeds
 	config := models.ContinuousScreeningConfig{
 		Id:          suite.configId,
 		StableId:    suite.configStableId,
@@ -387,9 +381,36 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
-		suite.objectType, suite.objectId, suite.configStableId, false).Return(&pgconn.PgError{
+		suite.objectType, suite.objectId, suite.configStableId).Return(uuid.Nil, &pgconn.PgError{
 		Code: pgerrcode.UniqueViolation,
 	})
+	// InsertContinuousScreeningAudit and EnqueueContinuousScreeningEnsureDeltaTrackTask
+	// are NOT called because the transaction fails at InsertContinuousScreeningObject.
+	suite.repository.On("SearchScreeningMatchWhitelist", mock.Anything, mock.Anything,
+		suite.orgId, mock.Anything, mock.Anything).Return([]models.ScreeningWhitelist{}, nil)
+	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
+		return len(query.Queries) > 0
+	})).Return(models.ScreeningRawSearchResponseWithMatches{
+		SearchInput:       []byte("{}"),
+		InitialHasMatches: false,
+		Matches:           []models.ScreeningMatch{},
+	}, nil)
+
+	continuousScreeningId := pure_utils.NewId()
+	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
+		mock.Anything).Return(models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:                                continuousScreeningId,
+			OrgId:                             suite.orgId,
+			ContinuousScreeningConfigId:       suite.configId,
+			ContinuousScreeningConfigStableId: suite.configStableId,
+			ObjectType:                        utils.Ptr(suite.objectType),
+			ObjectId:                          utils.Ptr(suite.objectId),
+		},
+		Matches: []models.ContinuousScreeningMatch{},
+	}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningMatchEnrichmentTask", mock.Anything, mock.Anything,
+		suite.orgId, continuousScreeningId).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()
@@ -400,11 +421,11 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		SkipScreen:     false,
 	}
 
-	_, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
+	result, err := uc.CreateContinuousScreeningObject(suite.ctx, input)
 
-	// Assert - should error when ignoreConflictError is false and unique violation occurs
-	suite.Error(err)
-	suite.True(errors.Is(err, models.ConflictError), "error should be ConflictError")
+	// Assert - unique violation is ignored and screening proceeds
+	suite.NoError(err)
+	suite.NotNil(result)
 	suite.AssertExpectations()
 }
 
@@ -517,13 +538,11 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 	}, nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
-		suite.objectType, suite.objectId, suite.configStableId, false).Return(nil)
+		suite.objectType, suite.objectId, suite.configStableId).Return(uuid.New(), nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
-	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
-		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
-		{},
-	}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEnsureDeltaTrackTask",
+		mock.Anything, mock.Anything).Return(nil)
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
 		mock.Anything).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
@@ -545,10 +564,6 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}, nil)
 	suite.taskQueueRepository.On("EnqueueContinuousScreeningMatchEnrichmentTask", mock.Anything, mock.Anything,
 		suite.orgId, continuousScreeningId).Return(nil)
-	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
-		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
-			return input.Operation == models.DeltaTrackOperationAdd
-		})).Return(nil)
 
 	// Mock case creation
 	caseId := pure_utils.NewId()
@@ -657,13 +672,11 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		},
 	}, nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
-		suite.objectType, suite.objectId, suite.configStableId, false).Return(nil)
+		suite.objectType, suite.objectId, suite.configStableId).Return(uuid.New(), nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
-	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
-		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
-		{},
-	}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEnsureDeltaTrackTask",
+		mock.Anything, mock.Anything).Return(nil)
 
 	continuousScreeningId := pure_utils.NewId()
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
@@ -687,10 +700,6 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}, nil)
 	suite.taskQueueRepository.On("EnqueueContinuousScreeningMatchEnrichmentTask", mock.Anything, mock.Anything,
 		suite.orgId, continuousScreeningId).Return(nil)
-	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
-		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
-			return input.Operation == models.DeltaTrackOperationAdd
-		})).Return(nil)
 
 	// Mock case creation to fail
 	suite.caseEditor.On("CreateCase", mock.Anything, mock.Anything, "", mock.MatchedBy(func(
@@ -1238,13 +1247,14 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	}, nil)
 
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
-		suite.objectType, suite.objectId, suite.configStableId, false).Return(nil)
+		suite.objectType, suite.objectId, suite.configStableId).Return(uuid.New(), nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
 	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
-		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
-		{},
-	}, nil)
+		suite.objectType, []string{suite.objectId}).Return(
+		[]models.ContinuousScreeningMonitoredObject{}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEnsureDeltaTrackTask",
+		mock.Anything, mock.Anything).Return(nil)
 
 	continuousScreeningId := pure_utils.NewId()
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
@@ -1473,13 +1483,11 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		Matches:           []models.ScreeningMatch{},
 	}, nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
-		suite.objectType, suite.objectId, suite.configStableId, false).Return(nil)
+		suite.objectType, suite.objectId, suite.configStableId).Return(uuid.New(), nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
-	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
-		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
-		{}, {},
-	}, nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEnsureDeltaTrackTask",
+		mock.Anything, mock.Anything).Return(nil)
 	continuousScreeningId := pure_utils.NewId()
 	suite.repository.On("InsertContinuousScreening", mock.Anything, mock.Anything,
 		mock.Anything).Return(models.ContinuousScreeningWithMatches{
@@ -1572,18 +1580,11 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	// Note: screeningProvider.Search and repository.InsertContinuousScreening should NOT be called since SkipScreen is true
 
 	suite.clientDbRepository.On("InsertContinuousScreeningObject", mock.Anything, mock.Anything,
-		suite.objectType, suite.objectId, suite.configStableId, false).Return(nil)
+		suite.objectType, suite.objectId, suite.configStableId).Return(uuid.New(), nil)
 	suite.clientDbRepository.On("InsertContinuousScreeningAudit", mock.Anything, mock.Anything,
 		mock.Anything).Return(nil)
-	suite.clientDbRepository.On("ListMonitoredObjectsByObjectIds", mock.Anything, mock.Anything,
-		suite.objectType, []string{suite.objectId}).Return([]models.ContinuousScreeningMonitoredObject{
-		{},
-	}, nil)
-
-	suite.repository.On("CreateContinuousScreeningDeltaTrack", mock.Anything, mock.Anything,
-		mock.MatchedBy(func(input models.CreateContinuousScreeningDeltaTrack) bool {
-			return input.Operation == models.DeltaTrackOperationAdd
-		})).Return(nil)
+	suite.taskQueueRepository.On("EnqueueContinuousScreeningEnsureDeltaTrackTask",
+		mock.Anything, mock.Anything).Return(nil)
 
 	// Execute
 	uc := suite.makeUsecase()

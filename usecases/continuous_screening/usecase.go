@@ -187,6 +187,10 @@ type continuousScreeningTaskQueueRepository interface {
 		organizationId uuid.UUID,
 		continuousScreeningId uuid.UUID,
 	) error
+	EnqueueContinuousScreeningEnsureDeltaTrackTask(
+		ctx context.Context,
+		args models.ContinuousScreeningEnsureDeltaTrackArgs,
+	) error
 }
 
 type inboxReader interface {
@@ -238,8 +242,7 @@ type ContinuousScreeningClientDbRepository interface {
 		objectType string,
 		objectId string,
 		configStableId uuid.UUID,
-		ignoreConflicts bool,
-	) error
+	) (uuid.UUID, error)
 	InsertContinuousScreeningAudit(
 		ctx context.Context,
 		exec repositories.Executor,

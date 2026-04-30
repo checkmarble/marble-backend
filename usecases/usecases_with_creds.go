@@ -911,6 +911,27 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningDoScreeningWorker() *co
 	)
 }
 
+func (usecases *UsecasesWithCreds) NewContinuousScreeningRegisterObjectWorker() *continuous_screening.RegisterObjectWorker {
+	return continuous_screening.NewRegisterObjectWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.TaskQueueRepository,
+		&usecases.Repositories.ClientDbRepository,
+		usecases.Repositories.IngestedDataReadRepository,
+		usecases.NewContinuousScreeningUsecase(),
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewContinuousScreeningEnsureDeltaTrackWorker() *continuous_screening.EnsureDeltaTrackWorker {
+	return continuous_screening.NewEnsureDeltaTrackWorker(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		&usecases.Repositories.ClientDbRepository,
+	)
+}
+
 func (usecases *UsecasesWithCreds) NewContinuousScreeningApplyDeltaFileWorker() *continuous_screening.ApplyDeltaFileWorker {
 	return continuous_screening.NewApplyDeltaFileWorker(
 		usecases.NewExecutorFactory(),
