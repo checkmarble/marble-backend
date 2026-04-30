@@ -157,6 +157,7 @@ func (repo *MarbleDbRepository) CreateScreeningConfig(ctx context.Context, exec 
 			"description",
 			"rule_group",
 			"datasets",
+			"filters",
 			"threshold",
 			"forced_outcome",
 			"trigger_rule",
@@ -172,6 +173,7 @@ func (repo *MarbleDbRepository) CreateScreeningConfig(ctx context.Context, exec 
 			utils.Or(cfg.Description, ""),
 			utils.Or(cfg.RuleGroup, ""),
 			cfg.Datasets,
+			cfg.Filters,
 			cfg.Threshold,
 			forcedOutcome.String(),
 			triggerRule,
@@ -252,6 +254,10 @@ func (repo *MarbleDbRepository) UpdateScreeningConfig(ctx context.Context, exec 
 	}
 	if cfg.Datasets != nil {
 		sql = sql.Set("datasets", cfg.Datasets)
+		updateFields = true
+	}
+	if cfg.Filters != nil {
+		sql = sql.Set("filters", cfg.Filters)
 		updateFields = true
 	}
 	if cfg.Threshold != nil {
