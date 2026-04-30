@@ -64,6 +64,7 @@ type LicenseEntitlements struct {
 	CaseAiAssist        bool
 	ContinuousScreening bool
 	UserScoring         bool
+	LexisNexis          bool
 }
 
 type LicenseValidation struct {
@@ -89,6 +90,7 @@ func NewFullLicense() LicenseValidation {
 			CaseAiAssist:        true,
 			ContinuousScreening: true,
 			UserScoring:         true,
+			LexisNexis:          true,
 		},
 	}
 }

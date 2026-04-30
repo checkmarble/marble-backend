@@ -7,6 +7,20 @@ import (
 	"github.com/google/uuid"
 )
 
+type ScreeningFeature string
+
+const (
+	ScreeningFeatureTransactionMonitoring ScreeningFeature = "transaction_monitoring"
+	ScreeningFeatureContinuousMonitoring  ScreeningFeature = "continuous_monitoring"
+	ScreeningFeatureManualSearch          ScreeningFeature = "manual_search"
+)
+
+var (
+	ValidScreeningProviderFeature = []ScreeningFeature{ScreeningFeatureTransactionMonitoring, ScreeningFeatureContinuousMonitoring, ScreeningFeatureManualSearch}
+	ValidScreeningProviders       = []string{"opensanctions", "lexisnexis"}
+	DefaultScreeningProvider      = "opensanctions"
+)
+
 type ScreeningStatus int
 
 const (
@@ -194,18 +208,18 @@ func (s ScreeningWithMatches) InitialStatusFromMatches() ScreeningStatus {
 }
 
 type ScreeningMatch struct {
-	Id                           string
-	IsMatch                      bool
-	ScreeningId                  string
-	EntityId                     string
-	Referents                    []string
-	Status                       ScreeningMatchStatus
-	QueryIds                     []string
-	Payload                      []byte
-	Enriched                     bool
-	ReviewedBy                   *string
-	Score                        float64
-	Comments                     []ScreeningMatchComment
+	Id          string
+	IsMatch     bool
+	ScreeningId string
+	EntityId    string
+	Referents   []string
+	Status      ScreeningMatchStatus
+	QueryIds    []string
+	Payload     []byte
+	Enriched    bool
+	ReviewedBy  *string
+	Score       float64
+	Comments    []ScreeningMatchComment
 }
 
 // Score is stored in the Payload and not in a dedicated column when fetching screening from DB.

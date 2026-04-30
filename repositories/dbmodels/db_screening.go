@@ -19,35 +19,37 @@ var (
 )
 
 type DBScreening struct {
-	Id                  string                           `db:"id"`
-	DecisionId          string                           `db:"decision_id"`
-	OrgId               uuid.UUID                        `db:"org_id"`
-	ScreeningConfigId   string                           `db:"screening_config_id"`
-	Status              string                           `db:"status"`
-	SearchInput         json.RawMessage                  `db:"search_input"`
-	InitialQuery        []models.OpenSanctionsCheckQuery `db:"initial_query"`
-	CounterpartyId      *string                          `db:"counterparty_id"`
-	MatchThreshold      int                              `db:"match_threshold"`
-	MatchLimit          int                              `db:"match_limit"`
-	IsManual            bool                             `db:"is_manual"`
-	RequestedBy         *string                          `db:"requested_by"`
-	IsPartial           bool                             `db:"is_partial"`
-	IsArchived          bool                             `db:"is_archived"`
-	InitialHasMatches   bool                             `db:"initial_has_matches"`
-	ErrorCodes          []string                         `db:"error_codes"`
-	NumberOfMatches     *int                             `db:"number_of_matches"`
-	CreatedAt           time.Time                        `db:"created_at"`
-	UpdatedAt           time.Time                        `db:"updated_at"`
+	Id                string                           `db:"id"`
+	DecisionId        string                           `db:"decision_id"`
+	OrgId             uuid.UUID                        `db:"org_id"`
+	ScreeningConfigId string                           `db:"screening_config_id"`
+	Status            string                           `db:"status"`
+	SearchInput       json.RawMessage                  `db:"search_input"`
+	InitialQuery      []models.OpenSanctionsCheckQuery `db:"initial_query"`
+	CounterpartyId    *string                          `db:"counterparty_id"`
+	MatchThreshold    int                              `db:"match_threshold"`
+	MatchLimit        int                              `db:"match_limit"`
+	IsManual          bool                             `db:"is_manual"`
+	RequestedBy       *string                          `db:"requested_by"`
+	IsPartial         bool                             `db:"is_partial"`
+	IsArchived        bool                             `db:"is_archived"`
+	InitialHasMatches bool                             `db:"initial_has_matches"`
+	ErrorCodes        []string                         `db:"error_codes"`
+	NumberOfMatches   *int                             `db:"number_of_matches"`
+	CreatedAt         time.Time                        `db:"created_at"`
+	UpdatedAt         time.Time                        `db:"updated_at"`
 }
 
 type DBScreeningAndConfig struct {
 	DBScreening
 
 	// Fields from config (joined via screening_config_id)
-	ConfigId string   `db:"config_id"`
-	StableId string   `db:"stable_id"`
-	Name     string   `db:"name"`
-	Datasets []string `db:"datasets"`
+	ConfigId string                `db:"config_id"`
+	StableId string                `db:"stable_id"`
+	Name     string                `db:"name"`
+	Provider string                `db:"provider"`
+	Datasets []string              `db:"datasets"`
+	Filters  map[string][][]string `db:"filters"`
 }
 
 type DBScreeningWithMatches struct {
