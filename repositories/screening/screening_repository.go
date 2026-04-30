@@ -389,7 +389,7 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, providerName str
 func (repo OpenSanctionsRepository) EnrichMatch(ctx context.Context, providerName string, match models.ScreeningMatch) ([]byte, error) {
 	provider := repo.GetProvider(providerName)
 
-	requestUrl := fmt.Sprintf("%s/entities/%s", repo.Config.Host("opensanctions"), match.EntityId)
+	requestUrl := fmt.Sprintf("%s/entities/%s", repo.Config.Host(providerName), match.EntityId)
 
 	if qs := provider.BuildQueryString(ctx, nil, nil); len(qs) > 0 {
 		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())

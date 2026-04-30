@@ -39,6 +39,8 @@ var AllowedSchemaTypes = []string{
 }
 
 type applyDeltaFileWorkerRepository interface {
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) (models.Organization, error)
+
 	GetEnrichedContinuousScreeningUpdateJob(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -212,6 +214,12 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		return err
 	}
 
+	org, err := w.repository.GetOrganizationById(ctx, exec, job.Args.OrgId)
+	if err != nil {
+		return errors.Wrap(err, "could not retrieve organization")
+	}
+	provider := org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring)
+
 	blob, err := w.blobRepository.GetBlob(
 		ctx,
 		w.bucketUrl,
@@ -293,7 +301,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		iterLogger.DebugContext(iterCtx, "Performing screening for record")
 		err = retry.Do(
 			func() error {
-				screeningResponse, err = w.screeningProvider.Search(iterCtx, "opensanctions", query)
+				screeningResponse, err = w.screeningProvider.Search(iterCtx, provider, query)
 				return err
 			},
 			retry.Attempts(3),

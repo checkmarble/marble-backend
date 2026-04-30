@@ -1326,7 +1326,9 @@ func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches() {
 	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table, "test-object-id", mock.Anything).
 		Return([]models.DataModelObject{ingestedObject}, nil)
 
-	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(q models.OpenSanctionsQuery) bool {
+	suite.repository.On("GetOrganizationById", mock.Anything, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
+	suite.screeningProvider.On("Search", mock.Anything, mock.Anything, mock.MatchedBy(func(q models.OpenSanctionsQuery) bool {
 		return q.OrgConfig.MatchLimit == 500 && q.Config.Datasets[0] == "dataset1"
 	})).Return(searchResponse, nil)
 
@@ -1520,7 +1522,9 @@ func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches_NoNewMat
 	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table, "test-object-id", mock.Anything).
 		Return([]models.DataModelObject{ingestedObject}, nil)
 
-	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(q models.OpenSanctionsQuery) bool {
+	suite.repository.On("GetOrganizationById", mock.Anything, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
+	suite.screeningProvider.On("Search", mock.Anything, mock.Anything, mock.MatchedBy(func(q models.OpenSanctionsQuery) bool {
 		return q.OrgConfig.MatchLimit == 500 && q.Config.Datasets[0] == "dataset1"
 	})).Return(searchResponse, nil)
 
