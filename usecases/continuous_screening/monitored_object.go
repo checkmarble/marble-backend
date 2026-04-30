@@ -377,13 +377,14 @@ func (uc *ContinuousScreeningUsecase) GetIngestedObject(ctx context.Context,
 // executeScreeningWithRetry performs the screening query with retry logic
 func (uc *ContinuousScreeningUsecase) executeScreeningWithRetry(
 	ctx context.Context,
+	providerName string,
 	query models.OpenSanctionsQuery,
 ) (models.ScreeningWithMatches, error) {
 	var screeningResponse models.ScreeningRawSearchResponseWithMatches
 	var err error
 	err = retry.Do(
 		func() error {
-			screeningResponse, err = uc.screeningProvider.Search(ctx, "opensanctions", query)
+			screeningResponse, err = uc.screeningProvider.Search(ctx, providerName, query)
 			return err
 		},
 		retry.Attempts(3),
@@ -430,7 +431,12 @@ func (uc *ContinuousScreeningUsecase) DoScreening(
 		return models.ScreeningWithMatches{}, err
 	}
 
-	return uc.executeScreeningWithRetry(ctx, query)
+	org, err := uc.repository.GetOrganizationById(ctx, exec, config.OrgId)
+	if err != nil {
+		return models.ScreeningWithMatches{}, errors.Wrap(err, "could not retrieve organization")
+	}
+
+	return uc.executeScreeningWithRetry(ctx, org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring), query)
 }
 
 // DoScreeningForEntity performs screening for OpenSanction entities against Marble data (OpenSanction → Marble direction)
@@ -474,7 +480,12 @@ func (uc *ContinuousScreeningUsecase) DoScreeningForEntity(
 		Scope:                orgCustomDatasetName(orgId),
 	}
 
-	return uc.executeScreeningWithRetry(ctx, query)
+	org, err := uc.repository.GetOrganizationById(ctx, exec, config.OrgId)
+	if err != nil {
+		return models.ScreeningWithMatches{}, errors.Wrap(err, "could not retrieve organization")
+	}
+
+	return uc.executeScreeningWithRetry(ctx, org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring), query)
 }
 
 func (uc *ContinuousScreeningUsecase) HandleCaseCreation(

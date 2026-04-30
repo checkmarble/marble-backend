@@ -168,7 +168,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.orgId, mock.Anything, mock.Anything).Return([]models.ScreeningWhitelist{}, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
-	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
+	suite.repository.On("GetOrganizationById", mock.Anything, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
+	suite.screeningProvider.On("Search", mock.Anything, mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
 		return len(query.Queries) > 0
 	})).Return(models.ScreeningRawSearchResponseWithMatches{
 		SearchInput:       []byte("{}"),
@@ -529,7 +531,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.orgId, mock.Anything, mock.Anything).Return([]models.ScreeningWhitelist{}, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
-	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
+	suite.repository.On("GetOrganizationById", mock.Anything, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
+	suite.screeningProvider.On("Search", mock.Anything, mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
 		return len(query.Queries) > 0
 	})).Return(models.ScreeningRawSearchResponseWithMatches{
 		SearchInput:       []byte("{}"),
@@ -668,7 +672,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.orgId, mock.Anything, mock.Anything).Return([]models.ScreeningWhitelist{}, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
-	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
+	suite.repository.On("GetOrganizationById", mock.Anything, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
+	suite.screeningProvider.On("Search", mock.Anything, mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
 		return len(query.Queries) > 0
 	})).Return(models.ScreeningRawSearchResponseWithMatches{
 		SearchInput:       []byte("{}"),
@@ -1245,7 +1251,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
 
 	// Mock screening provider and verify that the query contains the whitelisted entity IDs
-	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
+	suite.repository.On("GetOrganizationById", mock.Anything, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
+	suite.screeningProvider.On("Search", mock.Anything, mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
 		// Verify that the query contains the expected whitelisted entity IDs
 		expectedWhitelistedIds := []string{"whitelist-entity-1", "whitelist-entity-2"}
 		return slices.Equal(query.WhitelistedEntityIds, expectedWhitelistedIds)
@@ -1486,7 +1494,9 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.orgId, mock.Anything, mock.Anything).Return([]models.ScreeningWhitelist{}, nil)
 	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table,
 		suite.objectId, mock.Anything).Return(ingestedObjects, nil)
-	suite.screeningProvider.On("Search", mock.Anything, mock.Anything).Return(models.ScreeningRawSearchResponseWithMatches{
+	suite.repository.On("GetOrganizationById", mock.Anything, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
+	suite.screeningProvider.On("Search", mock.Anything, mock.Anything, mock.Anything).Return(models.ScreeningRawSearchResponseWithMatches{
 		SearchInput:       []byte("{}"),
 		InitialHasMatches: false,
 		Matches:           []models.ScreeningMatch{},

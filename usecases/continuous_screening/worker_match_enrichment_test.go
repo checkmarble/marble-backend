@@ -137,10 +137,12 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_DatasetTriggered_EnrichesO
 		mock.Anything,
 		suite.continuousScreeningId,
 	).Return(continuousScreeningWithMatches, nil)
+	suite.repository.On("GetOrganizationById", suite.ctx, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
 
 	// Expect only entity enrichment (not matches, as they are organization's own data)
 	enrichedPayload := []byte(`{"id":"entity-123","enriched":true}`)
-	suite.openSanctionsProvider.On("EnrichMatch", suite.ctx, models.ScreeningMatch{
+	suite.openSanctionsProvider.On("EnrichMatch", suite.ctx, models.DefaultScreeningProvider, models.ScreeningMatch{
 		EntityId: entityId,
 	}).Return(enrichedPayload, nil)
 	suite.repository.On("UpdateContinuousScreeningEntityEnrichedPayload",
@@ -192,10 +194,12 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_ObjectTriggered_EnrichesOn
 		mock.Anything,
 		suite.continuousScreeningId,
 	).Return(continuousScreeningWithMatches, nil)
+	suite.repository.On("GetOrganizationById", suite.ctx, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
 
 	// Only expect match enrichment (no entity enrichment for ObjectTriggered)
 	enrichedMatchPayload := []byte(`{"id":"match-1","enriched":true}`)
-	suite.openSanctionsProvider.On("EnrichMatch", suite.ctx, models.ScreeningMatch{
+	suite.openSanctionsProvider.On("EnrichMatch", suite.ctx, models.DefaultScreeningProvider, models.ScreeningMatch{
 		EntityId: "match-1",
 	}).Return(enrichedMatchPayload, nil)
 	suite.repository.On("UpdateContinuousScreeningMatchEnrichedPayload",

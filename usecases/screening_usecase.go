@@ -33,6 +33,7 @@ type ScreeningEnforceSecurityCase interface {
 }
 
 type ScreeningEnforceSecurity interface {
+	OrgId() uuid.UUID
 	ReadWhitelist(context.Context) error
 	WriteWhitelist(context.Context) error
 	PerformFreeformSearch(context.Context) error
@@ -147,8 +148,12 @@ func (uc ScreeningUsecase) CheckDatasetFreshness(ctx context.Context) (models.Op
 }
 
 func (uc ScreeningUsecase) GetDatasetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error) {
-	// TODO: request the right provider
-	return uc.openSanctionsProvider.GetCatalog(ctx, "opensanctions")
+	org, err := uc.organizationRepository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), uc.enforceSecurity.OrgId())
+	if err != nil {
+		return models.OpenSanctionsCatalog{}, errors.Wrap(err, "could not retrieve organization")
+	}
+
+	return uc.openSanctionsProvider.GetCatalog(ctx, org.GetScreeningProviderFor(models.ScreeningFeatureManualSearch))
 }
 
 func (uc ScreeningUsecase) GetScreening(ctx context.Context, id string) (models.ScreeningWithMatches, error) {
@@ -246,7 +251,7 @@ func (uc ScreeningUsecase) Execute(
 
 	query.OrgConfig = org.OpenSanctionsConfig
 
-	matches, err := uc.openSanctionsProvider.Search(ctx, "opensanctions", query)
+	matches, err := uc.openSanctionsProvider.Search(ctx, query.Config.Provider, query)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
@@ -397,6 +402,15 @@ func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
 	if err := uc.enforceSecurity.PerformFreeformSearch(ctx); err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
+
+	org, err := uc.organizationRepository.GetOrganizationById(ctx,
+		uc.executorFactory.NewExecutor(), orgId)
+	if err != nil {
+		return models.ScreeningWithMatches{},
+			errors.Wrap(err, "could not retrieve organization")
+	}
+
+	scc.Provider = org.GetScreeningProviderFor(models.ScreeningFeatureManualSearch)
 
 	query := models.OpenSanctionsQuery{
 		IsRefinement:  false,
@@ -690,7 +704,12 @@ func (uc ScreeningUsecase) EnrichMatchWithoutAuthorization(ctx context.Context, 
 			"this screening match was already enriched")
 	}
 
-	newPayload, err := uc.openSanctionsProvider.EnrichMatch(ctx, "opensanctions", match)
+	org, err := uc.organizationRepository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), uc.enforceSecurity.OrgId())
+	if err != nil {
+		return models.ScreeningMatch{}, errors.Wrap(err, "could not retrieve organization")
+	}
+
+	newPayload, err := uc.openSanctionsProvider.EnrichMatch(ctx, org.GetScreeningProviderFor(models.ScreeningFeatureManualSearch), match)
 	if err != nil {
 		return models.ScreeningMatch{}, err
 	}
@@ -711,7 +730,12 @@ func (uc ScreeningUsecase) EnrichMatchWithoutAuthorization(ctx context.Context, 
 }
 
 func (uc ScreeningUsecase) GetEntity(ctx context.Context, entityId string) ([]byte, error) {
-	return uc.openSanctionsProvider.EnrichMatch(ctx, "opensanctions", models.ScreeningMatch{EntityId: entityId})
+	org, err := uc.organizationRepository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), uc.enforceSecurity.OrgId())
+	if err != nil {
+		return nil, errors.Wrap(err, "could not retrieve organization")
+	}
+
+	return uc.openSanctionsProvider.EnrichMatch(ctx, org.GetScreeningProviderFor(models.ScreeningFeatureManualSearch), models.ScreeningMatch{EntityId: entityId})
 }
 
 func (uc ScreeningUsecase) CreateFiles(ctx context.Context, creds models.Credentials,

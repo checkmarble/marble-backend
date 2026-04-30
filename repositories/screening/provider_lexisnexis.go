@@ -67,7 +67,7 @@ func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
 			"could not parse OpenSanctions response")
 	}
 
-	requestUrl := fmt.Sprintf("%s/match/%s", p.Config.Host("opensanctions"), scope)
+	requestUrl := fmt.Sprintf("%s/match/%s", p.Config.Host("lexisnexis"), scope)
 
 	if qs := p.BuildQueryString(ctx, &query.Config, query); len(qs) > 0 {
 		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())
