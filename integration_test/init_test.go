@@ -93,6 +93,10 @@ func TestMain(m *testing.M) {
 
 	hostAndPort := resource.GetHostPort("5432/tcp") // docker container will bind to another port than 5432 if already taken
 
+	if os.Getenv("_INTERNAL_TEST_USE_CONTAINER_IP") == "1" {
+		hostAndPort = fmt.Sprintf("%s:5432", resource.Container.NetworkSettings.IPAddress)
+	}
+
 	connectionString := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", testUser, testPassword, hostAndPort, testDbName)
 	testDbPool, err := pgxpool.New(context.Background(), connectionString)
 	if err != nil {

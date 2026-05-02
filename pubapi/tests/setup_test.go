@@ -88,6 +88,14 @@ func setupPostgres(t *testing.T, ctx context.Context) *postgres.PostgresContaine
 	}
 
 	dsn := pg.MustConnectionString(ctx)
+	if os.Getenv("_INTERNAL_TEST_USE_CONTAINER_IP") == "1" {
+		ip, err := pg.ContainerIP(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		dsn = pg.MustConnectionString(ctx, fmt.Sprintf("host=%s", ip), "port=5432")
+	}
+
 	pgConfig := infra.PgConfig{ConnectionString: dsn}
 	migrator := repositories.NewMigrater(pgConfig)
 
