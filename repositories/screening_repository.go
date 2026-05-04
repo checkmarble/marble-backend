@@ -425,7 +425,6 @@ func (repo *MarbleDbRepository) CountScreeningsByOrg(ctx context.Context, exec E
 	return countByHelper(ctx, exec, query, orgIds)
 }
 
-// Only counts
 func (repo *MarbleDbRepository) CountScreeningsByProvider(ctx context.Context, exec Executor,
 	orgIds []string, providers []models.ScreeningProvider, from, to time.Time,
 ) (models.ByOrgByProviderCounter, error) {
@@ -441,7 +440,7 @@ func (repo *MarbleDbRepository) CountScreeningsByProvider(ctx context.Context, e
 		// Where(squirrel.Eq{"provider": providers}).
 		Where(squirrel.GtOrEq{"created_at": from}).
 		Where(squirrel.Lt{"created_at": to}).
-		Where(squirrel.NotEq{"status": models.ScreeningStatusError}).
+		Where(squirrel.NotEq{"status": models.ScreeningStatusError.String()}).
 		// TODO: uncomment or replace by the right field to filter by provider
 		// GroupBy("org_id", "provider")
 		GroupBy("org_id")
