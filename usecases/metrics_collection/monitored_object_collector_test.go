@@ -18,11 +18,11 @@ import (
 )
 
 // Test mocks for ContinuousScreeningCollector
-type MockContinuousScreeningMarbleDbRepository struct {
+type MockMonitoredObjectMarbleDbRepository struct {
 	mock.Mock
 }
 
-func (m *MockContinuousScreeningMarbleDbRepository) GetEnabledConfigStableIdsByOrg(
+func (m *MockMonitoredObjectMarbleDbRepository) GetEnabledConfigStableIdsByOrg(
 	ctx context.Context,
 	exec repositories.Executor,
 	orgIds []string,
@@ -31,11 +31,11 @@ func (m *MockContinuousScreeningMarbleDbRepository) GetEnabledConfigStableIdsByO
 	return args.Get(0).(map[string][]uuid.UUID), args.Error(1)
 }
 
-type MockContinuousScreeningClientDbRepository struct {
+type MockMonitoredClientDbRepository struct {
 	mock.Mock
 }
 
-func (m *MockContinuousScreeningClientDbRepository) CountMonitoredObjectsByConfigStableIds(
+func (m *MockMonitoredClientDbRepository) CountMonitoredObjectsByConfigStableIds(
 	ctx context.Context,
 	exec repositories.Executor,
 	configStableIds []uuid.UUID,
@@ -44,18 +44,18 @@ func (m *MockContinuousScreeningClientDbRepository) CountMonitoredObjectsByConfi
 	return args.Get(0).(int), args.Error(1)
 }
 
-// TestContinuousScreeningCollector_Collect_Success tests the successful collection with multiple scenarios:
+// TestMonitoredObjectCollector_Collect_Success tests the successful collection with multiple scenarios:
 // - Org with monitored objects
 // - Org with enabled configs but no monitored objects
 // - Org with no enabled configs
-func TestContinuousScreeningCollector_Collect_Success(t *testing.T) {
+func TestMonitoredObjectCollector_Collect_Success(t *testing.T) {
 	// Setup
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 31, 23, 59, 59, 0, time.UTC)
 
-	mockMarbleDbRepo := new(MockContinuousScreeningMarbleDbRepository)
-	mockClientDbRepo := new(MockContinuousScreeningClientDbRepository)
+	mockMarbleDbRepo := new(MockMonitoredObjectMarbleDbRepository)
+	mockClientDbRepo := new(MockMonitoredClientDbRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 
 	// Test organizations
@@ -93,7 +93,7 @@ func TestContinuousScreeningCollector_Collect_Success(t *testing.T) {
 		[]uuid.UUID{}).Return(0, nil)
 
 	// Create collector
-	collector := NewContinuousScreeningCollector(
+	collector := NewMonitoredObjectCollector(
 		mockMarbleDbRepo,
 		mockClientDbRepo,
 		mockExecutorFactory,

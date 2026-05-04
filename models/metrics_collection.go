@@ -52,3 +52,5 @@ func NewOrganizationMetric(name string, numeric *float64, text *string, publicOr
 		To:          to,
 	}
 }
+
+type ByOrgByProviderCounter map[string]map[string]int
