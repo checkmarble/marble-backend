@@ -1138,3 +1138,32 @@ func (repo *MarbleDbRepository) GetEnabledConfigStableIdsByOrg(
 
 	return result, nil
 }
+
+// Only counts continuous screening which have been triggered by object addition or update
+// TODO: TBD should we count the number of screening triggered by dataset update? meaning query to organization dataset
+func (repo *MarbleDbRepository) CountCSScreeningsByProvider(
+	ctx context.Context,
+	exec Executor,
+	orgIds []string,
+	providers []string,
+	from, to time.Time,
+) (models.ByOrgByProviderCounter, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("org_id, provider, count(*) as count").
+		From(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
+		Where(squirrel.Eq{"org_id": orgIds}).
+		// TODO: uncomment or replace by the right field to filter by provider
+		//Where(squirrel.Eq{"provider": providers}).
+		Where(squirrel.GtOrEq{"created_at": from}).
+		Where(squirrel.Lt{"created_at": to}).
+		Where(squirrel.Eq{"trigger_type": []string{models.ContinuousScreeningTriggerTypeObjectAdded.String(), models.ContinuousScreeningTriggerTypeObjectUpdated.String()}}).
+		// TODO: uncomment or replace by the right field to filter by provider
+		// GroupBy("org_id", "provider")
+		GroupBy("org_id")
+
+	return countBy2Dimensions(ctx, exec, query, orgIds, providers)
+}

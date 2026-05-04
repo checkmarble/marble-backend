@@ -425,6 +425,30 @@ func (repo *MarbleDbRepository) CountScreeningsByOrg(ctx context.Context, exec E
 	return countByHelper(ctx, exec, query, orgIds)
 }
 
+// Only counts
+func (repo *MarbleDbRepository) CountScreeningsByProvider(ctx context.Context, exec Executor,
+	orgIds []string, providers []string, from, to time.Time,
+) (models.ByOrgByProviderCounter, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("org_id, provider, count(*) as count").
+		From(dbmodels.TABLE_SCREENINGS).
+		Where(squirrel.Eq{"org_id": orgIds}).
+		// TODO: uncomment or replace by the right field to filter by provider
+		// Where(squirrel.Eq{"provider": providers}).
+		Where(squirrel.GtOrEq{"created_at": from}).
+		Where(squirrel.Lt{"created_at": to}).
+		Where(squirrel.NotEq{"status": models.ScreeningStatusError}).
+		// TODO: uncomment or replace by the right field to filter by provider
+		// GroupBy("org_id", "provider")
+		GroupBy("org_id")
+
+	return countBy2Dimensions(ctx, exec, query, orgIds, providers)
+}
+
 func (repo *MarbleDbRepository) screeningsWithoutHitsOfDecision(
 	ctx context.Context,
 	exec Executor,
