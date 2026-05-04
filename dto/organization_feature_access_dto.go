@@ -19,6 +19,7 @@ type APIOrganizationFeatureAccess struct {
 	CaseAiAssist        string `json:"case_ai_assist"`
 	ContinuousScreening string `json:"continuous_screening"`
 	AiRuleBuilding      string `json:"ai_rule_building"`
+	UserScoring         string `json:"user_scoring"`
 
 	// user-scoped
 	// Currently only used to control display of the AI assist button in the UI - DO NOT use for anything else as it will be removed
@@ -40,6 +41,7 @@ func AdaptOrganizationFeatureAccessDto(f models.OrganizationFeatureAccess) APIOr
 		ContinuousScreening: f.ContinuousScreening.String(),
 		AiRuleBuilding:      f.AiRuleBuilding.String(),
 		AiAssist:            f.AiAssist.String(),
+		UserScoring:         f.UserScoring.String(),
 	}
 }
 
