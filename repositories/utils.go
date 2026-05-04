@@ -137,3 +137,53 @@ func countByHelper(ctx context.Context, exec Executor, query squirrel.Sqlizer, b
 
 	return result, nil
 }
+
+type countBy2DimensionsItem struct {
+	firstKey  string
+	secondKey string
+	count     int
+}
+
+// Helper function to count items grouped by two keys (e.g. org id and provider), useful for metrics collector.
+// The function expects the query to return rows of (firstKey, secondKey, count) and returns a nested map
+// firstKey -> secondKey -> count, filling missing combinations of byFirstKeys × bySecondKeys with 0.
+// Example:
+// SELECT org_id, provider, count(*) as count FROM screenings WHERE org_id IN ($1) AND provider IN ($2) AND created_at >= $3 AND created_at < $4 GROUP BY org_id, provider
+func countBy2Dimensions(ctx context.Context, exec Executor, query squirrel.Sqlizer, byFirstKeys, bySecondKeys []string) (map[string]map[string]int, error) {
+	counts, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (countBy2DimensionsItem, error) {
+		var result countBy2DimensionsItem
+		err := row.Scan(&result.firstKey, &result.secondKey, &result.count)
+		if err != nil {
+			return countBy2DimensionsItem{}, err
+		}
+		return result, nil
+	})
+	if err != nil {
+		return map[string]map[string]int{}, err
+	}
+
+	secondValueDefaultGenerator := func() map[string]int {
+		result := make(map[string]int, len(bySecondKeys))
+		for _, key := range bySecondKeys {
+			result[key] = 0
+		}
+		return result
+	}
+
+	result := make(map[string]map[string]int, len(byFirstKeys))
+	for _, count := range counts {
+		if _, exists := result[count.firstKey]; !exists {
+			result[count.firstKey] = secondValueDefaultGenerator()
+		}
+		result[count.firstKey][count.secondKey] = count.Count
+	}
+
+	// Set default values for first keys which don't have any items
+	for _, firstKey := range byFirstKeys {
+		if _, exists := result[firstKey]; !exists {
+			result[firstKey] = secondValueDefaultGenerator()
+		}
+	}
+
+	return result, nil
+}
