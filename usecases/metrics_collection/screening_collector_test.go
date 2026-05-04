@@ -36,13 +36,13 @@ func TestScreeningByProviderCollector_Collect_Success(t *testing.T) {
 		{Id: org1Id, Name: "Org 1", PublicId: org1PublicId},
 		{Id: org2Id, Name: "Org 2", PublicId: org2PublicId},
 	}
-	providers := []string{"opensanctions", "ln"}
+	providers := []string{"opensanctions", "lexisnexis"}
 
 	mockRepo.On("CountScreeningsByProvider", ctx, mock.Anything,
 		[]string{org1Id.String(), org2Id.String()}, providers, from, to).
 		Return(models.ByOrgByProviderCounter{
-			org1Id.String(): {"opensanctions": 5, "ln": 0},
-			org2Id.String(): {"opensanctions": 3, "ln": 1},
+			org1Id.String(): {"opensanctions": 5, "lexisnexis": 0},
+			org2Id.String(): {"opensanctions": 3, "lexisnexis": 1},
 		}, nil)
 
 	collector := NewScreeningByProviderCollector(mockRepo, mockExecutorFactory, providers)
@@ -57,9 +57,9 @@ func TestScreeningByProviderCollector_Collect_Success(t *testing.T) {
 	}
 
 	assert.Equal(t, float64(5), byKey[screeningMetricKey{org1PublicId, ScreeningOpenSanctionsMetricName}])
-	assert.Equal(t, float64(0), byKey[screeningMetricKey{org1PublicId, ScreeningLNMetricName}])
+	assert.Equal(t, float64(0), byKey[screeningMetricKey{org1PublicId, ScreeningLexisNexisMetricName}])
 	assert.Equal(t, float64(3), byKey[screeningMetricKey{org2PublicId, ScreeningOpenSanctionsMetricName}])
-	assert.Equal(t, float64(1), byKey[screeningMetricKey{org2PublicId, ScreeningLNMetricName}])
+	assert.Equal(t, float64(1), byKey[screeningMetricKey{org2PublicId, ScreeningLexisNexisMetricName}])
 
 	for _, m := range metrics {
 		assert.Equal(t, from, m.From)
@@ -82,7 +82,7 @@ func TestScreeningByProviderCollector_Collect_MultiplePeriods(t *testing.T) {
 	orgs := []models.Organization{
 		{Id: org1Id, Name: "Org 1", PublicId: org1PublicId},
 	}
-	providers := []string{"opensanctions", "ln"}
+	providers := []string{"opensanctions", "lexisnexis"}
 	orgIds := []string{org1Id.String()}
 
 	period1From := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -92,11 +92,11 @@ func TestScreeningByProviderCollector_Collect_MultiplePeriods(t *testing.T) {
 
 	mockRepo.On("CountScreeningsByProvider", ctx, mock.Anything, orgIds, providers, period1From, period1To).
 		Return(models.ByOrgByProviderCounter{
-			org1Id.String(): {"opensanctions": 10, "ln": 2},
+			org1Id.String(): {"opensanctions": 10, "lexisnexis": 2},
 		}, nil)
 	mockRepo.On("CountScreeningsByProvider", ctx, mock.Anything, orgIds, providers, period2From, period2To).
 		Return(models.ByOrgByProviderCounter{
-			org1Id.String(): {"opensanctions": 8, "ln": 0},
+			org1Id.String(): {"opensanctions": 8, "lexisnexis": 0},
 		}, nil)
 
 	collector := NewScreeningByProviderCollector(mockRepo, mockExecutorFactory, providers)
@@ -115,9 +115,9 @@ func TestScreeningByProviderCollector_Collect_MultiplePeriods(t *testing.T) {
 	}
 
 	assert.Equal(t, float64(10), byKey[screeningPeriodicKey{ScreeningOpenSanctionsMetricName, period1From}])
-	assert.Equal(t, float64(2), byKey[screeningPeriodicKey{ScreeningLNMetricName, period1From}])
+	assert.Equal(t, float64(2), byKey[screeningPeriodicKey{ScreeningLexisNexisMetricName, period1From}])
 	assert.Equal(t, float64(8), byKey[screeningPeriodicKey{ScreeningOpenSanctionsMetricName, period2From}])
-	assert.Equal(t, float64(0), byKey[screeningPeriodicKey{ScreeningLNMetricName, period2From}])
+	assert.Equal(t, float64(0), byKey[screeningPeriodicKey{ScreeningLexisNexisMetricName, period2From}])
 
 	mockRepo.AssertExpectations(t)
 }
