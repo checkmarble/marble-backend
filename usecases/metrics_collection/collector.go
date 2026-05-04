@@ -20,7 +20,7 @@ const (
 )
 
 // TODO: Confirm the provider names
-var screeningProviderList = []string{"opensanctions", "ln"}
+var screeningProviderList = []string{"opensanctions", "lexisnexis"}
 
 type CollectorRepository interface {
 	AllOrganizations(ctx context.Context, exec repositories.Executor) ([]models.Organization, error)

@@ -36,13 +36,13 @@ func TestContinuousScreeningByProviderCollector_Collect_Success(t *testing.T) {
 		{Id: org1Id, Name: "Org 1", PublicId: org1PublicId},
 		{Id: org2Id, Name: "Org 2", PublicId: org2PublicId},
 	}
-	providers := []string{"opensanctions", "ln"}
+	providers := []models.ScreeningProvider{models.ScreeningProviderOpenSanctions, models.ScreeningProviderLexisNexis}
 
 	mockRepo.On("CountCSScreeningsByProvider", ctx, mock.Anything,
 		[]string{org1Id.String(), org2Id.String()}, providers, from, to).
 		Return(models.ByOrgByProviderCounter{
-			org1Id.String(): {"opensanctions": 20, "ln": 0},
-			org2Id.String(): {"opensanctions": 0, "ln": 4},
+			org1Id.String(): {"opensanctions": 20, "lexisnexis": 0},
+			org2Id.String(): {"opensanctions": 0, "lexisnexis": 4},
 		}, nil)
 
 	collector := NewContinuousScreeningByProviderCollector(mockRepo, mockExecutorFactory, providers)
@@ -57,9 +57,9 @@ func TestContinuousScreeningByProviderCollector_Collect_Success(t *testing.T) {
 	}
 
 	assert.Equal(t, float64(20), byKey[csMetricKey{org1PublicId, CSScreeningOpenSanctionsMetricName}])
-	assert.Equal(t, float64(0), byKey[csMetricKey{org1PublicId, CSScreeningLNMetricName}])
+	assert.Equal(t, float64(0), byKey[csMetricKey{org1PublicId, CSScreeningLexisNexisMetricName}])
 	assert.Equal(t, float64(0), byKey[csMetricKey{org2PublicId, CSScreeningOpenSanctionsMetricName}])
-	assert.Equal(t, float64(4), byKey[csMetricKey{org2PublicId, CSScreeningLNMetricName}])
+	assert.Equal(t, float64(4), byKey[csMetricKey{org2PublicId, CSScreeningLexisNexisMetricName}])
 
 	for _, m := range metrics {
 		assert.Equal(t, from, m.From)
@@ -82,7 +82,7 @@ func TestContinuousScreeningByProviderCollector_Collect_MultiplePeriods(t *testi
 	orgs := []models.Organization{
 		{Id: org1Id, Name: "Org 1", PublicId: org1PublicId},
 	}
-	providers := []string{"opensanctions", "ln"}
+	providers := []models.ScreeningProvider{models.ScreeningProviderOpenSanctions, models.ScreeningProviderLexisNexis}
 	orgIds := []string{org1Id.String()}
 
 	period1From := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -92,11 +92,11 @@ func TestContinuousScreeningByProviderCollector_Collect_MultiplePeriods(t *testi
 
 	mockRepo.On("CountCSScreeningsByProvider", ctx, mock.Anything, orgIds, providers, period1From, period1To).
 		Return(models.ByOrgByProviderCounter{
-			org1Id.String(): {"opensanctions": 15, "ln": 0},
+			org1Id.String(): {"opensanctions": 15, "lexisnexis": 0},
 		}, nil)
 	mockRepo.On("CountCSScreeningsByProvider", ctx, mock.Anything, orgIds, providers, period2From, period2To).
 		Return(models.ByOrgByProviderCounter{
-			org1Id.String(): {"opensanctions": 7, "ln": 3},
+			org1Id.String(): {"opensanctions": 7, "lexisnexis": 3},
 		}, nil)
 
 	collector := NewContinuousScreeningByProviderCollector(mockRepo, mockExecutorFactory, providers)
@@ -115,9 +115,9 @@ func TestContinuousScreeningByProviderCollector_Collect_MultiplePeriods(t *testi
 	}
 
 	assert.Equal(t, float64(15), byKey[csPeriodicKey{CSScreeningOpenSanctionsMetricName, period1From}])
-	assert.Equal(t, float64(0), byKey[csPeriodicKey{CSScreeningLNMetricName, period1From}])
+	assert.Equal(t, float64(0), byKey[csPeriodicKey{CSScreeningLexisNexisMetricName, period1From}])
 	assert.Equal(t, float64(7), byKey[csPeriodicKey{CSScreeningOpenSanctionsMetricName, period2From}])
-	assert.Equal(t, float64(3), byKey[csPeriodicKey{CSScreeningLNMetricName, period2From}])
+	assert.Equal(t, float64(3), byKey[csPeriodicKey{CSScreeningLexisNexisMetricName, period2From}])
 
 	mockRepo.AssertExpectations(t)
 }
