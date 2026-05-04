@@ -175,7 +175,7 @@ func countBy2Dimensions(ctx context.Context, exec Executor, query squirrel.Sqliz
 		if _, exists := result[count.firstKey]; !exists {
 			result[count.firstKey] = secondValueDefaultGenerator()
 		}
-		result[count.firstKey][count.secondKey] = count.Count
+		result[count.firstKey][count.secondKey] = count.count
 	}
 
 	// Set default values for first keys which don't have any items
