@@ -34,6 +34,7 @@ type CollectorRepository interface {
 	AiCaseReviewCollectorRepository
 	MonitoredObjectMarbleDbRepository
 	ContinuousScreeningCollectorRepository
+	FreeformSearchCollectorRepository
 }
 type CollectorClientRepository interface {
 	MonitoredClientDbRepository
@@ -191,6 +192,7 @@ func NewCollectorsV1(
 			NewMonitoredObjectCollector(repository, clientDbRepo, executorFactory),
 			NewScreeningByProviderCollector(repository, executorFactory, screeningProviderList),
 			NewContinuousScreeningByProviderCollector(repository, executorFactory, screeningProviderList),
+			NewFreeformSearchByProviderCollector(repository, executorFactory, screeningProviderList),
 		},
 		globalCollectors: []GlobalCollector{
 			NewAppVersionCollector(apiVersion),
