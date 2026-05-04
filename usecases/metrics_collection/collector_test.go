@@ -86,6 +86,13 @@ func (m *MockCollectorRepository) CountCSScreeningsByProvider(ctx context.Contex
 	return args.Get(0).(models.ByOrgByProviderCounter), args.Error(1)
 }
 
+func (m *MockCollectorRepository) CountFreeformSearchesByProvider(ctx context.Context, exec repositories.Executor,
+	orgIds []string, providers []string, from, to time.Time,
+) (models.ByOrgByProviderCounter, error) {
+	args := m.Called(ctx, exec, orgIds, providers, from, to)
+	return args.Get(0).(models.ByOrgByProviderCounter), args.Error(1)
+}
+
 type MockCollectorClientRepository struct {
 	mock.Mock
 }
@@ -415,7 +422,7 @@ func TestNewCollectorsV1(t *testing.T) {
 	// Assert
 	assert.Equal(t, "v1", collectors.version)
 	assert.Len(t, collectors.globalCollectors, 1)
-	assert.Len(t, collectors.collectors, 7)
+	assert.Len(t, collectors.collectors, 8)
 	assert.Equal(t, mockRepository, collectors.repository)
 	assert.Equal(t, mockExecutorFactory, collectors.executorFactory)
 
@@ -443,4 +450,7 @@ func TestNewCollectorsV1(t *testing.T) {
 
 	_, isContinuousScreeningByProviderCollector := collectors.collectors[6].(ContinuousScreeningByProviderCollector)
 	assert.True(t, isContinuousScreeningByProviderCollector, "Should contain ContinuousScreeningByProviderCollector")
+
+	_, isFreeformSearchByProviderCollector := collectors.collectors[7].(FreeformSearchByProviderCollector)
+	assert.True(t, isFreeformSearchByProviderCollector, "Should contain FreeformSearchByProviderCollector")
 }

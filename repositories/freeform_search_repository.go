@@ -37,3 +37,25 @@ func (*MarbleDbRepository) InsertFreeformSearch(
 
 	return ExecBuilder(ctx, exec, sql)
 }
+
+func (repo *MarbleDbRepository) CountFreeformSearchesByProvider(ctx context.Context, exec Executor,
+	orgIds []string, providers []string, from, to time.Time,
+) (models.ByOrgByProviderCounter, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("org_id, provider, count(*) as count").
+		From(dbmodels.TABLE_FREEFORM_SEARCH).
+		Where(squirrel.Eq{"org_id": orgIds}).
+		// TODO: TBD - uncomment or replace by the right field to filter by provider
+		// Where(squirrel.Eq{"provider": providers}).
+		Where(squirrel.GtOrEq{"created_at": from}).
+		Where(squirrel.Lt{"created_at": to}).
+		// TODO: TBD - uncomment or replace by the right field to group by provider
+		// GroupBy("org_id", "provider")
+		GroupBy("org_id")
+
+	return countBy2Dimensions(ctx, exec, query, orgIds, providers)
+}
