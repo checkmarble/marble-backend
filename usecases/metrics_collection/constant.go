@@ -7,17 +7,19 @@ import (
 )
 
 const (
-	AiCaseReviewCountMetricName        = "ai_case_reviews.count"
-	AppVersionMetricName               = "app_version"
-	CaseCountMetricName                = "cases.count"
-	DecisionCountMetricName            = "decisions.count"
-	ScreeningCountMetricName           = "screenings.count"
-	CheckLicenseMetricName             = "check_license.count"
-	CSMonitoredObjectsMetricName       = "monitored_objects.gauge"
-	ScreeningOpenSanctionsMetricName   = "screenings.opensanctions.count"
-	ScreeningLexisNexisMetricName      = "screenings.lexisnexis.count"
-	CSScreeningOpenSanctionsMetricName = "continuous_screenings.opensanctions.count"
-	CSScreeningLexisNexisMetricName    = "continuous_screenings.lexisnexis.count"
+	AiCaseReviewCountMetricName           = "ai_case_reviews.count"
+	AppVersionMetricName                  = "app_version"
+	CaseCountMetricName                   = "cases.count"
+	DecisionCountMetricName               = "decisions.count"
+	ScreeningCountMetricName              = "screenings.count"
+	CheckLicenseMetricName                = "check_license.count"
+	CSMonitoredObjectsMetricName          = "monitored_objects.gauge"
+	ScreeningOpenSanctionsMetricName      = "screenings.opensanctions.count"
+	ScreeningLexisNexisMetricName         = "screenings.lexisnexis.count"
+	CSScreeningOpenSanctionsMetricName    = "continuous_screenings.opensanctions.count"
+	CSScreeningLexisNexisMetricName       = "continuous_screenings.lexisnexis.count"
+	FreeformSearchOpenSanctionsMetricName = "freeform_searches.opensanctions.count"
+	FreeformSearchLexisNexisMetricName    = "freeform_searches.lexisnexis.count"
 )
 
 // Helper for building metric name
@@ -38,6 +40,17 @@ func buildCSScreeningMetricName(provider models.ScreeningProvider) (string, erro
 		return CSScreeningOpenSanctionsMetricName, nil
 	case models.ScreeningProviderLexisNexis:
 		return CSScreeningLexisNexisMetricName, nil
+	default:
+		return "", fmt.Errorf("unknown screening provider: %s", provider)
+	}
+}
+
+func buildFreeformSearchMetricName(provider models.ScreeningProvider) (string, error) {
+	switch provider {
+	case "opensanctions":
+		return FreeformSearchOpenSanctionsMetricName, nil
+	case "lexisnexis":
+		return FreeformSearchLexisNexisMetricName, nil
 	default:
 		return "", fmt.Errorf("unknown screening provider: %s", provider)
 	}
