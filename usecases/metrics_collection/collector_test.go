@@ -51,6 +51,13 @@ func (m *MockCollectorRepository) CountScreeningsByOrg(ctx context.Context, exec
 	return args.Get(0).(map[string]int), args.Error(1)
 }
 
+func (m *MockCollectorRepository) CountScreeningsByProvider(ctx context.Context, exec repositories.Executor, orgIds []string, providers []models.ScreeningProvider,
+	from, to time.Time,
+) (models.ByOrgByProviderCounter, error) {
+	args := m.Called(ctx, exec, orgIds, providers, from, to)
+	return args.Get(0).(models.ByOrgByProviderCounter), args.Error(1)
+}
+
 func (m *MockCollectorRepository) CountAiCaseReviewsByOrg(ctx context.Context, exec repositories.Executor, orgIds []string,
 	from, to time.Time,
 ) (map[string]int, error) {
@@ -70,6 +77,13 @@ func (m *MockCollectorRepository) GetEnabledConfigStableIdsByOrg(ctx context.Con
 ) (map[string][]uuid.UUID, error) {
 	args := m.Called(ctx, exec, orgIds)
 	return args.Get(0).(map[string][]uuid.UUID), args.Error(1)
+}
+
+func (m *MockCollectorRepository) CountCSScreeningsByProvider(ctx context.Context, exec repositories.Executor,
+	orgIds []string, providers []models.ScreeningProvider, from, to time.Time,
+) (models.ByOrgByProviderCounter, error) {
+	args := m.Called(ctx, exec, orgIds, providers, from, to)
+	return args.Get(0).(models.ByOrgByProviderCounter), args.Error(1)
 }
 
 type MockCollectorClientRepository struct {
@@ -401,7 +415,7 @@ func TestNewCollectorsV1(t *testing.T) {
 	// Assert
 	assert.Equal(t, "v1", collectors.version)
 	assert.Len(t, collectors.globalCollectors, 1)
-	assert.Len(t, collectors.collectors, 5)
+	assert.Len(t, collectors.collectors, 7)
 	assert.Equal(t, mockRepository, collectors.repository)
 	assert.Equal(t, mockExecutorFactory, collectors.executorFactory)
 
@@ -421,6 +435,12 @@ func TestNewCollectorsV1(t *testing.T) {
 	_, isAiCaseReviewCollector := collectors.collectors[3].(AiCaseReviewCollector)
 	assert.True(t, isAiCaseReviewCollector, "Should contain AiCaseReviewCollector")
 
-	_, isContinuousScreeningCollector := collectors.collectors[4].(ContinuousScreeningCollector)
-	assert.True(t, isContinuousScreeningCollector, "Should contain ContinuousScreeningCollector")
+	_, isMonitoredObjectCollector := collectors.collectors[4].(MonitoredObjectCollector)
+	assert.True(t, isMonitoredObjectCollector, "Should contain MonitoredObjectCollector")
+
+	_, isScreeningByProviderCollector := collectors.collectors[5].(ScreeningByProviderCollector)
+	assert.True(t, isScreeningByProviderCollector, "Should contain ScreeningByProviderCollector")
+
+	_, isContinuousScreeningByProviderCollector := collectors.collectors[6].(ContinuousScreeningByProviderCollector)
+	assert.True(t, isContinuousScreeningByProviderCollector, "Should contain ContinuousScreeningByProviderCollector")
 }
