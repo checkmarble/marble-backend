@@ -95,6 +95,9 @@ type ScreeningRepository interface {
 		orgId uuid.UUID, counterpartyId, entityId *string) ([]models.ScreeningWhitelist, error)
 	UpdateScreeningMatchPayload(ctx context.Context, exec repositories.Executor,
 		match models.ScreeningMatch, newPayload []byte) (models.ScreeningMatch, error)
+
+	InsertFreeformSearch(ctx context.Context, exec repositories.Executor,
+		h models.FreeformSearch) error
 }
 
 type ScreeningUsecaseExternalRepository interface {
@@ -373,6 +376,8 @@ func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
 	scc models.ScreeningConfig,
 	refine models.ScreeningRefineRequest,
 ) (models.ScreeningWithMatches, error) {
+	exec := uc.executorFactory.NewExecutor()
+
 	features, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
@@ -404,8 +409,56 @@ func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
+	err = uc.persistFreeformSearch(ctx, exec, orgId, refine)
+	if err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
 
 	return screening, nil
+}
+
+func (uc ScreeningUsecase) persistFreeformSearch(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	refine models.ScreeningRefineRequest,
+) error {
+	searchInput, err := json.Marshal(refine)
+	if err != nil {
+		return err
+	}
+
+	var (
+		userId   *uuid.UUID
+		apiKeyId *uuid.UUID
+	)
+	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
+		if id := string(creds.ActorIdentity.UserId); id != "" {
+			if parsed, err := uuid.Parse(id); err == nil {
+				userId = &parsed
+			}
+		}
+		if creds.ActorIdentity.ApiKeyId != "" {
+			if parsed, err := uuid.Parse(creds.ActorIdentity.ApiKeyId); err == nil {
+				apiKeyId = &parsed
+			}
+		}
+	}
+
+	row := models.FreeformSearch{
+		Id:          pure_utils.NewId(),
+		OrgId:       orgId,
+		UserId:      userId,
+		ApiKeyId:    apiKeyId,
+		Provider:    models.ScreeningProviderOpenSanctions,
+		SearchInput: searchInput,
+	}
+
+	if err := uc.repository.InsertFreeformSearch(ctx, exec, row); err != nil {
+		return errors.Wrap(err, "could not persist freeform search")
+	}
+
+	return nil
 }
 
 func (uc ScreeningUsecase) UpdateMatchStatus(
