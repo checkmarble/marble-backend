@@ -436,8 +436,7 @@ func (repo *MarbleDbRepository) CountScreeningsByProvider(ctx context.Context, e
 		Select("org_id, provider, count(*) as count").
 		From(dbmodels.TABLE_SCREENINGS).
 		Where(squirrel.Eq{"org_id": orgIds}).
-		// TODO: uncomment or replace by the right field to filter by provider
-		// Where(squirrel.Eq{"provider": providers}).
+		Where(squirrel.Eq{"provider": providers}).
 		Where(squirrel.GtOrEq{"created_at": from}).
 		Where(squirrel.Lt{"created_at": to}).
 		Where(squirrel.NotEq{"status": models.ScreeningStatusError.String()}).
