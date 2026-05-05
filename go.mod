@@ -21,7 +21,7 @@ require (
 	github.com/biter777/countries v1.7.5
 	github.com/checkmarble/llmberjack v0.0.0-20260323165140-09e47d6a061e
 	github.com/cockroachdb/errors v1.12.0
-	github.com/coreos/go-oidc/v3 v3.17.0
+	github.com/coreos/go-oidc/v3 v3.18.0
 	github.com/disintegration/imaging v1.6.2
 	github.com/duckdb/duckdb-go/v2 v2.5.4
 	github.com/exaring/otelpgx v0.10.0
