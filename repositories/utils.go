@@ -138,7 +138,7 @@ func countByHelper(ctx context.Context, exec Executor, query squirrel.Sqlizer, b
 	return result, nil
 }
 
-type countBy2DimensionsItem struct {
+type countBy2KeysItem struct {
 	firstKey  string
 	secondKey string
 	count     int
@@ -149,12 +149,12 @@ type countBy2DimensionsItem struct {
 // firstKey -> secondKey -> count, filling missing combinations of byFirstKeys × bySecondKeys with 0.
 // Example:
 // SELECT org_id, provider, count(*) as count FROM screenings WHERE org_id IN ($1) AND provider IN ($2) AND created_at >= $3 AND created_at < $4 GROUP BY org_id, provider
-func countBy2Dimensions(ctx context.Context, exec Executor, query squirrel.Sqlizer, byFirstKeys, bySecondKeys []string) (map[string]map[string]int, error) {
-	counts, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (countBy2DimensionsItem, error) {
-		var result countBy2DimensionsItem
+func countBy2Keys(ctx context.Context, exec Executor, query squirrel.Sqlizer, byFirstKeys, bySecondKeys []string) (map[string]map[string]int, error) {
+	counts, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (countBy2KeysItem, error) {
+		var result countBy2KeysItem
 		err := row.Scan(&result.firstKey, &result.secondKey, &result.count)
 		if err != nil {
-			return countBy2DimensionsItem{}, err
+			return countBy2KeysItem{}, err
 		}
 		return result, nil
 	})
