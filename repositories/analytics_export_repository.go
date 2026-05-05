@@ -419,6 +419,7 @@ func AnalyticsCopyCaseEvents(ctx context.Context, exec AnalyticsExecutor, req An
 			Where("ce.org_id = ?", req.OrgId).
 			Where("ce.event_type = 'outcome_updated'").
 			Where("c.status = 'closed'").
+			Where("d.org_id = ?", req.OrgId).
 			Where("d.trigger_object_type = ?", req.TriggerObject).
 			Where("ce.created_at < ?", req.EndTime).
 			OrderBy("ce.created_at, ce.id").
