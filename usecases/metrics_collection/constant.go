@@ -23,9 +23,9 @@ const (
 // Helper for building metric name
 func buildScreeningMetricName(provider models.ScreeningProvider) (string, error) {
 	switch provider {
-	case "opensanctions":
+	case models.ScreeningProviderOpenSanctions:
 		return ScreeningOpenSanctionsMetricName, nil
-	case "lexisnexis":
+	case models.ScreeningProviderLexisNexis:
 		return ScreeningLexisNexisMetricName, nil
 	default:
 		return "", fmt.Errorf("unknown screening provider: %s", provider)
@@ -34,9 +34,9 @@ func buildScreeningMetricName(provider models.ScreeningProvider) (string, error)
 
 func buildCSScreeningMetricName(provider models.ScreeningProvider) (string, error) {
 	switch provider {
-	case "opensanctions":
+	case models.ScreeningProviderOpenSanctions:
 		return CSScreeningOpenSanctionsMetricName, nil
-	case "lexisnexis":
+	case models.ScreeningProviderLexisNexis:
 		return CSScreeningLexisNexisMetricName, nil
 	default:
 		return "", fmt.Errorf("unknown screening provider: %s", provider)
