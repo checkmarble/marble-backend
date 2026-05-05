@@ -1162,9 +1162,7 @@ func (repo *MarbleDbRepository) CountCSScreeningsByProvider(
 		Where(squirrel.Lt{"created_at": to}).
 		Where(squirrel.Eq{"trigger_type": []string{models.ContinuousScreeningTriggerTypeObjectAdded.String(), models.ContinuousScreeningTriggerTypeObjectUpdated.String()}}).
 		Where(squirrel.NotEq{"status": models.ScreeningStatusError.String()}).
-		// TODO: uncomment or replace by the right field to filter by provider
-		// GroupBy("org_id", "provider")
-		GroupBy("org_id")
+		GroupBy("org_id", "provider")
 
 	stringProviders := pure_utils.Map(providers, func(p models.ScreeningProvider) string { return string(p) })
 
