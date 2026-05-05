@@ -441,9 +441,7 @@ func (repo *MarbleDbRepository) CountScreeningsByProvider(ctx context.Context, e
 		Where(squirrel.GtOrEq{"created_at": from}).
 		Where(squirrel.Lt{"created_at": to}).
 		Where(squirrel.NotEq{"status": models.ScreeningStatusError.String()}).
-		// TODO: uncomment or replace by the right field to filter by provider
-		// GroupBy("org_id", "provider")
-		GroupBy("org_id")
+		GroupBy("org_id", "provider")
 
 	return countBy2Keys(ctx, exec, query, orgIds, providers)
 }
