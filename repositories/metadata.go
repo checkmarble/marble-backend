@@ -5,6 +5,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/google/uuid"
 )
@@ -54,10 +55,16 @@ func (repo *MarbleDbRepository) UpsertMetadata(ctx context.Context, exec Executo
 		return err
 	}
 
+	id := metadata.ID
+
+	if id == uuid.Nil {
+		id = pure_utils.NewId()
+	}
+
 	query := NewQueryBuilder().
 		Insert(dbmodels.TABLE_METADATA).
 		Columns("id", "org_id", "key", "value").
-		Values(metadata.ID, metadata.OrgID, string(metadata.Key), metadata.Value).
+		Values(id, metadata.OrgID, string(metadata.Key), metadata.Value).
 		SuffixExpr(squirrel.Expr("on conflict (org_id, key) do update set value = ?", metadata.Value))
 
 	return ExecBuilder(ctx, exec, query)
