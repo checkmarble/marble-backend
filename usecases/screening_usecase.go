@@ -8,6 +8,7 @@ import (
 	"maps"
 	"mime/multipart"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -46,6 +47,7 @@ type ScreeningProvider interface {
 	Search(context.Context, string, models.OpenSanctionsQuery) (models.ScreeningRawSearchResponseWithMatches, error)
 	EnrichMatch(ctx context.Context, providerName string, match models.ScreeningMatch) ([]byte, error)
 	IsConfigured(ctx context.Context) (bool, error)
+	FindAvailableFilters(ctx context.Context, providerName string) (dto.ScreeningAvailableFilters, error)
 }
 
 type ScreeningInboxReader interface {
@@ -183,6 +185,77 @@ func (uc ScreeningUsecase) GetScreening(ctx context.Context, id string) (models.
 	}
 
 	return sc, nil
+}
+
+func (uc ScreeningUsecase) GetAvailableFilters(ctx context.Context, feature models.ScreeningFeature) (dto.ScreeningAvailableFilters, error) {
+	org, err := uc.organizationRepository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), uc.enforceSecurity.OrgId())
+	if err != nil {
+		return dto.ScreeningAvailableFilters{}, err
+	}
+
+	providerName := org.GetScreeningProviderFor(feature)
+	filters := dto.ScreeningAvailableFilters{}
+
+	if providerName == "opensanctions" {
+		upstreamCatalog, err := uc.GetDatasetCatalog(ctx)
+		if err != nil {
+			return dto.ScreeningAvailableFilters{}, err
+		}
+
+		catalog := dto.AdaptOpenSanctionsCatalog(upstreamCatalog)
+
+		sanctionsDatasets := []dto.ScreeningAvailableFiltersItem{}
+		pepDatasets := []dto.ScreeningAvailableFiltersItem{}
+		mediaDatasets := []dto.ScreeningAvailableFiltersItem{}
+		otherDatasets := []dto.ScreeningAvailableFiltersItem{}
+
+		for _, s := range catalog.Sections {
+			for _, d := range s.Datasets {
+				switch d.Tag {
+				case "sanctions":
+					sanctionsDatasets = append(sanctionsDatasets, dto.ScreeningAvailableFiltersItem{Section: s.Name, Name: d.Name, Title: d.Title})
+				case "peps":
+					pepDatasets = append(pepDatasets, dto.ScreeningAvailableFiltersItem{Section: s.Name, Name: d.Name, Title: d.Title})
+				case "adverse-media":
+					mediaDatasets = append(mediaDatasets, dto.ScreeningAvailableFiltersItem{Section: s.Name, Name: d.Name, Title: d.Title})
+				default:
+					otherDatasets = append(otherDatasets, dto.ScreeningAvailableFiltersItem{Section: s.Name, Name: d.Name, Title: d.Title})
+				}
+			}
+		}
+
+		filters = dto.ScreeningAvailableFilters{
+			Provider: "opensanctions",
+			Sections: dto.ScreeningAvailableFiltersSections{
+				Sanctions: dto.ScreeningAvailableFiltersSection{
+					Datasets: sanctionsDatasets,
+				},
+				Peps: dto.ScreeningAvailableFiltersSection{
+					Datasets: pepDatasets,
+				},
+				AdverseMedia: dto.ScreeningAvailableFiltersSection{
+					Datasets: mediaDatasets,
+				},
+				Other: dto.ScreeningAvailableFiltersSection{
+					Datasets: otherDatasets,
+				},
+			},
+		}
+
+		return filters, nil
+	}
+
+	if providerName == "lexisnexis" {
+		filters, err := uc.openSanctionsProvider.FindAvailableFilters(ctx, "lexisnexis")
+		if err != nil {
+			return dto.ScreeningAvailableFilters{}, err
+		}
+
+		return filters, nil
+
+	}
+
+	return dto.ScreeningAvailableFilters{}, nil
 }
 
 func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string,

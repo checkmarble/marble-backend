@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
@@ -40,6 +41,7 @@ type HTTPError struct {
 type ScreeningProvider interface {
 	BuildQueryString(ctx context.Context, cfg *models.ScreeningConfig, query *models.OpenSanctionsQuery) url.Values
 	SearchRequest(ctx context.Context, query *models.OpenSanctionsQuery) (*http.Request, []byte, error)
+	FindAvailableFilters(ctx context.Context) (dto.ScreeningAvailableFilters, error)
 }
 
 func (e *HTTPError) Error() string {
@@ -440,4 +442,10 @@ func (repo OpenSanctionsRepository) authenticateRequest(req *http.Request) {
 			req.SetBasicAuth(u, p)
 		}
 	}
+}
+
+func (repo OpenSanctionsRepository) FindAvailableFilters(ctx context.Context, providerName string) (dto.ScreeningAvailableFilters, error) {
+	provider := repo.GetProvider(providerName)
+
+	return provider.FindAvailableFilters(ctx)
 }

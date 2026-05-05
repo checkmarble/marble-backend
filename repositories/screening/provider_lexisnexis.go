@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -47,8 +48,8 @@ func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
 				q.Params.Filters["topics"] = [][]string{}
 			}
 
-			for _, topics := range query.Config.Filters.Peps.Topics {
-				q.Params.Filters["topics"] = append(q.Params.Filters["topics"], topics)
+			for _, topic := range query.Config.Filters.Peps.Topics {
+				q.Params.Filters["topics"] = append(q.Params.Filters["topics"], topic)
 			}
 		}
 
@@ -58,8 +59,8 @@ func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
 				q.Params.Filters["topics"] = [][]string{}
 			}
 
-			for _, topics := range query.Config.Filters.AdverseMedia.Topics {
-				q.Params.Filters["topics"] = append(q.Params.Filters["topics"], topics)
+			for _, topic := range query.Config.Filters.AdverseMedia.Topics {
+				q.Params.Filters["topics"] = append(q.Params.Filters["topics"], topic)
 			}
 		}
 	}
@@ -140,4 +141,85 @@ func (p ScreeningLexisNexisProvider) BuildQueryString(ctx context.Context,
 	}
 
 	return qs
+}
+
+type lexisNexisAvailableFilters struct {
+	Datasets []string `json:"properties.programId"` //nolint:tagliatelle
+	Topics   []string `json:"properties.topics"`    //nolint:tagliatelle
+}
+
+func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context) (dto.ScreeningAvailableFilters, error) {
+	url := fmt.Sprintf("%s/catalog/fields", p.Config.Host("lexisnexis"))
+
+	payload := map[string]any{
+		"fields": []string{"properties.programId", "properties.topics"},
+		"query": map[string]any{
+			"term": map[string]any{
+				"datasets": "lexisnexis",
+			},
+		},
+	}
+
+	var body bytes.Buffer
+
+	if err := json.NewEncoder(&body).Encode(payload); err != nil {
+		return dto.ScreeningAvailableFilters{}, err
+	}
+
+	req, _ := http.NewRequest(http.MethodPost, url, &body)
+	req.Header.Set("content-type", "application/json")
+
+	resp, err := p.Config.Client().Do(req)
+	if err != nil {
+		return dto.ScreeningAvailableFilters{}, err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return dto.ScreeningAvailableFilters{}, errors.Newf("could not retrieve field values, got status code %d", resp.StatusCode)
+	}
+
+	var values lexisNexisAvailableFilters
+
+	if err := json.NewDecoder(resp.Body).Decode(&values); err != nil {
+		return dto.ScreeningAvailableFilters{}, err
+	}
+
+	filters := dto.ScreeningAvailableFilters{
+		Sections: dto.ScreeningAvailableFiltersSections{
+			Sanctions: dto.ScreeningAvailableFiltersSection{
+				Self: "sanction",
+				Datasets: pure_utils.Map(values.Datasets, func(ds string) dto.ScreeningAvailableFiltersItem {
+					return dto.ScreeningAvailableFiltersItem{
+						Name:  ds,
+						Title: ds,
+					}
+				}),
+			},
+			// TODO: add PEPs and adverse media topics, organized by kind.
+			Peps: dto.ScreeningAvailableFiltersSection{
+				Self: "pep",
+				Topics: map[string][]dto.ScreeningAvailableFiltersItem{
+					"kind": {
+						{Name: "pep.kind.primary", Title: "pep.kind.primary"},
+						{Name: "pep.kind.secondary", Title: "pep.kind.secondary"},
+					},
+					"geography": {
+						{Name: "pep.geo.eu", Title: "pep.geo.eu"},
+						{Name: "pep.geo.us", Title: "pep.geo.us"},
+					},
+					"position": {
+						{Name: "pep.position.headofstate", Title: "pep.position.headofstate"},
+						{Name: "pep.position.legislative", Title: "pep.position.legislative"},
+					},
+				},
+			},
+			AdverseMedia: dto.ScreeningAvailableFiltersSection{
+				Self: "adversemedia",
+			},
+		},
+	}
+
+	return filters, nil
 }

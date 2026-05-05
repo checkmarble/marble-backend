@@ -116,8 +116,8 @@ func (scf *ScreeningConfigFilters) IsEmpty() bool {
 }
 
 type ScreeningConfigFilter struct {
-	Datasets []string   `json:"datasets"`
-	Topics   [][]string `json:"topics"`
+	Datasets []string            `json:"datasets,omitempty"`
+	Topics   map[string][]string `json:"topics,omitempty"`
 }
 
 type ScreeningConfigPreprocessing struct {

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -114,4 +115,8 @@ func (p ScreeningOpenSanctionsProvider) BuildQueryString(ctx context.Context,
 	}
 
 	return qs
+}
+
+func (p ScreeningOpenSanctionsProvider) FindAvailableFilters(ctx context.Context) (dto.ScreeningAvailableFilters, error) {
+	return dto.ScreeningAvailableFilters{}, nil
 }

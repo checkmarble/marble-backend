@@ -176,6 +176,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 
 	router.GET("/screenings/freshness", tom, handleScreeningDatasetFreshness(uc))
 	router.GET("/screenings/datasets", tom, handleScreeningDatasetCatalog(uc))
+	router.GET("/screenings/available-filters", tom, handleGetAvailableFilters(uc))
 	router.GET("/screenings", tom, handleListScreenings(uc))
 	router.POST("/screenings/refine", tom, handleRefineScreening(uc))
 	router.POST("/screenings/search", tom, handleSearchScreening(uc))
