@@ -2,7 +2,9 @@ package repositories
 
 import (
 	"context"
+	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
@@ -47,15 +49,12 @@ func (repo *MarbleDbRepository) CountFreeformSearchesByProvider(ctx context.Cont
 
 	query := NewQueryBuilder().
 		Select("org_id, provider, count(*) as count").
-		From(dbmodels.TABLE_FREEFORM_SEARCH).
+		From(dbmodels.TABLE_FREEFORM_SEARCHES).
 		Where(squirrel.Eq{"org_id": orgIds}).
-		// TODO: TBD - uncomment or replace by the right field to filter by provider
-		// Where(squirrel.Eq{"provider": providers}).
+		Where(squirrel.Eq{"provider": providers}).
 		Where(squirrel.GtOrEq{"created_at": from}).
 		Where(squirrel.Lt{"created_at": to}).
-		// TODO: TBD - uncomment or replace by the right field to group by provider
-		// GroupBy("org_id", "provider")
-		GroupBy("org_id")
+		GroupBy("org_id", "provider")
 
-	return countBy2Dimensions(ctx, exec, query, orgIds, providers)
+	return countBy2Keys(ctx, exec, query, orgIds, providers)
 }

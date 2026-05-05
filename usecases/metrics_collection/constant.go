@@ -47,9 +47,9 @@ func buildCSScreeningMetricName(provider string) (string, error) {
 
 func buildFreeformSearchMetricName(provider string) (string, error) {
 	switch provider {
-	case "opensanctions":
+	case models.ScreeningProviderOpenSanctions:
 		return FreeformSearchOpenSanctionsMetricName, nil
-	case "lexisnexis":
+	case models.ScreeningProviderLexisNexis:
 		return FreeformSearchLexisNexisMetricName, nil
 	default:
 		return "", fmt.Errorf("unknown screening provider: %s", provider)
