@@ -445,7 +445,7 @@ func (repo *MarbleDbRepository) CountScreeningsByProvider(ctx context.Context, e
 		// GroupBy("org_id", "provider")
 		GroupBy("org_id")
 
-	return countBy2Dimensions(ctx, exec, query, orgIds, providers)
+	return countBy2Keys(ctx, exec, query, orgIds, providers)
 }
 
 func (repo *MarbleDbRepository) screeningsWithoutHitsOfDecision(

@@ -1166,5 +1166,5 @@ func (repo *MarbleDbRepository) CountCSScreeningsByProvider(
 		// GroupBy("org_id", "provider")
 		GroupBy("org_id")
 
-	return countBy2Dimensions(ctx, exec, query, orgIds, providers)
+	return countBy2Keys(ctx, exec, query, orgIds, providers)
 }
