@@ -15,6 +15,30 @@ var (
 	ValidScreeningMatchStatuses = []string{"pending", "confirmed_hit", "no_hit"}
 )
 
+type ScreeningAvailableFilters struct {
+	Provider string                            `json:"provider"`
+	Sections ScreeningAvailableFiltersSections `json:"sections"`
+}
+
+type ScreeningAvailableFiltersSections struct {
+	Sanctions    ScreeningAvailableFiltersSection `json:"sanctions,omitzero"`
+	Peps         ScreeningAvailableFiltersSection `json:"peps,omitzero"`
+	AdverseMedia ScreeningAvailableFiltersSection `json:"adverse_media,omitzero"`
+	Other        ScreeningAvailableFiltersSection `json:"other,omitzero"`
+}
+
+type ScreeningAvailableFiltersSection struct {
+	Self     string                                     `json:"self,omitempty"`
+	Datasets []ScreeningAvailableFiltersItem            `json:"datasets,omitempty"`
+	Topics   map[string][]ScreeningAvailableFiltersItem `json:"topics,omitempty"`
+}
+
+type ScreeningAvailableFiltersItem struct {
+	Section string `json:"section,omitempty"`
+	Name    string `json:"name"`
+	Title   string `json:"title"`
+}
+
 type ScreeningDto struct {
 	Id                           string                           `json:"id"`
 	Config                       ScreeningConfigRefDto            `json:"config"`
