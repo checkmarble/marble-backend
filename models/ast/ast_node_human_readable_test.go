@@ -249,6 +249,25 @@ func TestToHumanReadable_ListsAndFilters(t *testing.T) {
 			},
 			expected: "Aggregator(aggregator: COUNT, fieldName: object_id, filters: [Filter(fieldName: payment_type, operator: =, tableName: transaction, value: card)], tableName: transaction)",
 		},
+		{
+			// The user-supplied label must not appear in the LLM-bound rendering;
+			// it is free text that biases the generated description.
+			name: "Aggregator with label is stripped",
+			node: Node{
+				Function: FUNC_AGGREGATOR,
+				NamedChildren: map[string]Node{
+					"aggregator": NewNodeConstant("COUNT"),
+					"fieldName":  NewNodeConstant("object_id"),
+					"tableName":  NewNodeConstant("transaction"),
+					"label":      NewNodeConstant("Number of risky txns"),
+					"filters": {
+						Function: FUNC_LIST,
+						Children: []Node{filterNode},
+					},
+				},
+			},
+			expected: "Aggregator(aggregator: COUNT, fieldName: object_id, filters: [Filter(fieldName: payment_type, operator: =, tableName: transaction, value: card)], tableName: transaction)",
+		},
 	}
 
 	for _, tt := range tests {

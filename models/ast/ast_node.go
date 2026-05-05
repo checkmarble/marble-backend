@@ -159,6 +159,13 @@ func (node *Node) formatNamedChildrenParams(depth int) []string {
 	sort.Strings(keys)
 
 	for _, key := range keys {
+		// The aggregator label is a free-text user-supplied name; including it in
+		// the LLM-bound rendering biases the description toward the user's wording
+		// rather than what the aggregator actually computes.
+		if node.Function == FUNC_AGGREGATOR && key == "label" {
+			continue
+		}
+
 		child := node.NamedChildren[key]
 		childStr := child.toHumanReadableWithDepth(depth + 1)
 
