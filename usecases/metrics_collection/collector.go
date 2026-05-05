@@ -19,8 +19,10 @@ const (
 	DeploymentIDCacheKey = "metadata_deployment_id"
 )
 
-// TODO: Confirm the provider names
-var screeningProviderList = []string{"opensanctions", "lexisnexis"}
+var screeningProviderList = []models.ScreeningProvider{
+	models.ScreeningProviderOpenSanctions,
+	models.ScreeningProviderLexisNexis,
+}
 
 type CollectorRepository interface {
 	AllOrganizations(ctx context.Context, exec repositories.Executor) ([]models.Organization, error)
