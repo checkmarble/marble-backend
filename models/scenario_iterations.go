@@ -105,6 +105,7 @@ type ScreeningConfigFilters struct {
 	Sanctions    *ScreeningConfigFilter `json:"sanctions,omitempty"`
 	Peps         *ScreeningConfigFilter `json:"peps,omitempty"`
 	AdverseMedia *ScreeningConfigFilter `json:"adverse_media,omitempty"`
+	Other        *ScreeningConfigFilter `json:"other,omitempty"`
 }
 
 func (scf *ScreeningConfigFilters) IsEmpty() bool {
