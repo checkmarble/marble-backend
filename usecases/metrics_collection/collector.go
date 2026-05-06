@@ -27,10 +27,8 @@ type CollectorRepository interface {
 	DecisionCollectorRepository
 	ScreeningCollectorRepository
 	AiCaseReviewCollectorRepository
-	ContinuousScreeningMarbleDbRepository
 }
 type CollectorClientRepository interface {
-	ContinuousScreeningClientDbRepository
 	MonitoredObjectActiveClientDbRepository
 }
 
@@ -183,7 +181,6 @@ func NewCollectorsV1(
 			NewCaseCollector(repository, executorFactory),
 			NewScreeningCollector(repository, executorFactory),
 			NewAiCaseReviewCollector(repository, executorFactory),
-			NewContinuousScreeningCollector(repository, clientDbRepo, executorFactory),
 			NewMonitoredObjectActiveCollector(clientDbRepo, executorFactory),
 		},
 		globalCollectors: []GlobalCollector{

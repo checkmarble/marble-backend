@@ -1,12 +1,11 @@
 package metrics_collection
 
 const (
-	AiCaseReviewCountMetricName        = "ai_case_reviews.count"
-	AppVersionMetricName               = "app_version"
-	CaseCountMetricName                = "cases.count"
-	DecisionCountMetricName            = "decisions.count"
-	ScreeningCountMetricName           = "screenings.count"
-	CheckLicenseMetricName             = "check_license.count"
-	CSMonitoredObjectsMetricName       = "monitored_objects.gauge"
-	CSMonitoredObjectsActiveMetricName = "monitored_objects_active.gauge"
+	AiCaseReviewCountMetricName  = "ai_case_reviews.count"
+	AppVersionMetricName         = "app_version"
+	CaseCountMetricName          = "cases.count"
+	DecisionCountMetricName      = "decisions.count"
+	ScreeningCountMetricName     = "screenings.count"
+	CheckLicenseMetricName       = "check_license.count"
+	CSMonitoredObjectsMetricName = "monitored_objects.gauge"
 )
