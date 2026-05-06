@@ -29,46 +29,38 @@ func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
 	}
 
 	if p.Config.MotivaFeatures(ctx).BodyParams {
-		q.Params = &motivaRequestParams{
-			Filters: make(map[string][][]string),
-		}
+		q.Params = &motivaRequestParams{}
 
 		if len(query.WhitelistedEntityIds) > 0 {
 			q.Params.ExcludeEntityIds = query.WhitelistedEntityIds
 		}
-
-		// Lexis Nexis needs its datasets as a programId filter.
-		if len(query.Config.Datasets) > 0 {
-			q.Params.Filters["programId"] = [][]string{query.Config.Datasets}
-		}
-
-		if query.Config.Filters.Peps != nil && len(query.Config.Filters.Peps.Topics) > 0 {
-			if q.Params.Filters == nil {
-				q.Params.Filters = make(map[string][][]string)
-				q.Params.Filters["topics"] = [][]string{}
-			}
-
-			for _, topic := range query.Config.Filters.Peps.Topics {
-				q.Params.Filters["topics"] = append(q.Params.Filters["topics"], topic)
-			}
-		}
-
-		if query.Config.Filters.AdverseMedia != nil && len(query.Config.Filters.AdverseMedia.Topics) > 0 {
-			if q.Params.Filters == nil {
-				q.Params.Filters = make(map[string][][]string)
-				q.Params.Filters["topics"] = [][]string{}
-			}
-
-			for _, topic := range query.Config.Filters.AdverseMedia.Topics {
-				q.Params.Filters["topics"] = append(q.Params.Filters["topics"], topic)
-			}
-		}
 	}
 
 	for _, subquery := range query.Queries {
-		q.Queries[pure_utils.NewId().String()] = openSanctionsRequestQuery{
-			Schema:     subquery.Type,
-			Properties: subquery.Filters,
+		filters := query.Config.Filters.Resolve()
+
+		for topic, filter := range filters.WithRootTopics() {
+			if filters.NoFilters() || filter.IsEnabled() {
+				id := pure_utils.NewId().String()
+
+				q.Queries[id] = openSanctionsRequestQuery{
+					Schema:     subquery.Type,
+					Properties: subquery.Filters,
+					Filters: map[string][][]string{
+						"topics": {{topic}},
+					},
+				}
+
+				if filter.Datasets != nil {
+					q.Queries[id].Filters["programId"] = [][]string{filter.Datasets}
+				}
+
+				if filter.Topics != nil {
+					for _, topic := range filter.Topics {
+						q.Queries[id].Filters["topics"] = append(q.Queries[id].Filters["topics"], topic)
+					}
+				}
+			}
 		}
 	}
 
@@ -187,9 +179,10 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context) (
 	}
 
 	filters := dto.ScreeningAvailableFilters{
+		Provider: "lexisnexis",
 		Sections: dto.ScreeningAvailableFiltersSections{
 			Sanctions: dto.ScreeningAvailableFiltersSection{
-				Self: "sanction",
+				Self: "sanctions",
 				Datasets: pure_utils.Map(values.Datasets, func(ds string) dto.ScreeningAvailableFiltersItem {
 					return dto.ScreeningAvailableFiltersItem{
 						Name:  ds,
@@ -201,6 +194,10 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context) (
 			Peps: dto.ScreeningAvailableFiltersSection{
 				Self: "pep",
 				Topics: map[string][]dto.ScreeningAvailableFiltersItem{
+					"status": {
+						{Name: "pep.status.active", Title: "pep.status.active"},
+						{Name: "pep.status.inactive", Title: "pep.status.inactive"},
+					},
 					"kind": {
 						{Name: "pep.kind.primary", Title: "pep.kind.primary"},
 						{Name: "pep.kind.secondary", Title: "pep.kind.secondary"},
@@ -217,6 +214,12 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context) (
 			},
 			AdverseMedia: dto.ScreeningAvailableFiltersSection{
 				Self: "adversemedia",
+				Topics: map[string][]dto.ScreeningAvailableFiltersItem{
+					"source": {
+						{Name: "adversemedia.media", Title: "adversemedia.media"},
+						{Name: "adversemedia.enforcements", Title: "adversemedia.enforcements"},
+					},
+				},
 			},
 		},
 	}
