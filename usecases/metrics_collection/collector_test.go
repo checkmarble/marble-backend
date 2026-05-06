@@ -83,6 +83,18 @@ func (m *MockCollectorClientRepository) CountMonitoredObjectsByConfigStableIds(c
 	return args.Get(0).(int), args.Error(1)
 }
 
+func (m *MockCollectorClientRepository) IsContinuousScreeningSetup(ctx context.Context, exec repositories.Executor) (bool, error) {
+	args := m.Called(ctx, exec)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockCollectorClientRepository) CountActiveMonitoredObjects(ctx context.Context, exec repositories.Executor,
+	yearStart, yearEnd time.Time,
+) (int, error) {
+	args := m.Called(ctx, exec, yearStart, yearEnd)
+	return args.Get(0).(int), args.Error(1)
+}
+
 type MockGlobalCollector struct {
 	mock.Mock
 }
@@ -401,7 +413,7 @@ func TestNewCollectorsV1(t *testing.T) {
 	// Assert
 	assert.Equal(t, "v1", collectors.version)
 	assert.Len(t, collectors.globalCollectors, 1)
-	assert.Len(t, collectors.collectors, 5)
+	assert.Len(t, collectors.collectors, 6)
 	assert.Equal(t, mockRepository, collectors.repository)
 	assert.Equal(t, mockExecutorFactory, collectors.executorFactory)
 
