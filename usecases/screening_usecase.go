@@ -155,7 +155,7 @@ func (uc ScreeningUsecase) GetDatasetCatalog(ctx context.Context) (models.OpenSa
 		return models.OpenSanctionsCatalog{}, errors.Wrap(err, "could not retrieve organization")
 	}
 
-	return uc.openSanctionsProvider.GetCatalog(ctx, org.GetScreeningProviderFor(models.ScreeningFeatureManualSearch))
+	return uc.openSanctionsProvider.GetCatalog(ctx, org.GetScreeningProviderFor("opensanctions")) // TODO: only opensanctions uses the catalog
 }
 
 func (uc ScreeningUsecase) GetScreening(ctx context.Context, id string) (models.ScreeningWithMatches, error) {
