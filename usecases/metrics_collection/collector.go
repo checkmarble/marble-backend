@@ -193,6 +193,7 @@ func NewCollectorsV1(
 			NewScreeningByProviderCollector(repository, executorFactory, screeningProviderList),
 			NewContinuousScreeningByProviderCollector(repository, executorFactory, screeningProviderList),
 			NewFreeformSearchByProviderCollector(repository, executorFactory, screeningProviderList),
+			NewMonitoredObjectCollector(repository, clientDbRepo, executorFactory),
 		},
 		globalCollectors: []GlobalCollector{
 			NewAppVersionCollector(apiVersion),
