@@ -44,12 +44,12 @@ type DBScreeningAndConfig struct {
 	DBScreening
 
 	// Fields from config (joined via screening_config_id)
-	ConfigId string                `db:"config_id"`
-	StableId string                `db:"stable_id"`
-	Name     string                `db:"name"`
-	Provider string                `db:"provider"`
-	Datasets []string              `db:"datasets"`
-	Filters  map[string][][]string `db:"filters"`
+	ConfigId string                        `db:"config_id"`
+	StableId string                        `db:"stable_id"`
+	Name     string                        `db:"name"`
+	Provider string                        `db:"provider"`
+	Datasets []string                      `db:"datasets"`
+	Filters  models.ScreeningConfigFilters `db:"filters"`
 }
 
 type DBScreeningWithMatches struct {

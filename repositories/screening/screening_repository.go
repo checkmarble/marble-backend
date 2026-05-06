@@ -67,15 +67,15 @@ type openSanctionsRequest struct {
 }
 
 type motivaRequestParams struct {
-	IncludeDatasets  []string              `json:"include_datasets"`
-	ExcludeDatasets  []string              `json:"exclude_datasets"`
-	ExcludeEntityIds []string              `json:"exclude_entity_ids"`
-	Filters          map[string][][]string `json:"filters"`
+	IncludeDatasets  []string `json:"include_datasets"`
+	ExcludeDatasets  []string `json:"exclude_datasets"`
+	ExcludeEntityIds []string `json:"exclude_entity_ids"`
 }
 
 type openSanctionsRequestQuery struct {
 	Schema     string                     `json:"schema"`
 	Properties models.OpenSanctionsFilter `json:"properties"`
+	Filters    map[string][][]string      `json:"filters"`
 }
 
 func (repo OpenSanctionsRepository) IsSelfHosted(ctx context.Context) bool {

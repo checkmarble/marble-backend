@@ -108,6 +108,13 @@ type ScreeningConfigFilters struct {
 	Other        *ScreeningConfigFilter `json:"other,omitempty"`
 }
 
+type ResolvedScreeningConfigFilters struct {
+	Sanctions    ScreeningConfigFilter
+	Peps         ScreeningConfigFilter
+	AdverseMedia ScreeningConfigFilter
+	Other        ScreeningConfigFilter
+}
+
 func (scf *ScreeningConfigFilters) IsEmpty() bool {
 	if scf == nil {
 		return true
@@ -116,9 +123,72 @@ func (scf *ScreeningConfigFilters) IsEmpty() bool {
 	return scf.Sanctions == nil && scf.Peps == nil && scf.AdverseMedia == nil && scf.Other == nil
 }
 
+func (scf ResolvedScreeningConfigFilters) NoFilters() bool {
+	return !scf.Sanctions.IsEnabled() &&
+		!scf.Peps.IsEnabled() &&
+		!scf.AdverseMedia.IsEnabled() &&
+		!scf.Other.IsEnabled()
+}
+
+func (scf ResolvedScreeningConfigFilters) WithRootTopics() map[string]ScreeningConfigFilter {
+	return map[string]ScreeningConfigFilter{
+		"sanctions":     scf.Sanctions,
+		"pep":           scf.Peps,
+		"adverse_media": scf.AdverseMedia,
+		"other":         scf.Other,
+	}
+}
+
+func (scf *ScreeningConfigFilters) Resolve() ResolvedScreeningConfigFilters {
+	if scf == nil {
+		return ResolvedScreeningConfigFilters{
+			Sanctions:    ScreeningConfigFilter{},
+			Peps:         ScreeningConfigFilter{},
+			AdverseMedia: ScreeningConfigFilter{},
+			Other:        ScreeningConfigFilter{},
+		}
+	}
+
+	return ResolvedScreeningConfigFilters{
+		Sanctions: func() ScreeningConfigFilter {
+			if scf.Sanctions == nil {
+				return ScreeningConfigFilter{}
+			}
+			return *scf.Sanctions
+		}(),
+		Peps: func() ScreeningConfigFilter {
+			if scf.Peps == nil {
+				return ScreeningConfigFilter{}
+			}
+			return *scf.Peps
+		}(),
+		AdverseMedia: func() ScreeningConfigFilter {
+			if scf.AdverseMedia == nil {
+				return ScreeningConfigFilter{}
+			}
+			return *scf.AdverseMedia
+		}(),
+		Other: func() ScreeningConfigFilter {
+			if scf.Other == nil {
+				return ScreeningConfigFilter{}
+			}
+			return *scf.Other
+		}(),
+	}
+}
+
 type ScreeningConfigFilter struct {
+	Enabled  bool                `json:"enabled"`
 	Datasets []string            `json:"datasets,omitempty"`
 	Topics   map[string][]string `json:"topics,omitempty"`
+}
+
+func (scf *ScreeningConfigFilter) IsEnabled() bool {
+	if scf == nil {
+		return true
+	}
+
+	return scf.Enabled
 }
 
 type ScreeningConfigPreprocessing struct {
