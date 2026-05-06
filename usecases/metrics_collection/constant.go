@@ -20,7 +20,6 @@ const (
 	CSScreeningLexisNexisMetricName       = "continuous_screenings.lexisnexis.count"
 	FreeformSearchOpenSanctionsMetricName = "freeform_searches.opensanctions.count"
 	FreeformSearchLexisNexisMetricName    = "freeform_searches.lexisnexis.count"
-	CSMonitoredObjectsActiveMetricName    = "monitored_objects_active.gauge"
 )
 
 // Helper for building metric name
