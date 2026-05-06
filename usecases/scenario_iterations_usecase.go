@@ -8,6 +8,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -72,6 +73,7 @@ const (
 type ScenarioIterationUsecase struct {
 	repository                IterationUsecaseRepository
 	screeningConfigRepository ScreeningConfigRepository
+	screeningProvider         ScreeningProvider
 	enforceSecurity           security.EnforceSecurityScenario
 	scenarioFetcher           scenarios.ScenarioFetcher
 	validateScenarioIteration scenarios.ValidateScenarioIteration
@@ -131,6 +133,50 @@ func (usecase *ScenarioIterationUsecase) GetScenarioIteration(ctx context.Contex
 			"could not retrieve screening config while getting scenario iteration")
 	}
 	si.ScreeningConfigs = scc
+
+	for idx, scc := range si.ScreeningConfigs {
+		// We need to backport the legacy "datasets" configuration into the new filter tree.
+		if scc.Provider == "opensanctions" && scc.Filters.IsEmpty() {
+			upstreamCatalog, err := usecase.screeningProvider.GetCatalog(ctx, "opensanctions")
+			if err != nil {
+				return models.ScenarioIteration{}, err
+			}
+
+			catalog := dto.AdaptOpenSanctionsCatalog(upstreamCatalog)
+
+			scc.Filters = &models.ScreeningConfigFilters{
+				Sanctions:    &models.ScreeningConfigFilter{Datasets: make([]string, 0)},
+				Peps:         &models.ScreeningConfigFilter{Datasets: make([]string, 0)},
+				AdverseMedia: &models.ScreeningConfigFilter{Datasets: make([]string, 0)},
+				Other:        &models.ScreeningConfigFilter{Datasets: make([]string, 0)},
+			}
+
+			for _, ds := range scc.Datasets {
+				for _, s := range catalog.Sections {
+					for _, d := range s.Datasets {
+						if d.Name == ds {
+							switch d.Tag {
+							case "sanctions":
+								scc.Filters.Sanctions.Enabled = true
+								scc.Filters.Sanctions.Datasets = append(scc.Filters.Sanctions.Datasets, ds)
+							case "peps":
+								scc.Filters.Peps.Enabled = true
+								scc.Filters.Peps.Datasets = append(scc.Filters.Peps.Datasets, ds)
+							case "adverse-media":
+								scc.Filters.AdverseMedia.Enabled = true
+								scc.Filters.AdverseMedia.Datasets = append(scc.Filters.AdverseMedia.Datasets, ds)
+							default:
+								scc.Filters.Other.Enabled = true
+								scc.Filters.Other.Datasets = append(scc.Filters.Other.Datasets, ds)
+							}
+						}
+					}
+				}
+			}
+
+			si.ScreeningConfigs[idx] = scc
+		}
+	}
 
 	if err := usecase.enforceSecurity.ReadScenarioIteration(si.ToMetadata()); err != nil {
 		return models.ScenarioIteration{}, err

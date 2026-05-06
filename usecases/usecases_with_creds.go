@@ -292,6 +292,7 @@ func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterati
 	return ScenarioIterationUsecase{
 		repository:                usecases.Repositories.MarbleDbRepository,
 		screeningConfigRepository: usecases.Repositories.MarbleDbRepository,
+		screeningProvider:         usecases.Repositories.OpenSanctionsRepository,
 		enforceSecurity:           usecases.NewEnforceScenarioSecurity(),
 		scenarioFetcher:           usecases.NewScenarioFetcher(),
 		validateScenarioIteration: usecases.NewValidateScenarioIteration(),
