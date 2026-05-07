@@ -67,7 +67,7 @@ func TestMain(m *testing.M) {
 	// pulls an image, creates a container based on it and runs it
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "postgis/postgis",
-		Tag:        "17-3.6-alpine",
+		Tag:        "18-3.6-alpine",
 		Platform:   "linux/amd64",
 		Env: []string{
 			fmt.Sprintf("POSTGRES_PASSWORD=%s", testPassword),
