@@ -66,7 +66,7 @@ func setupPostgres(t *testing.T, ctx context.Context) *postgres.PostgresContaine
 
 	pg, err := postgres.Run(
 		ctx,
-		"postgis/postgis:17-3.6-alpine",
+		"postgis/postgis:18-3.6-alpine",
 		postgres.WithDatabase("marble_test"),
 		postgres.WithUsername("postgres"),
 		postgres.WithPassword("marble"),
