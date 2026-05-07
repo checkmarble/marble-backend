@@ -2,9 +2,11 @@ package evaluate
 
 import (
 	"context"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/cockroachdb/errors"
@@ -76,6 +78,19 @@ func NewRecordRiskLevelEvaluator(
 }
 
 func (rs RecordRiskLevel) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
+	if err := verifyNumberOfArguments(arguments.Args, 1); err != nil {
+		return MakeEvaluateError(err)
+	}
+
+	matchingRiskLevelsF, errList := adaptArgumentToListOfThings[float64](arguments.Args[0])
+	if errList != nil {
+		return MakeEvaluateError(errors.Wrap(errList, "right argument is not a list"))
+	}
+
+	matchingRiskLevels := pure_utils.Map(matchingRiskLevelsF, func(rl float64) int {
+		return int(rl)
+	})
+
 	tableName := rs.clientObject.TableName
 	objectId := rs.clientObject.Data["object_id"].(string)
 
@@ -91,21 +106,21 @@ func (rs RecordRiskLevel) Evaluate(ctx context.Context, arguments ast.Arguments)
 		ruleset, tableName, objectId, err = rs.getPivotRuleset(ctx, exec, tableName)
 		if err != nil {
 			if errors.Is(err, models.NotFoundError) {
-				return 0, nil
+				return false, nil
 			}
 
 			return MakeEvaluateError(err)
 		}
 	}
 
-	riskLevel, err := executor_factory.TransactionReturnValue(ctx, rs.transactionFactory, func(tx repositories.Transaction) (int, error) {
+	riskLevel, err := executor_factory.TransactionReturnValue(ctx, rs.transactionFactory, func(tx repositories.Transaction) (bool, error) {
 		score, err := rs.repository.GetActiveScore(ctx, tx, models.ScoringRecordRef{
 			OrgId:      rs.orgId,
 			RecordType: tableName,
 			RecordId:   objectId,
 		})
 		if err != nil {
-			return 0, err
+			return false, err
 		}
 
 		// If the record does not have a score yet, we *MUST* compute it online.
@@ -114,10 +129,10 @@ func (rs RecordRiskLevel) Evaluate(ctx context.Context, arguments ast.Arguments)
 			if err != nil {
 				// If the record does not exist, it has no score and a score cannot be computed, return 0.
 				if errors.Is(err, models.NotFoundError) || eval == nil {
-					return 0, nil
+					return false, nil
 				}
 
-				return 0, err
+				return false, err
 			}
 
 			req := models.InsertScoreRequest{
@@ -131,13 +146,13 @@ func (rs RecordRiskLevel) Evaluate(ctx context.Context, arguments ast.Arguments)
 
 			score, err := rs.repository.InsertScore(ctx, tx, req)
 			if err != nil {
-				return 0, err
+				return false, err
 			}
 
-			return score.RiskLevel, nil
+			return slices.Contains(matchingRiskLevels, score.RiskLevel), nil
 		}
 
-		return score.RiskLevel, nil
+		return slices.Contains(matchingRiskLevels, score.RiskLevel), nil
 	})
 	if err != nil {
 		return MakeEvaluateError(err)
