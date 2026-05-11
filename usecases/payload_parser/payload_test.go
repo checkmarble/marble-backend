@@ -331,4 +331,20 @@ func TestTypedClientObject_BackwardCompatibility(t *testing.T) {
 	assert.Equal(t, "transactions", result.TableName)
 	assert.Equal(t, "123", result.Data["object_id"])
 	assert.Equal(t, 99.99, result.Data["amount"])
+
+	// Old payload with the new required field explicitly set to null (was nullable at ingestion time)
+	oldPayloadWithNull := models.ClientObject{
+		TableName: "transactions",
+		Data: map[string]any{
+			"object_id":          "124",
+			"updated_at":         "2026-03-13T10:00:00Z",
+			"amount":             99.99,
+			"new_required_field": nil,
+		},
+	}
+
+	resultWithNull, err := TypedClientObject(context.Background(), dataModel, oldPayloadWithNull)
+	assert.NoError(t, err, "TypedClientObject should handle old payloads with null on now-required fields")
+	assert.Equal(t, "124", resultWithNull.Data["object_id"])
+	assert.Nil(t, resultWithNull.Data["new_required_field"])
 }
