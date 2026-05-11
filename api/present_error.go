@@ -69,7 +69,7 @@ func presentError(ctx context.Context, c *gin.Context, err error) bool {
 
 	case errors.Is(err, models.LLMRateLimitedError):
 		logger.WarnContext(ctx, fmt.Sprintf("LLM provider rate limited: %v", err))
-		c.JSON(http.StatusInternalServerError, dto.APIErrorResponse{
+		c.JSON(http.StatusServiceUnavailable, dto.APIErrorResponse{
 			Message: "The AI service is temporarily unavailable due to rate limits. Please try again in a moment.",
 		})
 

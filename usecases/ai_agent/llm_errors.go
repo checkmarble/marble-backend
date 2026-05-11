@@ -24,13 +24,16 @@ func IsLLMRateLimitError(err error) bool {
 		strings.Contains(errStr, "DEADLINE_EXCEEDED")
 }
 
-// WrapIfLLMRateLimit returns err wrapped with models.LLMRateLimitedError when
-// IsLLMRateLimitError matches, otherwise returns err unchanged.
+// WrapIfLLMRateLimit tags err with the models.LLMRateLimitedError marker when
+// IsLLMRateLimitError matches, otherwise returns err unchanged. The original
+// error chain (wraps, stack frames, provider-specific types) is preserved so
+// that errors.Is(result, models.LLMRateLimitedError) reports true while
+// upstream details remain available for debugging.
 func WrapIfLLMRateLimit(err error) error {
 	if err == nil || !IsLLMRateLimitError(err) {
 		return err
 	}
-	return errors.Wrap(models.LLMRateLimitedError, err.Error())
+	return errors.Mark(err, models.LLMRateLimitedError)
 }
 
 // DoLLMRequest is the single sanctioned entrypoint for executing an
