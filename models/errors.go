@@ -29,6 +29,12 @@ var (
 
 	// MissingLicenseEntitlement indicates that the features required a license that was not acquired
 	MissingLicenseEntitlementError = errors.New("missing license entitlement")
+
+	// LLMRateLimitedError indicates an upstream LLM provider returned a
+	// rate-limit / resource-exhausted response. Surface to the client as a
+	// server error without Sentry capture (the condition is known and
+	// outside our control).
+	LLMRateLimitedError = errors.New("llm provider rate limited")
 )
 
 // Authentication related errors

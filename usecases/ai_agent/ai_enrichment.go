@@ -177,7 +177,7 @@ func (uc *AiAgentUsecase) enrichData(
 	}
 	request = request.WithProviderOptions(options)
 
-	response, err := request.Do(ctx, adapter)
+	response, err := DoLLMRequest(ctx, adapter, request)
 	if err != nil {
 		return models.AiEnrichmentKYC{}, errors.Wrap(err, "failed to make request")
 	}

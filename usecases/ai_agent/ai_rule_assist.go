@@ -99,12 +99,11 @@ func (uc *AiAgentUsecase) GenerateRule(
 		return dto.GenerateRuleResponse{}, err
 	}
 
-	resp, err := llmberjack.NewRequest[string]().
+	resp, err := DoLLMRequest(ctx, client, llmberjack.NewRequest[string]().
 		WithProvider(provider).
 		WithModel(model).
 		WithText(llmberjack.RoleUser, ruleGenerationPrompt).
-		WithThinking(true).
-		Do(ctx, client)
+		WithThinking(true))
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf(
 			"failed to generate rule from LLM: %w", err)
@@ -131,12 +130,11 @@ func (uc *AiAgentUsecase) GenerateRule(
 		return dto.GenerateRuleResponse{}, err
 	}
 
-	resp, err = llmberjack.NewRequest[string]().
+	resp, err = DoLLMRequest(ctx, client, llmberjack.NewRequest[string]().
 		WithProvider(provider).
 		WithModel(model).
 		WithSchemaDescription("NodeDto", "The AST node of the rule").
-		WithText(llmberjack.RoleUser, ruleGenerationPrompt).
-		Do(ctx, client)
+		WithText(llmberjack.RoleUser, ruleGenerationPrompt))
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf(
 			"failed to generate rule from LLM: %w", err)
@@ -285,12 +283,11 @@ func (uc *AiAgentUsecase) AiASTDescription(
 		return models.AiRuleDescription{}, err
 	}
 
-	aiStudioRequest, err := llmberjack.NewRequest[aiRuleDescriptionOutput]().
+	aiStudioRequest, err := DoLLMRequest(ctx, client, llmberjack.NewRequest[aiRuleDescriptionOutput]().
 		WithProvider(provider).
 		WithModel(model).
 		WithText(llmberjack.RoleUser, ruleDescription).
-		WithThinking(false).
-		Do(ctx, client)
+		WithThinking(false))
 	if err != nil {
 		return models.AiRuleDescription{}, err
 	}

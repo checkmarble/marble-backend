@@ -11,14 +11,17 @@ import (
 
 func LogAndReportSentryError(ctx context.Context, err error) {
 	logger := LoggerFromContext(ctx)
-	logger.ErrorContext(ctx, fmt.Sprintf("%+v", err))
 
 	// Ignore errors that are due to context deadlines or canceled context, as presumably their root case has been handled
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 		logger.DebugContext(ctx, fmt.Sprintf("Deadline exceeded or context canceled: %v", err))
 		return
 	}
+	if MaybeSuppressTransient(ctx, err) {
+		return
+	}
 
+	logger.ErrorContext(ctx, fmt.Sprintf("%+v", err))
 	if hub := sentry.GetHubFromContext(ctx); hub != nil {
 		CaptureSentryException(ctx, hub, err)
 	} else {

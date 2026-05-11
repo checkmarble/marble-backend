@@ -67,6 +67,12 @@ func presentError(ctx context.Context, c *gin.Context, err error) bool {
 	case errors.Is(err, models.MissingLicenseEntitlementError):
 		c.JSON(http.StatusForbidden, errorResponse)
 
+	case errors.Is(err, models.LLMRateLimitedError):
+		logger.WarnContext(ctx, fmt.Sprintf("LLM provider rate limited: %v", err))
+		c.JSON(http.StatusInternalServerError, dto.APIErrorResponse{
+			Message: "The AI service is temporarily unavailable due to rate limits. Please try again in a moment.",
+		})
+
 	case errors.Is(err, context.DeadlineExceeded):
 		logger.WarnContext(ctx, fmt.Sprintf("Deadline exceeded: %v", err))
 		c.JSON(http.StatusRequestTimeout, dto.APIErrorResponse{Message: timeoutMst})
@@ -75,11 +81,13 @@ func presentError(ctx context.Context, c *gin.Context, err error) bool {
 		c.JSON(http.StatusRequestTimeout, dto.APIErrorResponse{Message: timeoutMst})
 
 	default:
-		logger.ErrorContext(ctx, fmt.Sprintf("Unexpected Error: %+v", err))
-		if hub := sentrygin.GetHubFromContext(c); hub != nil {
-			utils.CaptureSentryException(ctx, hub, err)
-		} else {
-			sentry.CaptureException(err)
+		if !utils.MaybeSuppressTransient(ctx, err) {
+			logger.ErrorContext(ctx, fmt.Sprintf("Unexpected Error: %+v", err))
+			if hub := sentrygin.GetHubFromContext(c); hub != nil {
+				utils.CaptureSentryException(ctx, hub, err)
+			} else {
+				sentry.CaptureException(err)
+			}
 		}
 		c.JSON(http.StatusInternalServerError, dto.APIErrorResponse{
 			Message: "An unexpected error occurred. Please try again later, or contact support if the problem persists.",
