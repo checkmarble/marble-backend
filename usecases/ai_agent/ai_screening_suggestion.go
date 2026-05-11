@@ -203,12 +203,11 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 		"match_id", match.Id, "model", model)
 
 	// Call LLM
-	response, err := llmberjack.NewRequest[screeningHitLlmOutput]().
+	response, err := DoLLMRequest(ctx, client, llmberjack.NewRequest[screeningHitLlmOutput]().
 		WithInstruction(systemInstruction).
 		WithModel(model).
 		WithText(llmberjack.RoleUser, userMessage).
-		WithThinking(false).
-		Do(ctx, client)
+		WithThinking(false))
 	if err != nil {
 		return nil, errors.Wrap(err, "LLM call failed")
 	}

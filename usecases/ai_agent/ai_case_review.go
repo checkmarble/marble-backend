@@ -450,13 +450,12 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		}
 
 		// Create the request with Thread for the next steps which needs the response
-		requestDataModelSummary, err := llmberjack.NewUntypedRequest().
+		requestDataModelSummary, err := DoLLMRequest(ctx, client, llmberjack.NewUntypedRequest().
 			WithProvider(providerDataModelSummary).
 			WithModel(modelDataModelSummary).
 			WithThinking(false).
 			WithInstruction(systemInstruction).
-			WithText(llmberjack.RoleUser, promptDataModelSummary).
-			Do(ctx, client)
+			WithText(llmberjack.RoleUser, promptDataModelSummary))
 		if err != nil {
 			return nil, errors.Wrap(err, "could not generate data model summary")
 		}
@@ -522,15 +521,14 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 						return nil, errors.Wrap(err, "could not prepare data model object field read options request")
 					}
 
-					requestDataModelObjectFieldReadOptions, err := llmberjack.NewRequest[map[string][]string]().
+					requestDataModelObjectFieldReadOptions, err := DoLLMRequest(ctx, client, llmberjack.NewRequest[map[string][]string]().
 						OverrideResponseSchema(schema).
 						WithProvider(providerFieldReadOptions).
 						WithModel(modelDataModelObjectFieldReadOptions).
 						WithThinking(false).
 						WithInstruction(systemInstruction).
 						WithText(llmberjack.RoleAi, *caseReviewContext.DataModelSummary).
-						WithText(llmberjack.RoleUser, promptDataModelObjectFieldReadOptions).
-						Do(ctx, client)
+						WithText(llmberjack.RoleUser, promptDataModelObjectFieldReadOptions))
 					if err != nil {
 						return nil, errors.Wrap(err, "could not generate data model object field read options")
 					}
@@ -592,13 +590,12 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if err != nil {
 			return nil, errors.Wrap(err, "could not prepare rules definitions review request")
 		}
-		requestRulesDefinitionsReview, err := llmberjack.NewUntypedRequest().
+		requestRulesDefinitionsReview, err := DoLLMRequest(ctx, client, llmberjack.NewUntypedRequest().
 			WithProvider(providerRulesDefinitions).
 			WithModel(modelRulesDefinitions).
 			WithThinking(false).
 			WithInstruction(systemInstruction).
-			WithText(llmberjack.RoleUser, promptRulesDefinitions).
-			Do(ctx, client)
+			WithText(llmberjack.RoleUser, promptRulesDefinitions))
 		if err != nil {
 			return nil, errors.Wrap(err, "could not generate rules definitions review")
 		}
@@ -623,13 +620,12 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if err != nil {
 			return nil, errors.Wrap(err, "could not prepare rule thresholds request")
 		}
-		requestRuleThresholds, err := llmberjack.NewUntypedRequest().
+		requestRuleThresholds, err := DoLLMRequest(ctx, client, llmberjack.NewUntypedRequest().
 			WithProvider(providerRuleThresholds).
 			WithModel(modelRuleThresholds).
 			WithThinking(false).
 			WithInstruction(systemInstruction).
-			WithText(llmberjack.RoleUser, promptRuleThresholds).
-			Do(ctx, client)
+			WithText(llmberjack.RoleUser, promptRuleThresholds))
 		if err != nil {
 			return nil, errors.Wrap(err, "could not generate rule thresholds")
 		}
@@ -731,13 +727,12 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		logger.DebugContext(ctx, "case review prompt", "prompt", promptCaseReview)
 
 		schema := getProofSchema(caseData.dataModel)
-		requestCaseReview, err := llmberjack.NewRequest[caseReviewOutput]().
+		requestCaseReview, err := DoLLMRequest(ctx, client, llmberjack.NewRequest[caseReviewOutput]().
 			OverrideResponseSchema(schema).
 			WithProvider(providerCaseReview).
 			WithModel(modelCaseReview).
 			WithInstruction(systemInstruction).
-			WithText(llmberjack.RoleUser, promptCaseReview).
-			Do(ctx, client)
+			WithText(llmberjack.RoleUser, promptCaseReview))
 		if err != nil {
 			return nil, errors.Wrap(err, "could not generate case review")
 		}
@@ -800,12 +795,11 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if err != nil {
 			return nil, errors.Wrap(err, "could not prepare sanity check request")
 		}
-		requestSanityCheck, err := llmberjack.NewRequest[sanityCheckOutput]().
+		requestSanityCheck, err := DoLLMRequest(ctx, client, llmberjack.NewRequest[sanityCheckOutput]().
 			WithProvider(providerSanityCheck).
 			WithModel(modelSanityCheck).
 			WithInstruction(systemInstruction).
-			WithText(llmberjack.RoleUser, promptSanityCheck).
-			Do(ctx, client)
+			WithText(llmberjack.RoleUser, promptSanityCheck))
 		if err != nil {
 			return nil, errors.Wrap(err, "could not generate sanity check")
 		}
@@ -844,9 +838,8 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			logger.DebugContext(ctx, "Adding custom instruction", "instruction", instruction)
 			customFormatRequest = customFormatRequest.WithInstruction(instruction)
 		}
-		requestCustomFormat, err := customFormatRequest.
-			WithText(llmberjack.RoleUser, finalOutput).
-			Do(ctx, client)
+		requestCustomFormat, err := DoLLMRequest(ctx, client, customFormatRequest.
+			WithText(llmberjack.RoleUser, finalOutput))
 		if err != nil {
 			return nil, errors.Wrap(err, "could not execute custom format")
 		}

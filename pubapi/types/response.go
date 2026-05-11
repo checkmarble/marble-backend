@@ -246,18 +246,20 @@ func (resp baseErrorResponse) Serve(c *gin.Context, statuses ...int) {
 	}
 
 	if resp.Error.status >= http.StatusInternalServerError {
-		utils.LoggerFromContext(ctx).ErrorContext(
-			ctx,
-			fmt.Sprintf("error (%s): %s", resp.Error.Code, msg),
-			"code", resp.Error.Code,
-			"status", resp.Error.status,
-		)
+		if !utils.MaybeSuppressTransient(ctx, resp.Error.err) {
+			utils.LoggerFromContext(ctx).ErrorContext(
+				ctx,
+				fmt.Sprintf("error (%s): %s", resp.Error.Code, msg),
+				"code", resp.Error.Code,
+				"status", resp.Error.status,
+			)
 
-		switch hub := sentrygin.GetHubFromContext(c); hub {
-		case nil:
-			sentry.CaptureException(resp.Error.err)
-		default:
-			utils.CaptureSentryException(ctx, hub, resp.Error.err)
+			switch hub := sentrygin.GetHubFromContext(c); hub {
+			case nil:
+				sentry.CaptureException(resp.Error.err)
+			default:
+				utils.CaptureSentryException(ctx, hub, resp.Error.err)
+			}
 		}
 	} else {
 		utils.LoggerFromContext(ctx).DebugContext(

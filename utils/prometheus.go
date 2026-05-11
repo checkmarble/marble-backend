@@ -55,6 +55,11 @@ var (
 		Name: "marble_job_duration",
 		Help: "Duration of asynchronous worker jobs",
 	}, []string{"queue", "job_name"})
+
+	MetricTransientNetworkErrors = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "marble_transient_network_errors_total",
+		Help: "Count of transient network-level errors (db socket timeouts, broken pipe, conn reset) suppressed from Sentry",
+	}, []string{"kind"})
 )
 
 func MeasureLatencyErr[R any](metric *prometheus.HistogramVec, labels prometheus.Labels, f func() (R, error)) (R, error) {
