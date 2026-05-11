@@ -24,6 +24,7 @@ type fieldParser map[models.DataType]func(result gjson.Result) (any, error)
 type Parser struct {
 	parsers               fieldParser
 	allowPatch            bool
+	allFieldsNullable     bool
 	disallowUnknownFields bool
 	columnEscape          bool
 	enricher              PayloadEnrichementUsecase
@@ -80,14 +81,14 @@ func (p *Parser) ParsePayload(ctx context.Context, table models.Table, json []by
 					Field:          field,
 					ErrorIfMissing: errIsNotNullable.Error(),
 				})
-			} else if !field.Nullable {
+			} else if !field.Nullable && !p.allFieldsNullable {
 				addError(allErrors, objectId, name, errIsNotNullable)
 			}
 			continue
 		}
 
 		if value.Type == gjson.Null {
-			if !field.Nullable {
+			if !field.Nullable && !p.allFieldsNullable {
 				addError(allErrors, objectId, name, errIsNotNullable)
 			}
 			out[name] = nil
@@ -179,6 +180,7 @@ func (p *Parser) ParsePayload(ctx context.Context, table models.Table, json []by
 
 type parserOpts struct {
 	allowPatch            bool
+	allFieldsNullable     bool
 	disallowUnknownFields bool
 	columnEscape          bool
 	enricher              PayloadEnrichementUsecase
@@ -195,6 +197,17 @@ func WithAllowPatch() ParserOpt {
 func WithAllowedPatch(allowed bool) ParserOpt {
 	return func(o *parserOpts) {
 		o.allowPatch = allowed
+	}
+}
+
+// WithAllFieldsNullable disables the "not nullable" validation for all fields, both when a
+// field is missing and when it is present with a null value. Used when re-parsing a payload
+// that was already validated and persisted (e.g. when re-typing a decision's client object
+// for async workflow execution), where the data model may have tightened required/nullable
+// constraints since the object was ingested.
+func WithAllFieldsNullable() ParserOpt {
+	return func(o *parserOpts) {
+		o.allFieldsNullable = true
 	}
 }
 
@@ -291,6 +304,7 @@ func NewParser(opts ...ParserOpt) *Parser {
 	return &Parser{
 		parsers:               parsers,
 		allowPatch:            options.allowPatch,
+		allFieldsNullable:     options.allFieldsNullable,
 		disallowUnknownFields: options.disallowUnknownFields,
 		columnEscape:          options.columnEscape,
 		enricher:              options.enricher,
@@ -303,7 +317,7 @@ func TypedClientObject(ctx context.Context, dataModel models.DataModel, o models
 		return models.ClientObject{}, err
 	}
 
-	parser := NewParser(WithAllowedPatch(true))
+	parser := NewParser(WithAllFieldsNullable())
 
 	clientObject, err := parser.ParsePayload(ctx, dataModel.Tables[o.TableName], payloadJson)
 	if err != nil {
