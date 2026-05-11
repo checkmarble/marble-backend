@@ -92,7 +92,10 @@ func (usecase IngestedDataReaderUsecase) GetIngestedObject(
 		dataModel = &d
 	}
 
-	table := dataModel.Tables[objectType]
+	table, ok := dataModel.Tables[objectType]
+	if !ok {
+		return nil, errors.Wrapf(models.NotFoundError, "Table '%s' not found in GetIngestedObject", objectType)
+	}
 
 	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
