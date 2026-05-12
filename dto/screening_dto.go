@@ -98,8 +98,9 @@ func AdaptScreeningDto(m models.ScreeningWithMatches) ScreeningDto {
 type ScreeningFreeformDto struct {
 	ScreeningRefineDto
 
-	Datasets  []string `json:"datasets"`
-	Threshold *int     `json:"threshold"`
+	Datasets  []string                       `json:"datasets"`
+	Filters   *models.ScreeningConfigFilters `json:"filters,omitempty"`
+	Threshold *int                           `json:"threshold"`
 }
 
 type ScreeningRefineDto struct {

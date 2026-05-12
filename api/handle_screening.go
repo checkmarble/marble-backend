@@ -338,6 +338,7 @@ func handleFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
 
 		scc := models.ScreeningConfig{
 			Datasets:  payload.Datasets,
+			Filters:   payload.Filters,
 			Threshold: payload.Threshold,
 		}
 
