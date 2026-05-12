@@ -257,6 +257,10 @@ func (repo *MarbleDbRepository) UpdateOrganizationFeatureAccess(
 		query = query.Set("ai_rule_building", *updateFeatureAccess.AiRuleBuilding)
 		nbUpdated++
 	}
+	if updateFeatureAccess.LexisNexis != nil {
+		query = query.Set("lexisnexis", *updateFeatureAccess.LexisNexis)
+		nbUpdated++
+	}
 
 	if nbUpdated == 0 {
 		return nil
