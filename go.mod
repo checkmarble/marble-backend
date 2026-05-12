@@ -28,7 +28,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.13
 	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/gen2brain/go-fitz v1.24.15
-	github.com/getkin/kin-openapi v0.135.0
+	github.com/getkin/kin-openapi v0.136.0
 	github.com/getsentry/sentry-go v0.45.1
 	github.com/getsentry/sentry-go/gin v0.45.1
 	github.com/gin-contrib/cors v1.7.6
@@ -255,7 +255,7 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/oasdiff/yaml v0.0.9 // indirect
-	github.com/oasdiff/yaml3 v0.0.9 // indirect
+	github.com/oasdiff/yaml3 v0.0.12 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/onsi/gomega v1.25.0 // indirect
 	github.com/openai/openai-go v1.9.0 // indirect
@@ -279,6 +279,7 @@ require (
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/samber/lo v1.51.0 // indirect
 	github.com/sanity-io/litter v1.5.5 // indirect
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/segmentio/backo-go v1.1.0 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
