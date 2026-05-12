@@ -149,7 +149,9 @@ type ScreeningConfigRef struct {
 	Id       string
 	StableId string
 	Name     string
+	Provider string
 	Datasets []string
+	Filters  ScreeningConfigFilters
 }
 
 type ScreeningWithMatches struct {

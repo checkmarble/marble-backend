@@ -95,7 +95,9 @@ func AdaptScreening(dto DBScreeningAndConfig) (models.Screening, error) {
 		Id:       dto.ConfigId,
 		StableId: dto.StableId,
 		Name:     dto.Name,
+		Provider: dto.Provider,
 		Datasets: dto.Datasets,
+		Filters:  dto.Filters,
 	}
 	return sc, nil
 }
