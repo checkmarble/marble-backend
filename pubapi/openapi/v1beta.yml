@@ -163,8 +163,10 @@ paths:
             If monitoring the object, which configuration to use. Can be
             repeated multiple times.
           schema:
-            type: string
-            format: uuid
+            type: array
+            items:
+              type: string
+              format: uuid
         - name: skip_screening
           in: query
           description:
@@ -225,8 +227,10 @@ paths:
             If monitoring the object, which configuration to use. Can be
             repeated multiple times.
           schema:
-            type: string
-            format: uuid
+            type: array
+            items:
+              type: string
+              format: uuid
         - name: skip_screening
           in: query
           description:
@@ -288,8 +292,10 @@ paths:
             If monitoring the object, which configuration to use. Can be
             repeated multiple times.
           schema:
-            type: string
-            format: uuid
+            type: array
+            items:
+              type: string
+              format: uuid
         - name: skip_screening
           in: query
           description:
@@ -352,8 +358,10 @@ paths:
             If monitoring the object, which configuration to use. Can be
             repeated multiple times.
           schema:
-            type: string
-            format: uuid
+            type: array
+            items:
+              type: string
+              format: uuid
         - name: skip_screening
           in: query
           description:
