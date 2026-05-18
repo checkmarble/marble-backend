@@ -22,7 +22,7 @@ type DBScreeningConfigs struct {
 	RuleGroup           string                              `db:"rule_group"`
 	Provider            string                              `db:"provider"`
 	Datasets            []string                            `db:"datasets"`
-	Filters             *models.ScreeningConfigFilters      `db:"filters"`
+	Filters             models.ScreeningConfigFilters       `db:"filters"`
 	TriggerRule         []byte                              `db:"trigger_rule"`
 	EntityType          string                              `db:"entity_type"`
 	Query               json.RawMessage                     `db:"query"`
