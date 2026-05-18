@@ -15,6 +15,30 @@ var (
 	ValidScreeningMatchStatuses = []string{"pending", "confirmed_hit", "no_hit"}
 )
 
+type ScreeningAvailableFilters struct {
+	Provider string                            `json:"provider"`
+	Sections ScreeningAvailableFiltersSections `json:"sections"`
+}
+
+type ScreeningAvailableFiltersSections struct {
+	Sanctions    ScreeningAvailableFiltersSection `json:"sanctions,omitzero"`
+	Peps         ScreeningAvailableFiltersSection `json:"peps,omitzero"`
+	AdverseMedia ScreeningAvailableFiltersSection `json:"adverse_media,omitzero"`
+	Other        ScreeningAvailableFiltersSection `json:"other,omitzero"`
+}
+
+type ScreeningAvailableFiltersSection struct {
+	Self     string                                     `json:"self,omitempty"`
+	Datasets []ScreeningAvailableFiltersItem            `json:"datasets"`
+	Topics   map[string][]ScreeningAvailableFiltersItem `json:"topics,omitempty"`
+}
+
+type ScreeningAvailableFiltersItem struct {
+	Section string `json:"section,omitempty"`
+	Name    string `json:"name"`
+	Title   string `json:"title"`
+}
+
 type ScreeningDto struct {
 	Id                           string                           `json:"id"`
 	Config                       ScreeningConfigRefDto            `json:"config"`
@@ -31,7 +55,8 @@ type ScreeningDto struct {
 }
 
 type ScreeningConfigRefDto struct {
-	Name string `json:"name"`
+	Name     string `json:"name"`
+	Provider string `json:"provider"`
 }
 
 type ScreeningRequestDto struct {
@@ -45,7 +70,8 @@ func AdaptScreeningDto(m models.ScreeningWithMatches) ScreeningDto {
 	screening := ScreeningDto{
 		Id: m.Id,
 		Config: ScreeningConfigRefDto{
-			Name: m.Config.Name,
+			Name:     m.Config.Name,
+			Provider: m.Config.Provider,
 		},
 		Status:                       m.Status.String(),
 		UniqueCounterpartyIdentifier: m.UniqueCounterpartyIdentifier,
@@ -74,8 +100,9 @@ func AdaptScreeningDto(m models.ScreeningWithMatches) ScreeningDto {
 type ScreeningFreeformDto struct {
 	ScreeningRefineDto
 
-	Datasets  []string `json:"datasets"`
-	Threshold *int     `json:"threshold"`
+	Datasets  []string                      `json:"datasets"`
+	Filters   models.ScreeningConfigFilters `json:"filters"`
+	Threshold *int                          `json:"threshold"`
 }
 
 type ScreeningRefineDto struct {
@@ -92,30 +119,30 @@ func AdaptScreeningRefineDto(dto ScreeningRefineDto) models.ScreeningRefineReque
 }
 
 type ScreeningMatchDto struct {
-	Id                           string                     `json:"id"`
-	EntityId                     string                     `json:"entity_id"`
-	Referents                    []string                   `json:"referents"`
-	QueryIds                     []string                   `json:"query_ids"`
-	Status                       string                     `json:"status"`
-	ReviewedBy                   *string                    `json:"reviewer_id,omitempty"` //nolint:tagliatelle
-	Datasets                     []string                   `json:"datasets"`
-	Payload                      json.RawMessage            `json:"payload"`
-	Enriched                     bool                       `json:"enriched"`
-	Comments                     []ScreeningMatchCommentDto `json:"comments"`
+	Id         string                     `json:"id"`
+	EntityId   string                     `json:"entity_id"`
+	Referents  []string                   `json:"referents"`
+	QueryIds   []string                   `json:"query_ids"`
+	Status     string                     `json:"status"`
+	ReviewedBy *string                    `json:"reviewer_id,omitempty"` //nolint:tagliatelle
+	Datasets   []string                   `json:"datasets"`
+	Payload    json.RawMessage            `json:"payload"`
+	Enriched   bool                       `json:"enriched"`
+	Comments   []ScreeningMatchCommentDto `json:"comments"`
 }
 
 func AdaptScreeningMatchDto(m models.ScreeningMatch) ScreeningMatchDto {
 	match := ScreeningMatchDto{
-		Id:                           m.Id,
-		EntityId:                     m.EntityId,
-		Referents:                    m.Referents,
-		Status:                       m.Status.String(),
-		ReviewedBy:                   m.ReviewedBy,
-		QueryIds:                     m.QueryIds,
-		Datasets:                     make([]string, 0),
-		Payload:                      m.Payload,
-		Enriched:                     m.Enriched,
-		Comments:                     pure_utils.Map(m.Comments, AdaptScreeningMatchCommentDto),
+		Id:         m.Id,
+		EntityId:   m.EntityId,
+		Referents:  m.Referents,
+		Status:     m.Status.String(),
+		ReviewedBy: m.ReviewedBy,
+		QueryIds:   m.QueryIds,
+		Datasets:   make([]string, 0),
+		Payload:    m.Payload,
+		Enriched:   m.Enriched,
+		Comments:   pure_utils.Map(m.Comments, AdaptScreeningMatchCommentDto),
 	}
 
 	return match

@@ -88,7 +88,9 @@ type ScreeningConfig struct {
 	Name                     string
 	Description              string
 	RuleGroup                *string
+	Provider                 string
 	Datasets                 []string
+	Filters                  ScreeningConfigFilters
 	TriggerRule              *ast.Node
 	EntityType               string
 	Query                    map[string]ast.Node
@@ -97,6 +99,106 @@ type ScreeningConfig struct {
 	CounterpartyIdExpression *ast.Node
 	Preprocessing            ScreeningConfigPreprocessing
 	ConfigVersion            string
+}
+
+type ScreeningConfigFilters struct {
+	Global       *ScreeningConfigFilter `json:"global,omitempty"`
+	Sanctions    *ScreeningConfigFilter `json:"sanctions,omitempty"`
+	Peps         *ScreeningConfigFilter `json:"peps,omitempty"`
+	AdverseMedia *ScreeningConfigFilter `json:"adverse_media,omitempty"`
+	Other        *ScreeningConfigFilter `json:"other,omitempty"`
+}
+
+type ResolvedScreeningConfigFilters struct {
+	Global       ScreeningConfigFilter
+	Sanctions    ScreeningConfigFilter
+	Peps         ScreeningConfigFilter
+	AdverseMedia ScreeningConfigFilter
+	Other        ScreeningConfigFilter
+}
+
+func (scf *ScreeningConfigFilters) IsEmpty() bool {
+	if scf == nil {
+		return true
+	}
+
+	return scf.Sanctions == nil && scf.Peps == nil && scf.AdverseMedia == nil && scf.Other == nil
+}
+
+func (scf ResolvedScreeningConfigFilters) NoFilters() bool {
+	return !scf.Sanctions.IsEnabled() &&
+		!scf.Peps.IsEnabled() &&
+		!scf.AdverseMedia.IsEnabled() &&
+		!scf.Other.IsEnabled()
+}
+
+func (scf ResolvedScreeningConfigFilters) WithRootTopics() map[string]ScreeningConfigFilter {
+	return map[string]ScreeningConfigFilter{
+		"global":        scf.Global,
+		"sanctions":     scf.Sanctions,
+		"pep":           scf.Peps,
+		"adverse_media": scf.AdverseMedia,
+		"other":         scf.Other,
+	}
+}
+
+func (scf *ScreeningConfigFilters) Resolve() ResolvedScreeningConfigFilters {
+	if scf == nil {
+		return ResolvedScreeningConfigFilters{
+			Global:       ScreeningConfigFilter{},
+			Sanctions:    ScreeningConfigFilter{},
+			Peps:         ScreeningConfigFilter{},
+			AdverseMedia: ScreeningConfigFilter{},
+			Other:        ScreeningConfigFilter{},
+		}
+	}
+
+	return ResolvedScreeningConfigFilters{
+		Global: func() ScreeningConfigFilter {
+			if scf.Global == nil {
+				return ScreeningConfigFilter{}
+			}
+			return *scf.Global
+		}(),
+		Sanctions: func() ScreeningConfigFilter {
+			if scf.Sanctions == nil {
+				return ScreeningConfigFilter{}
+			}
+			return *scf.Sanctions
+		}(),
+		Peps: func() ScreeningConfigFilter {
+			if scf.Peps == nil {
+				return ScreeningConfigFilter{}
+			}
+			return *scf.Peps
+		}(),
+		AdverseMedia: func() ScreeningConfigFilter {
+			if scf.AdverseMedia == nil {
+				return ScreeningConfigFilter{}
+			}
+			return *scf.AdverseMedia
+		}(),
+		Other: func() ScreeningConfigFilter {
+			if scf.Other == nil {
+				return ScreeningConfigFilter{}
+			}
+			return *scf.Other
+		}(),
+	}
+}
+
+type ScreeningConfigFilter struct {
+	Enabled  bool                `json:"enabled"`
+	Datasets []string            `json:"datasets,omitempty"`
+	Topics   map[string][]string `json:"topics,omitempty"`
+}
+
+func (scf *ScreeningConfigFilter) IsEnabled() bool {
+	if scf == nil {
+		return true
+	}
+
+	return scf.Enabled
 }
 
 type ScreeningConfigPreprocessing struct {
@@ -199,6 +301,7 @@ type UpdateScreeningConfigInput struct {
 	Description              *string
 	RuleGroup                *string
 	Datasets                 []string
+	Filters                  *ScreeningConfigFilters
 	Threshold                *int
 	TriggerRule              *ast.Node
 	EntityType               *string

@@ -30,6 +30,7 @@ type ScenarioPublicationUsecaseTestSuite struct {
 	clientDbIndexEditor            *mocks.ClientDbIndexEditor
 	featureAccessReader            *mocks.FeatureAccessReader
 	taskQueueRepository            *mocks.TaskQueueRepository
+	organizationRepository         *mocks.OrganizationRepository
 
 	organizationId                uuid.UUID
 	scenarioId                    string
@@ -59,6 +60,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) SetupTest() {
 	suite.clientDbIndexEditor = new(mocks.ClientDbIndexEditor)
 	suite.featureAccessReader = new(mocks.FeatureAccessReader)
 	suite.taskQueueRepository = new(mocks.TaskQueueRepository)
+	suite.organizationRepository = new(mocks.OrganizationRepository)
 
 	suite.organizationId = uuid.MustParse("12345678-1234-5678-9012-345678901234")
 	suite.scenarioId = "scenarioId"
@@ -160,6 +162,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) makeUsecase() *ScenarioPublica
 		suite.clientDbIndexEditor,
 		suite.featureAccessReader,
 		nil,
+		suite.organizationRepository,
 	)
 }
 
@@ -241,6 +244,9 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_ListScenarioPublications_
 		suite.organizationId,
 		models.ListScenarioPublicationsFilters{},
 	).Return([]models.ScenarioPublication{suite.scenarioPublication}, nil)
+	suite.organizationRepository.On("GetOrganizationById", suite.ctx, suite.transaction, suite.organizationId).Return(models.Organization{
+		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[string]string{}},
+	}, nil)
 
 	publications, err := suite.makeUsecase().ListScenarioPublications(
 		suite.ctx,
@@ -300,6 +306,9 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_ExecuteScenarioPublicatio
 	suite.enforceSecurity.On("PublishScenario", suite.scenario).Return(nil)
 	suite.scenarioPublisher.On("PublishOrUnpublishIteration", suite.ctx, suite.transaction, mock.Anything, models.Publish).
 		Return([]models.ScenarioPublication{suite.scenarioPublication}, nil)
+	suite.organizationRepository.On("GetOrganizationById", suite.ctx, suite.transaction, suite.organizationId).Return(models.Organization{
+		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[string]string{}},
+	}, nil)
 
 	publications, err := suite.makeUsecase().ExecuteScenarioPublicationAction(suite.ctx,
 		suite.organizationId,
@@ -321,6 +330,9 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_ExecuteScenarioPublicatio
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything)
 	suite.scenarioFetcher.On("FetchScenarioAndIteration", suite.ctx, suite.transaction, suite.iterationId).
 		Return(models.ScenarioAndIteration{}, suite.repositoryError)
+	suite.organizationRepository.On("GetOrganizationById", suite.ctx, suite.transaction, suite.organizationId).Return(models.Organization{
+		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[string]string{}},
+	}, nil)
 
 	publications, err := suite.makeUsecase().ExecuteScenarioPublicationAction(
 		suite.ctx,
@@ -343,6 +355,9 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_ExecuteScenarioPublicatio
 	suite.scenarioFetcher.On("FetchScenarioAndIteration", suite.ctx, suite.transaction, suite.iterationId).
 		Return(suite.scenarioAndIteration, nil)
 	suite.enforceSecurity.On("PublishScenario", suite.scenario).Return(suite.securityError)
+	suite.organizationRepository.On("GetOrganizationById", suite.ctx, suite.transaction, suite.organizationId).Return(models.Organization{
+		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[string]string{}},
+	}, nil)
 
 	publications, err := suite.makeUsecase().ExecuteScenarioPublicationAction(
 		suite.ctx,

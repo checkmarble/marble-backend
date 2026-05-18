@@ -292,6 +292,7 @@ func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterati
 	return ScenarioIterationUsecase{
 		repository:                usecases.Repositories.MarbleDbRepository,
 		screeningConfigRepository: usecases.Repositories.MarbleDbRepository,
+		screeningProvider:         usecases.Repositories.OpenSanctionsRepository,
 		enforceSecurity:           usecases.NewEnforceScenarioSecurity(),
 		scenarioFetcher:           usecases.NewScenarioFetcher(),
 		validateScenarioIteration: usecases.NewValidateScenarioIteration(),
@@ -341,6 +342,7 @@ func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() *ScenarioPubl
 		usecases.NewClientDbIndexEditor(),
 		usecases.NewFeatureAccessReader(),
 		usecases.Repositories.OpenSanctionsRepository,
+		usecases.Repositories.MarbleDbRepository,
 	)
 }
 
@@ -365,6 +367,7 @@ func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase 
 		usecases.Repositories.OrganizationSchemaRepository,
 		usecases.NewExecutorFactory(),
 		usecases.NewFeatureAccessReader(),
+		usecases.Repositories.MarbleDbRepository,
 	)
 }
 

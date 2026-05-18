@@ -17,6 +17,7 @@ type ScreeningConfig struct {
 	Description              *string                              `json:"description"`
 	RuleGroup                *string                              `json:"rule_group,omitempty"`
 	Datasets                 []string                             `json:"datasets,omitempty"`
+	Filters                  models.ScreeningConfigFilters        `json:"filters"`
 	Threshold                *int                                 `json:"threshold,omitempty" binding:"omitempty,min=0,max=100"`
 	ForcedOutcome            *string                              `json:"forced_outcome,omitempty"`
 	TriggerRule              *NodeDto                             `json:"trigger_rule"`
@@ -34,6 +35,7 @@ func AdaptScreeningConfig(model models.ScreeningConfig) (ScreeningConfig, error)
 		Description:   &model.Description,
 		RuleGroup:     model.RuleGroup,
 		Datasets:      model.Datasets,
+		Filters:       model.Filters,
 		Threshold:     model.Threshold,
 		ForcedOutcome: utils.Ptr(model.ForcedOutcome.String()),
 		EntityType:    &model.EntityType,
@@ -76,6 +78,7 @@ func AdaptScreeningConfigInputDto(dto ScreeningConfig) (models.UpdateScreeningCo
 		Description:   dto.Description,
 		RuleGroup:     dto.RuleGroup,
 		Datasets:      dto.Datasets,
+		Filters:       &dto.Filters,
 		Threshold:     dto.Threshold,
 		EntityType:    dto.EntityType,
 		Preprocessing: dto.Preprocessing,

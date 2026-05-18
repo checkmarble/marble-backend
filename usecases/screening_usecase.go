@@ -8,6 +8,7 @@ import (
 	"maps"
 	"mime/multipart"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -33,6 +34,7 @@ type ScreeningEnforceSecurityCase interface {
 }
 
 type ScreeningEnforceSecurity interface {
+	OrgId() uuid.UUID
 	ReadWhitelist(context.Context) error
 	WriteWhitelist(context.Context) error
 	PerformFreeformSearch(context.Context) error
@@ -40,11 +42,12 @@ type ScreeningEnforceSecurity interface {
 
 type ScreeningProvider interface {
 	IsSelfHosted(ctx context.Context) bool
-	GetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error)
+	GetCatalog(ctx context.Context, provider string) (models.OpenSanctionsCatalog, error)
 	GetLatestLocalDataset(context.Context) (models.OpenSanctionsDatasetFreshness, error)
-	Search(context.Context, models.OpenSanctionsQuery) (models.ScreeningRawSearchResponseWithMatches, error)
-	EnrichMatch(ctx context.Context, match models.ScreeningMatch) ([]byte, error)
-	IsConfigured(ctx context.Context) (bool, error)
+	Search(context.Context, string, models.OpenSanctionsQuery) (models.ScreeningRawSearchResponseWithMatches, error)
+	EnrichMatch(ctx context.Context, providerName string, match models.ScreeningMatch) ([]byte, error)
+	IsConfigured(ctx context.Context, provider string) (bool, error)
+	FindAvailableFilters(ctx context.Context, providerName string) (dto.ScreeningAvailableFilters, error)
 }
 
 type ScreeningInboxReader interface {
@@ -147,7 +150,7 @@ func (uc ScreeningUsecase) CheckDatasetFreshness(ctx context.Context) (models.Op
 }
 
 func (uc ScreeningUsecase) GetDatasetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error) {
-	return uc.openSanctionsProvider.GetCatalog(ctx)
+	return uc.openSanctionsProvider.GetCatalog(ctx, "opensanctions") // TODO: only opensanctions uses the catalog so far
 }
 
 func (uc ScreeningUsecase) GetScreening(ctx context.Context, id string) (models.ScreeningWithMatches, error) {
@@ -177,6 +180,76 @@ func (uc ScreeningUsecase) GetScreening(ctx context.Context, id string) (models.
 	}
 
 	return sc, nil
+}
+
+func (uc ScreeningUsecase) GetAvailableFilters(ctx context.Context, feature models.ScreeningFeature) (dto.ScreeningAvailableFilters, error) {
+	org, err := uc.organizationRepository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), uc.enforceSecurity.OrgId())
+	if err != nil {
+		return dto.ScreeningAvailableFilters{}, err
+	}
+
+	providerName := org.GetScreeningProviderFor(feature)
+
+	if providerName == "opensanctions" {
+		upstreamCatalog, err := uc.GetDatasetCatalog(ctx)
+		if err != nil {
+			return dto.ScreeningAvailableFilters{}, err
+		}
+
+		catalog := dto.AdaptOpenSanctionsCatalog(upstreamCatalog)
+
+		sanctionsDatasets := []dto.ScreeningAvailableFiltersItem{}
+		pepDatasets := []dto.ScreeningAvailableFiltersItem{}
+		mediaDatasets := []dto.ScreeningAvailableFiltersItem{}
+		otherDatasets := []dto.ScreeningAvailableFiltersItem{}
+
+		for _, s := range catalog.Sections {
+			for _, d := range s.Datasets {
+				switch d.Tag {
+				case "sanctions":
+					sanctionsDatasets = append(sanctionsDatasets, dto.ScreeningAvailableFiltersItem{Section: s.Name, Name: d.Name, Title: d.Title})
+				case "peps":
+					pepDatasets = append(pepDatasets, dto.ScreeningAvailableFiltersItem{Section: s.Name, Name: d.Name, Title: d.Title})
+				case "adverse-media":
+					mediaDatasets = append(mediaDatasets, dto.ScreeningAvailableFiltersItem{Section: s.Name, Name: d.Name, Title: d.Title})
+				default:
+					otherDatasets = append(otherDatasets, dto.ScreeningAvailableFiltersItem{Section: s.Name, Name: d.Name, Title: d.Title})
+				}
+			}
+		}
+
+		filters := dto.ScreeningAvailableFilters{
+			Provider: "opensanctions",
+			Sections: dto.ScreeningAvailableFiltersSections{
+				Sanctions: dto.ScreeningAvailableFiltersSection{
+					Datasets: sanctionsDatasets,
+				},
+				Peps: dto.ScreeningAvailableFiltersSection{
+					Datasets: pepDatasets,
+				},
+				AdverseMedia: dto.ScreeningAvailableFiltersSection{
+					Datasets: mediaDatasets,
+				},
+				Other: dto.ScreeningAvailableFiltersSection{
+					Datasets: otherDatasets,
+				},
+			},
+		}
+
+		return filters, nil
+	}
+
+	if providerName == "lexisnexis" {
+		filters, err := uc.openSanctionsProvider.FindAvailableFilters(ctx, "lexisnexis")
+		if err != nil {
+			return dto.ScreeningAvailableFilters{}, err
+		}
+
+		return filters, nil
+
+	}
+
+	return dto.ScreeningAvailableFilters{}, nil
 }
 
 func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string,
@@ -224,8 +297,7 @@ func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string
 
 	for _, comment := range comments {
 		if _, ok := matchIdToMatch[comment.MatchId]; ok {
-			matchIdToMatch[comment.MatchId].Comments =
-				append(matchIdToMatch[comment.MatchId].Comments, comment)
+			matchIdToMatch[comment.MatchId].Comments = append(matchIdToMatch[comment.MatchId].Comments, comment)
 		}
 	}
 
@@ -246,7 +318,7 @@ func (uc ScreeningUsecase) Execute(
 
 	query.OrgConfig = org.OpenSanctionsConfig
 
-	matches, err := uc.openSanctionsProvider.Search(ctx, query)
+	matches, err := uc.openSanctionsProvider.Search(ctx, query.Config.Provider, query)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
@@ -398,6 +470,15 @@ func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
 		return models.ScreeningWithMatches{}, err
 	}
 
+	org, err := uc.organizationRepository.GetOrganizationById(ctx,
+		uc.executorFactory.NewExecutor(), orgId)
+	if err != nil {
+		return models.ScreeningWithMatches{},
+			errors.Wrap(err, "could not retrieve organization")
+	}
+
+	scc.Provider = org.GetScreeningProviderFor(models.ScreeningFeatureManualSearch)
+
 	query := models.OpenSanctionsQuery{
 		IsRefinement:  false,
 		Config:        scc,
@@ -409,7 +490,7 @@ func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
-	err = uc.persistFreeformSearch(ctx, exec, orgId, refine)
+	err = uc.persistFreeformSearch(ctx, exec, orgId, scc.Provider, refine)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
@@ -421,6 +502,7 @@ func (uc ScreeningUsecase) persistFreeformSearch(
 	ctx context.Context,
 	exec repositories.Executor,
 	orgId uuid.UUID,
+	provider string,
 	refine models.ScreeningRefineRequest,
 ) error {
 	searchInput, err := json.Marshal(refine)
@@ -450,7 +532,7 @@ func (uc ScreeningUsecase) persistFreeformSearch(
 		OrgId:       orgId,
 		UserId:      userId,
 		ApiKeyId:    apiKeyId,
-		Provider:    models.ScreeningProviderOpenSanctions,
+		Provider:    provider,
 		SearchInput: searchInput,
 	}
 
@@ -690,7 +772,12 @@ func (uc ScreeningUsecase) EnrichMatchWithoutAuthorization(ctx context.Context, 
 			"this screening match was already enriched")
 	}
 
-	newPayload, err := uc.openSanctionsProvider.EnrichMatch(ctx, match)
+	org, err := uc.organizationRepository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), uc.enforceSecurity.OrgId())
+	if err != nil {
+		return models.ScreeningMatch{}, errors.Wrap(err, "could not retrieve organization")
+	}
+
+	newPayload, err := uc.openSanctionsProvider.EnrichMatch(ctx, org.GetScreeningProviderFor(models.ScreeningFeatureManualSearch), match)
 	if err != nil {
 		return models.ScreeningMatch{}, err
 	}
@@ -711,7 +798,12 @@ func (uc ScreeningUsecase) EnrichMatchWithoutAuthorization(ctx context.Context, 
 }
 
 func (uc ScreeningUsecase) GetEntity(ctx context.Context, entityId string) ([]byte, error) {
-	return uc.openSanctionsProvider.EnrichMatch(ctx, models.ScreeningMatch{EntityId: entityId})
+	org, err := uc.organizationRepository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), uc.enforceSecurity.OrgId())
+	if err != nil {
+		return nil, errors.Wrap(err, "could not retrieve organization")
+	}
+
+	return uc.openSanctionsProvider.EnrichMatch(ctx, org.GetScreeningProviderFor(models.ScreeningFeatureManualSearch), models.ScreeningMatch{EntityId: entityId})
 }
 
 func (uc ScreeningUsecase) CreateFiles(ctx context.Context, creds models.Credentials,

@@ -47,6 +47,22 @@ func handleScreeningDatasetCatalog(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
+func handleGetAvailableFilters(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
+		feature := models.ScreeningFeature(c.Query("feature"))
+
+		filters, err := uc.GetAvailableFilters(ctx, feature)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, filters)
+	}
+}
+
 func handleListScreenings(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -322,6 +338,7 @@ func handleFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
 
 		scc := models.ScreeningConfig{
 			Datasets:  payload.Datasets,
+			Filters:   payload.Filters,
 			Threshold: payload.Threshold,
 		}
 

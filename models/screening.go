@@ -7,6 +7,20 @@ import (
 	"github.com/google/uuid"
 )
 
+type ScreeningFeature string
+
+const (
+	ScreeningFeatureTransactionMonitoring ScreeningFeature = "transaction_monitoring"
+	ScreeningFeatureContinuousMonitoring  ScreeningFeature = "continuous_monitoring"
+	ScreeningFeatureManualSearch          ScreeningFeature = "manual_search"
+)
+
+var (
+	ValidScreeningProviderFeature = []ScreeningFeature{ScreeningFeatureTransactionMonitoring, ScreeningFeatureContinuousMonitoring, ScreeningFeatureManualSearch}
+	ValidScreeningProviders       = []string{"opensanctions", "lexisnexis"}
+	DefaultScreeningProvider      = "opensanctions"
+)
+
 type ScreeningStatus int
 
 const (
@@ -102,6 +116,7 @@ type Screening struct {
 	ScreeningConfigId            string
 	Status                       ScreeningStatus
 	Config                       ScreeningConfigRef
+	Provider                     string
 	UniqueCounterpartyIdentifier *string
 	SearchInput                  json.RawMessage
 	InitialQuery                 []OpenSanctionsCheckQuery
@@ -135,7 +150,9 @@ type ScreeningConfigRef struct {
 	Id       string
 	StableId string
 	Name     string
+	Provider string
 	Datasets []string
+	Filters  ScreeningConfigFilters
 }
 
 type ScreeningWithMatches struct {
@@ -162,10 +179,12 @@ func (s ScreeningRawSearchResponseWithMatches) AdaptScreeningFromSearchResponse(
 	screening := ScreeningWithMatches{
 		Screening: Screening{
 			ScreeningConfigId: query.Config.Id,
+			Provider:          query.Config.Provider,
 			Config: ScreeningConfigRef{
 				Id:       query.Config.Id,
 				StableId: query.Config.StableId,
 				Name:     query.Config.Name,
+				Provider: query.Config.Provider,
 				Datasets: query.Config.Datasets,
 			},
 			OrgConfig:         query.OrgConfig,
@@ -194,18 +213,18 @@ func (s ScreeningWithMatches) InitialStatusFromMatches() ScreeningStatus {
 }
 
 type ScreeningMatch struct {
-	Id                           string
-	IsMatch                      bool
-	ScreeningId                  string
-	EntityId                     string
-	Referents                    []string
-	Status                       ScreeningMatchStatus
-	QueryIds                     []string
-	Payload                      []byte
-	Enriched                     bool
-	ReviewedBy                   *string
-	Score                        float64
-	Comments                     []ScreeningMatchComment
+	Id          string
+	IsMatch     bool
+	ScreeningId string
+	EntityId    string
+	Referents   []string
+	Status      ScreeningMatchStatus
+	QueryIds    []string
+	Payload     []byte
+	Enriched    bool
+	ReviewedBy  *string
+	Score       float64
+	Comments    []ScreeningMatchComment
 }
 
 // Score is stored in the Payload and not in a dedicated column when fetching screening from DB.

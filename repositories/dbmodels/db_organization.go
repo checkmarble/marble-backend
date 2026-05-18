@@ -1,6 +1,7 @@
 package dbmodels
 
 import (
+	"encoding/json"
 	"net"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -9,18 +10,19 @@ import (
 )
 
 type DBOrganizationResult struct {
-	Id                      uuid.UUID   `db:"id"`
-	PublicId                uuid.UUID   `db:"public_id"`
-	DeletedAt               *int        `db:"deleted_at"`
-	Name                    string      `db:"name"`
-	AllowedNetworks         []net.IPNet `db:"allowed_networks"`
-	AiCaseReviewEnabled     bool        `db:"ai_case_review_enabled"`
-	DefaultScenarioTimezone *string     `db:"default_scenario_timezone"`
-	ScreeningThreshold      int         `db:"sanctions_threshold"`
-	ScreeningLimit          int         `db:"sanctions_limit"`
-	AutoAssignQueueLimit    int         `db:"auto_assign_queue_limit"`
-	SentryReplayEnabled     bool        `db:"sentry_replay_enabled"`
-	Environment             string      `db:"environment"`
+	Id                      uuid.UUID       `db:"id"`
+	PublicId                uuid.UUID       `db:"public_id"`
+	DeletedAt               *int            `db:"deleted_at"`
+	Name                    string          `db:"name"`
+	AllowedNetworks         []net.IPNet     `db:"allowed_networks"`
+	AiCaseReviewEnabled     bool            `db:"ai_case_review_enabled"`
+	DefaultScenarioTimezone *string         `db:"default_scenario_timezone"`
+	ScreeningProviders      json.RawMessage `db:"screening_providers"`
+	ScreeningThreshold      int             `db:"sanctions_threshold"`
+	ScreeningLimit          int             `db:"sanctions_limit"`
+	AutoAssignQueueLimit    int             `db:"auto_assign_queue_limit"`
+	SentryReplayEnabled     bool            `db:"sentry_replay_enabled"`
+	Environment             string          `db:"environment"`
 }
 
 const TABLE_ORGANIZATION = "organizations"
@@ -28,6 +30,12 @@ const TABLE_ORGANIZATION = "organizations"
 var ColumnsSelectOrganization = utils.ColumnList[DBOrganizationResult]()
 
 func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
+	screeningProviders := make(map[string]string)
+
+	if err := json.Unmarshal(db.ScreeningProviders, &screeningProviders); err != nil {
+		return models.Organization{}, err
+	}
+
 	return models.Organization{
 		Id:                      db.Id,
 		PublicId:                db.PublicId,
@@ -36,6 +44,7 @@ func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
 		AiCaseReviewEnabled:     db.AiCaseReviewEnabled,
 		DefaultScenarioTimezone: db.DefaultScenarioTimezone,
 		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{
+			Providers:      screeningProviders,
 			MatchThreshold: db.ScreeningThreshold,
 			MatchLimit:     db.ScreeningLimit,
 		},
