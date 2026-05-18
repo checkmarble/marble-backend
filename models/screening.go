@@ -116,6 +116,7 @@ type Screening struct {
 	ScreeningConfigId            string
 	Status                       ScreeningStatus
 	Config                       ScreeningConfigRef
+	Provider                     string
 	UniqueCounterpartyIdentifier *string
 	SearchInput                  json.RawMessage
 	InitialQuery                 []OpenSanctionsCheckQuery
@@ -178,10 +179,12 @@ func (s ScreeningRawSearchResponseWithMatches) AdaptScreeningFromSearchResponse(
 	screening := ScreeningWithMatches{
 		Screening: Screening{
 			ScreeningConfigId: query.Config.Id,
+			Provider:          query.Config.Provider,
 			Config: ScreeningConfigRef{
 				Id:       query.Config.Id,
 				StableId: query.Config.StableId,
 				Name:     query.Config.Name,
+				Provider: query.Config.Provider,
 				Datasets: query.Config.Datasets,
 			},
 			OrgConfig:         query.OrgConfig,

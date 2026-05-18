@@ -226,7 +226,7 @@ func TestOpenSanctionsSuccessfulPartialResponse(t *testing.T) {
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}
 
-	body, _ := os.ReadFile("./fixtures/opensanctions/response_partial.json")
+	body, _ := os.ReadFile("../fixtures/opensanctions/response_partial.json")
 
 	gock.New(infra.OPEN_SANCTIONS_API_HOST).
 		Post("/match/default").
@@ -260,7 +260,7 @@ func TestOpenSanctionsSuccessfulFullResponse(t *testing.T) {
 		OrgConfig: models.OrganizationOpenSanctionsConfig{MatchThreshold: 70},
 	}
 
-	body, _ := os.ReadFile("./fixtures/opensanctions/response_full.json")
+	body, _ := os.ReadFile("../fixtures/opensanctions/response_full.json")
 
 	gock.New(infra.OPEN_SANCTIONS_API_HOST).
 		Post("/match/default").
@@ -301,7 +301,7 @@ func TestOpenSanctionsSuccessfulFullResponseWithThresholdOverride(t *testing.T) 
 		OrgConfig: models.OrganizationOpenSanctionsConfig{MatchThreshold: 70},
 	}
 
-	body, _ := os.ReadFile("./fixtures/opensanctions/response_full.json")
+	body, _ := os.ReadFile("../fixtures/opensanctions/response_full.json")
 
 	gock.New(infra.OPEN_SANCTIONS_API_HOST).
 		Post("/match/default").

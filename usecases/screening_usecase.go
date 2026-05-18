@@ -491,7 +491,7 @@ func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
-	err = uc.persistFreeformSearch(ctx, exec, orgId, refine)
+	err = uc.persistFreeformSearch(ctx, exec, orgId, scc.Provider, refine)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
@@ -503,6 +503,7 @@ func (uc ScreeningUsecase) persistFreeformSearch(
 	ctx context.Context,
 	exec repositories.Executor,
 	orgId uuid.UUID,
+	provider string,
 	refine models.ScreeningRefineRequest,
 ) error {
 	searchInput, err := json.Marshal(refine)
@@ -532,7 +533,7 @@ func (uc ScreeningUsecase) persistFreeformSearch(
 		OrgId:       orgId,
 		UserId:      userId,
 		ApiKeyId:    apiKeyId,
-		Provider:    models.ScreeningProviderOpenSanctions,
+		Provider:    provider,
 		SearchInput: searchInput,
 	}
 
