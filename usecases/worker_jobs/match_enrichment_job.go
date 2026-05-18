@@ -13,7 +13,7 @@ import (
 )
 
 type OpenSanctionsProvider interface {
-	IsConfigured(context.Context) (bool, error)
+	IsConfigured(context.Context, string) (bool, error)
 	IsSelfHosted(context.Context) bool
 }
 
@@ -51,7 +51,12 @@ func NewMatchEnrichmentWorker(
 func (w *MatchEnrichmentWorker) Work(ctx context.Context, job *river.Job[models.MatchEnrichmentArgs]) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	if ok, err := w.openSanctionsConfig.IsConfigured(ctx); err != nil || !ok {
+	scc, err := w.repository.GetScreening(ctx, w.executorFactory.NewExecutor(), job.Args.ScreeningId)
+	if err != nil {
+		return err
+	}
+
+	if ok, err := w.openSanctionsConfig.IsConfigured(ctx, scc.Provider); err != nil || !ok {
 		logger.WarnContext(ctx, "MatchEnrichmentWorker: Open Sanctions provider not configured, aborting...")
 		return nil
 	}
@@ -61,11 +66,6 @@ func (w *MatchEnrichmentWorker) Work(ctx context.Context, job *river.Job[models.
 	}
 
 	var errs error
-
-	scc, err := w.repository.GetScreening(ctx, w.executorFactory.NewExecutor(), job.Args.ScreeningId)
-	if err != nil {
-		return err
-	}
 
 	for _, match := range scc.Matches {
 		if match.Enriched {

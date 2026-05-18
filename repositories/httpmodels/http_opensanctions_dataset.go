@@ -35,14 +35,15 @@ type HTTPOpenSanctionCatalogResponse struct {
 }
 
 type HTTPOpenSanctionCatalogDataset struct {
-	Name         string   `json:"name"`
-	Title        string   `json:"title"`
-	Load         bool     `json:"load"`
-	IndexVersion *string  `json:"index_version"`
-	Children     []string `json:"children"`
-	Tags         []string `json:"tags"`
-	DeltaUrl     *string  `json:"delta_url"`
-	Version      string   `json:"version"`
+	Name         string         `json:"name"`
+	Title        string         `json:"title"`
+	Load         bool           `json:"load"`
+	IndexVersion *string        `json:"index_version"`
+	Children     []string       `json:"children"`
+	Tags         []string       `json:"tags"`
+	DeltaUrl     *string        `json:"delta_url"`
+	Version      string         `json:"version"`
+	Metadata     map[string]any `json:"metadata"`
 }
 
 func AdaptOpenSanctionCatalogResponse(datasets HTTPOpenSanctionCatalogResponse) models.OpenSanctionsRawCatalog {

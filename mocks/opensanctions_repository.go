@@ -41,8 +41,8 @@ func (m *OpenSanctionsRepository) EnrichMatch(ctx context.Context, providerName 
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (m *OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, error) {
-	args := m.Called(ctx)
+func (m *OpenSanctionsRepository) IsConfigured(ctx context.Context, provider string) (bool, error) {
+	args := m.Called(ctx, provider)
 	return args.Bool(0), args.Error(1)
 }
 

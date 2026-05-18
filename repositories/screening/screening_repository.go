@@ -82,8 +82,8 @@ func (repo OpenSanctionsRepository) IsSelfHosted(ctx context.Context) bool {
 	return repo.Config.IsSelfHosted("opensanctions")
 }
 
-func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, error) {
-	if ok, err := repo.Config.IsConfigured(); !ok {
+func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context, provider string) (bool, error) {
+	if ok, err := repo.Config.IsConfigured(provider); !ok {
 		utils.LoggerFromContext(ctx).WarnContext(ctx,
 			"open sanction is not misconfigured", "error", err)
 
@@ -94,7 +94,7 @@ func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context) (bool, err
 		}
 	}
 
-	catalogUrl := fmt.Sprintf("%s/readyz", repo.Config.Host("opensanctions"))
+	catalogUrl := fmt.Sprintf("%s/readyz", repo.Config.Host(provider))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
 	if err != nil {

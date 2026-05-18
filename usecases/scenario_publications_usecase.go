@@ -60,7 +60,7 @@ type PublicationUsecaseFeatureAccessReader interface {
 }
 
 type ScreeningRequirementChecker interface {
-	IsConfigured(context.Context) (bool, error)
+	IsConfigured(context.Context, string) (bool, error)
 }
 
 type ScenarioPublicationUsecase struct {
@@ -74,6 +74,7 @@ type ScenarioPublicationUsecase struct {
 	clientDbIndexEditor            clientDbIndexEditor
 	featureAccessReader            PublicationUsecaseFeatureAccessReader
 	screeningRequirements          ScreeningRequirementChecker
+	organizationRepository         ScreeningOrganizationRepository
 }
 
 func NewScenarioPublicationUsecase(
@@ -87,6 +88,7 @@ func NewScenarioPublicationUsecase(
 	clientDbIndexEditor clientDbIndexEditor,
 	featureAccessReader PublicationUsecaseFeatureAccessReader,
 	screeningRequirements ScreeningRequirementChecker,
+	organizationRepository ScreeningOrganizationRepository,
 ) *ScenarioPublicationUsecase {
 	return &ScenarioPublicationUsecase{
 		transactionFactory:             transactionFactory,
@@ -99,6 +101,7 @@ func NewScenarioPublicationUsecase(
 		clientDbIndexEditor:            clientDbIndexEditor,
 		featureAccessReader:            featureAccessReader,
 		screeningRequirements:          screeningRequirements,
+		organizationRepository:         organizationRepository,
 	}
 }
 
@@ -158,6 +161,11 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 		usecase.transactionFactory,
 		func(tx repositories.Transaction,
 		) ([]models.ScenarioPublication, error) {
+			org, err := usecase.organizationRepository.GetOrganizationById(ctx, tx, organizationId)
+			if err != nil {
+				return nil, err
+			}
+
 			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, input.ScenarioIterationId)
 			if err != nil {
 				return nil, err
@@ -172,7 +180,9 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 						"screening feature access is missing: status is %s", featureAccess.Sanctions)
 				}
 
-				if isConfigured, err := usecase.screeningRequirements.IsConfigured(ctx); !isConfigured {
+				screeningProvider := org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring)
+
+				if isConfigured, err := usecase.screeningRequirements.IsConfigured(ctx, screeningProvider); !isConfigured {
 					return nil, err
 				}
 			}
@@ -260,4 +270,3 @@ func (usecase *ScenarioPublicationUsecase) StartPublicationPreparation(
 		return nil
 	})
 }
-
