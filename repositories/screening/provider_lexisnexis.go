@@ -56,6 +56,10 @@ func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
 					q.Queries[id].Filters["programId"] = [][]string{filter.Datasets}
 				}
 
+				for _, globalTopic := range filters.Global.Topics {
+					q.Queries[id].Filters["topics"] = append(q.Queries[id].Filters["topics"], globalTopic)
+				}
+
 				if filter.Topics != nil {
 					for _, topic := range filter.Topics {
 						q.Queries[id].Filters["topics"] = append(q.Queries[id].Filters["topics"], topic)
@@ -142,6 +146,11 @@ type lexisNexisAvailableFilters struct {
 }
 
 func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context) (dto.ScreeningAvailableFilters, error) {
+	catalog, err := p.GetLexisNexisCatalog(ctx)
+	if err != nil {
+		return dto.ScreeningAvailableFilters{}, err
+	}
+
 	url := fmt.Sprintf("%s/catalog/fields", p.Config.Host("lexisnexis"))
 
 	payload := map[string]any{
@@ -187,10 +196,19 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context) (
 				Datasets: pure_utils.Map(values.Datasets, func(ds string) dto.ScreeningAvailableFiltersItem {
 					regionCode, _ := httpmodels.RegionFromDatasetName(ds)
 
+					name := ds
+					if datasets, ok := catalog.Metadata["datasets"].(map[string]any); ok {
+						if dsName, ok := datasets[ds]; ok {
+							if dsNameString, ok := dsName.(string); ok {
+								name = dsNameString
+							}
+						}
+					}
+
 					return dto.ScreeningAvailableFiltersItem{
 						Section: regionCode,
 						Name:    ds,
-						Title:   ds,
+						Title:   name,
 					}
 				}),
 			},
@@ -229,4 +247,34 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context) (
 	}
 
 	return filters, nil
+}
+
+func (p ScreeningLexisNexisProvider) GetLexisNexisCatalog(ctx context.Context) (httpmodels.HTTPOpenSanctionCatalogDataset, error) {
+	catalogUrl := fmt.Sprintf("%s/catalog", p.Config.Host("lexisnexis"))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
+	if err != nil {
+		return httpmodels.HTTPOpenSanctionCatalogDataset{}, err
+	}
+
+	resp, err := p.Config.Client().Do(req)
+	if err != nil {
+		return httpmodels.HTTPOpenSanctionCatalogDataset{}, err
+	}
+
+	defer resp.Body.Close()
+
+	var catalog httpmodels.HTTPOpenSanctionCatalogResponse
+
+	if err := json.NewDecoder(resp.Body).Decode(&catalog); err != nil {
+		return httpmodels.HTTPOpenSanctionCatalogDataset{}, err
+	}
+
+	for _, ds := range catalog.Datasets {
+		if ds.Name == "lexisnexis" {
+			return ds, nil
+		}
+	}
+
+	return httpmodels.HTTPOpenSanctionCatalogDataset{}, errors.New("could not find a dataset named `lexisnexis` in the catalog")
 }

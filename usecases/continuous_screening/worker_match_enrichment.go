@@ -16,7 +16,7 @@ import (
 )
 
 type matchEnrichmentWorkerOpenSanctionsProvider interface {
-	IsConfigured(context.Context) (bool, error)
+	IsConfigured(context.Context, string) (bool, error)
 	IsSelfHosted(context.Context) bool
 	EnrichMatch(ctx context.Context, providerName string, match models.ScreeningMatch) ([]byte, error)
 }
@@ -80,17 +80,6 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) Work(
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	if ok, err := w.openSanctionsConfig.IsConfigured(ctx); err != nil || !ok {
-		logger.WarnContext(ctx, "ContinuousScreeningMatchEnrichmentWorker: Open Sanctions provider not configured, aborting...")
-		return nil
-	}
-	if !w.openSanctionsConfig.IsSelfHosted(ctx) {
-		logger.WarnContext(ctx, "ContinuousScreeningMatchEnrichmentWorker: Open Sanctions provider is not self-hosted, aborting...")
-		return nil
-	}
-
-	var errs error
-
 	exec := w.executorFactory.NewExecutor()
 
 	continuousScreeningWithMatches, err := w.repository.GetContinuousScreeningWithMatchesById(
@@ -107,6 +96,17 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) Work(
 		return errors.Wrap(err, "could not retrieve organization")
 	}
 	provider := org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring)
+
+	if ok, err := w.openSanctionsConfig.IsConfigured(ctx, provider); err != nil || !ok {
+		logger.WarnContext(ctx, "ContinuousScreeningMatchEnrichmentWorker: Open Sanctions provider not configured, aborting...")
+		return nil
+	}
+	if !w.openSanctionsConfig.IsSelfHosted(ctx) {
+		logger.WarnContext(ctx, "ContinuousScreeningMatchEnrichmentWorker: Open Sanctions provider is not self-hosted, aborting...")
+		return nil
+	}
+
+	var errs error
 
 	// For DatasetTriggered screenings:
 	// - Enrich the OpenSanctions entity (external data from dataset)

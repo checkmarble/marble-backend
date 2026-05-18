@@ -30,6 +30,11 @@ type OpenSanctionsRawCatalog struct {
 	Outdated []string
 }
 
+type LexisNexisCatalog struct {
+	Datasets map[string]string
+	Topics   []string
+}
+
 type OpenSanctionsCatalog struct {
 	Sections []OpenSanctionsCatalogSection
 	Tags     *expirable.LRU[string, []string]
