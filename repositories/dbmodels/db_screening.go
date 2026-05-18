@@ -24,6 +24,7 @@ type DBScreening struct {
 	OrgId             uuid.UUID                        `db:"org_id"`
 	ScreeningConfigId string                           `db:"screening_config_id"`
 	Status            string                           `db:"status"`
+	Provider          string                           `db:"provider"`
 	SearchInput       json.RawMessage                  `db:"search_input"`
 	InitialQuery      []models.OpenSanctionsCheckQuery `db:"initial_query"`
 	CounterpartyId    *string                          `db:"counterparty_id"`
@@ -47,7 +48,6 @@ type DBScreeningAndConfig struct {
 	ConfigId string                        `db:"config_id"`
 	StableId string                        `db:"stable_id"`
 	Name     string                        `db:"name"`
-	Provider string                        `db:"provider"`
 	Datasets []string                      `db:"datasets"`
 	Filters  models.ScreeningConfigFilters `db:"filters"`
 }
@@ -72,6 +72,7 @@ func adaptScreeningWithoutConfig(dto DBScreening) (models.Screening, error) {
 		DecisionId:                   dto.DecisionId,
 		OrgId:                        dto.OrgId,
 		ScreeningConfigId:            dto.ScreeningConfigId,
+		Provider:                     dto.Provider,
 		UniqueCounterpartyIdentifier: dto.CounterpartyId,
 		SearchInput:                  dto.SearchInput,
 		InitialQuery:                 dto.InitialQuery,

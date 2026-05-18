@@ -11,6 +11,7 @@ import (
 type Screening struct {
 	Id           string                           `json:"id"`
 	Status       string                           `json:"status"`
+	Provider     string                           `json:"provider"`
 	Query        json.RawMessage                  `json:"query"`
 	InitialQuery []models.OpenSanctionsCheckQuery `json:"initial_query"`
 	Partial      bool                             `json:"partial"`
@@ -38,6 +39,7 @@ func AdaptScreening(includeMatches bool) func(models.ScreeningWithMatches) Scree
 		sc := Screening{
 			Id:           model.Id,
 			Status:       model.Status.String(),
+			Provider:     model.Provider,
 			Query:        model.SearchInput,
 			InitialQuery: model.InitialQuery,
 			Partial:      model.Partial,

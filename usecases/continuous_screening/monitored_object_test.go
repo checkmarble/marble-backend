@@ -377,6 +377,8 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
 	}, nil)
+	suite.repository.On("GetOrganizationById", mock.Anything, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything,
 		suite.configStableId).Return(config, nil)
 	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
@@ -394,7 +396,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	// are NOT called because the transaction fails at InsertContinuousScreeningObject.
 	suite.repository.On("SearchScreeningMatchWhitelist", mock.Anything, mock.Anything,
 		suite.orgId, mock.Anything, mock.Anything).Return([]models.ScreeningWhitelist{}, nil)
-	suite.screeningProvider.On("Search", mock.Anything, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
+	suite.screeningProvider.On("Search", mock.Anything, "opensanctions", mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
 		return len(query.Queries) > 0
 	})).Return(models.ScreeningRawSearchResponseWithMatches{
 		SearchInput:       []byte("{}"),
