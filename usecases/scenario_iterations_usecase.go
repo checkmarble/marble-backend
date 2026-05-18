@@ -144,7 +144,7 @@ func (usecase *ScenarioIterationUsecase) GetScenarioIteration(ctx context.Contex
 
 			catalog := dto.AdaptOpenSanctionsCatalog(upstreamCatalog)
 
-			scc.Filters = &models.ScreeningConfigFilters{
+			scc.Filters = models.ScreeningConfigFilters{
 				Sanctions:    &models.ScreeningConfigFilter{Datasets: make([]string, 0)},
 				Peps:         &models.ScreeningConfigFilter{Datasets: make([]string, 0)},
 				AdverseMedia: &models.ScreeningConfigFilter{Datasets: make([]string, 0)},

@@ -90,7 +90,7 @@ type ScreeningConfig struct {
 	RuleGroup                *string
 	Provider                 string
 	Datasets                 []string
-	Filters                  *ScreeningConfigFilters
+	Filters                  ScreeningConfigFilters
 	TriggerRule              *ast.Node
 	EntityType               string
 	Query                    map[string]ast.Node

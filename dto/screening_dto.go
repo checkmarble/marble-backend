@@ -29,7 +29,7 @@ type ScreeningAvailableFiltersSections struct {
 
 type ScreeningAvailableFiltersSection struct {
 	Self     string                                     `json:"self,omitempty"`
-	Datasets []ScreeningAvailableFiltersItem            `json:"datasets,omitempty"`
+	Datasets []ScreeningAvailableFiltersItem            `json:"datasets"`
 	Topics   map[string][]ScreeningAvailableFiltersItem `json:"topics,omitempty"`
 }
 
@@ -100,9 +100,9 @@ func AdaptScreeningDto(m models.ScreeningWithMatches) ScreeningDto {
 type ScreeningFreeformDto struct {
 	ScreeningRefineDto
 
-	Datasets  []string                       `json:"datasets"`
-	Filters   *models.ScreeningConfigFilters `json:"filters,omitempty"`
-	Threshold *int                           `json:"threshold"`
+	Datasets  []string                      `json:"datasets"`
+	Filters   models.ScreeningConfigFilters `json:"filters"`
+	Threshold *int                          `json:"threshold"`
 }
 
 type ScreeningRefineDto struct {

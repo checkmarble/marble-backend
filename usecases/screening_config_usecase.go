@@ -167,7 +167,7 @@ func (uc ScreeningUsecase) AdaptConfigForProvider(providerName string, scc model
 	default:
 		scc.Datasets = []string{}
 
-		if scc.Filters != nil && scc.Filters.Sanctions != nil {
+		if scc.Filters.Sanctions != nil {
 			scc.Datasets = scc.Filters.Sanctions.Datasets
 		}
 	}
