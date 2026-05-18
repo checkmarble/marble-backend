@@ -13,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 )
@@ -184,9 +185,12 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context) (
 			Sanctions: dto.ScreeningAvailableFiltersSection{
 				Self: "sanctions",
 				Datasets: pure_utils.Map(values.Datasets, func(ds string) dto.ScreeningAvailableFiltersItem {
+					regionCode, _ := httpmodels.RegionFromDatasetName(ds)
+
 					return dto.ScreeningAvailableFiltersItem{
-						Name:  ds,
-						Title: ds,
+						Section: regionCode,
+						Name:    ds,
+						Title:   ds,
 					}
 				}),
 			},
