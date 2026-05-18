@@ -55,7 +55,8 @@ type ScreeningDto struct {
 }
 
 type ScreeningConfigRefDto struct {
-	Name string `json:"name"`
+	Name     string `json:"name"`
+	Provider string `json:"provider"`
 }
 
 type ScreeningRequestDto struct {
@@ -69,7 +70,8 @@ func AdaptScreeningDto(m models.ScreeningWithMatches) ScreeningDto {
 	screening := ScreeningDto{
 		Id: m.Id,
 		Config: ScreeningConfigRefDto{
-			Name: m.Config.Name,
+			Name:     m.Config.Name,
+			Provider: m.Config.Provider,
 		},
 		Status:                       m.Status.String(),
 		UniqueCounterpartyIdentifier: m.UniqueCounterpartyIdentifier,
