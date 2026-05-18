@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
@@ -397,35 +398,47 @@ func (repo *ClientDbRepository) ListMonitoredObjects(
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningMonitoredObject)
 }
 
-func (repo *ClientDbRepository) CountMonitoredObjectsByConfigStableIds(
+// CountActiveMonitoredObjects counts distinct (object_type, object_id) pairs that were
+// active at any point during the current year. An object is considered active for the current year if:
+//   - it is currently in the live _monitored_objects table (still monitored), OR
+//   - it has a 'remove' entry in the audit table within the year (was monitored during the year, then removed)
+//
+// Objects removed before the year started are excluded from both sets and therefore not counted.
+// Config changes are transparent: the same (object_type, object_id) under multiple config_stable_ids
+// counts as one, thanks to DISTINCT and UNION deduplication.
+//
+// WARNING: This function is designed to get the gauge metric of active monitored objects for the **current year** and can not be used
+// to get historical data for previous years because it is based on the `_monitored_objects` table. objects removed YearX will not be present in the table
+// to compute gauge for YearX-1, try to recompute the metric of YearX-1 using this function will return incorrect value.
+// For historical data, you should based the count on the audit table only and on the `action` field
+func (repo *ClientDbRepository) CountActiveMonitoredObjects(
 	ctx context.Context,
 	exec Executor,
-	configStableIds []uuid.UUID,
+	yearStart, yearEnd time.Time,
 ) (int, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return 0, err
 	}
 
-	// If no config stable IDs provided, return 0
-	if len(configStableIds) == 0 {
-		return 0, nil
-	}
+	monitoredObjectsTable := sanitizedTableName(exec, dbmodels.TABLE_CONTINUOUS_SCREENING_MONITORED_OBJECTS)
+	auditTable := sanitizedTableName(exec, dbmodels.TABLE_CONTINUOUS_SCREENING_AUDIT)
 
-	query := NewQueryBuilder().
-		Select("count(*) as count").
-		From(sanitizedTableName(exec, dbmodels.TABLE_CONTINUOUS_SCREENING_MONITORED_OBJECTS)).
-		Where(squirrel.Eq{"config_stable_id": configStableIds})
+	sql := fmt.Sprintf(`
+		SELECT COUNT(*) FROM (
+			SELECT DISTINCT object_type, object_id FROM %s
+			UNION
+			SELECT DISTINCT object_type, object_id FROM %s
+			WHERE action = 'remove'
+				AND created_at >= $1
+				AND created_at < $2
+		) AS combined
+	`, monitoredObjectsTable, auditTable)
 
 	var count int
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return 0, err
-	}
-
-	err = exec.QueryRow(ctx, sql, args...).Scan(&count)
-	if err != nil {
+	if err := exec.QueryRow(ctx, sql, yearStart, yearEnd).Scan(&count); err != nil {
 		return 0, err
 	}
 
 	return count, nil
 }
+

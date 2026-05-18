@@ -11,111 +11,62 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
-	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-// Test mocks for ContinuousScreeningCollector
-type MockContinuousScreeningMarbleDbRepository struct {
-	mock.Mock
-}
-
-func (m *MockContinuousScreeningMarbleDbRepository) GetEnabledConfigStableIdsByOrg(
-	ctx context.Context,
-	exec repositories.Executor,
-	orgIds []string,
-) (map[string][]uuid.UUID, error) {
-	args := m.Called(ctx, exec, orgIds)
-	return args.Get(0).(map[string][]uuid.UUID), args.Error(1)
-}
-
-type MockContinuousScreeningClientDbRepository struct {
-	mock.Mock
-}
-
-func (m *MockContinuousScreeningClientDbRepository) CountMonitoredObjectsByConfigStableIds(
-	ctx context.Context,
-	exec repositories.Executor,
-	configStableIds []uuid.UUID,
-) (int, error) {
-	args := m.Called(ctx, exec, configStableIds)
-	return args.Get(0).(int), args.Error(1)
-}
-
-// TestContinuousScreeningCollector_Collect_Success tests the successful collection with multiple scenarios:
-// - Org with monitored objects
-// - Org with enabled configs but no monitored objects
-// - Org with no enabled configs
-func TestContinuousScreeningCollector_Collect_Success(t *testing.T) {
-	// Setup
+func TestMonitoredObjectActiveCollector_Collect_Success(t *testing.T) {
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
-	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	to := time.Date(2024, 1, 31, 23, 59, 59, 0, time.UTC)
+	to := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
+	from := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
+	yearStart := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	mockMarbleDbRepo := new(MockContinuousScreeningMarbleDbRepository)
-	mockClientDbRepo := new(MockContinuousScreeningClientDbRepository)
+	mockClientDbRepo := new(MockCollectorClientRepository)
 	mockExecutorFactory := executor_factory.NewExecutorFactoryStub()
 
-	// Test organizations
 	org1Id := utils.TextToUUID("org1")
 	org2Id := utils.TextToUUID("org2")
 	org3Id := utils.TextToUUID("org3")
 	org1PublicId := utils.TextToUUID("org1-public")
 	org2PublicId := utils.TextToUUID("org2-public")
 	org3PublicId := utils.TextToUUID("org3-public")
+
 	orgs := []models.Organization{
 		{Id: org1Id, Name: "Org with objects", PublicId: org1PublicId},
 		{Id: org2Id, Name: "Org with no objects", PublicId: org2PublicId},
-		{Id: org3Id, Name: "Org with no configs", PublicId: org3PublicId},
+		{Id: org3Id, Name: "Org not set up", PublicId: org3PublicId},
 	}
 
-	// Mock config stable IDs
-	config1 := pure_utils.NewId()
-	config2 := pure_utils.NewId()
-	configStableIdsByOrg := map[string][]uuid.UUID{
-		org1Id.String(): {config1},
-		org2Id.String(): {config2},
-		org3Id.String(): {},
-	}
+	// org1: set up, 50 active objects
+	mockClientDbRepo.On("IsContinuousScreeningSetup", ctx, mock.Anything).Return(true, nil).Once()
+	mockClientDbRepo.On("CountActiveMonitoredObjects", ctx, mock.Anything, yearStart, to).Return(50, nil).Once()
 
-	// Setup expectations
-	mockMarbleDbRepo.On("GetEnabledConfigStableIdsByOrg", ctx, mock.Anything, []string{
-		org1Id.String(), org2Id.String(), org3Id.String(),
-	}).Return(configStableIdsByOrg, nil)
+	// org2: set up, 0 active objects
+	mockClientDbRepo.On("IsContinuousScreeningSetup", ctx, mock.Anything).Return(true, nil).Once()
+	mockClientDbRepo.On("CountActiveMonitoredObjects", ctx, mock.Anything, yearStart, to).Return(0, nil).Once()
 
-	mockClientDbRepo.On("CountMonitoredObjectsByConfigStableIds", ctx, mock.Anything,
-		[]uuid.UUID{config1}).Return(100, nil)
-	mockClientDbRepo.On("CountMonitoredObjectsByConfigStableIds", ctx, mock.Anything,
-		[]uuid.UUID{config2}).Return(0, nil)
-	mockClientDbRepo.On("CountMonitoredObjectsByConfigStableIds", ctx, mock.Anything,
-		[]uuid.UUID{}).Return(0, nil)
+	// org3: not set up, skipped
+	mockClientDbRepo.On("IsContinuousScreeningSetup", ctx, mock.Anything).Return(false, nil).Once()
 
-	// Create collector
-	collector := NewContinuousScreeningCollector(
-		mockMarbleDbRepo,
-		mockClientDbRepo,
-		mockExecutorFactory,
-	)
+	collector := NewMonitoredObjectActiveCollector(mockClientDbRepo, mockExecutorFactory)
 
-	// Execute
 	metrics, err := collector.Collect(ctx, orgs, from, to)
 
-	// Assert
 	require.NoError(t, err)
-	assert.Len(t, metrics, 3)
+	assert.Len(t, metrics, 2)
 
-	// Verify metrics by organization
 	metricsByOrg := make(map[uuid.UUID]models.MetricData)
 	for _, metric := range metrics {
 		metricsByOrg[*metric.PublicOrgID] = metric
 	}
 
-	assert.Equal(t, float64(100), *metricsByOrg[org1PublicId].Numeric)
+	assert.Equal(t, float64(50), *metricsByOrg[org1PublicId].Numeric)
 	assert.Equal(t, float64(0), *metricsByOrg[org2PublicId].Numeric)
-	assert.Equal(t, float64(0), *metricsByOrg[org3PublicId].Numeric)
+	assert.Equal(t, yearStart, metricsByOrg[org1PublicId].From)
+	assert.Equal(t, to, metricsByOrg[org1PublicId].To)
+	_, org3Present := metricsByOrg[org3PublicId]
+	assert.False(t, org3Present)
 
-	mockMarbleDbRepo.AssertExpectations(t)
 	mockClientDbRepo.AssertExpectations(t)
 }
+
