@@ -102,6 +102,7 @@ type ScreeningConfig struct {
 }
 
 type ScreeningConfigFilters struct {
+	Global       *ScreeningConfigFilter `json:"global,omitempty"`
 	Sanctions    *ScreeningConfigFilter `json:"sanctions,omitempty"`
 	Peps         *ScreeningConfigFilter `json:"peps,omitempty"`
 	AdverseMedia *ScreeningConfigFilter `json:"adverse_media,omitempty"`
@@ -109,6 +110,7 @@ type ScreeningConfigFilters struct {
 }
 
 type ResolvedScreeningConfigFilters struct {
+	Global       ScreeningConfigFilter
 	Sanctions    ScreeningConfigFilter
 	Peps         ScreeningConfigFilter
 	AdverseMedia ScreeningConfigFilter
@@ -132,6 +134,7 @@ func (scf ResolvedScreeningConfigFilters) NoFilters() bool {
 
 func (scf ResolvedScreeningConfigFilters) WithRootTopics() map[string]ScreeningConfigFilter {
 	return map[string]ScreeningConfigFilter{
+		"global":        scf.Global,
 		"sanctions":     scf.Sanctions,
 		"pep":           scf.Peps,
 		"adverse_media": scf.AdverseMedia,
@@ -142,6 +145,7 @@ func (scf ResolvedScreeningConfigFilters) WithRootTopics() map[string]ScreeningC
 func (scf *ScreeningConfigFilters) Resolve() ResolvedScreeningConfigFilters {
 	if scf == nil {
 		return ResolvedScreeningConfigFilters{
+			Global:       ScreeningConfigFilter{},
 			Sanctions:    ScreeningConfigFilter{},
 			Peps:         ScreeningConfigFilter{},
 			AdverseMedia: ScreeningConfigFilter{},
@@ -150,6 +154,12 @@ func (scf *ScreeningConfigFilters) Resolve() ResolvedScreeningConfigFilters {
 	}
 
 	return ResolvedScreeningConfigFilters{
+		Global: func() ScreeningConfigFilter {
+			if scf.Global == nil {
+				return ScreeningConfigFilter{}
+			}
+			return *scf.Global
+		}(),
 		Sanctions: func() ScreeningConfigFilter {
 			if scf.Sanctions == nil {
 				return ScreeningConfigFilter{}

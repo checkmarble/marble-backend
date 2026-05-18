@@ -13,7 +13,7 @@ type healthRepository interface {
 }
 
 type OpenSanctionsHealthRepository interface {
-	IsConfigured(ctx context.Context) (bool, error)
+	IsConfigured(ctx context.Context, provider string) (bool, error)
 }
 
 type HealthUsecase struct {
@@ -36,7 +36,7 @@ func (u *HealthUsecase) GetHealthStatus(ctx context.Context) models.HealthStatus
 
 	// Check Open Sanctions health
 	if u.hasOpensanctionsSetup {
-		ok, err := u.openSanctionsRepository.IsConfigured(ctx)
+		ok, err := u.openSanctionsRepository.IsConfigured(ctx, "opensanctions")
 		statuses = append(statuses, models.HealthItemStatus{
 			Name:   models.OpenSanctionsHealthItemName,
 			Status: ok && err == nil,

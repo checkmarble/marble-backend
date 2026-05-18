@@ -342,6 +342,7 @@ func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() *ScenarioPubl
 		usecases.NewClientDbIndexEditor(),
 		usecases.NewFeatureAccessReader(),
 		usecases.Repositories.OpenSanctionsRepository,
+		usecases.Repositories.MarbleDbRepository,
 	)
 }
 

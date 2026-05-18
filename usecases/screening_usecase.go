@@ -46,7 +46,7 @@ type ScreeningProvider interface {
 	GetLatestLocalDataset(context.Context) (models.OpenSanctionsDatasetFreshness, error)
 	Search(context.Context, string, models.OpenSanctionsQuery) (models.ScreeningRawSearchResponseWithMatches, error)
 	EnrichMatch(ctx context.Context, providerName string, match models.ScreeningMatch) ([]byte, error)
-	IsConfigured(ctx context.Context) (bool, error)
+	IsConfigured(ctx context.Context, provider string) (bool, error)
 	FindAvailableFilters(ctx context.Context, providerName string) (dto.ScreeningAvailableFilters, error)
 }
 
@@ -189,7 +189,6 @@ func (uc ScreeningUsecase) GetAvailableFilters(ctx context.Context, feature mode
 	}
 
 	providerName := org.GetScreeningProviderFor(feature)
-	filters := dto.ScreeningAvailableFilters{}
 
 	if providerName == "opensanctions" {
 		upstreamCatalog, err := uc.GetDatasetCatalog(ctx)
@@ -219,7 +218,7 @@ func (uc ScreeningUsecase) GetAvailableFilters(ctx context.Context, feature mode
 			}
 		}
 
-		filters = dto.ScreeningAvailableFilters{
+		filters := dto.ScreeningAvailableFilters{
 			Provider: "opensanctions",
 			Sections: dto.ScreeningAvailableFiltersSections{
 				Sanctions: dto.ScreeningAvailableFiltersSection{
