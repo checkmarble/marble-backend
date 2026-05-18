@@ -148,6 +148,11 @@ func (repo *MarbleDbRepository) CreateScreeningConfig(ctx context.Context, exec 
 		configVersion = cfg.ConfigVersion
 	}
 
+	filters := models.ScreeningConfigFilters{}
+	if cfg.Filters != nil {
+		filters = *cfg.Filters
+	}
+
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SCREENING_CONFIGS).
 		Columns(
@@ -173,7 +178,7 @@ func (repo *MarbleDbRepository) CreateScreeningConfig(ctx context.Context, exec 
 			utils.Or(cfg.Description, ""),
 			utils.Or(cfg.RuleGroup, ""),
 			cfg.Datasets,
-			cfg.Filters,
+			filters,
 			cfg.Threshold,
 			forcedOutcome.String(),
 			triggerRule,
@@ -257,7 +262,7 @@ func (repo *MarbleDbRepository) UpdateScreeningConfig(ctx context.Context, exec 
 		updateFields = true
 	}
 	if cfg.Filters != nil {
-		sql = sql.Set("filters", cfg.Filters)
+		sql = sql.Set("filters", *cfg.Filters)
 		updateFields = true
 	}
 	if cfg.Threshold != nil {
