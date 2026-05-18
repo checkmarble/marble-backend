@@ -126,7 +126,7 @@ func findDatasets(sections map[string]*models.OpenSanctionsCatalogSection,
 			continue
 		}
 
-		regionCode, regionName := regionFromDatasetName(dataset.Name)
+		regionCode, regionName := RegionFromDatasetName(dataset.Name)
 
 		if _, ok := sections[regionCode]; !ok {
 			sections[regionCode] = &models.OpenSanctionsCatalogSection{
@@ -185,7 +185,7 @@ func regionCodeFromName(code string) string {
 	return "other"
 }
 
-func regionFromDatasetName(name string) (string, string) {
+func RegionFromDatasetName(name string) (string, string) {
 	cc := ""
 
 	if strings.HasPrefix(name, "ext") && len(name) >= 6 && isDatasetSeparator(name[3]) {
