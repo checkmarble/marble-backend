@@ -2,7 +2,9 @@ package repositories
 
 import (
 	"context"
+	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
@@ -36,4 +38,23 @@ func (*MarbleDbRepository) InsertFreeformSearch(
 		)
 
 	return ExecBuilder(ctx, exec, sql)
+}
+
+func (repo *MarbleDbRepository) CountFreeformSearchesByProvider(ctx context.Context, exec Executor,
+	orgIds []string, providers []string, from, to time.Time,
+) (models.ByOrgByProviderCounter, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("org_id, provider, count(*) as count").
+		From(dbmodels.TABLE_FREEFORM_SEARCHES).
+		Where(squirrel.Eq{"org_id": orgIds}).
+		Where(squirrel.Eq{"provider": providers}).
+		Where(squirrel.GtOrEq{"created_at": from}).
+		Where(squirrel.Lt{"created_at": to}).
+		GroupBy("org_id", "provider")
+
+	return countBy2Keys(ctx, exec, query, orgIds, providers)
 }
