@@ -1,4 +1,4 @@
-package repositories
+package screening
 
 import (
 	"context"
@@ -32,7 +32,7 @@ func getMockedOpenSanctionsRepository(host, authMethod, apiKey string) OpenSanct
 		Reply(http.StatusNotFound)
 
 	return OpenSanctionsRepository{
-		opensanctions: infra.InitializeOpenSanctions(context.TODO(), client, host, authMethod, apiKey),
+		Config: infra.InitializeScreening(context.TODO(), client, host, authMethod, apiKey),
 	}
 }
 
@@ -58,7 +58,7 @@ func TestOpenSanctionsSelfHostedApi(t *testing.T) {
 		Post("/match/default").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), query)
+	_, err := repo.Search(context.TODO(), "opensanctions", query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -87,7 +87,7 @@ func TestOpenSanctionsSelfHostedAndApiKey(t *testing.T) {
 		MatchParam("api_key", "abcdef").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), query)
+	_, err := repo.Search(context.TODO(), "opensanctions", query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -116,7 +116,7 @@ func TestOpenSanctionsSaaSAndApiKey(t *testing.T) {
 		MatchParam("api_key", "abcdef").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), query)
+	_, err := repo.Search(context.TODO(), "opensanctions", query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -145,7 +145,7 @@ func TestOpenSanctionsSelfHostedAndBearerToken(t *testing.T) {
 		MatchHeader("authorization", "Bearer abcdef").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), query)
+	_, err := repo.Search(context.TODO(), "opensanctions", query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -174,7 +174,7 @@ func TestOpenSanctionsSelfHostedAndBasicAuth(t *testing.T) {
 		MatchHeader("authorization", "Basic YWJjZGVmOmhlbGxvd29ybGQ=").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), query)
+	_, err := repo.Search(context.TODO(), "opensanctions", query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -202,7 +202,7 @@ func TestOpenSanctionsError(t *testing.T) {
 		Post("/match/default").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), query)
+	_, err := repo.Search(context.TODO(), "opensanctions", query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -226,14 +226,14 @@ func TestOpenSanctionsSuccessfulPartialResponse(t *testing.T) {
 		OrgConfig: models.OrganizationOpenSanctionsConfig{},
 	}
 
-	body, _ := os.ReadFile("./fixtures/opensanctions/response_partial.json")
+	body, _ := os.ReadFile("../fixtures/opensanctions/response_partial.json")
 
 	gock.New(infra.OPEN_SANCTIONS_API_HOST).
 		Post("/match/default").
 		Reply(http.StatusOK).
 		BodyString(string(body))
 
-	matches, err := repo.Search(context.TODO(), query)
+	matches, err := repo.Search(context.TODO(), "opensanctions", query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.NoError(t, err)
@@ -260,14 +260,14 @@ func TestOpenSanctionsSuccessfulFullResponse(t *testing.T) {
 		OrgConfig: models.OrganizationOpenSanctionsConfig{MatchThreshold: 70},
 	}
 
-	body, _ := os.ReadFile("./fixtures/opensanctions/response_full.json")
+	body, _ := os.ReadFile("../fixtures/opensanctions/response_full.json")
 
 	gock.New(infra.OPEN_SANCTIONS_API_HOST).
 		Post("/match/default").
 		Reply(http.StatusOK).
 		BodyString(string(body))
 
-	matches, err := repo.Search(context.TODO(), query)
+	matches, err := repo.Search(context.TODO(), "opensanctions", query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.NoError(t, err)
@@ -301,14 +301,14 @@ func TestOpenSanctionsSuccessfulFullResponseWithThresholdOverride(t *testing.T) 
 		OrgConfig: models.OrganizationOpenSanctionsConfig{MatchThreshold: 70},
 	}
 
-	body, _ := os.ReadFile("./fixtures/opensanctions/response_full.json")
+	body, _ := os.ReadFile("../fixtures/opensanctions/response_full.json")
 
 	gock.New(infra.OPEN_SANCTIONS_API_HOST).
 		Post("/match/default").
 		Reply(http.StatusOK).
 		BodyString(string(body))
 
-	matches, err := repo.Search(context.TODO(), query)
+	matches, err := repo.Search(context.TODO(), "opensanctions", query)
 
 	for _, r := range gock.GetUnmatchedRequests() {
 		fmt.Printf("%#v\n", *r)

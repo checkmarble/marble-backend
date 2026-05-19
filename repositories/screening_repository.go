@@ -92,7 +92,7 @@ func (*MarbleDbRepository) GetScreeningWithoutMatches(ctx context.Context, exec 
 func selectScreenings() squirrel.SelectBuilder {
 	return NewQueryBuilder().
 		Select(columnsNames("sc", dbmodels.SelectScreeningColumn)...).
-		Columns("scc.id AS config_id", "stable_id", "name", "scc.datasets").
+		Columns("scc.id AS config_id", "stable_id", "name", "scc.datasets", "scc.filters").
 		From(dbmodels.TABLE_SCREENINGS + " AS sc").
 		InnerJoin(dbmodels.TABLE_SCREENING_CONFIGS + " AS scc ON sc.screening_config_id=scc.id")
 }
@@ -100,7 +100,7 @@ func selectScreenings() squirrel.SelectBuilder {
 func selectScreeningsWithMatches() squirrel.SelectBuilder {
 	return NewQueryBuilder().
 		Select(columnsNames("sc", dbmodels.SelectScreeningColumn)...).
-		Columns("scc.id AS config_id", "stable_id", "scc.name", "scc.datasets").
+		Columns("scc.id AS config_id", "stable_id", "scc.name", "scc.datasets", "scc.filters").
 		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s) ORDER BY array_position(array['confirmed_hit', 'pending', 'no_hit', 'skipped'], scm.status), scm.payload->>'score' DESC) FILTER (WHERE scm.id IS NOT NULL) AS matches",
 			strings.Join(columnsNames("scm", dbmodels.SelectScreeningMatchesColumn), ","))).
 		From(dbmodels.TABLE_SCREENINGS + " AS sc").
@@ -109,7 +109,7 @@ func selectScreeningsWithMatches() squirrel.SelectBuilder {
 		// TODO: revert to "group by id" once the view/table renaming has been done - currently the "screenings" table is a view on the actual table called "sanction_checks" which is not compatible with the "group by id" syntax
 		// GroupBy("sc.id").
 		GroupBy(append(columnsNames("sc", dbmodels.SelectScreeningColumn), "config_id",
-			"stable_id", "name", "scc.datasets")...).
+			"stable_id", "name", "scc.datasets", "scc.filters")...).
 		OrderBy("sc.created_at")
 }
 
@@ -236,6 +236,7 @@ func (*MarbleDbRepository) InsertScreening(
 			"decision_id",
 			"org_id",
 			"screening_config_id",
+			"provider",
 			"search_input",
 			"initial_query",
 			"counterparty_id",
@@ -254,6 +255,7 @@ func (*MarbleDbRepository) InsertScreening(
 			screening.DecisionId,
 			screening.OrgId,
 			screening.ScreeningConfigId,
+			screening.Provider,
 			screening.SearchInput,
 			screening.InitialQuery,
 			screening.UniqueCounterpartyIdentifier,
@@ -421,6 +423,27 @@ func (repo *MarbleDbRepository) CountScreeningsByOrg(ctx context.Context, exec E
 		GroupBy("org_id")
 
 	return countByHelper(ctx, exec, query, orgIds)
+}
+
+func (repo *MarbleDbRepository) CountScreeningsByProvider(ctx context.Context, exec Executor,
+	orgIds []string, providers []string, from, to time.Time,
+) (models.ByOrgByProviderCounter, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("org_id, provider, count(*) as count").
+		From(dbmodels.TABLE_SCREENINGS).
+		Where(squirrel.Eq{"org_id": orgIds}).
+		// TODO: uncomment or replace by the right field to filter by provider
+		// Where(squirrel.Eq{"provider": providers}).
+		Where(squirrel.GtOrEq{"created_at": from}).
+		Where(squirrel.Lt{"created_at": to}).
+		Where(squirrel.NotEq{"status": models.ScreeningStatusError.String()}).
+		GroupBy("org_id", "provider")
+
+	return countBy2Keys(ctx, exec, query, orgIds, providers)
 }
 
 func (repo *MarbleDbRepository) screeningsWithoutHitsOfDecision(

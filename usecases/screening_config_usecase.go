@@ -26,8 +26,15 @@ type ScreeningConfigRepository interface {
 func (uc ScreeningUsecase) CreateScreeningConfig(ctx context.Context, iterationId string,
 	scCfg models.UpdateScreeningConfigInput,
 ) (models.ScreeningConfig, error) {
-	scenarioAndIteration, err := uc.scenarioFetcher.FetchScenarioAndIteration(ctx,
-		uc.executorFactory.NewExecutor(), iterationId)
+	exec := uc.executorFactory.NewExecutor()
+
+	org, err := uc.organizationRepository.GetOrganizationById(ctx, exec, uc.enforceSecurity.OrgId())
+	if err != nil {
+		return models.ScreeningConfig{}, errors.Wrap(err,
+			"could not find organization")
+	}
+
+	scenarioAndIteration, err := uc.scenarioFetcher.FetchScenarioAndIteration(ctx, exec, iterationId)
 	if err != nil {
 		return models.ScreeningConfig{}, errors.Wrap(err,
 			"could not find provided scenario iteration")
@@ -57,8 +64,9 @@ func (uc ScreeningUsecase) CreateScreeningConfig(ctx context.Context, iterationI
 			"screening config: invalid forced outcome")
 	}
 
-	scc, err := uc.screeningConfigRepository.CreateScreeningConfig(ctx, uc.executorFactory.NewExecutor(),
-		iterationId, scCfg)
+	scCfg = uc.AdaptConfigForProvider(org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring), scCfg)
+
+	scc, err := uc.screeningConfigRepository.CreateScreeningConfig(ctx, exec, iterationId, scCfg)
 	if err != nil {
 		return models.ScreeningConfig{}, err
 	}
@@ -70,8 +78,15 @@ func (uc ScreeningUsecase) UpdateScreeningConfig(ctx context.Context,
 	iterationId, screeningId string,
 	scCfg models.UpdateScreeningConfigInput,
 ) (models.ScreeningConfig, error) {
-	scenarioAndIteration, err := uc.scenarioFetcher.FetchScenarioAndIteration(ctx,
-		uc.executorFactory.NewExecutor(), iterationId)
+	exec := uc.executorFactory.NewExecutor()
+
+	org, err := uc.organizationRepository.GetOrganizationById(ctx, exec, uc.enforceSecurity.OrgId())
+	if err != nil {
+		return models.ScreeningConfig{}, errors.Wrap(err,
+			"could not find organization")
+	}
+
+	scenarioAndIteration, err := uc.scenarioFetcher.FetchScenarioAndIteration(ctx, exec, iterationId)
 	if err != nil {
 		return models.ScreeningConfig{}, errors.Wrap(err,
 			"could not find provided scenario iteration")
@@ -86,8 +101,7 @@ func (uc ScreeningUsecase) UpdateScreeningConfig(ctx context.Context,
 			fmt.Sprintf("iteration %s is not a draft", scenarioAndIteration.Iteration.Id))
 	}
 
-	currentScc, err := uc.screeningConfigRepository.GetScreeningConfig(ctx,
-		uc.executorFactory.NewExecutor(), iterationId, screeningId)
+	currentScc, err := uc.screeningConfigRepository.GetScreeningConfig(ctx, exec, iterationId, screeningId)
 	if err != nil {
 		return models.ScreeningConfig{}, err
 	}
@@ -115,8 +129,9 @@ func (uc ScreeningUsecase) UpdateScreeningConfig(ctx context.Context,
 			"screening config: invalid forced outcome")
 	}
 
-	scc, err := uc.screeningConfigRepository.UpdateScreeningConfig(ctx, uc.executorFactory.NewExecutor(),
-		iterationId, screeningId, scCfg)
+	scCfg = uc.AdaptConfigForProvider(org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring), scCfg)
+
+	scc, err := uc.screeningConfigRepository.UpdateScreeningConfig(ctx, exec, iterationId, screeningId, scCfg)
 	if err != nil {
 		return models.ScreeningConfig{}, err
 	}
@@ -142,4 +157,20 @@ func (uc ScreeningUsecase) DeleteScreeningConfig(ctx context.Context, iterationI
 
 	return uc.screeningConfigRepository.DeleteScreeningConfig(ctx,
 		uc.executorFactory.NewExecutor(), iterationId, configId)
+}
+
+func (uc ScreeningUsecase) AdaptConfigForProvider(providerName string, scc models.UpdateScreeningConfigInput) models.UpdateScreeningConfigInput {
+	switch providerName {
+	case "lexisnexis":
+		scc.Datasets = []string{"lexisnexis"}
+
+	default:
+		scc.Datasets = []string{}
+
+		if scc.Filters.Sanctions != nil {
+			scc.Datasets = scc.Filters.Sanctions.Datasets
+		}
+	}
+
+	return scc
 }

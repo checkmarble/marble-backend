@@ -19,6 +19,11 @@ const (
 	DeploymentIDCacheKey = "metadata_deployment_id"
 )
 
+var screeningProviderList = []string{
+	models.ScreeningProviderOpenSanctions,
+	models.ScreeningProviderLexisNexis,
+}
+
 type CollectorRepository interface {
 	AllOrganizations(ctx context.Context, exec repositories.Executor) ([]models.Organization, error)
 	GetMetadata(ctx context.Context, exec repositories.Executor, orgID *uuid.UUID,
@@ -27,10 +32,11 @@ type CollectorRepository interface {
 	DecisionCollectorRepository
 	ScreeningCollectorRepository
 	AiCaseReviewCollectorRepository
-	ContinuousScreeningMarbleDbRepository
+	MonitoredObjectMarbleDbRepository
+	ContinuousScreeningCollectorRepository
 }
 type CollectorClientRepository interface {
-	ContinuousScreeningClientDbRepository
+	MonitoredClientDbRepository
 }
 
 // GlobalCollector is a collector that is not specific to an organization.
@@ -182,7 +188,9 @@ func NewCollectorsV1(
 			NewCaseCollector(repository, executorFactory),
 			NewScreeningCollector(repository, executorFactory),
 			NewAiCaseReviewCollector(repository, executorFactory),
-			NewContinuousScreeningCollector(repository, clientDbRepo, executorFactory),
+			NewMonitoredObjectCollector(repository, clientDbRepo, executorFactory),
+			NewScreeningByProviderCollector(repository, executorFactory, screeningProviderList),
+			NewContinuousScreeningByProviderCollector(repository, executorFactory, screeningProviderList),
 		},
 		globalCollectors: []GlobalCollector{
 			NewAppVersionCollector(apiVersion),

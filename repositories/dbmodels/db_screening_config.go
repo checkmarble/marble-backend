@@ -20,7 +20,9 @@ type DBScreeningConfigs struct {
 	Name                string                              `db:"name"`
 	Description         string                              `db:"description"`
 	RuleGroup           string                              `db:"rule_group"`
+	Provider            string                              `db:"provider"`
 	Datasets            []string                            `db:"datasets"`
+	Filters             models.ScreeningConfigFilters       `db:"filters"`
 	TriggerRule         []byte                              `db:"trigger_rule"`
 	EntityType          string                              `db:"entity_type"`
 	Query               json.RawMessage                     `db:"query"`
@@ -43,7 +45,9 @@ func AdaptScreeningConfig(db DBScreeningConfigs) (models.ScreeningConfig, error)
 		Description:         db.Description,
 		RuleGroup:           &db.RuleGroup,
 		EntityType:          db.EntityType,
+		Provider:            db.Provider,
 		Datasets:            db.Datasets,
+		Filters:             db.Filters,
 		Threshold:           db.Threshold,
 		ForcedOutcome:       models.OutcomeFrom(db.ForcedOutcome),
 		Preprocessing:       db.Preprocessing,

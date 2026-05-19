@@ -162,18 +162,22 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		RateLimit: utils.GetEnv("CONVOY_RATE_LIMIT", 50),
 	}
 
-	openSanctionsConfig := infra.InitializeOpenSanctions(
+	openSanctionsConfig := infra.InitializeScreening(
 		ctx,
 		&http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)},
-		utils.GetEnv("OPENSANCTIONS_API_HOST", ""),
-		utils.GetEnv("OPENSANCTIONS_AUTH_METHOD", ""),
-		utils.GetEnv("OPENSANCTIONS_API_KEY", ""),
+		utils.GetEnv("SCREENING_OPENSANCTIONS_API_HOST", ""),
+		utils.GetEnv("SCREENING_OPENSANCTIONS_AUTH_METHOD", ""),
+		utils.GetEnv("SCREENING_OPENSANCTIONS_API_KEY", ""),
 	)
 
-	if scope := utils.GetEnv("OPENSANCTIONS_SCOPE", ""); scope != "" {
+	if scope := utils.GetEnv("SCREENING_OPENSANCTIONS_SCOPE", ""); scope != "" {
 		openSanctionsConfig.WithScope(scope)
 	}
-	if algo := utils.GetEnv("OPENSANCTIONS_ALGORITHM", ""); algo != "" {
+	if host := utils.GetEnv("SCREENING_LEXISNEXIS_API_HOST", ""); host != "" {
+		openSanctionsConfig.WithLexisNexisHost(host)
+	}
+
+	if algo := utils.GetEnv("SCREENING_ALGORITHM", ""); algo != "" {
 		openSanctionsConfig.WithAlgorithm(algo)
 	}
 

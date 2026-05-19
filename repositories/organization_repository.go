@@ -144,6 +144,11 @@ func (repo *MarbleDbRepository) UpdateOrganization(
 			*updateOrganization.ScreeningConfig.MatchLimit)
 		hasUpdates = true
 	}
+	if updateOrganization.ScreeningConfig.Providers != nil {
+		updateRequest = updateRequest.Set("screening_providers",
+			updateOrganization.ScreeningConfig.Providers)
+		hasUpdates = true
+	}
 	if updateOrganization.AutoAssignQueueLimit != nil {
 		updateRequest = updateRequest.Set("auto_assign_queue_limit",
 			updateOrganization.AutoAssignQueueLimit)
@@ -250,6 +255,10 @@ func (repo *MarbleDbRepository) UpdateOrganizationFeatureAccess(
 	}
 	if updateFeatureAccess.AiRuleBuilding != nil {
 		query = query.Set("ai_rule_building", *updateFeatureAccess.AiRuleBuilding)
+		nbUpdated++
+	}
+	if updateFeatureAccess.LexisNexis != nil {
+		query = query.Set("lexisnexis", *updateFeatureAccess.LexisNexis)
 		nbUpdated++
 	}
 

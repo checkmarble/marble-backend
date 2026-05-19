@@ -19,7 +19,7 @@ func getMockedNameRecognitionRepository() NameRecognitionRepository {
 		Get("/-/version").
 		Reply(http.StatusNotFound)
 
-	os := infra.InitializeOpenSanctions(context.TODO(), client, "", "", "")
+	os := infra.InitializeScreening(context.TODO(), client, "", "", "")
 	os.WithNameRecognition("http://name.recognition/detect", "apikey")
 
 	return NameRecognitionRepository{

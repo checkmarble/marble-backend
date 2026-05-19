@@ -1,4 +1,6 @@
 package models
 
-// TODO: TBD confirm provider name
-const ScreeningProviderOpenSanctions = "opensanctions"
+const (
+	ScreeningProviderOpenSanctions = "opensanctions"
+	ScreeningProviderLexisNexis    = "lexisnexis"
+)

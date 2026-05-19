@@ -11,12 +11,12 @@ import (
 	"github.com/google/uuid"
 )
 
-type ContinuousScreeningMarbleDbRepository interface {
+type MonitoredObjectMarbleDbRepository interface {
 	GetEnabledConfigStableIdsByOrg(ctx context.Context, exec repositories.Executor,
 		orgIds []string) (map[string][]uuid.UUID, error)
 }
 
-type ContinuousScreeningClientDbRepository interface {
+type MonitoredClientDbRepository interface {
 	CountMonitoredObjectsByConfigStableIds(ctx context.Context, exec repositories.Executor,
 		configStableIds []uuid.UUID) (int, error)
 }
@@ -24,18 +24,18 @@ type ContinuousScreeningClientDbRepository interface {
 // ContinuousScreeningCollector implements the Collector interface
 // This collector tracks the number of monitored objects linked to active continuous screening configs
 // It uses a gauge metric to report the current state (not a counter)
-type ContinuousScreeningCollector struct {
-	marbleDbRepository ContinuousScreeningMarbleDbRepository
-	clientDbRepository ContinuousScreeningClientDbRepository
+type MonitoredObjectCollector struct {
+	marbleDbRepository MonitoredObjectMarbleDbRepository
+	clientDbRepository MonitoredClientDbRepository
 	executorFactory    executor_factory.ExecutorFactory
 }
 
-func NewContinuousScreeningCollector(
-	marbleDbRepository ContinuousScreeningMarbleDbRepository,
-	clientDbRepository ContinuousScreeningClientDbRepository,
+func NewMonitoredObjectCollector(
+	marbleDbRepository MonitoredObjectMarbleDbRepository,
+	clientDbRepository MonitoredClientDbRepository,
 	executorFactory executor_factory.ExecutorFactory,
 ) Collector {
-	return ContinuousScreeningCollector{
+	return MonitoredObjectCollector{
 		marbleDbRepository: marbleDbRepository,
 		clientDbRepository: clientDbRepository,
 		executorFactory:    executorFactory,
@@ -44,7 +44,7 @@ func NewContinuousScreeningCollector(
 
 // Collect retrieves the current count of monitored objects for each organization
 // This is a gauge metric that represents the current state at collection time
-func (c ContinuousScreeningCollector) Collect(
+func (c MonitoredObjectCollector) Collect(
 	ctx context.Context,
 	orgs []models.Organization,
 	from, to time.Time,

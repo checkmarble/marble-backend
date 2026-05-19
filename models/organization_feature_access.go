@@ -22,6 +22,7 @@ type OrganizationFeatureAccess struct {
 	ContinuousScreening FeatureAccess `redis:"continuous_screening"`
 	AiRuleBuilding      FeatureAccess `redis:"ai_rule_building"`
 	UserScoring         FeatureAccess `redis:"user_scoring"`
+	LexisNexis          FeatureAccess `redis:"lexisnexis"`
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 
@@ -39,6 +40,7 @@ type DbStoredOrganizationFeatureAccess struct {
 	ContinuousScreening FeatureAccess
 	AiRuleBuilding      FeatureAccess
 	UserScoring         FeatureAccess
+	LexisNexis          FeatureAccess
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }
@@ -52,6 +54,7 @@ type UpdateOrganizationFeatureAccessInput struct {
 	ContinuousScreening *FeatureAccess
 	AiRuleBuilding      *FeatureAccess
 	UserScoring         *FeatureAccess
+	LexisNexis          *FeatureAccess
 }
 
 type FeaturesConfiguration struct {
@@ -77,6 +80,7 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 		ContinuousScreening: f.ContinuousScreening,
 		AiRuleBuilding:      f.AiRuleBuilding,
 		UserScoring:         f.UserScoring,
+		LexisNexis:          f.LexisNexis,
 		CreatedAt:           f.CreatedAt,
 		UpdatedAt:           f.UpdatedAt,
 	}
@@ -117,6 +121,9 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 	}
 	if !l.UserScoring {
 		o.UserScoring = Restricted
+	}
+	if !l.LexisNexis {
+		o.LexisNexis = Restricted
 	}
 
 	// remove the feature accesses that are not allowed by the configuration

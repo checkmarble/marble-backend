@@ -62,7 +62,16 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_OpenSanctionsNotConfigured
 		},
 	}
 
-	suite.openSanctionsProvider.On("IsConfigured", suite.ctx).Return(false, nil)
+	suite.repository.On("GetOrganizationById", suite.ctx, mock.Anything, suite.orgId).Return(models.Organization{
+		Id:                  suite.orgId,
+		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[string]string{}},
+	}, nil)
+	suite.repository.On("GetContinuousScreeningWithMatchesById", suite.ctx, mock.Anything, suite.continuousScreeningId).Return(models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			OrgId: suite.orgId,
+		},
+	}, nil)
+	suite.openSanctionsProvider.On("IsConfigured", suite.ctx, "opensanctions").Return(false, nil)
 
 	// Execute
 	err := worker.Work(suite.ctx, job)
@@ -81,7 +90,17 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_OpenSanctionsNotSelfHosted
 		},
 	}
 
-	suite.openSanctionsProvider.On("IsConfigured", suite.ctx).Return(true, nil)
+	suite.repository.On("GetOrganizationById", suite.ctx, mock.Anything, suite.orgId).Return(models.Organization{
+		Id:                  suite.orgId,
+		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[string]string{}},
+	}, nil)
+	suite.repository.On("GetContinuousScreeningWithMatchesById", suite.ctx, mock.Anything, suite.continuousScreeningId).Return(models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			OrgId: suite.orgId,
+		},
+	}, nil)
+
+	suite.openSanctionsProvider.On("IsConfigured", suite.ctx, "opensanctions").Return(true, nil)
 	suite.openSanctionsProvider.On("IsSelfHosted", suite.ctx).Return(false)
 
 	// Execute
@@ -130,17 +149,19 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_DatasetTriggered_EnrichesO
 		},
 	}
 
-	suite.openSanctionsProvider.On("IsConfigured", suite.ctx).Return(true, nil)
+	suite.openSanctionsProvider.On("IsConfigured", suite.ctx, "opensanctions").Return(true, nil)
 	suite.openSanctionsProvider.On("IsSelfHosted", suite.ctx).Return(true)
 	suite.repository.On("GetContinuousScreeningWithMatchesById",
 		suite.ctx,
 		mock.Anything,
 		suite.continuousScreeningId,
 	).Return(continuousScreeningWithMatches, nil)
+	suite.repository.On("GetOrganizationById", suite.ctx, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
 
 	// Expect only entity enrichment (not matches, as they are organization's own data)
 	enrichedPayload := []byte(`{"id":"entity-123","enriched":true}`)
-	suite.openSanctionsProvider.On("EnrichMatch", suite.ctx, models.ScreeningMatch{
+	suite.openSanctionsProvider.On("EnrichMatch", suite.ctx, models.DefaultScreeningProvider, models.ScreeningMatch{
 		EntityId: entityId,
 	}).Return(enrichedPayload, nil)
 	suite.repository.On("UpdateContinuousScreeningEntityEnrichedPayload",
@@ -185,17 +206,19 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_ObjectTriggered_EnrichesOn
 		},
 	}
 
-	suite.openSanctionsProvider.On("IsConfigured", suite.ctx).Return(true, nil)
+	suite.openSanctionsProvider.On("IsConfigured", suite.ctx, "opensanctions").Return(true, nil)
 	suite.openSanctionsProvider.On("IsSelfHosted", suite.ctx).Return(true)
 	suite.repository.On("GetContinuousScreeningWithMatchesById",
 		suite.ctx,
 		mock.Anything,
 		suite.continuousScreeningId,
 	).Return(continuousScreeningWithMatches, nil)
+	suite.repository.On("GetOrganizationById", suite.ctx, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
 
 	// Only expect match enrichment (no entity enrichment for ObjectTriggered)
 	enrichedMatchPayload := []byte(`{"id":"match-1","enriched":true}`)
-	suite.openSanctionsProvider.On("EnrichMatch", suite.ctx, models.ScreeningMatch{
+	suite.openSanctionsProvider.On("EnrichMatch", suite.ctx, models.DefaultScreeningProvider, models.ScreeningMatch{
 		EntityId: "match-1",
 	}).Return(enrichedMatchPayload, nil)
 	suite.repository.On("UpdateContinuousScreeningMatchEnrichedPayload",

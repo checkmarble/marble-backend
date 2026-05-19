@@ -30,6 +30,11 @@ type OpenSanctionsRawCatalog struct {
 	Outdated []string
 }
 
+type LexisNexisCatalog struct {
+	Datasets map[string]string
+	Topics   []string
+}
+
 type OpenSanctionsCatalog struct {
 	Sections []OpenSanctionsCatalogSection
 	Tags     *expirable.LRU[string, []string]
@@ -60,6 +65,7 @@ type OpenSanctionsQuery struct {
 	// cf: `exclude_entity_ids` in the OpenSanctions query
 	WhitelistedEntityIds []string
 	UseScopedIndex       bool
+	Filters              ScreeningConfigFilters
 }
 
 type OpenSanctionsCheckQuery struct {

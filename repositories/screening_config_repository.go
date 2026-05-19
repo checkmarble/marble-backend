@@ -14,10 +14,42 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 )
 
 var screeningConfigsCache = expirable.NewLRU[string, []models.ScreeningConfig](50, nil, utils.GlobalCacheDuration())
+
+func (repo *MarbleDbRepository) HasScreeningConfigs(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+) (bool, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return false, err
+	}
+
+	query := NewQueryBuilder().
+		Select("1").
+		Prefix("select exists(").
+		Suffix(")").
+		From(dbmodels.TABLE_SCREENING_CONFIGS + " scc").
+		LeftJoin("scenario_iterations si on si.id = scc.scenario_iteration_id").
+		Where(squirrel.Eq{"si.org_id": orgId})
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return false, err
+	}
+
+	var exists bool
+
+	if err = exec.QueryRow(ctx, sql, args...).Scan(&exists); err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
 
 func (repo *MarbleDbRepository) ListScreeningConfigs(
 	ctx context.Context,
@@ -116,6 +148,11 @@ func (repo *MarbleDbRepository) CreateScreeningConfig(ctx context.Context, exec 
 		configVersion = cfg.ConfigVersion
 	}
 
+	filters := models.ScreeningConfigFilters{}
+	if cfg.Filters != nil {
+		filters = *cfg.Filters
+	}
+
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SCREENING_CONFIGS).
 		Columns(
@@ -125,6 +162,7 @@ func (repo *MarbleDbRepository) CreateScreeningConfig(ctx context.Context, exec 
 			"description",
 			"rule_group",
 			"datasets",
+			"filters",
 			"threshold",
 			"forced_outcome",
 			"trigger_rule",
@@ -140,6 +178,7 @@ func (repo *MarbleDbRepository) CreateScreeningConfig(ctx context.Context, exec 
 			utils.Or(cfg.Description, ""),
 			utils.Or(cfg.RuleGroup, ""),
 			cfg.Datasets,
+			filters,
 			cfg.Threshold,
 			forcedOutcome.String(),
 			triggerRule,
@@ -220,6 +259,10 @@ func (repo *MarbleDbRepository) UpdateScreeningConfig(ctx context.Context, exec 
 	}
 	if cfg.Datasets != nil {
 		sql = sql.Set("datasets", cfg.Datasets)
+		updateFields = true
+	}
+	if cfg.Filters != nil {
+		sql = sql.Set("filters", *cfg.Filters)
 		updateFields = true
 	}
 	if cfg.Threshold != nil {

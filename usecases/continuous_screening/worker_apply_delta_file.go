@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
+	"github.com/checkmarble/marble-backend/repositories/screening"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -38,6 +39,8 @@ var AllowedSchemaTypes = []string{
 }
 
 type applyDeltaFileWorkerRepository interface {
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) (models.Organization, error)
+
 	GetEnrichedContinuousScreeningUpdateJob(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -99,6 +102,7 @@ type applyDeltaFileWorkerTaskQueueRepository interface {
 type applyDeltaFileWorkerScreeningProvider interface {
 	Search(
 		ctx context.Context,
+		providerName string,
 		query models.OpenSanctionsQuery,
 	) (models.ScreeningRawSearchResponseWithMatches, error)
 }
@@ -210,6 +214,12 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		return err
 	}
 
+	org, err := w.repository.GetOrganizationById(ctx, exec, job.Args.OrgId)
+	if err != nil {
+		return errors.Wrap(err, "could not retrieve organization")
+	}
+	provider := org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring)
+
 	blob, err := w.blobRepository.GetBlob(
 		ctx,
 		w.bucketUrl,
@@ -291,7 +301,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		iterLogger.DebugContext(iterCtx, "Performing screening for record")
 		err = retry.Do(
 			func() error {
-				screeningResponse, err = w.screeningProvider.Search(iterCtx, query)
+				screeningResponse, err = w.screeningProvider.Search(iterCtx, provider, query)
 				return err
 			},
 			retry.Attempts(3),
@@ -513,7 +523,7 @@ func (w *ApplyDeltaFileWorker) handleProcessError(
 // isTransientScreeningError checks if an error is a transient screening API error
 // (408, 429, 502, 503, 504) that should trigger a job snooze rather than a permanent failure
 func isTransientScreeningError(err error) bool {
-	var httpErr *repositories.HTTPError
+	var httpErr *screening.HTTPError
 	if errors.As(err, &httpErr) {
 		return httpErr.IsTransient()
 	}
