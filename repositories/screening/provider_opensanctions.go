@@ -65,6 +65,10 @@ func (p ScreeningOpenSanctionsProvider) SearchRequest(ctx context.Context,
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestUrl, &body)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "could not create screening request")
+	}
+
 	req.Header.Set("content-type", "application/json")
 
 	return req, rawQuery.Bytes(), err

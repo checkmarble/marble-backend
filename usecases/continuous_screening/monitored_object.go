@@ -480,7 +480,7 @@ func (uc *ContinuousScreeningUsecase) DoScreeningForEntity(
 		Scope:                orgCustomDatasetName(orgId),
 	}
 
-	org, err := uc.repository.GetOrganizationById(ctx, exec, config.OrgId)
+	org, err := uc.repository.GetOrganizationById(ctx, exec, orgId)
 	if err != nil {
 		return models.ScreeningWithMatches{}, errors.Wrap(err, "could not retrieve organization")
 	}

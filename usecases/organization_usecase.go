@@ -114,22 +114,6 @@ func (usecase *OrganizationUseCase) UpdateOrganization(
 		}
 	}
 
-	if organization.ScreeningConfig.Providers != nil {
-		featureAccess, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
-		if err != nil {
-			return models.Organization{}, err
-		}
-
-		for _, provider := range organization.ScreeningConfig.Providers {
-			if provider == models.ScreeningProviderLexisNexis {
-				if !featureAccess.LexisNexis.IsAllowed() {
-					return models.Organization{}, errors.Wrap(models.ForbiddenError,
-						"organization does not have access to the Lexis Nexis screening provider")
-				}
-			}
-		}
-	}
-
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.Organization, error) {
@@ -140,6 +124,22 @@ func (usecase *OrganizationUseCase) UpdateOrganization(
 
 		if err := usecase.enforceSecurity.EditOrganization(org); err != nil {
 			return models.Organization{}, err
+		}
+
+		if organization.ScreeningConfig.Providers != nil {
+			featureAccess, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
+			if err != nil {
+				return models.Organization{}, err
+			}
+
+			for _, provider := range organization.ScreeningConfig.Providers {
+				if provider == models.ScreeningProviderLexisNexis {
+					if !featureAccess.LexisNexis.IsAllowed() {
+						return models.Organization{}, errors.Wrap(models.ForbiddenError,
+							"organization does not have access to the Lexis Nexis screening provider")
+					}
+				}
+			}
 		}
 
 		for feature, provider := range organization.ScreeningConfig.Providers {

@@ -182,8 +182,13 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 
 				screeningProvider := org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring)
 
-				if isConfigured, err := usecase.screeningRequirements.IsConfigured(ctx, screeningProvider); !isConfigured {
-					return nil, err
+				isConfigured, err := usecase.screeningRequirements.IsConfigured(ctx, screeningProvider)
+				if err != nil {
+					return nil, errors.Wrapf(err,
+						"could not check whether screening was provided configured for %s", screeningProvider)
+				}
+				if !isConfigured {
+					return nil, errors.New("screening is not configured, cannot publish scenario")
 				}
 			}
 
