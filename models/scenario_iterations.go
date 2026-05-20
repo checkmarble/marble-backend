@@ -88,7 +88,7 @@ type ScreeningConfig struct {
 	Name                     string
 	Description              string
 	RuleGroup                *string
-	Provider                 string
+	Provider                 ScreeningProvider
 	Datasets                 []string
 	Filters                  ScreeningConfigFilters
 	TriggerRule              *ast.Node
@@ -300,6 +300,7 @@ type UpdateScreeningConfigInput struct {
 	Name                     *string
 	Description              *string
 	RuleGroup                *string
+	Provider                 *ScreeningProvider
 	Datasets                 []string
 	Filters                  *ScreeningConfigFilters
 	Threshold                *int

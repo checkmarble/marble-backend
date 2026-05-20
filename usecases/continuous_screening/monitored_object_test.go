@@ -396,7 +396,7 @@ func (suite *ContinuousScreeningUsecaseTestSuite) TestInsertContinuousScreeningO
 	// are NOT called because the transaction fails at InsertContinuousScreeningObject.
 	suite.repository.On("SearchScreeningMatchWhitelist", mock.Anything, mock.Anything,
 		suite.orgId, mock.Anything, mock.Anything).Return([]models.ScreeningWhitelist{}, nil)
-	suite.screeningProvider.On("Search", mock.Anything, "opensanctions", mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
+	suite.screeningProvider.On("Search", mock.Anything, models.ScreeningProviderOpenSanctions, mock.MatchedBy(func(query models.OpenSanctionsQuery) bool {
 		return len(query.Queries) > 0
 	})).Return(models.ScreeningRawSearchResponseWithMatches{
 		SearchInput:       []byte("{}"),

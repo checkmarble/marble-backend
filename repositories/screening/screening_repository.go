@@ -79,10 +79,10 @@ type openSanctionsRequestQuery struct {
 }
 
 func (repo OpenSanctionsRepository) IsSelfHosted(ctx context.Context) bool {
-	return repo.Config.IsSelfHosted("opensanctions")
+	return repo.Config.IsSelfHosted(models.ScreeningProviderOpenSanctions)
 }
 
-func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context, provider string) (bool, error) {
+func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context, provider models.ScreeningProvider) (bool, error) {
 	if ok, err := repo.Config.IsConfigured(provider); !ok {
 		utils.LoggerFromContext(ctx).WarnContext(ctx,
 			"open sanction is not misconfigured", "error", err)
@@ -134,7 +134,7 @@ func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context, provider s
 	return true, nil
 }
 
-func (repo OpenSanctionsRepository) GetRawCatalog(ctx context.Context, provider string) (models.OpenSanctionsRawCatalog, error) {
+func (repo OpenSanctionsRepository) GetRawCatalog(ctx context.Context, provider models.ScreeningProvider) (models.OpenSanctionsRawCatalog, error) {
 	catalogUrl := fmt.Sprintf("%s/catalog", repo.Config.Host(provider))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
@@ -159,7 +159,7 @@ func (repo OpenSanctionsRepository) GetRawCatalog(ctx context.Context, provider 
 	return httpmodels.AdaptOpenSanctionCatalogResponse(httpCatalog), nil
 }
 
-func (repo OpenSanctionsRepository) GetCatalog(ctx context.Context, provider string) (models.OpenSanctionsCatalog, error) {
+func (repo OpenSanctionsRepository) GetCatalog(ctx context.Context, provider models.ScreeningProvider) (models.OpenSanctionsCatalog, error) {
 	cacheKey := fmt.Sprintf("%s:%s", OPEN_SANCTIONS_CATALOG_CACHE_KEY, provider)
 
 	if cached, ok := OPEN_SANCTIONS_DATASET_CACHE.Get(cacheKey); ok {
@@ -258,7 +258,7 @@ func (repo OpenSanctionsRepository) GetLatestLocalDataset(ctx context.Context) (
 			errors.Wrap(err, "could not retrieve upstream dataset")
 	}
 
-	u := fmt.Sprintf("%s/catalog", repo.Config.Host("opensanctions"))
+	u := fmt.Sprintf("%s/catalog", repo.Config.Host(models.ScreeningProviderOpenSanctions))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return models.OpenSanctionsDatasetFreshness{}, err
@@ -297,7 +297,7 @@ func (repo OpenSanctionsRepository) GetAlgorithms(ctx context.Context) (models.O
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		fmt.Sprintf("%s/algorithms", repo.Config.Host("opensanctions")), nil)
+		fmt.Sprintf("%s/algorithms", repo.Config.Host(models.ScreeningProviderOpenSanctions)), nil)
 	if err != nil {
 		return models.OpenSanctionAlgorithms{}, err
 	}
@@ -323,16 +323,16 @@ func (repo OpenSanctionsRepository) GetAlgorithms(ctx context.Context) (models.O
 	return modelAlgorithms, nil
 }
 
-func (repo OpenSanctionsRepository) GetProvider(provider string) ScreeningProvider {
+func (repo OpenSanctionsRepository) GetProvider(provider models.ScreeningProvider) ScreeningProvider {
 	switch provider {
-	case "lexisnexis":
+	case models.ScreeningProviderLexisNexis:
 		return ScreeningLexisNexisProvider(repo)
 	default:
 		return ScreeningOpenSanctionsProvider(repo)
 	}
 }
 
-func (repo OpenSanctionsRepository) Search(ctx context.Context, providerName string, query models.OpenSanctionsQuery) (models.ScreeningRawSearchResponseWithMatches, error) {
+func (repo OpenSanctionsRepository) Search(ctx context.Context, providerName models.ScreeningProvider, query models.OpenSanctionsQuery) (models.ScreeningRawSearchResponseWithMatches, error) {
 	provider := repo.GetProvider(providerName)
 
 	ctx, span := utils.OpenTelemetryTracerFromContext(ctx).Start(ctx, "yente-request")
@@ -388,7 +388,7 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, providerName str
 	return screening, err
 }
 
-func (repo OpenSanctionsRepository) EnrichMatch(ctx context.Context, providerName string, match models.ScreeningMatch) ([]byte, error) {
+func (repo OpenSanctionsRepository) EnrichMatch(ctx context.Context, providerName models.ScreeningProvider, match models.ScreeningMatch) ([]byte, error) {
 	provider := repo.GetProvider(providerName)
 
 	requestUrl := fmt.Sprintf("%s/entities/%s", repo.Config.Host(providerName), match.EntityId)
@@ -432,7 +432,7 @@ func (repo OpenSanctionsRepository) EnrichMatch(ctx context.Context, providerNam
 }
 
 func (repo OpenSanctionsRepository) authenticateRequest(req *http.Request) {
-	if repo.Config.IsSelfHosted("opensanctions") {
+	if repo.Config.IsSelfHosted(models.ScreeningProviderOpenSanctions) {
 		switch repo.Config.AuthMethod() {
 		case infra.SCREENING_AUTH_BEARER:
 			req.Header.Set("authorization", "Bearer "+repo.Config.Credentials())
@@ -444,7 +444,7 @@ func (repo OpenSanctionsRepository) authenticateRequest(req *http.Request) {
 	}
 }
 
-func (repo OpenSanctionsRepository) FindAvailableFilters(ctx context.Context, providerName string) (dto.ScreeningAvailableFilters, error) {
+func (repo OpenSanctionsRepository) FindAvailableFilters(ctx context.Context, providerName models.ScreeningProvider) (dto.ScreeningAvailableFilters, error) {
 	provider := repo.GetProvider(providerName)
 
 	return provider.FindAvailableFilters(ctx)

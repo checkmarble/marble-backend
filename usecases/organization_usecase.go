@@ -121,7 +121,7 @@ func (usecase *OrganizationUseCase) UpdateOrganization(
 		}
 
 		for _, provider := range organization.ScreeningConfig.Providers {
-			if provider == "lexisnexis" {
+			if provider == models.ScreeningProviderLexisNexis {
 				if !featureAccess.LexisNexis.IsAllowed() {
 					return models.Organization{}, errors.Wrap(models.ForbiddenError,
 						"organization does not have access to the Lexis Nexis screening provider")

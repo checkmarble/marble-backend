@@ -69,7 +69,7 @@ func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
 		}
 	}
 
-	scope := p.Config.Scope("lexisnexis")
+	scope := p.Config.Scope(models.ScreeningProviderLexisNexis)
 	if query.Scope != "" {
 		scope = query.Scope
 	}
@@ -81,7 +81,7 @@ func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
 			"could not parse OpenSanctions response")
 	}
 
-	requestUrl := fmt.Sprintf("%s/match/%s", p.Config.Host("lexisnexis"), scope)
+	requestUrl := fmt.Sprintf("%s/match/%s", p.Config.Host(models.ScreeningProviderLexisNexis), scope)
 
 	if qs := p.BuildQueryString(ctx, &query.Config, query); len(qs) > 0 {
 		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())
@@ -151,7 +151,7 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context) (
 		return dto.ScreeningAvailableFilters{}, err
 	}
 
-	url := fmt.Sprintf("%s/catalog/fields", p.Config.Host("lexisnexis"))
+	url := fmt.Sprintf("%s/catalog/fields", p.Config.Host(models.ScreeningProviderLexisNexis))
 
 	payload := map[string]any{
 		"fields": []string{"properties.programId", "properties.topics"},
@@ -189,7 +189,7 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context) (
 	}
 
 	filters := dto.ScreeningAvailableFilters{
-		Provider: "lexisnexis",
+		Provider: models.ScreeningProviderLexisNexis,
 		Sections: dto.ScreeningAvailableFiltersSections{
 			Sanctions: dto.ScreeningAvailableFiltersSection{
 				Self: "sanctions",
@@ -250,7 +250,7 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context) (
 }
 
 func (p ScreeningLexisNexisProvider) GetLexisNexisCatalog(ctx context.Context) (httpmodels.HTTPOpenSanctionCatalogDataset, error) {
-	catalogUrl := fmt.Sprintf("%s/catalog", p.Config.Host("lexisnexis"))
+	catalogUrl := fmt.Sprintf("%s/catalog", p.Config.Host(models.ScreeningProviderLexisNexis))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, catalogUrl, nil)
 	if err != nil {

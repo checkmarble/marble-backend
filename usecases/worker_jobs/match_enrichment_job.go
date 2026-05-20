@@ -13,7 +13,7 @@ import (
 )
 
 type OpenSanctionsProvider interface {
-	IsConfigured(context.Context, string) (bool, error)
+	IsConfigured(context.Context, models.ScreeningProvider) (bool, error)
 	IsSelfHosted(context.Context) bool
 }
 

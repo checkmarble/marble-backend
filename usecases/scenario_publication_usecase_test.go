@@ -245,7 +245,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_ListScenarioPublications_
 		models.ListScenarioPublicationsFilters{},
 	).Return([]models.ScenarioPublication{suite.scenarioPublication}, nil)
 	suite.organizationRepository.On("GetOrganizationById", suite.ctx, suite.transaction, suite.organizationId).Return(models.Organization{
-		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[string]string{}},
+		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[string]models.ScreeningProvider{}},
 	}, nil)
 
 	publications, err := suite.makeUsecase().ListScenarioPublications(
@@ -307,7 +307,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_ExecuteScenarioPublicatio
 	suite.scenarioPublisher.On("PublishOrUnpublishIteration", suite.ctx, suite.transaction, mock.Anything, models.Publish).
 		Return([]models.ScenarioPublication{suite.scenarioPublication}, nil)
 	suite.organizationRepository.On("GetOrganizationById", suite.ctx, suite.transaction, suite.organizationId).Return(models.Organization{
-		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[string]string{}},
+		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[string]models.ScreeningProvider{}},
 	}, nil)
 
 	publications, err := suite.makeUsecase().ExecuteScenarioPublicationAction(suite.ctx,
@@ -331,7 +331,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_ExecuteScenarioPublicatio
 	suite.scenarioFetcher.On("FetchScenarioAndIteration", suite.ctx, suite.transaction, suite.iterationId).
 		Return(models.ScenarioAndIteration{}, suite.repositoryError)
 	suite.organizationRepository.On("GetOrganizationById", suite.ctx, suite.transaction, suite.organizationId).Return(models.Organization{
-		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[string]string{}},
+		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[string]models.ScreeningProvider{}},
 	}, nil)
 
 	publications, err := suite.makeUsecase().ExecuteScenarioPublicationAction(
@@ -356,7 +356,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_ExecuteScenarioPublicatio
 		Return(suite.scenarioAndIteration, nil)
 	suite.enforceSecurity.On("PublishScenario", suite.scenario).Return(suite.securityError)
 	suite.organizationRepository.On("GetOrganizationById", suite.ctx, suite.transaction, suite.organizationId).Return(models.Organization{
-		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[string]string{}},
+		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[string]models.ScreeningProvider{}},
 	}, nil)
 
 	publications, err := suite.makeUsecase().ExecuteScenarioPublicationAction(

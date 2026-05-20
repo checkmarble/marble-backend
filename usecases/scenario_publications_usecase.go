@@ -60,7 +60,7 @@ type PublicationUsecaseFeatureAccessReader interface {
 }
 
 type ScreeningRequirementChecker interface {
-	IsConfigured(context.Context, string) (bool, error)
+	IsConfigured(context.Context, models.ScreeningProvider) (bool, error)
 }
 
 type ScenarioPublicationUsecase struct {

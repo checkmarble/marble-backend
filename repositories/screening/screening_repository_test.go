@@ -58,7 +58,7 @@ func TestOpenSanctionsSelfHostedApi(t *testing.T) {
 		Post("/match/default").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), "opensanctions", query)
+	_, err := repo.Search(context.TODO(), models.ScreeningProviderOpenSanctions, query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -87,7 +87,7 @@ func TestOpenSanctionsSelfHostedAndApiKey(t *testing.T) {
 		MatchParam("api_key", "abcdef").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), "opensanctions", query)
+	_, err := repo.Search(context.TODO(), models.ScreeningProviderOpenSanctions, query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -116,7 +116,7 @@ func TestOpenSanctionsSaaSAndApiKey(t *testing.T) {
 		MatchParam("api_key", "abcdef").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), "opensanctions", query)
+	_, err := repo.Search(context.TODO(), models.ScreeningProviderOpenSanctions, query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -145,7 +145,7 @@ func TestOpenSanctionsSelfHostedAndBearerToken(t *testing.T) {
 		MatchHeader("authorization", "Bearer abcdef").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), "opensanctions", query)
+	_, err := repo.Search(context.TODO(), models.ScreeningProviderOpenSanctions, query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -174,7 +174,7 @@ func TestOpenSanctionsSelfHostedAndBasicAuth(t *testing.T) {
 		MatchHeader("authorization", "Basic YWJjZGVmOmhlbGxvd29ybGQ=").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), "opensanctions", query)
+	_, err := repo.Search(context.TODO(), models.ScreeningProviderOpenSanctions, query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -202,7 +202,7 @@ func TestOpenSanctionsError(t *testing.T) {
 		Post("/match/default").
 		Reply(http.StatusBadRequest)
 
-	_, err := repo.Search(context.TODO(), "opensanctions", query)
+	_, err := repo.Search(context.TODO(), models.ScreeningProviderOpenSanctions, query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.Error(t, err)
@@ -233,7 +233,7 @@ func TestOpenSanctionsSuccessfulPartialResponse(t *testing.T) {
 		Reply(http.StatusOK).
 		BodyString(string(body))
 
-	matches, err := repo.Search(context.TODO(), "opensanctions", query)
+	matches, err := repo.Search(context.TODO(), models.ScreeningProviderOpenSanctions, query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.NoError(t, err)
@@ -267,7 +267,7 @@ func TestOpenSanctionsSuccessfulFullResponse(t *testing.T) {
 		Reply(http.StatusOK).
 		BodyString(string(body))
 
-	matches, err := repo.Search(context.TODO(), "opensanctions", query)
+	matches, err := repo.Search(context.TODO(), models.ScreeningProviderOpenSanctions, query)
 
 	assert.False(t, gock.HasUnmatchedRequest())
 	assert.NoError(t, err)
@@ -308,7 +308,7 @@ func TestOpenSanctionsSuccessfulFullResponseWithThresholdOverride(t *testing.T) 
 		Reply(http.StatusOK).
 		BodyString(string(body))
 
-	matches, err := repo.Search(context.TODO(), "opensanctions", query)
+	matches, err := repo.Search(context.TODO(), models.ScreeningProviderOpenSanctions, query)
 
 	for _, r := range gock.GetUnmatchedRequests() {
 		fmt.Printf("%#v\n", *r)

@@ -11,14 +11,14 @@ type OpenSanctionsRepository struct {
 	mock.Mock
 }
 
-func (m *OpenSanctionsRepository) GetRawCatalog(ctx context.Context, provider string) (models.OpenSanctionsRawCatalog, error) {
+func (m *OpenSanctionsRepository) GetRawCatalog(ctx context.Context, provider models.ScreeningProvider) (models.OpenSanctionsRawCatalog, error) {
 	args := m.Called(ctx, provider)
 	return args.Get(0).(models.OpenSanctionsRawCatalog), args.Error(1)
 }
 
 func (m *OpenSanctionsRepository) Search(
 	ctx context.Context,
-	providerName string,
+	providerName models.ScreeningProvider,
 	query models.OpenSanctionsQuery,
 ) (models.ScreeningRawSearchResponseWithMatches, error) {
 	args := m.Called(ctx, providerName, query)
@@ -33,7 +33,7 @@ func (m *OpenSanctionsRepository) GetAlgorithms(ctx context.Context) (models.Ope
 	return args.Get(0).(models.OpenSanctionAlgorithms), args.Error(1)
 }
 
-func (m *OpenSanctionsRepository) EnrichMatch(ctx context.Context, providerName string, match models.ScreeningMatch) ([]byte, error) {
+func (m *OpenSanctionsRepository) EnrichMatch(ctx context.Context, providerName models.ScreeningProvider, match models.ScreeningMatch) ([]byte, error) {
 	args := m.Called(ctx, providerName, match)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -41,7 +41,7 @@ func (m *OpenSanctionsRepository) EnrichMatch(ctx context.Context, providerName 
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (m *OpenSanctionsRepository) IsConfigured(ctx context.Context, provider string) (bool, error) {
+func (m *OpenSanctionsRepository) IsConfigured(ctx context.Context, provider models.ScreeningProvider) (bool, error) {
 	args := m.Called(ctx, provider)
 	return args.Bool(0), args.Error(1)
 }

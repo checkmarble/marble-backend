@@ -237,7 +237,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_NewDataset_CreatesRecor
 	job := &river.Job[models.ContinuousScreeningScanDatasetUpdatesArgs]{}
 
 	// Setup mocks
-	suite.screeningProvider.On("GetRawCatalog", suite.ctx, "opensanctions").Return(catalog, nil)
+	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderOpenSanctions).Return(catalog, nil)
 	suite.repository.On("ListContinuousScreeningConfigs", mock.Anything, mock.Anything).Return([]models.ContinuousScreeningConfig{
 		{Id: pure_utils.NewId(), OrgId: pure_utils.NewId(), Enabled: true},
 	}, nil)
@@ -297,7 +297,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_DatasetWithoutDeltaUrl_
 	job := &river.Job[models.ContinuousScreeningScanDatasetUpdatesArgs]{}
 
 	// Setup mocks
-	suite.screeningProvider.On("GetRawCatalog", suite.ctx, "opensanctions").Return(catalog, nil)
+	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderOpenSanctions).Return(catalog, nil)
 	suite.repository.On("ListContinuousScreeningConfigs", mock.Anything, mock.Anything).Return([]models.ContinuousScreeningConfig{
 		{Id: pure_utils.NewId(), OrgId: pure_utils.NewId(), Enabled: true},
 	}, nil)
@@ -348,7 +348,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_NoNewVersions_NoProcess
 	job := &river.Job[models.ContinuousScreeningScanDatasetUpdatesArgs]{}
 
 	// Setup mocks
-	suite.screeningProvider.On("GetRawCatalog", suite.ctx, "opensanctions").Return(catalog, nil)
+	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderOpenSanctions).Return(catalog, nil)
 	suite.repository.On("ListContinuousScreeningConfigs", mock.Anything, mock.Anything).Return([]models.ContinuousScreeningConfig{
 		{Id: pure_utils.NewId(), OrgId: pure_utils.NewId(), Enabled: true},
 	}, nil)
@@ -447,7 +447,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 			ContinuousScreening: models.Allowed,
 		}, nil,
 	)
-	suite.screeningProvider.On("GetRawCatalog", suite.ctx, "opensanctions").Return(catalog, nil)
+	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderOpenSanctions).Return(catalog, nil)
 
 	// Dataset has older version in DB
 	suite.repository.On("GetLastProcessedVersion", suite.ctx, mock.Anything, datasetName).Return(
@@ -589,7 +589,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_OrgMissingFeature_Skips
 	job := &river.Job[models.ContinuousScreeningScanDatasetUpdatesArgs]{}
 
 	// Setup mocks
-	suite.screeningProvider.On("GetRawCatalog", suite.ctx, "opensanctions").Return(catalog, nil)
+	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderOpenSanctions).Return(catalog, nil)
 
 	// Dataset has older version in DB
 	suite.repository.On("GetLastProcessedVersion", suite.ctx, mock.Anything, datasetName).Return(

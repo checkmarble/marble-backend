@@ -47,7 +47,7 @@ type scanDatasetUpdatesWorkerRepository interface {
 }
 
 type scanDatasetUpdatesWorkerScreeningProvider interface {
-	GetRawCatalog(ctx context.Context, provider string) (models.OpenSanctionsRawCatalog, error)
+	GetRawCatalog(ctx context.Context, provider models.ScreeningProvider) (models.OpenSanctionsRawCatalog, error)
 }
 
 type scanDatasetUpdatesWorkerTaskEnqueuer interface {
@@ -145,7 +145,7 @@ func (w *ScanDatasetUpdatesWorker) Work(
 	}
 
 	// Get datasets from screening provider and get only outdated datasets
-	catalogs, err := w.screeningProvider.GetRawCatalog(ctx, "opensanctions")
+	catalogs, err := w.screeningProvider.GetRawCatalog(ctx, models.ScreeningProviderOpenSanctions)
 	if err != nil {
 		return err
 	}
