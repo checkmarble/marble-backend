@@ -7,6 +7,13 @@ import (
 	"github.com/google/uuid"
 )
 
+type ScreeningProvider string
+
+const (
+	ScreeningProviderOpenSanctions ScreeningProvider = "opensanctions"
+	ScreeningProviderLexisNexis    ScreeningProvider = "lexisnexis"
+)
+
 type ScreeningFeature string
 
 const (
@@ -17,8 +24,8 @@ const (
 
 var (
 	ValidScreeningProviderFeature = []ScreeningFeature{ScreeningFeatureTransactionMonitoring, ScreeningFeatureContinuousMonitoring, ScreeningFeatureManualSearch}
-	ValidScreeningProviders       = []string{"opensanctions", "lexisnexis"}
-	DefaultScreeningProvider      = "opensanctions"
+	ValidScreeningProviders       = []ScreeningProvider{ScreeningProviderOpenSanctions, ScreeningProviderLexisNexis}
+	DefaultScreeningProvider      = ScreeningProviderOpenSanctions
 )
 
 type ScreeningStatus int
@@ -116,7 +123,7 @@ type Screening struct {
 	ScreeningConfigId            string
 	Status                       ScreeningStatus
 	Config                       ScreeningConfigRef
-	Provider                     string
+	Provider                     ScreeningProvider
 	UniqueCounterpartyIdentifier *string
 	SearchInput                  json.RawMessage
 	InitialQuery                 []OpenSanctionsCheckQuery
@@ -150,7 +157,7 @@ type ScreeningConfigRef struct {
 	Id       string
 	StableId string
 	Name     string
-	Provider string
+	Provider ScreeningProvider
 	Datasets []string
 	Filters  ScreeningConfigFilters
 }

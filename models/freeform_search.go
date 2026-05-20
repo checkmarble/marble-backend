@@ -12,7 +12,7 @@ type FreeformSearch struct {
 	OrgId       uuid.UUID
 	UserId      *uuid.UUID
 	ApiKeyId    *uuid.UUID
-	Provider    string
+	Provider    ScreeningProvider
 	CreatedAt   time.Time
 	SearchInput json.RawMessage
 	Result      json.RawMessage

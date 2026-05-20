@@ -12,16 +12,16 @@ import (
 )
 
 type APIOrganization struct {
-	Id                      string            `json:"id"`
-	Name                    string            `json:"name"`
-	DefaultScenarioTimezone *string           `json:"default_scenario_timezone"`
-	ScreeningProviders      map[string]string `json:"screening_providers"`
-	SanctionsThreshold      int               `json:"sanctions_threshold"`
-	SanctionsLimit          int               `json:"sanctions_limit"`
-	AutoAssignQueueLimit    int               `json:"auto_assign_queue_limit"`
-	AllowedNetworks         []SubnetDto       `json:"allowed_networks"`
-	SentryReplayEnabled     bool              `json:"sentry_replay_enabled"`
-	Environment             string            `json:"environment"`
+	Id                      string                              `json:"id"`
+	Name                    string                              `json:"name"`
+	DefaultScenarioTimezone *string                             `json:"default_scenario_timezone"`
+	ScreeningProviders      map[string]models.ScreeningProvider `json:"screening_providers"`
+	SanctionsThreshold      int                                 `json:"sanctions_threshold"`
+	SanctionsLimit          int                                 `json:"sanctions_limit"`
+	AutoAssignQueueLimit    int                                 `json:"auto_assign_queue_limit"`
+	AllowedNetworks         []SubnetDto                         `json:"allowed_networks"`
+	SentryReplayEnabled     bool                                `json:"sentry_replay_enabled"`
+	Environment             string                              `json:"environment"`
 }
 
 func AdaptOrganizationDto(org models.Organization) APIOrganization {
@@ -64,13 +64,13 @@ func AdaptCreateOrganizationInput(dto CreateOrganizationBodyDto) (models.CreateO
 }
 
 type UpdateOrganizationBodyDto struct {
-	DefaultScenarioTimezone *string           `json:"default_scenario_timezone,omitempty"`
-	SanctionsThreshold      *int              `json:"sanctions_threshold,omitempty"`
-	SanctionsLimit          *int              `json:"sanctions_limit,omitempty"`
-	ScreeningProviders      map[string]string `json:"screening_providers,omitempty"`
-	AutoAssignQueueLimit    *int              `json:"auto_assign_queue_limit,omitempty"`
-	SentryReplayEnabled     *bool             `json:"sentry_replay_enabled"`
-	Environment             *string           `json:"environment"`
+	DefaultScenarioTimezone *string                             `json:"default_scenario_timezone,omitempty"`
+	SanctionsThreshold      *int                                `json:"sanctions_threshold,omitempty"`
+	SanctionsLimit          *int                                `json:"sanctions_limit,omitempty"`
+	ScreeningProviders      map[string]models.ScreeningProvider `json:"screening_providers,omitempty"`
+	AutoAssignQueueLimit    *int                                `json:"auto_assign_queue_limit,omitempty"`
+	SentryReplayEnabled     *bool                               `json:"sentry_replay_enabled"`
+	Environment             *string                             `json:"environment"`
 }
 
 func AdaptUpdateOrganizationInput(dto UpdateOrganizationBodyDto) (models.UpdateOrganizationInput, error) {

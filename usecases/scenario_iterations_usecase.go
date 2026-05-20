@@ -136,8 +136,8 @@ func (usecase *ScenarioIterationUsecase) GetScenarioIteration(ctx context.Contex
 
 	for idx, scc := range si.ScreeningConfigs {
 		// We need to backport the legacy "datasets" configuration into the new filter tree.
-		if scc.Provider == "opensanctions" && scc.Filters.IsEmpty() {
-			upstreamCatalog, err := usecase.screeningProvider.GetCatalog(ctx, "opensanctions")
+		if scc.Provider == models.ScreeningProviderOpenSanctions && scc.Filters.IsEmpty() {
+			upstreamCatalog, err := usecase.screeningProvider.GetCatalog(ctx, models.ScreeningProviderOpenSanctions)
 			if err != nil {
 				return models.ScenarioIteration{}, err
 			}
@@ -359,7 +359,9 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 						Description:              &scc.Description,
 						RuleGroup:                scc.RuleGroup,
 						EntityType:               &scc.EntityType,
+						Provider:                 &scc.Provider,
 						Datasets:                 scc.Datasets,
+						Filters:                  &scc.Filters,
 						Threshold:                scc.Threshold,
 						TriggerRule:              scc.TriggerRule,
 						CounterpartyIdExpression: scc.CounterpartyIdExpression,

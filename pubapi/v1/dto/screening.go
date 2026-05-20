@@ -11,7 +11,7 @@ import (
 type Screening struct {
 	Id           string                           `json:"id"`
 	Status       string                           `json:"status"`
-	Provider     string                           `json:"provider"`
+	Provider     models.ScreeningProvider         `json:"provider"`
 	Query        json.RawMessage                  `json:"query"`
 	InitialQuery []models.OpenSanctionsCheckQuery `json:"initial_query"`
 	Partial      bool                             `json:"partial"`

@@ -16,7 +16,7 @@ var (
 )
 
 type ScreeningAvailableFilters struct {
-	Provider string                            `json:"provider"`
+	Provider models.ScreeningProvider          `json:"provider"`
 	Sections ScreeningAvailableFiltersSections `json:"sections"`
 }
 
@@ -55,8 +55,8 @@ type ScreeningDto struct {
 }
 
 type ScreeningConfigRefDto struct {
-	Name     string `json:"name"`
-	Provider string `json:"provider"`
+	Name     string                   `json:"name"`
+	Provider models.ScreeningProvider `json:"provider"`
 }
 
 type ScreeningRequestDto struct {

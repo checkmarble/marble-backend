@@ -159,10 +159,10 @@ func (uc ScreeningUsecase) DeleteScreeningConfig(ctx context.Context, iterationI
 		uc.executorFactory.NewExecutor(), iterationId, configId)
 }
 
-func (uc ScreeningUsecase) AdaptConfigForProvider(providerName string, scc models.UpdateScreeningConfigInput) models.UpdateScreeningConfigInput {
+func (uc ScreeningUsecase) AdaptConfigForProvider(providerName models.ScreeningProvider, scc models.UpdateScreeningConfigInput) models.UpdateScreeningConfigInput {
 	switch providerName {
-	case "lexisnexis":
-		scc.Datasets = []string{"lexisnexis"}
+	case models.ScreeningProviderLexisNexis:
+		scc.Datasets = []string{string(models.ScreeningProviderLexisNexis)}
 
 	default:
 		scc.Datasets = []string{}

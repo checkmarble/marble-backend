@@ -42,12 +42,12 @@ type ScreeningEnforceSecurity interface {
 
 type ScreeningProvider interface {
 	IsSelfHosted(ctx context.Context) bool
-	GetCatalog(ctx context.Context, provider string) (models.OpenSanctionsCatalog, error)
+	GetCatalog(ctx context.Context, provider models.ScreeningProvider) (models.OpenSanctionsCatalog, error)
 	GetLatestLocalDataset(context.Context) (models.OpenSanctionsDatasetFreshness, error)
-	Search(context.Context, string, models.OpenSanctionsQuery) (models.ScreeningRawSearchResponseWithMatches, error)
-	EnrichMatch(ctx context.Context, providerName string, match models.ScreeningMatch) ([]byte, error)
-	IsConfigured(ctx context.Context, provider string) (bool, error)
-	FindAvailableFilters(ctx context.Context, providerName string) (dto.ScreeningAvailableFilters, error)
+	Search(context.Context, models.ScreeningProvider, models.OpenSanctionsQuery) (models.ScreeningRawSearchResponseWithMatches, error)
+	EnrichMatch(ctx context.Context, providerName models.ScreeningProvider, match models.ScreeningMatch) ([]byte, error)
+	IsConfigured(ctx context.Context, provider models.ScreeningProvider) (bool, error)
+	FindAvailableFilters(ctx context.Context, providerName models.ScreeningProvider) (dto.ScreeningAvailableFilters, error)
 }
 
 type ScreeningInboxReader interface {
@@ -150,7 +150,7 @@ func (uc ScreeningUsecase) CheckDatasetFreshness(ctx context.Context) (models.Op
 }
 
 func (uc ScreeningUsecase) GetDatasetCatalog(ctx context.Context) (models.OpenSanctionsCatalog, error) {
-	return uc.openSanctionsProvider.GetCatalog(ctx, "opensanctions") // TODO: only opensanctions uses the catalog so far
+	return uc.openSanctionsProvider.GetCatalog(ctx, models.ScreeningProviderOpenSanctions) // TODO: only opensanctions uses the catalog so far
 }
 
 func (uc ScreeningUsecase) GetScreening(ctx context.Context, id string) (models.ScreeningWithMatches, error) {
@@ -190,7 +190,7 @@ func (uc ScreeningUsecase) GetAvailableFilters(ctx context.Context, feature mode
 
 	providerName := org.GetScreeningProviderFor(feature)
 
-	if providerName == "opensanctions" {
+	if providerName == models.ScreeningProviderOpenSanctions {
 		upstreamCatalog, err := uc.GetDatasetCatalog(ctx)
 		if err != nil {
 			return dto.ScreeningAvailableFilters{}, err
@@ -219,7 +219,7 @@ func (uc ScreeningUsecase) GetAvailableFilters(ctx context.Context, feature mode
 		}
 
 		filters := dto.ScreeningAvailableFilters{
-			Provider: "opensanctions",
+			Provider: models.ScreeningProviderOpenSanctions,
 			Sections: dto.ScreeningAvailableFiltersSections{
 				Sanctions: dto.ScreeningAvailableFiltersSection{
 					Datasets: sanctionsDatasets,
@@ -239,8 +239,8 @@ func (uc ScreeningUsecase) GetAvailableFilters(ctx context.Context, feature mode
 		return filters, nil
 	}
 
-	if providerName == "lexisnexis" {
-		filters, err := uc.openSanctionsProvider.FindAvailableFilters(ctx, "lexisnexis")
+	if providerName == models.ScreeningProviderLexisNexis {
+		filters, err := uc.openSanctionsProvider.FindAvailableFilters(ctx, models.ScreeningProviderLexisNexis)
 		if err != nil {
 			return dto.ScreeningAvailableFilters{}, err
 		}
@@ -502,7 +502,7 @@ func (uc ScreeningUsecase) persistFreeformSearch(
 	ctx context.Context,
 	exec repositories.Executor,
 	orgId uuid.UUID,
-	provider string,
+	provider models.ScreeningProvider,
 	refine models.ScreeningRefineRequest,
 ) error {
 	searchInput, err := json.Marshal(refine)

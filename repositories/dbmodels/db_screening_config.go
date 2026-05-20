@@ -20,7 +20,7 @@ type DBScreeningConfigs struct {
 	Name                string                              `db:"name"`
 	Description         string                              `db:"description"`
 	RuleGroup           string                              `db:"rule_group"`
-	Provider            string                              `db:"provider"`
+	Provider            models.ScreeningProvider            `db:"provider"`
 	Datasets            []string                            `db:"datasets"`
 	Filters             models.ScreeningConfigFilters       `db:"filters"`
 	TriggerRule         []byte                              `db:"trigger_rule"`

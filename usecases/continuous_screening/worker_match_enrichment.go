@@ -16,9 +16,9 @@ import (
 )
 
 type matchEnrichmentWorkerOpenSanctionsProvider interface {
-	IsConfigured(context.Context, string) (bool, error)
+	IsConfigured(context.Context, models.ScreeningProvider) (bool, error)
 	IsSelfHosted(context.Context) bool
-	EnrichMatch(ctx context.Context, providerName string, match models.ScreeningMatch) ([]byte, error)
+	EnrichMatch(ctx context.Context, providerName models.ScreeningProvider, match models.ScreeningMatch) ([]byte, error)
 }
 
 type matchEnrichmentWorkerRepository interface {
@@ -138,7 +138,7 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) Work(
 
 func (w *ContinuousScreeningMatchEnrichmentWorker) enrichEntity(
 	ctx context.Context,
-	providerName string,
+	providerName models.ScreeningProvider,
 	screening models.ContinuousScreeningWithMatches,
 ) error {
 	if screening.OpenSanctionEntityEnriched {
@@ -179,7 +179,7 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) enrichEntity(
 
 func (w *ContinuousScreeningMatchEnrichmentWorker) enrichMatch(
 	ctx context.Context,
-	providerName string,
+	providerName models.ScreeningProvider,
 	match models.ContinuousScreeningMatch,
 ) error {
 	if match.Enriched {

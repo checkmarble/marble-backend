@@ -102,7 +102,7 @@ type applyDeltaFileWorkerTaskQueueRepository interface {
 type applyDeltaFileWorkerScreeningProvider interface {
 	Search(
 		ctx context.Context,
-		providerName string,
+		providerName models.ScreeningProvider,
 		query models.OpenSanctionsQuery,
 	) (models.ScreeningRawSearchResponseWithMatches, error)
 }

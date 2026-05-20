@@ -24,7 +24,7 @@ type DBScreening struct {
 	OrgId             uuid.UUID                        `db:"org_id"`
 	ScreeningConfigId string                           `db:"screening_config_id"`
 	Status            string                           `db:"status"`
-	Provider          string                           `db:"provider"`
+	Provider          models.ScreeningProvider         `db:"provider"`
 	SearchInput       json.RawMessage                  `db:"search_input"`
 	InitialQuery      []models.OpenSanctionsCheckQuery `db:"initial_query"`
 	CounterpartyId    *string                          `db:"counterparty_id"`

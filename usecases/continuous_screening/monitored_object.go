@@ -377,7 +377,7 @@ func (uc *ContinuousScreeningUsecase) GetIngestedObject(ctx context.Context,
 // executeScreeningWithRetry performs the screening query with retry logic
 func (uc *ContinuousScreeningUsecase) executeScreeningWithRetry(
 	ctx context.Context,
-	providerName string,
+	providerName models.ScreeningProvider,
 	query models.OpenSanctionsQuery,
 ) (models.ScreeningWithMatches, error) {
 	var screeningResponse models.ScreeningRawSearchResponseWithMatches

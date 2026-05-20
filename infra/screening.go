@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"golang.org/x/mod/semver"
@@ -29,7 +30,7 @@ const (
 type Screening struct {
 	client *http.Client
 
-	providers map[string]*ScreeningProvider
+	providers map[models.ScreeningProvider]*ScreeningProvider
 
 	authMethod  ScreeningAuthMethod
 	credentials string
@@ -59,7 +60,7 @@ type MotivaFeatures struct {
 func InitializeScreening(ctx context.Context, client *http.Client, host, authMethod, creds string) Screening {
 	os := Screening{
 		client:                 client,
-		providers:              map[string]*ScreeningProvider{},
+		providers:              map[models.ScreeningProvider]*ScreeningProvider{},
 		credentials:            creds,
 		algorithm:              "logic-v1",
 		motivaFeatures:         &atomic.Pointer[MotivaFeatures]{},
@@ -67,7 +68,7 @@ func InitializeScreening(ctx context.Context, client *http.Client, host, authMet
 	}
 
 	if host != "" {
-		os.providers["opensanctions"] = &ScreeningProvider{
+		os.providers[models.ScreeningProviderOpenSanctions] = &ScreeningProvider{
 			host:  host,
 			scope: "default",
 		}
@@ -75,7 +76,7 @@ func InitializeScreening(ctx context.Context, client *http.Client, host, authMet
 
 	os.MotivaFeatures(ctx)
 
-	if os.IsSelfHosted("opensanctions") {
+	if os.IsSelfHosted(models.ScreeningProviderOpenSanctions) {
 		switch authMethod {
 		case "bearer":
 			os.authMethod = SCREENING_AUTH_BEARER
@@ -94,7 +95,7 @@ func (os *Screening) WithAlgorithm(algo string) *Screening {
 }
 
 func (os *Screening) WithScope(scope string) *Screening {
-	os.providers["opensanctions"].scope = scope
+	os.providers[models.ScreeningProviderOpenSanctions].scope = scope
 
 	return os
 }
@@ -121,21 +122,21 @@ func (os Screening) Client() *http.Client {
 	return os.client
 }
 
-func (os Screening) IsConfigured(provider string) (bool, error) {
+func (os Screening) IsConfigured(provider models.ScreeningProvider) (bool, error) {
 	if !os.IsSelfHosted(provider) && len(os.credentials) == 0 {
 		return false, fmt.Errorf("missing API key for SaaS Open Sanctions configuration")
 	}
 	return true, nil
 }
 
-func (os Screening) IsSelfHosted(provider string) bool {
+func (os Screening) IsSelfHosted(provider models.ScreeningProvider) bool {
 	if p, ok := os.providers[provider]; ok {
 		return len(p.host) > 0
 	}
 	return false
 }
 
-func (os Screening) Host(provider string) string {
+func (os Screening) Host(provider models.ScreeningProvider) string {
 	if os.IsSelfHosted(provider) {
 		if p, ok := os.providers[provider]; ok {
 			return p.host
@@ -147,7 +148,7 @@ func (os Screening) Host(provider string) string {
 }
 
 func (os Screening) IsSet() bool {
-	return os.IsSelfHosted("opensanctions") || os.Credentials() != ""
+	return os.IsSelfHosted(models.ScreeningProviderOpenSanctions) || os.Credentials() != ""
 }
 
 func (os Screening) AuthMethod() ScreeningAuthMethod {
@@ -162,7 +163,7 @@ func (os Screening) NameRecognition() *NameRecognitionProvider {
 	return os.nameRecognition
 }
 
-func (os Screening) Scope(provider string) string {
+func (os Screening) Scope(provider models.ScreeningProvider) string {
 	if p, ok := os.providers[provider]; ok {
 		return p.scope
 	}
@@ -194,7 +195,7 @@ func (os *Screening) MotivaFeatures(ctx context.Context) MotivaFeatures {
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/-/version", os.Host("opensanctions")), nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/-/version", os.Host(models.ScreeningProviderOpenSanctions)), nil)
 		if err != nil {
 			return false, err
 		}
