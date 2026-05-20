@@ -130,10 +130,10 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Cont
 		return models.ContinuousScreeningConfig{}, err
 	}
 
-	if len(input.Datasets) == 0 {
-		return models.ContinuousScreeningConfig{},
-			errors.New("datasets are required for continuous screening config")
-	}
+	// if len(input.Datasets) == 0 {
+	// 	return models.ContinuousScreeningConfig{},
+	// 		errors.New("datasets are required for continuous screening config")
+	// }
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
@@ -146,7 +146,9 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Cont
 			"name",
 			"description",
 			"algorithm",
+			"provider",
 			"datasets",
+			"filters",
 			"match_threshold",
 			"match_limit",
 			"object_types",
@@ -159,7 +161,9 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Cont
 			input.Name,
 			input.Description,
 			input.Algorithm,
+			input.Provider,
 			input.Datasets,
+			input.Filters,
 			input.MatchThreshold,
 			input.MatchLimit,
 			input.ObjectTypes,
@@ -200,6 +204,10 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningConfig(
 	}
 	if input.Datasets != nil {
 		sql = sql.Set("datasets", *input.Datasets)
+		countUpdate++
+	}
+	if input.Filters != nil {
+		sql = sql.Set("filters", *input.Filters)
 		countUpdate++
 	}
 	if input.MatchThreshold != nil {
@@ -255,6 +263,7 @@ func (repo *MarbleDbRepository) InsertContinuousScreening(
 			"org_id",
 			"continuous_screening_config_id",
 			"continuous_screening_config_stable_id",
+			"provider",
 			"object_type",
 			"object_id",
 			"object_internal_id",
@@ -271,6 +280,7 @@ func (repo *MarbleDbRepository) InsertContinuousScreening(
 			input.Config.OrgId,
 			input.Config.Id,
 			input.Config.StableId,
+			input.Config.Provider,
 			input.ObjectType,
 			input.ObjectId,
 			input.ObjectInternalId,
@@ -738,12 +748,14 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningUpdateJob(
 		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS).
 		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectContinuousScreeningUpdateJobColumn, ","))).
 		Columns(
+			"provider",
 			"continuous_screening_dataset_update_id",
 			"continuous_screening_config_id",
 			"org_id",
 			"status",
 		).
 		Values(
+			input.Provider,
 			input.DatasetUpdateId,
 			input.ConfigId,
 			input.OrgId,

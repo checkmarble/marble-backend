@@ -145,78 +145,81 @@ func (w *ScanDatasetUpdatesWorker) Work(
 		return nil
 	}
 
-	// Get datasets from screening provider and get only outdated datasets
-	catalogs, err := w.screeningProvider.GetRawCatalog(ctx, models.ScreeningProviderOpenSanctions)
-	if err != nil {
-		return err
-	}
-	loadedDatasets := getLoadedDataset(ctx, catalogs)
-	logger.DebugContext(ctx, "loaded dataset result", "datasets", loadedDatasets)
-	datasetsWithVersionRange, err := w.getOutdatedDatasets(ctx, exec, loadedDatasets)
-	if err != nil {
-		return err
-	}
-	if len(datasetsWithVersionRange) == 0 {
-		logger.DebugContext(ctx, "No outdated datasets found, skip processing")
-		return nil
-	}
-
-	var blobInfos []deltaBlobInfo
-	// Doesn't need to parallelize here. Much of case, we will have one catalog scope which groups datasets
-	// datasetsWithVersionRange will be small (1 scope)
-	// Inside a scope, we will have several versions to process
-	for _, datasetWithRange := range datasetsWithVersionRange {
-		resultBlobInfos, err := w.processDatasetVersion(
-			ctx,
-			datasetWithRange,
-		)
+	for _, provider := range models.ValidScreeningProviders {
+		// Get datasets from screening provider and get only outdated datasets
+		catalogs, err := w.screeningProvider.GetRawCatalog(ctx, provider)
 		if err != nil {
 			return err
 		}
-		blobInfos = append(blobInfos, resultBlobInfos...)
-	}
+		loadedDatasets := getLoadedDataset(ctx, catalogs, provider)
+		logger.DebugContext(ctx, "loaded dataset result", "provider", provider, "datasets", loadedDatasets)
+		datasetsWithVersionRange, err := w.getOutdatedDatasets(ctx, exec, loadedDatasets)
+		if err != nil {
+			return err
+		}
+		if len(datasetsWithVersionRange) == 0 {
+			logger.DebugContext(ctx, "No outdated datasets found, skip processing")
+			continue
+		}
 
-	// Since the datasets are processed, we can update the last processed version in DB and enqueue task for each org
-	err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		for _, blobInfo := range blobInfos {
-			datasetUpdate, err := w.repo.CreateContinuousScreeningDatasetUpdate(ctx, tx, models.CreateContinuousScreeningDatasetUpdate{
-				DatasetName:   blobInfo.datasetName,
-				Version:       blobInfo.version,
-				DeltaFilePath: blobInfo.blobKey,
-				TotalItems:    blobInfo.lines,
-			})
+		var blobInfos []deltaBlobInfo
+		// Doesn't need to parallelize here. Much of case, we will have one catalog scope which groups datasets
+		// datasetsWithVersionRange will be small (1 scope)
+		// Inside a scope, we will have several versions to process
+		for _, datasetWithRange := range datasetsWithVersionRange {
+			resultBlobInfos, err := w.processDatasetVersion(
+				ctx,
+				datasetWithRange,
+			)
 			if err != nil {
 				return err
 			}
-			for _, config := range activeConfigs {
-				if err := w.checkFeatureAccess(ctx, config.OrgId); err != nil {
-					logger.DebugContext(ctx, "Could not process delta files due to feature access check", "org_id", config.OrgId, "error", err)
-					continue
-				}
+			blobInfos = append(blobInfos, resultBlobInfos...)
+		}
 
-				update, err := w.repo.CreateContinuousScreeningUpdateJob(ctx, tx, models.CreateContinuousScreeningUpdateJob{
-					DatasetUpdateId: datasetUpdate.Id,
-					ConfigId:        config.Id,
-					OrgId:           config.OrgId,
+		// Since the datasets are processed, we can update the last processed version in DB and enqueue task for each org
+		err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+			for _, blobInfo := range blobInfos {
+				datasetUpdate, err := w.repo.CreateContinuousScreeningDatasetUpdate(ctx, tx, models.CreateContinuousScreeningDatasetUpdate{
+					DatasetName:   blobInfo.datasetName,
+					Version:       blobInfo.version,
+					DeltaFilePath: blobInfo.blobKey,
+					TotalItems:    blobInfo.lines,
 				})
 				if err != nil {
 					return err
 				}
-				err = w.taskEnqueuer.EnqueueContinuousScreeningApplyDeltaFileTask(
-					ctx,
-					tx,
-					config.OrgId,
-					update.Id,
-				)
-				if err != nil {
-					return err
+				for _, config := range activeConfigs {
+					if err := w.checkFeatureAccess(ctx, config.OrgId); err != nil {
+						logger.DebugContext(ctx, "Could not process delta files due to feature access check", "org_id", config.OrgId, "error", err)
+						continue
+					}
+
+					update, err := w.repo.CreateContinuousScreeningUpdateJob(ctx, tx, models.CreateContinuousScreeningUpdateJob{
+						Provider:        provider,
+						DatasetUpdateId: datasetUpdate.Id,
+						ConfigId:        config.Id,
+						OrgId:           config.OrgId,
+					})
+					if err != nil {
+						return err
+					}
+					err = w.taskEnqueuer.EnqueueContinuousScreeningApplyDeltaFileTask(
+						ctx,
+						tx,
+						config.OrgId,
+						update.Id,
+					)
+					if err != nil {
+						return err
+					}
 				}
 			}
+			return nil
+		})
+		if err != nil {
+			return err
 		}
-		return nil
-	})
-	if err != nil {
-		return err
 	}
 
 	logger.DebugContext(ctx, "Successfully processed dataset updates")
@@ -300,7 +303,7 @@ func (w *ScanDatasetUpdatesWorker) getOutdatedDatasets(
 
 // Helper to get detailed datasets info from catalog
 // Filter out marble datasets
-func getLoadedDataset(ctx context.Context, catalog models.OpenSanctionsRawCatalog) []models.OpenSanctionsRawDataset {
+func getLoadedDataset(ctx context.Context, catalog models.OpenSanctionsRawCatalog, provider models.ScreeningProvider) []models.OpenSanctionsRawDataset {
 	logger := utils.LoggerFromContext(ctx)
 	loadedDataset := append(catalog.Current, catalog.Outdated...)
 	datasetList := make([]models.OpenSanctionsRawDataset, 0, len(loadedDataset))
@@ -308,6 +311,12 @@ func getLoadedDataset(ctx context.Context, catalog models.OpenSanctionsRawCatalo
 		d, ok := catalog.Datasets[dataset]
 		if !ok {
 			logger.WarnContext(ctx, "Loaded dataset is not present in catalog dataset, ignore it", "dataset", dataset)
+			continue
+		}
+		if dataset == "lexisnexis" && provider != "lexisnexis" {
+			continue
+		}
+		if dataset != "lexisnexis" && provider == "lexisnexis" {
 			continue
 		}
 		if slices.Contains(d.Tags, MarbleContinuousScreeningTag) {

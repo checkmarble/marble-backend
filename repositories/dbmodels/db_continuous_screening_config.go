@@ -11,20 +11,22 @@ import (
 const TABLE_CONTINUOUS_SCREENING_CONFIGS = "continuous_screening_configs"
 
 type DBContinuousScreeningConfig struct {
-	Id             uuid.UUID `db:"id"`
-	StableId       uuid.UUID `db:"stable_id"`
-	OrgId          uuid.UUID `db:"org_id"`
-	InboxId        uuid.UUID `db:"inbox_id"`
-	Name           string    `db:"name"`
-	Description    string    `db:"description"`
-	Algorithm      string    `db:"algorithm"`
-	ObjectTypes    []string  `db:"object_types"`
-	Datasets       []string  `db:"datasets"`
-	MatchThreshold int       `db:"match_threshold"`
-	MatchLimit     int       `db:"match_limit"`
-	Enabled        bool      `db:"enabled"`
-	CreatedAt      time.Time `db:"created_at"`
-	UpdatedAt      time.Time `db:"updated_at"`
+	Id             uuid.UUID                     `db:"id"`
+	StableId       uuid.UUID                     `db:"stable_id"`
+	OrgId          uuid.UUID                     `db:"org_id"`
+	InboxId        uuid.UUID                     `db:"inbox_id"`
+	Name           string                        `db:"name"`
+	Description    string                        `db:"description"`
+	Algorithm      string                        `db:"algorithm"`
+	ObjectTypes    []string                      `db:"object_types"`
+	Provider       models.ScreeningProvider      `db:"provider"`
+	Datasets       []string                      `db:"datasets"`
+	Filters        models.ScreeningConfigFilters `db:"filters"`
+	MatchThreshold int                           `db:"match_threshold"`
+	MatchLimit     int                           `db:"match_limit"`
+	Enabled        bool                          `db:"enabled"`
+	CreatedAt      time.Time                     `db:"created_at"`
+	UpdatedAt      time.Time                     `db:"updated_at"`
 }
 
 var SelectContinuousScreeningConfigColumnList = utils.ColumnList[DBContinuousScreeningConfig]()
@@ -39,7 +41,9 @@ func AdaptContinuousScreeningConfig(db DBContinuousScreeningConfig) (models.Cont
 		Description:    db.Description,
 		Algorithm:      db.Algorithm,
 		ObjectTypes:    db.ObjectTypes,
+		Provider:       db.Provider,
 		Datasets:       db.Datasets,
+		Filters:        db.Filters,
 		MatchThreshold: db.MatchThreshold,
 		MatchLimit:     db.MatchLimit,
 		Enabled:        db.Enabled,

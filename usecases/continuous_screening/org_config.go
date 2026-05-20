@@ -3,6 +3,7 @@ package continuous_screening
 import (
 	"context"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -11,6 +12,51 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
+
+func (uc *ContinuousScreeningUsecase) AdaptLegacyDatasets(ctx context.Context, config models.ContinuousScreeningConfig) (models.ContinuousScreeningConfig, error) {
+	if config.Provider != "opensanctions" || !config.Filters.IsEmpty() {
+		return config, nil
+	}
+
+	upstreamCatalog, err := uc.screeningProvider.GetCatalog(ctx, "opensanctions")
+	if err != nil {
+		return models.ContinuousScreeningConfig{}, err
+	}
+
+	catalog := dto.AdaptOpenSanctionsCatalog(upstreamCatalog)
+
+	config.Filters = models.ScreeningConfigFilters{
+		Sanctions:    &models.ScreeningConfigFilter{Datasets: make([]string, 0)},
+		Peps:         &models.ScreeningConfigFilter{Datasets: make([]string, 0)},
+		AdverseMedia: &models.ScreeningConfigFilter{Datasets: make([]string, 0)},
+		Other:        &models.ScreeningConfigFilter{Datasets: make([]string, 0)},
+	}
+
+	for _, ds := range config.Datasets {
+		for _, s := range catalog.Sections {
+			for _, d := range s.Datasets {
+				if d.Name == ds {
+					switch d.Tag {
+					case "sanctions":
+						config.Filters.Sanctions.Enabled = true
+						config.Filters.Sanctions.Datasets = append(config.Filters.Sanctions.Datasets, ds)
+					case "peps":
+						config.Filters.Peps.Enabled = true
+						config.Filters.Peps.Datasets = append(config.Filters.Peps.Datasets, ds)
+					case "adverse-media":
+						config.Filters.AdverseMedia.Enabled = true
+						config.Filters.AdverseMedia.Datasets = append(config.Filters.AdverseMedia.Datasets, ds)
+					default:
+						config.Filters.Other.Enabled = true
+						config.Filters.Other.Datasets = append(config.Filters.Other.Datasets, ds)
+					}
+				}
+			}
+		}
+	}
+
+	return config, nil
+}
 
 func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfig(ctx context.Context, id uuid.UUID) (models.ContinuousScreeningConfig, error) {
 	if err := uc.CheckFeatureAccess(ctx, uc.enforceSecurity.OrgId()); err != nil {
@@ -23,6 +69,11 @@ func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfig(ctx context.C
 	}
 
 	if err := uc.enforceSecurity.ReadContinuousScreeningConfig(config); err != nil {
+		return models.ContinuousScreeningConfig{}, err
+	}
+
+	config, err = uc.AdaptLegacyDatasets(ctx, config)
+	if err != nil {
 		return models.ContinuousScreeningConfig{}, err
 	}
 
@@ -46,6 +97,11 @@ func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfigByStableId(
 		return models.ContinuousScreeningConfig{}, err
 	}
 
+	config, err = uc.AdaptLegacyDatasets(ctx, config)
+	if err != nil {
+		return models.ContinuousScreeningConfig{}, err
+	}
+
 	return config, nil
 }
 
@@ -64,10 +120,17 @@ func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfigsByOrgId(
 		return []models.ContinuousScreeningConfig{}, err
 	}
 
-	for _, config := range configs {
+	for idx, config := range configs {
 		if err := uc.enforceSecurity.ReadContinuousScreeningConfig(config); err != nil {
 			return []models.ContinuousScreeningConfig{}, err
 		}
+
+		config, err = uc.AdaptLegacyDatasets(ctx, config)
+		if err != nil {
+			return []models.ContinuousScreeningConfig{}, err
+		}
+
+		configs[idx] = config
 	}
 
 	return configs, nil
@@ -124,8 +187,12 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 		ctx,
 		uc.transactionFactory,
 		func(tx repositories.Transaction) (models.ContinuousScreeningConfig, error) {
+			org, err := uc.repository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), uc.enforceSecurity.OrgId())
+			if err != nil {
+				return models.ContinuousScreeningConfig{}, err
+			}
+
 			var inbox models.Inbox
-			var err error
 			// Check if the inbox exists
 			inbox, err = uc.inboxReader.GetInboxById(ctx, tx, input.InboxId)
 			if err != nil {
@@ -152,6 +219,8 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningConfig(
 			if err := uc.checkDataModelConfiguration(ctx, tx, input.OrgId, input.ObjectTypes); err != nil {
 				return models.ContinuousScreeningConfig{}, err
 			}
+
+			input.Provider = org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring)
 
 			configCreated, err := uc.repository.CreateContinuousScreeningConfig(ctx, tx, input)
 			if err != nil {
@@ -331,6 +400,7 @@ func createUpdatedConfig(config models.ContinuousScreeningConfig,
 		Description:    pure_utils.PtrValueOrDefault(updateInput.Description, config.Description),
 		Algorithm:      pure_utils.PtrValueOrDefault(updateInput.Algorithm, config.Algorithm),
 		Datasets:       pure_utils.PtrSliceValueOrDefault(updateInput.Datasets, config.Datasets),
+		Filters:        pure_utils.PtrValueOrDefault(updateInput.Filters, config.Filters),
 		MatchThreshold: pure_utils.PtrValueOrDefault(updateInput.MatchThreshold, config.MatchThreshold),
 		MatchLimit:     pure_utils.PtrValueOrDefault(updateInput.MatchLimit, config.MatchLimit),
 		ObjectTypes:    pure_utils.PtrSliceValueOrDefault(updateInput.ObjectTypes, config.ObjectTypes),

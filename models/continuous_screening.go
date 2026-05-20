@@ -60,6 +60,7 @@ type ContinuousScreening struct {
 	OrgId                             uuid.UUID
 	ContinuousScreeningConfigId       uuid.UUID
 	ContinuousScreeningConfigStableId uuid.UUID
+	Provider                          ScreeningProvider
 	CaseId                            *uuid.UUID
 	ObjectType                        *string
 	ObjectId                          *string
@@ -207,6 +208,7 @@ func (s ContinuousScreeningUpdateJobStatus) String() string {
 // ContinuousScreeningUpdateJob represents a job to process dataset updates
 type ContinuousScreeningUpdateJob struct {
 	Id              uuid.UUID
+	Provider        ScreeningProvider
 	DatasetUpdateId uuid.UUID
 	ConfigId        uuid.UUID
 	OrgId           uuid.UUID
@@ -216,6 +218,7 @@ type ContinuousScreeningUpdateJob struct {
 }
 
 type CreateContinuousScreeningUpdateJob struct {
+	Provider        ScreeningProvider
 	DatasetUpdateId uuid.UUID
 	ConfigId        uuid.UUID
 	OrgId           uuid.UUID

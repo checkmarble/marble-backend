@@ -169,6 +169,8 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig() {
 
 	// Mock expectations
 	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
+	suite.repository.On("GetOrganizationById", mock.Anything, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
 		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
@@ -297,6 +299,8 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_NonEmptyObj
 
 	// Mock expectations
 	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
+	suite.repository.On("GetOrganizationById", mock.Anything, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
 		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
@@ -695,6 +699,8 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_TableMissin
 
 	// Mock expectations
 	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
+	suite.repository.On("GetOrganizationById", mock.Anything, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
 		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
@@ -756,6 +762,8 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_TableMissin
 
 	// Mock expectations
 	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
+	suite.repository.On("GetOrganizationById", mock.Anything, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
 		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
@@ -805,6 +813,8 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_ObjectTypeN
 
 	// Mock expectations
 	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
+	suite.repository.On("GetOrganizationById", mock.Anything, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
 		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
@@ -850,6 +860,8 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_InboxNotAct
 
 	// Mock expectations
 	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
+	suite.repository.On("GetOrganizationById", mock.Anything, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
 		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,
@@ -900,6 +912,8 @@ func (suite *OrgConfigTestSuite) TestCreateContinuousScreeningConfig_InboxNotFou
 
 	// Mock expectations
 	suite.enforceSecurity.On("OrgId").Return(suite.orgId)
+	suite.repository.On("GetOrganizationById", mock.Anything, mock.Anything, suite.orgId).
+		Return(models.Organization{Id: suite.orgId}, nil)
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything,
 		suite.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
 		ContinuousScreening: models.Allowed,

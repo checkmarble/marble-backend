@@ -299,6 +299,7 @@ type ContinuousScreeningIngestionUsecase interface {
 }
 
 type ContinuousScreeningScreeningProvider interface {
+	GetCatalog(ctx context.Context, provider models.ScreeningProvider) (models.OpenSanctionsCatalog, error)
 	Search(
 		ctx context.Context,
 		providerName models.ScreeningProvider,

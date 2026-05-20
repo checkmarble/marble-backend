@@ -12,16 +12,16 @@ import (
 )
 
 type APIOrganization struct {
-	Id                      string                              `json:"id"`
-	Name                    string                              `json:"name"`
-	DefaultScenarioTimezone *string                             `json:"default_scenario_timezone"`
-	ScreeningProviders      map[string]models.ScreeningProvider `json:"screening_providers"`
-	SanctionsThreshold      int                                 `json:"sanctions_threshold"`
-	SanctionsLimit          int                                 `json:"sanctions_limit"`
-	AutoAssignQueueLimit    int                                 `json:"auto_assign_queue_limit"`
-	AllowedNetworks         []SubnetDto                         `json:"allowed_networks"`
-	SentryReplayEnabled     bool                                `json:"sentry_replay_enabled"`
-	Environment             string                              `json:"environment"`
+	Id                      string                                               `json:"id"`
+	Name                    string                                               `json:"name"`
+	DefaultScenarioTimezone *string                                              `json:"default_scenario_timezone"`
+	ScreeningProviders      map[models.ScreeningFeature]models.ScreeningProvider `json:"screening_providers"`
+	SanctionsThreshold      int                                                  `json:"sanctions_threshold"`
+	SanctionsLimit          int                                                  `json:"sanctions_limit"`
+	AutoAssignQueueLimit    int                                                  `json:"auto_assign_queue_limit"`
+	AllowedNetworks         []SubnetDto                                          `json:"allowed_networks"`
+	SentryReplayEnabled     bool                                                 `json:"sentry_replay_enabled"`
+	Environment             string                                               `json:"environment"`
 }
 
 func AdaptOrganizationDto(org models.Organization) APIOrganization {
