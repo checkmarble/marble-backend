@@ -122,7 +122,7 @@ func (scf *ScreeningConfigFilters) IsEmpty() bool {
 		return true
 	}
 
-	return scf.Sanctions == nil && scf.Peps == nil && scf.AdverseMedia == nil && scf.Other == nil
+	return scf.Global == nil && scf.Sanctions == nil && scf.Peps == nil && scf.AdverseMedia == nil && scf.Other == nil
 }
 
 func (scf ResolvedScreeningConfigFilters) NoFilters() bool {
@@ -140,6 +140,36 @@ func (scf ResolvedScreeningConfigFilters) WithRootTopics() map[string]ScreeningC
 		"adverse_media": scf.AdverseMedia,
 		"other":         scf.Other,
 	}
+}
+
+func (scf ResolvedScreeningConfigFilters) Equal(other ResolvedScreeningConfigFilters) bool {
+	lhsFilter := scf.WithRootTopics()
+	rhsFilter := other.WithRootTopics()
+
+	for k, lhs := range lhsFilter {
+		rhs := rhsFilter[k]
+
+		if lhs.Enabled != rhs.Enabled {
+			return false
+		}
+		if !pure_utils.ContainsSameElements(lhs.Datasets, rhs.Datasets) {
+			return false
+		}
+		if len(lhs.Topics) != len(rhs.Topics) {
+			return false
+		}
+		for lhsK, lhsV := range lhs.Topics {
+			rhsV, ok := rhs.Topics[lhsK]
+			if !ok {
+				return false
+			}
+			if !pure_utils.ContainsSameElements(lhsV, rhsV) {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
 func (scf *ScreeningConfigFilters) Resolve() ResolvedScreeningConfigFilters {
@@ -226,11 +256,19 @@ func (cfg ScreeningConfigPreprocessing) equal(other ScreeningConfigPreprocessing
 }
 
 func (scc ScreeningConfig) HasSameQuery(other ScreeningConfig) bool {
+	if scc.Provider != other.Provider {
+		return false
+	}
+
 	if scc.StableId != other.StableId {
 		return false
 	}
 
 	if !pure_utils.ContainsSameElements(scc.Datasets, other.Datasets) {
+		return false
+	}
+
+	if !scc.Filters.Resolve().Equal(other.Filters.Resolve()) {
 		return false
 	}
 

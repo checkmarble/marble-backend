@@ -767,17 +767,17 @@ func (uc ScreeningUsecase) EnrichMatchWithoutAuthorization(ctx context.Context, 
 		return models.ScreeningMatch{}, err
 	}
 
+	screening, err := uc.repository.GetScreening(ctx, uc.executorFactory.NewExecutor(), match.ScreeningId)
+	if err != nil {
+		return models.ScreeningMatch{}, err
+	}
+
 	if match.Enriched {
 		return models.ScreeningMatch{}, errors.WithDetail(models.UnprocessableEntityError,
 			"this screening match was already enriched")
 	}
 
-	org, err := uc.organizationRepository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), uc.enforceSecurity.OrgId())
-	if err != nil {
-		return models.ScreeningMatch{}, errors.Wrap(err, "could not retrieve organization")
-	}
-
-	newPayload, err := uc.openSanctionsProvider.EnrichMatch(ctx, org.GetScreeningProviderFor(models.ScreeningFeatureManualSearch), match)
+	newPayload, err := uc.openSanctionsProvider.EnrichMatch(ctx, screening.Provider, match)
 	if err != nil {
 		return models.ScreeningMatch{}, err
 	}

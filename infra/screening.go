@@ -95,7 +95,9 @@ func (os *Screening) WithAlgorithm(algo string) *Screening {
 }
 
 func (os *Screening) WithScope(scope string) *Screening {
-	os.providers[models.ScreeningProviderOpenSanctions].scope = scope
+	if p, ok := os.providers[models.ScreeningProviderOpenSanctions]; ok && p != nil {
+		os.providers[models.ScreeningProviderOpenSanctions].scope = scope
+	}
 
 	return os
 }

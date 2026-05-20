@@ -193,6 +193,7 @@ func (s ScreeningRawSearchResponseWithMatches) AdaptScreeningFromSearchResponse(
 				Name:     query.Config.Name,
 				Provider: query.Config.Provider,
 				Datasets: query.Config.Datasets,
+				Filters:  query.Config.Filters,
 			},
 			OrgConfig:         query.OrgConfig,
 			SearchInput:       s.SearchInput,

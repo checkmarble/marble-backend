@@ -88,6 +88,10 @@ func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestUrl, &body)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "could not create screening request")
+	}
+
 	req.Header.Set("content-type", "application/json")
 
 	return req, rawQuery.Bytes(), err
@@ -168,7 +172,11 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context) (
 		return dto.ScreeningAvailableFilters{}, err
 	}
 
-	req, _ := http.NewRequest(http.MethodPost, url, &body)
+	req, err := http.NewRequest(http.MethodPost, url, &body)
+	if err != nil {
+		return dto.ScreeningAvailableFilters{}, errors.Wrap(err, "could not create available filters request")
+	}
+
 	req.Header.Set("content-type", "application/json")
 
 	resp, err := p.Config.Client().Do(req)
@@ -261,8 +269,10 @@ func (p ScreeningLexisNexisProvider) GetLexisNexisCatalog(ctx context.Context) (
 	if err != nil {
 		return httpmodels.HTTPOpenSanctionCatalogDataset{}, err
 	}
-
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return httpmodels.HTTPOpenSanctionCatalogDataset{}, errors.Newf("got %d while fetching Lexis Nexis catalog", resp.StatusCode)
+	}
 
 	var catalog httpmodels.HTTPOpenSanctionCatalogResponse
 

@@ -162,14 +162,17 @@ func (uc ScreeningUsecase) DeleteScreeningConfig(ctx context.Context, iterationI
 func (uc ScreeningUsecase) AdaptConfigForProvider(providerName models.ScreeningProvider, scc models.UpdateScreeningConfigInput) models.UpdateScreeningConfigInput {
 	switch providerName {
 	case models.ScreeningProviderLexisNexis:
+		scc.Provider = new(models.ScreeningProviderLexisNexis)
 		scc.Datasets = []string{string(models.ScreeningProviderLexisNexis)}
 
 	default:
-		scc.Datasets = []string{}
+		scc.Provider = new(models.ScreeningProviderOpenSanctions)
 
-		if scc.Filters.Sanctions != nil {
-			scc.Datasets = scc.Filters.Sanctions.Datasets
-		}
+		filters := scc.Filters.Resolve()
+
+		scc.Datasets = append(filters.Sanctions.Datasets, filters.Peps.Datasets...)
+		scc.Datasets = append(scc.Datasets, filters.AdverseMedia.Datasets...)
+		scc.Datasets = append(scc.Datasets, filters.Other.Datasets...)
 	}
 
 	return scc
