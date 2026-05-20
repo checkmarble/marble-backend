@@ -16,6 +16,11 @@ func (m *OpenSanctionsRepository) GetRawCatalog(ctx context.Context, provider mo
 	return args.Get(0).(models.OpenSanctionsRawCatalog), args.Error(1)
 }
 
+func (m *OpenSanctionsRepository) GetCatalog(ctx context.Context, provider models.ScreeningProvider) (models.OpenSanctionsCatalog, error) {
+	args := m.Called(ctx, provider)
+	return args.Get(0).(models.OpenSanctionsCatalog), args.Error(1)
+}
+
 func (m *OpenSanctionsRepository) Search(
 	ctx context.Context,
 	providerName models.ScreeningProvider,

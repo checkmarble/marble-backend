@@ -74,6 +74,7 @@ type registerObjectWorkerIngestedDataReader interface {
 }
 
 type registerObjectWorkerCSUsecase interface {
+	AdaptLegacyDatasets(ctx context.Context, config models.ContinuousScreeningConfig) (models.ContinuousScreeningConfig, error)
 	GetDataModelTableAndMapping(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -182,6 +183,11 @@ func (w *RegisterObjectWorker) Work(ctx context.Context, job *river.Job[models.C
 	}
 
 	config, err := w.repo.GetContinuousScreeningConfigByStableId(ctx, exec, job.Args.ConfigStableId)
+	if err != nil {
+		return err
+	}
+
+	config, err = w.usecase.AdaptLegacyDatasets(ctx, config)
 	if err != nil {
 		return err
 	}

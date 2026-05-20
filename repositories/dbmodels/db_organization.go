@@ -30,7 +30,7 @@ const TABLE_ORGANIZATION = "organizations"
 var ColumnsSelectOrganization = utils.ColumnList[DBOrganizationResult]()
 
 func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
-	screeningProviders := make(map[string]models.ScreeningProvider)
+	screeningProviders := make(map[models.ScreeningFeature]models.ScreeningProvider)
 
 	if err := json.Unmarshal(db.ScreeningProviders, &screeningProviders); err != nil {
 		return models.Organization{}, err

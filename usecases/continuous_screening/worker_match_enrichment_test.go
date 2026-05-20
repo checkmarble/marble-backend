@@ -64,7 +64,7 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_OpenSanctionsNotConfigured
 
 	suite.repository.On("GetOrganizationById", suite.ctx, mock.Anything, suite.orgId).Return(models.Organization{
 		Id:                  suite.orgId,
-		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[string]models.ScreeningProvider{}},
+		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[models.ScreeningFeature]models.ScreeningProvider{}},
 	}, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", suite.ctx, mock.Anything, suite.continuousScreeningId).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
@@ -92,7 +92,7 @@ func (suite *MatchEnrichmentWorkerTestSuite) TestWork_OpenSanctionsNotSelfHosted
 
 	suite.repository.On("GetOrganizationById", suite.ctx, mock.Anything, suite.orgId).Return(models.Organization{
 		Id:                  suite.orgId,
-		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[string]models.ScreeningProvider{}},
+		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{Providers: map[models.ScreeningFeature]models.ScreeningProvider{}},
 	}, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", suite.ctx, mock.Anything, suite.continuousScreeningId).Return(models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{

@@ -282,6 +282,7 @@ func prepareOpenSanctionsQuery(
 		Config: models.ScreeningConfig{
 			Datasets: config.Datasets,
 		},
+		Filters: config.Filters,
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
 				Type:    dataModelEntityType,
@@ -431,12 +432,7 @@ func (uc *ContinuousScreeningUsecase) DoScreening(
 		return models.ScreeningWithMatches{}, err
 	}
 
-	org, err := uc.repository.GetOrganizationById(ctx, exec, config.OrgId)
-	if err != nil {
-		return models.ScreeningWithMatches{}, errors.Wrap(err, "could not retrieve organization")
-	}
-
-	return uc.executeScreeningWithRetry(ctx, org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring), query)
+	return uc.executeScreeningWithRetry(ctx, config.Provider, query)
 }
 
 // DoScreeningForEntity performs screening for OpenSanction entities against Marble data (OpenSanction → Marble direction)

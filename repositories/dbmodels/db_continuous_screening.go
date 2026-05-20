@@ -14,24 +14,25 @@ const TABLE_CONTINUOUS_SCREENINGS = "continuous_screenings"
 var SelectContinuousScreeningColumn = utils.ColumnList[DBContinuousScreening]()
 
 type DBContinuousScreening struct {
-	Id                                uuid.UUID       `db:"id"`
-	OrgId                             uuid.UUID       `db:"org_id"`
-	ContinuousScreeningConfigId       uuid.UUID       `db:"continuous_screening_config_id"`
-	ContinuousScreeningConfigStableId uuid.UUID       `db:"continuous_screening_config_stable_id"`
-	CaseId                            *uuid.UUID      `db:"case_id"`
-	ObjectType                        *string         `db:"object_type"`
-	ObjectId                          *string         `db:"object_id"`
-	ObjectInternalId                  *uuid.UUID      `db:"object_internal_id"`
-	OpenSanctionEntityId              *string         `db:"opensanction_entity_id"`
-	OpenSanctionEntityPayload         json.RawMessage `db:"opensanction_entity_payload"`
-	OpenSanctionEntityEnriched        bool            `db:"opensanction_entity_enriched"`
-	Status                            string          `db:"status"`
-	TriggerType                       string          `db:"trigger_type"`
-	SearchInput                       json.RawMessage `db:"search_input"`
-	IsPartial                         bool            `db:"is_partial"`
-	NumberOfMatches                   int             `db:"number_of_matches"`
-	CreatedAt                         time.Time       `db:"created_at"`
-	UpdatedAt                         time.Time       `db:"updated_at"`
+	Id                                uuid.UUID                `db:"id"`
+	OrgId                             uuid.UUID                `db:"org_id"`
+	ContinuousScreeningConfigId       uuid.UUID                `db:"continuous_screening_config_id"`
+	ContinuousScreeningConfigStableId uuid.UUID                `db:"continuous_screening_config_stable_id"`
+	Provider                          models.ScreeningProvider `db:"provider"`
+	CaseId                            *uuid.UUID               `db:"case_id"`
+	ObjectType                        *string                  `db:"object_type"`
+	ObjectId                          *string                  `db:"object_id"`
+	ObjectInternalId                  *uuid.UUID               `db:"object_internal_id"`
+	OpenSanctionEntityId              *string                  `db:"opensanction_entity_id"`
+	OpenSanctionEntityPayload         json.RawMessage          `db:"opensanction_entity_payload"`
+	OpenSanctionEntityEnriched        bool                     `db:"opensanction_entity_enriched"`
+	Status                            string                   `db:"status"`
+	TriggerType                       string                   `db:"trigger_type"`
+	SearchInput                       json.RawMessage          `db:"search_input"`
+	IsPartial                         bool                     `db:"is_partial"`
+	NumberOfMatches                   int                      `db:"number_of_matches"`
+	CreatedAt                         time.Time                `db:"created_at"`
+	UpdatedAt                         time.Time                `db:"updated_at"`
 }
 
 func AdaptContinuousScreening(db DBContinuousScreening) (models.ContinuousScreening, error) {
@@ -40,6 +41,7 @@ func AdaptContinuousScreening(db DBContinuousScreening) (models.ContinuousScreen
 		OrgId:                             db.OrgId,
 		ContinuousScreeningConfigId:       db.ContinuousScreeningConfigId,
 		ContinuousScreeningConfigStableId: db.ContinuousScreeningConfigStableId,
+		Provider:                          db.Provider,
 		CaseId:                            db.CaseId,
 		ObjectType:                        db.ObjectType,
 		ObjectId:                          db.ObjectId,
@@ -184,18 +186,20 @@ const TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS = "continuous_screening_update_jobs
 var SelectContinuousScreeningUpdateJobColumn = utils.ColumnList[DBContinuousScreeningUpdateJob]()
 
 type DBContinuousScreeningUpdateJob struct {
-	Id                                 uuid.UUID `db:"id"`
-	ContinuousScreeningDatasetUpdateId uuid.UUID `db:"continuous_screening_dataset_update_id"`
-	ContinuousScreeningConfigId        uuid.UUID `db:"continuous_screening_config_id"`
-	OrgId                              uuid.UUID `db:"org_id"`
-	Status                             string    `db:"status"`
-	CreatedAt                          time.Time `db:"created_at"`
-	UpdatedAt                          time.Time `db:"updated_at"`
+	Id                                 uuid.UUID                `db:"id"`
+	Provider                           models.ScreeningProvider `db:"provider"`
+	ContinuousScreeningDatasetUpdateId uuid.UUID                `db:"continuous_screening_dataset_update_id"`
+	ContinuousScreeningConfigId        uuid.UUID                `db:"continuous_screening_config_id"`
+	OrgId                              uuid.UUID                `db:"org_id"`
+	Status                             string                   `db:"status"`
+	CreatedAt                          time.Time                `db:"created_at"`
+	UpdatedAt                          time.Time                `db:"updated_at"`
 }
 
 func AdaptContinuousScreeningUpdateJob(dto DBContinuousScreeningUpdateJob) (models.ContinuousScreeningUpdateJob, error) {
 	return models.ContinuousScreeningUpdateJob{
 		Id:              dto.Id,
+		Provider:        dto.Provider,
 		DatasetUpdateId: dto.ContinuousScreeningDatasetUpdateId,
 		ConfigId:        dto.ContinuousScreeningConfigId,
 		OrgId:           dto.OrgId,

@@ -106,6 +106,9 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		utils.GetEnv("SCREENING_OPENSANCTIONS_AUTH_METHOD", ""),
 		utils.GetEnv("SCREENING_OPENSANCTIONS_API_KEY", ""),
 	)
+	if host := utils.GetEnv("SCREENING_LEXISNEXIS_API_HOST", ""); host != "" {
+		openSanctionsConfig.WithLexisNexisHost(host)
+	}
 	if apiUrl := utils.GetEnv("NAME_RECOGNITION_API_URL", ""); apiUrl != "" {
 		openSanctionsConfig.WithNameRecognition(apiUrl,
 			utils.GetEnv("NAME_RECOGNITION_API_KEY", ""))

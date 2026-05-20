@@ -14,19 +14,21 @@ import (
 const DefaultContinuousScreeningAlgorithm = "best"
 
 type ContinuousScreeningConfigDto struct {
-	Id             uuid.UUID `json:"id"`
-	StableId       uuid.UUID `json:"stable_id"`
-	InboxId        uuid.UUID `json:"inbox_id"`
-	Name           string    `json:"name"`
-	Description    string    `json:"description,omitempty"`
-	ObjectTypes    []string  `json:"object_types"`
-	Algorithm      string    `json:"algorithm"`
-	Datasets       []string  `json:"datasets"`
-	MatchThreshold int       `json:"match_threshold"`
-	MatchLimit     int       `json:"match_limit"`
-	Enabled        bool      `json:"enabled"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	Id             uuid.UUID                     `json:"id"`
+	StableId       uuid.UUID                     `json:"stable_id"`
+	InboxId        uuid.UUID                     `json:"inbox_id"`
+	Name           string                        `json:"name"`
+	Description    string                        `json:"description,omitempty"`
+	ObjectTypes    []string                      `json:"object_types"`
+	Algorithm      string                        `json:"algorithm"`
+	Provider       models.ScreeningProvider      `json:"provider"`
+	Datasets       []string                      `json:"datasets"`
+	Filters        models.ScreeningConfigFilters `json:"filters"`
+	MatchThreshold int                           `json:"match_threshold"`
+	MatchLimit     int                           `json:"match_limit"`
+	Enabled        bool                          `json:"enabled"`
+	CreatedAt      time.Time                     `json:"created_at"`
+	UpdatedAt      time.Time                     `json:"updated_at"`
 }
 
 func AdaptContinuousScreeningConfigDto(config models.ContinuousScreeningConfig) ContinuousScreeningConfigDto {
@@ -38,7 +40,9 @@ func AdaptContinuousScreeningConfigDto(config models.ContinuousScreeningConfig) 
 		Description:    config.Description,
 		ObjectTypes:    config.ObjectTypes,
 		Algorithm:      config.Algorithm,
+		Provider:       config.Provider,
 		Datasets:       config.Datasets,
+		Filters:        config.Filters,
 		MatchThreshold: config.MatchThreshold,
 		MatchLimit:     config.MatchLimit,
 		Enabled:        config.Enabled,
@@ -111,6 +115,7 @@ type CreateContinuousScreeningConfigDto struct {
 	InboxId        uuid.UUID                             `json:"inbox_id"`
 	Algorithm      *string                               `json:"algorithm"`
 	Datasets       []string                              `json:"datasets" binding:"required"`
+	Filters        models.ScreeningConfigFilters         `json:"filters"`
 	MatchThreshold int                                   `json:"match_threshold" binding:"required"`
 	MatchLimit     int                                   `json:"match_limit" binding:"required"`
 	ObjectTypes    []string                              `json:"object_types" binding:"required"`
@@ -118,12 +123,12 @@ type CreateContinuousScreeningConfigDto struct {
 }
 
 func (dto CreateContinuousScreeningConfigDto) Validate() error {
-	if len(dto.Datasets) == 0 {
-		return errors.Wrap(
-			models.BadParameterError,
-			"datasets are required for continuous screening config",
-		)
-	}
+	// if len(dto.Datasets) == 0 {
+	// 	return errors.Wrap(
+	// 		models.BadParameterError,
+	// 		"datasets are required for continuous screening config",
+	// 	)
+	// }
 
 	if dto.MatchThreshold < 0 || dto.MatchThreshold > 100 {
 		return errors.Wrap(
@@ -168,6 +173,7 @@ func AdaptCreateContinuousScreeningConfigDtoToModel(dto CreateContinuousScreenin
 		Description:    dto.Description,
 		Algorithm:      *dto.Algorithm,
 		Datasets:       dto.Datasets,
+		Filters:        dto.Filters,
 		MatchThreshold: dto.MatchThreshold,
 		MatchLimit:     dto.MatchLimit,
 		ObjectTypes:    dto.ObjectTypes,
@@ -184,6 +190,7 @@ type UpdateContinuousScreeningConfigDto struct {
 	InboxId        *uuid.UUID                            `json:"inbox_id"`
 	Algorithm      *string                               `json:"algorithm"`
 	Datasets       *[]string                             `json:"datasets"`
+	Filters        *models.ScreeningConfigFilters        `json:"filters"`
 	MatchThreshold *int                                  `json:"match_threshold"`
 	MatchLimit     *int                                  `json:"match_limit"`
 	Enabled        *bool                                 `json:"enabled"`
@@ -206,12 +213,13 @@ func (dto UpdateContinuousScreeningConfigDto) Validate() error {
 		)
 	}
 
-	if dto.Datasets != nil && len(*dto.Datasets) == 0 {
-		return errors.Wrap(
-			models.BadParameterError,
-			"datasets cannot be empty",
-		)
-	}
+	// TODO: That is going to cause trouble
+	// if dto.Datasets != nil && len(*dto.Datasets) == 0 {
+	// 	return errors.Wrap(
+	// 		models.BadParameterError,
+	// 		"datasets cannot be empty",
+	// 	)
+	// }
 
 	if dto.ObjectTypes != nil && len(*dto.ObjectTypes) == 0 {
 		return errors.Wrap(
@@ -239,6 +247,7 @@ func AdaptUpdateContinuousScreeningConfigDtoToModel(dto UpdateContinuousScreenin
 		InboxId:        dto.InboxId,
 		Algorithm:      dto.Algorithm,
 		Datasets:       dto.Datasets,
+		Filters:        dto.Filters,
 		MatchThreshold: dto.MatchThreshold,
 		MatchLimit:     dto.MatchLimit,
 		Enabled:        dto.Enabled,

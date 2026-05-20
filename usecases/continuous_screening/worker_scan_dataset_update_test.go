@@ -270,8 +270,8 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_NewDataset_OnlyProcesse
 	job := &river.Job[models.ContinuousScreeningScanDatasetUpdatesArgs]{}
 
 	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderOpenSanctions).Return(catalog, nil)
+	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderLexisNexis).Return(catalog, nil)
 	suite.repository.On("ListContinuousScreeningConfigs", mock.Anything, mock.Anything).Return(configs, nil)
-	// GetLastProcessedVersion returns NotFoundError for new dataset (cold start).
 	suite.repository.On("GetLastProcessedVersion", suite.ctx, mock.Anything, datasetName).Return(
 		models.ContinuousScreeningDatasetUpdate{}, models.NotFoundError)
 
@@ -303,6 +303,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_NewDataset_OnlyProcesse
 
 	suite.repository.On("CreateContinuousScreeningUpdateJob", mock.Anything, mock.Anything,
 		models.CreateContinuousScreeningUpdateJob{
+			Provider:        "opensanctions",
 			DatasetUpdateId: expectedDatasetUpdate.Id,
 			ConfigId:        configId,
 			OrgId:           orgId,
@@ -350,6 +351,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_DatasetWithoutDeltaUrl_
 
 	// Setup mocks
 	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderOpenSanctions).Return(catalog, nil)
+	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderLexisNexis).Return(catalog, nil)
 	suite.repository.On("ListContinuousScreeningConfigs", mock.Anything, mock.Anything).Return([]models.ContinuousScreeningConfig{
 		{Id: pure_utils.NewId(), OrgId: pure_utils.NewId(), Enabled: true},
 	}, nil)
@@ -401,6 +403,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_NoNewVersions_NoProcess
 
 	// Setup mocks
 	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderOpenSanctions).Return(catalog, nil)
+	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderLexisNexis).Return(catalog, nil)
 	suite.repository.On("ListContinuousScreeningConfigs", mock.Anything, mock.Anything).Return([]models.ContinuousScreeningConfig{
 		{Id: pure_utils.NewId(), OrgId: pure_utils.NewId(), Enabled: true},
 	}, nil)
@@ -500,6 +503,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 		}, nil,
 	)
 	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderOpenSanctions).Return(catalog, nil)
+	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderLexisNexis).Return(catalog, nil)
 
 	// Dataset has older version in DB
 	suite.repository.On("GetLastProcessedVersion", suite.ctx, mock.Anything, datasetName).Return(
@@ -546,6 +550,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 	for _, job := range expectedUpdateJobs {
 		suite.repository.On("CreateContinuousScreeningUpdateJob", mock.Anything, mock.Anything,
 			models.CreateContinuousScreeningUpdateJob{
+				Provider:        models.ScreeningProviderOpenSanctions,
 				DatasetUpdateId: job.DatasetUpdateId,
 				ConfigId:        job.ConfigId,
 				OrgId:           job.OrgId,
@@ -642,6 +647,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_OrgMissingFeature_Skips
 
 	// Setup mocks
 	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderOpenSanctions).Return(catalog, nil)
+	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderLexisNexis).Return(catalog, nil)
 
 	// Dataset has older version in DB
 	suite.repository.On("GetLastProcessedVersion", suite.ctx, mock.Anything, datasetName).Return(
@@ -693,6 +699,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_OrgMissingFeature_Skips
 	// Mock update job creation - only for org1 (org2 is skipped)
 	suite.repository.On("CreateContinuousScreeningUpdateJob", mock.Anything, mock.Anything,
 		models.CreateContinuousScreeningUpdateJob{
+			Provider:        models.ScreeningProviderOpenSanctions,
 			DatasetUpdateId: expectedDatasetUpdate.Id,
 			ConfigId:        config1Id,
 			OrgId:           org1Id,

@@ -65,7 +65,7 @@ type Organization struct {
 }
 
 func (org Organization) GetScreeningProviderFor(feature ScreeningFeature) ScreeningProvider {
-	if p, ok := org.OpenSanctionsConfig.Providers[string(feature)]; ok {
+	if p, ok := org.OpenSanctionsConfig.Providers[feature]; ok {
 		return p
 	}
 	return ScreeningProviderOpenSanctions
@@ -73,7 +73,7 @@ func (org Organization) GetScreeningProviderFor(feature ScreeningFeature) Screen
 
 // TODO: Add other organization-level configuration options
 type OrganizationOpenSanctionsConfig struct {
-	Providers      map[string]ScreeningProvider
+	Providers      map[ScreeningFeature]ScreeningProvider
 	MatchThreshold int
 	MatchLimit     int
 }

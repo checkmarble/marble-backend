@@ -17,8 +17,10 @@ type ContinuousScreeningConfig struct {
 	Description string
 	ObjectTypes []string
 	Algorithm   string
+	Provider    ScreeningProvider
 	// Dataset that are used for the monitoring
 	Datasets []string
+	Filters  ScreeningConfigFilters
 
 	// Threshold used in matching score, between 0 and 100
 	MatchThreshold int
@@ -54,7 +56,9 @@ type CreateContinuousScreeningConfig struct {
 	Name           string
 	Description    string
 	Algorithm      string
+	Provider       ScreeningProvider
 	Datasets       []string
+	Filters        ScreeningConfigFilters
 	MatchThreshold int
 	MatchLimit     int
 	ObjectTypes    []string
@@ -68,6 +72,7 @@ type UpdateContinuousScreeningConfig struct {
 	Algorithm      *string
 	ObjectTypes    *[]string
 	Datasets       *[]string
+	Filters        *ScreeningConfigFilters
 	MatchThreshold *int
 	MatchLimit     *int
 	Enabled        *bool
