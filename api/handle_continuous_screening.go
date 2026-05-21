@@ -71,8 +71,7 @@ func handleCreateContinuousScreeningConfig(uc usecases.Usecases) func(c *gin.Con
 			return
 		}
 
-		createContinuousScreeningConfigInput :=
-			dto.AdaptCreateContinuousScreeningConfigDtoToModel(input)
+		createContinuousScreeningConfigInput := dto.AdaptCreateContinuousScreeningConfigDtoToModel(input)
 		createContinuousScreeningConfigInput.OrgId = organizationId
 
 		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
@@ -380,12 +379,11 @@ func handleGetContinuousScreeningDelta(uc usecases.Usecases) func(c *gin.Context
 			return
 		}
 		usecase := uc.NewContinuousScreeningManifestUsecase()
-		deltaBlob, err := usecase.GetContinuousScreeningDeltaBlob(ctx, orgId, deltaId)
+		url, err := usecase.GetContinuousScreeningDeltaUrl(ctx, orgId, deltaId)
 		if presentError(ctx, c, err) {
 			return
 		}
-		defer deltaBlob.ReadCloser.Close()
-		c.DataFromReader(http.StatusOK, -1, "application/x-ndjson", deltaBlob.ReadCloser, nil)
+		c.Redirect(http.StatusFound, url)
 	}
 }
 
@@ -400,11 +398,10 @@ func handleGetContinuousScreeningFull(uc usecases.Usecases) func(c *gin.Context)
 		}
 
 		usecase := uc.NewContinuousScreeningManifestUsecase()
-		fullBlob, err := usecase.GetContinuousScreeningFullBlob(ctx, orgId)
+		url, err := usecase.GetContinuousScreeningFullUrl(ctx, orgId)
 		if presentError(ctx, c, err) {
 			return
 		}
-		defer fullBlob.ReadCloser.Close()
-		c.DataFromReader(http.StatusOK, -1, "application/x-ndjson", fullBlob.ReadCloser, nil)
+		c.Redirect(http.StatusFound, url)
 	}
 }

@@ -103,56 +103,50 @@ func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningDeltaList(
 	}, nil
 }
 
-func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningDeltaBlob(
+func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningDeltaUrl(
 	ctx context.Context,
 	orgId uuid.UUID,
 	deltaId uuid.UUID,
-) (models.Blob, error) {
+) (string, error) {
 	exec := u.executorFactory.NewExecutor()
 
 	delta, err := u.repository.GetContinuousScreeningDatasetFileById(ctx, exec, deltaId)
 	if err != nil {
-		return models.Blob{},
-			errors.Wrap(err, "failed to get continuous screening delta")
+		return "", errors.Wrap(err, "failed to get continuous screening delta")
 	}
 
 	if delta.OrgId != orgId {
-		return models.Blob{},
-			errors.New("delta does not belong to the organization")
+		return "", errors.New("delta does not belong to the organization")
 	}
 
-	blob, err := u.blobRepository.GetBlob(ctx, u.continuousScreeningBucketUrl, delta.FilePath)
+	url, err := u.blobRepository.GenerateSignedUrl(ctx, u.continuousScreeningBucketUrl, delta.FilePath)
 	if err != nil {
-		return models.Blob{},
-			errors.Wrap(err, "failed to get delta file blob")
+		return "", errors.Wrap(err, "failed to generate signed url for delta file")
 	}
 
-	return blob, nil
+	return url, nil
 }
 
-func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningFullBlob(
+func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningFullUrl(
 	ctx context.Context,
 	orgId uuid.UUID,
-) (models.Blob, error) {
+) (string, error) {
 	exec := u.executorFactory.NewExecutor()
 
 	fullFile, err := u.repository.GetContinuousScreeningLatestDatasetFileByOrgId(ctx, exec, orgId,
 		models.ContinuousScreeningDatasetFileTypeFull)
 	if err != nil {
-		return models.Blob{},
-			errors.Wrap(err, "failed to get latest full dataset file")
+		return "", errors.Wrap(err, "failed to get latest full dataset file")
 	}
 
 	if fullFile == nil {
-		return models.Blob{},
-			errors.Wrap(models.NotFoundError, "no full dataset file found for organization")
+		return "", errors.Wrap(models.NotFoundError, "no full dataset file found for organization")
 	}
 
-	blob, err := u.blobRepository.GetBlob(ctx, u.continuousScreeningBucketUrl, fullFile.FilePath)
+	url, err := u.blobRepository.GenerateSignedUrl(ctx, u.continuousScreeningBucketUrl, fullFile.FilePath)
 	if err != nil {
-		return models.Blob{},
-			errors.Wrap(err, "failed to get full dataset file blob")
+		return "", errors.Wrap(err, "failed to generate signed url for full dataset file")
 	}
 
-	return blob, nil
+	return url, nil
 }
