@@ -41,7 +41,7 @@ func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
 		filters := query.Config.Filters.Resolve()
 
 		for topic, filter := range filters.WithRootTopics() {
-			if filters.NoFilters() || filter.IsEnabled() {
+			if topic != "global" && (filters.NoFilters() || filter.IsEnabled()) {
 				id := pure_utils.NewId().String()
 
 				q.Queries[id] = openSanctionsRequestQuery{

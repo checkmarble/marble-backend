@@ -170,7 +170,8 @@ func (uc ScreeningUsecase) AdaptConfigForProvider(providerName models.ScreeningP
 
 		filters := scc.Filters.Resolve()
 
-		scc.Datasets = append(filters.Sanctions.Datasets, filters.Peps.Datasets...)
+		scc.Datasets = make([]string, 0)
+		scc.Datasets = append(scc.Datasets, filters.Peps.Datasets...)
 		scc.Datasets = append(scc.Datasets, filters.AdverseMedia.Datasets...)
 		scc.Datasets = append(scc.Datasets, filters.Other.Datasets...)
 	}
