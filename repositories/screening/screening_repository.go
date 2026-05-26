@@ -41,7 +41,7 @@ type HTTPError struct {
 type ScreeningProvider interface {
 	BuildQueryString(ctx context.Context, cfg *models.ScreeningConfig, query *models.OpenSanctionsQuery) url.Values
 	SearchRequest(ctx context.Context, query *models.OpenSanctionsQuery) (*http.Request, []byte, error)
-	FindAvailableFilters(ctx context.Context) (dto.ScreeningAvailableFilters, error)
+	FindAvailableFilters(ctx context.Context, feature models.ScreeningFeature) (dto.ScreeningAvailableFilters, error)
 }
 
 func (e *HTTPError) Error() string {
@@ -444,8 +444,8 @@ func (repo OpenSanctionsRepository) authenticateRequest(req *http.Request) {
 	}
 }
 
-func (repo OpenSanctionsRepository) FindAvailableFilters(ctx context.Context, providerName models.ScreeningProvider) (dto.ScreeningAvailableFilters, error) {
+func (repo OpenSanctionsRepository) FindAvailableFilters(ctx context.Context, providerName models.ScreeningProvider, feature models.ScreeningFeature) (dto.ScreeningAvailableFilters, error) {
 	provider := repo.GetProvider(providerName)
 
-	return provider.FindAvailableFilters(ctx)
+	return provider.FindAvailableFilters(ctx, feature)
 }

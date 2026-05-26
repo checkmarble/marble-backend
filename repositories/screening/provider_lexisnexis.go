@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/infra"
@@ -149,7 +150,7 @@ type lexisNexisAvailableFilters struct {
 	Topics   []string `json:"properties.topics"`    //nolint:tagliatelle
 }
 
-func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context) (dto.ScreeningAvailableFilters, error) {
+func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context, feature models.ScreeningFeature) (dto.ScreeningAvailableFilters, error) {
 	catalog, err := p.GetLexisNexisCatalog(ctx)
 	if err != nil {
 		return dto.ScreeningAvailableFilters{}, err
@@ -199,6 +200,9 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context) (
 	filters := dto.ScreeningAvailableFilters{
 		Provider: models.ScreeningProviderLexisNexis,
 		Sections: dto.ScreeningAvailableFiltersSections{
+			Global: dto.ScreeningAvailableFiltersSection{
+				Topics: p.buildTopicFilterFor(feature, values.Topics, "global"),
+			},
 			Sanctions: dto.ScreeningAvailableFiltersSection{
 				Self: "sanctions",
 				Datasets: pure_utils.Map(values.Datasets, func(ds string) dto.ScreeningAvailableFiltersItem {
@@ -220,41 +224,76 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context) (
 					}
 				}),
 			},
-			// TODO: add PEPs and adverse media topics, organized by kind.
-			Peps: dto.ScreeningAvailableFiltersSection{
-				Self: "pep",
-				Topics: map[string][]dto.ScreeningAvailableFiltersItem{
-					"status": {
-						{Name: "pep.status.active", Title: "pep.status.active"},
-						{Name: "pep.status.inactive", Title: "pep.status.inactive"},
-					},
-					"kind": {
-						{Name: "pep.kind.primary", Title: "pep.kind.primary"},
-						{Name: "pep.kind.secondary", Title: "pep.kind.secondary"},
-					},
-					"geography": {
-						{Name: "pep.geo.eu", Title: "pep.geo.eu"},
-						{Name: "pep.geo.us", Title: "pep.geo.us"},
-					},
-					"position": {
-						{Name: "pep.position.headofstate", Title: "pep.position.headofstate"},
-						{Name: "pep.position.legislative", Title: "pep.position.legislative"},
-					},
-				},
-			},
-			AdverseMedia: dto.ScreeningAvailableFiltersSection{
-				Self: "adversemedia",
-				Topics: map[string][]dto.ScreeningAvailableFiltersItem{
-					"source": {
-						{Name: "adversemedia.media", Title: "adversemedia.media"},
-						{Name: "adversemedia.enforcements", Title: "adversemedia.enforcements"},
-					},
-				},
-			},
 		},
 	}
 
+	if feature != models.ScreeningFeatureTransactionMonitoring {
+		filters.Sections.Peps = dto.ScreeningAvailableFiltersSection{
+			Self:   "pep",
+			Topics: p.buildTopicFilterFor(feature, values.Topics, "pep"),
+		}
+		filters.Sections.AdverseMedia = dto.ScreeningAvailableFiltersSection{
+			Self:   "adverse_media",
+			Topics: p.buildTopicFilterFor(feature, values.Topics, "adverse_media"),
+		}
+	}
+
 	return filters, nil
+}
+
+var globalTopicFiltersCategories = map[string]string{
+	"filter.alive":    "liveness",
+	"filter.deceased": "liveness",
+}
+
+func (p ScreeningLexisNexisProvider) buildTopicFilterFor(feature models.ScreeningFeature, topics []string, section string) map[string][]dto.ScreeningAvailableFiltersItem {
+	if section != "sanctions" && feature == models.ScreeningFeatureTransactionMonitoring {
+		return nil
+	}
+
+	prefix := "filter." + section
+	filters := make(map[string][]dto.ScreeningAvailableFiltersItem)
+
+	for _, topic := range topics {
+		toks := strings.Split(topic, ".")
+
+		switch len(toks) {
+		case 2:
+			if section != "global" {
+				continue
+			}
+			cat, ok := globalTopicFiltersCategories[topic]
+			if !ok {
+				continue
+			}
+			if _, ok := filters[cat]; !ok {
+				filters[cat] = make([]dto.ScreeningAvailableFiltersItem, 0)
+			}
+
+			filters[cat] = append(filters[cat], dto.ScreeningAvailableFiltersItem{
+				Name:  topic,
+				Title: topic,
+			})
+
+		case 4:
+			if !strings.HasPrefix(topic, prefix) || toks[1] != section {
+				continue
+			}
+
+			if _, ok := filters[toks[2]]; !ok {
+				filters[toks[2]] = make([]dto.ScreeningAvailableFiltersItem, 0)
+			}
+
+			filters[toks[2]] = append(filters[toks[2]], dto.ScreeningAvailableFiltersItem{
+				Name:  topic,
+				Title: topic,
+			})
+
+		default:
+		}
+	}
+
+	return filters
 }
 
 func (p ScreeningLexisNexisProvider) GetLexisNexisCatalog(ctx context.Context) (httpmodels.HTTPOpenSanctionCatalogDataset, error) {

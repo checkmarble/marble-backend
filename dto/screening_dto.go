@@ -21,6 +21,7 @@ type ScreeningAvailableFilters struct {
 }
 
 type ScreeningAvailableFiltersSections struct {
+	Global       ScreeningAvailableFiltersSection `json:"global,omitzero"`
 	Sanctions    ScreeningAvailableFiltersSection `json:"sanctions,omitzero"`
 	Peps         ScreeningAvailableFiltersSection `json:"peps,omitzero"`
 	AdverseMedia ScreeningAvailableFiltersSection `json:"adverse_media,omitzero"`

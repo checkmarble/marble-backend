@@ -165,14 +165,19 @@ func (uc ScreeningUsecase) AdaptConfigForProvider(providerName models.ScreeningP
 		scc.Provider = new(models.ScreeningProviderLexisNexis)
 		scc.Datasets = []string{string(models.ScreeningProviderLexisNexis)}
 
+		// Lexis Nexis can only be used with sanctions for transaction monitoring
+		if scc.Filters != nil {
+			scc.Filters.Peps = nil
+			scc.Filters.AdverseMedia = nil
+		}
+
 	default:
 		scc.Provider = new(models.ScreeningProviderOpenSanctions)
 
 		filters := scc.Filters.Resolve()
 
 		scc.Datasets = make([]string, 0)
-		scc.Datasets = append(scc.Datasets, filters.Peps.Datasets...)
-		scc.Datasets = append(scc.Datasets, filters.AdverseMedia.Datasets...)
+		scc.Datasets = append(scc.Datasets, filters.Sanctions.Datasets...)
 		scc.Datasets = append(scc.Datasets, filters.Other.Datasets...)
 	}
 
