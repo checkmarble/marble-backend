@@ -85,6 +85,7 @@ func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gi
 
 	{
 		root := authed.Group("/", pubapi.TimeoutMiddleware(conf.DefaultTimeout))
+		decision := authed.Group("/", pubapi.TimeoutMiddleware(conf.DecisionTimeout))
 
 		// v1beta only
 
@@ -97,12 +98,19 @@ func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gi
 
 		// Graduated
 
-		root.POST("/ingest/:objectType", v1beta.HandleIngestObject(uc, false))
-		root.PATCH("/ingest/:objectType", v1beta.HandleIngestObject(uc, false))
-		root.POST("/ingest/:objectType/batch", v1beta.HandleIngestObject(uc, true))
-		root.PATCH("/ingest/:objectType/batch", v1beta.HandleIngestObject(uc, true))
+		root.POST("/ingest/:objectType", HandleIngestObject(uc, false))
+		root.PATCH("/ingest/:objectType", HandleIngestObject(uc, false))
+		root.POST("/ingest/:objectType/batch", HandleIngestObject(uc, true))
+		root.PATCH("/ingest/:objectType/batch", HandleIngestObject(uc, true))
 
+		root.GET("/decisions", HandleListDecisions(uc))
+		root.GET("/decisions/:decisionId", HandleGetDecision(uc))
+		root.POST("/decisions/:decisionId/snooze", HandleSnoozeRule(uc))
+		root.GET("/decisions/:decisionId/screenings", HandleListScreenings(uc))
 		root.POST("/decisions/:decisionId/case", HandleAddDecisionToCase(uc))
+
+		decision.POST("/decisions", HandleCreateDecision(uc))
+		decision.POST("/decisions/all", HandleCreateAllDecisions(uc))
 
 		root.GET("/cases", HandleListCases(uc))
 		root.GET("/cases/:caseId", HandleGetCase(uc))
@@ -120,6 +128,19 @@ func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gi
 		root.GET("/tags", HandleListTags(uc))
 		root.POST("/cases/:caseId/tags", HandleAddCaseTags(uc))
 		root.DELETE("/cases/:caseId/tags/:tagId", HandleRemoveCaseTag(uc))
+
+		root.GET("/batch-executions", HandleListBatchExecutions(uc))
+
+		root.POST("/screening/:screeningId/refine", HandleRefineScreening(uc, true))
+		root.POST("/screening/:screeningId/search", HandleRefineScreening(uc, false))
+		root.POST("/screening/search", HandleScreeningFreeformSearch(uc))
+
+		root.GET("/screening/entities/:entityId", HandleGetScreeningEntity(uc))
+		root.POST("/screening/matches/:matchId", HandleUpdateScreeningMatchStatus(uc))
+
+		root.POST("/screening/whitelists/search", HandleSearchWhitelist(uc))
+		root.POST("/screening/whitelists", HandleAddWhitelist(uc))
+		root.DELETE("/screening/whitelists", HandleDeleteWhitelist(uc))
 
 		root.POST("/continuous-screenings/objects",
 			HandleCreateContinuousScreeningObject(uc))
