@@ -121,6 +121,6 @@ func (p ScreeningOpenSanctionsProvider) BuildQueryString(ctx context.Context,
 	return qs
 }
 
-func (p ScreeningOpenSanctionsProvider) FindAvailableFilters(ctx context.Context) (dto.ScreeningAvailableFilters, error) {
+func (p ScreeningOpenSanctionsProvider) FindAvailableFilters(ctx context.Context, feature models.ScreeningFeature) (dto.ScreeningAvailableFilters, error) {
 	return dto.ScreeningAvailableFilters{}, nil
 }

@@ -47,7 +47,7 @@ type ScreeningProvider interface {
 	Search(context.Context, models.ScreeningProvider, models.OpenSanctionsQuery) (models.ScreeningRawSearchResponseWithMatches, error)
 	EnrichMatch(ctx context.Context, providerName models.ScreeningProvider, match models.ScreeningMatch) ([]byte, error)
 	IsConfigured(ctx context.Context, provider models.ScreeningProvider) (bool, error)
-	FindAvailableFilters(ctx context.Context, providerName models.ScreeningProvider) (dto.ScreeningAvailableFilters, error)
+	FindAvailableFilters(ctx context.Context, providerName models.ScreeningProvider, feature models.ScreeningFeature) (dto.ScreeningAvailableFilters, error)
 }
 
 type ScreeningInboxReader interface {
@@ -240,7 +240,7 @@ func (uc ScreeningUsecase) GetAvailableFilters(ctx context.Context, feature mode
 	}
 
 	if providerName == models.ScreeningProviderLexisNexis {
-		filters, err := uc.openSanctionsProvider.FindAvailableFilters(ctx, models.ScreeningProviderLexisNexis)
+		filters, err := uc.openSanctionsProvider.FindAvailableFilters(ctx, models.ScreeningProviderLexisNexis, feature)
 		if err != nil {
 			return dto.ScreeningAvailableFilters{}, err
 		}
