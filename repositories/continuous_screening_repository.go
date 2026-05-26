@@ -708,7 +708,7 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningDatasetUpdate(
 
 	query := NewQueryBuilder().
 		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES).
-		Suffix("RETURNING *").
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectContinuousScreeningDatasetUpdateColumn, ","))).
 		Columns(
 			"dataset_name",
 			"version",
@@ -736,7 +736,7 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningUpdateJob(
 
 	query := NewQueryBuilder().
 		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS).
-		Suffix("RETURNING *").
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectContinuousScreeningUpdateJobColumn, ","))).
 		Columns(
 			"continuous_screening_dataset_update_id",
 			"continuous_screening_config_id",
@@ -1087,4 +1087,3 @@ func (repo *MarbleDbRepository) UpdateDeltaTracksDatasetFileId(
 
 	return ExecBuilder(ctx, exec, query)
 }
-

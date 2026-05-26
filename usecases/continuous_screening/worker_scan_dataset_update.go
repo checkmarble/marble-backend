@@ -2,6 +2,7 @@ package continuous_screening
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -224,7 +225,7 @@ func (w *ScanDatasetUpdatesWorker) Work(
 
 type datasetWithVersionRange struct {
 	dataset     models.OpenSanctionsRawDataset
-	fromVersion string
+	fromVersion *string
 	toVersion   string
 }
 
@@ -250,14 +251,14 @@ func (w *ScanDatasetUpdatesWorker) getOutdatedDatasets(
 					"dataset", dataset.Name,
 					"version", dataset.Version,
 				)
-				_, err = w.repo.CreateContinuousScreeningDatasetUpdate(ctx, exec,
-					models.CreateContinuousScreeningDatasetUpdate{
-						DatasetName: dataset.Name,
-						Version:     dataset.Version,
-					})
-				if err != nil {
-					return nil, err
-				}
+				datasetsWithVersionRange = append(
+					datasetsWithVersionRange,
+					datasetWithVersionRange{
+						dataset:     dataset,
+						fromVersion: nil,
+						toVersion:   dataset.Version,
+					},
+				)
 				continue
 			}
 			return nil, err
@@ -288,7 +289,7 @@ func (w *ScanDatasetUpdatesWorker) getOutdatedDatasets(
 			datasetsWithVersionRange,
 			datasetWithVersionRange{
 				dataset:     dataset,
-				fromVersion: lastDatasetUpdate.Version,
+				fromVersion: &lastDatasetUpdate.Version,
 				toVersion:   dataset.Version,
 			},
 		)
@@ -334,7 +335,7 @@ func (w *ScanDatasetUpdatesWorker) processDatasetVersion(
 
 	filteredVersions := slices.DeleteFunc(versions, func(record deltaRecord) bool {
 		// Keep versions within (fromVersion, toVersion]
-		if record.version <= d.fromVersion {
+		if d.fromVersion != nil && record.version <= *d.fromVersion {
 			return true
 		}
 		if record.version > d.toVersion {
@@ -342,6 +343,16 @@ func (w *ScanDatasetUpdatesWorker) processDatasetVersion(
 		}
 		return false
 	})
+
+	// Cold start (no previously stored version): only process the most recent delta.
+	// Avoids replaying the full delta history on first run, which would be expensive and is
+	// not useful — we just want to register the dataset and start tracking updates going forward.
+	if d.fromVersion == nil && len(filteredVersions) > 1 {
+		slices.SortFunc(filteredVersions, func(a, b deltaRecord) int {
+			return cmp.Compare(a.version, b.version)
+		})
+		filteredVersions = filteredVersions[len(filteredVersions)-1:]
+	}
 
 	// Channel to collect results from concurrent downloads
 	// Use buffered channel to avoid goroutines blocking
