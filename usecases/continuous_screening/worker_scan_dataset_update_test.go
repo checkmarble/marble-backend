@@ -216,52 +216,104 @@ func TestScanDatasetUpdatesWorker(t *testing.T) {
 	suite.Run(t, new(ScanDatasetUpdatesWorkerTestSuite))
 }
 
-func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_NewDataset_CreatesRecord_NoProcessing() {
-	// Setup
+func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_NewDataset_OnlyProcessesLatestDelta() {
+	// On cold start (no previously stored version for the dataset), we should not
+	// replay the entire delta history — only the most recent delta is processed,
+	// so the dataset gets registered with that version going forward.
 	datasetName := "test-dataset"
-	version := "2024-01-01"
+	catalogVersion := "2024-01-04"
+	latestDeltaVersion := "2024-01-04"
+	deltaUrl := "https://example.com/delta"
 
-	// Mock catalog with one dataset
 	catalog := models.OpenSanctionsRawCatalog{
 		Current:  []string{datasetName},
 		Outdated: []string{},
 		Datasets: map[string]models.OpenSanctionsRawDataset{
 			datasetName: {
-				Name:    datasetName,
-				Version: version,
+				Name:     datasetName,
+				Version:  catalogVersion,
+				DeltaUrl: &deltaUrl,
 			},
 		},
 	}
 
-	// Job args
+	// Delta list contains several historical versions; only the most recent must be processed.
+	deltaList := `{
+		"versions": {
+			"2024-01-02": "https://example.com/delta/2024-01-02.ndjson",
+			"2024-01-03": "https://example.com/delta/2024-01-03.ndjson",
+			"2024-01-04": "https://example.com/delta/2024-01-04.ndjson"
+		}
+	}`
+
+	configId := pure_utils.NewId()
+	orgId := pure_utils.NewId()
+	configs := []models.ContinuousScreeningConfig{
+		{Id: configId, OrgId: orgId, Enabled: true},
+	}
+
+	blobKey := fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, datasetName, latestDeltaVersion)
+	expectedDatasetUpdate := models.ContinuousScreeningDatasetUpdate{
+		Id:            pure_utils.NewId(),
+		DatasetName:   datasetName,
+		Version:       latestDeltaVersion,
+		DeltaFilePath: blobKey,
+		TotalItems:    1,
+	}
+	expectedUpdateJob := models.ContinuousScreeningUpdateJob{
+		Id:              pure_utils.NewId(),
+		DatasetUpdateId: expectedDatasetUpdate.Id,
+		ConfigId:        configId,
+		OrgId:           orgId,
+	}
+
 	job := &river.Job[models.ContinuousScreeningScanDatasetUpdatesArgs]{}
 
-	// Setup mocks
 	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderOpenSanctions).Return(catalog, nil)
-	suite.repository.On("ListContinuousScreeningConfigs", mock.Anything, mock.Anything).Return([]models.ContinuousScreeningConfig{
-		{Id: pure_utils.NewId(), OrgId: pure_utils.NewId(), Enabled: true},
-	}, nil)
-	// GetLastProcessedVersion returns NotFoundError for new dataset
+	suite.repository.On("ListContinuousScreeningConfigs", mock.Anything, mock.Anything).Return(configs, nil)
+	// GetLastProcessedVersion returns NotFoundError for new dataset (cold start).
 	suite.repository.On("GetLastProcessedVersion", suite.ctx, mock.Anything, datasetName).Return(
 		models.ContinuousScreeningDatasetUpdate{}, models.NotFoundError)
-	// CreateContinuousScreeningDatasetUpdate should be called for the new dataset
-	expectedInput := models.CreateContinuousScreeningDatasetUpdate{
-		DatasetName: datasetName,
-		Version:     version,
-	}
-	expectedUpdate := models.ContinuousScreeningDatasetUpdate{
-		Id:          pure_utils.NewId(),
-		DatasetName: datasetName,
-		Version:     version,
-	}
-	suite.repository.On("CreateContinuousScreeningDatasetUpdate", suite.ctx, mock.Anything,
-		expectedInput).Return(expectedUpdate, nil)
 
-	// Execute
+	defer gock.Off()
+	gock.New("https://example.com").
+		Get("/delta").
+		Reply(200).
+		BodyString(deltaList)
+	// Only the latest delta file must be downloaded. Older versions intentionally have no
+	// gock mock — if the worker tries to fetch them, the HTTP call will fail and the test fails.
+	gock.New("https://example.com").
+		Get("/delta/" + latestDeltaVersion + ".ndjson").
+		Reply(200).
+		BodyString("line1\n")
+
+	suite.blobRepo.On("OpenStream", mock.Anything, "test-bucket", blobKey, blobKey).Return(&mockBlobWriter{}, nil)
+
+	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, orgId, mock.Anything).Return(
+		models.OrganizationFeatureAccess{ContinuousScreening: models.Allowed}, nil,
+	)
+
+	suite.repository.On("CreateContinuousScreeningDatasetUpdate", mock.Anything, mock.Anything,
+		models.CreateContinuousScreeningDatasetUpdate{
+			DatasetName:   datasetName,
+			Version:       latestDeltaVersion,
+			DeltaFilePath: blobKey,
+			TotalItems:    1,
+		}).Return(expectedDatasetUpdate, nil)
+
+	suite.repository.On("CreateContinuousScreeningUpdateJob", mock.Anything, mock.Anything,
+		models.CreateContinuousScreeningUpdateJob{
+			DatasetUpdateId: expectedDatasetUpdate.Id,
+			ConfigId:        configId,
+			OrgId:           orgId,
+		}).Return(expectedUpdateJob, nil)
+
+	suite.taskEnqueuer.On("EnqueueContinuousScreeningApplyDeltaFileTask",
+		mock.Anything, mock.Anything, orgId, expectedUpdateJob.Id).Return(nil)
+
 	worker := suite.makeWorker()
 	err := worker.Work(suite.ctx, job)
 
-	// Assert
 	suite.NoError(err)
 	suite.AssertExpectations()
 }
