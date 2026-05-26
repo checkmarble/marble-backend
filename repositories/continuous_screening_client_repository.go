@@ -442,3 +442,35 @@ func (repo *ClientDbRepository) CountActiveMonitoredObjects(
 	return count, nil
 }
 
+func (repo *ClientDbRepository) CountMonitoredObjectsByConfigStableIds(
+	ctx context.Context,
+	exec Executor,
+	configStableIds []uuid.UUID,
+) (int, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return 0, err
+	}
+
+	// If no config stable IDs provided, return 0
+	if len(configStableIds) == 0 {
+		return 0, nil
+	}
+
+	query := NewQueryBuilder().
+		Select("count(*) as count").
+		From(sanitizedTableName(exec, dbmodels.TABLE_CONTINUOUS_SCREENING_MONITORED_OBJECTS)).
+		Where(squirrel.Eq{"config_stable_id": configStableIds})
+
+	var count int
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return 0, err
+	}
+
+	err = exec.QueryRow(ctx, sql, args...).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}

@@ -65,8 +65,22 @@ func (m *MockCollectorRepository) GetMetadata(ctx context.Context, exec reposito
 	return args.Get(0).(*models.Metadata), args.Error(1)
 }
 
+func (m *MockCollectorRepository) GetEnabledConfigStableIdsByOrg(ctx context.Context, exec repositories.Executor,
+	orgIds []string,
+) (map[string][]uuid.UUID, error) {
+	args := m.Called(ctx, exec, orgIds)
+	return args.Get(0).(map[string][]uuid.UUID), args.Error(1)
+}
+
 type MockCollectorClientRepository struct {
 	mock.Mock
+}
+
+func (m *MockCollectorClientRepository) CountMonitoredObjectsByConfigStableIds(ctx context.Context, exec repositories.Executor,
+	configStableIds []uuid.UUID,
+) (int, error) {
+	args := m.Called(ctx, exec, configStableIds)
+	return args.Get(0).(int), args.Error(1)
 }
 
 func (m *MockCollectorClientRepository) IsContinuousScreeningSetup(ctx context.Context, exec repositories.Executor) (bool, error) {
@@ -399,7 +413,7 @@ func TestNewCollectorsV1(t *testing.T) {
 	// Assert
 	assert.Equal(t, "v1", collectors.version)
 	assert.Len(t, collectors.globalCollectors, 1)
-	assert.Len(t, collectors.collectors, 5)
+	assert.Len(t, collectors.collectors, 6)
 	assert.Equal(t, mockRepository, collectors.repository)
 	assert.Equal(t, mockExecutorFactory, collectors.executorFactory)
 
@@ -419,6 +433,6 @@ func TestNewCollectorsV1(t *testing.T) {
 	_, isAiCaseReviewCollector := collectors.collectors[3].(AiCaseReviewCollector)
 	assert.True(t, isAiCaseReviewCollector, "Should contain AiCaseReviewCollector")
 
-	_, isMonitoredObjectActiveCollector := collectors.collectors[4].(MonitoredObjectActiveCollector)
-	assert.True(t, isMonitoredObjectActiveCollector, "Should contain MonitoredObjectActiveCollector")
+	_, isContinuousScreeningCollector := collectors.collectors[4].(ContinuousScreeningCollector)
+	assert.True(t, isContinuousScreeningCollector, "Should contain ContinuousScreeningCollector")
 }
