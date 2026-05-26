@@ -7,10 +7,12 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/pubapi/types"
+	"github.com/checkmarble/marble-backend/pubapi/v1/params"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func HandleIngestObject(uc usecases.Usecases, batch bool) gin.HandlerFunc {
@@ -25,6 +27,13 @@ func HandleIngestObject(uc usecases.Usecases, batch bool) gin.HandlerFunc {
 
 		objectType := c.Param("objectType")
 
+		var p params.IngestionParams
+
+		if err := c.ShouldBindQuery(&p); err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
 		object, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
@@ -38,10 +47,20 @@ func HandleIngestObject(uc usecases.Usecases, batch bool) gin.HandlerFunc {
 			f = usecase.IngestObjects
 		}
 
+		ingestionOptions := models.IngestionOptions{
+			ShouldMonitor:          p.MonitorObjects,
+			ShouldScreen:           p.MonitorObjects && !p.SkipInitialScreening,
+			ContinuousScreeningIds: make([]uuid.UUID, len(p.ContinuousConfigIds)),
+		}
+
+		if p.MonitorObjects {
+			for idx, configId := range p.ContinuousConfigIds {
+				ingestionOptions.ContinuousScreeningIds[idx] = uuid.MustParse(configId)
+			}
+		}
+
 		partial := c.Request.Method == http.MethodPatch
-		ingestedCount, err := f(ctx, orgId, objectType, object, models.IngestionOptions{
-			ShouldScreen: true,
-		},
+		ingestedCount, err := f(ctx, orgId, objectType, object, ingestionOptions,
 			payload_parser.WithAllowedPatch(partial), payload_parser.DisallowUnknownFields())
 		if err != nil {
 			switch batch {
