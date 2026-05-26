@@ -322,12 +322,6 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		screening := screeningResponse.AdaptScreeningFromSearchResponse(query)
 		iterLogger.DebugContext(iterCtx, "Screening result", "matches", len(screening.Matches))
 
-		// No hit, skip the record
-		// Note: I'm not entirely sure that we SHOULD keep no written trace of the request that was made here, keeping this question open for now.
-		if screening.Status == models.ScreeningStatusNoHit {
-			continue
-		}
-
 		err = w.transactionFactory.Transaction(iterCtx, func(tx repositories.Transaction) error {
 			entityPayload, err := json.Marshal(record.Entity)
 			if err != nil {
@@ -346,6 +340,10 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 			)
 			if err != nil {
 				return err
+			}
+			// if there were no hits, that's it
+			if screening.Status == models.ScreeningStatusNoHit {
+				return nil
 			}
 
 			_, err = w.usecase.HandleCaseCreation(
