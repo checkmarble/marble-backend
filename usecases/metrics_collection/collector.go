@@ -31,7 +31,6 @@ type CollectorRepository interface {
 }
 type CollectorClientRepository interface {
 	ContinuousScreeningClientDbRepository
-	MonitoredObjectActiveClientDbRepository
 }
 
 // GlobalCollector is a collector that is not specific to an organization.
@@ -184,7 +183,6 @@ func NewCollectorsV1(
 			NewScreeningCollector(repository, executorFactory),
 			NewAiCaseReviewCollector(repository, executorFactory),
 			NewContinuousScreeningCollector(repository, clientDbRepo, executorFactory),
-			NewMonitoredObjectActiveCollector(clientDbRepo, executorFactory),
 		},
 		globalCollectors: []GlobalCollector{
 			NewAppVersionCollector(apiVersion),
