@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"time"
 	"unicode"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -147,8 +146,12 @@ func IgnoreList(ctx context.Context, e ScenarioEvaluator, screeningId string,
 	return out, nil
 }
 
-func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, screeningId string,
-	queries []models.OpenSanctionsCheckQuery, iteration models.ScenarioIteration,
+func NameEntityRecognition(
+	ctx context.Context,
+	e ScenarioEvaluator,
+	screeningId string,
+	queries []models.OpenSanctionsCheckQuery,
+	iteration models.ScenarioIteration,
 	scc models.ScreeningConfig,
 ) ([]models.OpenSanctionsCheckQuery, error) {
 	if !scc.Preprocessing.UseNer {
@@ -162,19 +165,13 @@ func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, screeningId
 	performed := false
 
 	for _, query := range queries {
-		nerCtx, cancel := context.WithTimeout(ctx,
-			utils.GetEnvDuration("NER_TIMEOUT", 2*time.Second))
-		defer cancel()
-
-		matches, err := e.nameRecognizer.PerformNameRecognition(nerCtx, query.GetName())
+		matches, err := e.nameRecognizer.PerformNameRecognition(ctx, query.GetName())
 		if err != nil {
-			utils.LoggerFromContext(ctx).Warn("screening preprocessing: name entity recognition returned an error, using initial query", "error", err.Error())
-			return queries, nil
+			return queries, errors.Wrap(err, "name entity recognition failed")
 		}
 
 		if len(matches) == 0 {
 			utils.LoggerFromContext(ctx).Debug("screening preprocessing: name entity recognition returns no match, using initial query")
-			out = append(out, query)
 			continue
 		}
 
@@ -228,5 +225,4 @@ func NameEntityRecognition(ctx context.Context, e ScenarioEvaluator, screeningId
 	}
 
 	return queries, nil
-	// return append(queries, out...), nil
 }
