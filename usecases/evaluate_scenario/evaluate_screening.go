@@ -23,7 +23,6 @@ const (
 	ErrScreeningCounterpartyIdNotString = "counterparty_id_not_string"
 	ErrScreeningAllFieldsNullOrEmpty    = "all_fields_null_or_empty"
 	ErrScreeningFieldsNotString         = "fields_not_string"
-	ErrScreeningPreprocessingFailed     = "preprocessing_failed"
 )
 
 func (e ScenarioEvaluator) evaluateScreening(
@@ -161,7 +160,7 @@ func (e ScenarioEvaluator) evaluateScreening(
 				}
 
 				if queries, err = e.preprocess(ctx, scId, queriesBeforeProcessing, iteration, scc); err != nil {
-					addScreeningResult(idx, outcomeError(scc, ErrScreeningPreprocessingFailed, nil))
+					addScreeningError(scc, errors.Wrap(err, "could not perform screening"))
 					return
 				}
 			}
