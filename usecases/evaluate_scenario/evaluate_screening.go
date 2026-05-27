@@ -127,6 +127,7 @@ func (e ScenarioEvaluator) evaluateScreening(
 					},
 				}
 
+				numEmptyFields := 0
 				for fieldName, fieldAst := range scc.Query {
 					inputAst, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
 						fieldAst, iteration.OrganizationId,
@@ -137,8 +138,8 @@ func (e ScenarioEvaluator) evaluateScreening(
 					}
 
 					if inputAst.ReturnValue == nil {
-						addScreeningResult(idx, outcomeError(scc, ErrScreeningAllFieldsNullOrEmpty, nil))
-						return
+						numEmptyFields++
+						continue
 					}
 
 					input, ok := inputAst.ReturnValue.(string)
@@ -147,15 +148,20 @@ func (e ScenarioEvaluator) evaluateScreening(
 						return
 					}
 					if input == "" {
-						addScreeningResult(idx, outcomeError(scc, ErrScreeningAllFieldsNullOrEmpty, nil))
-						return
+						numEmptyFields++
+						continue
 					}
 
 					queriesBeforeProcessing[0].Filters[fieldName] = []string{input}
 				}
 
-				if queries, err = e.preprocess(ctx, scId, queriesBeforeProcessing, iteration, scc); err != nil {
+				if numEmptyFields == len(scc.Query) {
 					addScreeningResult(idx, outcomeError(scc, ErrScreeningAllFieldsNullOrEmpty, nil))
+					return
+				}
+
+				if queries, err = e.preprocess(ctx, scId, queriesBeforeProcessing, iteration, scc); err != nil {
+					addScreeningResult(idx, outcomeError(scc, ErrScreeningPreprocessingFailed, nil))
 					return
 				}
 			}
