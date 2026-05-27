@@ -16,7 +16,9 @@ import (
 	"github.com/mohae/deepcopy"
 )
 
+// NB: these are used in DTOs used by the frontend (but not exposed to the end user through the public API).
 const (
+	ErrScreeningTriggerRuleNull         = "trigger_rule_null"
 	ErrScreeningTriggerRuleNotBoolean   = "trigger_rule_not_boolean"
 	ErrScreeningCounterpartyIdNotString = "counterparty_id_not_string"
 	ErrScreeningAllFieldsNullOrEmpty    = "all_fields_null_or_empty"
@@ -94,8 +96,12 @@ func (e ScenarioEvaluator) evaluateScreening(
 					return
 				}
 
+				if triggerEvaluation.ReturnValue == nil {
+					addScreeningResult(idx, outcomeError(scc,
+						ErrScreeningTriggerRuleNull, nil))
+					return
+				}
 				passed, ok := triggerEvaluation.ReturnValue.(bool)
-
 				if !ok {
 					addScreeningResult(idx, outcomeError(scc,
 						ErrScreeningTriggerRuleNotBoolean, nil))
