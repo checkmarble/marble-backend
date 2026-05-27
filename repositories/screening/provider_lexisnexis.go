@@ -247,7 +247,7 @@ var globalTopicFiltersCategories = map[string]string{
 }
 
 func (p ScreeningLexisNexisProvider) buildTopicFilterFor(feature models.ScreeningFeature, topics []string, section string) map[string][]dto.ScreeningAvailableFiltersItem {
-	if section != "sanctions" && feature == models.ScreeningFeatureTransactionMonitoring {
+	if section != "sanctions" && section != "global" && feature == models.ScreeningFeatureTransactionMonitoring {
 		return nil
 	}
 
