@@ -34,6 +34,12 @@ func (p ScreeningOpenSanctionsProvider) SearchRequest(ctx context.Context,
 		if len(query.Config.Datasets) > 0 {
 			q.Params.IncludeDatasets = query.Config.Datasets
 		}
+
+		resolvedFilters := query.Config.Filters.Resolve()
+		if !resolvedFilters.NoFilters() {
+			q.Params.IncludeDatasets = resolvedFilters.ToLegacyDatasets()
+		}
+
 		if len(query.WhitelistedEntityIds) > 0 {
 			q.Params.ExcludeEntityIds = query.WhitelistedEntityIds
 		}
@@ -86,6 +92,11 @@ func (p ScreeningOpenSanctionsProvider) BuildQueryString(ctx context.Context,
 
 	if !p.Config.MotivaFeatures(ctx).BodyParams && cfg != nil && len(cfg.Datasets) > 0 {
 		qs["include_dataset"] = cfg.Datasets
+
+		resolvedFilters := query.Config.Filters.Resolve()
+		if !resolvedFilters.NoFilters() {
+			qs["include_dataset"] = resolvedFilters.ToLegacyDatasets()
+		}
 	}
 
 	qs.Set("algorithm", p.Config.Algorithm())
