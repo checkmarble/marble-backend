@@ -172,6 +172,16 @@ func (scf ResolvedScreeningConfigFilters) Equal(other ResolvedScreeningConfigFil
 	return true
 }
 
+func (scf ResolvedScreeningConfigFilters) ToLegacyDatasets() []string {
+	datasets := make([]string, 0)
+	datasets = append(datasets, scf.Sanctions.Datasets...)
+	datasets = append(datasets, scf.Peps.Datasets...)
+	datasets = append(datasets, scf.AdverseMedia.Datasets...)
+	datasets = append(datasets, scf.Other.Datasets...)
+
+	return datasets
+}
+
 func (scf *ScreeningConfigFilters) Resolve() ResolvedScreeningConfigFilters {
 	if scf == nil {
 		return ResolvedScreeningConfigFilters{
