@@ -313,14 +313,6 @@ func (usecases *UsecasesWithCreds) NewRuleUsecase() RuleUsecase {
 	}
 }
 
-func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
-	return NewAstExpressionUsecase(
-		usecases.NewExecutorFactory(),
-		usecases.NewEnforceScenarioSecurity(),
-		usecases.Repositories.MarbleDbRepository,
-	)
-}
-
 func (usecases *UsecasesWithCreds) NewCustomListUseCase() CustomListUseCase {
 	return CustomListUseCase{
 		enforceSecurity:      usecases.NewEnforceCustomListSecurity(),
