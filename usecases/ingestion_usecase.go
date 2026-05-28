@@ -40,16 +40,19 @@ const (
 var csvIngestionBatchSize = utils.GetEnv("CSV_INGESTION_BATCH_SIZE", 1000)
 
 type continuousScreeningRepository interface {
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) (models.Organization, error)
 	ListContinuousScreeningConfigByObjectType(
 		ctx context.Context,
 		exec repositories.Executor,
 		orgId uuid.UUID,
+		provider models.ScreeningProvider,
 		objectType string,
 	) ([]models.ContinuousScreeningConfig, error)
 	ListContinuousScreeningConfigByStableIds(
 		ctx context.Context,
 		exec repositories.Executor,
 		orgId uuid.UUID,
+		provider models.ScreeningProvider,
 		stableIds []uuid.UUID,
 	) ([]models.ContinuousScreeningConfig, error)
 }
@@ -143,6 +146,12 @@ func (usecase *IngestionUseCase) IngestObject(
 	}
 
 	exec := usecase.executorFactory.NewExecutor()
+
+	org, err := usecase.continuousScreeningRepository.GetOrganizationById(ctx, exec, organizationId)
+	if err != nil {
+		return 0, errors.Wrap(err, "error getting organization")
+	}
+
 	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false, true)
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting data model in IngestObject")
@@ -161,7 +170,7 @@ func (usecase *IngestionUseCase) IngestObject(
 
 	if ingestionOptions.ShouldMonitor {
 		continuousScreeningConfigs, err = usecase.continuousScreeningRepository.ListContinuousScreeningConfigByStableIds(
-			ctx, exec, organizationId, ingestionOptions.ContinuousScreeningIds)
+			ctx, exec, organizationId, org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring), ingestionOptions.ContinuousScreeningIds)
 		if err != nil {
 			return 0, err
 		}
@@ -237,6 +246,12 @@ func (usecase *IngestionUseCase) IngestObjects(
 	}
 
 	exec := usecase.executorFactory.NewExecutor()
+
+	org, err := usecase.continuousScreeningRepository.GetOrganizationById(ctx, exec, organizationId)
+	if err != nil {
+		return 0, errors.Wrap(err, "error getting organization")
+	}
+
 	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false, true)
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting data model in IngestObjects")
@@ -254,7 +269,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 
 	if ingestionOptions.ShouldMonitor {
 		continuousScreeningConfigs, err = usecase.continuousScreeningRepository.ListContinuousScreeningConfigByStableIds(
-			ctx, exec, organizationId, ingestionOptions.ContinuousScreeningIds)
+			ctx, exec, organizationId, org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring), ingestionOptions.ContinuousScreeningIds)
 		if err != nil {
 			return 0, err
 		}
@@ -603,6 +618,13 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 ) ingestionResult {
 	exec := usecase.executorFactory.NewExecutor()
 
+	org, err := usecase.continuousScreeningRepository.GetOrganizationById(ctx, exec, organizationId)
+	if err != nil {
+		return ingestionResult{
+			err: errors.Wrap(err, "error getting organization"),
+		}
+	}
+
 	logger := utils.LoggerFromContext(ctx)
 	total := 0
 	start := time.Now()
@@ -641,7 +663,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 
 	if ingestionOptions.ShouldMonitor {
 		continuousScreeningConfigs, err = usecase.continuousScreeningRepository.ListContinuousScreeningConfigByStableIds(
-			ctx, exec, organizationId, ingestionOptions.ContinuousScreeningIds)
+			ctx, exec, organizationId, org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring), ingestionOptions.ContinuousScreeningIds)
 		if err != nil {
 			return ingestionResult{
 				err: err,

@@ -21,9 +21,10 @@ func (repo *MarbleDbRepository) GetContinuousScreeningConfig(ctx context.Context
 	}
 
 	sql := NewQueryBuilder().
-		Select(dbmodels.SelectContinuousScreeningConfigColumnList...).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
-		Where(squirrel.Eq{"id": Id})
+		Select(columnsNames("c", dbmodels.SelectContinuousScreeningConfigColumnList)...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS + " c").
+		InnerJoin(dbmodels.TABLE_ORGANIZATION + " o on c.provider = coalesce(o.screening_providers->>'transaction_monitoring', 'opensanctions')").
+		Where(squirrel.Eq{"c.id": Id})
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
 }
@@ -37,10 +38,11 @@ func (repo *MarbleDbRepository) GetContinuousScreeningConfigByStableId(ctx conte
 	}
 
 	sql := NewQueryBuilder().
-		Select(dbmodels.SelectContinuousScreeningConfigColumnList...).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
+		Select(columnsNames("c", dbmodels.SelectContinuousScreeningConfigColumnList)...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS + " c").
 		Where(squirrel.Eq{"stable_id": stableId}).
-		OrderBy("created_at DESC").
+		InnerJoin(dbmodels.TABLE_ORGANIZATION + " o on c.provider = coalesce(o.screening_providers->>'transaction_monitoring', 'opensanctions')").
+		OrderBy("c.created_at DESC").
 		Limit(1)
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
@@ -51,6 +53,7 @@ func (repo *MarbleDbRepository) ListContinuousScreeningConfigByObjectType(
 	ctx context.Context,
 	exec Executor,
 	orgId uuid.UUID,
+	provider models.ScreeningProvider,
 	objectType string,
 ) ([]models.ContinuousScreeningConfig, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -62,6 +65,7 @@ func (repo *MarbleDbRepository) ListContinuousScreeningConfigByObjectType(
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
 		Where(squirrel.Eq{"org_id": orgId}).
 		Where(squirrel.Expr("? = ANY(object_types)", objectType)).
+		Where(squirrel.Eq{"provider": provider}).
 		Where(squirrel.Eq{"enabled": true})
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
@@ -71,6 +75,7 @@ func (repo *MarbleDbRepository) ListContinuousScreeningConfigByStableIds(
 	ctx context.Context,
 	exec Executor,
 	orgId uuid.UUID,
+	provider models.ScreeningProvider,
 	stableIds []uuid.UUID,
 ) ([]models.ContinuousScreeningConfig, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -82,6 +87,7 @@ func (repo *MarbleDbRepository) ListContinuousScreeningConfigByStableIds(
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
 		Where(squirrel.Eq{"org_id": orgId}).
 		Where(squirrel.Expr("stable_id = ANY(?)", stableIds)).
+		Where(squirrel.Eq{"provider": provider}).
 		Where(squirrel.Eq{"enabled": true})
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
@@ -91,6 +97,7 @@ func (repo *MarbleDbRepository) GetContinuousScreeningConfigsByOrgId(
 	ctx context.Context,
 	exec Executor,
 	orgId uuid.UUID,
+	provider models.ScreeningProvider,
 ) ([]models.ContinuousScreeningConfig, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
@@ -100,6 +107,7 @@ func (repo *MarbleDbRepository) GetContinuousScreeningConfigsByOrgId(
 		Select(dbmodels.SelectContinuousScreeningConfigColumnList...).
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
 		Where(squirrel.Eq{"org_id": orgId}).
+		Where(squirrel.Eq{"provider": provider}).
 		Where(squirrel.Eq{"enabled": true})
 
 	return SqlToListOfModels(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
@@ -114,10 +122,11 @@ func (repo *MarbleDbRepository) ListContinuousScreeningConfigs(
 	}
 
 	query := NewQueryBuilder().
-		Select(dbmodels.SelectContinuousScreeningConfigColumnList...).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
+		Select(columnsNames("c", dbmodels.SelectContinuousScreeningConfigColumnList)...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS + " c").
 		Where(squirrel.Eq{"enabled": true}).
-		OrderBy("id")
+		InnerJoin(dbmodels.TABLE_ORGANIZATION + " o on c.provider = coalesce(o.screening_providers->>'transaction_monitoring', 'opensanctions')").
+		OrderBy("c.id")
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningConfig)
 }
@@ -130,10 +139,12 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Cont
 		return models.ContinuousScreeningConfig{}, err
 	}
 
-	// if len(input.Datasets) == 0 {
-	// 	return models.ContinuousScreeningConfig{},
-	// 		errors.New("datasets are required for continuous screening config")
-	// }
+	if input.Provider == models.ScreeningProviderOpenSanctions {
+		if len(input.Filters.Resolve().ToLegacyDatasets()) == 0 {
+			return models.ContinuousScreeningConfig{},
+				errors.New("datasets are required for continuous screening config")
+		}
+	}
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).

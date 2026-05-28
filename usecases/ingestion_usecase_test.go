@@ -211,6 +211,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
+	suite.continuousScreeningRepository.On("GetOrganizationById",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId).
+		Return(models.Organization{}, nil)
 	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
 		Return([]models.ContinuousScreeningConfig{}, nil)
@@ -266,6 +269,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
+	suite.continuousScreeningRepository.On("GetOrganizationById",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId).
+		Return(models.Organization{}, nil)
 	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
 		Return([]models.ContinuousScreeningConfig{}, nil)
@@ -321,6 +327,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(dataModel, nil)
 
+	suite.continuousScreeningRepository.On("GetOrganizationById",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId).
+		Return(models.Organization{}, nil)
 	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
 		Return([]models.ContinuousScreeningConfig{}, nil)
@@ -372,6 +381,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
+	suite.continuousScreeningRepository.On("GetOrganizationById",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId).
+		Return(models.Organization{}, nil)
 	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
 		Return([]models.ContinuousScreeningConfig{}, nil)
@@ -420,6 +432,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
+	suite.continuousScreeningRepository.On("GetOrganizationById",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId).
+		Return(models.Organization{}, nil)
 	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
 		Return([]models.ContinuousScreeningConfig{}, nil)
@@ -476,6 +491,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_withou
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
+	suite.continuousScreeningRepository.On("GetOrganizationById",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId).
+		Return(models.Organization{}, nil)
 	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
 		Return([]models.ContinuousScreeningConfig{}, nil)
@@ -505,6 +523,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_nomin
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
+	suite.continuousScreeningRepository.On("GetOrganizationById",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId).
+		Return(models.Organization{}, nil)
 	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
 		Return([]models.ContinuousScreeningConfig{}, nil)
@@ -556,6 +577,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
+	suite.continuousScreeningRepository.On("GetOrganizationById",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId).
+		Return(models.Organization{}, nil)
 	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
 		Return([]models.ContinuousScreeningConfig{}, nil)
@@ -616,9 +640,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
-	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
-		Return([]models.ContinuousScreeningConfig{}, nil)
+	suite.continuousScreeningRepository.On("GetOrganizationById",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId).
+		Return(models.Organization{}, nil)
 
 	rowIdStr1 := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
 	rowId1 := utils.ByteUuid(rowIdStr1)
@@ -678,14 +702,17 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(dataModel, nil)
 
-	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
-		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
-		Return([]models.ContinuousScreeningConfig{{}}, nil) // Return one config to enable feature
-
 	// Setup continuous screening mocks - only objects "1" and "3" are monitored out of 5 total
 	monitoringId1 := pure_utils.NewId()
 	monitoringId3 := pure_utils.NewId()
 	configStableId := pure_utils.NewId()
+
+	suite.continuousScreeningRepository.On("GetOrganizationById",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId).
+		Return(models.Organization{}, nil)
+	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByStableIds",
+		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), suite.organizationId, models.ScreeningProviderOpenSanctions, []uuid.UUID{configStableId}).
+		Return([]models.ContinuousScreeningConfig{{ObjectTypes: []string{"transactions"}}}, nil) // Return one config to enable feature
 
 	rowId1 := pure_utils.NewId()
 	rowId2 := pure_utils.NewId()
@@ -804,7 +831,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 
 	nb, err := uc.IngestObjects(suite.ctx, suite.organizationId, "transactions",
 		json.RawMessage(`[{"object_id": "1", "updated_at": "2020-01-01T00:00:00Z", "value": 1.0, "status": "OK"}, {"object_id": "2", "updated_at": "2020-01-01T00:00:00Z", "value": 2.0, "status": "OK"}, {"object_id": "3", "updated_at": "2020-01-01T00:00:00Z", "value": 3.0, "status": "OK"}, {"object_id": "4", "updated_at": "2020-01-01T00:00:00Z", "value": 4.0, "status": "OK"}, {"object_id": "5", "updated_at": "2020-01-01T00:00:00Z", "value": 5.0, "status": "OK"}]`),
-		models.IngestionOptions{ShouldScreen: true})
+		models.IngestionOptions{ShouldMonitor: true, ContinuousScreeningIds: []uuid.UUID{configStableId}, ShouldScreen: true})
 	asserts := assert.New(t)
 	asserts.NoError(err, "Error ingesting objects")
 	asserts.Equal(5, nb, "Number of rows affected")
@@ -819,6 +846,9 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(suite.dataModel, nil)
 
+	suite.continuousScreeningRepository.On("GetOrganizationById",
+		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId).
+		Return(models.Organization{}, nil)
 	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
 		Return([]models.ContinuousScreeningConfig{}, nil)

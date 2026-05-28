@@ -49,6 +49,8 @@ func NewContinuousScreeningCreateFullDatasetPeriodicJob(orgId uuid.UUID, interva
 }
 
 type createFullDatasetWorkerRepository interface {
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) (models.Organization, error)
+
 	ListContinuousScreeningLastChangeByEntityIds(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -62,6 +64,7 @@ type createFullDatasetWorkerRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		orgId uuid.UUID,
+		provider models.ScreeningProvider,
 	) ([]models.ContinuousScreeningConfig, error)
 
 	GetContinuousScreeningLatestDatasetFileByOrgId(
@@ -174,6 +177,11 @@ func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 	}
 	defer release()
 
+	org, err := w.repo.GetOrganizationById(ctx, exec, orgId)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse org id")
+	}
+
 	// Set a timeout for the session in case the worker hangs or is killed
 	// This ensures Postgres will eventually release the lock even if the connection isn't closed properly
 	timeout := w.Timeout(job)
@@ -200,7 +208,7 @@ func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 	}()
 
 	// Check if the org has a continuous screening config
-	configs, err := w.repo.GetContinuousScreeningConfigsByOrgId(ctx, exec, orgId)
+	configs, err := w.repo.GetContinuousScreeningConfigsByOrgId(ctx, exec, orgId, org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring))
 	if err != nil {
 		return errors.Wrap(err, "failed to get continuous screening configs by org id")
 	}
