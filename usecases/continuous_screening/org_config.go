@@ -114,8 +114,13 @@ func (uc *ContinuousScreeningUsecase) GetContinuousScreeningConfigsByOrgId(
 		return []models.ContinuousScreeningConfig{}, err
 	}
 
+	org, err := uc.repository.GetOrganizationById(ctx, uc.executorFactory.NewExecutor(), orgId)
+	if err != nil {
+		return []models.ContinuousScreeningConfig{}, err
+	}
+
 	configs, err := uc.repository.GetContinuousScreeningConfigsByOrgId(ctx,
-		uc.executorFactory.NewExecutor(), orgId)
+		uc.executorFactory.NewExecutor(), orgId, org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring))
 	if err != nil {
 		return []models.ContinuousScreeningConfig{}, err
 	}

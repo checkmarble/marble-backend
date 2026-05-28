@@ -16,6 +16,15 @@ type ContinuousScreeningRepository struct {
 	mock.Mock
 }
 
+func (m *ContinuousScreeningRepository) GetOrganizationById(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+) (models.Organization, error) {
+	args := m.Called(ctx, exec, orgId)
+	return args.Get(0).(models.Organization), args.Error(1)
+}
+
 func (m *ContinuousScreeningRepository) GetContinuousScreeningConfig(
 	ctx context.Context,
 	exec repositories.Executor,
@@ -29,8 +38,9 @@ func (m *ContinuousScreeningRepository) GetContinuousScreeningConfigsByOrgId(
 	ctx context.Context,
 	exec repositories.Executor,
 	orgId uuid.UUID,
+	provider models.ScreeningProvider,
 ) ([]models.ContinuousScreeningConfig, error) {
-	args := m.Called(ctx, exec, orgId)
+	args := m.Called(ctx, exec, orgId, provider)
 	return args.Get(0).([]models.ContinuousScreeningConfig), args.Error(1)
 }
 
@@ -82,9 +92,10 @@ func (m *ContinuousScreeningRepository) ListContinuousScreeningConfigByObjectTyp
 	ctx context.Context,
 	exec repositories.Executor,
 	orgId uuid.UUID,
+	provider models.ScreeningProvider,
 	objectType string,
 ) ([]models.ContinuousScreeningConfig, error) {
-	args := m.Called(ctx, exec, orgId, objectType)
+	args := m.Called(ctx, exec, orgId, provider, objectType)
 	return args.Get(0).([]models.ContinuousScreeningConfig), args.Error(1)
 }
 
@@ -92,9 +103,10 @@ func (m *ContinuousScreeningRepository) ListContinuousScreeningConfigByStableIds
 	ctx context.Context,
 	exec repositories.Executor,
 	orgId uuid.UUID,
+	provider models.ScreeningProvider,
 	stableIds []uuid.UUID,
 ) ([]models.ContinuousScreeningConfig, error) {
-	args := m.Called(ctx, exec, orgId, stableIds)
+	args := m.Called(ctx, exec, orgId, provider, stableIds)
 	return args.Get(0).([]models.ContinuousScreeningConfig), args.Error(1)
 }
 
@@ -372,15 +384,6 @@ func (m *ContinuousScreeningRepository) ListContinuousScreeningLatestDeltaFiles(
 ) ([]models.ContinuousScreeningDatasetFile, error) {
 	args := m.Called(ctx, exec, orgId, limit)
 	return args.Get(0).([]models.ContinuousScreeningDatasetFile), args.Error(1)
-}
-
-func (m *ContinuousScreeningRepository) GetOrganizationById(
-	ctx context.Context,
-	exec repositories.Executor,
-	organizationId uuid.UUID,
-) (models.Organization, error) {
-	args := m.Called(ctx, exec, organizationId)
-	return args.Get(0).(models.Organization), args.Error(1)
 }
 
 func (m *ContinuousScreeningRepository) GetContinuousScreeningDatasetFileById(

@@ -27,6 +27,7 @@ type ContinuousScreeningUsecaseRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		orgId uuid.UUID,
+		provider models.ScreeningProvider,
 	) ([]models.ContinuousScreeningConfig, error)
 	GetContinuousScreeningConfigByStableId(
 		ctx context.Context,

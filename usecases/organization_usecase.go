@@ -26,7 +26,7 @@ type OrganizationUsecaseFeatureAccessReader interface {
 
 type organizationUsecaseScreeningChecksRepository interface {
 	HasScreeningConfigs(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (bool, error)
-	GetContinuousScreeningConfigsByOrgId(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.ContinuousScreeningConfig, error)
+	GetContinuousScreeningConfigsByOrgId(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, provider models.ScreeningProvider) ([]models.ContinuousScreeningConfig, error)
 }
 
 type OrganizationUseCase struct {
@@ -156,13 +156,15 @@ func (usecase *OrganizationUseCase) UpdateOrganization(
 					}
 
 				case string(models.ScreeningFeatureContinuousMonitoring):
-					configs, err := usecase.screeningConfigRepository.GetContinuousScreeningConfigsByOrgId(ctx, tx, org.Id)
-					if err != nil {
-						return models.Organization{}, err
-					}
-					if len(configs) > 0 {
-						return models.Organization{}, errors.Wrap(models.UnprocessableEntityError,
-							"cannot change continuous monitoring screening provider because a scenario already uses screening")
+					for _, p := range models.ValidScreeningProviders {
+						configs, err := usecase.screeningConfigRepository.GetContinuousScreeningConfigsByOrgId(ctx, tx, org.Id, p)
+						if err != nil {
+							return models.Organization{}, err
+						}
+						if len(configs) > 0 {
+							return models.Organization{}, errors.Wrap(models.UnprocessableEntityError,
+								"cannot change continuous monitoring screening provider because a continuous screening config already exists")
+						}
 					}
 
 				default:
