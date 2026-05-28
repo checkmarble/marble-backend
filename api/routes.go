@@ -253,8 +253,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/custom-lists/:list_id/values/batch", tom, handlePostCsvCustomListValues(uc))
 	router.DELETE("/custom-lists/:list_id/values/:value_id", tom, handleDeleteCustomListValue(uc))
 
-	router.GET("/editor/:scenario_id/identifiers", tom, handleGetEditorIdentifiers(uc))
-
 	router.GET("/users", tom, handleListUsers(uc))
 	router.POST("/users", tom, handlePostUser(uc))
 	router.GET("/users/:user_id", tom, handleGetUser(uc))
