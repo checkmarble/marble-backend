@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -191,9 +192,13 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) SetupTest() {
 }
 
 func (suite *ScanDatasetUpdatesWorkerTestSuite) makeWorker() *ScanDatasetUpdatesWorker {
+	cfg := infra.InitializeScreening(context.Background(), nil, "", "http://example.com", "")
+	cfg.WithLexisNexisHost("http://nexis.com", "thetoken")
+
 	return NewScanDatasetUpdatesWorker(
 		suite.executorFactory,
 		suite.transactionFactory,
+		cfg,
 		suite.repository,
 		suite.screeningProvider,
 		suite.blobRepo,
@@ -434,13 +439,18 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 
 	// Mock catalog with one dataset that has a newer version
 	catalog := models.OpenSanctionsRawCatalog{
-		Current:  []string{datasetName},
+		Current:  []string{datasetName, "lexisnexis"},
 		Outdated: []string{},
 		Datasets: map[string]models.OpenSanctionsRawDataset{
 			datasetName: {
 				Name:     datasetName,
 				Version:  newVersion,
 				DeltaUrl: &deltaUrl,
+			},
+			"lexisnexis": {
+				Name:     "lexisnexis",
+				Version:  newVersion,
+				DeltaUrl: new("https://nexis.com/delta"),
 			},
 		},
 	}
@@ -451,6 +461,14 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 			"2024-01-02": "https://example.com/delta/2024-01-02.ndjson",
 			"2024-01-03": "https://example.com/delta/2024-01-03.ndjson",
 			"2024-01-04": "https://example.com/delta/2024-01-04.ndjson"
+		}
+	}`
+
+	nexisDeltaList := `{
+		"versions": {
+			"2024-01-02": "https://nexis.com/delta/2024-01-02.ndjson",
+			"2024-01-03": "https://nexis.com/delta/2024-01-03.ndjson",
+			"2024-01-04": "https://nexis.com/delta/2024-01-04.ndjson"
 		}
 	}`
 
@@ -508,6 +526,8 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 	// Dataset has older version in DB
 	suite.repository.On("GetLastProcessedVersion", suite.ctx, mock.Anything, datasetName).Return(
 		models.ContinuousScreeningDatasetUpdate{Version: oldVersion}, nil)
+	suite.repository.On("GetLastProcessedVersion", suite.ctx, mock.Anything, "lexisnexis").Return(
+		models.ContinuousScreeningDatasetUpdate{Version: oldVersion}, nil)
 
 	// Mock HTTP client for delta list and delta files
 	defer gock.Off()
@@ -515,6 +535,11 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 		Get("/delta").
 		Reply(200).
 		BodyString(deltaList)
+	gock.New("https://nexis.com").
+		Get("/delta").
+		MatchHeader("authorization", "Token thetoken").
+		Reply(200).
+		BodyString(nexisDeltaList)
 
 	// Mock delta file downloads for all versions
 	deltaFileContent := "line1\nline2\nline3\nline4\nline5\n"
@@ -523,11 +548,18 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 			Get("/delta/" + version + ".ndjson").
 			Reply(200).
 			BodyString(deltaFileContent)
+		gock.New("https://nexis.com").
+			Get("/delta/"+version+".ndjson").
+			MatchHeader("authorization", "Token thetoken").
+			Reply(200).
+			BodyString(deltaFileContent)
 	}
 
 	// Mock blob storage for all versions
 	for _, version := range versionsToProcess {
 		blobKey := fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, datasetName, version)
+		suite.blobRepo.On("OpenStream", mock.Anything, "test-bucket", blobKey, blobKey).Return(&mockBlobWriter{}, nil)
+		blobKey = fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, "lexisnexis", version)
 		suite.blobRepo.On("OpenStream", mock.Anything, "test-bucket", blobKey, blobKey).Return(&mockBlobWriter{}, nil)
 	}
 
@@ -544,6 +576,15 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 				DeltaFilePath: blobKey,
 				TotalItems:    5,
 			}).Return(expectedDatasetUpdates[i], nil)
+
+		blobKey = fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, "lexisnexis", version)
+		suite.repository.On("CreateContinuousScreeningDatasetUpdate", mock.Anything, mock.Anything,
+			models.CreateContinuousScreeningDatasetUpdate{
+				DatasetName:   "lexisnexis",
+				Version:       version,
+				DeltaFilePath: blobKey,
+				TotalItems:    5,
+			}).Return(expectedDatasetUpdates[i], nil)
 	}
 
 	// Mock update job creation for each dataset update and config combination
@@ -551,6 +592,14 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 		suite.repository.On("CreateContinuousScreeningUpdateJob", mock.Anything, mock.Anything,
 			models.CreateContinuousScreeningUpdateJob{
 				Provider:        models.ScreeningProviderOpenSanctions,
+				DatasetUpdateId: job.DatasetUpdateId,
+				ConfigId:        job.ConfigId,
+				OrgId:           job.OrgId,
+			}).Return(job, nil)
+
+		suite.repository.On("CreateContinuousScreeningUpdateJob", mock.Anything, mock.Anything,
+			models.CreateContinuousScreeningUpdateJob{
+				Provider:        models.ScreeningProviderLexisNexis,
 				DatasetUpdateId: job.DatasetUpdateId,
 				ConfigId:        job.ConfigId,
 				OrgId:           job.OrgId,

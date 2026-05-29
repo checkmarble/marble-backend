@@ -11,6 +11,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
@@ -88,6 +89,7 @@ type ScanDatasetUpdatesWorker struct {
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
 
+	screeningConfig     infra.Screening
 	repo                scanDatasetUpdatesWorkerRepository
 	screeningProvider   scanDatasetUpdatesWorkerScreeningProvider
 	blobRepo            repositories.BlobRepository
@@ -100,6 +102,7 @@ type ScanDatasetUpdatesWorker struct {
 func NewScanDatasetUpdatesWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
+	screeningConfig infra.Screening,
 	repo scanDatasetUpdatesWorkerRepository,
 	screeningProvider scanDatasetUpdatesWorkerScreeningProvider,
 	blobRepo repositories.BlobRepository,
@@ -110,6 +113,7 @@ func NewScanDatasetUpdatesWorker(
 	return &ScanDatasetUpdatesWorker{
 		executorFactory:     executorFactory,
 		transactionFactory:  transactionFactory,
+		screeningConfig:     screeningConfig,
 		repo:                repo,
 		screeningProvider:   screeningProvider,
 		blobRepo:            blobRepo,
@@ -169,6 +173,7 @@ func (w *ScanDatasetUpdatesWorker) Work(
 		for _, datasetWithRange := range datasetsWithVersionRange {
 			resultBlobInfos, err := w.processDatasetVersion(
 				ctx,
+				provider,
 				datasetWithRange,
 			)
 			if err != nil {
@@ -332,11 +337,21 @@ func getLoadedDataset(ctx context.Context, catalog models.OpenSanctionsRawCatalo
 
 func (w *ScanDatasetUpdatesWorker) processDatasetVersion(
 	ctx context.Context,
+	provider models.ScreeningProvider,
 	d datasetWithVersionRange,
 ) ([]deltaBlobInfo, error) {
 	logger := utils.LoggerFromContext(ctx)
 
-	versions, err := w.getDeltaList(ctx, d)
+	var token *string
+
+	switch provider {
+	case models.ScreeningProviderLexisNexis:
+		if tok := w.screeningConfig.DownloadToken(models.ScreeningProviderLexisNexis); tok != "" {
+			token = new(tok)
+		}
+	}
+
+	versions, err := w.getDeltaList(ctx, d, token)
 	if err != nil {
 		return nil, err
 	}
@@ -377,7 +392,7 @@ func (w *ScanDatasetUpdatesWorker) processDatasetVersion(
 				"version", version.version,
 				"url", version.url,
 			)
-			blobInfo, err := w.downloadDeltaFileAndSaveInBlob(ctx, version)
+			blobInfo, err := w.downloadDeltaFileAndSaveInBlob(ctx, version, token)
 			if err != nil {
 				logger.WarnContext(
 					ctx,
@@ -445,11 +460,16 @@ type deltaBlobInfo struct {
 	blobKey     string
 }
 
-func (w *ScanDatasetUpdatesWorker) downloadDeltaFileAndSaveInBlob(ctx context.Context, version deltaRecord) (deltaBlobInfo, error) {
+func (w *ScanDatasetUpdatesWorker) downloadDeltaFileAndSaveInBlob(ctx context.Context, version deltaRecord, token *string) (deltaBlobInfo, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", version.url, nil)
 	if err != nil {
 		return deltaBlobInfo{}, err
 	}
+
+	if token != nil {
+		req.Header.Set("authorization", "Token "+*token)
+	}
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return deltaBlobInfo{}, err
@@ -500,7 +520,7 @@ type deltaRecord struct {
 }
 
 func (w *ScanDatasetUpdatesWorker) getDeltaList(ctx context.Context,
-	datasetWithRange datasetWithVersionRange,
+	datasetWithRange datasetWithVersionRange, token *string,
 ) ([]deltaRecord, error) {
 	if datasetWithRange.dataset.DeltaUrl == nil {
 		// Should not happen
@@ -510,6 +530,11 @@ func (w *ScanDatasetUpdatesWorker) getDeltaList(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+
+	if token != nil {
+		req.Header.Set("authorization", "Token "+*token)
+	}
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
