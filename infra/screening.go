@@ -45,6 +45,7 @@ type Screening struct {
 type ScreeningProvider struct {
 	host  string
 	scope string
+	token string
 }
 
 type NameRecognitionProvider struct {
@@ -102,10 +103,11 @@ func (os *Screening) WithScope(scope string) *Screening {
 	return os
 }
 
-func (os *Screening) WithLexisNexisHost(host string) *Screening {
+func (os *Screening) WithLexisNexisHost(host, token string) *Screening {
 	os.providers["lexisnexis"] = &ScreeningProvider{
 		host:  host,
 		scope: "lexisnexis",
+		token: token,
 	}
 
 	return os
@@ -147,6 +149,16 @@ func (os Screening) Host(provider models.ScreeningProvider) string {
 	}
 
 	return OPEN_SANCTIONS_API_HOST
+}
+
+func (os Screening) DownloadToken(provider models.ScreeningProvider) string {
+	if os.IsSelfHosted(provider) {
+		if p, ok := os.providers[provider]; ok {
+			return p.token
+		}
+	}
+
+	return ""
 }
 
 func (os Screening) IsSet() bool {

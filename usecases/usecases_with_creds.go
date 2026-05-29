@@ -945,6 +945,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningScanDatasetUpdatesWorke
 	return continuous_screening.NewScanDatasetUpdatesWorker(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
+		usecases.Repositories.OpenSanctionsRepository.Config,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.OpenSanctionsRepository,
 		usecases.Repositories.BlobRepository,
