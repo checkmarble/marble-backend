@@ -217,6 +217,10 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context, f
 						}
 					}
 
+					if regionCode == "other" {
+						regionCode, _ = httpmodels.RegionFromDatasetName(strings.ToLower(name))
+					}
+
 					return dto.ScreeningAvailableFiltersItem{
 						Section: regionCode,
 						Name:    ds,
