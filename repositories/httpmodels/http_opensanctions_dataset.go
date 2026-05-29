@@ -193,6 +193,8 @@ func RegionFromDatasetName(name string) (string, string) {
 		cc = name[4:6]
 	} else if len(name) >= 3 && isDatasetSeparator(name[2]) {
 		cc = name[0:2]
+	} else if len(name) >= 5 && name[2] == ' ' && isDatasetSeparator(name[3]) && name[4] == ' ' {
+		cc = name[0:2]
 	}
 
 	switch cc {
