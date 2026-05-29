@@ -54,7 +54,7 @@ func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
 				}
 
 				if filter.Datasets != nil {
-					q.Queries[id].Filters["programId"] = [][]string{filter.Datasets}
+					q.Queries[id].Filters["properties.programId"] = [][]string{filter.Datasets}
 				}
 
 				for _, globalTopic := range filters.Global.Topics {
