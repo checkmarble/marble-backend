@@ -37,7 +37,7 @@ type DecisionScenario struct {
 
 type DecisionRule struct {
 	Id            string             `json:"id"`
-	StableRuleId  string             `json:"stable_rule_id"`
+	RuleId        string             `json:"rule_id"`
 	Name          string             `json:"name"`
 	Outcome       string             `json:"outcome"`
 	ScoreModifier int                `json:"score_modifier"`
@@ -103,7 +103,7 @@ func AdaptDecisionRule(rule models.RuleExecution) DecisionRule {
 
 	out := DecisionRule{
 		Id:            rule.Rule.Id,
-		StableRuleId:  rule.Rule.StableRuleId,
+		RuleId:        rule.Rule.StableRuleId,
 		Name:          rule.Rule.Name,
 		Outcome:       rule.Outcome,
 		ScoreModifier: rule.ResultScoreModifier,
