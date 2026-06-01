@@ -37,6 +37,7 @@ type DecisionScenario struct {
 
 type DecisionRule struct {
 	Id            string             `json:"id"`
+	StableRuleId  string             `json:"stable_rule_id"`
 	Name          string             `json:"name"`
 	Outcome       string             `json:"outcome"`
 	ScoreModifier int                `json:"score_modifier"`
@@ -48,7 +49,9 @@ type DecisionRuleError struct {
 	Message string `json:"message"`
 }
 
-func AdaptDecision(includeRules bool, ruleExecutions []models.RuleExecution,
+func AdaptDecision(
+	includeRules bool,
+	ruleExecutions []models.RuleExecution,
 	screening []models.ScreeningWithMatches,
 ) func(models.Decision) Decision {
 	return func(model models.Decision) Decision {
@@ -100,6 +103,7 @@ func AdaptDecisionRule(rule models.RuleExecution) DecisionRule {
 
 	out := DecisionRule{
 		Id:            rule.Rule.Id,
+		StableRuleId:  rule.Rule.StableRuleId,
 		Name:          rule.Rule.Name,
 		Outcome:       rule.Outcome,
 		ScoreModifier: rule.ResultScoreModifier,

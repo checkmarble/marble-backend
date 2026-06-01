@@ -10,6 +10,8 @@ import (
 
 type Screening struct {
 	Id           string                           `json:"id"`
+	StableRuleId string                           `json:"stable_rule_id"`
+	Name         string                           `json:"name"`
 	Status       string                           `json:"status"`
 	Provider     models.ScreeningProvider         `json:"-"`
 	Query        json.RawMessage                  `json:"query"`
@@ -38,6 +40,8 @@ func AdaptScreening(includeMatches bool) func(models.ScreeningWithMatches) Scree
 	return func(model models.ScreeningWithMatches) Screening {
 		sc := Screening{
 			Id:           model.Id,
+			StableRuleId: model.Config.StableId,
+			Name:         model.Config.Name,
 			Status:       model.Status.String(),
 			Provider:     model.Provider,
 			Query:        model.SearchInput,
