@@ -133,6 +133,11 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) Work(
 		}
 	}
 
+	if errors.Is(errs, models.NotFoundError) {
+		logger.DebugContext(ctx, "404 returned while trying to enrich a delta file row, this may happen if indexation has not yet run. Snoozing one hour...")
+		return river.JobSnooze(1 * time.Hour)
+	}
+
 	return errs
 }
 
