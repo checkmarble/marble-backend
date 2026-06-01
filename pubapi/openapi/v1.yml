@@ -990,17 +990,17 @@ components:
       type: object
       required:
         - name
-        - stable_rule_id
+        - rule_id
         - outcome
         - score_modifier
       properties:
         name:
           description: Name of the rule in the scenario version
           type: string
-        stable_rule_id:
+        rule_id:
           type: string
           format: uuid
-          description: Stable ID of the rule across scenario versions. Can be used to implement automations in a way that is more reliable than using the rule name.
+          description: ID of the rule across scenario versions. Can be used to implement automations in a way that is more reliable than using the rule name.
         outcome:
           description: Outcome of the rule execution
           type: string
@@ -1025,7 +1025,7 @@ components:
       type: object
       required:
         - id
-        - stable_rule_id
+        - rule_id
         - status
         - query
         - match_count
@@ -1035,10 +1035,11 @@ components:
         id:
           type: string
           format: uuid
-        stable_rule_id:
+          description: ID of the screening result.
+        rule_id:
           type: string
           format: uuid
-          description: Stable ID of the screening rule across scenario versions. Can be used to implement automations in a way that is more reliable than using the rule name.
+          description: ID of the screening rule across scenario versions. Can be used to implement automations in a way that is more reliable than using the rule name.
         status:
           type: string
           enum:
