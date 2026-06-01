@@ -17,6 +17,26 @@ paths:
           required: true
           schema:
             type: string
+        - name: monitor
+          in: query
+          description: Whether to put the ingested object under continuous monitoring
+          schema:
+            type: boolean
+        - name: monitoring_config_id
+          in: query
+          description:
+            If monitoring the object, which configuration to use. Can be
+            repeated multiple times.
+          schema:
+            type: string
+            format: uuid
+        - name: skip_screening
+          in: query
+          description:
+            If monitoring, whether to skip the initial screening of the
+            ingested object.
+          schema:
+            type: boolean
       requestBody:
         content:
           application/json:
@@ -59,6 +79,26 @@ paths:
           required: true
           schema:
             type: string
+        - name: monitor
+          in: query
+          description: Whether to put the ingested object under continuous monitoring
+          schema:
+            type: boolean
+        - name: monitoring_config_id
+          in: query
+          description:
+            If monitoring the object, which configuration to use. Can be
+            repeated multiple times.
+          schema:
+            type: string
+            format: uuid
+        - name: skip_screening
+          in: query
+          description:
+            If monitoring, whether to skip the initial screening of the
+            ingested object.
+          schema:
+            type: boolean
       requestBody:
         content:
           application/json:
@@ -102,6 +142,26 @@ paths:
           required: true
           schema:
             type: string
+        - name: monitor
+          in: query
+          description: Whether to put the ingested object under continuous monitoring
+          schema:
+            type: boolean
+        - name: monitoring_config_id
+          in: query
+          description:
+            If monitoring the object, which configuration to use. Can be
+            repeated multiple times.
+          schema:
+            type: string
+            format: uuid
+        - name: skip_screening
+          in: query
+          description:
+            If monitoring, whether to skip the initial screening of the
+            ingested object.
+          schema:
+            type: boolean
       requestBody:
         content:
           application/json:
@@ -148,6 +208,26 @@ paths:
           required: true
           schema:
             type: string
+        - name: monitor
+          in: query
+          description: Whether to put the ingested object under continuous monitoring
+          schema:
+            type: boolean
+        - name: monitoring_config_id
+          in: query
+          description:
+            If monitoring the object, which configuration to use. Can be
+            repeated multiple times.
+          schema:
+            type: string
+            format: uuid
+        - name: skip_screening
+          in: query
+          description:
+            If monitoring, whether to skip the initial screening of the
+            ingested object.
+          schema:
+            type: boolean
       requestBody:
         content:
           application/json:
