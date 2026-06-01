@@ -7,9 +7,69 @@ import (
 	"testing"
 	"testing/iotest"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/stretchr/testify/assert"
 )
+
+// matchesFilters (LexisNexis): a record matches when at least one enabled
+// section matches; it must not slip through when no section matches.
+func TestMatchesFilters_LexisNexis(t *testing.T) {
+	enabled := func(datasets []string, topics map[string][]string) *models.ScreeningConfigFilter {
+		return &models.ScreeningConfigFilter{Enabled: true, Datasets: datasets, Topics: topics}
+	}
+
+	// Mirrors cmd/filter.json: sanctions (with datasets) + peps + adverse_media
+	// enabled, other & global disabled.
+	filters := models.ScreeningConfigFilters{
+		Global:       &models.ScreeningConfigFilter{Enabled: false},
+		Other:        &models.ScreeningConfigFilter{Enabled: false},
+		Sanctions:    enabled([]string{"ofac", "eulist"}, nil),
+		Peps:         enabled(nil, nil),
+		AdverseMedia: enabled(nil, nil),
+	}
+
+	job := models.EnrichedContinuousScreeningUpdateJob{
+		Config: models.ContinuousScreeningConfig{
+			Provider: models.ScreeningProviderLexisNexis,
+			Filters:  filters,
+		},
+	}
+
+	recordWithTopics := func(topics ...string) models.OpenSanctionsDeltaFileRecord {
+		return models.OpenSanctionsDeltaFileRecord{
+			Entity: models.OpenSanctionsDeltaFileEntity{
+				Properties: map[string][]string{"topics": topics},
+			},
+		}
+	}
+
+	tests := []struct {
+		name     string
+		record   models.OpenSanctionsDeltaFileRecord
+		expected bool
+	}{
+		{
+			// Matches the enabled adverse_media section (no datasets required).
+			name:     "matches an enabled section",
+			record:   recordWithTopics("adverse_media"),
+			expected: true,
+		},
+		{
+			// "sanctions" topic, but no programId in the configured datasets.
+			// No section matches and global must not let it through.
+			name:     "matches no enabled section",
+			record:   recordWithTopics("sanctions"),
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, matchesFilters(job, tt.record))
+		})
+	}
+}
 
 // Test the json decoder offset behavior and resume from offset mechanism
 // Mock the S3/Blob storage with OneByteReader to simulate chunked data (stream)
