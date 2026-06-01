@@ -291,7 +291,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 			}
 		}
 
-		if !w.matchesFilters(updateJob, record) {
+		if !matchesFilters(updateJob, record) {
 			iterLogger.DebugContext(iterCtx, "Skipping record because it does not meet filter")
 			continue
 		}
@@ -306,7 +306,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		err = retry.Do(
 			func() error {
 				// Searches in this direction should use the Open Sanctions schema (no complex topics filters).
-				screeningResponse, err = w.screeningProvider.Search(iterCtx, models.ScreeningProviderOpenSanctions,  query)
+				screeningResponse, err = w.screeningProvider.Search(iterCtx, models.ScreeningProviderOpenSanctions, query)
 				return err
 			},
 			retry.Attempts(3),
@@ -537,7 +537,26 @@ func isTransientScreeningError(err error) bool {
 	return false
 }
 
-func (w *ApplyDeltaFileWorker) matchesFilters(updateJob models.EnrichedContinuousScreeningUpdateJob, record models.OpenSanctionsDeltaFileRecord) bool {
+// Topics come in groups, matching is a AND of groups with an OR inside groups.
+func topicsMatchForSection(sectionTopics map[string][]string, record models.OpenSanctionsDeltaFileRecord) bool {
+	for _, topicGroup := range sectionTopics {
+		topicFound := false
+
+		for _, topic := range record.Entity.Properties["topics"] {
+			if slices.Contains(topicGroup, topic) {
+				topicFound = true
+				break
+			}
+		}
+
+		if !topicFound {
+			return false
+		}
+	}
+	return true
+}
+
+func matchesFilters(updateJob models.EnrichedContinuousScreeningUpdateJob, record models.OpenSanctionsDeltaFileRecord) bool {
 	filters := updateJob.Config.Filters.Resolve()
 
 	switch updateJob.Config.Provider {
@@ -556,16 +575,25 @@ func (w *ApplyDeltaFileWorker) matchesFilters(updateJob models.EnrichedContinuou
 
 	case models.ScreeningProviderLexisNexis:
 		// Loop over each configuration section
+		globalFilter := filters.Global
+		if globalFilter.Enabled {
+			if !topicsMatchForSection(globalFilter.Topics, record) {
+				return false
+			}
+		}
+
+		recordMatches := false
 		for rootTopic, section := range filters.WithRootTopics() {
-			// Short-circuit if the section is not enabled
-			if !section.Enabled && rootTopic != "global" {
+			// Short-circuit if the section is not enabled. Global filters ("is alive"...) are applied before the loop, separately because all records must match them regardless of their root topic.
+			if !section.Enabled || rootTopic == "global" {
 				continue
 			}
 
-			foundDataset := false
+			sectionMatches := true
 
 			// If we searches for specific datasets (programId for Lexis Nexis), break if not found
 			if len(section.Datasets) > 0 {
+				foundDataset := false
 				for _, recordDataset := range record.Entity.Properties["programId"] {
 					if slices.Contains(section.Datasets, recordDataset) {
 						foundDataset = true
@@ -574,33 +602,26 @@ func (w *ApplyDeltaFileWorker) matchesFilters(updateJob models.EnrichedContinuou
 				}
 
 				if !foundDataset {
-					return false
+					sectionMatches = false
 				}
 			}
 
 			// Check whether the record holds the root topic for the section
-			if rootTopic != "global" && rootTopic != "other" && !slices.Contains(record.Entity.Properties["topics"], rootTopic) {
-				return false
+			if rootTopic != "other" && !slices.Contains(record.Entity.Properties["topics"], rootTopic) {
+				sectionMatches = false
 			}
 
-			// For each group of filtered topic, break if there is no match in any of the groups
-			for _, topicGroup := range section.Topics {
-				topicFound := false
+			if !topicsMatchForSection(section.Topics, record) {
+				sectionMatches = false
+			}
 
-				for _, topic := range record.Entity.Properties["topics"] {
-					if slices.Contains(topicGroup, topic) {
-						topicFound = true
-						break
-					}
-				}
-
-				if !topicFound {
-					return false
-				}
+			if sectionMatches {
+				recordMatches = true
+				break
 			}
 		}
 
-		return true
+		return recordMatches
 	}
 
 	return false
