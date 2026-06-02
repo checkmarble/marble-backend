@@ -110,9 +110,13 @@ func IgnoreList(ctx context.Context, e ScenarioEvaluator, screeningId string,
 			return nil, err
 		}
 
-		list, ok := customListEval.ReturnValue.([]string)
+		listAny, ok := customListEval.ReturnValue.([]any)
 		if !ok {
-			return nil, errors.New("could not retrieve custom list")
+			return nil, errors.New("could not parse result from custom list (not []any)")
+		}
+		list, ok := pure_utils.CastAnySlice[string](listAny)
+		if !ok {
+			return nil, errors.New("could not parse result from custom list (not []string)")
 		}
 
 		list = pure_utils.Map(list, func(s string) string {
