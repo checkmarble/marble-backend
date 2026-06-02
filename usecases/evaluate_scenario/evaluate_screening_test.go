@@ -59,7 +59,7 @@ func (m mockScreeningExecutor) PerformNameRecognition(ctx context.Context, label
 type customListAstMock struct{}
 
 func (customListAstMock) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
-	return []string{"this", "forbidden"}, nil
+	return []any{"this", "forbidden"}, nil
 }
 
 func getScreeningEvaluator() (ScenarioEvaluator, mockScreeningExecutor) {
