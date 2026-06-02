@@ -60,14 +60,14 @@ require (
 	github.com/pressly/goose/v3 v3.27.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/redis/go-redis/v9 v9.18.0
-	github.com/riverqueue/river v0.35.1
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.35.1
-	github.com/riverqueue/river/rivertype v0.35.1
+	github.com/riverqueue/river v0.37.1
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.37.1
+	github.com/riverqueue/river/rivertype v0.37.1
 	github.com/segmentio/analytics-go/v3 v3.3.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.42.0
-	github.com/tidwall/gjson v1.18.0
+	github.com/tidwall/gjson v1.19.0
 	github.com/twpayne/go-geom v1.6.1
 	github.com/twpayne/go-geos v0.20.4
 	github.com/twpayne/pgx-geos v1.0.1
@@ -84,7 +84,7 @@ require (
 	golang.org/x/net v0.53.0
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.20.0
-	golang.org/x/text v0.36.0
+	golang.org/x/text v0.37.0
 	golang.org/x/time v0.15.0
 	google.golang.org/api v0.278.0
 	google.golang.org/genai v1.52.0
@@ -272,8 +272,8 @@ require (
 	github.com/prometheus/procfs v0.19.2 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.59.0 // indirect
-	github.com/riverqueue/river/riverdriver v0.35.1 // indirect
-	github.com/riverqueue/river/rivershared v0.35.1 // indirect
+	github.com/riverqueue/river/riverdriver v0.37.1 // indirect
+	github.com/riverqueue/river/rivershared v0.37.1 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/samber/lo v1.51.0 // indirect
 	github.com/sanity-io/litter v1.5.5 // indirect
