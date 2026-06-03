@@ -191,7 +191,7 @@ func HandleScreeningFreeformSearch(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		screening, err := screeningUsecase.FreeformSearch(c.Request.Context(),
-			orgId, models.ScreeningConfig{}, refineQuery)
+			orgId, models.FreeformSearchConfig{}, refineQuery)
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return

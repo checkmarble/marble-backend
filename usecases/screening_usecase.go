@@ -519,10 +519,11 @@ func (uc ScreeningUsecase) Search(ctx context.Context, refine models.ScreeningRe
 	return screening, nil
 }
 
-func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
+func (uc ScreeningUsecase) FreeformSearch(
+	ctx context.Context,
 	orgId uuid.UUID,
-	scc models.ScreeningConfig,
-	refine models.ScreeningRefineRequest,
+	config models.FreeformSearchConfig,
+	searchQuery models.ScreeningRefineRequest,
 ) (models.ScreeningWithMatches, error) {
 	exec := uc.executorFactory.NewExecutor()
 
@@ -553,20 +554,15 @@ func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
 			errors.Wrap(err, "could not retrieve organization")
 	}
 
-	scc.Provider = org.GetScreeningProviderFor(models.ScreeningFeatureManualSearch)
+	config.Provider = org.GetScreeningProviderFor(models.ScreeningFeatureManualSearch)
 
-	query := models.OpenSanctionsQuery{
-		IsRefinement:  false,
-		Config:        scc,
-		Queries:       models.AdaptRefineRequestToMatchable(refine),
-		LimitOverride: refine.LimitOverride,
-	}
+	query := freeformSearchToOpenSanctionsQuery(config, searchQuery)
 
 	screening, err := uc.Execute(ctx, orgId, query)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
-	err = uc.persistFreeformSearch(ctx, exec, orgId, scc.Provider, refine)
+	err = uc.persistFreeformSearch(ctx, exec, orgId, config, searchQuery)
 	if err != nil {
 		return models.ScreeningWithMatches{}, err
 	}
@@ -574,18 +570,26 @@ func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
 	return screening, nil
 }
 
+func freeformSearchToOpenSanctionsQuery(c models.FreeformSearchConfig, q models.ScreeningRefineRequest) models.OpenSanctionsQuery {
+	return models.OpenSanctionsQuery{
+		IsRefinement: false,
+		Config: models.ScreeningConfig{
+			Filters:   c.Filters,
+			Threshold: c.Threshold,
+			Provider:  c.Provider,
+		},
+		Queries:       models.AdaptRefineRequestToMatchable(q),
+		LimitOverride: &c.Limit,
+	}
+}
+
 func (uc ScreeningUsecase) persistFreeformSearch(
 	ctx context.Context,
 	exec repositories.Executor,
 	orgId uuid.UUID,
-	provider models.ScreeningProvider,
+	config models.FreeformSearchConfig,
 	refine models.ScreeningRefineRequest,
 ) error {
-	searchInput, err := json.Marshal(refine)
-	if err != nil {
-		return err
-	}
-
 	var (
 		userId   *uuid.UUID
 		apiKeyId *uuid.UUID
@@ -604,12 +608,13 @@ func (uc ScreeningUsecase) persistFreeformSearch(
 	}
 
 	row := models.FreeformSearch{
-		Id:          pure_utils.NewId(),
-		OrgId:       orgId,
-		UserId:      userId,
-		ApiKeyId:    apiKeyId,
-		Provider:    provider,
-		SearchInput: searchInput,
+		Id:           pure_utils.NewId(),
+		OrgId:        orgId,
+		UserId:       userId,
+		ApiKeyId:     apiKeyId,
+		Provider:     config.Provider,
+		SearchInput:  refine,
+		SearchConfig: config,
 	}
 
 	if err := uc.repository.InsertFreeformSearch(ctx, exec, row); err != nil {
