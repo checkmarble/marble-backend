@@ -324,27 +324,26 @@ func handleFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		limitOverride := utils.Ptr(10)
+		limit := 10
 
 		if l, err := strconv.Atoi(c.Query("limit")); err == nil {
-			limitOverride = utils.Ptr(min(l, SCREENING_FREEFORM_SEARCH_LIMIT_MAX))
+			limit = min(l, SCREENING_FREEFORM_SEARCH_LIMIT_MAX)
 		}
 
 		req := models.ScreeningRefineRequest{
-			Type:          payload.Query.Type(),
-			Query:         dto.AdaptRefineQueryDto(payload.Query),
-			LimitOverride: limitOverride,
+			Type:  payload.Query.Type(),
+			Query: dto.AdaptRefineQueryDto(payload.Query),
 		}
 
-		scc := models.ScreeningConfig{
-			Datasets:  payload.Datasets,
+		config := models.FreeformSearchConfig{
 			Filters:   payload.Filters,
 			Threshold: payload.Threshold,
+			Limit:     limit,
 		}
 
 		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
 
-		matches, err := uc.FreeformSearch(ctx, orgId, scc, req)
+		matches, err := uc.FreeformSearch(ctx, orgId, config, req)
 		if presentError(ctx, c, err) {
 			return
 		}
