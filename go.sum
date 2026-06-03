@@ -296,8 +296,8 @@ github.com/getsentry/sentry-go v0.46.2 h1:1jhYwrKGa3sIpo/y5iDNXS5wDoT7I1KNzMHrnK
 github.com/getsentry/sentry-go v0.46.2/go.mod h1:evVbw2qotNUdYG8KxXbAdjOQWWvWIwKxpjdZZIvcIPw=
 github.com/getsentry/sentry-go/gin v0.46.2 h1:+YCJvpEKuKVgna6ZAHMIlJAiBk1D+Nh+K4awpUtJNG0=
 github.com/getsentry/sentry-go/gin v0.46.2/go.mod h1:fPPyezNO87IwDi7Q5sCtA6tGHoHD7DutdYbN/l77m2k=
-github.com/gin-contrib/cors v1.7.6 h1:3gQ8GMzs1Ylpf70y8bMw4fVpycXIeX1ZemuSQIsnQQY=
-github.com/gin-contrib/cors v1.7.6/go.mod h1:Ulcl+xN4jel9t1Ry8vqph23a60FwH9xVLd+3ykmTjOk=
+github.com/gin-contrib/cors v1.7.7 h1:Oh9joP463x7Mw72vhvJ61YQm8ODh9b04YR7vsOErD0Q=
+github.com/gin-contrib/cors v1.7.7/go.mod h1:K5tW0RkzJtWSiOdikXloy8VEZlgdVNpHNw8FpjUPNrE=
 github.com/gin-contrib/size v1.0.2 h1:rW5bgj7+SwDmnOlZ9lJV8lDYWTrllQAspi3WP8GtqHE=
 github.com/gin-contrib/size v1.0.2/go.mod h1:kKbz/Ervg8tpnrhrBpTO5m4wuQNTVlEqTb1MgkRrmFY=
 github.com/gin-contrib/sse v1.1.1 h1:uGYpNwTacv5R68bSGMapo62iLTRa9l5zxGCps4hK6ko=
