@@ -14,25 +14,56 @@ const TABLE_FREEFORM_SEARCHES = "screening_freeform_searches"
 var SelectFreeformSearchColumn = utils.ColumnList[DBFreeformSearch]()
 
 type DBFreeformSearch struct {
-	Id          uuid.UUID                `db:"id"`
-	OrgId       uuid.UUID                `db:"org_id"`
-	UserId      *uuid.UUID               `db:"user_id"`
-	ApiKeyId    *uuid.UUID               `db:"api_key_id"`
-	Provider    models.ScreeningProvider `db:"provider"`
-	CreatedAt   time.Time                `db:"created_at"`
-	SearchInput json.RawMessage          `db:"search_input"`
-	Result      json.RawMessage          `db:"result"`
+	Id           uuid.UUID                `db:"id"`
+	OrgId        uuid.UUID                `db:"org_id"`
+	UserId       *uuid.UUID               `db:"user_id"`
+	ApiKeyId     *uuid.UUID               `db:"api_key_id"`
+	Provider     models.ScreeningProvider `db:"provider"`
+	CreatedAt    time.Time                `db:"created_at"`
+	SearchInput  json.RawMessage          `db:"search_input"`
+	SearchConfig json.RawMessage          `db:"search_config"`
+	Result       json.RawMessage          `db:"result"`
 }
 
 func AdaptFreeformSearch(db DBFreeformSearch) (models.FreeformSearch, error) {
+	searchInputDb := DBScreeningRefineRequest{}
+	if err := json.Unmarshal(db.SearchInput, &searchInputDb); err != nil {
+		return models.FreeformSearch{}, err
+	}
+	searchInput := models.ScreeningRefineRequest{
+		Type:          searchInputDb.Type,
+		Query:         searchInputDb.Query,
+		LimitOverride: searchInputDb.LimitOverride,
+	}
+
+	config := models.FreeformSearchConfig{}
+	if err := json.Unmarshal(db.SearchConfig, &config); err != nil {
+		return models.FreeformSearch{}, err
+	}
+
 	return models.FreeformSearch{
-		Id:          db.Id,
-		OrgId:       db.OrgId,
-		UserId:      db.UserId,
-		ApiKeyId:    db.ApiKeyId,
-		Provider:    db.Provider,
-		CreatedAt:   db.CreatedAt,
-		SearchInput: db.SearchInput,
-		Result:      db.Result,
+		Id:           db.Id,
+		OrgId:        db.OrgId,
+		UserId:       db.UserId,
+		ApiKeyId:     db.ApiKeyId,
+		Provider:     db.Provider,
+		CreatedAt:    db.CreatedAt,
+		SearchInput:  searchInput,
+		SearchConfig: config,
+		Result:       db.Result,
 	}, nil
+}
+
+type DBScreeningRefineRequest struct {
+	Type          string                     `json:"type"`
+	Query         models.OpenSanctionsFilter `json:"query"`
+	LimitOverride *int                       `json:"limit_override,omitempty"`
+}
+
+func AdaptDBScreeningRefineRequest(r models.ScreeningRefineRequest) DBScreeningRefineRequest {
+	return DBScreeningRefineRequest{
+		Type:          r.Type,
+		Query:         r.Query,
+		LimitOverride: r.LimitOverride,
+	}
 }

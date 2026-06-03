@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -13,9 +14,18 @@ import (
 func (*MarbleDbRepository) InsertFreeformSearch(
 	ctx context.Context,
 	exec Executor,
-	h models.FreeformSearch,
+	s models.FreeformSearch,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	searchInputBytes, err := json.Marshal(dbmodels.AdaptDBScreeningRefineRequest(s.SearchInput))
+	if err != nil {
+		return err
+	}
+	configBytes, err := json.Marshal(s.SearchConfig)
+	if err != nil {
 		return err
 	}
 
@@ -28,14 +38,16 @@ func (*MarbleDbRepository) InsertFreeformSearch(
 			"api_key_id",
 			"provider",
 			"search_input",
+			"search_config",
 		).
 		Values(
-			h.Id,
-			h.OrgId,
-			h.UserId,
-			h.ApiKeyId,
-			h.Provider,
-			h.SearchInput,
+			s.Id,
+			s.OrgId,
+			s.UserId,
+			s.ApiKeyId,
+			s.Provider,
+			searchInputBytes,
+			configBytes,
 		)
 
 	return ExecBuilder(ctx, exec, sql)
