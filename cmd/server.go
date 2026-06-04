@@ -174,7 +174,9 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		openSanctionsConfig.WithScope(scope)
 	}
 	if host := utils.GetEnv("SCREENING_LEXISNEXIS_API_HOST", ""); host != "" {
-		openSanctionsConfig.WithLexisNexisHost(host, utils.GetEnv("SCREENING_LEXISNEXIS_TOKEN", ""))
+		openSanctionsConfig.
+			WithLexisNexisHost(host, utils.GetEnv("SCREENING_LEXISNEXIS_TOKEN", "")).
+			WithLexisNexisScope(utils.GetEnv("SCREENING_LEXISNEXIS_SCOPE", ""))
 	}
 
 	if algo := utils.GetEnv("SCREENING_ALGORITHM", ""); algo != "" {

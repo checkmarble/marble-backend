@@ -107,6 +107,7 @@ type ScreeningConfigFilters struct {
 	Peps         *ScreeningConfigFilter `json:"peps,omitempty"`
 	AdverseMedia *ScreeningConfigFilter `json:"adverse_media,omitempty"`
 	Other        *ScreeningConfigFilter `json:"other,omitempty"`
+	Custom       *ScreeningConfigFilter `json:"custom,omitempty"`
 }
 
 type ResolvedScreeningConfigFilters struct {
@@ -115,6 +116,7 @@ type ResolvedScreeningConfigFilters struct {
 	Peps         ScreeningConfigFilter
 	AdverseMedia ScreeningConfigFilter
 	Other        ScreeningConfigFilter
+	Custom       ScreeningConfigFilter
 }
 
 func (scf *ScreeningConfigFilters) IsEmpty() bool {
@@ -122,14 +124,15 @@ func (scf *ScreeningConfigFilters) IsEmpty() bool {
 		return true
 	}
 
-	return scf.Global == nil && scf.Sanctions == nil && scf.Peps == nil && scf.AdverseMedia == nil && scf.Other == nil
+	return scf.Global == nil && scf.Sanctions == nil && scf.Peps == nil && scf.AdverseMedia == nil && scf.Other == nil && scf.Custom == nil
 }
 
 func (scf ResolvedScreeningConfigFilters) NoFilters() bool {
 	return !scf.Sanctions.IsEnabled() &&
 		!scf.Peps.IsEnabled() &&
 		!scf.AdverseMedia.IsEnabled() &&
-		!scf.Other.IsEnabled()
+		!scf.Other.IsEnabled() &&
+		!scf.Custom.IsEnabled()
 }
 
 func (scf ResolvedScreeningConfigFilters) WithRootTopics() map[string]ScreeningConfigFilter {
@@ -139,6 +142,7 @@ func (scf ResolvedScreeningConfigFilters) WithRootTopics() map[string]ScreeningC
 		"pep":           scf.Peps,
 		"adverse_media": scf.AdverseMedia,
 		"other":         scf.Other,
+		"custom":        scf.Custom,
 	}
 }
 
@@ -178,6 +182,7 @@ func (scf ResolvedScreeningConfigFilters) ToLegacyDatasets() []string {
 	datasets = append(datasets, scf.Peps.Datasets...)
 	datasets = append(datasets, scf.AdverseMedia.Datasets...)
 	datasets = append(datasets, scf.Other.Datasets...)
+	datasets = append(datasets, scf.Custom.Datasets...)
 
 	return datasets
 }
@@ -190,6 +195,7 @@ func (scf *ScreeningConfigFilters) Resolve() ResolvedScreeningConfigFilters {
 			Peps:         ScreeningConfigFilter{},
 			AdverseMedia: ScreeningConfigFilter{},
 			Other:        ScreeningConfigFilter{},
+			Custom:       ScreeningConfigFilter{},
 		}
 	}
 
@@ -223,6 +229,12 @@ func (scf *ScreeningConfigFilters) Resolve() ResolvedScreeningConfigFilters {
 				return ScreeningConfigFilter{}
 			}
 			return *scf.Other
+		}(),
+		Custom: func() ScreeningConfigFilter {
+			if scf.Custom == nil {
+				return ScreeningConfigFilter{}
+			}
+			return *scf.Custom
 		}(),
 	}
 }
