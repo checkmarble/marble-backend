@@ -106,8 +106,13 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		utils.GetEnv("SCREENING_OPENSANCTIONS_AUTH_METHOD", ""),
 		utils.GetEnv("SCREENING_OPENSANCTIONS_API_KEY", ""),
 	)
+	if scope := utils.GetEnv("SCREENING_OPENSANCTIONS_SCOPE", ""); scope != "" {
+		openSanctionsConfig.WithScope(scope)
+	}
 	if host := utils.GetEnv("SCREENING_LEXISNEXIS_API_HOST", ""); host != "" {
-		openSanctionsConfig.WithLexisNexisHost(host, utils.GetEnv("SCREENING_LEXISNEXIS_TOKEN", ""))
+		openSanctionsConfig.
+			WithLexisNexisHost(host, utils.GetEnv("SCREENING_LEXISNEXIS_TOKEN", "")).
+			WithLexisNexisScope(utils.GetEnv("SCREENING_LEXISNEXIS_SCOPE", ""))
 	}
 	if apiUrl := utils.GetEnv("NAME_RECOGNITION_API_URL", ""); apiUrl != "" {
 		openSanctionsConfig.WithNameRecognition(apiUrl,

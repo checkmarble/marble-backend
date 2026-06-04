@@ -113,6 +113,14 @@ func (os *Screening) WithLexisNexisHost(host, token string) *Screening {
 	return os
 }
 
+func (os *Screening) WithLexisNexisScope(scope string) *Screening {
+	if scope != "" {
+		os.providers["lexisnexis"].scope = scope
+	}
+
+	return os
+}
+
 func (os *Screening) WithNameRecognition(apiUrl, apiKey string) *Screening {
 	os.nameRecognition = &NameRecognitionProvider{
 		ApiUrl: apiUrl,

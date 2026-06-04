@@ -9,6 +9,7 @@ import (
 	"maps"
 	"mime/multipart"
 	"slices"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -251,9 +252,14 @@ func (uc ScreeningUsecase) GetAvailableFilters(ctx context.Context, feature mode
 		pepDatasets := []dto.ScreeningAvailableFiltersItem{}
 		mediaDatasets := []dto.ScreeningAvailableFiltersItem{}
 		otherDatasets := []dto.ScreeningAvailableFiltersItem{}
+		customDatasets := []dto.ScreeningAvailableFiltersItem{}
 
 		for _, s := range catalog.Sections {
 			for _, d := range s.Datasets {
+				if d.Name == "lexisnexis" {
+					continue
+				}
+
 				switch d.Tag {
 				case "sanctions":
 					sanctionsDatasets = append(sanctionsDatasets, dto.ScreeningAvailableFiltersItem{Section: s.Name, Name: d.Name, Title: d.Title})
@@ -262,7 +268,12 @@ func (uc ScreeningUsecase) GetAvailableFilters(ctx context.Context, feature mode
 				case "adverse-media":
 					mediaDatasets = append(mediaDatasets, dto.ScreeningAvailableFiltersItem{Section: s.Name, Name: d.Name, Title: d.Title})
 				default:
-					otherDatasets = append(otherDatasets, dto.ScreeningAvailableFiltersItem{Section: s.Name, Name: d.Name, Title: d.Title})
+					switch strings.HasPrefix(d.Name, "marble_custom_") {
+					case true:
+						customDatasets = append(customDatasets, dto.ScreeningAvailableFiltersItem{Section: "Custom", Name: d.Name, Title: d.Title})
+					case false:
+						otherDatasets = append(otherDatasets, dto.ScreeningAvailableFiltersItem{Section: s.Name, Name: d.Name, Title: d.Title})
+					}
 				}
 			}
 		}
@@ -281,6 +292,9 @@ func (uc ScreeningUsecase) GetAvailableFilters(ctx context.Context, feature mode
 				},
 				Other: dto.ScreeningAvailableFiltersSection{
 					Datasets: otherDatasets,
+				},
+				Custom: dto.ScreeningAvailableFiltersSection{
+					Datasets: customDatasets,
 				},
 			},
 		}

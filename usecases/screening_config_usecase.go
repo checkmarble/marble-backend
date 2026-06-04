@@ -179,6 +179,7 @@ func (uc ScreeningUsecase) AdaptConfigForProvider(providerName models.ScreeningP
 		scc.Datasets = make([]string, 0)
 		scc.Datasets = append(scc.Datasets, filters.Sanctions.Datasets...)
 		scc.Datasets = append(scc.Datasets, filters.Other.Datasets...)
+		scc.Datasets = append(scc.Datasets, filters.Custom.Datasets...)
 	}
 
 	return scc

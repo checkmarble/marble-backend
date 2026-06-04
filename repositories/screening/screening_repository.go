@@ -76,6 +76,7 @@ type openSanctionsRequestQuery struct {
 	Schema     string                     `json:"schema"`
 	Properties models.OpenSanctionsFilter `json:"properties"`
 	Filters    map[string][][]string      `json:"filters"`
+	Params     *motivaRequestParams       `json:"params"`
 }
 
 func (repo OpenSanctionsRepository) IsSelfHosted(ctx context.Context) bool {
