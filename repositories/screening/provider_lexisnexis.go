@@ -20,7 +20,8 @@ import (
 )
 
 type ScreeningLexisNexisProvider struct {
-	Config infra.Screening
+	Config     infra.Screening
+	Repository OpenSanctionsRepository
 }
 
 func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
@@ -72,13 +73,32 @@ func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
 			}
 		}
 
-		if len(filters.Custom.Datasets) > 0 {
-			id := pure_utils.NewId().String()
+		if len(filters.Custom.Datasets) > 0 || filters.NoFilters() {
+			datasets := filters.Custom.Datasets
 
-			q.Queries[id] = openSanctionsRequestQuery{
-				Schema:     subquery.Type,
-				Properties: subquery.Filters,
-				Params:     &motivaRequestParams{IncludeDatasets: filters.Custom.Datasets},
+			if filters.NoFilters() {
+				catalog, err := p.Repository.GetRawCatalog(ctx, models.ScreeningProviderLexisNexis)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				datasets = make([]string, 0)
+
+				for _, ds := range catalog.Datasets {
+					if strings.HasPrefix(ds.Name, "marble_custom_") {
+						datasets = append(datasets, ds.Name)
+					}
+				}
+			}
+
+			if len(datasets) > 0 {
+				id := pure_utils.NewId().String()
+
+				q.Queries[id] = openSanctionsRequestQuery{
+					Schema:     subquery.Type,
+					Properties: subquery.Filters,
+					Params:     &motivaRequestParams{IncludeDatasets: datasets},
+				}
 			}
 		}
 	}
@@ -169,6 +189,11 @@ type lexisNexisAvailableFilters struct {
 }
 
 func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context, feature models.ScreeningFeature) (dto.ScreeningAvailableFilters, error) {
+	rawCatalog, err := p.Repository.GetRawCatalog(ctx, models.ScreeningProviderLexisNexis)
+	if err != nil {
+		return dto.ScreeningAvailableFilters{}, err
+	}
+
 	catalog, err := p.GetLexisNexisCatalog(ctx)
 	if err != nil {
 		return dto.ScreeningAvailableFilters{}, err
@@ -272,14 +297,22 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context, f
 
 			if filters.Sections.Custom.Self == "" {
 				filters.Sections.Custom = dto.ScreeningAvailableFiltersSection{
-					Self: "other",
+					Self: "custom",
+				}
+			}
+
+			title := ds
+
+			for _, catalogDataset := range rawCatalog.Datasets {
+				if catalogDataset.Name == ds {
+					title = catalogDataset.Title
 				}
 			}
 
 			filters.Sections.Custom.Datasets = append(filters.Sections.Custom.Datasets, dto.ScreeningAvailableFiltersItem{
 				Section: "custom",
 				Name:    ds,
-				Title:   ds,
+				Title:   title,
 			})
 		}
 	}

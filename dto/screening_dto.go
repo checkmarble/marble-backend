@@ -26,7 +26,7 @@ type ScreeningAvailableFiltersSections struct {
 	Peps         ScreeningAvailableFiltersSection `json:"peps,omitzero"`
 	AdverseMedia ScreeningAvailableFiltersSection `json:"adverse_media,omitzero"`
 	Other        ScreeningAvailableFiltersSection `json:"other,omitzero"`
-	Custom       ScreeningAvailableFiltersSection `json:"custom"`
+	Custom       ScreeningAvailableFiltersSection `json:"custom,omitzero"`
 }
 
 type ScreeningAvailableFiltersSection struct {
