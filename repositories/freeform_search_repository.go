@@ -10,6 +10,8 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/cockroachdb/errors"
+	"github.com/jackc/pgx/v5"
 )
 
 func (*MarbleDbRepository) InsertFreeformSearch(
@@ -71,6 +73,32 @@ func (*MarbleDbRepository) ListFreeformSearches(
 		Where(squirrel.Eq{"org_id": filters.OrgId}).
 		OrderBy(orderCondition).
 		Limit(uint64(pagination.Limit))
+
+	if pagination.OffsetId != "" {
+		q := NewQueryBuilder().
+			Select("created_at").
+			From(dbmodels.TABLE_FREEFORM_SEARCHES).
+			Where(squirrel.Eq{
+				"id":     pagination.OffsetId,
+				"org_id": filters.OrgId,
+			})
+		sql, args, err := q.ToSql()
+		if err != nil {
+			return nil, err
+		}
+
+		var offsetCreatedAt time.Time
+		err = exec.QueryRow(ctx, sql, args...).Scan(&offsetCreatedAt)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.Wrap(models.NotFoundError,
+				"No row found matching the provided offsetId")
+		} else if err != nil {
+			return nil, errors.Wrap(err,
+				"failed to fetch decision corresponding to the provided offsetId")
+		}
+
+		query = query.Where(fmt.Sprintf("(%s,%s) < (?,?)", pagination.Sorting, "id"), offsetCreatedAt, pagination.OffsetId)
+	}
 
 	return SqlToListOfModels(
 		ctx,
