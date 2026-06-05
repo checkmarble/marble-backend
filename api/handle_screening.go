@@ -367,7 +367,7 @@ func handleListFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		filters := dto.ScreeningFreeformSearchFilters{}
-		if presentError(ctx, c, c.ShouldBind(&filters)) {
+		if presentError(ctx, c, c.ShouldBindQuery(&filters)) {
 			return
 		}
 

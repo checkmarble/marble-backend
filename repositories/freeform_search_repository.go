@@ -42,6 +42,7 @@ func (*MarbleDbRepository) InsertFreeformSearch(
 			"provider",
 			"search_input",
 			"search_config",
+			"is_saved",
 		).
 		Values(
 			s.Id,
@@ -51,6 +52,7 @@ func (*MarbleDbRepository) InsertFreeformSearch(
 			s.Provider,
 			searchInputBytes,
 			configBytes,
+			s.IsSaved,
 		)
 
 	return ExecBuilder(ctx, exec, sql)
@@ -73,6 +75,16 @@ func (*MarbleDbRepository) ListFreeformSearches(
 		Where(squirrel.Eq{"org_id": filters.OrgId}).
 		OrderBy(orderCondition).
 		Limit(uint64(pagination.Limit))
+
+	if filters.UserId != nil {
+		query = query.Where(squirrel.Eq{"user_id": *filters.UserId})
+	}
+	if filters.ApiKeyId != nil {
+		query = query.Where(squirrel.Eq{"api_key_id": *filters.ApiKeyId})
+	}
+	if filters.SavedOnly {
+		query = query.Where(squirrel.Eq{"is_saved": true})
+	}
 
 	if pagination.OffsetId != "" {
 		q := NewQueryBuilder().

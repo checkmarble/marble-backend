@@ -115,7 +115,7 @@ func (resp baseErrorResponse) WithError(err error) baseErrorResponse {
 		resp.Error.status = http.StatusBadRequest
 		resp.Error.Code = ErrInvalidPayload.Error()
 		resp.Error.Messages = pure_utils.Map(err, func(verr validator.FieldError) string {
-			return AdaptFieldValidationError(verr)
+			return utils.AdaptFieldValidationError(verr)
 		})
 
 	// Special case of the input JSON being plain invalid.

@@ -23,6 +23,7 @@ type DBFreeformSearch struct {
 	SearchInput  json.RawMessage          `db:"search_input"`
 	SearchConfig json.RawMessage          `db:"search_config"`
 	Result       json.RawMessage          `db:"result"`
+	IsSaved      bool                     `db:"is_saved"`
 }
 
 func AdaptFreeformSearch(db DBFreeformSearch) (models.FreeformSearch, error) {
@@ -51,6 +52,7 @@ func AdaptFreeformSearch(db DBFreeformSearch) (models.FreeformSearch, error) {
 		SearchInput:  searchInput,
 		SearchConfig: config,
 		Result:       db.Result,
+		IsSaved:      db.IsSaved,
 	}, nil
 }
 
