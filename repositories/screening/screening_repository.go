@@ -327,7 +327,7 @@ func (repo OpenSanctionsRepository) GetAlgorithms(ctx context.Context) (models.O
 func (repo OpenSanctionsRepository) GetProvider(provider models.ScreeningProvider) ScreeningProvider {
 	switch provider {
 	case models.ScreeningProviderLexisNexis:
-		return ScreeningLexisNexisProvider(repo)
+		return ScreeningLexisNexisProvider{Config: repo.Config, Repository: repo}
 	default:
 		return ScreeningOpenSanctionsProvider(repo)
 	}

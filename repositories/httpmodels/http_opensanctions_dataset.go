@@ -56,6 +56,7 @@ func AdaptOpenSanctionCatalogResponse(datasets HTTPOpenSanctionCatalogResponse) 
 	for _, dataset := range datasets.Datasets {
 		rawCatalog.Datasets[dataset.Name] = models.OpenSanctionsRawDataset{
 			Name:     dataset.Name,
+			Title:    dataset.Title,
 			Version:  dataset.Version,
 			Load:     dataset.Load,
 			Tags:     dataset.Tags,

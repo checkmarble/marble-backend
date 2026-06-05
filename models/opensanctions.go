@@ -16,6 +16,7 @@ const OPEN_SANCTIONS_OUTDATED_DATASET_LEEWAY = 1 * time.Hour
 // Note: I didn't declare all fields, only those needed for our logic, don't hesitate to add more if needed
 type OpenSanctionsRawDataset struct {
 	Name     string
+	Title    string
 	Version  string
 	Load     bool
 	Tags     []string
