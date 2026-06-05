@@ -281,8 +281,8 @@ func prepareOpenSanctionsQuery(
 		},
 		Config: models.ScreeningConfig{
 			Datasets: config.Datasets,
+			Filters:  config.Filters,
 		},
-		Filters: config.Filters,
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
 				Type:    dataModelEntityType,
