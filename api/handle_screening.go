@@ -382,11 +382,11 @@ func handleListFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
 
 		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
 
-		searches, err := uc.ListFreeformSearch(ctx, orgId, filters.ToModel(orgId), paginationAndSorting)
+		searches, hasNextPage, err := uc.ListFreeformSearch(ctx, orgId, filters.ToModel(orgId), paginationAndSorting)
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, pure_utils.Map(searches, dto.AdaptScreeningFreeformSearchDto))
+		c.JSON(http.StatusOK, dto.AdaptPaginatedScreeningFreeformSearches(searches, hasNextPage))
 	}
 }

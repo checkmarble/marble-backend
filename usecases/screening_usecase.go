@@ -1237,17 +1237,25 @@ func getScreeningCounterpartyIdentifier(screening models.ScreeningWithMatches) *
 	return screening.UniqueCounterpartyIdentifier
 }
 
-func (uc ScreeningUsecase) ListFreeformSearch(ctx context.Context, orgId uuid.UUID, filters models.ScreeningFreeformSearchFilters, pagination models.PaginationAndSorting) ([]models.FreeformSearch, error) {
-	searches, err := uc.repository.ListFreeformSearches(ctx, uc.executorFactory.NewExecutor(), filters, pagination)
+func (uc ScreeningUsecase) ListFreeformSearch(ctx context.Context, orgId uuid.UUID, filters models.ScreeningFreeformSearchFilters, pagination models.PaginationAndSorting) ([]models.FreeformSearch, bool, error) {
+	paginationWithOneMore := pagination
+	paginationWithOneMore.Limit++
+
+	searches, err := uc.repository.ListFreeformSearches(ctx, uc.executorFactory.NewExecutor(), filters, paginationWithOneMore)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	for _, search := range searches {
 		if err := uc.enforceSecurity.ReadFreeformSearch(search); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
 
-	return searches, nil
+	hasNextPage := len(searches) == paginationWithOneMore.Limit
+	if hasNextPage {
+		searches = searches[:len(searches)-1]
+	}
+
+	return searches, hasNextPage, nil
 }

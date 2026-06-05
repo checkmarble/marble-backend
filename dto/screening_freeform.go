@@ -7,6 +7,23 @@ import (
 	"github.com/google/uuid"
 )
 
+type PaginatedScreeningFreeformSearches struct {
+	Data        []ScreeningFreeformSearch `json:"data"`
+	HasNextPage bool                      `json:"has_next_page"`
+}
+
+func AdaptPaginatedScreeningFreeformSearches(data []models.FreeformSearch, hasNextPage bool) PaginatedScreeningFreeformSearches {
+	items := make([]ScreeningFreeformSearch, len(data))
+	for i, freeformSearch := range data {
+		items[i] = AdaptScreeningFreeformSearchDto(freeformSearch)
+	}
+
+	return PaginatedScreeningFreeformSearches{
+		Data:        items,
+		HasNextPage: hasNextPage,
+	}
+}
+
 type ScreeningFreeformSearch struct {
 	Id           uuid.UUID                   `json:"id"`
 	UserId       *uuid.UUID                  `json:"user_id,omitempty"`
