@@ -38,6 +38,7 @@ type ScreeningEnforceSecurity interface {
 	ReadWhitelist(context.Context) error
 	WriteWhitelist(context.Context) error
 	PerformFreeformSearch(context.Context) error
+	ReadFreeformSearch(s models.FreeformSearch) error
 }
 
 type ScreeningProvider interface {
@@ -99,8 +100,17 @@ type ScreeningRepository interface {
 	UpdateScreeningMatchPayload(ctx context.Context, exec repositories.Executor,
 		match models.ScreeningMatch, newPayload []byte) (models.ScreeningMatch, error)
 
-	InsertFreeformSearch(ctx context.Context, exec repositories.Executor,
-		h models.FreeformSearch) error
+	InsertFreeformSearch(
+		ctx context.Context,
+		exec repositories.Executor,
+		h models.FreeformSearch,
+	) error
+	ListFreeformSearches(
+		ctx context.Context,
+		exec repositories.Executor,
+		filters models.ScreeningFreeformSearchFilters,
+		pagination models.PaginationAndSorting,
+	) ([]models.FreeformSearch, error)
 }
 
 type ScreeningUsecaseExternalRepository interface {
@@ -1115,4 +1125,19 @@ func mergePayloads(originalRaw, newRaw []byte) ([]byte, error) {
 
 func getScreeningCounterpartyIdentifier(screening models.ScreeningWithMatches) *string {
 	return screening.UniqueCounterpartyIdentifier
+}
+
+func (uc ScreeningUsecase) ListFreeformSearch(ctx context.Context, orgId uuid.UUID, filters models.ScreeningFreeformSearchFilters, pagination models.PaginationAndSorting) ([]models.FreeformSearch, error) {
+	searches, err := uc.repository.ListFreeformSearches(ctx, uc.executorFactory.NewExecutor(), filters, pagination)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, search := range searches {
+		if err := uc.enforceSecurity.ReadFreeformSearch(search); err != nil {
+			return nil, err
+		}
+	}
+
+	return searches, nil
 }
