@@ -396,6 +396,7 @@ func createUpdatedConfig(config models.ContinuousScreeningConfig,
 	return models.CreateContinuousScreeningConfig{
 		OrgId:          config.OrgId,
 		StableId:       config.StableId,
+		Provider:       config.Provider,
 		Name:           pure_utils.PtrValueOrDefault(updateInput.Name, config.Name),
 		Description:    pure_utils.PtrValueOrDefault(updateInput.Description, config.Description),
 		Algorithm:      pure_utils.PtrValueOrDefault(updateInput.Algorithm, config.Algorithm),
