@@ -14,6 +14,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var freeformSearchPaginationDefaults = models.PaginationDefaults{
+	Limit:  25,
+	SortBy: models.SortingFieldCreatedAt,
+	Order:  models.SortingOrderDesc,
+}
+
 func handleScreeningDatasetFreshness(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -330,7 +336,7 @@ func handleFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
 			limit = min(l, SCREENING_FREEFORM_SEARCH_LIMIT_MAX)
 		}
 
-		req := models.ScreeningRefineRequest{
+		req := dto.FreeformSearchInput{
 			Type:  payload.Query.Type(),
 			Query: dto.AdaptRefineQueryDto(payload.Query),
 		}
@@ -343,11 +349,44 @@ func handleFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
 
 		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
 
-		matches, err := uc.FreeformSearch(ctx, orgId, config, req)
+		matches, err := uc.FreeformSearch(ctx, orgId, config, req.ToScreeningRefineRequest())
 		if presentError(ctx, c, err) {
 			return
 		}
 
 		c.JSON(http.StatusOK, pure_utils.Map(matches.Matches, dto.AdaptScreeningMatchDto))
+	}
+}
+
+func handleListFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		filters := dto.ScreeningFreeformSearchFilters{}
+		if presentError(ctx, c, c.ShouldBind(&filters)) {
+			return
+		}
+
+		var paginationAndSortingDto dto.PaginationAndSorting
+		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		paginationAndSorting := models.WithPaginationDefaults(
+			dto.AdaptPaginationAndSorting(paginationAndSortingDto),
+			freeformSearchPaginationDefaults)
+
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
+
+		searches, err := uc.ListFreeformSearch(ctx, orgId, filters.ToModel(orgId), paginationAndSorting)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(searches, dto.AdaptScreeningFreeformSearchDto))
 	}
 }

@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -51,6 +52,32 @@ func (*MarbleDbRepository) InsertFreeformSearch(
 		)
 
 	return ExecBuilder(ctx, exec, sql)
+}
+
+func (*MarbleDbRepository) ListFreeformSearches(
+	ctx context.Context,
+	exec Executor,
+	filters models.ScreeningFreeformSearchFilters,
+	pagination models.PaginationAndSorting,
+) ([]models.FreeformSearch, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	orderCondition := fmt.Sprintf("%s %s", pagination.Sorting, pagination.Order)
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectFreeformSearchColumn...).
+		From(dbmodels.TABLE_FREEFORM_SEARCHES).
+		Where(squirrel.Eq{"org_id": filters.OrgId}).
+		OrderBy(orderCondition).
+		Limit(uint64(pagination.Limit))
+
+	return SqlToListOfModels(
+		ctx,
+		exec,
+		query,
+		dbmodels.AdaptFreeformSearch,
+	)
 }
 
 func (repo *MarbleDbRepository) CountFreeformSearchesByProvider(ctx context.Context, exec Executor,

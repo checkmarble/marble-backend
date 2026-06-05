@@ -270,6 +270,11 @@ func (e *EnforceSecurity) PerformFreeformSearch(ctx context.Context) error {
 	return args.Error(0)
 }
 
+func (e *EnforceSecurity) ReadFreeformSearch(s models.FreeformSearch) error {
+	args := e.Called(s)
+	return args.Error(0)
+}
+
 func (e *EnforceSecurity) ReadRecordScore(score models.ScoringScore) error {
 	args := e.Called(score)
 	return args.Error(0)

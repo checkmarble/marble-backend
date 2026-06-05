@@ -26,3 +26,7 @@ type FreeformSearchConfig struct {
 	Threshold *int `json:"threshold"`
 	Limit     int  `json:"limit"`
 }
+
+type ScreeningFreeformSearchFilters struct {
+	OrgId uuid.UUID
+}
