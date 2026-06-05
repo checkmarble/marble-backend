@@ -1,12 +1,41 @@
 package dto
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 )
+
+// ScreeningFreeformSearchResult is the response of performing or saving a freeform search. It
+// carries the search id (so the frontend can later save the results) alongside the matches.
+type ScreeningFreeformSearchResult struct {
+	Id      uuid.UUID           `json:"id"`
+	Matches []ScreeningMatchDto `json:"matches"`
+}
+
+func AdaptScreeningFreeformSearchResult(id uuid.UUID, matches []models.ScreeningMatch) ScreeningFreeformSearchResult {
+	return ScreeningFreeformSearchResult{
+		Id:      id,
+		Matches: pure_utils.Map(matches, AdaptScreeningMatchDto),
+	}
+}
+
+// SavedScreeningFreeformSearch exposes a stored freeform search together with its saved results.
+type SavedScreeningFreeformSearch struct {
+	ScreeningFreeformSearch
+	Matches []json.RawMessage `json:"matches"`
+}
+
+func AdaptSavedScreeningFreeformSearch(m models.FreeformSearch) SavedScreeningFreeformSearch {
+	return SavedScreeningFreeformSearch{
+		ScreeningFreeformSearch: AdaptScreeningFreeformSearchDto(m),
+		Matches:                 m.Result,
+	}
+}
 
 type PaginatedScreeningFreeformSearches struct {
 	Data        []ScreeningFreeformSearch `json:"data"`

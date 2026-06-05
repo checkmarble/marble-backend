@@ -16,7 +16,8 @@ type FreeformSearch struct {
 	CreatedAt    time.Time
 	SearchInput  ScreeningRefineRequest
 	SearchConfig FreeformSearchConfig
-	Result       json.RawMessage
+	Result       []json.RawMessage
+	ResultHash   []byte
 	IsSaved      bool
 }
 

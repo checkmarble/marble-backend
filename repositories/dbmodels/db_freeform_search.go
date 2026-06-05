@@ -23,6 +23,7 @@ type DBFreeformSearch struct {
 	SearchInput  json.RawMessage          `db:"search_input"`
 	SearchConfig json.RawMessage          `db:"search_config"`
 	Result       json.RawMessage          `db:"result"`
+	ResultHash   []byte                   `db:"result_hash"`
 	IsSaved      bool                     `db:"is_saved"`
 }
 
@@ -42,6 +43,13 @@ func AdaptFreeformSearch(db DBFreeformSearch) (models.FreeformSearch, error) {
 		return models.FreeformSearch{}, err
 	}
 
+	var result []json.RawMessage
+	if len(db.Result) > 0 {
+		if err := json.Unmarshal(db.Result, &result); err != nil {
+			return models.FreeformSearch{}, err
+		}
+	}
+
 	return models.FreeformSearch{
 		Id:           db.Id,
 		OrgId:        db.OrgId,
@@ -51,7 +59,8 @@ func AdaptFreeformSearch(db DBFreeformSearch) (models.FreeformSearch, error) {
 		CreatedAt:    db.CreatedAt,
 		SearchInput:  searchInput,
 		SearchConfig: config,
-		Result:       db.Result,
+		Result:       result,
+		ResultHash:   db.ResultHash,
 		IsSaved:      db.IsSaved,
 	}, nil
 }

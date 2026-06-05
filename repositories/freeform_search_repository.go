@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -42,6 +43,7 @@ func (*MarbleDbRepository) InsertFreeformSearch(
 			"provider",
 			"search_input",
 			"search_config",
+			"result_hash",
 			"is_saved",
 		).
 		Values(
@@ -52,8 +54,53 @@ func (*MarbleDbRepository) InsertFreeformSearch(
 			s.Provider,
 			searchInputBytes,
 			configBytes,
+			s.ResultHash,
 			s.IsSaved,
 		)
+
+	return ExecBuilder(ctx, exec, sql)
+}
+
+func (*MarbleDbRepository) GetFreeformSearch(
+	ctx context.Context,
+	exec Executor,
+	id uuid.UUID,
+) (models.FreeformSearch, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.FreeformSearch{}, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectFreeformSearchColumn...).
+		From(dbmodels.TABLE_FREEFORM_SEARCHES).
+		Where(squirrel.Eq{"id": id})
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptFreeformSearch)
+}
+
+// SaveFreeformSearchResult stores the result payloads of a freeform search and flips its
+// is_saved flag. The result hash is left untouched: it is set once at search time and used to
+// verify that a re-run produces the same results before saving.
+func (*MarbleDbRepository) SaveFreeformSearchResult(
+	ctx context.Context,
+	exec Executor,
+	id uuid.UUID,
+	result []json.RawMessage,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	resultBytes, err := json.Marshal(result)
+	if err != nil {
+		return err
+	}
+
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_FREEFORM_SEARCHES).
+		Set("result", resultBytes).
+		Set("is_saved", true).
+		Where(squirrel.Eq{"id": id})
 
 	return ExecBuilder(ctx, exec, sql)
 }

@@ -188,7 +188,7 @@ func HandleScreeningFreeformSearch(uc usecases.Usecases) gin.HandlerFunc {
 			Query: gdto.AdaptRefineQueryDto(params),
 		}
 
-		screening, err := screeningUsecase.FreeformSearch(c.Request.Context(),
+		_, screening, err := screeningUsecase.FreeformSearch(c.Request.Context(),
 			orgId, models.FreeformSearchConfig{}, refineQuery)
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
