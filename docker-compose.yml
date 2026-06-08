@@ -15,7 +15,7 @@ services:
     volumes:
       - postgres-db:/data/postgres
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 2s
       timeout: 1s
       retries: 5
@@ -79,13 +79,13 @@ services:
     ports:
       - "6379:6379"
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 2s
       timeout: 1s
       retries: 5
   motiva:
     container_name: motiva
-    image: ghcr.io/apognu/motiva:v0.8.1
+    image: ghcr.io/apognu/motiva:v0.9.0
     platform: linux/x86_64
     ports:
       - "8000:8000"
