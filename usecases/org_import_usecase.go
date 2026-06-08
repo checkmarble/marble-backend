@@ -305,6 +305,7 @@ func (uc *OrgImportUsecase) createOrganization(ctx context.Context, tx repositor
 		ScreeningConfig: models.OrganizationOpenSanctionsConfigUpdateInput{
 			MatchThreshold: spec.Org.SanctionsThreshold,
 			MatchLimit:     spec.Org.SanctionsLimit,
+			Providers:      spec.Org.ScreeningProviders,
 		},
 	})
 	if err != nil {
@@ -948,6 +949,7 @@ func (uc *OrgImportUsecase) createScenarios(ctx context.Context, tx repositories
 				Name:                     sc.Name,
 				Description:              sc.Description,
 				RuleGroup:                sc.RuleGroup,
+				Provider:                 utils.Ptr(sc.Provider),
 				Datasets:                 sc.Datasets,
 				Threshold:                sc.Threshold,
 				TriggerRule:              triggerRule,

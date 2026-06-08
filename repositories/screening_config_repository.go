@@ -153,6 +153,11 @@ func (repo *MarbleDbRepository) CreateScreeningConfig(ctx context.Context, exec 
 		filters = *cfg.Filters
 	}
 
+	provider := models.DefaultScreeningProvider
+	if cfg.Provider != nil && *cfg.Provider != "" {
+		provider = *cfg.Provider
+	}
+
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SCREENING_CONFIGS).
 		Columns(
@@ -178,7 +183,7 @@ func (repo *MarbleDbRepository) CreateScreeningConfig(ctx context.Context, exec 
 			cfg.Name,
 			utils.Or(cfg.Description, ""),
 			utils.Or(cfg.RuleGroup, ""),
-			cfg.Provider,
+			provider,
 			cfg.Datasets,
 			filters,
 			cfg.Threshold,
