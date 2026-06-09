@@ -7,12 +7,21 @@ import (
 )
 
 func AdaptImportOrgDto(org models.Organization) ImportOrg {
+	var screeningProviders map[string]models.ScreeningProvider
+	if len(org.OpenSanctionsConfig.Providers) > 0 {
+		screeningProviders = make(map[string]models.ScreeningProvider, len(org.OpenSanctionsConfig.Providers))
+		for feature, provider := range org.OpenSanctionsConfig.Providers {
+			screeningProviders[string(feature)] = provider
+		}
+	}
+
 	return ImportOrg{
 		Name: org.Name,
 		UpdateOrganizationBodyDto: UpdateOrganizationBodyDto{
 			DefaultScenarioTimezone: org.DefaultScenarioTimezone,
 			SanctionsThreshold:      utils.Ptr(org.OpenSanctionsConfig.MatchThreshold),
 			SanctionsLimit:          utils.Ptr(org.OpenSanctionsConfig.MatchLimit),
+			ScreeningProviders:      screeningProviders,
 		},
 	}
 }
