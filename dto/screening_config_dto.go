@@ -16,6 +16,7 @@ type ScreeningConfig struct {
 	Name                     *string                              `json:"name"`
 	Description              *string                              `json:"description"`
 	RuleGroup                *string                              `json:"rule_group,omitempty"`
+	Provider                 models.ScreeningProvider             `json:"provider,omitempty"`
 	Datasets                 []string                             `json:"datasets,omitempty"`
 	Filters                  models.ScreeningConfigFilters        `json:"filters"`
 	Threshold                *int                                 `json:"threshold,omitempty" binding:"omitempty,min=0,max=100"`
@@ -34,6 +35,7 @@ func AdaptScreeningConfig(model models.ScreeningConfig) (ScreeningConfig, error)
 		Name:          &model.Name,
 		Description:   &model.Description,
 		RuleGroup:     model.RuleGroup,
+		Provider:      model.Provider,
 		Datasets:      model.Datasets,
 		Filters:       model.Filters,
 		Threshold:     model.Threshold,
