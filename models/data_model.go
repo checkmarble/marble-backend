@@ -551,7 +551,7 @@ func (d DataModel) AddNavigationOptionsToDataModel(indexes []ConcreteIndex, pivo
 			if pivot.BaseTable != index.TableName {
 				continue
 			}
-			if pivot.Field != field.Name {
+			if pivot.FieldId != field.ID {
 				continue
 			}
 
