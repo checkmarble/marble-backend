@@ -235,6 +235,10 @@ func (resp baseResponse[T]) Serve(c *gin.Context, statuses ...int) {
 }
 
 func (resp baseErrorResponse) Serve(c *gin.Context, statuses ...int) {
+	if resp.Error.err == nil {
+		resp.Error.err = ErrInternalServerError
+	}
+
 	ctx := c.Request.Context()
 	msg := resp.Error.err.Error()
 

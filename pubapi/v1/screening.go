@@ -106,6 +106,7 @@ func HandleRefineScreening(uc usecases.Usecases, write bool) gin.HandlerFunc {
 		if !params.Validate() {
 			types.
 				NewErrorResponse().
+				WithError(types.ErrInvalidPayload).
 				WithErrorMessage("refine query is missing some required fields").
 				Serve(c, http.StatusBadRequest)
 			return
@@ -175,6 +176,7 @@ func HandleScreeningFreeformSearch(uc usecases.Usecases) gin.HandlerFunc {
 		if !params.Validate() {
 			types.
 				NewErrorResponse().
+				WithError(types.ErrInvalidPayload).
 				WithErrorMessage("refine query is missing some required fields").
 				Serve(c, http.StatusBadRequest)
 			return
