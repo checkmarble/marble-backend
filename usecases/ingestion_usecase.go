@@ -32,11 +32,12 @@ import (
 )
 
 const (
-	csvIngestionBatchSize        = 1000
 	DefaultApiBatchIngestionSize = 100
 
 	CSV_INGESTION_ITERATION_TIMEOUT = 10 * time.Second
 )
+
+var csvIngestionBatchSize = utils.GetEnv("CSV_INGESTION_BATCH_SIZE", 1000)
 
 type continuousScreeningRepository interface {
 	ListContinuousScreeningConfigByObjectType(
