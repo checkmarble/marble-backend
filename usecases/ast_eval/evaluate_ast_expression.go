@@ -20,12 +20,14 @@ func (evaluator EvaluateAstExpression) EvaluateAstExpression(
 	ruleAstExpression ast.Node,
 	organizationId uuid.UUID,
 	payload models.ClientObject,
+	pivot models.DataModelObject,
 	dataModel models.DataModel,
 ) (ast.NodeEvaluation, error) {
 	environment := evaluator.AstEvaluationEnvironmentFactory(EvaluationEnvironmentFactoryParams{
 		OrganizationId:                organizationId,
 		ClientObject:                  payload,
 		DataModel:                     dataModel,
+		PivotObject:                   pivot,
 		DatabaseAccessReturnFakeValue: false,
 	})
 

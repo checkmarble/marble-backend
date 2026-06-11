@@ -88,6 +88,7 @@ func (e ScenarioEvaluator) evaluateScreening(
 					*scc.TriggerRule,
 					params.Scenario.OrganizationId,
 					dataAccessor.ClientObject,
+					dataAccessor.PivotObject,
 					params.DataModel,
 				)
 				if err != nil {
@@ -130,7 +131,7 @@ func (e ScenarioEvaluator) evaluateScreening(
 				for fieldName, fieldAst := range scc.Query {
 					inputAst, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
 						fieldAst, iteration.OrganizationId,
-						dataAccessor.ClientObject, dataAccessor.DataModel)
+						dataAccessor.ClientObject, dataAccessor.PivotObject, dataAccessor.DataModel)
 					if err != nil {
 						addScreeningError(scc, errors.New("could not parse screening counterparty name AST expression"))
 						return
@@ -198,6 +199,7 @@ func (e ScenarioEvaluator) evaluateScreening(
 					*scc.CounterpartyIdExpression,
 					params.Scenario.OrganizationId,
 					dataAccessor.ClientObject,
+					dataAccessor.PivotObject,
 					params.DataModel,
 				)
 				if err != nil {

@@ -14,6 +14,7 @@ import (
 type DataAccessor struct {
 	DataModel                  models.DataModel
 	ClientObject               models.ClientObject
+	PivotObject                models.DataModelObject
 	executorFactory            executor_factory.ExecutorFactory
 	organizationId             uuid.UUID
 	ingestedDataReadRepository repositories.IngestedDataReadRepository

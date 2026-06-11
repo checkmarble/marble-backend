@@ -105,7 +105,7 @@ func IgnoreList(ctx context.Context, e ScenarioEvaluator, screeningId string,
 	for _, query := range queries {
 		customListEval, err := e.evaluateAstExpression.EvaluateAstExpression(ctx, nil,
 			ast.NewNodeCustomListAccess(scc.Preprocessing.IgnoreListId), iteration.OrganizationId,
-			models.ClientObject{}, models.DataModel{})
+			models.ClientObject{}, models.DataModelObject{}, models.DataModel{})
 		if err != nil {
 			return nil, err
 		}

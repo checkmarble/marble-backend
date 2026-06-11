@@ -453,6 +453,11 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 
 	environment.AddEvaluator(ast.FUNC_PAYLOAD,
 		evaluate.NewPayload(ast.FUNC_PAYLOAD, params.ClientObject))
+	environment.AddEvaluator(ast.FUNC_FULL_PAYLOAD,
+		evaluate.NewFullPayload(ast.FUNC_FULL_PAYLOAD, params.ClientObject))
+
+	environment.AddEvaluator(ast.FUNC_LUA,
+		evaluate.NewLua(params.ClientObject, params.PivotObject))
 
 	environment.AddEvaluator(ast.FUNC_AGGREGATOR, evaluate.AggregatorEvaluator{
 		OrganizationId:             params.OrganizationId,

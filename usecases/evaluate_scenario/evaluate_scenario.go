@@ -92,6 +92,7 @@ type EvaluateAstExpression interface {
 		ruleAstExpression ast.Node,
 		organizationId uuid.UUID,
 		payload models.ClientObject,
+		pivot models.DataModelObject,
 		dataModel models.DataModel,
 	) (ast.NodeEvaluation, error)
 }
@@ -259,6 +260,20 @@ func (e ScenarioEvaluator) processScenarioIteration(
 
 		selectedPivot = eligible[0].pivot
 		pivotValue = &eligible[0].value
+	}
+
+	clientDbExec, err := e.executorFactory.NewClientDbExecutor(ctx, dataAccessor.organizationId)
+	if err != nil {
+		return false, models.ScenarioExecution{}, errors.Wrap(err, "could not get client database executor")
+	}
+
+	pivotObjects, err := dataAccessor.ingestedDataReadRepository.QueryIngestedObject(ctx, clientDbExec, dataAccessor.DataModel.Tables[selectedPivot.PivotTable], *pivotValue)
+	if err != nil {
+		return false, models.ScenarioExecution{}, errors.Wrap(err, "failed to query for the decision payload pivot")
+	}
+
+	if len(pivotObjects) > 0 {
+		dataAccessor.PivotObject = pivotObjects[0]
 	}
 
 	snoozes := make([]models.RuleSnooze, 0)
@@ -645,6 +660,7 @@ func (e ScenarioEvaluator) evalScenarioRule(
 		*rule.FormulaAstExpression,
 		dataAccessor.organizationId,
 		dataAccessor.ClientObject,
+		dataAccessor.PivotObject,
 		dataModel,
 	)
 	switch {
@@ -726,6 +742,7 @@ func (e ScenarioEvaluator) evalScenarioTrigger(
 		triggerAstExpression,
 		organizationId,
 		payload,
+		models.DataModelObject{},
 		dataModel,
 	)
 	switch {
@@ -854,6 +871,7 @@ func (e ScenarioEvaluator) EvalCaseName(
 		*titleTemplate,
 		params.Scenario.OrganizationId,
 		params.ClientObject,
+		models.DataModelObject{},
 		params.DataModel,
 	)
 	logger := utils.LoggerFromContext(ctx)

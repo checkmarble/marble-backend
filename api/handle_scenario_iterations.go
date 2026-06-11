@@ -14,6 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -468,5 +469,39 @@ func handleAiDescriptionAST(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusOK, dto.AdaptAiRuleDescriptionDto(result))
+	}
+}
+
+type LuaInput struct {
+	Code    string         `json:"code"`
+	Payload map[string]any `json:"payload"`
+}
+
+func handleRunLua(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var input LuaInput
+
+		if err := c.ShouldBindBodyWithJSON(&input); presentError(ctx, c, err) {
+			return
+		}
+
+		sandbox := evaluate.NewLuaSandbox()
+		sandbox.SetClientObject(input.Payload)
+		sandbox.SetPivotObject(nil)
+
+		ret, err := sandbox.Run(input.Code)
+		if err != nil {
+			c.JSON(http.StatusOK, map[string]any{
+				"return_value": nil,
+				"error":        err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, map[string]any{
+			"return_value": ret,
+		})
 	}
 }

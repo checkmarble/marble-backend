@@ -163,6 +163,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		handleCommitScenarioIterationVersion(uc))
 	router.POST("/scenario-iterations/:iteration_id/schedule-execution", tom, handleCreateScheduledExecution(uc))
 	router.GET("/scenario-iterations/:iteration_id/active-snoozes", tom, handleSnoozesOfScenarioIteration(uc))
+	router.POST("/scenario-iterations/run-lua", tom, handleRunLua(uc))
 
 	router.GET("/scenario-iteration-rules/metadata", tom, handleListRulesMetadata(uc))
 	router.GET("/scenario-iteration-rules", tom, handleListRules(uc))

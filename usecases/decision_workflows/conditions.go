@@ -90,7 +90,7 @@ func ruleHit(ruleIds []uuid.UUID) DecisionWorkflowsCondition {
 
 func payloadEvaluates(astNode ast.Node) DecisionWorkflowsCondition {
 	return func(ctx context.Context, req DecisionWorkflowRequest) (bool, error) {
-		eval, err := req.EvaluateAst.EvaluateAstExpression(ctx, nil, astNode, req.Scenario.OrganizationId, req.Params.ClientObject, req.Params.DataModel)
+		eval, err := req.EvaluateAst.EvaluateAstExpression(ctx, nil, astNode, req.Scenario.OrganizationId, req.Params.ClientObject, models.DataModelObject{}, req.Params.DataModel)
 		if err != nil {
 			return false, err
 		}

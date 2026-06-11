@@ -8,6 +8,7 @@ import (
 type EvaluationEnvironmentFactoryParams struct {
 	OrganizationId                uuid.UUID
 	ClientObject                  models.ClientObject
+	PivotObject                   models.DataModelObject
 	DataModel                     models.DataModel
 	DatabaseAccessReturnFakeValue bool
 }

@@ -69,6 +69,36 @@ func adaptArgumentToString(argument any) (string, error) {
 	)
 }
 
+func adaptArgumentToClientObject(argument any) (models.ClientObject, error) {
+	if err := argumentNotNil(argument); err != nil {
+		return models.ClientObject{}, err
+	}
+
+	if result, ok := argument.(models.ClientObject); ok {
+		return result, nil
+	}
+
+	return models.ClientObject{}, errors.Wrap(
+		ast.ErrArgumentMustBeString,
+		fmt.Sprintf("can't promote argument %v to ClientObject", argument),
+	)
+}
+
+func adaptArgumentToMapOfAny(argument any) (map[string]any, error) {
+	if err := argumentNotNil(argument); err != nil {
+		return nil, err
+	}
+
+	if result, ok := argument.(map[string]any); ok {
+		return result, nil
+	}
+
+	return nil, errors.Wrap(
+		ast.ErrArgumentMustBeString,
+		fmt.Sprintf("can't promote argument %v to map[string]any", argument),
+	)
+}
+
 func adaptArgumentToTime(argument any) (time.Time, error) {
 	if err := argumentNotNil(argument); err != nil {
 		return time.Time{}, err

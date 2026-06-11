@@ -59,6 +59,9 @@ const (
 	FUNC_SCORE_COMPUTATION
 	FUNC_SWITCH
 
+	FUNC_FULL_PAYLOAD
+	FUNC_LUA
+
 	FUNC_UNDEFINED Function = -1
 	FUNC_UNKNOWN   Function = -2
 )
@@ -323,6 +326,15 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		AstName:             "Switch",
 		NamedArguments:      []string{"field", "type"},
 		LazyChildEvaluation: shortCircuitIfScoringTriggered,
+	},
+	FUNC_FULL_PAYLOAD: {
+		DebugName: "FUNC_FULL_PAYLOAD",
+		AstName:   "FullPayload",
+	},
+	FUNC_LUA: {
+		DebugName:      "FUNC_LUA",
+		AstName:        "Lua",
+		NamedArguments: []string{"code", "payload"},
 	},
 }
 
