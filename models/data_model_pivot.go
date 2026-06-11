@@ -17,6 +17,10 @@ type PivotMetadata struct {
 	BaseTableId string
 	FieldId     *string
 	PathLinkIds []string
+
+	// Pivots are soft-deleted: decisions keep referencing their pivot_id after the
+	// pivot is removed, so the definition must remain readable for historical data.
+	DeletedAt *time.Time
 }
 
 type Pivot struct {
@@ -34,6 +38,8 @@ type Pivot struct {
 
 	PathLinks   []string
 	PathLinkIds []string
+
+	DeletedAt *time.Time
 }
 
 func (p PivotMetadata) Enrich(dataModel DataModel) Pivot {
@@ -44,6 +50,7 @@ func (p PivotMetadata) Enrich(dataModel DataModel) Pivot {
 
 		BaseTableId: p.BaseTableId,
 		PathLinkIds: p.PathLinkIds,
+		DeletedAt:   p.DeletedAt,
 	}
 
 	baseTable := dataModel.AllTablesAsMap()[p.BaseTableId]

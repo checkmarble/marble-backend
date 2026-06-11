@@ -84,7 +84,7 @@ func (usecase usecase) getDataModelWithExec(
 	}
 
 	if options.IncludeNavigationOptions {
-		pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationID, nil, useCache)
+		pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationID, nil, useCache, false)
 		if err != nil {
 			return models.DataModel{}, err
 		}
@@ -258,7 +258,7 @@ func (usecase *usecase) ensureTableHasPivot(
 	tableId string,
 	fieldIdsByName map[string]string,
 ) error {
-	pivots, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationId, utils.Ptr(tableId), false)
+	pivots, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationId, utils.Ptr(tableId), false, false)
 	if err != nil {
 		return err
 	}
@@ -717,17 +717,18 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 				}
 			}
 
-			// For BelongsTo links, cascade-delete associated pivot(s) found via PathLinkIds
+			// For BelongsTo links, cascade soft-delete associated pivot(s) found via
+			// PathLinkIds. Soft delete because decisions may reference the pivot.
 			if linkType == models.LinkTypeBelongsTo {
 				pivots, err := usecase.dataModelRepository.ListPivots(
-					ctx, tx, table.OrganizationID, nil, false)
+					ctx, tx, table.OrganizationID, nil, false, false)
 				if err != nil {
 					return err
 				}
 				for _, pivot := range pivots {
 					for _, pathLinkId := range pivot.PathLinkIds {
 						if pathLinkId == linkId {
-							if err := usecase.dataModelRepository.DeleteDataModelPivot(
+							if err := usecase.dataModelRepository.SoftDeletePivot(
 								ctx, tx, pivot.Id.String()); err != nil {
 								return err
 							}
@@ -783,19 +784,20 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			}
 
 			pivots, err := usecase.dataModelRepository.ListPivots(
-				ctx, tx, table.OrganizationID, nil, false)
+				ctx, tx, table.OrganizationID, nil, false, false)
 			if err != nil {
 				return err
 			}
 
 			if linkUpdate.LinkType == models.LinkTypeRelated {
-				// Changing to "related": delete the path-based pivot that references this link.
-				// The child table is always tableID, and ensureTableHasPivot at the end of
-				// the transaction will recreate a default pivot if none remain.
+				// Changing to "related": soft-delete the path-based pivot that references
+				// this link (decisions may reference it). The child table is always tableID,
+				// and ensureTableHasPivot at the end of the transaction will recreate a
+				// default pivot if none remain.
 				for _, pivot := range pivots {
 					for _, pathLinkId := range pivot.PathLinkIds {
 						if pathLinkId == linkUpdate.ID {
-							if err := usecase.dataModelRepository.DeleteDataModelPivot(
+							if err := usecase.dataModelRepository.SoftDeletePivot(
 								ctx, tx, pivot.Id.String()); err != nil {
 								return err
 							}
@@ -816,11 +818,11 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 					}
 				}
 
-				// Delete the default pivot (field_id-based) on the child table, not path-based
-				// pivots that rely on another belongs_to link
+				// Soft-delete the default pivot (field_id-based) on the child table, not
+				// path-based pivots that rely on another belongs_to link
 				for _, pivot := range pivots {
 					if pivot.BaseTableId == existingLink.ChildTableId && pivot.FieldId != nil {
-						if err := usecase.dataModelRepository.DeleteDataModelPivot(
+						if err := usecase.dataModelRepository.SoftDeletePivot(
 							ctx, tx, pivot.Id.String()); err != nil {
 							return err
 						}
@@ -1426,16 +1428,17 @@ func (usecase *usecase) createDataModelLinkWithExec(ctx context.Context, exec re
 			}
 		}
 
-		// Delete the default pivot (field_id-based) to replace it with a path-based one.
-		// Do not delete path-based pivots that rely on another belongs_to link.
+		// Soft-delete the default pivot (field_id-based) to replace it with a path-based
+		// one (decisions may reference it). Do not delete path-based pivots that rely on
+		// another belongs_to link.
 		pivots, err := usecase.dataModelRepository.ListPivots(ctx, exec,
-			link.OrganizationID, utils.Ptr(link.ChildTableID), false)
+			link.OrganizationID, utils.Ptr(link.ChildTableID), false, false)
 		if err != nil {
 			return "", nil, err
 		}
 		for _, pivot := range pivots {
 			if pivot.FieldId != nil {
-				if err := usecase.dataModelRepository.DeleteDataModelPivot(ctx, exec, pivot.Id.String()); err != nil {
+				if err := usecase.dataModelRepository.SoftDeletePivot(ctx, exec, pivot.Id.String()); err != nil {
 					return "", nil, err
 				}
 			}
@@ -1532,6 +1535,33 @@ func (usecase *usecase) CreatePivotWithExec(ctx context.Context, exec repositori
 		return models.Pivot{}, err
 	}
 
+	// If a soft-deleted pivot with the same definition exists, restore it instead of
+	// creating a new row: historical decisions reference it by id, so reusing it keeps
+	// old and new decisions grouped under the same pivot (e.g. when a link is demoted
+	// to "related" then promoted back to "belongs_to").
+	existingPivots, err := usecase.dataModelRepository.ListPivots(
+		ctx, exec, input.OrganizationId, &input.BaseTableId, false, true)
+	if err != nil {
+		return models.Pivot{}, err
+	}
+	// Only restore if the table has no live pivot: otherwise let CreatePivot return its
+	// usual conflict error (one live pivot per table).
+	hasLivePivot := slices.ContainsFunc(existingPivots, func(p models.PivotMetadata) bool {
+		return p.DeletedAt == nil
+	})
+	if !hasLivePivot {
+		for _, existing := range existingPivots {
+			if !pivotDefinitionMatchesInput(existing, input) {
+				continue
+			}
+			if err := usecase.dataModelRepository.RestorePivot(ctx, exec, existing.Id.String()); err != nil {
+				return models.Pivot{}, err
+			}
+			pivotMeta, err := usecase.dataModelRepository.GetPivot(ctx, exec, existing.Id.String())
+			return pivotMeta.Enrich(dm), err
+		}
+	}
+
 	id := pure_utils.NewId().String()
 	err = usecase.dataModelRepository.CreatePivot(ctx, exec, id, input)
 	if err != nil {
@@ -1539,6 +1569,22 @@ func (usecase *usecase) CreatePivotWithExec(ctx context.Context, exec repositori
 	}
 	pivotMeta, err := usecase.dataModelRepository.GetPivot(ctx, exec, id)
 	return pivotMeta.Enrich(dm), err
+}
+
+// pivotDefinitionMatchesInput returns whether an existing pivot defines the same pivot
+// as the creation input: the same base table, and the same field (for field-based
+// pivots) or the same ordered path of links (for path-based pivots). A pivot is either
+// field-based (FieldId set, empty path) or path-based (FieldId nil, non-empty path).
+// Table ids are globally unique, so the organization is implied by the base table.
+func pivotDefinitionMatchesInput(pivot models.PivotMetadata, input models.CreatePivotInput) bool {
+	if pivot.BaseTableId != input.BaseTableId {
+		return false
+	}
+
+	sameField := (pivot.FieldId == nil && input.FieldId == nil) ||
+		(pivot.FieldId != nil && input.FieldId != nil && *pivot.FieldId == *input.FieldId)
+
+	return sameField && slices.Equal(pivot.PathLinkIds, input.PathLinkIds)
 }
 
 func (usecase *usecase) CreatePivot(ctx context.Context, input models.CreatePivotInput) (models.Pivot, error) {
@@ -1629,7 +1675,7 @@ func (usecase *usecase) ListPivots(ctx context.Context, organizationId uuid.UUID
 		return nil, err
 	}
 
-	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationId, tableID, false)
+	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationId, tableID, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1683,7 +1729,7 @@ func (usecase *usecase) CreateNavigationOption(ctx context.Context, input models
 	dataModel = dataModel.AddUnicityConstraintStatusToDataModel(uniqueIndexes)
 	allTables := dataModel.AllTablesAsMap()
 
-	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false)
+	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false, false)
 	if err != nil {
 		return err
 	}

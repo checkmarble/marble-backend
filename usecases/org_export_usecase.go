@@ -97,7 +97,7 @@ func (uc *OrgExportUsecase) Export(ctx context.Context, orgId uuid.UUID) (dto.Or
 	}
 
 	// Fetch pivots
-	pivotMetadatas, err := uc.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false)
+	pivotMetadatas, err := uc.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false, false)
 	if err != nil {
 		return dto.OrgImport{}, errors.Wrap(err, "failed to fetch pivots")
 	}

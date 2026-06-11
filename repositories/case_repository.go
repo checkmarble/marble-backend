@@ -686,6 +686,9 @@ func (repo *MarbleDbRepository) GetNextCase(ctx context.Context, exec Executor, 
 //     plus pivots defined directly on a field of that table (no belongs_to link, pivot uses field_id instead of a path)
 //  3. Find all decisions whose pivot ID is one of those pivots, and whose pivot value is the record under evaluation
 //
+// Soft-deleted pivots are intentionally included: historical decisions keep referencing
+// their pivot_id after the pivot is deleted, and must still surface related cases.
+//
 // Parameters: $1 = orgId, $2 = objectType (table name), $3 = objectId (pivot value).
 // Exposes a `decisions(case_id)` CTE for the caller to join against.
 const casesRelatedToObjectCTE = `
