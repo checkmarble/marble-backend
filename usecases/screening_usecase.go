@@ -601,29 +601,33 @@ func hashFreeformSearchResult(matches []models.ScreeningMatch) []byte {
 // config, verifies that the results still hash to the same value, then persists the results. The
 // frontend only provides the search id: it cannot control what is saved. Only the actor who
 // performed the search may save it.
-func (uc ScreeningUsecase) SaveFreeformSearch(ctx context.Context, id uuid.UUID) (models.ScreeningWithMatches, error) {
+func (uc ScreeningUsecase) SaveFreeformSearch(ctx context.Context, id uuid.UUID) error {
 	exec := uc.executorFactory.NewExecutor()
 
 	search, err := uc.repository.GetFreeformSearch(ctx, exec, id)
 	if err != nil {
-		return models.ScreeningWithMatches{}, err
+		return err
+	}
+
+	if search.IsSaved {
+		return nil
 	}
 
 	if err := uc.enforceSecurity.SaveFreeformSearch(search); err != nil {
-		return models.ScreeningWithMatches{}, err
+		return err
 	}
 
 	query := freeformSearchToOpenSanctionsQuery(search.SearchConfig, search.SearchInput)
 
 	screening, err := uc.Execute(ctx, search.OrgId, query)
 	if err != nil {
-		return models.ScreeningWithMatches{}, err
+		return err
 	}
 
 	resultHash := hashFreeformSearchResult(screening.Matches)
 
 	if !bytes.Equal(resultHash, search.ResultHash) {
-		return models.ScreeningWithMatches{}, errors.WithDetail(models.ConflictError,
+		return errors.WithDetail(models.ConflictError,
 			"the search results have changed since the search was performed, it cannot be saved")
 	}
 
@@ -632,10 +636,10 @@ func (uc ScreeningUsecase) SaveFreeformSearch(ctx context.Context, id uuid.UUID)
 	})
 
 	if err := uc.repository.SaveFreeformSearchResult(ctx, exec, id, result); err != nil {
-		return models.ScreeningWithMatches{}, errors.Wrap(err, "could not save freeform search result")
+		return errors.Wrap(err, "could not save freeform search result")
 	}
 
-	return screening, nil
+	return nil
 }
 
 func (uc ScreeningUsecase) GetFreeformSearch(ctx context.Context, id uuid.UUID) (models.FreeformSearch, error) {

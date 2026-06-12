@@ -404,12 +404,12 @@ func handleSaveFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
 
 		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
 
-		screening, err := uc.SaveFreeformSearch(ctx, searchId)
+		err = uc.SaveFreeformSearch(ctx, searchId)
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.AdaptScreeningFreeformSearchResult(searchId, screening.Matches))
+		c.Status(http.StatusOK)
 	}
 }
 
