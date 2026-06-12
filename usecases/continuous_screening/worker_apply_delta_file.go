@@ -480,6 +480,7 @@ func (w *ApplyDeltaFileWorker) buildOpenSanctionQuery(
 		},
 		WhitelistedEntityIds: whitelistedEntityIds,
 		Scope:                orgCustomDatasetName(updateJob.OrgId),
+		Partition:            true,
 	}, nil
 }
 
