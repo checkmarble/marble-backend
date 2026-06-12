@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/repositories/idp"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/organization"
 	"github.com/checkmarble/marble-backend/utils"
@@ -22,6 +23,7 @@ type SeedUseCase struct {
 	organizationCreator    organization.OrganizationCreator
 	organizationRepository repositories.OrganizationRepository
 	customListRepository   repositories.CustomListRepository
+	firebaseAdmin          idp.Adminer
 }
 
 func (usecase *SeedUseCase) SeedMarbleAdmins(ctx context.Context, firstMarbleAdminEmail string) error {
@@ -38,6 +40,27 @@ func (usecase *SeedUseCase) SeedMarbleAdmins(ctx context.Context, firstMarbleAdm
 		return err
 	}
 	logger.InfoContext(ctx, fmt.Sprintf("Created marble admin user with email %s (or already exists)", firstMarbleAdminEmail))
+
+	// Mirror the API user-creation path and create the user in Firebase too. This is
+	// idempotent (the Firebase client skips creation when the user already exists), so it
+	// is safe to run on every startup and heals users that exist in DB but not in Firebase.
+	if err := usecase.createFirebaseUser(ctx, firstMarbleAdminEmail); err != nil {
+		return err
+	}
+	return nil
+}
+
+// createFirebaseUser creates the user in Firebase if a Firebase admin client is configured.
+// It is a no-op when Firebase is not configured, and idempotent otherwise.
+func (usecase *SeedUseCase) createFirebaseUser(ctx context.Context, email string) error {
+	if usecase.firebaseAdmin == nil {
+		return nil
+	}
+	// Seeded users have no first/last name, so use the email as the Firebase display name
+	// (the Firebase client rejects an empty display name).
+	if err := usecase.firebaseAdmin.CreateUser(ctx, email, email); err != nil {
+		return errors.Wrap(err, "could not create Firebase user")
+	}
 	return nil
 }
 
@@ -98,6 +121,10 @@ func (usecase *SeedUseCase) CreateOrgAndUser(ctx context.Context, input models.I
 			ctx,
 			fmt.Sprintf("Created admin user for organization %s with email %s (or already exists)", targetOrg.Id, input.AdminEmail),
 		)
+
+		if err := usecase.createFirebaseUser(ctx, input.AdminEmail); err != nil {
+			return err
+		}
 	}
 
 	return nil

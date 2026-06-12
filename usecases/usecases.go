@@ -378,6 +378,7 @@ func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 		organizationCreator:    usecases.NewOrganizationCreator(),
 		organizationRepository: usecases.Repositories.MarbleDbRepository,
 		customListRepository:   usecases.Repositories.CustomListRepository,
+		firebaseAdmin:          usecases.firebaseAdmin,
 	}
 }
 
