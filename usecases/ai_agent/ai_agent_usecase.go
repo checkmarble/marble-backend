@@ -185,6 +185,7 @@ type AiAgentUsecase struct {
 	billingUsecase                     AiAgentUsecaseBillingUsecase
 	caseReviewFileRepository           caseReviewWorkerRepository
 	blobRepository                     repositories.BlobRepository
+	offloadedReader                    repositories.OffloadedReadWriter
 	caseReviewTaskEnqueuer             caseReviewTaskEnqueuer
 	screeningHitSuggestionTaskEnqueuer screeningHitSuggestionTaskEnqueuer
 	screeningUsecase                   AiAgentScreeningUsecase
@@ -213,6 +214,7 @@ func NewAiAgentUsecase(
 	billingUsecase AiAgentUsecaseBillingUsecase,
 	caseReviewFileRepository caseReviewWorkerRepository,
 	blobRepository repositories.BlobRepository,
+	offloadedReader repositories.OffloadedReadWriter,
 	caseReviewTaskEnqueuer caseReviewTaskEnqueuer,
 	transactionFactory executor_factory.TransactionFactory,
 	featureAccessReader featureAccessReader,
@@ -237,6 +239,7 @@ func NewAiAgentUsecase(
 		billingUsecase:                     billingUsecase,
 		caseReviewFileRepository:           caseReviewFileRepository,
 		blobRepository:                     blobRepository,
+		offloadedReader:                    offloadedReader,
 		caseReviewTaskEnqueuer:             caseReviewTaskEnqueuer,
 		transactionFactory:                 transactionFactory,
 		screeningHitSuggestionTaskEnqueuer: screeningHitSuggestionTaskEnqueuer,

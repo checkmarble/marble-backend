@@ -89,6 +89,56 @@ func TestOffloadScreeningMatches(t *testing.T) {
 	}
 }
 
+func TestHydrateScreeningMatches(t *testing.T) {
+	ctx := context.Background()
+	rw := newFileOffloadedReadWriter(t)
+
+	orgId := uuid.New()
+	screeningId := uuid.NewString()
+	offloadedMatchId := uuid.NewString()
+	legacyMatchId := uuid.NewString()
+	missingMatchId := uuid.NewString()
+
+	// An offloaded match: payload lives in blob storage, column is empty.
+	payload := []byte(`{"score":0.7,"id":"entity-1"}`)
+	require.NoError(t, rw.OffloadScreeningMatchPayload(ctx, orgId, screeningId, offloadedMatchId, payload))
+
+	screenings := []models.ScreeningWithMatches{
+		{
+			Screening: models.Screening{Id: screeningId, OrgId: orgId},
+			Matches: []models.ScreeningMatch{
+				{Id: offloadedMatchId, ScreeningId: screeningId, Payload: nil},
+				// A legacy match still has its payload in the column: left untouched, no blob read.
+				{Id: legacyMatchId, ScreeningId: screeningId, Payload: []byte(`{"score":0.2}`)},
+				// A match with no blob and no column payload: stays empty
+				{Id: missingMatchId, ScreeningId: screeningId, Payload: nil},
+			},
+		},
+	}
+
+	require.NoError(t, rw.HydrateScreeningMatches(ctx, screenings))
+
+	assert.JSONEq(t, string(payload), string(screenings[0].Matches[0].Payload))
+	assert.JSONEq(t, `{"score":0.2}`, string(screenings[0].Matches[1].Payload))
+	assert.Empty(t, screenings[0].Matches[2].Payload)
+}
+
+func TestHydrateScreeningMatchesDisabledIsNoOp(t *testing.T) {
+	ctx := context.Background()
+	rw := newFileOffloadedReadWriter(t)
+	rw.OffloadingBucketUrl = ""
+
+	screenings := []models.ScreeningWithMatches{
+		{
+			Screening: models.Screening{Id: uuid.NewString(), OrgId: uuid.New()},
+			Matches:   []models.ScreeningMatch{{Id: uuid.NewString(), Payload: nil}},
+		},
+	}
+
+	require.NoError(t, rw.HydrateScreeningMatches(ctx, screenings))
+	assert.Empty(t, screenings[0].Matches[0].Payload)
+}
+
 func TestOffloadScreeningMatchesDisabledReturnsMatchesUnchanged(t *testing.T) {
 	ctx := context.Background()
 	rw := newFileOffloadedReadWriter(t)

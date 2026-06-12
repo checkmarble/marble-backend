@@ -997,6 +997,12 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 			return caseData{}, casePivotDataByPivot{}, errors.Wrapf(err,
 				"could not retrieve screenings for decision %s", decision.DecisionId)
 		}
+		// Match payloads may be offloaded to blob storage (empty `payload` column); load them back
+		// so the AI review sees the full match data instead of empty payloads.
+		if err := uc.offloadedReader.HydrateScreeningMatches(ctx, screenings); err != nil {
+			return caseData{}, casePivotDataByPivot{}, errors.Wrapf(err,
+				"could not hydrate offloaded screening match payloads for decision %s", decision.DecisionId)
+		}
 		for _, s := range screenings {
 			screeningIds = append(screeningIds, s.Id)
 		}

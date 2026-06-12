@@ -193,26 +193,14 @@ func (uc ScreeningUsecase) GetScreening(ctx context.Context, id string) (models.
 
 // hydrateAndSortMatches loads offloaded match payloads from blob storage (for matches whose DB
 // payload column is empty) and sorts the matches by status, then by descending score. The score
-// lives inside the payload, so the sort must happen after hydration rather than in SQL. Matches
-// whose payload cannot be loaded (missing from both the column and blob storage) are logged and
-// pushed to the end of their status group rather than failing the whole read.
+// lives inside the payload, so the sort must happen after hydration rather than in SQL.
 func (uc ScreeningUsecase) hydrateAndSortMatches(ctx context.Context, orgId uuid.UUID,
 	matches []models.ScreeningMatch,
 ) error {
-	if uc.offloadedReader.IsOffloadingEnabled() {
-		for i := range matches {
-			if len(matches[i].Payload) > 0 {
-				continue
-			}
-
-			payload, err := uc.offloadedReader.ReadOffloadedScreeningMatchPayload(ctx, orgId,
-				matches[i].ScreeningId, matches[i].Id)
-			if err != nil {
-				return errors.Wrap(err, "could not read offloaded screening match payload")
-			}
-
-			matches[i].Payload = payload
-		}
+	if err := uc.offloadedReader.HydrateScreeningMatches(ctx, []models.ScreeningWithMatches{
+		{Screening: models.Screening{OrgId: orgId}, Matches: matches},
+	}); err != nil {
+		return err
 	}
 
 	slices.SortStableFunc(matches, func(a, b models.ScreeningMatch) int {

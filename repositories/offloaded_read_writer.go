@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"gocloud.dev/blob"
@@ -329,6 +330,47 @@ func (uc OffloadedReadWriter) OffloadScreeningMatches(
 	}
 
 	return offloaded, nil
+}
+
+// HydrateScreeningMatches fills in, from blob storage, the payload of every match whose DB column
+// is empty (the offloaded-payload signal) across the given screenings. It is the read-side
+// counterpart of OffloadScreeningMatches, for callers that read screenings outside ScreeningUsecase
+// (e.g. the AI case review). No-op when offloading is disabled. A match whose payload is missing
+// from both the column and blob storage is logged and left empty rather than failing the read.
+func (uc OffloadedReadWriter) HydrateScreeningMatches(
+	ctx context.Context, screenings []models.ScreeningWithMatches,
+) error {
+	if !uc.IsOffloadingEnabled() {
+		return nil
+	}
+
+	for _, screening := range screenings {
+		for i := range screening.Matches {
+			if len(screening.Matches[i].Payload) > 0 {
+				continue
+			}
+
+			payload, err := uc.ReadOffloadedScreeningMatchPayload(ctx, screening.OrgId,
+				screening.Matches[i].ScreeningId, screening.Matches[i].Id)
+			if err != nil {
+				return err
+			}
+
+			if len(payload) == 0 {
+				utils.LoggerFromContext(ctx).WarnContext(ctx,
+					"screening match payload is missing from blob storage",
+					"org_id", screening.OrgId,
+					"screening_id", screening.Matches[i].ScreeningId,
+					"match_id", screening.Matches[i].Id,
+				)
+				continue
+			}
+
+			screening.Matches[i].Payload = payload
+		}
+	}
+
+	return nil
 }
 
 // OffloadContinuousScreeningMatchPayload writes a continuous screening match payload to blob

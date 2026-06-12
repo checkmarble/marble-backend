@@ -794,6 +794,7 @@ func (usecases *UsecasesWithCreds) NewAiAgentUsecase() ai_agent.AiAgentUsecase {
 		usecases.NewBillingUsecase(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.BlobRepository,
+		usecases.NewOffloadedReader(),
 		usecases.Repositories.TaskQueueRepository,
 		usecases.NewTransactionFactory(),
 		usecases.NewFeatureAccessReader(),
