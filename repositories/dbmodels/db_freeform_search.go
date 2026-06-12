@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 )
 
 const TABLE_FREEFORM_SEARCHES = "screening_freeform_searches"
@@ -46,7 +47,7 @@ func AdaptFreeformSearch(db DBFreeformSearch) (models.FreeformSearch, error) {
 	var result []json.RawMessage
 	if len(db.Result) > 0 {
 		if err := json.Unmarshal(db.Result, &result); err != nil {
-			return models.FreeformSearch{}, err
+			return models.FreeformSearch{}, errors.Wrap(err, "error while unmarshalling freeform search results into an array of json objects")
 		}
 	}
 
