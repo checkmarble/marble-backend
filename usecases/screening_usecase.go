@@ -628,8 +628,7 @@ func (uc ScreeningUsecase) SaveFreeformSearch(ctx context.Context, id uuid.UUID)
 	}
 
 	result := pure_utils.Map(screening.Matches, func(m models.ScreeningMatch) json.RawMessage {
-		raw, _ := json.Marshal(dto.AdaptScreeningMatchDto(m))
-		return raw
+		return m.Payload
 	})
 
 	if err := uc.repository.SaveFreeformSearchResult(ctx, exec, id, result); err != nil {
