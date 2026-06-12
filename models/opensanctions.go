@@ -62,6 +62,7 @@ type OpenSanctionsQuery struct {
 	Config             ScreeningConfig
 	OrgConfig          OrganizationOpenSanctionsConfig
 	Scope              string
+	Partition          bool
 	// cf: `exclude_entity_ids` in the OpenSanctions query
 	WhitelistedEntityIds []string
 	UseScopedIndex       bool

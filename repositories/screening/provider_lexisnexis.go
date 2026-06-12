@@ -115,6 +115,10 @@ func (p ScreeningLexisNexisProvider) BuildQueryString(ctx context.Context,
 	qs.Set("algorithm", p.Config.Algorithm())
 
 	if query != nil {
+		if query.Partition {
+			qs.Set("partition", "true")
+		}
+
 		if p.Config.MotivaFeatures(ctx).ScopedIndex && query.UseScopedIndex {
 			qs.Set("index_type", "scoped")
 		}
