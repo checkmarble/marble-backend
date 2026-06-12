@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pubapi/types"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
@@ -24,7 +24,7 @@ type Config struct {
 
 func InitPublicApi() {
 	if validator, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		validator.RegisterTagNameFunc(types.FieldNameFromTag)
+		validator.RegisterTagNameFunc(utils.FieldNameFromTag)
 	}
 }
 
