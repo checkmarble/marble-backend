@@ -390,6 +390,13 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	}
 
 	for _, sce := range decision.ScreeningExecutions {
+		matchesToInsert, offloadErr := w.offloadedReader.OffloadScreeningMatches(ctx, sce)
+		if offloadErr != nil {
+			return false, nil, nil, errors.Wrapf(offloadErr,
+				"could not offload screening match payloads in createSingleDecisionForObjectId")
+		}
+		sce.Matches = matchesToInsert
+
 		err := w.screeningRepository.InsertScreening(ctx, tx, sce)
 		if err != nil {
 			return false, nil, nil, errors.Wrapf(err,

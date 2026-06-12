@@ -246,6 +246,7 @@ func (usecases *UsecasesWithCreds) NewScreeningUsecase() ScreeningUsecase {
 		repository:                usecases.Repositories.MarbleDbRepository,
 		blobRepository:            usecases.Repositories.BlobRepository,
 		blobBucketUrl:             usecases.caseManagerBucketUrl,
+		offloadedReader:           usecases.NewOffloadedReader(),
 		executorFactory:           usecases.NewExecutorFactory(),
 		transactionFactory:        usecases.NewTransactionFactory(),
 	}

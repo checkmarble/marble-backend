@@ -84,8 +84,7 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(
 		return false, models.PhantomDecision{}, err
 	}
 
-	triggerPassed, testRunScenarioExecution, err :=
-		usecase.scenarioEvaluator.EvalTestRunScenario(ctx, evaluationParameters)
+	triggerPassed, testRunScenarioExecution, err := usecase.scenarioEvaluator.EvalTestRunScenario(ctx, evaluationParameters)
 	if err != nil {
 		return false, models.PhantomDecision{},
 			fmt.Errorf("error evaluating scenario: %w", err)
@@ -121,7 +120,8 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(
 
 			for _, sce := range phantomDecision.ScreeningExecutions {
 				// We don't need to store the matches in the case of a phantom decision
-				// because we are only interested in statistics on the screening status
+				// because we are only interested in statistics on the screening status.
+				// Nothing to offload
 				sce.Matches = nil
 				err := usecase.externalRepository.InsertScreening(ctx, tx, sce)
 				if err != nil {
