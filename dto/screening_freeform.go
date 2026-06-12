@@ -13,14 +13,14 @@ import (
 // ScreeningFreeformSearchResult is the response of performing or saving a freeform search. It
 // carries the search id (so the frontend can later save the results) alongside the matches.
 type ScreeningFreeformSearchResult struct {
-	Id      uuid.UUID           `json:"id"`
-	Matches []ScreeningMatchDto `json:"matches"`
+	Id      uuid.UUID         `json:"id"`
+	Matches []json.RawMessage `json:"matches"`
 }
 
 func AdaptScreeningFreeformSearchResult(id uuid.UUID, matches []models.ScreeningMatch) ScreeningFreeformSearchResult {
 	return ScreeningFreeformSearchResult{
 		Id:      id,
-		Matches: pure_utils.Map(matches, AdaptScreeningMatchDto),
+		Matches: pure_utils.Map(matches, func(m models.ScreeningMatch) json.RawMessage { return m.Payload }),
 	}
 }
 
