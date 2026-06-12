@@ -25,7 +25,6 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       VERSION_IMAGE: europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:${{ inputs.version }}
-      COMMIT_IMAGE: europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:${{ github.sha }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -54,23 +53,38 @@ jobs:
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
 
-      - name: Extract version from tag
+      # BUILD_IMAGE is the artifact we promote from. Releases key it by
+      # (version + sha) so a pre-release and its promoted stable release share
+      # one artifact, while never colliding with the staging :<sha> build.
+      - name: Compute versions
         id: version
-        run: echo "MARBLE_VERSION=$(git describe --tags)" >> "$GITHUB_OUTPUT"
-
-      - name: Build and push
-        uses: docker/build-push-action@v7
-        with:
-          push: true
-          build-args: |
-            MARBLE_VERSION=${{ steps.version.outputs.MARBLE_VERSION }}
-            SEGMENT_WRITE_KEY=${{ secrets.segment_write_key_opensource }}
-          tags: ${{ env.COMMIT_IMAGE }}
-
-      - name: Tag existing image with version
         run: |
-          echo "Retagging existing image ${{ env.COMMIT_IMAGE }} as ${{ env.VERSION_IMAGE }}"
-          docker buildx imagetools create --tag ${{ env.VERSION_IMAGE }} ${{ env.COMMIT_IMAGE }}
+          REPO="europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend"
+          if [ "${{ inputs.version }}" = "latest" ]; then
+            echo "MARBLE_VERSION=$(git describe --tags)" >> "$GITHUB_OUTPUT"
+            echo "BUILD_IMAGE=${REPO}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            DISPLAY_VERSION="${{ inputs.version }}"
+            DISPLAY_VERSION="${DISPLAY_VERSION%%-*}"
+            echo "MARBLE_VERSION=${DISPLAY_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "BUILD_IMAGE=${REPO}:build-${DISPLAY_VERSION}-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build image if absent
+        run: |
+          if docker buildx imagetools inspect ${{ steps.version.outputs.BUILD_IMAGE }} >/dev/null 2>&1; then
+            echo "Build image ${{ steps.version.outputs.BUILD_IMAGE }} already exists; reusing for promotion."
+          else
+            docker buildx build --push \
+              --build-arg MARBLE_VERSION=${{ steps.version.outputs.MARBLE_VERSION }} \
+              --build-arg SEGMENT_WRITE_KEY=${{ secrets.segment_write_key_opensource }} \
+              --tag ${{ steps.version.outputs.BUILD_IMAGE }} .
+          fi
+
+      - name: Tag image with release version
+        run: |
+          echo "Tagging ${{ steps.version.outputs.BUILD_IMAGE }} as ${{ env.VERSION_IMAGE }}"
+          docker buildx imagetools create --tag ${{ env.VERSION_IMAGE }} ${{ steps.version.outputs.BUILD_IMAGE }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
@@ -93,7 +107,7 @@ jobs:
             --image=${{ env.VERSION_IMAGE }} \
             --region="europe-west1"
 
-      - name: Deploy server
+      - name: Deploy analytics server
         run: |
           gcloud run deploy marble-analytics-backend \
             --quiet \

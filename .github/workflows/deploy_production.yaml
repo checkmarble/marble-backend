@@ -1,12 +1,11 @@
 name: Deploy Production
 
 on:
-  push:
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
+  release:
+    types: [prereleased, released]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.release.tag_name }}
   cancel-in-progress: true
 
 jobs:
@@ -25,7 +24,7 @@ jobs:
       id-token: "write" # needed for using open id token to authenticate with GCP services
     with:
       environment: "production"
-      version: ${{ github.ref_name }}
+      version: ${{ github.event.release.tag_name }}
     secrets:
       segment_write_key_opensource: ${{ secrets.SEGMENT_WRITE_KEY_OPENSOURCE }}
 
