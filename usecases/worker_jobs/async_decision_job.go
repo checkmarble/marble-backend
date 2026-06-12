@@ -291,7 +291,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 			case *geos.Geom:
 				objectMap[idx].Data[k] = fmt.Sprintf("%f,%f", typed.Y(), typed.X())
 			case netip.Prefix:
-				objectMap[idx].Data[k] = typed.String()
+				objectMap[idx].Data[k] = typed.Addr().String()
 			}
 		}
 	}
