@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"math"
 	"math/rand/v2"
+	"net/netip"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -20,6 +22,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
+	"github.com/twpayne/go-geos"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -180,8 +183,7 @@ func (w *AsyncDecisionWorker) handleDecision(
 		return nil, nil, nil
 	}
 
-	decisionCreated, webhookEventIds, testRunCallback, err :=
-		w.createSingleDecisionForObjectId(ctx, args, tx)
+	decisionCreated, webhookEventIds, testRunCallback, err := w.createSingleDecisionForObjectId(ctx, args, tx)
 	if err != nil {
 		statusErr := w.repository.UpdateDecisionToCreateStatus(
 			ctx,
@@ -275,6 +277,25 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		return false, nil, nil, nil
 	}
 
+	// Scheduled executions are special, they are retrieved from the database whereas
+	// all the process was made for JSON input. We need to untype all special
+	// types (geolocations, IP address, metadata fields).
+	for idx := range objectMap {
+		for k, v := range objectMap[idx].Data {
+			if strings.Contains(k, ".metadata") {
+				delete(objectMap[idx].Data, k)
+				continue
+			}
+
+			switch typed := v.(type) {
+			case *geos.Geom:
+				objectMap[idx].Data[k] = fmt.Sprintf("%f,%f", typed.Y(), typed.X())
+			case netip.Prefix:
+				objectMap[idx].Data[k] = typed.String()
+			}
+		}
+	}
+
 	object := models.ClientObject{TableName: table.Name, Data: objectMap[0].Data}
 
 	evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
@@ -316,8 +337,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		}
 	}
 
-	triggerPassed, scenarioExecution, err :=
-		w.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+	triggerPassed, scenarioExecution, err := w.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 	if err != nil {
 		return false, nil, nil, errors.Wrapf(err, "error evaluating scenario in AsyncDecisionWorker %s", scenario.Id)
 	}
