@@ -894,6 +894,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningUsecase() *continuous_s
 		usecases.NewFeatureAccessReader(),
 		usecases.NewEntityAnnotationUsecase(),
 		usecases.NewWebhookEventsUsecase(),
+		usecases.NewOffloadedReader(),
 	)
 }
 
@@ -906,6 +907,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningDoScreeningWorker() *co
 		&usecases.Repositories.ClientDbRepository,
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.NewContinuousScreeningUsecase(),
+		usecases.NewOffloadedReader(),
 	)
 }
 
@@ -918,6 +920,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningRegisterObjectWorker() 
 		&usecases.Repositories.ClientDbRepository,
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.NewContinuousScreeningUsecase(),
+		usecases.NewOffloadedReader(),
 	)
 }
 
@@ -941,6 +944,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningApplyDeltaFileWorker() 
 		usecases.Repositories.OpenSanctionsRepository,
 		usecases.continuousScreeningBucketUrl,
 		usecases.NewContinuousScreeningUsecase(),
+		usecases.NewOffloadedReader(),
 	)
 }
 
@@ -963,6 +967,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningMatchEnrichmentWorker()
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.OpenSanctionsRepository,
 		usecases.Repositories.MarbleDbRepository,
+		usecases.NewOffloadedReader(),
 	)
 }
 

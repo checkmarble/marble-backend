@@ -149,31 +149,38 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 	}
 
 	var screeningWithMatches models.ScreeningWithMatches
+	var createInput models.CreateContinuousScreening
 	if !input.SkipScreen {
 		screeningWithMatches, err = uc.DoScreening(ctx, exec, ingestedObject, mapping, config, input.ObjectType, objectId)
 		if err != nil {
 			logger.WarnContext(ctx, "Continuous Screening - error searching on open sanctions", "error", err.Error())
 			return models.ContinuousScreeningWithMatches{}, err
 		}
+
+		createInput = models.CreateContinuousScreening{
+			Id:               pure_utils.NewId(),
+			Screening:        screeningWithMatches,
+			Config:           config,
+			ObjectType:       &input.ObjectType,
+			ObjectId:         &objectId,
+			ObjectInternalId: &ingestedObjectInternalId,
+			TriggerType:      models.ContinuousScreeningTriggerTypeObjectAdded,
+		}
+
+		// Try to offload the match payloads to blob storage
+		createInput.Screening.Matches, err = uc.offloadedReader.OffloadContinuousScreeningMatches(
+			ctx, config.OrgId, createInput.Id, createInput.Screening.Matches)
+		if err != nil {
+			return models.ContinuousScreeningWithMatches{}, err
+		}
 	}
 
-	return executor_factory.TransactionReturnValue(
+	continuousScreening, err := executor_factory.TransactionReturnValue(
 		ctx,
 		uc.transactionFactory,
 		func(tx repositories.Transaction) (models.ContinuousScreeningWithMatches, error) {
 			if !input.SkipScreen {
-				continuousScreeningWithMatches, err := uc.repository.InsertContinuousScreening(
-					ctx,
-					tx,
-					models.CreateContinuousScreening{
-						Screening:        screeningWithMatches,
-						Config:           config,
-						ObjectType:       &input.ObjectType,
-						ObjectId:         &objectId,
-						ObjectInternalId: &ingestedObjectInternalId,
-						TriggerType:      models.ContinuousScreeningTriggerTypeObjectAdded,
-					},
-				)
+				continuousScreeningWithMatches, err := uc.repository.InsertContinuousScreening(ctx, tx, createInput)
 				if err != nil {
 					return models.ContinuousScreeningWithMatches{}, err
 				}
@@ -217,6 +224,17 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 			return models.ContinuousScreeningWithMatches{}, nil
 		},
 	)
+	if err != nil {
+		return models.ContinuousScreeningWithMatches{}, err
+	}
+
+	// The inserted matches come back with empty payload columns when offloaded; hydrate them from
+	// blob storage (and sort) so the create response carries the full match data.
+	if err := uc.hydrateContinuousScreening(ctx, &continuousScreening); err != nil {
+		return models.ContinuousScreeningWithMatches{}, err
+	}
+
+	return continuousScreening, nil
 }
 
 type payloadObjectID struct {
@@ -326,6 +344,11 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningsForOrg(
 			return nil, err
 		}
 	}
+
+	if err := uc.hydrateContinuousScreenings(ctx, monitorings); err != nil {
+		return nil, err
+	}
+
 	return monitorings, nil
 }
 

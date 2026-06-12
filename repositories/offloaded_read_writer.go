@@ -420,3 +420,124 @@ func (uc OffloadedReadWriter) ReadOffloadedContinuousScreeningEntityPayload(
 	return uc.readPayload(ctx,
 		uc.Repository.GetOffloadedContinuousScreeningEntityKey(orgId, continuousScreeningId))
 }
+
+// OffloadContinuousScreeningEntity offloads the OpenSanctions entity payload of a continuous
+// screening to blob storage (keyed by the screening id) and returns the value to store in the
+// `opensanction_entity_payload` column: nil once offloaded, or the payload unchanged when
+// offloading is disabled (or there is no payload).
+func (uc OffloadedReadWriter) OffloadContinuousScreeningEntity(
+	ctx context.Context, orgId, continuousScreeningId uuid.UUID, payload []byte,
+) ([]byte, error) {
+	if !uc.IsOffloadingEnabled() || len(payload) == 0 {
+		return payload, nil
+	}
+
+	if err := uc.OffloadContinuousScreeningEntityPayload(ctx, orgId, continuousScreeningId, payload); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+// OffloadContinuousScreeningMatches offloads match payloads to blob storage and returns a copy of
+// the matches with a pre-assigned id (matching its blob key) and a blanked payload, ready to be
+// inserted with empty payload columns. When offloading is disabled the matches are returned
+// unchanged.
+func (uc OffloadedReadWriter) OffloadContinuousScreeningMatches(
+	ctx context.Context, orgId, continuousScreeningId uuid.UUID, matches []models.ScreeningMatch,
+) ([]models.ScreeningMatch, error) {
+	if !uc.IsOffloadingEnabled() {
+		return matches, nil
+	}
+
+	offloaded := make([]models.ScreeningMatch, len(matches))
+	for i := range matches {
+		match := matches[i]
+		if match.Id == "" {
+			match.Id = pure_utils.NewId().String()
+		}
+
+		matchId, err := uuid.Parse(match.Id)
+		if err != nil {
+			return nil, errors.Wrap(err, "invalid screening match id")
+		}
+
+		if err := uc.OffloadContinuousScreeningMatchPayload(ctx, orgId, continuousScreeningId,
+			matchId, match.Payload); err != nil {
+			return nil, err
+		}
+
+		match.Payload = nil
+		offloaded[i] = match
+	}
+
+	return offloaded, nil
+}
+
+// HydrateContinuousScreeningEntity fills in, from blob storage, the entity payload of a
+// dataset-triggered continuous screening when it was offloaded (empty DB column). No-op when
+// offloading is disabled or the screening has no entity id. A missing blob is logged and left
+// empty rather than failing the read.
+func (uc OffloadedReadWriter) HydrateContinuousScreeningEntity(
+	ctx context.Context, screening *models.ContinuousScreeningWithMatches,
+) error {
+	if !uc.IsOffloadingEnabled() {
+		return nil
+	}
+
+	if screening.OpenSanctionEntityId == nil || len(screening.OpenSanctionEntityPayload) > 0 {
+		return nil
+	}
+
+	payload, err := uc.ReadOffloadedContinuousScreeningEntityPayload(ctx, screening.OrgId, screening.Id)
+	if err != nil {
+		return err
+	}
+	if len(payload) == 0 {
+		utils.LoggerFromContext(ctx).WarnContext(ctx,
+			"continuous screening entity payload is missing from both the DB column and blob storage",
+			"org_id", screening.OrgId,
+			"continuous_screening_id", screening.Id,
+		)
+		return nil
+	}
+
+	screening.OpenSanctionEntityPayload = payload
+	return nil
+}
+
+// HydrateContinuousScreeningMatch fills in, from blob storage, the match payloads that
+// were offloaded (empty DB column) for the given screening. No-op when offloading is disabled.
+// A missing blob is logged and left empty rather than failing the read.
+func (uc OffloadedReadWriter) HydrateContinuousScreeningMatch(
+	ctx context.Context, screening *models.ContinuousScreeningWithMatches,
+) error {
+	if !uc.IsOffloadingEnabled() {
+		return nil
+	}
+
+	for j := range screening.Matches {
+		if len(screening.Matches[j].Payload) > 0 {
+			continue
+		}
+
+		payload, err := uc.ReadOffloadedContinuousScreeningMatchPayload(ctx, screening.OrgId,
+			screening.Id, screening.Matches[j].Id)
+		if err != nil {
+			return err
+		}
+		if len(payload) == 0 {
+			utils.LoggerFromContext(ctx).WarnContext(ctx,
+				"continuous screening match payload is missing from both the DB column and blob storage",
+				"org_id", screening.OrgId,
+				"continuous_screening_id", screening.Id,
+				"match_id", screening.Matches[j].Id,
+			)
+			continue
+		}
+
+		screening.Matches[j].Payload = payload
+	}
+
+	return nil
+}

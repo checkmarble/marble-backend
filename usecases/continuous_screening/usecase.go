@@ -1,8 +1,10 @@
 package continuous_screening
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -329,6 +331,7 @@ type ContinuousScreeningUsecase struct {
 	featureAccessReader          featureAccessReader
 	objectRiskTagWriter          objectRiskTagWriter
 	webhookEventsUsecase         webhookEventsUsecase
+	offloadedReader              repositories.OffloadedReadWriter
 }
 
 func NewContinuousScreeningUsecase(
@@ -350,6 +353,7 @@ func NewContinuousScreeningUsecase(
 	featureAccessReader featureAccessReader,
 	objectRiskTagWriter objectRiskTagWriter,
 	webhookEventsUsecase webhookEventsUsecase,
+	offloadedReader repositories.OffloadedReadWriter,
 ) *ContinuousScreeningUsecase {
 	return &ContinuousScreeningUsecase{
 		executorFactory:              executorFactory,
@@ -370,5 +374,64 @@ func NewContinuousScreeningUsecase(
 		featureAccessReader:          featureAccessReader,
 		objectRiskTagWriter:          objectRiskTagWriter,
 		webhookEventsUsecase:         webhookEventsUsecase,
+		offloadedReader:              offloadedReader,
+	}
+}
+
+// hydrateContinuousScreenings loads offloaded entity and match payloads from blob storage (no-op
+// when offloading is disabled) and then sorts each screening's matches by status, then descending
+// score. The score lives in the (possibly offloaded) payload, so the sort runs in memory here
+// rather than in SQL. The slice is mutated in place.
+func (uc *ContinuousScreeningUsecase) hydrateContinuousScreenings(
+	ctx context.Context, screenings []models.ContinuousScreeningWithMatches,
+) error {
+	for i := range screenings {
+		if err := uc.offloadedReader.HydrateContinuousScreeningEntity(ctx, &screenings[i]); err != nil {
+			return err
+		}
+		if err := uc.offloadedReader.HydrateContinuousScreeningMatch(ctx, &screenings[i]); err != nil {
+			return err
+		}
+
+		slices.SortStableFunc(screenings[i].Matches, func(a, b models.ContinuousScreeningMatch) int {
+			if n := cmp.Compare(continuousScreeningMatchStatusRank(a.Status),
+				continuousScreeningMatchStatusRank(b.Status)); n != 0 {
+				return n
+			}
+			return cmp.Compare(b.GetScoreFromPayload(), a.GetScoreFromPayload())
+		})
+	}
+
+	return nil
+}
+
+// hydrateContinuousScreening hydrates and sorts a single continuous screening in place. Unlike
+// passing a value to hydrateContinuousScreenings, this reflects the hydrated entity payload back
+// onto the caller's screening (a scalar field, not a shared slice).
+func (uc *ContinuousScreeningUsecase) hydrateContinuousScreening(
+	ctx context.Context, screening *models.ContinuousScreeningWithMatches,
+) error {
+	wrapped := []models.ContinuousScreeningWithMatches{*screening}
+	if err := uc.hydrateContinuousScreenings(ctx, wrapped); err != nil {
+		return err
+	}
+	*screening = wrapped[0]
+	return nil
+}
+
+// continuousScreeningMatchStatusRank mirrors the status ordering previously expressed in SQL
+// (array['confirmed_hit', 'pending', 'no_hit', 'skipped']).
+func continuousScreeningMatchStatusRank(s models.ScreeningMatchStatus) int {
+	switch s {
+	case models.ScreeningMatchStatusConfirmedHit:
+		return 0
+	case models.ScreeningMatchStatusPending:
+		return 1
+	case models.ScreeningMatchStatusNoHit:
+		return 2
+	case models.ScreeningMatchStatusSkipped:
+		return 3
+	default:
+		return 4
 	}
 }

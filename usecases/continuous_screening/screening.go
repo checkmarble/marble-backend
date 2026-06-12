@@ -190,6 +190,20 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 				continuousScreeningMatch.ContinuousScreeningId)
 		}
 
+		// The refreshed screening and the updated match are read from the DB, so their payloads
+		// are empty when offloaded; hydrate them so the webhook carries the full match/entity data.
+		if err := uc.hydrateContinuousScreening(ctx, &refreshedScreening); err != nil {
+			return err
+		}
+		matchHolder := models.ContinuousScreeningWithMatches{
+			ContinuousScreening: refreshedScreening.ContinuousScreening,
+			Matches:             []models.ContinuousScreeningMatch{updatedMatch},
+		}
+		if err := uc.offloadedReader.HydrateContinuousScreeningMatch(ctx, &matchHolder); err != nil {
+			return err
+		}
+		updatedMatch = matchHolder.Matches[0]
+
 		if err := uc.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             pure_utils.NewId().String(),
 			OrganizationId: refreshedScreening.OrgId,
@@ -372,6 +386,10 @@ func (uc *ContinuousScreeningUsecase) DismissContinuousScreening(ctx context.Con
 		return models.ContinuousScreeningWithMatches{}, err
 	}
 
+	if err := uc.hydrateContinuousScreening(ctx, &continuousScreening); err != nil {
+		return models.ContinuousScreeningWithMatches{}, err
+	}
+
 	return continuousScreening, nil
 }
 
@@ -479,17 +497,37 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 			)
 		}
 
+		// Offload the new match payloads to blob storage
+		offloadedMatches, err := uc.offloadedReader.OffloadContinuousScreeningMatches(
+			ctx,
+			continuousScreening.OrgId,
+			continuousScreeningId,
+			newMatches,
+		)
+		if err != nil {
+			return err
+		}
+
+		matchesToInsert := pure_utils.Map(offloadedMatches, func(m models.ScreeningMatch) models.ContinuousScreeningMatch {
+			// m.Id was pre-assigned by the offloader (it is the blob key); empty when offloading is
+			// disabled, in which case InsertContinuousScreeningMatches generates one.
+			var matchId uuid.UUID
+			if m.Id != "" {
+				matchId = uuid.MustParse(m.Id)
+			}
+			return models.ContinuousScreeningMatch{
+				Id:                   matchId,
+				OpenSanctionEntityId: m.EntityId,
+				Payload:              m.Payload,
+			}
+		})
+
 		// Insert new matches
 		insertedMatches, err := uc.repository.InsertContinuousScreeningMatches(
 			ctx,
 			tx,
 			continuousScreeningId,
-			pure_utils.Map(newMatches, func(m models.ScreeningMatch) models.ContinuousScreeningMatch {
-				return models.ContinuousScreeningMatch{
-					OpenSanctionEntityId: m.EntityId,
-					Payload:              m.Payload,
-				}
-			}),
+			matchesToInsert,
 		)
 		if err != nil {
 			return err
@@ -526,6 +564,10 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 		return nil
 	})
 	if err != nil {
+		return models.ContinuousScreeningWithMatches{}, err
+	}
+
+	if err := uc.hydrateContinuousScreening(ctx, &continuousScreening); err != nil {
 		return models.ContinuousScreeningWithMatches{}, err
 	}
 

@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
@@ -65,6 +66,7 @@ func (suite *DoScreeningWorkerTestSuite) makeWorker() *DoScreeningWorker {
 		suite.clientDbRepository,
 		suite.ingestedDataReader,
 		suite.usecase,
+		repositories.OffloadedReadWriter{},
 	)
 }
 

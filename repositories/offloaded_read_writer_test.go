@@ -6,6 +6,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,6 +22,9 @@ func newFileOffloadedReadWriter(t *testing.T) OffloadedReadWriter {
 	}
 }
 
+// /////////////////////////////
+// Offload screening payload //
+// /////////////////////////////
 func TestOffloadScreeningMatchPayloadRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	rw := newFileOffloadedReadWriter(t)
@@ -173,4 +177,112 @@ func TestOffloadingDisabledIsNoOp(t *testing.T) {
 	got, err := rw.ReadOffloadedScreeningMatchPayload(ctx, uuid.New(), "sc", "m")
 	require.NoError(t, err)
 	assert.Nil(t, got)
+}
+
+// ///////////////////////////////////////
+// Offload continuous screening payload //
+// ///////////////////////////////////////
+
+func TestOffloadContinuousScreeningEntity(t *testing.T) {
+	ctx := context.Background()
+	rw := newFileOffloadedReadWriter(t)
+
+	orgId := uuid.New()
+	csId := uuid.New()
+	entityPayload := []byte(`{"id":"entity-1","caption":"ACME"}`)
+
+	// Offloaded: returns nil (to store an empty column) and writes the payload to blob storage.
+	stored, err := rw.OffloadContinuousScreeningEntity(ctx, orgId, csId, entityPayload)
+	require.NoError(t, err)
+	assert.Empty(t, stored)
+
+	got, err := rw.ReadOffloadedContinuousScreeningEntityPayload(ctx, orgId, csId)
+	require.NoError(t, err)
+	assert.JSONEq(t, string(entityPayload), string(got))
+
+	// Disabled: returns the payload unchanged so it is written to the DB column.
+	rw.OffloadingBucketUrl = ""
+	stored, err = rw.OffloadContinuousScreeningEntity(ctx, orgId, csId, entityPayload)
+	require.NoError(t, err)
+	assert.JSONEq(t, string(entityPayload), string(stored))
+}
+
+func TestOffloadContinuousScreeningMatches(t *testing.T) {
+	ctx := context.Background()
+	rw := newFileOffloadedReadWriter(t)
+
+	orgId := uuid.New()
+	csId := uuid.New()
+	matches := []models.ScreeningMatch{
+		{EntityId: "match-1", Payload: []byte(`{"score":0.9}`)},
+		{EntityId: "match-2", Payload: []byte(`{"score":0.4}`)},
+	}
+
+	offloaded, err := rw.OffloadContinuousScreeningMatches(ctx, orgId, csId, matches)
+	require.NoError(t, err)
+	require.Len(t, offloaded, 2)
+
+	for i, m := range offloaded {
+		// Each offloaded match has a pre-assigned id and an empty payload.
+		assert.NotEmpty(t, m.Id)
+		assert.Empty(t, m.Payload)
+
+		matchId, err := uuid.Parse(m.Id)
+		require.NoError(t, err)
+
+		got, err := rw.ReadOffloadedContinuousScreeningMatchPayload(ctx, orgId, csId, matchId)
+		require.NoError(t, err)
+		assert.JSONEq(t, string(matches[i].Payload), string(got))
+	}
+}
+
+func TestOffloadContinuousScreeningMatchesDisabledIsNoOp(t *testing.T) {
+	ctx := context.Background()
+	rw := newFileOffloadedReadWriter(t)
+	rw.OffloadingBucketUrl = ""
+
+	matches := []models.ScreeningMatch{{EntityId: "match-1", Payload: []byte(`{"score":0.9}`)}}
+
+	offloaded, err := rw.OffloadContinuousScreeningMatches(ctx, uuid.New(), uuid.New(), matches)
+	require.NoError(t, err)
+
+	// Unchanged: payloads stay so the repository writes them to the DB column as before.
+	assert.Equal(t, matches, offloaded)
+	assert.NotEmpty(t, offloaded[0].Payload)
+}
+
+func TestHydrateContinuousScreeningMatches(t *testing.T) {
+	ctx := context.Background()
+	rw := newFileOffloadedReadWriter(t)
+
+	orgId := uuid.New()
+	csId := uuid.New()
+	offloadedMatchId := uuid.New()
+	legacyMatchId := uuid.New()
+
+	entityPayload := []byte(`{"id":"entity-1"}`)
+	matchPayload := []byte(`{"score":0.7}`)
+	require.NoError(t, rw.OffloadContinuousScreeningEntityPayload(ctx, orgId, csId, entityPayload))
+	require.NoError(t, rw.OffloadContinuousScreeningMatchPayload(ctx, orgId, csId, offloadedMatchId, matchPayload))
+
+	screenings := []models.ContinuousScreeningWithMatches{
+		{
+			ContinuousScreening: models.ContinuousScreening{
+				Id:                   csId,
+				OrgId:                orgId,
+				OpenSanctionEntityId: utils.Ptr("entity-1"),
+			},
+			Matches: []models.ContinuousScreeningMatch{
+				{Id: offloadedMatchId, ContinuousScreeningId: csId, Payload: nil},
+				{Id: legacyMatchId, ContinuousScreeningId: csId, Payload: []byte(`{"score":0.2}`)},
+			},
+		},
+	}
+
+	require.NoError(t, rw.HydrateContinuousScreeningEntity(ctx, &screenings[0]))
+	require.NoError(t, rw.HydrateContinuousScreeningMatch(ctx, &screenings[0]))
+
+	assert.JSONEq(t, string(entityPayload), string(screenings[0].OpenSanctionEntityPayload))
+	assert.JSONEq(t, string(matchPayload), string(screenings[0].Matches[0].Payload))
+	assert.JSONEq(t, `{"score":0.2}`, string(screenings[0].Matches[1].Payload))
 }

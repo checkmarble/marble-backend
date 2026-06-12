@@ -113,6 +113,7 @@ type RegisterObjectWorker struct {
 	clientDbRepo       registerObjectWorkerClientDbRepository
 	ingestedDataReader registerObjectWorkerIngestedDataReader
 	usecase            registerObjectWorkerCSUsecase
+	offloadedReader    repositories.OffloadedReadWriter
 }
 
 func NewRegisterObjectWorker(
@@ -123,6 +124,7 @@ func NewRegisterObjectWorker(
 	clientDbRepo registerObjectWorkerClientDbRepository,
 	ingestedDataReader registerObjectWorkerIngestedDataReader,
 	uc registerObjectWorkerCSUsecase,
+	offloadedReader repositories.OffloadedReadWriter,
 ) *RegisterObjectWorker {
 	return &RegisterObjectWorker{
 		executorFactory:    executorFactory,
@@ -132,6 +134,7 @@ func NewRegisterObjectWorker(
 		clientDbRepo:       clientDbRepo,
 		ingestedDataReader: ingestedDataReader,
 		usecase:            uc,
+		offloadedReader:    offloadedReader,
 	}
 }
 
@@ -277,15 +280,26 @@ func (w *RegisterObjectWorker) Work(ctx context.Context, job *river.Job[models.C
 		return err
 	}
 
+	createInput := models.CreateContinuousScreening{
+		Id:               pure_utils.NewId(),
+		Screening:        screeningWithMatches,
+		Config:           config,
+		ObjectType:       &job.Args.ObjectType,
+		ObjectId:         &job.Args.ObjectId,
+		ObjectInternalId: &newObjectInternalId,
+		TriggerType:      models.ContinuousScreeningTriggerTypeObjectAdded,
+	}
+
+	// Offload the match payloads to blob storage (no-op when offloading is disabled) before
+	// persisting, so the rows are written with empty payload columns.
+	createInput.Screening.Matches, err = w.offloadedReader.OffloadContinuousScreeningMatches(
+		ctx, config.OrgId, createInput.Id, createInput.Screening.Matches)
+	if err != nil {
+		return err
+	}
+
 	return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		continuousScreeningWithMatches, err := w.repo.InsertContinuousScreening(ctx, tx, models.CreateContinuousScreening{
-			Screening:        screeningWithMatches,
-			Config:           config,
-			ObjectType:       &job.Args.ObjectType,
-			ObjectId:         &job.Args.ObjectId,
-			ObjectInternalId: &newObjectInternalId,
-			TriggerType:      models.ContinuousScreeningTriggerTypeObjectAdded,
-		})
+		continuousScreeningWithMatches, err := w.repo.InsertContinuousScreening(ctx, tx, createInput)
 		if err != nil {
 			return err
 		}

@@ -137,7 +137,7 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Cont
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
-		Suffix("RETURNING *").
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectContinuousScreeningConfigColumnList, ","))).
 		Columns(
 			"id",
 			"org_id",
@@ -186,7 +186,7 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningConfig(
 
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS).
-		Suffix("RETURNING *").
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectContinuousScreeningConfigColumnList, ","))).
 		Set("updated_at", squirrel.Expr("NOW()")).
 		Where(squirrel.Eq{"id": id})
 
@@ -253,11 +253,16 @@ func (repo *MarbleDbRepository) InsertContinuousScreening(
 		return models.ContinuousScreeningWithMatches{}, err
 	}
 
-	id := pure_utils.NewId()
+	// The caller may pre-assign the id (so it can offload the entity payload to blob storage,
+	// keyed by this id, before insert). Generate one when it isn't set.
+	id := input.Id
+	if id == uuid.Nil {
+		id = pure_utils.NewId()
+	}
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
-		Suffix("RETURNING *").
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectContinuousScreeningColumn, ","))).
 		Columns(
 			"id",
 			"org_id",
@@ -304,11 +309,18 @@ func (repo *MarbleDbRepository) InsertContinuousScreening(
 
 	matchSql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES).
-		Suffix("RETURNING *").
-		Columns("continuous_screening_id", "opensanction_entity_id", "payload")
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectContinuousScreeningMatchesColumn, ","))).
+		Columns("id", "continuous_screening_id", "opensanction_entity_id", "payload")
 
 	for _, match := range input.Screening.Matches {
-		matchSql = matchSql.Values(id, match.EntityId, match.Payload)
+		// Matches offloaded by the caller carry a pre-assigned id (their blob key); otherwise
+		// generate one here.
+		matchId := match.Id
+		if matchId == "" {
+			matchId = pure_utils.NewId().String()
+		}
+
+		matchSql = matchSql.Values(matchId, id, match.EntityId, match.Payload)
 	}
 
 	matches, err := SqlToListOfModels(ctx, exec, matchSql, dbmodels.AdaptContinuousScreeningMatch)
@@ -335,11 +347,18 @@ func (repo *MarbleDbRepository) InsertContinuousScreeningMatches(
 
 	matchSql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES).
-		Suffix("RETURNING *").
-		Columns("continuous_screening_id", "opensanction_entity_id", "payload")
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectContinuousScreeningMatchesColumn, ","))).
+		Columns("id", "continuous_screening_id", "opensanction_entity_id", "payload")
 
 	for _, match := range matches {
-		matchSql = matchSql.Values(screeningId, match.OpenSanctionEntityId, match.Payload)
+		// Matches offloaded by the caller carry a pre-assigned id (their blob key); otherwise
+		// generate one here.
+		matchId := match.Id
+		if matchId == uuid.Nil {
+			matchId = pure_utils.NewId()
+		}
+
+		matchSql = matchSql.Values(matchId, screeningId, match.OpenSanctionEntityId, match.Payload)
 	}
 
 	return SqlToListOfModels(ctx, exec, matchSql, dbmodels.AdaptContinuousScreeningMatch)
@@ -445,7 +464,7 @@ func (repo *MarbleDbRepository) ListContinuousScreeningsForOrg(
 func selectContinuousScreeningWithMatches() squirrel.SelectBuilder {
 	return NewQueryBuilder().
 		Select(columnsNames("cs", dbmodels.SelectContinuousScreeningColumn)...).
-		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s) ORDER BY array_position(array['confirmed_hit', 'pending', 'no_hit', 'skipped'], csm.status), csm.payload->>'score' DESC) FILTER (WHERE csm.id IS NOT NULL) AS matches",
+		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s)) FILTER (WHERE csm.id IS NOT NULL) AS matches",
 			strings.Join(columnsNames("csm", dbmodels.SelectContinuousScreeningMatchesColumn), ","))).
 		From(dbmodels.TABLE_CONTINUOUS_SCREENINGS + " AS cs").
 		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES +
@@ -555,7 +574,7 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningMatchStatus(
 		Set("status", newStatus.String()).
 		Set("reviewed_by", reviewedBy).
 		Set("updated_at", squirrel.Expr("NOW()")).
-		Suffix("RETURNING *")
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectContinuousScreeningMatchesColumn, ",")))
 
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningMatch)
 }
@@ -581,7 +600,7 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningMatchStatusByBatch(
 		Set("status", newStatus.String()).
 		Set("reviewed_by", reviewedBy).
 		Set("updated_at", squirrel.Expr("NOW()")).
-		Suffix("RETURNING *")
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectContinuousScreeningMatchesColumn, ",")))
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningMatch)
 }
@@ -601,7 +620,7 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningStatus(
 		Where(squirrel.Eq{"id": id}).
 		Set("status", newStatus.String()).
 		Set("updated_at", squirrel.Expr("NOW()")).
-		Suffix("RETURNING *")
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectContinuousScreeningColumn, ",")))
 
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreening)
 }
@@ -621,7 +640,7 @@ func (repo *MarbleDbRepository) UpdateContinuousScreening(
 		Update(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
 		Where(squirrel.Eq{"id": id}).
 		Set("updated_at", squirrel.Expr("NOW()")).
-		Suffix("RETURNING *")
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectContinuousScreeningColumn, ",")))
 
 	if input.Status != nil {
 		sql = sql.Set("status", input.Status.String())
@@ -667,6 +686,26 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningEntityEnrichedPayload(
 	return ExecBuilder(ctx, exec, query)
 }
 
+// SetContinuousScreeningEntityEnriched marks the entity as enriched without touching the payload
+// column.
+func (repo *MarbleDbRepository) SetContinuousScreeningEntityEnriched(
+	ctx context.Context,
+	exec Executor,
+	id uuid.UUID,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
+		Where(squirrel.Eq{"id": id}).
+		Set("opensanction_entity_enriched", true).
+		Set("updated_at", squirrel.Expr("NOW()"))
+
+	return ExecBuilder(ctx, exec, query)
+}
+
 func (repo *MarbleDbRepository) UpdateContinuousScreeningMatchEnrichedPayload(
 	ctx context.Context,
 	exec Executor,
@@ -681,6 +720,26 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningMatchEnrichedPayload(
 		Update(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES).
 		Where(squirrel.Eq{"id": id}).
 		Set("payload", enrichedPayload).
+		Set("enriched", true).
+		Set("updated_at", squirrel.Expr("NOW()"))
+
+	return ExecBuilder(ctx, exec, query)
+}
+
+// SetContinuousScreeningMatchEnriched marks a match as enriched without touching the payload
+// column.
+func (repo *MarbleDbRepository) SetContinuousScreeningMatchEnriched(
+	ctx context.Context,
+	exec Executor,
+	id uuid.UUID,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES).
+		Where(squirrel.Eq{"id": id}).
 		Set("enriched", true).
 		Set("updated_at", squirrel.Expr("NOW()"))
 
@@ -1061,7 +1120,7 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningDatasetFile(
 
 	query := NewQueryBuilder().
 		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_FILES).
-		Suffix("RETURNING *").
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectContinuousScreeningDatasetFileColumn, ","))).
 		Columns(
 			"org_id",
 			"file_type",

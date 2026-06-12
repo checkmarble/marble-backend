@@ -95,6 +95,9 @@ type UpdateContinuousScreeningInput struct {
 }
 
 type CreateContinuousScreening struct {
+	// Id is optionally pre-assigned by the caller
+	// Repository will generated a new UUID if not provided during insertion
+	Id                        uuid.UUID
 	Screening                 ScreeningWithMatches
 	Config                    ContinuousScreeningConfig
 	ObjectType                *string
@@ -117,6 +120,18 @@ type ContinuousScreeningMatch struct {
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+// GetScoreFromPayload extracts the match score from the (possibly offloaded) payload. The score
+// is not a dedicated column, so it can only be read once the payload has been hydrated.
+func (m ContinuousScreeningMatch) GetScoreFromPayload() float64 {
+	var parsed struct {
+		Score float64 `json:"score"`
+	}
+	if err := json.Unmarshal(m.Payload, &parsed); err != nil {
+		return 0
+	}
+	return parsed.Score
 }
 
 type ContinuousScreeningWithMatches struct {
