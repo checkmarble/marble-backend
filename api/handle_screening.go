@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 var freeformSearchPaginationDefaults = models.PaginationDefaults{
@@ -349,12 +350,12 @@ func handleFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
 
 		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
 
-		matches, err := uc.FreeformSearch(ctx, orgId, config, req.ToScreeningRefineRequest())
+		searchId, screening, err := uc.FreeformSearch(ctx, orgId, config, req.ToScreeningRefineRequest())
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, pure_utils.Map(matches.Matches, dto.AdaptScreeningMatchDto))
+		c.JSON(http.StatusOK, dto.AdaptScreeningFreeformSearchResult(searchId, screening.Matches))
 	}
 }
 
@@ -367,7 +368,7 @@ func handleListFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		filters := dto.ScreeningFreeformSearchFilters{}
-		if presentError(ctx, c, c.ShouldBind(&filters)) {
+		if presentError(ctx, c, c.ShouldBindQuery(&filters)) {
 			return
 		}
 
@@ -388,5 +389,47 @@ func handleListFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusOK, dto.AdaptPaginatedScreeningFreeformSearches(searches, hasNextPage))
+	}
+}
+
+func handleSaveFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		searchId, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid freeform search id"))
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
+
+		err = uc.SaveFreeformSearch(ctx, searchId)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.Status(http.StatusOK)
+	}
+}
+
+func handleGetFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		searchId, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid freeform search id"))
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
+
+		search, err := uc.GetFreeformSearch(ctx, searchId)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.AdaptSavedScreeningFreeformSearch(search))
 	}
 }

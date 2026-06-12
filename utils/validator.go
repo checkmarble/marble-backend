@@ -1,7 +1,4 @@
-package types
-
-// Authored by Antoine Popineau
-// MIT license
+package utils
 
 import (
 	"fmt"
@@ -11,6 +8,9 @@ import (
 
 	"github.com/go-playground/validator/v10"
 )
+
+// Authored by Antoine Popineau
+// MIT license
 
 // AdaptFieldValidationError maps generic validation error to human-readable error
 // messages, to be returned in the response.

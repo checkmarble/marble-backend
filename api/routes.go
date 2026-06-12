@@ -196,6 +196,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 
 	router.POST("/screenings/freeform-search", tom, handleFreeformSearch(uc))
 	router.GET("/screenings/freeform-search", tom, handleListFreeformSearch(uc))
+	router.GET("/screenings/freeform-search/:id", tom, handleGetFreeformSearch(uc))
+	router.POST("/screenings/freeform-search/:id/save", tom, handleSaveFreeformSearch(uc))
 	router.GET("/screenings/entities/:entityId", tom, handleGetScreeningEntity(uc))
 
 	router.GET("/continuous-screenings/configs", tom, handleListContinuousScreeningConfigs(uc))
