@@ -42,6 +42,7 @@ type ingestedDataReaderRepository interface {
 		organizationId uuid.UUID,
 		tableId *string,
 		useCache bool,
+		includeDeleted bool,
 	) ([]models.PivotMetadata, error)
 	GetEntityAnnotations(
 		ctx context.Context,
@@ -141,7 +142,9 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 		return nil, err
 	}
 
-	pivotsMeta, err := usecase.repository.ListPivots(ctx, exec, orgId, nil, true)
+	// Include soft-deleted pivots: the input values come from decisions, which keep
+	// referencing their pivot_id after the pivot is deleted.
+	pivotsMeta, err := usecase.repository.ListPivots(ctx, exec, orgId, nil, true, true)
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +178,18 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 			lastField := dataModel.AllFieldsAsMap()[lastLink.ParentFieldId]
 			fieldName = lastField.Name
 		}
+
+		// A pivot (typically soft-deleted) whose path references a link that no longer
+		// exists cannot be resolved to a table and field anymore. Degrade it to a plain
+		// value so decisions referencing it still render, without ingested data.
+		// see: enrichPivotObjectWithData
+		if t == models.PivotTypeObject && (pivot.PivotTable == "" || fieldName == "") {
+			logger.WarnContext(ctx,
+				"Pivot references a link that no longer exists, pivot objects will not be enriched",
+				"pivotId", pivot.Id)
+			t = models.PivotTypeField
+		}
+
 		mapOfPivotDetail[pivot.Id.String()] = pivotObjectDetail{
 			pivotTable: pivot.PivotTable,
 			pivotField: fieldName,
@@ -204,27 +219,31 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 		}
 
 		pivotObject := models.PivotObject{
-			PivotValue:      value.PivotValue,
-			PivotId:         value.PivotId,
-			PivotType:       pivotDetail.pivotType,
-			PivotObjectName: pivotDetail.pivotTable,
-			PivotFieldName:  pivotDetail.pivotField,
-			PivotObjectData: models.ClientObjectDetail{
-				Data: map[string]any{
-					pivotDetail.pivotField: value.PivotValue,
-				},
-			},
+			PivotValue:        value.PivotValue,
+			PivotId:           value.PivotId,
+			PivotType:         pivotDetail.pivotType,
+			PivotObjectName:   pivotDetail.pivotTable,
+			PivotFieldName:    pivotDetail.pivotField,
+			PivotObjectData:   models.ClientObjectDetail{Data: map[string]any{}},
 			NumberOfDecisions: value.NbOfDecisions,
+		}
+		if pivotDetail.pivotField != "" {
+			pivotObject.PivotObjectData.Data[pivotDetail.pivotField] = value.PivotValue
 		}
 		if pivotDetail.pivotField == "object_id" {
 			pivotObject.PivotObjectId = value.PivotValue
 		}
 
-		pivotObject, err = usecase.enrichPivotObjectWithData(ctx, pivotObject, orgId, dataModel)
+		// Best effort: a pivot object that cannot be enriched (e.g. its pivot definition
+		// references data model elements that no longer exist) is still returned with the
+		// bare pivot value, and must not fail the whole batch.
+		enrichedPivotObject, err := usecase.enrichPivotObjectWithData(ctx, pivotObject, orgId, dataModel)
 		if err != nil {
-			return nil, errors.Wrapf(err,
-				"failed to read data for pivot object {id: %s, value: %s} in ReadPivotObjectsFromValues",
-				pivotObject.PivotId, pivotObject.PivotValue)
+			logger.WarnContext(ctx,
+				"failed to read data for pivot object in ReadPivotObjectsFromValues, returning it without enrichment",
+				"pivotId", pivotObject.PivotId, "pivotValue", pivotObject.PivotValue, "error", err.Error())
+		} else {
+			pivotObject = enrichedPivotObject
 		}
 		pivotObjectsMap[pivotObjectsMapKey(pivotDetail.pivotTable, pivotDetail.pivotField, value.PivotValue)] = pivotObject
 	}

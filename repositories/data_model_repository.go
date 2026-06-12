@@ -64,8 +64,10 @@ type DataModelRepository interface {
 
 	CreatePivot(ctx context.Context, exec Executor, id string, pivot models.CreatePivotInput) error
 	ListPivots(ctx context.Context, exec Executor, organizationId uuid.UUID, tableId *string,
-		useCache bool) ([]models.PivotMetadata, error)
+		useCache bool, includeDeleted bool) ([]models.PivotMetadata, error)
 	GetPivot(ctx context.Context, exec Executor, pivotId string) (models.PivotMetadata, error)
+	SoftDeletePivot(ctx context.Context, exec Executor, id string) error
+	RestorePivot(ctx context.Context, exec Executor, id string) error
 
 	GetDataModelOptionsForTable(ctx context.Context, exec Executor, tableId string) (*models.DataModelOptions, error)
 	UpsertDataModelOptions(ctx context.Context, exec Executor,
@@ -526,6 +528,7 @@ func (repo MarbleDbRepository) GetLinks(ctx context.Context, exec Executor, orga
 			SELECT 1 FROM data_model_pivots p
 			WHERE p.organization_id = links.organization_id
 			AND links.id = ANY(p.path_link_ids)
+			AND p.deleted_at IS NULL
 		) AS is_belongs_to
 	FROM data_model_links AS links
     	JOIN data_model_tables AS parent_table ON (links.parent_table_id = parent_table.id)
@@ -701,16 +704,23 @@ func (repo MarbleDbRepository) CreatePivot(
 	return repo.DeleteDataModelCache(ctx, exec)
 }
 
+// ListPivots returns pivots that have not been soft-deleted, unless includeDeleted is
+// set. Including soft-deleted pivots is required when resolving pivots referenced by
+// historical decisions, which may point to a pivot that has since been deleted.
 func (repo MarbleDbRepository) ListPivots(
 	ctx context.Context,
 	exec Executor,
 	organizationId uuid.UUID,
 	tableId *string,
 	useCache bool,
+	includeDeleted bool,
 ) ([]models.PivotMetadata, error) {
 	cacheKey := organizationId.String()
 	if tableId != nil {
 		cacheKey = organizationId.String() + *tableId
+	}
+	if includeDeleted {
+		cacheKey += "|withDeleted"
 	}
 
 	if useCache && repo.withCache {
@@ -731,6 +741,9 @@ func (repo MarbleDbRepository) ListPivots(
 
 	if tableId != nil {
 		query = query.Where(squirrel.Eq{"base_table_id": *tableId})
+	}
+	if !includeDeleted {
+		query = query.Where(squirrel.Eq{"deleted_at": nil})
 	}
 
 	pivots, err := SqlToListOfModels(ctx, exec, query, dbmodels.AdaptPivotMetadata)
@@ -897,6 +910,10 @@ func (repo MarbleDbRepository) DeleteDataModelLink(ctx context.Context, exec Exe
 	return repo.DeleteDataModelCache(ctx, exec)
 }
 
+// DeleteDataModelPivot hard-deletes a pivot row. It must only be used when nothing can
+// reference the pivot anymore (e.g. the whole table is being deleted, or the pivot was
+// just created in the same transaction). User-facing deletion flows must use
+// SoftDeletePivot instead, because decisions keep referencing their pivot_id.
 func (repo MarbleDbRepository) DeleteDataModelPivot(ctx context.Context, exec Executor, id string) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -905,6 +922,40 @@ func (repo MarbleDbRepository) DeleteDataModelPivot(ctx context.Context, exec Ex
 	query := NewQueryBuilder().
 		Delete("data_model_pivots").
 		Where("id = ?", id)
+
+	if err := ExecBuilder(ctx, exec, query); err != nil {
+		return err
+	}
+
+	return repo.DeleteDataModelCache(ctx, exec)
+}
+
+func (repo MarbleDbRepository) SoftDeletePivot(ctx context.Context, exec Executor, id string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_DATA_MODEL_PIVOTS).
+		Set("deleted_at", squirrel.Expr("now()")).
+		Where(squirrel.Eq{"id": id})
+
+	if err := ExecBuilder(ctx, exec, query); err != nil {
+		return err
+	}
+
+	return repo.DeleteDataModelCache(ctx, exec)
+}
+
+func (repo MarbleDbRepository) RestorePivot(ctx context.Context, exec Executor, id string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_DATA_MODEL_PIVOTS).
+		Set("deleted_at", nil).
+		Where(squirrel.Eq{"id": id})
 
 	if err := ExecBuilder(ctx, exec, query); err != nil {
 		return err

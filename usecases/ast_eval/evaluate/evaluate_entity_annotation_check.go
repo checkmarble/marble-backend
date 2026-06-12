@@ -34,6 +34,7 @@ type EntityAnnotationCheckRepository interface {
 		organizationId uuid.UUID,
 		tableId *string,
 		useCache bool,
+		includeDeleted bool,
 	) ([]models.PivotMetadata, error)
 }
 
@@ -585,7 +586,7 @@ func (mlc EntityAnnotationCheck) buildDataModelWithNavigationOptions(
 	execDbClient repositories.Executor,
 ) (models.DataModel, error) {
 	// Fetch pivots
-	pivotsMeta, err := mlc.Repository.ListPivots(ctx, exec, mlc.OrgId, nil, true)
+	pivotsMeta, err := mlc.Repository.ListPivots(ctx, exec, mlc.OrgId, nil, true, false)
 	if err != nil {
 		return models.DataModel{}, errors.Wrap(err, "failed to list pivots")
 	}

@@ -10,12 +10,13 @@ import (
 )
 
 type DbPivot struct {
-	Id             uuid.UUID   `db:"id"`
-	BaseTableId    string      `db:"base_table_id"`
-	CreatedAt      time.Time   `db:"created_at"`
-	FieldId        pgtype.Text `db:"field_id"`
-	OrganizationId uuid.UUID   `db:"organization_id"`
-	PathLinkIds    []string    `db:"path_link_ids"`
+	Id             uuid.UUID          `db:"id"`
+	BaseTableId    string             `db:"base_table_id"`
+	CreatedAt      time.Time          `db:"created_at"`
+	FieldId        pgtype.Text        `db:"field_id"`
+	OrganizationId uuid.UUID          `db:"organization_id"`
+	PathLinkIds    []string           `db:"path_link_ids"`
+	DeletedAt      pgtype.Timestamptz `db:"deleted_at"`
 }
 
 const TABLE_DATA_MODEL_PIVOTS = "data_model_pivots"
@@ -33,6 +34,9 @@ func AdaptPivotMetadata(dbPivot DbPivot) (models.PivotMetadata, error) {
 	}
 	if dbPivot.FieldId.Valid {
 		pivot.FieldId = &dbPivot.FieldId.String
+	}
+	if dbPivot.DeletedAt.Valid {
+		pivot.DeletedAt = &dbPivot.DeletedAt.Time
 	}
 
 	return pivot, nil

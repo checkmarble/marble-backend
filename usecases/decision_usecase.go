@@ -343,7 +343,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 	}
 
 	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec,
-		input.OrganizationId, nil, true)
+		input.OrganizationId, nil, true, false)
 	if err != nil {
 		return false, models.DecisionWithRuleExecutions{}, err
 	}
@@ -524,7 +524,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	}
 
 	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec,
-		input.OrganizationId, nil, true)
+		input.OrganizationId, nil, true, false)
 	if err != nil {
 		return nil, 0, nil, err
 	}

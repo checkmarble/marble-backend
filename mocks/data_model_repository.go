@@ -108,8 +108,9 @@ func (d *DataModelRepository) ListPivots(
 	organizationId uuid.UUID,
 	tableId *string,
 	useCache bool,
+	includeDeleted bool,
 ) ([]models.PivotMetadata, error) {
-	args := d.Called(ctx, exec, organizationId, tableId, useCache)
+	args := d.Called(ctx, exec, organizationId, tableId, useCache, includeDeleted)
 	if args.Error(1) != nil {
 		return nil, args.Error(1)
 	}
@@ -173,6 +174,16 @@ func (d *DataModelRepository) DeleteDataModelLink(ctx context.Context, exec repo
 }
 
 func (d *DataModelRepository) DeleteDataModelPivot(ctx context.Context, exec repositories.Executor, id string) error {
+	args := d.Called(ctx, exec, id)
+	return args.Error(0)
+}
+
+func (d *DataModelRepository) SoftDeletePivot(ctx context.Context, exec repositories.Executor, id string) error {
+	args := d.Called(ctx, exec, id)
+	return args.Error(0)
+}
+
+func (d *DataModelRepository) RestorePivot(ctx context.Context, exec repositories.Executor, id string) error {
 	args := d.Called(ctx, exec, id)
 	return args.Error(0)
 }

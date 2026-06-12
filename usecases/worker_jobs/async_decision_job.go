@@ -258,7 +258,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 			scenario.TriggerObjectType, models.NotFoundError)
 	}
 
-	pivotsMeta, err := w.dataModelRepository.ListPivots(ctx, tx, scenario.OrganizationId, nil, true)
+	pivotsMeta, err := w.dataModelRepository.ListPivots(ctx, tx, scenario.OrganizationId, nil, true, false)
 	if err != nil {
 		return false, nil, nil, err
 	}
