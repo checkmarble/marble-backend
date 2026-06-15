@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	cloud.google.com/go/bigquery v1.77.0
-	cloud.google.com/go/iam v1.9.0
+	cloud.google.com/go/iam v1.11.0
 	cloud.google.com/go/profiler v0.6.0
 	cloud.google.com/go/storage v1.62.2
 	firebase.google.com/go/v4 v4.19.0
