@@ -142,6 +142,10 @@ func (*MarbleDbRepository) ListFreeformSearches(
 	}
 
 	if pagination.OffsetId != "" {
+		// Freeform searches are only ever ordered by created_at. The anchor row is uniquely
+		// identified by its primary key (scoped to org_id for tenant safety), so the main
+		// query's other filters are intentionally not reapplied here: they would only risk
+		// failing to locate a valid anchor.
 		q := NewQueryBuilder().
 			Select("created_at").
 			From(dbmodels.TABLE_FREEFORM_SEARCHES).
@@ -164,7 +168,14 @@ func (*MarbleDbRepository) ListFreeformSearches(
 				"failed to fetch decision corresponding to the provided offsetId")
 		}
 
-		query = query.Where(fmt.Sprintf("(%s,%s) < (?,?)", pagination.Sorting, "id"), offsetCreatedAt, pagination.OffsetId)
+		comparator := "<"
+		if pagination.Order == models.SortingOrderAsc {
+			comparator = ">"
+		}
+
+		query = query.Where(
+			fmt.Sprintf("(created_at, id) %s (?, ?)", comparator),
+			offsetCreatedAt, pagination.OffsetId)
 	}
 
 	return SqlToListOfModels(

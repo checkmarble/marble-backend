@@ -595,6 +595,13 @@ func (uc ScreeningUsecase) FreeformSearch(
 }
 
 func freeformSearchToOpenSanctionsQuery(c models.FreeformSearchConfig, q models.ScreeningRefineRequest) models.OpenSanctionsQuery {
+	// Leave LimitOverride nil for an unset limit so the provider falls back to the org default
+	// instead of forcing an explicit limit of 0.
+	var limitOverride *int
+	if c.Limit > 0 {
+		limitOverride = &c.Limit
+	}
+
 	return models.OpenSanctionsQuery{
 		IsRefinement: false,
 		Config: models.ScreeningConfig{
@@ -603,7 +610,7 @@ func freeformSearchToOpenSanctionsQuery(c models.FreeformSearchConfig, q models.
 			Provider:  c.Provider,
 		},
 		Queries:       models.AdaptRefineRequestToMatchable(q),
-		LimitOverride: &c.Limit,
+		LimitOverride: limitOverride,
 	}
 }
 
