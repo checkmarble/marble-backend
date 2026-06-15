@@ -334,7 +334,7 @@ func handleFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
 		limit := 10
 
 		if l, err := strconv.Atoi(c.Query("limit")); err == nil {
-			limit = min(l, SCREENING_FREEFORM_SEARCH_LIMIT_MAX)
+			limit = max(1, min(l, SCREENING_FREEFORM_SEARCH_LIMIT_MAX))
 		}
 
 		req := dto.FreeformSearchInput{
