@@ -932,6 +932,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningApplyDeltaFileWorker() 
 	return continuous_screening.NewApplyDeltaFileWorker(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
+		*usecases.Repositories.RedisClient,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.TaskQueueRepository,
 		usecases.Repositories.BlobRepository,

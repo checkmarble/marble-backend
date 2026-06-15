@@ -259,6 +259,7 @@ type OpenSanctionsDeltaFileEntity struct {
 	Referents  []string            `json:"referents"`
 	Datasets   []string            `json:"datasets"`
 	Properties map[string][]string `json:"properties"`
+	LastChange *time.Time          `json:"last_change"`
 }
 
 type OpenSanctionsDeltaFileRecord struct {
