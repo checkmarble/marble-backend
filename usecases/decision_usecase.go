@@ -396,6 +396,13 @@ func (usecase *DecisionUsecase) CreateDecision(
 		}
 
 		for _, sce := range decision.ScreeningExecutions {
+			matchesToInsert, offloadErr := usecase.offloadedReader.OffloadScreeningMatches(ctx, sce)
+			if offloadErr != nil {
+				return models.DecisionWithRuleExecutions{},
+					errors.Wrapf(offloadErr, "could not offload screening match payloads in CreateDecision")
+			}
+			sce.Matches = matchesToInsert
+
 			err := usecase.screeningRepository.InsertScreening(ctx, tx, sce)
 			if err != nil {
 				return models.DecisionWithRuleExecutions{},
@@ -646,6 +653,12 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				Observe(time.Since(decisionStart).Seconds())
 
 			for _, sce := range item.decision.ScreeningExecutions {
+				matchesToInsert, offloadErr := usecase.offloadedReader.OffloadScreeningMatches(ctx, sce)
+				if offloadErr != nil {
+					return errors.Wrapf(offloadErr, "could not offload screening match payloads in CreateAllDecisions")
+				}
+				sce.Matches = matchesToInsert
+
 				err := usecase.screeningRepository.InsertScreening(ctx, tx, sce)
 				if err != nil {
 					return errors.Wrapf(err, "error storing screening execution in CreateAllDecisions")

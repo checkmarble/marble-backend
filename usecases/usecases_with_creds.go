@@ -246,6 +246,7 @@ func (usecases *UsecasesWithCreds) NewScreeningUsecase() ScreeningUsecase {
 		repository:                usecases.Repositories.MarbleDbRepository,
 		blobRepository:            usecases.Repositories.BlobRepository,
 		blobBucketUrl:             usecases.caseManagerBucketUrl,
+		offloadedReader:           usecases.NewOffloadedReader(),
 		executorFactory:           usecases.NewExecutorFactory(),
 		transactionFactory:        usecases.NewTransactionFactory(),
 	}
@@ -793,6 +794,7 @@ func (usecases *UsecasesWithCreds) NewAiAgentUsecase() ai_agent.AiAgentUsecase {
 		usecases.NewBillingUsecase(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.BlobRepository,
+		usecases.NewOffloadedReader(),
 		usecases.Repositories.TaskQueueRepository,
 		usecases.NewTransactionFactory(),
 		usecases.NewFeatureAccessReader(),

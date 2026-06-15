@@ -1,12 +1,14 @@
 package usecases
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"maps"
 	"mime/multipart"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -98,6 +100,8 @@ type ScreeningRepository interface {
 		orgId uuid.UUID, counterpartyId, entityId *string) ([]models.ScreeningWhitelist, error)
 	UpdateScreeningMatchPayload(ctx context.Context, exec repositories.Executor,
 		match models.ScreeningMatch, newPayload []byte) (models.ScreeningMatch, error)
+	SetScreeningMatchEnriched(ctx context.Context, exec repositories.Executor,
+		matchId string) (models.ScreeningMatch, error)
 
 	InsertFreeformSearch(ctx context.Context, exec repositories.Executor,
 		h models.FreeformSearch) error
@@ -140,6 +144,7 @@ type ScreeningUsecase struct {
 	openSanctionsProvider ScreeningProvider
 	blobBucketUrl         string
 	blobRepository        repositories.BlobRepository
+	offloadedReader       repositories.OffloadedReadWriter
 
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
@@ -179,7 +184,51 @@ func (uc ScreeningUsecase) GetScreening(ctx context.Context, id string) (models.
 		}
 	}
 
+	if err := uc.hydrateAndSortMatches(ctx, sc.OrgId, sc.Matches); err != nil {
+		return models.ScreeningWithMatches{}, err
+	}
+
 	return sc, nil
+}
+
+// hydrateAndSortMatches loads offloaded match payloads from blob storage (for matches whose DB
+// payload column is empty) and sorts the matches by status, then by descending score. The score
+// lives inside the payload, so the sort must happen after hydration rather than in SQL.
+func (uc ScreeningUsecase) hydrateAndSortMatches(ctx context.Context, orgId uuid.UUID,
+	matches []models.ScreeningMatch,
+) error {
+	if err := uc.offloadedReader.HydrateScreeningMatches(ctx, []models.ScreeningWithMatches{
+		{Screening: models.Screening{OrgId: orgId}, Matches: matches},
+	}); err != nil {
+		return err
+	}
+
+	slices.SortStableFunc(matches, func(a, b models.ScreeningMatch) int {
+		// Status drives the primary grouping.
+		if n := cmp.Compare(screeningMatchStatusRank(a.Status), screeningMatchStatusRank(b.Status)); n != 0 {
+			return n
+		}
+		return cmp.Compare(b.GetScoreFromPayload(), a.GetScoreFromPayload())
+	})
+
+	return nil
+}
+
+// screeningMatchStatusRank mirrors the status ordering previously expressed in SQL
+// (array['confirmed_hit', 'pending', 'no_hit', 'skipped']).
+func screeningMatchStatusRank(s models.ScreeningMatchStatus) int {
+	switch s {
+	case models.ScreeningMatchStatusConfirmedHit:
+		return 0
+	case models.ScreeningMatchStatusPending:
+		return 1
+	case models.ScreeningMatchStatusNoHit:
+		return 2
+	case models.ScreeningMatchStatusSkipped:
+		return 3
+	default:
+		return 4
+	}
 }
 
 func (uc ScreeningUsecase) GetAvailableFilters(ctx context.Context, feature models.ScreeningFeature) (dto.ScreeningAvailableFilters, error) {
@@ -301,6 +350,12 @@ func (uc ScreeningUsecase) ListScreenings(ctx context.Context, decisionId string
 		}
 	}
 
+	for sidx := range scs {
+		if err := uc.hydrateAndSortMatches(ctx, scs[sidx].OrgId, scs[sidx].Matches); err != nil {
+			return nil, err
+		}
+	}
+
 	return scs, nil
 }
 
@@ -383,7 +438,14 @@ func (uc ScreeningUsecase) Refine(ctx context.Context, refine models.ScreeningRe
 			return models.ScreeningWithMatches{}, err
 		}
 
-		if err = uc.repository.InsertScreening(ctx, tx, screening); err != nil {
+		screeningToInsert := screening
+		screeningToInsert.Matches, err = uc.offloadedReader.OffloadScreeningMatches(ctx, screening)
+		if err != nil {
+			return models.ScreeningWithMatches{}, errors.Wrap(err,
+				"could not offload screening match payloads")
+		}
+
+		if err = uc.repository.InsertScreening(ctx, tx, screeningToInsert); err != nil {
 			return models.ScreeningWithMatches{}, err
 		}
 
@@ -777,17 +839,51 @@ func (uc ScreeningUsecase) EnrichMatchWithoutAuthorization(ctx context.Context, 
 			"this screening match was already enriched")
 	}
 
+	// An empty payload column on a bucket-enabled deployment means the original payload was
+	// offloaded to blob storage; read it back so we can merge the enrichment into it.
+	offloaded := uc.offloadedReader.IsOffloadingEnabled() && len(match.Payload) == 0
+
+	originalPayload := match.Payload
+	if offloaded {
+		originalPayload, err = uc.offloadedReader.ReadOffloadedScreeningMatchPayload(ctx,
+			screening.OrgId, match.ScreeningId, match.Id)
+		if err != nil {
+			return models.ScreeningMatch{}, errors.Wrap(err,
+				"could not read offloaded screening match payload for enrichment")
+		}
+	}
+
 	newPayload, err := uc.openSanctionsProvider.EnrichMatch(ctx, screening.Provider, match)
 	if err != nil {
 		return models.ScreeningMatch{}, err
 	}
 
-	mergedPayload, err := mergePayloads(match.Payload, newPayload)
+	mergedPayload, err := mergePayloads(originalPayload, newPayload)
 	if err != nil {
 		return models.ScreeningMatch{}, errors.Wrap(err,
 			"could not merge payloads for match enrichment")
 	}
 
+	// Offloaded matches keep their payload in blob storage: overwrite the same key and only
+	// flip the enriched flag in the DB. Legacy matches keep their payload in the DB column.
+	if offloaded {
+		if err := uc.offloadedReader.OffloadScreeningMatchPayload(ctx, screening.OrgId,
+			match.ScreeningId, match.Id, mergedPayload); err != nil {
+			return models.ScreeningMatch{}, errors.Wrap(err,
+				"could not write enriched screening match payload")
+		}
+
+		newMatch, err := uc.repository.SetScreeningMatchEnriched(ctx,
+			uc.executorFactory.NewExecutor(), match.Id)
+		if err != nil {
+			return models.ScreeningMatch{}, err
+		}
+
+		newMatch.Payload = mergedPayload
+		return newMatch, nil
+	}
+
+	// Legacy match, update the payload and set enriched to true
 	newMatch, err := uc.repository.UpdateScreeningMatchPayload(ctx,
 		uc.executorFactory.NewExecutor(), match, mergedPayload)
 	if err != nil {
