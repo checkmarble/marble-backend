@@ -55,6 +55,10 @@ func (uc *AiAgentUsecase) AnalyseScreeningHits(ctx context.Context, screeningId 
 		return err
 	}
 
+	if err := uc.offloadedReader.HydrateScreeningMatches(ctx, []models.ScreeningWithMatches{screening}); err != nil {
+		return errors.Wrap(err, "could not hydrate offloaded screening match payloads")
+	}
+
 	// Check feature access
 	enabled, err := uc.hasScreeningHitSuggestionEnabled(ctx, screening.OrgId)
 	if err != nil {
