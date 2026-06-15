@@ -19,6 +19,7 @@ type FreeformSearch struct {
 	Result       []json.RawMessage
 	ResultHash   []byte
 	IsSaved      bool
+	NbHits       int
 }
 
 type FreeformSearchConfig struct {
@@ -34,6 +35,9 @@ type ScreeningFreeformSearchFilters struct {
 
 	UserId   *uuid.UUID
 	ApiKeyId *uuid.UUID
+
+	CreatedBefore *time.Time
+	CreatedAfter  *time.Time
 
 	// include only freeform searches where the user saved the results. Default: return all
 	SavedOnly bool
