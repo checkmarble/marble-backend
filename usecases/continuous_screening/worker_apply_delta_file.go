@@ -125,7 +125,7 @@ type ApplyDeltaFileWorker struct {
 
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
-	redisClient        repositories.RedisClient
+	redisClient        *repositories.RedisClient
 	repository         applyDeltaFileWorkerRepository
 	taskQueueRepo      applyDeltaFileWorkerTaskQueueRepository
 	blobRepository     repositories.BlobRepository
@@ -137,7 +137,7 @@ type ApplyDeltaFileWorker struct {
 func NewApplyDeltaFileWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
-	redisClient repositories.RedisClient,
+	redisClient *repositories.RedisClient,
 	repository applyDeltaFileWorkerRepository,
 	taskQueueRepo applyDeltaFileWorkerTaskQueueRepository,
 	blobRepository repositories.BlobRepository,
