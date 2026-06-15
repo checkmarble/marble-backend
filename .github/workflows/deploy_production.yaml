@@ -2,7 +2,7 @@ name: Deploy Production
 
 on:
   release:
-    types: [prereleased, released]
+    types: [published]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.release.tag_name }}
