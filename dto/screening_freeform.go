@@ -62,6 +62,7 @@ type ScreeningFreeformSearch struct {
 	SearchInput  FreeformSearchInput         `json:"search_input"`
 	SearchConfig models.FreeformSearchConfig `json:"search_config"`
 	IsSaved      bool                        `json:"is_saved"`
+	NbHits       int                         `json:"nb_hits"`
 }
 
 type FreeformSearchInput struct {
@@ -92,12 +93,15 @@ func AdaptScreeningFreeformSearchDto(m models.FreeformSearch) ScreeningFreeformS
 		SearchInput:  adaptFreeformSearchInputDto(m.SearchInput),
 		SearchConfig: m.SearchConfig,
 		IsSaved:      m.IsSaved,
+		NbHits:       m.NbHits,
 	}
 }
 
 type ScreeningFreeformSearchFilters struct {
-	UserId   *string `form:"user_id" binding:"omitempty,uuid"`
-	ApiKeyId *string `form:"api_key_id" binding:"omitempty,uuid"`
+	UserId        *string    `form:"user_id" binding:"omitempty,uuid"`
+	ApiKeyId      *string    `form:"api_key_id" binding:"omitempty,uuid"`
+	CreatedBefore *time.Time `form:"created_before"`
+	CreatedAfter  *time.Time `form:"created_after"`
 
 	// include only freeform searches where the user saved the results. Default: return all
 	SavedOnly bool `form:"saved_only"`
@@ -114,9 +118,11 @@ func (f ScreeningFreeformSearchFilters) ToModel(orgId uuid.UUID) models.Screenin
 	}
 
 	return models.ScreeningFreeformSearchFilters{
-		OrgId:     orgId,
-		UserId:    userId,
-		ApiKeyId:  apiKeyId,
-		SavedOnly: f.SavedOnly,
+		OrgId:         orgId,
+		UserId:        userId,
+		ApiKeyId:      apiKeyId,
+		CreatedBefore: f.CreatedBefore,
+		CreatedAfter:  f.CreatedAfter,
+		SavedOnly:     f.SavedOnly,
 	}
 }

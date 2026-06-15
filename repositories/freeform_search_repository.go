@@ -45,6 +45,7 @@ func (*MarbleDbRepository) InsertFreeformSearch(
 			"search_config",
 			"result_hash",
 			"is_saved",
+			"nb_hits",
 		).
 		Values(
 			s.Id,
@@ -56,6 +57,7 @@ func (*MarbleDbRepository) InsertFreeformSearch(
 			configBytes,
 			s.ResultHash,
 			s.IsSaved,
+			s.NbHits,
 		)
 
 	return ExecBuilder(ctx, exec, sql)
@@ -131,6 +133,12 @@ func (*MarbleDbRepository) ListFreeformSearches(
 	}
 	if filters.SavedOnly {
 		query = query.Where(squirrel.Eq{"is_saved": true})
+	}
+	if filters.CreatedAfter != nil {
+		query = query.Where(squirrel.GtOrEq{"created_at": *filters.CreatedAfter})
+	}
+	if filters.CreatedBefore != nil {
+		query = query.Where(squirrel.LtOrEq{"created_at": *filters.CreatedBefore})
 	}
 
 	if pagination.OffsetId != "" {

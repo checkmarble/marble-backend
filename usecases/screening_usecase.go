@@ -643,6 +643,7 @@ func (uc ScreeningUsecase) persistFreeformSearch(
 		SearchInput:  refine,
 		SearchConfig: config,
 		ResultHash:   resultHash,
+		NbHits:       screening.NumberOfMatches,
 	}
 
 	if err := uc.repository.InsertFreeformSearch(ctx, exec, row); err != nil {
