@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
@@ -193,6 +194,26 @@ func RedisLoadMap[T comparable](ctx context.Context, exec *RedisExecutor, key st
 
 	if err := cmd.Scan(&model); err != nil {
 		return model, err
+	}
+
+	return model, nil
+}
+
+func RedisGetScalar[T any](ctx context.Context, exec *RedisExecutor, key string) (T, error) {
+	cmd := exec.client.client.Get(ctx, key)
+
+	var model T
+
+	if err := cmd.Err(); err != nil {
+		if errors.Is(err, redis.Nil) {
+			return model, models.NotFoundError
+		}
+
+		return model, errors.Wrap(err, "could not get key from redis")
+	}
+
+	if err := cmd.Scan(&model); err != nil {
+		return model, errors.Wrap(err, "could not scan redis value")
 	}
 
 	return model, nil
