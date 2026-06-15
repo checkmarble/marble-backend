@@ -433,7 +433,7 @@ func (uc OffloadedReadWriter) OffloadContinuousScreeningEntity(
 	}
 
 	if err := uc.OffloadContinuousScreeningEntityPayload(ctx, orgId, continuousScreeningId, payload); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to offload continuous screening entity payload")
 	}
 
 	return nil, nil
@@ -464,7 +464,7 @@ func (uc OffloadedReadWriter) OffloadContinuousScreeningMatches(
 
 		if err := uc.OffloadContinuousScreeningMatchPayload(ctx, orgId, continuousScreeningId,
 			matchId, match.Payload); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to offload continuous screening match payload")
 		}
 
 		match.Payload = nil
@@ -491,7 +491,7 @@ func (uc OffloadedReadWriter) HydrateContinuousScreeningEntity(
 
 	payload, err := uc.ReadOffloadedContinuousScreeningEntityPayload(ctx, screening.OrgId, screening.Id)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to read continuous screening entity payload")
 	}
 	if len(payload) == 0 {
 		utils.LoggerFromContext(ctx).WarnContext(ctx,
@@ -524,7 +524,7 @@ func (uc OffloadedReadWriter) HydrateContinuousScreeningMatch(
 		payload, err := uc.ReadOffloadedContinuousScreeningMatchPayload(ctx, screening.OrgId,
 			screening.Id, screening.Matches[j].Id)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to read continuous screening match payload")
 		}
 		if len(payload) == 0 {
 			utils.LoggerFromContext(ctx).WarnContext(ctx,

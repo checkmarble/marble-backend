@@ -508,19 +508,26 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 			return err
 		}
 
-		matchesToInsert := pure_utils.Map(offloadedMatches, func(m models.ScreeningMatch) models.ContinuousScreeningMatch {
-			// m.Id was pre-assigned by the offloader (it is the blob key); empty when offloading is
-			// disabled, in which case InsertContinuousScreeningMatches generates one.
+		// m.Id was pre-assigned by the offloader (it is the blob key); empty when offloading is
+		// disabled, in which case InsertContinuousScreeningMatches generates one.
+		matchesToInsert, err := pure_utils.MapErr(offloadedMatches, func(m models.ScreeningMatch) (models.ContinuousScreeningMatch, error) {
 			var matchId uuid.UUID
 			if m.Id != "" {
-				matchId = uuid.MustParse(m.Id)
+				var parseErr error
+				matchId, parseErr = uuid.Parse(m.Id)
+				if parseErr != nil {
+					return models.ContinuousScreeningMatch{}, errors.Wrap(parseErr, "invalid screening match id")
+				}
 			}
 			return models.ContinuousScreeningMatch{
 				Id:                   matchId,
 				OpenSanctionEntityId: m.EntityId,
 				Payload:              m.Payload,
-			}
+			}, nil
 		})
+		if err != nil {
+			return err
+		}
 
 		// Insert new matches
 		insertedMatches, err := uc.repository.InsertContinuousScreeningMatches(
