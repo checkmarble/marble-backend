@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	ops "github.com/go-faker/faker/v4/pkg/options"
+	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -65,8 +66,7 @@ func TestListScreeningOnDecision(t *testing.T) {
 		SELECT
 			sc.id, sc.decision_id, sc.org_id, sc.screening_config_id, sc.status, sc.provider, sc.search_input, sc.initial_query, sc.counterparty_id, sc.match_threshold, sc.match_limit, sc.is_manual, sc.requested_by, sc.is_partial, sc.is_archived, sc.initial_has_matches, sc.error_codes, sc.number_of_matches, sc.created_at, sc.updated_at,
 			scc.id AS config_id, stable_id, scc.name, scc.datasets, scc.filters,
-			ARRAY_AGG(ROW(scm.id,scm.screening_id,scm.opensanction_entity_id,scm.status,scm.query_ids,scm.payload,scm.enriched,scm.reviewed_by,scm.created_at,scm.updated_at)
-				ORDER BY array_position(.+, scm.status), scm.payload->>'score' DESC) FILTER (WHERE scm.id IS NOT NULL)
+			ARRAY_AGG(ROW(scm.id,scm.screening_id,scm.opensanction_entity_id,scm.status,scm.query_ids,scm.payload,scm.enriched,scm.reviewed_by,scm.created_at,scm.updated_at)) FILTER (WHERE scm.id IS NOT NULL)
 				AS matches
 		FROM screenings AS sc
 		INNER JOIN screening_configs AS scc ON sc.screening_config_id=scc.id
@@ -186,4 +186,42 @@ func TestUpdateMatchStatus(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NoError(t, exec.Mock.ExpectationsWereMet())
+}
+
+// TestHydrateAndSortMatches checks the in-memory match ordering (status, then descending score)
+// that replaced the SQL `ORDER BY payload->>'score'` once payloads can be offloaded. Offloading
+// is disabled here, so payloads are read straight from the in-memory matches. Two matches per
+// status, in scrambled input order, so both the status grouping and the within-status score
+// ordering are exercised.
+func TestHydrateAndSortMatches(t *testing.T) {
+	uc, _ := buildScreeningUsecaseMock()
+
+	matches := []models.ScreeningMatch{
+		{Id: "no_hit_low", Status: models.ScreeningMatchStatusNoHit, Payload: []byte(`{"score":0.10}`)},
+		{Id: "confirmed_high", Status: models.ScreeningMatchStatusConfirmedHit, Payload: []byte(`{"score":0.90}`)},
+		{Id: "skipped_high", Status: models.ScreeningMatchStatusSkipped, Payload: []byte(`{"score":0.70}`)},
+		{Id: "pending_low", Status: models.ScreeningMatchStatusPending, Payload: []byte(`{"score":0.20}`)},
+		{Id: "no_hit_high", Status: models.ScreeningMatchStatusNoHit, Payload: []byte(`{"score":0.95}`)},
+		{Id: "confirmed_low", Status: models.ScreeningMatchStatusConfirmedHit, Payload: []byte(`{"score":0.30}`)},
+		{Id: "skipped_low", Status: models.ScreeningMatchStatusSkipped, Payload: []byte(`{"score":0.40}`)},
+		{Id: "pending_high", Status: models.ScreeningMatchStatusPending, Payload: []byte(`{"score":0.80}`)},
+		// A confirmed_hit match whose payload could not be loaded: it stays in its status group
+		// but sorts to the end of that group (after the confirmed_hit matches with a score).
+		{Id: "confirmed_missing", Status: models.ScreeningMatchStatusConfirmedHit, Payload: nil},
+	}
+
+	err := uc.hydrateAndSortMatches(context.TODO(), uuid.New(), matches)
+	assert.NoError(t, err)
+
+	got := make([]string, len(matches))
+	for i, m := range matches {
+		got[i] = m.Id
+	}
+
+	assert.Equal(t, []string{
+		"confirmed_high", "confirmed_low", "confirmed_missing",
+		"pending_high", "pending_low",
+		"no_hit_high", "no_hit_low",
+		"skipped_high", "skipped_low",
+	}, got)
 }

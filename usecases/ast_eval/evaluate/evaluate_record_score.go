@@ -31,6 +31,7 @@ type evaluateRecordRiskLevelRepository interface {
 		organizationId uuid.UUID,
 		tableId *string,
 		useCache bool,
+		includeDeleted bool,
 	) ([]models.PivotMetadata, error)
 	GetActiveScore(
 		ctx context.Context,
@@ -167,7 +168,7 @@ func (rs RecordRiskLevel) getPivotRuleset(ctx context.Context, exec repositories
 		return models.ScoringRuleset{}, "", "", models.NotFoundError
 	}
 
-	pivots, err := rs.repository.ListPivots(ctx, exec, rs.orgId, &table.ID, false)
+	pivots, err := rs.repository.ListPivots(ctx, exec, rs.orgId, &table.ID, false, false)
 	if err != nil {
 		return models.ScoringRuleset{}, "", "", err
 	}

@@ -219,6 +219,49 @@ func (suite *CaseReviewWorkerTestSuite) TestGetPreviousCaseReviewContext_ValidFi
 	suite.AssertExpectations()
 }
 
+// TestGetPreviousCaseReviewContext_WithScreeningSuggestions is a regression test: CaseReviewContext.ScreeningSuggestions
+// is a slice of an interface, which marshals fine but historically failed to unmarshal, permanently breaking case review
+// recovery once suggestions had been saved ("cannot unmarshal object into ... AiScreeningHitSuggestionDto").
+func (suite *CaseReviewWorkerTestSuite) TestGetPreviousCaseReviewContext_WithScreeningSuggestions() {
+	worker := suite.makeWorker()
+	ctx := context.Background()
+
+	_, _, _, aiCaseReview := createTestCaseReviewData()
+
+	expectedContext := CaseReviewContext{
+		DataModelSummary: utils.Ptr("test summary"),
+		ScreeningSuggestions: agent_dto.ScreeningHitSuggestions{
+			agent_dto.ScreeningHitSuggestionV1{
+				MatchId:    "019eca91-4bf5-738e-b8a0-1d89dbf8e219",
+				EntityId:   "Q1317",
+				Confidence: models.ScreeningHitConfidenceProbableFalsePositive,
+				Reason:     "names do not match",
+				Version:    agent_dto.VersionScreeningHitSuggestionV1,
+				CreatedAt:  time.Date(2026, 6, 15, 11, 35, 6, 0, time.UTC),
+			},
+		},
+	}
+
+	contextJSON, err := json.Marshal(expectedContext)
+	suite.NoError(err)
+
+	mockReader := newMockReadCloser(string(contextJSON))
+	blob := models.Blob{
+		FileName:   aiCaseReview.FileTempReference,
+		ReadCloser: mockReader,
+	}
+	suite.blobRepo.On("GetBlob", ctx, "test-bucket-url", aiCaseReview.FileTempReference, mock.Anything).
+		Return(blob, nil)
+
+	result, err := worker.getPreviousCaseReviewContext(ctx, aiCaseReview)
+
+	suite.NoError(err, "getPreviousCaseReviewContext should decode screening suggestions")
+	suite.Equal(expectedContext, result, "Round-tripped context should match the original")
+	suite.True(mockReader.closed, "ReadCloser should be closed")
+
+	suite.AssertExpectations()
+}
+
 // TestGetPreviousCaseReviewContext_InvalidJSON tests that getPreviousCaseReviewContext returns an error for invalid JSON
 func (suite *CaseReviewWorkerTestSuite) TestGetPreviousCaseReviewContext_InvalidJSON() {
 	worker := suite.makeWorker()

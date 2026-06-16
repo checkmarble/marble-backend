@@ -1,6 +1,10 @@
 package httpmodels
 
-import "github.com/checkmarble/marble-backend/models"
+import (
+	"time"
+
+	"github.com/checkmarble/marble-backend/models"
+)
 
 type HTTPOpenSanctionsDeltaFileEntity struct {
 	Id         string              `json:"id"`
@@ -9,9 +13,16 @@ type HTTPOpenSanctionsDeltaFileEntity struct {
 	Referents  []string            `json:"referents"`
 	Datasets   []string            `json:"datasets"`
 	Properties map[string][]string `json:"properties"`
+	LastChange string              `json:"last_change"` // Cannot parse as time.Time because of missing TZ
 }
 
 func AdaptOpenSanctionDeltaFileEntityToModel(entity HTTPOpenSanctionsDeltaFileEntity) models.OpenSanctionsDeltaFileEntity {
+	var lastChange *time.Time
+
+	if t, err := time.ParseInLocation("2006-01-02T15:04:05", entity.LastChange, time.UTC); err == nil {
+		lastChange = &t
+	}
+
 	return models.OpenSanctionsDeltaFileEntity{
 		Id:         entity.Id,
 		Caption:    entity.Caption,
@@ -19,6 +30,7 @@ func AdaptOpenSanctionDeltaFileEntityToModel(entity HTTPOpenSanctionsDeltaFileEn
 		Referents:  entity.Referents,
 		Datasets:   entity.Datasets,
 		Properties: entity.Properties,
+		LastChange: lastChange,
 	}
 }
 

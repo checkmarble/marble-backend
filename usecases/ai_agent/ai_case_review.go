@@ -339,14 +339,14 @@ func (uc *AiAgentUsecase) getOrganizationInstructionsForPrompt(ctx context.Conte
 // Update this struct during the process and expose this struct to the caller to save the results in case we need to resume it
 // Does not include the custom format output because it's the last step and we don't need to save it.
 type CaseReviewContext struct {
-	DataModelSummary       *string                                 `json:"data_model_summary"`
-	FieldsToReadPerTable   map[string][]string                     `json:"fields_to_read_per_table"`
-	RulesDefinitionsReview *string                                 `json:"rules_definitions_review"`
-	RuleThresholds         *string                                 `json:"rule_thresholds"`
-	PivotEnrichments       []models.AiEnrichmentKYC                `json:"pivot_enrichments"`
-	ScreeningSuggestions   []agent_dto.AiScreeningHitSuggestionDto `json:"screening_suggestions"`
-	CaseReview             *caseReviewOutput                       `json:"case_review"`
-	SanityCheck            *sanityCheckOutput                      `json:"sanity_check"`
+	DataModelSummary       *string                           `json:"data_model_summary"`
+	FieldsToReadPerTable   map[string][]string               `json:"fields_to_read_per_table"`
+	RulesDefinitionsReview *string                           `json:"rules_definitions_review"`
+	RuleThresholds         *string                           `json:"rule_thresholds"`
+	PivotEnrichments       []models.AiEnrichmentKYC          `json:"pivot_enrichments"`
+	ScreeningSuggestions   agent_dto.ScreeningHitSuggestions `json:"screening_suggestions"`
+	CaseReview             *caseReviewOutput                 `json:"case_review"`
+	SanityCheck            *sanityCheckOutput                `json:"sanity_check"`
 }
 
 // CreateCaseReviewSync performs a comprehensive AI-powered review of a case by analyzing
@@ -533,8 +533,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 						return nil, errors.Wrap(err, "could not generate data model object field read options")
 					}
 
-					dataModelObjectFieldReadOptions, err :=
-						requestDataModelObjectFieldReadOptions.Get(0)
+					dataModelObjectFieldReadOptions, err := requestDataModelObjectFieldReadOptions.Get(0)
 					if err != nil {
 						return nil, errors.Wrap(err, "could not get data model object field read options")
 					}
@@ -580,8 +579,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			"decisions": caseData.decisions,
 		}
 		if aiSetting.CaseReviewSetting.OrgDescription != nil {
-			ruleDefinitionsData["activity_description"] =
-				*aiSetting.CaseReviewSetting.OrgDescription
+			ruleDefinitionsData["activity_description"] = *aiSetting.CaseReviewSetting.OrgDescription
 		}
 		providerRulesDefinitions, modelRulesDefinitions, promptRulesDefinitions, err := uc.preparePromptWithModel(
 			PROMPT_RULE_DEFINITIONS_PATH,
@@ -657,17 +655,26 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	if len(caseReviewContext.ScreeningSuggestions) == 0 && len(caseData.screeningIds) > 0 {
 		var allSuggestions []agent_dto.AiScreeningHitSuggestionDto
 		for _, screeningId := range caseData.screeningIds {
-			// If analysis already exists for the screening, the method will do nothing
+			// Best-effort: screening suggestions enrich the review but must not block it.
+			// If analysis fails for some/all matches, log and continue — failed matches simply
+			// get no suggestion (the per-match step is idempotent and skips matches with no blob).
+			// If analysis already exists for the screening, the method will do nothing.
 			if err := uc.AnalyseScreeningHits(ctx, screeningId); err != nil {
-				logger.ErrorContext(ctx, "Failed to generate screening suggestions",
+				if ctx.Err() != nil {
+					return nil, ctx.Err()
+				}
+				logger.WarnContext(ctx, "Some screening matches could not be analysed, continuing with partial suggestions",
 					"screening_id", screeningId, "error", err)
-				return nil, errors.Wrapf(err, "failed to generate screening suggestions for screening id %s", screeningId)
+				// Do not return: fall through to gather whatever succeeded.
 			}
 			suggestions, err := uc.GetScreeningSuggestions(ctx, screeningId)
 			if err != nil {
-				logger.ErrorContext(ctx, "Failed to load screening suggestions",
+				if ctx.Err() != nil {
+					return nil, ctx.Err()
+				}
+				logger.WarnContext(ctx, "Could not load screening suggestions, skipping screening",
 					"screening_id", screeningId, "error", err)
-				return nil, errors.Wrapf(err, "failed to load screening suggestions for screening id %s", screeningId)
+				continue
 			}
 			allSuggestions = append(allSuggestions, suggestions...)
 		}
@@ -713,8 +720,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			caseReviewData["screening_suggestions"] = caseReviewContext.ScreeningSuggestions
 		}
 		if aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction != nil {
-			caseReviewData["additional_case_review_instruction"] =
-				*aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
+			caseReviewData["additional_case_review_instruction"] = *aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
 		}
 		providerCaseReview, modelCaseReview, promptCaseReview, err := uc.preparePromptWithModel(
 			PROMPT_CASE_REVIEW_PATH,
@@ -723,8 +729,6 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		if err != nil {
 			return nil, errors.Wrap(err, "could not prepare case review request")
 		}
-
-		logger.DebugContext(ctx, "case review prompt", "prompt", promptCaseReview)
 
 		schema := getProofSchema(caseData.dataModel)
 		requestCaseReview, err := DoLLMRequest(ctx, client, llmberjack.NewRequest[caseReviewOutput]().
@@ -785,8 +789,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			sanityCheckData["screening_suggestions"] = caseReviewContext.ScreeningSuggestions
 		}
 		if aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction != nil {
-			sanityCheckData["additional_case_review_instruction"] =
-				*aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
+			sanityCheckData["additional_case_review_instruction"] = *aiSetting.CaseReviewSetting.AdditionalCaseReviewInstruction
 		}
 		providerSanityCheck, modelSanityCheck, promptSanityCheck, err := uc.preparePromptWithModel(
 			PROMPT_SANITY_CHECK_PATH,
@@ -997,6 +1000,12 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 			return caseData{}, casePivotDataByPivot{}, errors.Wrapf(err,
 				"could not retrieve screenings for decision %s", decision.DecisionId)
 		}
+		// Match payloads may be offloaded to blob storage (empty `payload` column); load them back
+		// so the AI review sees the full match data instead of empty payloads.
+		if err := uc.offloadedReader.HydrateScreeningMatches(ctx, screenings); err != nil {
+			return caseData{}, casePivotDataByPivot{}, errors.Wrapf(err,
+				"could not hydrate offloaded screening match payloads for decision %s", decision.DecisionId)
+		}
 		for _, s := range screenings {
 			screeningIds = append(screeningIds, s.Id)
 		}
@@ -1041,11 +1050,9 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 		pivotObjectKey := agent_dto.PivotObjectKeyForMap(pivotObject)
 
 		// This map is a map of [tableName]IngestedDataResult for this pivot object
-		relatedDataPerClient.ingestedData[pivotObjectKey] =
-			make(agent_dto.CasePivotIngestedData, len(dataModel.Tables))
+		relatedDataPerClient.ingestedData[pivotObjectKey] = make(agent_dto.CasePivotIngestedData, len(dataModel.Tables))
 
-		relatedDataPerClient.relatedCases[pivotObjectKey] =
-			make([]agent_dto.CaseWithDecisions, 0, 10)
+		relatedDataPerClient.relatedCases[pivotObjectKey] = make([]agent_dto.CaseWithDecisions, 0, 10)
 
 		previousCases, err := uc.repository.GetCasesWithPivotValue(ctx, exec,
 			c.OrganizationId, pivotObject.PivotValue)
@@ -1095,8 +1102,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 				return caseData{}, casePivotDataByPivot{}, errors.Wrapf(err,
 					"could not adapt case with decisions for previous case %s", previousCase.Id)
 			}
-			relatedDataPerClient.relatedCases[pivotObjectKey] =
-				append(relatedDataPerClient.relatedCases[pivotObjectKey], rc)
+			relatedDataPerClient.relatedCases[pivotObjectKey] = append(relatedDataPerClient.relatedCases[pivotObjectKey], rc)
 		}
 
 		// then, retrieve the ingested data for this pivot object (of any navigation options exist)

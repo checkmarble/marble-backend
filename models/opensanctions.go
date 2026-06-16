@@ -16,6 +16,7 @@ const OPEN_SANCTIONS_OUTDATED_DATASET_LEEWAY = 1 * time.Hour
 // Note: I didn't declare all fields, only those needed for our logic, don't hesitate to add more if needed
 type OpenSanctionsRawDataset struct {
 	Name     string
+	Title    string
 	Version  string
 	Load     bool
 	Tags     []string
@@ -62,6 +63,7 @@ type OpenSanctionsQuery struct {
 	Config             ScreeningConfig
 	OrgConfig          OrganizationOpenSanctionsConfig
 	Scope              string
+	Partition          bool
 	// cf: `exclude_entity_ids` in the OpenSanctions query
 	WhitelistedEntityIds []string
 	UseScopedIndex       bool
@@ -259,6 +261,7 @@ type OpenSanctionsDeltaFileEntity struct {
 	Referents  []string            `json:"referents"`
 	Datasets   []string            `json:"datasets"`
 	Properties map[string][]string `json:"properties"`
+	LastChange *time.Time          `json:"last_change"`
 }
 
 type OpenSanctionsDeltaFileRecord struct {

@@ -76,6 +76,7 @@ type openSanctionsRequestQuery struct {
 	Schema     string                     `json:"schema"`
 	Properties models.OpenSanctionsFilter `json:"properties"`
 	Filters    map[string][][]string      `json:"filters"`
+	Params     *motivaRequestParams       `json:"params"`
 }
 
 func (repo OpenSanctionsRepository) IsSelfHosted(ctx context.Context) bool {
@@ -326,7 +327,7 @@ func (repo OpenSanctionsRepository) GetAlgorithms(ctx context.Context) (models.O
 func (repo OpenSanctionsRepository) GetProvider(provider models.ScreeningProvider) ScreeningProvider {
 	switch provider {
 	case models.ScreeningProviderLexisNexis:
-		return ScreeningLexisNexisProvider(repo)
+		return ScreeningLexisNexisProvider{Config: repo.Config, Repository: repo}
 	default:
 		return ScreeningOpenSanctionsProvider(repo)
 	}

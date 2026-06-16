@@ -51,8 +51,9 @@ func (m *mockMonitoringListCheckRepository) ListPivots(
 	organizationId uuid.UUID,
 	tableId *string,
 	useCache bool,
+	includeDeleted bool,
 ) ([]models.PivotMetadata, error) {
-	args := m.Called(ctx, exec, organizationId, tableId, useCache)
+	args := m.Called(ctx, exec, organizationId, tableId, useCache, includeDeleted)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

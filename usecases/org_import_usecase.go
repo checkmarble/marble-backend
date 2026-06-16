@@ -461,7 +461,7 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 	// CreateDataModelTable may have auto-created a default pivot (object_id field-based or
 	// belongs_to path-based). If the import spec defines a different pivot for the same
 	// table, replace the auto-created one; if it matches, keep it.
-	existingPivots, err := uc.dataModelRepository.ListPivots(ctx, tx, orgId, nil, false)
+	existingPivots, err := uc.dataModelRepository.ListPivots(ctx, tx, orgId, nil, false, false)
 	if err != nil {
 		return errors.Wrap(err, "failed to list existing pivots")
 	}
@@ -490,6 +490,8 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 			}
 			// Auto-created pivot differs from the spec; delete it before creating the
 			// imported one to avoid the unique-constraint conflict on (org, base_table).
+			// Hard delete is safe here: import only runs on a new or empty organization,
+			// so no object can reference the pivot.
 			if err := uc.dataModelRepository.DeleteDataModelPivot(ctx, tx, existing.Id.String()); err != nil {
 				return errors.Wrapf(err, "failed to delete auto-created pivot for table %s", baseTableId)
 			}

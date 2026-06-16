@@ -20,7 +20,8 @@ import (
 )
 
 type ScreeningLexisNexisProvider struct {
-	Config infra.Screening
+	Config     infra.Screening
+	Repository OpenSanctionsRepository
 }
 
 func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
@@ -31,7 +32,9 @@ func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
 	}
 
 	if p.Config.MotivaFeatures(ctx).BodyParams {
-		q.Params = &motivaRequestParams{}
+		q.Params = &motivaRequestParams{
+			IncludeDatasets: []string{"lexisnexis"},
+		}
 
 		if len(query.WhitelistedEntityIds) > 0 {
 			q.Params.ExcludeEntityIds = query.WhitelistedEntityIds
@@ -42,12 +45,13 @@ func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
 		filters := query.Config.Filters.Resolve()
 
 		for topic, filter := range filters.WithRootTopics() {
-			if topic != "global" && (filters.NoFilters() || filter.IsEnabled()) {
+			if topic != "global" && topic != "custom" && (filters.NoFilters() || filter.IsEnabled()) {
 				id := pure_utils.NewId().String()
 
 				q.Queries[id] = openSanctionsRequestQuery{
 					Schema:     subquery.Type,
 					Properties: subquery.Filters,
+					Params:     &motivaRequestParams{IncludeDatasets: []string{"lexisnexis"}},
 					Filters: map[string][][]string{
 						"topics": {{topic}},
 					},
@@ -65,6 +69,35 @@ func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
 					for _, topic := range filter.Topics {
 						q.Queries[id].Filters["topics"] = append(q.Queries[id].Filters["topics"], topic)
 					}
+				}
+			}
+		}
+
+		if len(filters.Custom.Datasets) > 0 || filters.NoFilters() {
+			datasets := filters.Custom.Datasets
+
+			if filters.NoFilters() {
+				catalog, err := p.Repository.GetRawCatalog(ctx, models.ScreeningProviderLexisNexis)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				datasets = make([]string, 0)
+
+				for _, ds := range catalog.Datasets {
+					if strings.HasPrefix(ds.Name, "marble_custom_") {
+						datasets = append(datasets, ds.Name)
+					}
+				}
+			}
+
+			if len(datasets) > 0 {
+				id := pure_utils.NewId().String()
+
+				q.Queries[id] = openSanctionsRequestQuery{
+					Schema:     subquery.Type,
+					Properties: subquery.Filters,
+					Params:     &motivaRequestParams{IncludeDatasets: datasets},
 				}
 			}
 		}
@@ -115,6 +148,10 @@ func (p ScreeningLexisNexisProvider) BuildQueryString(ctx context.Context,
 	qs.Set("algorithm", p.Config.Algorithm())
 
 	if query != nil {
+		if query.Partition {
+			qs.Set("partition", "true")
+		}
+
 		if p.Config.MotivaFeatures(ctx).ScopedIndex && query.UseScopedIndex {
 			qs.Set("index_type", "scoped")
 		}
@@ -146,11 +183,17 @@ func (p ScreeningLexisNexisProvider) BuildQueryString(ctx context.Context,
 }
 
 type lexisNexisAvailableFilters struct {
-	Datasets []string `json:"properties.programId"` //nolint:tagliatelle
-	Topics   []string `json:"properties.topics"`    //nolint:tagliatelle
+	Datasets       []string `json:"properties.programId"` //nolint:tagliatelle
+	Topics         []string `json:"properties.topics"`    //nolint:tagliatelle
+	CustomDatasets []string `json:"datasets"`             //nolint:tagliatelle
 }
 
 func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context, feature models.ScreeningFeature) (dto.ScreeningAvailableFilters, error) {
+	rawCatalog, err := p.Repository.GetRawCatalog(ctx, models.ScreeningProviderLexisNexis)
+	if err != nil {
+		return dto.ScreeningAvailableFilters{}, err
+	}
+
 	catalog, err := p.GetLexisNexisCatalog(ctx)
 	if err != nil {
 		return dto.ScreeningAvailableFilters{}, err
@@ -159,10 +202,14 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context, f
 	url := fmt.Sprintf("%s/catalog/fields", p.Config.Host(models.ScreeningProviderLexisNexis))
 
 	payload := map[string]any{
-		"fields": []string{"properties.programId", "properties.topics"},
+		"fields": []string{"properties.programId", "properties.topics", "datasets"},
 		"query": map[string]any{
-			"term": map[string]any{
-				"datasets": "lexisnexis",
+			"bool": map[string]any{
+				"minimum_should_match": 1,
+				"should": []any{
+					map[string]any{"term": map[string]any{"datasets": "lexisnexis"}},
+					map[string]any{"prefix": map[string]any{"datasets": "marble_custom_"}},
+				},
 			},
 		},
 	}
@@ -239,6 +286,34 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context, f
 		filters.Sections.AdverseMedia = dto.ScreeningAvailableFiltersSection{
 			Self:   "adverse_media",
 			Topics: p.buildTopicFilterFor(feature, values.Topics, "adverse_media"),
+		}
+	}
+
+	if len(values.CustomDatasets) > 0 {
+		for _, ds := range values.CustomDatasets {
+			if ds == "lexisnexis" {
+				continue
+			}
+
+			if filters.Sections.Custom.Self == "" {
+				filters.Sections.Custom = dto.ScreeningAvailableFiltersSection{
+					Self: "custom",
+				}
+			}
+
+			title := ds
+
+			for _, catalogDataset := range rawCatalog.Datasets {
+				if catalogDataset.Name == ds {
+					title = catalogDataset.Title
+				}
+			}
+
+			filters.Sections.Custom.Datasets = append(filters.Sections.Custom.Datasets, dto.ScreeningAvailableFiltersItem{
+				Section: "custom",
+				Name:    ds,
+				Title:   title,
+			})
 		}
 	}
 

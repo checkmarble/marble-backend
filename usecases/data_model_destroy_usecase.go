@@ -111,7 +111,7 @@ func (uc DataModelDestroyUsecase) DeleteTable(ctx context.Context, dryRun bool, 
 			// Should not occur since the table was fetched successfully before
 			return errors.New("table not found in data model")
 		}
-		pivotsToDelete, err := uc.dataModelRepository.ListPivots(ctx, tx, table.OrganizationID, &table.ID, false)
+		pivotsToDelete, err := uc.dataModelRepository.ListPivots(ctx, tx, table.OrganizationID, &table.ID, false, false)
 		if err != nil {
 			return err
 		}
@@ -261,6 +261,24 @@ func (uc DataModelDestroyUsecase) DeleteLink(ctx context.Context, dryRun bool, l
 			}
 		}
 
+		// Cascade soft-delete pivots whose path references this link. A "related" link
+		// is by definition referenced by no live pivot (link type is derived from pivot
+		// membership), so this is a no-op for them. It applies to "belongs_to" links:
+		// both the single-link pivot coupled to the link, and legacy multi-link path
+		// pivots in which the link appears at any position (such a pivot cannot survive
+		// the loss of one of its path links).
+		pivots, err := uc.dataModelRepository.ListPivots(ctx, tx, orgId, nil, false, false)
+		if err != nil {
+			return err
+		}
+		for _, pivot := range pivots {
+			if slices.Contains(pivot.PathLinkIds, linkId) {
+				if err := uc.dataModelRepository.SoftDeletePivot(ctx, tx, pivot.Id.String()); err != nil {
+					return err
+				}
+			}
+		}
+
 		if err := uc.dataModelRepository.DeleteDataModelLink(ctx, tx, linkId); err != nil {
 			return err
 		}
@@ -288,7 +306,9 @@ func (uc DataModelDestroyUsecase) DeletePivot(ctx context.Context, dryRun bool, 
 		return models.NewDataModelDeleteFieldReport(), nil
 	}
 
-	if err := uc.dataModelRepository.DeleteDataModelPivot(ctx, exec, pivotId); err != nil {
+	// Soft delete: decisions reference the pivot by id, so the definition must remain
+	// readable for historical data (pivot object enrichment, related cases, scoring).
+	if err := uc.dataModelRepository.SoftDeletePivot(ctx, exec, pivotId); err != nil {
 		return models.DataModelDeleteFieldReport{}, err
 	}
 
@@ -418,7 +438,7 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 	// the deletion will not break anything since the table will be deleted
 	// TODO: TBD What if the pivot has multi links?
 	if field != nil {
-		pivots, err := uc.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false)
+		pivots, err := uc.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false, false)
 		if err != nil {
 			return false, models.DataModelDeleteFieldReport{}, err
 		}
@@ -681,7 +701,7 @@ func (uc DataModelDestroyUsecase) canDeleteLink(
 	}
 
 	if linkType != models.LinkTypeBelongsTo {
-		pivots, err := uc.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false)
+		pivots, err := uc.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false, false)
 		if err != nil {
 			return false, models.DataModelDeleteFieldReport{}, err
 		}

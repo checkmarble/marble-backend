@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
@@ -67,11 +65,16 @@ func NewServer(
 	// Add 5 seconds to the server timeout to gracefully handle the timeout in our code
 	maxTimeout := max(conf.BatchTimeout, conf.DecisionTimeout, conf.DefaultTimeout) + 5*time.Second
 
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+	protocols.SetUnencryptedHTTP2(true)
+
 	return &http.Server{
 		Addr:         fmt.Sprintf("%s:%s", host, conf.Port),
 		WriteTimeout: maxTimeout,
 		ReadTimeout:  maxTimeout,
 		IdleTimeout:  maxTimeout,
-		Handler:      h2c.NewHandler(router, &http2.Server{}),
+		Handler:      router,
+		Protocols:    protocols,
 	}
 }

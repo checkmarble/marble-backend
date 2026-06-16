@@ -97,11 +97,15 @@ func selectScreenings() squirrel.SelectBuilder {
 		InnerJoin(dbmodels.TABLE_SCREENING_CONFIGS + " AS scc ON sc.screening_config_id=scc.id")
 }
 
+// The screening matches are returned unordered. The score used for sorting lives inside the
+// payload, which may be offloaded to blob storage (NULL `payload` column), so it can't be read
+// in SQL reliably. The whole ordering (status, then descending score) is therefore done in one
+// place, in memory after hydration - see ScreeningUsecase.hydrateAndSortMatches.
 func selectScreeningsWithMatches() squirrel.SelectBuilder {
 	return NewQueryBuilder().
 		Select(columnsNames("sc", dbmodels.SelectScreeningColumn)...).
 		Columns("scc.id AS config_id", "stable_id", "scc.name", "scc.datasets", "scc.filters").
-		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s) ORDER BY array_position(array['confirmed_hit', 'pending', 'no_hit', 'skipped'], scm.status), scm.payload->>'score' DESC) FILTER (WHERE scm.id IS NOT NULL) AS matches",
+		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s)) FILTER (WHERE scm.id IS NOT NULL) AS matches",
 			strings.Join(columnsNames("scm", dbmodels.SelectScreeningMatchesColumn), ","))).
 		From(dbmodels.TABLE_SCREENINGS + " AS sc").
 		InnerJoin(dbmodels.TABLE_SCREENING_CONFIGS + " AS scc ON sc.screening_config_id=scc.id").
@@ -165,6 +169,26 @@ func (*MarbleDbRepository) UpdateScreeningMatchPayload(ctx context.Context, exec
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningMatch)
 }
 
+// SetScreeningMatchEnriched marks a match as enriched without touching the payload column. It is
+// used for offloaded matches, whose enriched payload is written back to blob storage instead of
+// the DB column.
+func (*MarbleDbRepository) SetScreeningMatchEnriched(ctx context.Context, exec Executor,
+	matchId string,
+) (models.ScreeningMatch, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ScreeningMatch{}, err
+	}
+
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_SCREENING_MATCHES).
+		Set("enriched", true).
+		Set("updated_at", "NOW()").
+		Where(squirrel.Eq{"id": matchId}).
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScreeningMatchesColumn, ",")))
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningMatch)
+}
+
 func (*MarbleDbRepository) ListScreeningMatches(
 	ctx context.Context,
 	exec Executor,
@@ -220,6 +244,11 @@ func (*MarbleDbRepository) UpdateScreeningMatchStatus(
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningMatch)
 }
 
+// InsertScreening persists a screening and its matches. Match payloads that should be offloaded
+// to blob storage are expected to be offloaded and blanked by the caller (see
+// OffloadedReadWriter.OffloadScreeningMatches) before this is called - this method only writes
+// whatever payload it is given. Matches with a pre-assigned Id keep it (so it matches their blob
+// key); otherwise an Id is generated here.
 func (*MarbleDbRepository) InsertScreening(
 	ctx context.Context,
 	exec Executor,
@@ -284,8 +313,12 @@ func (*MarbleDbRepository) InsertScreening(
 		Columns("id", "screening_id", "opensanction_entity_id", "query_ids", "payload")
 
 	for _, match := range screening.Matches {
-		matchSql = matchSql.Values(pure_utils.NewId(), screening.Id, match.EntityId, match.QueryIds,
-			match.Payload)
+		matchId := match.Id
+		if matchId == "" {
+			matchId = pure_utils.NewId().String()
+		}
+
+		matchSql = matchSql.Values(matchId, screening.Id, match.EntityId, match.QueryIds, match.Payload)
 	}
 
 	return ExecBuilder(ctx, exec, matchSql)

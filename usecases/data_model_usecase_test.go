@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
@@ -12,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -276,7 +278,7 @@ func (suite *DatamodelUsecaseTestSuite) TestGetDataModel_nominal_no_unique() {
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction, nil)
 	var nilStr *string
 	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction,
-		suite.organizationId, nilStr, mock.Anything).
+		suite.organizationId, nilStr, mock.Anything, false).
 		Return(nil, nil)
 	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
 		Return(nil, nil)
@@ -309,7 +311,7 @@ func (suite *DatamodelUsecaseTestSuite) TestGetDataModel_nominal_with_unique() {
 
 	var nilStr *string
 	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction,
-		suite.organizationId, nilStr, mock.Anything).
+		suite.organizationId, nilStr, mock.Anything, false).
 		Return(nil, nil)
 	suite.clientDbIndexEditor.On("ListAllIndexes", suite.ctx, suite.organizationId, models.IndexTypeNavigation).
 		Return(nil, nil)
@@ -409,7 +411,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_nominal() {
 		Return(nil)
 	// ensureTableHasPivot: return non-empty pivots so no pivot creation needed
 	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId,
-		mock.AnythingOfType("*string"), false).
+		mock.AnythingOfType("*string"), false, false).
 		Return([]models.PivotMetadata{{Id: uuid.New()}}, nil)
 	suite.transactionFactory.On("TransactionInOrgSchema", suite.ctx, suite.organizationId, mock.Anything).
 		Return(nil)
@@ -510,7 +512,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_org_repository_
 		Return(nil)
 	// ensureTableHasPivot: return non-empty pivots so no pivot creation needed
 	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction, suite.organizationId,
-		mock.AnythingOfType("*string"), false).
+		mock.AnythingOfType("*string"), false, false).
 		Return([]models.PivotMetadata{{Id: uuid.New()}}, nil)
 	suite.transactionFactory.On("TransactionInOrgSchema", suite.ctx, suite.organizationId, mock.Anything).
 		Return(nil)
@@ -1475,6 +1477,155 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_with_invalid_pa
 		"expected error message about invalid property")
 
 	suite.AssertExpectations()
+}
+
+// CreatePivot
+func (suite *DatamodelUsecaseTestSuite) TestCreatePivot_restores_identical_soft_deleted_pivot() {
+	input := models.CreatePivotInput{
+		OrganizationId: suite.organizationId,
+		BaseTableId:    "accounts-table-id",
+		FieldId:        utils.Ptr("accounts-object-id-field-id"),
+	}
+	pivotId := uuid.MustParse("87654321-4321-8765-2109-876543210987")
+	deletedAt := time.Now()
+
+	usecase := suite.makeUsecase()
+	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+	suite.dataModelRepository.On("GetDataModel",
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
+		Return(suite.dataModel, nil)
+	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction,
+		suite.organizationId, utils.Ptr("accounts-table-id"), false, true).
+		Return([]models.PivotMetadata{
+			{
+				Id:             pivotId,
+				OrganizationId: suite.organizationId,
+				BaseTableId:    "accounts-table-id",
+				FieldId:        utils.Ptr("accounts-object-id-field-id"),
+				DeletedAt:      &deletedAt,
+			},
+		}, nil)
+	suite.dataModelRepository.On("RestorePivot", suite.ctx, suite.transaction, pivotId.String()).
+		Return(nil)
+	suite.dataModelRepository.On("GetPivot", suite.ctx, suite.transaction, pivotId.String()).
+		Return(models.PivotMetadata{
+			Id:             pivotId,
+			OrganizationId: suite.organizationId,
+			BaseTableId:    "accounts-table-id",
+			FieldId:        utils.Ptr("accounts-object-id-field-id"),
+		}, nil)
+
+	pivot, err := usecase.CreatePivotWithExec(suite.ctx, suite.transaction, input)
+	suite.Require().NoError(err, "no error expected")
+	suite.Require().Equal(pivotId, pivot.Id, "the soft-deleted pivot should be restored with its original id")
+
+	// CreatePivot must not be called: the soft-deleted pivot is restored instead
+	suite.dataModelRepository.AssertNotCalled(suite.T(), "CreatePivot",
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	suite.AssertExpectations()
+}
+
+func (suite *DatamodelUsecaseTestSuite) TestCreatePivot_does_not_restore_different_soft_deleted_pivot() {
+	input := models.CreatePivotInput{
+		OrganizationId: suite.organizationId,
+		BaseTableId:    "accounts-table-id",
+		FieldId:        utils.Ptr("accounts-object-id-field-id"),
+	}
+	deletedAt := time.Now()
+
+	usecase := suite.makeUsecase()
+	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+	suite.dataModelRepository.On("GetDataModel",
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
+		Return(suite.dataModel, nil)
+	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction,
+		suite.organizationId, utils.Ptr("accounts-table-id"), false, true).
+		Return([]models.PivotMetadata{
+			{
+				Id:             uuid.MustParse("87654321-4321-8765-2109-876543210987"),
+				OrganizationId: suite.organizationId,
+				BaseTableId:    "accounts-table-id",
+				FieldId:        utils.Ptr("accounts-status-field-id"), // different definition
+				DeletedAt:      &deletedAt,
+			},
+		}, nil)
+	suite.dataModelRepository.On("CreatePivot", suite.ctx, suite.transaction,
+		mock.AnythingOfType("string"), input).
+		Return(nil)
+	suite.dataModelRepository.On("GetPivot", suite.ctx, suite.transaction, mock.AnythingOfType("string")).
+		Return(models.PivotMetadata{
+			OrganizationId: suite.organizationId,
+			BaseTableId:    "accounts-table-id",
+			FieldId:        utils.Ptr("accounts-object-id-field-id"),
+		}, nil)
+
+	_, err := usecase.CreatePivotWithExec(suite.ctx, suite.transaction, input)
+	suite.Require().NoError(err, "no error expected")
+
+	suite.dataModelRepository.AssertNotCalled(suite.T(), "RestorePivot",
+		mock.Anything, mock.Anything, mock.Anything)
+	suite.AssertExpectations()
+}
+
+func TestPivotDefinitionMatchesInput(t *testing.T) {
+	fieldA := utils.Ptr("field-a")
+	fieldB := utils.Ptr("field-b")
+
+	cases := []struct {
+		name     string
+		pivot    models.PivotMetadata
+		input    models.CreatePivotInput
+		expected bool
+	}{
+		{
+			name:     "same field",
+			pivot:    models.PivotMetadata{FieldId: fieldA},
+			input:    models.CreatePivotInput{FieldId: utils.Ptr("field-a")},
+			expected: true,
+		},
+		{
+			name:     "different field",
+			pivot:    models.PivotMetadata{FieldId: fieldA},
+			input:    models.CreatePivotInput{FieldId: fieldB},
+			expected: false,
+		},
+		{
+			name:     "field vs path",
+			pivot:    models.PivotMetadata{FieldId: fieldA},
+			input:    models.CreatePivotInput{PathLinkIds: []string{"link-1"}},
+			expected: false,
+		},
+		{
+			name:     "same path",
+			pivot:    models.PivotMetadata{PathLinkIds: []string{"link-1", "link-2"}},
+			input:    models.CreatePivotInput{PathLinkIds: []string{"link-1", "link-2"}},
+			expected: true,
+		},
+		{
+			name:     "different path",
+			pivot:    models.PivotMetadata{PathLinkIds: []string{"link-1"}},
+			input:    models.CreatePivotInput{PathLinkIds: []string{"link-2"}},
+			expected: false,
+		},
+		{
+			name:     "different path order",
+			pivot:    models.PivotMetadata{PathLinkIds: []string{"link-1", "link-2"}},
+			input:    models.CreatePivotInput{PathLinkIds: []string{"link-2", "link-1"}},
+			expected: false,
+		},
+		{
+			name:     "same field on different base table",
+			pivot:    models.PivotMetadata{BaseTableId: "table-a", FieldId: fieldA},
+			input:    models.CreatePivotInput{BaseTableId: "table-b", FieldId: utils.Ptr("field-a")},
+			expected: false,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			assert.Equal(t, c.expected, pivotDefinitionMatchesInput(c.pivot, c.input))
+		})
+	}
 }
 
 func TestDatamodelUsecase(t *testing.T) {

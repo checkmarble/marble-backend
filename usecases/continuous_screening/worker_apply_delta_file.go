@@ -17,6 +17,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/riverqueue/river"
 	"github.com/tidwall/gjson"
 )
@@ -124,6 +125,7 @@ type ApplyDeltaFileWorker struct {
 
 	executorFactory    executor_factory.ExecutorFactory
 	transactionFactory executor_factory.TransactionFactory
+	redisClient        *repositories.RedisClient
 	repository         applyDeltaFileWorkerRepository
 	taskQueueRepo      applyDeltaFileWorkerTaskQueueRepository
 	blobRepository     repositories.BlobRepository
@@ -135,6 +137,7 @@ type ApplyDeltaFileWorker struct {
 func NewApplyDeltaFileWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
+	redisClient *repositories.RedisClient,
 	repository applyDeltaFileWorkerRepository,
 	taskQueueRepo applyDeltaFileWorkerTaskQueueRepository,
 	blobRepository repositories.BlobRepository,
@@ -145,6 +148,7 @@ func NewApplyDeltaFileWorker(
 	return &ApplyDeltaFileWorker{
 		executorFactory:    executorFactory,
 		transactionFactory: transactionFactory,
+		redisClient:        redisClient,
 		repository:         repository,
 		taskQueueRepo:      taskQueueRepo,
 		blobRepository:     blobRepository,
@@ -232,6 +236,8 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 	defer blob.ReadCloser.Close()
 	jsonReader := json.NewDecoder(blob.ReadCloser)
 
+	redisExec := w.redisClient.NewExecutor(job.Args.OrgId, "deltas")
+
 	iteration := 0
 	for {
 		if iteration > 0 && iteration%MaxBatchSizePerIteration == 0 {
@@ -294,6 +300,27 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		if !matchesFilters(updateJob, record) {
 			iterLogger.DebugContext(iterCtx, "Skipping record because it does not meet filter")
 			continue
+		}
+
+		if record.Entity.LastChange != nil {
+			previousChangeAt, err := repositories.RedisGetScalar[time.Time](ctx, redisExec, redisExec.Key(record.Entity.Id))
+			if err == nil {
+				if previousChangeAt.Equal(*record.Entity.LastChange) || record.Entity.LastChange.Before(previousChangeAt) {
+					iterLogger.DebugContext(iterCtx, "Skipping record because we already processed this version")
+					continue
+				}
+			}
+		}
+
+		savedLastChange := func() {
+			if record.Entity.LastChange != nil {
+				err := redisExec.Exec(func(c *redis.Client) error {
+					return c.Set(ctx, redisExec.Key(record.Entity.Id), record.Entity.LastChange.Format(time.RFC3339Nano), 0).Err()
+				})
+				if err != nil {
+					iterLogger.WarnContext(iterCtx, "could not save last_change for entity to redis")
+				}
+			}
 		}
 
 		query, err := w.buildOpenSanctionQuery(iterCtx, exec, updateJob, record)
@@ -377,6 +404,8 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		if err != nil {
 			return err
 		}
+
+		savedLastChange()
 	}
 
 	err = w.repository.UpdateContinuousScreeningUpdateJob(
@@ -480,6 +509,7 @@ func (w *ApplyDeltaFileWorker) buildOpenSanctionQuery(
 		},
 		WhitelistedEntityIds: whitelistedEntityIds,
 		Scope:                orgCustomDatasetName(updateJob.OrgId),
+		Partition:            true,
 	}, nil
 }
 
