@@ -35,7 +35,7 @@ type decisionWorkflowsWorkerRepository interface {
 		exec repositories.Executor,
 		decisionId string,
 	) (models.DecisionWithRuleExecutions, error)
-	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
+	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string, screeningProvider models.ScreeningProvider) (models.Scenario, error)
 	ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID) ([]models.Workflow, error)
 }
 
@@ -106,7 +106,7 @@ func (w *DecisionWorkflowsWorker) Work(ctx context.Context, job *river.Job[model
 		return errors.Wrap(err, "error getting decision with rule executions")
 	}
 
-	scenario, err := w.decisionWorkflowsWorkerRepository.GetScenarioById(ctx, exec, decision.ScenarioId.String())
+	scenario, err := w.decisionWorkflowsWorkerRepository.GetScenarioById(ctx, exec, decision.ScenarioId.String(), "")
 	if err != nil {
 		return errors.Wrap(err, "error getting scenario")
 	}

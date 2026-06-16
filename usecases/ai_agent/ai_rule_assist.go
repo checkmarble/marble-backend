@@ -41,7 +41,12 @@ func (uc *AiAgentUsecase) GenerateRule(
 
 	exec := uc.executorFactory.NewExecutor()
 
-	scenario, err := uc.repository.GetScenarioById(ctx, exec, scenarioId)
+	org, err := uc.repository.GetOrganizationById(ctx, exec, orgId)
+	if err != nil {
+		return dto.GenerateRuleResponse{}, err
+	}
+
+	scenario, err := uc.repository.GetScenarioById(ctx, exec, scenarioId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 	if err != nil {
 		return dto.GenerateRuleResponse{}, err
 	}

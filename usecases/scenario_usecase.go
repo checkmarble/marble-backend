@@ -23,14 +23,21 @@ type ScenarioUsecase struct {
 	executorFactory           executor_factory.ExecutorFactory
 	enforceSecurity           security.EnforceSecurityScenario
 	repository                repositories.ScenarioUsecaseRepository
+	orgRepository             repositories.OrganizationRepository
 	workflowRepository        workflowRepository
 	iterationRepository       IterationUsecaseRepository
 	screeningConfigRepository ScreeningConfigRepository
 }
 
 func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context, organizationId uuid.UUID) ([]models.Scenario, error) {
-	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx,
-		usecase.executorFactory.NewExecutor(), organizationId)
+	exec := usecase.executorFactory.NewExecutor()
+
+	org, err := usecase.orgRepository.GetOrganizationById(ctx, exec, usecase.enforceSecurity.OrgId())
+	if err != nil {
+		return nil, err
+	}
+
+	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx, exec, organizationId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 	if err != nil {
 		return nil, err
 	}
@@ -40,12 +47,19 @@ func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context, organizationI
 			return nil, err
 		}
 	}
+
 	return scenarios, nil
 }
 
 func (usecase *ScenarioUsecase) GetScenario(ctx context.Context, scenarioId string) (models.Scenario, error) {
-	scenario, err := usecase.repository.GetScenarioById(ctx,
-		usecase.executorFactory.NewExecutor(), scenarioId)
+	exec := usecase.executorFactory.NewExecutor()
+
+	org, err := usecase.orgRepository.GetOrganizationById(ctx, exec, usecase.enforceSecurity.OrgId())
+	if err != nil {
+		return models.Scenario{}, err
+	}
+
+	scenario, err := usecase.repository.GetScenarioById(ctx, exec, scenarioId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 	if err != nil {
 		return models.Scenario{}, err
 	}
@@ -65,7 +79,12 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.Scenario, error) {
-			scenario, err := usecase.repository.GetScenarioById(ctx, tx, scenarioInput.Id)
+			org, err := usecase.orgRepository.GetOrganizationById(ctx, tx, usecase.enforceSecurity.OrgId())
+			if err != nil {
+				return models.Scenario{}, err
+			}
+
+			scenario, err := usecase.repository.GetScenarioById(ctx, tx, scenarioInput.Id, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 			if err != nil {
 				return models.Scenario{}, err
 			}
@@ -78,7 +97,7 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 			if err != nil {
 				return models.Scenario{}, err
 			}
-			scenario, err = usecase.repository.GetScenarioById(ctx, tx, scenario.Id)
+			scenario, err = usecase.repository.GetScenarioById(ctx, tx, scenario.Id, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 			return scenario, errors.HandledWithMessage(err, "Error getting scenario after update")
 		},
 	)
@@ -87,8 +106,14 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 func (usecase *ScenarioUsecase) ValidateScenarioAst(ctx context.Context,
 	scenarioId string, astNode *ast.Node, expectedReturnType ...string,
 ) (validation models.AstValidation, err error) {
-	scenario, err := usecase.scenarioFetcher.FetchScenario(ctx,
-		usecase.executorFactory.NewExecutor(), scenarioId)
+	exec := usecase.executorFactory.NewExecutor()
+
+	org, err := usecase.orgRepository.GetOrganizationById(ctx, exec, usecase.enforceSecurity.OrgId())
+	if err != nil {
+		return validation, err
+	}
+
+	scenario, err := usecase.scenarioFetcher.FetchScenario(ctx, exec, scenarioId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 	if err != nil {
 		return validation, err
 	}
@@ -114,11 +139,16 @@ func (usecase *ScenarioUsecase) CreateScenario(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.Scenario, error) {
+			org, err := usecase.orgRepository.GetOrganizationById(ctx, tx, usecase.enforceSecurity.OrgId())
+			if err != nil {
+				return models.Scenario{}, err
+			}
+
 			newScenarioId := pure_utils.NewId().String()
 			if err := usecase.repository.CreateScenario(ctx, tx, scenario.OrganizationId, scenario, newScenarioId); err != nil {
 				return models.Scenario{}, err
 			}
-			scenario, err := usecase.repository.GetScenarioById(ctx, tx, newScenarioId)
+			scenario, err := usecase.repository.GetScenarioById(ctx, tx, newScenarioId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 			return scenario, errors.HandledWithMessage(err, "Error getting scenario after update")
 		},
 	)
@@ -133,8 +163,14 @@ func (usecase *ScenarioUsecase) CreateScenario(
 }
 
 func (usecase *ScenarioUsecase) ListLatestRules(ctx context.Context, scenarioId string) ([]models.ScenarioRuleLatestVersion, error) {
-	scenario, err := usecase.repository.GetScenarioById(ctx,
-		usecase.executorFactory.NewExecutor(), scenarioId)
+	exec := usecase.executorFactory.NewExecutor()
+
+	org, err := usecase.orgRepository.GetOrganizationById(ctx, exec, usecase.enforceSecurity.OrgId())
+	if err != nil {
+		return nil, err
+	}
+
+	scenario, err := usecase.repository.GetScenarioById(ctx, exec, scenarioId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 	if err != nil {
 		return nil, err
 	}
@@ -156,8 +192,13 @@ func (usecase *ScenarioUsecase) CopyScenario(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.Scenario, error) {
+			org, err := usecase.orgRepository.GetOrganizationById(ctx, tx, usecase.enforceSecurity.OrgId())
+			if err != nil {
+				return models.Scenario{}, err
+			}
+
 			// Fetch the source scenario
-			sourceScenario, err := usecase.repository.GetScenarioById(ctx, tx, scenarioId)
+			sourceScenario, err := usecase.repository.GetScenarioById(ctx, tx, scenarioId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 			if err != nil {
 				return models.Scenario{}, err
 			}
@@ -352,7 +393,7 @@ func (usecase *ScenarioUsecase) CopyScenario(
 			}
 
 			// Return the newly created scenario
-			newScenario, err := usecase.repository.GetScenarioById(ctx, tx, newScenarioId)
+			newScenario, err := usecase.repository.GetScenarioById(ctx, tx, newScenarioId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 			if err != nil {
 				return models.Scenario{}, errors.Wrap(err, "failed to get new scenario")
 			}

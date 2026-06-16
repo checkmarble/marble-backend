@@ -13,7 +13,9 @@ import (
 )
 
 type ScheduledExecutionUsecaseRepository interface {
-	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (models.Organization, error)
+
+	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string, screeningProvider models.ScreeningProvider) (models.Scenario, error)
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string, useCache bool) (
 		models.ScenarioIteration, error,
 	)
@@ -108,11 +110,16 @@ func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(
 func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.Context, input models.CreateScheduledExecutionInput) error {
 	exec := usecase.executorFactory.NewExecutor()
 
+	org, err := usecase.repository.GetOrganizationById(ctx, exec, input.OrganizationId)
+	if err != nil {
+		return err
+	}
+
 	scenarioIteration, err := usecase.repository.GetScenarioIteration(ctx, exec, input.ScenarioIterationId, false)
 	if err != nil {
 		return err
 	}
-	scenario, err := usecase.repository.GetScenarioById(ctx, exec, scenarioIteration.ScenarioId)
+	scenario, err := usecase.repository.GetScenarioById(ctx, exec, scenarioIteration.ScenarioId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 	if err != nil {
 		return err
 	}

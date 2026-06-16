@@ -57,12 +57,12 @@ type DecisionUsecaseRepository interface {
 		filters models.DecisionFilters,
 	) ([]models.Decision, error)
 
-	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
+	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string, screeningProvider models.ScreeningProvider) (models.Scenario, error)
 
 	GetSummarizedDecisionStatForTestRun(ctx context.Context, exec repositories.Executor,
 		testRunId string) ([]models.DecisionsByVersionByOutcome, error)
 	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor,
-		organizationId uuid.UUID) ([]models.Scenario, error)
+		organizationId uuid.UUID, screeningProvider models.ScreeningProvider) ([]models.Scenario, error)
 	ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID) ([]models.Workflow, error)
 
 	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (map[string]analytics.Settings, error)
@@ -92,6 +92,7 @@ type DecisionUsecase struct {
 	executorFactory           executor_factory.ExecutorFactory
 	dataModelRepository       repositories.DataModelRepository
 	repository                DecisionUsecaseRepository
+	orgRepository             repositories.OrganizationRepository
 	screeningRepository       decisionUsecaseScreeningWriter
 	scenarioTestRunRepository repositories.ScenarioTestRunRepository
 	offloadedReader           repositories.OffloadedReadWriter
@@ -166,8 +167,13 @@ func (usecase *DecisionUsecase) ListDecisions(
 	paginationAndSorting models.PaginationAndSorting,
 	filters dto.DecisionFilters,
 ) (models.DecisionListPage, error) {
+	org, err := usecase.orgRepository.GetOrganizationById(ctx, usecase.executorFactory.NewExecutor(), organizationId)
+	if err != nil {
+		return models.DecisionListPage{}, err
+	}
+
 	if !filters.AllowInvalidScenarioId {
-		if err := usecase.validateScenarioIds(ctx, filters.ScenarioIds, organizationId); err != nil {
+		if err := usecase.validateScenarioIds(ctx, filters.ScenarioIds, org); err != nil {
 			return models.DecisionListPage{}, err
 		}
 	}
@@ -238,9 +244,9 @@ func (usecase *DecisionUsecase) ListDecisions(
 	}, nil
 }
 
-func (usecase *DecisionUsecase) validateScenarioIds(ctx context.Context, scenarioIds []string, organizationId uuid.UUID) error {
+func (usecase *DecisionUsecase) validateScenarioIds(ctx context.Context, scenarioIds []string, org models.Organization) error {
 	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx,
-		usecase.executorFactory.NewExecutor(), organizationId)
+		usecase.executorFactory.NewExecutor(), org.Id, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 	if err != nil {
 		return err
 	}
@@ -252,7 +258,7 @@ func (usecase *DecisionUsecase) validateScenarioIds(ctx context.Context, scenari
 	for _, scenarioId := range scenarioIds {
 		if !slices.Contains(organizationScenarioIds, scenarioId) {
 			return fmt.Errorf("scenario id %s not found in organization %s: %w",
-				scenarioId, organizationId, models.BadParameterError)
+				scenarioId, org.Id, models.BadParameterError)
 		}
 	}
 	return nil
@@ -312,9 +318,14 @@ func (usecase *DecisionUsecase) CreateDecision(
 		return false, models.DecisionWithRuleExecutions{}, err
 	}
 
+	org, err := usecase.orgRepository.GetOrganizationById(ctx, exec, input.OrganizationId)
+	if err != nil {
+		return false, models.DecisionWithRuleExecutions{}, err
+	}
+
 	scenario, ok := singleScenarioCache.Get(input.ScenarioId)
 	if !ok {
-		s, err := usecase.repository.GetScenarioById(ctx, exec, input.ScenarioId)
+		s, err := usecase.repository.GetScenarioById(ctx, exec, input.ScenarioId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 		if errors.Is(err, models.NotFoundError) {
 			return false, models.DecisionWithRuleExecutions{},
 				errors.WithDetail(err, "scenario not found")
@@ -537,9 +548,14 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	}
 	pivot := models.FindPivot(pivotsMeta, input.TriggerObjectTable, dataModel)
 
+	org, err := usecase.orgRepository.GetOrganizationById(ctx, exec, input.OrganizationId)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+
 	scenarios, ok := orgScenariosCache.Get(input.OrganizationId.String())
 	if !ok {
-		s, err := usecase.repository.ListScenariosOfOrganization(ctx, exec, input.OrganizationId)
+		s, err := usecase.repository.ListScenariosOfOrganization(ctx, exec, input.OrganizationId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 		if err != nil {
 			return nil, 0, nil, errors.Wrap(err, "error getting scenarios in CreateAllDecisions")
 		}

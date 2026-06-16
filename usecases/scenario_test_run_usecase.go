@@ -26,6 +26,7 @@ type ScenarioTestRunUsecase struct {
 	executorFactory            executor_factory.ExecutorFactory
 	enforceSecurity            security.EnforceSecurityTestRun
 	repository                 repositories.ScenarioTestRunRepository
+	orgRepository              repositories.OrganizationRepository
 	scenarioRepository         repositories.ScenarioUsecaseRepository
 	scenarioIteratorRepository IterationUsecaseRepository
 	clientDbIndexEditor        clientDbIndexEditor
@@ -43,8 +44,13 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
 	}
 	exec := usecase.executorFactory.NewExecutor()
 
+	org, err := usecase.orgRepository.GetOrganizationById(ctx, exec, organizationId)
+	if err != nil {
+		return models.ScenarioTestRun{}, err
+	}
+
 	// we should have a live version running
-	scenario, err := usecase.scenarioRepository.GetScenarioById(ctx, exec, input.ScenarioId)
+	scenario, err := usecase.scenarioRepository.GetScenarioById(ctx, exec, input.ScenarioId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 	if err != nil {
 		return models.ScenarioTestRun{}, err
 	}

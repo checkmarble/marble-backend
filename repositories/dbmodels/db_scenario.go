@@ -45,8 +45,9 @@ func AdaptScenario(dto DBScenario) (models.Scenario, error) {
 }
 
 type DBScenarioRuleLatestVersion struct {
-	Type         string `db:"type"`
-	StableRuleId string `db:"stable_rule_id"`
-	Name         string `db:"name"`
-	Version      string `db:"version"`
+	Type              string                   `db:"type"`
+	StableRuleId      string                   `db:"stable_rule_id"`
+	Name              string                   `db:"name"`
+	Version           string                   `db:"version"`
+	ScreeningProvider models.ScreeningProvider `db:"provider"`
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -42,8 +43,15 @@ func (s *ScheduledExecutionUsecaseRepository) UpdateScheduledExecutionStatus(
 	return args.Error(0)
 }
 
+func (s *ScheduledExecutionUsecaseRepository) GetOrganizationById(ctx context.Context,
+	exec repositories.Executor, orgId uuid.UUID,
+) (models.Organization, error) {
+	args := s.Called(ctx, exec, orgId)
+	return args.Get(0).(models.Organization), args.Error(1)
+}
+
 func (s *ScheduledExecutionUsecaseRepository) GetScenarioById(ctx context.Context,
-	exec repositories.Executor, scenarioId string,
+	exec repositories.Executor, scenarioId string, screeningProvider models.ScreeningProvider,
 ) (models.Scenario, error) {
 	args := s.Called(exec, scenarioId)
 	return args.Get(0).(models.Scenario), args.Error(1)

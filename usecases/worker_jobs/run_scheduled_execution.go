@@ -25,7 +25,7 @@ const (
 )
 
 type RunScheduledExecutionRepository interface {
-	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
+	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string, screeningProvider models.ScreeningProvider) (models.Scenario, error)
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string,
 		useCache bool) (models.ScenarioIteration, error)
 	StoreDecisionsToCreate(

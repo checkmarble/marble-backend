@@ -17,8 +17,15 @@ type ScenarioFetcherRepositoryMock struct {
 	mock.Mock
 }
 
+func (s *ScenarioFetcherRepositoryMock) GetOrganizationById(ctx context.Context,
+	exec repositories.Executor, orgId uuid.UUID,
+) (models.Organization, error) {
+	args := s.Called(ctx, exec, orgId)
+	return args.Get(0).(models.Organization), args.Error(1)
+}
+
 func (s *ScenarioFetcherRepositoryMock) GetScenarioById(ctx context.Context,
-	exec repositories.Executor, scenarioId string,
+	exec repositories.Executor, scenarioId string, screeningProvider models.ScreeningProvider,
 ) (models.Scenario, error) {
 	args := s.Called(exec, scenarioId)
 	return args.Get(0).(models.Scenario), args.Error(1)

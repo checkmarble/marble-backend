@@ -131,7 +131,7 @@ func (uc *OrgExportUsecase) Export(ctx context.Context, orgId uuid.UUID) (dto.Or
 	}
 
 	// Fetch scenarios with published iterations
-	scenarios, err := uc.scenarioRepository.ListScenariosOfOrganization(ctx, exec, orgId)
+	scenarios, err := uc.scenarioRepository.ListScenariosOfOrganization(ctx, exec, orgId, "")
 	if err != nil {
 		return dto.OrgImport{}, errors.Wrap(err, "failed to fetch scenarios")
 	}
