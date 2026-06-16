@@ -419,7 +419,7 @@ func (uc OffloadedReadWriter) OffloadContinuousScreeningEntityPayload(
 func (uc OffloadedReadWriter) ReadOffloadedContinuousScreeningEntityPayload(
 	ctx context.Context, orgId, continuousScreeningId uuid.UUID,
 ) ([]byte, error) {
-	if !uc.IsScreeningOffloadingEnabled() {
+	if !uc.IsOffloadingEnabled() {
 		return nil, nil
 	}
 	return uc.readPayload(ctx,

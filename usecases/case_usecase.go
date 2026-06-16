@@ -156,6 +156,7 @@ type CaseUseCase struct {
 	featureAccessReader     feature_access.FeatureAccessReader
 	publicApiAdapterUsecase PublicApiAdapterUsecase
 	scoringScoreUsecase     scoring.ScoringScoresUsecase
+	offloadedReader         repositories.OffloadedReadWriter
 }
 
 func (usecase *CaseUseCase) ListCases(
@@ -1430,6 +1431,15 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 		continuousScreeningsWithMatches, err := usecase.repository.ListContinuousScreeningsWithMatchesByCaseId(ctx, exec, caseId)
 		if err != nil {
 			return models.Case{}, err
+		}
+
+		for i := range continuousScreeningsWithMatches {
+			if err := usecase.offloadedReader.HydrateContinuousScreeningEntity(ctx, &continuousScreeningsWithMatches[i]); err != nil {
+				return models.Case{}, err
+			}
+			if err := usecase.offloadedReader.HydrateContinuousScreeningMatch(ctx, &continuousScreeningsWithMatches[i]); err != nil {
+				return models.Case{}, err
+			}
 		}
 
 		c.ContinuousScreenings = continuousScreeningsWithMatches

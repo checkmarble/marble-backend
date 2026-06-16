@@ -372,16 +372,10 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 			TriggerType:               models.ContinuousScreeningTriggerTypeDatasetUpdated,
 		}
 
-		// Offload the entity and match payloads to blob storage (no-op when offloading is
-		// disabled) before persisting, so the rows are written with empty payload columns.
+		// Offload only the entity payload to blob storage (no-op when offloading is disabled).
+		// Match payloads are customer data and are kept in the DB column in this direction.
 		createInput.OpenSanctionEntityPayload, err = w.offloadedReader.OffloadContinuousScreeningEntity(
 			iterCtx, updateJob.Config.OrgId, createInput.Id, createInput.OpenSanctionEntityPayload)
-		if err != nil {
-			return err
-		}
-
-		createInput.Screening.Matches, err = w.offloadedReader.OffloadContinuousScreeningMatches(
-			iterCtx, updateJob.Config.OrgId, createInput.Id, createInput.Screening.Matches)
 		if err != nil {
 			return err
 		}

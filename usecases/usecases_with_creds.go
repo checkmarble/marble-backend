@@ -195,9 +195,10 @@ func (usecases *UsecasesWithCreds) NewAsyncDecisionExecutionUsecase() AsyncDecis
 
 func (usecases *UsecasesWithCreds) NewOffloadedReader() repositories.OffloadedReadWriter {
 	return repositories.OffloadedReadWriter{
-		Repository:          usecases.Repositories.MarbleDbRepository,
-		BlobRepository:      usecases.Repositories.BlobRepository,
-		OffloadingBucketUrl: usecases.offloadingBucketUrl,
+		Repository:                 usecases.Repositories.MarbleDbRepository,
+		BlobRepository:             usecases.Repositories.BlobRepository,
+		OffloadingBucketUrl:        usecases.offloadingBucketUrl,
+		ScreeningOffloadingEnabled: usecases.screeningOffloadingEnabled,
 	}
 }
 
@@ -470,6 +471,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		featureAccessReader:     usecases.NewFeatureAccessReader(),
 		publicApiAdapterUsecase: usecases.NewPublicApiAdapterUsecase(),
 		scoringScoreUsecase:     usecases.NewScoringScoresUsecase(),
+		offloadedReader:         usecases.NewOffloadedReader(),
 	}
 }
 
