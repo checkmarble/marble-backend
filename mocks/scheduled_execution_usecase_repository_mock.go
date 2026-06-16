@@ -53,7 +53,7 @@ func (s *ScheduledExecutionUsecaseRepository) GetOrganizationById(ctx context.Co
 func (s *ScheduledExecutionUsecaseRepository) GetScenarioById(ctx context.Context,
 	exec repositories.Executor, scenarioId string, screeningProvider models.ScreeningProvider,
 ) (models.Scenario, error) {
-	args := s.Called(exec, scenarioId)
+	args := s.Called(ctx, exec, scenarioId, screeningProvider)
 	return args.Get(0).(models.Scenario), args.Error(1)
 }
 
