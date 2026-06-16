@@ -1,7 +1,6 @@
 package ai_agent
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -397,8 +396,7 @@ func (uc *AiAgentUsecase) loadSuggestionFromBlob(
 		return nil, errors.Wrap(err, "could not decode suggestion blob")
 	}
 
-	return agent_dto.UnmarshalScreeningHitSuggestionDto(
-		envelope.Version, bytes.NewReader(envelope.Content))
+	return agent_dto.UnmarshalScreeningHitSuggestionDto(envelope.Version, envelope.Content)
 }
 
 func (uc *AiAgentUsecase) writeSuggestionToBlob(

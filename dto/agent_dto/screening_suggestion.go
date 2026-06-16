@@ -1,13 +1,13 @@
 package agent_dto
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
-	"io"
+	"slices"
 	"time"
 
+	"github.com/buger/jsonparser"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 )
 
 // ⚠️⚠️⚠️
@@ -18,6 +18,8 @@ import (
 const (
 	VersionScreeningHitSuggestionV1 = "v1"
 )
+
+var ValidScreeningHitSuggestionVersions = []string{VersionScreeningHitSuggestionV1}
 
 type AiScreeningHitSuggestionDto interface {
 	aiScreeningHitSuggestionDto()
@@ -36,28 +38,36 @@ func (s *ScreeningHitSuggestions) UnmarshalJSON(data []byte) error {
 		*s = nil
 		return nil
 	}
-	var raws []json.RawMessage
-	if err := json.Unmarshal(data, &raws); err != nil {
-		return err
-	}
-	result := make(ScreeningHitSuggestions, 0, len(raws))
-	for _, raw := range raws {
-		var probe struct {
-			Version string `json:"version"`
+	var result ScreeningHitSuggestions
+	var parseErr error
+	_, err := jsonparser.ArrayEach(data, func(raw []byte, _ jsonparser.ValueType, _ int, err error) {
+		if err != nil || parseErr != nil {
+			parseErr = err
+			return
 		}
-		if err := json.Unmarshal(raw, &probe); err != nil {
-			return err
-		}
-		version := probe.Version
-		if version == "" {
-			// Tolerate pre-versioning data: the only format ever written is v1.
-			version = VersionScreeningHitSuggestionV1
-		}
-		dto, err := UnmarshalScreeningHitSuggestionDto(version, bytes.NewReader(raw))
+		version, err := jsonparser.GetString(raw, "version")
 		if err != nil {
-			return err
+			parseErr = err
+			return
+		}
+
+		if !slices.Contains(ValidScreeningHitSuggestionVersions, version) {
+			parseErr = errors.New("invalid version in screening hit suggestion")
+			return
+		}
+
+		dto, err := UnmarshalScreeningHitSuggestionDto(version, raw)
+		if err != nil {
+			parseErr = err
+			return
 		}
 		result = append(result, dto)
+	})
+	if err != nil {
+		return err
+	}
+	if parseErr != nil {
+		return parseErr
 	}
 	*s = result
 	return nil
@@ -95,11 +105,11 @@ func NewScreeningHitSuggestionBlob(dto AiScreeningHitSuggestionDto) (ScreeningHi
 	}, nil
 }
 
-func UnmarshalScreeningHitSuggestionDto(version string, payload io.Reader) (AiScreeningHitSuggestionDto, error) {
+func UnmarshalScreeningHitSuggestionDto(version string, payload []byte) (AiScreeningHitSuggestionDto, error) {
 	switch version {
 	case VersionScreeningHitSuggestionV1:
 		var dto ScreeningHitSuggestionV1
-		err := json.NewDecoder(payload).Decode(&dto)
+		err := json.Unmarshal(payload, &dto)
 		return dto, err
 	}
 	return nil, errors.New("unsupported version")
