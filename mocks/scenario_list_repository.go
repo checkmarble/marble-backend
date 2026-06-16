@@ -15,8 +15,8 @@ type ScenarioListRepository struct {
 }
 
 func (m *ScenarioListRepository) ListScenariosOfOrganization(ctx context.Context,
-	exec repositories.Executor, organizationId uuid.UUID,
+	exec repositories.Executor, organizationId uuid.UUID, screeningProvider models.ScreeningProvider,
 ) ([]models.Scenario, error) {
-	args := m.Called(ctx, exec, organizationId)
+	args := m.Called(ctx, exec, organizationId, screeningProvider)
 	return args.Get(0).([]models.Scenario), args.Error(1)
 }

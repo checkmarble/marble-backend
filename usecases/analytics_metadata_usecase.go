@@ -27,7 +27,7 @@ func (uc AnalyticsMetadataUsecase) GetAvailableFilters(ctx context.Context,
 	req dto.AnalyticsAvailableFiltersRequest,
 ) ([]models.AnalyticsFilter, error) {
 	scenario, err := uc.scenarioRepository.GetScenarioById(ctx,
-		uc.executorFactory.NewExecutor(), req.ScenarioId.String())
+		uc.executorFactory.NewExecutor(), req.ScenarioId.String(), "")
 	if err != nil {
 		return nil, err
 	}

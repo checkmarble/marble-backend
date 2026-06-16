@@ -423,7 +423,7 @@ func (uc AnalyticsQueryUsecase) CaseStatusByInbox(ctx context.Context,
 
 func (uc AnalyticsQueryUsecase) getExecutor(ctx context.Context, scenarioId uuid.UUID) (models.Scenario, repositories.AnalyticsExecutor, error) {
 	scenario, err := uc.scenarioRepository.GetScenarioById(ctx,
-		uc.executorFactory.NewExecutor(), scenarioId.String())
+		uc.executorFactory.NewExecutor(), scenarioId.String(), "")
 	if err != nil {
 		return models.Scenario{}, nil, err
 	}

@@ -9,8 +9,9 @@ import (
 )
 
 type ScenarioFetcherRepository interface {
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (models.Organization, error)
 	ListLiveIterationsAndNeighbors(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.ScenarioIteration, error)
-	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
+	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string, screeningProvider models.ScreeningProvider) (models.Scenario, error)
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string, useCache bool) (
 		models.ScenarioIteration, error,
 	)
@@ -38,7 +39,12 @@ func (fetcher ScenarioFetcher) FetchScenarioAndIteration(ctx context.Context,
 	}
 	result.Iteration.ScreeningConfigs = screeningConfig
 
-	result.Scenario, err = fetcher.Repository.GetScenarioById(ctx, exec, result.Iteration.ScenarioId)
+	org, err := fetcher.Repository.GetOrganizationById(ctx, exec, result.Iteration.OrganizationId)
+	if err != nil {
+		return models.ScenarioAndIteration{}, err
+	}
+
+	result.Scenario, err = fetcher.Repository.GetScenarioById(ctx, exec, result.Iteration.ScenarioId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 	if err != nil {
 		return models.ScenarioAndIteration{}, err
 	}
@@ -57,6 +63,6 @@ func (fetcher ScenarioFetcher) ListLiveIterationsAndNeighbors(ctx context.Contex
 	return iterations, err
 }
 
-func (fetcher ScenarioFetcher) FetchScenario(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error) {
-	return fetcher.Repository.GetScenarioById(ctx, exec, scenarioId)
+func (fetcher ScenarioFetcher) FetchScenario(ctx context.Context, exec repositories.Executor, scenarioId string, screeningProvider models.ScreeningProvider) (models.Scenario, error) {
+	return fetcher.Repository.GetScenarioById(ctx, exec, scenarioId, screeningProvider)
 }

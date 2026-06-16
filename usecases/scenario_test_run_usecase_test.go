@@ -93,6 +93,7 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 	}, nil)
 	suite.repository.On("GetTestRunByID", suite.ctx, suite.transaction,
 		mock.Anything).Return(output, nil)
+	suite.enforceSecurity.On("OrgId").Return(suite.organizationId)
 	suite.enforceSecurity.On("CreateTestRun", suite.organizationId).Return(nil)
 	suite.enforceSecurity.On("ReadOrganization", suite.organizationId).Return(nil)
 	suite.repository.On("CreateTestRun", suite.ctx, suite.transaction, mock.Anything,

@@ -14,15 +14,17 @@ type ScenarioRepository struct {
 	mock.Mock
 }
 
-func (s *ScenarioRepository) GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error) {
-	args := s.Called(exec, scenarioId)
+func (s *ScenarioRepository) GetScenarioById(ctx context.Context,
+	exec repositories.Executor, scenarioId string, screeningProvider models.ScreeningProvider,
+) (models.Scenario, error) {
+	args := s.Called(ctx, exec, scenarioId, screeningProvider)
 	return args.Get(0).(models.Scenario), args.Error(1)
 }
 
 func (s *ScenarioRepository) ListScenariosOfOrganization(ctx context.Context,
-	exec repositories.Executor, organizationId uuid.UUID,
+	exec repositories.Executor, organizationId uuid.UUID, screeningProvider models.ScreeningProvider,
 ) ([]models.Scenario, error) {
-	args := s.Called(exec, organizationId)
+	args := s.Called(ctx, exec, organizationId, screeningProvider)
 	return args.Get(0).([]models.Scenario), args.Error(1)
 }
 

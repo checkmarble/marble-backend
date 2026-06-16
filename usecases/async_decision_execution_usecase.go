@@ -17,7 +17,7 @@ import (
 )
 
 type scenarioReader interface {
-	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
+	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string, screeningProvider models.ScreeningProvider) (models.Scenario, error)
 }
 
 type asyncDecisionsSecurity interface {
@@ -30,6 +30,7 @@ type AsyncDecisionExecutionUsecase struct {
 	enforceSecurityDecisions         security.EnforceSecurityDecision
 	enforceSecurity                  asyncDecisionsSecurity
 	asyncDecisionExecutionRepository repositories.AsyncDecisionExecutionRepository
+	orgRepository                    repositories.OrganizationRepository
 	taskQueueRepository              repositories.TaskQueueRepository
 	dataModelRepository              repositories.DataModelRepository
 	scenarioReader                   scenarioReader
@@ -41,6 +42,7 @@ func NewAsyncDecisionExecutionUsecase(
 	enforceSecurityDecisions security.EnforceSecurityDecision,
 	enforceSecurity asyncDecisionsSecurity,
 	asyncDecisionExecutionRepository repositories.AsyncDecisionExecutionRepository,
+	orgRepository repositories.OrganizationRepository,
 	taskQueueRepository repositories.TaskQueueRepository,
 	dataModelRepository repositories.DataModelRepository,
 	scenarioReader scenarioReader,
@@ -51,6 +53,7 @@ func NewAsyncDecisionExecutionUsecase(
 		enforceSecurityDecisions:         enforceSecurityDecisions,
 		enforceSecurity:                  enforceSecurity,
 		asyncDecisionExecutionRepository: asyncDecisionExecutionRepository,
+		orgRepository:                    orgRepository,
 		taskQueueRepository:              taskQueueRepository,
 		dataModelRepository:              dataModelRepository,
 		scenarioReader:                   scenarioReader,
@@ -69,8 +72,14 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecution(
 	if err := usecase.enforceSecurityDecisions.CreateDecision(orgId); err != nil {
 		return nil, err
 	}
+
+	org, err := usecase.orgRepository.GetOrganizationById(ctx, exec, orgId)
+	if err != nil {
+		return nil, err
+	}
+
 	if scenarioId != nil {
-		scenario, err := usecase.scenarioReader.GetScenarioById(ctx, exec, *scenarioId)
+		scenario, err := usecase.scenarioReader.GetScenarioById(ctx, exec, *scenarioId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 		if err != nil {
 			return nil, errors.Wrap(err, "error looking up scenario for batch async decision execution")
 		}
@@ -79,7 +88,7 @@ func (usecase *AsyncDecisionExecutionUsecase) CreateAsyncDecisionExecution(
 		}
 	}
 
-	objectType, err := usecase.resolveObjectType(ctx, orgId, objectType, scenarioId)
+	objectType, err = usecase.resolveObjectType(ctx, org, objectType, scenarioId)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +199,7 @@ func (usecase *AsyncDecisionExecutionUsecase) GetAsyncDecisionExecution(
 // it looks up the scenario to derive the object type.
 func (usecase *AsyncDecisionExecutionUsecase) resolveObjectType(
 	ctx context.Context,
-	orgId uuid.UUID,
+	org models.Organization,
 	objectType string,
 	scenarioId *string,
 ) (string, error) {
@@ -205,11 +214,11 @@ func (usecase *AsyncDecisionExecutionUsecase) resolveObjectType(
 
 	// Derive object type from scenario
 	exec := usecase.executorFactory.NewExecutor()
-	scenario, err := usecase.scenarioReader.GetScenarioById(ctx, exec, *scenarioId)
+	scenario, err := usecase.scenarioReader.GetScenarioById(ctx, exec, *scenarioId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 	if err != nil {
 		return "", errors.Wrap(err, "error looking up scenario for trigger_object_type")
 	}
-	if scenario.OrganizationId != orgId {
+	if scenario.OrganizationId != org.Id {
 		return "", errors.Wrap(models.NotFoundError, "scenario not found")
 	}
 

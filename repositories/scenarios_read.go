@@ -8,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
@@ -15,8 +16,8 @@ import (
 )
 
 type ScenarioUsecaseRepository interface {
-	GetScenarioById(ctx context.Context, exec Executor, scenarioId string) (models.Scenario, error)
-	ListScenariosOfOrganization(ctx context.Context, exec Executor, organizationId uuid.UUID) ([]models.Scenario, error)
+	GetScenarioById(ctx context.Context, exec Executor, scenarioId string, screeningProvider models.ScreeningProvider) (models.Scenario, error)
+	ListScenariosOfOrganization(ctx context.Context, exec Executor, organizationId uuid.UUID, screeningProvider models.ScreeningProvider) ([]models.Scenario, error)
 	CreateScenario(
 		ctx context.Context,
 		exec Executor,
@@ -39,30 +40,79 @@ func selectScenarios() squirrel.SelectBuilder {
 		From(dbmodels.TABLE_SCENARIOS)
 }
 
-func (repo *MarbleDbRepository) GetScenarioById(ctx context.Context, exec Executor, scenarioId string) (models.Scenario, error) {
+func (repo *MarbleDbRepository) GetScenarioById(ctx context.Context, exec Executor, scenarioId string, screeningProvider models.ScreeningProvider) (models.Scenario, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.Scenario{}, err
 	}
 
-	return SqlToModel(
+	scenario, err := SqlToModel(
 		ctx,
 		exec,
 		selectScenarios().Where(squirrel.Eq{"id": scenarioId}),
 		dbmodels.AdaptScenario,
 	)
+	if err != nil {
+		return scenario, err
+	}
+
+	isValid, err := repo.isValidScenarioForProvider(ctx, exec, scenario, screeningProvider)
+	if err != nil {
+		return models.Scenario{}, err
+	}
+	if !isValid {
+		return models.Scenario{}, errors.Wrap(models.NotFoundError, "scenario was found but has rules for an inactive provider")
+	}
+
+	return scenario, nil
 }
 
-func (repo *MarbleDbRepository) ListScenariosOfOrganization(ctx context.Context, exec Executor, organizationId uuid.UUID) ([]models.Scenario, error) {
+func (repo *MarbleDbRepository) ListScenariosOfOrganization(ctx context.Context, exec Executor, organizationId uuid.UUID, screeningProvider models.ScreeningProvider) ([]models.Scenario, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
-	return SqlToListOfModels(
+	scenarios, err := SqlToListOfModels(
 		ctx,
 		exec,
 		selectScenarios().Where(squirrel.Eq{"org_id": organizationId}).OrderBy("archived ASC", "created_at DESC"),
 		dbmodels.AdaptScenario,
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	activeScenarios := make([]models.Scenario, 0, len(scenarios))
+
+	for _, scenario := range scenarios {
+		isValid, err := repo.isValidScenarioForProvider(ctx, exec, scenario, screeningProvider)
+		if err != nil {
+			return nil, err
+		}
+		if isValid {
+			activeScenarios = append(activeScenarios, scenario)
+		}
+	}
+
+	return activeScenarios, err
+}
+
+func (repo *MarbleDbRepository) isValidScenarioForProvider(ctx context.Context, exec Executor, scenario models.Scenario, provider models.ScreeningProvider) (bool, error) {
+	if string(provider) == "" {
+		return true, nil
+	}
+
+	rules, err := repo.ListScenarioLatestRuleVersions(ctx, exec, scenario.Id)
+	if err != nil {
+		return false, err
+	}
+
+	for _, rule := range rules {
+		if rule.Type == "screening" && rule.ScreeningProvider != provider {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
 
 func (repo *MarbleDbRepository) ListAllScenarios(ctx context.Context, exec Executor,
@@ -195,13 +245,14 @@ func (repo *MarbleDbRepository) ListScenarioLatestRuleVersions(ctx context.Conte
 	scenarioId string,
 ) ([]models.ScenarioRuleLatestVersion, error) {
 	sql := `
-		select type, stable_rule_id, name, version
+		select type, stable_rule_id, name, provider, version
 		from (
 			select
 				rank() over (partition by sir.stable_rule_id order by si.version desc) as rank,
 				'rule' as type,
 				sir.stable_rule_id,
 				sir.name,
+				'' as provider,
 				si.version
 			from scenario_iteration_rules sir
 			inner join scenario_iterations si on si.id = sir.scenario_iteration_id
@@ -213,6 +264,7 @@ func (repo *MarbleDbRepository) ListScenarioLatestRuleVersions(ctx context.Conte
 				'screening' as type,
 				scc.stable_id,
 				scc.name,
+				scc.provider as provider,
 				si.version
 			from screening_configs scc
 			inner join scenario_iterations si on si.id = scc.scenario_iteration_id
@@ -237,10 +289,11 @@ func (repo *MarbleDbRepository) ListScenarioLatestRuleVersions(ctx context.Conte
 		}
 
 		rules = append(rules, models.ScenarioRuleLatestVersion{
-			Type:          rule.Type,
-			StableId:      rule.StableRuleId,
-			Name:          rule.Name,
-			LatestVersion: rule.Version,
+			Type:              rule.Type,
+			StableId:          rule.StableRuleId,
+			Name:              rule.Name,
+			LatestVersion:     rule.Version,
+			ScreeningProvider: rule.ScreeningProvider,
 		})
 	}
 

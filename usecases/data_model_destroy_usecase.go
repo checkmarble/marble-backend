@@ -451,7 +451,7 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 		}
 	}
 
-	scenarios, err := uc.scenarioRepository.ListScenariosOfOrganization(ctx, exec, orgId)
+	scenarios, err := uc.scenarioRepository.ListScenariosOfOrganization(ctx, exec, orgId, "")
 	if err != nil {
 		return false, models.DataModelDeleteFieldReport{}, err
 	}
@@ -716,7 +716,7 @@ func (uc DataModelDestroyUsecase) canDeleteLink(
 		}
 	}
 
-	scenarios, err := uc.scenarioRepository.ListScenariosOfOrganization(ctx, exec, orgId)
+	scenarios, err := uc.scenarioRepository.ListScenariosOfOrganization(ctx, exec, orgId, "")
 	if err != nil {
 		return false, models.DataModelDeleteFieldReport{}, err
 	}

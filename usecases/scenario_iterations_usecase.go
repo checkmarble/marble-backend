@@ -194,7 +194,13 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(
 	}
 
 	exec := usecase.executorFactory.NewExecutor()
-	scenario, err := usecase.scenarioFetcher.FetchScenario(ctx, exec, scenarioIteration.ScenarioId)
+
+	org, err := usecase.scenarioFetcher.Repository.GetOrganizationById(ctx, exec, organizationId)
+	if err != nil {
+		return models.ScenarioIteration{}, err
+	}
+
+	scenario, err := usecase.scenarioFetcher.FetchScenario(ctx, exec, scenarioIteration.ScenarioId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 	if err != nil {
 		return models.ScenarioIteration{}, err
 	}
