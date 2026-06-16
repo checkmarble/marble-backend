@@ -20,6 +20,7 @@ type ScenarioTestrunTestSuite struct {
 
 	executorFactory            *mocks.ExecutorFactory
 	scenarioRepository         *mocks.ScenarioRepository
+	orgRepository              *mocks.OrganizationRepository
 	enforceSecurity            *mocks.EnforceSecurity
 	repository                 *mocks.ScenarioTestrunRepository
 	clientDbIndexEditor        *mocks.ClientDbIndexEditor
@@ -38,6 +39,7 @@ func (suite *ScenarioTestrunTestSuite) SetupTest() {
 	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
 	suite.executorFactory = new(mocks.ExecutorFactory)
 	suite.scenarioRepository = new(mocks.ScenarioRepository)
+	suite.orgRepository = new(mocks.OrganizationRepository)
 	suite.repository = new(mocks.ScenarioTestrunRepository)
 	suite.featureAccessReader = new(mocks.FeatureAccessReader)
 	suite.scenarioIteratorRepository = new(mocks.ScenarioIterationReadWriterRepository)
@@ -56,6 +58,7 @@ func (suite *ScenarioTestrunTestSuite) makeUsecase() *ScenarioTestRunUsecase {
 		enforceSecurity:            suite.enforceSecurity,
 		repository:                 suite.repository,
 		scenarioRepository:         suite.scenarioRepository,
+		orgRepository:              suite.orgRepository,
 		clientDbIndexEditor:        suite.clientDbIndexEditor,
 		featureAccessReader:        suite.featureAccessReader,
 		screeningConfigRepository:  suite.screeningConfig,
@@ -86,8 +89,10 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 		suite.organizationId,
 		mock.Anything).Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.orgRepository.On("GetOrganizationById", suite.ctx, suite.transaction, suite.organizationId).
+		Return(models.Organization{Id: suite.organizationId}, nil)
 	suite.scenarioRepository.On("GetScenarioById",
-		suite.transaction, input.ScenarioId).Return(models.Scenario{
+		suite.ctx, suite.transaction, input.ScenarioId, mock.Anything).Return(models.Scenario{
 		OrganizationId: suite.organizationId,
 		LiveVersionID:  &liveVersionID,
 	}, nil)
