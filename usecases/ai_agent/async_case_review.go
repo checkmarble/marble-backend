@@ -162,6 +162,8 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 		// Check if this is a rate limit error from the LLM provider
 		if errors.Is(err, models.LLMRateLimitedError) {
 			logger.WarnContext(ctx, "LLM provider rate limited, rescheduling job", "error", err.Error())
+			// Ignore the error, if the save fails, we will retry the entire job
+			_ = w.saveCaseReviewContext(ctx, aiCaseReview, &caseReviewContext)
 			return river.JobSnooze(30 * time.Second)
 		}
 		return w.handleCreateCaseReviewSyncError(
@@ -221,6 +223,23 @@ func (w *CaseReviewWorker) Work(ctx context.Context, job *river.Job[models.CaseR
 	return nil
 }
 
+func (w *CaseReviewWorker) saveCaseReviewContext(ctx context.Context, aiCaseReview models.AiCaseReview, caseReviewContext *CaseReviewContext) error {
+	// Store the case review context into a blob
+	stream, errStream := w.blobRepository.OpenStream(ctx, w.bucketUrl,
+		aiCaseReview.FileTempReference, aiCaseReview.FileTempReference)
+	if errStream != nil {
+		return errors.Wrap(errStream, "Error while opening temporary file stream")
+	}
+	defer stream.Close()
+
+	errEncode := json.NewEncoder(stream).Encode(caseReviewContext)
+	if errEncode != nil {
+		return errors.Wrap(errEncode, "Error while encoding case review context to temporary file")
+	}
+
+	return nil
+}
+
 // handleCreateCaseReviewSyncError is a helper function to handle errors during the case review process
 // It stores the case review context into a blob and updates the case review file status to failed
 // It returns the original error
@@ -233,20 +252,11 @@ func (w *CaseReviewWorker) handleCreateCaseReviewSyncError(
 	// Use a detached context so cleanup operations succeed even if the original context is cancelled/expired.
 	cleanupCtx := context.WithoutCancel(ctx)
 
-	// Store the case review context into a blob
-	stream, errStream := w.blobRepository.OpenStream(cleanupCtx, w.bucketUrl,
-		aiCaseReview.FileTempReference, aiCaseReview.FileTempReference)
-	if errStream != nil {
-		return errors.Join(err, errors.Wrap(errStream,
-			"Error while opening temporary file stream"))
-	}
-	defer stream.Close()
-
-	errEncode := json.NewEncoder(stream).Encode(caseReviewContext)
-	if errEncode != nil {
+	errSave := w.saveCaseReviewContext(cleanupCtx, aiCaseReview, caseReviewContext)
+	if errSave != nil {
 		return errors.Join(
 			err,
-			errors.Wrap(errEncode, "Error while encoding case review context to temporary file"),
+			errors.Wrap(errSave, "Error while encoding case review context to temporary file"),
 		)
 	}
 
@@ -286,4 +296,3 @@ func (w *CaseReviewWorker) getPreviousCaseReviewContext(
 
 	return caseReviewContext, nil
 }
-

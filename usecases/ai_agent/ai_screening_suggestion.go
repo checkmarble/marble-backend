@@ -1,7 +1,6 @@
 package ai_agent
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -53,6 +52,10 @@ func (uc *AiAgentUsecase) AnalyseScreeningHits(ctx context.Context, screeningId 
 
 	if err := uc.enforceCanGenerateScreeningSuggestions(ctx, exec, screening.Screening); err != nil {
 		return err
+	}
+
+	if err := uc.offloadedReader.HydrateScreeningMatches(ctx, []models.ScreeningWithMatches{screening}); err != nil {
+		return errors.Wrap(err, "could not hydrate offloaded screening match payloads")
 	}
 
 	// Check feature access
@@ -393,8 +396,7 @@ func (uc *AiAgentUsecase) loadSuggestionFromBlob(
 		return nil, errors.Wrap(err, "could not decode suggestion blob")
 	}
 
-	return agent_dto.UnmarshalScreeningHitSuggestionDto(
-		envelope.Version, bytes.NewReader(envelope.Content))
+	return agent_dto.UnmarshalScreeningHitSuggestionDto(envelope.Version, envelope.Content)
 }
 
 func (uc *AiAgentUsecase) writeSuggestionToBlob(
