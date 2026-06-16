@@ -35,10 +35,15 @@ func (uc OffloadedReadWriter) IsOffloadingEnabled() bool {
 	return uc.OffloadingBucketUrl != ""
 }
 
+func (uc OffloadedReadWriter) IsScreeningOffloadingEnabled() bool {
+	return uc.IsOffloadingEnabled() && uc.ScreeningOffloadingEnabled
+}
+
 type OffloadedReadWriter struct {
-	Repository          offloadableRepository
-	BlobRepository      BlobRepository
-	OffloadingBucketUrl string
+	Repository                 offloadableRepository
+	BlobRepository             BlobRepository
+	OffloadingBucketUrl        string
+	ScreeningOffloadingEnabled bool
 }
 
 func (uc OffloadedReadWriter) OffloadRuleExecutions(
@@ -282,7 +287,7 @@ func (uc OffloadedReadWriter) readPayload(ctx context.Context, key string) ([]by
 func (uc OffloadedReadWriter) OffloadScreeningMatchPayload(
 	ctx context.Context, orgId uuid.UUID, screeningId, matchId string, payload []byte,
 ) error {
-	if !uc.IsOffloadingEnabled() {
+	if !uc.IsScreeningOffloadingEnabled() {
 		return nil
 	}
 	return uc.writePayload(ctx, uc.Repository.GetOffloadedScreeningMatchKey(orgId, screeningId, matchId), payload)
@@ -309,7 +314,7 @@ func (uc OffloadedReadWriter) ReadOffloadedScreeningMatchPayload(
 func (uc OffloadedReadWriter) OffloadScreeningMatches(
 	ctx context.Context, screening models.ScreeningWithMatches,
 ) ([]models.ScreeningMatch, error) {
-	if !uc.IsOffloadingEnabled() {
+	if !uc.IsScreeningOffloadingEnabled() {
 		return screening.Matches, nil
 	}
 
@@ -378,7 +383,7 @@ func (uc OffloadedReadWriter) HydrateScreeningMatches(
 func (uc OffloadedReadWriter) OffloadContinuousScreeningMatchPayload(
 	ctx context.Context, orgId, continuousScreeningId, matchId uuid.UUID, payload []byte,
 ) error {
-	if !uc.IsOffloadingEnabled() {
+	if !uc.IsScreeningOffloadingEnabled() {
 		return nil
 	}
 	return uc.writePayload(ctx,
@@ -402,7 +407,7 @@ func (uc OffloadedReadWriter) ReadOffloadedContinuousScreeningMatchPayload(
 func (uc OffloadedReadWriter) OffloadContinuousScreeningEntityPayload(
 	ctx context.Context, orgId, continuousScreeningId uuid.UUID, payload []byte,
 ) error {
-	if !uc.IsOffloadingEnabled() {
+	if !uc.IsScreeningOffloadingEnabled() {
 		return nil
 	}
 	return uc.writePayload(ctx,
@@ -414,7 +419,7 @@ func (uc OffloadedReadWriter) OffloadContinuousScreeningEntityPayload(
 func (uc OffloadedReadWriter) ReadOffloadedContinuousScreeningEntityPayload(
 	ctx context.Context, orgId, continuousScreeningId uuid.UUID,
 ) ([]byte, error) {
-	if !uc.IsOffloadingEnabled() {
+	if !uc.IsScreeningOffloadingEnabled() {
 		return nil, nil
 	}
 	return uc.readPayload(ctx,
@@ -428,7 +433,7 @@ func (uc OffloadedReadWriter) ReadOffloadedContinuousScreeningEntityPayload(
 func (uc OffloadedReadWriter) OffloadContinuousScreeningEntity(
 	ctx context.Context, orgId, continuousScreeningId uuid.UUID, payload []byte,
 ) ([]byte, error) {
-	if !uc.IsOffloadingEnabled() || len(payload) == 0 {
+	if !uc.IsScreeningOffloadingEnabled() || len(payload) == 0 {
 		return payload, nil
 	}
 
@@ -446,7 +451,7 @@ func (uc OffloadedReadWriter) OffloadContinuousScreeningEntity(
 func (uc OffloadedReadWriter) OffloadContinuousScreeningMatches(
 	ctx context.Context, orgId, continuousScreeningId uuid.UUID, matches []models.ScreeningMatch,
 ) ([]models.ScreeningMatch, error) {
-	if !uc.IsOffloadingEnabled() {
+	if !uc.IsScreeningOffloadingEnabled() {
 		return matches, nil
 	}
 

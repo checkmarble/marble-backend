@@ -403,6 +403,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithContinuousScreeningBucketUrl(serverConfig.continuousScreeningBucketUrl),
 		usecases.WithMarbleApiInternalUrl(apiConfig.MarbleApiInternalUrl),
 		usecases.WithIpEnrichmentDatabase(ipEnrichmentDatabase),
+		usecases.WithScreeningOffloadingEnabled(utils.GetEnv("SCREENING_OFFLOADING_ENABLED", true)),
 	)
 
 	////////////////////////////////////////////////////////////
