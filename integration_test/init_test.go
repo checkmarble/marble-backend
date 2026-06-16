@@ -175,8 +175,8 @@ func TestMain(m *testing.M) {
 	testUsecases = usecases.NewUsecases(repos,
 		usecases.WithAppName("marble-test"),
 		usecases.WithLicense(models.NewFullLicense()),
-		usecases.WithIngestionBucketUrl("file://./tempFiles?create_dir=true"),
-		usecases.WithCaseManagerBucketUrl("file://./tempFiles?create_dir=true"),
+		usecases.WithIngestionBucketUrl("file://./tempFiles?create_dir=true&no_tmp_dir=true"),
+		usecases.WithCaseManagerBucketUrl("file://./tempFiles?create_dir=true&no_tmp_dir=true"),
 		usecases.WithFirebaseAdmin(auth.TokenProviderFirebase, firebaseAdminClient),
 	)
 
