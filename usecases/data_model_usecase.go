@@ -1533,21 +1533,21 @@ func (usecase *usecase) CreatePivotWithExec(ctx context.Context, exec repositori
 	if err != nil {
 		return models.Pivot{}, err
 	}
-	// Only restore if the table has no live pivot: otherwise let CreatePivot return its
-	// usual conflict error (one live pivot per table).
-	hasLivePivot := slices.ContainsFunc(existingPivots, func(p models.PivotMetadata) bool {
-		return p.DeletedAt == nil
+	// A table may have several pivots, so match by definition rather than "any live pivot":
+	// restore a soft-deleted pivot with this exact definition, unless a live pivot already
+	// has it — in which case CreatePivot returns the usual conflict via the signature index.
+	liveMatchExists := slices.ContainsFunc(existingPivots, func(p models.PivotMetadata) bool {
+		return p.DeletedAt == nil && pivotDefinitionMatchesInput(p, input)
 	})
-	if !hasLivePivot {
+	if !liveMatchExists {
 		for _, existing := range existingPivots {
-			if !pivotDefinitionMatchesInput(existing, input) {
-				continue
+			if existing.DeletedAt != nil && pivotDefinitionMatchesInput(existing, input) {
+				if err := usecase.dataModelRepository.RestorePivot(ctx, exec, existing.Id.String()); err != nil {
+					return models.Pivot{}, err
+				}
+				pivotMeta, err := usecase.dataModelRepository.GetPivot(ctx, exec, existing.Id.String())
+				return pivotMeta.Enrich(dm), err
 			}
-			if err := usecase.dataModelRepository.RestorePivot(ctx, exec, existing.Id.String()); err != nil {
-				return models.Pivot{}, err
-			}
-			pivotMeta, err := usecase.dataModelRepository.GetPivot(ctx, exec, existing.Id.String())
-			return pivotMeta.Enrich(dm), err
 		}
 	}
 

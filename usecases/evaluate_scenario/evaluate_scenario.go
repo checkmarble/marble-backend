@@ -45,8 +45,8 @@ type ScenarioEvaluationParameters struct {
 	TargetIterationId *string
 	ClientObject      models.ClientObject
 	DataModel         models.DataModel
-	// Pivots is the set of candidate pivots for the trigger table.
-	// The applicable one is resolved per row at evaluation time ("first non-null path wins").
+	// Pivots is the set of candidate pivots for the trigger table (polymorphic belongs_to:
+	// at most one applies per row). The applicable one is resolved per row at evaluation time.
 	Pivots           []models.Pivot
 	CachedScreenings map[string]models.ScreeningWithMatches
 	ConcurrentRules  int
