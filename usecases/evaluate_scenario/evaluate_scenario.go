@@ -44,9 +44,11 @@ type ScenarioEvaluationParameters struct {
 	TargetIterationId *string
 	ClientObject      models.ClientObject
 	DataModel         models.DataModel
-	Pivot             *models.Pivot
-	CachedScreenings  map[string]models.ScreeningWithMatches
-	ConcurrentRules   int
+	// Pivots is the set of candidate pivots for the trigger table.
+	// The applicable one is resolved per row at evaluation time ("first non-null path wins").
+	Pivots           []models.Pivot
+	CachedScreenings map[string]models.ScreeningWithMatches
+	ConcurrentRules  int
 }
 
 type EvalScreeningUsecase interface {
@@ -191,14 +193,22 @@ func (e ScenarioEvaluator) processScenarioIteration(
 		triggerExpressionDuration = time.Since(beforeTriggerExpression)
 	}
 
+	// Resolve which pivot applies to this row: try each candidate in order and keep
+	// the first one whose path resolves to a non-null value ("first non-null path
+	// wins").
 	var pivotValue *string
-	var errPv error
-	if params.Pivot != nil {
-		pivotValue, errPv = getPivotValue(ctx, *params.Pivot, dataAccessor)
+	var selectedPivot *models.Pivot
+	for i := range params.Pivots {
+		value, errPv := getPivotValue(ctx, params.Pivots[i], dataAccessor)
 		if errPv != nil {
 			return false, models.ScenarioExecution{}, errors.Wrap(
 				errPv,
 				"error getting pivot value in EvalScenario")
+		}
+		if value != nil {
+			pivotValue = value
+			selectedPivot = &params.Pivots[i]
+			break
 		}
 	}
 
@@ -336,8 +346,8 @@ func (e ScenarioEvaluator) processScenarioIteration(
 		Outcome:             outcome,
 		OrganizationId:      params.Scenario.OrganizationId,
 	}
-	if params.Pivot != nil {
-		se.PivotId = &params.Pivot.Id
+	if selectedPivot != nil {
+		se.PivotId = &selectedPivot.Id
 		se.PivotValue = pivotValue
 	}
 

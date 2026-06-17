@@ -11,7 +11,6 @@ type CreatePhantomDecisionInput struct {
 	OrganizationId     uuid.UUID
 	Scenario           Scenario
 	ClientObject       ClientObject
-	Pivot              *Pivot
 	TriggerObjectTable string
 }
 

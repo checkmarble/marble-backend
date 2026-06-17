@@ -391,7 +391,9 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 		case nil:
 			// The case link.FieldTableId == table.ID will not create a conflict because when deleting a table, we will allow
 			// cascade deletion of all links.
-			// TODO: TBD what if the link is part of a pivot with multi links?
+			// A path pivot (possibly one of several on its base table) references its links
+			// via path_link_ids; deleting a table that any such link points at is flagged
+			// here as a link conflict
 			if link.ParentTableId == table.ID {
 				canDelete = false
 				report.Conflicts.Links.Insert(link.Id)
@@ -433,10 +435,11 @@ func (uc DataModelDestroyUsecase) canDeleteRef(
 		}
 	}
 
-	// This only covers table referencing themselves, pivots to other tables are covered by the check on links.
+	// This only covers field-based pivots referencing the field directly. Path pivots
+	// (including multi-link ones, and tables that have several pivots) reference their
+	// links via path_link_ids and are already covered by the link conflict checks above.
 	// When deleting a table (field == nil), we don't need to check if a pivot was referencing itself because
 	// the deletion will not break anything since the table will be deleted
-	// TODO: TBD What if the pivot has multi links?
 	if field != nil {
 		pivots, err := uc.dataModelRepository.ListPivots(ctx, exec, orgId, nil, false, false)
 		if err != nil {

@@ -358,13 +358,13 @@ func (usecase *DecisionUsecase) CreateDecision(
 	if err != nil {
 		return false, models.DecisionWithRuleExecutions{}, err
 	}
-	pivot := models.FindPivot(pivotsMeta, input.TriggerObjectTable, dataModel)
+	pivots := models.FindPivotsForTable(pivotsMeta, input.TriggerObjectTable, dataModel)
 
 	evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
 		Scenario:        scenario,
 		ClientObject:    payload,
 		DataModel:       dataModel,
-		Pivot:           pivot,
+		Pivots:          pivots,
 		ConcurrentRules: params.ConcurrentRules,
 	}
 
@@ -546,7 +546,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	if err != nil {
 		return nil, 0, nil, err
 	}
-	pivot := models.FindPivot(pivotsMeta, input.TriggerObjectTable, dataModel)
+	pivots := models.FindPivotsForTable(pivotsMeta, input.TriggerObjectTable, dataModel)
 
 	org, err := usecase.orgRepository.GetOrganizationById(ctx, exec, input.OrganizationId)
 	if err != nil {
@@ -588,7 +588,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			Scenario:        scenario,
 			ClientObject:    payload,
 			DataModel:       dataModel,
-			Pivot:           pivot,
+			Pivots:          pivots,
 			ConcurrentRules: params.ConcurrentRules,
 		}
 
@@ -779,7 +779,6 @@ func (usecase *DecisionUsecase) executeTestRun(
 		OrganizationId:     organizationId,
 		Scenario:           scenario,
 		ClientObject:       evaluationParameters.ClientObject,
-		Pivot:              evaluationParameters.Pivot,
 		TriggerObjectTable: triggerObjectTable,
 	}
 	if scenarioExecution != nil {

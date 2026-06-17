@@ -457,19 +457,30 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 	}
 
 	// Step F: Reconcile pivots with the import spec.
-	// Each table has at most one pivot (unique index on organization_id + base_table_id).
-	// CreateDataModelTable may have auto-created a default pivot (object_id field-based or
-	// belongs_to path-based). If the import spec defines a different pivot for the same
-	// table, replace the auto-created one; if it matches, keep it.
+	// A table may have several pivots (polymorphic belongs_to: at most one applies per row).
+	// CreateDataModelTable / link creation may have auto-created pivots (a default object_id
+	// field pivot, or a belongs_to path pivot per link). For every table the spec mentions,
+	// the auto-created set is reconciled to exactly the spec set: matching pivots are kept
+	// (recording the ID mapping), spec pivots not present are created, and auto-created
+	// pivots absent from the spec are deleted (e.g. the default object_id pivot when the
+	// spec defines belongs_to pivots instead). Tables the spec does not mention keep their
+	// auto-created default. Hard delete is safe: import only runs on a new/empty org.
 	existingPivots, err := uc.dataModelRepository.ListPivots(ctx, tx, orgId, nil, false, false)
 	if err != nil {
 		return errors.Wrap(err, "failed to list existing pivots")
 	}
-	existingPivotByBaseTable := make(map[string]models.PivotMetadata, len(existingPivots))
+	existingPivotsByTable := make(map[string][]models.PivotMetadata, len(existingPivots))
 	for _, p := range existingPivots {
-		existingPivotByBaseTable[p.BaseTableId] = p
+		existingPivotsByTable[p.BaseTableId] = append(existingPivotsByTable[p.BaseTableId], p)
 	}
 
+	// Resolve the spec pivots into create inputs grouped by (resolved) base table id.
+	type resolvedPivot struct {
+		input  models.CreatePivotInput
+		sig    string
+		origId string
+	}
+	specPivotsByTable := make(map[string][]resolvedPivot, len(dataModel.Pivots))
 	for _, pivot := range dataModel.Pivots {
 		var fieldId *string
 		if pivot.FieldId != nil {
@@ -479,35 +490,49 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 			return ids[id]
 		})
 		baseTableId := ids[pivot.BaseTableId]
+		specPivotsByTable[baseTableId] = append(specPivotsByTable[baseTableId], resolvedPivot{
+			input: models.CreatePivotInput{
+				OrganizationId: orgId,
+				BaseTableId:    baseTableId,
+				FieldId:        fieldId,
+				PathLinkIds:    pathLinkIds,
+			},
+			sig:    pivotSignature(baseTableId, fieldId, pathLinkIds),
+			origId: pivot.Id.String(),
+		})
+	}
 
-		newSig := pivotSignature(baseTableId, fieldId, pathLinkIds)
-		if existing, ok := existingPivotByBaseTable[baseTableId]; ok {
-			if pivotSignature(existing.BaseTableId, existing.FieldId, existing.PathLinkIds) == newSig {
-				// Auto-created pivot already matches the spec; keep it but record
-				// the ID mapping so downstream references resolve correctly.
-				ids[pivot.Id.String()] = existing.Id.String()
-				continue
-			}
-			// Auto-created pivot differs from the spec; delete it before creating the
-			// imported one to avoid the unique-constraint conflict on (org, base_table).
-			// Hard delete is safe here: import only runs on a new or empty organization,
-			// so no object can reference the pivot.
-			if err := uc.dataModelRepository.DeleteDataModelPivot(ctx, tx, existing.Id.String()); err != nil {
-				return errors.Wrapf(err, "failed to delete auto-created pivot for table %s", baseTableId)
+	for baseTableId, specPivots := range specPivotsByTable {
+		specSigs := make(map[string]struct{}, len(specPivots))
+		for _, sp := range specPivots {
+			specSigs[sp.sig] = struct{}{}
+		}
+
+		existingBySig := make(map[string]models.PivotMetadata, len(existingPivotsByTable[baseTableId]))
+		for _, ex := range existingPivotsByTable[baseTableId] {
+			sig := pivotSignature(ex.BaseTableId, ex.FieldId, ex.PathLinkIds)
+			existingBySig[sig] = ex
+			// Delete auto-created pivots that the spec does not define for this table.
+			if _, ok := specSigs[sig]; !ok {
+				if err := uc.dataModelRepository.DeleteDataModelPivot(ctx, tx, ex.Id.String()); err != nil {
+					return errors.Wrapf(err, "failed to delete auto-created pivot for table %s", baseTableId)
+				}
 			}
 		}
 
-		pivotId := pure_utils.NewId()
-		ids[pivot.Id.String()] = pivotId.String()
+		for _, sp := range specPivots {
+			if existing, ok := existingBySig[sp.sig]; ok {
+				// Auto-created pivot already matches the spec; keep it but record the
+				// ID mapping so downstream references resolve correctly.
+				ids[sp.origId] = existing.Id.String()
+				continue
+			}
 
-		err := uc.dataModelRepository.CreatePivot(ctx, tx, pivotId.String(), models.CreatePivotInput{
-			OrganizationId: orgId,
-			BaseTableId:    baseTableId,
-			FieldId:        fieldId,
-			PathLinkIds:    pathLinkIds,
-		})
-		if err != nil {
-			return errors.Wrapf(err, "failed to create pivot for table %s", baseTableId)
+			pivotId := pure_utils.NewId()
+			ids[sp.origId] = pivotId.String()
+			if err := uc.dataModelRepository.CreatePivot(ctx, tx, pivotId.String(), sp.input); err != nil {
+				return errors.Wrapf(err, "failed to create pivot for table %s", baseTableId)
+			}
 		}
 	}
 

@@ -250,7 +250,9 @@ func retrieveParentFieldIdForLink(parentTableId string, TablesById map[string]mo
 	return parentFieldId.ID, nil
 }
 
-// Table can have only one pivot because of the unique index on `organization_id + base_table_id`
+// ensureTableHasPivot creates the default field pivot (on object_id) only when the table
+// has no pivot at all. Once any belongs_to pivot exists, the default is mutually exclusive
+// and is not (re)created.
 func (usecase *usecase) ensureTableHasPivot(
 	ctx context.Context,
 	exec repositories.Executor,
@@ -808,15 +810,8 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			}
 
 			if linkUpdate.LinkType == models.LinkTypeBelongsTo {
-				// Changing to "belongs_to": validate no other belongs_to link on child table
-				for _, l := range links {
-					if l.Id != linkUpdate.ID && l.ChildTableId == tableID &&
-						l.LinkType == models.LinkTypeBelongsTo {
-						return errors.Wrap(models.BadParameterError,
-							fmt.Sprintf("child table %s already has a belongs_to link",
-								existingLink.ChildTableName))
-					}
-				}
+				// A child table may have several belongs_to links (polymorphic belongs_to:
+				// at most one applies per row), each with its own path-based pivot.
 
 				// Soft-delete the default pivot (field_id-based) on the child table, not
 				// path-based pivots that rely on another belongs_to link
@@ -1419,15 +1414,9 @@ func (usecase *usecase) createDataModelLinkWithExec(ctx context.Context, exec re
 			"child field cannot be object_id")
 	}
 
-	// Can only have one BelongsTo link on the child Table
+	// A child table may have several BelongsTo links (polymorphic belongs_to: at most one
+	// applies per row), each with its own path-based pivot.
 	if link.LinkType == models.LinkTypeBelongsTo {
-		for _, l := range allTables[link.ChildTableID].LinksToSingle {
-			if l.LinkType == models.LinkTypeBelongsTo {
-				return "", nil, errors.Wrap(models.BadParameterError,
-					fmt.Sprintf("child table %s already has a belongs_to link", allTables[link.ChildTableID].Name))
-			}
-		}
-
 		// Soft-delete the default pivot (field_id-based) to replace it with a path-based
 		// one (decisions may reference it). Do not delete path-based pivots that rely on
 		// another belongs_to link.
