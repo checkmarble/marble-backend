@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"runtime/debug"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -193,11 +194,15 @@ func (e ScenarioEvaluator) processScenarioIteration(
 		triggerExpressionDuration = time.Since(beforeTriggerExpression)
 	}
 
-	// Resolve which pivot applies to this row: try each candidate in order and keep
-	// the first one whose path resolves to a non-null value ("first non-null path
-	// wins").
-	var pivotValue *string
-	var selectedPivot *models.Pivot
+	// Resolve which pivot applies to this row. Under polymorphic belongs_to at most one
+	// candidate pivot should resolve to a non-null value for a given row. We evaluate all
+	// candidates so we can detect the (unexpected) case where several are populated, and
+	// in that case pick one deterministically by pivot field name (alphanumeric order).
+	type eligiblePivot struct {
+		pivot *models.Pivot
+		value string
+	}
+	var eligible []eligiblePivot
 	for i := range params.Pivots {
 		value, errPv := getPivotValue(ctx, params.Pivots[i], dataAccessor)
 		if errPv != nil {
@@ -206,10 +211,32 @@ func (e ScenarioEvaluator) processScenarioIteration(
 				"error getting pivot value in EvalScenario")
 		}
 		if value != nil {
-			pivotValue = value
-			selectedPivot = &params.Pivots[i]
-			break
+			eligible = append(eligible, eligiblePivot{pivot: &params.Pivots[i], value: *value})
 		}
+	}
+
+	var pivotValue *string
+	var selectedPivot *models.Pivot
+	if len(eligible) > 0 {
+		// Deterministic selection: alphanumeric order on the pivot field name.
+		slices.SortFunc(eligible, func(a, b eligiblePivot) int {
+			return strings.Compare(a.pivot.Field, b.pivot.Field)
+		})
+
+		if len(eligible) > 1 {
+			utils.LoggerFromContext(ctx).InfoContext(ctx,
+				"multiple eligible pivot values present in payload; selecting deterministically by pivot field name",
+				"scenario_id", params.Scenario.Id,
+				"trigger_object_type", params.Scenario.TriggerObjectType,
+				"eligible_pivot_fields", pure_utils.Map(eligible, func(e eligiblePivot) string { return e.pivot.Field }),
+				"selected_pivot_field", eligible[0].pivot.Field,
+				"selected_pivot_id", eligible[0].pivot.Id,
+				"object_id", params.ClientObject.Data["object_id"],
+			)
+		}
+
+		selectedPivot = eligible[0].pivot
+		pivotValue = &eligible[0].value
 	}
 
 	snoozes := make([]models.RuleSnooze, 0)

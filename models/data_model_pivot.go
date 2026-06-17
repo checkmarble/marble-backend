@@ -124,7 +124,8 @@ func FieldFromPath(dm DataModel, pathLinkIds []string) Field {
 // table. A table may have several pivots (polymorphic belongs_to: at most one
 // applies per row); the per-row resolution of which one applies happens at
 // evaluation time. The result is sorted deterministically (by creation time then
-// id) so that "first non-null path wins" resolution is stable.
+// id) so the candidate set is stable; evaluation then selects among the candidates
+// that resolve to a non-null value.
 func FindPivotsForTable(pivotsMeta []PivotMetadata, table string, dm DataModel) []Pivot {
 	pivots := make([]Pivot, 0, len(pivotsMeta))
 	for _, p := range pivotsMeta {
