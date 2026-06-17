@@ -836,6 +836,7 @@ func (usecases *UsecasesWithCreds) NewUserSettingsUsecase() UserSettingsUsecase 
 }
 
 func (usecases *UsecasesWithCreds) NewDecisionWorkflowsWorker() *decision_workflows.DecisionWorkflowsWorker {
+	decisionUsecase := usecases.NewDecisionUsecase()
 	return decision_workflows.NewDecisionWorkflowsWorker(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
@@ -844,6 +845,7 @@ func (usecases *UsecasesWithCreds) NewDecisionWorkflowsWorker() *decision_workfl
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewWebhookEventsUsecase(),
+		&decisionUsecase,
 	)
 }
 

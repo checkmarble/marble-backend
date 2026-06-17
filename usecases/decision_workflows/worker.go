@@ -54,6 +54,10 @@ type ingestedDataReadRepository interface {
 	) ([]models.DataModelObject, error)
 }
 
+type decisionReader interface {
+	GetDecision(ctx context.Context, decisionId string) (models.DecisionWithRuleExecutions, error)
+}
+
 type DecisionWorkflowsWorker struct {
 	river.WorkerDefaults[models.DecisionWorkflowArgs]
 
@@ -64,6 +68,7 @@ type DecisionWorkflowsWorker struct {
 	ingestedDataReadRepository        ingestedDataReadRepository
 	decisionWorkflowsWorkerRepository decisionWorkflowsWorkerRepository
 	webhookEventsUsecase              webhookEventsUsecase
+	decisionReader                    decisionReader
 }
 
 func NewDecisionWorkflowsWorker(
@@ -74,6 +79,7 @@ func NewDecisionWorkflowsWorker(
 	ingestedDataReadRepository ingestedDataReadRepository,
 	decisionWorkflowsWorkerRepository decisionWorkflowsWorkerRepository,
 	webhookEventsUsecase webhookEventsUsecase,
+	decisionReader decisionReader,
 ) *DecisionWorkflowsWorker {
 	return &DecisionWorkflowsWorker{
 		executorFactory:                   executorFactory,
@@ -83,6 +89,7 @@ func NewDecisionWorkflowsWorker(
 		ingestedDataReadRepository:        ingestedDataReadRepository,
 		decisionWorkflowsWorkerRepository: decisionWorkflowsWorkerRepository,
 		webhookEventsUsecase:              webhookEventsUsecase,
+		decisionReader:                    decisionReader,
 	}
 }
 
@@ -94,7 +101,7 @@ func (w *DecisionWorkflowsWorker) Work(ctx context.Context, job *river.Job[model
 	exec := w.executorFactory.NewExecutor()
 
 	// Fetch/Build data for decision workflows
-	decision, err := w.decisionWorkflowsWorkerRepository.DecisionWithRuleExecutionsById(ctx, exec, job.Args.DecisionId)
+	decision, err := w.decisionReader.GetDecision(ctx, job.Args.DecisionId)
 	if err != nil {
 		return errors.Wrap(err, "error getting decision with rule executions")
 	}
