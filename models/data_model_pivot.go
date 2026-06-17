@@ -2,9 +2,10 @@ package models
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
@@ -119,20 +120,28 @@ func FieldFromPath(dm DataModel, pathLinkIds []string) Field {
 	return dm.AllFieldsAsMap()[lastLink.ParentFieldId]
 }
 
-// Find the pivot definition, if there is one for this table
-func FindPivot(pivotsMeta []PivotMetadata, table string, dm DataModel) *Pivot {
-	pivots := pure_utils.Map(pivotsMeta, func(p PivotMetadata) Pivot {
-		return p.Enrich(dm)
-	})
-	var pivot *Pivot
-	for _, p := range pivots {
-		if p.BaseTable == table {
-			pivot = &p
-			break
+// FindPivotsForTable returns every pivot definition whose base table is the given
+// table. A table may have several pivots (polymorphic belongs_to: at most one
+// applies per row); the per-row resolution of which one applies happens at
+// evaluation time. The result is sorted deterministically (by creation time then
+// id) so that "first non-null path wins" resolution is stable.
+func FindPivotsForTable(pivotsMeta []PivotMetadata, table string, dm DataModel) []Pivot {
+	pivots := make([]Pivot, 0, len(pivotsMeta))
+	for _, p := range pivotsMeta {
+		enriched := p.Enrich(dm)
+		if enriched.BaseTable == table {
+			pivots = append(pivots, enriched)
 		}
 	}
 
-	return pivot
+	slices.SortFunc(pivots, func(a, b Pivot) int {
+		if c := a.CreatedAt.Compare(b.CreatedAt); c != 0 {
+			return c
+		}
+		return strings.Compare(a.Id.String(), b.Id.String())
+	})
+
+	return pivots
 }
 
 type CreatePivotInput struct {

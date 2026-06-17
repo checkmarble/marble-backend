@@ -262,7 +262,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	if err != nil {
 		return false, nil, nil, err
 	}
-	pivot := models.FindPivot(pivotsMeta, scenario.TriggerObjectType, dataModel)
+	pivots := models.FindPivotsForTable(pivotsMeta, scenario.TriggerObjectType, dataModel)
 
 	// list objects to score
 	db, err := w.executorFactory.NewClientDbExecutor(ctx, scenario.OrganizationId)
@@ -303,7 +303,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		TargetIterationId: &args.ScenarioIterationId,
 		ClientObject:      object,
 		DataModel:         dataModel,
-		Pivot:             pivot,
+		Pivots:            pivots,
 	}
 
 	// Note: Statistics on test runs when using batch scenarios may still be slightly off, because the batch execution does a partial
@@ -325,7 +325,6 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 			OrganizationId: scenario.OrganizationId,
 			Scenario:       scenario,
 			ClientObject:   object,
-			Pivot:          pivot,
 		}
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()

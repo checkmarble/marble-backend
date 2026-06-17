@@ -121,29 +121,28 @@ func transactionTableSemanticTypeValidation(tableName string, datamodel models.D
 	}
 	table := datamodel.Tables[tableName]
 
-	linkBelongsToName := ""
+	// A transaction table may have several BelongsTo links (polymorphic belongs_to: at
+	// most one parent applies per row), but it must have at least one, and every one of
+	// them must point at a Party table.
+	belongsToCount := 0
 	for _, link := range table.LinksToSingle {
-		if link.LinkType == models.LinkTypeBelongsTo {
-			if linkBelongsToName != "" {
-				return errors.Wrap(models.BadParameterError,
-					"transaction table must have only one BelongsTo link to a Party table")
-			}
-			linkBelongsToName = link.Name
+		if link.LinkType != models.LinkTypeBelongsTo {
+			continue
+		}
+		belongsToCount++
+
+		linkedTable, ok := datamodel.Tables[link.ParentTableName]
+		if !ok {
+			return errors.Wrap(models.BadParameterError,
+				"linked table not found in data model")
+		}
+		if !linkedTable.SemanticType.IsParty() {
+			return errors.Wrap(models.BadParameterError,
+				"every BelongsTo link of a transaction table must point at a Party table")
 		}
 	}
 
-	if linkBelongsToName == "" {
-		return errors.Wrap(models.BadParameterError,
-			"transaction table must have a BelongsTo link to a Party table")
-	}
-
-	link := table.LinksToSingle[linkBelongsToName]
-	linkedTable, ok := datamodel.Tables[link.ParentTableName]
-	if !ok {
-		return errors.Wrap(models.BadParameterError,
-			"linked table not found in data model")
-	}
-	if !linkedTable.SemanticType.IsParty() {
+	if belongsToCount == 0 {
 		return errors.Wrap(models.BadParameterError,
 			"transaction table must have a BelongsTo link to a Party table")
 	}
