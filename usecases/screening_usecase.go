@@ -718,7 +718,12 @@ func (uc ScreeningUsecase) SaveFreeformSearch(ctx context.Context, id uuid.UUID)
 		return m.Payload
 	})
 
-	if err := uc.repository.SaveFreeformSearchResult(ctx, exec, id, result); err != nil {
+	toStore, err := uc.offloadedReader.OffloadFreeformSearchResult(ctx, search.OrgId, id, result)
+	if err != nil {
+		return errors.Wrap(err, "could not offload freeform search result")
+	}
+
+	if err := uc.repository.SaveFreeformSearchResult(ctx, exec, id, toStore); err != nil {
 		return errors.Wrap(err, "could not save freeform search result")
 	}
 
@@ -732,6 +737,10 @@ func (uc ScreeningUsecase) GetFreeformSearch(ctx context.Context, id uuid.UUID) 
 	}
 
 	if err := uc.enforceSecurity.ReadFreeformSearch(search); err != nil {
+		return models.FreeformSearch{}, err
+	}
+
+	if err := uc.offloadedReader.HydrateFreeformSearchResult(ctx, &search); err != nil {
 		return models.FreeformSearch{}, err
 	}
 
