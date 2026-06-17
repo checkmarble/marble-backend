@@ -215,6 +215,12 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		return nil
 	}
 
+	// Adapt legacy datasets to the new format for the the filtering which will be used in matchesFilters method
+	updateJob.Config, err = w.usecase.AdaptLegacyDatasets(ctx, updateJob.Config)
+	if err != nil {
+		return err
+	}
+
 	initialOffset, initialItemsProcessed, err := w.getLastIterationOffset(
 		ctx,
 		exec,
@@ -294,10 +300,6 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 			continue
 		}
 
-		updateJob.Config, err = w.usecase.AdaptLegacyDatasets(ctx, updateJob.Config)
-		if err != nil {
-			return err
-		}
 		if !matchesFilters(updateJob, record) {
 			iterLogger.DebugContext(iterCtx, "Skipping record because it does not meet filter")
 			continue
