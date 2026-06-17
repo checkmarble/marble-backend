@@ -19,6 +19,7 @@ require (
 	github.com/authenticvision/rgeo v1.4.0
 	github.com/avast/retry-go/v4 v4.7.0
 	github.com/biter777/countries v1.7.5
+	github.com/buger/jsonparser v1.1.2
 	github.com/checkmarble/llmberjack v0.0.0-20260323165140-09e47d6a061e
 	github.com/cockroachdb/errors v1.13.0
 	github.com/coreos/go-oidc/v3 v3.18.0
@@ -27,7 +28,6 @@ require (
 	github.com/exaring/otelpgx v0.11.1
 	github.com/gabriel-vasile/mimetype v1.4.13
 	github.com/gavv/httpexpect/v2 v2.17.0
-	github.com/gen2brain/go-fitz v1.24.15
 	github.com/getkin/kin-openapi v0.136.0
 	github.com/getsentry/sentry-go v0.46.2
 	github.com/getsentry/sentry-go/gin v0.46.2
@@ -145,7 +145,6 @@ require (
 	github.com/aws/smithy-go v1.24.2 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/buger/jsonparser v1.1.2 // indirect
 	github.com/bytedance/gopkg v0.1.4 // indirect
 	github.com/bytedance/sonic v1.15.1 // indirect
 	github.com/bytedance/sonic/loader v0.5.1 // indirect
@@ -214,7 +213,6 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/jupiterrider/ffi v0.5.0 // indirect
 	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
