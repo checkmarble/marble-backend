@@ -10,6 +10,7 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/checkmarble/marble-backend/repositories/screening"
@@ -118,6 +119,7 @@ type applyDeltaFileWorkerUsecase interface {
 		continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
 	) (models.Case, error)
 	CheckFeatureAccess(ctx context.Context, orgId uuid.UUID) error
+	AdaptLegacyDatasets(ctx context.Context, config models.ContinuousScreeningConfig) (models.ContinuousScreeningConfig, error)
 }
 
 type ApplyDeltaFileWorker struct {
@@ -131,6 +133,7 @@ type ApplyDeltaFileWorker struct {
 	blobRepository     repositories.BlobRepository
 	screeningProvider  applyDeltaFileWorkerScreeningProvider
 	usecase            applyDeltaFileWorkerUsecase
+	offloadedReader    repositories.OffloadedReadWriter
 	bucketUrl          string
 }
 
@@ -144,6 +147,7 @@ func NewApplyDeltaFileWorker(
 	screeningProvider applyDeltaFileWorkerScreeningProvider,
 	bucketUrl string,
 	usecase applyDeltaFileWorkerUsecase,
+	offloadedReader repositories.OffloadedReadWriter,
 ) *ApplyDeltaFileWorker {
 	return &ApplyDeltaFileWorker{
 		executorFactory:    executorFactory,
@@ -155,6 +159,7 @@ func NewApplyDeltaFileWorker(
 		screeningProvider:  screeningProvider,
 		bucketUrl:          bucketUrl,
 		usecase:            usecase,
+		offloadedReader:    offloadedReader,
 	}
 }
 
@@ -208,6 +213,12 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 	if updateJob.Status == models.ContinuousScreeningUpdateJobStatusCompleted {
 		logger.DebugContext(ctx, "Continuous screening update job already completed, skip processing")
 		return nil
+	}
+
+	// Adapt legacy datasets to the new format for the the filtering which will be used in matchesFilters method
+	updateJob.Config, err = w.usecase.AdaptLegacyDatasets(ctx, updateJob.Config)
+	if err != nil {
+		return err
 	}
 
 	initialOffset, initialItemsProcessed, err := w.getLastIterationOffset(
@@ -289,14 +300,6 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 			continue
 		}
 
-		if updateJob.Provider != "lexisnexis" {
-			// The new record should be in a dataset that is monitored
-			if !AtLeastOneDatasetsAreMonitored(record.Entity.Datasets, updateJob.Config.Datasets) {
-				iterLogger.DebugContext(iterCtx, "Skipping record because none of its datasets are monitored", "datasets", record.Entity.Datasets)
-				continue
-			}
-		}
-
 		if !matchesFilters(updateJob, record) {
 			iterLogger.DebugContext(iterCtx, "Skipping record because it does not meet filter")
 			continue
@@ -354,22 +357,30 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		screening := screeningResponse.AdaptScreeningFromSearchResponse(query)
 		iterLogger.DebugContext(iterCtx, "Screening result", "matches", len(screening.Matches))
 
+		entityPayload, err := json.Marshal(record.Entity)
+		if err != nil {
+			return err
+		}
+
+		createInput := models.CreateContinuousScreening{
+			Id:                        pure_utils.NewId(),
+			Screening:                 screening,
+			Config:                    updateJob.Config,
+			OpenSanctionEntityId:      &record.Entity.Id,
+			OpenSanctionEntityPayload: entityPayload,
+			TriggerType:               models.ContinuousScreeningTriggerTypeDatasetUpdated,
+		}
+
+		// Offload only the entity payload to blob storage (no-op when offloading is disabled).
+		// Match payloads are customer data and are kept in the DB column in this direction.
+		createInput.OpenSanctionEntityPayload, err = w.offloadedReader.OffloadContinuousScreeningEntity(
+			iterCtx, updateJob.Config.OrgId, createInput.Id, createInput.OpenSanctionEntityPayload)
+		if err != nil {
+			return errors.Wrap(err, "failed to offload continuous screening entity payload")
+		}
+
 		err = w.transactionFactory.Transaction(iterCtx, func(tx repositories.Transaction) error {
-			entityPayload, err := json.Marshal(record.Entity)
-			if err != nil {
-				return err
-			}
-			continuousScreeningWithMatches, err := w.repository.InsertContinuousScreening(
-				iterCtx,
-				tx,
-				models.CreateContinuousScreening{
-					Screening:                 screening,
-					Config:                    updateJob.Config,
-					OpenSanctionEntityId:      &record.Entity.Id,
-					OpenSanctionEntityPayload: entityPayload,
-					TriggerType:               models.ContinuousScreeningTriggerTypeDatasetUpdated,
-				},
-			)
+			continuousScreeningWithMatches, err := w.repository.InsertContinuousScreening(iterCtx, tx, createInput)
 			if err != nil {
 				return err
 			}
@@ -595,13 +606,7 @@ func matchesFilters(updateJob models.EnrichedContinuousScreeningUpdateJob, recor
 		ds = append(ds, filters.AdverseMedia.Datasets...)
 		ds = append(ds, filters.Other.Datasets...)
 
-		for _, recordDataset := range record.Entity.Datasets {
-			if slices.Contains(ds, recordDataset) {
-				return true
-			}
-		}
-
-		return false
+		return AtLeastOneDatasetsAreMonitored(record.Entity.Datasets, ds)
 
 	case models.ScreeningProviderLexisNexis:
 		// Loop over each configuration section

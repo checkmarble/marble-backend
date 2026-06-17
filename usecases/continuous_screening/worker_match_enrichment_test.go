@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
@@ -40,6 +41,7 @@ func (suite *MatchEnrichmentWorkerTestSuite) makeWorker() *ContinuousScreeningMa
 		suite.executorFactory,
 		suite.openSanctionsProvider,
 		suite.repository,
+		repositories.OffloadedReadWriter{},
 	)
 }
 

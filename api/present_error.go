@@ -5,13 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/getsentry/sentry-go"
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 )
 
 const timeoutMst = "Sorry, the API timed out. Please try again later."
@@ -27,6 +30,14 @@ func presentError(ctx context.Context, c *gin.Context, err error) bool {
 	logger := utils.LoggerFromContext(ctx)
 
 	switch {
+	case errors.As(err, &validator.ValidationErrors{}):
+		var verr validator.ValidationErrors
+		errors.As(err, &verr)
+		logger.InfoContext(ctx, fmt.Sprintf("Validation error: %v", err))
+		errorResponse.Message = strings.Join(pure_utils.Map(verr, func(verr validator.FieldError) string {
+			return utils.AdaptFieldValidationError(verr)
+		}), ", ")
+		c.JSON(http.StatusBadRequest, errorResponse)
 	case errors.Is(err, models.BadParameterError):
 		logger.InfoContext(ctx, fmt.Sprintf("BadParameterError: %v", err))
 		c.JSON(http.StatusBadRequest, errorResponse)

@@ -1,8 +1,10 @@
 package usecases
 
 import (
+	"bytes"
 	"cmp"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -41,6 +43,8 @@ type ScreeningEnforceSecurity interface {
 	ReadWhitelist(context.Context) error
 	WriteWhitelist(context.Context) error
 	PerformFreeformSearch(context.Context) error
+	ReadFreeformSearch(s models.FreeformSearch) error
+	SaveFreeformSearch(s models.FreeformSearch) error
 }
 
 type ScreeningProvider interface {
@@ -104,8 +108,28 @@ type ScreeningRepository interface {
 	SetScreeningMatchEnriched(ctx context.Context, exec repositories.Executor,
 		matchId string) (models.ScreeningMatch, error)
 
-	InsertFreeformSearch(ctx context.Context, exec repositories.Executor,
-		h models.FreeformSearch) error
+	InsertFreeformSearch(
+		ctx context.Context,
+		exec repositories.Executor,
+		h models.FreeformSearch,
+	) error
+	ListFreeformSearches(
+		ctx context.Context,
+		exec repositories.Executor,
+		filters models.ScreeningFreeformSearchFilters,
+		pagination models.PaginationAndSorting,
+	) ([]models.FreeformSearch, error)
+	GetFreeformSearch(
+		ctx context.Context,
+		exec repositories.Executor,
+		id uuid.UUID,
+	) (models.FreeformSearch, error)
+	SaveFreeformSearchResult(
+		ctx context.Context,
+		exec repositories.Executor,
+		id uuid.UUID,
+		result []json.RawMessage,
+	) error
 }
 
 type ScreeningUsecaseExternalRepository interface {
@@ -201,7 +225,7 @@ func (uc ScreeningUsecase) hydrateAndSortMatches(ctx context.Context, orgId uuid
 	if err := uc.offloadedReader.HydrateScreeningMatches(ctx, []models.ScreeningWithMatches{
 		{Screening: models.Screening{OrgId: orgId}, Matches: matches},
 	}); err != nil {
-		return err
+		return errors.Wrap(err, "failed to hydrate screening matches")
 	}
 
 	slices.SortStableFunc(matches, func(a, b models.ScreeningMatch) int {
@@ -519,23 +543,24 @@ func (uc ScreeningUsecase) Search(ctx context.Context, refine models.ScreeningRe
 	return screening, nil
 }
 
-func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
+func (uc ScreeningUsecase) FreeformSearch(
+	ctx context.Context,
 	orgId uuid.UUID,
-	scc models.ScreeningConfig,
-	refine models.ScreeningRefineRequest,
-) (models.ScreeningWithMatches, error) {
+	config models.FreeformSearchConfig,
+	searchQuery models.ScreeningRefineRequest,
+) (uuid.UUID, models.ScreeningWithMatches, error) {
 	exec := uc.executorFactory.NewExecutor()
 
 	features, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
 	if err != nil {
-		return models.ScreeningWithMatches{}, err
+		return uuid.Nil, models.ScreeningWithMatches{}, err
 	}
 
 	if !features.Sanctions.IsAllowed() && !features.ContinuousScreening.IsAllowed() {
-		return models.ScreeningWithMatches{}, models.ForbiddenError
+		return uuid.Nil, models.ScreeningWithMatches{}, models.ForbiddenError
 	}
 	if features.Sanctions == models.MissingConfiguration {
-		return models.ScreeningWithMatches{}, models.MissingRequirementError{
+		return uuid.Nil, models.ScreeningWithMatches{}, models.MissingRequirementError{
 			Requirement: models.REQUIREMENT_OPEN_SANCTIONS,
 			Reason:      models.REQUIREMENT_REASON_MISSING_CONFIGURATION,
 			Err:         errors.New("screening provider not configured"),
@@ -543,49 +568,60 @@ func (uc ScreeningUsecase) FreeformSearch(ctx context.Context,
 	}
 
 	if err := uc.enforceSecurity.PerformFreeformSearch(ctx); err != nil {
-		return models.ScreeningWithMatches{}, err
+		return uuid.Nil, models.ScreeningWithMatches{}, err
 	}
 
 	org, err := uc.organizationRepository.GetOrganizationById(ctx,
 		uc.executorFactory.NewExecutor(), orgId)
 	if err != nil {
-		return models.ScreeningWithMatches{},
+		return uuid.Nil, models.ScreeningWithMatches{},
 			errors.Wrap(err, "could not retrieve organization")
 	}
 
-	scc.Provider = org.GetScreeningProviderFor(models.ScreeningFeatureManualSearch)
+	config.Provider = org.GetScreeningProviderFor(models.ScreeningFeatureManualSearch)
 
-	query := models.OpenSanctionsQuery{
-		IsRefinement:  false,
-		Config:        scc,
-		Queries:       models.AdaptRefineRequestToMatchable(refine),
-		LimitOverride: refine.LimitOverride,
-	}
+	query := freeformSearchToOpenSanctionsQuery(config, searchQuery)
 
 	screening, err := uc.Execute(ctx, orgId, query)
 	if err != nil {
-		return models.ScreeningWithMatches{}, err
+		return uuid.Nil, models.ScreeningWithMatches{}, err
 	}
-	err = uc.persistFreeformSearch(ctx, exec, orgId, scc.Provider, refine)
+	searchId, err := uc.persistFreeformSearch(ctx, exec, orgId, config, searchQuery, screening)
 	if err != nil {
-		return models.ScreeningWithMatches{}, err
+		return uuid.Nil, models.ScreeningWithMatches{}, err
 	}
 
-	return screening, nil
+	return searchId, screening, nil
+}
+
+func freeformSearchToOpenSanctionsQuery(c models.FreeformSearchConfig, q models.ScreeningRefineRequest) models.OpenSanctionsQuery {
+	// Leave LimitOverride nil for an unset limit so the provider falls back to the org default
+	// instead of forcing an explicit limit of 0.
+	var limitOverride *int
+	if c.Limit > 0 {
+		limitOverride = &c.Limit
+	}
+
+	return models.OpenSanctionsQuery{
+		IsRefinement: false,
+		Config: models.ScreeningConfig{
+			Filters:   c.Filters,
+			Threshold: c.Threshold,
+			Provider:  c.Provider,
+		},
+		Queries:       models.AdaptRefineRequestToMatchable(q),
+		LimitOverride: limitOverride,
+	}
 }
 
 func (uc ScreeningUsecase) persistFreeformSearch(
 	ctx context.Context,
 	exec repositories.Executor,
 	orgId uuid.UUID,
-	provider models.ScreeningProvider,
+	config models.FreeformSearchConfig,
 	refine models.ScreeningRefineRequest,
-) error {
-	searchInput, err := json.Marshal(refine)
-	if err != nil {
-		return err
-	}
-
+	screening models.ScreeningWithMatches,
+) (uuid.UUID, error) {
 	var (
 		userId   *uuid.UUID
 		apiKeyId *uuid.UUID
@@ -603,20 +639,103 @@ func (uc ScreeningUsecase) persistFreeformSearch(
 		}
 	}
 
+	resultHash := hashFreeformSearchResult(screening.Matches)
+
 	row := models.FreeformSearch{
-		Id:          pure_utils.NewId(),
-		OrgId:       orgId,
-		UserId:      userId,
-		ApiKeyId:    apiKeyId,
-		Provider:    provider,
-		SearchInput: searchInput,
+		Id:           pure_utils.NewId(),
+		OrgId:        orgId,
+		UserId:       userId,
+		ApiKeyId:     apiKeyId,
+		Provider:     config.Provider,
+		SearchInput:  refine,
+		SearchConfig: config,
+		ResultHash:   resultHash,
+		NbHits:       screening.NumberOfMatches,
 	}
 
 	if err := uc.repository.InsertFreeformSearch(ctx, exec, row); err != nil {
-		return errors.Wrap(err, "could not persist freeform search")
+		return uuid.Nil, errors.Wrap(err, "could not persist freeform search")
+	}
+
+	return row.Id, nil
+}
+
+// hashFreeformSearchResult computes a stable hash over the set of entity ids matched by a freeform
+// search. Ids are deduplicated and sorted so the hash depends only on which entities matched, not
+// on their order or on volatile payload metadata (scores, dataset crawl timestamps). It is used to
+// verify that re-running a stored search produces the same set of matches before saving them.
+func hashFreeformSearchResult(matches []models.ScreeningMatch) []byte {
+	entityIds := pure_utils.Map(matches, func(m models.ScreeningMatch) string {
+		return m.EntityId
+	})
+	slices.Sort(entityIds)
+	entityIds = slices.Compact(entityIds)
+
+	h := sha256.New()
+	for _, id := range entityIds {
+		h.Write([]byte(id))
+		h.Write([]byte{0}) // separator to avoid ambiguity between concatenated ids
+	}
+
+	return h.Sum(nil)
+}
+
+// SaveFreeformSearch re-runs a previously performed freeform search with its stored input and
+// config, verifies that the results still hash to the same value, then persists the results. The
+// frontend only provides the search id: it cannot control what is saved. Only the actor who
+// performed the search may save it.
+func (uc ScreeningUsecase) SaveFreeformSearch(ctx context.Context, id uuid.UUID) error {
+	exec := uc.executorFactory.NewExecutor()
+
+	search, err := uc.repository.GetFreeformSearch(ctx, exec, id)
+	if err != nil {
+		return err
+	}
+
+	if search.IsSaved {
+		return nil
+	}
+
+	if err := uc.enforceSecurity.SaveFreeformSearch(search); err != nil {
+		return err
+	}
+
+	query := freeformSearchToOpenSanctionsQuery(search.SearchConfig, search.SearchInput)
+
+	screening, err := uc.Execute(ctx, search.OrgId, query)
+	if err != nil {
+		return err
+	}
+
+	resultHash := hashFreeformSearchResult(screening.Matches)
+
+	if !bytes.Equal(resultHash, search.ResultHash) {
+		return errors.WithDetail(models.ConflictError,
+			"the search results have changed since the search was performed, it cannot be saved")
+	}
+
+	result := pure_utils.Map(screening.Matches, func(m models.ScreeningMatch) json.RawMessage {
+		return m.Payload
+	})
+
+	if err := uc.repository.SaveFreeformSearchResult(ctx, exec, id, result); err != nil {
+		return errors.Wrap(err, "could not save freeform search result")
 	}
 
 	return nil
+}
+
+func (uc ScreeningUsecase) GetFreeformSearch(ctx context.Context, id uuid.UUID) (models.FreeformSearch, error) {
+	search, err := uc.repository.GetFreeformSearch(ctx, uc.executorFactory.NewExecutor(), id)
+	if err != nil {
+		return models.FreeformSearch{}, err
+	}
+
+	if err := uc.enforceSecurity.ReadFreeformSearch(search); err != nil {
+		return models.FreeformSearch{}, err
+	}
+
+	return search, nil
 }
 
 func (uc ScreeningUsecase) UpdateMatchStatus(
@@ -1220,4 +1339,27 @@ func mergePayloads(originalRaw, newRaw []byte) ([]byte, error) {
 
 func getScreeningCounterpartyIdentifier(screening models.ScreeningWithMatches) *string {
 	return screening.UniqueCounterpartyIdentifier
+}
+
+func (uc ScreeningUsecase) ListFreeformSearch(ctx context.Context, orgId uuid.UUID, filters models.ScreeningFreeformSearchFilters, pagination models.PaginationAndSorting) ([]models.FreeformSearch, bool, error) {
+	paginationWithOneMore := pagination
+	paginationWithOneMore.Limit++
+
+	searches, err := uc.repository.ListFreeformSearches(ctx, uc.executorFactory.NewExecutor(), filters, paginationWithOneMore)
+	if err != nil {
+		return nil, false, err
+	}
+
+	for _, search := range searches {
+		if err := uc.enforceSecurity.ReadFreeformSearch(search); err != nil {
+			return nil, false, err
+		}
+	}
+
+	hasNextPage := len(searches) == paginationWithOneMore.Limit
+	if hasNextPage {
+		searches = searches[:len(searches)-1]
+	}
+
+	return searches, hasNextPage, nil
 }

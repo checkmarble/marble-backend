@@ -46,6 +46,8 @@ type matchEnrichmentWorkerRepository interface {
 		id uuid.UUID,
 		enrichedPayload []byte,
 	) error
+	SetContinuousScreeningEntityEnriched(ctx context.Context, exec repositories.Executor, id uuid.UUID) error
+	SetContinuousScreeningMatchEnriched(ctx context.Context, exec repositories.Executor, id uuid.UUID) error
 }
 
 type ContinuousScreeningMatchEnrichmentWorker struct {
@@ -54,17 +56,20 @@ type ContinuousScreeningMatchEnrichmentWorker struct {
 	executorFactory     executor_factory.ExecutorFactory
 	openSanctionsConfig matchEnrichmentWorkerOpenSanctionsProvider
 	repository          matchEnrichmentWorkerRepository
+	offloadedReader     repositories.OffloadedReadWriter
 }
 
 func NewContinuousScreeningMatchEnrichmentWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	openSanctionsProvider matchEnrichmentWorkerOpenSanctionsProvider,
 	repository matchEnrichmentWorkerRepository,
+	offloadedReader repositories.OffloadedReadWriter,
 ) *ContinuousScreeningMatchEnrichmentWorker {
 	return &ContinuousScreeningMatchEnrichmentWorker{
 		executorFactory:     executorFactory,
 		openSanctionsConfig: openSanctionsProvider,
 		repository:          repository,
+		offloadedReader:     offloadedReader,
 	}
 }
 
@@ -127,7 +132,7 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) Work(
 				continue
 			}
 
-			if err := w.enrichMatch(ctx, provider, match); err != nil {
+			if err := w.enrichMatch(ctx, provider, continuousScreeningWithMatches.OrgId, match); err != nil {
 				errs = errors.Join(errs, err)
 			}
 		}
@@ -161,30 +166,50 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) enrichEntity(
 		EntityId: *screening.OpenSanctionEntityId,
 	}
 
+	// An empty payload column on a bucket-enabled deployment means the entity payload was
+	// offloaded to blob storage; read it back so we can merge the enrichment into it.
+	offloaded := w.offloadedReader.IsOffloadingEnabled() && len(screening.OpenSanctionEntityPayload) == 0
+
+	originalPayload := screening.OpenSanctionEntityPayload
+	if offloaded {
+		var err error
+		originalPayload, err = w.offloadedReader.ReadOffloadedContinuousScreeningEntityPayload(
+			ctx, screening.OrgId, screening.Id)
+		if err != nil {
+			return errors.Wrap(err, "could not read offloaded continuous screening entity payload")
+		}
+	}
+
 	newPayload, err := w.openSanctionsConfig.EnrichMatch(ctx, providerName, fakeMatch)
 	if err != nil {
 		return err
 	}
 
-	mergedPayload, err := mergePayloads(screening.OpenSanctionEntityPayload, newPayload)
+	mergedPayload, err := mergePayloads(originalPayload, newPayload)
 	if err != nil {
 		return errors.Wrap(err,
 			"could not merge payloads for continuous screening entity enrichment")
 	}
 
 	exec := w.executorFactory.NewExecutor()
-	if err := w.repository.UpdateContinuousScreeningEntityEnrichedPayload(
-		ctx, exec, screening.Id, mergedPayload,
-	); err != nil {
-		return err
+
+	// Offloaded entities keep their payload in blob storage: overwrite the same key and only flip
+	// the enriched flag in the DB. Legacy entities keep their payload in the DB column.
+	if offloaded {
+		if err := w.offloadedReader.OffloadContinuousScreeningEntityPayload(
+			ctx, screening.OrgId, screening.Id, mergedPayload); err != nil {
+			return errors.Wrap(err, "could not write enriched continuous screening entity payload")
+		}
+		return w.repository.SetContinuousScreeningEntityEnriched(ctx, exec, screening.Id)
 	}
 
-	return nil
+	return w.repository.UpdateContinuousScreeningEntityEnrichedPayload(ctx, exec, screening.Id, mergedPayload)
 }
 
 func (w *ContinuousScreeningMatchEnrichmentWorker) enrichMatch(
 	ctx context.Context,
 	providerName models.ScreeningProvider,
+	orgId uuid.UUID,
 	match models.ContinuousScreeningMatch,
 ) error {
 	if match.Enriched {
@@ -200,25 +225,44 @@ func (w *ContinuousScreeningMatchEnrichmentWorker) enrichMatch(
 		EntityId: match.OpenSanctionEntityId,
 	}
 
+	// An empty payload column on a bucket-enabled deployment means the match payload was
+	// offloaded to blob storage; read it back so we can merge the enrichment into it.
+	offloaded := w.offloadedReader.IsOffloadingEnabled() && len(match.Payload) == 0
+
+	originalPayload := match.Payload
+	if offloaded {
+		var err error
+		originalPayload, err = w.offloadedReader.ReadOffloadedContinuousScreeningMatchPayload(
+			ctx, orgId, match.ContinuousScreeningId, match.Id)
+		if err != nil {
+			return errors.Wrap(err, "could not read offloaded continuous screening match payload")
+		}
+	}
+
 	newPayload, err := w.openSanctionsConfig.EnrichMatch(ctx, providerName, fakeMatch)
 	if err != nil {
 		return err
 	}
 
-	mergedPayload, err := mergePayloads(match.Payload, newPayload)
+	mergedPayload, err := mergePayloads(originalPayload, newPayload)
 	if err != nil {
 		return errors.Wrap(err,
 			"could not merge payloads for continuous screening match enrichment")
 	}
 
 	exec := w.executorFactory.NewExecutor()
-	if err := w.repository.UpdateContinuousScreeningMatchEnrichedPayload(
-		ctx, exec, match.Id, mergedPayload,
-	); err != nil {
-		return err
+
+	// Offloaded matches keep their payload in blob storage: overwrite the same key and only flip
+	// the enriched flag in the DB. Legacy matches keep their payload in the DB column.
+	if offloaded {
+		if err := w.offloadedReader.OffloadContinuousScreeningMatchPayload(
+			ctx, orgId, match.ContinuousScreeningId, match.Id, mergedPayload); err != nil {
+			return errors.Wrap(err, "could not write enriched continuous screening match payload")
+		}
+		return w.repository.SetContinuousScreeningMatchEnriched(ctx, exec, match.Id)
 	}
 
-	return nil
+	return w.repository.UpdateContinuousScreeningMatchEnrichedPayload(ctx, exec, match.Id, mergedPayload)
 }
 
 func mergePayloads(originalRaw, newRaw []byte) ([]byte, error) {

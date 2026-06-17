@@ -382,6 +382,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithContinuousScreeningBucketUrl(workerConfig.continuousScreeningBucketUrl),
 		usecases.WithCsCreateFullDatasetInterval(workerConfig.CreateFullDatasetInterval),
 		usecases.WithIpEnrichmentDatabase(ipEnrichmentDatabase),
+		usecases.WithScreeningOffloadingEnabled(utils.GetEnv("SCREENING_OFFLOADING_ENABLED", true)),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 

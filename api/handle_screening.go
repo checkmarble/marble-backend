@@ -12,7 +12,14 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
+
+var freeformSearchPaginationDefaults = models.PaginationDefaults{
+	Limit:  25,
+	SortBy: models.SortingFieldCreatedAt,
+	Order:  models.SortingOrderDesc,
+}
 
 func handleScreeningDatasetFreshness(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
@@ -324,31 +331,105 @@ func handleFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		limitOverride := utils.Ptr(10)
+		limit := 10
 
 		if l, err := strconv.Atoi(c.Query("limit")); err == nil {
-			limitOverride = utils.Ptr(min(l, SCREENING_FREEFORM_SEARCH_LIMIT_MAX))
+			limit = max(1, min(l, SCREENING_FREEFORM_SEARCH_LIMIT_MAX))
 		}
 
-		req := models.ScreeningRefineRequest{
-			Type:          payload.Query.Type(),
-			Query:         dto.AdaptRefineQueryDto(payload.Query),
-			LimitOverride: limitOverride,
+		req := dto.FreeformSearchInput{
+			Type:  payload.Query.Type(),
+			Query: dto.AdaptRefineQueryDto(payload.Query),
 		}
 
-		scc := models.ScreeningConfig{
-			Datasets:  payload.Datasets,
+		config := models.FreeformSearchConfig{
 			Filters:   payload.Filters,
 			Threshold: payload.Threshold,
+			Limit:     limit,
 		}
 
 		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
 
-		matches, err := uc.FreeformSearch(ctx, orgId, scc, req)
+		searchId, screening, err := uc.FreeformSearch(ctx, orgId, config, req.ToScreeningRefineRequest())
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, pure_utils.Map(matches.Matches, dto.AdaptScreeningMatchDto))
+		c.JSON(http.StatusOK, dto.AdaptScreeningFreeformSearchResult(searchId, screening.Matches))
+	}
+}
+
+func handleListFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		filters := dto.ScreeningFreeformSearchFilters{}
+		if presentError(ctx, c, c.ShouldBindQuery(&filters)) {
+			return
+		}
+
+		var paginationAndSortingDto dto.PaginationAndSorting
+		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		paginationAndSorting := models.WithPaginationDefaults(
+			dto.AdaptPaginationAndSorting(paginationAndSortingDto),
+			freeformSearchPaginationDefaults)
+
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
+
+		searches, hasNextPage, err := uc.ListFreeformSearch(ctx, orgId, filters.ToModel(orgId), paginationAndSorting)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.AdaptPaginatedScreeningFreeformSearches(searches, hasNextPage))
+	}
+}
+
+func handleSaveFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		searchId, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid freeform search id"))
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
+
+		err = uc.SaveFreeformSearch(ctx, searchId)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.Status(http.StatusOK)
+	}
+}
+
+func handleGetFreeformSearch(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		searchId, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid freeform search id"))
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
+
+		search, err := uc.GetFreeformSearch(ctx, searchId)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.AdaptSavedScreeningFreeformSearch(search))
 	}
 }
