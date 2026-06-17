@@ -241,6 +241,9 @@ func NewParser(opts ...ParserOpt) *Parser {
 			if t, err := time.Parse("2006-01-02T15:04:05", result.String()); err == nil {
 				return t.UTC(), nil
 			}
+			if t, err := time.Parse("2006-01-02", result.String()); err == nil {
+				return t, nil
+			}
 			return nil, fmt.Errorf("%w: expected format \"YYYY-MM-DD hh:mm:ss[+optional decimals]\" or \"YYYY-MM-DDThh:mm:ss[+optional decimals]Z\", got \"%s\"", errIsInvalidTimestamp, result.String())
 		},
 		models.Int: func(result gjson.Result) (any, error) {

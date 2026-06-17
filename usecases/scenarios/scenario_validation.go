@@ -165,11 +165,20 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 
 				queryNameValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment, fieldAst)
 
-				if _, ok := queryNameValidation.RuleEvaluation.ReturnValue.(string); !ok {
+				returnTypeIsValid := false
+
+				if _, ok := queryNameValidation.RuleEvaluation.ReturnValue.(string); ok {
+					returnTypeIsValid = true
+				}
+				if _, ok := queryNameValidation.RuleEvaluation.ReturnValue.(time.Time); ok {
+					returnTypeIsValid = true
+				}
+
+				if !returnTypeIsValid {
 					queryNameValidation.Errors = append(
 						queryNameValidation.Errors, models.ScenarioValidationError{
 							Error: errors.Wrapf(models.BadParameterError,
-								"screening field filter '%s' does not return a string", field),
+								"screening field filter '%s' does not return a string or a timestamp", field),
 							Code: models.FormulaMustReturnString,
 						})
 				}
