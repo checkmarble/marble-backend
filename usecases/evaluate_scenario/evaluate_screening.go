@@ -141,17 +141,26 @@ func (e ScenarioEvaluator) evaluateScreening(
 						continue
 					}
 
-					input, ok := inputAst.ReturnValue.(string)
-					if !ok {
+					switch input := inputAst.ReturnValue.(type) {
+					case string:
+						if input == "" {
+							numEmptyFields++
+							continue
+						}
+
+						queriesBeforeProcessing[0].Filters[fieldName] = []string{input}
+					case time.Time:
+						if input.IsZero() {
+							numEmptyFields++
+							continue
+						}
+
+						queriesBeforeProcessing[0].Filters[fieldName] = []string{input.Format("2006-01-02")}
+
+					default:
 						addScreeningResult(idx, outcomeError(scc, ErrScreeningFieldsNotString, nil))
 						return
 					}
-					if input == "" {
-						numEmptyFields++
-						continue
-					}
-
-					queriesBeforeProcessing[0].Filters[fieldName] = []string{input}
 				}
 
 				if numEmptyFields == len(scc.Query) {

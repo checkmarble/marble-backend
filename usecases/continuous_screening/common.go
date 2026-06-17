@@ -81,14 +81,23 @@ func deltaFileVersionUrlBuilder(backendUrl string, orgId uuid.UUID, deltaId uuid
 // Convert the value to a string representation, use the default string representation
 // most of the time, the value is a string.
 func stringRepresentation(value any) string {
-	timestampVal, ok := value.(time.Time)
-	if ok {
-		return timestampVal.Format(time.RFC3339)
+	switch value := value.(type) {
+	case time.Time:
+		value = value.UTC()
+
+		if value.Hour() == 0 && value.Minute() == 0 && value.Second() == 0 {
+			return value.Format("2006-01-02")
+		}
+
+		return value.Format(time.RFC3339)
+
+	default:
+		if value == nil {
+			return ""
+		}
+
+		return strings.TrimSpace(fmt.Sprintf("%v", value))
 	}
-	if value == nil {
-		return ""
-	}
-	return strings.TrimSpace(fmt.Sprintf("%v", value))
 }
 
 // buildCaseName returns a human-readable case name from the ingested object using FTM property
