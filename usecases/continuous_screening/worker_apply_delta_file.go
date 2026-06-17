@@ -10,6 +10,7 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/checkmarble/marble-backend/repositories/screening"
@@ -131,6 +132,7 @@ type ApplyDeltaFileWorker struct {
 	blobRepository     repositories.BlobRepository
 	screeningProvider  applyDeltaFileWorkerScreeningProvider
 	usecase            applyDeltaFileWorkerUsecase
+	offloadedReader    repositories.OffloadedReadWriter
 	bucketUrl          string
 }
 
@@ -144,6 +146,7 @@ func NewApplyDeltaFileWorker(
 	screeningProvider applyDeltaFileWorkerScreeningProvider,
 	bucketUrl string,
 	usecase applyDeltaFileWorkerUsecase,
+	offloadedReader repositories.OffloadedReadWriter,
 ) *ApplyDeltaFileWorker {
 	return &ApplyDeltaFileWorker{
 		executorFactory:    executorFactory,
@@ -155,6 +158,7 @@ func NewApplyDeltaFileWorker(
 		screeningProvider:  screeningProvider,
 		bucketUrl:          bucketUrl,
 		usecase:            usecase,
+		offloadedReader:    offloadedReader,
 	}
 }
 
@@ -354,22 +358,30 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		screening := screeningResponse.AdaptScreeningFromSearchResponse(query)
 		iterLogger.DebugContext(iterCtx, "Screening result", "matches", len(screening.Matches))
 
+		entityPayload, err := json.Marshal(record.Entity)
+		if err != nil {
+			return err
+		}
+
+		createInput := models.CreateContinuousScreening{
+			Id:                        pure_utils.NewId(),
+			Screening:                 screening,
+			Config:                    updateJob.Config,
+			OpenSanctionEntityId:      &record.Entity.Id,
+			OpenSanctionEntityPayload: entityPayload,
+			TriggerType:               models.ContinuousScreeningTriggerTypeDatasetUpdated,
+		}
+
+		// Offload only the entity payload to blob storage (no-op when offloading is disabled).
+		// Match payloads are customer data and are kept in the DB column in this direction.
+		createInput.OpenSanctionEntityPayload, err = w.offloadedReader.OffloadContinuousScreeningEntity(
+			iterCtx, updateJob.Config.OrgId, createInput.Id, createInput.OpenSanctionEntityPayload)
+		if err != nil {
+			return errors.Wrap(err, "failed to offload continuous screening entity payload")
+		}
+
 		err = w.transactionFactory.Transaction(iterCtx, func(tx repositories.Transaction) error {
-			entityPayload, err := json.Marshal(record.Entity)
-			if err != nil {
-				return err
-			}
-			continuousScreeningWithMatches, err := w.repository.InsertContinuousScreening(
-				iterCtx,
-				tx,
-				models.CreateContinuousScreening{
-					Screening:                 screening,
-					Config:                    updateJob.Config,
-					OpenSanctionEntityId:      &record.Entity.Id,
-					OpenSanctionEntityPayload: entityPayload,
-					TriggerType:               models.ContinuousScreeningTriggerTypeDatasetUpdated,
-				},
-			)
+			continuousScreeningWithMatches, err := w.repository.InsertContinuousScreening(iterCtx, tx, createInput)
 			if err != nil {
 				return err
 			}

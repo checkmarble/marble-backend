@@ -53,6 +53,7 @@ type Usecases struct {
 	webhookSystemMigrated        bool   // True when migrated to new internal webhook system
 	allowInsecureWebhookURLs     bool   // Allow HTTP webhook URLs (dev only)
 	webhookIPWhitelist           string // Comma-separated CIDR ranges to whitelist for webhooks
+	screeningOffloadingEnabled   bool
 
 	coordsEnricher *rgeo.Rgeo
 	ipEnricher     *maxminddb.Reader
@@ -222,6 +223,12 @@ func WithIpEnrichmentDatabase(db *maxminddb.Reader) Option {
 	}
 }
 
+func WithScreeningOffloadingEnabled(enabled bool) Option {
+	return func(o *options) {
+		o.screeningOffloadingEnabled = enabled
+	}
+}
+
 type options struct {
 	appName                      string
 	apiVersion                   string
@@ -245,6 +252,7 @@ type options struct {
 	csCreateFullDatasetInterval  time.Duration
 	webhookSystemMigrated        bool
 	allowInsecureWebhookURLs     bool
+	screeningOffloadingEnabled   bool
 	webhookIPWhitelist           string
 	ipEnricher                   *maxminddb.Reader
 }
@@ -284,6 +292,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		webhookSystemMigrated:        o.webhookSystemMigrated,
 		allowInsecureWebhookURLs:     o.allowInsecureWebhookURLs,
 		webhookIPWhitelist:           o.webhookIPWhitelist,
+		screeningOffloadingEnabled:   o.screeningOffloadingEnabled,
 
 		coordsEnricher: coordsEnricher,
 		ipEnricher:     o.ipEnricher,

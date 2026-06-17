@@ -425,6 +425,24 @@ func (m *ContinuousScreeningRepository) UpdateContinuousScreeningMatchEnrichedPa
 	return args.Error(0)
 }
 
+func (m *ContinuousScreeningRepository) SetContinuousScreeningEntityEnriched(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+) error {
+	args := m.Called(ctx, exec, id)
+	return args.Error(0)
+}
+
+func (m *ContinuousScreeningRepository) SetContinuousScreeningMatchEnriched(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+) error {
+	args := m.Called(ctx, exec, id)
+	return args.Error(0)
+}
+
 type ContinuousScreeningClientDbRepository struct {
 	mock.Mock
 }
