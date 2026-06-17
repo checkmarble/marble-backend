@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -387,10 +388,10 @@ func (uc *ContinuousScreeningUsecase) hydrateContinuousScreenings(
 ) error {
 	for i := range screenings {
 		if err := uc.offloadedReader.HydrateContinuousScreeningEntity(ctx, &screenings[i]); err != nil {
-			return err
+			return errors.Wrap(err, "failed to hydrate continuous screening entity")
 		}
 		if err := uc.offloadedReader.HydrateContinuousScreeningMatch(ctx, &screenings[i]); err != nil {
-			return err
+			return errors.Wrap(err, "failed to hydrate continuous screening match")
 		}
 
 		slices.SortStableFunc(screenings[i].Matches, func(a, b models.ContinuousScreeningMatch) int {

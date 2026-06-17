@@ -377,7 +377,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		createInput.OpenSanctionEntityPayload, err = w.offloadedReader.OffloadContinuousScreeningEntity(
 			iterCtx, updateJob.Config.OrgId, createInput.Id, createInput.OpenSanctionEntityPayload)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to offload continuous screening entity payload")
 		}
 
 		err = w.transactionFactory.Transaction(iterCtx, func(tx repositories.Transaction) error {

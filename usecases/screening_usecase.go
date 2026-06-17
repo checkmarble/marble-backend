@@ -201,7 +201,7 @@ func (uc ScreeningUsecase) hydrateAndSortMatches(ctx context.Context, orgId uuid
 	if err := uc.offloadedReader.HydrateScreeningMatches(ctx, []models.ScreeningWithMatches{
 		{Screening: models.Screening{OrgId: orgId}, Matches: matches},
 	}); err != nil {
-		return err
+		return errors.Wrap(err, "failed to hydrate screening matches")
 	}
 
 	slices.SortStableFunc(matches, func(a, b models.ScreeningMatch) int {

@@ -171,7 +171,7 @@ func (uc *ContinuousScreeningUsecase) CreateContinuousScreeningObject(
 		createInput.Screening.Matches, err = uc.offloadedReader.OffloadContinuousScreeningMatches(
 			ctx, config.OrgId, createInput.Id, createInput.Screening.Matches)
 		if err != nil {
-			return models.ContinuousScreeningWithMatches{}, err
+			return models.ContinuousScreeningWithMatches{}, errors.Wrap(err, "failed to offload continuous screening matches")
 		}
 	}
 

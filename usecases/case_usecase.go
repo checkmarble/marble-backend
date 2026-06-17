@@ -1435,10 +1435,10 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 
 		for i := range continuousScreeningsWithMatches {
 			if err := usecase.offloadedReader.HydrateContinuousScreeningEntity(ctx, &continuousScreeningsWithMatches[i]); err != nil {
-				return models.Case{}, err
+				return models.Case{}, errors.Wrap(err, "failed to hydrate continuous screening entity")
 			}
 			if err := usecase.offloadedReader.HydrateContinuousScreeningMatch(ctx, &continuousScreeningsWithMatches[i]); err != nil {
-				return models.Case{}, err
+				return models.Case{}, errors.Wrap(err, "failed to hydrate continuous screening match")
 			}
 		}
 

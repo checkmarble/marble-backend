@@ -319,7 +319,7 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 	createInput.Screening.Matches, err = w.offloadedReader.OffloadContinuousScreeningMatches(
 		ctx, config.OrgId, createInput.Id, createInput.Screening.Matches)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to offload continuous screening matches")
 	}
 
 	return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {

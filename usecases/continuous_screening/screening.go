@@ -200,7 +200,7 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			Matches:             []models.ContinuousScreeningMatch{updatedMatch},
 		}
 		if err := uc.offloadedReader.HydrateContinuousScreeningMatch(ctx, &matchHolder); err != nil {
-			return err
+			return errors.Wrap(err, "failed to hydrate continuous screening match")
 		}
 		updatedMatch = matchHolder.Matches[0]
 
@@ -505,7 +505,7 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 			newMatches,
 		)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to offload continuous screening matches")
 		}
 
 		// m.Id was pre-assigned by the offloader (it is the blob key); empty when offloading is
