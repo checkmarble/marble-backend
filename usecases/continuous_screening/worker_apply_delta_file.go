@@ -119,6 +119,7 @@ type applyDeltaFileWorkerUsecase interface {
 		continuousScreeningWithMatches models.ContinuousScreeningWithMatches,
 	) (models.Case, error)
 	CheckFeatureAccess(ctx context.Context, orgId uuid.UUID) error
+	AdaptLegacyDatasets(ctx context.Context, config models.ContinuousScreeningConfig) (models.ContinuousScreeningConfig, error)
 }
 
 type ApplyDeltaFileWorker struct {
@@ -293,14 +294,10 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 			continue
 		}
 
-		if updateJob.Provider != "lexisnexis" {
-			// The new record should be in a dataset that is monitored
-			if !AtLeastOneDatasetsAreMonitored(record.Entity.Datasets, updateJob.Config.Datasets) {
-				iterLogger.DebugContext(iterCtx, "Skipping record because none of its datasets are monitored", "datasets", record.Entity.Datasets)
-				continue
-			}
+		updateJob.Config, err = w.usecase.AdaptLegacyDatasets(ctx, updateJob.Config)
+		if err != nil {
+			return err
 		}
-
 		if !matchesFilters(updateJob, record) {
 			iterLogger.DebugContext(iterCtx, "Skipping record because it does not meet filter")
 			continue
@@ -607,13 +604,7 @@ func matchesFilters(updateJob models.EnrichedContinuousScreeningUpdateJob, recor
 		ds = append(ds, filters.AdverseMedia.Datasets...)
 		ds = append(ds, filters.Other.Datasets...)
 
-		for _, recordDataset := range record.Entity.Datasets {
-			if slices.Contains(ds, recordDataset) {
-				return true
-			}
-		}
-
-		return false
+		return AtLeastOneDatasetsAreMonitored(record.Entity.Datasets, ds)
 
 	case models.ScreeningProviderLexisNexis:
 		// Loop over each configuration section
