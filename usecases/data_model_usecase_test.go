@@ -1525,6 +1525,61 @@ func (suite *DatamodelUsecaseTestSuite) TestCreatePivot_restores_identical_soft_
 	suite.AssertExpectations()
 }
 
+// With multiple pivots per table, a matching soft-deleted pivot must be restored even
+// when another (different) live pivot already exists on the same table — otherwise a new
+// row would be created and historical decisions referencing the old id would be orphaned.
+func (suite *DatamodelUsecaseTestSuite) TestCreatePivot_restores_matching_soft_deleted_pivot_when_another_live_pivot_exists() {
+	input := models.CreatePivotInput{
+		OrganizationId: suite.organizationId,
+		BaseTableId:    "accounts-table-id",
+		FieldId:        utils.Ptr("accounts-object-id-field-id"),
+	}
+	matchingPivotId := uuid.MustParse("87654321-4321-8765-2109-876543210987")
+	deletedAt := time.Now()
+
+	usecase := suite.makeUsecase()
+	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
+	suite.dataModelRepository.On("GetDataModel",
+		suite.ctx, suite.transaction, suite.organizationId, false, mock.Anything).
+		Return(suite.dataModel, nil)
+	suite.dataModelRepository.On("ListPivots", suite.ctx, suite.transaction,
+		suite.organizationId, utils.Ptr("accounts-table-id"), false, true).
+		Return([]models.PivotMetadata{
+			{
+				// A different, live pivot on the same table (must not block the restore).
+				Id:             uuid.MustParse("11111111-1111-1111-1111-111111111111"),
+				OrganizationId: suite.organizationId,
+				BaseTableId:    "accounts-table-id",
+				FieldId:        utils.Ptr("accounts-status-field-id"),
+			},
+			{
+				// The soft-deleted pivot matching the input: it should be restored.
+				Id:             matchingPivotId,
+				OrganizationId: suite.organizationId,
+				BaseTableId:    "accounts-table-id",
+				FieldId:        utils.Ptr("accounts-object-id-field-id"),
+				DeletedAt:      &deletedAt,
+			},
+		}, nil)
+	suite.dataModelRepository.On("RestorePivot", suite.ctx, suite.transaction, matchingPivotId.String()).
+		Return(nil)
+	suite.dataModelRepository.On("GetPivot", suite.ctx, suite.transaction, matchingPivotId.String()).
+		Return(models.PivotMetadata{
+			Id:             matchingPivotId,
+			OrganizationId: suite.organizationId,
+			BaseTableId:    "accounts-table-id",
+			FieldId:        utils.Ptr("accounts-object-id-field-id"),
+		}, nil)
+
+	pivot, err := usecase.CreatePivotWithExec(suite.ctx, suite.transaction, input)
+	suite.Require().NoError(err, "no error expected")
+	suite.Require().Equal(matchingPivotId, pivot.Id, "the matching soft-deleted pivot should be restored")
+
+	suite.dataModelRepository.AssertNotCalled(suite.T(), "CreatePivot",
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	suite.AssertExpectations()
+}
+
 func (suite *DatamodelUsecaseTestSuite) TestCreatePivot_does_not_restore_different_soft_deleted_pivot() {
 	input := models.CreatePivotInput{
 		OrganizationId: suite.organizationId,

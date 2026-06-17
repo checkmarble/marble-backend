@@ -5,22 +5,17 @@
 
 drop index data_model_pivots_base_table_id_idx;
 
--- Lookup index for ListPivots (filters by organization_id [+ base_table_id]).
-create index data_model_pivots_base_table_id_idx
-on data_model_pivots (organization_id, base_table_id)
-where deleted_at is null;
-
 -- Prevent exact-duplicate live pivots while allowing distinct ones on the same
 -- table. NULLS NOT DISTINCT (PG15+) makes two path pivots with the same
 -- path_link_ids (field_id NULL) collide, while pivots with different paths or
--- fields coexist.
+-- fields coexist. Its (organization_id, base_table_id) prefix also serves the
+-- ListPivots lookups, so no separate lookup index is needed.
 create unique index data_model_pivots_signature_idx
 on data_model_pivots (organization_id, base_table_id, field_id, path_link_ids) nulls not distinct
 where deleted_at is null;
 
 -- +goose Down
 drop index data_model_pivots_signature_idx;
-drop index data_model_pivots_base_table_id_idx;
 
 -- Restore the single-pivot-per-table constraint (fails if a table has >1 live pivot).
 delete from data_model_pivots
