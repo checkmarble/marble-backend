@@ -200,6 +200,10 @@ func RedisLoadMap[T comparable](ctx context.Context, exec *RedisExecutor, key st
 }
 
 func RedisGetScalar[T any](ctx context.Context, exec *RedisExecutor, key string) (T, error) {
+	if exec == nil {
+		return *new(T), models.NotFoundError
+	}
+
 	cmd := exec.client.client.Get(ctx, key)
 
 	var model T
