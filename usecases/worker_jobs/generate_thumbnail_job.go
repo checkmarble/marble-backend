@@ -8,11 +8,8 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/utils"
-	"github.com/cockroachdb/errors"
 	"github.com/disintegration/imaging"
 	"github.com/gabriel-vasile/mimetype"
-	"github.com/gen2brain/go-fitz"
 	"github.com/riverqueue/river"
 )
 
@@ -52,7 +49,8 @@ func (w GenerateThumbnailWorker) Work(ctx context.Context, job *river.Job[models
 
 	switch {
 	case mime.Is("application/pdf"):
-		img, err = w.createPdfThumbnail(ctx, b.ReadCloser)
+		// TODO: find a new way to generate PDF thumbnail
+		return nil
 	case strings.HasPrefix(mime.String(), "image/"):
 		img, err = w.createImageThumbnail(ctx, b.ReadCloser)
 	default:
@@ -70,38 +68,6 @@ func (w GenerateThumbnailWorker) Work(ctx context.Context, job *river.Job[models
 	defer wr.Close()
 
 	return imaging.Encode(wr, img, imaging.JPEG)
-}
-
-func (w GenerateThumbnailWorker) createPdfThumbnail(ctx context.Context, r io.Reader) (*image.NRGBA, error) {
-	doc, err := fitz.NewFromReader(r)
-	if err != nil {
-		return nil, err
-	}
-	defer doc.Close()
-
-	if doc.NumPage() == 0 {
-		return nil, errors.New("PDF document contains zero pages")
-	}
-
-	img, err := doc.Image(0)
-	if err != nil {
-		return nil, err
-	}
-
-	pr, pw := io.Pipe()
-
-	go func() {
-		if err := imaging.Encode(pw, img, imaging.JPEG); err != nil {
-			utils.LoggerFromContext(ctx).WarnContext(ctx, "could not write thumbnail", "error", err)
-		}
-	}()
-
-	go func() {
-		<-ctx.Done()
-		pr.CloseWithError(ctx.Err())
-	}()
-
-	return w.createImageThumbnail(ctx, pr)
 }
 
 func (w GenerateThumbnailWorker) createImageThumbnail(_ context.Context, r io.Reader) (*image.NRGBA, error) {

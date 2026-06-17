@@ -28,7 +28,6 @@ require (
 	github.com/exaring/otelpgx v0.11.1
 	github.com/gabriel-vasile/mimetype v1.4.13
 	github.com/gavv/httpexpect/v2 v2.17.0
-	github.com/gen2brain/go-fitz v1.24.15
 	github.com/getkin/kin-openapi v0.136.0
 	github.com/getsentry/sentry-go v0.46.2
 	github.com/getsentry/sentry-go/gin v0.46.2
@@ -214,7 +213,6 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/jupiterrider/ffi v0.5.0 // indirect
 	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
