@@ -1,0 +1,39 @@
+name: Licensing check
+
+on: workflow_call
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: write
+
+jobs:
+  licensing:
+    name: Check open source licenses
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: ./go.mod
+
+      - run: go install github.com/google/go-licenses/v2@latest
+
+      # Ignored packages
+      # github.com/checkmarble
+      #   Self
+      # github.com/apache/arrow/go
+      #   MIT: https://github.com/apache/arrow/blob/go/v15.0.0/LICENSE.txt
+      # github.com/jmespath/go-jmespath \
+      #   Apache-2.0: https://github.com/jmespath/go-jmespath/blob/master/LICENSE
+      # github.com/jackc/pgerrcode
+      #   MIT: https://github.com/jackc/pgerrcode/blob/master/LICENSE
+
+      - run: |
+          go-licenses check . \
+            --allowed_licenses MIT,Apache-2.0,BSD-0-Clause,BSD-2-Clause,BSD-3-Clause,MPL-2.0,ISC \
+            --ignore github.com/checkmarble \
+            --ignore github.com/apache/arrow/go \
+            --ignore github.com/jmespath/go-jmespath \
+            --ignore github.com/jackc/pgerrcode
