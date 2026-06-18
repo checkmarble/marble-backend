@@ -40,6 +40,7 @@ type OrganizationUseCase struct {
 	executorFactory              executor_factory.ExecutorFactory
 	featureAccessReader          OrganizationUsecaseFeatureAccessReader
 	screeningConfigRepository    organizationUsecaseScreeningChecksRepository
+	isManagedMarble              bool
 }
 
 func NewOrganizationUseCase(
@@ -53,6 +54,7 @@ func NewOrganizationUseCase(
 	executorFactory executor_factory.ExecutorFactory,
 	featureAccessReader OrganizationUsecaseFeatureAccessReader,
 	screeningConfigRepository organizationUsecaseScreeningChecksRepository,
+	isManagedMarble bool,
 ) OrganizationUseCase {
 	return OrganizationUseCase{
 		enforceSecurity:              enforceSecurity,
@@ -65,6 +67,7 @@ func NewOrganizationUseCase(
 		executorFactory:              executorFactory,
 		featureAccessReader:          featureAccessReader,
 		screeningConfigRepository:    screeningConfigRepository,
+		isManagedMarble:              isManagedMarble,
 	}
 }
 
@@ -144,6 +147,10 @@ func (usecase *OrganizationUseCase) UpdateOrganization(
 
 		for feature, provider := range organization.ScreeningConfig.Providers {
 			if org.GetScreeningProviderFor(models.ScreeningFeature(feature)) != provider {
+				if err := usecase.enforceSecurity.EditOrganizationScreeningProvider(org, usecase.isManagedMarble); err != nil {
+					return models.Organization{}, err
+				}
+
 				switch feature {
 				case string(models.ScreeningFeatureTransactionMonitoring):
 					configExists, err := usecase.screeningConfigRepository.HasScreeningConfigs(ctx, tx, org.Id)
