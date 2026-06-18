@@ -118,7 +118,7 @@ func TestParser_ParsePayload(t *testing.T) {
 				"string":     errIsInvalidString.Error(),
 				"integer":    "is not a valid integer: expected an integer, got \"string\"",
 				"float":      "is not a valid float: expected a float, got \"string\"",
-				"timestamp":  "is not a valid timestamp: expected format \"YYYY-MM-DD hh:mm:ss[+optional decimals]\" or \"YYYY-MM-DDThh:mm:ss[+optional decimals]Z\", got \"not a timestamp\"",
+				"timestamp":  "is not a valid timestamp: expected format \"YYYY-MM-DD hh:mm:ss[+optional decimals]\", \"YYYY-MM-DDThh:mm:ss[+optional decimals]Z\" or \"YYYY-MM-DD\", got \"not a timestamp\"",
 				"boolean":    "is not a valid boolean: expected a boolean, got \"true\"",
 				"object_id":  errIsNotNullable.Error(),
 				"updated_at": errIsNotNullable.Error(),
