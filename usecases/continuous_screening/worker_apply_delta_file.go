@@ -605,6 +605,7 @@ func matchesFilters(updateJob models.EnrichedContinuousScreeningUpdateJob, recor
 		ds := append(filters.Sanctions.Datasets, filters.Peps.Datasets...)
 		ds = append(ds, filters.AdverseMedia.Datasets...)
 		ds = append(ds, filters.Other.Datasets...)
+		ds = append(ds, filters.Custom.Datasets...)
 
 		return AtLeastOneDatasetsAreMonitored(record.Entity.Datasets, ds)
 
