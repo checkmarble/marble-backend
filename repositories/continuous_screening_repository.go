@@ -23,7 +23,7 @@ func (repo *MarbleDbRepository) GetContinuousScreeningConfig(ctx context.Context
 	sql := NewQueryBuilder().
 		Select(columnsNames("c", dbmodels.SelectContinuousScreeningConfigColumnList)...).
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS + " c").
-		InnerJoin(dbmodels.TABLE_ORGANIZATION + " o on c.org_id = o.id and c.provider = coalesce(o.screening_providers->>'transaction_monitoring', 'opensanctions')").
+		InnerJoin(dbmodels.TABLE_ORGANIZATION + " o on c.org_id = o.id and c.provider = coalesce(o.screening_providers->>'continuous_monitoring', 'opensanctions')").
 		Where(squirrel.Eq{"c.id": Id})
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)
@@ -41,7 +41,7 @@ func (repo *MarbleDbRepository) GetContinuousScreeningConfigByStableId(ctx conte
 		Select(columnsNames("c", dbmodels.SelectContinuousScreeningConfigColumnList)...).
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS + " c").
 		Where(squirrel.Eq{"stable_id": stableId}).
-		InnerJoin(dbmodels.TABLE_ORGANIZATION + " o on c.org_id = o.id and c.provider = coalesce(o.screening_providers->>'transaction_monitoring', 'opensanctions')").
+		InnerJoin(dbmodels.TABLE_ORGANIZATION + " o on c.org_id = o.id and c.provider = coalesce(o.screening_providers->>'continuous_monitoring', 'opensanctions')").
 		OrderBy("c.created_at DESC").
 		Limit(1)
 
@@ -125,7 +125,7 @@ func (repo *MarbleDbRepository) ListContinuousScreeningConfigs(
 		Select(columnsNames("c", dbmodels.SelectContinuousScreeningConfigColumnList)...).
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS + " c").
 		Where(squirrel.Eq{"enabled": true}).
-		InnerJoin(dbmodels.TABLE_ORGANIZATION + " o on c.org_id = o.id and c.provider = coalesce(o.screening_providers->>'transaction_monitoring', 'opensanctions')").
+		InnerJoin(dbmodels.TABLE_ORGANIZATION + " o on c.org_id = o.id and c.provider = coalesce(o.screening_providers->>'continuous_monitoring', 'opensanctions')").
 		OrderBy("c.id")
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningConfig)
