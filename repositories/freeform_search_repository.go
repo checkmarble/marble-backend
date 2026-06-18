@@ -93,9 +93,13 @@ func (*MarbleDbRepository) SaveFreeformSearchResult(
 		return err
 	}
 
-	resultBytes, err := json.Marshal(result)
-	if err != nil {
-		return err
+	var resultBytes []byte
+	if result != nil {
+		var err error
+		resultBytes, err = json.Marshal(result)
+		if err != nil {
+			return err
+		}
 	}
 
 	sql := NewQueryBuilder().

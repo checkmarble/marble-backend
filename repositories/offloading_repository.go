@@ -49,3 +49,10 @@ func (repo *MarbleDbRepository) GetOffloadedContinuousScreeningMatchKey(orgId, c
 func (repo *MarbleDbRepository) GetOffloadedContinuousScreeningEntityKey(orgId, continuousScreeningId uuid.UUID) string {
 	return fmt.Sprintf("continuous_screening/entity/%s/%s", orgId.String(), continuousScreeningId.String())
 }
+
+// GetOffloadedFreeformSearchResultKey returns the deterministic blob key under which a saved
+// freeform search's result array is offloaded. A populated result column means the row is legacy
+// (read it directly); an empty column means the payload lives at this key in blob storage.
+func (repo *MarbleDbRepository) GetOffloadedFreeformSearchResultKey(orgId, searchId uuid.UUID) string {
+	return fmt.Sprintf("freeform_search/result/%s/%s", orgId.String(), searchId.String())
+}

@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"time"
 
@@ -23,6 +24,7 @@ type offloadableRepository interface {
 	GetOffloadedScreeningMatchKey(orgId uuid.UUID, screeningId, matchId string) string
 	GetOffloadedContinuousScreeningMatchKey(orgId, continuousScreeningId, matchId uuid.UUID) string
 	GetOffloadedContinuousScreeningEntityKey(orgId, continuousScreeningId uuid.UUID) string
+	GetOffloadedFreeformSearchResultKey(orgId, searchId uuid.UUID) string
 	GetWatermark(
 		ctx context.Context,
 		exec Executor,
@@ -508,6 +510,77 @@ func (uc OffloadedReadWriter) HydrateContinuousScreeningEntity(
 	}
 
 	screening.OpenSanctionEntityPayload = payload
+	return nil
+}
+
+// ReadOffloadedFreeformSearchResultPayload reads a saved freeform search's result array from blob
+// storage. Returns (nil, nil) when offloading is disabled or the object is missing.
+func (uc OffloadedReadWriter) ReadOffloadedFreeformSearchResultPayload(
+	ctx context.Context, orgId, searchId uuid.UUID,
+) ([]byte, error) {
+	if !uc.IsOffloadingEnabled() {
+		return nil, nil
+	}
+	return uc.readPayload(ctx, uc.Repository.GetOffloadedFreeformSearchResultKey(orgId, searchId))
+}
+
+// OffloadFreeformSearchResult marshals the result array to blob storage and returns the value to
+// store in the result column: nil once offloaded, or the result unchanged when offloading is
+// disabled.
+func (uc OffloadedReadWriter) OffloadFreeformSearchResult(
+	ctx context.Context, orgId, searchId uuid.UUID, result []json.RawMessage,
+) ([]json.RawMessage, error) {
+	if !uc.IsScreeningOffloadingEnabled() {
+		return result, nil
+	}
+
+	payload, err := json.Marshal(result)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not marshal freeform search result for offloading")
+	}
+
+	if err := uc.writePayload(ctx, uc.Repository.GetOffloadedFreeformSearchResultKey(orgId, searchId), payload); err != nil {
+		return nil, errors.Wrap(err, "failed to offload freeform search result")
+	}
+
+	return nil, nil
+}
+
+// HydrateFreeformSearchResult fills in, from blob storage, the result of a saved freeform search
+// when its DB column is empty (the offloaded-payload signal). No-op when offloading is disabled,
+// the search is not yet saved, or the column is already populated (legacy row). A missing blob is
+// logged and left empty rather than failing the read.
+func (uc OffloadedReadWriter) HydrateFreeformSearchResult(
+	ctx context.Context, search *models.FreeformSearch,
+) error {
+	if !uc.IsOffloadingEnabled() {
+		return nil
+	}
+
+	if !search.IsSaved || search.Result != nil {
+		return nil
+	}
+
+	payload, err := uc.ReadOffloadedFreeformSearchResultPayload(ctx, search.OrgId, search.Id)
+	if err != nil {
+		return errors.Wrap(err, "failed to read freeform search result payload")
+	}
+
+	if len(payload) == 0 {
+		utils.LoggerFromContext(ctx).WarnContext(ctx,
+			"freeform search result is missing from both the DB column and blob storage",
+			"org_id", search.OrgId,
+			"freeform_search_id", search.Id,
+		)
+		return nil
+	}
+
+	var result []json.RawMessage
+	if err := json.Unmarshal(payload, &result); err != nil {
+		return errors.Wrap(err, "failed to unmarshal offloaded freeform search result")
+	}
+
+	search.Result = result
 	return nil
 }
 
