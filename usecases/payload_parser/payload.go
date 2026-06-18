@@ -19,7 +19,7 @@ import (
 	"github.com/twpayne/go-geos"
 )
 
-type fieldParser map[models.DataType]func(result gjson.Result) (any, error)
+type fieldParser map[models.DataType]func(fieldName string, result gjson.Result) (any, error)
 
 type Parser struct {
 	parsers               fieldParser
@@ -100,7 +100,7 @@ func (p *Parser) ParsePayload(ctx context.Context, table models.Table, json []by
 			return models.ClientObject{}, fmt.Errorf("%w: %s",
 				errIsInvalidDataType, field.DataType.String())
 		}
-		if val, err := parseField(value); err != nil {
+		if val, err := parseField(name, value); err != nil {
 			addError(allErrors, objectId, name, err)
 		} else {
 			// Enrich ingested data for fields supporting it
@@ -231,7 +231,7 @@ func WithColumnEscape() ParserOpt {
 
 func NewParser(opts ...ParserOpt) *Parser {
 	parsers := fieldParser{
-		models.Timestamp: func(result gjson.Result) (any, error) {
+		models.Timestamp: func(fieldName string, result gjson.Result) (any, error) {
 			if t, err := time.Parse(time.RFC3339, result.String()); err == nil {
 				return t.UTC(), nil
 			}
@@ -241,38 +241,44 @@ func NewParser(opts ...ParserOpt) *Parser {
 			if t, err := time.Parse("2006-01-02T15:04:05", result.String()); err == nil {
 				return t.UTC(), nil
 			}
+
+			if fieldName == "updated_at" {
+				return nil, fmt.Errorf("%w: expected format \"YYYY-MM-DD hh:mm:ss[+optional decimals]\" or \"YYYY-MM-DDThh:mm:ss[+optional decimals]Z\", got \"%s\"", errIsInvalidTimestamp, result.String())
+			}
+
 			if t, err := time.Parse("2006-01-02", result.String()); err == nil {
 				return t, nil
 			}
-			return nil, fmt.Errorf("%w: expected format \"YYYY-MM-DD hh:mm:ss[+optional decimals]\" or \"YYYY-MM-DDThh:mm:ss[+optional decimals]Z\", got \"%s\"", errIsInvalidTimestamp, result.String())
+
+			return nil, fmt.Errorf("%w: expected format \"YYYY-MM-DD hh:mm:ss[+optional decimals]\", \"YYYY-MM-DDThh:mm:ss[+optional decimals]Z\" or \"YYYY-MM-DD\", got \"%s\"", errIsInvalidTimestamp, result.String())
 		},
-		models.Int: func(result gjson.Result) (any, error) {
+		models.Int: func(fieldName string, result gjson.Result) (any, error) {
 			i, err := strconv.ParseInt(result.Raw, 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("%w: expected an integer, got %s", errIsInvalidInteger, result.Raw)
 			}
 			return i, nil
 		},
-		models.Float: func(result gjson.Result) (any, error) {
+		models.Float: func(fieldName string, result gjson.Result) (any, error) {
 			f, err := strconv.ParseFloat(result.Raw, 64)
 			if err != nil {
 				return nil, fmt.Errorf("%w: expected a float, got %s", errIsInvalidFloat, result.Raw)
 			}
 			return f, nil
 		},
-		models.String: func(result gjson.Result) (any, error) {
+		models.String: func(fieldName string, result gjson.Result) (any, error) {
 			if result.Type != gjson.String {
 				return nil, errIsInvalidString
 			}
 			return result.String(), nil
 		},
-		models.Bool: func(result gjson.Result) (any, error) {
+		models.Bool: func(fieldName string, result gjson.Result) (any, error) {
 			if !result.IsBool() {
 				return nil, fmt.Errorf("%w: expected a boolean, got %s", errIsInvalidBoolean, result.Raw)
 			}
 			return result.Bool(), nil
 		},
-		models.IpAddress: func(result gjson.Result) (any, error) {
+		models.IpAddress: func(fieldName string, result gjson.Result) (any, error) {
 			if result.Type != gjson.String {
 				return nil, errIsInvalidString
 			}
@@ -282,7 +288,7 @@ func NewParser(opts ...ParserOpt) *Parser {
 			}
 			return ip, nil
 		},
-		models.Coords: func(result gjson.Result) (any, error) {
+		models.Coords: func(fieldName string, result gjson.Result) (any, error) {
 			if result.Type != gjson.String {
 				return nil, errIsInvalidString
 			}

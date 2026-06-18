@@ -28,9 +28,10 @@ func TestParseStringValuesToMap(t *testing.T) {
 			"object_id": {
 				DataType: models.String, Nullable: false,
 			},
-			"updated_at": {DataType: models.Timestamp, Nullable: false},
-			"value":      {DataType: models.Float, Nullable: true},
-			"status":     {DataType: models.String, Nullable: true},
+			"updated_at":    {DataType: models.Timestamp, Nullable: false},
+			"value":         {DataType: models.Float, Nullable: true},
+			"status":        {DataType: models.String, Nullable: true},
+			"date_of_birth": {DataType: models.Timestamp, Nullable: true},
 		},
 		LinksToSingle: nil,
 	}
@@ -70,6 +71,11 @@ func TestParseStringValuesToMap(t *testing.T) {
 			name:    "valid case with RFC3339 with time zone offset",
 			columns: []string{"object_id", "updated_at", "value", "status"},
 			values:  []string{"1234", "2023-04-10T17:00:00+02:30", "", ""},
+		},
+		{
+			name:    "valid case with raw civil date as timestamp",
+			columns: []string{"object_id", "updated_at", "value", "status", "date_of_birth"},
+			values:  []string{"1234", "2023-04-10T17:00:00+02:30", "", "", "1985-05-12"},
 		},
 	}
 
