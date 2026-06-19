@@ -8,7 +8,28 @@ import (
 	"google.golang.org/genai"
 )
 
+func clearEnv(t *testing.T, keys ...string) {
+	t.Helper()
+
+	for _, key := range keys {
+		t.Setenv(key, "")
+	}
+}
+
 func TestNewPgConfigDefaults(t *testing.T) {
+	clearEnv(t,
+		"PG_CONNECTION_STRING",
+		"PG_DATABASE",
+		"PG_HOSTNAME",
+		"PG_PASSWORD",
+		"PG_PORT",
+		"PG_USER",
+		"PG_MAX_POOL_SIZE",
+		"CLIENT_DB_CONFIG_FILE",
+		"PG_SSL_MODE",
+		"PG_IMPERSONATE_ROLE",
+	)
+
 	config, err := NewPgConfig()
 
 	require.NoError(t, err)
@@ -21,6 +42,18 @@ func TestNewPgConfigDefaults(t *testing.T) {
 }
 
 func TestNewPgConfigConnectionString(t *testing.T) {
+	clearEnv(t,
+		"PG_CONNECTION_STRING",
+		"PG_DATABASE",
+		"PG_HOSTNAME",
+		"PG_PASSWORD",
+		"PG_PORT",
+		"PG_USER",
+		"PG_MAX_POOL_SIZE",
+		"CLIENT_DB_CONFIG_FILE",
+		"PG_SSL_MODE",
+		"PG_IMPERSONATE_ROLE",
+	)
 	t.Setenv("PG_CONNECTION_STRING", "postgres://user:pass@localhost:5432/dbname")
 
 	config, err := NewPgConfig()
@@ -30,6 +63,18 @@ func TestNewPgConfigConnectionString(t *testing.T) {
 }
 
 func TestNewPgConfigInvalidConnectionString(t *testing.T) {
+	clearEnv(t,
+		"PG_CONNECTION_STRING",
+		"PG_DATABASE",
+		"PG_HOSTNAME",
+		"PG_PASSWORD",
+		"PG_PORT",
+		"PG_USER",
+		"PG_MAX_POOL_SIZE",
+		"CLIENT_DB_CONFIG_FILE",
+		"PG_SSL_MODE",
+		"PG_IMPERSONATE_ROLE",
+	)
 	t.Setenv("PG_CONNECTION_STRING", "/dbname")
 
 	_, err := NewPgConfig()
@@ -37,6 +82,18 @@ func TestNewPgConfigInvalidConnectionString(t *testing.T) {
 }
 
 func TestNewPgConfigReadsOptionalValues(t *testing.T) {
+	clearEnv(t,
+		"PG_CONNECTION_STRING",
+		"PG_DATABASE",
+		"PG_HOSTNAME",
+		"PG_PASSWORD",
+		"PG_PORT",
+		"PG_USER",
+		"PG_MAX_POOL_SIZE",
+		"CLIENT_DB_CONFIG_FILE",
+		"PG_SSL_MODE",
+		"PG_IMPERSONATE_ROLE",
+	)
 	t.Setenv("PG_MAX_POOL_SIZE", "12")
 	t.Setenv("CLIENT_DB_CONFIG_FILE", "/tmp/client-db.json")
 	t.Setenv("PG_IMPERSONATE_ROLE", "app_role")
@@ -50,6 +107,17 @@ func TestNewPgConfigReadsOptionalValues(t *testing.T) {
 }
 
 func TestNewAIAgentConfigurationDefaults(t *testing.T) {
+	clearEnv(t,
+		"AI_AGENT_MAIN_AGENT_PROVIDER_TYPE",
+		"AI_AGENT_MAIN_AGENT_URL",
+		"AI_AGENT_MAIN_AGENT_KEY",
+		"AI_AGENT_MAIN_AGENT_DEFAULT_MODEL",
+		"AI_AGENT_MAIN_AGENT_BACKEND",
+		"AI_AGENT_MAIN_AGENT_PROJECT",
+		"AI_AGENT_MAIN_AGENT_LOCATION",
+		"AI_AGENT_PERPLEXITY_API_KEY",
+	)
+
 	config := NewAIAgentConfiguration("gcp-project")
 
 	assert.Equal(t, AIAgentProviderTypeOpenAI, config.MainAgentProviderType)
@@ -58,6 +126,16 @@ func TestNewAIAgentConfigurationDefaults(t *testing.T) {
 }
 
 func TestNewAIAgentConfigurationReadsEnv(t *testing.T) {
+	clearEnv(t,
+		"AI_AGENT_MAIN_AGENT_PROVIDER_TYPE",
+		"AI_AGENT_MAIN_AGENT_URL",
+		"AI_AGENT_MAIN_AGENT_KEY",
+		"AI_AGENT_MAIN_AGENT_DEFAULT_MODEL",
+		"AI_AGENT_MAIN_AGENT_BACKEND",
+		"AI_AGENT_MAIN_AGENT_PROJECT",
+		"AI_AGENT_MAIN_AGENT_LOCATION",
+		"AI_AGENT_PERPLEXITY_API_KEY",
+	)
 	t.Setenv("AI_AGENT_MAIN_AGENT_PROVIDER_TYPE", "aistudio")
 	t.Setenv("AI_AGENT_MAIN_AGENT_URL", "https://example.test")
 	t.Setenv("AI_AGENT_MAIN_AGENT_KEY", "secret")
@@ -79,8 +157,14 @@ func TestNewAIAgentConfigurationReadsEnv(t *testing.T) {
 	assert.Equal(t, "pplx-key", config.PerplexityAPIKey)
 }
 
-
 func TestNewConvoyConfigurationDefaults(t *testing.T) {
+	clearEnv(t,
+		"CONVOY_API_KEY",
+		"CONVOY_API_URL",
+		"CONVOY_PROJECT_ID",
+		"CONVOY_RATE_LIMIT",
+	)
+
 	config := NewConvoyConfiguration()
 
 	assert.Equal(t, 50, config.RateLimit)
@@ -90,6 +174,12 @@ func TestNewConvoyConfigurationDefaults(t *testing.T) {
 }
 
 func TestNewConvoyConfigurationReadsEnv(t *testing.T) {
+	clearEnv(t,
+		"CONVOY_API_KEY",
+		"CONVOY_API_URL",
+		"CONVOY_PROJECT_ID",
+		"CONVOY_RATE_LIMIT",
+	)
 	t.Setenv("CONVOY_API_KEY", "key")
 	t.Setenv("CONVOY_API_URL", "https://convoy.test")
 	t.Setenv("CONVOY_PROJECT_ID", "project-id")
@@ -104,6 +194,11 @@ func TestNewConvoyConfigurationReadsEnv(t *testing.T) {
 }
 
 func TestNewLicenseConfigurationDefaults(t *testing.T) {
+	clearEnv(t,
+		"LICENSE_KEY",
+		"KILL_IF_READ_LICENSE_ERROR",
+	)
+
 	config := NewLicenseConfiguration()
 
 	assert.Equal(t, "", config.LicenseKey)
@@ -111,6 +206,10 @@ func TestNewLicenseConfigurationDefaults(t *testing.T) {
 }
 
 func TestNewLicenseConfigurationReadsEnv(t *testing.T) {
+	clearEnv(t,
+		"LICENSE_KEY",
+		"KILL_IF_READ_LICENSE_ERROR",
+	)
 	t.Setenv("LICENSE_KEY", "license-key")
 	t.Setenv("KILL_IF_READ_LICENSE_ERROR", "true")
 
