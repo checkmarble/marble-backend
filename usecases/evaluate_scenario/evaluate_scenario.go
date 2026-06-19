@@ -197,10 +197,24 @@ func (e ScenarioEvaluator) processScenarioIteration(
 	// Resolve which pivot applies to this row. Under polymorphic belongs_to at most one
 	// candidate pivot should resolve to a non-null value for a given row. We evaluate all
 	// candidates so we can detect the (unexpected) case where several are populated, and
-	// in that case pick one deterministically by pivot field name (alphanumeric order).
+	// in that case pick one deterministically by the pivot's start field (see below).
+	links := dataAccessor.DataModel.AllLinksAsMap()
+	// pivotStartField is the field the pivot value is read from on the trigger object: the
+	// belongs_to FK column for a path pivot, or the pivot field itself for a field pivot.
+	// We sort on this (the payload-side start of the pivot) rather than on pivot.Field,
+	// because path pivots typically all end at the parent's "object_id" field and so would
+	// not be distinguishable by their end field.
+	pivotStartField := func(p models.Pivot) string {
+		if len(p.PathLinkIds) == 0 {
+			return p.Field
+		}
+		return links[p.PathLinkIds[0]].ChildFieldName
+	}
+
 	type eligiblePivot struct {
-		pivot *models.Pivot
-		value string
+		pivot      *models.Pivot
+		value      string
+		startField string
 	}
 	var eligible []eligiblePivot
 	for i := range params.Pivots {
@@ -211,25 +225,33 @@ func (e ScenarioEvaluator) processScenarioIteration(
 				"error getting pivot value in EvalScenario")
 		}
 		if value != nil {
-			eligible = append(eligible, eligiblePivot{pivot: &params.Pivots[i], value: *value})
+			eligible = append(eligible, eligiblePivot{
+				pivot:      &params.Pivots[i],
+				value:      *value,
+				startField: pivotStartField(params.Pivots[i]),
+			})
 		}
 	}
 
 	var pivotValue *string
 	var selectedPivot *models.Pivot
 	if len(eligible) > 0 {
-		// Deterministic selection: alphanumeric order on the pivot field name.
-		slices.SortFunc(eligible, func(a, b eligiblePivot) int {
-			return strings.Compare(a.pivot.Field, b.pivot.Field)
+		// Deterministic selection: alphanumeric order on the start field, with the pivot id
+		// as a tiebreaker in case two pivots start from the same field.
+		slices.SortStableFunc(eligible, func(a, b eligiblePivot) int {
+			if c := strings.Compare(a.startField, b.startField); c != 0 {
+				return c
+			}
+			return strings.Compare(a.pivot.Id.String(), b.pivot.Id.String())
 		})
 
 		if len(eligible) > 1 {
 			utils.LoggerFromContext(ctx).InfoContext(ctx,
-				"multiple eligible pivot values present in payload; selecting deterministically by pivot field name",
+				"multiple eligible pivot values present in payload; selecting deterministically by pivot start field",
 				"scenario_id", params.Scenario.Id,
 				"trigger_object_type", params.Scenario.TriggerObjectType,
-				"eligible_pivot_fields", pure_utils.Map(eligible, func(e eligiblePivot) string { return e.pivot.Field }),
-				"selected_pivot_field", eligible[0].pivot.Field,
+				"eligible_pivot_start_fields", pure_utils.Map(eligible, func(e eligiblePivot) string { return e.startField }),
+				"selected_pivot_start_field", eligible[0].startField,
 				"selected_pivot_id", eligible[0].pivot.Id,
 				"object_id", params.ClientObject.Data["object_id"],
 			)
