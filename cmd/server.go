@@ -134,7 +134,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 
 	pgConfig, err := infra.NewPgConfig()
 	if err != nil {
-		return err
+		return fmt.Errorf("load postgres config for server: %w", err)
 	}
 
 	convoyConfiguration := infra.NewConvoyConfiguration()

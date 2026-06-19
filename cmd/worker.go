@@ -42,7 +42,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	pgConfig, err := infra.NewPgConfig()
 	if err != nil {
-		return err
+		return fmt.Errorf("load postgres config for worker: %w", err)
 	}
 
 	convoyConfiguration := infra.NewConvoyConfiguration()

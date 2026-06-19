@@ -13,7 +13,7 @@ import (
 func RunMigrations(apiVersion string, migrateDownTo *int64) error {
 	pgConfig, err := infra.NewPgConfig()
 	if err != nil {
-		return err
+		return fmt.Errorf("load postgres config for migrations: %w", err)
 	}
 
 	logger := utils.NewLogger(utils.GetEnv("LOGGING_FORMAT", "text"))
