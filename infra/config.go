@@ -218,6 +218,15 @@ type ConvoyConfiguration struct {
 	RateLimit int
 }
 
+func NewConvoyConfiguration() ConvoyConfiguration {
+	return ConvoyConfiguration{
+		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
+		APIUrl:    utils.GetEnv("CONVOY_API_URL", ""),
+		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
+		RateLimit: utils.GetEnv("CONVOY_RATE_LIMIT", 50),
+	}
+}
+
 type AIAgentProviderType string
 
 const (

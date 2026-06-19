@@ -78,3 +78,27 @@ func TestNewAIAgentConfigurationReadsEnv(t *testing.T) {
 	assert.Equal(t, "europe-west1", config.MainAgentLocation)
 	assert.Equal(t, "pplx-key", config.PerplexityAPIKey)
 }
+
+
+func TestNewConvoyConfigurationDefaults(t *testing.T) {
+	config := NewConvoyConfiguration()
+
+	assert.Equal(t, 50, config.RateLimit)
+	assert.Equal(t, "", config.APIKey)
+	assert.Equal(t, "", config.APIUrl)
+	assert.Equal(t, "", config.ProjectID)
+}
+
+func TestNewConvoyConfigurationReadsEnv(t *testing.T) {
+	t.Setenv("CONVOY_API_KEY", "key")
+	t.Setenv("CONVOY_API_URL", "https://convoy.test")
+	t.Setenv("CONVOY_PROJECT_ID", "project-id")
+	t.Setenv("CONVOY_RATE_LIMIT", "25")
+
+	config := NewConvoyConfiguration()
+
+	assert.Equal(t, "key", config.APIKey)
+	assert.Equal(t, "https://convoy.test", config.APIUrl)
+	assert.Equal(t, "project-id", config.ProjectID)
+	assert.Equal(t, 25, config.RateLimit)
+}

@@ -137,12 +137,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		return err
 	}
 
-	convoyConfiguration := infra.ConvoyConfiguration{
-		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
-		APIUrl:    utils.GetEnv("CONVOY_API_URL", ""),
-		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
-		RateLimit: utils.GetEnv("CONVOY_RATE_LIMIT", 50),
-	}
+	convoyConfiguration := infra.NewConvoyConfiguration()
 
 	openSanctionsConfig := infra.InitializeScreening(
 		ctx,
