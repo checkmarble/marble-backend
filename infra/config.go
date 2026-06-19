@@ -241,6 +241,23 @@ type AIAgentConfiguration struct {
 	PerplexityAPIKey string
 }
 
+func NewAIAgentConfiguration(defaultProjectID string) AIAgentConfiguration {
+	return AIAgentConfiguration{
+		MainAgentProviderType: AIAgentProviderTypeFromString(
+			utils.GetEnv("AI_AGENT_MAIN_AGENT_PROVIDER_TYPE", "openai"),
+		),
+		MainAgentURL:          utils.GetEnv("AI_AGENT_MAIN_AGENT_URL", ""),
+		MainAgentKey:          utils.GetEnv("AI_AGENT_MAIN_AGENT_KEY", ""),
+		MainAgentDefaultModel: utils.GetEnv("AI_AGENT_MAIN_AGENT_DEFAULT_MODEL", "gemini-2.5-flash"),
+		MainAgentBackend: AIAgentProviderBackendFromString(
+			utils.GetEnv("AI_AGENT_MAIN_AGENT_BACKEND", ""),
+		),
+		MainAgentProject:  utils.GetEnv("AI_AGENT_MAIN_AGENT_PROJECT", defaultProjectID),
+		MainAgentLocation: utils.GetEnv("AI_AGENT_MAIN_AGENT_LOCATION", ""),
+		PerplexityAPIKey:  utils.GetEnv("AI_AGENT_PERPLEXITY_API_KEY", ""),
+	}
+}
+
 func AIAgentProviderTypeFromString(providerType string) AIAgentProviderType {
 	switch providerType {
 	case "openai":
