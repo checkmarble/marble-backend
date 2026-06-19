@@ -227,6 +227,17 @@ func NewConvoyConfiguration() ConvoyConfiguration {
 	}
 }
 
+func NewLicenseConfiguration() models.LicenseConfiguration {
+	// we can't keep this constructor in the models package because calling utils.GetEnv
+	// would trigger an import cycle.
+	// Injecting a variable getter to the constructor instead of coupling it to
+	// the environment could solve the cycle issue and be more idiomatic to test
+	return models.LicenseConfiguration{
+		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
+		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
+	}
+}
+
 type AIAgentProviderType string
 
 const (

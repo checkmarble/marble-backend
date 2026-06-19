@@ -102,3 +102,20 @@ func TestNewConvoyConfigurationReadsEnv(t *testing.T) {
 	assert.Equal(t, "project-id", config.ProjectID)
 	assert.Equal(t, 25, config.RateLimit)
 }
+
+func TestNewLicenseConfigurationDefaults(t *testing.T) {
+	config := NewLicenseConfiguration()
+
+	assert.Equal(t, "", config.LicenseKey)
+	assert.False(t, config.KillIfReadLicenseError)
+}
+
+func TestNewLicenseConfigurationReadsEnv(t *testing.T) {
+	t.Setenv("LICENSE_KEY", "license-key")
+	t.Setenv("KILL_IF_READ_LICENSE_ERROR", "true")
+
+	config := NewLicenseConfiguration()
+
+	assert.Equal(t, "license-key", config.LicenseKey)
+	assert.True(t, config.KillIfReadLicenseError)
+}

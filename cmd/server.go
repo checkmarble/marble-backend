@@ -170,10 +170,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		CreateOrgName:          utils.GetEnv("CREATE_ORG_NAME", ""),
 		CreateOrgAdminEmail:    utils.GetEnv("CREATE_ORG_ADMIN_EMAIL", ""),
 	}
-	licenseConfig := models.LicenseConfiguration{
-		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
-		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
-	}
+	licenseConfig := infra.NewLicenseConfiguration()
 	bigQueryConfig := infra.BigQueryConfig{
 		ProjectID:      utils.GetEnv("BIGQUERY_PROJECT_ID", gcpConfig.ProjectId),
 		MetricsDataset: utils.GetEnv("BIGQUERY_METRICS_DATASET", infra.MetricsDataset),
