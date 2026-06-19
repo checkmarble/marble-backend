@@ -17,9 +17,21 @@ where deleted_at is null;
 -- +goose Down
 drop index data_model_pivots_signature_idx;
 
--- Restore the single-pivot-per-table constraint (fails if a table has >1 live pivot).
-delete from data_model_pivots
-where deleted_at is not null;
+-- The restored index allows only one live pivot per (organization_id, base_table_id),
+-- but the forward migration may have created several. Soft-delete all but the oldest
+-- live pivot per table so the unique index can be recreated. Soft-delete (rather than
+-- hard delete) preserves decisions that reference these pivots by id.
+update data_model_pivots p
+set deleted_at = now()
+where p.deleted_at is null
+  and exists (
+    select 1
+    from data_model_pivots q
+    where q.organization_id = p.organization_id
+      and q.base_table_id = p.base_table_id
+      and q.deleted_at is null
+      and (q.created_at, q.id) < (p.created_at, p.id)
+  );
 
 create unique index data_model_pivots_base_table_id_idx
 on data_model_pivots (organization_id, base_table_id)
