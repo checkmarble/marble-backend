@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
@@ -112,6 +113,34 @@ type PgConfig struct {
 	// Role to impersonate when connecting to the database. To be used in particular with IAM authentication t
 	// handle role based access control. Ignored if empty.
 	ImpersonateRole string
+}
+
+func NewPgConfig() (PgConfig, error) {
+	config := PgConfig{
+		ConnectionString:   utils.GetEnv("PG_CONNECTION_STRING", ""),
+		Database:           utils.GetEnv("PG_DATABASE", "marble"),
+		Hostname:           utils.GetEnv("PG_HOSTNAME", ""),
+		Password:           utils.GetEnv("PG_PASSWORD", ""),
+		Port:               utils.GetEnv("PG_PORT", "5432"),
+		User:               utils.GetEnv("PG_USER", ""),
+		MaxPoolConnections: utils.GetEnv("PG_MAX_POOL_SIZE", DEFAULT_MAX_CONNECTIONS),
+		ClientDbConfigFile: utils.GetEnv("CLIENT_DB_CONFIG_FILE", ""),
+		SslMode:            utils.GetEnv("PG_SSL_MODE", "prefer"),
+		ImpersonateRole:    utils.GetEnv("PG_IMPERSONATE_ROLE", ""),
+	}
+
+	if config.ConnectionString != "" {
+		if u, err := url.Parse(config.ConnectionString); err != nil || !u.IsAbs() {
+			switch err {
+			case nil:
+				return PgConfig{}, errors.New("invalid database connection string")
+			default:
+				return PgConfig{}, errors.Wrap(err, "invalid database connection string")
+			}
+		}
+	}
+
+	return config, nil
 }
 
 func (config PgConfig) GetConnectionString() string {

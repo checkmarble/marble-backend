@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"reflect"
@@ -41,27 +40,9 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	appName := fmt.Sprintf("marble-worker %s", apiVersion)
 
 	// This is where we read the environment variables and set up the configuration for the application.
-	pgConfig := infra.PgConfig{
-		ConnectionString:   utils.GetEnv("PG_CONNECTION_STRING", ""),
-		Database:           utils.GetEnv("PG_DATABASE", "marble"),
-		Hostname:           utils.GetEnv("PG_HOSTNAME", ""),
-		Password:           utils.GetEnv("PG_PASSWORD", ""),
-		Port:               utils.GetEnv("PG_PORT", "5432"),
-		User:               utils.GetEnv("PG_USER", ""),
-		MaxPoolConnections: utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
-		ClientDbConfigFile: utils.GetEnv("CLIENT_DB_CONFIG_FILE", ""),
-		SslMode:            utils.GetEnv("PG_SSL_MODE", "prefer"),
-		ImpersonateRole:    utils.GetEnv("PG_IMPERSONATE_ROLE", ""),
-	}
-	if pgConfig.ConnectionString != "" {
-		if u, err := url.Parse(pgConfig.ConnectionString); err != nil || !u.IsAbs() {
-			switch err {
-			case nil:
-				return errors.New("invalid database connection string")
-			default:
-				return errors.Wrap(err, "invalid database connection string")
-			}
-		}
+	pgConfig, err := infra.NewPgConfig()
+	if err != nil {
+		return err
 	}
 
 	convoyConfiguration := infra.ConvoyConfiguration{
