@@ -365,6 +365,7 @@ func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase 
 		usecases.NewExecutorFactory(),
 		usecases.NewFeatureAccessReader(),
 		usecases.Repositories.MarbleDbRepository,
+		usecases.license.IsManagedMarble,
 	)
 }
 

@@ -1,9 +1,8 @@
 package security
 
 import (
-	"errors"
-
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -12,6 +11,7 @@ type EnforceSecurityOrganization interface {
 	ListOrganization() error
 	CreateOrganization() error
 	EditOrganization(org models.Organization) error
+	EditOrganizationScreeningProvider(org models.Organization, isManagedMarble bool) error
 	DeleteOrganization() error
 	ReadDataModel() error
 	WriteDataModel(organizationId uuid.UUID) error
@@ -40,6 +40,23 @@ func (e *EnforceSecurityOrganizationImpl) EditOrganization(org models.Organizati
 		e.Permission(models.ORGANIZATIONS_UPDATE),
 		e.ReadOrganization(org.Id),
 	)
+}
+
+// EditOrganizationScreeningProvider enforces the correct permissions for editing the screening provider,
+// depending on whether the deployment is managed by Marble or self-hosted.
+// For managed deployments, only Marble admins can change the screening provider.
+// For self-hosted deployments, the credentials are used to determine the authority.
+func (e *EnforceSecurityOrganizationImpl) EditOrganizationScreeningProvider(org models.Organization, isManagedMarble bool) error {
+	if isManagedMarble {
+		if e.Credentials.Role != models.MARBLE_ADMIN {
+			return errors.Wrap(
+				models.ForbiddenError,
+				"only marble admins can change the screening provider on managed deployments",
+			)
+		}
+		return nil
+	}
+	return e.EditOrganization(org)
 }
 
 func (e *EnforceSecurityOrganizationImpl) DeleteOrganization() error {
