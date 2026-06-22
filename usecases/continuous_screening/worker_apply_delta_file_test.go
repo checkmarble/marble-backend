@@ -1,15 +1,19 @@
 package continuous_screening
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"strings"
 	"testing"
 	"testing/iotest"
 
+	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 // matchesFilters (LexisNexis): a record matches when at least one enabled
@@ -114,4 +118,49 @@ func TestWork_JsonDecoderOffsetBehavior(t *testing.T) {
 	finalProgress := savedOffset + jsonReader2.InputOffset()
 	assert.Equal(t, int64(len(record1)+1+len(record2)+1+len(record3)), finalProgress,
 		"Phase 3 final progress should match records + intermediate newlines")
+}
+
+func TestBuildOpenSanctionQuery(t *testing.T) {
+	orgId := uuid.New()
+	repo := new(mocks.ContinuousScreeningRepository)
+	repo.On("SearchScreeningMatchWhitelistByIds", mock.Anything, mock.Anything,
+		orgId, mock.Anything, mock.Anything).
+		Return([]models.ScreeningWhitelist{}, nil)
+	worker := &ApplyDeltaFileWorker{repository: repo}
+
+	record := models.OpenSanctionsDeltaFileRecord{
+		Entity: models.OpenSanctionsDeltaFileEntity{
+			Id:     "entity-123",
+			Schema: "Person",
+			Properties: map[string][]string{
+				"name":      {"John Doe"},
+				"topics":    {"sanction"},
+				"programId": {"GlobalSanctions"},
+			},
+		},
+	}
+
+	job := models.EnrichedContinuousScreeningUpdateJob{
+		ContinuousScreeningUpdateJob: models.ContinuousScreeningUpdateJob{OrgId: orgId},
+		Config: models.ContinuousScreeningConfig{
+			OrgId:          orgId,
+			ObjectTypes:    []string{"person_A"},
+			MatchThreshold: 80,
+			MatchLimit:     50,
+		},
+	}
+
+	query, err := worker.buildOpenSanctionQuery(context.Background(), nil, job, record)
+	assert.NoError(t, err)
+
+	// ObjectTypes threaded from config
+	assert.Equal(t, []string{"person_A"}, query.ObjectTypes)
+
+	// programId stripped from scoring properties
+	assert.Empty(t, query.Queries[0].Filters["programId"],
+		"programId should be stripped from scoring properties")
+
+	// topics stripped too (existing behaviour)
+	assert.Empty(t, query.Queries[0].Filters["topics"],
+		"topics should be stripped from scoring properties")
 }

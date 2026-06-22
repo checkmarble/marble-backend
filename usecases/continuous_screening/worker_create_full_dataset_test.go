@@ -287,6 +287,10 @@ func TestBuildDatasetEntity_Metadata(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "obj-123", metadata.ObjectId)
 	assert.Equal(t, "customer", metadata.ObjectType)
+
+	programIdVal, ok := result.Properties[models.ContinuousScreeningObjectTypeProperty]
+	assert.True(t, ok, "programId property should exist")
+	assert.Equal(t, []string{track.ObjectType}, programIdVal)
 }
 
 func TestGenerateNextVersion(t *testing.T) {

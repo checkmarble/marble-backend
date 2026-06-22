@@ -12,6 +12,10 @@ import (
 
 const OPEN_SANCTIONS_OUTDATED_DATASET_LEEWAY = 1 * time.Hour
 
+// FTM property used to tag an org-dataset entity with its source table name,
+// enabling per-config filtering in dataset-update queries.
+const ContinuousScreeningObjectTypeProperty = "programId"
+
 // Row structure representing a dataset in the OpenSanctions catalog
 // Note: I didn't declare all fields, only those needed for our logic, don't hesitate to add more if needed
 type OpenSanctionsRawDataset struct {
@@ -67,6 +71,10 @@ type OpenSanctionsQuery struct {
 	// cf: `exclude_entity_ids` in the OpenSanctions query
 	WhitelistedEntityIds []string
 	UseScopedIndex       bool
+	// Restrict matches to org-dataset entities from these source tables.
+	// Map to the `programId` property
+	// Empty = no restriction. Set only for dataset-update (direction B) queries.
+	ObjectTypes []string
 }
 
 type OpenSanctionsCheckQuery struct {

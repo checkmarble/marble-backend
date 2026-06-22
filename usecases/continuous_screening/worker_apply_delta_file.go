@@ -506,6 +506,9 @@ func (w *ApplyDeltaFileWorker) buildOpenSanctionQuery(
 
 	// Upstream -> Organization record searches should not contain topics filters
 	delete(filters, "topics")
+	// programId is reserved on org-dataset entities to carry the source table name;
+	// strip it from the incoming record's scoring properties to avoid noise.
+	delete(filters, "programId")
 
 	return models.OpenSanctionsQuery{
 		OrgConfig: models.OrganizationOpenSanctionsConfig{
@@ -521,6 +524,7 @@ func (w *ApplyDeltaFileWorker) buildOpenSanctionQuery(
 		WhitelistedEntityIds: whitelistedEntityIds,
 		Scope:                orgCustomDatasetName(updateJob.OrgId),
 		Partition:            true,
+		ObjectTypes:          updateJob.Config.ObjectTypes,
 	}, nil
 }
 
