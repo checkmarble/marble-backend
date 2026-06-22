@@ -48,6 +48,7 @@ type Usecases struct {
 	aiAgentConfig                infra.AIAgentConfiguration
 	analyticsConfig              infra.AnalyticsConfig
 	continuousScreeningBucketUrl string
+	csServeFilesDirectly         bool
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
 	webhookSystemMigrated        bool   // True when migrated to new internal webhook system
@@ -179,6 +180,12 @@ func WithContinuousScreeningBucketUrl(bucket string) Option {
 	}
 }
 
+func WithCsServeFilesDirectly(v bool) Option {
+	return func(o *options) {
+		o.csServeFilesDirectly = v
+	}
+}
+
 func WithMarbleApiInternalUrl(url string) Option {
 	return func(o *options) {
 		o.marbleApiInternalUrl = url
@@ -248,6 +255,7 @@ type options struct {
 	aiAgentConfig                infra.AIAgentConfiguration
 	analyticsConfig              infra.AnalyticsConfig
 	continuousScreeningBucketUrl string
+	csServeFilesDirectly         bool
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
 	webhookSystemMigrated        bool
@@ -287,6 +295,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		aiAgentConfig:                o.aiAgentConfig,
 		analyticsConfig:              o.analyticsConfig,
 		continuousScreeningBucketUrl: o.continuousScreeningBucketUrl,
+		csServeFilesDirectly:         o.csServeFilesDirectly,
 		marbleApiInternalUrl:         o.marbleApiInternalUrl,
 		csCreateFullDatasetInterval:  o.csCreateFullDatasetInterval,
 		webhookSystemMigrated:        o.webhookSystemMigrated,
@@ -639,6 +648,7 @@ func (usecases *Usecases) NewContinuousScreeningManifestUsecase() *continuous_sc
 		usecases.Repositories.BlobRepository,
 		usecases.marbleApiInternalUrl,
 		usecases.continuousScreeningBucketUrl,
+		usecases.csServeFilesDirectly,
 	)
 }
 

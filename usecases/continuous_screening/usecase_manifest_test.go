@@ -40,6 +40,7 @@ func (suite *ContinuousScreeningManifestTestSuite) makeUsecase() *ContinuousScre
 		suite.blobRepository,
 		suite.marbleBackendUrl,
 		suite.continuousScreeningBucketUrl,
+		false,
 	)
 }
 

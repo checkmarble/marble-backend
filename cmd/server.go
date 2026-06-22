@@ -231,6 +231,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		similarityThreshold:          utils.GetEnv("SIMILARITY_THRESHOLD", models.DEFAULT_SIMILARITY_THRESHOLD),
 		enableTracing:                utils.GetEnv("ENABLE_TRACING", false),
 		continuousScreeningBucketUrl: utils.GetEnv("CONTINUOUS_SCREENING_BUCKET_URL", ""),
+		csServeFilesDirectly:         utils.GetEnv("CONTINUOUS_SCREENING_SERVE_FILES_DIRECTLY", false),
 	}
 	if err := serverConfig.Validate(); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -401,6 +402,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithAIAgentConfig(aiAgentConfig),
 		usecases.WithAnalyticsConfig(analyticsConfig),
 		usecases.WithContinuousScreeningBucketUrl(serverConfig.continuousScreeningBucketUrl),
+		usecases.WithCsServeFilesDirectly(serverConfig.csServeFilesDirectly),
 		usecases.WithMarbleApiInternalUrl(apiConfig.MarbleApiInternalUrl),
 		usecases.WithIpEnrichmentDatabase(ipEnrichmentDatabase),
 		usecases.WithScreeningOffloadingEnabled(utils.GetEnv("SCREENING_OFFLOADING_ENABLED", true)),
