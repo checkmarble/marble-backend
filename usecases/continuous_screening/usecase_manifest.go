@@ -58,14 +58,6 @@ func NewContinuousScreeningManifestUsecase(
 	}
 }
 
-// ContinuousScreeningFileResult holds the result of a file fetch request.
-// Exactly one of RedirectURL or Blob is set depending on the server configuration.
-// When Blob is set, the caller is responsible for closing Blob.ReadCloser.
-type ContinuousScreeningFileResult struct {
-	RedirectURL string
-	Blob        *models.Blob
-}
-
 func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningCatalog(ctx context.Context) (models.CatalogResponse, error) {
 	exec := u.executorFactory.NewExecutor()
 
@@ -117,59 +109,59 @@ func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningDeltaList(
 func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningFull(
 	ctx context.Context,
 	orgId uuid.UUID,
-) (ContinuousScreeningFileResult, error) {
+) (models.ContinuousScreeningFileResult, error) {
 	exec := u.executorFactory.NewExecutor()
 
 	fullFile, err := u.repository.GetContinuousScreeningLatestDatasetFileByOrgId(ctx, exec, orgId,
 		models.ContinuousScreeningDatasetFileTypeFull)
 	if err != nil {
-		return ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to get latest full dataset file")
+		return models.ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to get latest full dataset file")
 	}
 	if fullFile == nil {
-		return ContinuousScreeningFileResult{}, errors.Wrap(models.NotFoundError, "no full dataset file found for organization")
+		return models.ContinuousScreeningFileResult{}, errors.Wrap(models.NotFoundError, "no full dataset file found for organization")
 	}
 
 	if u.serveFilesDirectly {
 		blob, err := u.blobRepository.GetBlob(ctx, u.continuousScreeningBucketUrl, fullFile.FilePath)
 		if err != nil {
-			return ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to read full dataset file blob")
+			return models.ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to read full dataset file blob")
 		}
-		return ContinuousScreeningFileResult{Blob: &blob}, nil
+		return models.ContinuousScreeningFileResult{Blob: &blob}, nil
 	}
 
 	url, err := u.blobRepository.GenerateSignedUrl(ctx, u.continuousScreeningBucketUrl, fullFile.FilePath)
 	if err != nil {
-		return ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to generate signed url for full dataset file")
+		return models.ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to generate signed url for full dataset file")
 	}
-	return ContinuousScreeningFileResult{RedirectURL: url}, nil
+	return models.ContinuousScreeningFileResult{RedirectURL: url}, nil
 }
 
 func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningDelta(
 	ctx context.Context,
 	orgId uuid.UUID,
 	deltaId uuid.UUID,
-) (ContinuousScreeningFileResult, error) {
+) (models.ContinuousScreeningFileResult, error) {
 	exec := u.executorFactory.NewExecutor()
 
 	delta, err := u.repository.GetContinuousScreeningDatasetFileById(ctx, exec, deltaId)
 	if err != nil {
-		return ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to get continuous screening delta")
+		return models.ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to get continuous screening delta")
 	}
 	if delta.OrgId != orgId {
-		return ContinuousScreeningFileResult{}, errors.New("delta does not belong to the organization")
+		return models.ContinuousScreeningFileResult{}, errors.Wrap(models.ForbiddenError, "delta does not belong to the organization")
 	}
 
 	if u.serveFilesDirectly {
 		blob, err := u.blobRepository.GetBlob(ctx, u.continuousScreeningBucketUrl, delta.FilePath)
 		if err != nil {
-			return ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to read delta file blob")
+			return models.ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to read delta file blob")
 		}
-		return ContinuousScreeningFileResult{Blob: &blob}, nil
+		return models.ContinuousScreeningFileResult{Blob: &blob}, nil
 	}
 
 	url, err := u.blobRepository.GenerateSignedUrl(ctx, u.continuousScreeningBucketUrl, delta.FilePath)
 	if err != nil {
-		return ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to generate signed url for delta file")
+		return models.ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to generate signed url for delta file")
 	}
-	return ContinuousScreeningFileResult{RedirectURL: url}, nil
+	return models.ContinuousScreeningFileResult{RedirectURL: url}, nil
 }

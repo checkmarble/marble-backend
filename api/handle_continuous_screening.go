@@ -8,7 +8,6 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
-	"github.com/checkmarble/marble-backend/usecases/continuous_screening"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
@@ -409,7 +408,7 @@ func handleGetContinuousScreeningFull(uc usecases.Usecases) func(c *gin.Context)
 	}
 }
 
-func serveContinuousScreeningFileResult(c *gin.Context, result continuous_screening.ContinuousScreeningFileResult) {
+func serveContinuousScreeningFileResult(c *gin.Context, result models.ContinuousScreeningFileResult) {
 	if result.Blob != nil {
 		defer result.Blob.ReadCloser.Close()
 		c.Header("Content-Type", "application/x-ndjson")

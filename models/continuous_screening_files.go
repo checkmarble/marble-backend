@@ -1,5 +1,13 @@
 package models
 
+// ContinuousScreeningFileResult holds the result of a dataset file fetch.
+// Exactly one of RedirectURL or Blob is set depending on the server configuration.
+// When Blob is set, the caller is responsible for closing Blob.ReadCloser.
+type ContinuousScreeningFileResult struct {
+	RedirectURL string
+	Blob        *Blob
+}
+
 type ContinuousScreeningDeltaList struct {
 	Versions map[string]string `json:"versions"`
 }
