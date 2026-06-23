@@ -99,6 +99,11 @@ type CaseUseCaseRepository interface {
 		caseId string,
 	) ([]models.ContinuousScreeningWithMatches, error)
 	ListContinuousScreeningsByIds(ctx context.Context, exec repositories.Executor, ids []uuid.UUID) ([]models.ContinuousScreening, error)
+	ListContinuousScreeningMatchCommentsByMatchIds(
+		ctx context.Context,
+		exec repositories.Executor,
+		ids []uuid.UUID,
+	) ([]models.ScreeningMatchComment, error)
 	UpdateContinuousScreeningsCaseId(ctx context.Context, exec repositories.Executor, ids []uuid.UUID, caseId string) error
 	GetContinuousScreeningConfig(
 		ctx context.Context,
@@ -1439,6 +1444,28 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 			}
 			if err := usecase.offloadedReader.HydrateContinuousScreeningMatch(ctx, &continuousScreeningsWithMatches[i]); err != nil {
 				return models.Case{}, errors.Wrap(err, "failed to hydrate continuous screening match")
+			}
+		}
+
+		// Batch-load comments for all matches
+		matchIdToMatch := make(map[string]*models.ContinuousScreeningMatch)
+		matchUUIDs := make([]uuid.UUID, 0)
+		for si := range continuousScreeningsWithMatches {
+			for mi := range continuousScreeningsWithMatches[si].Matches {
+				m := &continuousScreeningsWithMatches[si].Matches[mi]
+				matchIdToMatch[m.Id.String()] = m
+				matchUUIDs = append(matchUUIDs, m.Id)
+			}
+		}
+		if len(matchUUIDs) > 0 {
+			comments, err := usecase.repository.ListContinuousScreeningMatchCommentsByMatchIds(ctx, exec, matchUUIDs)
+			if err != nil {
+				return models.Case{}, errors.Wrap(err, "failed to load continuous screening match comments")
+			}
+			for _, comment := range comments {
+				if m, ok := matchIdToMatch[comment.MatchId]; ok {
+					m.Comments = append(m.Comments, comment)
+				}
 			}
 		}
 

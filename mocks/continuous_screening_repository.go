@@ -455,6 +455,24 @@ func (m *ContinuousScreeningRepository) GetEnrichedContinuousScreeningUpdateJob(
 	return args.Get(0).(models.EnrichedContinuousScreeningUpdateJob), args.Error(1)
 }
 
+func (m *ContinuousScreeningRepository) AddContinuousScreeningMatchComment(
+	ctx context.Context,
+	exec repositories.Executor,
+	comment models.ScreeningMatchComment,
+) (models.ScreeningMatchComment, error) {
+	args := m.Called(ctx, exec, comment)
+	return args.Get(0).(models.ScreeningMatchComment), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) ListContinuousScreeningMatchCommentsByMatchIds(
+	ctx context.Context,
+	exec repositories.Executor,
+	ids []uuid.UUID,
+) ([]models.ScreeningMatchComment, error) {
+	args := m.Called(ctx, exec, ids)
+	return args.Get(0).([]models.ScreeningMatchComment), args.Error(1)
+}
+
 func (m *ContinuousScreeningRepository) UpdateContinuousScreeningUpdateJob(
 	ctx context.Context,
 	exec repositories.Executor,

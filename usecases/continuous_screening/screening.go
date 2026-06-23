@@ -122,6 +122,15 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			return err
 		}
 
+		var savedComment *models.ScreeningMatchComment
+		if update.Comment != nil {
+			c, err := uc.repository.AddContinuousScreeningMatchComment(ctx, tx, *update.Comment)
+			if err != nil {
+				return errors.Wrap(err, "could not add comment while updating match status")
+			}
+			savedComment = &c
+		}
+
 		_, err = uc.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			OrgId:         continuousScreeningWithMatches.OrgId,
 			CaseId:        continuousScreeningWithMatches.CaseId.String(),
@@ -203,6 +212,9 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			return errors.Wrap(err, "failed to hydrate continuous screening match")
 		}
 		updatedMatch = matchHolder.Matches[0]
+		if savedComment != nil {
+			updatedMatch.Comments = []models.ScreeningMatchComment{*savedComment}
+		}
 
 		if err := uc.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             pure_utils.NewId().String(),

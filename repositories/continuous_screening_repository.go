@@ -616,6 +616,45 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningMatchStatusByBatch(
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningMatch)
 }
 
+func (repo *MarbleDbRepository) ListContinuousScreeningMatchCommentsByMatchIds(
+	ctx context.Context,
+	exec Executor,
+	ids []uuid.UUID,
+) ([]models.ScreeningMatchComment, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningMatchCommentsColumn...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCH_COMMENTS).
+		Where(squirrel.Eq{"continuous_screening_match_id": ids})
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningMatchComment)
+}
+
+func (repo *MarbleDbRepository) AddContinuousScreeningMatchComment(
+	ctx context.Context,
+	exec Executor,
+	comment models.ScreeningMatchComment,
+) (models.ScreeningMatchComment, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ScreeningMatchComment{}, err
+	}
+
+	matchId, err := uuid.Parse(comment.MatchId)
+	if err != nil {
+		return models.ScreeningMatchComment{}, errors.Wrap(err, "invalid match id for comment")
+	}
+
+	query := NewQueryBuilder().
+		Insert(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCH_COMMENTS).
+		Columns("id", "continuous_screening_match_id", "commented_by", "comment").
+		Values(pure_utils.NewId(), matchId, comment.CommenterId, comment.Comment).
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectContinuousScreeningMatchCommentsColumn, ",")))
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningMatchComment)
+}
+
 func (repo *MarbleDbRepository) UpdateContinuousScreeningStatus(
 	ctx context.Context,
 	exec Executor,

@@ -240,6 +240,15 @@ func (r *CaseRepository) GetContinuousScreeningConfig(ctx context.Context,
 	return args.Get(0).(models.ContinuousScreeningConfig), args.Error(1)
 }
 
+func (r *CaseRepository) ListContinuousScreeningMatchCommentsByMatchIds(
+	ctx context.Context,
+	exec repositories.Executor,
+	ids []uuid.UUID,
+) ([]models.ScreeningMatchComment, error) {
+	args := r.Called(ctx, exec, ids)
+	return args.Get(0).([]models.ScreeningMatchComment), args.Error(1)
+}
+
 func (r *CaseRepository) GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error) {
 	args := r.Called(ctx, exec, inboxId)
 	return args.Get(0).(models.Inbox), args.Error(1)
