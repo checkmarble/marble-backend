@@ -46,10 +46,16 @@ func (p ScreeningOpenSanctionsProvider) SearchRequest(ctx context.Context,
 	}
 
 	for _, subquery := range query.Queries {
-		q.Queries[pure_utils.NewId().String()] = openSanctionsRequestQuery{
+		rq := openSanctionsRequestQuery{
 			Schema:     subquery.Type,
 			Properties: subquery.Filters,
 		}
+		if len(query.ObjectTypes) > 0 {
+			rq.Filters = map[string][][]string{
+				"properties." + models.ContinuousScreeningObjectTypeProperty: {query.ObjectTypes},
+			}
+		}
+		q.Queries[pure_utils.NewId().String()] = rq
 	}
 
 	scope := p.Config.Scope(models.ScreeningProviderOpenSanctions)

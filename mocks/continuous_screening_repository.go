@@ -425,6 +425,70 @@ func (m *ContinuousScreeningRepository) UpdateContinuousScreeningMatchEnrichedPa
 	return args.Error(0)
 }
 
+func (m *ContinuousScreeningRepository) SetContinuousScreeningEntityEnriched(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+) error {
+	args := m.Called(ctx, exec, id)
+	return args.Error(0)
+}
+
+func (m *ContinuousScreeningRepository) SetContinuousScreeningMatchEnriched(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+) error {
+	args := m.Called(ctx, exec, id)
+	return args.Error(0)
+}
+
+func (m *ContinuousScreeningRepository) GetEnrichedContinuousScreeningUpdateJob(
+	ctx context.Context,
+	exec repositories.Executor,
+	updateId uuid.UUID,
+) (models.EnrichedContinuousScreeningUpdateJob, error) {
+	args := m.Called(ctx, exec, updateId)
+	return args.Get(0).(models.EnrichedContinuousScreeningUpdateJob), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) UpdateContinuousScreeningUpdateJob(
+	ctx context.Context,
+	exec repositories.Executor,
+	updateId uuid.UUID,
+	status models.ContinuousScreeningUpdateJobStatus,
+) error {
+	args := m.Called(ctx, exec, updateId, status)
+	return args.Error(0)
+}
+
+func (m *ContinuousScreeningRepository) GetContinuousScreeningJobOffset(
+	ctx context.Context,
+	exec repositories.Executor,
+	updateJobId uuid.UUID,
+) (*models.ContinuousScreeningJobOffset, error) {
+	args := m.Called(ctx, exec, updateJobId)
+	return args.Get(0).(*models.ContinuousScreeningJobOffset), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) UpsertContinuousScreeningJobOffset(
+	ctx context.Context,
+	exec repositories.Executor,
+	offset models.CreateContinuousScreeningJobOffset,
+) error {
+	args := m.Called(ctx, exec, offset)
+	return args.Error(0)
+}
+
+func (m *ContinuousScreeningRepository) CreateContinuousScreeningJobError(
+	ctx context.Context,
+	exec repositories.Executor,
+	input models.CreateContinuousScreeningJobError,
+) error {
+	args := m.Called(ctx, exec, input)
+	return args.Error(0)
+}
+
 type ContinuousScreeningClientDbRepository struct {
 	mock.Mock
 }
