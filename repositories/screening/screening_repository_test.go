@@ -2,6 +2,7 @@ package screening
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -326,6 +327,53 @@ func TestOpenSanctionsSuccessfulFullResponseWithThresholdOverride(t *testing.T) 
 			t.Error("payloads did not contain required text")
 		}
 	}
+}
+
+func TestOpenSanctionsSearchRequest_ObjectTypesFilter(t *testing.T) {
+	repo := getMockedOpenSanctionsRepository("", "", "")
+	provider := repo.GetProvider(models.ScreeningProviderOpenSanctions)
+
+	baseQuery := models.OpenSanctionsQuery{
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type:    "Person",
+				Filters: models.OpenSanctionsFilter{"name": []string{"John Doe"}},
+			},
+		},
+		OrgConfig: models.OrganizationOpenSanctionsConfig{},
+	}
+
+	t.Run("sets programId filter when ObjectTypes is non-empty", func(t *testing.T) {
+		query := baseQuery
+		query.ObjectTypes = []string{"person_A", "person_B"}
+
+		_, body, err := provider.SearchRequest(context.TODO(), &query)
+		assert.NoError(t, err)
+
+		var req openSanctionsRequest
+		assert.NoError(t, json.Unmarshal(body, &req))
+		assert.Len(t, req.Queries, 1)
+		for _, subquery := range req.Queries {
+			assert.Equal(t,
+				[][]string{{"person_A", "person_B"}},
+				subquery.Filters["properties."+models.ContinuousScreeningObjectTypeProperty],
+			)
+		}
+	})
+
+	t.Run("omits programId filter when ObjectTypes is empty", func(t *testing.T) {
+		query := baseQuery
+		query.ObjectTypes = nil
+
+		_, body, err := provider.SearchRequest(context.TODO(), &query)
+		assert.NoError(t, err)
+
+		var req openSanctionsRequest
+		assert.NoError(t, json.Unmarshal(body, &req))
+		for _, subquery := range req.Queries {
+			assert.Empty(t, subquery.Filters)
+		}
+	})
 }
 
 func TestDatasetOutdatedDetector(t *testing.T) {

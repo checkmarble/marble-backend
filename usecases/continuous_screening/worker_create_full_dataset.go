@@ -820,6 +820,10 @@ func buildDatasetEntity(
 		}
 	}
 
+	// Tag the entity with its source table name so dataset-update queries can filter
+	// per-config using a hard keyword filter on properties.programId.
+	properties[models.ContinuousScreeningObjectTypeProperty] = []string{track.ObjectType}
+
 	// Add metadata in `notes` property
 	metadata := models.EntityNoteMetadata{
 		ObjectId:   track.ObjectId,
