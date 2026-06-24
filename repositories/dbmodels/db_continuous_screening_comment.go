@@ -15,7 +15,7 @@ var SelectContinuousScreeningMatchCommentsColumn = utils.ColumnList[DBContinuous
 type DBContinuousScreeningMatchComment struct {
 	Id                         uuid.UUID `db:"id"`
 	ContinuousScreeningMatchId uuid.UUID `db:"continuous_screening_match_id"`
-	CommentedBy                string    `db:"commented_by"`
+	CommentedBy                uuid.UUID `db:"commented_by"`
 	Comment                    string    `db:"comment"`
 	CreatedAt                  time.Time `db:"created_at"`
 }
@@ -24,7 +24,7 @@ func AdaptContinuousScreeningMatchComment(dto DBContinuousScreeningMatchComment)
 	return models.ScreeningMatchComment{
 		Id:          dto.Id.String(),
 		MatchId:     dto.ContinuousScreeningMatchId.String(),
-		CommenterId: models.UserId(dto.CommentedBy),
+		CommenterId: models.UserId(dto.CommentedBy.String()),
 		Comment:     dto.Comment,
 		CreatedAt:   dto.CreatedAt,
 	}, nil
