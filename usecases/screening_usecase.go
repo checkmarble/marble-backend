@@ -889,7 +889,15 @@ func (uc ScreeningUsecase) UpdateMatchStatus(
 		},
 	)
 
-	return updatedMatch, err
+	if err != nil {
+		return models.ScreeningMatch{}, err
+	}
+
+	matches := []models.ScreeningMatch{updatedMatch}
+	if err := uc.hydrateAndSortMatches(ctx, data.decision.OrganizationId, matches); err != nil {
+		return models.ScreeningMatch{}, err
+	}
+	return matches[0], nil
 }
 
 func (uc ScreeningUsecase) CreateWhitelist(ctx context.Context, exec repositories.Executor,
