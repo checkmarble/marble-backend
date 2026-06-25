@@ -248,7 +248,7 @@ require (
 	github.com/openai/openai-go v1.9.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
-	github.com/opencontainers/runc v1.2.8 // indirect
+	github.com/opencontainers/runc v1.3.6 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.3.1 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
