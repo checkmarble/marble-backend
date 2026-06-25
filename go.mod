@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/bigquery v1.77.0
 	cloud.google.com/go/iam v1.11.0
 	cloud.google.com/go/profiler v0.6.0
-	cloud.google.com/go/storage v1.62.2
+	cloud.google.com/go/storage v1.62.3
 	firebase.google.com/go/v4 v4.19.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.31.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.56.0
