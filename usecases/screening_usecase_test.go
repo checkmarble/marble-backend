@@ -55,12 +55,13 @@ func TestListScreeningOnDecision(t *testing.T) {
 		}),
 	)
 
-	mockComments, mockCommentsRows := utils.FakeStructs[dbmodels.DBScreeningMatchComment](
-		4,
-		ops.WithCustomFieldProvider("ScreeningMatchId", func() (interface{}, error) {
-			return mockSc.Matches[0].Id, nil
-		}),
-	)
+	mockComments, mockCommentsRows := utils.FakeStructs[dbmodels.DBScreeningMatchComment](4)
+	matchId := mockSc.Matches[0].Id
+	for i := range mockComments {
+		mockComments[i].ScreeningMatchId = &matchId
+		mockComments[i].ContinuousScreeningMatchId = nil
+		mockCommentsRows[i] = utils.StructToMockRow(mockComments[i])
+	}
 
 	exec.Mock.ExpectQuery(escapeSql(`
 		SELECT
@@ -85,7 +86,7 @@ func TestListScreeningOnDecision(t *testing.T) {
 	exec.Mock.ExpectQuery(`SELECT .* FROM screening_match_comments WHERE screening_match_id = ANY\(\$1\)`).
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(
-			pgxmock.NewRows([]string{"id", "screening_match_id", "commented_by", "comment", "created_at"}).
+			pgxmock.NewRows([]string{"id", "screening_match_id", "continuous_screening_match_id", "commented_by", "comment", "created_at"}).
 				AddRows(mockCommentsRows...),
 		)
 

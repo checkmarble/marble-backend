@@ -117,6 +117,7 @@ type ContinuousScreeningMatch struct {
 	Enriched              bool
 	ReviewedBy            *uuid.UUID
 	Metadata              *EntityNoteMetadata
+	Comments              []ScreeningMatchComment
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

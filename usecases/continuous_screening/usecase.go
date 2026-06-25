@@ -123,6 +123,16 @@ type ContinuousScreeningUsecaseRepository interface {
 		screeningId uuid.UUID,
 		matches []models.ContinuousScreeningMatch,
 	) ([]models.ContinuousScreeningMatch, error)
+	AddContinuousScreeningMatchComment(
+		ctx context.Context,
+		exec repositories.Executor,
+		comment models.ScreeningMatchComment,
+	) (models.ScreeningMatchComment, error)
+	ListContinuousScreeningMatchCommentsByMatchIds(
+		ctx context.Context,
+		exec repositories.Executor,
+		ids []uuid.UUID,
+	) ([]models.ScreeningMatchComment, error)
 
 	// Cases:
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)

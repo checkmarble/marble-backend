@@ -2185,3 +2185,81 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	suite.Equal(updatedMatch, result)
 	suite.AssertExpectations()
 }
+
+func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_WithComment() {
+	comment := "looks clean, not a match"
+	commentModel := models.ScreeningMatchComment{
+		MatchId:     suite.matchId.String(),
+		CommenterId: suite.userId,
+		Comment:     comment,
+	}
+	input := models.ScreeningMatchUpdate{
+		MatchId:    suite.matchId.String(),
+		Status:     models.ScreeningMatchStatusNoHit,
+		ReviewerId: &suite.userId,
+		Comment:    &commentModel,
+	}
+
+	continuousScreeningMatch := models.ContinuousScreeningMatch{
+		Id:                    suite.matchId,
+		ContinuousScreeningId: suite.screeningId,
+		Status:                models.ScreeningMatchStatusPending,
+		OpenSanctionEntityId:  "marble-entity-123",
+	}
+
+	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:                   suite.screeningId,
+			OrgId:                suite.orgId,
+			Status:               models.ScreeningStatusInReview,
+			CaseId:               &suite.caseId,
+			IsPartial:            true,
+			TriggerType:          models.ContinuousScreeningTriggerTypeDatasetUpdated,
+			OpenSanctionEntityId: utils.Ptr("open-sanction-entity-abc"),
+		},
+		Matches: []models.ContinuousScreeningMatch{continuousScreeningMatch},
+	}
+
+	caseData := models.Case{Id: suite.caseId.String()}
+
+	updatedMatch := continuousScreeningMatch
+	updatedMatch.Status = models.ScreeningMatchStatusNoHit
+
+	savedComment := commentModel
+	savedComment.Id = pure_utils.NewId().String()
+
+	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
+		suite.matchId).Return(continuousScreeningMatch, nil)
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(continuousScreeningWithMatches, nil)
+	suite.repository.On("GetCaseById", mock.Anything, mock.Anything, suite.caseId.String()).Return(caseData, nil)
+	suite.enforceSecurity.On("WriteContinuousScreeningHit", suite.orgId).Return(nil)
+	suite.repository.On("ListInboxes", mock.Anything, mock.Anything, suite.orgId, false).Return([]models.Inbox{}, nil)
+	suite.enforceSecurity.On("ReadOrUpdateCase", mock.Anything, mock.Anything).Return(nil)
+	suite.repository.On("UpdateContinuousScreeningMatchStatus", mock.Anything, mock.Anything,
+		suite.matchId, models.ScreeningMatchStatusNoHit, mock.Anything).Return(updatedMatch, nil)
+	suite.repository.On("AddContinuousScreeningMatchComment", mock.Anything, mock.Anything,
+		commentModel).Return(savedComment, nil)
+	suite.caseEditor.On("PerformCaseActionSideEffects", mock.Anything, mock.Anything, caseData).Return(nil)
+	suite.enforceSecurity.On("WriteWhitelist", mock.Anything).Return(nil)
+	suite.repository.On("AddScreeningMatchWhitelist", mock.Anything, mock.Anything,
+		suite.orgId, "marble-entity-123", "open-sanction-entity-abc", &suite.userId).Return(nil)
+	suite.repository.On("CreateCaseEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(
+		attrs models.CreateCaseEventAttributes,
+	) bool {
+		return attrs.EventType == models.ScreeningMatchReviewed
+	})).Return(models.CaseEvent{}, nil)
+	suite.webhookEventsUsecase.
+		On("CreateWebhookEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(in models.WebhookEventCreate) bool {
+			return in.EventContent.Type == models.WebhookEventType_ContinuousScreeningMatchReviewed
+		})).Return(nil)
+
+	uc := suite.makeUsecase()
+	result, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
+
+	suite.NoError(err)
+	suite.Require().Len(result.Comments, 1)
+	suite.Equal(comment, result.Comments[0].Comment)
+	suite.Equal(suite.userId, result.Comments[0].CommenterId)
+	suite.AssertExpectations()
+}
