@@ -37,6 +37,7 @@ type ContinuousScreeningManifestUsecase struct {
 	blobRepository               repositories.BlobRepository
 	marbleBackendUrl             string
 	continuousScreeningBucketUrl string
+	serveFilesDirectly           bool
 }
 
 func NewContinuousScreeningManifestUsecase(
@@ -45,6 +46,7 @@ func NewContinuousScreeningManifestUsecase(
 	blobRepository repositories.BlobRepository,
 	marbleBackendUrl string,
 	continuousScreeningBucketUrl string,
+	serveFilesDirectly bool,
 ) *ContinuousScreeningManifestUsecase {
 	return &ContinuousScreeningManifestUsecase{
 		executorFactory:              executorFactory,
@@ -52,6 +54,7 @@ func NewContinuousScreeningManifestUsecase(
 		blobRepository:               blobRepository,
 		marbleBackendUrl:             marbleBackendUrl,
 		continuousScreeningBucketUrl: continuousScreeningBucketUrl,
+		serveFilesDirectly:           serveFilesDirectly,
 	}
 }
 
@@ -103,50 +106,62 @@ func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningDeltaList(
 	}, nil
 }
 
-func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningDeltaUrl(
+func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningFull(
 	ctx context.Context,
 	orgId uuid.UUID,
-	deltaId uuid.UUID,
-) (string, error) {
-	exec := u.executorFactory.NewExecutor()
-
-	delta, err := u.repository.GetContinuousScreeningDatasetFileById(ctx, exec, deltaId)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to get continuous screening delta")
-	}
-
-	if delta.OrgId != orgId {
-		return "", errors.New("delta does not belong to the organization")
-	}
-
-	url, err := u.blobRepository.GenerateSignedUrl(ctx, u.continuousScreeningBucketUrl, delta.FilePath)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to generate signed url for delta file")
-	}
-
-	return url, nil
-}
-
-func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningFullUrl(
-	ctx context.Context,
-	orgId uuid.UUID,
-) (string, error) {
+) (models.ContinuousScreeningFileResult, error) {
 	exec := u.executorFactory.NewExecutor()
 
 	fullFile, err := u.repository.GetContinuousScreeningLatestDatasetFileByOrgId(ctx, exec, orgId,
 		models.ContinuousScreeningDatasetFileTypeFull)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to get latest full dataset file")
+		return models.ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to get latest full dataset file")
+	}
+	if fullFile == nil {
+		return models.ContinuousScreeningFileResult{}, errors.Wrap(models.NotFoundError, "no full dataset file found for organization")
 	}
 
-	if fullFile == nil {
-		return "", errors.Wrap(models.NotFoundError, "no full dataset file found for organization")
+	if u.serveFilesDirectly {
+		blob, err := u.blobRepository.GetBlob(ctx, u.continuousScreeningBucketUrl, fullFile.FilePath)
+		if err != nil {
+			return models.ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to read full dataset file blob")
+		}
+		return models.ContinuousScreeningFileResult{Blob: &blob}, nil
 	}
 
 	url, err := u.blobRepository.GenerateSignedUrl(ctx, u.continuousScreeningBucketUrl, fullFile.FilePath)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to generate signed url for full dataset file")
+		return models.ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to generate signed url for full dataset file")
+	}
+	return models.ContinuousScreeningFileResult{RedirectURL: url}, nil
+}
+
+func (u *ContinuousScreeningManifestUsecase) GetContinuousScreeningDelta(
+	ctx context.Context,
+	orgId uuid.UUID,
+	deltaId uuid.UUID,
+) (models.ContinuousScreeningFileResult, error) {
+	exec := u.executorFactory.NewExecutor()
+
+	delta, err := u.repository.GetContinuousScreeningDatasetFileById(ctx, exec, deltaId)
+	if err != nil {
+		return models.ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to get continuous screening delta")
+	}
+	if delta.OrgId != orgId {
+		return models.ContinuousScreeningFileResult{}, errors.Wrap(models.ForbiddenError, "delta does not belong to the organization")
 	}
 
-	return url, nil
+	if u.serveFilesDirectly {
+		blob, err := u.blobRepository.GetBlob(ctx, u.continuousScreeningBucketUrl, delta.FilePath)
+		if err != nil {
+			return models.ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to read delta file blob")
+		}
+		return models.ContinuousScreeningFileResult{Blob: &blob}, nil
+	}
+
+	url, err := u.blobRepository.GenerateSignedUrl(ctx, u.continuousScreeningBucketUrl, delta.FilePath)
+	if err != nil {
+		return models.ContinuousScreeningFileResult{}, errors.Wrap(err, "failed to generate signed url for delta file")
+	}
+	return models.ContinuousScreeningFileResult{RedirectURL: url}, nil
 }

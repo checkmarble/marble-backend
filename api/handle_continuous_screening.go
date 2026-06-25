@@ -1,6 +1,7 @@
 package api
 
 import (
+	"io"
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -378,12 +379,13 @@ func handleGetContinuousScreeningDelta(uc usecases.Usecases) func(c *gin.Context
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
+
 		usecase := uc.NewContinuousScreeningManifestUsecase()
-		url, err := usecase.GetContinuousScreeningDeltaUrl(ctx, orgId, deltaId)
+		result, err := usecase.GetContinuousScreeningDelta(ctx, orgId, deltaId)
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.Redirect(http.StatusFound, url)
+		serveContinuousScreeningFileResult(c, result)
 	}
 }
 
@@ -398,10 +400,22 @@ func handleGetContinuousScreeningFull(uc usecases.Usecases) func(c *gin.Context)
 		}
 
 		usecase := uc.NewContinuousScreeningManifestUsecase()
-		url, err := usecase.GetContinuousScreeningFullUrl(ctx, orgId)
+		result, err := usecase.GetContinuousScreeningFull(ctx, orgId)
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.Redirect(http.StatusFound, url)
+		serveContinuousScreeningFileResult(c, result)
 	}
+}
+
+func serveContinuousScreeningFileResult(c *gin.Context, result models.ContinuousScreeningFileResult) {
+	if result.Blob != nil {
+		defer result.Blob.ReadCloser.Close()
+		c.Header("Content-Type", "application/x-ndjson")
+		if _, err := io.Copy(c.Writer, result.Blob.ReadCloser); err != nil {
+			_ = c.Error(err)
+		}
+		return
+	}
+	c.Redirect(http.StatusFound, result.RedirectURL)
 }

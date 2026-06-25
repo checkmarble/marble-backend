@@ -23,7 +23,8 @@ type ServerConfig struct {
 	otelSamplingRates            string
 	similarityThreshold          float64
 	enableTracing                bool
-	continuousScreeningBucketUrl string
+	continuousScreeningBucketUrl    string
+	csServeFilesDirectly            bool
 }
 
 func (config ServerConfig) Validate() error {
