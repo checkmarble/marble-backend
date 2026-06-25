@@ -132,10 +132,7 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 	}
 
 	decision.ScreeningExecutions = make([]models.ScreeningWithMatches, len(scs))
-
-	for idx, sc := range scs {
-		decision.ScreeningExecutions[idx] = sc
-	}
+	copy(decision.ScreeningExecutions, scs)
 
 	return decision, nil
 }
