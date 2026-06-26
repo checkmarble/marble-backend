@@ -1,0 +1,5 @@
+allowBuilds:
+  cpu-features: true
+  protobufjs: true
+  ssh2: true
+  unrs-resolver: true
