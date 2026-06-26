@@ -23,7 +23,8 @@ type ScheduledExecution struct {
 	Scenario                   Scenario
 	Manual                     bool
 
-	// Batch execution v2 (manifest + coordinator). Zero/nil for legacy executions.
+	// Set when the execution is processed from an object-id manifest in blob storage. Nil/zero
+	// when it is processed with one decision row and job per object.
 	ManifestBlobKey       *string
 	ManifestByteOffset    int64
 	ManifestRowsProcessed int64
