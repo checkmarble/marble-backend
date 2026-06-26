@@ -124,6 +124,12 @@ type TaskQueueRepository interface {
 		organizationId uuid.UUID,
 		scheduledExecutionId string,
 	) error
+	EnqueueBatchExecutionCoordinator(
+		ctx context.Context,
+		tx Transaction,
+		organizationId uuid.UUID,
+		scheduledExecutionId string,
+	) error
 	EnqueueContinuousScreeningMatchEnrichmentTask(
 		ctx context.Context,
 		tx Transaction,
@@ -668,6 +674,34 @@ func (r riverRepository) EnqueueScheduledExecutionTask(
 
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued scheduled execution task",
+		"scheduled_execution_id", scheduledExecutionId, "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueBatchExecutionCoordinator(
+	ctx context.Context,
+	tx Transaction,
+	organizationId uuid.UUID,
+	scheduledExecutionId string,
+) error {
+	res, err := r.client.InsertTx(ctx, tx.RawTx(), models.BatchExecutionCoordinatorArgs{
+		ScheduledExecutionId: scheduledExecutionId,
+	}, &river.InsertOpts{
+		// The coordinator loops to completion in a single run; errors are handled in-loop and
+		// it only returns an error on process shutdown, so a generous attempt count lets it
+		// resume from its committed offset across several deploys.
+		MaxAttempts: 30,
+		Queue:       organizationId.String(),
+		UniqueOpts: river.UniqueOpts{
+			ByArgs: true,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued batch execution coordinator",
 		"scheduled_execution_id", scheduledExecutionId, "job_id", res.Job.ID)
 	return nil
 }

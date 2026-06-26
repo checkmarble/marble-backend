@@ -1,8 +1,10 @@
 package repositories
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"maps"
 	"slices"
 	"time"
@@ -28,6 +30,13 @@ type IngestedDataReadRepository interface {
 		tableName string,
 		filters ...models.Filter,
 	) ([]string, error)
+	StreamAllObjectIdsFromTable(
+		ctx context.Context,
+		exec Executor,
+		w io.Writer,
+		tableName string,
+		filters ...models.Filter,
+	) (int64, error)
 	QueryIngestedObjectByInternalId(
 		ctx context.Context,
 		exec Executor,
@@ -280,6 +289,67 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectIdsFromTable(
 	}
 
 	return output, nil
+}
+
+// StreamAllObjectIdsFromTable streams the matching object ids straight from the DB cursor
+// into w, one id per line, instead of materializing them all in memory. It returns the
+// number of ids written. Used to build the batch-execution manifest.
+func (repo *IngestedDataReadRepositoryImpl) StreamAllObjectIdsFromTable(
+	ctx context.Context,
+	exec Executor,
+	w io.Writer,
+	tableName string,
+	filters ...models.Filter,
+) (int64, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return 0, err
+	}
+
+	qualifiedTableName := pgIdentifierWithSchema(exec, tableName)
+	q := NewQueryBuilder().
+		Select("object_id").
+		From(qualifiedTableName).
+		Where(rowIsValid(qualifiedTableName))
+	for _, f := range filters {
+		sql, args := f.ToSql()
+		q = q.Where(sql, args...)
+	}
+
+	sql, args, err := q.ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("error while building SQL query: %w", err)
+	}
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return 0, fmt.Errorf("error while querying DB: %w", err)
+	}
+	defer rows.Close()
+
+	buf := bufio.NewWriter(w)
+	var count int64
+	var objectId string
+	for rows.Next() {
+		if err = rows.Scan(&objectId); err != nil {
+			return 0, fmt.Errorf("error while scanning row: %w", err)
+		}
+		if _, err = buf.WriteString(objectId); err != nil {
+			return 0, fmt.Errorf("error while writing object id to manifest: %w", err)
+		}
+		if err = buf.WriteByte('\n'); err != nil {
+			return 0, fmt.Errorf("error while writing object id to manifest: %w", err)
+		}
+		count++
+	}
+
+	if err = rows.Err(); err != nil {
+		return 0, fmt.Errorf("error while iterating over rows: %w", err)
+	}
+
+	if err = buf.Flush(); err != nil {
+		return 0, fmt.Errorf("error while flushing manifest writer: %w", err)
+	}
+
+	return count, nil
 }
 
 func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectByInternalId(
