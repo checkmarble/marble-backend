@@ -1,6 +1,10 @@
 name: Test back-end
 
-on: workflow_call
+on:
+  workflow_call:
+    secrets:
+      LICENSE_KEY:
+        description: Dummy license key to run E2E tests
 
 permissions:
   contents: read
@@ -64,3 +68,19 @@ jobs:
         with:
           version: v2.11
           args: --timeout=3m -v
+
+  screening_e2e:
+    name: E2E Screening
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11
+          run_install: |
+            - cwd: integration_test/screening
+      - run: pnpm test
+        working-directory: integration_test/screening
+        env:
+          DEBUG: testcontainers:containers
+          LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
