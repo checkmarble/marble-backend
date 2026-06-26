@@ -17,6 +17,7 @@ type HTTPOpenSanctionsResult struct {
 		} `json:"total"`
 		Results []json.RawMessage `json:"results"`
 	} `json:"responses"`
+	Limit int `json:"limit"`
 }
 
 type HTTPOpenSanctionResultResult struct {
@@ -31,6 +32,16 @@ type HTTPOpenSanctionResultResult struct {
 	} `json:"properties"`
 }
 
+// AdaptOpenSanctionsResult merges all subquery responses into a single deduplicated,
+// score-ordered match list, then truncates it to the provider-echoed limit.
+//
+// In Marble, all subqueries within the same match request serve a single screening
+// purpose — they are linked variants of the same lookup (e.g. Lexis Nexis topic
+// fan-out, or Vehicle expanding to Airplane + Vessel). Merging and truncating their
+// results to a single list is therefore correct and intentional.
+//
+// If two independent lookups need separate result lists, issue them as two distinct
+// match requests instead of bundling them into one.
 func AdaptOpenSanctionsResult(query json.RawMessage, result HTTPOpenSanctionsResult) (models.ScreeningRawSearchResponseWithMatches, error) {
 	partial := false
 	matches := make(map[string]models.ScreeningMatch)
@@ -87,13 +98,17 @@ func AdaptOpenSanctionsResult(query json.RawMessage, result HTTPOpenSanctionsRes
 		return cmp.Compare(m1.EntityId, m2.EntityId)
 	})
 
+	if result.Limit > 0 && len(sortedMatches) > result.Limit {
+		sortedMatches = sortedMatches[:result.Limit]
+	}
+
 	output := models.ScreeningRawSearchResponseWithMatches{
 		SearchInput:       query,
 		Partial:           partial,
 		InitialHasMatches: len(matches) > 0,
 
 		Matches: sortedMatches,
-		Count:   len(matches),
+		Count:   len(sortedMatches),
 	}
 
 	return output, nil

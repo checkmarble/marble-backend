@@ -329,6 +329,52 @@ func TestOpenSanctionsSuccessfulFullResponseWithThresholdOverride(t *testing.T) 
 	}
 }
 
+func TestOpenSanctionsMultiQueryResponseTruncatedToLimit(t *testing.T) {
+	defer gock.Off()
+
+	repo := getMockedOpenSanctionsRepository("", "", "")
+	// Two subqueries mirror the two-subquery fixture: each produces its own response
+	// key, resulting in 5 unique entities (ENTITY2 duplicated) before truncation.
+	query := models.OpenSanctionsQuery{
+		Config: models.ScreeningConfig{},
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type:    "Person",
+				Filters: models.OpenSanctionsFilter{"name": []string{"test"}},
+			},
+			{
+				Type:    "Organization",
+				Filters: models.OpenSanctionsFilter{"name": []string{"test"}},
+			},
+		},
+		OrgConfig: models.OrganizationOpenSanctionsConfig{MatchThreshold: 50},
+	}
+
+	body, _ := os.ReadFile("../fixtures/opensanctions/response_multi_query.json")
+
+	gock.New(infra.OPEN_SANCTIONS_API_HOST).
+		Post("/match/default").
+		Reply(http.StatusOK).
+		BodyString(string(body))
+
+	matches, err := repo.Search(context.TODO(), models.ScreeningProviderOpenSanctions, query)
+
+	assert.False(t, gock.HasUnmatchedRequest())
+	assert.NoError(t, err)
+
+	// The fixture has 2 subqueries with 3 results each, ENTITY2 duplicated → 5 unique entities.
+	// The fixture sets "limit": 3, so the merged list is truncated to the top 3 by score.
+	fixtureLimit := 3
+	assert.Len(t, matches.Matches, fixtureLimit)
+	assert.Equal(t, fixtureLimit, matches.Count)
+	// Neither subquery has total > returned count, so partial stays false
+	assert.Equal(t, false, matches.Partial)
+	// Top 3 by score desc: ENTITY1 (0.95), ENTITY2 (0.85), ENTITY3 (0.75); ENTITY4 and ENTITY5 dropped
+	assert.Equal(t, "ENTITY1", matches.Matches[0].EntityId)
+	assert.Equal(t, "ENTITY2", matches.Matches[1].EntityId)
+	assert.Equal(t, "ENTITY3", matches.Matches[2].EntityId)
+}
+
 func TestOpenSanctionsSearchRequest_ObjectTypesFilter(t *testing.T) {
 	repo := getMockedOpenSanctionsRepository("", "", "")
 	provider := repo.GetProvider(models.ScreeningProviderOpenSanctions)

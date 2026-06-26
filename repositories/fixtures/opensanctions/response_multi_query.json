@@ -1,0 +1,75 @@
+{
+    "responses": {
+        "query_sanctions": {
+            "status": 200,
+            "results": [
+                {
+                    "id": "ENTITY1",
+                    "schema": "Person",
+                    "properties": {
+                        "name": ["Alice"]
+                    },
+                    "match": true,
+                    "score": 0.95
+                },
+                {
+                    "id": "ENTITY2",
+                    "schema": "Person",
+                    "properties": {
+                        "name": ["Bob"]
+                    },
+                    "match": true,
+                    "score": 0.85
+                },
+                {
+                    "id": "ENTITY3",
+                    "schema": "Person",
+                    "properties": {
+                        "name": ["Carol"]
+                    },
+                    "match": true,
+                    "score": 0.75
+                }
+            ],
+            "total": {
+                "value": 3
+            }
+        },
+        "query_pep": {
+            "status": 200,
+            "results": [
+                {
+                    "id": "ENTITY2",
+                    "schema": "Person",
+                    "properties": {
+                        "name": ["Bob"]
+                    },
+                    "match": true,
+                    "score": 0.85
+                },
+                {
+                    "id": "ENTITY4",
+                    "schema": "Person",
+                    "properties": {
+                        "name": ["Dave"]
+                    },
+                    "match": true,
+                    "score": 0.70
+                },
+                {
+                    "id": "ENTITY5",
+                    "schema": "Person",
+                    "properties": {
+                        "name": ["Eve"]
+                    },
+                    "match": true,
+                    "score": 0.65
+                }
+            ],
+            "total": {
+                "value": 3
+            }
+        }
+    },
+    "limit": 3
+}
