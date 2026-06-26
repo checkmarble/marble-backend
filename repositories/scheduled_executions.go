@@ -192,6 +192,60 @@ func (repo *MarbleDbRepository) UpdateScheduledExecution(
 		query = query.
 			Set("number_of_planned_decisions", *input.NumberOfPlannedDecisions)
 	}
+	if input.ManifestBlobKey != nil {
+		query = query.Set("manifest_blob_key", *input.ManifestBlobKey)
+	}
+	if input.Deadline != nil {
+		query = query.Set("deadline", *input.Deadline)
+	}
+
+	return ExecBuilder(ctx, exec, query)
+}
+
+// AdvanceScheduledExecutionManifest moves the v2 coordinator's manifest cursor and
+// progress counters forward. It is meant to run in the same transaction as the batch's
+// decision inserts so the offset and the persisted decisions commit together.
+func (repo *MarbleDbRepository) AdvanceScheduledExecutionManifest(
+	ctx context.Context,
+	exec Executor,
+	input models.AdvanceScheduledExecutionManifestInput,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
+		Set("manifest_byte_offset", input.ManifestByteOffset).
+		Set("manifest_rows_processed", input.ManifestRowsProcessed).
+		Set("number_of_created_decisions", input.NumberOfCreatedDecisions).
+		Set("number_of_evaluated_decisions", input.NumberOfEvaluatedDecisions).
+		Where("id = ?", input.Id)
+
+	return ExecBuilder(ctx, exec, query)
+}
+
+// InsertScheduledExecutionFailures records the object ids the coordinator could not
+// evaluate. The coordinator stops on hard failures, so this stays small.
+func (repo *MarbleDbRepository) InsertScheduledExecutionFailures(
+	ctx context.Context,
+	exec Executor,
+	scheduledExecutionId string,
+	failures []models.ScheduledExecutionFailedObject,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+	if len(failures) == 0 {
+		return nil
+	}
+
+	query := NewQueryBuilder().
+		Insert("scheduled_execution_failures").
+		Columns("scheduled_execution_id", "object_id", "error")
+	for _, f := range failures {
+		query = query.Values(scheduledExecutionId, f.ObjectId, f.Error)
+	}
 
 	return ExecBuilder(ctx, exec, query)
 }
