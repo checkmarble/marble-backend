@@ -22,6 +22,12 @@ type ScheduledExecution struct {
 	NumberOfPlannedDecisions   *int
 	Scenario                   Scenario
 	Manual                     bool
+
+	// Batch execution v2 (manifest + coordinator). Zero/nil for legacy executions.
+	ManifestBlobKey       *string
+	ManifestByteOffset    int64
+	ManifestRowsProcessed int64
+	Deadline              *time.Time
 }
 
 type PaginatedScheduledExecutions struct {
@@ -81,6 +87,20 @@ type UpdateScheduledExecutionStatusInput struct {
 type UpdateScheduledExecutionInput struct {
 	Id                       string
 	NumberOfPlannedDecisions *int
+	ManifestBlobKey          *string
+	Deadline                 *time.Time
+}
+
+// AdvanceScheduledExecutionManifestInput records progress of the v2 coordinator after a
+// batch is persisted: the manifest cursor and the running totals, written atomically with
+// the decision inserts so a crash resumes exactly where it left off. Values are absolute
+// (the coordinator is the single writer and tracks cumulative counts).
+type AdvanceScheduledExecutionManifestInput struct {
+	Id                         string
+	ManifestByteOffset         int64
+	ManifestRowsProcessed      int64
+	NumberOfCreatedDecisions   int
+	NumberOfEvaluatedDecisions int
 }
 
 type CreateScheduledExecutionInput struct {
@@ -194,6 +214,12 @@ const (
 type ListDecisionsToCreateFilters struct {
 	ScheduledExecutionId string
 	Status               []DecisionToCreateStatus
+}
+
+// ScheduledExecutionFailedObject is one hard-failed object recorded by the v2 coordinator.
+type ScheduledExecutionFailedObject struct {
+	ObjectId string
+	Error    string
 }
 
 type DecisionToCreateCountMetadata struct {

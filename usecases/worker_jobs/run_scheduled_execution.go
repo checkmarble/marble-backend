@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -73,6 +75,12 @@ type taskQueueRepository interface {
 		organizationId uuid.UUID,
 		scheduledExecutionId string,
 	) error
+	EnqueueBatchExecutionCoordinator(
+		ctx context.Context,
+		tx repositories.Transaction,
+		organizationId uuid.UUID,
+		scheduledExecutionId string,
+	) error
 }
 
 type RunScheduledExecution struct {
@@ -82,6 +90,8 @@ type RunScheduledExecution struct {
 	ingestedDataReadRepository     repositories.IngestedDataReadRepository
 	transactionFactory             executor_factory.TransactionFactory
 	taskQueueRepository            taskQueueRepository
+	blobRepository                 repositories.BlobRepository
+	manifestBucketUrl              string
 }
 
 func NewRunScheduledExecution(
@@ -91,6 +101,8 @@ func NewRunScheduledExecution(
 	transactionFactory executor_factory.TransactionFactory,
 	taskQueueRepository taskQueueRepository,
 	scenarioPublicationsRepository repositories.ScenarioPublicationRepository,
+	blobRepository repositories.BlobRepository,
+	manifestBucketUrl string,
 ) *RunScheduledExecution {
 	return &RunScheduledExecution{
 		repository:                     repository,
@@ -99,6 +111,8 @@ func NewRunScheduledExecution(
 		transactionFactory:             transactionFactory,
 		taskQueueRepository:            taskQueueRepository,
 		scenarioPublicationsRepository: scenarioPublicationsRepository,
+		blobRepository:                 blobRepository,
+		manifestBucketUrl:              manifestBucketUrl,
 	}
 }
 
@@ -146,6 +160,16 @@ func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(
 			*liveVersion.TriggerConditionAstExpression,
 			models.TableIdentifier{Table: scenario.TriggerObjectType, Schema: db.DatabaseSchema().Schema},
 		)
+	}
+
+	// v2 batch execution (manifest + looping coordinator), gated per-org. Runs in parallel with
+	// the legacy per-object job fan-out below.
+	if batchExecV2EnabledForOrg(scenario.OrganizationId) {
+		if usecase.manifestBucketUrl == "" {
+			logger.WarnContext(ctx, "v2 batch execution is enabled for this org but no manifest bucket is configured; falling back to the legacy path")
+		} else {
+			return usecase.executeViaManifest(ctx, exec, db, scheduledExecution, scenario, filters)
+		}
 	}
 
 	objectIds, err := usecase.ingestedDataReadRepository.ListAllObjectIdsFromTable(ctx, db, scenario.TriggerObjectType, filters...)
@@ -216,6 +240,88 @@ func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(
 
 	logger.InfoContext(ctx, fmt.Sprintf("Inserted %d decisions to be executed", nbPlannedDecisions))
 
+	return nil
+}
+
+// batchExecV2EnabledForOrg gates the v2 manifest+coordinator path per organization. The
+// allowlist is read from SCHEDULED_EXEC_V2_ORGS (comma-separated org UUIDs, or "*" for all),
+// mirroring the existing OFFLOADING_ONLY_ORG env convention. No DB column, no plumbing.
+func batchExecV2EnabledForOrg(orgId uuid.UUID) bool {
+	v := strings.TrimSpace(os.Getenv("SCHEDULED_EXEC_V2_ORGS"))
+	if v == "" {
+		return false
+	}
+	if v == "*" {
+		return true
+	}
+	for _, part := range strings.Split(v, ",") {
+		if strings.TrimSpace(part) == orgId.String() {
+			return true
+		}
+	}
+	return false
+}
+
+// executeViaManifest sets up a v2 batch execution: it streams the matching object ids into a
+// GCS manifest, records the planned count + deadline + manifest key, then enqueues a single
+// looping coordinator job to process it. No per-object rows, no per-object jobs.
+func (usecase *RunScheduledExecution) executeViaManifest(
+	ctx context.Context,
+	exec repositories.Executor,
+	db repositories.Executor,
+	scheduledExecution models.ScheduledExecution,
+	scenario models.Scenario,
+	filters []models.Filter,
+) error {
+	logger := utils.LoggerFromContext(ctx)
+
+	manifestKey := fmt.Sprintf("scheduled_executions/%s/manifest.txt", scheduledExecution.Id)
+	writer, err := usecase.blobRepository.OpenStream(ctx, usecase.manifestBucketUrl, manifestKey, "manifest.txt")
+	if err != nil {
+		return fmt.Errorf("error opening manifest writer: %w", err)
+	}
+
+	count, streamErr := usecase.ingestedDataReadRepository.StreamAllObjectIdsFromTable(
+		ctx, db, writer, scenario.TriggerObjectType, filters...)
+	// Always close to flush/commit the blob, even on error.
+	closeErr := writer.Close()
+	if streamErr != nil {
+		return fmt.Errorf("error streaming object ids to manifest: %w", streamErr)
+	}
+	if closeErr != nil {
+		return fmt.Errorf("error finalizing manifest blob: %w", closeErr)
+	}
+
+	nbPlanned := int(count)
+	deadline := time.Now().Add(batchExecDefaultRunDuration)
+	err = usecase.repository.UpdateScheduledExecution(ctx, exec, models.UpdateScheduledExecutionInput{
+		Id:                       scheduledExecution.Id,
+		NumberOfPlannedDecisions: &nbPlanned,
+		ManifestBlobKey:          &manifestKey,
+		Deadline:                 &deadline,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = usecase.repository.UpdateScheduledExecutionStatus(ctx, exec, models.UpdateScheduledExecutionStatusInput{
+		Id:     scheduledExecution.Id,
+		Status: models.ScheduledExecutionProcessing,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		return usecase.taskQueueRepository.EnqueueBatchExecutionCoordinator(
+			ctx, tx, scenario.OrganizationId, scheduledExecution.Id)
+	})
+	if err != nil {
+		return err
+	}
+
+	logger.InfoContext(ctx, fmt.Sprintf(
+		"Batch execution v2: wrote manifest with %d objects and enqueued coordinator", nbPlanned))
 	return nil
 }
 
