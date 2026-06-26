@@ -221,8 +221,7 @@ type ScheduledExecutionArgs struct {
 
 func (ScheduledExecutionArgs) Kind() string { return "scheduled_execution" }
 
-// Batch execution coordinator (v2) - drives one scheduled execution by walking its GCS
-// manifest of object ids in batches, instead of fanning out one job + one row per object.
+// Drives one scheduled execution by walking its object-id manifest in blob storage in batches.
 type BatchExecutionCoordinatorArgs struct {
 	ScheduledExecutionId string `json:"scheduled_execution_id"`
 }
