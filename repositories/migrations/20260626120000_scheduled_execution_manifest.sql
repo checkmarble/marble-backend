@@ -1,12 +1,11 @@
 -- +goose Up
--- Scalable batch execution v2: a scheduled execution is driven by a single looping
--- coordinator that walks a GCS manifest of object ids instead of fanning out one
--- river job + one decisions_to_create row per object.
+-- Lets a scheduled execution be processed from a manifest of object ids in blob storage,
+-- walked by a single looping coordinator job.
 --
--- manifest_blob_key      : GCS key of the newline-delimited object-id manifest (NULL for the legacy path).
--- manifest_byte_offset   : resume cursor into the manifest, always aligned to a line boundary.
+-- manifest_blob_key       : blob key of the newline-delimited object-id manifest (NULL when not used).
+-- manifest_byte_offset    : resume cursor into the manifest, always aligned to a line boundary.
 -- manifest_rows_processed : number of object ids consumed from the manifest so far.
--- deadline               : wall-clock ceiling for the whole run; the only termination on sustained retryable failure.
+-- deadline                : wall-clock ceiling for the whole run.
 alter table scheduled_executions
     add column manifest_blob_key       text,
     add column manifest_byte_offset    bigint      not null default 0,

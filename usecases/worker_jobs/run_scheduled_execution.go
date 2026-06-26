@@ -162,11 +162,12 @@ func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(
 		)
 	}
 
-	// v2 batch execution (manifest + looping coordinator), gated per-org. Runs in parallel with
-	// the legacy per-object job fan-out below.
+	// When enabled for the org, process the execution by streaming a manifest of object ids to
+	// blob storage and handing off to a single looping coordinator, rather than inserting one
+	// row and one job per object below.
 	if batchExecV2EnabledForOrg(scenario.OrganizationId) {
 		if usecase.manifestBucketUrl == "" {
-			logger.WarnContext(ctx, "v2 batch execution is enabled for this org but no manifest bucket is configured; falling back to the legacy path")
+			logger.WarnContext(ctx, "manifest-based batch execution is enabled for this org but no manifest bucket is configured; using per-object execution instead")
 		} else {
 			return usecase.executeViaManifest(ctx, exec, db, scheduledExecution, scenario, filters)
 		}
@@ -243,9 +244,8 @@ func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(
 	return nil
 }
 
-// batchExecV2EnabledForOrg gates the v2 manifest+coordinator path per organization. The
-// allowlist is read from SCHEDULED_EXEC_V2_ORGS (comma-separated org UUIDs, or "*" for all),
-// mirroring the existing OFFLOADING_ONLY_ORG env convention. No DB column, no plumbing.
+// batchExecV2EnabledForOrg reports whether an organization uses manifest-based batch execution.
+// The allowlist is read from SCHEDULED_EXEC_V2_ORGS: comma-separated org UUIDs, or "*" for all.
 func batchExecV2EnabledForOrg(orgId uuid.UUID) bool {
 	v := strings.TrimSpace(os.Getenv("SCHEDULED_EXEC_V2_ORGS"))
 	if v == "" {
@@ -262,9 +262,9 @@ func batchExecV2EnabledForOrg(orgId uuid.UUID) bool {
 	return false
 }
 
-// executeViaManifest sets up a v2 batch execution: it streams the matching object ids into a
-// GCS manifest, records the planned count + deadline + manifest key, then enqueues a single
-// looping coordinator job to process it. No per-object rows, no per-object jobs.
+// executeViaManifest streams the matching object ids into a manifest blob, records the planned
+// count, deadline, and manifest key on the execution, then enqueues a single coordinator job to
+// process it.
 func (usecase *RunScheduledExecution) executeViaManifest(
 	ctx context.Context,
 	exec repositories.Executor,

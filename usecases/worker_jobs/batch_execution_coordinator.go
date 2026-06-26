@@ -26,10 +26,10 @@ import (
 )
 
 const (
-	// batchExecBatchSize is the number of object ids read from the manifest per loop
-	// iteration. They are evaluated concurrently (P = K) and the surviving decisions are
-	// inserted in a single transaction together with the manifest cursor advance. Kept well
-	// under the ~100 ceiling to bound per-transaction write pressure.
+	// batchExecBatchSize is the number of object ids read from the manifest per loop iteration.
+	// They are evaluated concurrently and the surviving decisions are inserted in a single
+	// transaction together with the manifest cursor advance. Kept small to bound the number of
+	// rows written per transaction.
 	batchExecBatchSize = 50
 
 	// batchExecPerIterTimeout caps a single loop iteration so a wedged DB/blob/screening
@@ -50,7 +50,7 @@ const (
 )
 
 // batchCoordinatorRepository is the marble-db surface the coordinator needs. MarbleDbRepository
-// satisfies it. Deliberately leaner than asyncDecisionWorkerRepository: no decisions_to_create.
+// satisfies it.
 type batchCoordinatorRepository interface {
 	GetScheduledExecution(ctx context.Context, exec repositories.Executor, id string) (models.ScheduledExecution, error)
 	UpdateScheduledExecutionStatus(
@@ -72,9 +72,9 @@ type batchCoordinatorRepository interface {
 	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (map[string]analytics.Settings, error)
 }
 
-// BatchExecutionCoordinator drives a single scheduled execution (v2 path): it walks the
-// object-id manifest in batches, evaluating and storing decisions, advancing a resumable
-// cursor in the same transaction as the inserts.
+// BatchExecutionCoordinator drives a single scheduled execution by walking an object-id
+// manifest in batches, evaluating and storing decisions, and advancing a resumable cursor in
+// the same transaction as the inserts.
 type BatchExecutionCoordinator struct {
 	repository                 batchCoordinatorRepository
 	executorFactory            executor_factory.ExecutorFactory
@@ -143,8 +143,8 @@ func isHardError(err error) bool {
 	return errors.As(err, &h)
 }
 
-// batchInvariants holds the per-run context loaded once and reused for every object in every
-// batch — this amortization (vs reloading per object) is the throughput win over the v1 path.
+// batchInvariants holds the per-run context (scenario, data model, pivots, client DB handle)
+// loaded once and reused for every object in every batch, rather than reloaded per object.
 type batchInvariants struct {
 	scenario             models.Scenario
 	scenarioIterationId  string
@@ -167,7 +167,6 @@ type evalOutcome struct {
 	hardErr           error
 }
 
-// BatchExecutionCoordinatorWorker is the River worker wrapping the coordinator.
 type BatchExecutionCoordinatorWorker struct {
 	river.WorkerDefaults[models.BatchExecutionCoordinatorArgs]
 	coordinator *BatchExecutionCoordinator
@@ -602,8 +601,9 @@ func (c *BatchExecutionCoordinator) storeDecision(
 	return []string{webhookEventId}, nil
 }
 
-// testRunCallback mirrors the v1 worker's phantom test-run piggyback: if an active test run
-// exists, a phantom decision is evaluated against it after the batch commits.
+// testRunCallback returns a function, to be run after the batch commits, that evaluates a
+// phantom decision against any active test run for the scenario. Returns nil when there is
+// nothing to evaluate (the object was not found).
 func (c *BatchExecutionCoordinator) testRunCallback(
 	ctx context.Context,
 	inv batchInvariants,
