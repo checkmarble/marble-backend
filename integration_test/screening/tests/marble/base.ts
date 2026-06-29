@@ -10,12 +10,15 @@ import {
 	PostgreSqlContainer,
 	StartedPostgreSqlContainer,
 } from "@testcontainers/postgresql";
-import { NATIVE_ARCH } from "./utils";
+import { NATIVE_ARCH, uri } from "./utils";
 import path from "path";
+import { CreateBucketCommand, S3Client } from "@aws-sdk/client-s3";
 
 export const startFirebase = async (
 	network: StartedNetwork,
 ): Promise<StartedTestContainer> => {
+	console.log("starting firebase...");
+
 	const firebase = new GenericContainer(
 		"europe-west1-docker.pkg.dev/marble-infra/marble/firebase-emulator:latest",
 	)
@@ -29,20 +32,56 @@ export const startFirebase = async (
 export const startDatabase = async (
 	network: StartedNetwork,
 ): Promise<StartedPostgreSqlContainer> => {
+	console.log("starting database...");
+
 	const pg = new PostgreSqlContainer("postgis/postgis:18-3.6-alpine")
 		.withNetwork(network)
 		.withNetworkAliases("db")
 		.withUsername("postgres")
 		.withPassword("marble")
-		.withDatabase("marble");
+		.withDatabase("marble")
+		.withCommand(["-c", "wal_level=logical"]);
 
 	return pg.start();
+};
+
+export const startS3 = async (
+	network: StartedNetwork,
+): Promise<StartedTestContainer> => {
+	console.log("starting s3...");
+
+	const s3 = new PostgreSqlContainer("ghcr.io/versity/versitygw:v1.6.0")
+		.withNetwork(network)
+		.withNetworkAliases("s3")
+		.withExposedPorts(7070)
+		.withWaitStrategy(Wait.forHttp("/health", 7070))
+		.withEnvironment({
+			VGW_BACKEND: "posix",
+			VGW_HEALTH: "/health",
+			ROOT_ACCESS_KEY: "root",
+			ROOT_SECRET_KEY: "azertyuiop",
+		})
+		.withCommand(["posix", "/tmp"]);
+
+	const c = await s3.start();
+
+	const client = new S3Client({
+		endpoint: uri(network, c, 7070),
+		region: "us-east-1",
+		credentials: { accessKeyId: "root", secretAccessKey: "azertyuiop" },
+	});
+
+	await client.send(new CreateBucketCommand({ Bucket: "marble" }));
+
+	return c;
 };
 
 export const startApi = async (
 	network: StartedNetwork,
 	licenseKey: string,
 ): Promise<StartedTestContainer> => {
+	console.log("starting api...");
+
 	const client = await getContainerRuntimeClient();
 
 	await client.image.pull(ImageName.fromString("debian:trixie"), {
@@ -84,4 +123,55 @@ export const startApi = async (
 		]);
 
 	return api.start();
+};
+
+export const startWorker = async (
+	network: StartedNetwork,
+	licenseKey: string,
+): Promise<StartedTestContainer> => {
+	console.log("starting worker...");
+
+	const client = await getContainerRuntimeClient();
+
+	await client.image.pull(ImageName.fromString("debian:trixie"), {
+		force: true,
+		platform: NATIVE_ARCH,
+	});
+
+	const worker = new GenericContainer("debian:trixie")
+		.withPlatform(NATIVE_ARCH)
+		.withNetwork(network)
+		.withNetworkAliases("worker")
+		.withExposedPorts(9191)
+		.withWaitStrategy(Wait.forHttp("/liveness", 9191))
+		.withCopyFilesToContainer([
+			{
+				source: path.resolve("../../marble-backend"),
+				target: "/marble-backend",
+				mode: 666,
+			},
+		])
+		.withEnvironment({
+			CLOUD_RUN_PROBE_PORT: "9191",
+			LOG_LEVEL: "debug",
+			LICENSE_KEY: licenseKey,
+			KILL_IF_READ_LICENSE_ERROR: "1",
+			ENV: "production",
+			PORT: "8080",
+			PG_CONNECTION_STRING:
+				"postgres://postgres:marble@db:5432/marble?sslmode=disable",
+			FIREBASE_AUTH_EMULATOR_HOST: "firebase:9099",
+			FIREBASE_PROJECT_ID: "test-project",
+			FIREBASE_API_KEY: "dummy",
+			SCREENING_OPENSANCTIONS_API_HOST: "http://motiva:8000",
+			INGESTION_BUCKET_URL:
+				"s3://marble?endpoint=http://s3:7070&region=us-east-1&use_path_style=true&disable_https=true",
+		})
+		.withCommand([
+			"sh",
+			"-c",
+			"apt update && apt install -y ca-certificates libgeos++-dev && /marble-backend --worker",
+		]);
+
+	return worker.start();
 };
