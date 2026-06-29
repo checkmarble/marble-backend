@@ -4,11 +4,12 @@ import {
 	StartedTestContainer,
 	Wait,
 } from "testcontainers";
+import { createFakeCatalog } from "./catalog";
 
-const DEFAULT_MANIFEST = {
+export const DEFAULT_MANIFEST = {
 	catalogs: [
 		{
-			url: "https://data.opensanctions.org/datasets/latest/index.json",
+			url: "http://s3:7070/marble/fake/index.json",
 			scope: "fr_assemblee",
 			resource_name: "entities.ftm.json",
 		},
@@ -56,7 +57,7 @@ export const triggerIndexing = async (
 			YENTE_INDEX_URL: "http://es:9200",
 		})
 		.withWaitStrategy(Wait.forOneShotStartup())
-		.withCommand(["yente", "reindex", "--force"])
+		.withCommand(["yente", "reindex"])
 		.start();
 };
 
@@ -78,6 +79,7 @@ export const startMotiva = async (
 			},
 		])
 		.withEnvironment({
+			RUST_LOG: "libmotiva=trace",
 			MANIFEST_URL: "/manifest.json",
 			INDEX_URL: "http://es:9200",
 		})
