@@ -1,6 +1,6 @@
 module github.com/checkmarble/marble-backend
 
-go 1.27.1
+go 1.27.3
 
 require (
 	cloud.google.com/go/bigquery v1.83.0

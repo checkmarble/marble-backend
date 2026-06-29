@@ -1,0 +1,36 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: write
+    uses: ./.github/workflows/test.yaml
+
+  image:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/image.yaml
+    secrets:
+      segment_write_key_opensource: ${{ secrets.SEGMENT_WRITE_KEY_OPENSOURCE }}
+
+  deploy:
+    needs: [test, image]
+    uses: ./.github/workflows/deploy.yaml
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    with:
+      environment: staging
+      version: latest
