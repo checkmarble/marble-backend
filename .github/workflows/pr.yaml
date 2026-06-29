@@ -1,0 +1,33 @@
+name: PR build
+
+on:
+  pull_request:
+  merge_group:
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yaml
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: write
+    secrets:
+      LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
+
+  compliance:
+    uses: ./.github/workflows/compliance.yaml
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: write
+
+  migrations:
+    uses: ./.github/workflows/migrations.yaml
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: write
