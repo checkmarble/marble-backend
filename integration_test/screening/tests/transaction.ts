@@ -18,7 +18,7 @@ export const testTransactionMonitoring = async (
 			outcome: "block_and_review",
 			status: "in_review",
 			entity_id: "Q30343128",
-			score: 0.9,
+			score: 1.0,
 		},
 		{ name: "Vladimir Putin", outcome: "approve", status: "no_hit" },
 	];

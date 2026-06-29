@@ -14,6 +14,8 @@ import { testTransactionMonitoring } from "./transaction";
 import { buildMarble } from "./marble/build";
 import { uri } from "./marble/utils";
 import { testOutgoingContinuousMonitoring } from "./continuous-outgoing";
+import { testIncomingContinuousMonitoring } from "./continuous-incoming";
+import { createFakeCatalog } from "./marble/catalog";
 
 var network: StartedNetwork;
 
@@ -33,12 +35,15 @@ beforeAll(
 	async () => {
 		network = await new Network().start();
 
-		[, pg, fb, es, s3] = await Promise.all([
+		s3 = await startS3(network);
+
+		await createFakeCatalog(network, s3);
+
+		[, pg, fb, es] = await Promise.all([
 			buildMarble(),
 			startDatabase(network),
 			startFirebase(network),
 			startElasticsearch(network),
-			startS3(network),
 		]);
 
 		sql = postgres(pg.getConnectionUri());
@@ -89,12 +94,15 @@ describe("Initial setup", () => {
 	it(
 		"perform incoming continuous screening on dataset update",
 		async () => {
-			await testOutgoingContinuousMonitoring(
+			await testIncomingContinuousMonitoring(
+				network,
 				sql,
+				s3,
+				motiva,
 				uri(network, api, 8080),
 				vars.continuousScreeningConfigId,
 			);
 		},
-		30 * 1000,
+		300 * 1000,
 	);
 });

@@ -17,6 +17,8 @@ jobs:
       pull-requests: read
       checks: write
     uses: ./.github/workflows/backend_test_workflow.yaml
+    with:
+      run-e2e: true
 
   build_and_deploy_backend:
     needs: test_backend
