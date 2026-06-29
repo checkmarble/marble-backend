@@ -74,3 +74,6 @@ prompts
 # LLM agents skills
 .agents/skills/
 .claude/skills/
+
+node_modules
+

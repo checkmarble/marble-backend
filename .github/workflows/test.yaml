@@ -1,0 +1,123 @@
+name: Test back-end
+
+on:
+  workflow_call:
+    inputs:
+      run-e2e:
+        type: boolean
+        description: Whether to run full E2E tests
+        default: false
+    secrets:
+      LICENSE_KEY:
+        description: Dummy license key to run E2E tests
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: write
+
+jobs:
+  test:
+    name: Test back-end
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        id: go
+        uses: ./.github/actions/setup-go
+        with:
+          cache-prefix: go-host
+
+      - name: Test
+        run: go test ./...
+
+      - name: Generate Marble API OpenAPI as temporary file
+        run: |
+          go run pubapi/openapi/generate.go v1 > /tmp/marble-api-v1.yml
+          cp pubapi/openapi/v1beta.yml /tmp/marble-api-v1beta.yml
+
+      - name: Upload OpenAPI specifications as artifacts, to be downloaded and used in the production deployment workflow
+        uses: actions/upload-artifact@v7
+        with:
+          name: marble-api-openapi
+          path: /tmp/marble-api-*.yml
+          retention-days: 1
+
+      # The test job compiles every package and test binary, so it is the one priming the host cache for PRs.
+      - name: Save Go cache
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ steps.go.outputs.cache-key }}
+
+  lint:
+    name: Lint back-end
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: ./.github/actions/setup-go
+        with:
+          cache-prefix: go-host
+
+      - name: Check go.mod is tidy
+        run: go mod tidy -diff
+
+      # Build artifacts come from the test job's cache, this one only holds golangci-lint analysis results.
+      - name: Restore golangci-lint cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/golangci-lint
+          key: golangci-${{ runner.os }}-${{ hashFiles('go.sum', '.golangci.yml') }}-${{ github.sha }}
+          restore-keys: |
+            golangci-${{ runner.os }}-${{ hashFiles('go.sum', '.golangci.yml') }}-
+            golangci-${{ runner.os }}-
+
+      # Cold runs (Go bump, cache eviction) must compile all dependencies' export data, hence the generous timeout.
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+        with:
+          version: v2.15.0
+          skip-cache: true
+          only-new-issues: true
+          args: --timeout=10m -v
+
+      # Saved even when lint reports issues, the analysis results are still valid.
+      - name: Save golangci-lint cache
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/golangci-lint
+          key: golangci-${{ runner.os }}-${{ hashFiles('go.sum', '.golangci.yml') }}-${{ github.sha }}
+
+  screening_e2e:
+    name: E2E Screening
+    runs-on: ubuntu-26.04
+    if: ${{ inputs.run-e2e }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.25.0
+          run_install: |
+            - cwd: integration_test/screening
+
+      - run: pnpm test
+        working-directory: integration_test/screening
+        env:
+          DEBUG: testcontainers:containers
+          LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
