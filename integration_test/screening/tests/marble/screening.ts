@@ -18,6 +18,8 @@ const DEFAULT_MANIFEST = {
 export const startElasticsearch = async (
 	network: StartedNetwork,
 ): Promise<StartedTestContainer> => {
+	console.log("starting elasticsearch...");
+
 	const container = new GenericContainer("elasticsearch:9.4.2")
 		.withNetwork(network)
 		.withNetworkAliases("es")
@@ -39,6 +41,8 @@ export const triggerIndexing = async (
 	network: StartedNetwork,
 	manifest: any,
 ) => {
+	console.log("starting indexer...");
+
 	await new GenericContainer("ghcr.io/opensanctions/yente:5.3.0")
 		.withNetwork(network)
 		.withCopyContentToContainer([
@@ -59,6 +63,8 @@ export const triggerIndexing = async (
 export const startMotiva = async (
 	network: StartedNetwork,
 ): Promise<StartedTestContainer> => {
+	console.log("starting motiva...");
+
 	return new GenericContainer("ghcr.io/apognu/motiva:v0.9.2")
 		.withPlatform("linux/x86_64")
 		.withNetwork(network)
