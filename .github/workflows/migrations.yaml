@@ -1,0 +1,66 @@
+name: Test migration ordering
+
+on: workflow_call
+
+jobs:
+  migrations:
+    name: Test migration ordering
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: write
+
+    services:
+      postgres:
+        image: postgis/postgis:17-3.6-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: marble_test
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 10
+          --tmpfs /var/lib/postgresql/data
+        ports:
+          - 5432:5432
+
+    steps:
+      # In the merge queue, the base includes the PRs queued ahead of this one, which are not on main yet.
+      - name: Checkout base
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.ref }}
+          persist-credentials: false
+
+      - name: Install goose
+        run: curl -fsSL -o /tmp/goose https://github.com/pressly/goose/releases/download/v3.27.0/goose_linux_x86_64 && chmod +x /tmp/goose
+
+      - name: Run migrations on base
+        env:
+          GOOSE_DRIVER: postgres
+          GOOSE_DBSTRING: host=localhost port=5432 user=postgres password=postgres dbname=marble_test sslmode=disable
+        run: /tmp/goose -dir repositories/migrations up
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Run migrations on PR branch
+        env:
+          GOOSE_DRIVER: postgres
+          GOOSE_DBSTRING: host=localhost port=5432 user=postgres password=postgres dbname=marble_test sslmode=disable
+        run: |
+          echo "Running migrations on PR branch..."
+          # Remove the compacted baseline migration - it's only for fresh installs,
+          # not for testing migration ordering against main branch
+          rm -f repositories/migrations/20241231000000_baseline_compacted.sql
+          /tmp/goose -dir repositories/migrations up || {
+            echo "❌ Migration failed! This indicates migration ordering issues."
+            echo "Check if your new migrations can run after main branch migrations."
+            exit 1
+          }
