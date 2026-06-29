@@ -50,7 +50,7 @@ export const startS3 = async (
 ): Promise<StartedTestContainer> => {
 	console.log("starting s3...");
 
-	const s3 = new PostgreSqlContainer("ghcr.io/versity/versitygw:v1.6.0")
+	const s3 = new GenericContainer("ghcr.io/versity/versitygw:v1.6.0")
 		.withNetwork(network)
 		.withNetworkAliases("s3")
 		.withExposedPorts(7070)
@@ -76,6 +76,20 @@ export const startS3 = async (
 	return c;
 };
 
+const COMMON_ENV = {
+	KILL_IF_READ_LICENSE_ERROR: "1",
+	ENV: "production",
+	MARBLE_API_URL: "http://api:8080",
+	INGESTION_BUCKET_URL:
+		"s3://marble?endpoint=http://s3:7070&region=us-east-1&use_path_style=true&disable_https=true",
+	CONTINUOUS_SCREENING_BUCKET_URL:
+		"s3://marble?endpoint=http://s3:7070&region=us-east-1&use_path_style=true&disable_https=true",
+	SCREENING_OPENSANCTIONS_API_HOST: "http://motiva:8000",
+	AWS_ACCESS_KEY_ID: "root",
+	AWS_SECRET_ACCESS_KEY: "azertyuiop",
+	SCREENING_INDEXER_TOKEN: "authtoken",
+};
+
 export const startApi = async (
 	network: StartedNetwork,
 	licenseKey: string,
@@ -99,13 +113,12 @@ export const startApi = async (
 			{
 				source: path.resolve("../../marble-backend"),
 				target: "/marble-backend",
-				mode: 666,
+				mode: 755,
 			},
 		])
 		.withEnvironment({
+			...COMMON_ENV,
 			LICENSE_KEY: licenseKey,
-			KILL_IF_READ_LICENSE_ERROR: "1",
-			ENV: "production",
 			PORT: "8080",
 			PG_CONNECTION_STRING:
 				"postgres://postgres:marble@db:5432/marble?sslmode=disable",
@@ -114,7 +127,6 @@ export const startApi = async (
 			FIREBASE_AUTH_EMULATOR_HOST: "firebase:9099",
 			FIREBASE_PROJECT_ID: "test-project",
 			FIREBASE_API_KEY: "dummy",
-			SCREENING_OPENSANCTIONS_API_HOST: "http://motiva:8000",
 		})
 		.withCommand([
 			"sh",
@@ -148,24 +160,17 @@ export const startWorker = async (
 			{
 				source: path.resolve("../../marble-backend"),
 				target: "/marble-backend",
-				mode: 666,
+				mode: 755,
 			},
 		])
 		.withEnvironment({
+			...COMMON_ENV,
 			CLOUD_RUN_PROBE_PORT: "9191",
-			LOG_LEVEL: "debug",
 			LICENSE_KEY: licenseKey,
-			KILL_IF_READ_LICENSE_ERROR: "1",
-			ENV: "production",
-			PORT: "8080",
 			PG_CONNECTION_STRING:
 				"postgres://postgres:marble@db:5432/marble?sslmode=disable",
-			FIREBASE_AUTH_EMULATOR_HOST: "firebase:9099",
-			FIREBASE_PROJECT_ID: "test-project",
-			FIREBASE_API_KEY: "dummy",
-			SCREENING_OPENSANCTIONS_API_HOST: "http://motiva:8000",
-			INGESTION_BUCKET_URL:
-				"s3://marble?endpoint=http://s3:7070&region=us-east-1&use_path_style=true&disable_https=true",
+			SCAN_DATASET_UPDATES_INTERVAL: "5s",
+			CREATE_FULL_DATASET_INTERVAL: "5s",
 		})
 		.withCommand([
 			"sh",
