@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -49,6 +50,11 @@ func (r *MockBlobRepository) DeleteFile(ctx context.Context, bucketUrl, key stri
 
 func (r *MockBlobRepository) GenerateSignedUrl(ctx context.Context, bucketUrl, key string) (string, error) {
 	args := r.Called(ctx, bucketUrl, key)
+	return args.String(0), args.Error(1)
+}
+
+func (r *MockBlobRepository) GenerateWriteSignedUrl(ctx context.Context, bucketUrl, key string, expiry time.Duration, hostOverride string) (string, error) {
+	args := r.Called(ctx, bucketUrl, key, expiry, hostOverride)
 	return args.String(0), args.Error(1)
 }
 

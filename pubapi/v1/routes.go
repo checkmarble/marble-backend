@@ -96,6 +96,8 @@ func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gi
 		root.POST("/cases/:caseId/ai_reviews", HandleEnqueueAiCaseReview(uc))
 		root.GET("/cases/:caseId/ai_reviews/:aiReviewId", HandleGetAiCaseReviewById(uc))
 
+		root.PUT("/ingest/:objectType/upload", v1beta.HandleUploadCsv(uc))
+
 		// Graduated
 
 		root.POST("/ingest/:objectType", HandleIngestObject(uc, false))

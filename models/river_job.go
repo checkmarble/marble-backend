@@ -312,3 +312,12 @@ type ScoringInitialComputationArgs struct {
 }
 
 func (ScoringInitialComputationArgs) Kind() string { return "scoring_initial_computation" }
+
+type AsyncUploadArgs struct {
+	OrgId            uuid.UUID        `json:"org_id"`
+	ObjectType       string           `json:"object_type"`
+	Key              string           `json:"key"`
+	IngestionOptions IngestionOptions `json:"ingestion_options"`
+}
+
+func (AsyncUploadArgs) Kind() string { return "async_upload" }

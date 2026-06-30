@@ -75,6 +75,28 @@ func IsMarbleStagingProject() bool {
 	return slices.Contains(MarbleStagingProjectIds, projectId)
 }
 
+func GetLocalCdnDomain() string {
+	if !IsMarbleSaasProject() {
+		return ""
+	}
+
+	if IsMarbleStagingProject() {
+		return "https://cdn.staging.checkmarble.com"
+	}
+
+	projectId, err := GetProjectId()
+	if err != nil {
+		return ""
+	}
+
+	switch projectId {
+	case "marble-prod-sg":
+		return "https://cdn.sg.checkmarble.com"
+	default:
+		return "https://cdn.checkmarble.com"
+	}
+}
+
 func getProjectIdFromMetadataServer() (string, error) {
 	req, err := http.NewRequest("GET", GOOGLE_METADATA_URL_PROJECT_ID, nil)
 	if err != nil {
