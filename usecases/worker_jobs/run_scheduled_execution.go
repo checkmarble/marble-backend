@@ -169,7 +169,7 @@ func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(
 		if usecase.manifestBucketUrl == "" {
 			logger.WarnContext(ctx, "manifest-based batch execution is enabled for this org but no manifest bucket is configured; using per-object execution instead")
 		} else {
-			return usecase.executeViaManifest(ctx, exec, db, scheduledExecution, scenario, filters)
+			return usecase.executeViaManifest(ctx, db, scheduledExecution, scenario, filters)
 		}
 	}
 
@@ -262,12 +262,15 @@ func batchExecV2EnabledForOrg(orgId uuid.UUID) bool {
 	return false
 }
 
+func batchExecutionManifestFileKey(id string) string {
+	return fmt.Sprintf("scheduled_executions/%s/manifest.txt", id)
+}
+
 // executeViaManifest streams the matching object ids into a manifest blob, records the planned
 // count, deadline, and manifest key on the execution, then enqueues a single coordinator job to
 // process it.
 func (usecase *RunScheduledExecution) executeViaManifest(
 	ctx context.Context,
-	exec repositories.Executor,
 	db repositories.Executor,
 	scheduledExecution models.ScheduledExecution,
 	scenario models.Scenario,
@@ -275,11 +278,12 @@ func (usecase *RunScheduledExecution) executeViaManifest(
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	manifestKey := fmt.Sprintf("scheduled_executions/%s/manifest.txt", scheduledExecution.Id)
+	manifestKey := batchExecutionManifestFileKey(scheduledExecution.Id)
 	writer, err := usecase.blobRepository.OpenStream(ctx, usecase.manifestBucketUrl, manifestKey, "manifest.txt")
 	if err != nil {
 		return fmt.Errorf("error opening manifest writer: %w", err)
 	}
+	defer writer.Close()
 
 	count, streamErr := usecase.ingestedDataReadRepository.StreamAllObjectIdsFromTable(
 		ctx, db, writer, scenario.TriggerObjectType, filters...)
@@ -293,26 +297,26 @@ func (usecase *RunScheduledExecution) executeViaManifest(
 	}
 
 	nbPlanned := int(count)
-	deadline := time.Now().Add(batchExecDefaultRunDuration)
-	err = usecase.repository.UpdateScheduledExecution(ctx, exec, models.UpdateScheduledExecutionInput{
-		Id:                       scheduledExecution.Id,
-		NumberOfPlannedDecisions: &nbPlanned,
-		ManifestBlobKey:          &manifestKey,
-		Deadline:                 &deadline,
-	})
-	if err != nil {
-		return err
-	}
-
-	err = usecase.repository.UpdateScheduledExecutionStatus(ctx, exec, models.UpdateScheduledExecutionStatusInput{
-		Id:     scheduledExecution.Id,
-		Status: models.ScheduledExecutionProcessing,
-	})
-	if err != nil {
-		return err
-	}
+	deadline := time.Now().Add(scheduledExecutionFullMaxRuntime)
 
 	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		err = usecase.repository.UpdateScheduledExecution(ctx, tx, models.UpdateScheduledExecutionInput{
+			Id:                       scheduledExecution.Id,
+			NumberOfPlannedDecisions: &nbPlanned,
+			ManifestBlobKey:          &manifestKey,
+			Deadline:                 &deadline,
+		})
+		if err != nil {
+			return err
+		}
+
+		err = usecase.repository.UpdateScheduledExecutionStatus(ctx, tx, models.UpdateScheduledExecutionStatusInput{
+			Id:     scheduledExecution.Id,
+			Status: models.ScheduledExecutionProcessing,
+		})
+		if err != nil {
+			return err
+		}
 		return usecase.taskQueueRepository.EnqueueBatchExecutionCoordinator(
 			ctx, tx, scenario.OrganizationId, scheduledExecution.Id)
 	})

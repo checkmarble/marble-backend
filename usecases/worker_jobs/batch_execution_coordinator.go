@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/netip"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,31 +27,34 @@ import (
 )
 
 const (
-	// batchExecBatchSize is the number of object ids read from the manifest per loop iteration.
+	// batchExecBatchSize is the number of decisions evaluated concurrently in a batch execution.
+	batchExecBatchSize = 20
+
+	// batchExecCommitBatchSize is the number of object ids read from the manifest per loop iteration.
 	// They are evaluated concurrently and the surviving decisions are inserted in a single
 	// transaction together with the manifest cursor advance. Kept small to bound the number of
 	// rows written per transaction.
-	batchExecBatchSize = 50
+	batchExecCommitBatchSize = 50
 
 	// batchExecPerIterTimeout caps a single loop iteration so a wedged DB/blob/screening
 	// call cannot hang the coordinator until the whole-job timeout. A timeout is retryable.
-	batchExecPerIterTimeout = 10 * time.Minute
+	batchExecPerIterTimeout = 1 * time.Minute
 
 	// batchExecDefaultRunDuration is the wall-clock budget for a whole run when no deadline
 	// was recorded at setup. The deadline is the only termination on sustained failure.
-	batchExecDefaultRunDuration = 12 * time.Hour
+	batchExecDefaultRunDuration = 9 * time.Minute
+
+	scheduledExecutionFullMaxRuntime = 24 * time.Hour
 
 	// Coordinator job timeout: must comfortably exceed the run deadline so River's stuck-job
 	// rescuer never double-runs a healthy coordinator.
-	batchExecJobTimeout = batchExecDefaultRunDuration + time.Hour
+	batchExecJobTimeout = batchExecDefaultRunDuration + batchExecPerIterTimeout + time.Second*20
 
-	batchExecBackoffBase  = 1 * time.Second
+	batchExecBackoffBase  = 5 * time.Second
 	batchExecBackoffCap   = 2 * time.Minute
 	batchExecSentryEveryN = 20
 )
 
-// batchCoordinatorRepository is the marble-db surface the coordinator needs. MarbleDbRepository
-// satisfies it.
 type batchCoordinatorRepository interface {
 	GetScheduledExecution(ctx context.Context, exec repositories.Executor, id string) (models.ScheduledExecution, error)
 	UpdateScheduledExecutionStatus(
@@ -63,18 +67,9 @@ type batchCoordinatorRepository interface {
 		exec repositories.Executor,
 		input models.AdvanceScheduledExecutionManifestInput,
 	) error
-	InsertScheduledExecutionFailures(
-		ctx context.Context,
-		exec repositories.Executor,
-		scheduledExecutionId string,
-		failures []models.ScheduledExecutionFailedObject,
-	) error
 	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (map[string]analytics.Settings, error)
 }
 
-// BatchExecutionCoordinator drives a single scheduled execution by walking an object-id
-// manifest in batches, evaluating and storing decisions, and advancing a resumable cursor in
-// the same transaction as the inserts.
 type BatchExecutionCoordinator struct {
 	repository                 batchCoordinatorRepository
 	executorFactory            executor_factory.ExecutorFactory
@@ -129,20 +124,6 @@ func NewBatchExecutionCoordinator(
 	}
 }
 
-// hardError marks a failure the coordinator must NOT retry: an invariant it checks itself, or
-// a recovered panic. Everything else is presumed retryable (a transient dependency error).
-type hardError struct{ err error }
-
-func (e hardError) Error() string { return e.err.Error() }
-func (e hardError) Unwrap() error { return e.err }
-
-func hardf(format string, args ...any) error { return hardError{errors.Newf(format, args...)} }
-
-func isHardError(err error) bool {
-	var h hardError
-	return errors.As(err, &h)
-}
-
 // batchInvariants holds the per-run context (scenario, data model, pivots, client DB handle)
 // loaded once and reused for every object in every batch, rather than reloaded per object.
 type batchInvariants struct {
@@ -163,8 +144,7 @@ type evalOutcome struct {
 	scenarioExecution models.ScenarioExecution
 	evalParams        evaluate_scenario.ScenarioEvaluationParameters
 	object            models.ClientObject
-	retryErr          error
-	hardErr           error
+	error             error
 }
 
 type BatchExecutionCoordinatorWorker struct {
@@ -193,32 +173,40 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 	exec := c.executorFactory.NewExecutor()
 
-	se, err := c.repository.GetScheduledExecution(ctx, exec, scheduledExecutionId)
+	setupCtx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
+	se, err := c.repository.GetScheduledExecution(setupCtx, exec, scheduledExecutionId)
 	if err != nil {
 		return errors.Wrap(err, "could not load scheduled execution in batch coordinator")
 	}
 	if se.ManifestBlobKey == nil {
 		// Invariant: the coordinator only ever runs for v2 executions, which always have a
 		// manifest. Mark failed rather than spin.
-		return c.finalize(ctx, exec, se, models.ScheduledExecutionFailure, []models.ScheduledExecutionFailedObject{
-			{ObjectId: "(setup)", Error: "batch coordinator started for an execution without a manifest"},
-		})
+		return c.markFailed(ctx, se.Id, errors.New("batch coordinator started for an execution without a manifest"))
 	}
 
-	inv, err := c.loadInvariants(ctx, exec, se)
-	if err != nil {
-		if isHardError(err) {
-			return c.finalize(ctx, exec, se, models.ScheduledExecutionFailure, []models.ScheduledExecutionFailedObject{
-				{ObjectId: "(setup)", Error: err.Error()},
-			})
+	if se.Deadline == nil {
+		return c.markFailed(ctx, se.Id, errors.New("invariant violated: job scheduled for v2 batch execution must have a deadline set"))
+	}
+
+	// A context timeout during the job execution leads to a snooze and retry, the next execution can mark it as failed if the deadline is passed
+	if time.Now().After(*se.Deadline) {
+		if se.ManifestRowsProcessed >= int64(*se.NumberOfPlannedDecisions) {
+			return c.repository.UpdateScheduledExecutionStatus(ctx, exec, models.UpdateScheduledExecutionStatusInput{Id: se.Id, Status: models.ScheduledExecutionSuccess})
+		} else {
+			logger.InfoContext(ctx, "Scheduled execution not completed after the deadline, marking as failed")
+			return c.markFailed(ctx, se.Id, errors.New("Scheduled execution not completed after the deadline"))
 		}
+	}
+
+	inv, err := c.loadInvariants(setupCtx, exec, se)
+	if err != nil {
 		return errors.Wrap(err, "could not load batch invariants")
 	}
 
-	deadline := time.Now().Add(batchExecDefaultRunDuration)
-	if se.Deadline != nil {
-		deadline = *se.Deadline
-	}
+	ctx, cancel = context.WithTimeout(ctx, batchExecDefaultRunDuration)
+	defer cancel()
 
 	var planned int64
 	if se.NumberOfPlannedDecisions != nil {
@@ -230,32 +218,46 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 	created := se.NumberOfCreatedDecisions
 	evaluated := se.NumberOfEvaluatedDecisions
 	consecutiveFailures := 0
-	var lastErr error
+
+	// Keep a single manifest reader open across the slice and read batches sequentially from it,
+	// rather than reopening the blob for every batch. The reader is reopened only when it is nil:
+	// at slice start, and after any error that leaves the offset unadvanced (the reader has by
+	// then consumed bytes past the committed offset, so it must be re-seeked there).
+	var manifestCloser io.Closer
+	var manifestReader *bufio.Reader
+	defer func() {
+		if manifestCloser != nil {
+			_ = manifestCloser.Close()
+		}
+	}()
+	resetManifestReader := func() {
+		if manifestCloser != nil {
+			_ = manifestCloser.Close()
+			manifestCloser = nil
+		}
+		manifestReader = nil
+	}
+	openManifestReader := func() error {
+		blob, err := c.blobRepository.GetBlob(ctx, c.manifestBucketUrl, *se.ManifestBlobKey,
+			repositories.WithBeginOffset(offset))
+		if err != nil {
+			return errors.Wrapf(err, "could not open manifest %s at offset %d", *se.ManifestBlobKey, offset)
+		}
+		manifestCloser = blob.ReadCloser
+		manifestReader = bufio.NewReader(blob.ReadCloser)
+		return nil
+	}
 
 	for {
 		if ctx.Err() != nil {
-			// Process shutting down (deploy). Return the error so River reschedules and we
-			// resume from the committed offset.
-			return ctx.Err()
+			logger.InfoContext(ctx, fmt.Sprintf("Per-job timeout of %s reached for scheduled execution coordinator job, snoozing 5 sec before reexecuting", batchExecDefaultRunDuration))
+			return river.JobSnooze(time.Second * 5)
 		}
 
-		if time.Now().After(deadline) {
-			logger.WarnContext(ctx, "batch execution reached its deadline before completing, marking failed")
-			marker := "(deadline)"
-			errStr := "run deadline exceeded"
-			if lastErr != nil {
-				errStr = fmt.Sprintf("run deadline exceeded, last error: %s", lastErr.Error())
-			}
-			return c.finalize(ctx, exec, se, models.ScheduledExecutionFailure,
-				[]models.ScheduledExecutionFailedObject{{ObjectId: marker, Error: errStr}})
-		}
-
-		// Re-read status before each batch so a cancellation (status flipped away from
-		// Processing) stops the run promptly. One job to stop, not N.
+		// Re-read status before each batch so a cancellation (status flipped away from processing) stops the run promptly.
 		current, err := c.repository.GetScheduledExecution(ctx, exec, scheduledExecutionId)
 		if err != nil {
-			lastErr = err
-			c.handleRetryable(ctx, err, &consecutiveFailures)
+			c.logAndSleepWithBackoff(ctx, err, &consecutiveFailures)
 			continue
 		}
 		if current.Status != models.ScheduledExecutionProcessing {
@@ -266,42 +268,43 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 
 		if rows >= planned {
 			logger.InfoContext(ctx, fmt.Sprintf("batch execution complete: %d decisions created, %d evaluated", created, evaluated))
-			return c.finalize(ctx, exec, se, models.ScheduledExecutionSuccess, nil)
+			return c.repository.UpdateScheduledExecutionStatus(ctx, exec, models.UpdateScheduledExecutionStatusInput{Id: se.Id, Status: models.ScheduledExecutionSuccess})
 		}
 
-		// One per-iteration context bounds the whole iteration — manifest read, concurrent
-		// evaluation, and the persistence transaction — so no single wedged operation hangs the
-		// coordinator until the whole-job timeout. Derived from the job ctx so a deploy still
-		// propagates cancellation. A timeout here is just another retryable error.
-		batchCtx, cancel := context.WithTimeout(ctx, batchExecPerIterTimeout)
+		if manifestReader == nil {
+			if err := openManifestReader(); err != nil {
+				c.logAndSleepWithBackoff(ctx, err, &consecutiveFailures)
+				continue
+			}
+		}
 
-		ids, newOffset, err := c.readManifestBatch(batchCtx, *se.ManifestBlobKey, offset, batchExecBatchSize)
+		ids, consumed, err := readManifestBatch(manifestReader, batchExecCommitBatchSize)
 		if err != nil {
-			cancel()
-			lastErr = err
-			c.handleRetryable(ctx, err, &consecutiveFailures)
+			resetManifestReader()
+			c.logAndSleepWithBackoff(ctx, err, &consecutiveFailures)
 			continue
 		}
 		if len(ids) == 0 {
 			// Manifest drained earlier than the planned count predicted. Finalize rather than
 			// loop forever; log because counts should have matched.
-			cancel()
 			logger.WarnContext(ctx, fmt.Sprintf(
 				"manifest exhausted at %d rows but %d were planned; finalizing", rows, planned))
-			return c.finalize(ctx, exec, se, models.ScheduledExecutionSuccess, nil)
+			return c.repository.UpdateScheduledExecutionStatus(ctx, exec, models.UpdateScheduledExecutionStatusInput{Id: se.Id, Status: models.ScheduledExecutionSuccess})
 		}
+		newOffset := offset + consumed
 
-		results, hardFailures, retryErr := c.evaluateBatch(batchCtx, inv, ids)
+		// One per-iteration context bounds evaluation and the persistence transaction — so no
+		// single wedged operation hangs the coordinator until the whole-job timeout. Derived from
+		// the job ctx so a deploy still propagates cancellation. A timeout here is retryable.
+		batchCtx, cancel := context.WithTimeout(ctx, batchExecPerIterTimeout)
+
+		results, retryErr := c.evaluateBatch(batchCtx, inv, ids)
 		if retryErr != nil {
 			cancel()
-			lastErr = retryErr
-			c.handleRetryable(ctx, retryErr, &consecutiveFailures)
+			// Offset is not advanced, so the reader (now past this batch) must re-seek to it.
+			resetManifestReader()
+			c.logAndSleepWithBackoff(ctx, retryErr, &consecutiveFailures)
 			continue
-		}
-		if len(hardFailures) > 0 {
-			cancel()
-			logger.ErrorContext(ctx, fmt.Sprintf("hard failure evaluating batch, marking execution failed: %s", hardFailures[0].Error))
-			return c.finalize(ctx, exec, se, models.ScheduledExecutionFailure, hardFailures)
 		}
 
 		batchCreated := 0
@@ -342,10 +345,10 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 		})
 		cancel()
 		if err != nil {
-			// Store or advance failed: nothing committed, do not advance our cursors. Retry the
-			// same batch after backoff.
-			lastErr = err
-			c.handleRetryable(ctx, err, &consecutiveFailures)
+			// Store or advance failed: nothing committed, do not advance our cursors. The reader
+			// has consumed this batch, so re-seek it to the committed offset and retry.
+			resetManifestReader()
+			c.logAndSleepWithBackoff(ctx, err, &consecutiveFailures)
 			continue
 		}
 
@@ -355,7 +358,6 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 		created += batchCreated
 		evaluated += batchEvaluated
 		consecutiveFailures = 0
-		lastErr = nil
 
 		for _, wid := range webhookIds {
 			c.webhookEventsSender.SendWebhookEventAsync(ctx, wid)
@@ -383,8 +385,14 @@ func (c *BatchExecutionCoordinator) loadInvariants(
 	}
 	table, ok := dataModel.Tables[scenario.TriggerObjectType]
 	if !ok {
-		return batchInvariants{}, hardf(
-			"trigger object type %s not found in data model", scenario.TriggerObjectType)
+		err = c.repository.UpdateScheduledExecutionStatus(ctx, exec, models.UpdateScheduledExecutionStatusInput{
+			Id:     se.Id,
+			Status: models.ScheduledExecutionFailure,
+		})
+		if err != nil {
+			utils.LogAndReportSentryError(ctx, err)
+		}
+		return batchInvariants{}, river.JobCancel(err)
 	}
 
 	pivotsMeta, err := c.dataModelRepository.ListPivots(ctx, exec, scenario.OrganizationId, nil, true, false)
@@ -409,52 +417,41 @@ func (c *BatchExecutionCoordinator) loadInvariants(
 	}, nil
 }
 
-// readManifestBatch reads up to batchSize object ids from the manifest starting at a
-// line-aligned byte offset, returning the ids and the new (still line-aligned) offset.
-func (c *BatchExecutionCoordinator) readManifestBatch(
-	ctx context.Context,
-	key string,
-	offset int64,
-	batchSize int,
-) (ids []string, newOffset int64, err error) {
-	blob, err := c.blobRepository.GetBlob(ctx, c.manifestBucketUrl, key, repositories.WithBeginOffset(offset))
-	if err != nil {
-		return nil, offset, errors.Wrapf(err, "could not open manifest %s at offset %d", key, offset)
-	}
-	defer blob.ReadCloser.Close()
-
-	reader := bufio.NewReader(blob.ReadCloser)
-	consumed := int64(0)
+// readManifestBatch reads up to batchSize object ids from reader and returns them along with
+// the number of bytes consumed, so the caller can advance its byte offset. Each manifest line
+// is a Go-quoted id (see StreamAllObjectIdsFromTable); reads stop at EOF or batchSize.
+func readManifestBatch(reader *bufio.Reader, batchSize int) (ids []string, consumed int64, err error) {
 	ids = make([]string, 0, batchSize)
 	for len(ids) < batchSize {
 		line, readErr := reader.ReadString('\n')
 		if len(line) > 0 {
 			consumed += int64(len(line))
 			if trimmed := strings.TrimRight(line, "\n"); trimmed != "" {
-				ids = append(ids, trimmed)
+				id, unquoteErr := strconv.Unquote(trimmed)
+				if unquoteErr != nil {
+					return nil, 0, errors.Wrapf(unquoteErr, "corrupt manifest line %q", trimmed)
+				}
+				ids = append(ids, id)
 			}
 		}
 		if readErr == io.EOF {
 			break
 		}
 		if readErr != nil {
-			return nil, offset, errors.Wrapf(readErr, "error reading manifest %s", key)
+			return nil, 0, errors.Wrap(readErr, "error reading manifest")
 		}
 	}
 
-	return ids, offset + consumed, nil
+	return ids, consumed, nil
 }
 
-// evaluateBatch evaluates every object in the batch concurrently (P = K), outside any
-// transaction so the screening HTTP calls never hold a tx open. Classification: a retryable
-// error anywhere aborts the whole batch for retry (precedence over hard failures, since a
-// genuine hard failure recurs and is caught once the transient one clears); hard failures
-// (invariants, recovered panics) stop the run.
 func (c *BatchExecutionCoordinator) evaluateBatch(
 	ctx context.Context,
 	inv batchInvariants,
 	ids []string,
-) (results []evalOutcome, hardFailures []models.ScheduledExecutionFailedObject, retryErr error) {
+) (results []evalOutcome, err error) {
+	batchCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	outcomes := make([]evalOutcome, len(ids))
 	var g errgroup.Group
 	g.SetLimit(batchExecBatchSize)
@@ -462,10 +459,14 @@ func (c *BatchExecutionCoordinator) evaluateBatch(
 		g.Go(func() (err error) {
 			defer func() {
 				if r := recover(); r != nil {
-					outcomes[i] = evalOutcome{objectId: id, hardErr: hardf("panic evaluating object %s: %v", id, r)}
+					outcomes[i] = evalOutcome{objectId: id, error: errors.Newf("panic evaluating object %s: %v", id, r)}
 				}
 			}()
-			outcomes[i] = c.evaluateObject(ctx, inv, id)
+			outcomes[i] = c.evaluateObject(batchCtx, inv, id)
+			if outcomes[i].error != nil {
+				// on any error, cancel the context. The whole batch is retried
+				cancel()
+			}
 			return nil
 		})
 	}
@@ -473,24 +474,20 @@ func (c *BatchExecutionCoordinator) evaluateBatch(
 
 	for _, o := range outcomes {
 		switch {
-		case o.retryErr != nil:
-			if retryErr == nil {
-				retryErr = o.retryErr
+		case o.error != nil:
+			// any error will cause some more context canceled errors because they cancel the context -- preferably keep the initial error and return it
+			if err == nil || !(errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+				err = o.error
 			}
-		case o.hardErr != nil:
-			hardFailures = append(hardFailures, models.ScheduledExecutionFailedObject{
-				ObjectId: o.objectId,
-				Error:    o.hardErr.Error(),
-			})
 		default:
 			results = append(results, o)
 		}
 	}
 
-	if retryErr != nil {
-		return nil, nil, retryErr
+	if err != nil {
+		return nil, err
 	}
-	return results, hardFailures, nil
+	return results, nil
 }
 
 func (c *BatchExecutionCoordinator) evaluateObject(
@@ -500,7 +497,7 @@ func (c *BatchExecutionCoordinator) evaluateObject(
 ) evalOutcome {
 	objectMap, err := c.ingestedDataReadRepository.QueryIngestedObject(ctx, inv.clientDb, inv.table, objectId)
 	if err != nil {
-		return evalOutcome{objectId: objectId, retryErr: errors.Wrapf(err, "error querying ingested object %s", objectId)}
+		return evalOutcome{objectId: objectId, error: errors.Wrapf(err, "error querying ingested object %s", objectId)}
 	}
 	if len(objectMap) == 0 {
 		utils.LogAndReportSentryError(ctx, errors.Newf("object %s not found in table %s", objectId, inv.table.Name))
@@ -535,7 +532,7 @@ func (c *BatchExecutionCoordinator) evaluateObject(
 
 	triggerPassed, scenarioExecution, err := c.scenarioEvaluator.EvalScenario(ctx, evalParams)
 	if err != nil {
-		return evalOutcome{objectId: objectId, retryErr: errors.Wrapf(err, "error evaluating scenario for object %s", objectId)}
+		return evalOutcome{objectId: objectId, error: errors.Wrapf(err, "error evaluating scenario for object %s", objectId)}
 	}
 
 	return evalOutcome{
@@ -639,30 +636,29 @@ func (c *BatchExecutionCoordinator) testRunCallback(
 	}
 }
 
-// finalize sets the terminal status (and records any hard failures) for the run.
-func (c *BatchExecutionCoordinator) finalize(
+func (c *BatchExecutionCoordinator) markFailed(
 	ctx context.Context,
-	exec repositories.Executor,
-	se models.ScheduledExecution,
-	status models.ScheduledExecutionStatus,
-	failures []models.ScheduledExecutionFailedObject,
+	id string,
+	err error,
 ) error {
-	if len(failures) > 0 {
-		if err := c.repository.InsertScheduledExecutionFailures(ctx, exec, se.Id, failures); err != nil {
-			utils.LogAndReportSentryError(ctx, errors.Wrap(err, "could not record batch execution failures"))
-		}
-	}
-
-	return c.repository.UpdateScheduledExecutionStatus(ctx, exec, models.UpdateScheduledExecutionStatusInput{
-		Id:     se.Id,
-		Status: status,
+	repoErr := c.repository.UpdateScheduledExecutionStatus(ctx, c.executorFactory.NewExecutor(), models.UpdateScheduledExecutionStatusInput{
+		Id:     id,
+		Status: models.ScheduledExecutionFailure,
 	})
+	if repoErr != nil {
+		utils.LogAndReportSentryError(ctx, repoErr)
+	}
+	return river.JobCancel(err)
 }
 
-// handleRetryable keeps the run in the loop on a presumed-retryable error: log every time,
+// logAndSleepWithBackoff keeps the run in the loop on a presumed-retryable error: log every time,
 // report to Sentry throttled, and back off (ctx-aware) before retrying the same offset. The
 // deadline check is what eventually terminates a run that never recovers.
-func (c *BatchExecutionCoordinator) handleRetryable(ctx context.Context, err error, consecutiveFailures *int) {
+func (c *BatchExecutionCoordinator) logAndSleepWithBackoff(ctx context.Context, err error, consecutiveFailures *int) {
+	// return early on canceled context, it is handled at the beginning of the loop
+	if ctx.Err() != nil {
+		return
+	}
 	*consecutiveFailures++
 	logger := utils.LoggerFromContext(ctx)
 	logger.ErrorContext(ctx, fmt.Sprintf("retryable error in batch coordinator (consecutive: %d): %s",

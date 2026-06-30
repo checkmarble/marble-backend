@@ -217,12 +217,6 @@ type ListDecisionsToCreateFilters struct {
 	Status               []DecisionToCreateStatus
 }
 
-// ScheduledExecutionFailedObject is one hard-failed object recorded by the v2 coordinator.
-type ScheduledExecutionFailedObject struct {
-	ObjectId string
-	Error    string
-}
-
 type DecisionToCreateCountMetadata struct {
 	Created                  int
 	TriggerConditionMismatch int

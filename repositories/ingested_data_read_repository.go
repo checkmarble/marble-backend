@@ -7,6 +7,7 @@ import (
 	"io"
 	"maps"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -294,6 +295,9 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectIdsFromTable(
 // StreamAllObjectIdsFromTable streams the matching object ids straight from the DB cursor
 // into w, one id per line, instead of materializing them all in memory. It returns the
 // number of ids written. Used to build the batch-execution manifest.
+//
+// Each id is written as a Go-quoted string (strconv.Quote) so that an id containing a newline
+// or other control character cannot break the one-id-per-line framing the reader relies on.
 func (repo *IngestedDataReadRepositoryImpl) StreamAllObjectIdsFromTable(
 	ctx context.Context,
 	exec Executor,
@@ -332,7 +336,7 @@ func (repo *IngestedDataReadRepositoryImpl) StreamAllObjectIdsFromTable(
 		if err = rows.Scan(&objectId); err != nil {
 			return 0, fmt.Errorf("error while scanning row: %w", err)
 		}
-		if _, err = buf.WriteString(objectId); err != nil {
+		if _, err = buf.WriteString(strconv.Quote(objectId)); err != nil {
 			return 0, fmt.Errorf("error while writing object id to manifest: %w", err)
 		}
 		if err = buf.WriteByte('\n'); err != nil {
