@@ -101,6 +101,14 @@ type taskEnqueuer interface {
 		tx repositories.Transaction,
 		entities []models.ScoringRecordRef,
 	) error
+	EnqueueAsyncUploadTask(
+		ctx context.Context,
+		tx repositories.Transaction,
+		organizationId uuid.UUID,
+		objectType string,
+		key string,
+		ingestionOptions models.IngestionOptions,
+	) error
 }
 
 type scoreComputationUsecase interface {
@@ -122,6 +130,7 @@ type IngestionUseCase struct {
 	ingestionBucketUrl                  string
 	batchIngestionMaxSize               int
 	taskEnqueuer                        taskEnqueuer
+	isManagedMarble                     bool
 }
 
 func (usecase *IngestionUseCase) IngestObject(
@@ -571,14 +580,31 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context,
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Ingesting data from CSV %s", fileName))
 
-	fileNameElements := strings.Split(fileName, "/")
-	if len(fileNameElements) != 3 {
-		return ingestionResult{
-			err: fmt.Errorf("invalid filename %s: expecting format organizationId/tableName/timestamp.csv", fileName),
+	var (
+		organizationIdStr string
+		tableName         string
+	)
+
+	if strings.HasPrefix(fileName, "uploads/") {
+		fileNameElements := strings.Split(fileName, "/")
+		if len(fileNameElements) != 4 {
+			return ingestionResult{
+				err: fmt.Errorf("invalid filename %s: expecting format organizationId/tableName/timestamp.csv", fileName),
+			}
 		}
+		organizationIdStr = fileNameElements[1]
+		tableName = fileNameElements[2]
+	} else {
+		fileNameElements := strings.Split(fileName, "/")
+		if len(fileNameElements) != 3 {
+			return ingestionResult{
+				err: fmt.Errorf("invalid filename %s: expecting format organizationId/tableName/timestamp.csv", fileName),
+			}
+		}
+		organizationIdStr = fileNameElements[0]
+		tableName = fileNameElements[1]
 	}
-	organizationIdStr := fileNameElements[0]
-	tableName := fileNameElements[1]
+
 	organizationId, err := uuid.Parse(organizationIdStr)
 	if err != nil {
 		return ingestionResult{

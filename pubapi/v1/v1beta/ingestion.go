@@ -1,0 +1,56 @@
+package v1beta
+
+import (
+	"net/http"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pubapi"
+	"github.com/checkmarble/marble-backend/pubapi/types"
+	"github.com/checkmarble/marble-backend/pubapi/v1/params"
+	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/utils"
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+)
+
+func HandleUploadCsv(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		recordType := c.Param("objectType")
+
+		var p params.IngestionParams
+
+		if err := c.ShouldBindQuery(&p); err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		ingestionOptions := models.IngestionOptions{
+			ShouldMonitor:          p.MonitorObjects,
+			ShouldScreen:           p.MonitorObjects && !p.SkipInitialScreening,
+			ContinuousScreeningIds: make([]uuid.UUID, len(p.ContinuousConfigIds)),
+		}
+
+		if p.MonitorObjects {
+			for idx, configId := range p.ContinuousConfigIds {
+				ingestionOptions.ContinuousScreeningIds[idx] = uuid.MustParse(configId)
+			}
+		}
+
+		uc := pubapi.UsecasesWithCreds(ctx, uc).NewIngestionUseCase()
+		signedUrl, err := uc.GenerateUploadLink(ctx, orgId, recordType, ingestionOptions)
+		if err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
+
+		c.Redirect(http.StatusTemporaryRedirect, signedUrl)
+	}
+}

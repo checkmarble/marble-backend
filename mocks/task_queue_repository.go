@@ -263,3 +263,15 @@ func (m *TaskQueueRepository) EnqueueDeleteIndexByNameTask(
 	args := m.Called(ctx, tx, organizationId, indexNames)
 	return args.Error(0)
 }
+
+func (m *TaskQueueRepository) EnqueueAsyncUploadTask(
+	ctx context.Context,
+	tx repositories.Transaction,
+	organizationId uuid.UUID,
+	objectType string,
+	key string,
+	ingestionOptions models.IngestionOptions,
+) error {
+	args := m.Called(ctx, tx, organizationId, objectType, key, ingestionOptions)
+	return args.Error(0)
+}

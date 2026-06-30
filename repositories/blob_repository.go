@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/sas"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
@@ -19,6 +21,7 @@ import (
 
 	credentials "cloud.google.com/go/iam/credentials/apiv1"
 	"cloud.google.com/go/iam/credentials/apiv1/credentialspb"
+	"cloud.google.com/go/storage"
 	"github.com/cockroachdb/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -44,6 +47,7 @@ type BlobRepository interface {
 	RawBucket(ctx context.Context, bucketUrl string) (*blob.Bucket, error)
 	DeleteFile(ctx context.Context, bucketUrl, key string) error
 	GenerateSignedUrl(ctx context.Context, bucketUrl, key string) (string, error)
+	GenerateWriteSignedUrl(ctx context.Context, bucketUrl, key string, expiry time.Duration, hostOverride string) (string, error)
 	GetContentType(ctx context.Context, bucketUrl, key string) string
 
 	ExtractHost(bucketUrl string) []string
@@ -285,6 +289,53 @@ func (repository *blobRepository) GenerateSignedUrl(ctx context.Context, bucketU
 			Method: http.MethodGet,
 			Expiry: signedUrlExpiry,
 		})
+}
+
+func (repository *blobRepository) GenerateWriteSignedUrl(ctx context.Context, bucketUrl, key string, expiry time.Duration, hostOverride string) (string, error) {
+	if strings.HasPrefix(bucketUrl, "file://") {
+		logger := utils.LoggerFromContext(ctx)
+		logger.Warn("Signed URL generation is not supported with a file bucket. Please use a GCS, S3 or Azure bucket instead. Returning a placeholder URL instead.")
+		// placeholder file url for local testing, url valid for 3 years from 2025/06/02
+		return placeholderFileUrl, nil
+	}
+
+	bucket, err := repository.openBlobBucket(ctx, bucketUrl)
+	if err != nil {
+		return "", err
+	}
+
+	opts := blob.SignedURLOptions{
+		Method: http.MethodPut,
+		Expiry: expiry,
+	}
+
+	opts.BeforeSign = func(asFunc func(any) bool) error {
+		var s3Writer *s3.PutObjectInput
+		var gcsWriter *storage.SignedURLOptions
+		var azWriter *sas.BlobPermissions
+
+		if asFunc(&s3Writer) {
+			s3Writer.IfNoneMatch = new("*")
+		}
+		if asFunc(&gcsWriter) {
+			gcsWriter.Headers = []string{"x-goog-if-generation-match:0"}
+
+			if len(hostOverride) > 0 {
+				gcsWriter.Hostname = hostOverride
+			}
+		}
+		if asFunc(&azWriter) {
+			azWriter.Create = true // TODO: check if that works
+		}
+
+		return nil
+	}
+
+	return bucket.SignedURL(
+		ctx,
+		key,
+		&opts,
+	)
 }
 
 func (repository *blobRepository) GetContentType(ctx context.Context, bucketUrl, key string) string {

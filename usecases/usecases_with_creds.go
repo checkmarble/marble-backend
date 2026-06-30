@@ -408,6 +408,7 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 		continuousScreeningClientRepository: &usecases.Repositories.ClientDbRepository,
 		batchIngestionMaxSize:               usecases.Usecases.batchIngestionMaxSize,
 		taskEnqueuer:                        usecases.Repositories.TaskQueueRepository,
+		isManagedMarble:                     usecases.license.IsManagedMarble,
 	}
 }
 
@@ -1236,5 +1237,15 @@ func (usecases *UsecasesWithCreds) NewScoringScoresUsecase() scoring.ScoringScor
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.Repositories.TaskQueueRepository,
 		usecases.NewEvaluateAstExpression(),
+	)
+}
+
+func (usecases UsecasesWithCreds) NewAsyncUploadWorker() worker_jobs.AsyncUploadWorker {
+	return worker_jobs.NewAsyncUploadWorker(
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.TaskQueueRepository,
+		usecases.Repositories.BlobRepository,
+		usecases.Repositories.UploadLogRepository,
+		usecases.ingestionBucketUrl,
 	)
 }
