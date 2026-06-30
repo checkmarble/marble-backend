@@ -225,31 +225,6 @@ func (repo *MarbleDbRepository) AdvanceScheduledExecutionManifest(
 	return ExecBuilder(ctx, exec, query)
 }
 
-// InsertScheduledExecutionFailures records the object ids the coordinator could not
-// evaluate. The coordinator stops on hard failures, so this stays small.
-func (repo *MarbleDbRepository) InsertScheduledExecutionFailures(
-	ctx context.Context,
-	exec Executor,
-	scheduledExecutionId string,
-	failures []models.ScheduledExecutionFailedObject,
-) error {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return err
-	}
-	if len(failures) == 0 {
-		return nil
-	}
-
-	query := NewQueryBuilder().
-		Insert("scheduled_execution_failures").
-		Columns("scheduled_execution_id", "object_id", "error")
-	for _, f := range failures {
-		query = query.Values(scheduledExecutionId, f.ObjectId, f.Error)
-	}
-
-	return ExecBuilder(ctx, exec, query)
-}
-
 func (repo *MarbleDbRepository) StoreDecisionsToCreate(
 	ctx context.Context,
 	exec Executor,
