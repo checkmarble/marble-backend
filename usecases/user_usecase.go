@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 
 	"github.com/cockroachdb/errors"
@@ -121,7 +122,7 @@ func (usecase *UserUseCase) DeleteUser(ctx context.Context, userId, currentUserI
 	return nil
 }
 
-func (usecase *UserUseCase) ListUsers(ctx context.Context, organisationId *uuid.UUID) ([]models.User, error) {
+func (usecase *UserUseCase) ListUsers(ctx context.Context, organisationId *uuid.UUID, withTfa bool) ([]models.User, error) {
 	if err := usecase.enforceUserSecurity.ListUsers(organisationId); err != nil {
 		return nil, err
 	}
@@ -138,7 +139,34 @@ func (usecase *UserUseCase) ListUsers(ctx context.Context, organisationId *uuid.
 		}
 	}
 
+	if withTfa {
+		usecase.enrichWithTfa(ctx, users)
+	}
+
 	return users, nil
+}
+
+// enrichWithTfa populates the TfaEnabled field on each user from the identity
+// provider. It is a no-op when no Firebase admin client is configured (e.g.
+// OIDC deployments), where MFA enrollment is not tracked here. A provider
+// failure is logged and leaves TfaEnabled nil rather than failing the listing.
+func (usecase *UserUseCase) enrichWithTfa(ctx context.Context, users []models.User) {
+	if usecase.firebaseAdmin == nil {
+		return
+	}
+
+	enrollment, err := usecase.firebaseAdmin.ListMfaEnrollment(ctx)
+	if err != nil {
+		utils.LoggerFromContext(ctx).WarnContext(ctx,
+			"could not fetch MFA enrollment from identity provider, omitting tfa_enabled",
+			"error", err.Error())
+		return
+	}
+
+	for i := range users {
+		enabled := enrollment[strings.ToLower(users[i].Email)]
+		users[i].TfaEnabled = &enabled
+	}
 }
 
 func (usecase *UserUseCase) GetUser(ctx context.Context, userID string) (models.User, error) {

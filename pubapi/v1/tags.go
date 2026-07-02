@@ -101,7 +101,7 @@ func HandleAddCaseTags(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		users, err := userUsecase.ListUsers(ctx, &orgId)
+		users, err := userUsecase.ListUsers(ctx, &orgId, false)
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return

@@ -122,7 +122,7 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models
 	assert.NoError(t, err)
 
 	// Check that there are no users on the organization yet
-	users, err := userUsecase.ListUsers(ctx, &organizationId)
+	users, err := userUsecase.ListUsers(ctx, &organizationId, false)
 	if err != nil {
 		assert.FailNow(t, "Could not get users of organization", err)
 	}

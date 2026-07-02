@@ -20,6 +20,12 @@ type User struct {
 	// Currently only used to control display of the AI assist button in the UI - DO NOT use for anything else as it will be removed
 	AiAssistEnabled bool
 	Picture         string
+
+	// TfaEnabled reflects whether the user has at least one multi-factor
+	// authentication factor enrolled with the identity provider. It is only
+	// populated on demand (it requires an identity provider round-trip) and is
+	// nil when not computed, so a nil value must not be read as "no MFA".
+	TfaEnabled *bool
 }
 
 func (u User) FullName() string {
