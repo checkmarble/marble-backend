@@ -31,7 +31,7 @@ func TestEditScreeningProvider(t *testing.T) {
 			creds := models.Credentials{
 				OrganizationId: orgId,
 				ActorIdentity:  models.Identity{UserId: "principal"},
-				Role:           tt.role,
+				Roles:          []models.Role{tt.role},
 			}
 			e := EnforceSecurityOrganizationImpl{
 				EnforceSecurity: &EnforceSecurityImpl{Credentials: creds},

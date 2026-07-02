@@ -22,6 +22,7 @@ type UserRepository interface {
 	ListUsers(ctx context.Context, exec Executor, organizationId *uuid.UUID) ([]models.User, error)
 	UserByEmail(ctx context.Context, exec Executor, email string) (*models.User, error)
 	HasUsers(ctx context.Context, exec Executor) (bool, error)
+	ListCustomRoles(ctx context.Context, exec Executor, orgId uuid.UUID) ([]string, error)
 }
 
 func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (string, error) {
@@ -39,6 +40,7 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 				"id",
 				"email",
 				"role",
+				"roles",
 				"organization_id",
 				"first_name",
 				"last_name",
@@ -46,7 +48,8 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 			Values(
 				userId,
 				createUser.Email,
-				int(createUser.Role),
+				0,
+				createUser.Roles,
 				createUser.OrganizationId,
 				createUser.FirstName,
 				createUser.LastName,
@@ -65,8 +68,8 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 	if updateUser.Email != nil {
 		query = query.Set("email", *updateUser.Email)
 	}
-	if updateUser.Role != nil && *updateUser.Role != models.NO_ROLE {
-		query = query.Set("role", int(*updateUser.Role))
+	if updateUser.Roles != nil {
+		query = query.Set("roles", *updateUser.Roles)
 	}
 	if updateUser.FirstName != nil {
 		query = query.Set("first_name", *updateUser.FirstName)
@@ -201,4 +204,20 @@ func (repo *MarbleDbRepository) HasUsers(ctx context.Context, exec Executor) (bo
 	}
 
 	return exists, nil
+}
+
+func (repo *MarbleDbRepository) ListCustomRoles(ctx context.Context, exec Executor, orgId uuid.UUID) ([]string, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	return SqlToListOfModels(
+		ctx,
+		exec,
+		NewQueryBuilder().
+			Select(dbmodels.SelectRoleColumn...).
+			From(dbmodels.TABLE_ROLES).
+			Where("org_id = ?", orgId),
+		dbmodels.AdaptRoleName,
+	)
 }

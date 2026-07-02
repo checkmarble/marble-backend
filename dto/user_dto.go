@@ -8,22 +8,22 @@ import (
 )
 
 type User struct {
-	UserId         string     `json:"user_id"`
-	Email          string     `json:"email"`
-	Role           string     `json:"role"`
-	OrganizationId uuid.UUID  `json:"organization_id"`
-	FirstName      string     `json:"first_name"`
-	LastName       string     `json:"last_name"`
-	Picture        string     `json:"picture"`
-	DeletedAt      *time.Time `json:"deleted_at,omitempty"`
-	TfaEnabled     *bool      `json:"tfa_enabled,omitempty"`
+	UserId         string        `json:"user_id"`
+	Email          string        `json:"email"`
+	Roles          []models.Role `json:"roles"`
+	OrganizationId uuid.UUID     `json:"organization_id"`
+	FirstName      string        `json:"first_name"`
+	LastName       string        `json:"last_name"`
+	Picture        string        `json:"picture"`
+	DeletedAt      *time.Time    `json:"deleted_at,omitempty"`
+	TfaEnabled     *bool         `json:"tfa_enabled,omitempty"`
 }
 
 func AdaptUserDto(user models.User) User {
 	return User{
 		UserId:         string(user.UserId),
 		Email:          user.Email,
-		Role:           user.Role.String(),
+		Roles:          user.Roles,
 		OrganizationId: user.OrganizationId,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
@@ -34,24 +34,24 @@ func AdaptUserDto(user models.User) User {
 }
 
 type CreateUser struct {
-	Email          string    `json:"email"`
-	Role           string    `json:"role"`
-	OrganizationId uuid.UUID `json:"organization_id"`
-	FirstName      string    `json:"first_name"`
-	LastName       string    `json:"last_name"`
+	Email          string        `json:"email"`
+	Roles          []models.Role `json:"roles"`
+	OrganizationId uuid.UUID     `json:"organization_id"`
+	FirstName      string        `json:"first_name"`
+	LastName       string        `json:"last_name"`
 }
 
 type UpdateUser struct {
-	Email     *string `json:"email"`
-	Role      *string `json:"role"`
-	FirstName *string `json:"first_name"`
-	LastName  *string `json:"last_name"`
+	Email     *string        `json:"email"`
+	Roles     *[]models.Role `json:"roles"`
+	FirstName *string        `json:"first_name"`
+	LastName  *string        `json:"last_name"`
 }
 
 func AdaptCreateUser(dto CreateUser) models.CreateUser {
 	return models.CreateUser{
 		Email:          dto.Email,
-		Role:           models.RoleFromString(dto.Role),
+		Roles:          dto.Roles,
 		OrganizationId: dto.OrganizationId,
 		FirstName:      dto.FirstName,
 		LastName:       dto.LastName,
@@ -59,16 +59,16 @@ func AdaptCreateUser(dto CreateUser) models.CreateUser {
 }
 
 func AdaptUpdateUser(dto UpdateUser, userId string) models.UpdateUser {
-	var updatedRole *models.Role
-	if dto.Role != nil {
-		new := models.RoleFromString(*dto.Role)
-		updatedRole = &new
+	var updatedRoles *[]models.Role
+	if dto.Roles != nil {
+		new := *dto.Roles
+		updatedRoles = &new
 	}
 
 	return models.UpdateUser{
 		UserId:    userId,
 		Email:     dto.Email,
-		Role:      updatedRole,
+		Roles:     updatedRoles,
 		FirstName: dto.FirstName,
 		LastName:  dto.LastName,
 	}

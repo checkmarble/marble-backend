@@ -91,7 +91,7 @@ func (usecase *InboxUsers) ListInboxUsers(ctx context.Context, inboxId uuid.UUID
 }
 
 func (usecase *InboxUsers) ListAllInboxUsers(ctx context.Context) ([]models.InboxUser, error) {
-	if usecase.Credentials.Role != models.ADMIN && usecase.Credentials.Role != models.MARBLE_ADMIN {
+	if !usecase.Credentials.HasRole(models.ADMIN, models.MARBLE_ADMIN) {
 		return []models.InboxUser{}, errors.New("only admins can list all inbox users")
 	}
 

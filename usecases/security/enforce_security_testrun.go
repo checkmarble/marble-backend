@@ -26,7 +26,7 @@ func (e *EnforceSecurotyTestRunImpl) CreateTestRun(organizationId uuid.UUID) err
 }
 
 func (e *EnforceSecurotyTestRunImpl) ListTestRuns(organizationId uuid.UUID) error {
-	if e.Credentials.Role == models.MARBLE_ADMIN {
+	if e.Credentials.HasRole(models.MARBLE_ADMIN) {
 		return errors.Join(
 			e.Permission(models.SCENARIO_READ),
 		)

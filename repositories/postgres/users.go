@@ -11,12 +11,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
 func (db *Database) UserByEmail(ctx context.Context, email string) (models.User, error) {
 	query := `
-		SELECT id, email, first_name, last_name, role, organization_id
+		SELECT id, email, first_name, last_name, roles, organization_id
 		FROM users
 		WHERE email = $1
 		AND deleted_at IS NULL
@@ -30,7 +31,7 @@ func (db *Database) UserByEmail(ctx context.Context, email string) (models.User,
 			&user.Email,
 			&firstName,
 			&lastName,
-			&user.Role,
+			&user.Roles,
 			&organizationID,
 		)
 	if firstName.Valid {
@@ -96,4 +97,42 @@ func (db *Database) UpdateUserProfileFromClaims(
 	}
 
 	return db.UserByEmail(ctx, user.Email)
+}
+
+func (db *Database) FetchPermissions(ctx context.Context, orgId uuid.UUID, roles []models.Role) ([]models.Permission, error) {
+	query := `
+		select coalesce(array_agg(permissions), '{}') as permissions
+		from (
+			select unnest(permissions) as permissions
+			from roles
+			where
+				org_id = $1 and
+				name = any($2)
+		)
+	`
+
+	var perms []models.Permission
+	var tmp []string
+
+	rows, err := db.pool.Query(ctx, query, orgId, roles)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		if err := rows.Scan(&tmp); err != nil {
+			return nil, err
+		}
+
+		perms = append(perms, pure_utils.Map(tmp, func(perm string) models.Permission {
+			return models.Permission(perm)
+		})...)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return perms, nil
 }

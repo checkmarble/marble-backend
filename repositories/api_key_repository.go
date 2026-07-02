@@ -77,7 +77,7 @@ func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor,
 				"prefix",
 				"key_hash",
 				"description",
-				"role",
+				"roles",
 			).
 			Values(
 				apiKey.Id,
@@ -85,7 +85,7 @@ func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor,
 				apiKey.Prefix,
 				apiKey.Hash,
 				apiKey.Description,
-				apiKey.Role,
+				apiKey.Roles,
 			),
 	)
 	return err

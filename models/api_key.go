@@ -13,7 +13,8 @@ type ApiKey struct {
 	Hash           []byte
 	OrganizationId uuid.UUID
 	Prefix         string
-	Role           Role
+	// Role           Role
+	Roles []Role
 
 	DisplayString string
 }
@@ -21,7 +22,7 @@ type ApiKey struct {
 type CreateApiKeyInput struct {
 	Description    string
 	OrganizationId uuid.UUID
-	Role           Role
+	Roles          []Role
 }
 
 type CreatedApiKey struct {

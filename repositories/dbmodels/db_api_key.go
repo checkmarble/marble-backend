@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 
@@ -19,6 +20,7 @@ type DBApiKey struct {
 	Prefix         string             `db:"prefix"`
 	OrganizationId uuid.UUID          `db:"org_id"`
 	Role           int                `db:"role"`
+	Roles          []string           `db:"roles"`
 }
 
 const TABLE_APIKEYS = "api_keys"
@@ -33,7 +35,9 @@ func AdaptApikey(db DBApiKey) (models.ApiKey, error) {
 		Hash:           db.Hash,
 		OrganizationId: db.OrganizationId,
 		Prefix:         db.Prefix,
-		Role:           models.Role(db.Role),
+		Roles: pure_utils.Map(db.Roles, func(role string) models.Role {
+			return models.Role(role)
+		}),
 	}
 
 	return out, nil

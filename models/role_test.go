@@ -7,9 +7,8 @@ import (
 )
 
 func TestSystemRoleIsInternal(t *testing.T) {
-	assert.Equal(t, "SYSTEM", SYSTEM.String())
+	assert.Equal(t, "SYSTEM", SYSTEM)
 	assert.NotContains(t, GetValidUserRoles(), SYSTEM)
-	assert.Equal(t, NO_ROLE, RoleFromString("SYSTEM"))
 }
 
 func TestSystemRoleHasWorkerPermissionsOnly(t *testing.T) {

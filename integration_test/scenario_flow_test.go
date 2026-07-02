@@ -82,7 +82,7 @@ func setupApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases
 	apiKey, err := apiKeyUsecase.CreateApiKey(ctx, models.CreateApiKeyInput{
 		OrganizationId: organizationId,
 		Description:    "Test API key",
-		Role:           models.API_CLIENT,
+		Roles:          []models.Role{models.API_CLIENT},
 	})
 	if err != nil {
 		assert.FailNow(t, "Could not create api key", err)
@@ -132,7 +132,7 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models
 	adminUser, err := userUsecase.AddUser(ctx, models.CreateUser{
 		Email:          pure_utils.NewId().String() + "@testmarble.com",
 		OrganizationId: organizationId,
-		Role:           models.ADMIN,
+		Roles:          []models.Role{models.ADMIN},
 	})
 	if err != nil {
 		assert.FailNow(t, "Could not create user", err)
@@ -142,7 +142,7 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models
 
 	// Create credentials for this user
 	creds := models.Credentials{
-		Role:           models.ADMIN,
+		Roles:          []models.Role{models.ADMIN},
 		OrganizationId: organizationId,
 		ActorIdentity: models.Identity{
 			UserId: adminUserId,

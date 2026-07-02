@@ -1,6 +1,7 @@
 package security
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -61,19 +62,19 @@ func TestUpdateUserRole(t *testing.T) {
 				Credentials: models.Credentials{
 					OrganizationId: utils.TextToUUID("org"),
 					ActorIdentity:  models.Identity{UserId: "principal"},
-					Role:           tt.principal,
+					Roles:          []models.Role{tt.principal},
 				},
 			}
 
-			target := models.User{OrganizationId: utils.TextToUUID("org"), UserId: "target", Role: tt.from}
+			target := models.User{OrganizationId: utils.TextToUUID("org"), UserId: "target", Roles: []models.Role{tt.from}}
 			if tt.sameUser {
 				target.UserId = "principal"
-				target.Role = tt.principal
+				target.Roles = []models.Role{tt.principal}
 			}
 
-			update := models.UpdateUser{UserId: string(target.UserId), Role: &tt.to}
-			if tt.principal == *update.Role {
-				update.Role = nil
+			update := models.UpdateUser{UserId: string(target.UserId), Roles: &[]models.Role{tt.to}}
+			if slices.Equal([]models.Role{tt.principal}, *update.Roles) {
+				update.Roles = nil
 			}
 
 			outcome := e.UpdateUser(target, update)

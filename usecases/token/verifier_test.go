@@ -26,7 +26,7 @@ func TestGenerator_VerifyToken_APIKey(t *testing.T) {
 		Id:             "api_key_id",
 		OrganizationId: utils.TextToUUID("organization_id"),
 		Prefix:         "abc",
-		Role:           models.ADMIN,
+		Roles:          []models.Role{models.ADMIN},
 		DisplayString:  "Api key abc*** of organization",
 	}
 	orgIdString := apiKey.OrganizationId
@@ -98,9 +98,10 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 	now := time.Now()
 
 	user := models.User{
-		UserId:         "user_id",
-		Email:          "user@email.com",
-		Role:           models.ADMIN,
+		UserId: "user_id",
+		Email:  "user@email.com",
+
+		Roles:          []models.Role{models.ADMIN},
 		OrganizationId: utils.TextToUUID("organization_id"),
 	}
 	userOrgIdString := user.OrganizationId
@@ -119,7 +120,7 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
 			OrganizationId: utils.TextToUUID("organization_id"),
-			Role:           models.ADMIN,
+			Roles:          []models.Role{models.ADMIN},
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
 				Email:  user.Email,

@@ -59,17 +59,17 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 		Hash:           hash[:],
 		Prefix:         key[:3],
 		OrganizationId: input.OrganizationId,
-		Role:           input.Role,
+		Roles:          input.Roles,
 	}
 
 	if err := usecase.enforceSecurity.CreateApiKey(input.OrganizationId); err != nil {
 		return models.CreatedApiKey{}, err
 	}
 
-	if input.Role != models.API_CLIENT {
+	if len(input.Roles) > 1 || input.Roles[0] != models.API_CLIENT {
 		return models.CreatedApiKey{}, errors.Wrap(
 			models.BadParameterError,
-			fmt.Sprintf("role %s is not supported", input.Role),
+			fmt.Sprintf("roles %s are not supported", input.Roles),
 		)
 	}
 

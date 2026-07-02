@@ -53,7 +53,7 @@ func CaptureSentryException(ctx context.Context, hub *sentry.Hub, err error) {
 			})
 		}
 		hub.Scope().SetTag("organization_id", creds.OrganizationId.String())
-		hub.Scope().SetTag("role", creds.Role.String())
+		hub.Scope().SetTag("role", fmt.Sprintf("%s", creds.Roles))
 	}
 	hub.CaptureException(err)
 }

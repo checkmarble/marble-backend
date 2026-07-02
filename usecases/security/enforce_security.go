@@ -62,13 +62,8 @@ func (e *EnforceSecurityImpl) Permissions(permissions []models.Permission) error
 }
 
 func (e *EnforceSecurityImpl) Permission(permission models.Permission) error {
-	permissionStr, err := permission.String()
-	if err != nil {
-		return errors.Wrap(err, "failed to adapt permission to string")
-	}
-
-	if !e.Credentials.Role.HasPermission(permission) {
-		return errors.Wrap(models.ForbiddenError, "missing permission "+permissionStr)
+	if !e.Credentials.HasPermission(permission) {
+		return errors.Wrap(models.ForbiddenError, "missing permission "+string(permission))
 	}
 	return nil
 }

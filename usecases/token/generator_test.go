@@ -23,7 +23,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 		Id:             "api_key_id",
 		OrganizationId: utils.TextToUUID("organization_id"),
 		Prefix:         "abc",
-		Role:           models.ADMIN,
+		Roles:          []models.Role{models.ADMIN},
 		DisplayString:  "Api key abc*** of organization",
 	}
 
@@ -38,7 +38,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", "", mock.Anything, models.Credentials{
 			OrganizationId: utils.TextToUUID("organization_id"),
-			Role:           models.ADMIN,
+			Roles:          []models.Role{models.ADMIN},
 			ActorIdentity: models.Identity{
 				ApiKeyId:   "api_key_id",
 				ApiKeyName: "Api key abc*** of organization",
@@ -70,7 +70,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", "", mock.Anything, models.Credentials{
 			OrganizationId: utils.TextToUUID("organization_id"),
-			Role:           models.ADMIN,
+			Roles:          []models.Role{models.ADMIN},
 			ActorIdentity: models.Identity{
 				ApiKeyId:   "api_key_id",
 				ApiKeyName: "Api key abc*** of organization",
@@ -109,7 +109,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 	user := models.User{
 		UserId:         "user_id",
 		Email:          "user@email.com",
-		Role:           models.ADMIN,
+		Roles:          []models.Role{models.ADMIN},
 		OrganizationId: utils.TextToUUID("organization_id"),
 	}
 	orgIdString := user.OrganizationId
@@ -126,7 +126,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
 			OrganizationId: utils.TextToUUID("organization_id"),
-			Role:           models.ADMIN,
+			Roles:          []models.Role{models.ADMIN},
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
 				Email:  user.Email,
@@ -164,7 +164,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
 			OrganizationId: utils.TextToUUID("organization_id"),
-			Role:           models.ADMIN,
+			Roles:          []models.Role{models.ADMIN},
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
 				Email:  user.Email,
@@ -202,7 +202,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
 			OrganizationId: utils.TextToUUID("organization_id"),
-			Role:           models.ADMIN,
+			Roles:          []models.Role{models.ADMIN},
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
 				Email:  user.Email,
