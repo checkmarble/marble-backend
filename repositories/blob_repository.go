@@ -41,6 +41,7 @@ const (
 )
 
 type BlobRepository interface {
+	GetBlobAttributes(ctx context.Context, bucketUrl, key string) (blob.Attributes, error)
 	GetBlob(ctx context.Context, bucketUrl, key string, opts ...GetBlobOption) (models.Blob, error)
 	OpenStream(ctx context.Context, bucketUrl, key string, fileName string) (io.WriteCloser, error)
 	OpenStreamWithOptions(ctx context.Context, bucketUrl, key string, opts *blob.WriterOptions) (io.WriteCloser, error)
@@ -182,6 +183,20 @@ func WithEndOffset(offset int64) GetBlobOption {
 	return func(opts *getBlobOptions) {
 		opts.EndOffset = offset
 	}
+}
+
+func (repository *blobRepository) GetBlobAttributes(ctx context.Context, bucketUrl, key string) (blob.Attributes, error) {
+	bucket, err := repository.openBlobBucket(ctx, bucketUrl)
+	if err != nil {
+		return blob.Attributes{}, err
+	}
+
+	attrs, err := bucket.Attributes(ctx, key)
+	if err != nil {
+		return blob.Attributes{}, err
+	}
+
+	return *attrs, nil
 }
 
 func (repository *blobRepository) GetBlob(ctx context.Context, bucketUrl, key string, opts ...GetBlobOption) (models.Blob, error) {

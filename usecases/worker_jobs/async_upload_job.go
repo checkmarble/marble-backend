@@ -2,20 +2,24 @@ package worker_jobs
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 )
 
 const (
-	ASYNC_UPLOAD_TIMEOUT = 15 * time.Minute
-	ASYNC_UPLOAD_TICK    = time.Minute
+	ASYNC_UPLOAD_START_TIMEOUT = 5 * time.Minute
+	ASYNC_UPLOAD_TIMEOUT       = 15 * time.Minute
+	ASYNC_UPLOAD_TICK          = time.Minute
+	ASYNC_UPLOAD_MAX_SIZE      = 10 << 30 // 10 GB
 )
 
 type asyncUploadTaskEnqueuer interface {
@@ -56,7 +60,8 @@ func NewAsyncUploadWorker(
 
 func (w AsyncUploadWorker) Work(ctx context.Context, job *river.Job[models.AsyncUploadArgs]) error {
 	// If we get an error retrieving the blob
-	if _, err := w.blobRepository.GetBlob(ctx, w.ingestionBucketUrl, job.Args.Key); err != nil {
+	blobAttrs, err := w.blobRepository.GetBlobAttributes(ctx, w.ingestionBucketUrl, job.Args.Key)
+	if err != nil {
 		// If the blob was not uploaded yet
 		if errors.Is(err, models.NotFoundError) {
 			// If we passed the token validity period, it won't be uploaded, so we cancel the job
@@ -71,6 +76,15 @@ func (w AsyncUploadWorker) Work(ctx context.Context, job *river.Job[models.Async
 
 		// Any other error fails the job immediately
 		return err
+	}
+
+	if blobAttrs.Size > ASYNC_UPLOAD_MAX_SIZE {
+		utils.LoggerFromContext(ctx).WarnContext(ctx, "uploaded file for async ingestion was too large",
+			"org_id", job.Args.OrgId,
+			"key", job.Args.Key,
+			"size", blobAttrs.Size)
+
+		return w.createUploadError(ctx, job, fmt.Sprintf("maximum allowed file size is 10GB, provided file was %d GB", blobAttrs.Size%10<<30))
 	}
 
 	return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
@@ -95,5 +109,41 @@ func (w AsyncUploadWorker) Work(ctx context.Context, job *river.Job[models.Async
 			ContinuousScreeningIds: job.Args.IngestionOptions.ContinuousScreeningIds,
 			ShouldScreen:           job.Args.IngestionOptions.ShouldScreen,
 		})
+	})
+}
+
+func (w AsyncUploadWorker) createUploadError(ctx context.Context, job *river.Job[models.AsyncUploadArgs], err string) error {
+	return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		newUploadLoad := models.UploadLog{
+			Id:             pure_utils.NewId().String(),
+			UploadStatus:   models.UploadFailure,
+			OrganizationId: job.Args.OrgId,
+			FileName:       job.Args.Key,
+			TableName:      job.Args.ObjectType,
+			UserId:         uuid.Max.String(),
+			StartedAt:      time.Now(),
+			LinesProcessed: 0,
+			Error:          &err,
+		}
+
+		if err := w.uploadLogRepository.CreateUploadLog(ctx, tx, newUploadLoad); err != nil {
+			utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not insert failed upload log",
+				"org_id", job.Args.OrgId,
+				"key", job.Args.Key,
+				"error", err.Error())
+
+			return err
+		}
+
+		if err := w.blobRepository.DeleteFile(ctx, w.ingestionBucketUrl, job.Args.Key); err != nil {
+			utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not delete uploaded file",
+				"org_id", job.Args.OrgId,
+				"key", job.Args.Key,
+				"error", err.Error())
+
+			return err
+		}
+
+		return nil
 	})
 }

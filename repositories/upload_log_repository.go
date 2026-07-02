@@ -39,6 +39,7 @@ func (repo *UploadLogRepositoryImpl) CreateUploadLog(ctx context.Context, exec E
 				"started_at",
 				"finished_at",
 				"lines_processed",
+				"error",
 			).
 			Values(
 				log.Id,
@@ -50,6 +51,7 @@ func (repo *UploadLogRepositoryImpl) CreateUploadLog(ctx context.Context, exec E
 				log.StartedAt,
 				log.FinishedAt,
 				log.LinesProcessed,
+				log.Error,
 			),
 	)
 	return err

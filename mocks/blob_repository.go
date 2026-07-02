@@ -16,6 +16,11 @@ type MockBlobRepository struct {
 	mock.Mock
 }
 
+func (r *MockBlobRepository) GetBlobAttributes(ctx context.Context, bucketUrl, key string) (blob.Attributes, error) {
+	args := r.Called(ctx, bucketUrl, key)
+	return args.Get(0).(blob.Attributes), args.Error(1)
+}
+
 func (r *MockBlobRepository) GetBlob(ctx context.Context, bucketUrl, key string, opts ...repositories.GetBlobOption) (models.Blob, error) {
 	args := r.Called(ctx, bucketUrl, key, opts)
 	return args.Get(0).(models.Blob), args.Error(1)
