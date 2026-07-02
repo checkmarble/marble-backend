@@ -22,7 +22,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 		Id:             "api_key_id",
 		OrganizationId: utils.TextToUUID("organization_id"),
 		Prefix:         "abc",
-		Role:           models.ADMIN,
+		Roles:          []models.Role{models.ADMIN},
 	}
 
 	organization := models.Organization{
@@ -32,7 +32,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 
 	creds := models.Credentials{
 		OrganizationId: utils.TextToUUID("organization_id"),
-		Role:           models.ADMIN,
+		Roles:          []models.Role{models.ADMIN},
 		ActorIdentity: models.Identity{
 			ApiKeyId:   "api_key_id",
 			ApiKeyName: "Api key abc*** of organization",
@@ -95,7 +95,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 	t.Run("nominal", func(t *testing.T) {
 		creds := models.Credentials{
 			OrganizationId: utils.TextToUUID("organization_id"),
-			Role:           models.ADMIN,
+			Roles:          []models.Role{models.ADMIN},
 			ActorIdentity: models.Identity{
 				UserId: "user_id",
 				Email:  "user@email.com",

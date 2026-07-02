@@ -62,7 +62,7 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 
 	switch creds.Type {
 	case CredentialsBearer:
-		if credentials.Role != models.MARBLE_ADMIN {
+		if !credentials.HasRole(models.MARBLE_ADMIN) {
 			organization, err := g.repository.GetOrganizationByID(ctx, credentials.OrganizationId)
 			if err != nil {
 				return Token{}, fmt.Errorf("GetOrganizationByID error: %w", err)

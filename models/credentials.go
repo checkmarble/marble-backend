@@ -1,6 +1,10 @@
 package models
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 type IntoCredentials interface {
 	IntoCredentials() Credentials
@@ -18,7 +22,21 @@ type Identity struct {
 type Credentials struct {
 	ActorIdentity  Identity // email or api key, for audit log
 	OrganizationId uuid.UUID
-	Role           Role
+	Roles          []Role
+	Permissions    []Permission
+}
+
+func (c Credentials) HasRole(roles ...Role) bool {
+	for _, role := range roles {
+		if slices.Contains(c.Roles, role) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c Credentials) HasPermission(perm Permission) bool {
+	return slices.Contains(c.Permissions, perm)
 }
 
 func (u User) IntoCredentials() Credentials {
@@ -30,7 +48,7 @@ func (u User) IntoCredentials() Credentials {
 			LastName:  u.LastName,
 		},
 		OrganizationId: u.OrganizationId,
-		Role:           u.Role,
+		Roles:          u.Roles,
 	}
 }
 
@@ -41,6 +59,6 @@ func (k ApiKey) IntoCredentials() Credentials {
 			ApiKeyName: k.DisplayString,
 		},
 		OrganizationId: k.OrganizationId,
-		Role:           k.Role,
+		Roles:          k.Roles,
 	}
 }

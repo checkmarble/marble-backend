@@ -330,7 +330,7 @@ func (uc *OrgImportUsecase) createAdmins(ctx context.Context, tx repositories.Tr
 			Email:          admin.Email,
 			FirstName:      admin.FirstName,
 			LastName:       admin.LastName,
-			Role:           models.ADMIN,
+			Roles:          []models.Role{models.ADMIN},
 		})
 		if err != nil {
 			return nil, err

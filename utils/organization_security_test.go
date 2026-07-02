@@ -12,7 +12,7 @@ func TestEnforceOrganizationAccess(t *testing.T) {
 	orgId := TextToUUID("1234")
 	err := EnforceOrganizationAccess(models.Credentials{
 		OrganizationId: orgId,
-		Role:           models.NO_ROLE,
+		Roles:          []models.Role{},
 	}, orgId)
 	assert.NoError(t, err)
 }
@@ -32,6 +32,6 @@ func TestEnforceOrganizationAccess_Fail(t *testing.T) {
 
 func TestEnforceOrganizationAccess_marble_admin_override(t *testing.T) {
 	orgId := TextToUUID("1234")
-	err := EnforceOrganizationAccess(models.Credentials{Role: models.MARBLE_ADMIN}, orgId)
+	err := EnforceOrganizationAccess(models.Credentials{Roles: []models.Role{models.MARBLE_ADMIN}}, orgId)
 	assert.NoError(t, err)
 }

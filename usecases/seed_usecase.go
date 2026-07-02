@@ -32,7 +32,7 @@ func (usecase *SeedUseCase) SeedMarbleAdmins(ctx context.Context, firstMarbleAdm
 
 	_, err := usecase.userRepository.CreateUser(ctx, exec, models.CreateUser{
 		Email: firstMarbleAdminEmail,
-		Role:  models.MARBLE_ADMIN,
+		Roles: []models.Role{models.MARBLE_ADMIN},
 	})
 
 	// ignore user already added
@@ -112,7 +112,7 @@ func (usecase *SeedUseCase) CreateOrgAndUser(ctx context.Context, input models.I
 		_, err := usecase.userRepository.CreateUser(ctx, exec, models.CreateUser{
 			Email:          input.AdminEmail,
 			OrganizationId: targetOrg.Id,
-			Role:           models.ADMIN,
+			Roles:          []models.Role{models.ADMIN},
 		})
 		if err != nil && !repositories.IsUniqueViolationError(err) {
 			return err

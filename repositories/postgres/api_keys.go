@@ -13,7 +13,7 @@ import (
 
 func (db *Database) GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error) {
 	query := `
-		SELECT id, org_id, prefix, description, role
+		SELECT id, org_id, prefix, description, roles
 		FROM api_keys
 		WHERE key_hash = $1
 		AND deleted_at IS NULL
@@ -25,7 +25,7 @@ func (db *Database) GetApiKeyByHash(ctx context.Context, hash []byte) (models.Ap
 		&apiKey.OrganizationId,
 		&apiKey.Prefix,
 		&apiKey.Description,
-		&apiKey.Role,
+		&apiKey.Roles,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return models.ApiKey{}, models.NotFoundError

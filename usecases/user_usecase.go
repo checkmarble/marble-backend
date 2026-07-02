@@ -69,8 +69,17 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 }
 
 func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.UpdateUser) (models.User, error) {
-	if updateUser.Role != nil && !slices.Contains(models.GetValidUserRoles(), *updateUser.Role) {
-		return models.User{}, errors.Wrap(models.BadParameterError, "Invalid role received")
+	if updateUser.Roles != nil {
+		allValidRoles := true
+
+		for _, role := range *updateUser.Roles {
+			if !strings.HasPrefix(string(role), "org/") && !slices.Contains(models.GetValidUserRoles(), role) {
+				allValidRoles = false
+			}
+		}
+		if !allValidRoles {
+			return models.User{}, errors.Wrap(models.BadParameterError, "Invalid role received")
+		}
 	}
 
 	updatedUser, err := executor_factory.TransactionReturnValue(
@@ -199,4 +208,20 @@ func (usecase *UserUseCase) GetUserByEmail(ctx context.Context, email string) (m
 	}
 
 	return *user, nil
+}
+
+func (usecase *UserUseCase) GetRoles(ctx context.Context) ([]string, []models.Permission, error) {
+	roles, err := usecase.userRepository.ListCustomRoles(ctx,
+		usecase.executorFactory.NewExecutor(), usecase.enforceUserSecurity.OrgId())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for _, role := range models.GetValidUserRoles() {
+		if role != models.MARBLE_ADMIN {
+			roles = append(roles, string(role))
+		}
+	}
+
+	return roles, models.ValidPermissions, nil
 }

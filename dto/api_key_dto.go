@@ -8,12 +8,12 @@ import (
 )
 
 type ApiKey struct {
-	Id             string    `json:"id"`
-	CreatedAt      time.Time `json:"created_at"`
-	Description    string    `json:"description"`
-	OrganizationId uuid.UUID `json:"organization_id"`
-	Prefix         string    `json:"prefix"`
-	Role           string    `json:"role"`
+	Id             string        `json:"id"`
+	CreatedAt      time.Time     `json:"created_at"`
+	Description    string        `json:"description"`
+	OrganizationId uuid.UUID     `json:"organization_id"`
+	Prefix         string        `json:"prefix"`
+	Roles          []models.Role `json:"roles"`
 }
 
 func AdaptApiKeyDto(apiKey models.ApiKey) ApiKey {
@@ -23,7 +23,7 @@ func AdaptApiKeyDto(apiKey models.ApiKey) ApiKey {
 		Description:    apiKey.Description,
 		OrganizationId: apiKey.OrganizationId,
 		Prefix:         apiKey.Prefix,
-		Role:           apiKey.Role.String(),
+		Roles:          apiKey.Roles,
 	}
 }
 

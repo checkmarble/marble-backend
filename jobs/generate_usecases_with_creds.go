@@ -10,7 +10,7 @@ import (
 
 func GenerateUsecaseWithCredForMarbleAdmin(ctx context.Context, jobUsecases usecases.Usecases) usecases.UsecasesWithCreds {
 	creds := models.Credentials{
-		Role:           models.MARBLE_ADMIN,
+		Roles:          []models.Role{models.MARBLE_ADMIN},
 		OrganizationId: uuid.Nil,
 	}
 	return usecases.UsecasesWithCreds{

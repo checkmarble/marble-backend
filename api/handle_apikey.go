@@ -49,7 +49,7 @@ func handlePostApiKey(uc usecases.Usecases) func(c *gin.Context) {
 		apiKey, err := usecase.CreateApiKey(ctx, models.CreateApiKeyInput{
 			OrganizationId: organizationId,
 			Description:    input.Description,
-			Role:           models.RoleFromString(input.Role),
+			Roles:          []models.Role{models.Role(input.Role)},
 		})
 		if presentError(ctx, c, err) {
 			return

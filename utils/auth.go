@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
+	"github.com/hashicorp/go-set/v2"
 
 	"github.com/gin-gonic/gin"
 )
@@ -43,8 +45,13 @@ type tokenAndKeyValidator interface {
 	ValidateTokenOrKey(ctx context.Context, marbleToken, apiKey string) (models.Credentials, error)
 }
 
+type permissionFetcher interface {
+	FetchPermissions(ctx context.Context, orgId uuid.UUID, roles []models.Role) ([]models.Permission, error)
+}
+
 type Authentication struct {
 	validator             tokenAndKeyValidator
+	permissionFetcher     permissionFetcher
 	screeningIndexerToken string
 }
 
@@ -121,20 +128,40 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 			return
 		}
 
+		permissions := set.New[models.Permission](10)
+
+		for _, role := range credentials.Roles {
+			permissions.InsertSlice(role.Permissions())
+		}
+
+		if a.permissionFetcher != nil {
+			customPermissions, err := a.permissionFetcher.FetchPermissions(ctx, credentials.OrganizationId, credentials.Roles)
+			if err != nil {
+				LoggerFromContext(ctx).ErrorContext(ctx, "could not retrieve custom permissions for principal", "error", err.Error())
+				c.AbortWithStatus(http.StatusInternalServerError)
+				return
+			}
+
+			permissions.InsertSlice(customPermissions)
+		}
+
+		credentials.Permissions = permissions.Slice()
+
 		newContext := context.WithValue(ctx, ContextKeyCredentials, credentials)
 		if attr, ok := identityAttr(credentials.ActorIdentity); ok {
 			logger := LoggerFromContext(newContext).
 				With(attr).
-				With(slog.String("Role", credentials.Role.String()))
+				With(slog.Any("Roles", credentials.Roles))
 			c.Request = c.Request.WithContext(context.WithValue(newContext, ContextKeyLogger, logger))
 		}
 		c.Next()
 	}
 }
 
-func NewAuthentication(validator tokenAndKeyValidator, screeningIndexerToken string) Authentication {
+func NewAuthentication(validator tokenAndKeyValidator, permissionFetcher permissionFetcher, screeningIndexerToken string) Authentication {
 	return Authentication{
 		validator:             validator,
+		permissionFetcher:     permissionFetcher,
 		screeningIndexerToken: screeningIndexerToken,
 	}
 }

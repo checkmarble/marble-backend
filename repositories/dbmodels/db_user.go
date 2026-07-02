@@ -2,6 +2,7 @@ package dbmodels
 
 import (
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -11,6 +12,7 @@ type DBUserResult struct {
 	Id              string             `db:"id"`
 	Email           string             `db:"email"`
 	Role            int                `db:"role"`
+	Roles           []string           `db:"roles"`
 	OrganizationId  *uuid.UUID         `db:"organization_id"`
 	FirstName       pgtype.Text        `db:"first_name"`
 	LastName        pgtype.Text        `db:"last_name"`
@@ -25,9 +27,11 @@ var UserFields = utils.ColumnList[DBUserResult]()
 
 func AdaptUser(db DBUserResult) (models.User, error) {
 	user := models.User{
-		UserId:          models.UserId(db.Id),
-		Email:           db.Email,
-		Role:            models.Role(db.Role),
+		UserId: models.UserId(db.Id),
+		Email:  db.Email,
+		Roles: pure_utils.Map(db.Roles, func(role string) models.Role {
+			return models.Role(role)
+		}),
 		AiAssistEnabled: db.AiAssistEnabled,
 		Picture:         db.Picture,
 	}

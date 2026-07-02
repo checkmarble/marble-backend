@@ -2,7 +2,6 @@ package dto
 
 import (
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/google/uuid"
 )
 
@@ -15,21 +14,13 @@ type Identity struct {
 }
 
 type Credentials struct {
-	ActorIdentity  Identity  `json:"actor_identity"`
-	OrganizationId uuid.UUID `json:"organization_id"`
-	Permissions    []string  `json:"permissions"`
-	Role           string    `json:"role"`
+	ActorIdentity  Identity            `json:"actor_identity"`
+	OrganizationId uuid.UUID           `json:"organization_id"`
+	Roles          []models.Role       `json:"roles"`
+	Permissions    []models.Permission `json:"permissions"`
 }
 
 func AdaptCredentialDto(creds models.Credentials) (Credentials, error) {
-	permissions, err := pure_utils.MapErr(
-		creds.Role.Permissions(),
-		func(p models.Permission) (string, error) { return p.String() },
-	)
-	if err != nil {
-		return Credentials{}, err
-	}
-
 	return Credentials{
 		ActorIdentity: Identity{
 			UserId:     string(creds.ActorIdentity.UserId),
@@ -39,8 +30,8 @@ func AdaptCredentialDto(creds models.Credentials) (Credentials, error) {
 			ApiKeyName: creds.ActorIdentity.ApiKeyName,
 		},
 		OrganizationId: creds.OrganizationId,
-		Permissions:    permissions,
-		Role:           creds.Role.String(),
+		Permissions:    creds.Permissions,
+		Roles:          creds.Roles,
 	}, nil
 }
 
@@ -54,6 +45,6 @@ func AdaptCredential(dto Credentials) models.Credentials {
 			ApiKeyName: dto.ActorIdentity.ApiKeyName,
 		},
 		OrganizationId: dto.OrganizationId,
-		Role:           models.RoleFromString(dto.Role),
+		Roles:          dto.Roles,
 	}
 }

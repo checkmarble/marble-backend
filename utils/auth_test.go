@@ -42,7 +42,7 @@ func TestAuthedBy(t *testing.T) {
 				v.On("ValidateTokenOrKey", mock.Anything, "", "test-api-key").
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{ApiKeyName: "test"},
-						Role:          models.ADMIN,
+						Roles:         []models.Role{models.ADMIN},
 					}, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -57,7 +57,7 @@ func TestAuthedBy(t *testing.T) {
 				v.On("ValidateTokenOrKey", mock.Anything, "", "test-token").
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{Email: "test@example.com"},
-						Role:          models.VIEWER,
+						Roles:         []models.Role{models.VIEWER},
 					}, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -72,7 +72,7 @@ func TestAuthedBy(t *testing.T) {
 				v.On("ValidateTokenOrKey", mock.Anything, "test-jwt", "").
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{Email: "test@example.com"},
-						Role:          models.VIEWER,
+						Roles:         []models.Role{models.VIEWER},
 					}, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -126,7 +126,7 @@ func TestAuthedBy(t *testing.T) {
 				v.On("ValidateTokenOrKey", mock.Anything, "", "test-api-key").
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{ApiKeyName: "test"},
-						Role:          models.ADMIN,
+						Roles:         []models.Role{models.ADMIN},
 					}, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -168,7 +168,7 @@ func TestAuthedBy(t *testing.T) {
 				v.On("ValidateTokenOrKey", mock.Anything, "", "test-api-key").
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{ApiKeyName: "test"},
-						Role:          models.ADMIN,
+						Roles:         []models.Role{models.ADMIN},
 					}, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -179,7 +179,7 @@ func TestAuthedBy(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			validator := new(MockValidator)
 			tt.setupValidator(validator)
-			auth := NewAuthentication(validator, "test-indexer-token")
+			auth := NewAuthentication(validator, nil, "test-indexer-token")
 
 			w := httptest.NewRecorder()
 			_, engine := gin.CreateTestContext(w)

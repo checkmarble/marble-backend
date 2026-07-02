@@ -888,7 +888,6 @@ func (uc ScreeningUsecase) UpdateMatchStatus(
 			return nil
 		},
 	)
-
 	if err != nil {
 		return models.ScreeningMatch{}, err
 	}
@@ -1219,7 +1218,7 @@ func (uc ScreeningUsecase) enforceCanReadOrUpdateCase(ctx context.Context, decis
 			"could not find the decision linked to the screening")
 	}
 
-	if creds.Role != models.API_CLIENT {
+	if !creds.HasRole(models.API_CLIENT) {
 		if decision[0].Case == nil {
 			return decision[0], errors.Wrap(models.UnprocessableEntityError,
 				"this screening is not linked to a case")

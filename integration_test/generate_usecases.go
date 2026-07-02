@@ -6,7 +6,7 @@ import (
 )
 
 func generateUsecaseWithCredForMarbleAdmin(testUsecases usecases.Usecases) usecases.UsecasesWithCreds {
-	creds := models.Credentials{Role: models.MARBLE_ADMIN}
+	creds := models.Credentials{Roles: []models.Role{models.MARBLE_ADMIN}}
 	return usecases.UsecasesWithCreds{
 		Usecases:    testUsecases,
 		Credentials: creds,

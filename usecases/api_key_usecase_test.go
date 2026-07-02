@@ -57,7 +57,7 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_nominal() {
 	ctx := context.Background()
 	input := models.CreateApiKeyInput{
 		OrganizationId: suite.organizationId,
-		Description:    "test key", Role: models.API_CLIENT,
+		Description:    "test key", Roles: []models.Role{models.API_CLIENT},
 	}
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
 	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
@@ -81,7 +81,7 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_bad_parameter() {
 	ctx := context.Background()
 	input := models.CreateApiKeyInput{
 		OrganizationId: suite.organizationId,
-		Description:    "test key", Role: models.ADMIN,
+		Description:    "test key", Roles: []models.Role{models.ADMIN},
 	}
 	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
 
@@ -96,7 +96,7 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_security_error() {
 	ctx := context.Background()
 	input := models.CreateApiKeyInput{
 		OrganizationId: suite.organizationId,
-		Description:    "test key", Role: models.API_CLIENT,
+		Description:    "test key", Roles: []models.Role{models.API_CLIENT},
 	}
 	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(suite.securityError)
 
@@ -111,7 +111,7 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_repository_error() {
 	ctx := context.Background()
 	input := models.CreateApiKeyInput{
 		OrganizationId: suite.organizationId,
-		Description:    "test key", Role: models.API_CLIENT,
+		Description:    "test key", Roles: []models.Role{models.API_CLIENT},
 	}
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
 	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
