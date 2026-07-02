@@ -293,8 +293,6 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 // language instruction for the LLM, and the model to use for it. The returned instruction is
 // empty when the language resolves to English, since the case review is already generated in
 // English (mirrors the guard historically inlined in getOrganizationInstructionsForPrompt).
-// Shared by the report's language formatting step and the summary translation step, so both
-// are localized consistently.
 func (uc *AiAgentUsecase) resolveLanguageInstruction(ctx context.Context,
 	caseReviewSetting models.CaseReviewSetting,
 ) (instruction string, model string) {

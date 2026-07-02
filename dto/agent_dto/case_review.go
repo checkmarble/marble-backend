@@ -60,11 +60,7 @@ type CaseReviewV1 struct {
 	Proofs           []CaseReviewProof        `json:"proofs"`
 	PivotEnrichments *KYCEnrichmentResultsDto `json:"pivot_enrichments"`
 	ReviewLevel      *string                  `json:"review_level"`
-
-	// Summary is a short, at-a-glance synopsis of the review, for a compact UI box. It is null
-	// when no summary was generated (e.g. older reviews created before this field existed), in
-	// which case the frontend should fall back to displaying the beginning of Output.
-	Summary *string `json:"summary"`
+	Summary          *string                  `json:"summary"`
 }
 
 func (c CaseReviewV1) aiCaseReviewDto() {}
