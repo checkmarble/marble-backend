@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 	"text/template"
 
 	"github.com/checkmarble/llmberjack"
@@ -55,6 +56,7 @@ type sanityCheckOutput struct {
 // The jsonschema used for the case review output are set dynamically, because the list of enum values depends on the user.
 type caseReviewOutput struct {
 	CaseReview string  `json:"case_review"`
+	Summary    string  `json:"summary"`
 	Proofs     []proof `json:"proofs"`
 }
 type proof struct {
@@ -287,6 +289,39 @@ func (uc *AiAgentUsecase) EnqueueCreateCaseReview(ctx context.Context, caseId st
 	return caseReviewId, true, nil
 }
 
+// resolveLanguageInstruction resolves the organization's configured language into a custom
+// language instruction for the LLM, and the model to use for it. The returned instruction is
+// empty when the language resolves to English, since the case review is already generated in
+// English (mirrors the guard historically inlined in getOrganizationInstructionsForPrompt).
+// Shared by the report's language formatting step and the summary translation step, so both
+// are localized consistently.
+func (uc *AiAgentUsecase) resolveLanguageInstruction(ctx context.Context,
+	caseReviewSetting models.CaseReviewSetting,
+) (instruction string, model string) {
+	logger := utils.LoggerFromContext(ctx)
+
+	language, err := pure_utils.BCP47ToEnglish(caseReviewSetting.Language)
+	if err != nil {
+		logger.DebugContext(ctx, "could not convert language to english, do not format the output with language", "error", err)
+	}
+	if language == "English" {
+		return "", ""
+	}
+
+	_, model, customLanguagePrompt, err := uc.preparePromptWithModel(
+		INSTRUCTION_LANGUAGE_PATH,
+		map[string]any{
+			"language": language,
+		},
+	)
+	if err != nil {
+		logger.DebugContext(ctx, "could not read custom language prompt", "error", err)
+		return "", ""
+	}
+
+	return customLanguagePrompt, model
+}
+
 // Return a list of instructions to give to the LLM and the model to use for the prompt
 // NOTE: The model is given by `prepareRequest()`, we call it at most twice and the the last call will set the model
 func (uc *AiAgentUsecase) getOrganizationInstructionsForPrompt(ctx context.Context,
@@ -296,24 +331,8 @@ func (uc *AiAgentUsecase) getOrganizationInstructionsForPrompt(ctx context.Conte
 	instructions := []string{}
 	modelToUse := ""
 
-	language, err := pure_utils.BCP47ToEnglish(caseReviewSetting.Language)
-	if err != nil {
-		logger.DebugContext(ctx, "could not convert language to english, do not format the output with language", "error", err)
-	}
-	if language != "English" {
-		// If the language is English, ignore this step because the case review is already in English
-		_, model, customLanguagePrompt, err := uc.preparePromptWithModel(
-			INSTRUCTION_LANGUAGE_PATH,
-			map[string]any{
-				"language": language,
-			},
-		)
-		if err != nil {
-			logger.DebugContext(ctx, "could not read custom language prompt", "error", err)
-		} else {
-			instructions = append(instructions, customLanguagePrompt)
-		}
-
+	if languageInstruction, model := uc.resolveLanguageInstruction(ctx, caseReviewSetting); languageInstruction != "" {
+		instructions = append(instructions, languageInstruction)
 		modelToUse = model
 	}
 	if caseReviewSetting.Structure != nil {
@@ -855,6 +874,37 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		logger.DebugContext(ctx, "Custom format", "response", finalOutput)
 	}
 
+	// Translate the at-a-glance summary to the organization's language, mirroring the report's
+	// language step above (but never the structure instruction, which does not apply to a
+	// two-sentence summary). Left nil if no summary was generated (older prompts, or a model
+	// that did not return one) so the frontend can fall back to the beginning of the report.
+	summary := caseReviewContext.CaseReview.Summary
+	if strings.TrimSpace(summary) != "" {
+		if languageInstruction, modelForSummary := uc.resolveLanguageInstruction(ctx, aiSetting.CaseReviewSetting); languageInstruction != "" {
+			requestSummaryTranslation, err := DoLLMRequest(ctx, client, llmberjack.NewRequest[string]().
+				WithModel(modelForSummary).
+				WithInstruction(systemInstruction).
+				WithThinking(false).
+				WithInstruction(languageInstruction).
+				WithText(llmberjack.RoleUser, summary))
+			if err != nil {
+				return nil, errors.Wrap(err, "could not translate case review summary")
+			}
+			translatedSummary, err := requestSummaryTranslation.Get(0)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not get translated summary from response")
+			}
+			summary = translatedSummary
+
+			logger.DebugContext(ctx, "================================ Summary translation ================================")
+			logger.DebugContext(ctx, "Summary translation", "response", summary)
+		}
+	}
+	var summaryPtr *string
+	if strings.TrimSpace(summary) != "" {
+		summaryPtr = &summary
+	}
+
 	// Format the proof evidence
 	proofs := make([]agent_dto.CaseReviewProof, len(caseReviewContext.CaseReview.Proofs))
 	for i, proof := range caseReviewContext.CaseReview.Proofs {
@@ -894,6 +944,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		return agent_dto.CaseReviewV1{
 			Ok:               caseReviewContext.SanityCheck.Ok,
 			Output:           finalOutput,
+			Summary:          summaryPtr,
 			Proofs:           proofs,
 			PivotEnrichments: pivotEnrichments,
 			ReviewLevel:      caseReviewContext.SanityCheck.ReviewLevel,
@@ -903,6 +954,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		Ok:               false,
 		Output:           finalOutput,
 		SanityCheck:      caseReviewContext.SanityCheck.Justification,
+		Summary:          summaryPtr,
 		Proofs:           proofs,
 		PivotEnrichments: pivotEnrichments,
 	}, nil
@@ -1292,6 +1344,10 @@ func getProofSchema(dataModel models.DataModel) jsonschema.Schema {
 	properties.Set("case_review", &jsonschema.Schema{
 		Type: "string",
 	})
+	properties.Set("summary", &jsonschema.Schema{
+		Type:        "string",
+		Description: "A ~2-sentence at-a-glance summary of the case review, for a compact UI box: leads with the suggested action (false positive, investigate, or escalate), followed by the few most important facts. Plain text, no markdown.",
+	})
 	proofsSchemaDataModel := jsonschema.NewProperties()
 	proofsSchemaDataModel.Set("id", &jsonschema.Schema{
 		Type:        "string",
@@ -1327,5 +1383,6 @@ func getProofSchema(dataModel models.DataModel) jsonschema.Schema {
 		Description: "A review of a case",
 		Type:        "object",
 		Properties:  properties,
+		Required:    []string{"case_review", "summary"},
 	}
 }
