@@ -52,6 +52,8 @@ func (repo NameRecognitionRepository) PerformNameRecognition(ctx context.Context
 		return nil, err
 	}
 
+	req.Header.Set("content-type", "application/json")
+
 	if repo.NameRecognitionProvider.ApiKey != "" {
 		req.Header.Set("authorization", fmt.Sprintf("Bearer %s", repo.NameRecognitionProvider.ApiKey))
 	}
