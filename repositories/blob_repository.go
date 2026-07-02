@@ -316,9 +316,11 @@ func (repository *blobRepository) GenerateWriteSignedUrl(ctx context.Context, bu
 
 		if asFunc(&s3Writer) {
 			s3Writer.IfNoneMatch = new("*")
+			s3Writer.ContentType = new("text/csv")
 		}
 		if asFunc(&gcsWriter) {
 			gcsWriter.Headers = []string{"x-goog-if-generation-match:0"}
+			gcsWriter.ContentType = "text/csv"
 
 			if len(hostOverride) > 0 {
 				gcsWriter.Hostname = hostOverride
