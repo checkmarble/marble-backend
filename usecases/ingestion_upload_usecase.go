@@ -3,6 +3,8 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
@@ -18,7 +20,12 @@ func (usecase *IngestionUseCase) GenerateUploadLink(
 	ctx context.Context,
 	orgId uuid.UUID, recordType string,
 	ingestionOptions models.IngestionOptions,
+	headers http.Header,
 ) (string, error) {
+	if err := usecase.validateAsyncIngestionHeaders(headers); err != nil {
+		return "", err
+	}
+
 	uploadId := pure_utils.NewId()
 	key := fmt.Sprintf("uploads/%s/%s/%s", orgId, recordType, uploadId)
 
@@ -66,4 +73,24 @@ func (usecase *IngestionUseCase) GenerateUploadLink(
 
 		return usecase.blobRepository.GenerateWriteSignedUrl(ctx, usecase.ingestionBucketUrl, key, worker_jobs.ASYNC_UPLOAD_TIMEOUT, hostOverride)
 	})
+}
+
+func (usecase *IngestionUseCase) validateAsyncIngestionHeaders(headers http.Header) error {
+	if headers.Get("content-type") != "text/csv" {
+		return errors.WithDetail(models.BadParameterError, "content-type header must be `text/csv`")
+	}
+
+	switch {
+	case strings.HasPrefix(usecase.ingestionBucketUrl, "gs://"):
+		if headers.Get("x-goog-if-generation-match") != "0" {
+			return errors.WithDetail(models.BadParameterError, "x-goog-if-generation-match header must be set to `0`")
+		}
+
+	case strings.HasPrefix(usecase.ingestionBucketUrl, "s3://"):
+		if headers.Get("if-none-match") != "*" {
+			return errors.WithDetail(models.BadParameterError, "if-none-match header must be set to `*`")
+		}
+	}
+
+	return nil
 }

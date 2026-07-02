@@ -45,7 +45,7 @@ func HandleUploadCsv(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		uc := pubapi.UsecasesWithCreds(ctx, uc).NewIngestionUseCase()
-		signedUrl, err := uc.GenerateUploadLink(ctx, orgId, recordType, ingestionOptions)
+		signedUrl, err := uc.GenerateUploadLink(ctx, orgId, recordType, ingestionOptions, c.Request.Header)
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return
