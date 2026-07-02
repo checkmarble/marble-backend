@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+	"io"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
@@ -25,6 +26,13 @@ func (m *IngestedDataReader) ListAllObjectIdsFromTable(ctx context.Context,
 ) ([]string, error) {
 	args := m.Called(ctx, exec, tableName, filters)
 	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *IngestedDataReader) StreamAllObjectIdsFromTable(ctx context.Context,
+	exec repositories.Executor, w io.Writer, tableName string, filters ...models.Filter,
+) (int64, error) {
+	args := m.Called(ctx, exec, w, tableName, filters)
+	return args.Get(0).(int64), args.Error(1)
 }
 
 func (m *IngestedDataReader) QueryIngestedObjectByInternalId(ctx context.Context,

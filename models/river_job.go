@@ -221,6 +221,13 @@ type ScheduledExecutionArgs struct {
 
 func (ScheduledExecutionArgs) Kind() string { return "scheduled_execution" }
 
+// Drives one scheduled execution by walking its object-id manifest in blob storage in batches.
+type BatchExecutionCoordinatorArgs struct {
+	ScheduledExecutionId string `json:"scheduled_execution_id"`
+}
+
+func (BatchExecutionCoordinatorArgs) Kind() string { return "batch_execution_coordinator" }
+
 // CSV ingestion job - processes a single upload log
 type CsvIngestionArgs struct {
 	UploadLogId      string           `json:"upload_log_id"`

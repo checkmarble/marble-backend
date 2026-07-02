@@ -420,7 +420,34 @@ func (usecases *UsecasesWithCreds) NewRunScheduledExecution() worker_jobs.RunSch
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.TaskQueueRepository,
 		usecases.Repositories.ScenarioPublicationRepository,
+		usecases.Repositories.BlobRepository,
+		usecases.offloadingBucketUrl,
 	)
+}
+
+func (usecases *UsecasesWithCreds) NewBatchExecutionCoordinator() *worker_jobs.BatchExecutionCoordinator {
+	c := worker_jobs.NewBatchExecutionCoordinator(
+		usecases.Repositories.MarbleDbRepository,
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.IngestedDataReadRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.NewOffloadedReader(),
+		usecases.Repositories.BlobRepository,
+		usecases.offloadingBucketUrl,
+		usecases.NewWebhookEventsUsecase(),
+		usecases.NewScenarioFetcher(),
+		usecases.NewPhantomDecisionUseCase(),
+		usecases.NewScenarioEvaluator(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.TaskQueueRepository,
+	)
+	return &c
+}
+
+func (usecases *UsecasesWithCreds) NewBatchExecutionCoordinatorWorker() *worker_jobs.BatchExecutionCoordinatorWorker {
+	return worker_jobs.NewBatchExecutionCoordinatorWorker(usecases.NewBatchExecutionCoordinator())
 }
 
 func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecutionUsecase {

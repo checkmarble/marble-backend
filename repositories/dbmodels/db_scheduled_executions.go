@@ -21,6 +21,10 @@ type DBScheduledExecution struct {
 	NumberOfEvaluatedDecisions int        `db:"number_of_evaluated_decisions"`
 	NumberOfPlannedDecisions   *int       `db:"number_of_planned_decisions"`
 	Manual                     bool       `db:"manual"`
+	ManifestBlobKey            *string    `db:"manifest_blob_key"`
+	ManifestByteOffset         int64      `db:"manifest_byte_offset"`
+	ManifestRowsProcessed      int64      `db:"manifest_rows_processed"`
+	Deadline                   *time.Time `db:"deadline"`
 }
 
 const TABLE_SCHEDULED_EXECUTIONS = "scheduled_executions"
@@ -44,5 +48,9 @@ func AdaptScheduledExecution(db DBScheduledExecution, scenario models.Scenario,
 		NumberOfPlannedDecisions:   db.NumberOfPlannedDecisions,
 		Scenario:                   scenario,
 		Manual:                     db.Manual,
+		ManifestBlobKey:            db.ManifestBlobKey,
+		ManifestByteOffset:         db.ManifestByteOffset,
+		ManifestRowsProcessed:      db.ManifestRowsProcessed,
+		Deadline:                   db.Deadline,
 	}
 }
