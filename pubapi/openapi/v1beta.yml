@@ -26,6 +26,51 @@ tags:
   - name: Record
     description: Routes for record (data ingested into Marble)
 paths:
+  /ingest/{objectType}/upload:
+    put:
+      operationId: asyncIngestCsv
+      tags:
+        - Ingestion
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Upload a CSV fil that will be ingested asynchronously
+      parameters:
+        - name: objectType
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: content-type
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: ["text/csv"]
+        - name: x-goog-if-generation-match
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: ["0"]
+      description: |
+        This endpoint will emit a 307 redirect to a temporary upload URL.
+
+        Both the start **and** end of the upload must be completed within 15 minutes.
+
+        The HTTP client used **must** follow the redirect with the same headers as the initial request, and upload the CSV
+        file to the provided URL without modification.
+
+        For Marble's hosted platform or when using Google Cloud Storage, adding the header indicated here (`x-goog-if-generation-match: 0`)
+        is mandatory. For self-hosted deployment, refer to Marble's documentation to learn more about requirements, depending on the
+        blob storage in use.
+      requestBody:
+        content:
+          text/csv:
+      responses:
+        "307":
+          description: Redirect to upload URL
+
   /decisions/async:
     post:
       operationId: createAsyncDecisionBatch
