@@ -71,7 +71,7 @@ func (usecase *IngestionUseCase) GenerateUploadLink(
 
 		hostOverride := infra.GetLocalCdnDomain()
 
-		return usecase.blobRepository.GenerateWriteSignedUrl(ctx, usecase.ingestionBucketUrl, key, worker_jobs.ASYNC_UPLOAD_TIMEOUT, hostOverride)
+		return usecase.blobRepository.GenerateWriteSignedUrl(ctx, usecase.ingestionBucketUrl, key, worker_jobs.ASYNC_UPLOAD_START_TIMEOUT, hostOverride)
 	})
 }
 
