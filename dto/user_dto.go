@@ -16,6 +16,7 @@ type User struct {
 	LastName       string     `json:"last_name"`
 	Picture        string     `json:"picture"`
 	DeletedAt      *time.Time `json:"deleted_at,omitempty"`
+	TfaEnabled     *bool      `json:"tfa_enabled,omitempty"`
 }
 
 func AdaptUserDto(user models.User) User {
@@ -28,6 +29,7 @@ func AdaptUserDto(user models.User) User {
 		LastName:       user.LastName,
 		Picture:        user.Picture,
 		DeletedAt:      user.DeletedAt,
+		TfaEnabled:     user.TfaEnabled,
 	}
 }
 

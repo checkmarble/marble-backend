@@ -37,3 +37,13 @@ func (m *FirebaseAdminClient) CreateUser(ctx context.Context, email, name string
 
 	return args.Error(0)
 }
+
+func (m *FirebaseAdminClient) ListMfaEnrollment(ctx context.Context) (map[string]bool, error) {
+	args := m.Called(ctx)
+
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(map[string]bool), args.Error(1)
+}

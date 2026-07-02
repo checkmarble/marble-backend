@@ -7,14 +7,21 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"firebase.google.com/go/v4/auth"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
+	"google.golang.org/api/iterator"
 )
 
 type Adminer interface {
 	CreateUser(ctx context.Context, email, name string) error
+	// ListMfaEnrollment returns, keyed by lowercased email, whether each user
+	// has at least one multi-factor authentication factor enrolled. It scans
+	// every user in the project in a single paginated pass rather than issuing
+	// one lookup per user.
+	ListMfaEnrollment(ctx context.Context) (map[string]bool, error)
 }
 
 type AdminClient struct {
@@ -64,6 +71,29 @@ func (c AdminClient) CreateUser(ctx context.Context, email, name string) error {
 	}
 
 	return nil
+}
+
+func (c AdminClient) ListMfaEnrollment(ctx context.Context) (map[string]bool, error) {
+	enrollment := make(map[string]bool)
+
+	iter := c.client.Users(ctx, "")
+	for {
+		user, err := iter.Next()
+		if errors.Is(err, iterator.Done) {
+			break
+		}
+		if err != nil {
+			return nil, errors.Wrap(err, "could not iterate over Firebase users")
+		}
+		if user.Email == "" {
+			continue
+		}
+
+		enrolled := user.MultiFactor != nil && len(user.MultiFactor.EnrolledFactors) > 0
+		enrollment[strings.ToLower(user.Email)] = enrolled
+	}
+
+	return enrollment, nil
 }
 
 func (c AdminClient) SendPasswordResetEmail(ctx context.Context, user *auth.UserRecord) error {

@@ -36,8 +36,10 @@ func handleListUsers(uc usecases.Usecases) func(c *gin.Context) {
 			organizationId = &orgId
 		}
 
+		withTfa := c.Query("with_tfa") == "true"
+
 		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
-		users, err := usecase.ListUsers(ctx, organizationId)
+		users, err := usecase.ListUsers(ctx, organizationId, withTfa)
 		if presentError(ctx, c, err) {
 			return
 		}
