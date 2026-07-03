@@ -44,7 +44,8 @@ func writeCaseReviewPrompt(t *testing.T, root, content string) {
 }
 
 // writePromptsFixture creates a flat (legacy, unversioned) prompts directory under
-// t.TempDir(), matching a subset of aiPromptResources, and returns its path.
+// t.TempDir() and returns its path. Represents the flat legacy files that coexist with (but
+// are never read by) the versioned resolution logic.
 func writePromptsFixture(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -54,8 +55,8 @@ func writePromptsFixture(t *testing.T) string {
 	return dir
 }
 
-// writeVersionedPromptsFixture creates <tempdir>/vX.Y.Z/ subdirectories, one per entry in
-// versions (full directory names, e.g. "v1.0.0"), each containing a case_review prompt whose
+// writeVersionedPromptsFixture creates <tempdir>/vX.Y/ subdirectories, one per entry in
+// versions (full directory names, e.g. "v1.0"), each containing a case_review prompt whose
 // content identifies its own version, so tests can assert exactly which version was served
 // (there is no reported version field to check: the response is just the prompt files).
 func writeVersionedPromptsFixture(t *testing.T, versions ...string) string {
@@ -124,21 +125,25 @@ func Test_PromptServingUsecase_DownloadPrompts_Authorization(t *testing.T) {
 		name       string
 		promptsDir string
 		validation stubLicenseValidator
+		wantErr    error
 	}{
 		{
 			name:       "invalid license",
 			promptsDir: dir,
 			validation: stubLicenseValidator{validation: models.LicenseValidation{LicenseValidationCode: models.NOT_FOUND}},
+			wantErr:    models.ForbiddenError,
 		},
 		{
 			name:       "valid license without AI entitlement",
 			promptsDir: dir,
 			validation: stubLicenseValidator{validation: models.LicenseValidation{LicenseValidationCode: models.VALID}},
+			wantErr:    models.MissingLicenseEntitlementError,
 		},
 		{
 			name:       "no prompts directory configured on this server",
 			promptsDir: "",
 			validation: stubLicenseValidator{validation: validLicenseWithAi()},
+			wantErr:    models.MissingRequirement,
 		},
 	}
 	for _, tt := range tests {
@@ -146,65 +151,42 @@ func Test_PromptServingUsecase_DownloadPrompts_Authorization(t *testing.T) {
 			uc := NewPromptServingUsecase(tt.validation, tt.promptsDir)
 			_, err := uc.DownloadPrompts(context.Background(), "some-key", "")
 			require.Error(t, err)
-			assert.True(t, errors.Is(err, models.NotFoundError))
+			assert.True(t, errors.Is(err, tt.wantErr))
 		})
 	}
 
-	t.Run("license server error is propagated but not surfaced as not-found", func(t *testing.T) {
+	t.Run("license server error is propagated as-is, not mapped to a specific error type", func(t *testing.T) {
 		uc := NewPromptServingUsecase(stubLicenseValidator{err: errors.New("boom")}, dir)
 		_, err := uc.DownloadPrompts(context.Background(), "some-key", "")
 		require.Error(t, err)
-		assert.False(t, errors.Is(err, models.NotFoundError))
+		assert.False(t, errors.Is(err, models.ForbiddenError))
+		assert.False(t, errors.Is(err, models.MissingLicenseEntitlementError))
 	})
 }
 
-func Test_PromptServingUsecase_DownloadPrompts_LegacyFlatLayout(t *testing.T) {
-	dir := writePromptsFixture(t)
-	uc := NewPromptServingUsecase(stubLicenseValidator{validation: validLicenseWithAi()}, dir)
-	wantNames := []string{"case_review/case_review.md", "system.md", "ai_agent_models.json"}
-
-	t.Run("well-formed version with no matching directory falls back to the flat bundle", func(t *testing.T) {
-		names := zipEntryNames(t, downloadPrompts(t, uc, "1.4.2"))
-		assert.ElementsMatch(t, wantNames, names)
-		assert.NotContains(t, names, "manifest.json")
-	})
-
-	t.Run("empty version also falls back to the flat bundle", func(t *testing.T) {
-		names := zipEntryNames(t, downloadPrompts(t, uc, ""))
-		assert.ElementsMatch(t, wantNames, names)
-	})
-
-	t.Run("malformed version is rejected even in flat/legacy mode", func(t *testing.T) {
-		_, err := uc.DownloadPrompts(context.Background(), "some-key", "not-a-version")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, models.BadParameterError))
-	})
-}
-
-func Test_PromptServingUsecase_DownloadPrompts_ExactVersionResolution(t *testing.T) {
+func Test_PromptServingUsecase_DownloadPrompts_VersionResolution(t *testing.T) {
 	validated := stubLicenseValidator{validation: validLicenseWithAi()}
-	dir := writeVersionedPromptsFixture(t, "v1.0.0", "v1.1.0", "v2.0.0")
+	dir := writeVersionedPromptsFixture(t, "v1.0", "v1.1", "v2.0")
 	uc := NewPromptServingUsecase(validated, dir)
 
 	t.Run("exact match is served", func(t *testing.T) {
-		content := downloadCaseReviewContent(t, uc, "1.1.0")
-		assert.Equal(t, "prompt for v1.1.0", content)
+		content := downloadCaseReviewContent(t, uc, "1.1")
+		assert.Equal(t, "prompt for v1.1", content)
 	})
 
-	t.Run("another available version is served exactly, no resolution to 'latest'", func(t *testing.T) {
-		content := downloadCaseReviewContent(t, uc, "1.0.0")
-		assert.Equal(t, "prompt for v1.0.0", content)
+	t.Run("backward search: nearest earlier available, never forward, can cross a major", func(t *testing.T) {
+		// v2.0 exists in the bucket, but requesting 1.5 (absent) must resolve to v1.1, not v2.0.
+		content := downloadCaseReviewContent(t, uc, "1.5")
+		assert.Equal(t, "prompt for v1.1", content)
 	})
 
-	t.Run("version absent from a versioned bucket is not found, never a fallback", func(t *testing.T) {
-		_, err := uc.DownloadPrompts(context.Background(), "some-key", "1.5.0")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, models.NotFoundError))
+	t.Run("request above everything resolves to the nearest earlier, no ceiling", func(t *testing.T) {
+		content := downloadCaseReviewContent(t, uc, "3.0")
+		assert.Equal(t, "prompt for v2.0", content)
 	})
 
-	t.Run("a newer major that happens to exist is never silently substituted", func(t *testing.T) {
-		// v2.0.0 exists in the bucket, but requesting v1.9.0 (absent) must not resolve to it.
-		_, err := uc.DownloadPrompts(context.Background(), "some-key", "1.9.0")
+	t.Run("request below everything is not found, no fallback", func(t *testing.T) {
+		_, err := uc.DownloadPrompts(context.Background(), "some-key", "0.9")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, models.NotFoundError))
 	})
@@ -216,7 +198,7 @@ func Test_PromptServingUsecase_DownloadPrompts_ExactVersionResolution(t *testing
 	})
 
 	t.Run("malformed version is rejected", func(t *testing.T) {
-		_, err := uc.DownloadPrompts(context.Background(), "some-key", "1.9")
+		_, err := uc.DownloadPrompts(context.Background(), "some-key", "1.9.3")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, models.BadParameterError))
 	})
@@ -226,15 +208,32 @@ func Test_PromptServingUsecase_DownloadPrompts_ExactVersionResolution(t *testing
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, models.BadParameterError))
 	})
+
+	t.Run("a bucket with zero version directories never falls back to the flat legacy files", func(t *testing.T) {
+		flatDir := writePromptsFixture(t)
+		flatUc := NewPromptServingUsecase(validated, flatDir)
+		_, err := flatUc.DownloadPrompts(context.Background(), "some-key", "1.4")
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, models.NotFoundError))
+	})
 }
 
-func Test_PromptServingUsecase_DownloadPrompts_SkipsResourcesMissingFromResolvedVersion(t *testing.T) {
-	// Only contains case_review/ under v1.0.0; system.md, rule/, etc. are absent for it.
-	dir := writeVersionedPromptsFixture(t, "v1.0.0")
+func Test_PromptServingUsecase_DownloadPrompts_ZipsWhateverIsInTheResolvedVersionDirectory(t *testing.T) {
+	// There is no fixed resource list: whatever exists under the resolved version directory is
+	// zipped, so a version can bring an entirely new folder/file and it's included automatically
+	// without any code change here.
+	dir := writeVersionedPromptsFixture(t, "v1.0")
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "v1.0", "brand_new_feature"), 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "v1.0", "brand_new_feature", "prompt.md"), []byte("new"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "v1.0", "system.md"), []byte("system"), 0o644))
+
 	uc := NewPromptServingUsecase(stubLicenseValidator{validation: validLicenseWithAi()}, dir)
 
-	names := zipEntryNames(t, downloadPrompts(t, uc, "1.0.0"))
-	assert.Contains(t, names, "case_review/case_review.md")
-	assert.NotContains(t, names, "system.md")
-	assert.NotContains(t, names, "manifest.json")
+	names := zipEntryNames(t, downloadPrompts(t, uc, "1.0"))
+	assert.ElementsMatch(t, []string{
+		"case_review/case_review.md",
+		"brand_new_feature/prompt.md",
+		"system.md",
+	}, names)
 }

@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -11,8 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-// aiPromptsLicenseKey extracts the caller's license key from the "Authorization: Bearer <key>"
-// header.
+// Extract the caller's license
 func aiPromptsLicenseKey(c *gin.Context) (string, error) {
 	key, err := utils.ParseAuthorizationBearerHeader(c.Request.Header)
 	if err != nil {
@@ -25,11 +25,10 @@ func aiPromptsLicenseKey(c *gin.Context) (string, error) {
 }
 
 // handleAiPromptsDownload streams a zip of the whole AI prompt bundle the caller's license is
-// entitled to, for the exact prompts_version requested (the caller always asks for one precise
-// version — its own hardcoded default, or an operator-configured pin — never "give me the
-// latest"; see PromptServingUsecase for the resolution rules). The zip contains only the
-// prompt files themselves — no manifest or version is reported back, since the caller already
-// knows which version it asked for. Only reachable on Marble SaaS.
+// entitled to, resolved for the caller's prompts_version (its own product Major.Minor).
+// Resolution is a backward search: exact Major.Minor
+// match wins, else the nearest earlier published one; never a newer one. The zip contains only the prompt files themselves.
+// Only reachable on Marble SaaS.
 func handleAiPromptsDownload(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -40,6 +39,10 @@ func handleAiPromptsDownload(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		version := c.Query("prompts_version")
+		if version == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "prompts_version in query is required"))
+			return
+		}
 
 		usecase := uc.NewPromptServingUsecase()
 		zipReader, err := usecase.DownloadPrompts(ctx, licenseKey, version)
