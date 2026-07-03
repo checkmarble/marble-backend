@@ -342,7 +342,8 @@ func (repository *blobRepository) GenerateWriteSignedUrl(ctx context.Context, bu
 			}
 		}
 		if asFunc(&azWriter) {
-			azWriter.Create = true // TODO: check if that works
+			azWriter.Create = true
+			azWriter.Write = false
 		}
 
 		return nil

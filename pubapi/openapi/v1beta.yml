@@ -54,12 +54,12 @@ paths:
             type: string
             enum: ["0"]
       description: |
-        This endpoint will emit a 307 redirect to a temporary upload URL.
+        This endpoint will emit a presigned URL to which to upload the file.
 
-        Both the start **and** end of the upload must be completed within 15 minutes.
+        The actual upload must start within one minute of the initial call, and terminate within 15 minutes.
 
-        The HTTP client used **must** follow the redirect with the same headers as the initial request, and upload the CSV
-        file to the provided URL without modification.
+        The HTTP client used **must** then replay the request to the provided URL with the same headers as the initial request except for
+        the Marble API key, and upload the CSV file.
 
         For Marble's hosted platform or when using Google Cloud Storage, adding the header indicated here (`x-goog-if-generation-match: 0`)
         is mandatory. For self-hosted deployment, refer to Marble's documentation to learn more about requirements, depending on the
@@ -68,8 +68,19 @@ paths:
         content:
           text/csv:
       responses:
-        "307":
-          description: Redirect to upload URL
+        "200":
+          description: Upload URL created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AsyncUploadCreated"
+        "400":
+          $ref: "#/components/responses/400"
 
   /decisions/async:
     post:
@@ -1415,6 +1426,16 @@ components:
             next_page_id:
               description: Value to use in pagination filter to request for the next page
               type: string
+
+    AsyncUploadCreated:
+      title: Upload URL signed and generated
+      type: object
+      required:
+        - upload_url
+      properties:
+        upload_url:
+          type: string
+          format: url
 
     AsyncDecisionExecutionCreated:
       title: Async decision execution created

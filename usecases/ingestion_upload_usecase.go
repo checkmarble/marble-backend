@@ -90,6 +90,11 @@ func (usecase *IngestionUseCase) validateAsyncIngestionHeaders(headers http.Head
 		if headers.Get("if-none-match") != "*" {
 			return errors.WithDetail(models.BadParameterError, "if-none-match header must be set to `*`")
 		}
+
+	case strings.HasPrefix(usecase.ingestionBucketUrl, "azblob://"):
+		if headers.Get("x-ms-blob-type") != "BlockBlob" {
+			return errors.WithDetail(models.BadParameterError, "x-ms-blob-type header must be set to `BlockBlob`")
+		}
 	}
 
 	return nil
