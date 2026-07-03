@@ -176,6 +176,16 @@ type ContinuousScreeningDatasetUpdate struct {
 	CreatedAt     time.Time
 }
 
+// ContinuousScreeningDatasetUpdateSummary is a trimmed view of a dataset update,
+// exposing only the fields relevant to a monitoring/history listing.
+type ContinuousScreeningDatasetUpdateSummary struct {
+	Id          uuid.UUID
+	DatasetName string
+	Version     string
+	TotalItems  int
+	CreatedAt   time.Time
+}
+
 type CreateContinuousScreeningDatasetUpdate struct {
 	DatasetName   string
 	Version       string

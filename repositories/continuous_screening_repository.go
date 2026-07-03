@@ -812,6 +812,73 @@ func (repo *MarbleDbRepository) GetLastProcessedVersion(
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetUpdate)
 }
 
+func (repo *MarbleDbRepository) ListContinuousScreeningDatasetUpdates(
+	ctx context.Context,
+	exec Executor,
+	pagination models.PaginationAndSorting,
+) ([]models.ContinuousScreeningDatasetUpdate, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	// Only created_at sorting is supported (table has no updated_at column).
+	if pagination.Sorting != models.SortingFieldCreatedAt {
+		return nil, errors.Wrapf(models.BadParameterError,
+			"invalid sorting field: %s", pagination.Sorting)
+	}
+
+	orderCond := fmt.Sprintf("%s %s, id %s",
+		pagination.Sorting, pagination.Order, pagination.Order)
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningDatasetUpdateColumn...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES).
+		OrderBy(orderCond).
+		Limit(uint64(pagination.Limit))
+
+	query, err := repo.applyContinuousScreeningDatasetUpdatePaginationFilters(
+		ctx, exec, query, pagination)
+	if err != nil {
+		return nil, err
+	}
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetUpdate)
+}
+
+func (repo *MarbleDbRepository) applyContinuousScreeningDatasetUpdatePaginationFilters(
+	ctx context.Context,
+	exec Executor,
+	query squirrel.SelectBuilder,
+	p models.PaginationAndSorting,
+) (squirrel.SelectBuilder, error) {
+	if p.OffsetId == "" {
+		return query, nil
+	}
+
+	offsetQuery := NewQueryBuilder().
+		Select(dbmodels.SelectContinuousScreeningDatasetUpdateColumn...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES).
+		Where(squirrel.Eq{"id": p.OffsetId})
+
+	offset, err := SqlToModel(ctx, exec, offsetQuery, dbmodels.AdaptContinuousScreeningDatasetUpdate)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return query, errors.Wrap(models.NotFoundError,
+			"No row found matching the provided offsetId")
+	} else if err != nil {
+		return query, errors.Wrap(err,
+			"failed to fetch dataset update corresponding to the provided offsetId")
+	}
+
+	args := []any{offset.CreatedAt, p.OffsetId}
+	if p.Order == models.SortingOrderDesc {
+		query = query.Where(fmt.Sprintf("(%s, id) < (?, ?)", p.Sorting), args...)
+	} else {
+		query = query.Where(fmt.Sprintf("(%s, id) > (?, ?)", p.Sorting), args...)
+	}
+
+	return query, nil
+}
+
 func (repo *MarbleDbRepository) CreateContinuousScreeningDatasetUpdate(
 	ctx context.Context,
 	exec Executor,
