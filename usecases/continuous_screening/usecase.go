@@ -67,6 +67,11 @@ type ContinuousScreeningUsecaseRepository interface {
 		orgId uuid.UUID,
 		paginationAndSorting models.PaginationAndSorting,
 	) ([]models.ContinuousScreeningWithMatches, error)
+	ListContinuousScreeningDatasetUpdates(
+		ctx context.Context,
+		exec repositories.Executor,
+		pagination models.PaginationAndSorting,
+	) ([]models.ContinuousScreeningDatasetUpdate, error)
 	GetContinuousScreeningWithMatchesById(
 		ctx context.Context,
 		exec repositories.Executor,

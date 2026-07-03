@@ -9,6 +9,26 @@ import (
 	"github.com/google/uuid"
 )
 
+type ContinuousScreeningDatasetUpdateDto struct {
+	Id          uuid.UUID `json:"id"`
+	DatasetName string    `json:"dataset_name"`
+	Version     string    `json:"version"`
+	TotalItems  int       `json:"total_items"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+func AdaptContinuousScreeningDatasetUpdateDto(
+	u models.ContinuousScreeningDatasetUpdateSummary,
+) ContinuousScreeningDatasetUpdateDto {
+	return ContinuousScreeningDatasetUpdateDto{
+		Id:          u.Id,
+		DatasetName: u.DatasetName,
+		Version:     u.Version,
+		TotalItems:  u.TotalItems,
+		CreatedAt:   u.CreatedAt,
+	}
+}
+
 type ContinuousScreeningDto struct {
 	Id                                uuid.UUID                     `json:"id"`
 	OrgId                             uuid.UUID                     `json:"org_id"`

@@ -185,6 +185,15 @@ func (m *ContinuousScreeningRepository) ListContinuousScreeningsForOrg(
 	return args.Get(0).([]models.ContinuousScreeningWithMatches), args.Error(1)
 }
 
+func (m *ContinuousScreeningRepository) ListContinuousScreeningDatasetUpdates(
+	ctx context.Context,
+	exec repositories.Executor,
+	pagination models.PaginationAndSorting,
+) ([]models.ContinuousScreeningDatasetUpdate, error) {
+	args := m.Called(ctx, exec, pagination)
+	return args.Get(0).([]models.ContinuousScreeningDatasetUpdate), args.Error(1)
+}
+
 func (m *ContinuousScreeningRepository) GetContinuousScreeningWithMatchesById(
 	ctx context.Context,
 	exec repositories.Executor,
