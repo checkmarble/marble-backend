@@ -1053,16 +1053,6 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 		// 12. Org schema mutations (add/delete physical columns)
 		return usecase.transactionFactory.TransactionInOrgSchema(
 			ctx, table.OrganizationID, func(orgTx repositories.Transaction) error {
-				for _, f := range input.FieldsToAdd {
-					if f.Name == "object_id" || f.Name == "updated_at" {
-						continue
-					}
-					if err := usecase.organizationSchemaRepository.CreateField(
-						ctx, orgTx, table.Name, f); err != nil {
-						return err
-					}
-				}
-
 				for _, field := range deletedFields {
 					if err := usecase.organizationSchemaRepository.DeleteField(
 						ctx, orgTx, table.Name, field.Name); err != nil {
@@ -1073,6 +1063,16 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 				for _, field := range archivedFields {
 					if err := usecase.organizationSchemaRepository.RenameField(
 						ctx, orgTx, table.Name, field.Name); err != nil {
+						return err
+					}
+				}
+
+				for _, f := range input.FieldsToAdd {
+					if f.Name == "object_id" || f.Name == "updated_at" {
+						continue
+					}
+					if err := usecase.organizationSchemaRepository.CreateField(
+						ctx, orgTx, table.Name, f); err != nil {
 						return err
 					}
 				}
