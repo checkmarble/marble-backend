@@ -1,11 +1,10 @@
 package v1beta
 
 import (
-	"net/http"
-
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/pubapi/types"
+	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
 	"github.com/checkmarble/marble-backend/pubapi/v1/params"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
@@ -51,6 +50,10 @@ func HandleUploadCsv(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		c.Redirect(http.StatusTemporaryRedirect, signedUrl)
+		types.
+			NewResponse(dto.AsyncUpload{
+				UploadUrl: signedUrl,
+			}).
+			Serve(c)
 	}
 }
