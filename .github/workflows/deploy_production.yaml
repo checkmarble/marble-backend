@@ -3,8 +3,8 @@ name: Deploy Production
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+" # stable
-      - "v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+" # release candidate (e.g. v1.2.0-rc.1)
+      - "v[0-9]+\\.[0-9]+\\.[0-9]+" # stable
+      - "v[0-9]+\\.[0-9]+\\.[0-9]+-rc\\.[0-9]+" # release candidate (e.g. v1.2.0-rc.1)
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
