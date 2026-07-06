@@ -988,6 +988,59 @@ func (repo *MarbleDbRepository) applyContinuousScreeningUpdateJobPaginationFilte
 	return query, nil
 }
 
+func (repo *MarbleDbRepository) ListContinuousScreeningClientDataIndexing(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	pagination models.PaginationAndSorting,
+) ([]models.ContinuousScreeningClientDataIndexingSummary, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	// The update_jobs table has both created_at and updated_at columns.
+	if pagination.Sorting != models.SortingFieldCreatedAt &&
+		pagination.Sorting != models.SortingFieldUpdatedAt {
+		return nil, errors.Wrapf(models.BadParameterError,
+			"invalid sorting field: %s", pagination.Sorting)
+	}
+
+	// Columns are ambiguous across the joined tables, so qualify with the ucs alias.
+	orderCond := fmt.Sprintf("ucs.%s %s, ucs.id %s",
+		pagination.Sorting, pagination.Order, pagination.Order)
+
+	query := NewQueryBuilder().
+		Select(
+			"ucs.id AS id",
+			"ucs.status AS status",
+			"ucs.created_at AS job_start",
+			"ds.total_items AS total_items",
+			"off.items_processed AS processed",
+		).
+		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s)) FILTER (WHERE err.id IS NOT NULL) AS errors",
+			strings.Join(columnsNames("err", dbmodels.SelectContinuousScreeningJobErrorColumn), ","))).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS + " AS ucs").
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES +
+			" AS ds ON (ucs.continuous_screening_dataset_update_id = ds.id)").
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS +
+			" AS off ON (off.continuous_screening_update_job_id = ucs.id)").
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_ERRORS +
+			" AS err ON (err.continuous_screening_update_job_id = ucs.id)").
+		Where(squirrel.Eq{"ucs.org_id": orgId}).
+		GroupBy("ucs.id", "ucs.status", "ucs.created_at", "ds.total_items",
+			"off.items_processed").
+		OrderBy(orderCond).
+		Limit(uint64(pagination.Limit))
+
+	query, err := repo.applyContinuousScreeningUpdateJobPaginationFilters(
+		ctx, exec, query, orgId, pagination)
+	if err != nil {
+		return nil, err
+	}
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningClientDataIndexingSummary)
+}
+
 func (repo *MarbleDbRepository) CreateContinuousScreeningDatasetUpdate(
 	ctx context.Context,
 	exec Executor,

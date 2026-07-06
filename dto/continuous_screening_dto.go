@@ -18,7 +18,7 @@ type ContinuousScreeningDatasetUpdateDto struct {
 }
 
 func AdaptContinuousScreeningDatasetUpdateDto(
-	u models.ContinuousScreeningDatasetUpdateSummary,
+	u models.ContinuousScreeningDatasetUpdate,
 ) ContinuousScreeningDatasetUpdateDto {
 	return ContinuousScreeningDatasetUpdateDto{
 		Id:          u.Id,
@@ -68,6 +68,28 @@ func AdaptContinuousScreeningUpdateJobDto(
 		TotalItems:     j.TotalItems,
 		ReceptionTime:  j.ReceptionTime,
 		Version:        j.Version,
+		ItemsProcessed: j.ItemsProcessed,
+		Errors:         pure_utils.Map(j.Errors, AdaptContinuousScreeningJobErrorDto),
+	}
+}
+
+type ContinuousScreeningClientDataIndexingDto struct {
+	Id             uuid.UUID                        `json:"id"`
+	Status         string                           `json:"status"`
+	JobStart       time.Time                        `json:"job_start"`
+	TotalItems     int                              `json:"total_items"`
+	ItemsProcessed *int                             `json:"items_processed"`
+	Errors         []ContinuousScreeningJobErrorDto `json:"errors"`
+}
+
+func AdaptContinuousScreeningClientDataIndexingDto(
+	j models.ContinuousScreeningClientDataIndexingSummary,
+) ContinuousScreeningClientDataIndexingDto {
+	return ContinuousScreeningClientDataIndexingDto{
+		Id:             j.Id,
+		Status:         j.Status.String(),
+		JobStart:       j.JobStart,
+		TotalItems:     j.TotalItems,
 		ItemsProcessed: j.ItemsProcessed,
 		Errors:         pure_utils.Map(j.Errors, AdaptContinuousScreeningJobErrorDto),
 	}

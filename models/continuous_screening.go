@@ -176,16 +176,6 @@ type ContinuousScreeningDatasetUpdate struct {
 	CreatedAt     time.Time
 }
 
-// ContinuousScreeningDatasetUpdateSummary is a trimmed view of a dataset update,
-// exposing only the fields relevant to a monitoring/history listing.
-type ContinuousScreeningDatasetUpdateSummary struct {
-	Id          uuid.UUID
-	DatasetName string
-	Version     string
-	TotalItems  int
-	CreatedAt   time.Time
-}
-
 type CreateContinuousScreeningDatasetUpdate struct {
 	DatasetName   string
 	Version       string
@@ -268,6 +258,17 @@ type ContinuousScreeningUpdateJobSummary struct {
 	TotalItems     int
 	ReceptionTime  time.Time // dataset_update.created_at
 	Version        string
+	ItemsProcessed *int // nullable: job_offsets may not exist yet
+	Errors         []ContinuousScreeningJobError
+}
+
+// ContinuousScreeningClientDataIndexingSummary is a trimmed view of an update job's
+// client-data indexing progress: status, item counts, processing offset and errors.
+type ContinuousScreeningClientDataIndexingSummary struct {
+	Id             uuid.UUID // needed for keyset pagination cursor
+	Status         ContinuousScreeningUpdateJobStatus
+	JobStart       time.Time // update_job.created_at
+	TotalItems     int
 	ItemsProcessed *int // nullable: job_offsets may not exist yet
 	Errors         []ContinuousScreeningJobError
 }
