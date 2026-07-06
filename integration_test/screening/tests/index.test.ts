@@ -79,17 +79,13 @@ describe("Initial setup", () => {
 		await testTransactionMonitoring(uri(network, api, 8080), vars.scenarioId);
 	});
 
-	it(
-		"perform outgoing continuous screening on ingestion",
-		async () => {
-			await testOutgoingContinuousMonitoring(
-				sql,
-				uri(network, api, 8080),
-				vars.continuousScreeningConfigId,
-			);
-		},
-		30 * 1000,
-	);
+	it("perform outgoing continuous screening on ingestion", async () => {
+		await testOutgoingContinuousMonitoring(
+			sql,
+			uri(network, api, 8080),
+			vars.continuousScreeningConfigId,
+		);
+	});
 
 	it(
 		"perform incoming continuous screening on dataset update",
@@ -103,6 +99,6 @@ describe("Initial setup", () => {
 				vars.continuousScreeningConfigId,
 			);
 		},
-		300 * 1000,
+		60 * 1000,
 	);
 });

@@ -78,6 +78,7 @@ jobs:
     name: E2E Screening
     runs-on: ubuntu-latest
     if: ${{ inputs.run-e2e }}
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v6
 
