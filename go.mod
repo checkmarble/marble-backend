@@ -8,6 +8,7 @@ require (
 	cloud.google.com/go/profiler v0.6.0
 	cloud.google.com/go/storage v1.62.3
 	firebase.google.com/go/v4 v4.19.0
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.1
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.31.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.56.0
 	github.com/Masterminds/semver v1.5.0
@@ -18,6 +19,7 @@ require (
 	github.com/alicebob/miniredis/v2 v2.38.0
 	github.com/authenticvision/rgeo v1.4.0
 	github.com/avast/retry-go/v4 v4.7.0
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.97.3
 	github.com/biter777/countries v1.7.5
 	github.com/buger/jsonparser v1.1.2
 	github.com/checkmarble/llmberjack v0.0.0-20260323165140-09e47d6a061e
@@ -105,7 +107,6 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.10.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.1 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest/to v0.4.1 // indirect
@@ -138,7 +139,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.13 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.21 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.21 // indirect
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.97.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.25.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.30.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.34.0 // indirect
@@ -309,7 +309,7 @@ require (
 	golang.org/x/arch v0.27.0 // indirect
 	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
-	golang.org/x/image v0.38.0 // indirect
+	golang.org/x/image v0.41.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260409153401-be6f6cb8b1fa // indirect
