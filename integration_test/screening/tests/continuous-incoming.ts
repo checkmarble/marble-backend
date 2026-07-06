@@ -1,4 +1,4 @@
-import { Row, Sql } from "postgres";
+import { Row, Sql, SubscriptionHandle } from "postgres";
 import { API_KEY } from "./marble/setup";
 import { StartedNetwork, StartedTestContainer } from "testcontainers";
 import { uploadDelta } from "./marble/catalog";
@@ -24,26 +24,28 @@ export const testIncomingContinuousMonitoring = async (
 			},
 		);
 
-		let ingestion = await fetch(
-			`${apiUrl}/v1/ingest/users?monitor=true&monitoring_config_id=${configId}`,
-			{
-				method: "POST",
-				headers: { "x-api-key": API_KEY },
-				body: JSON.stringify({
-					object_id: "chervieu",
-					updated_at: new Date().toISOString(),
-					name: "Céline Hervieu",
-				}),
-			},
-		);
+		try {
+			let ingestion = await fetch(
+				`${apiUrl}/v1/ingest/users?monitor=true&monitoring_config_id=${configId}`,
+				{
+					method: "POST",
+					headers: { "x-api-key": API_KEY },
+					body: JSON.stringify({
+						object_id: "chervieu",
+						updated_at: new Date().toISOString(),
+						name: "Céline Hervieu",
+					}),
+				},
+			);
 
-		expect(ingestion.status).toBe(201);
+			expect(ingestion.status).toBe(201);
 
-		while (!found) {
-			await new Promise((resolve) => setTimeout(resolve, 1000));
+			while (!found) {
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+			}
+		} finally {
+			off();
 		}
-
-		off();
 	}
 
 	const manifest = {
@@ -73,18 +75,19 @@ export const testIncomingContinuousMonitoring = async (
 	let foundCase: Row;
 
 	const { unsubscribe: off } = await sql.subscribe("*:marble.cases", (row) => {
-		console.log(row);
 		found = true;
 		foundCase = row as Row;
 	});
 
-	while (!found) {
-		await new Promise((resolve) => setTimeout(resolve, 1000));
+	try {
+		while (!found) {
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+		}
+
+		expect(foundCase!.type).toBe("continuous_screening");
+		expect(foundCase!.name).toBe("Céline Hervieu");
+		expect(foundCase!.status).toBe("pending");
+	} finally {
+		off();
 	}
-
-	expect(foundCase!.type).toBe("continuous_screening");
-	expect(foundCase!.name).toBe("Céline Hervieu");
-	expect(foundCase!.status).toBe("pending");
-
-	off();
 };

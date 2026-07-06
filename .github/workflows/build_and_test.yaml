@@ -96,5 +96,7 @@ jobs:
       pull-requests: read
       checks: write
     uses: ./.github/workflows/backend_test_workflow.yaml
+    with:
+      run-e2e: true
     secrets:
       LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
