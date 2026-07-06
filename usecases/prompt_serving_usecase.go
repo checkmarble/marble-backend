@@ -9,27 +9,13 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
-	"strconv"
-	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
 )
-
-// promptVersionDirPattern matches a Major.Minor version directory at the root of promptsDir,
-// e.g. "v1.4". Prompt versions follow the Marble product's own release tags (not an
-// independent numbering), truncated to Major.Minor by the prompts-repo CI: every publish
-// targeting the same Major.Minor overwrites that one folder, so "latest for the Major.Minor"
-// is automatic by construction — there is no patch level to list or compare here.
-var promptVersionDirPattern = regexp.MustCompile(`^v\d+\.\d+$`)
-
-// requestedVersionPattern validates a caller-supplied version string (no "v" prefix), e.g.
-// "1.4". Checked before the string is ever used to build a filesystem path, so a malformed
-// or path-traversal value (e.g. "../secret") is rejected outright instead of reaching disk.
-var requestedVersionPattern = regexp.MustCompile(`^\d+\.\d+$`)
 
 // promptsLicenseValidator is the subset of PublicLicenseUseCase used by PromptServingUsecase,
 // so license validation (suspended/expired/not-found handling, metrics reporting) is not
@@ -78,7 +64,7 @@ func (uc PromptServingUsecase) validateEntitlement(ctx context.Context, licenseK
 // is reported back, since the caller already knows which version it asked for. The archive is
 // fully built (and every check run) before returning, so callers can set response headers only
 // once this call has succeeded, without risking a partially-written response.
-func (uc PromptServingUsecase) DownloadPrompts(ctx context.Context, licenseKey, version string) (io.Reader, error) {
+func (uc PromptServingUsecase) DownloadPrompts(ctx context.Context, licenseKey, version string) (_ io.Reader, err error) {
 	if err := uc.validateEntitlement(ctx, licenseKey); err != nil {
 		return nil, err
 	}
@@ -94,14 +80,19 @@ func (uc PromptServingUsecase) DownloadPrompts(ctx context.Context, licenseKey, 
 
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
+	// zw.Close() writes the zip's central directory - it must always run (even on an early
+	// return) and its error must be surfaced, but only when it's the sole failure: don't mask
+	// a more specific earlier error (e.g. from addDirToZip) with a secondary Close() failure.
+	defer func() {
+		if cerr := zw.Close(); cerr != nil && err == nil {
+			err = errors.Wrap(cerr, "could not finalize prompts zip")
+		}
+	}()
 
 	if err := addDirToZip(zw, baseDir, ""); err != nil {
 		return nil, err
 	}
 
-	if err := zw.Close(); err != nil {
-		return nil, errors.Wrap(err, "could not finalize prompts zip")
-	}
 	return &buf, nil
 }
 
@@ -114,12 +105,12 @@ func (uc PromptServingUsecase) DownloadPrompts(ctx context.Context, licenseKey, 
 // one — including the case where no version directory exists at all — the request fails
 // closed with models.NotFoundError.
 func (uc PromptServingUsecase) resolvePromptsBase(version string) (string, error) {
-	if !requestedVersionPattern.MatchString(version) {
-		return "", errors.Wrapf(models.BadParameterError, "invalid prompts version format: %s", version)
-	}
-	reqMajor, reqMinor, err := parseMajorMinor(version)
+	requestedVersion, err := semver.NewVersion(version)
 	if err != nil {
-		return "", errors.Wrapf(models.BadParameterError, "invalid prompts version: %s", version)
+		return "", errors.Wrapf(models.BadParameterError, "invalid version format: %s", version)
+	}
+	if requestedVersion.Patch() != 0 {
+		return "", errors.Wrapf(models.BadParameterError, "version must be Major.Minor, got %s", version)
 	}
 
 	entries, err := os.ReadDir(uc.promptsDir)
@@ -127,46 +118,25 @@ func (uc PromptServingUsecase) resolvePromptsBase(version string) (string, error
 		return "", errors.Wrapf(err, "could not list prompts directory %s", uc.promptsDir)
 	}
 
-	bestName := ""
-	bestMajor, bestMinor := -1, -1
+	var bestVersion *semver.Version
 	for _, e := range entries {
-		if !e.IsDir() || !promptVersionDirPattern.MatchString(e.Name()) {
-			continue // ignores the coexisting flat legacy files entirely — they don't match
+		if !e.IsDir() {
+			continue // Ignore non-directory entries
 		}
-		maj, min, err := parseMajorMinor(strings.TrimPrefix(e.Name(), "v"))
+		entryVersion, err := semver.NewVersion(e.Name())
 		if err != nil {
-			continue
+			continue // entry is not a prompt version directory
 		}
-		if maj > reqMajor || (maj == reqMajor && min > reqMinor) {
-			continue // never resolve forward
-		}
-		if maj > bestMajor || (maj == bestMajor && min > bestMinor) {
-			bestMajor, bestMinor = maj, min
-			bestName = e.Name()
+		if requestedVersion.Compare(entryVersion) >= 0 && (bestVersion == nil || entryVersion.Compare(bestVersion) > 0) {
+			bestVersion = entryVersion
 		}
 	}
 
-	if bestName == "" {
+	if bestVersion == nil {
 		// No matching/precedent version folder
 		return "", errors.Wrap(models.NotFoundError, "no prompts version available")
 	}
-	return filepath.Join(uc.promptsDir, bestName), nil
-}
-
-func parseMajorMinor(v string) (int, int, error) {
-	parts := strings.Split(v, ".")
-	if len(parts) != 2 {
-		return 0, 0, errors.Newf("expected major.minor, got %q", v)
-	}
-	maj, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return 0, 0, err
-	}
-	min, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return 0, 0, err
-	}
-	return maj, min, nil
+	return filepath.Join(uc.promptsDir, bestVersion.Original()), nil
 }
 
 func addFileToZip(zw *zip.Writer, srcPath, zipName string) error {

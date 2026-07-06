@@ -51,7 +51,6 @@ func handleAiPromptsDownload(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		c.Header("Content-Type", "application/zip")
-		c.Header("Content-Disposition", `attachment; filename="ai-prompts.zip"`)
 		if _, err := io.Copy(c.Writer, zipReader); err != nil {
 			presentError(ctx, c, err)
 			return
