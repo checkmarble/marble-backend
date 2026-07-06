@@ -194,6 +194,16 @@ func (m *ContinuousScreeningRepository) ListContinuousScreeningDatasetUpdates(
 	return args.Get(0).([]models.ContinuousScreeningDatasetUpdate), args.Error(1)
 }
 
+func (m *ContinuousScreeningRepository) ListContinuousScreeningUpdateJobs(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	pagination models.PaginationAndSorting,
+) ([]models.ContinuousScreeningUpdateJobSummary, error) {
+	args := m.Called(ctx, exec, orgId, pagination)
+	return args.Get(0).([]models.ContinuousScreeningUpdateJobSummary), args.Error(1)
+}
+
 func (m *ContinuousScreeningRepository) GetContinuousScreeningWithMatchesById(
 	ctx context.Context,
 	exec repositories.Executor,

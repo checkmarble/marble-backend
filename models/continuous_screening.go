@@ -255,6 +255,23 @@ type CreateContinuousScreeningUpdateJob struct {
 	OrgId           uuid.UUID
 }
 
+// ContinuousScreeningUpdateJobSummary is a trimmed, enriched view of an update job,
+// exposing the fields relevant to a monitoring/history listing (joined with its
+// config, dataset update, processing offset and errors).
+type ContinuousScreeningUpdateJobSummary struct {
+	Id             uuid.UUID
+	Status         ContinuousScreeningUpdateJobStatus
+	JobStart       time.Time // update_job.created_at
+	JobEnd         time.Time // update_job.updated_at
+	ConfigName     string
+	Description    string
+	TotalItems     int
+	ReceptionTime  time.Time // dataset_update.created_at
+	Version        string
+	ItemsProcessed *int // nullable: job_offsets may not exist yet
+	Errors         []ContinuousScreeningJobError
+}
+
 type EnrichedContinuousScreeningUpdateJob struct {
 	ContinuousScreeningUpdateJob
 	Config        ContinuousScreeningConfig

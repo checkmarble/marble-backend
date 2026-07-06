@@ -235,6 +235,45 @@ func AdaptEnrichedContinuousScreeningUpdateJob(dto DBEnrichedContinuousScreening
 	}, nil
 }
 
+type DBContinuousScreeningUpdateJobSummary struct {
+	Id             uuid.UUID                       `db:"id"`
+	Status         string                          `db:"status"`
+	JobStart       time.Time                       `db:"job_start"`
+	JobEnd         time.Time                       `db:"job_end"`
+	ConfigName     string                          `db:"config_name"`
+	Description    string                          `db:"description"`
+	TotalItems     int                             `db:"total_items"`
+	ReceptionTime  time.Time                       `db:"reception_time"`
+	Version        string                          `db:"version"`
+	ItemsProcessed *int                            `db:"processed"`
+	Errors         []DBContinuousScreeningJobError `db:"errors"`
+}
+
+func AdaptContinuousScreeningUpdateJobSummary(dto DBContinuousScreeningUpdateJobSummary) (models.ContinuousScreeningUpdateJobSummary, error) {
+	errs := make([]models.ContinuousScreeningJobError, 0, len(dto.Errors))
+	for _, e := range dto.Errors {
+		m, err := AdaptContinuousScreeningJobError(e)
+		if err != nil {
+			return models.ContinuousScreeningUpdateJobSummary{}, err
+		}
+		errs = append(errs, m)
+	}
+
+	return models.ContinuousScreeningUpdateJobSummary{
+		Id:             dto.Id,
+		Status:         models.ContinuousScreeningUpdateJobStatusFrom(dto.Status),
+		JobStart:       dto.JobStart,
+		JobEnd:         dto.JobEnd,
+		ConfigName:     dto.ConfigName,
+		Description:    dto.Description,
+		TotalItems:     dto.TotalItems,
+		ReceptionTime:  dto.ReceptionTime,
+		Version:        dto.Version,
+		ItemsProcessed: dto.ItemsProcessed,
+		Errors:         errs,
+	}, nil
+}
+
 const TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS = "continuous_screening_job_offsets"
 
 var SelectContinuousScreeningJobOffsetColumn = utils.ColumnList[DBContinuousScreeningJobOffset]()
