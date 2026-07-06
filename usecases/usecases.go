@@ -55,6 +55,7 @@ type Usecases struct {
 	allowInsecureWebhookURLs     bool   // Allow HTTP webhook URLs (dev only)
 	webhookIPWhitelist           string // Comma-separated CIDR ranges to whitelist for webhooks
 	screeningOffloadingEnabled   bool
+	promptsDir                   string
 
 	coordsEnricher *rgeo.Rgeo
 	ipEnricher     *maxminddb.Reader
@@ -236,6 +237,12 @@ func WithScreeningOffloadingEnabled(enabled bool) Option {
 	}
 }
 
+func WithPromptsDir(dir string) Option {
+	return func(o *options) {
+		o.promptsDir = dir
+	}
+}
+
 type options struct {
 	appName                      string
 	apiVersion                   string
@@ -263,6 +270,7 @@ type options struct {
 	screeningOffloadingEnabled   bool
 	webhookIPWhitelist           string
 	ipEnricher                   *maxminddb.Reader
+	promptsDir                   string
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -302,6 +310,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		allowInsecureWebhookURLs:     o.allowInsecureWebhookURLs,
 		webhookIPWhitelist:           o.webhookIPWhitelist,
 		screeningOffloadingEnabled:   o.screeningOffloadingEnabled,
+		promptsDir:                   o.promptsDir,
 
 		coordsEnricher: coordsEnricher,
 		ipEnricher:     o.ipEnricher,
@@ -578,6 +587,14 @@ func (usecases *Usecases) NewLicenseUsecase() PublicLicenseUseCase {
 		usecases.Repositories.MetricsIngestionRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.license,
+	)
+}
+
+func (usecases *Usecases) NewPromptServingUsecase() PromptServingUsecase {
+	licenseUsecase := usecases.NewLicenseUsecase()
+	return NewPromptServingUsecase(
+		&licenseUsecase,
+		usecases.promptsDir,
 	)
 }
 

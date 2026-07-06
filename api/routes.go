@@ -69,6 +69,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 
 	if infra.IsMarbleSaasProject() {
 		r.POST("/metrics", tom, handleMetricsIngestion(uc))
+		r.GET("/ai-prompts/download", tom, handleAiPromptsDownload(uc))
 	}
 
 	// Public API initialization
