@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
-	"strings"
 	"time"
 
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -165,7 +164,7 @@ func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(
 	// When enabled for the org, process the execution by streaming a manifest of object ids to
 	// blob storage and handing off to a single looping coordinator, rather than inserting one
 	// row and one job per object below.
-	if batchExecV2EnabledForOrg(scenario.OrganizationId) {
+	if infra.HasFeatureFlag(infra.BATCH_EXECUTION_V2_FEATURE_FLAG, scenario.OrganizationId) {
 		if usecase.manifestBucketUrl == "" {
 			logger.WarnContext(ctx, "manifest-based batch execution is enabled for this org but no manifest bucket is configured; using per-object execution instead")
 		} else {
@@ -242,24 +241,6 @@ func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(
 	logger.InfoContext(ctx, fmt.Sprintf("Inserted %d decisions to be executed", nbPlannedDecisions))
 
 	return nil
-}
-
-// batchExecV2EnabledForOrg reports whether an organization uses manifest-based batch execution.
-// The allowlist is read from SCHEDULED_EXEC_V2_ORGS: comma-separated org UUIDs, or "*" for all.
-func batchExecV2EnabledForOrg(orgId uuid.UUID) bool {
-	v := strings.TrimSpace(os.Getenv("SCHEDULED_EXEC_V2_ORGS"))
-	if v == "" {
-		return false
-	}
-	if v == "*" {
-		return true
-	}
-	for _, part := range strings.Split(v, ",") {
-		if strings.TrimSpace(part) == orgId.String() {
-			return true
-		}
-	}
-	return false
 }
 
 func batchExecutionManifestFileKey(id string) string {

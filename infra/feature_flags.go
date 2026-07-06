@@ -14,7 +14,8 @@ import (
 type featureFlag string
 
 const (
-	TEST_UNUSED_FEATURE_FLAG featureFlag = "TEST_UNUSED_FEATURE_FLAG"
+	TEST_UNUSED_FEATURE_FLAG        featureFlag = "TEST_UNUSED_FEATURE_FLAG"
+	BATCH_EXECUTION_V2_FEATURE_FLAG featureFlag = "BATCH_EXECUTION_V2"
 )
 
 func HasGlobalFeatureFlag(flag featureFlag) bool {
