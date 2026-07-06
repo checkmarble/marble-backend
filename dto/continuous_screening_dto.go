@@ -29,6 +29,50 @@ func AdaptContinuousScreeningDatasetUpdateDto(
 	}
 }
 
+type ContinuousScreeningJobErrorDto struct {
+	Details   json.RawMessage `json:"details"`
+	CreatedAt time.Time       `json:"created_at"`
+}
+
+func AdaptContinuousScreeningJobErrorDto(e models.ContinuousScreeningJobError) ContinuousScreeningJobErrorDto {
+	return ContinuousScreeningJobErrorDto{
+		Details:   e.Details,
+		CreatedAt: e.CreatedAt,
+	}
+}
+
+type ContinuousScreeningUpdateJobDto struct {
+	Id             uuid.UUID                        `json:"id"`
+	Status         string                           `json:"status"`
+	JobStart       time.Time                        `json:"job_start"`
+	JobEnd         time.Time                        `json:"job_end"`
+	ConfigName     string                           `json:"config_name"`
+	Description    string                           `json:"description"`
+	TotalItems     int                              `json:"total_items"`
+	ReceptionTime  time.Time                        `json:"reception_time"`
+	Version        string                           `json:"version"`
+	ItemsProcessed *int                             `json:"items_processed"`
+	Errors         []ContinuousScreeningJobErrorDto `json:"errors"`
+}
+
+func AdaptContinuousScreeningUpdateJobDto(
+	j models.ContinuousScreeningUpdateJobSummary,
+) ContinuousScreeningUpdateJobDto {
+	return ContinuousScreeningUpdateJobDto{
+		Id:             j.Id,
+		Status:         j.Status.String(),
+		JobStart:       j.JobStart,
+		JobEnd:         j.JobEnd,
+		ConfigName:     j.ConfigName,
+		Description:    j.Description,
+		TotalItems:     j.TotalItems,
+		ReceptionTime:  j.ReceptionTime,
+		Version:        j.Version,
+		ItemsProcessed: j.ItemsProcessed,
+		Errors:         pure_utils.Map(j.Errors, AdaptContinuousScreeningJobErrorDto),
+	}
+}
+
 type ContinuousScreeningDto struct {
 	Id                                uuid.UUID                     `json:"id"`
 	OrgId                             uuid.UUID                     `json:"org_id"`

@@ -215,6 +215,37 @@ func handleListContinuousScreeningDatasetUpdates(uc usecases.Usecases) func(c *g
 	}
 }
 
+func handleListContinuousScreeningUpdateJobs(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		var paginationAndSortingDto dto.PaginationAndSorting
+		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{Message: err.Error()})
+			return
+		}
+		paginationAndSorting := models.WithPaginationDefaults(
+			dto.AdaptPaginationAndSorting(paginationAndSortingDto),
+			continuousScreeningPaginationDefaults,
+		)
+
+		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
+		jobs, err := uc.ListContinuousScreeningUpdateJobs(ctx, organizationId, paginationAndSorting)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.Paginated[dto.ContinuousScreeningUpdateJobDto]{
+			Items:       pure_utils.Map(jobs.Items, dto.AdaptContinuousScreeningUpdateJobDto),
+			HasNextPage: jobs.HasNextPage,
+		})
+	}
+}
+
 func handleUpdateContinuousScreeningMatchStatus(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
