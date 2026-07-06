@@ -274,6 +274,35 @@ func AdaptContinuousScreeningUpdateJobSummary(dto DBContinuousScreeningUpdateJob
 	}, nil
 }
 
+type DBContinuousScreeningClientDataIndexingSummary struct {
+	Id             uuid.UUID                       `db:"id"`
+	Status         string                          `db:"status"`
+	JobStart       time.Time                       `db:"job_start"`
+	TotalItems     int                             `db:"total_items"`
+	ItemsProcessed *int                            `db:"processed"`
+	Errors         []DBContinuousScreeningJobError `db:"errors"`
+}
+
+func AdaptContinuousScreeningClientDataIndexingSummary(dto DBContinuousScreeningClientDataIndexingSummary) (models.ContinuousScreeningClientDataIndexingSummary, error) {
+	errs := make([]models.ContinuousScreeningJobError, 0, len(dto.Errors))
+	for _, e := range dto.Errors {
+		m, err := AdaptContinuousScreeningJobError(e)
+		if err != nil {
+			return models.ContinuousScreeningClientDataIndexingSummary{}, err
+		}
+		errs = append(errs, m)
+	}
+
+	return models.ContinuousScreeningClientDataIndexingSummary{
+		Id:             dto.Id,
+		Status:         models.ContinuousScreeningUpdateJobStatusFrom(dto.Status),
+		JobStart:       dto.JobStart,
+		TotalItems:     dto.TotalItems,
+		ItemsProcessed: dto.ItemsProcessed,
+		Errors:         errs,
+	}, nil
+}
+
 const TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS = "continuous_screening_job_offsets"
 
 var SelectContinuousScreeningJobOffsetColumn = utils.ColumnList[DBContinuousScreeningJobOffset]()
