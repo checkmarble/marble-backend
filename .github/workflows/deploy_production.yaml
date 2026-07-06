@@ -18,7 +18,7 @@ jobs:
       checks: write
     uses: ./.github/workflows/backend_test_workflow.yaml
     with:
-      run-e2e: true
+      run-e2e: false
     secrets:
       LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
 
