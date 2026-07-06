@@ -21,7 +21,7 @@ require (
 	github.com/avast/retry-go/v4 v4.7.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.97.3
 	github.com/biter777/countries v1.7.5
-	github.com/buger/jsonparser v1.1.2
+	github.com/buger/jsonparser v1.2.0
 	github.com/checkmarble/llmberjack v0.0.0-20260323165140-09e47d6a061e
 	github.com/cockroachdb/errors v1.13.0
 	github.com/coreos/go-oidc/v3 v3.18.0
