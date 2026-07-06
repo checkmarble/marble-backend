@@ -208,8 +208,10 @@ func handleListContinuousScreeningDatasetUpdates(uc usecases.Usecases) func(c *g
 			return
 		}
 
-		c.JSON(http.StatusOK,
-			pure_utils.Map(updates, dto.AdaptContinuousScreeningDatasetUpdateDto))
+		c.JSON(http.StatusOK, dto.Paginated[dto.ContinuousScreeningDatasetUpdateDto]{
+			Items:       pure_utils.Map(updates.Items, dto.AdaptContinuousScreeningDatasetUpdateDto),
+			HasNextPage: updates.HasNextPage,
+		})
 	}
 }
 
