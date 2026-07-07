@@ -1,6 +1,8 @@
 package v1beta
 
 import (
+	"net/http"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/pubapi/types"
@@ -54,6 +56,6 @@ func HandleUploadCsv(uc usecases.Usecases) gin.HandlerFunc {
 			NewResponse(dto.AsyncUpload{
 				UploadUrl: signedUrl,
 			}).
-			Serve(c)
+			Serve(c, http.StatusAccepted)
 	}
 }
