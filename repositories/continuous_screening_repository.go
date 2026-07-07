@@ -916,8 +916,10 @@ func (repo *MarbleDbRepository) ListContinuousScreeningUpdateJobs(
 		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s)) FILTER (WHERE err.id IS NOT NULL) AS errors",
 			strings.Join(columnsNames("err", dbmodels.SelectContinuousScreeningJobErrorColumn), ","))).
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS + " AS ucs").
+		InnerJoin(dbmodels.TABLE_ORGANIZATION +
+			" o ON ucs.org_id = o.id AND ucs.provider = coalesce(o.screening_providers->>'continuous_monitoring', 'opensanctions')").
 		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS +
-			" AS cs ON (ucs.continuous_screening_config_id = cs.id)").
+			" AS cs ON (ucs.continuous_screening_config_id = cs.id AND cs.provider = coalesce(o.screening_providers->>'continuous_monitoring', 'opensanctions'))").
 		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES +
 			" AS ds ON (ucs.continuous_screening_dataset_update_id = ds.id)").
 		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS +
@@ -954,9 +956,11 @@ func (repo *MarbleDbRepository) applyContinuousScreeningUpdateJobPaginationFilte
 	// Fetch the cursor row scoped to the org so a foreign cursor id cannot be used
 	// to page another organization's data.
 	offsetQuery := NewQueryBuilder().
-		Select(dbmodels.SelectContinuousScreeningUpdateJobColumn...).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS).
-		Where(squirrel.Eq{"id": p.OffsetId, "org_id": orgId})
+		Select(columnsNames("ucs", dbmodels.SelectContinuousScreeningUpdateJobColumn)...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS + " ucs").
+		InnerJoin(dbmodels.TABLE_ORGANIZATION +
+			" o ON ucs.org_id = o.id AND ucs.provider = coalesce(o.screening_providers->>'continuous_monitoring', 'opensanctions')").
+		Where(squirrel.Eq{"ucs.id": p.OffsetId, "ucs.org_id": orgId})
 
 	offset, err := SqlToModel(ctx, exec, offsetQuery, dbmodels.AdaptContinuousScreeningUpdateJob)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -1020,6 +1024,8 @@ func (repo *MarbleDbRepository) ListContinuousScreeningClientDataIndexing(
 		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s)) FILTER (WHERE err.id IS NOT NULL) AS errors",
 			strings.Join(columnsNames("err", dbmodels.SelectContinuousScreeningJobErrorColumn), ","))).
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS + " AS ucs").
+		InnerJoin(dbmodels.TABLE_ORGANIZATION +
+			" o ON ucs.org_id = o.id AND ucs.provider = coalesce(o.screening_providers->>'continuous_monitoring', 'opensanctions')").
 		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES +
 			" AS ds ON (ucs.continuous_screening_dataset_update_id = ds.id)").
 		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS +
