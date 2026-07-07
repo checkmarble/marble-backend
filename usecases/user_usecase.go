@@ -165,8 +165,10 @@ func (usecase *UserUseCase) enrichWithTfa(ctx context.Context, users []models.Us
 	}
 
 	for i := range users {
-		enabled := enrollment[strings.ToLower(users[i].Email)]
-		users[i].TfaEnabled = &enabled
+		enabled, found := enrollment[strings.ToLower(users[i].Email)]
+		if found {
+			users[i].TfaEnabled = &enabled
+		}
 	}
 }
 
