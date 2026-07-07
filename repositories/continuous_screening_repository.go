@@ -919,7 +919,7 @@ func (repo *MarbleDbRepository) ListContinuousScreeningUpdateJobs(
 		InnerJoin(dbmodels.TABLE_ORGANIZATION +
 			" o ON ucs.org_id = o.id AND ucs.provider = coalesce(o.screening_providers->>'continuous_monitoring', 'opensanctions')").
 		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS +
-			" AS cs ON (ucs.continuous_screening_config_id = cs.id AND cs.provider = coalesce(o.screening_providers->>'continuous_monitoring', 'opensanctions'))").
+			" AS cs ON (ucs.continuous_screening_config_id = cs.id)").
 		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES +
 			" AS ds ON (ucs.continuous_screening_dataset_update_id = ds.id)").
 		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS +
