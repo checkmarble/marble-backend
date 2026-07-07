@@ -107,9 +107,9 @@ func (c AdminClient) ListMfaEnrollment(ctx context.Context, emails []string) (ma
 		return nil, err
 	}
 	for _, u := range usersResp.Users {
-		if u.MultiFactor != nil && len(u.MultiFactor.EnrolledFactors) > 0 {
-			enrollment[strings.ToLower(u.Email)] = true
-		}
+		enrolled := u.MultiFactor != nil && len(u.MultiFactor.EnrolledFactors) > 0
+		enrollment[strings.ToLower(u.Email)] = enrolled
+
 	}
 
 	return enrollment, nil
