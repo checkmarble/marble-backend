@@ -68,7 +68,7 @@ paths:
         content:
           text/csv:
       responses:
-        "200":
+        "202":
           description: Upload URL created
           content:
             application/json:
