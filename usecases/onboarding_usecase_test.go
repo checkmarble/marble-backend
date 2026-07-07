@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/cockroachdb/errors"
@@ -78,7 +79,7 @@ func TestCreateInitialOrganization(t *testing.T) {
 			models.CreateOrganizationInput{Name: "Acme"}).Return(nil)
 		deps.userRepository.On("CreateUser", ctx, deps.transaction, mock.MatchedBy(
 			func(u models.CreateUser) bool {
-				return u.Email == "admin@acme.com" && u.Role == models.ADMIN
+				return u.Email == "admin@acme.com" && slices.Contains(u.Roles, models.ADMIN)
 			},
 		)).Return("some-user-id", nil)
 		deps.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)

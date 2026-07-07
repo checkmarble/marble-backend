@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -210,18 +211,64 @@ func (usecase *UserUseCase) GetUserByEmail(ctx context.Context, email string) (m
 	return *user, nil
 }
 
-func (usecase *UserUseCase) GetRoles(ctx context.Context) ([]string, []models.Permission, error) {
-	roles, err := usecase.userRepository.ListCustomRoles(ctx,
-		usecase.executorFactory.NewExecutor(), usecase.enforceUserSecurity.OrgId())
+func (usecase *UserUseCase) GetRoles(ctx context.Context) ([]models.RbacRole, []models.Permission, error) {
+	if err := usecase.enforceUserSecurity.ManageRoles(); err != nil {
+		return nil, nil, err
+	}
+
+	roles, err := usecase.userRepository.ListRoles(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		usecase.enforceUserSecurity.OrgId())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	for _, role := range models.GetValidUserRoles() {
-		if role != models.MARBLE_ADMIN {
-			roles = append(roles, string(role))
-		}
+	return roles, models.ValidPermissions, nil
+}
+
+func (usecase *UserUseCase) CreateRole(ctx context.Context, slug, name string) (models.RbacRole, error) {
+	if err := usecase.enforceUserSecurity.ManageRoles(); err != nil {
+		return models.RbacRole{}, err
 	}
 
-	return roles, models.ValidPermissions, nil
+	role, err := usecase.userRepository.CreateRole(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		usecase.enforceUserSecurity.OrgId(),
+		slug,
+		name)
+	if err != nil {
+		if repositories.IsUniqueViolationError(err) {
+			return models.RbacRole{}, errors.Wrap(models.ConflictError, "role already exists")
+		}
+
+		return models.RbacRole{}, err
+	}
+
+	return role, nil
+}
+
+func (usecase *UserUseCase) UpdateRolePermissions(ctx context.Context, roleId uuid.UUID, permissions []dto.RoleGrantPermission) (models.RbacRole, error) {
+	if err := usecase.enforceUserSecurity.ManageRoles(); err != nil {
+		return models.RbacRole{}, err
+	}
+
+	exec := usecase.executorFactory.NewExecutor()
+
+	err := usecase.userRepository.UpdateRolePermissions(
+		ctx,
+		exec,
+		usecase.enforceUserSecurity.OrgId(),
+		roleId,
+		permissions)
+	if err != nil {
+		if repositories.IsUniqueViolationError(err) {
+			return models.RbacRole{}, errors.Wrap(models.ConflictError, "duplicate permission")
+		}
+
+		return models.RbacRole{}, err
+	}
+
+	return usecase.userRepository.GetRole(ctx, exec, usecase.enforceUserSecurity.OrgId(), roleId)
 }

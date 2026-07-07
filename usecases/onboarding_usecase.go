@@ -102,7 +102,7 @@ func (uc OnboardingUsecase) CreateInitialOrganization(ctx context.Context, req d
 			Email:          email,
 			FirstName:      req.Firstname,
 			LastName:       req.Lastname,
-			Role:           models.ADMIN,
+			Roles:          []models.Role{models.ADMIN},
 		}
 
 		if _, err := uc.userRepository.CreateUser(ctx, tx, userCreate); err != nil {

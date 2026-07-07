@@ -38,6 +38,6 @@ func TestEnforceOrganizationAccess_marble_admin_override(t *testing.T) {
 
 func TestEnforceOrganizationAccess_system_override(t *testing.T) {
 	orgId := TextToUUID("1234")
-	err := EnforceOrganizationAccess(models.Credentials{Role: models.SYSTEM}, orgId)
+	err := EnforceOrganizationAccess(models.Credentials{Roles: []models.Role{models.SYSTEM}}, orgId)
 	assert.NoError(t, err)
 }

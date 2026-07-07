@@ -9,6 +9,7 @@ import (
 type RbacRole struct {
 	Id          uuid.UUID
 	OrgId       uuid.UUID
+	Slug        string
 	Name        string
 	Permissions []RbacPermission
 }
