@@ -1,5 +1,21 @@
 package models
 
+import "github.com/google/uuid"
+
+type RbacRole struct {
+	Id          uuid.UUID
+	OrgId       uuid.UUID
+	Name        string
+	Permissions []RbacPermission
+}
+
+type RbacPermission struct {
+	Id        uuid.UUID
+	OrgId     uuid.UUID
+	Name      string
+	Condition *string
+}
+
 type Role string
 
 // Do not remove or reorder entries here, even if a role if deleted, since the

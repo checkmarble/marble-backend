@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -100,19 +101,17 @@ func (db *Database) UpdateUserProfileFromClaims(
 }
 
 func (db *Database) FetchPermissions(ctx context.Context, orgId uuid.UUID, roles []models.Role) ([]models.Permission, error) {
-	query := `
-		select coalesce(array_agg(permissions), '{}') as permissions
-		from (
-			select unnest(permissions) as permissions
-			from roles
-			where
-				org_id = $1 and
-				name = any($2)
-		)
-	`
-
-	var perms []models.Permission
-	var tmp []string
+	query := fmt.Sprintf(`
+		select %s
+		from permissions
+		where role_id in (
+			select id
+      from roles
+      where
+      	org_id = $1 and
+        name = any($2)
+    )
+	`, strings.Join(dbmodels.SelectPermissionColumn, ","))
 
 	rows, err := db.pool.Query(ctx, query, orgId, roles)
 	if err != nil {
@@ -120,19 +119,11 @@ func (db *Database) FetchPermissions(ctx context.Context, orgId uuid.UUID, roles
 	}
 	defer rows.Close()
 
-	for rows.Next() {
-		if err := rows.Scan(&tmp); err != nil {
-			return nil, err
-		}
+	permissions, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbmodels.DbPermission])
 
-		perms = append(perms, pure_utils.Map(tmp, func(perm string) models.Permission {
-			return models.Permission(perm)
-		})...)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
+	perms := pure_utils.Map(permissions, func(p dbmodels.DbPermission) models.Permission {
+		return models.Permission(p.Name)
+	})
 
 	return perms, nil
 }

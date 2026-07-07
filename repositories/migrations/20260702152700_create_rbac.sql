@@ -1,10 +1,21 @@
 -- +goose Up
 
 create table roles (
-    id uuid primary key,
+    id uuid primary key default gen_random_uuid(),
     org_id uuid not null,
     name text not null,
-    permissions text[] not null default '{}'
+
+    unique (org_id, name)
+);
+
+create table permissions (
+    id uuid primary key default gen_random_uuid(),
+    org_id uuid not null,
+    role_id uuid not null references roles (id),
+    name text not null,
+    condition text,
+
+    unique (org_id, role_id, name)
 );
 
 alter table users

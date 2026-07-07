@@ -16,6 +16,7 @@ type EnforceSecurityUser interface {
 	UpdateUser(targetUser models.User, updateUser models.UpdateUser) error
 	DeleteUser(user models.User) error
 	ListUsers(organizationId *uuid.UUID) error
+	ManageRoles() error
 }
 
 type EnforceSecurityUserImpl struct {
@@ -122,5 +123,12 @@ func (e *EnforceSecurityUserImpl) ListUsers(organizationId *uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.MARBLE_USER_LIST),
 		e.ReadOrganization(*organizationId),
+	)
+}
+
+func (e *EnforceSecurityUserImpl) ManageRoles() error {
+	return errors.Join(
+		e.Permission(models.MANAGE_ROLES),
+		e.ReadOrganization(e.OrgId()),
 	)
 }

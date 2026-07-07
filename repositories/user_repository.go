@@ -2,6 +2,9 @@ package repositories
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -22,7 +25,11 @@ type UserRepository interface {
 	ListUsers(ctx context.Context, exec Executor, organizationId *uuid.UUID) ([]models.User, error)
 	UserByEmail(ctx context.Context, exec Executor, email string) (*models.User, error)
 	HasUsers(ctx context.Context, exec Executor) (bool, error)
-	ListCustomRoles(ctx context.Context, exec Executor, orgId uuid.UUID) ([]string, error)
+
+	ListRoles(ctx context.Context, exec Executor, orgId uuid.UUID) ([]models.RbacRole, error)
+	GetRole(ctx context.Context, exec Executor, orgId, roleId uuid.UUID) (models.RbacRole, error)
+	CreateRole(ctx context.Context, exec Executor, orgId uuid.UUID, name string) (models.RbacRole, error)
+	UpdateRolePermissions(ctx context.Context, exec Executor, orgId, roleId uuid.UUID, permissions []string) error
 }
 
 func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (string, error) {
@@ -206,7 +213,24 @@ func (repo *MarbleDbRepository) HasUsers(ctx context.Context, exec Executor) (bo
 	return exists, nil
 }
 
-func (repo *MarbleDbRepository) ListCustomRoles(ctx context.Context, exec Executor, orgId uuid.UUID) ([]string, error) {
+func (repo *MarbleDbRepository) GetRole(ctx context.Context, exec Executor, orgId, roleId uuid.UUID) (models.RbacRole, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.RbacRole{}, err
+	}
+
+	return SqlToModel(
+		ctx,
+		exec,
+		NewQueryBuilder().
+			Select(dbmodels.SelectRoleColumn...).
+			Column(fmt.Sprintf(`(select array_agg(row(%s)) from permissions p where p.role_id = r.id) as permissions`, strings.Join(dbmodels.SelectPermissionColumn, ","))).
+			From(dbmodels.TABLE_ROLES+" r").
+			Where("org_id = ? and id = ?", orgId, roleId),
+		dbmodels.AdaptRoleWithPermissions,
+	)
+}
+
+func (repo *MarbleDbRepository) ListRoles(ctx context.Context, exec Executor, orgId uuid.UUID) ([]models.RbacRole, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -216,8 +240,61 @@ func (repo *MarbleDbRepository) ListCustomRoles(ctx context.Context, exec Execut
 		exec,
 		NewQueryBuilder().
 			Select(dbmodels.SelectRoleColumn...).
-			From(dbmodels.TABLE_ROLES).
+			Column(fmt.Sprintf(`(select array_agg(row(%s)) from permissions p where p.role_id = r.id) as permissions`, strings.Join(dbmodels.SelectPermissionColumn, ","))).
+			From(dbmodels.TABLE_ROLES+" r").
 			Where("org_id = ?", orgId),
-		dbmodels.AdaptRoleName,
+		dbmodels.AdaptRoleWithPermissions,
 	)
+}
+
+func (repo *MarbleDbRepository) CreateRole(ctx context.Context, exec Executor, orgId uuid.UUID, name string) (models.RbacRole, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.RbacRole{}, err
+	}
+
+	name = "org/" + name
+
+	sql := NewQueryBuilder().
+		Insert(dbmodels.TABLE_ROLES).
+		Columns("id", "org_id", "name").
+		Values(pure_utils.NewId(), orgId, name).
+		Suffix(fmt.Sprintf("returning %s", strings.Join(dbmodels.SelectRoleColumn, ",")))
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptRole)
+}
+
+func (repo *MarbleDbRepository) UpdateRolePermissions(ctx context.Context, exec Executor, orgId, roleId uuid.UUID, permissions []string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	inputs := make([]dbmodels.DbPermission, len(permissions))
+
+	for idx, perm := range permissions {
+		inputs[idx] = dbmodels.DbPermission{
+			Id:     pure_utils.NewId(),
+			OrgId:  orgId,
+			RoleId: roleId,
+			Name:   perm,
+		}
+	}
+
+	jsonb, err := json.Marshal(inputs)
+	if err != nil {
+		return err
+	}
+
+	sql := fmt.Sprintf(`
+		merge into permissions as p
+		using jsonb_populate_recordset(null::permissions, $1::jsonb) as s (%[1]s)
+		on p.role_id = s.role_id::uuid and p.name = s.name
+		when not matched then
+		  insert (%[1]s) values (s.id, s.org_id::uuid, s.role_id::uuid, s.name, s.condition)
+		when not matched by source and p.org_id = $2::uuid and p.role_id = $3 then
+		  delete;
+	`, strings.Join(dbmodels.SelectPermissionColumn, ","))
+
+	_, err = exec.Exec(ctx, sql, jsonb, orgId, roleId)
+
+	return err
 }

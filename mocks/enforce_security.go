@@ -304,3 +304,8 @@ func (e *EnforceSecurity) OverrideScore(ref models.ScoringRecordRef) error {
 	args := e.Called(ref)
 	return args.Error(0)
 }
+
+func (e *EnforceSecurity) ManageRoles() error {
+	args := e.Called()
+	return args.Error(0)
+}

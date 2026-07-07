@@ -59,6 +59,7 @@ const (
 	SCORING_UPDATE_SETTINGS           Permission = "SCORING_UPDATE_SETTINGS"
 	SCORING_UPDATE_RULESETS           Permission = "SCORING_UPDATE_RULESETS"
 	SCORING_OVERRIDE_SCORE            Permission = "SCORING_OVERRIDE_SCORE"
+	MANAGE_ROLES                      Permission = "MANAGE_ROLES"
 )
 
 var ValidPermissions = []Permission{
@@ -118,4 +119,5 @@ var ValidPermissions = []Permission{
 	SCORING_UPDATE_SETTINGS,
 	SCORING_UPDATE_RULESETS,
 	SCORING_OVERRIDE_SCORE,
+	MANAGE_ROLES,
 }

@@ -52,3 +52,18 @@ func (r *UserRepository) HasUsers(ctx context.Context, exec repositories.Executo
 	args := r.Called(ctx, exec)
 	return args.Bool(0), args.Error(1)
 }
+
+func (r *UserRepository) ListCustomRoles(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.RbacRole, error) {
+	args := r.Called(ctx, exec)
+	return args.Get(0).([]models.RbacRole), args.Error(1)
+}
+
+func (r *UserRepository) CreateRole(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, name string) (models.RbacRole, error) {
+	args := r.Called(ctx, exec, orgId, name)
+	return args.Get(0).(models.RbacRole), args.Error(1)
+}
+
+func (r *UserRepository) UpdateRolePermissions(ctx context.Context, exec repositories.Executor, orgId, roleId uuid.UUID, permissions []string) error {
+	args := r.Called(ctx, exec, orgId, roleId, permissions)
+	return args.Error(0)
+}
