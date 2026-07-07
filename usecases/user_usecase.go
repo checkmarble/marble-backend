@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/idp"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -155,7 +156,7 @@ func (usecase *UserUseCase) enrichWithTfa(ctx context.Context, users []models.Us
 		return
 	}
 
-	enrollment, err := usecase.firebaseAdmin.ListMfaEnrollment(ctx)
+	enrollment, err := usecase.firebaseAdmin.ListMfaEnrollment(ctx, pure_utils.Map(users, func(u models.User) string { return u.Email }))
 	if err != nil {
 		utils.LoggerFromContext(ctx).WarnContext(ctx,
 			"could not fetch MFA enrollment from identity provider, omitting tfa_enabled",
