@@ -512,12 +512,15 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		return nil
 	}
 
-	setToFailed := func(numRowsIngested int, ingestErr error) {
+	setToFailed := func(numRowsIngested int, inputErr error, ingestErr error) {
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
 		defer cancel()
 
-		errorString := ""
+		errorString, inputErrorString := "", ""
 
+		if inputErr != nil {
+			inputErrorString = strings.Join(errors.GetAllDetails(inputErr), ": ")
+		}
 		if ingestErr != nil {
 			errorString = ingestErr.Error()
 		}
@@ -530,6 +533,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 				CurrentUploadStatusCondition: models.UploadProcessing,
 				UploadStatus:                 models.UploadFailure,
 				NumRowsIngested:              &numRowsIngested,
+				InputError:                   &inputErrorString,
 				Error:                        &errorString,
 			})
 		if err != nil {
@@ -542,14 +546,14 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		defer file.ReadCloser.Close()
 	}
 	if err != nil {
-		setToFailed(0, err)
+		setToFailed(0, nil, err)
 		return err
 	}
 
 	out := usecase.readFileIngestObjects(ctx, exec, file.FileName, file.ReadCloser, ingestionOptions)
-	if out.err != nil {
-		setToFailed(out.numRowsIngested, out.err)
-		return out.err
+	if out.inputErr != nil || out.err != nil {
+		setToFailed(out.numRowsIngested, out.inputErr, out.err)
+		return errors.Join(out.inputErr, out.err)
 	}
 
 	currentTime := time.Now()
@@ -568,6 +572,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 
 type ingestionResult struct {
 	numRowsIngested int
+	inputErr        error
 	err             error
 }
 
@@ -589,7 +594,7 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context,
 		fileNameElements := strings.Split(fileName, "/")
 		if len(fileNameElements) != 4 {
 			return ingestionResult{
-				err: fmt.Errorf("invalid filename %s: expecting format organizationId/tableName/timestamp.csv", fileName),
+				err: fmt.Errorf("invalid filename %s: expecting format organizationId/tableName/uuid", fileName),
 			}
 		}
 		organizationIdStr = fileNameElements[1]
@@ -598,7 +603,7 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context,
 		fileNameElements := strings.Split(fileName, "/")
 		if len(fileNameElements) != 3 {
 			return ingestionResult{
-				err: fmt.Errorf("invalid filename %s: expecting format organizationId/tableName/timestamp.csv", fileName),
+				inputErr: fmt.Errorf("invalid filename %s: expecting format organizationId/tableName/timestamp.csv", fileName),
 			}
 		}
 		organizationIdStr = fileNameElements[0]
@@ -679,7 +684,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 		if !field.Nullable {
 			if !slices.Contains(firstRow, name) {
 				return ingestionResult{
-					err: fmt.Errorf("missing required field %s in CSV", name),
+					inputErr: errors.WithDetailf(models.BadParameterError, "missing required field %s in CSV", name),
 				}
 			}
 		}
@@ -697,7 +702,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 		}
 
 		if err := validateContinuousScreeningConfigs(continuousScreeningConfigs, ingestionOptions.ContinuousScreeningIds, table.Name); err != nil {
-			return ingestionResult{err: err}
+			return ingestionResult{inputErr: errors.WithDetailf(err, "could not used provided continuous screening config: %v", err)}
 		}
 	}
 
@@ -726,7 +731,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 			if err != nil {
 				return ingestionResult{
 					numRowsIngested: total,
-					err:             fmt.Errorf("error parsing line %d of CSV: %w", objectIdx, err),
+					inputErr:        errors.WithDetailf(err, "error parsing field value in CSV at line %d: %v", objectIdx, err),
 				}
 			}
 			logger.DebugContext(iterationCtx, fmt.Sprintf("Object to ingest %d: %+v", objectIdx, object))

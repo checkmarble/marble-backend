@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	ASYNC_UPLOAD_START_TIMEOUT = 1 * time.Minute
+	ASYNC_UPLOAD_START_TIMEOUT = time.Minute
 	ASYNC_UPLOAD_TIMEOUT       = 15 * time.Minute
 	ASYNC_UPLOAD_TICK          = time.Minute
 	ASYNC_UPLOAD_MAX_SIZE      = 10 << 30 // 10 GB
