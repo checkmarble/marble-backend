@@ -122,33 +122,33 @@ func Test_PromptServingUsecase_DownloadPrompts_Authorization(t *testing.T) {
 	dir := writePromptsFixture(t)
 
 	tests := []struct {
-		name       string
-		promptsDir string
-		validation stubLicenseValidator
-		wantErr    error
+		name                string
+		aiPromptsServingDir string
+		validation          stubLicenseValidator
+		wantErr             error
 	}{
 		{
-			name:       "invalid license",
-			promptsDir: dir,
-			validation: stubLicenseValidator{validation: models.LicenseValidation{LicenseValidationCode: models.NOT_FOUND}},
-			wantErr:    models.ForbiddenError,
+			name:                "invalid license",
+			aiPromptsServingDir: dir,
+			validation:          stubLicenseValidator{validation: models.LicenseValidation{LicenseValidationCode: models.NOT_FOUND}},
+			wantErr:             models.ForbiddenError,
 		},
 		{
-			name:       "valid license without AI entitlement",
-			promptsDir: dir,
-			validation: stubLicenseValidator{validation: models.LicenseValidation{LicenseValidationCode: models.VALID}},
-			wantErr:    models.MissingLicenseEntitlementError,
+			name:                "valid license without AI entitlement",
+			aiPromptsServingDir: dir,
+			validation:          stubLicenseValidator{validation: models.LicenseValidation{LicenseValidationCode: models.VALID}},
+			wantErr:             models.MissingLicenseEntitlementError,
 		},
 		{
-			name:       "no prompts directory configured on this server",
-			promptsDir: "",
-			validation: stubLicenseValidator{validation: validLicenseWithAi()},
-			wantErr:    models.MissingRequirement,
+			name:                "no prompts directory configured on this server",
+			aiPromptsServingDir: "",
+			validation:          stubLicenseValidator{validation: validLicenseWithAi()},
+			wantErr:             models.MissingRequirement,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			uc := NewPromptServingUsecase(tt.validation, tt.promptsDir)
+			uc := NewPromptServingUsecase(tt.validation, tt.aiPromptsServingDir)
 			_, err := uc.DownloadPrompts(context.Background(), "some-key", "")
 			require.Error(t, err)
 			assert.True(t, errors.Is(err, tt.wantErr))

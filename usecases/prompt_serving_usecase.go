@@ -27,14 +27,14 @@ type promptsLicenseValidator interface {
 // PromptServingUsecase serves the private AI prompt files to license-holding clients
 // (self-hosted premium deployments downloading prompts at runtime)
 type PromptServingUsecase struct {
-	licenseValidator promptsLicenseValidator
-	promptsDir       string
+	licenseValidator    promptsLicenseValidator
+	aiPromptsServingDir string
 }
 
-func NewPromptServingUsecase(licenseValidator promptsLicenseValidator, promptsDir string) PromptServingUsecase {
+func NewPromptServingUsecase(licenseValidator promptsLicenseValidator, aiPromptsServingDir string) PromptServingUsecase {
 	return PromptServingUsecase{
-		licenseValidator: licenseValidator,
-		promptsDir:       promptsDir,
+		licenseValidator:    licenseValidator,
+		aiPromptsServingDir: aiPromptsServingDir,
 	}
 }
 
@@ -69,7 +69,7 @@ func (uc PromptServingUsecase) DownloadPrompts(ctx context.Context, licenseKey, 
 		return nil, err
 	}
 
-	if uc.promptsDir == "" {
+	if uc.aiPromptsServingDir == "" {
 		return nil, errors.Wrap(models.MissingRequirement, "ai prompts are not configured on this server")
 	}
 
@@ -113,9 +113,9 @@ func (uc PromptServingUsecase) resolvePromptsBase(version string) (string, error
 		return "", errors.Wrapf(models.BadParameterError, "version must be Major.Minor, got %s", version)
 	}
 
-	entries, err := os.ReadDir(uc.promptsDir)
+	entries, err := os.ReadDir(uc.aiPromptsServingDir)
 	if err != nil {
-		return "", errors.Wrapf(err, "could not list prompts directory %s", uc.promptsDir)
+		return "", errors.Wrapf(err, "could not list prompts directory %s", uc.aiPromptsServingDir)
 	}
 
 	var bestVersion *semver.Version
@@ -136,7 +136,7 @@ func (uc PromptServingUsecase) resolvePromptsBase(version string) (string, error
 		// No matching/precedent version folder
 		return "", errors.Wrap(models.NotFoundError, "no prompts version available")
 	}
-	return filepath.Join(uc.promptsDir, bestVersion.Original()), nil
+	return filepath.Join(uc.aiPromptsServingDir, bestVersion.Original()), nil
 }
 
 func addFileToZip(zw *zip.Writer, srcPath, zipName string) error {
