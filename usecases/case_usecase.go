@@ -96,6 +96,7 @@ type CaseUseCaseRepository interface {
 	ListContinuousScreeningsWithMatchesByCaseId(
 		ctx context.Context,
 		exec repositories.Executor,
+		orgId uuid.UUID,
 		caseId string,
 	) ([]models.ContinuousScreeningWithMatches, error)
 	ListContinuousScreeningsByIds(ctx context.Context, exec repositories.Executor, ids []uuid.UUID) ([]models.ContinuousScreening, error)
@@ -1438,7 +1439,7 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 		c.Decisions = decisions
 
 	case models.CaseTypeContinuousScreening:
-		continuousScreeningsWithMatches, err := usecase.repository.ListContinuousScreeningsWithMatchesByCaseId(ctx, exec, caseId)
+		continuousScreeningsWithMatches, err := usecase.repository.ListContinuousScreeningsWithMatchesByCaseId(ctx, exec, c.OrganizationId, caseId)
 		if err != nil {
 			return models.Case{}, err
 		}
