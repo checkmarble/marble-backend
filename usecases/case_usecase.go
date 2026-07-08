@@ -843,7 +843,12 @@ func (usecase *CaseUseCase) AssignCase(ctx context.Context, req models.CaseAssig
 			return err
 		}
 
-		if err := usecase.PerformCaseActionSideEffects(ctx, tx, c); err != nil {
+		updatedCase, err := usecase.getCaseWithDetails(ctx, tx, req.CaseId)
+		if err != nil {
+			return err
+		}
+
+		if err := usecase.PerformCaseActionSideEffects(ctx, tx, updatedCase); err != nil {
 			return err
 		}
 
