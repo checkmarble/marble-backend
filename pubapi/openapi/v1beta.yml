@@ -34,7 +34,7 @@ paths:
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
-      summary: Upload a CSV fil that will be ingested asynchronously
+      summary: Upload a CSV file that will be ingested asynchronously
       parameters:
         - name: objectType
           in: path
@@ -53,6 +53,26 @@ paths:
           schema:
             type: string
             enum: ["0"]
+        - name: monitor
+          in: query
+          description: Whether to put the ingested object under continuous monitoring
+          schema:
+            type: boolean
+        - name: monitoring_config_id
+          in: query
+          description:
+            If monitoring the object, which configuration to use. Can be
+            repeated multiple times.
+          schema:
+            type: string
+            format: uuid
+        - name: skip_screening
+          in: query
+          description:
+            If monitoring, whether to skip the initial screening of the
+            ingested object.
+          schema:
+            type: boolean
       description: |
         This endpoint will emit a presigned URL to which to upload the file.
 
