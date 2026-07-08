@@ -27,6 +27,47 @@ tags:
     description: Routes for record (data ingested into Marble)
 paths:
   /ingest/{objectType}/uploads:
+    get:
+      operationId: listBatchIngestionLogs
+      tags:
+        - Ingestion
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: List batch ingestion logs
+      parameters:
+        - name: objectType
+          description: Filter decisions by their scenario
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: status
+          description: Only show logs in a specific status
+          in: query
+          schema:
+            type: string
+            enum: [pending processing success failure]
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/after"
+      responses:
+        "200":
+          description: List of batch ingestion events
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - $ref: "#/components/schemas/BasePagination"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/BatchIngestionLog"
+        "400":
+          $ref: "#/components/responses/400"
+
     put:
       operationId: asyncIngestCsv 
       tags:
@@ -1446,6 +1487,36 @@ components:
             next_page_id:
               description: Value to use in pagination filter to request for the next page
               type: string
+
+    BatchIngestionLog:
+      title: Batch ingestion log
+      type: object
+      required:
+        - id
+        - status
+        - started_at
+        - rows_processed
+        - rows_ingested
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, processing, success, failure]
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          description: Time at which ingestion finished, will be `null` until completed.
+          type: string
+          format: date-time
+        rows_processed:
+          type: integer
+        rows_ingested:
+          type: integer
+        error:
+          type: string
 
     AsyncUploadCreated:
       title: Upload URL signed and generated

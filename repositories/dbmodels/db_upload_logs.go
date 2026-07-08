@@ -9,7 +9,7 @@ import (
 )
 
 type DBUploadLog struct {
-	Id              string     `db:"id"`
+	Id              uuid.UUID  `db:"id"`
 	OrganizationId  uuid.UUID  `db:"org_id"`
 	UserId          string     `db:"user_id"`
 	FileName        string     `db:"file_name"`

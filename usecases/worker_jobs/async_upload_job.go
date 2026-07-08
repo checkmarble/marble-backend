@@ -27,7 +27,7 @@ type asyncUploadTaskEnqueuer interface {
 		ctx context.Context,
 		tx repositories.Transaction,
 		organizationId uuid.UUID,
-		uploadLogId string,
+		uploadLogId uuid.UUID,
 		ingestionOptions models.IngestionOptions,
 	) error
 }
@@ -88,7 +88,7 @@ func (w AsyncUploadWorker) Work(ctx context.Context, job *river.Job[models.Async
 	}
 
 	return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		uploadLogId := pure_utils.NewId().String()
+		uploadLogId := pure_utils.NewId()
 
 		newUploadLoad := models.UploadLog{
 			Id:             uploadLogId,
@@ -115,7 +115,7 @@ func (w AsyncUploadWorker) Work(ctx context.Context, job *river.Job[models.Async
 func (w AsyncUploadWorker) createUploadError(ctx context.Context, job *river.Job[models.AsyncUploadArgs], err string) error {
 	return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		newUploadLoad := models.UploadLog{
-			Id:             pure_utils.NewId().String(),
+			Id:             pure_utils.NewId(),
 			UploadStatus:   models.UploadFailure,
 			OrganizationId: job.Args.OrgId,
 			FileName:       job.Args.Key,

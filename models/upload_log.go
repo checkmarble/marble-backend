@@ -6,8 +6,12 @@ import (
 	"github.com/google/uuid"
 )
 
+type UploadLogFilters struct {
+	Status *UploadStatus
+}
+
 type UploadLog struct {
-	Id             string
+	Id             uuid.UUID
 	OrganizationId uuid.UUID
 	UserId         string
 	FileName       string
@@ -45,7 +49,7 @@ func UploadStatusFrom(s string) UploadStatus {
 }
 
 type UpdateUploadLogStatusInput struct {
-	Id                           string
+	Id                           uuid.UUID
 	UploadStatus                 UploadStatus
 	CurrentUploadStatusCondition UploadStatus // for optimistic locking. Only rows matching this current status will be updated
 	FinishedAt                   *time.Time

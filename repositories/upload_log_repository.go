@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -13,9 +14,11 @@ import (
 type UploadLogRepository interface {
 	CreateUploadLog(ctx context.Context, exec Executor, log models.UploadLog) error
 	UpdateUploadLogStatus(ctx context.Context, exec Executor, input models.UpdateUploadLogStatusInput) (executed bool, err error)
-	UploadLogById(ctx context.Context, exec Executor, id string) (models.UploadLog, error)
+	UploadLogById(ctx context.Context, exec Executor, id uuid.UUID) (models.UploadLog, error)
 	AllUploadLogsByTable(ctx context.Context, exec Executor, organizationId uuid.UUID,
 		tableName string) ([]models.UploadLog, error)
+	ListUploadLogs(ctx context.Context, exec Executor, organizationId uuid.UUID,
+		tableName string, filters models.UploadLogFilters, pagination models.PaginationAndSorting) ([]models.UploadLog, error)
 }
 
 type UploadLogRepositoryImpl struct{}
@@ -104,7 +107,7 @@ func (repo *UploadLogRepositoryImpl) UpdateUploadLogStatus(
 	return tag.RowsAffected() > 0, nil
 }
 
-func (repo *UploadLogRepositoryImpl) UploadLogById(ctx context.Context, exec Executor, id string) (models.UploadLog, error) {
+func (repo *UploadLogRepositoryImpl) UploadLogById(ctx context.Context, exec Executor, id uuid.UUID) (models.UploadLog, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.UploadLog{}, err
 	}
@@ -144,6 +147,50 @@ func (repo *UploadLogRepositoryImpl) AllUploadLogsByTable(
 			Where(squirrel.Eq{"org_id": organizationId}).
 			Where(squirrel.Eq{"table_name": tableName}).
 			OrderBy("started_at DESC"),
+		dbmodels.AdaptUploadLog,
+	)
+}
+
+func (repo *UploadLogRepositoryImpl) ListUploadLogs(
+	ctx context.Context,
+	exec Executor,
+	organizationId uuid.UUID,
+	tableName string,
+	filters models.UploadLogFilters,
+	pagination models.PaginationAndSorting,
+) ([]models.UploadLog, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectUploadLogColumn...).
+		From(dbmodels.TABLE_UPLOAD_LOGS).
+		Where(squirrel.Eq{"org_id": organizationId}).
+		Where(squirrel.Eq{"table_name": tableName}).
+		OrderBy("started_at DESC, id DESC").
+		Limit(uint64(pagination.Limit))
+
+	if filters.Status != nil {
+		query = query.Where("status = ?", *filters.Status)
+	}
+
+	if pagination.OffsetId != "" {
+		offsetId, err := uuid.Parse(pagination.OffsetId)
+		if err != nil {
+			return nil, errors.Wrap(err, "provided upload log offset ID was not a UUID")
+		}
+		offsetLog, err := repo.UploadLogById(ctx, exec, offsetId)
+		if err != nil {
+			return nil, err
+		}
+		query = query.Where("(started_at, id) < (?, ?)", offsetLog.StartedAt, offsetLog.Id)
+	}
+
+	return SqlToListOfModels(
+		ctx,
+		exec,
+		query,
 		dbmodels.AdaptUploadLog,
 	)
 }
