@@ -213,7 +213,7 @@ func (r *CaseRepository) CaseMassMoveToInbox(ctx context.Context, tx repositorie
 }
 
 func (r *CaseRepository) ListContinuousScreeningsWithMatchesByCaseId(ctx context.Context,
-	exec repositories.Executor, caseId string,
+	exec repositories.Executor, orgId uuid.UUID, caseId string,
 ) ([]models.ContinuousScreeningWithMatches, error) {
 	args := r.Called(ctx, exec, caseId)
 	return args.Get(0).([]models.ContinuousScreeningWithMatches), args.Error(1)

@@ -404,6 +404,7 @@ func (repo *MarbleDbRepository) GetContinuousScreeningWithMatchesById(ctx contex
 func (repo *MarbleDbRepository) ListContinuousScreeningsWithMatchesByCaseId(
 	ctx context.Context,
 	exec Executor,
+	orgId uuid.UUID,
 	caseId string,
 ) ([]models.ContinuousScreeningWithMatches, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
