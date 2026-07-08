@@ -95,21 +95,25 @@ func (c AdminClient) ListMfaEnrollment(ctx context.Context, emails []string) (ma
 		return enrollment, nil
 	}
 
-	filters := make([]*auth.Expression, len(emails))
+	identifiers := make([]auth.UserIdentifier, len(emails))
 	for i, email := range emails {
-		filters[i] = utils.Ptr(auth.Expression{Email: email})
+		identifiers[i] = auth.EmailIdentifier{Email: email}
 	}
-	// returns up to 500 entries, which in our case should be plenty for a long time
-	usersResp, err := c.client.QueryUsers(ctx, &auth.QueryUsersRequest{
-		Expression: filters,
-	})
-	if err != nil {
-		return nil, err
-	}
-	for _, u := range usersResp.Users {
-		enrolled := u.MultiFactor != nil && len(u.MultiFactor.EnrolledFactors) > 0
-		enrollment[strings.ToLower(u.Email)] = enrolled
 
+	// Look up accounts directly (accounts:lookup) rather than via QueryUsers,
+	// whose search index is eventually consistent and omits recently-created
+	// users. accounts:lookup reads the live account store and accepts at most
+	// 100 identifiers per request.
+	const batchSize = 100
+	for start := 0; start < len(identifiers); start += batchSize {
+		res, err := c.client.GetUsers(ctx, identifiers[start:min(start+batchSize, len(identifiers))])
+		if err != nil {
+			return nil, err
+		}
+		for _, u := range res.Users {
+			enrolled := u.MultiFactor != nil && len(u.MultiFactor.EnrolledFactors) > 0
+			enrollment[strings.ToLower(u.Email)] = enrolled
+		}
 	}
 
 	return enrollment, nil
