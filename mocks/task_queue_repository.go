@@ -149,7 +149,7 @@ func (m *TaskQueueRepository) EnqueueCsvIngestionTask(
 	ctx context.Context,
 	tx repositories.Transaction,
 	organizationId uuid.UUID,
-	uploadLogId string,
+	uploadLogId uuid.UUID,
 	ingestionOptions models.IngestionOptions,
 ) error {
 	args := m.Called(ctx, tx, organizationId, uploadLogId, ingestionOptions)

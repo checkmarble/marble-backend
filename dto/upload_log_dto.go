@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type UploadLogDto struct {
@@ -16,19 +17,12 @@ type UploadLogDto struct {
 }
 
 func AdaptUploadLogDto(log models.UploadLog) UploadLogDto {
-	error := ""
-	if log.Error != nil {
-		error = *log.Error
-	}
-
-	linesProcessed := max(log.LinesProcessed, log.RowsIngested)
-
 	return UploadLogDto{
 		Status:          string(log.UploadStatus),
 		StartedAt:       log.StartedAt,
 		FinishedAt:      log.FinishedAt,
-		LinesProcessed:  linesProcessed,
+		LinesProcessed:  max(log.LinesProcessed, log.RowsIngested),
 		NumRowsIngested: log.RowsIngested,
-		Error:           error,
+		Error:           utils.Or(log.InputError, ""),
 	}
 }

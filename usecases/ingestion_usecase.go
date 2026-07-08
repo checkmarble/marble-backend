@@ -88,7 +88,7 @@ type taskEnqueuer interface {
 		ctx context.Context,
 		tx repositories.Transaction,
 		organizationId uuid.UUID,
-		uploadLogId string,
+		uploadLogId uuid.UUID,
 		ingestionOptions models.IngestionOptions,
 	) error
 	EnqueueTriggerScoreComputation(
@@ -349,6 +349,37 @@ func (usecase *IngestionUseCase) ListUploadLogs(ctx context.Context,
 		usecase.executorFactory.NewExecutor(), organizationId, objectType)
 }
 
+func (usecase *IngestionUseCase) ListFilteredUploadLogs(
+	ctx context.Context,
+	organizationId uuid.UUID, objectType string,
+	filters models.UploadLogFilters,
+	pagination models.PaginationAndSorting,
+) (models.Paginated[models.UploadLog], error) {
+	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
+		return models.Paginated[models.UploadLog]{}, err
+	}
+
+	page := models.PaginationAndSorting{
+		OffsetId: pagination.OffsetId,
+		Sorting:  pagination.Sorting,
+		Order:    pagination.Order,
+		Limit:    pagination.Limit + 1,
+	}
+
+	logs, err := usecase.uploadLogRepository.ListUploadLogs(
+		ctx,
+		usecase.executorFactory.NewExecutor(), organizationId, objectType,
+		filters, page)
+	if err != nil {
+		return models.Paginated[models.UploadLog]{}, err
+	}
+
+	return models.Paginated[models.UploadLog]{
+		Items:       logs[:min(len(logs), pagination.Limit)],
+		HasNextPage: len(logs) > pagination.Limit,
+	}, nil
+}
+
 func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Context,
 	organizationId uuid.UUID, userId, objectType string, fileReader *csv.Reader,
 	ingestionOptions models.IngestionOptions,
@@ -456,7 +487,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 
 	return executor_factory.TransactionReturnValue(ctx,
 		usecase.transactionFactory, func(tx repositories.Transaction) (models.UploadLog, error) {
-			newUploadListId := pure_utils.NewId().String()
+			newUploadListId := pure_utils.NewId()
 			newUploadLoad := models.UploadLog{
 				Id:             newUploadListId,
 				UploadStatus:   models.UploadPending,
@@ -481,7 +512,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 // IngestDataFromCsvByUploadLogId processes a single upload log by its ID.
 // This is the main entry point for the CSV ingestion worker.
 func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(ctx context.Context,
-	uploadLogId string, ingestionOptions models.IngestionOptions,
+	uploadLogId uuid.UUID, ingestionOptions models.IngestionOptions,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Start ingesting data from upload log %s", uploadLogId))

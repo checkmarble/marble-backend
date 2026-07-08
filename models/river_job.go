@@ -230,7 +230,7 @@ func (BatchExecutionCoordinatorArgs) Kind() string { return "batch_execution_coo
 
 // CSV ingestion job - processes a single upload log
 type CsvIngestionArgs struct {
-	UploadLogId      string           `json:"upload_log_id"`
+	UploadLogId      uuid.UUID        `json:"upload_log_id"`
 	IngestionOptions IngestionOptions `json:"ingestion_options"`
 }
 

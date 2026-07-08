@@ -107,7 +107,7 @@ type TaskQueueRepository interface {
 		ctx context.Context,
 		tx Transaction,
 		organizationId uuid.UUID,
-		uploadLogId string,
+		uploadLogId uuid.UUID,
 		ingestionOptions models.IngestionOptions,
 	) error
 	EnqueueAsyncUploadTask(
@@ -610,7 +610,7 @@ func (r riverRepository) EnqueueCsvIngestionTask(
 	ctx context.Context,
 	tx Transaction,
 	organizationId uuid.UUID,
-	uploadLogId string,
+	uploadLogId uuid.UUID,
 	ingestionOptions models.IngestionOptions,
 ) error {
 	res, err := r.client.InsertTx(ctx, tx.RawTx(), models.CsvIngestionArgs{
