@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"io/fs"
 	"time"
 
 	"github.com/authenticvision/rgeo"
@@ -54,6 +55,7 @@ type Usecases struct {
 	webhookIPWhitelist           string // Comma-separated CIDR ranges to whitelist for webhooks
 	screeningOffloadingEnabled   bool
 	aiPromptsServingDir          string
+	aiPromptsFS                  fs.FS
 
 	coordsEnricher *rgeo.Rgeo
 	ipEnricher     *maxminddb.Reader
@@ -224,6 +226,12 @@ func WithAIPromptsServingDir(dir string) Option {
 	}
 }
 
+func WithAIPromptsFS(aiPromptsFS fs.FS) Option {
+	return func(o *options) {
+		o.aiPromptsFS = aiPromptsFS
+	}
+}
+
 type options struct {
 	appName                      string
 	apiVersion                   string
@@ -250,6 +258,7 @@ type options struct {
 	webhookIPWhitelist           string
 	ipEnricher                   *maxminddb.Reader
 	aiPromptsServingDir          string
+	aiPromptsFS                  fs.FS
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -288,6 +297,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		webhookIPWhitelist:           o.webhookIPWhitelist,
 		screeningOffloadingEnabled:   o.screeningOffloadingEnabled,
 		aiPromptsServingDir:          o.aiPromptsServingDir,
+		aiPromptsFS:                  o.aiPromptsFS,
 
 		coordsEnricher: coordsEnricher,
 		ipEnricher:     o.ipEnricher,

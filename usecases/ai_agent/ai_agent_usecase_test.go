@@ -33,7 +33,8 @@ func TestPreparePrompt_StringTypes(t *testing.T) {
 		"description": "Test Description",
 	}
 
-	result, err := preparePrompt(promptPath, data)
+	uc := AiAgentUsecase{promptsFS: os.DirFS(tmpDir)}
+	result, err := uc.preparePrompt("test_prompt.txt", data)
 	if err != nil {
 		t.Fatalf("preparePrompt failed: %v", err)
 	}
@@ -63,7 +64,8 @@ func TestPreparePrompt_StringPointers(t *testing.T) {
 		"nullValue": (*string)(nil),
 	}
 
-	result, err := preparePrompt(promptPath, data)
+	uc := AiAgentUsecase{promptsFS: os.DirFS(tmpDir)}
+	result, err := uc.preparePrompt("test_prompt.txt", data)
 	if err != nil {
 		t.Fatalf("preparePrompt failed: %v", err)
 	}
@@ -91,7 +93,8 @@ func TestPreparePrompt_AgentPrinter(t *testing.T) {
 		"printer": mockAgentPrinter{value: "custom printed value"},
 	}
 
-	result, err := preparePrompt(promptPath, data)
+	uc := AiAgentUsecase{promptsFS: os.DirFS(tmpDir)}
+	result, err := uc.preparePrompt("test_prompt.txt", data)
 	if err != nil {
 		t.Fatalf("preparePrompt failed: %v", err)
 	}
@@ -120,7 +123,8 @@ func TestPreparePrompt_ComplexTypes(t *testing.T) {
 		},
 	}
 
-	result, err := preparePrompt(promptPath, data)
+	uc := AiAgentUsecase{promptsFS: os.DirFS(tmpDir)}
+	result, err := uc.preparePrompt("test_prompt.txt", data)
 	if err != nil {
 		t.Fatalf("preparePrompt failed: %v", err)
 	}
@@ -146,7 +150,8 @@ func TestPreparePrompt_HTMLCharacters(t *testing.T) {
 		"content": `<script>alert("test")</script> & "quotes"`,
 	}
 
-	result, err := preparePrompt(promptPath, data)
+	uc := AiAgentUsecase{promptsFS: os.DirFS(tmpDir)}
+	result, err := uc.preparePrompt("test_prompt.txt", data)
 	if err != nil {
 		t.Fatalf("preparePrompt failed: %v", err)
 	}
@@ -179,7 +184,8 @@ Complex: {{ .complex }}`
 		"complex": []string{"a", "b", "c"},
 	}
 
-	result, err := preparePrompt(promptPath, data)
+	uc := AiAgentUsecase{promptsFS: os.DirFS(tmpDir)}
+	result, err := uc.preparePrompt("test_prompt.txt", data)
 	if err != nil {
 		t.Fatalf("preparePrompt failed: %v", err)
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"maps"
 	"net/http"
@@ -21,6 +22,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/ai_agent"
 	"github.com/checkmarble/marble-backend/usecases/continuous_screening"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
@@ -338,6 +340,17 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		return errors.Wrap(err, "failed to open ip enrichment database")
 	}
 
+	aiPromptsServingDir := utils.GetEnv("AI_PROMPTS_SERVING_DIR", "")
+	var aiPromptsFS fs.FS
+	if license.LicenseValidationCode == models.VALID && license.CaseAiAssist {
+		aiPromptsFS = infra.InitAiPromptsFS(ctx, aiPromptsServingDir, apiVersion, licenseConfig.LicenseKey)
+		if err := ai_agent.ValidatePromptsFS(aiPromptsFS); err != nil {
+			utils.LoggerFromContext(ctx).WarnContext(ctx, "ai prompts filesystem failed validation, ai features are unavailable",
+				"error", err.Error())
+			aiPromptsFS = nil
+		}
+	}
+
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithAppName(appName),
 		usecases.WithIngestionBucketUrl(workerConfig.ingestionBucketUrl),
@@ -357,6 +370,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithCsCreateFullDatasetInterval(workerConfig.CreateFullDatasetInterval),
 		usecases.WithIpEnrichmentDatabase(ipEnrichmentDatabase),
 		usecases.WithScreeningOffloadingEnabled(utils.GetEnv("SCREENING_OFFLOADING_ENABLED", true)),
+		usecases.WithAIPromptsFS(aiPromptsFS),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 

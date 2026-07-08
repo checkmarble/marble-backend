@@ -10,15 +10,15 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/google/uuid"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 )
 
 const ENRICHMENT_DEFAULT_MODEL = "sonar-pro"
 
 const (
-	INSTRUCTION_PATH   = "prompts/kyc_enrichment/instruction.md"
-	PROMPT_ENRICH_PATH = "prompts/kyc_enrichment/prompt_enrich.md"
+	INSTRUCTION_PATH   = models.AiAgentKYCInstructionPath
+	PROMPT_ENRICH_PATH = models.AiAgentKYCPromptEnrichPath
 )
 
 var ErrKYCEnrichmentNotEnabled = errors.New("kyc enrichment is not enabled")
@@ -142,11 +142,11 @@ func (uc *AiAgentUsecase) enrichData(
 		*aiSetting.KYCEnrichmentSetting.CustomInstructions != "" {
 		instructionData["custom_instructions"] = *aiSetting.KYCEnrichmentSetting.CustomInstructions
 	}
-	instruction, err := preparePrompt(INSTRUCTION_PATH, instructionData)
+	instruction, err := uc.preparePrompt(INSTRUCTION_PATH, instructionData)
 	if err != nil {
 		return models.AiEnrichmentKYC{}, errors.Wrap(err, "failed to read instruction")
 	}
-	prompt, err := preparePrompt(PROMPT_ENRICH_PATH, map[string]any{
+	prompt, err := uc.preparePrompt(PROMPT_ENRICH_PATH, map[string]any{
 		"data": string(data),
 	})
 	if err != nil {

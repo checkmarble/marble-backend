@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	PROMPT_SCREENING_HIT_EVALUATE_PATH   = "prompts/screening_hit_suggestion/evaluate_match.md"
-	SCREENING_HIT_SYSTEM_PROMPT_PATH     = "prompts/screening_hit_suggestion/system.md"
+	PROMPT_SCREENING_HIT_EVALUATE_PATH   = models.AiAgentScreeningHitEvaluatePromptPath
+	SCREENING_HIT_SYSTEM_PROMPT_PATH     = models.AiAgentScreeningHitSystemPromptPath
 	SCREENING_HIT_SUGGESTION_BLOB_PREFIX = "ai_screening_reviews"
 )
 
@@ -94,7 +94,7 @@ func (uc *AiAgentUsecase) AnalyseScreeningHits(ctx context.Context, screeningId 
 	}
 
 	// Read system prompt
-	systemInstruction, err := readPrompt(SCREENING_HIT_SYSTEM_PROMPT_PATH)
+	systemInstruction, err := uc.readPrompt(SCREENING_HIT_SYSTEM_PROMPT_PATH)
 	if err != nil {
 		logger.DebugContext(ctx, "could not read screening hit system instruction", "error", err)
 		systemInstruction = "You are a compliance screening analyst. Assess whether each screening hit is a true positive or false positive."
