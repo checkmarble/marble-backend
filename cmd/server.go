@@ -197,7 +197,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
 		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
 	}
-	promptsDir := utils.GetEnv("PROMPTS_DIR", "")
+	aiPromptsServingDir := utils.GetEnv("AI_PROMPTS_SERVING_DIR", "")
 	bigQueryConfig := infra.BigQueryConfig{
 		ProjectID:      utils.GetEnv("BIGQUERY_PROJECT_ID", gcpConfig.ProjectId),
 		MetricsDataset: utils.GetEnv("BIGQUERY_METRICS_DATASET", infra.MetricsDataset),
@@ -407,7 +407,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithMarbleApiInternalUrl(apiConfig.MarbleApiInternalUrl),
 		usecases.WithIpEnrichmentDatabase(ipEnrichmentDatabase),
 		usecases.WithScreeningOffloadingEnabled(utils.GetEnv("SCREENING_OFFLOADING_ENABLED", true)),
-		usecases.WithPromptsDir(promptsDir),
+		usecases.WithAIPromptsServingDir(aiPromptsServingDir),
 	)
 
 	////////////////////////////////////////////////////////////
