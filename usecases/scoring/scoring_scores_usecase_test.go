@@ -31,6 +31,7 @@ type TryRefreshScoreTestSuite struct {
 	dataModelRepo       *mocks.DataModelRepository
 	ingestedDataReader  *mocks.IngestedDataReader
 	featureAccessReader *mocks.FeatureAccessReader
+	webhookSender       *mocks.WebhookEventsUsecase
 
 	orgId      uuid.UUID
 	recordType string
@@ -53,6 +54,7 @@ func (s *TryRefreshScoreTestSuite) SetupTest() {
 	s.dataModelRepo = new(mocks.DataModelRepository)
 	s.ingestedDataReader = new(mocks.IngestedDataReader)
 	s.featureAccessReader = new(mocks.FeatureAccessReader)
+	s.webhookSender = new(mocks.WebhookEventsUsecase)
 
 	s.orgId = pure_utils.NewId()
 	s.recordType = "account"
@@ -72,6 +74,7 @@ func (s *TryRefreshScoreTestSuite) makeUsecase() ScoringScoresUsecase {
 		repository:          s.repository,
 		taskQueueRepository: s.taskQueue,
 		featureAccessReader: s.featureAccessReader,
+		webhookSender:       s.webhookSender,
 	}
 }
 
@@ -239,6 +242,9 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeAndInsert_Ha
 		Return([]models.DataModelObject{obj}, nil)
 	s.repository.On("InsertScore", s.ctx, s.transaction, expectedReq).
 		Return(inserted, nil)
+	s.webhookSender.On("CreateWebhookEvent", s.ctx, s.transaction, mock.Anything).
+		Return(nil)
+	s.webhookSender.On("SendWebhookEventAsync", s.ctx, mock.Anything).Once()
 
 	uc := s.makeUsecaseWithCompute()
 	result, err := uc.tryRefreshScore(s.ctx, current, s.record, opts)

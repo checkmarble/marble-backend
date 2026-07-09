@@ -76,6 +76,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) makeScoreUsecase() scoring.Sc
 		ast_eval.EvaluateAstExpression{
 			AstEvaluationEnvironmentFactory: noopAstEvaluationEnvironmentFactory,
 		},
+		nil,
 	)
 }
 

@@ -1264,6 +1264,7 @@ func (usecases *UsecasesWithCreds) NewScoringScoresUsecase() scoring.ScoringScor
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.Repositories.TaskQueueRepository,
 		usecases.NewEvaluateAstExpression(),
+		usecases.NewWebhookEventsUsecase(),
 	)
 }
 
