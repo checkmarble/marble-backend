@@ -193,7 +193,7 @@ type CaseDecisionListPaginationDto struct {
 }
 
 type CaseMassUpdateDto struct {
-	Action      string                     `json:"action" binding:"required,oneof=close reopen assign move_to_inbox"`
+	Action      string                     `json:"action" binding:"required,oneof=close reopen assign unassign move_to_inbox"`
 	CaseIds     []uuid.UUID                `json:"case_ids" binding:"required,dive,uuid"`
 	Assign      *CaseMassUpdateAssignDto   `json:"assign" binding:"required_if=Action assign"`
 	MoveToInbox *CaseMassUpdateMoveToInbox `json:"move_to_inbox" binding:"required_if=Action move_to_inbox"`

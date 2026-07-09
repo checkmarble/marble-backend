@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
+	mcpserver "github.com/checkmarble/marble-backend/mcp"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
 	pubapiv1 "github.com/checkmarble/marble-backend/pubapi/v1"
@@ -85,6 +86,12 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 			auth.AuthedBy(utils.PublicApiKey, utils.ApiKeyAsBearerToken), uc)
 		pubapiv1.BetaRoutes(cfg, r.Group("/v1beta"),
 			auth.AuthedBy(utils.PublicApiKey, utils.ApiKeyAsBearerToken), uc)
+	}
+
+	// MCP server (POC)
+	{
+		mcpserver.Routes(uc, conf.AppVersion, r.Group("/mcp"),
+			auth.AuthedBy(utils.PublicApiKey, utils.ApiKeyAsBearerToken))
 	}
 
 	// Screening Indexer endpoints

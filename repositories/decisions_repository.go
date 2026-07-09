@@ -832,3 +832,44 @@ func (repo *MarbleDbRepository) CountDecisionsByOrg(ctx context.Context, exec Ex
 
 	return countByHelper(ctx, exec, query, orgIds)
 }
+
+// DecisionStatsByDayOutcomeUser returns decision counts for the given org and
+// date range, broken down by day, outcome, and the assignee of the decision's
+// case (nil if the decision has no case, or the case is unassigned).
+func (repo *MarbleDbRepository) DecisionStatsByDayOutcomeUser(ctx context.Context, exec Executor,
+	orgId uuid.UUID, start, end time.Time,
+) ([]models.DecisionStatRow, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(
+			"date_trunc('day', d.created_at) as date",
+			"d.outcome",
+			"c.assigned_to",
+			"count(*) as count",
+		).
+		From(dbmodels.TABLE_DECISIONS + " d").
+		LeftJoin(dbmodels.TABLE_CASES + " c on c.id = d.case_id").
+		Where(squirrel.Eq{"d.org_id": orgId}).
+		Where(squirrel.GtOrEq{"d.created_at": start}).
+		Where(squirrel.Lt{"d.created_at": end}).
+		GroupBy("date, d.outcome, c.assigned_to")
+
+	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.DecisionStatRow, error) {
+		var date time.Time
+		var outcome string
+		var assignedTo *string
+		var count int
+		if err := row.Scan(&date, &outcome, &assignedTo, &count); err != nil {
+			return models.DecisionStatRow{}, err
+		}
+		var userId *models.UserId
+		if assignedTo != nil {
+			uid := models.UserId(*assignedTo)
+			userId = &uid
+		}
+		return models.DecisionStatRow{Date: date, Outcome: outcome, AssignedTo: userId, Count: count}, nil
+	})
+}

@@ -798,3 +798,47 @@ func (repo *MarbleDbRepository) CountCasesByOrg(ctx context.Context, exec Execut
 
 	return countByHelper(ctx, exec, query, orgIds)
 }
+
+// CasesCountByAssignee returns, for the given org (and optional filters), the
+// number of cases grouped by assignee. Unassigned cases are grouped under a
+// nil AssignedTo.
+func (repo *MarbleDbRepository) CasesCountByAssignee(ctx context.Context, exec Executor,
+	filters models.CaseFilters,
+) ([]models.CaseAssigneeCount, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select("assigned_to, count(*) as case_count").
+		From(dbmodels.TABLE_CASES).
+		Where(squirrel.Eq{"org_id": filters.OrganizationId}).
+		GroupBy("assigned_to")
+
+	if len(filters.Statuses) > 0 {
+		query = query.Where(squirrel.Eq{"status": filters.Statuses})
+	}
+	if len(filters.InboxIds) > 0 {
+		query = query.Where(squirrel.Eq{"inbox_id": filters.InboxIds})
+	}
+	if !filters.StartDate.IsZero() {
+		query = query.Where(squirrel.GtOrEq{"created_at": filters.StartDate})
+	}
+	if !filters.EndDate.IsZero() {
+		query = query.Where(squirrel.LtOrEq{"created_at": filters.EndDate})
+	}
+
+	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.CaseAssigneeCount, error) {
+		var assignedTo *string
+		var count int
+		if err := row.Scan(&assignedTo, &count); err != nil {
+			return models.CaseAssigneeCount{}, err
+		}
+		var userId *models.UserId
+		if assignedTo != nil {
+			uid := models.UserId(*assignedTo)
+			userId = &uid
+		}
+		return models.CaseAssigneeCount{AssignedTo: userId, CaseCount: count}, nil
+	})
+}
