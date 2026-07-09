@@ -26,7 +26,7 @@ tags:
   - name: Record
     description: Routes for record (data ingested into Marble)
 paths:
-  /ingest/{objectType}/upload:
+  /ingest/{objectType}/uploads:
     put:
       operationId: asyncIngestCsv
       tags:
