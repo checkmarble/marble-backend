@@ -192,6 +192,11 @@ type CaseListPage struct {
 	HasNextPage bool
 }
 
+type CaseAssigneeCount struct {
+	AssignedTo *UserId
+	CaseCount  int
+}
+
 const CasesSortingCreatedAt = SortingFieldCreatedAt
 
 func ValidateCaseStatuses(statuses []string) ([]CaseStatus, error) {
@@ -288,6 +293,7 @@ const (
 	CaseMassUpdateClose       CaseMassUpdateAction = "close"
 	CaseMassUpdateReopen      CaseMassUpdateAction = "reopen"
 	CaseMassUpdateAssign      CaseMassUpdateAction = "assign"
+	CaseMassUpdateUnassign    CaseMassUpdateAction = "unassign"
 	CaseMassUpdateMoveToInbox CaseMassUpdateAction = "move_to_inbox"
 	CaseMassUpdateUnknown     CaseMassUpdateAction = "unknown"
 )
@@ -304,6 +310,8 @@ func CaseMassUpdateActionFromString(s string) CaseMassUpdateAction {
 		return CaseMassUpdateReopen
 	case "assign":
 		return CaseMassUpdateAssign
+	case "unassign":
+		return CaseMassUpdateUnassign
 	case "move_to_inbox":
 		return CaseMassUpdateMoveToInbox
 	default:

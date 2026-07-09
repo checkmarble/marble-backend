@@ -62,6 +62,24 @@ func (repo *MarbleDbRepository) CaseMassAssign(ctx context.Context, tx Transacti
 	return caseMassUpdateExecAndReturnedChanged(ctx, tx, query)
 }
 
+func (repo *MarbleDbRepository) CaseMassUnassign(ctx context.Context, tx Transaction, caseIds []uuid.UUID) ([]uuid.UUID, error) {
+	if err := validateMarbleDbExecutor(tx); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_CASES).
+		Set("assigned_to", nil).
+		Set("boost", nil).
+		Where(squirrel.And{
+			squirrel.Eq{"id": caseIds},
+			squirrel.NotEq{"assigned_to": nil},
+		}).
+		Suffix("returning id")
+
+	return caseMassUpdateExecAndReturnedChanged(ctx, tx, query)
+}
+
 func (repo *MarbleDbRepository) CaseMassMoveToInbox(ctx context.Context, tx Transaction, caseIds []uuid.UUID, inboxId uuid.UUID) ([]uuid.UUID, error) {
 	if err := validateMarbleDbExecutor(tx); err != nil {
 		return nil, err

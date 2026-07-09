@@ -90,7 +90,11 @@ type CaseUseCaseRepository interface {
 		status models.CaseStatus) ([]uuid.UUID, error)
 	CaseMassAssign(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID,
 		assigneeId uuid.UUID) ([]uuid.UUID, error)
+	CaseMassUnassign(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID) ([]uuid.UUID, error)
 	CaseMassMoveToInbox(ctx context.Context, tx repositories.Transaction, caseIds []uuid.UUID, inboxId uuid.UUID) ([]uuid.UUID, error)
+
+	CasesCountByAssignee(ctx context.Context, exec repositories.Executor,
+		filters models.CaseFilters) ([]models.CaseAssigneeCount, error)
 
 	// Continuous screenings
 	ListContinuousScreeningsWithMatchesByCaseId(
@@ -351,6 +355,30 @@ func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.
 	}
 
 	return c, nil
+}
+
+func (usecase *CaseUseCase) CountCasesByAssignee(ctx context.Context, filters models.CaseFilters) ([]models.CaseAssigneeCount, error) {
+	exec := usecase.executorFactory.NewExecutor()
+	orgId := usecase.enforceSecurity.OrgId()
+
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, orgId)
+	if err != nil {
+		return nil, err
+	}
+
+	repoFilters := filters
+	repoFilters.OrganizationId = orgId
+	if len(filters.InboxIds) > 0 {
+		for _, inboxId := range filters.InboxIds {
+			if !slices.Contains(availableInboxIds, inboxId) {
+				return nil, errors.Wrap(models.ForbiddenError, fmt.Sprintf("inbox %s is not accessible", inboxId))
+			}
+		}
+	} else {
+		repoFilters.InboxIds = availableInboxIds
+	}
+
+	return usecase.repository.CasesCountByAssignee(ctx, exec, repoFilters)
 }
 
 func (usecase *CaseUseCase) GetEntityRelatedCases(ctx context.Context, objectType, objectId string) ([]models.Case, error) {
@@ -2510,6 +2538,23 @@ func (usecase *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpda
 					EventType:     models.CaseAssigned,
 					PreviousValue: (*string)(sourceCases[updatedId.String()].AssignedTo),
 					NewValue:      utils.Ptr(req.Assign.AssigneeId.String()),
+				}
+			}
+
+		case models.CaseMassUpdateUnassign:
+			updatedIds, err := usecase.repository.CaseMassUnassign(ctx, tx, req.CaseIds)
+			if err != nil {
+				return errors.Wrap(err, "could not unassign cases in mass update")
+			}
+
+			for _, updatedId := range updatedIds {
+				events[updatedId.String()] = models.CreateCaseEventAttributes{
+					OrgId:         orgId,
+					UserId:        userId,
+					CaseId:        updatedId.String(),
+					EventType:     models.CaseAssigned,
+					PreviousValue: (*string)(sourceCases[updatedId.String()].AssignedTo),
+					NewValue:      nil,
 				}
 			}
 

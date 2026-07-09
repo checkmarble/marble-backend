@@ -225,6 +225,13 @@ type DecisionListPage struct {
 	HasNextPage bool
 }
 
+type DecisionStatRow struct {
+	Date       time.Time
+	Outcome    string
+	AssignedTo *UserId
+	Count      int
+}
+
 const DecisionSortingCreatedAt SortingField = SortingFieldCreatedAt
 
 type DecisionWorkflowFilters struct {

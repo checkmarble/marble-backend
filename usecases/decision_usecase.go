@@ -56,6 +56,8 @@ type DecisionUsecaseRepository interface {
 		paginationAndSorting models.PaginationAndSorting,
 		filters models.DecisionFilters,
 	) ([]models.Decision, error)
+	DecisionStatsByDayOutcomeUser(ctx context.Context, exec repositories.Executor,
+		orgId uuid.UUID, start, end time.Time) ([]models.DecisionStatRow, error)
 
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string, screeningProvider models.ScreeningProvider) (models.Scenario, error)
 
@@ -156,6 +158,22 @@ func (usecase *DecisionUsecase) GetDecisionsByOutcomeAndScore(ctx context.Contex
 	}
 
 	return decisions, nil
+}
+
+func (usecase *DecisionUsecase) StatsByDayOutcomeUser(
+	ctx context.Context,
+	organizationId uuid.UUID,
+	start, end time.Time,
+) ([]models.DecisionStatRow, error) {
+	if err := usecase.enforceSecurity.Permission(models.DECISION_READ); err != nil {
+		return nil, err
+	}
+	if err := usecase.enforceSecurity.ReadOrganization(organizationId); err != nil {
+		return nil, err
+	}
+
+	exec := usecase.executorFactory.NewExecutor()
+	return usecase.repository.DecisionStatsByDayOutcomeUser(ctx, exec, organizationId, start, end)
 }
 
 func (usecase *DecisionUsecase) ListDecisions(
