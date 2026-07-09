@@ -188,7 +188,8 @@ type ContinuousScreeningDatasetUpdateEnriched struct {
 	IsCurrent   bool
 	// Latest processing job for this dataset update and org. Status is Unknown when no job
 	// exists yet; ItemsProcessed is nil until a job offset has been recorded.
-	Status         ContinuousScreeningUpdateJobStatus
+	// Latest processing job for this dataset update and org. Status defaults to Pending
+	// when no job exists yet; ItemsProcessed is nil until a job offset has been recorded.	Status ContinuousScreeningUpdateJobStatus
 	ItemsProcessed *int
 }
 
