@@ -188,10 +188,11 @@ func (m *ContinuousScreeningRepository) ListContinuousScreeningsForOrg(
 func (m *ContinuousScreeningRepository) ListContinuousScreeningDatasetUpdates(
 	ctx context.Context,
 	exec repositories.Executor,
+	orgId uuid.UUID,
 	pagination models.PaginationAndSorting,
-) ([]models.ContinuousScreeningDatasetUpdate, error) {
-	args := m.Called(ctx, exec, pagination)
-	return args.Get(0).([]models.ContinuousScreeningDatasetUpdate), args.Error(1)
+) ([]models.ContinuousScreeningDatasetUpdateEnriched, error) {
+	args := m.Called(ctx, exec, orgId, pagination)
+	return args.Get(0).([]models.ContinuousScreeningDatasetUpdateEnriched), args.Error(1)
 }
 
 func (m *ContinuousScreeningRepository) ListContinuousScreeningUpdateJobs(

@@ -12,19 +12,39 @@ import (
 type ContinuousScreeningDatasetUpdateDto struct {
 	Id          uuid.UUID `json:"id"`
 	DatasetName string    `json:"dataset_name"`
+	// Version is the stored (processed) version; LiveVersion is the current version reported by
+	// the provider catalog. They differ when the stored data is not up to date.
 	Version     string    `json:"version"`
+	LiveVersion string    `json:"live_version"`
+	Title       string    `json:"title"`
+	IsCurrent   bool      `json:"is_current"`
 	TotalItems  int       `json:"total_items"`
-	CreatedAt   time.Time `json:"created_at"`
+	// Status of the latest processing job for this dataset update ("processing", "completed",
+	// "failed", ...). Progress is the processed percentage, set only while processing.
+	Status    string    `json:"status"`
+	Progress  *int      `json:"progress,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func AdaptContinuousScreeningDatasetUpdateDto(
-	u models.ContinuousScreeningDatasetUpdate,
+	u models.ContinuousScreeningDatasetUpdateEnriched,
 ) ContinuousScreeningDatasetUpdateDto {
+	var progress *int
+	if u.ItemsProcessed != nil && u.TotalItems > 0 {
+		p := *u.ItemsProcessed * 100 / u.TotalItems
+		progress = &p
+	}
+
 	return ContinuousScreeningDatasetUpdateDto{
 		Id:          u.Id,
 		DatasetName: u.DatasetName,
 		Version:     u.Version,
+		LiveVersion: u.LiveVersion,
+		Title:       u.Title,
+		IsCurrent:   u.IsCurrent,
 		TotalItems:  u.TotalItems,
+		Status:      u.Status.String(),
+		Progress:    progress,
 		CreatedAt:   u.CreatedAt,
 	}
 }
