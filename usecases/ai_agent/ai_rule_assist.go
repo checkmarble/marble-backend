@@ -15,10 +15,25 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	RULE_DESCRIPTION_PROMPT_PATH      = models.AiAgentRuleDescriptionPromptPath
-	RULE_GENERATION_PROMPT_STEP1_PATH = models.AiAgentRuleGenerationStep1PromptPath
-	RULE_GENERATION_PROMPT_STEP2_PATH = models.AiAgentRuleGenerationStep2PromptPath
+// Rule assist prompts, each tagged with the feature and model tier it needs. Describing an
+// existing rule and building one from natural language are distinct features, so they can be
+// tuned independently.
+var (
+	RULE_DESCRIPTION_PROMPT = promptSpec{
+		Path:    models.AiAgentRuleDescriptionPromptPath,
+		Feature: models.AiFeatureRuleDescription,
+		Tier:    models.AiModelTierLight,
+	}
+	RULE_GENERATION_PROMPT_STEP1 = promptSpec{
+		Path:    models.AiAgentRuleGenerationStep1PromptPath,
+		Feature: models.AiFeatureRuleBuilder,
+		Tier:    models.AiModelTierHeavy,
+	}
+	RULE_GENERATION_PROMPT_STEP2 = promptSpec{
+		Path:    models.AiAgentRuleGenerationStep2PromptPath,
+		Feature: models.AiFeatureRuleBuilder,
+		Tier:    models.AiModelTierHeavy,
+	}
 )
 
 // GenerateRule generates a rule AST from a natural language instruction
@@ -92,7 +107,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 	}
 
 	provider, model, ruleGenerationPrompt, err := uc.preparePromptWithModel(
-		RULE_GENERATION_PROMPT_STEP1_PATH, map[string]any{
+		RULE_GENERATION_PROMPT_STEP1, map[string]any{
 			"data_model":         dataModelDto,
 			"custom_list":        customListsDto,
 			"instruction":        instruction,
@@ -124,7 +139,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 	logger.DebugContext(ctx, fmt.Sprintf("LLM response as string:\n%s\n", ruleAsString))
 
 	provider, model, ruleGenerationPrompt, err = uc.preparePromptWithModel(
-		RULE_GENERATION_PROMPT_STEP2_PATH, map[string]any{
+		RULE_GENERATION_PROMPT_STEP2, map[string]any{
 			"data_model":         dataModelDto,
 			"custom_list":        customListsDto,
 			"instruction":        instruction,
@@ -261,7 +276,7 @@ func (uc *AiAgentUsecase) AiASTDescription(
 
 	// Execute the LLM prompt and return the result
 	provider, model, ruleDescription, err := uc.preparePromptWithModel(
-		RULE_DESCRIPTION_PROMPT_PATH, map[string]any{
+		RULE_DESCRIPTION_PROMPT, map[string]any{
 			"data_model":  dataModelDto,
 			"custom_list": customListsDto,
 			"rule":        ruleAST,

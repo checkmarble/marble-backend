@@ -194,7 +194,6 @@ type AIAgentConfiguration struct {
 	MainAgentProviderType AIAgentProviderType
 	MainAgentURL          string
 	MainAgentKey          string
-	MainAgentDefaultModel string
 
 	// For AI Studio
 	MainAgentBackend  genai.Backend
@@ -203,6 +202,10 @@ type AIAgentConfiguration struct {
 
 	// For Perplexity
 	PerplexityAPIKey string
+
+	// Path to an optional local JSON file overriding the light/heavy AI agent models, merged
+	// on top of the resolved ai_agent_models.json field by field. Empty means no override.
+	ModelsConfigOverridePath string
 }
 
 func AIAgentProviderTypeFromString(providerType string) AIAgentProviderType {

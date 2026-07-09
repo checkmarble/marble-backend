@@ -7,6 +7,7 @@ require (
 	cloud.google.com/go/iam v1.11.0
 	cloud.google.com/go/profiler v0.6.0
 	cloud.google.com/go/storage v1.63.0
+	dario.cat/mergo v1.0.2
 	firebase.google.com/go/v4 v4.20.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.33.0
