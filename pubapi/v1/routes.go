@@ -99,6 +99,9 @@ func BetaRoutes(conf pubapi.Config, unauthed *gin.RouterGroup, authMiddleware gi
 		root.PUT("/ingest/:objectType/uploads", v1beta.HandleUploadCsv(uc))
 		root.GET("/ingest/:objectType/uploads", v1beta.HandleBatchIngestionLog(uc))
 
+		root.GET("/risk-levels/:objectType/:objectId", v1beta.HandleGetObjectRiskLevel(uc))
+		root.POST("/risk-levels/:objectType/:objectId", v1beta.HandleOverrideObjectRiskLevel(uc))
+
 		// Graduated
 
 		root.POST("/ingest/:objectType", HandleIngestObject(uc, false))
