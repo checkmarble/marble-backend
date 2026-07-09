@@ -56,6 +56,7 @@ type Usecases struct {
 	screeningOffloadingEnabled   bool
 	aiPromptsServingDir          string
 	aiPromptsFS                  fs.FS
+	aiAgentModelConfig           *models.AiAgentModelConfig
 
 	coordsEnricher *rgeo.Rgeo
 	ipEnricher     *maxminddb.Reader
@@ -232,6 +233,12 @@ func WithAIPromptsFS(aiPromptsFS fs.FS) Option {
 	}
 }
 
+func WithAIAgentModelConfig(config *models.AiAgentModelConfig) Option {
+	return func(o *options) {
+		o.aiAgentModelConfig = config
+	}
+}
+
 type options struct {
 	appName                      string
 	apiVersion                   string
@@ -259,6 +266,7 @@ type options struct {
 	ipEnricher                   *maxminddb.Reader
 	aiPromptsServingDir          string
 	aiPromptsFS                  fs.FS
+	aiAgentModelConfig           *models.AiAgentModelConfig
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -298,6 +306,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		screeningOffloadingEnabled:   o.screeningOffloadingEnabled,
 		aiPromptsServingDir:          o.aiPromptsServingDir,
 		aiPromptsFS:                  o.aiPromptsFS,
+		aiAgentModelConfig:           o.aiAgentModelConfig,
 
 		coordsEnricher: coordsEnricher,
 		ipEnricher:     o.ipEnricher,

@@ -2,9 +2,12 @@ package cmd
 
 import (
 	"context"
+	"io/fs"
 
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/ai_agent"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 )
@@ -52,4 +55,34 @@ func IsWebhookSystemMigrated(ctx context.Context, repositories repositories.Repo
 	}
 
 	return metadata.Value == "true"
+}
+
+// Configure the AI prompts filesystem and AI agent model configuration
+func configAiResource(
+	ctx context.Context,
+	license models.LicenseValidation,
+	licenseConfig models.LicenseConfiguration,
+	aiAgentConfig infra.AIAgentConfiguration,
+	aiPromptsServingDir string,
+	version string,
+) (fs.FS, *models.AiAgentModelConfig) {
+	var aiPromptsFS fs.FS
+	if license.LicenseValidationCode == models.VALID && license.CaseAiAssist {
+		aiPromptsFS = infra.InitAiPromptsFS(ctx, aiPromptsServingDir, version, licenseConfig.LicenseKey)
+		if err := ai_agent.ValidatePromptsFS(aiPromptsFS); err != nil {
+			utils.LoggerFromContext(ctx).WarnContext(ctx, "ai prompts filesystem failed validation, ai features are unavaible",
+				"error", err.Error())
+			aiPromptsFS = nil
+		}
+	}
+
+	aiAgentModelConfig, err := models.LoadAiAgentModelConfig(aiPromptsFS, aiAgentConfig.ModelsConfigOverridePath)
+	if err != nil {
+		if aiPromptsFS != nil {
+			utils.LoggerFromContext(ctx).WarnContext(ctx, "failed to load ai agent model configuration, ai features are unavailable",
+				"error", err.Error())
+		}
+		aiAgentModelConfig = nil
+	}
+	return aiPromptsFS, aiAgentModelConfig
 }

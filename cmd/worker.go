@@ -148,15 +148,15 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		MainAgentProviderType: infra.AIAgentProviderTypeFromString(
 			utils.GetEnv("AI_AGENT_MAIN_AGENT_PROVIDER_TYPE", "openai"),
 		),
-		MainAgentURL:          utils.GetEnv("AI_AGENT_MAIN_AGENT_URL", ""),
-		MainAgentKey:          utils.GetEnv("AI_AGENT_MAIN_AGENT_KEY", ""),
-		MainAgentDefaultModel: utils.GetEnv("AI_AGENT_MAIN_AGENT_DEFAULT_MODEL", "gemini-2.5-flash"),
+		MainAgentURL: utils.GetEnv("AI_AGENT_MAIN_AGENT_URL", ""),
+		MainAgentKey: utils.GetEnv("AI_AGENT_MAIN_AGENT_KEY", ""),
 		MainAgentBackend: infra.AIAgentProviderBackendFromString(
 			utils.GetEnv("AI_AGENT_MAIN_AGENT_BACKEND", ""),
 		),
-		MainAgentProject:  utils.GetEnv("AI_AGENT_MAIN_AGENT_PROJECT", gcpConfig.ProjectId),
-		MainAgentLocation: utils.GetEnv("AI_AGENT_MAIN_AGENT_LOCATION", ""),
-		PerplexityAPIKey:  utils.GetEnv("AI_AGENT_PERPLEXITY_API_KEY", ""),
+		MainAgentProject:         utils.GetEnv("AI_AGENT_MAIN_AGENT_PROJECT", gcpConfig.ProjectId),
+		MainAgentLocation:        utils.GetEnv("AI_AGENT_MAIN_AGENT_LOCATION", ""),
+		PerplexityAPIKey:         utils.GetEnv("AI_AGENT_PERPLEXITY_API_KEY", ""),
+		ModelsConfigOverridePath: utils.GetEnv("AI_AGENT_MODELS_CONFIG_OVERRIDE_FILE", ""),
 	}
 
 	infra.SetupSentry(workerConfig.sentryDsn, workerConfig.env, apiVersion)
@@ -371,6 +371,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithIpEnrichmentDatabase(ipEnrichmentDatabase),
 		usecases.WithScreeningOffloadingEnabled(utils.GetEnv("SCREENING_OFFLOADING_ENABLED", true)),
 		usecases.WithAIPromptsFS(aiPromptsFS),
+		usecases.WithAIAgentModelConfig(aiAgentModelConfig),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 

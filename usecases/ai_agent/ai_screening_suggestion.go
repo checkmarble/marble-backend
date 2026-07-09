@@ -17,10 +17,15 @@ import (
 )
 
 const (
-	PROMPT_SCREENING_HIT_EVALUATE_PATH   = models.AiAgentScreeningHitEvaluatePromptPath
 	SCREENING_HIT_SYSTEM_PROMPT_PATH     = models.AiAgentScreeningHitSystemPromptPath
 	SCREENING_HIT_SUGGESTION_BLOB_PREFIX = "ai_screening_reviews"
 )
+
+var PROMPT_SCREENING_HIT_EVALUATE = promptSpec{
+	Path:    models.AiAgentScreeningHitEvaluatePromptPath,
+	Feature: models.AiFeatureScreeningHitSuggestion,
+	Tier:    models.AiModelTierLight,
+}
 
 func screeningHitSuggestionBlobPath(screeningId, matchId string) string {
 	return fmt.Sprintf("%s/%s/%s.json", SCREENING_HIT_SUGGESTION_BLOB_PREFIX, screeningId, matchId)
@@ -197,7 +202,7 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 	matchPromptData["MatchPayload"] = string(agent_dto.SanitizeScreeningPayloadForLLM(enrichedMatch.Payload))
 	matchPromptData["MatchScore"] = fmt.Sprintf("%.2f", enrichedMatch.GetScoreFromPayload())
 
-	_, model, userMessage, err := uc.preparePromptWithModel(PROMPT_SCREENING_HIT_EVALUATE_PATH, matchPromptData)
+	_, model, userMessage, err := uc.preparePromptWithModel(PROMPT_SCREENING_HIT_EVALUATE, matchPromptData)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not prepare prompt")
 	}
