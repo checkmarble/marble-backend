@@ -28,7 +28,7 @@ tags:
 paths:
   /ingest/{objectType}/uploads:
     put:
-      operationId: asyncIngestCsv
+      operationId: asyncIngestCsv 
       tags:
         - Ingestion
       security:
@@ -86,7 +86,7 @@ paths:
         blob storage in use.
       requestBody:
         content:
-          text/csv:
+          text/csv: {}
       responses:
         "202":
           description: Upload URL created
