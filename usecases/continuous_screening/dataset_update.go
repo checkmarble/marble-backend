@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -20,7 +21,8 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningDatasetUpdates(
 
 	org, err := uc.repository.GetOrganizationById(ctx, exec, orgId)
 	if err != nil {
-		return models.Paginated[models.ContinuousScreeningDatasetUpdateEnriched]{}, err
+		return models.Paginated[models.ContinuousScreeningDatasetUpdateEnriched]{},
+			errors.Wrap(err, "failed to get organization for continuous screening dataset updates")
 	}
 	provider := org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring)
 
@@ -31,7 +33,8 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningDatasetUpdates(
 
 	updates, err := uc.repository.ListContinuousScreeningDatasetUpdates(ctx, exec, orgId, pagination)
 	if err != nil {
-		return models.Paginated[models.ContinuousScreeningDatasetUpdateEnriched]{}, err
+		return models.Paginated[models.ContinuousScreeningDatasetUpdateEnriched]{},
+			errors.Wrap(err, "failed to list continuous screening dataset updates")
 	}
 
 	hasNextPage := len(updates) > limit
@@ -40,7 +43,8 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningDatasetUpdates(
 	// Overlay fresh data from the provider catalog onto each stored row.
 	catalog, err := uc.screeningProvider.GetRawCatalog(ctx, provider)
 	if err != nil {
-		return models.Paginated[models.ContinuousScreeningDatasetUpdateEnriched]{}, err
+		return models.Paginated[models.ContinuousScreeningDatasetUpdateEnriched]{},
+			errors.Wrap(err, "failed to get screening provider catalog")
 	}
 	current := make(map[string]struct{}, len(catalog.Current))
 	for _, name := range catalog.Current {
@@ -77,7 +81,8 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningUpdateJobs(
 	exec := uc.executorFactory.NewExecutor()
 	jobs, err := uc.repository.ListContinuousScreeningUpdateJobs(ctx, exec, orgId, pagination)
 	if err != nil {
-		return models.Paginated[models.ContinuousScreeningUpdateJobSummary]{}, err
+		return models.Paginated[models.ContinuousScreeningUpdateJobSummary]{},
+			errors.Wrap(err, "failed to list continuous screening update jobs")
 	}
 
 	hasNextPage := len(jobs) > limit
@@ -105,7 +110,8 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningClientDataIndexing(
 	exec := uc.executorFactory.NewExecutor()
 	items, err := uc.repository.ListContinuousScreeningClientDataIndexing(ctx, exec, orgId, pagination)
 	if err != nil {
-		return models.Paginated[models.ContinuousScreeningClientDataIndexingSummary]{}, err
+		return models.Paginated[models.ContinuousScreeningClientDataIndexingSummary]{},
+			errors.Wrap(err, "failed to list continuous screening client data indexing")
 	}
 
 	hasNextPage := len(items) > limit
