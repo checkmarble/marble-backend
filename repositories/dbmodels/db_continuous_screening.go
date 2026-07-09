@@ -181,6 +181,44 @@ func AdaptContinuousScreeningDatasetUpdate(dto DBContinuousScreeningDatasetUpdat
 	}, nil
 }
 
+// DBContinuousScreeningDatasetUpdateEnriched is a dataset-update row left-joined to the latest
+// processing job for the org (status) and its offset (items_processed). Status/ItemsProcessed
+// are nullable because a dataset update may not have a job (or offset) yet.
+type DBContinuousScreeningDatasetUpdateEnriched struct {
+	Id             uuid.UUID `db:"id"`
+	DatasetName    string    `db:"dataset_name"`
+	Version        string    `db:"version"`
+	DeltaFilePath  string    `db:"delta_file_path"`
+	TotalItems     int       `db:"total_items"`
+	CreatedAt      time.Time `db:"created_at"`
+	Status         *string   `db:"status"`
+	ItemsProcessed *int      `db:"items_processed"`
+}
+
+func AdaptContinuousScreeningDatasetUpdateEnriched(
+	dto DBContinuousScreeningDatasetUpdateEnriched,
+) (models.ContinuousScreeningDatasetUpdateEnriched, error) {
+	// No job row yet for this dataset update and org means processing has not started:
+	// surface it as pending rather than unknown.
+	status := models.ContinuousScreeningUpdateJobStatusPending
+	if dto.Status != nil {
+		status = models.ContinuousScreeningUpdateJobStatusFrom(*dto.Status)
+	}
+
+	return models.ContinuousScreeningDatasetUpdateEnriched{
+		ContinuousScreeningDatasetUpdate: models.ContinuousScreeningDatasetUpdate{
+			Id:            dto.Id,
+			DatasetName:   dto.DatasetName,
+			Version:       dto.Version,
+			DeltaFilePath: dto.DeltaFilePath,
+			TotalItems:    dto.TotalItems,
+			CreatedAt:     dto.CreatedAt,
+		},
+		Status:         status,
+		ItemsProcessed: dto.ItemsProcessed,
+	}, nil
+}
+
 const TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS = "continuous_screening_update_jobs"
 
 var SelectContinuousScreeningUpdateJobColumn = utils.ColumnList[DBContinuousScreeningUpdateJob]()

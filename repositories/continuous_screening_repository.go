@@ -812,11 +812,19 @@ func (repo *MarbleDbRepository) GetLastProcessedVersion(
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetUpdate)
 }
 
+// ListContinuousScreeningDatasetUpdates returns the stored dataset-update history (paginated by
+// created_at) completed with the latest processing job status for the given org. The caller
+// overlays fresh catalog data (title, live version, freshness) on top of these rows.
+//
+// The job status is left-joined via a LATERAL subquery that picks the most recent job for each
+// dataset update scoped to the org: a dataset update may have several jobs (one per config), and
+// a plain join would multiply rows and break the keyset pagination window.
 func (repo *MarbleDbRepository) ListContinuousScreeningDatasetUpdates(
 	ctx context.Context,
 	exec Executor,
+	orgId uuid.UUID,
 	pagination models.PaginationAndSorting,
-) ([]models.ContinuousScreeningDatasetUpdate, error) {
+) ([]models.ContinuousScreeningDatasetUpdateEnriched, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -827,12 +835,23 @@ func (repo *MarbleDbRepository) ListContinuousScreeningDatasetUpdates(
 			"invalid sorting field: %s", pagination.Sorting)
 	}
 
-	orderCond := fmt.Sprintf("%s %s, id %s",
+	orderCond := fmt.Sprintf("ds.%s %s, ds.id %s",
 		pagination.Sorting, pagination.Order, pagination.Order)
 
 	query := NewQueryBuilder().
-		Select(dbmodels.SelectContinuousScreeningDatasetUpdateColumn...).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES).
+		Select(columnsNames("ds", dbmodels.SelectContinuousScreeningDatasetUpdateColumn)...).
+		Column("job.status AS status").
+		Column("off.items_processed AS items_processed").
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES + " AS ds").
+		JoinClause(`LEFT JOIN LATERAL (
+			SELECT ucs.id, ucs.status
+			FROM `+dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS+` ucs
+			WHERE ucs.continuous_screening_dataset_update_id = ds.id AND ucs.org_id = ?
+			ORDER BY ucs.created_at DESC
+			LIMIT 1
+		) job ON true`, orgId).
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS +
+			" AS off ON (off.continuous_screening_update_job_id = job.id)").
 		OrderBy(orderCond).
 		Limit(uint64(pagination.Limit))
 
@@ -842,7 +861,7 @@ func (repo *MarbleDbRepository) ListContinuousScreeningDatasetUpdates(
 		return nil, err
 	}
 
-	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetUpdate)
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetUpdateEnriched)
 }
 
 func (repo *MarbleDbRepository) applyContinuousScreeningDatasetUpdatePaginationFilters(
@@ -871,9 +890,9 @@ func (repo *MarbleDbRepository) applyContinuousScreeningDatasetUpdatePaginationF
 
 	args := []any{offset.CreatedAt, p.OffsetId}
 	if p.Order == models.SortingOrderDesc {
-		query = query.Where(fmt.Sprintf("(%s, id) < (?, ?)", p.Sorting), args...)
+		query = query.Where(fmt.Sprintf("(ds.%s, ds.id) < (?, ?)", p.Sorting), args...)
 	} else {
-		query = query.Where(fmt.Sprintf("(%s, id) > (?, ?)", p.Sorting), args...)
+		query = query.Where(fmt.Sprintf("(ds.%s, ds.id) > (?, ?)", p.Sorting), args...)
 	}
 
 	return query, nil

@@ -192,6 +192,11 @@ func handleListContinuousScreeningDatasetUpdates(uc usecases.Usecases) func(c *g
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
 		var paginationAndSortingDto dto.PaginationAndSorting
 		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
 			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{Message: err.Error()})
@@ -203,7 +208,7 @@ func handleListContinuousScreeningDatasetUpdates(uc usecases.Usecases) func(c *g
 		)
 
 		uc := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
-		updates, err := uc.ListContinuousScreeningDatasetUpdates(ctx, paginationAndSorting)
+		updates, err := uc.ListContinuousScreeningDatasetUpdates(ctx, organizationId, paginationAndSorting)
 		if presentError(ctx, c, err) {
 			return
 		}

@@ -70,8 +70,9 @@ type ContinuousScreeningUsecaseRepository interface {
 	ListContinuousScreeningDatasetUpdates(
 		ctx context.Context,
 		exec repositories.Executor,
+		orgId uuid.UUID,
 		pagination models.PaginationAndSorting,
-	) ([]models.ContinuousScreeningDatasetUpdate, error)
+	) ([]models.ContinuousScreeningDatasetUpdateEnriched, error)
 	ListContinuousScreeningUpdateJobs(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -331,6 +332,7 @@ type ContinuousScreeningIngestionUsecase interface {
 
 type ContinuousScreeningScreeningProvider interface {
 	GetCatalog(ctx context.Context, provider models.ScreeningProvider) (models.OpenSanctionsCatalog, error)
+	GetRawCatalog(ctx context.Context, provider models.ScreeningProvider) (models.OpenSanctionsRawCatalog, error)
 	Search(
 		ctx context.Context,
 		providerName models.ScreeningProvider,
