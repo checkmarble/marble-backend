@@ -38,6 +38,7 @@ const (
 	WebhookEventType_AsyncDecisionFailed              WebhookEventType = "async_decision.failed"
 	WebhookEventType_ContinuousScreeningCreated       WebhookEventType = "continuous_screening.created"
 	WebhookEventType_ContinuousScreeningMatchReviewed WebhookEventType = "continuous_screening.match_reviewed"
+	WebhookEventType_ScoringScoreChanged              WebhookEventType = "scoring_score_changed"
 )
 
 var validWebhookEventTypes = []WebhookEventType{
@@ -75,6 +76,7 @@ type WebhookEventData struct {
 	AsyncDecisionExecution   *AsyncDecisionExecution
 	ContinuousScreening      *ContinuousScreeningWithMatches
 	ContinuousScreeningMatch *ContinuousScreeningMatch
+	Score                    *ScoringScore
 }
 
 type WebhookEvent struct {
@@ -238,6 +240,12 @@ func NewWebhookEventAsyncDecisionFailed(data AsyncDecisionExecution) WebhookEven
 			Timestamp: time.Now(),
 		},
 	}
+}
+
+func NewWebhookScoringScoreChanged(score ScoringScore) WebhookEventContent {
+	return newWebhookContent(WebhookEventType_ScoringScoreChanged, WebhookEventData{
+		Score: &score,
+	})
 }
 
 type Webhook struct {

@@ -25,6 +25,11 @@ type featureAccessReader interface {
 	) (models.OrganizationFeatureAccess, error)
 }
 
+type webhookSender interface {
+	CreateWebhookEvent(ctx context.Context, tx repositories.Transaction, input models.WebhookEventCreate) error
+	SendWebhookEventAsync(ctx context.Context, webhookEventId string)
+}
+
 type ScoringScoresUsecase struct {
 	enforceSecurity        security.EnforceSecurityScoring
 	executorFactory        executor_factory.ExecutorFactory
@@ -37,6 +42,7 @@ type ScoringScoresUsecase struct {
 	ingestedDataReader     scoringIngestedDataReader
 	taskQueueRepository    repositories.TaskQueueRepository
 	evaluateAst            ast_eval.EvaluateAstExpression
+	webhookSender          webhookSender
 }
 
 func NewScoringScoresUsecase(
@@ -51,6 +57,7 @@ func NewScoringScoresUsecase(
 	ingestedDataReader scoringIngestedDataReader,
 	taskQueueRepository repositories.TaskQueueRepository,
 	evaluateAst ast_eval.EvaluateAstExpression,
+	webhookSender webhookSender,
 ) ScoringScoresUsecase {
 	return ScoringScoresUsecase{
 		enforceSecurity:        enforceSecurity,
@@ -64,6 +71,7 @@ func NewScoringScoresUsecase(
 		ingestedDataReader:     ingestedDataReader,
 		taskQueueRepository:    taskQueueRepository,
 		evaluateAst:            evaluateAst,
+		webhookSender:          webhookSender,
 	}
 }
 
@@ -198,7 +206,9 @@ func (uc ScoringScoresUsecase) GetActiveScore(ctx context.Context, record models
 }
 
 func (uc ScoringScoresUsecase) tryRefreshScore(ctx context.Context, activeScore *models.ScoringScore, record models.ScoringRecordRef, opts models.RefreshScoreOptions) (*models.ScoringScore, error) {
-	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (*models.ScoringScore, error) {
+	var webhookEventId *uuid.UUID
+
+	score, err := executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (*models.ScoringScore, error) {
 		// We do not compute the score in the background if we do not have a
 		// currently active score. In this case, we fall back to synchronous
 		// computing.
@@ -277,8 +287,24 @@ func (uc ScoringScoresUsecase) tryRefreshScore(ctx context.Context, activeScore 
 			return nil, errors.Wrap(err, "could not offload score computation")
 		}
 
+		webhookEventId = new(pure_utils.NewId())
+
+		if err := uc.webhookSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+			Id:             webhookEventId.String(),
+			OrganizationId: score.OrgId,
+			EventContent:   models.NewWebhookScoringScoreChanged(score),
+		}); err != nil {
+			return nil, errors.Wrap(err, "could not send score change webhook")
+		}
+
 		return &score, nil
 	})
+
+	if err == nil && webhookEventId != nil {
+		uc.webhookSender.SendWebhookEventAsync(ctx, webhookEventId.String())
+	}
+
+	return score, err
 }
 
 func (uc ScoringScoresUsecase) OverrideScore(ctx context.Context, req models.InsertScoreRequest) (models.ScoringScore, error) {
@@ -324,9 +350,29 @@ func (uc ScoringScoresUsecase) OverrideScore(ctx context.Context, req models.Ins
 		}
 	}
 
+	var webhookEventId *uuid.UUID
+
 	score, err := executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(tx repositories.Transaction) (models.ScoringScore, error) {
-		return uc.repository.InsertScore(ctx, tx, req)
+		score, err := uc.repository.InsertScore(ctx, tx, req)
+		if err != nil {
+			return models.ScoringScore{}, err
+		}
+		webhookEventId = new(pure_utils.NewId())
+
+		if err := uc.webhookSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+			Id:             webhookEventId.String(),
+			OrganizationId: score.OrgId,
+			EventContent:   models.NewWebhookScoringScoreChanged(score),
+		}); err != nil {
+			return models.ScoringScore{}, errors.Wrap(err, "could not send score change webhook")
+		}
+
+		return score, nil
 	})
+
+	if err == nil && webhookEventId != nil {
+		uc.webhookSender.SendWebhookEventAsync(ctx, webhookEventId.String())
+	}
 
 	return score, err
 }

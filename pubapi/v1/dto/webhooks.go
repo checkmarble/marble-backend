@@ -37,6 +37,7 @@ type WebhookEventData struct {
 	AsyncDecision       *AsyncDecisionExecution   `json:"async_decision,omitzero"`
 	ContinuousScreening *ContinuousScreening      `json:"continuous_screening,omitzero"`
 	Match               *ContinuousScreeningMatch `json:"match,omitzero"`
+	RiskLevel           *RiskLevel                `json:"risk_level,omitzero"`
 }
 
 func AdaptWebhookEventData(
@@ -101,6 +102,9 @@ func AdaptWebhookEventData(
 			ContinuousScreening: applyWebhookEventData(m.Content.ContinuousScreening, AdaptContinuousScreening),
 			Match: applyWebhookEventData(m.Content.ContinuousScreeningMatch, func(match models.ContinuousScreeningMatch) ContinuousScreeningMatch {
 				return AdaptContinuousScreeningMatch(matchTriggerType, match)
+			}),
+			RiskLevel: applyWebhookEventData(m.Content.Score, func(rl models.ScoringScore) RiskLevel {
+				return AdaptRiskLevel(rl, nil)
 			}),
 		},
 		Timestamp: m.Timestamp,
