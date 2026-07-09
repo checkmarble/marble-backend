@@ -132,7 +132,7 @@ func (uc ScoringScoresUsecase) InternalComputeScore(ctx context.Context, exec re
 }
 
 func (uc ScoringScoresUsecase) GetScoreHistory(ctx context.Context, record models.ScoringRecordRef) ([]models.ScoringScore, error) {
-	if err := uc.isScoringEnabled(ctx, record.OrgId); err != nil {
+	if err := uc.isScoringEnabled(ctx, uc.enforceSecurity.OrgId()); err != nil {
 		return nil, err
 	}
 
