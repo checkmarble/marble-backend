@@ -71,6 +71,7 @@ type ContinuousScreeningUsecaseRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		orgId uuid.UUID,
+		provider models.ScreeningProvider,
 		pagination models.PaginationAndSorting,
 	) ([]models.ContinuousScreeningDatasetUpdateEnriched, error)
 	ListContinuousScreeningUpdateJobs(

@@ -14,27 +14,29 @@ type ContinuousScreeningDatasetUpdateDto struct {
 	DatasetName string    `json:"dataset_name"`
 	// Version is the stored (processed) version; LiveVersion is the current version reported by
 	// the provider catalog. They differ when the stored data is not up to date.
-	Version     string    `json:"version"`
-	LiveVersion string    `json:"live_version"`
-	Title       string    `json:"title"`
-	IsCurrent   bool      `json:"is_current"`
-	TotalItems  int       `json:"total_items"`
-	// Status of the latest processing job for this dataset update ("processing", "completed",
-	// "failed", ...). Progress is the processed percentage, set only while processing.
-	Status    string    `json:"status"`
-	Progress  *int      `json:"progress,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
+	Version     string `json:"version"`
+	LiveVersion string `json:"live_version"`
+	Title       string `json:"title"`
+	IsCurrent   bool   `json:"is_current"`
+	TotalItems  int    `json:"total_items"`
+	// Aggregated status across processing jobs for this dataset update ("processing",
+	// "completed", "failed", ...).
+	Status     string                                     `json:"status"`
+	Completion ContinuousScreeningDatasetUpdateCompletion `json:"completion"`
+	CreatedAt  time.Time                                  `json:"created_at"`
+}
+
+type ContinuousScreeningDatasetUpdateCompletion struct {
+	Completed  int `json:"completed"`
+	Processing int `json:"processing"`
+	Pending    int `json:"pending"`
+	Failed     int `json:"failed"`
+	Total      int `json:"total"`
 }
 
 func AdaptContinuousScreeningDatasetUpdateDto(
 	u models.ContinuousScreeningDatasetUpdateEnriched,
 ) ContinuousScreeningDatasetUpdateDto {
-	var progress *int
-	if u.ItemsProcessed != nil && u.TotalItems > 0 {
-		p := *u.ItemsProcessed * 100 / u.TotalItems
-		progress = &p
-	}
-
 	return ContinuousScreeningDatasetUpdateDto{
 		Id:          u.Id,
 		DatasetName: u.DatasetName,
@@ -44,8 +46,14 @@ func AdaptContinuousScreeningDatasetUpdateDto(
 		IsCurrent:   u.IsCurrent,
 		TotalItems:  u.TotalItems,
 		Status:      u.Status.String(),
-		Progress:    progress,
-		CreatedAt:   u.CreatedAt,
+		Completion: ContinuousScreeningDatasetUpdateCompletion{
+			Completed:  u.Completion.Completed,
+			Processing: u.Completion.Processing,
+			Pending:    u.Completion.Pending,
+			Failed:     u.Completion.Failed,
+			Total:      u.Completion.Total,
+		},
+		CreatedAt: u.CreatedAt,
 	}
 }
 

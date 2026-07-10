@@ -31,7 +31,7 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningDatasetUpdates(
 	limit := pagination.Limit
 	pagination.Limit = limit + 1
 
-	updates, err := uc.repository.ListContinuousScreeningDatasetUpdates(ctx, exec, orgId, pagination)
+	updates, err := uc.repository.ListContinuousScreeningDatasetUpdates(ctx, exec, orgId, provider, pagination)
 	if err != nil {
 		return models.Paginated[models.ContinuousScreeningDatasetUpdateEnriched]{},
 			errors.Wrap(err, "failed to list continuous screening dataset updates")

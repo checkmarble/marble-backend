@@ -813,16 +813,17 @@ func (repo *MarbleDbRepository) GetLastProcessedVersion(
 }
 
 // ListContinuousScreeningDatasetUpdates returns the stored dataset-update history (paginated by
-// created_at) completed with the latest processing job status for the given org. The caller
-// overlays fresh catalog data (title, live version, freshness) on top of these rows.
+// created_at) completed with aggregated processing job status for the given org/provider. The
+// caller overlays fresh catalog data (title, live version, freshness) on top of these rows.
 //
-// The job status is left-joined via a LATERAL subquery that picks the most recent job for each
-// dataset update scoped to the org: a dataset update may have several jobs (one per config), and
-// a plain join would multiply rows and break the keyset pagination window.
+// The job status is left-joined via a LATERAL aggregate scoped to the dataset update, org and
+// provider: a dataset update may have several jobs (one per config), and a plain join would
+// multiply rows and break the keyset pagination window.
 func (repo *MarbleDbRepository) ListContinuousScreeningDatasetUpdates(
 	ctx context.Context,
 	exec Executor,
 	orgId uuid.UUID,
+	provider models.ScreeningProvider,
 	pagination models.PaginationAndSorting,
 ) ([]models.ContinuousScreeningDatasetUpdateEnriched, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -841,17 +842,31 @@ func (repo *MarbleDbRepository) ListContinuousScreeningDatasetUpdates(
 	query := NewQueryBuilder().
 		Select(columnsNames("ds", dbmodels.SelectContinuousScreeningDatasetUpdateColumn)...).
 		Column("job.status AS status").
-		Column("off.items_processed AS items_processed").
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES + " AS ds").
+		Column("job.completed_count AS completed_count").
+		Column("job.processing_count AS processing_count").
+		Column("job.pending_count AS pending_count").
+		Column("job.failed_count AS failed_count").
+		Column("job.total_jobs AS total_jobs").
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES+" AS ds").
 		JoinClause(`LEFT JOIN LATERAL (
-			SELECT ucs.id, ucs.status
+			SELECT
+				(COUNT(*) FILTER (WHERE ucs.status = 'completed'))::int AS completed_count,
+				(COUNT(*) FILTER (WHERE ucs.status = 'processing'))::int AS processing_count,
+				(COUNT(*) FILTER (WHERE ucs.status = 'pending'))::int AS pending_count,
+				(COUNT(*) FILTER (WHERE ucs.status = 'failed'))::int AS failed_count,
+				COUNT(ucs.id)::int AS total_jobs,
+				CASE
+					WHEN COUNT(*) FILTER (WHERE ucs.status = 'failed') > 0 THEN 'failed'
+					WHEN COUNT(*) FILTER (WHERE ucs.status = 'pending') > 0 THEN 'pending'
+					WHEN COUNT(*) FILTER (WHERE ucs.status = 'processing') > 0 THEN 'processing'
+					WHEN COUNT(*) FILTER (WHERE ucs.status = 'completed') > 0 THEN 'completed'
+					ELSE 'pending'
+				END AS status
 			FROM `+dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS+` ucs
-			WHERE ucs.continuous_screening_dataset_update_id = ds.id AND ucs.org_id = ?
-			ORDER BY ucs.created_at DESC
-			LIMIT 1
-		) job ON true`, orgId).
-		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS +
-			" AS off ON (off.continuous_screening_update_job_id = job.id)").
+			WHERE ucs.continuous_screening_dataset_update_id = ds.id
+				AND ucs.org_id = ?
+				AND ucs.provider = ?
+		) job ON true`, orgId, provider).
 		OrderBy(orderCond).
 		Limit(uint64(pagination.Limit))
 
@@ -934,16 +949,16 @@ func (repo *MarbleDbRepository) ListContinuousScreeningUpdateJobs(
 		).
 		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s)) FILTER (WHERE err.id IS NOT NULL) AS errors",
 			strings.Join(columnsNames("err", dbmodels.SelectContinuousScreeningJobErrorColumn), ","))).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS + " AS ucs").
-		InnerJoin(dbmodels.TABLE_ORGANIZATION +
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS+" AS ucs").
+		InnerJoin(dbmodels.TABLE_ORGANIZATION+
 			" o ON ucs.org_id = o.id AND ucs.provider = coalesce(o.screening_providers->>'continuous_monitoring', 'opensanctions')").
-		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS +
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS+
 			" AS cs ON (ucs.continuous_screening_config_id = cs.id)").
-		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES +
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES+
 			" AS ds ON (ucs.continuous_screening_dataset_update_id = ds.id)").
-		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS +
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS+
 			" AS off ON (off.continuous_screening_update_job_id = ucs.id)").
-		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_ERRORS +
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_ERRORS+
 			" AS err ON (err.continuous_screening_update_job_id = ucs.id)").
 		Where(squirrel.Eq{"ucs.org_id": orgId}).
 		GroupBy("ucs.id", "ucs.status", "ucs.created_at", "ucs.updated_at",
@@ -1042,14 +1057,14 @@ func (repo *MarbleDbRepository) ListContinuousScreeningClientDataIndexing(
 		).
 		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s)) FILTER (WHERE err.id IS NOT NULL) AS errors",
 			strings.Join(columnsNames("err", dbmodels.SelectContinuousScreeningJobErrorColumn), ","))).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS + " AS ucs").
-		InnerJoin(dbmodels.TABLE_ORGANIZATION +
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS+" AS ucs").
+		InnerJoin(dbmodels.TABLE_ORGANIZATION+
 			" o ON ucs.org_id = o.id AND ucs.provider = coalesce(o.screening_providers->>'continuous_monitoring', 'opensanctions')").
-		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES +
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES+
 			" AS ds ON (ucs.continuous_screening_dataset_update_id = ds.id)").
-		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS +
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS+
 			" AS off ON (off.continuous_screening_update_job_id = ucs.id)").
-		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_ERRORS +
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_ERRORS+
 			" AS err ON (err.continuous_screening_update_job_id = ucs.id)").
 		Where(squirrel.Eq{"ucs.org_id": orgId}).
 		GroupBy("ucs.id", "ucs.status", "ucs.created_at", "ds.total_items",

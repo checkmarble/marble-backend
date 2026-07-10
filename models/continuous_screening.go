@@ -176,9 +176,17 @@ type ContinuousScreeningDatasetUpdate struct {
 	CreatedAt     time.Time
 }
 
+type ContinuousScreeningDatasetUpdateJobCounts struct {
+	Completed  int
+	Processing int
+	Pending    int
+	Failed     int
+	Total      int
+}
+
 // ContinuousScreeningDatasetUpdateEnriched is a stored dataset-update row (from the
 // continuous_screening_dataset_updates table) completed with fresh data from the provider
-// catalog (Title, LiveVersion, IsCurrent) and the latest processing job status for the org.
+// catalog (Title, LiveVersion, IsCurrent) and aggregated processing job status for the org.
 type ContinuousScreeningDatasetUpdateEnriched struct {
 	ContinuousScreeningDatasetUpdate
 	// Fresh, from the provider catalog. Left zero-valued when the dataset is no longer
@@ -186,11 +194,10 @@ type ContinuousScreeningDatasetUpdateEnriched struct {
 	Title       string
 	LiveVersion string
 	IsCurrent   bool
-	// Latest processing job for this dataset update and org. Status is Unknown when no job
-	// exists yet; ItemsProcessed is nil until a job offset has been recorded.
-	// Latest processing job for this dataset update and org. Status defaults to Pending
-	// when no job exists yet; ItemsProcessed is nil until a job offset has been recorded.	Status ContinuousScreeningUpdateJobStatus
-	ItemsProcessed *int
+	// Aggregated processing status for this dataset update and org. Status defaults to Pending
+	// when no job exists yet.
+	Status     ContinuousScreeningUpdateJobStatus
+	Completion ContinuousScreeningDatasetUpdateJobCounts
 }
 
 type CreateContinuousScreeningDatasetUpdate struct {
