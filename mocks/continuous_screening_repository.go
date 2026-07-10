@@ -211,9 +211,9 @@ func (m *ContinuousScreeningRepository) ListContinuousScreeningClientDataIndexin
 	exec repositories.Executor,
 	orgId uuid.UUID,
 	pagination models.PaginationAndSorting,
-) ([]models.ContinuousScreeningClientDataIndexingSummary, error) {
+) (models.ContinuousScreeningClientDataIndexing, error) {
 	args := m.Called(ctx, exec, orgId, pagination)
-	return args.Get(0).([]models.ContinuousScreeningClientDataIndexingSummary), args.Error(1)
+	return args.Get(0).(models.ContinuousScreeningClientDataIndexing), args.Error(1)
 }
 
 func (m *ContinuousScreeningRepository) GetContinuousScreeningWithMatchesById(

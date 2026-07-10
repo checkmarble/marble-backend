@@ -97,9 +97,9 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningClientDataIndexing(
 	ctx context.Context,
 	orgId uuid.UUID,
 	pagination models.PaginationAndSorting,
-) (models.Paginated[models.ContinuousScreeningClientDataIndexingSummary], error) {
+) (models.ContinuousScreeningClientDataIndexing, error) {
 	if err := models.ValidatePagination(pagination); err != nil {
-		return models.Paginated[models.ContinuousScreeningClientDataIndexingSummary]{}, err
+		return models.ContinuousScreeningClientDataIndexing{}, err
 	}
 
 	// Fetch one more item than requested so we can tell whether a next page exists,
@@ -108,16 +108,18 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningClientDataIndexing(
 	pagination.Limit = limit + 1
 
 	exec := uc.executorFactory.NewExecutor()
-	items, err := uc.repository.ListContinuousScreeningClientDataIndexing(ctx, exec, orgId, pagination)
+	indexing, err := uc.repository.ListContinuousScreeningClientDataIndexing(ctx, exec, orgId, pagination)
 	if err != nil {
-		return models.Paginated[models.ContinuousScreeningClientDataIndexingSummary]{},
+		return models.ContinuousScreeningClientDataIndexing{},
 			errors.Wrap(err, "failed to list continuous screening client data indexing")
 	}
 
-	hasNextPage := len(items) > limit
+	hasNextPage := len(indexing.Items.Items) > limit
 
-	return models.Paginated[models.ContinuousScreeningClientDataIndexingSummary]{
-		Items:       items[:min(limit, len(items))],
+	indexing.Items = models.Paginated[models.ContinuousScreeningClientDataIndexingSummary]{
+		Items:       indexing.Items.Items[:min(limit, len(indexing.Items.Items))],
 		HasNextPage: hasNextPage,
-	}, nil
+	}
+
+	return indexing, nil
 }

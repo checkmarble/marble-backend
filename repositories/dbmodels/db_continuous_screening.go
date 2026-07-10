@@ -315,31 +315,20 @@ func AdaptContinuousScreeningUpdateJobSummary(dto DBContinuousScreeningUpdateJob
 }
 
 type DBContinuousScreeningClientDataIndexingSummary struct {
-	Id             uuid.UUID                       `db:"id"`
-	Status         string                          `db:"status"`
-	JobStart       time.Time                       `db:"job_start"`
-	TotalItems     int                             `db:"total_items"`
-	ItemsProcessed *int                            `db:"processed"`
-	Errors         []DBContinuousScreeningJobError `db:"errors"`
+	Id         uuid.UUID `db:"id"`
+	JobDate    time.Time `db:"job_date"`
+	TotalItems int       `db:"total_items"`
+	Version    string    `db:"version"`
+	ObjectType string    `db:"object_type"`
 }
 
 func AdaptContinuousScreeningClientDataIndexingSummary(dto DBContinuousScreeningClientDataIndexingSummary) (models.ContinuousScreeningClientDataIndexingSummary, error) {
-	errs := make([]models.ContinuousScreeningJobError, 0, len(dto.Errors))
-	for _, e := range dto.Errors {
-		m, err := AdaptContinuousScreeningJobError(e)
-		if err != nil {
-			return models.ContinuousScreeningClientDataIndexingSummary{}, err
-		}
-		errs = append(errs, m)
-	}
-
 	return models.ContinuousScreeningClientDataIndexingSummary{
-		Id:             dto.Id,
-		Status:         models.ContinuousScreeningUpdateJobStatusFrom(dto.Status),
-		JobStart:       dto.JobStart,
-		TotalItems:     dto.TotalItems,
-		ItemsProcessed: dto.ItemsProcessed,
-		Errors:         errs,
+		Id:         dto.Id,
+		JobDate:    dto.JobDate,
+		TotalItems: dto.TotalItems,
+		Version:    dto.Version,
+		ObjectType: dto.ObjectType,
 	}, nil
 }
 
