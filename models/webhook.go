@@ -38,7 +38,7 @@ const (
 	WebhookEventType_AsyncDecisionFailed              WebhookEventType = "async_decision.failed"
 	WebhookEventType_ContinuousScreeningCreated       WebhookEventType = "continuous_screening.created"
 	WebhookEventType_ContinuousScreeningMatchReviewed WebhookEventType = "continuous_screening.match_reviewed"
-	WebhookEventType_ScoringScoreChanged              WebhookEventType = "scoring_score_changed"
+	WebhookEventType_ScoringRiskLevelChangedChanged   WebhookEventType = "user_scoring.risk_level_changed"
 )
 
 var validWebhookEventTypes = []WebhookEventType{
@@ -243,7 +243,7 @@ func NewWebhookEventAsyncDecisionFailed(data AsyncDecisionExecution) WebhookEven
 }
 
 func NewWebhookScoringScoreChanged(score ScoringScore) WebhookEventContent {
-	return newWebhookContent(WebhookEventType_ScoringScoreChanged, WebhookEventData{
+	return newWebhookContent(WebhookEventType_ScoringRiskLevelChangedChanged, WebhookEventData{
 		Score: &score,
 	})
 }
