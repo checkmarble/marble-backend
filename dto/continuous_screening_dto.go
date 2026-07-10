@@ -102,24 +102,38 @@ func AdaptContinuousScreeningUpdateJobDto(
 }
 
 type ContinuousScreeningClientDataIndexingDto struct {
-	Id             uuid.UUID                        `json:"id"`
-	Status         string                           `json:"status"`
-	JobStart       time.Time                        `json:"job_start"`
-	TotalItems     int                              `json:"total_items"`
-	ItemsProcessed *int                             `json:"items_processed"`
-	Errors         []ContinuousScreeningJobErrorDto `json:"errors"`
+	Id         uuid.UUID `json:"id"`
+	JobDate    time.Time `json:"job_date"`
+	TotalItems int       `json:"total_items"`
+	Version    string    `json:"version"`
+	ObjectType string    `json:"object_type"`
+}
+
+type ContinuousScreeningClientDataIndexingResponseDto struct {
+	PendingItems int                                        `json:"pending_items"`
+	Items        []ContinuousScreeningClientDataIndexingDto `json:"items"`
+	HasNextPage  bool                                       `json:"has_next_page"`
 }
 
 func AdaptContinuousScreeningClientDataIndexingDto(
 	j models.ContinuousScreeningClientDataIndexingSummary,
 ) ContinuousScreeningClientDataIndexingDto {
 	return ContinuousScreeningClientDataIndexingDto{
-		Id:             j.Id,
-		Status:         j.Status.String(),
-		JobStart:       j.JobStart,
-		TotalItems:     j.TotalItems,
-		ItemsProcessed: j.ItemsProcessed,
-		Errors:         pure_utils.Map(j.Errors, AdaptContinuousScreeningJobErrorDto),
+		Id:         j.Id,
+		JobDate:    j.JobDate,
+		TotalItems: j.TotalItems,
+		Version:    j.Version,
+		ObjectType: j.ObjectType,
+	}
+}
+
+func AdaptContinuousScreeningClientDataIndexingResponseDto(
+	indexing models.ContinuousScreeningClientDataIndexing,
+) ContinuousScreeningClientDataIndexingResponseDto {
+	return ContinuousScreeningClientDataIndexingResponseDto{
+		PendingItems: indexing.PendingItems,
+		Items:        pure_utils.Map(indexing.Items.Items, AdaptContinuousScreeningClientDataIndexingDto),
+		HasNextPage:  indexing.Items.HasNextPage,
 	}
 }
 

@@ -1031,54 +1031,127 @@ func (repo *MarbleDbRepository) ListContinuousScreeningClientDataIndexing(
 	exec Executor,
 	orgId uuid.UUID,
 	pagination models.PaginationAndSorting,
-) ([]models.ContinuousScreeningClientDataIndexingSummary, error) {
+) (models.ContinuousScreeningClientDataIndexing, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return nil, err
+		return models.ContinuousScreeningClientDataIndexing{}, err
 	}
 
-	// The update_jobs table has both created_at and updated_at columns.
-	if pagination.Sorting != models.SortingFieldCreatedAt &&
-		pagination.Sorting != models.SortingFieldUpdatedAt {
-		return nil, errors.Wrapf(models.BadParameterError,
+	if pagination.Sorting != models.SortingFieldCreatedAt {
+		return models.ContinuousScreeningClientDataIndexing{}, errors.Wrapf(models.BadParameterError,
 			"invalid sorting field: %s", pagination.Sorting)
 	}
 
-	// Columns are ambiguous across the joined tables, so qualify with the ucs alias.
-	orderCond := fmt.Sprintf("ucs.%s %s, ucs.id %s",
-		pagination.Sorting, pagination.Order, pagination.Order)
+	pendingItems, err := repo.countPendingContinuousScreeningClientDataIndexing(
+		ctx, exec, orgId)
+	if err != nil {
+		return models.ContinuousScreeningClientDataIndexing{}, err
+	}
+
+	orderCond := fmt.Sprintf("client_data_indexing.job_date %s, client_data_indexing.id %s",
+		pagination.Order, pagination.Order)
 
 	query := NewQueryBuilder().
-		Select(
-			"ucs.id AS id",
-			"ucs.status AS status",
-			"ucs.created_at AS job_start",
-			"ds.total_items AS total_items",
-			"off.items_processed AS processed",
-		).
-		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s)) FILTER (WHERE err.id IS NOT NULL) AS errors",
-			strings.Join(columnsNames("err", dbmodels.SelectContinuousScreeningJobErrorColumn), ","))).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS+" AS ucs").
-		InnerJoin(dbmodels.TABLE_ORGANIZATION+
-			" o ON ucs.org_id = o.id AND ucs.provider = coalesce(o.screening_providers->>'continuous_monitoring', 'opensanctions')").
-		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES+
-			" AS ds ON (ucs.continuous_screening_dataset_update_id = ds.id)").
-		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS+
-			" AS off ON (off.continuous_screening_update_job_id = ucs.id)").
-		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_ERRORS+
-			" AS err ON (err.continuous_screening_update_job_id = ucs.id)").
-		Where(squirrel.Eq{"ucs.org_id": orgId}).
-		GroupBy("ucs.id", "ucs.status", "ucs.created_at", "ds.total_items",
-			"off.items_processed").
+		Select("client_data_indexing.*").
+		FromSelect(continuousScreeningClientDataIndexingAggregateQuery(orgId), "client_data_indexing").
 		OrderBy(orderCond).
 		Limit(uint64(pagination.Limit))
 
-	query, err := repo.applyContinuousScreeningUpdateJobPaginationFilters(
+	query, err = repo.applyContinuousScreeningClientDataIndexingPaginationFilters(
 		ctx, exec, query, orgId, pagination)
 	if err != nil {
-		return nil, err
+		return models.ContinuousScreeningClientDataIndexing{}, err
 	}
 
-	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningClientDataIndexingSummary)
+	items, err := SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningClientDataIndexingSummary)
+	if err != nil {
+		return models.ContinuousScreeningClientDataIndexing{}, err
+	}
+
+	return models.ContinuousScreeningClientDataIndexing{
+		PendingItems: pendingItems,
+		Items: models.Paginated[models.ContinuousScreeningClientDataIndexingSummary]{
+			Items: items,
+		},
+	}, nil
+}
+
+func continuousScreeningClientDataIndexingAggregateQuery(orgId uuid.UUID) squirrel.SelectBuilder {
+	return NewQueryBuilder().
+		Select(
+			"MIN(dt.id::text)::uuid AS id",
+			"date_trunc('minute', dt.created_at) AS job_date",
+			"COUNT(*) AS total_items",
+			"df.version AS version",
+			"dt.object_type AS object_type",
+		).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DELTA_TRACKS+" AS dt").
+		InnerJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_FILES+
+			" AS df ON df.id = dt.dataset_file_id AND df.org_id = dt.org_id AND df.file_type = ?",
+			models.ContinuousScreeningDatasetFileTypeFull.String()).
+		Where(squirrel.Eq{"dt.org_id": orgId}).
+		GroupBy("date_trunc('minute', dt.created_at)", "df.version", "dt.object_type")
+}
+
+func (repo *MarbleDbRepository) countPendingContinuousScreeningClientDataIndexing(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+) (int, error) {
+	query := NewQueryBuilder().
+		Select("COUNT(*)").
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DELTA_TRACKS).
+		Where(squirrel.Eq{
+			"org_id":          orgId,
+			"dataset_file_id": nil,
+		})
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return 0, errors.Wrap(err, "error building pending client data indexing count query")
+	}
+
+	var count int
+	if err := exec.QueryRow(ctx, sql, args...).Scan(&count); err != nil {
+		return 0, errors.Wrap(err, "error counting pending client data indexing items")
+	}
+
+	return count, nil
+}
+
+func (repo *MarbleDbRepository) applyContinuousScreeningClientDataIndexingPaginationFilters(
+	ctx context.Context,
+	exec Executor,
+	query squirrel.SelectBuilder,
+	orgId uuid.UUID,
+	p models.PaginationAndSorting,
+) (squirrel.SelectBuilder, error) {
+	if p.OffsetId == "" {
+		return query, nil
+	}
+
+	offsetQuery := NewQueryBuilder().
+		Select("client_data_indexing.*").
+		FromSelect(continuousScreeningClientDataIndexingAggregateQuery(orgId), "client_data_indexing").
+		Where(squirrel.Eq{"client_data_indexing.id": p.OffsetId})
+
+	offset, err := SqlToModel(ctx, exec, offsetQuery,
+		dbmodels.AdaptContinuousScreeningClientDataIndexingSummary)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return query, errors.Wrap(models.NotFoundError,
+			"No row found matching the provided offsetId")
+	} else if err != nil {
+		return query, errors.Wrap(err,
+			"failed to fetch client data indexing aggregate corresponding to the provided offsetId")
+	}
+
+	args := []any{offset.JobDate, p.OffsetId}
+	if p.Order == models.SortingOrderDesc {
+		query = query.Where("(client_data_indexing.job_date, client_data_indexing.id) < (?, ?)", args...)
+	} else {
+		query = query.Where("(client_data_indexing.job_date, client_data_indexing.id) > (?, ?)", args...)
+	}
+
+	return query, nil
 }
 
 func (repo *MarbleDbRepository) CreateContinuousScreeningDatasetUpdate(

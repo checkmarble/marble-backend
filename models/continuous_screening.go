@@ -286,15 +286,19 @@ type ContinuousScreeningUpdateJobSummary struct {
 	Errors         []ContinuousScreeningJobError
 }
 
-// ContinuousScreeningClientDataIndexingSummary is a trimmed view of an update job's
-// client-data indexing progress: status, item counts, processing offset and errors.
+type ContinuousScreeningClientDataIndexing struct {
+	PendingItems int
+	Items        Paginated[ContinuousScreeningClientDataIndexingSummary]
+}
+
+// ContinuousScreeningClientDataIndexingSummary is a grouped view of client-data
+// indexing activity for one full dataset file version and object type.
 type ContinuousScreeningClientDataIndexingSummary struct {
-	Id             uuid.UUID // needed for keyset pagination cursor
-	Status         ContinuousScreeningUpdateJobStatus
-	JobStart       time.Time // update_job.created_at
-	TotalItems     int
-	ItemsProcessed *int // nullable: job_offsets may not exist yet
-	Errors         []ContinuousScreeningJobError
+	Id         uuid.UUID // needed for keyset pagination cursor
+	JobDate    time.Time // delta_track.created_at rounded to the minute
+	TotalItems int
+	Version    string
+	ObjectType string
 }
 
 type EnrichedContinuousScreeningUpdateJob struct {

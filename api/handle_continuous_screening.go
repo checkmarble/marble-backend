@@ -275,10 +275,7 @@ func handleListContinuousScreeningClientDataIndexing(uc usecases.Usecases) func(
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.Paginated[dto.ContinuousScreeningClientDataIndexingDto]{
-			Items:       pure_utils.Map(items.Items, dto.AdaptContinuousScreeningClientDataIndexingDto),
-			HasNextPage: items.HasNextPage,
-		})
+		c.JSON(http.StatusOK, dto.AdaptContinuousScreeningClientDataIndexingResponseDto(items))
 	}
 }
 
