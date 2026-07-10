@@ -121,6 +121,10 @@ type decisionStatsBucketKey struct {
 	assignee string
 }
 
+type caseAnalyticsQueryOutput struct {
+	Results any `json:"results" jsonschema:"query result rows; shape depends on the requested metric"`
+}
+
 // registerReportingTools registers the read-only reporting tools that need
 // no new SQL: they wrap existing usecases (ListUsers, CaseUseCase.ListCases,
 // CaseAnalyticsUsecase).
@@ -319,8 +323,9 @@ func registerReportingTools(server *sdkmcp.Server, uc usecases.Usecases) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name: "case_analytics_query",
 		Description: "Run a case analytics aggregate query (case counts, resolution duration, status breakdowns, SAR delay, etc). " +
-			"For mean case resolution time, use metric=cases_duration and compute sum(sum_days)/sum(count_cases) over the returned rows.",
-	}, func(ctx context.Context, req *sdkmcp.CallToolRequest, in caseAnalyticsQueryInput) (*sdkmcp.CallToolResult, any, error) {
+			"Results are returned under the `results` key. For mean case resolution time, use metric=cases_duration and " +
+			"compute sum(sum_days)/sum(count_cases) over the returned rows.",
+	}, func(ctx context.Context, req *sdkmcp.CallToolRequest, in caseAnalyticsQueryInput) (*sdkmcp.CallToolResult, caseAnalyticsQueryOutput, error) {
 		withCreds := pubapi.UsecasesWithCreds(ctx, uc)
 
 		tz := in.Timezone
@@ -332,7 +337,7 @@ func registerReportingTools(server *sdkmcp.Server, uc usecases.Usecases) {
 		if in.InboxId != "" {
 			parsed, err := uuid.Parse(in.InboxId)
 			if err != nil {
-				return nil, nil, fmt.Errorf("invalid inbox_id: %w", err)
+				return nil, caseAnalyticsQueryOutput{}, fmt.Errorf("invalid inbox_id: %w", err)
 			}
 			inboxId = &parsed
 		}
@@ -346,7 +351,7 @@ func registerReportingTools(server *sdkmcp.Server, uc usecases.Usecases) {
 			AssignedUserId: in.AssignedUserId,
 		}
 		if err := filters.Validate(); err != nil {
-			return nil, nil, err
+			return nil, caseAnalyticsQueryOutput{}, err
 		}
 
 		analyticsUC := withCreds.NewCaseAnalyticsUsecase()
@@ -375,12 +380,12 @@ func registerReportingTools(server *sdkmcp.Server, uc usecases.Usecases) {
 		case "case_status_by_inbox":
 			result, err = analyticsUC.CaseStatusByInbox(ctx, filters)
 		default:
-			return nil, nil, fmt.Errorf("unknown metric %q", in.Metric)
+			return nil, caseAnalyticsQueryOutput{}, fmt.Errorf("unknown metric %q", in.Metric)
 		}
 		if err != nil {
-			return nil, nil, err
+			return nil, caseAnalyticsQueryOutput{}, err
 		}
 
-		return nil, result, nil
+		return nil, caseAnalyticsQueryOutput{Results: result}, nil
 	})
 }
