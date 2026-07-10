@@ -24,7 +24,7 @@ require (
 	github.com/buger/jsonparser v1.2.0
 	github.com/checkmarble/llmberjack v0.0.0-20260323165140-09e47d6a061e
 	github.com/cockroachdb/errors v1.13.0
-	github.com/coreos/go-oidc/v3 v3.18.0
+	github.com/coreos/go-oidc/v3 v3.19.0
 	github.com/disintegration/imaging v1.6.2
 	github.com/duckdb/duckdb-go/v2 v2.10503.1
 	github.com/exaring/otelpgx v0.11.1
