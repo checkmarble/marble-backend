@@ -189,9 +189,10 @@ func (m *ContinuousScreeningRepository) ListContinuousScreeningDatasetUpdates(
 	ctx context.Context,
 	exec repositories.Executor,
 	orgId uuid.UUID,
+	provider models.ScreeningProvider,
 	pagination models.PaginationAndSorting,
 ) ([]models.ContinuousScreeningDatasetUpdateEnriched, error) {
-	args := m.Called(ctx, exec, orgId, pagination)
+	args := m.Called(ctx, exec, orgId, provider, pagination)
 	return args.Get(0).([]models.ContinuousScreeningDatasetUpdateEnriched), args.Error(1)
 }
 
