@@ -25,6 +25,8 @@ tags:
     description: Routes for continuous screenings
   - name: Record
     description: Routes for record (data ingested into Marble)
+  - name: User scoring
+    description: Routes for user scoring
 paths:
   /ingest/{objectType}/uploads:
     get:
@@ -1365,6 +1367,72 @@ paths:
         "400":
           $ref: "#/components/responses/400"
 
+  /risk-levels/{objectType}/{objectId}:
+    get:
+      operationId: getActiveRiskLevel
+      tags:
+        - User scoring
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Retrieve a record's active risk level
+      responses:
+        "200":
+          description: Current risk level
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/RecordRiskLevel"
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+
+    post:
+      operationId: overrideRiskLevel
+      tags:
+        - User scoring
+      security:
+        - BearerTokenAuth: []
+        - ApiKeyAuth: []
+      summary: Override a record's risj level
+      parameters:
+        - name: objectType
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: objectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: risk_level
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: New risk level
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/RecordRiskLevel"
+        "400":
+          $ref: "#/components/responses/400"
+        "404":
+          $ref: "#/components/responses/404"
+
 components:
   securitySchemes:
     BearerTokenAuth:
@@ -2087,3 +2155,28 @@ components:
                   type: string
                   format: uri
                   description: URL to supporting evidence for the risk tag
+
+    RecordRiskLevel:
+      title: Record risk level
+      type: object
+      required:
+        - source
+        - risk_level
+        - current
+        - created_at
+      properties:
+        source:
+          type: string
+          enum: [initial, ruleset, override]
+        risk_level:
+          type: integer
+        current:
+          type: boolean
+        overridden_by:
+          $ref: "#/components/schemas/Ref"
+        created_at:
+          type: string
+          format: date-time
+        stale_at:
+          type: string
+          format: date-time
