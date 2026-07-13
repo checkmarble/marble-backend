@@ -26,19 +26,20 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningDatasetUpdates(
 	}
 	provider := org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring)
 
-	// Fetch one more item than requested so we can tell whether a next page exists,
-	// then strip it back out below.
-	limit := pagination.Limit
-	pagination.Limit = limit + 1
-
-	updates, err := uc.repository.ListContinuousScreeningDatasetUpdates(ctx, exec, orgId, provider, pagination)
+	updates, err := listContinuousScreeningPage(
+		pagination,
+		func(pagination models.PaginationAndSorting) (
+			[]models.ContinuousScreeningDatasetUpdateEnriched,
+			error,
+		) {
+			return uc.repository.ListContinuousScreeningDatasetUpdates(
+				ctx, exec, orgId, provider, pagination)
+		},
+	)
 	if err != nil {
 		return models.Paginated[models.ContinuousScreeningDatasetUpdateEnriched]{},
 			errors.Wrap(err, "failed to list continuous screening dataset updates")
 	}
-
-	hasNextPage := len(updates) > limit
-	updates = updates[:min(limit, len(updates))]
 
 	// Overlay fresh data from the provider catalog onto each stored row.
 	catalog, err := uc.screeningProvider.GetRawCatalog(ctx, provider)
@@ -50,18 +51,15 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningDatasetUpdates(
 	for _, name := range catalog.Current {
 		current[name] = struct{}{}
 	}
-	for i := range updates {
-		if dataset, ok := catalog.Datasets[updates[i].DatasetName]; ok {
-			updates[i].Title = dataset.Title
-			updates[i].LiveVersion = dataset.Version
-			_, updates[i].IsCurrent = current[updates[i].DatasetName]
+	for i := range updates.Items {
+		if dataset, ok := catalog.Datasets[updates.Items[i].DatasetName]; ok {
+			updates.Items[i].Title = dataset.Title
+			updates.Items[i].LiveVersion = dataset.Version
+			_, updates.Items[i].IsCurrent = current[updates.Items[i].DatasetName]
 		}
 	}
 
-	return models.Paginated[models.ContinuousScreeningDatasetUpdateEnriched]{
-		Items:       updates,
-		HasNextPage: hasNextPage,
-	}, nil
+	return updates, nil
 }
 
 func (uc *ContinuousScreeningUsecase) ListContinuousScreeningUpdateJobs(
@@ -73,23 +71,49 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningUpdateJobs(
 		return models.Paginated[models.ContinuousScreeningUpdateJobSummary]{}, err
 	}
 
-	// Fetch one more item than requested so we can tell whether a next page exists,
-	// then strip it back out below.
-	limit := pagination.Limit
-	pagination.Limit = limit + 1
-
 	exec := uc.executorFactory.NewExecutor()
-	jobs, err := uc.repository.ListContinuousScreeningUpdateJobs(ctx, exec, orgId, pagination)
+
+	org, err := uc.repository.GetOrganizationById(ctx, exec, orgId)
+	if err != nil {
+		return models.Paginated[models.ContinuousScreeningUpdateJobSummary]{},
+			errors.Wrap(err, "failed to get organization for continuous screening update jobs")
+	}
+	provider := org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring)
+
+	jobs, err := listContinuousScreeningPage(
+		pagination,
+		func(pagination models.PaginationAndSorting) (
+			[]models.ContinuousScreeningUpdateJobSummary,
+			error,
+		) {
+			return uc.repository.ListContinuousScreeningUpdateJobs(
+				ctx, exec, orgId, provider, pagination)
+		},
+	)
 	if err != nil {
 		return models.Paginated[models.ContinuousScreeningUpdateJobSummary]{},
 			errors.Wrap(err, "failed to list continuous screening update jobs")
 	}
 
-	hasNextPage := len(jobs) > limit
+	return jobs, nil
+}
 
-	return models.Paginated[models.ContinuousScreeningUpdateJobSummary]{
-		Items:       jobs[:min(limit, len(jobs))],
-		HasNextPage: hasNextPage,
+func listContinuousScreeningPage[T any](
+	pagination models.PaginationAndSorting,
+	list func(models.PaginationAndSorting) ([]T, error),
+) (models.Paginated[T], error) {
+	// Fetch one more item than requested so we can tell whether a next page exists.
+	limit := pagination.Limit
+	pagination.Limit = limit + 1
+
+	items, err := list(pagination)
+	if err != nil {
+		return models.Paginated[T]{}, err
+	}
+
+	return models.Paginated[T]{
+		Items:       items[:min(limit, len(items))],
+		HasNextPage: len(items) > limit,
 	}, nil
 }
 
