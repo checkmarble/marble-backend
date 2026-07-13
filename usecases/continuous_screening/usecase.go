@@ -84,6 +84,7 @@ type ContinuousScreeningUsecaseRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		orgId uuid.UUID,
+		provider models.ScreeningProvider,
 		indexVersion *string,
 		pagination models.PaginationAndSorting,
 	) (models.ContinuousScreeningClientDataIndexing, error)

@@ -423,6 +423,7 @@ func (ft ContinuousScreeningDatasetFileType) String() string {
 type ContinuousScreeningDatasetFile struct {
 	Id        uuid.UUID
 	OrgId     uuid.UUID
+	Provider  ScreeningProvider
 	FileType  ContinuousScreeningDatasetFileType
 	Version   string
 	FilePath  string
@@ -459,6 +460,7 @@ type CreateContinuousScreeningDeltaTrack struct {
 
 type CreateContinuousScreeningDatasetFile struct {
 	OrgId    uuid.UUID
+	Provider ScreeningProvider
 	FileType ContinuousScreeningDatasetFileType
 	Version  string
 	FilePath string
