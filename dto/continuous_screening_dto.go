@@ -115,6 +115,9 @@ type ContinuousScreeningClientDataIndexingDto struct {
 
 type ContinuousScreeningClientDataIndexingResponseDto struct {
 	PendingItems int                                        `json:"pending_items"`
+	Version      string                                     `json:"version"`
+	IndexVersion *string                                    `json:"index_version"`
+	IndexCurrent bool                                       `json:"index_current"`
 	Items        []ContinuousScreeningClientDataIndexingDto `json:"items"`
 	HasNextPage  bool                                       `json:"has_next_page"`
 }
@@ -136,6 +139,9 @@ func AdaptContinuousScreeningClientDataIndexingResponseDto(
 ) ContinuousScreeningClientDataIndexingResponseDto {
 	return ContinuousScreeningClientDataIndexingResponseDto{
 		PendingItems: indexing.PendingItems,
+		Version:      indexing.Version,
+		IndexVersion: indexing.IndexVersion,
+		IndexCurrent: indexing.IndexCurrent,
 		Items:        pure_utils.Map(indexing.Items.Items, AdaptContinuousScreeningClientDataIndexingDto),
 		HasNextPage:  indexing.Items.HasNextPage,
 	}

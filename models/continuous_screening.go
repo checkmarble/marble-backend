@@ -290,6 +290,9 @@ type ContinuousScreeningUpdateJobSummary struct {
 
 type ContinuousScreeningClientDataIndexing struct {
 	PendingItems int
+	Version      string
+	IndexVersion *string
+	IndexCurrent bool
 	Items        Paginated[ContinuousScreeningClientDataIndexingSummary]
 }
 
@@ -297,7 +300,7 @@ type ContinuousScreeningClientDataIndexing struct {
 // indexing activity for one full dataset file version and object type.
 type ContinuousScreeningClientDataIndexingSummary struct {
 	Id         uuid.UUID // needed for keyset pagination cursor
-	JobDate    time.Time // delta_track.created_at rounded to the minute
+	JobDate    time.Time // full dataset file creation time
 	TotalItems int
 	Version    string
 	ObjectType string
