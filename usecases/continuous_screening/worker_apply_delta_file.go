@@ -232,6 +232,18 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		return nil
 	}
 
+	// If the job is not processing, set it to processing (used by observability)
+	if updateJob.Status != models.ContinuousScreeningUpdateJobStatusProcessing {
+		if err := w.repository.UpdateContinuousScreeningUpdateJob(
+			ctx,
+			exec,
+			updateJob.Id,
+			models.ContinuousScreeningUpdateJobStatusProcessing,
+		); err != nil {
+			return err
+		}
+	}
+
 	// Adapt legacy datasets to the new format for the the filtering which will be used in matchesFilters method
 	updateJob.Config, err = w.usecase.AdaptLegacyDatasets(ctx, updateJob.Config)
 	if err != nil {

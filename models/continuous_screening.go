@@ -177,11 +177,13 @@ type ContinuousScreeningDatasetUpdate struct {
 }
 
 type ContinuousScreeningDatasetUpdateJobCounts struct {
-	Completed  int
-	Processing int
-	Pending    int
-	Failed     int
-	Total      int
+	Completed      int
+	Processing     int
+	Pending        int
+	Failed         int
+	Total          int
+	ItemsProcessed int
+	ItemsTotal     int
 }
 
 // ContinuousScreeningDatasetUpdateEnriched is a stored dataset-update row (from the

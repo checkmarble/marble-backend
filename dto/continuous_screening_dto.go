@@ -27,11 +27,13 @@ type ContinuousScreeningDatasetUpdateDto struct {
 }
 
 type ContinuousScreeningDatasetUpdateCompletion struct {
-	Completed  int `json:"completed"`
-	Processing int `json:"processing"`
-	Pending    int `json:"pending"`
-	Failed     int `json:"failed"`
-	Total      int `json:"total"`
+	Completed      int `json:"completed"`
+	Processing     int `json:"processing"`
+	Pending        int `json:"pending"`
+	Failed         int `json:"failed"`
+	Total          int `json:"total"`
+	ItemsProcessed int `json:"items_processed"`
+	ItemsTotal     int `json:"items_total"`
 }
 
 func AdaptContinuousScreeningDatasetUpdateDto(
@@ -47,11 +49,13 @@ func AdaptContinuousScreeningDatasetUpdateDto(
 		TotalItems:  u.TotalItems,
 		Status:      u.Status.String(),
 		Completion: ContinuousScreeningDatasetUpdateCompletion{
-			Completed:  u.Completion.Completed,
-			Processing: u.Completion.Processing,
-			Pending:    u.Completion.Pending,
-			Failed:     u.Completion.Failed,
-			Total:      u.Completion.Total,
+			Completed:      u.Completion.Completed,
+			Processing:     u.Completion.Processing,
+			Pending:        u.Completion.Pending,
+			Failed:         u.Completion.Failed,
+			Total:          u.Completion.Total,
+			ItemsProcessed: u.Completion.ItemsProcessed,
+			ItemsTotal:     u.Completion.ItemsTotal,
 		},
 		CreatedAt: u.CreatedAt,
 	}

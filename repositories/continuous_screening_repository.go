@@ -847,6 +847,8 @@ func (repo *MarbleDbRepository) ListContinuousScreeningDatasetUpdates(
 		Column("job.pending_count AS pending_count").
 		Column("job.failed_count AS failed_count").
 		Column("job.total_jobs AS total_jobs").
+		Column("job.items_processed AS items_processed").
+		Column("job.items_total AS items_total").
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES+" AS ds").
 		JoinClause(`LEFT JOIN LATERAL (
 			SELECT
@@ -855,6 +857,13 @@ func (repo *MarbleDbRepository) ListContinuousScreeningDatasetUpdates(
 				(COUNT(*) FILTER (WHERE ucs.status = 'pending'))::int AS pending_count,
 				(COUNT(*) FILTER (WHERE ucs.status = 'failed'))::int AS failed_count,
 				COUNT(ucs.id)::int AS total_jobs,
+				COALESCE(SUM(
+					CASE
+						WHEN ucs.status = 'completed' THEN ds.total_items
+						ELSE COALESCE(off.items_processed, 0)
+					END
+				), 0)::int AS items_processed,
+				(COUNT(ucs.id) * ds.total_items)::int AS items_total,
 				CASE
 					WHEN COUNT(*) FILTER (WHERE ucs.status = 'failed') > 0 THEN 'failed'
 					WHEN COUNT(*) FILTER (WHERE ucs.status = 'pending') > 0 THEN 'pending'
@@ -863,6 +872,8 @@ func (repo *MarbleDbRepository) ListContinuousScreeningDatasetUpdates(
 					ELSE 'pending'
 				END AS status
 			FROM `+dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS+` ucs
+			LEFT JOIN `+dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS+` off
+				ON off.continuous_screening_update_job_id = ucs.id
 			WHERE ucs.continuous_screening_dataset_update_id = ds.id
 				AND ucs.org_id = ?
 				AND ucs.provider = ?

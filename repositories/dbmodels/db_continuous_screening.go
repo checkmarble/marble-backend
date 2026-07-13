@@ -196,6 +196,8 @@ type DBContinuousScreeningDatasetUpdateEnriched struct {
 	PendingCount    int       `db:"pending_count"`
 	FailedCount     int       `db:"failed_count"`
 	TotalJobs       int       `db:"total_jobs"`
+	ItemsProcessed  int       `db:"items_processed"`
+	ItemsTotal      int       `db:"items_total"`
 }
 
 func AdaptContinuousScreeningDatasetUpdateEnriched(
@@ -212,11 +214,13 @@ func AdaptContinuousScreeningDatasetUpdateEnriched(
 		},
 		Status: models.ContinuousScreeningUpdateJobStatusFrom(dto.Status),
 		Completion: models.ContinuousScreeningDatasetUpdateJobCounts{
-			Completed:  dto.CompletedCount,
-			Processing: dto.ProcessingCount,
-			Pending:    dto.PendingCount,
-			Failed:     dto.FailedCount,
-			Total:      dto.TotalJobs,
+			Completed:      dto.CompletedCount,
+			Processing:     dto.ProcessingCount,
+			Pending:        dto.PendingCount,
+			Failed:         dto.FailedCount,
+			Total:          dto.TotalJobs,
+			ItemsProcessed: dto.ItemsProcessed,
+			ItemsTotal:     dto.ItemsTotal,
 		},
 	}, nil
 }
