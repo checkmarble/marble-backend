@@ -108,7 +108,28 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningClientDataIndexing(
 	pagination.Limit = limit + 1
 
 	exec := uc.executorFactory.NewExecutor()
-	indexing, err := uc.repository.ListContinuousScreeningClientDataIndexing(ctx, exec, orgId, pagination)
+
+	org, err := uc.repository.GetOrganizationById(ctx, exec, orgId)
+	if err != nil {
+		return models.ContinuousScreeningClientDataIndexing{},
+			errors.Wrap(err, "failed to get organization for continuous screening client data indexing")
+	}
+
+	provider := org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring)
+	catalog, err := uc.screeningProvider.GetRawCatalog(ctx, provider)
+	if err != nil {
+		return models.ContinuousScreeningClientDataIndexing{},
+			errors.Wrap(err, "failed to get screening provider catalog")
+	}
+
+	dataset, datasetFound := catalog.Datasets[orgCustomDatasetName(orgId)]
+	var indexVersion *string
+	if datasetFound {
+		indexVersion = dataset.IndexVersion
+	}
+
+	indexing, err := uc.repository.ListContinuousScreeningClientDataIndexing(
+		ctx, exec, orgId, indexVersion, pagination)
 	if err != nil {
 		return models.ContinuousScreeningClientDataIndexing{},
 			errors.Wrap(err, "failed to list continuous screening client data indexing")
@@ -119,6 +140,11 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningClientDataIndexing(
 	indexing.Items = models.Paginated[models.ContinuousScreeningClientDataIndexingSummary]{
 		Items:       indexing.Items.Items[:min(limit, len(indexing.Items.Items))],
 		HasNextPage: hasNextPage,
+	}
+	if datasetFound {
+		indexing.Version = dataset.Version
+		indexing.IndexVersion = dataset.IndexVersion
+		indexing.IndexCurrent = dataset.IndexCurrent
 	}
 
 	return indexing, nil
