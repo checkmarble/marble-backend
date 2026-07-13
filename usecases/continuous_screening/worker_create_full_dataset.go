@@ -208,7 +208,8 @@ func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 	}()
 
 	// Check if the org has a continuous screening config
-	configs, err := w.repo.GetContinuousScreeningConfigsByOrgId(ctx, exec, orgId, org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring))
+	provider := org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring)
+	configs, err := w.repo.GetContinuousScreeningConfigsByOrgId(ctx, exec, orgId, provider)
 	if err != nil {
 		return errors.Wrap(err, "failed to get continuous screening configs by org id")
 	}
@@ -226,14 +227,14 @@ func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 
 	if datasetFile == nil {
 		logger.DebugContext(ctx, "No dataset file found for org, creating new one", "orgId", orgId)
-		err := w.handleFirstFullDataset(ctx, exec, orgId)
+		err := w.handleFirstFullDataset(ctx, exec, orgId, provider)
 		if err != nil {
 			return errors.Wrap(err, "failed to handle first full dataset")
 		}
 	} else {
 		logger.DebugContext(ctx, "Dataset file found for org, patching it and creating new version",
 			"orgId", orgId, "datasetFile", datasetFile)
-		err := w.handlePatchDataset(ctx, exec, orgId, *datasetFile)
+		err := w.handlePatchDataset(ctx, exec, orgId, provider, *datasetFile)
 		if err != nil {
 			return errors.Wrap(err, "failed to handle patch dataset")
 		}
@@ -246,7 +247,7 @@ func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 // Create the first full dataset for the org.
 // The flow is simpler than the patch dataset and we don't need to create a delta dataset file.
 func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
-	exec repositories.Executor, orgId uuid.UUID,
+	exec repositories.Executor, orgId uuid.UUID, provider models.ScreeningProvider,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Creating first full dataset", "orgId", orgId)
@@ -323,6 +324,7 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 		datasetFile, err := w.repo.CreateContinuousScreeningDatasetFile(ctx, tx,
 			models.CreateContinuousScreeningDatasetFile{
 				OrgId:    orgId,
+				Provider: provider,
 				FileType: models.ContinuousScreeningDatasetFileTypeFull,
 				Version:  version,
 				FilePath: fullDatasetFileName,
@@ -351,7 +353,8 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 // handlePatchDataset handles patching an existing dataset by merging the previous dataset file
 // with new delta tracks. Both sources are sorted by entity_id, enabling an efficient merge.
 func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
-	exec repositories.Executor, orgId uuid.UUID, previousDatasetFile models.ContinuousScreeningDatasetFile,
+	exec repositories.Executor, orgId uuid.UUID, provider models.ScreeningProvider,
+	previousDatasetFile models.ContinuousScreeningDatasetFile,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Patching dataset", "orgId", orgId, "previousVersion", previousDatasetFile.Version)
@@ -546,6 +549,7 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 		datasetFile, err := w.repo.CreateContinuousScreeningDatasetFile(ctx, tx,
 			models.CreateContinuousScreeningDatasetFile{
 				OrgId:    orgId,
+				Provider: provider,
 				FileType: models.ContinuousScreeningDatasetFileTypeFull,
 				Version:  version,
 				FilePath: fullDatasetFileName,
@@ -558,6 +562,7 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 		_, err = w.repo.CreateContinuousScreeningDatasetFile(ctx, tx,
 			models.CreateContinuousScreeningDatasetFile{
 				OrgId:    orgId,
+				Provider: provider,
 				FileType: models.ContinuousScreeningDatasetFileTypeDelta,
 				Version:  version,
 				FilePath: deltaDatasetFileName,

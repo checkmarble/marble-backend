@@ -129,7 +129,7 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningClientDataIndexing(
 	}
 
 	indexing, err := uc.repository.ListContinuousScreeningClientDataIndexing(
-		ctx, exec, orgId, indexVersion, pagination)
+		ctx, exec, orgId, provider, indexVersion, pagination)
 	if err != nil {
 		return models.ContinuousScreeningClientDataIndexing{},
 			errors.Wrap(err, "failed to list continuous screening client data indexing")

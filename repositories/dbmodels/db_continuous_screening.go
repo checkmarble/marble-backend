@@ -383,6 +383,7 @@ func AdaptContinuousScreeningJobError(dto DBContinuousScreeningJobError) (models
 type DBContinuousScreeningDatasetFile struct {
 	Id        uuid.UUID `db:"id"`
 	OrgId     uuid.UUID `db:"org_id"`
+	Provider  string    `db:"provider"`
 	FileType  string    `db:"file_type"`
 	Version   string    `db:"version"`
 	FilePath  string    `db:"file_path"`
@@ -398,6 +399,7 @@ func AdaptContinuousScreeningDatasetFile(dto DBContinuousScreeningDatasetFile) (
 	return models.ContinuousScreeningDatasetFile{
 		Id:        dto.Id,
 		OrgId:     dto.OrgId,
+		Provider:  models.ScreeningProvider(dto.Provider),
 		FileType:  models.ContinuousScreeningDatasetFileTypeFrom(dto.FileType),
 		Version:   dto.Version,
 		FilePath:  dto.FilePath,

@@ -64,6 +64,7 @@ func TestListContinuousScreeningClientDataIndexingUsesMotivaIndexVersion(t *test
 		ctx,
 		mock.Anything,
 		orgId,
+		models.ScreeningProviderLexisNexis,
 		mock.MatchedBy(func(version *string) bool {
 			return version != nil && *version == indexVersion
 		}),
@@ -114,6 +115,7 @@ func TestListContinuousScreeningClientDataIndexingTreatsMissingMotivaDatasetAsUn
 		ctx,
 		mock.Anything,
 		orgId,
+		models.ScreeningProviderOpenSanctions,
 		(*string)(nil),
 		models.PaginationAndSorting{
 			Sorting: models.SortingFieldCreatedAt,
