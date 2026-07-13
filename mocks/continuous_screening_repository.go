@@ -200,9 +200,10 @@ func (m *ContinuousScreeningRepository) ListContinuousScreeningUpdateJobs(
 	ctx context.Context,
 	exec repositories.Executor,
 	orgId uuid.UUID,
+	provider models.ScreeningProvider,
 	pagination models.PaginationAndSorting,
 ) ([]models.ContinuousScreeningUpdateJobSummary, error) {
-	args := m.Called(ctx, exec, orgId, pagination)
+	args := m.Called(ctx, exec, orgId, provider, pagination)
 	return args.Get(0).([]models.ContinuousScreeningUpdateJobSummary), args.Error(1)
 }
 

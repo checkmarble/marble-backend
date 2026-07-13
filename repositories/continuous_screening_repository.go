@@ -830,16 +830,65 @@ func (repo *MarbleDbRepository) ListContinuousScreeningDatasetUpdates(
 		return nil, err
 	}
 
-	// Only created_at sorting is supported (table has no updated_at column).
-	if pagination.Sorting != models.SortingFieldCreatedAt {
-		return nil, errors.Wrapf(models.BadParameterError,
-			"invalid sorting field: %s", pagination.Sorting)
+	query, err := continuousScreeningDatasetUpdatesQuery(orgId, provider, pagination)
+	if err != nil {
+		return nil, err
 	}
 
-	orderCond := fmt.Sprintf("ds.%s %s, ds.id %s",
-		pagination.Sorting, pagination.Order, pagination.Order)
+	offsetQuery := NewQueryBuilder().
+		Select(fmt.Sprintf("%s AS offset_value", pagination.Sorting)).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES).
+		Where(squirrel.Eq{"id": pagination.OffsetId})
 
-	query := NewQueryBuilder().
+	query, err = repo.applyContinuousScreeningKeysetPagination(
+		ctx, exec, query, offsetQuery, "ds", pagination)
+	if err != nil {
+		return nil, err
+	}
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetUpdateEnriched)
+}
+
+func continuousScreeningDatasetUpdatesQuery(
+	orgId uuid.UUID,
+	provider models.ScreeningProvider,
+	pagination models.PaginationAndSorting,
+) (squirrel.SelectBuilder, error) {
+	// Only created_at sorting is supported (table has no updated_at column).
+	if err := validateContinuousScreeningSorting(
+		pagination, models.SortingFieldCreatedAt,
+	); err != nil {
+		return squirrel.SelectBuilder{}, err
+	}
+
+	jobAggregate := continuousScreeningUpdateJobsQuery(
+		orgId,
+		provider,
+		"(COUNT(*) FILTER (WHERE ucs.status = 'completed'))::int AS completed_count",
+		"(COUNT(*) FILTER (WHERE ucs.status = 'processing'))::int AS processing_count",
+		"(COUNT(*) FILTER (WHERE ucs.status = 'pending'))::int AS pending_count",
+		"(COUNT(*) FILTER (WHERE ucs.status = 'failed'))::int AS failed_count",
+		"COUNT(ucs.id)::int AS total_jobs",
+		`COALESCE(SUM(
+			CASE
+				WHEN ucs.status = 'completed' THEN ds.total_items
+				ELSE COALESCE(off.items_processed, 0)
+			END
+		), 0)::int AS items_processed`,
+		"(COUNT(ucs.id) * ds.total_items)::int AS items_total",
+		`CASE
+			WHEN COUNT(*) FILTER (WHERE ucs.status = 'failed') > 0 THEN 'failed'
+			WHEN COUNT(*) FILTER (WHERE ucs.status = 'pending') > 0 THEN 'pending'
+			WHEN COUNT(*) FILTER (WHERE ucs.status = 'processing') > 0 THEN 'processing'
+			WHEN COUNT(*) FILTER (WHERE ucs.status = 'completed') > 0 THEN 'completed'
+			ELSE 'pending'
+		END AS status`,
+	).
+		Where("ucs.continuous_screening_dataset_update_id = ds.id").
+		// Keep nested placeholders unnumbered so the outer query can number all arguments once.
+		PlaceholderFormat(squirrel.Question)
+
+	return NewQueryBuilder().
 		Select(columnsNames("ds", dbmodels.SelectContinuousScreeningDatasetUpdateColumn)...).
 		Column("job.status AS status").
 		Column("job.completed_count AS completed_count").
@@ -849,137 +898,37 @@ func (repo *MarbleDbRepository) ListContinuousScreeningDatasetUpdates(
 		Column("job.total_jobs AS total_jobs").
 		Column("job.items_processed AS items_processed").
 		Column("job.items_total AS items_total").
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES+" AS ds").
-		JoinClause(`LEFT JOIN LATERAL (
-			SELECT
-				(COUNT(*) FILTER (WHERE ucs.status = 'completed'))::int AS completed_count,
-				(COUNT(*) FILTER (WHERE ucs.status = 'processing'))::int AS processing_count,
-				(COUNT(*) FILTER (WHERE ucs.status = 'pending'))::int AS pending_count,
-				(COUNT(*) FILTER (WHERE ucs.status = 'failed'))::int AS failed_count,
-				COUNT(ucs.id)::int AS total_jobs,
-				COALESCE(SUM(
-					CASE
-						WHEN ucs.status = 'completed' THEN ds.total_items
-						ELSE COALESCE(off.items_processed, 0)
-					END
-				), 0)::int AS items_processed,
-				(COUNT(ucs.id) * ds.total_items)::int AS items_total,
-				CASE
-					WHEN COUNT(*) FILTER (WHERE ucs.status = 'failed') > 0 THEN 'failed'
-					WHEN COUNT(*) FILTER (WHERE ucs.status = 'pending') > 0 THEN 'pending'
-					WHEN COUNT(*) FILTER (WHERE ucs.status = 'processing') > 0 THEN 'processing'
-					WHEN COUNT(*) FILTER (WHERE ucs.status = 'completed') > 0 THEN 'completed'
-					ELSE 'pending'
-				END AS status
-			FROM `+dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS+` ucs
-			LEFT JOIN `+dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS+` off
-				ON off.continuous_screening_update_job_id = ucs.id
-			WHERE ucs.continuous_screening_dataset_update_id = ds.id
-				AND ucs.org_id = ?
-				AND ucs.provider = ?
-		) job ON true`, orgId, provider).
-		OrderBy(orderCond).
-		Limit(uint64(pagination.Limit))
-
-	query, err := repo.applyContinuousScreeningDatasetUpdatePaginationFilters(
-		ctx, exec, query, pagination)
-	if err != nil {
-		return nil, err
-	}
-
-	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningDatasetUpdateEnriched)
-}
-
-func (repo *MarbleDbRepository) applyContinuousScreeningDatasetUpdatePaginationFilters(
-	ctx context.Context,
-	exec Executor,
-	query squirrel.SelectBuilder,
-	p models.PaginationAndSorting,
-) (squirrel.SelectBuilder, error) {
-	if p.OffsetId == "" {
-		return query, nil
-	}
-
-	offsetQuery := NewQueryBuilder().
-		Select(dbmodels.SelectContinuousScreeningDatasetUpdateColumn...).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES).
-		Where(squirrel.Eq{"id": p.OffsetId})
-
-	offset, err := SqlToModel(ctx, exec, offsetQuery, dbmodels.AdaptContinuousScreeningDatasetUpdate)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return query, errors.Wrap(models.NotFoundError,
-			"No row found matching the provided offsetId")
-	} else if err != nil {
-		return query, errors.Wrap(err,
-			"failed to fetch dataset update corresponding to the provided offsetId")
-	}
-
-	args := []any{offset.CreatedAt, p.OffsetId}
-	if p.Order == models.SortingOrderDesc {
-		query = query.Where(fmt.Sprintf("(ds.%s, ds.id) < (?, ?)", p.Sorting), args...)
-	} else {
-		query = query.Where(fmt.Sprintf("(ds.%s, ds.id) > (?, ?)", p.Sorting), args...)
-	}
-
-	return query, nil
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES + " AS ds").
+		JoinClause(squirrel.Expr("LEFT JOIN LATERAL (?) job ON true", jobAggregate)).
+		OrderBy(continuousScreeningKeysetOrder("ds", pagination)).
+		Limit(uint64(pagination.Limit)), nil
 }
 
 func (repo *MarbleDbRepository) ListContinuousScreeningUpdateJobs(
 	ctx context.Context,
 	exec Executor,
 	orgId uuid.UUID,
+	provider models.ScreeningProvider,
 	pagination models.PaginationAndSorting,
 ) ([]models.ContinuousScreeningUpdateJobSummary, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
-	// The update_jobs table has both created_at and updated_at columns.
-	if pagination.Sorting != models.SortingFieldCreatedAt &&
-		pagination.Sorting != models.SortingFieldUpdatedAt {
-		return nil, errors.Wrapf(models.BadParameterError,
-			"invalid sorting field: %s", pagination.Sorting)
+	query, err := continuousScreeningUpdateJobDetailsQuery(orgId, provider, pagination)
+	if err != nil {
+		return nil, err
 	}
 
-	// Columns are ambiguous across the joined tables, so qualify with the ucs alias.
-	orderCond := fmt.Sprintf("ucs.%s %s, ucs.id %s",
-		pagination.Sorting, pagination.Order, pagination.Order)
+	// Fetch the cursor row with the same org/provider scope as the result query.
+	offsetQuery := continuousScreeningUpdateJobsQuery(
+		orgId,
+		provider,
+		fmt.Sprintf("ucs.%s AS offset_value", pagination.Sorting),
+	).Where(squirrel.Eq{"ucs.id": pagination.OffsetId})
 
-	query := NewQueryBuilder().
-		Select(
-			"ucs.id AS id",
-			"ucs.status AS status",
-			"ucs.created_at AS job_start",
-			"ucs.updated_at AS job_end",
-			"cs.name AS config_name",
-			"cs.description AS description",
-			"ds.total_items AS total_items",
-			"ds.created_at AS reception_time",
-			"ds.version AS version",
-			"off.items_processed AS processed",
-		).
-		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s)) FILTER (WHERE err.id IS NOT NULL) AS errors",
-			strings.Join(columnsNames("err", dbmodels.SelectContinuousScreeningJobErrorColumn), ","))).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS+" AS ucs").
-		InnerJoin(dbmodels.TABLE_ORGANIZATION+
-			" o ON ucs.org_id = o.id AND ucs.provider = coalesce(o.screening_providers->>'continuous_monitoring', 'opensanctions')").
-		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS+
-			" AS cs ON (ucs.continuous_screening_config_id = cs.id)").
-		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES+
-			" AS ds ON (ucs.continuous_screening_dataset_update_id = ds.id)").
-		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS+
-			" AS off ON (off.continuous_screening_update_job_id = ucs.id)").
-		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_ERRORS+
-			" AS err ON (err.continuous_screening_update_job_id = ucs.id)").
-		Where(squirrel.Eq{"ucs.org_id": orgId}).
-		GroupBy("ucs.id", "ucs.status", "ucs.created_at", "ucs.updated_at",
-			"cs.name", "cs.description", "ds.total_items", "ds.created_at",
-			"ds.version", "off.items_processed").
-		OrderBy(orderCond).
-		Limit(uint64(pagination.Limit))
-
-	query, err := repo.applyContinuousScreeningUpdateJobPaginationFilters(
-		ctx, exec, query, orgId, pagination)
+	query, err = repo.applyContinuousScreeningKeysetPagination(
+		ctx, exec, query, offsetQuery, "ucs", pagination)
 	if err != nil {
 		return nil, err
 	}
@@ -987,54 +936,139 @@ func (repo *MarbleDbRepository) ListContinuousScreeningUpdateJobs(
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptContinuousScreeningUpdateJobSummary)
 }
 
-func (repo *MarbleDbRepository) applyContinuousScreeningUpdateJobPaginationFilters(
+func continuousScreeningUpdateJobDetailsQuery(
+	orgId uuid.UUID,
+	provider models.ScreeningProvider,
+	pagination models.PaginationAndSorting,
+) (squirrel.SelectBuilder, error) {
+	// The update_jobs table has both created_at and updated_at columns.
+	if err := validateContinuousScreeningSorting(
+		pagination,
+		models.SortingFieldCreatedAt,
+		models.SortingFieldUpdatedAt,
+	); err != nil {
+		return squirrel.SelectBuilder{}, err
+	}
+
+	return continuousScreeningUpdateJobsQuery(
+		orgId,
+		provider,
+		"ucs.id AS id",
+		"ucs.status AS status",
+		"ucs.created_at AS job_start",
+		"ucs.updated_at AS job_end",
+		"cs.name AS config_name",
+		"cs.description AS description",
+		"ds.total_items AS total_items",
+		"ds.created_at AS reception_time",
+		"ds.version AS version",
+		"off.items_processed AS processed",
+	).
+		Column(fmt.Sprintf("ARRAY_AGG(ROW(%s)) FILTER (WHERE err.id IS NOT NULL) AS errors",
+			strings.Join(columnsNames("err", dbmodels.SelectContinuousScreeningJobErrorColumn), ","))).
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_CONFIGS+
+			" AS cs ON (ucs.continuous_screening_config_id = cs.id)").
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_UPDATES+
+			" AS ds ON (ucs.continuous_screening_dataset_update_id = ds.id)").
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_ERRORS+
+			" AS err ON (err.continuous_screening_update_job_id = ucs.id)").
+		GroupBy("ucs.id", "ucs.status", "ucs.created_at", "ucs.updated_at",
+			"cs.name", "cs.description", "ds.total_items", "ds.created_at",
+			"ds.version", "off.items_processed").
+		OrderBy(continuousScreeningKeysetOrder("ucs", pagination)).
+		Limit(uint64(pagination.Limit)), nil
+}
+
+func continuousScreeningUpdateJobsQuery(
+	orgId uuid.UUID,
+	provider models.ScreeningProvider,
+	columns ...string,
+) squirrel.SelectBuilder {
+	return NewQueryBuilder().
+		Select(columns...).
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS + " AS ucs").
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_OFFSETS +
+			" AS off ON (off.continuous_screening_update_job_id = ucs.id)").
+		Where(squirrel.Eq{
+			"ucs.org_id":   orgId,
+			"ucs.provider": provider,
+		})
+}
+
+type continuousScreeningPaginationOffset struct {
+	Value time.Time `db:"offset_value"`
+}
+
+func adaptContinuousScreeningPaginationOffset(
+	offset continuousScreeningPaginationOffset,
+) (time.Time, error) {
+	return offset.Value, nil
+}
+
+func validateContinuousScreeningSorting(
+	pagination models.PaginationAndSorting,
+	allowed ...models.SortingField,
+) error {
+	for _, sorting := range allowed {
+		if pagination.Sorting == sorting {
+			return nil
+		}
+	}
+
+	return errors.Wrapf(models.BadParameterError,
+		"invalid sorting field: %s", pagination.Sorting)
+}
+
+func continuousScreeningKeysetOrder(
+	tableAlias string,
+	pagination models.PaginationAndSorting,
+) string {
+	return fmt.Sprintf("%s.%s %s, %s.id %s",
+		tableAlias, pagination.Sorting, pagination.Order, tableAlias, pagination.Order)
+}
+
+func (repo *MarbleDbRepository) applyContinuousScreeningKeysetPagination(
 	ctx context.Context,
 	exec Executor,
 	query squirrel.SelectBuilder,
-	orgId uuid.UUID,
+	offsetQuery squirrel.SelectBuilder,
+	tableAlias string,
 	p models.PaginationAndSorting,
 ) (squirrel.SelectBuilder, error) {
 	if p.OffsetId == "" {
 		return query, nil
 	}
 
-	// Fetch the cursor row scoped to the org so a foreign cursor id cannot be used
-	// to page another organization's data.
-	offsetQuery := NewQueryBuilder().
-		Select(columnsNames("ucs", dbmodels.SelectContinuousScreeningUpdateJobColumn)...).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS + " ucs").
-		InnerJoin(dbmodels.TABLE_ORGANIZATION +
-			" o ON ucs.org_id = o.id AND ucs.provider = coalesce(o.screening_providers->>'continuous_monitoring', 'opensanctions')").
-		Where(squirrel.Eq{"ucs.id": p.OffsetId, "ucs.org_id": orgId})
-
-	offset, err := SqlToModel(ctx, exec, offsetQuery, dbmodels.AdaptContinuousScreeningUpdateJob)
+	offset, err := SqlToModel(
+		ctx, exec, offsetQuery, adaptContinuousScreeningPaginationOffset)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return query, errors.Wrap(models.NotFoundError,
 			"No row found matching the provided offsetId")
 	} else if err != nil {
 		return query, errors.Wrap(err,
-			"failed to fetch update job corresponding to the provided offsetId")
+			"failed to fetch row corresponding to the provided offsetId")
 	}
 
-	var offsetValue any
-	switch p.Sorting {
-	case models.SortingFieldCreatedAt:
-		offsetValue = offset.CreatedAt
-	case models.SortingFieldUpdatedAt:
-		offsetValue = offset.UpdatedAt
-	default:
-		return query, errors.Wrapf(models.BadParameterError,
-			"invalid sorting field: %s", p.Sorting)
-	}
+	return applyContinuousScreeningKeysetCondition(query, tableAlias, p, offset), nil
+}
 
-	args := []any{offsetValue, p.OffsetId}
+func applyContinuousScreeningKeysetCondition(
+	query squirrel.SelectBuilder,
+	tableAlias string,
+	p models.PaginationAndSorting,
+	offset time.Time,
+) squirrel.SelectBuilder {
+	operator := ">"
 	if p.Order == models.SortingOrderDesc {
-		query = query.Where(fmt.Sprintf("(ucs.%s, ucs.id) < (?, ?)", p.Sorting), args...)
-	} else {
-		query = query.Where(fmt.Sprintf("(ucs.%s, ucs.id) > (?, ?)", p.Sorting), args...)
+		operator = "<"
 	}
 
-	return query, nil
+	return query.Where(
+		fmt.Sprintf("(%s.%s, %s.id) %s (?, ?)",
+			tableAlias, p.Sorting, tableAlias, operator),
+		offset,
+		p.OffsetId,
+	)
 }
 
 func (repo *MarbleDbRepository) ListContinuousScreeningClientDataIndexing(
