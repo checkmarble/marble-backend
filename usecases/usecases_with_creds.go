@@ -589,14 +589,10 @@ func (usecases *UsecasesWithCreds) NewWebhookEventsUsecase() webhooks.WebhookEve
 		security.NewEnforceSecurity(usecases.Credentials),
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
-		usecases.Repositories.ConvoyRepository,
-		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.TaskQueueRepository,
 		usecases.Usecases.failedWebhooksRetryPageSize,
 		usecases.Usecases.license.Webhooks,
-		usecases.Usecases.hasConvoyServerSetup,
-		usecases.Usecases.webhookSystemMigrated,
 		usecases.NewPublicApiAdapterUsecase(),
 	)
 }
@@ -606,14 +602,12 @@ func (usecases *UsecasesWithCreds) NewWebhooksUsecase() webhooks.WebhooksUsecase
 		security.NewEnforceSecurity(usecases.Credentials),
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
-		usecases.Repositories.ConvoyRepository,
 		usecases.Repositories.MarbleDbRepository,
 		webhooks.NewWebhookDeliveryService(webhooks.WebhookDeliveryConfig{
 			AllowInsecureURLs: usecases.Usecases.allowInsecureWebhookURLs,
 			MarbleVersion:     usecases.Usecases.apiVersion,
 			IPWhitelist:       usecases.Usecases.webhookIPWhitelist,
 		}),
-		usecases.Usecases.webhookSystemMigrated,
 	)
 }
 
@@ -627,7 +621,6 @@ func (usecases *UsecasesWithCreds) NewRuleSnoozeUsecase() RuleSnoozeUsecase {
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 		security.NewEnforceSecurity(usecases.Credentials),
-		usecases.NewWebhookEventsUsecase(),
 	)
 }
 
@@ -773,9 +766,7 @@ func (usecases UsecasesWithCreds) NewFeatureAccessReader() feature_access.Featur
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.RedisClient,
 		usecases.Usecases.license,
-		usecases.Usecases.hasConvoyServerSetup,
 		usecases.Usecases.hasAnalyticsSetup,
-		usecases.Usecases.webhookSystemMigrated,
 		usecases.Usecases.hasOpensanctionsSetup,
 		usecases.Usecases.hasNameRecognizerSetup,
 	)
@@ -877,7 +868,6 @@ func (usecases *UsecasesWithCreds) NewDecisionWorkflowsWorker() *decision_workfl
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.Repositories.MarbleDbRepository,
-		usecases.NewWebhookEventsUsecase(),
 		&decisionUsecase,
 	)
 }
@@ -1036,11 +1026,6 @@ func (usecases UsecasesWithCreds) NewScheduledExecutionWorker() *worker_jobs.Sch
 func (usecases UsecasesWithCreds) NewCsvIngestionWorker() *CsvIngestionWorker {
 	ingestionUsecase := usecases.NewIngestionUseCase()
 	return NewCsvIngestionWorker(&ingestionUsecase)
-}
-
-func (usecases UsecasesWithCreds) NewWebhookRetryWorker() *worker_jobs.WebhookRetryWorker {
-	webhookEventsUsecase := usecases.NewWebhookEventsUsecase()
-	return worker_jobs.NewWebhookRetryWorker(&webhookEventsUsecase)
 }
 
 func (usecases UsecasesWithCreds) NewWebhookDispatchWorker() *worker_jobs.WebhookDispatchWorker {

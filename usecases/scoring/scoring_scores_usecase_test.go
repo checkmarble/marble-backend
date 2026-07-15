@@ -244,7 +244,6 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeAndInsert_Ha
 		Return(inserted, nil)
 	s.webhookSender.On("CreateWebhookEvent", s.ctx, s.transaction, mock.Anything).
 		Return(nil)
-	s.webhookSender.On("SendWebhookEventAsync", s.ctx, mock.Anything).Once()
 
 	uc := s.makeUsecaseWithCompute()
 	result, err := uc.tryRefreshScore(s.ctx, current, s.record, opts)

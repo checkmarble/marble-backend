@@ -17,8 +17,7 @@ func (m *AsyncDecisionCreator) CreateAllDecisions(
 	input models.CreateAllDecisionsInput,
 	params models.CreateDecisionParams,
 	optTx ...repositories.Transaction,
-) ([]models.DecisionWithRuleExecutions, int, []string, error) {
+) ([]models.DecisionWithRuleExecutions, int, error) {
 	args := m.Called(ctx, input, params, optTx)
-	return args.Get(0).([]models.DecisionWithRuleExecutions), args.Int(1),
-		args.Get(2).([]string), args.Error(3)
+	return args.Get(0).([]models.DecisionWithRuleExecutions), args.Int(1), args.Error(2)
 }

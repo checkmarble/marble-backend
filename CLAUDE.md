@@ -403,11 +403,6 @@ logger.InfoContext(ctx, "processing decision",
 - Can be self-hosted or use SaaS
 - Client in `infra/opensanctions.go`
 
-### Convoy (Webhooks)
-- Webhook delivery service
-- Handles retries and delivery guarantees
-- Client in `infra/convoy.go`
-
 ### Google Cloud Platform
 - BigQuery for analytics
 - Cloud Storage for file uploads

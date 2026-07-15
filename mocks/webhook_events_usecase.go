@@ -20,7 +20,3 @@ func (m *WebhookEventsUsecase) CreateWebhookEvent(
 	args := m.Called(ctx, tx, input)
 	return args.Error(0)
 }
-
-func (m *WebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, webhookEventId string) {
-	m.Called(ctx, webhookEventId)
-}

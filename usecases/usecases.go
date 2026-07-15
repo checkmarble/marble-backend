@@ -38,7 +38,6 @@ type Usecases struct {
 	offloadingBucketUrl          string
 	offloadingConfig             infra.OffloadingConfig
 	failedWebhooksRetryPageSize  int
-	hasConvoyServerSetup         bool
 	hasAnalyticsSetup            bool
 	hasOpensanctionsSetup        bool
 	hasNameRecognizerSetup       bool
@@ -51,7 +50,6 @@ type Usecases struct {
 	csServeFilesDirectly         bool
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
-	webhookSystemMigrated        bool   // True when migrated to new internal webhook system
 	allowInsecureWebhookURLs     bool   // Allow HTTP webhook URLs (dev only)
 	webhookIPWhitelist           string // Comma-separated CIDR ranges to whitelist for webhooks
 	screeningOffloadingEnabled   bool
@@ -116,14 +114,6 @@ func WithLicense(license models.LicenseValidation) Option {
 func WithBatchIngestionMaxSize(size int) Option {
 	return func(o *options) {
 		o.batchIngestionMaxSize = size
-	}
-}
-
-func WithConvoyServer(url string) Option {
-	return func(o *options) {
-		if url != "" {
-			o.hasConvoyServerSetup = true
-		}
 	}
 }
 
@@ -199,15 +189,6 @@ func WithCsCreateFullDatasetInterval(interval time.Duration) Option {
 	}
 }
 
-// WithWebhookSystemMigrated sets whether the webhook system has been migrated
-// to the new internal system. When true, new webhooks use the internal River-based
-// delivery system instead of Convoy.
-func WithWebhookSystemMigrated(migrated bool) Option {
-	return func(o *options) {
-		o.webhookSystemMigrated = migrated
-	}
-}
-
 // WithAllowInsecureWebhookURLs allows HTTP webhook URLs (for development only).
 // In production, only HTTPS is allowed.
 func WithAllowInsecureWebhookURLs(allow bool) Option {
@@ -253,7 +234,6 @@ type options struct {
 	offloadingConfig             infra.OffloadingConfig
 	failedWebhooksRetryPageSize  int
 	license                      models.LicenseValidation
-	hasConvoyServerSetup         bool
 	hasAnalyticsSetup            bool
 	hasOpensanctionsSetup        bool
 	hasNameRecognitionSetup      bool
@@ -265,7 +245,6 @@ type options struct {
 	csServeFilesDirectly         bool
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
-	webhookSystemMigrated        bool
 	allowInsecureWebhookURLs     bool
 	screeningOffloadingEnabled   bool
 	webhookIPWhitelist           string
@@ -294,7 +273,6 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		offloadingConfig:             o.offloadingConfig,
 		failedWebhooksRetryPageSize:  o.failedWebhooksRetryPageSize,
 		license:                      o.license,
-		hasConvoyServerSetup:         o.hasConvoyServerSetup,
 		hasAnalyticsSetup:            o.hasAnalyticsSetup,
 		hasOpensanctionsSetup:        o.hasOpensanctionsSetup,
 		hasNameRecognizerSetup:       o.hasNameRecognitionSetup,
@@ -306,7 +284,6 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		csServeFilesDirectly:         o.csServeFilesDirectly,
 		marbleApiInternalUrl:         o.marbleApiInternalUrl,
 		csCreateFullDatasetInterval:  o.csCreateFullDatasetInterval,
-		webhookSystemMigrated:        o.webhookSystemMigrated,
 		allowInsecureWebhookURLs:     o.allowInsecureWebhookURLs,
 		webhookIPWhitelist:           o.webhookIPWhitelist,
 		screeningOffloadingEnabled:   o.screeningOffloadingEnabled,
@@ -339,10 +316,6 @@ func (usecases Usecases) GetBlobHosts() []string {
 	}
 
 	return hosts
-}
-
-func (usecases Usecases) IsWebhookSystemMigrated() bool {
-	return usecases.webhookSystemMigrated
 }
 
 func (usecases *Usecases) NewExecutorFactory() executor_factory.ExecutorFactory {

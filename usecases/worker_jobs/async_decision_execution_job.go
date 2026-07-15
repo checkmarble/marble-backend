@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
@@ -34,7 +33,7 @@ type asyncDecisionCreator interface {
 		input models.CreateAllDecisionsInput,
 		params models.CreateDecisionParams,
 		optTx ...repositories.Transaction,
-	) ([]models.DecisionWithRuleExecutions, int, []string, error)
+	) ([]models.DecisionWithRuleExecutions, int, error)
 }
 
 type asyncDecisionExecutionRepo interface {
@@ -109,9 +108,8 @@ func (w *AsyncDecisionExecutionWorker) Work(ctx context.Context, job *river.Job[
 	}
 
 	// Decision creation + status update in a single transaction
-	var allWebhookEventIds []string
 	err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		decisions, _, webhookEventIds, err := w.decisionCreator.CreateAllDecisions(ctx,
+		decisions, _, err := w.decisionCreator.CreateAllDecisions(ctx,
 			models.CreateAllDecisionsInput{
 				OrganizationId:     execution.OrgId,
 				TriggerObjectTable: execution.ObjectType,
@@ -126,8 +124,6 @@ func (w *AsyncDecisionExecutionWorker) Work(ctx context.Context, job *river.Job[
 		if err != nil {
 			return err
 		}
-
-		allWebhookEventIds = webhookEventIds
 
 		// Extract decision IDs
 		decisionIds := make([]uuid.UUID, len(decisions))
@@ -144,11 +140,6 @@ func (w *AsyncDecisionExecutionWorker) Work(ctx context.Context, job *river.Job[
 	})
 	if err != nil {
 		return w.handleError(ctx, job, execution, err)
-	}
-
-	// Send webhooks after transaction commits
-	for _, webhookEventId := range allWebhookEventIds {
-		w.webhookEventsSender.SendWebhookEventAsync(ctx, webhookEventId)
 	}
 
 	logger.DebugContext(ctx, "async decision execution completed",
@@ -223,7 +214,6 @@ func (w *AsyncDecisionExecutionWorker) handleError(
 	)
 
 	// Mark as failed and create webhook event in a single transaction
-	var webhookEventId string
 	err := w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := w.executionRepo.UpdateAsyncDecisionExecution(ctx, tx, models.AsyncDecisionExecutionUpdate{
 			Id:           execution.Id,
@@ -238,9 +228,7 @@ func (w *AsyncDecisionExecutionWorker) handleError(
 		execution.ErrorMessage = &safeMessage
 
 		// Create webhook event for the failure
-		webhookEventId = pure_utils.NewId().String()
 		if err := w.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-			Id:             webhookEventId,
 			OrganizationId: execution.OrgId,
 			EventContent:   models.NewWebhookEventAsyncDecisionFailed(execution),
 		}); err != nil {
@@ -257,9 +245,6 @@ func (w *AsyncDecisionExecutionWorker) handleError(
 		)
 		return originalErr
 	}
-
-	// Send webhook after transaction commits (same pattern as async_decision_job.go)
-	w.webhookEventsSender.SendWebhookEventAsync(ctx, webhookEventId)
 
 	// Return nil so River doesn't retry (we've handled the failure ourselves)
 	return nil

@@ -78,7 +78,7 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 			Features: dto.ConfigFeaturesDto{
 				Sso:                   licenseUsecase.HasSsoEnabled(),
 				Segment:               !cfg.DisableSegment,
-				WebhookSecretRotation: uc.IsWebhookSystemMigrated(),
+				WebhookSecretRotation: true,
 			},
 		}
 

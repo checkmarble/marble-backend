@@ -14,14 +14,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type convoyWebhooksRepository interface {
-	GetWebhook(ctx context.Context, webhookId string) (models.Webhook, error)
-	ListWebhooks(ctx context.Context, organizationId uuid.UUID) ([]models.Webhook, error)
-	RegisterWebhook(ctx context.Context, organizationId uuid.UUID, input models.WebhookRegister) (models.Webhook, error)
-	UpdateWebhook(ctx context.Context, input models.Webhook) (models.Webhook, error)
-	DeleteWebhook(ctx context.Context, webhookId string) error
-}
-
 type webhooksRepository interface {
 	CreateWebhook(ctx context.Context, exec repositories.Executor, webhook models.NewWebhook) error
 	GetWebhook(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.NewWebhook, error)
@@ -48,32 +40,26 @@ type webhookEndpointValidator interface {
 }
 
 type WebhooksUsecase struct {
-	enforceSecurity       enforceSecurityWebhook
-	executorFactory       executor_factory.ExecutorFactory
-	transactionFactory    executor_factory.TransactionFactory
-	convoyRepository      convoyWebhooksRepository
-	webhookRepository     webhooksRepository
-	endpointValidator     webhookEndpointValidator
-	webhookSystemMigrated bool
+	enforceSecurity    enforceSecurityWebhook
+	executorFactory    executor_factory.ExecutorFactory
+	transactionFactory executor_factory.TransactionFactory
+	webhookRepository  webhooksRepository
+	endpointValidator  webhookEndpointValidator
 }
 
 func NewWebhooksUsecase(
 	enforceSecurity enforceSecurityWebhook,
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
-	convoyRepository convoyWebhooksRepository,
 	webhookRepository webhooksRepository,
 	endpointValidator webhookEndpointValidator,
-	webhookSystemMigrated bool,
 ) WebhooksUsecase {
 	return WebhooksUsecase{
-		enforceSecurity:       enforceSecurity,
-		executorFactory:       executorFactory,
-		transactionFactory:    transactionFactory,
-		convoyRepository:      convoyRepository,
-		webhookRepository:     webhookRepository,
-		endpointValidator:     endpointValidator,
-		webhookSystemMigrated: webhookSystemMigrated,
+		enforceSecurity:    enforceSecurity,
+		executorFactory:    executorFactory,
+		transactionFactory: transactionFactory,
+		webhookRepository:  webhookRepository,
+		endpointValidator:  endpointValidator,
 	}
 }
 
@@ -123,28 +109,6 @@ func generateSecretValue() (string, error) {
 }
 
 func (usecase WebhooksUsecase) ListWebhooks(ctx context.Context, organizationId uuid.UUID) ([]models.Webhook, error) {
-	if usecase.webhookSystemMigrated {
-		return usecase.listWebhooksNew(ctx, organizationId)
-	}
-	return usecase.listWebhooksConvoy(ctx, organizationId)
-}
-
-func (usecase WebhooksUsecase) listWebhooksConvoy(ctx context.Context, organizationId uuid.UUID) ([]models.Webhook, error) {
-	webhooks, err := usecase.convoyRepository.ListWebhooks(ctx, organizationId)
-	if err != nil {
-		return nil, errors.Wrap(err, "error listing webhooks")
-	}
-
-	for _, webhook := range webhooks {
-		if err := usecase.enforceSecurity.CanReadWebhook(ctx, webhook); err != nil {
-			return nil, err
-		}
-	}
-
-	return webhooks, nil
-}
-
-func (usecase WebhooksUsecase) listWebhooksNew(ctx context.Context, organizationId uuid.UUID) ([]models.Webhook, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	newWebhooks, err := usecase.webhookRepository.ListWebhooks(ctx, exec, organizationId)
 	if err != nil {
@@ -184,12 +148,7 @@ func (usecase WebhooksUsecase) RegisterWebhook(
 		return models.Webhook{}, err
 	}
 
-	if usecase.webhookSystemMigrated {
-		return usecase.registerWebhookNew(ctx, organizationId, input)
-	}
-
-	webhook, err := usecase.convoyRepository.RegisterWebhook(ctx, organizationId, input)
-	return webhook, errors.Wrap(err, "error registering webhook")
+	return usecase.registerWebhookNew(ctx, organizationId, input)
 }
 
 func (usecase WebhooksUsecase) registerWebhookNew(
@@ -253,21 +212,6 @@ func (usecase WebhooksUsecase) registerWebhookNew(
 }
 
 func (usecase WebhooksUsecase) GetWebhook(ctx context.Context, organizationId uuid.UUID, webhookId string) (models.Webhook, error) {
-	if usecase.webhookSystemMigrated {
-		return usecase.getWebhookNew(ctx, webhookId)
-	}
-
-	webhook, err := usecase.convoyRepository.GetWebhook(ctx, webhookId)
-	if err != nil {
-		return models.Webhook{}, models.NotFoundError
-	}
-	if err = usecase.enforceSecurity.CanReadWebhook(ctx, webhook); err != nil {
-		return models.Webhook{}, err
-	}
-	return webhook, nil
-}
-
-func (usecase WebhooksUsecase) getWebhookNew(ctx context.Context, webhookId string) (models.Webhook, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
 	id, err := uuid.Parse(webhookId)
@@ -295,23 +239,6 @@ func (usecase WebhooksUsecase) getWebhookNew(ctx context.Context, webhookId stri
 }
 
 func (usecase WebhooksUsecase) DeleteWebhook(ctx context.Context, organizationId uuid.UUID, webhookId string) error {
-	if usecase.webhookSystemMigrated {
-		return usecase.deleteWebhookNew(ctx, webhookId)
-	}
-
-	webhook, err := usecase.convoyRepository.GetWebhook(ctx, webhookId)
-	if err != nil {
-		return models.NotFoundError
-	}
-	if err = usecase.enforceSecurity.CanModifyWebhook(ctx, webhook); err != nil {
-		return err
-	}
-
-	err = usecase.convoyRepository.DeleteWebhook(ctx, webhook.Id)
-	return errors.Wrap(err, "error deleting webhook")
-}
-
-func (usecase WebhooksUsecase) deleteWebhookNew(ctx context.Context, webhookId string) error {
 	exec := usecase.executorFactory.NewExecutor()
 
 	id, err := uuid.Parse(webhookId)
@@ -340,26 +267,6 @@ func (usecase WebhooksUsecase) UpdateWebhook(ctx context.Context, organizationId
 		return models.Webhook{}, err
 	}
 
-	if usecase.webhookSystemMigrated {
-		return usecase.updateWebhookNew(ctx, webhookId, input)
-	}
-
-	webhook, err := usecase.convoyRepository.GetWebhook(ctx, webhookId)
-	if err != nil {
-		return models.Webhook{}, models.NotFoundError
-	}
-	if err = usecase.enforceSecurity.CanModifyWebhook(ctx, webhook); err != nil {
-		return models.Webhook{}, err
-	}
-
-	updatedWebhook, err := usecase.convoyRepository.UpdateWebhook(ctx,
-		models.MergeWebhookWithUpdate(webhook, input))
-	return updatedWebhook, errors.Wrap(err, "error updating webhook")
-}
-
-func (usecase WebhooksUsecase) updateWebhookNew(
-	ctx context.Context, webhookId string, input models.WebhookUpdate,
-) (models.Webhook, error) {
 	// Validate new URL if being changed
 	if input.Url != nil {
 		if err := usecase.endpointValidator.ValidateEndpoint(ctx, *input.Url); err != nil {
@@ -420,17 +327,11 @@ func (usecase WebhooksUsecase) updateWebhookNew(
 
 // CreateWebhookSecret generates a new secret for a webhook.
 // If expireExistingInDays is provided, sets expiration on all existing non-revoked secrets without expiration.
-// Only works for migrated webhooks.
 func (usecase WebhooksUsecase) CreateWebhookSecret(
 	ctx context.Context,
 	webhookId uuid.UUID,
 	expireExistingInDays *int,
 ) (models.Secret, error) {
-	if !usecase.webhookSystemMigrated {
-		return models.Secret{}, errors.Wrap(models.BadParameterError,
-			"secret rotation only available for migrated webhooks")
-	}
-
 	exec := usecase.executorFactory.NewExecutor()
 
 	// Get webhook to check permissions
@@ -481,17 +382,11 @@ func (usecase WebhooksUsecase) CreateWebhookSecret(
 
 // RevokeWebhookSecret revokes a webhook secret.
 // Fails if this would leave the webhook without any permanent (non-expiring) secrets.
-// Only works for migrated webhooks.
 func (usecase WebhooksUsecase) RevokeWebhookSecret(
 	ctx context.Context,
 	webhookId uuid.UUID,
 	secretId uuid.UUID,
 ) error {
-	if !usecase.webhookSystemMigrated {
-		return errors.Wrap(models.BadParameterError,
-			"secret revocation only available for migrated webhooks")
-	}
-
 	exec := usecase.executorFactory.NewExecutor()
 
 	// Get webhook to check permissions

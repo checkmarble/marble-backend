@@ -26,7 +26,6 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	action models.WorkflowActionSpec[dto.WorkflowActionCaseParams],
 ) (models.WorkflowExecution, error) {
 	logger := utils.LoggerFromContext(ctx)
-	webhookEventId := pure_utils.NewId().String()
 	orgId := evalParams.Scenario.OrganizationId
 
 	createNewCaseForDecision := func(ctx context.Context) (models.WorkflowExecution, error) {
@@ -79,7 +78,6 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 		}
 
 		err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-			Id:             webhookEventId,
 			OrganizationId: orgId,
 			EventContent:   models.NewWebhookEventCaseCreatedWorkflow(newCase),
 		})
@@ -113,7 +111,6 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 
 		return models.WorkflowExecution{
 			AddedToCase: true,
-			WebhookIds:  []string{webhookEventId},
 		}, nil
 	}
 
@@ -159,7 +156,6 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 		}
 
 		err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-			Id:             webhookEventId,
 			OrganizationId: matchedCase.OrganizationId,
 			EventContent:   models.NewWebhookEventCaseDecisionsUpdated(c),
 		})
@@ -169,7 +165,6 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 
 		return models.WorkflowExecution{
 			AddedToCase: true,
-			WebhookIds:  []string{webhookEventId},
 		}, nil
 	default:
 		return models.WorkflowExecution{}, errors.New(

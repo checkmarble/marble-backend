@@ -72,11 +72,10 @@ func (suite *WebhooksUsecaseTestSuite) SetupTest() {
 
 func (suite *WebhooksUsecaseTestSuite) makeUsecase() WebhooksUsecase {
 	return WebhooksUsecase{
-		enforceSecurity:       suite.enforceSecurity,
-		executorFactory:       suite.executorFactory,
-		transactionFactory:    suite.transactionFactory,
-		webhookRepository:     suite.webhookRepository,
-		webhookSystemMigrated: true,
+		enforceSecurity:    suite.enforceSecurity,
+		executorFactory:    suite.executorFactory,
+		transactionFactory: suite.transactionFactory,
+		webhookRepository:  suite.webhookRepository,
 	}
 }
 
@@ -140,16 +139,6 @@ func (suite *WebhooksUsecaseTestSuite) Test_CreateWebhookSecret_with_expiration(
 	assert.NotEmpty(t, secret.Value)
 
 	suite.AssertExpectations()
-}
-
-func (suite *WebhooksUsecaseTestSuite) Test_CreateWebhookSecret_not_migrated() {
-	usecase := WebhooksUsecase{webhookSystemMigrated: false}
-
-	_, err := usecase.CreateWebhookSecret(suite.ctx, suite.webhookId, nil)
-
-	t := suite.T()
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "only available for migrated webhooks")
 }
 
 func (suite *WebhooksUsecaseTestSuite) Test_CreateWebhookSecret_webhook_not_found() {
@@ -303,16 +292,6 @@ func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_fails_expiring_w
 	assert.Contains(t, err.Error(), "must retain at least one permanent")
 
 	suite.AssertExpectations()
-}
-
-func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_not_migrated() {
-	usecase := WebhooksUsecase{webhookSystemMigrated: false}
-
-	err := usecase.RevokeWebhookSecret(suite.ctx, suite.webhookId, suite.secretId)
-
-	t := suite.T()
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "only available for migrated webhooks")
 }
 
 func (suite *WebhooksUsecaseTestSuite) Test_RevokeWebhookSecret_secret_wrong_webhook() {

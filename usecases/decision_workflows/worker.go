@@ -25,10 +25,6 @@ type decisionWorkflowsUsecase interface {
 	) (models.WorkflowExecution, error)
 }
 
-type webhookEventsUsecase interface {
-	SendWebhookEventAsync(ctx context.Context, webhookEventId string)
-}
-
 type decisionWorkflowsWorkerRepository interface {
 	DecisionWithRuleExecutionsById(
 		ctx context.Context,
@@ -67,7 +63,6 @@ type DecisionWorkflowsWorker struct {
 	dataModelRepository               dataModelRepository
 	ingestedDataReadRepository        ingestedDataReadRepository
 	decisionWorkflowsWorkerRepository decisionWorkflowsWorkerRepository
-	webhookEventsUsecase              webhookEventsUsecase
 	decisionReader                    decisionReader
 }
 
@@ -78,7 +73,6 @@ func NewDecisionWorkflowsWorker(
 	dataModelRepository dataModelRepository,
 	ingestedDataReadRepository ingestedDataReadRepository,
 	decisionWorkflowsWorkerRepository decisionWorkflowsWorkerRepository,
-	webhookEventsUsecase webhookEventsUsecase,
 	decisionReader decisionReader,
 ) *DecisionWorkflowsWorker {
 	return &DecisionWorkflowsWorker{
@@ -88,7 +82,6 @@ func NewDecisionWorkflowsWorker(
 		dataModelRepository:               dataModelRepository,
 		ingestedDataReadRepository:        ingestedDataReadRepository,
 		decisionWorkflowsWorkerRepository: decisionWorkflowsWorkerRepository,
-		webhookEventsUsecase:              webhookEventsUsecase,
 		decisionReader:                    decisionReader,
 	}
 }
@@ -143,7 +136,7 @@ func (w *DecisionWorkflowsWorker) Work(ctx context.Context, job *river.Job[model
 	}
 
 	// Create transaction just for ProcessDecisionWorkflows because all functions in there expect a transaction
-	workflowExecutions, err := executor_factory.TransactionReturnValue(ctx, w.transactionFactory, func(
+	_, err = executor_factory.TransactionReturnValue(ctx, w.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.WorkflowExecution, error) {
 		workflowExecutions, err := w.decisionWorkflowsUsecase.ProcessDecisionWorkflows(
@@ -161,10 +154,6 @@ func (w *DecisionWorkflowsWorker) Work(ctx context.Context, job *river.Job[model
 	})
 	if err != nil {
 		return errors.Wrap(err, "error processing decision workflows")
-	}
-
-	for _, webhookId := range workflowExecutions.WebhookIds {
-		w.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookId)
 	}
 
 	return nil

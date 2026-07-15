@@ -217,7 +217,6 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 		}
 
 		if err := uc.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-			Id:             pure_utils.NewId().String(),
 			OrganizationId: refreshedScreening.OrgId,
 			EventContent: models.NewWebhookEventCaseContinuousScreeningMatchReviewed(
 				refreshedScreening, updatedMatch,
