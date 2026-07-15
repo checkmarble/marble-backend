@@ -71,7 +71,7 @@ paths:
           $ref: "#/components/responses/400"
 
     put:
-      operationId: asyncIngestCsv 
+      operationId: asyncIngestCsv
       tags:
         - Ingestion
       security:
@@ -1376,6 +1376,17 @@ paths:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
       summary: Retrieve a record's active risk level
+      parameters:
+        - name: objectType
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: objectId
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: Current risk level
@@ -1400,7 +1411,7 @@ paths:
       security:
         - BearerTokenAuth: []
         - ApiKeyAuth: []
-      summary: Override a record's risj level
+      summary: Override a record's risk level
       parameters:
         - name: objectType
           in: path
@@ -1414,6 +1425,7 @@ paths:
             type: string
         - name: risk_level
           in: query
+          required: true
           schema:
             type: integer
       responses:

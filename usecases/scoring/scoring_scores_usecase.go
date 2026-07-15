@@ -283,18 +283,20 @@ func (uc ScoringScoresUsecase) tryRefreshScore(ctx context.Context, activeScore 
 			return nil, err
 		}
 
-		if err := uc.offloadedReadWriter.OffloadScoreComputation(ctx, scoreRuleset, score, scoreEvaluationsSer); err != nil {
-			return nil, errors.Wrap(err, "could not offload score computation")
+		if req.IgnoredByCooldown {
+			webhookEventId = new(pure_utils.NewId())
+
+			if err := uc.webhookSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+				Id:             webhookEventId.String(),
+				OrganizationId: score.OrgId,
+				EventContent:   models.NewWebhookScoringScoreChanged(score),
+			}); err != nil {
+				return nil, errors.Wrap(err, "could not send score change webhook")
+			}
 		}
 
-		webhookEventId = new(pure_utils.NewId())
-
-		if err := uc.webhookSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-			Id:             webhookEventId.String(),
-			OrganizationId: score.OrgId,
-			EventContent:   models.NewWebhookScoringScoreChanged(score),
-		}); err != nil {
-			return nil, errors.Wrap(err, "could not send score change webhook")
+		if err := uc.offloadedReadWriter.OffloadScoreComputation(ctx, scoreRuleset, score, scoreEvaluationsSer); err != nil {
+			return nil, errors.Wrap(err, "could not offload score computation")
 		}
 
 		return &score, nil

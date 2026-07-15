@@ -55,6 +55,7 @@ var validWebhookEventTypes = []WebhookEventType{
 	WebhookEventType_AsyncDecisionFailed,
 	WebhookEventType_ContinuousScreeningCreated,
 	WebhookEventType_ContinuousScreeningMatchReviewed,
+	WebhookEventType_ScoringRiskLevelChangedChanged,
 }
 
 type WebhookEventContent struct {
