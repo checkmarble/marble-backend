@@ -538,7 +538,6 @@ func (uc *ContinuousScreeningUsecase) HandleCaseCreation(
 	continuousScreeningWithMatches.CaseId = utils.Ptr(caseUuid)
 
 	if err := uc.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-		Id:             pure_utils.NewId().String(),
 		OrganizationId: newCase.OrganizationId,
 		EventContent: models.NewWebhookEventCaseCreatedFromContinuousScreening(
 			continuousScreeningWithMatches,

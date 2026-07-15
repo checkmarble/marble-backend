@@ -15,18 +15,16 @@ import (
 )
 
 type options struct {
-	metabase             Metabase
-	clientDbConfig       map[string]infra.ClientDbConfig
-	redisClient          *RedisClient
-	convoyClientProvider ConvoyClientProvider
-	convoyRateLimit      int
-	openSanctions        infra.Screening
-	riverClient          *river.Client[pgx.Tx]
-	tp                   trace.TracerProvider
-	bigQueryInfra        *infra.BigQueryInfra
-	withCache            bool
-	similarityThreshold  float64
-	lagoConfig           infra.LagoConfig
+	metabase            Metabase
+	clientDbConfig      map[string]infra.ClientDbConfig
+	redisClient         *RedisClient
+	openSanctions       infra.Screening
+	riverClient         *river.Client[pgx.Tx]
+	tp                  trace.TracerProvider
+	bigQueryInfra       *infra.BigQueryInfra
+	withCache           bool
+	similarityThreshold float64
+	lagoConfig          infra.LagoConfig
 }
 
 type Option func(*options)
@@ -48,13 +46,6 @@ func WithRedisClient(client *RedisClient) Option {
 func WithMetabase(metabase Metabase) Option {
 	return func(o *options) {
 		o.metabase = metabase
-	}
-}
-
-func WithConvoyClientProvider(convoyResources ConvoyClientProvider, convoyRateLimit int) Option {
-	return func(o *options) {
-		o.convoyClientProvider = convoyResources
-		o.convoyRateLimit = convoyRateLimit
 	}
 }
 
@@ -109,7 +100,6 @@ func WithLagoConfig(lagoConfig infra.LagoConfig) Option {
 type Repositories struct {
 	ExecutorGetter                ExecutorGetter
 	RedisClient                   *RedisClient
-	ConvoyRepository              ConvoyRepository
 	IngestionRepository           IngestionRepository
 	IngestedDataReadRepository    IngestedDataReadRepository
 	MarbleDbRepository            *MarbleDbRepository
@@ -153,7 +143,6 @@ func NewRepositories(
 	return Repositories{
 		ExecutorGetter:                executorGetter,
 		RedisClient:                   options.redisClient,
-		ConvoyRepository:              NewConvoyRepository(options.convoyClientProvider, options.convoyRateLimit),
 		IngestionRepository:           &IngestionRepositoryImpl{},
 		IngestedDataReadRepository:    &IngestedDataReadRepositoryImpl{},
 		MarbleDbRepository:            NewMarbleDbRepository(options.withCache, options.similarityThreshold),

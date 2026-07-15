@@ -309,13 +309,11 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 
 		batchCreated := 0
 		batchEvaluated := len(results)
-		var webhookIds []string
 		var callbacks []func()
 
 		err = c.transactionFactory.Transaction(batchCtx, func(tx repositories.Transaction) error {
 			// Reset accumulators so a retry of the same batch (tx rollback) starts clean.
 			batchCreated = 0
-			webhookIds = nil
 			callbacks = nil
 			for _, r := range results {
 				if r.skipped || !r.triggerPassed {
@@ -324,11 +322,10 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 					}
 					continue
 				}
-				wid, err := c.storeDecision(batchCtx, tx, inv, r)
+				err := c.storeDecision(batchCtx, tx, inv, r)
 				if err != nil {
 					return err
 				}
-				webhookIds = append(webhookIds, wid...)
 				if cb := c.testRunCallback(ctx, inv, r, true); cb != nil {
 					callbacks = append(callbacks, cb)
 				}
@@ -359,9 +356,6 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 		evaluated += batchEvaluated
 		consecutiveFailures = 0
 
-		for _, wid := range webhookIds {
-			c.webhookEventsSender.SendWebhookEventAsync(ctx, wid)
-		}
 		for _, cb := range callbacks {
 			cb()
 		}
@@ -550,7 +544,7 @@ func (c *BatchExecutionCoordinator) storeDecision(
 	tx repositories.Transaction,
 	inv batchInvariants,
 	o evalOutcome,
-) ([]string, error) {
+) error {
 	decision := models.AdaptScenarExecToDecision(o.scenarioExecution, o.object, &inv.scheduledExecutionId)
 
 	analyticsFields := c.scenarioEvaluator.GetDataAccessor(o.evalParams).
@@ -566,36 +560,34 @@ func (c *BatchExecutionCoordinator) storeDecision(
 		analyticsFields,
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "error storing decision in batch coordinator")
+		return errors.Wrap(err, "error storing decision in batch coordinator")
 	}
 
 	for _, sce := range decision.ScreeningExecutions {
 		matchesToInsert, offloadErr := c.offloadedReader.OffloadScreeningMatches(ctx, sce)
 		if offloadErr != nil {
-			return nil, errors.Wrap(offloadErr, "could not offload screening match payloads in batch coordinator")
+			return errors.Wrap(offloadErr, "could not offload screening match payloads in batch coordinator")
 		}
 		sce.Matches = matchesToInsert
 		if err := c.screeningRepository.InsertScreening(ctx, tx, sce); err != nil {
-			return nil, errors.Wrap(err, "error storing screening execution in batch coordinator")
+			return errors.Wrap(err, "error storing screening execution in batch coordinator")
 		}
 	}
 
-	webhookEventId := pure_utils.NewId().String()
 	err = c.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-		Id:             webhookEventId,
 		OrganizationId: decision.OrganizationId,
 		EventContent:   models.NewWebhookEventDecisionCreated(decision),
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	err = c.taskQueueRepository.EnqueueDecisionWorkflowTask(ctx, tx, decision.OrganizationId, decision.DecisionId.String())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return []string{webhookEventId}, nil
+	return nil
 }
 
 // testRunCallback returns a function, to be run after the batch commits, that evaluates a

@@ -107,5 +107,4 @@ type WorkflowActionSpec[T any] struct {
 
 type WorkflowExecution struct {
 	AddedToCase bool
-	WebhookIds  []string
 }

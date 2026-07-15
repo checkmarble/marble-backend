@@ -61,10 +61,6 @@ type caseUsecase interface {
 	) error
 }
 
-type webhooksSender interface {
-	SendWebhookEventAsync(ctx context.Context, webhookEventId string)
-}
-
 type RuleSnoozeUsecase struct {
 	decisionGetter       decisionGetter
 	executorFactory      executor_factory.ExecutorFactory
@@ -74,7 +70,6 @@ type RuleSnoozeUsecase struct {
 	ruleRepository       updateRuleRepository
 	ruleSnoozeRepository ruleSnoozeRepository
 	enforceSecurity      enforceSecuritySnoozes
-	webhooksSender       webhooksSender
 }
 
 func NewRuleSnoozeUsecase(
@@ -86,7 +81,6 @@ func NewRuleSnoozeUsecase(
 	r updateRuleRepository,
 	s ruleSnoozeRepository,
 	es enforceSecuritySnoozes,
-	w webhooksSender,
 ) RuleSnoozeUsecase {
 	return RuleSnoozeUsecase{
 		decisionGetter:       d,
@@ -97,7 +91,6 @@ func NewRuleSnoozeUsecase(
 		ruleRepository:       r,
 		ruleSnoozeRepository: s,
 		enforceSecurity:      es,
-		webhooksSender:       w,
 	}
 }
 
@@ -238,7 +231,6 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 		}
 	}
 
-	webhookEventId := pure_utils.NewId().String()
 	snoozes, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
@@ -287,7 +279,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 				Comment:        input.Comment,
 				RuleSnoozeId:   snoozeId,
 				UserId:         userId,
-				WebhookEventId: webhookEventId,
+				WebhookEventId: pure_utils.NewId().String(),
 			})
 			if err != nil {
 				return nil, err
@@ -299,8 +291,6 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 	if err != nil {
 		return models.SnoozesOfDecision{}, errors.Wrap(err, "could not persist decision snooze")
 	}
-
-	usecase.webhooksSender.SendWebhookEventAsync(ctx, webhookEventId)
 
 	return models.NewSnoozesOfDecision(decision.DecisionId.String(), snoozes, it), nil
 }
@@ -385,7 +375,6 @@ func (usecase RuleSnoozeUsecase) SnoozeDecisionWithoutCase(
 		}
 	}
 
-	webhookEventId := pure_utils.NewId().String()
 	snoozes, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
@@ -429,8 +418,6 @@ func (usecase RuleSnoozeUsecase) SnoozeDecisionWithoutCase(
 	if err != nil {
 		return models.SnoozesOfDecision{}, errors.Wrap(err, "could not persist decision snooze")
 	}
-
-	usecase.webhooksSender.SendWebhookEventAsync(ctx, webhookEventId)
 
 	return models.NewSnoozesOfDecision(decision.DecisionId.String(), snoozes, it), nil
 }

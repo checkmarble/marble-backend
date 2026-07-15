@@ -18,7 +18,7 @@ const (
 	Success WebhookEventDeliveryStatus = "success"
 	// The event delivery previously failed and the automatic retries have kicked in
 	Retry WebhookEventDeliveryStatus = "retry"
-	// The webhooks feature is available in the license, or no convoy server has been set up
+	// The webhooks feature is not available in the license
 	Skipped WebhookEventDeliveryStatus = "skipped"
 )
 
@@ -91,7 +91,6 @@ type WebhookEvent struct {
 }
 
 type WebhookEventCreate struct {
-	Id             string
 	OrganizationId uuid.UUID
 	EventContent   WebhookEventContent
 }

@@ -12,10 +12,9 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 )
 
-// WebhookSignatureService generates Convoy-compatible HMAC-SHA256 signatures for webhook payloads.
+// WebhookSignatureService generates HMAC-SHA256 signatures for webhook payloads.
 type WebhookSignatureService struct{}
 
-// Sign generates a Convoy-compatible signature header value.
 // Always uses advanced mode with timestamp for replay protection.
 // Format: t=<unix_timestamp>,v1=<sig1>,v2=<sig2>,...
 //

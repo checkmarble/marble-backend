@@ -78,9 +78,7 @@ Rule:
 		}
 	}
 
-	performed := models.WorkflowExecution{
-		WebhookIds: make([]string, 0),
-	}
+	performed := models.WorkflowExecution{}
 
 	for _, rule := range matchingRules {
 		for _, action := range rule.Actions {
@@ -101,7 +99,6 @@ Rule:
 					}
 
 					performed.AddedToCase = performed.AddedToCase || exec.AddedToCase
-					performed.WebhookIds = append(performed.WebhookIds, exec.WebhookIds...)
 				}
 			}
 		}

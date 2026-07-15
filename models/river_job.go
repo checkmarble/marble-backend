@@ -236,13 +236,6 @@ type CsvIngestionArgs struct {
 
 func (CsvIngestionArgs) Kind() string { return "csv_ingestion" }
 
-// Webhook retry job (legacy - Convoy)
-type WebhookRetryArgs struct {
-	OrgId uuid.UUID `json:"org_id"`
-}
-
-func (WebhookRetryArgs) Kind() string { return "webhook_retry" }
-
 type GenerateThumbnailArgs struct {
 	Bucket string `json:"bucket"`
 	Key    string `json:"key"`

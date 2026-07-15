@@ -33,7 +33,6 @@ type webhookEventsUsecase interface {
 		tx repositories.Transaction,
 		input models.WebhookEventCreate,
 	) error
-	SendWebhookEventAsync(ctx context.Context, webhookEventId string)
 }
 
 type asyncDecisionWorkerRepository interface {
@@ -138,23 +137,14 @@ func NewAsyncDecisionWorker(
 func (w *AsyncDecisionWorker) Work(ctx context.Context, job *river.Job[models.AsyncDecisionArgs]) error {
 	args := job.Args
 
-	var webhookEventIds []string
 	var testRunCallback func()
 	err := w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		var err error
-		webhookEventIds, testRunCallback, err = w.handleDecision(ctx, args, tx)
-		if err != nil {
-			return err
-		}
-
-		return nil
+		testRunCallback, err = w.handleDecision(ctx, args, tx)
+		return err
 	})
 	if err != nil {
 		return err
-	}
-	// TODO: it's really a pain to do this after we committed the transaction - we can stop doing this once webhook sending itself is also moved into a task queue
-	for _, webhookEventId := range webhookEventIds {
-		w.webhookEventsSender.SendWebhookEventAsync(ctx, webhookEventId)
 	}
 	if testRunCallback != nil {
 		testRunCallback()
@@ -171,19 +161,19 @@ func (w *AsyncDecisionWorker) handleDecision(
 	ctx context.Context,
 	args models.AsyncDecisionArgs,
 	tx repositories.Transaction,
-) (webhookIds []string, testRunCallback func(), err error) {
+) (testRunCallback func(), err error) {
 	decisionToCreate, err := w.repository.GetDecisionToCreate(ctx, tx, args.DecisionToCreateId, true)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if slices.Contains([]models.DecisionToCreateStatus{
 		models.DecisionToCreateStatusCreated,
 		models.DecisionToCreateStatusTriggerConditionMismatch,
 	}, decisionToCreate.Status) {
-		return nil, nil, nil
+		return nil, nil
 	}
 
-	decisionCreated, webhookEventIds, testRunCallback, err := w.createSingleDecisionForObjectId(ctx, args, tx)
+	decisionCreated, testRunCallback, err := w.createSingleDecisionForObjectId(ctx, args, tx)
 	if err != nil {
 		statusErr := w.repository.UpdateDecisionToCreateStatus(
 			ctx,
@@ -191,35 +181,35 @@ func (w *AsyncDecisionWorker) handleDecision(
 			args.DecisionToCreateId,
 			models.DecisionToCreateStatusFailed,
 		)
-		return nil, nil, errors.Join(err, statusErr)
+		return nil, errors.Join(err, statusErr)
 	}
 
 	if decisionCreated {
 		err = w.repository.UpdateDecisionToCreateStatus(ctx, tx, args.DecisionToCreateId, models.DecisionToCreateStatusCreated)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	} else {
 		err = w.repository.UpdateDecisionToCreateStatus(
 			ctx, tx, args.DecisionToCreateId, models.DecisionToCreateStatusTriggerConditionMismatch)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
 	err = w.possiblyUpdateScheduledExecNumbers(ctx, tx, args)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return webhookEventIds, testRunCallback, nil
+	return testRunCallback, nil
 }
 
 func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	ctx context.Context,
 	args models.AsyncDecisionArgs,
 	tx repositories.Transaction,
-) (decisionCreated bool, webhookIds []string, testRunCallback func(), err error) {
+) (decisionCreated bool, testRunCallback func(), err error) {
 	decisionStart := time.Now()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(
@@ -234,47 +224,47 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 
 	scheduledExecution, err := w.repository.GetScheduledExecution(ctx, tx, args.ScheduledExecutionId)
 	if err != nil {
-		return false, nil, nil, err
+		return false, nil, err
 	}
 	if scheduledExecution.Status != models.ScheduledExecutionProcessing {
-		return false, nil, nil, nil
+		return false, nil, nil
 	}
 
 	scenarioAndIteration, err := w.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, args.ScenarioIterationId)
 	if err != nil {
-		return false, nil, nil, err
+		return false, nil, err
 	}
 	scenario := scenarioAndIteration.Scenario
 
 	dataModel, err := w.dataModelRepository.GetDataModel(ctx, tx, scenario.OrganizationId, false, true)
 	if err != nil {
-		return false, nil, nil, err
+		return false, nil, err
 	}
 	tables := dataModel.Tables
 	table, ok := tables[scenario.TriggerObjectType]
 	if !ok {
-		return false, nil, nil, fmt.Errorf(
+		return false, nil, fmt.Errorf(
 			"trigger object type %s not found in data model: %w",
 			scenario.TriggerObjectType, models.NotFoundError)
 	}
 
 	pivotsMeta, err := w.dataModelRepository.ListPivots(ctx, tx, scenario.OrganizationId, nil, true, false)
 	if err != nil {
-		return false, nil, nil, err
+		return false, nil, err
 	}
 	pivots := models.FindPivotsForTable(pivotsMeta, scenario.TriggerObjectType, dataModel)
 
 	// list objects to score
 	db, err := w.executorFactory.NewClientDbExecutor(ctx, scenario.OrganizationId)
 	if err != nil {
-		return false, nil, nil, err
+		return false, nil, err
 	}
 	objectMap, err := w.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, args.ObjectId)
 	if err != nil {
-		return false, nil, nil, errors.Wrap(err, "error while querying ingested objects in AsyncDecisionWorker.createSingleDecisionForObjectId")
+		return false, nil, errors.Wrap(err, "error while querying ingested objects in AsyncDecisionWorker.createSingleDecisionForObjectId")
 	} else if len(objectMap) == 0 {
 		utils.LogAndReportSentryError(ctx, errors.Newf("object %s not found in table %s", args.ObjectId, table.Name))
-		return false, nil, nil, nil
+		return false, nil, nil
 	}
 
 	// Scheduled executions are special, they are retrieved from the database whereas
@@ -338,7 +328,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 
 	triggerPassed, scenarioExecution, err := w.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 	if err != nil {
-		return false, nil, nil, errors.Wrapf(err, "error evaluating scenario in AsyncDecisionWorker %s", scenario.Id)
+		return false, nil, errors.Wrapf(err, "error evaluating scenario in AsyncDecisionWorker %s", scenario.Id)
 	}
 	if !triggerPassed {
 		if err := w.repository.UpdateDecisionToCreateStatus(
@@ -347,14 +337,13 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 			args.DecisionToCreateId,
 			models.DecisionToCreateStatusTriggerConditionMismatch,
 		); err != nil {
-			return false, nil, nil, err
+			return false, nil, err
 		}
 
-		return false, nil, func() { executeTestRun(nil) }, nil
+		return false, func() { executeTestRun(nil) }, nil
 	}
 
 	decision := models.AdaptScenarExecToDecision(scenarioExecution, object, &args.ScheduledExecutionId)
-	sendWebhookEventId := make([]string, 0, 2)
 	storageStart := time.Now()
 
 	err = w.decisionRepository.StoreDecision(
@@ -367,7 +356,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		w.scenarioEvaluator.GetDataAccessor(evaluationParameters).GetAnalyticsFields(ctx, tx, w.repository, evaluationParameters),
 	)
 	if err != nil {
-		return false, nil, nil, errors.Wrapf(err, "error storing decision in AsyncDecisionWorker %s", scenario.Id)
+		return false, nil, errors.Wrapf(err, "error storing decision in AsyncDecisionWorker %s", scenario.Id)
 	}
 
 	if scenarioExecution.ExecutionMetrics != nil {
@@ -391,41 +380,38 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	for _, sce := range decision.ScreeningExecutions {
 		matchesToInsert, offloadErr := w.offloadedReader.OffloadScreeningMatches(ctx, sce)
 		if offloadErr != nil {
-			return false, nil, nil, errors.Wrapf(offloadErr,
+			return false, nil, errors.Wrapf(offloadErr,
 				"could not offload screening match payloads in createSingleDecisionForObjectId")
 		}
 		sce.Matches = matchesToInsert
 
 		err := w.screeningRepository.InsertScreening(ctx, tx, sce)
 		if err != nil {
-			return false, nil, nil, errors.Wrapf(err,
+			return false, nil, errors.Wrapf(err,
 				"error storing screening execution in createSingleDecisionForObjectId")
 		}
 	}
 
-	webhookEventId := pure_utils.NewId().String()
 	err = w.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-		Id:             webhookEventId,
 		OrganizationId: decision.OrganizationId,
 		EventContent:   models.NewWebhookEventDecisionCreated(decision),
 	})
 	if err != nil {
-		return false, nil, nil, err
+		return false, nil, err
 	}
-	sendWebhookEventId = append(sendWebhookEventId, webhookEventId)
 
 	err = w.taskQueueRepository.EnqueueDecisionWorkflowTask(ctx, tx,
 		decision.OrganizationId, decision.DecisionId.String())
 	if err != nil {
-		return false, nil, nil, err
+		return false, nil, err
 	}
 
 	err = w.repository.UpdateDecisionToCreateStatus(ctx, tx, args.DecisionToCreateId, models.DecisionToCreateStatusCreated)
 	if err != nil {
-		return false, nil, nil, err
+		return false, nil, err
 	}
 
-	return true, sendWebhookEventId, func() { executeTestRun(&scenarioExecution) }, nil
+	return true, func() { executeTestRun(&scenarioExecution) }, nil
 }
 
 func (w *AsyncDecisionWorker) possiblyUpdateScheduledExecNumbers(

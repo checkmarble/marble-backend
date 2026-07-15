@@ -384,7 +384,6 @@ func (usecase *DecisionUsecase) CreateDecision(
 		trace.WithAttributes(attribute.Int("nb_rule_executions", len(decision.RuleExecutions))))
 	defer span.End()
 
-	sendWebhookEventId := make([]string, 0)
 	storageStart := time.Now()
 	newDecision, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
@@ -436,16 +435,13 @@ func (usecase *DecisionUsecase) CreateDecision(
 				"error", err.Error())
 		}
 
-		webhookEventId := uuid.NewString()
 		err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-			Id:             webhookEventId,
 			OrganizationId: decision.OrganizationId,
 			EventContent:   models.NewWebhookEventDecisionCreated(decision),
 		})
 		if err != nil {
 			return models.DecisionWithRuleExecutions{}, err
 		}
-		sendWebhookEventId = append(sendWebhookEventId, webhookEventId)
 
 		err = usecase.taskQueueRepository.EnqueueDecisionWorkflowTask(
 			ctx,
@@ -489,25 +485,20 @@ func (usecase *DecisionUsecase) CreateDecision(
 
 	}
 
-	for _, webhookEventId := range sendWebhookEventId {
-		usecase.webhookEventsSender.SendWebhookEventAsync(ctx, webhookEventId)
-	}
-
 	usecase.executeTestRun(ctx, input.OrganizationId, input.TriggerObjectTable,
 		evaluationParameters, scenario, &scenarioExecution)
 	return true, newDecision, nil
 }
 
 // CreateAllDecisions evaluates all matching scenarios for the given trigger object and stores the resulting decisions.
-// An optional transaction can be passed; when provided, decisions are stored in that transaction and webhook
-// events are not sent (their IDs are returned so the caller can send them after committing).
-// When no transaction is passed, the method manages its own transaction and sends webhooks on commit.
+// An optional transaction can be passed; when provided, decisions are stored in that transaction
+// When no transaction is passed, the method manages its own transaction.
 func (usecase *DecisionUsecase) CreateAllDecisions(
 	ctx context.Context,
 	input models.CreateAllDecisionsInput,
 	params models.CreateDecisionParams,
 	optTx ...repositories.Transaction,
-) (decisions []models.DecisionWithRuleExecutions, nbSkipped int, webhookEventIds []string, err error) {
+) (decisions []models.DecisionWithRuleExecutions, nbSkipped int, err error) {
 	logger := utils.LoggerFromContext(ctx).
 		With("org_id", input.OrganizationId,
 			"trigger_object_table", input.TriggerObjectTable,
@@ -535,26 +526,26 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		params.WithDisallowUnknownFields,
 	)
 	if err != nil {
-		return nil, 0, nil, err
+		return nil, 0, err
 	}
 
 	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec,
 		input.OrganizationId, nil, true, false)
 	if err != nil {
-		return nil, 0, nil, err
+		return nil, 0, err
 	}
 	pivots := models.FindPivotsForTable(pivotsMeta, input.TriggerObjectTable, dataModel)
 
 	org, err := usecase.orgRepository.GetOrganizationById(ctx, exec, input.OrganizationId)
 	if err != nil {
-		return nil, 0, nil, err
+		return nil, 0, err
 	}
 
 	scenarios, ok := orgScenariosCache.Get(input.OrganizationId.String())
 	if !ok {
 		s, err := usecase.repository.ListScenariosOfOrganization(ctx, exec, input.OrganizationId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 		if err != nil {
-			return nil, 0, nil, errors.Wrap(err, "error getting scenarios in CreateAllDecisions")
+			return nil, 0, errors.Wrap(err, "error getting scenarios in CreateAllDecisions")
 		}
 		orgScenariosCache.Add(input.OrganizationId.String(), s)
 		scenarios = s
@@ -567,7 +558,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				continue
 			}
 			if err := usecase.enforceSecurityScenario.ReadScenario(scenario); err != nil {
-				return nil, 0, nil, err
+				return nil, 0, err
 			}
 			filteredScenarios = append(filteredScenarios, scenario)
 		}
@@ -601,7 +592,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		triggerPassed, scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 		switch {
 		case err != nil:
-			return nil, 0, nil, errors.Wrapf(err, `error evaluating scenario "%s" in CreateAllDecisions`, scenario.Name)
+			return nil, 0, errors.Wrapf(err, `error evaluating scenario "%s" in CreateAllDecisions`, scenario.Name)
 		case !triggerPassed:
 			nbSkipped++
 			sinceStart := time.Since(decisionStart)
@@ -693,7 +684,6 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 
 			webhookEventId := uuid.NewString()
 			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-				Id:             webhookEventId,
 				OrganizationId: item.decision.OrganizationId,
 				EventContent:   models.NewWebhookEventDecisionCreated(item.decision),
 			})
@@ -737,12 +727,12 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 
 	if externalTx != nil {
 		if err = storeDecisions(externalTx); err != nil {
-			return nil, 0, nil, err
+			return nil, 0, err
 		}
 	} else {
 		err = usecase.transactionFactory.Transaction(ctx, storeDecisions)
 		if err != nil {
-			return nil, 0, nil, err
+			return nil, 0, err
 		}
 	}
 	// Note: do not do anything that may take time after this, otherwise the info logs about decision execution time will be incorrect.
@@ -753,14 +743,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		"nb_decisions", len(decisions),
 	)
 
-	// When using an external transaction, the caller is responsible for sending webhooks after commit.
-	if externalTx == nil {
-		for _, caseWebhookEventId := range sendWebhookEventIds {
-			usecase.webhookEventsSender.SendWebhookEventAsync(ctx, caseWebhookEventId)
-		}
-	}
-
-	return decisions, nbSkipped, sendWebhookEventIds, nil
+	return decisions, nbSkipped, nil
 }
 
 func (usecase *DecisionUsecase) executeTestRun(

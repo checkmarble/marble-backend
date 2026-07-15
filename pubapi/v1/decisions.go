@@ -211,7 +211,7 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
 		decisionsUsecase := uc.NewDecisionUsecase()
 
-		decisions, skipped, _, err := decisionsUsecase.CreateAllDecisions(
+		decisions, skipped, err := decisionsUsecase.CreateAllDecisions(
 			ctx,
 			models.CreateAllDecisionsInput{
 				OrganizationId:     orgId,

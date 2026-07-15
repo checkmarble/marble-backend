@@ -155,13 +155,6 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		}
 	}
 
-	convoyConfiguration := infra.ConvoyConfiguration{
-		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
-		APIUrl:    utils.GetEnv("CONVOY_API_URL", ""),
-		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
-		RateLimit: utils.GetEnv("CONVOY_RATE_LIMIT", 50),
-	}
-
 	openSanctionsConfig := infra.InitializeScreening(
 		ctx,
 		&http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)},
@@ -347,10 +340,6 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		gcpConfig,
 		repositories.WithRedisClient(redisClient),
 		repositories.WithMetabase(infra.InitializeMetabase(apiConfig.MetabaseConfig)),
-		repositories.WithConvoyClientProvider(
-			infra.InitializeConvoyRessources(convoyConfiguration),
-			convoyConfiguration.RateLimit,
-		),
 		repositories.WithOpenSanctions(openSanctionsConfig),
 		repositories.WithClientDbConfig(clientDbConfig),
 		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
@@ -377,8 +366,6 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		return errors.New("cannot use OpenID Connect configuration without the appropriate license entitlement")
 	}
 
-	webhookSystemMigrated := IsWebhookSystemMigrated(ctx, repositories)
-
 	ipEnrichmentDatabase, err := infra.InitIpEnrichmentDatabase(ctx, license)
 	if err != nil {
 		return errors.Wrap(err, "failed to open ip enrichment database")
@@ -392,9 +379,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithOffloadingBucketUrl(serverConfig.offloadingBucketUrl),
 		usecases.WithCaseManagerBucketUrl(serverConfig.caseManagerBucket),
 		usecases.WithLicense(license),
-		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 		usecases.WithAnalyticsEnabled(analyticsConfig.Enabled),
-		usecases.WithWebhookSystemMigrated(webhookSystemMigrated),
 		usecases.WithAllowInsecureWebhookURLs(utils.GetEnv("ENV", "production") == "development"),
 		usecases.WithWebhookIPWhitelist(os.Getenv("WEBHOOK_IP_WHITELIST")),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),

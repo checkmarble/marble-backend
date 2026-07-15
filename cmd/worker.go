@@ -64,13 +64,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		}
 	}
 
-	convoyConfiguration := infra.ConvoyConfiguration{
-		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
-		APIUrl:    utils.GetEnv("CONVOY_API_URL", ""),
-		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
-		RateLimit: utils.GetEnv("CONVOY_RATE_LIMIT", 50),
-	}
-
 	licenseConfig := models.LicenseConfiguration{
 		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
 		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
@@ -229,10 +222,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		infra.GcpConfig{},
 		repositories.WithRedisClient(redisClient),
 		repositories.WithRiverClient(riverClient),
-		repositories.WithConvoyClientProvider(
-			infra.InitializeConvoyRessources(convoyConfiguration),
-			convoyConfiguration.RateLimit,
-		),
 		repositories.WithClientDbConfig(clientDbConfig),
 		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
 		repositories.WithOpenSanctions(openSanctionsConfig),
@@ -344,19 +333,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		return err
 	}
 
-	////////////////////////////////////////////////////////////
-	// Migrate Convoy webhooks to internal system (one-time)
-	// Must run on worker (not server) to ensure new job handlers are ready
-	// before the system is marked as migrated.
-	////////////////////////////////////////////////////////////
-	if err := MigrateConvoyWebhooks(ctx, repositories, convoyConfiguration.APIUrl != ""); err != nil {
-		utils.LogAndReportSentryError(ctx, err)
-		// Don't fail startup, just log the error - migration can be retried
-		logger.ErrorContext(ctx, "Webhook migration failed", "error", err.Error())
-	}
-
-	webhookSystemMigrated := IsWebhookSystemMigrated(ctx, repositories)
-
 	ipEnrichmentDatabase, err := infra.InitIpEnrichmentDatabase(ctx, license)
 	if err != nil {
 		return errors.Wrap(err, "failed to open ip enrichment database")
@@ -369,8 +345,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithOffloading(offloadingConfig),
 		usecases.WithFailedWebhooksRetryPageSize(workerConfig.failedWebhooksRetryPageSize),
 		usecases.WithLicense(license),
-		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
-		usecases.WithWebhookSystemMigrated(webhookSystemMigrated),
 		usecases.WithAllowInsecureWebhookURLs(utils.GetEnv("ENV", "production") == "development"),
 		usecases.WithWebhookIPWhitelist(os.Getenv("WEBHOOK_IP_WHITELIST")),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
@@ -434,7 +408,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	}
 	river.AddWorker(workers, uc.NewContinuousScreeningCreateFullDatasetWorker())
 	river.AddWorker(workers, adminUc.NewScheduledScenarioWorker())
-	river.AddWorker(workers, adminUc.NewWebhookRetryWorker())
 
 	// New webhook delivery system
 	river.AddWorker(workers, adminUc.NewWebhookDispatchWorker())
@@ -674,9 +647,6 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion
 	case "csv_ingestion":
 		return uc.NewCsvIngestionWorker().Work(ctx,
 			singleJobCreate[models.CsvIngestionArgs](ctx, jobArgs))
-	case "webhook_retry":
-		return uc.NewWebhookRetryWorker().Work(ctx,
-			singleJobCreate[models.WebhookRetryArgs](ctx, jobArgs))
 	case "webhook_dispatch":
 		return uc.NewWebhookDispatchWorker().Work(ctx,
 			singleJobCreate[models.WebhookDispatchJobArgs](ctx, jobArgs))

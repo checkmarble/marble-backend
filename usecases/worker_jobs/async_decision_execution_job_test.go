@@ -158,7 +158,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_PendingWithIngestion_In
 		{Decision: models.Decision{DecisionId: decisionId}},
 	}
 	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(decisions, 1, []string{}, nil)
+		Return(decisions, 1, nil)
 
 	// Mark completed (in same transaction)
 	s.executionRepo.On("UpdateAsyncDecisionExecution", mock.Anything, mock.Anything,
@@ -198,7 +198,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_IngestedStatus_SkipsIng
 		{Decision: models.Decision{DecisionId: decisionId}},
 	}
 	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(decisions, 1, []string{}, nil)
+		Return(decisions, 1, nil)
 
 	// Mark completed (in same transaction)
 	s.executionRepo.On("UpdateAsyncDecisionExecution", mock.Anything, mock.Anything,
@@ -236,7 +236,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_NonRetryableError_Marks
 
 	// Decision creation fails with NotFoundError
 	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return([]models.DecisionWithRuleExecutions(nil), 0, []string(nil), models.NotFoundError)
+		Return([]models.DecisionWithRuleExecutions(nil), 0, models.NotFoundError)
 
 	// Expect update to failed
 	s.executionRepo.On("UpdateAsyncDecisionExecution", mock.Anything, mock.Anything,
@@ -251,9 +251,6 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_NonRetryableError_Marks
 		mock.MatchedBy(func(input models.WebhookEventCreate) bool {
 			return input.OrganizationId == s.orgId
 		})).Return(nil)
-
-	// Expect async webhook send
-	s.webhookSender.On("SendWebhookEventAsync", mock.Anything, mock.AnythingOfType("string")).Return()
 
 	worker := s.makeWorker()
 	err := worker.Work(s.ctx, job)
@@ -286,7 +283,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_LastAttempt_MarksFailed
 
 	// Decision creation fails with a generic (retryable) error
 	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return([]models.DecisionWithRuleExecutions(nil), 0, []string(nil), assert.AnError)
+		Return([]models.DecisionWithRuleExecutions(nil), 0, assert.AnError)
 
 	// Expect update to failed
 	s.executionRepo.On("UpdateAsyncDecisionExecution", mock.Anything, mock.Anything,
@@ -301,9 +298,6 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_LastAttempt_MarksFailed
 		mock.MatchedBy(func(input models.WebhookEventCreate) bool {
 			return input.OrganizationId == s.orgId
 		})).Return(nil)
-
-	// Expect async webhook send
-	s.webhookSender.On("SendWebhookEventAsync", mock.Anything, mock.AnythingOfType("string")).Return()
 
 	worker := s.makeWorker()
 	err := worker.Work(s.ctx, job)
@@ -336,7 +330,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_RetryableError_ReturnsE
 
 	// Decision creation fails with a generic (retryable) error
 	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return([]models.DecisionWithRuleExecutions(nil), 0, []string(nil), assert.AnError)
+		Return([]models.DecisionWithRuleExecutions(nil), 0, assert.AnError)
 
 	worker := s.makeWorker()
 	err := worker.Work(s.ctx, job)
@@ -350,7 +344,6 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_RetryableError_ReturnsE
 				models.AsyncDecisionExecutionStatusFailed
 		}))
 	s.webhookSender.AssertNotCalled(s.T(), "CreateWebhookEvent")
-	s.webhookSender.AssertNotCalled(s.T(), "SendWebhookEventAsync")
 	s.AssertExpectations()
 }
 
@@ -378,7 +371,7 @@ func (s *AsyncDecisionExecutionWorkerTestSuite) TestWork_PendingNoIngestion_Skip
 		{Decision: models.Decision{DecisionId: decisionId}},
 	}
 	s.decisionCreator.On("CreateAllDecisions", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(decisions, 1, []string{}, nil)
+		Return(decisions, 1, nil)
 
 	// Mark completed (in same transaction)
 	s.executionRepo.On("UpdateAsyncDecisionExecution", mock.Anything, mock.Anything,

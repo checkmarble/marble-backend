@@ -36,9 +36,7 @@ func NewFeatureAccessReader(
 	executorFactory executor_factory.ExecutorFactory,
 	redis *repositories.RedisClient,
 	license models.LicenseValidation,
-	hasConvoyServerSetup bool,
 	hasAnalyticsSetup bool,
-	webhookSystemMigrated bool,
 	hasOpensanctionsSetup bool,
 	hasNameRecognitionSetup bool,
 ) FeatureAccessReader {
@@ -49,7 +47,6 @@ func NewFeatureAccessReader(
 		cache:           redis,
 		license:         license,
 		featuresConfiguration: models.FeaturesConfiguration{
-			Webhooks:        webhookSystemMigrated || hasConvoyServerSetup,
 			Sanctions:       hasOpensanctionsSetup,
 			NameRecognition: hasNameRecognitionSetup,
 			Analytics:       hasAnalyticsSetup,

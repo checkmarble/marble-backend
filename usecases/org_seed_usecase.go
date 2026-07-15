@@ -83,7 +83,7 @@ func (uc OrgImportUsecase) Seed(ctx context.Context, spec dto.OrgImport, orgId u
 				return err
 			}
 
-			_, _, _, err = uc.decisionUsecase.CreateAllDecisions(
+			_, _, err = uc.decisionUsecase.CreateAllDecisions(
 				ctx,
 				models.CreateAllDecisionsInput{
 					OrganizationId:     orgId,
