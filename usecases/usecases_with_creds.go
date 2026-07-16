@@ -283,6 +283,14 @@ func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewGraphWalkUsecase() GraphWalkUsecase {
+	return GraphWalkUsecase{
+		executorFactory:     usecases.NewExecutorFactory(),
+		dataModelRepository: usecases.Repositories.MarbleDbRepository,
+		graphRepository:     usecases.Repositories.GraphRepository,
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewWorkflowUsecase() WorkflowUsecase {
 	return WorkflowUsecase{
 		executorFactory:     usecases.NewExecutorFactory(),

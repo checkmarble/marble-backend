@@ -112,6 +112,7 @@ type Repositories struct {
 	ConvoyRepository              ConvoyRepository
 	IngestionRepository           IngestionRepository
 	IngestedDataReadRepository    IngestedDataReadRepository
+	GraphRepository               GraphRepository
 	MarbleDbRepository            *MarbleDbRepository
 	ClientDbRepository            ClientDbRepository
 	ScenarioPublicationRepository ScenarioPublicationRepository
@@ -156,6 +157,7 @@ func NewRepositories(
 		ConvoyRepository:              NewConvoyRepository(options.convoyClientProvider, options.convoyRateLimit),
 		IngestionRepository:           &IngestionRepositoryImpl{},
 		IngestedDataReadRepository:    &IngestedDataReadRepositoryImpl{},
+		GraphRepository:               GraphRepositoryPostgresql{},
 		MarbleDbRepository:            NewMarbleDbRepository(options.withCache, options.similarityThreshold),
 		ClientDbRepository:            ClientDbRepository{},
 		ScenarioPublicationRepository: &ScenarioPublicationRepositoryPostgresql{},
