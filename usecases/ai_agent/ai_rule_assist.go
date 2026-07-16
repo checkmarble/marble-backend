@@ -99,7 +99,8 @@ func (uc *AiAgentUsecase) GenerateRule(
 			"trigger_type":       scenario.TriggerObjectType,
 			"database_accessors": databaseNodes,
 			"payload_accessors":  payloadNodes,
-		})
+		},
+	)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, err
 	}
@@ -111,7 +112,8 @@ func (uc *AiAgentUsecase) GenerateRule(
 		WithThinking(true))
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf(
-			"failed to generate rule from LLM: %w", err)
+			"failed to generate rule from LLM: %w", err,
+		)
 	}
 
 	ruleAsString, err := resp.Get(0)
@@ -130,7 +132,8 @@ func (uc *AiAgentUsecase) GenerateRule(
 			"database_accessors": databaseNodes,
 			"payload_accessors":  payloadNodes,
 			"rule_plan":          ruleAsString,
-		})
+		},
+	)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, err
 	}
@@ -142,7 +145,8 @@ func (uc *AiAgentUsecase) GenerateRule(
 		WithText(llmberjack.RoleUser, ruleGenerationPrompt))
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf(
-			"failed to generate rule from LLM: %w", err)
+			"failed to generate rule from LLM: %w", err,
+		)
 	}
 
 	ruleAsStringStep2, err := resp.Get(0)
@@ -156,7 +160,8 @@ func (uc *AiAgentUsecase) GenerateRule(
 	err = json.Unmarshal([]byte(ruleAsStringStep2), &ruleAstDto)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf(
-			"failed to parse LLM response as JSON: %w", err)
+			"failed to parse LLM response as JSON: %w", err,
+		)
 	}
 
 	ruleAst, err := dto.AdaptASTNode(ruleAstDto)
@@ -168,7 +173,8 @@ func (uc *AiAgentUsecase) GenerateRule(
 		scenario.Id, &ruleAst)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf(
-			"failed to validate generated AST: %w", err)
+			"failed to validate generated AST: %w", err,
+		)
 	}
 
 	// Build response with validation details
@@ -187,7 +193,8 @@ func (uc *AiAgentUsecase) GenerateRule(
 
 	isValid := len(validationErrors) == 0
 
-	logger.DebugContext(ctx, "AST validation result",
+	logger.DebugContext(
+		ctx, "AST validation result",
 		"is_valid", isValid,
 		"errors_count", len(validationErrors),
 	)
@@ -206,31 +213,6 @@ func (uc *AiAgentUsecase) GenerateRule(
 
 type aiRuleDescriptionOutput struct {
 	Description string `json:"description" jsonschema_description:"The description of the rule"`
-}
-
-func (uc *AiAgentUsecase) AiRuleDescription(
-	ctx context.Context,
-	orgId uuid.UUID,
-	ruleId string,
-) (models.AiRuleDescription, error) {
-	// Get the scenario iteration
-	// Permissions are checked in the rule usecase
-	rule, err := uc.ruleUsecase.GetRule(ctx, ruleId)
-	if err != nil {
-		return models.AiRuleDescription{}, err
-	}
-
-	scenarioIteration, err := uc.repository.GetScenarioIteration(
-		ctx,
-		uc.executorFactory.NewExecutor(),
-		rule.ScenarioIterationId,
-		true,
-	)
-	if err != nil {
-		return models.AiRuleDescription{}, err
-	}
-
-	return uc.AiASTDescription(ctx, orgId, scenarioIteration.ScenarioId, rule.FormulaAstExpression)
 }
 
 // AiASTDescription generates a description for a given AST node
@@ -283,7 +265,8 @@ func (uc *AiAgentUsecase) AiASTDescription(
 			"data_model":  dataModelDto,
 			"custom_list": customListsDto,
 			"rule":        ruleAST,
-		})
+		},
+	)
 	if err != nil {
 		return models.AiRuleDescription{}, err
 	}
