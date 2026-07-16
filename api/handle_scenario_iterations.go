@@ -38,7 +38,8 @@ func handleListScenarioIterations(uc usecases.Usecases) func(c *gin.Context) {
 			organizationId,
 			models.GetScenarioIterationFilters{
 				ScenarioId: scenarioId,
-			})
+			},
+		)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -75,7 +76,8 @@ func handleListScenarioIterationsMetadata(uc usecases.Usecases) func(c *gin.Cont
 		scenarioIterations, err := usecase.ListScenarioIterationsMetadata(
 			ctx,
 			organizationId,
-			models.GetScenarioIterationFilters{ScenarioId: scenarioId})
+			models.GetScenarioIterationFilters{ScenarioId: scenarioId},
+		)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -378,25 +380,6 @@ func handleExpectedIterationError(c *gin.Context, err error) bool {
 	}
 
 	return false
-}
-
-func handleAiDescriptionScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
-		ruleId := c.Param("rule_id")
-		orgId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		usecase := usecasesWithCreds(ctx, uc).NewAiAgentUsecase()
-		result, err := usecase.AiRuleDescription(ctx, orgId, ruleId)
-		if presentError(ctx, c, err) {
-			return
-		}
-
-		c.JSON(http.StatusOK, dto.AdaptAiRuleDescriptionDto(result))
-	}
 }
 
 type PostGenerateRuleInputBody struct {

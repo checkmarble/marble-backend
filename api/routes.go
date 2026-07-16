@@ -140,7 +140,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.PATCH("/scenarios/:scenario_id", tom, updateScenario(uc))
 	router.POST("/scenarios/:scenario_id/copy", tom, copyScenario(uc))
 	router.POST("/scenarios/:scenario_id/validate-ast", tom, validateScenarioAst(uc))
-	router.POST("/scenarios/:scenario_id/ast-ai-description", timeoutMiddleware(conf.BatchTimeout),
+	router.POST(
+		"/scenarios/:scenario_id/ast-ai-description", timeoutMiddleware(conf.BatchTimeout),
 		handleAiDescriptionAST(uc),
 	)
 	router.GET("/scenarios/:scenario_id/rules/latest", tom, listLatestScenarioRules(uc))
@@ -171,9 +172,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/scenario-iteration-rules/:rule_id", tom, handleGetRule(uc))
 	router.PATCH("/scenario-iteration-rules/:rule_id", tom, handleUpdateRule(uc))
 	router.DELETE("/scenario-iteration-rules/:rule_id", tom, handleDeleteRule(uc))
-	router.GET("/scenario-iteration-rules/:rule_id/ai-description", timeoutMiddleware(conf.BatchTimeout),
-		handleAiDescriptionScenarioIteration(uc),
-	)
 
 	router.GET("/screenings/freshness", tom, handleScreeningDatasetFreshness(uc))
 	router.GET("/screenings/datasets", tom, handleScreeningDatasetCatalog(uc))
@@ -205,7 +203,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/continuous-screenings/configs", tom,
 		handleCreateContinuousScreeningConfig(uc))
 	router.GET("/continuous-screenings/configs/:stable_id", tom, handleGetContinuousScreeningConfig(uc))
-	router.PATCH("/continuous-screenings/configs/:stable_id", tom,
+	router.PATCH(
+		"/continuous-screenings/configs/:stable_id", tom,
 		handleUpdateContinuousScreeningConfig(uc),
 	)
 	router.GET("/continuous-screenings/objects", tom, handleListContinuousScreeningObjects(uc))
