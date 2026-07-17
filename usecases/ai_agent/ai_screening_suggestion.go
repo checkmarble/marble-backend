@@ -194,7 +194,7 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 	// Add per-match data to the prompt data
 	matchPromptData := make(map[string]any, len(promptData)+2)
 	maps.Copy(matchPromptData, promptData)
-	matchPromptData["MatchPayload"] = string(enrichedMatch.Payload)
+	matchPromptData["MatchPayload"] = string(agent_dto.SanitizeScreeningPayloadForLLM(enrichedMatch.Payload))
 	matchPromptData["MatchScore"] = fmt.Sprintf("%.2f", enrichedMatch.GetScoreFromPayload())
 
 	_, model, userMessage, err := uc.preparePromptWithModel(PROMPT_SCREENING_HIT_EVALUATE_PATH, matchPromptData)
