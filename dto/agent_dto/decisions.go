@@ -75,7 +75,7 @@ func AdaptScreeningMatch(match models.ScreeningMatch) ScreeningMatch {
 	return ScreeningMatch{
 		IsMatch: match.IsMatch,
 		Status:  match.Status.String(),
-		Payload: match.Payload,
+		Payload: SanitizeScreeningPayloadForLLM(match.Payload),
 	}
 }
 
