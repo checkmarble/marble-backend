@@ -36,7 +36,6 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				CaseAutoAssign: true,
 			},
 			config: FeaturesConfiguration{
-				Webhooks:        true,
 				Sanctions:       true,
 				NameRecognition: true,
 				Analytics:       true,
@@ -76,7 +75,6 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				Sanctions:   false,
 			},
 			config: FeaturesConfiguration{
-				Webhooks:        true,
 				Sanctions:       true,
 				NameRecognition: true,
 				Analytics:       true,
@@ -117,7 +115,6 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				CaseAutoAssign: true,
 			},
 			config: FeaturesConfiguration{
-				Webhooks:        false,
 				Sanctions:       false,
 				NameRecognition: false,
 				Analytics:       false,

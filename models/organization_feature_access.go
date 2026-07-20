@@ -58,7 +58,6 @@ type UpdateOrganizationFeatureAccessInput struct {
 }
 
 type FeaturesConfiguration struct {
-	Webhooks        bool
 	Sanctions       bool
 	NameRecognition bool
 	Analytics       bool
@@ -129,9 +128,6 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 	// remove the feature accesses that are not allowed by the configuration
 	if o.Analytics.IsAllowed() && !c.Analytics {
 		o.Analytics = MissingConfiguration
-	}
-	if o.Webhooks.IsAllowed() && !c.Webhooks {
-		o.Webhooks = MissingConfiguration
 	}
 	if o.Sanctions.IsAllowed() && !c.Sanctions {
 		o.Sanctions = MissingConfiguration
