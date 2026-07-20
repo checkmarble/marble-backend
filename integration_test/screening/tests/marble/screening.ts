@@ -4,7 +4,6 @@ import {
 	StartedTestContainer,
 	Wait,
 } from "testcontainers";
-import { createFakeCatalog } from "./catalog";
 
 export const DEFAULT_MANIFEST = {
 	catalogs: [
