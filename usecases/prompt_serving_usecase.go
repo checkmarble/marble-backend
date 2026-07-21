@@ -38,7 +38,7 @@ func NewPromptServingUsecase(licenseValidator promptsLicenseValidator, aiPrompts
 	}
 }
 
-// validateEntitlement checks that licenseKey is valid and entitled to the AI feature.
+// validateEntitlement checks that licenseKey is valid
 func (uc PromptServingUsecase) validateEntitlement(ctx context.Context, licenseKey string) error {
 	license, err := uc.licenseValidator.ValidateLicense(ctx, licenseKey, uuid.Nil)
 	if err != nil {
@@ -46,9 +46,6 @@ func (uc PromptServingUsecase) validateEntitlement(ctx context.Context, licenseK
 	}
 	if license.LicenseValidationCode != models.VALID {
 		return errors.Wrap(models.ForbiddenError, "invalid license")
-	}
-	if !license.CaseAiAssist {
-		return errors.Wrap(models.MissingLicenseEntitlementError, "license is not entitled to the ai feature")
 	}
 	return nil
 }
