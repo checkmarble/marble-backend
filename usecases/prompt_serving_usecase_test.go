@@ -33,7 +33,6 @@ func (s stubLicenseValidator) ValidateLicense(
 func validLicenseWithAi() models.LicenseValidation {
 	return models.LicenseValidation{
 		LicenseValidationCode: models.VALID,
-		LicenseEntitlements:   models.LicenseEntitlements{CaseAiAssist: true},
 	}
 }
 
@@ -132,12 +131,6 @@ func Test_PromptServingUsecase_DownloadPrompts_Authorization(t *testing.T) {
 			aiPromptsServingDir: dir,
 			validation:          stubLicenseValidator{validation: models.LicenseValidation{LicenseValidationCode: models.NOT_FOUND}},
 			wantErr:             models.ForbiddenError,
-		},
-		{
-			name:                "valid license without AI entitlement",
-			aiPromptsServingDir: dir,
-			validation:          stubLicenseValidator{validation: models.LicenseValidation{LicenseValidationCode: models.VALID}},
-			wantErr:             models.MissingLicenseEntitlementError,
 		},
 		{
 			name:                "no prompts directory configured on this server",
