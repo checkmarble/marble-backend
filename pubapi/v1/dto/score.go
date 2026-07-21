@@ -30,3 +30,7 @@ func AdaptRiskLevel(rl models.ScoringScore, overriddenBy *Ref) RiskLevel {
 		}(),
 	}
 }
+
+type RiskLevelOverride struct {
+	RiskLevel int `json:"risk_level"`
+}

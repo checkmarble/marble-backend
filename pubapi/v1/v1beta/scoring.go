@@ -10,7 +10,6 @@ import (
 	"github.com/checkmarble/marble-backend/pubapi"
 	"github.com/checkmarble/marble-backend/pubapi/types"
 	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
-	"github.com/checkmarble/marble-backend/pubapi/v1/params"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/gin-gonic/gin"
@@ -72,9 +71,9 @@ func HandleOverrideObjectRiskLevel(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		var p params.RiskLevelOverrideParams
+		var p dto.RiskLevelOverride
 
-		if err := c.ShouldBindQuery(&p); err != nil {
+		if err := c.ShouldBindBodyWithJSON(&p); err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return
 		}

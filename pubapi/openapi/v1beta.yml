@@ -1423,11 +1423,17 @@ paths:
           required: true
           schema:
             type: string
-        - name: risk_level
-          in: query
-          required: true
-          schema:
-            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [risk_level]
+              properties:
+                risk_level:
+                  type: integer
+                  minimum: 1
       responses:
         "200":
           description: New risk level
