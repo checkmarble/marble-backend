@@ -13,6 +13,12 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningDatasetUpdates(
 	orgId uuid.UUID,
 	pagination models.PaginationAndSorting,
 ) (models.Paginated[models.ContinuousScreeningDatasetUpdateEnriched], error) {
+	if err := uc.CheckFeatureAccess(ctx, orgId); err != nil {
+		return models.Paginated[models.ContinuousScreeningDatasetUpdateEnriched]{}, err
+	}
+	if err := uc.enforceSecurity.ReadContinuousScreeningObject(orgId); err != nil {
+		return models.Paginated[models.ContinuousScreeningDatasetUpdateEnriched]{}, err
+	}
 	if err := models.ValidatePagination(pagination); err != nil {
 		return models.Paginated[models.ContinuousScreeningDatasetUpdateEnriched]{}, err
 	}
@@ -67,6 +73,12 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningUpdateJobs(
 	orgId uuid.UUID,
 	pagination models.PaginationAndSorting,
 ) (models.Paginated[models.ContinuousScreeningUpdateJobSummary], error) {
+	if err := uc.CheckFeatureAccess(ctx, orgId); err != nil {
+		return models.Paginated[models.ContinuousScreeningUpdateJobSummary]{}, err
+	}
+	if err := uc.enforceSecurity.ReadContinuousScreeningObject(orgId); err != nil {
+		return models.Paginated[models.ContinuousScreeningUpdateJobSummary]{}, err
+	}
 	if err := models.ValidatePagination(pagination); err != nil {
 		return models.Paginated[models.ContinuousScreeningUpdateJobSummary]{}, err
 	}
@@ -122,6 +134,12 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningClientDataIndexing(
 	orgId uuid.UUID,
 	pagination models.PaginationAndSorting,
 ) (models.ContinuousScreeningClientDataIndexing, error) {
+	if err := uc.CheckFeatureAccess(ctx, orgId); err != nil {
+		return models.ContinuousScreeningClientDataIndexing{}, err
+	}
+	if err := uc.enforceSecurity.ReadContinuousScreeningObject(orgId); err != nil {
+		return models.ContinuousScreeningClientDataIndexing{}, err
+	}
 	if err := models.ValidatePagination(pagination); err != nil {
 		return models.ContinuousScreeningClientDataIndexing{}, err
 	}
