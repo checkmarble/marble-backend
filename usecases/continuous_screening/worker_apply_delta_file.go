@@ -25,6 +25,12 @@ import (
 
 const (
 	MaxBatchSizePerIteration = 50
+
+	// ApplyDeltaFileTimeoutMargin is the headroom reserved before river's own Timeout
+	// to save the checkpoint and return the snooze.
+	ApplyDeltaJobTimeout        = 10 * time.Minute
+	ApplyDeltaFileTimeoutMargin = 1 * time.Minute
+	ApplyDeltaFileSnoozeDelay   = 5 * time.Second
 )
 
 var AllowedRecordOperations = []models.OpenSanctionsDeltaFileRecordOp{
@@ -164,7 +170,7 @@ func NewApplyDeltaFileWorker(
 }
 
 func (w *ApplyDeltaFileWorker) Timeout(job *river.Job[models.ContinuousScreeningApplyDeltaFileArgs]) time.Duration {
-	return 10 * time.Minute
+	return ApplyDeltaJobTimeout
 }
 
 // Process the delta file, record by record sequentially.
@@ -172,14 +178,22 @@ func (w *ApplyDeltaFileWorker) Timeout(job *river.Job[models.ContinuousScreening
 func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.ContinuousScreeningApplyDeltaFileArgs]) error {
 	logger := utils.LoggerFromContext(ctx)
 
+	exec := w.executorFactory.NewExecutor()
+
 	if utils.GetEnv("DISABLE_CONTINUOUS_SCREENING_APPLY_DELTA_FILE", false) {
 		logger.InfoContext(ctx, "Continuous screening apply delta file is disabled, skipping job",
 			"update_id", job.Args.UpdateId,
 			"org_id", job.Args.OrgId)
+		if err := w.repository.UpdateContinuousScreeningUpdateJob(
+			ctx,
+			exec,
+			job.Args.UpdateId,
+			models.ContinuousScreeningUpdateJobStatusSkipped,
+		); err != nil {
+			return err
+		}
 		return nil
 	}
-
-	exec := w.executorFactory.NewExecutor()
 
 	// Log error if job has been retried many times
 	if gjson.GetBytes(job.Metadata, "snoozes").Int() > 100 {
@@ -199,6 +213,9 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 
 	if err := w.usecase.CheckFeatureAccess(ctx, job.Args.OrgId); err != nil {
 		logger.WarnContext(ctx, "Continuous Screening - feature access not allowed, skipping apply delta file update", "error", err)
+		if hErr := w.handleError(ctx, exec, job, errors.New("organization is not allowed to use continuous screening"), false); hErr != nil {
+			return hErr
+		}
 		return nil
 	}
 
@@ -237,7 +254,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		repositories.WithBeginOffset(initialOffset),
 	)
 	if err != nil {
-		hErr := w.handleProcessError(ctx, exec, job, errors.Wrap(err,
+		hErr := w.handleError(ctx, exec, job, errors.Wrap(err,
 			"failed to get blob"), true)
 		if hErr != nil {
 			return hErr
@@ -249,20 +266,35 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 
 	redisExec := w.redisClient.NewExecutor(job.Args.OrgId, "deltas")
 
+	saveOffset := func(itemsProcessed int) error {
+		return w.repository.UpsertContinuousScreeningJobOffset(
+			ctx,
+			exec,
+			models.CreateContinuousScreeningJobOffset{
+				UpdateJobId:    updateJob.Id,
+				ByteOffset:     initialOffset + jsonReader.InputOffset(),
+				ItemsProcessed: initialItemsProcessed + itemsProcessed,
+			},
+		)
+	}
+
+	// Deadline earlier than river's own Timeout for this job, so there's time left to
+	// save the checkpoint and return the snooze before river marks the job failed.
+	deadline := time.Now().Add(w.Timeout(job) - ApplyDeltaFileTimeoutMargin)
+
 	iteration := 0
 	for {
+		if time.Now().After(deadline) {
+			if err := saveOffset(iteration); err != nil {
+				return err
+			}
+			logger.InfoContext(ctx, "continuous_screening_apply_delta_file: per-run timeout reached, snoozing before resuming",
+				"update_id", job.Args.UpdateId, "items_processed", initialItemsProcessed+iteration)
+			return river.JobSnooze(ApplyDeltaFileSnoozeDelay)
+		}
+
 		if iteration > 0 && iteration%MaxBatchSizePerIteration == 0 {
-			// Save the progress
-			err = w.repository.UpsertContinuousScreeningJobOffset(
-				ctx,
-				exec,
-				models.CreateContinuousScreeningJobOffset{
-					UpdateJobId:    updateJob.Id,
-					ByteOffset:     initialOffset + jsonReader.InputOffset(),
-					ItemsProcessed: initialItemsProcessed + iteration,
-				},
-			)
-			if err != nil {
+			if err := saveOffset(iteration); err != nil {
 				return err
 			}
 		}
@@ -273,9 +305,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			hErr := w.handleProcessError(ctx, exec, job,
-				errors.Wrap(err, "failed to decode record"), false)
-			if hErr != nil {
+			if hErr := w.handleError(ctx, exec, job, errors.Wrap(err, "failed to decode record"), false); hErr != nil {
 				return hErr
 			}
 			// Don't need to retry if the record is not valid
@@ -328,6 +358,9 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 
 		query, err := w.buildOpenSanctionQuery(iterCtx, exec, updateJob, record)
 		if err != nil {
+			if hErr := w.handleError(ctx, exec, job, err, true); hErr != nil {
+				return hErr
+			}
 			return err
 		}
 
@@ -350,6 +383,9 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 			if isTransientScreeningError(err) {
 				iterLogger.WarnContext(iterCtx, "Screening API transient error, rescheduling job", "error", err.Error())
 				return river.JobSnooze(5 * time.Minute)
+			}
+			if hErr := w.handleError(ctx, exec, job, err, true); hErr != nil {
+				return hErr
 			}
 			return err
 		}
@@ -376,7 +412,11 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		createInput.OpenSanctionEntityPayload, err = w.offloadedReader.OffloadContinuousScreeningEntity(
 			iterCtx, updateJob.Config.OrgId, createInput.Id, createInput.OpenSanctionEntityPayload)
 		if err != nil {
-			return errors.Wrap(err, "failed to offload continuous screening entity payload")
+			errToReturn := errors.Wrap(err, "failed to offload continuous screening entity payload")
+			if hErr := w.handleError(ctx, exec, job, errToReturn, true); hErr != nil {
+				return hErr
+			}
+			return errToReturn
 		}
 
 		err = w.transactionFactory.Transaction(iterCtx, func(tx repositories.Transaction) error {
@@ -413,6 +453,9 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 			return nil
 		})
 		if err != nil {
+			if hErr := w.handleError(ctx, exec, job, err, true); hErr != nil {
+				return hErr
+			}
 			return err
 		}
 
@@ -426,6 +469,9 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		models.ContinuousScreeningUpdateJobStatusCompleted,
 	)
 	if err != nil {
+		if hErr := w.handleError(ctx, exec, job, err, true); hErr != nil {
+			return hErr
+		}
 		return err
 	}
 
@@ -528,11 +574,11 @@ func (w *ApplyDeltaFileWorker) buildOpenSanctionQuery(
 	}, nil
 }
 
-func (w *ApplyDeltaFileWorker) handleProcessError(
+func (w *ApplyDeltaFileWorker) handleError(
 	ctx context.Context,
 	exec repositories.Executor,
 	riverJob *river.Job[models.ContinuousScreeningApplyDeltaFileArgs],
-	processError error,
+	errCatched error,
 	isRetryable bool,
 ) error {
 	if isRetryable && riverJob.Attempt < riverJob.MaxAttempts {
@@ -540,7 +586,7 @@ func (w *ApplyDeltaFileWorker) handleProcessError(
 		return nil
 	}
 	details := map[string]string{
-		"error": processError.Error(),
+		"error": errCatched.Error(),
 	}
 	detailsBytes, err := json.Marshal(details)
 	if err != nil {
