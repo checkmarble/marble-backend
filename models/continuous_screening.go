@@ -191,6 +191,7 @@ const (
 	ContinuousScreeningUpdateJobStatusProcessing
 	ContinuousScreeningUpdateJobStatusCompleted
 	ContinuousScreeningUpdateJobStatusFailed
+	ContinuousScreeningUpdateJobStatusSkipped
 )
 
 func ContinuousScreeningUpdateJobStatusFrom(s string) ContinuousScreeningUpdateJobStatus {
@@ -203,6 +204,8 @@ func ContinuousScreeningUpdateJobStatusFrom(s string) ContinuousScreeningUpdateJ
 		return ContinuousScreeningUpdateJobStatusCompleted
 	case "failed":
 		return ContinuousScreeningUpdateJobStatusFailed
+	case "skipped":
+		return ContinuousScreeningUpdateJobStatusSkipped
 	}
 	return ContinuousScreeningUpdateJobStatusUnknown
 }
@@ -217,6 +220,8 @@ func (s ContinuousScreeningUpdateJobStatus) String() string {
 		return "completed"
 	case ContinuousScreeningUpdateJobStatusFailed:
 		return "failed"
+	case ContinuousScreeningUpdateJobStatusSkipped:
+		return "skipped"
 	}
 	return "unknown"
 }
