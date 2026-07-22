@@ -127,7 +127,7 @@ func TestMergeWithLicenseEntitlement(t *testing.T) {
 				Sanctions:       MissingConfiguration,
 				NameRecognition: MissingConfiguration,
 				Analytics:       MissingConfiguration,
-				Webhooks:        MissingConfiguration,
+				Webhooks:        Allowed,
 				Workflows:       Allowed,
 				RuleSnoozes:     Allowed,
 				Roles:           Allowed,
