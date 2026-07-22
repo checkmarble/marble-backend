@@ -13,6 +13,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
+	"gocloud.dev/gcerrors"
 )
 
 const (
@@ -63,7 +64,7 @@ func (w AsyncUploadWorker) Work(ctx context.Context, job *river.Job[models.Async
 	blobAttrs, err := w.blobRepository.GetBlobAttributes(ctx, w.ingestionBucketUrl, job.Args.Key)
 	if err != nil {
 		// If the blob was not uploaded yet
-		if errors.Is(err, models.NotFoundError) {
+		if gcerrors.Code(err) == gcerrors.NotFound {
 			// If we passed the token validity period, it won't be uploaded, so we cancel the job
 			if time.Now().After(job.CreatedAt.Add(ASYNC_UPLOAD_TIMEOUT)) {
 				return river.JobCancel(
