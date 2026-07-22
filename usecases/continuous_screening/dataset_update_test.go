@@ -17,10 +17,14 @@ func TestListContinuousScreeningDatasetUpdatesUsesProviderAndEnrichesPage(t *tes
 	orgId := uuid.New()
 	repository := new(mocks.ContinuousScreeningRepository)
 	screeningProvider := new(mocks.OpenSanctionsRepository)
+	enforceSecurity := new(mocks.EnforceSecurity)
+	featureAccessReader := new(mocks.FeatureAccessReader)
 	uc := &ContinuousScreeningUsecase{
-		executorFactory:   executor_factory.NewExecutorFactoryStub(),
-		repository:        repository,
-		screeningProvider: screeningProvider,
+		executorFactory:     executor_factory.NewExecutorFactoryStub(),
+		repository:          repository,
+		screeningProvider:   screeningProvider,
+		enforceSecurity:     enforceSecurity,
+		featureAccessReader: featureAccessReader,
 	}
 	org := models.Organization{
 		Id: orgId,
@@ -35,6 +39,11 @@ func TestListContinuousScreeningDatasetUpdatesUsesProviderAndEnrichesPage(t *tes
 		Order:   models.SortingOrderDesc,
 		Limit:   2,
 	}
+	featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, orgId,
+		(*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		ContinuousScreening: models.Allowed,
+	}, nil)
+	enforceSecurity.On("ReadContinuousScreeningObject", orgId).Return(nil)
 	repositoryUpdates := []models.ContinuousScreeningDatasetUpdateEnriched{
 		{ContinuousScreeningDatasetUpdate: models.ContinuousScreeningDatasetUpdate{
 			DatasetName: "current_dataset",
@@ -90,15 +99,21 @@ func TestListContinuousScreeningDatasetUpdatesUsesProviderAndEnrichesPage(t *tes
 	require.False(t, result.Items[1].IsCurrent)
 	repository.AssertExpectations(t)
 	screeningProvider.AssertExpectations(t)
+	enforceSecurity.AssertExpectations(t)
+	featureAccessReader.AssertExpectations(t)
 }
 
 func TestListContinuousScreeningUpdateJobsUsesProviderAndTrimsPage(t *testing.T) {
 	ctx := context.Background()
 	orgId := uuid.New()
 	repository := new(mocks.ContinuousScreeningRepository)
+	enforceSecurity := new(mocks.EnforceSecurity)
+	featureAccessReader := new(mocks.FeatureAccessReader)
 	uc := &ContinuousScreeningUsecase{
-		executorFactory: executor_factory.NewExecutorFactoryStub(),
-		repository:      repository,
+		executorFactory:     executor_factory.NewExecutorFactoryStub(),
+		repository:          repository,
+		enforceSecurity:     enforceSecurity,
+		featureAccessReader: featureAccessReader,
 	}
 	org := models.Organization{
 		Id: orgId,
@@ -113,6 +128,11 @@ func TestListContinuousScreeningUpdateJobsUsesProviderAndTrimsPage(t *testing.T)
 		Order:   models.SortingOrderAsc,
 		Limit:   2,
 	}
+	featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, orgId,
+		(*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		ContinuousScreening: models.Allowed,
+	}, nil)
+	enforceSecurity.On("ReadContinuousScreeningObject", orgId).Return(nil)
 	repositoryJobs := []models.ContinuousScreeningUpdateJobSummary{
 		{Id: uuid.New()},
 		{Id: uuid.New()},
@@ -139,6 +159,8 @@ func TestListContinuousScreeningUpdateJobsUsesProviderAndTrimsPage(t *testing.T)
 	require.True(t, result.HasNextPage)
 	require.Equal(t, repositoryJobs[:2], result.Items)
 	repository.AssertExpectations(t)
+	enforceSecurity.AssertExpectations(t)
+	featureAccessReader.AssertExpectations(t)
 }
 
 func TestListContinuousScreeningClientDataIndexingUsesMotivaIndexVersion(t *testing.T) {
@@ -147,10 +169,14 @@ func TestListContinuousScreeningClientDataIndexingUsesMotivaIndexVersion(t *test
 	indexVersion := "20260713123000-001"
 	repository := new(mocks.ContinuousScreeningRepository)
 	screeningProvider := new(mocks.OpenSanctionsRepository)
+	enforceSecurity := new(mocks.EnforceSecurity)
+	featureAccessReader := new(mocks.FeatureAccessReader)
 	uc := &ContinuousScreeningUsecase{
-		executorFactory:   executor_factory.NewExecutorFactoryStub(),
-		repository:        repository,
-		screeningProvider: screeningProvider,
+		executorFactory:     executor_factory.NewExecutorFactoryStub(),
+		repository:          repository,
+		screeningProvider:   screeningProvider,
+		enforceSecurity:     enforceSecurity,
+		featureAccessReader: featureAccessReader,
 	}
 	pagination := models.PaginationAndSorting{
 		Sorting: models.SortingFieldCreatedAt,
@@ -185,6 +211,11 @@ func TestListContinuousScreeningClientDataIndexingUsesMotivaIndexVersion(t *test
 		},
 	}
 
+	featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, orgId,
+		(*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		ContinuousScreening: models.Allowed,
+	}, nil)
+	enforceSecurity.On("ReadContinuousScreeningObject", orgId).Return(nil)
 	repository.On("GetOrganizationById", ctx, mock.Anything, orgId).Return(org, nil)
 	screeningProvider.On("GetRawCatalog", ctx, models.ScreeningProviderLexisNexis).
 		Return(catalog, nil)
@@ -214,6 +245,8 @@ func TestListContinuousScreeningClientDataIndexingUsesMotivaIndexVersion(t *test
 	require.True(t, result.Items.HasNextPage)
 	repository.AssertExpectations(t)
 	screeningProvider.AssertExpectations(t)
+	enforceSecurity.AssertExpectations(t)
+	featureAccessReader.AssertExpectations(t)
 }
 
 func TestListContinuousScreeningClientDataIndexingTreatsMissingMotivaDatasetAsUnindexed(t *testing.T) {
@@ -221,10 +254,14 @@ func TestListContinuousScreeningClientDataIndexingTreatsMissingMotivaDatasetAsUn
 	orgId := uuid.New()
 	repository := new(mocks.ContinuousScreeningRepository)
 	screeningProvider := new(mocks.OpenSanctionsRepository)
+	enforceSecurity := new(mocks.EnforceSecurity)
+	featureAccessReader := new(mocks.FeatureAccessReader)
 	uc := &ContinuousScreeningUsecase{
-		executorFactory:   executor_factory.NewExecutorFactoryStub(),
-		repository:        repository,
-		screeningProvider: screeningProvider,
+		executorFactory:     executor_factory.NewExecutorFactoryStub(),
+		repository:          repository,
+		screeningProvider:   screeningProvider,
+		enforceSecurity:     enforceSecurity,
+		featureAccessReader: featureAccessReader,
 	}
 	pagination := models.PaginationAndSorting{
 		Sorting: models.SortingFieldCreatedAt,
@@ -233,6 +270,11 @@ func TestListContinuousScreeningClientDataIndexingTreatsMissingMotivaDatasetAsUn
 	}
 	org := models.Organization{Id: orgId}
 
+	featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, orgId,
+		(*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{
+		ContinuousScreening: models.Allowed,
+	}, nil)
+	enforceSecurity.On("ReadContinuousScreeningObject", orgId).Return(nil)
 	repository.On("GetOrganizationById", ctx, mock.Anything, orgId).Return(org, nil)
 	screeningProvider.On("GetRawCatalog", ctx, models.ScreeningProviderOpenSanctions).
 		Return(models.OpenSanctionsRawCatalog{
@@ -269,4 +311,6 @@ func TestListContinuousScreeningClientDataIndexingTreatsMissingMotivaDatasetAsUn
 	require.False(t, result.Items.HasNextPage)
 	repository.AssertExpectations(t)
 	screeningProvider.AssertExpectations(t)
+	enforceSecurity.AssertExpectations(t)
+	featureAccessReader.AssertExpectations(t)
 }
