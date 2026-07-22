@@ -54,7 +54,7 @@ require (
 	github.com/mitchellh/hashstructure/v2 v2.0.2
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/ory/dockertest/v3 v3.12.0
-	github.com/oschwald/maxminddb-golang/v2 v2.3.0
+	github.com/oschwald/maxminddb-golang/v2 v2.4.1
 	github.com/pashagolub/pgxmock/v4 v4.9.0
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.27.0
