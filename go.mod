@@ -69,7 +69,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.43.0
 	github.com/tidwall/gjson v1.19.0
 	github.com/twpayne/go-geom v1.6.1
-	github.com/twpayne/go-geos v0.20.4
+	github.com/twpayne/go-geos v0.21.0
 	github.com/twpayne/pgx-geos v1.0.1
 	github.com/vearne/gin-timeout v0.2.3
 	go.opentelemetry.io/contrib/detectors/gcp v1.44.0
