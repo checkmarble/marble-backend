@@ -374,7 +374,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	}
 
 	var aiPromptsFS fs.FS
-	if license.LicenseValidationCode == models.VALID && license.CaseAiAssist {
+	if license.LicenseValidationCode == models.VALID {
 		aiPromptsFS = infra.InitAiPromptsFS(ctx, aiPromptsServingDir, config.Version, licenseConfig.LicenseKey)
 		if err := ai_agent.ValidatePromptsFS(aiPromptsFS); err != nil {
 			utils.LoggerFromContext(ctx).WarnContext(ctx, "ai prompts filesystem failed validation, ai features are unavaible",

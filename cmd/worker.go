@@ -342,7 +342,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	aiPromptsServingDir := utils.GetEnv("AI_PROMPTS_SERVING_DIR", "")
 	var aiPromptsFS fs.FS
-	if license.LicenseValidationCode == models.VALID && license.CaseAiAssist {
+	if license.LicenseValidationCode == models.VALID {
 		aiPromptsFS = infra.InitAiPromptsFS(ctx, aiPromptsServingDir, apiVersion, licenseConfig.LicenseKey)
 		if err := ai_agent.ValidatePromptsFS(aiPromptsFS); err != nil {
 			utils.LoggerFromContext(ctx).WarnContext(ctx, "ai prompts filesystem failed validation, ai features are unavailable",
