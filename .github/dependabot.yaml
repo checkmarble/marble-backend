@@ -17,5 +17,8 @@ updates:
       sentry:
         patterns:
           - "github.com/getsentry/sentry-go*"
+      testcontainers:
+        patterns:
+          - "github.com/testcontainers/testcontainers-go*"
     cooldown:
       default-days: 14
