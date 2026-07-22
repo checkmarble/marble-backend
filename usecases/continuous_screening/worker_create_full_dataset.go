@@ -234,7 +234,7 @@ func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 	} else {
 		logger.DebugContext(ctx, "Dataset file found for org, patching it and creating new version",
 			"orgId", orgId, "datasetFile", datasetFile)
-		err := w.handlePatchDataset(ctx, exec, orgId, provider, *datasetFile)
+		err := w.handlePatchDataset(ctx, exec, orgId, *datasetFile)
 		if err != nil {
 			return errors.Wrap(err, "failed to handle patch dataset")
 		}
@@ -324,7 +324,6 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 		datasetFile, err := w.repo.CreateContinuousScreeningDatasetFile(ctx, tx,
 			models.CreateContinuousScreeningDatasetFile{
 				OrgId:    orgId,
-				Provider: provider,
 				FileType: models.ContinuousScreeningDatasetFileTypeFull,
 				Version:  version,
 				FilePath: fullDatasetFileName,
@@ -353,7 +352,7 @@ func (w *CreateFullDatasetWorker) handleFirstFullDataset(ctx context.Context,
 // handlePatchDataset handles patching an existing dataset by merging the previous dataset file
 // with new delta tracks. Both sources are sorted by entity_id, enabling an efficient merge.
 func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
-	exec repositories.Executor, orgId uuid.UUID, provider models.ScreeningProvider,
+	exec repositories.Executor, orgId uuid.UUID,
 	previousDatasetFile models.ContinuousScreeningDatasetFile,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
@@ -549,7 +548,6 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 		datasetFile, err := w.repo.CreateContinuousScreeningDatasetFile(ctx, tx,
 			models.CreateContinuousScreeningDatasetFile{
 				OrgId:    orgId,
-				Provider: provider,
 				FileType: models.ContinuousScreeningDatasetFileTypeFull,
 				Version:  version,
 				FilePath: fullDatasetFileName,
@@ -562,7 +560,6 @@ func (w *CreateFullDatasetWorker) handlePatchDataset(ctx context.Context,
 		_, err = w.repo.CreateContinuousScreeningDatasetFile(ctx, tx,
 			models.CreateContinuousScreeningDatasetFile{
 				OrgId:    orgId,
-				Provider: provider,
 				FileType: models.ContinuousScreeningDatasetFileTypeDelta,
 				Version:  version,
 				FilePath: deltaDatasetFileName,

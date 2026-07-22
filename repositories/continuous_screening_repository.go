@@ -999,12 +999,6 @@ type continuousScreeningPaginationOffset struct {
 	Value time.Time `db:"offset_value"`
 }
 
-func adaptContinuousScreeningPaginationOffset(
-	offset continuousScreeningPaginationOffset,
-) (time.Time, error) {
-	return offset.Value, nil
-}
-
 func validateContinuousScreeningSorting(
 	pagination models.PaginationAndSorting,
 	allowed ...models.SortingField,
@@ -1040,7 +1034,9 @@ func (repo *MarbleDbRepository) applyContinuousScreeningKeysetPagination(
 	}
 
 	offset, err := SqlToModel(
-		ctx, exec, offsetQuery, adaptContinuousScreeningPaginationOffset)
+		ctx, exec, offsetQuery, func(offset continuousScreeningPaginationOffset) (time.Time, error) {
+			return offset.Value, nil
+		})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return query, errors.Wrap(models.NotFoundError,
 			"No row found matching the provided offsetId")
@@ -1075,7 +1071,6 @@ func (repo *MarbleDbRepository) ListContinuousScreeningClientDataIndexing(
 	ctx context.Context,
 	exec Executor,
 	orgId uuid.UUID,
-	provider models.ScreeningProvider,
 	indexVersion *string,
 	pagination models.PaginationAndSorting,
 ) (models.ContinuousScreeningClientDataIndexing, error) {
@@ -1089,7 +1084,7 @@ func (repo *MarbleDbRepository) ListContinuousScreeningClientDataIndexing(
 	}
 
 	pendingItems, err := repo.countPendingContinuousScreeningClientDataIndexing(
-		ctx, exec, orgId, provider, indexVersion)
+		ctx, exec, orgId, indexVersion)
 	if err != nil {
 		return models.ContinuousScreeningClientDataIndexing{}, err
 	}
@@ -1100,12 +1095,12 @@ func (repo *MarbleDbRepository) ListContinuousScreeningClientDataIndexing(
 	query := NewQueryBuilder().
 		Select("client_data_indexing.*").
 		FromSelect(continuousScreeningClientDataIndexingAggregateQuery(
-			orgId, provider, indexVersion), "client_data_indexing").
+			orgId, indexVersion), "client_data_indexing").
 		OrderBy(orderCond).
 		Limit(uint64(pagination.Limit))
 
 	query, err = repo.applyContinuousScreeningClientDataIndexingPaginationFilters(
-		ctx, exec, query, orgId, provider, indexVersion, pagination)
+		ctx, exec, query, orgId, indexVersion, pagination)
 	if err != nil {
 		return models.ContinuousScreeningClientDataIndexing{}, err
 	}
@@ -1125,7 +1120,6 @@ func (repo *MarbleDbRepository) ListContinuousScreeningClientDataIndexing(
 
 func continuousScreeningClientDataIndexingAggregateQuery(
 	orgId uuid.UUID,
-	provider models.ScreeningProvider,
 	indexVersion *string,
 ) squirrel.SelectBuilder {
 	query := NewQueryBuilder().
@@ -1139,8 +1133,8 @@ func continuousScreeningClientDataIndexingAggregateQuery(
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DELTA_TRACKS+" AS dt").
 		InnerJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_FILES+
 			" AS df ON df.id = dt.dataset_file_id AND df.org_id = dt.org_id"+
-			" AND df.file_type = ? AND df.provider = ?",
-			models.ContinuousScreeningDatasetFileTypeFull.String(), provider).
+			" AND df.file_type = ?",
+			models.ContinuousScreeningDatasetFileTypeFull.String()).
 		Where(squirrel.Eq{"dt.org_id": orgId}).
 		GroupBy("df.created_at", "df.version", "dt.object_type")
 
@@ -1155,10 +1149,9 @@ func (repo *MarbleDbRepository) countPendingContinuousScreeningClientDataIndexin
 	ctx context.Context,
 	exec Executor,
 	orgId uuid.UUID,
-	provider models.ScreeningProvider,
 	indexVersion *string,
 ) (int, error) {
-	query := continuousScreeningClientDataIndexingPendingQuery(orgId, provider, indexVersion)
+	query := continuousScreeningClientDataIndexingPendingQuery(orgId, indexVersion)
 
 	sql, args, err := query.ToSql()
 	if err != nil {
@@ -1173,28 +1166,40 @@ func (repo *MarbleDbRepository) countPendingContinuousScreeningClientDataIndexin
 	return count, nil
 }
 
+// Cap pending-item counts so large orgs do not pay for a full table scan.
+// Matches the capped COUNT(*) FROM (SELECT 1 … LIMIT N) pattern used elsewhere
+// (e.g. inbox case counts).
+const continuousScreeningClientDataIndexingPendingCountLimit = 1000
+
 func continuousScreeningClientDataIndexingPendingQuery(
 	orgId uuid.UUID,
-	provider models.ScreeningProvider,
 	indexVersion *string,
 ) squirrel.SelectBuilder {
-	query := NewQueryBuilder().
-		Select("COUNT(*)").
+	// Inner query stops after N matching rows; outer COUNT(*) therefore returns at most N.
+	inner := NewQueryBuilder().
+		Select("1").
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DELTA_TRACKS+" AS dt").
 		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_FILES+
 			" AS df ON df.id = dt.dataset_file_id AND df.org_id = dt.org_id"+
-			" AND df.file_type = ? AND df.provider = ?",
-			models.ContinuousScreeningDatasetFileTypeFull.String(), provider).
-		Where(squirrel.Eq{"dt.org_id": orgId})
+			" AND df.file_type = ?",
+			models.ContinuousScreeningDatasetFileTypeFull.String()).
+		Where(squirrel.Eq{"dt.org_id": orgId}).
+		Limit(continuousScreeningClientDataIndexingPendingCountLimit)
 
 	if indexVersion == nil {
-		return query.Where(squirrel.Eq{"df.id": nil})
+		// No Motiva index yet: count delta tracks not assigned to a full dataset file.
+		inner = inner.Where(squirrel.Eq{"df.id": nil})
+	} else {
+		// Count rows still unassigned, or assigned to a newer full-dataset version than Motiva.
+		inner = inner.Where(squirrel.Or{
+			squirrel.Eq{"df.id": nil},
+			squirrel.Gt{"df.version": *indexVersion},
+		})
 	}
 
-	return query.Where(squirrel.Or{
-		squirrel.Eq{"df.id": nil},
-		squirrel.Gt{"df.version": *indexVersion},
-	})
+	return NewQueryBuilder().
+		Select("COUNT(*)").
+		FromSelect(inner, "pending")
 }
 
 func (repo *MarbleDbRepository) applyContinuousScreeningClientDataIndexingPaginationFilters(
@@ -1202,7 +1207,6 @@ func (repo *MarbleDbRepository) applyContinuousScreeningClientDataIndexingPagina
 	exec Executor,
 	query squirrel.SelectBuilder,
 	orgId uuid.UUID,
-	provider models.ScreeningProvider,
 	indexVersion *string,
 	p models.PaginationAndSorting,
 ) (squirrel.SelectBuilder, error) {
@@ -1213,7 +1217,7 @@ func (repo *MarbleDbRepository) applyContinuousScreeningClientDataIndexingPagina
 	offsetQuery := NewQueryBuilder().
 		Select("client_data_indexing.*").
 		FromSelect(continuousScreeningClientDataIndexingAggregateQuery(
-			orgId, provider, indexVersion), "client_data_indexing").
+			orgId, indexVersion), "client_data_indexing").
 		Where(squirrel.Eq{"client_data_indexing.id": p.OffsetId})
 
 	offset, err := SqlToModel(ctx, exec, offsetQuery,
@@ -1593,14 +1597,12 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningDatasetFile(
 		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectContinuousScreeningDatasetFileColumn, ","))).
 		Columns(
 			"org_id",
-			"provider",
 			"file_type",
 			"version",
 			"file_path",
 		).
 		Values(
 			input.OrgId,
-			input.Provider,
 			input.FileType.String(),
 			input.Version,
 			input.FilePath,
