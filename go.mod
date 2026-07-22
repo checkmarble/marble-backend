@@ -36,7 +36,7 @@ require (
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-contrib/size v1.0.2
 	github.com/gin-gonic/gin v1.12.0
-	github.com/go-faker/faker/v4 v4.8.0
+	github.com/go-faker/faker/v4 v4.9.0
 	github.com/go-playground/validator/v10 v10.30.3
 	github.com/go-testfixtures/testfixtures/v3 v3.19.0
 	github.com/go-viper/mapstructure/v2 v2.5.0
