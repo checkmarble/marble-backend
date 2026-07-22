@@ -211,11 +211,10 @@ func (m *ContinuousScreeningRepository) ListContinuousScreeningClientDataIndexin
 	ctx context.Context,
 	exec repositories.Executor,
 	orgId uuid.UUID,
-	provider models.ScreeningProvider,
 	indexVersion *string,
 	pagination models.PaginationAndSorting,
 ) (models.ContinuousScreeningClientDataIndexing, error) {
-	args := m.Called(ctx, exec, orgId, provider, indexVersion, pagination)
+	args := m.Called(ctx, exec, orgId, indexVersion, pagination)
 	return args.Get(0).(models.ContinuousScreeningClientDataIndexing), args.Error(1)
 }
 
