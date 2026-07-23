@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	RULE_DESCRIPTION_PROMPT_PATH      = "prompts/rule/rule_description.md"
-	RULE_GENERATION_PROMPT_STEP1_PATH = "prompts/rule/rule_generation_step1.md"
-	RULE_GENERATION_PROMPT_STEP2_PATH = "prompts/rule/rule_generation_step2.md"
+	RULE_DESCRIPTION_PROMPT_PATH      = models.AiAgentRuleDescriptionPromptPath
+	RULE_GENERATION_PROMPT_STEP1_PATH = models.AiAgentRuleGenerationStep1PromptPath
+	RULE_GENERATION_PROMPT_STEP2_PATH = models.AiAgentRuleGenerationStep2PromptPath
 )
 
 // GenerateRule generates a rule AST from a natural language instruction

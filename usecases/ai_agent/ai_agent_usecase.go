@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"os"
+	"io/fs"
 	"strings"
 	"sync"
 
@@ -192,6 +192,7 @@ type AiAgentUsecase struct {
 	featureAccessReader                featureAccessReader
 	config                             infra.AIAgentConfiguration
 	caseManagerBucketUrl               string
+	promptsFS                          fs.FS
 
 	caseReviewAdapter *llmberjack.Llmberjack
 	enrichmentAdapter *llmberjack.Llmberjack
@@ -222,6 +223,7 @@ func NewAiAgentUsecase(
 	screeningUsecase AiAgentScreeningUsecase,
 	config infra.AIAgentConfiguration,
 	caseManagerBucketUrl string,
+	promptsFS fs.FS,
 ) AiAgentUsecase {
 	return AiAgentUsecase{
 		enforceSecurityCase:                enforceSecurityCase,
@@ -247,6 +249,7 @@ func NewAiAgentUsecase(
 		featureAccessReader:                featureAccessReader,
 		config:                             config,
 		caseManagerBucketUrl:               caseManagerBucketUrl,
+		promptsFS:                          promptsFS,
 	}
 }
 
@@ -433,25 +436,26 @@ func (uc *AiAgentUsecase) GetCaseDataZip(ctx context.Context, caseId string) (io
 	return pr, nil
 }
 
-func readPrompt(path string) (string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return "", errors.Wrapf(err, "could not open prompt file %s", path)
+// readPrompt reads a prompt file by name (root-relative, no leading "/") from the usecase's
+// injected prompts filesystem. Returns an error if no prompts filesystem was resolved at
+// process startup (see infra.InitAiPromptsFS).
+func (uc *AiAgentUsecase) readPrompt(name string) (string, error) {
+	if uc.promptsFS == nil {
+		return "", errors.Errorf("cannot read prompt %s: ai prompts filesystem is not available", name)
 	}
-	defer file.Close()
 
-	promptBytes, err := io.ReadAll(file)
+	promptBytes, err := fs.ReadFile(uc.promptsFS, name)
 	if err != nil {
-		return "", errors.Wrapf(err, "could not read prompt file %s", path)
+		return "", errors.Wrapf(err, "could not read prompt file %s", name)
 	}
 	return string(promptBytes), nil
 }
 
 // Prepare the request for the LLM, the prompt comes from a file and need to be templated.
 // The file contains some variables that are replaced by the data provided by the caller.
-func preparePrompt(promptPath string, data map[string]any) (prompt string, err error) {
+func (uc *AiAgentUsecase) preparePrompt(promptPath string, data map[string]any) (prompt string, err error) {
 	// Load prompt from file, do each time in case prompt configuration changes
-	promptContent, err := readPrompt(promptPath)
+	promptContent, err := uc.readPrompt(promptPath)
 	if err != nil {
 		return "", errors.Wrap(err, "could not read prompt file")
 	}
@@ -518,7 +522,7 @@ func providerForModel(model string) string {
 func (uc *AiAgentUsecase) preparePromptWithModel(promptPath string, data map[string]any) (provider string, model string, prompt string, err error) {
 	// Load model configuration on each call
 	// Give the possibility to change the prompt without reloading the application
-	modelConfig, err := models.LoadAiAgentModelConfig("prompts/ai_agent_models.json", uc.config.MainAgentDefaultModel)
+	modelConfig, err := models.LoadAiAgentModelConfig(uc.promptsFS, uc.config.MainAgentDefaultModel)
 	if err != nil {
 		return "", "", "", errors.Wrap(err, "could not load AI agent model configuration")
 	}
@@ -526,7 +530,7 @@ func (uc *AiAgentUsecase) preparePromptWithModel(promptPath string, data map[str
 	model = modelConfig.GetModelForPrompt(promptPath)
 	provider = providerForModel(model)
 
-	prompt, err = preparePrompt(promptPath, data)
+	prompt, err = uc.preparePrompt(promptPath, data)
 	if err != nil {
 		return "", "", "", errors.Wrap(err, "could not prepare prompt")
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 // promptsLicenseValidator is the subset of PublicLicenseUseCase used by PromptServingUsecase,
@@ -115,25 +116,25 @@ func (uc PromptServingUsecase) resolvePromptsBase(version string) (string, error
 		return "", errors.Wrapf(err, "could not list prompts directory %s", uc.aiPromptsServingDir)
 	}
 
-	var bestVersion *semver.Version
+	dirNames := make([]string, 0, len(entries))
 	for _, e := range entries {
-		if !e.IsDir() {
-			continue // Ignore non-directory entries
-		}
-		entryVersion, err := semver.NewVersion(e.Name())
-		if err != nil {
-			continue // entry is not a prompt version directory
-		}
-		if requestedVersion.Compare(entryVersion) >= 0 && (bestVersion == nil || entryVersion.Compare(bestVersion) > 0) {
-			bestVersion = entryVersion
+		if e.IsDir() {
+			dirNames = append(dirNames, e.Name())
 		}
 	}
 
-	if bestVersion == nil {
+	// requestedVersion was already validated above; the error here can only come from a
+	// malformed entry in dirNames, which ResolveBestPromptVersion already skips rather than
+	// erroring on - so err is always nil in practice, but still checked defensively.
+	best, err := pure_utils.ResolveBestPromptVersion(dirNames, requestedVersion.Original())
+	if err != nil {
+		return "", errors.Wrapf(models.BadParameterError, "invalid version format: %s", version)
+	}
+	if best == "" {
 		// No matching/precedent version folder
 		return "", errors.Wrap(models.NotFoundError, "no prompts version available")
 	}
-	return filepath.Join(uc.aiPromptsServingDir, bestVersion.Original()), nil
+	return filepath.Join(uc.aiPromptsServingDir, best), nil
 }
 
 func addFileToZip(zw *zip.Writer, srcPath, zipName string) error {

@@ -828,6 +828,7 @@ func (usecases *UsecasesWithCreds) NewAiAgentUsecase() ai_agent.AiAgentUsecase {
 		utils.Ptr(usecases.NewScreeningUsecase()),
 		usecases.aiAgentConfig,
 		usecases.caseManagerBucketUrl, // TODO: I think we could avoid passing the caseManagerBucketURL here only for the creation of the model
+		usecases.aiPromptsFS,
 	)
 }
 

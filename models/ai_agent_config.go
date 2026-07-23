@@ -3,7 +3,7 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"os"
+	"io/fs"
 )
 
 // AiAgentModelConfig represents the configuration for AI agent models
@@ -15,26 +15,28 @@ type AiAgentModelConfig struct {
 	PromptModels map[string]string `json:"prompt_models"`
 }
 
-// LoadAiAgentModelConfig loads the AI agent model configuration from a JSON file
-// The default model is provided by the caller depends on the provider it uses
-func LoadAiAgentModelConfig(configPath string, defaultModel string) (*AiAgentModelConfig, error) {
-	if configPath == "" {
-		// Return default configuration if no path is provided
+// LoadAiAgentModelConfig loads the AI agent model configuration from AiAgentModelConfigFileName
+// at the root of promptsFS. The default model is provided by the caller depends on the provider
+// it uses. If promptsFS is nil (no prompts filesystem available), the default configuration is
+// returned.
+func LoadAiAgentModelConfig(promptsFS fs.FS, defaultModel string) (*AiAgentModelConfig, error) {
+	if promptsFS == nil {
+		// Return default configuration if no prompts filesystem is available
 		return &AiAgentModelConfig{
 			DefaultModel: defaultModel,
 			PromptModels: make(map[string]string),
 		}, nil
 	}
 
-	file, err := os.Open(configPath)
+	file, err := promptsFS.Open(AiAgentModelConfigFileName)
 	if err != nil {
-		return nil, fmt.Errorf("could not open AI agent config file %s: %w", configPath, err)
+		return nil, fmt.Errorf("could not open AI agent config file %s: %w", AiAgentModelConfigFileName, err)
 	}
 	defer file.Close()
 
 	var config AiAgentModelConfig
 	if err := json.NewDecoder(file).Decode(&config); err != nil {
-		return nil, fmt.Errorf("could not decode AI agent config file %s: %w", configPath, err)
+		return nil, fmt.Errorf("could not decode AI agent config file %s: %w", AiAgentModelConfigFileName, err)
 	}
 
 	// Set default model if not specified

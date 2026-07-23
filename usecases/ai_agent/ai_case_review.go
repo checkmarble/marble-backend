@@ -33,18 +33,17 @@ const (
 
 var ReviewLevelEnum = []string{"probable_false_positive", "investigate", "escalate"}
 
-// Constants for the case review prompt paths
 const (
-	PROMPT_CASE_REVIEW_PATH                          = "prompts/case_review/case_review.md"
-	PROMPT_DATA_MODEL_OBJECT_FIELD_READ_OPTIONS_PATH = "prompts/case_review/data_model_object_field_read_options.md"
-	PROMPT_DATA_MODEL_SUMMARY_PATH                   = "prompts/case_review/data_model_summary.md"
-	PROMPT_RULE_DEFINITIONS_PATH                     = "prompts/case_review/rule_definitions.md"
-	PROMPT_RULE_THRESHOLD_VALUES_PATH                = "prompts/case_review/rule_threshold_values.md"
-	PROMPT_SANITY_CHECK_PATH                         = "prompts/case_review/sanity_check.md"
-	INSTRUCTION_CUSTOM_REPORT_PATH                   = "prompts/case_review/instruction_custom_report.md"
-	INSTRUCTION_LANGUAGE_PATH                        = "prompts/case_review/instruction_language.md"
-	INSTRUCTION_STRUCTURE_PATH                       = "prompts/case_review/instruction_structure.md"
-	SYSTEM_PROMPT_PATH                               = "prompts/system.md"
+	PROMPT_CASE_REVIEW_PATH                          = models.AiAgentCaseReviewPromptPath
+	PROMPT_DATA_MODEL_OBJECT_FIELD_READ_OPTIONS_PATH = models.AiAgentCaseReviewDataModelObjectFieldReadOptionsPromptPath
+	PROMPT_DATA_MODEL_SUMMARY_PATH                   = models.AiAgentCaseReviewDataModelSummaryPromptPath
+	PROMPT_RULE_DEFINITIONS_PATH                     = models.AiAgentCaseReviewRuleDefinitionsPromptPath
+	PROMPT_RULE_THRESHOLD_VALUES_PATH                = models.AiAgentCaseReviewRuleThresholdValuesPromptPath
+	PROMPT_SANITY_CHECK_PATH                         = models.AiAgentCaseReviewSanityCheckPromptPath
+	INSTRUCTION_CUSTOM_REPORT_PATH                   = models.AiAgentCaseReviewCustomReportInstructionPath
+	INSTRUCTION_LANGUAGE_PATH                        = models.AiAgentCaseReviewLanguageInstructionPath
+	INSTRUCTION_STRUCTURE_PATH                       = models.AiAgentCaseReviewStructureInstructionPath
+	SYSTEM_PROMPT_PATH                               = models.AiAgentSystemPromptPath
 )
 
 type sanityCheckOutput struct {
@@ -450,7 +449,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	}
 
 	// Define the system instruction for prompt
-	systemInstruction, err := readPrompt(SYSTEM_PROMPT_PATH)
+	systemInstruction, err := uc.readPrompt(SYSTEM_PROMPT_PATH)
 	if err != nil {
 		logger.DebugContext(ctx, "could not read system instruction", "error", err)
 		systemInstruction = "You are a compliance officer or fraud analyst. You are given a case and you need to review it step by step. Reply factually to instructions in markdown format."
@@ -842,7 +841,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 	if len(instructions) == 0 {
 		logger.DebugContext(ctx, "No custom instructions for organization, skip this part")
 	} else {
-		customReportInstruction, err := readPrompt(INSTRUCTION_CUSTOM_REPORT_PATH)
+		customReportInstruction, err := uc.readPrompt(INSTRUCTION_CUSTOM_REPORT_PATH)
 		if err != nil {
 			logger.DebugContext(ctx, "could not read custom report instruction", "error", err)
 			customReportInstruction = "Transform the case review according to the instructions. Return only the transformed content without explanations or preambles."

@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -16,6 +17,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/ai_agent"
 	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
@@ -371,6 +373,16 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		return errors.Wrap(err, "failed to open ip enrichment database")
 	}
 
+	var aiPromptsFS fs.FS
+	if license.LicenseValidationCode == models.VALID {
+		aiPromptsFS = infra.InitAiPromptsFS(ctx, aiPromptsServingDir, config.Version, licenseConfig.LicenseKey)
+		if err := ai_agent.ValidatePromptsFS(aiPromptsFS); err != nil {
+			utils.LoggerFromContext(ctx).WarnContext(ctx, "ai prompts filesystem failed validation, ai features are unavaible",
+				"error", err.Error())
+			aiPromptsFS = nil
+		}
+	}
+
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithAppName(appName),
 		usecases.WithApiVersion(config.Version),
@@ -393,6 +405,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithIpEnrichmentDatabase(ipEnrichmentDatabase),
 		usecases.WithScreeningOffloadingEnabled(utils.GetEnv("SCREENING_OFFLOADING_ENABLED", true)),
 		usecases.WithAIPromptsServingDir(aiPromptsServingDir),
+		usecases.WithAIPromptsFS(aiPromptsFS),
 	)
 
 	////////////////////////////////////////////////////////////
