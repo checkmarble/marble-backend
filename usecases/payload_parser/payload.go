@@ -12,11 +12,10 @@ import (
 	"time"
 
 	"github.com/tidwall/gjson"
+	"github.com/twpayne/go-geom"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
-
-	"github.com/twpayne/go-geos"
 )
 
 type fieldParser map[models.DataType]func(fieldName string, result gjson.Result) (any, error)
@@ -301,7 +300,7 @@ func NewParser(opts ...ParserOpt) *Parser {
 			if errLat != nil || errLng != nil {
 				return nil, errIsInvalidCoords
 			}
-			return models.Location{Geom: geos.NewPoint([]float64{lng, lat}).SetSRID(4326)}, nil
+			return models.Location{Point: geom.NewPointFlat(geom.XY, []float64{lng, lat}).SetSRID(4326)}, nil
 		},
 	}
 
