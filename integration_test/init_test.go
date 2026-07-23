@@ -47,6 +47,7 @@ var (
 	apiKeyVerifier auth.Verifier
 	tokenGenerator auth.TokenGenerator
 	riverClient    *river.Client[pgx.Tx]
+	pgPool         *pgxpool.Pool
 
 	testServer *httptest.Server
 )
@@ -131,6 +132,8 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Could not create connection pool: %s", err)
 	}
+
+	pgPool = dbPool
 
 	privateKey := infra.ReadParseOrGenerateSigningKey(ctx, "", "")
 

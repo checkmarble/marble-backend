@@ -131,7 +131,7 @@ export const startApi = async (
 		.withCommand([
 			"sh",
 			"-c",
-			"apt update && apt install -y ca-certificates libgeos++-dev && /marble-backend --migrations --server",
+			"apt update && apt install -y ca-certificates && /marble-backend --migrations --server",
 		]);
 
 	return api.start();
@@ -175,7 +175,7 @@ export const startWorker = async (
 		.withCommand([
 			"sh",
 			"-c",
-			"apt update && apt install -y ca-certificates libgeos++-dev && /marble-backend --worker",
+			"apt update && apt install -y ca-certificates && /marble-backend --worker",
 		]);
 
 	return worker.start();
