@@ -8,7 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
-	"github.com/twpayne/go-geos"
+	"github.com/twpayne/go-geom"
 )
 
 // This struct is used as a DTO, but instead of using struct tags directly they are set on an anonymous struct below in the MarshalJSON method.
@@ -61,7 +61,7 @@ func (c ClientObjectDetail) MarshalJSON() ([]byte, error) {
 
 	for k, v := range c.Data {
 		switch v := v.(type) {
-		case *geos.Geom:
+		case *geom.Point:
 			c.Data[k] = fmt.Sprintf("%f,%f", v.Y(), v.X())
 		}
 

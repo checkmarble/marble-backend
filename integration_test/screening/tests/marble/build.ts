@@ -33,7 +33,7 @@ export const buildMarble = async () => {
 		.withCommand([
 			"sh",
 			"-c",
-			"apt update && apt install -y libgeos++-dev && go build -buildvcs=false -ldflags '-s -w' .",
+			"go build -buildvcs=false -ldflags '-s -w' .",
 		]);
 
 	await builder.start();
