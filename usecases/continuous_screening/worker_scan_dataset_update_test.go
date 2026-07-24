@@ -254,7 +254,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_NewDataset_OnlyProcesse
 	configId := pure_utils.NewId()
 	orgId := pure_utils.NewId()
 	configs := []models.ContinuousScreeningConfig{
-		{Id: configId, OrgId: orgId, Enabled: true},
+		{Id: configId, OrgId: orgId, Enabled: true, Provider: models.ScreeningProviderOpenSanctions},
 	}
 
 	blobKey := fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, datasetName, latestDeltaVersion)
@@ -428,86 +428,93 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_NoNewVersions_NoProcess
 	suite.AssertExpectations()
 }
 
-func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatasetUpdates() {
-	datasetName := "test-dataset"
+// providerCase parametrizes TestWork_HappyPath_ProcessDatasetUpdates across screening providers.
+type providerCase struct {
+	provider      models.ScreeningProvider
+	otherProvider models.ScreeningProvider
+	datasetName   string
+	baseUrl       string
+	requiresAuth  bool
+}
+
+func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatasetUpdates_OpenSanctions() {
+	suite.runHappyPathProcessDatasetUpdates(providerCase{
+		provider:      models.ScreeningProviderOpenSanctions,
+		otherProvider: models.ScreeningProviderLexisNexis,
+		datasetName:   "test-dataset",
+		baseUrl:       "https://example.com",
+	})
+}
+
+func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatasetUpdates_LexisNexis() {
+	suite.runHappyPathProcessDatasetUpdates(providerCase{
+		provider:      models.ScreeningProviderLexisNexis,
+		otherProvider: models.ScreeningProviderOpenSanctions,
+		// getLoadedDataset hardcodes this exact name to route it to the LexisNexis provider.
+		datasetName:  "lexisnexis",
+		baseUrl:      "https://nexis.com",
+		requiresAuth: true,
+	})
+}
+
+func (suite *ScanDatasetUpdatesWorkerTestSuite) runHappyPathProcessDatasetUpdates(tc providerCase) {
 	oldVersion := "2024-01-01"
 	newVersion := "2024-01-04" // Latest version in catalog
-	deltaUrl := "https://example.com/delta"
+	deltaUrl := tc.baseUrl + "/delta"
 
 	// Versions to be processed: 2024-01-02, 2024-01-03, 2024-01-04
 	versionsToProcess := []string{"2024-01-02", "2024-01-03", "2024-01-04"}
 
-	// Mock catalog with one dataset that has a newer version
 	catalog := models.OpenSanctionsRawCatalog{
-		Current:  []string{datasetName, "lexisnexis"},
+		Current:  []string{tc.datasetName},
 		Outdated: []string{},
 		Datasets: map[string]models.OpenSanctionsRawDataset{
-			datasetName: {
-				Name:     datasetName,
+			tc.datasetName: {
+				Name:     tc.datasetName,
 				Version:  newVersion,
 				DeltaUrl: &deltaUrl,
 			},
-			"lexisnexis": {
-				Name:     "lexisnexis",
-				Version:  newVersion,
-				DeltaUrl: new("https://nexis.com/delta"),
-			},
 		},
 	}
+	// The other provider has nothing to process; its loop must be a no-op.
+	emptyCatalog := models.OpenSanctionsRawCatalog{}
 
-	// Mock delta list response with 3 versions
-	deltaList := `{
+	deltaList := fmt.Sprintf(`{
 		"versions": {
-			"2024-01-02": "https://example.com/delta/2024-01-02.ndjson",
-			"2024-01-03": "https://example.com/delta/2024-01-03.ndjson",
-			"2024-01-04": "https://example.com/delta/2024-01-04.ndjson"
+			"2024-01-02": "%[1]s/delta/2024-01-02.ndjson",
+			"2024-01-03": "%[1]s/delta/2024-01-03.ndjson",
+			"2024-01-04": "%[1]s/delta/2024-01-04.ndjson"
 		}
-	}`
+	}`, tc.baseUrl)
 
-	nexisDeltaList := `{
-		"versions": {
-			"2024-01-02": "https://nexis.com/delta/2024-01-02.ndjson",
-			"2024-01-03": "https://nexis.com/delta/2024-01-03.ndjson",
-			"2024-01-04": "https://nexis.com/delta/2024-01-04.ndjson"
-		}
-	}`
-
-	// Mock continuous screening configs
-	config1Id := pure_utils.NewId()
-	config2Id := pure_utils.NewId()
-	org1Id := pure_utils.NewId()
-	org2Id := pure_utils.NewId()
+	// Config scoped to the tested provider: must receive a job for every processed version.
+	matchingConfigId := pure_utils.NewId()
+	matchingOrgId := pure_utils.NewId()
+	// Config scoped to the other provider: must be excluded from this run.
+	otherProviderConfigId := pure_utils.NewId()
+	otherProviderOrgId := pure_utils.NewId()
 	configs := []models.ContinuousScreeningConfig{
-		{Id: config1Id, OrgId: org1Id, Enabled: true},
-		{Id: config2Id, OrgId: org2Id, Enabled: true},
+		{Id: matchingConfigId, OrgId: matchingOrgId, Enabled: true, Provider: tc.provider},
+		{Id: otherProviderConfigId, OrgId: otherProviderOrgId, Enabled: true, Provider: tc.otherProvider},
 	}
 
-	// Expected dataset updates (one for each version)
 	expectedDatasetUpdates := make([]models.ContinuousScreeningDatasetUpdate, len(versionsToProcess))
-	expectedUpdateJobs := make([]models.ContinuousScreeningUpdateJob, len(versionsToProcess)*len(configs))
+	expectedUpdateJobs := make([]models.ContinuousScreeningUpdateJob, len(versionsToProcess))
 
 	for i, version := range versionsToProcess {
-		blobKey := fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, datasetName, version)
+		blobKey := fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, tc.datasetName, version)
 		expectedDatasetUpdates[i] = models.ContinuousScreeningDatasetUpdate{
 			Id:            pure_utils.NewId(),
-			DatasetName:   datasetName,
+			DatasetName:   tc.datasetName,
 			Version:       version,
 			DeltaFilePath: blobKey,
 			TotalItems:    5, // Each mocked to have 5 lines
 		}
-
-		// Create jobs for each config for this dataset update
-		expectedUpdateJobs[i*2] = models.ContinuousScreeningUpdateJob{
+		expectedUpdateJobs[i] = models.ContinuousScreeningUpdateJob{
 			Id:              pure_utils.NewId(),
 			DatasetUpdateId: expectedDatasetUpdates[i].Id,
-			ConfigId:        config1Id,
-			OrgId:           org1Id,
-		}
-		expectedUpdateJobs[i*2+1] = models.ContinuousScreeningUpdateJob{
-			Id:              pure_utils.NewId(),
-			DatasetUpdateId: expectedDatasetUpdates[i].Id,
-			ConfigId:        config2Id,
-			OrgId:           org2Id,
+			ConfigId:        matchingConfigId,
+			OrgId:           matchingOrgId,
 		}
 	}
 
@@ -515,51 +522,38 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 	job := &river.Job[models.ContinuousScreeningScanDatasetUpdatesArgs]{}
 
 	// Setup mocks
-	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, mock.Anything, mock.Anything).Return(
+	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, matchingOrgId, mock.Anything).Return(
 		models.OrganizationFeatureAccess{
 			ContinuousScreening: models.Allowed,
 		}, nil,
 	)
-	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderOpenSanctions).Return(catalog, nil)
-	suite.screeningProvider.On("GetRawCatalog", suite.ctx, models.ScreeningProviderLexisNexis).Return(catalog, nil)
+	suite.screeningProvider.On("GetRawCatalog", suite.ctx, tc.provider).Return(catalog, nil)
+	suite.screeningProvider.On("GetRawCatalog", suite.ctx, tc.otherProvider).Return(emptyCatalog, nil)
 
 	// Dataset has older version in DB
-	suite.repository.On("GetLastProcessedVersion", suite.ctx, mock.Anything, datasetName).Return(
-		models.ContinuousScreeningDatasetUpdate{Version: oldVersion}, nil)
-	suite.repository.On("GetLastProcessedVersion", suite.ctx, mock.Anything, "lexisnexis").Return(
+	suite.repository.On("GetLastProcessedVersion", suite.ctx, mock.Anything, tc.datasetName).Return(
 		models.ContinuousScreeningDatasetUpdate{Version: oldVersion}, nil)
 
 	// Mock HTTP client for delta list and delta files
 	defer gock.Off()
-	gock.New("https://example.com").
-		Get("/delta").
-		Reply(200).
-		BodyString(deltaList)
-	gock.New("https://nexis.com").
-		Get("/delta").
-		MatchHeader("authorization", "Token thetoken").
-		Reply(200).
-		BodyString(nexisDeltaList)
+	mockRequest := func(path string) *gock.Request {
+		req := gock.New(tc.baseUrl).Get(path)
+		if tc.requiresAuth {
+			req = req.MatchHeader("authorization", "Token thetoken")
+		}
+		return req
+	}
+	mockRequest("/delta").Reply(200).BodyString(deltaList)
 
 	// Mock delta file downloads for all versions
 	deltaFileContent := "line1\nline2\nline3\nline4\nline5\n"
 	for _, version := range versionsToProcess {
-		gock.New("https://example.com").
-			Get("/delta/" + version + ".ndjson").
-			Reply(200).
-			BodyString(deltaFileContent)
-		gock.New("https://nexis.com").
-			Get("/delta/"+version+".ndjson").
-			MatchHeader("authorization", "Token thetoken").
-			Reply(200).
-			BodyString(deltaFileContent)
+		mockRequest("/delta/" + version + ".ndjson").Reply(200).BodyString(deltaFileContent)
 	}
 
 	// Mock blob storage for all versions
 	for _, version := range versionsToProcess {
-		blobKey := fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, datasetName, version)
-		suite.blobRepo.On("OpenStream", mock.Anything, "test-bucket", blobKey, blobKey).Return(&mockBlobWriter{}, nil)
-		blobKey = fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, "lexisnexis", version)
+		blobKey := fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, tc.datasetName, version)
 		suite.blobRepo.On("OpenStream", mock.Anything, "test-bucket", blobKey, blobKey).Return(&mockBlobWriter{}, nil)
 	}
 
@@ -568,48 +562,28 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 
 	// Mock dataset update creation for each version
 	for i, version := range versionsToProcess {
-		blobKey := fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, datasetName, version)
+		blobKey := fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, tc.datasetName, version)
 		suite.repository.On("CreateContinuousScreeningDatasetUpdate", mock.Anything, mock.Anything,
 			models.CreateContinuousScreeningDatasetUpdate{
-				DatasetName:   datasetName,
-				Version:       version,
-				DeltaFilePath: blobKey,
-				TotalItems:    5,
-			}).Return(expectedDatasetUpdates[i], nil)
-
-		blobKey = fmt.Sprintf("%s/%s/%s.ndjson", ProviderUpdatesFolderName, "lexisnexis", version)
-		suite.repository.On("CreateContinuousScreeningDatasetUpdate", mock.Anything, mock.Anything,
-			models.CreateContinuousScreeningDatasetUpdate{
-				DatasetName:   "lexisnexis",
+				DatasetName:   tc.datasetName,
 				Version:       version,
 				DeltaFilePath: blobKey,
 				TotalItems:    5,
 			}).Return(expectedDatasetUpdates[i], nil)
 	}
 
-	// Mock update job creation for each dataset update and config combination
-	for _, job := range expectedUpdateJobs {
+	// Mock update job creation and task enqueuing, only for the matching config
+	for _, updateJob := range expectedUpdateJobs {
 		suite.repository.On("CreateContinuousScreeningUpdateJob", mock.Anything, mock.Anything,
 			models.CreateContinuousScreeningUpdateJob{
-				Provider:        models.ScreeningProviderOpenSanctions,
-				DatasetUpdateId: job.DatasetUpdateId,
-				ConfigId:        job.ConfigId,
-				OrgId:           job.OrgId,
-			}).Return(job, nil)
+				Provider:        tc.provider,
+				DatasetUpdateId: updateJob.DatasetUpdateId,
+				ConfigId:        updateJob.ConfigId,
+				OrgId:           updateJob.OrgId,
+			}).Return(updateJob, nil)
 
-		suite.repository.On("CreateContinuousScreeningUpdateJob", mock.Anything, mock.Anything,
-			models.CreateContinuousScreeningUpdateJob{
-				Provider:        models.ScreeningProviderLexisNexis,
-				DatasetUpdateId: job.DatasetUpdateId,
-				ConfigId:        job.ConfigId,
-				OrgId:           job.OrgId,
-			}).Return(job, nil)
-	}
-
-	// Mock task enqueuing for all jobs
-	for _, job := range expectedUpdateJobs {
 		suite.taskEnqueuer.On("EnqueueContinuousScreeningApplyDeltaFileTask",
-			mock.Anything, mock.Anything, job.OrgId, job.Id).Return(nil)
+			mock.Anything, mock.Anything, updateJob.OrgId, updateJob.Id).Return(nil)
 	}
 
 	// Execute
@@ -619,6 +593,15 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_HappyPath_ProcessDatase
 	// Assert
 	suite.NoError(err)
 	suite.AssertExpectations()
+
+	for _, call := range suite.repository.Calls {
+		if call.Method != "CreateContinuousScreeningUpdateJob" {
+			continue
+		}
+		input := call.Arguments[2].(models.CreateContinuousScreeningUpdateJob)
+		suite.NotEqual(otherProviderConfigId, input.ConfigId,
+			"a config scoped to the other provider must not receive a job")
+	}
 }
 
 func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_NoActiveConfigs_ReturnsEarly() {
@@ -669,8 +652,8 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_OrgMissingFeature_Skips
 	org1Id := pure_utils.NewId()
 	org2Id := pure_utils.NewId() // This org does NOT have the feature
 	configs := []models.ContinuousScreeningConfig{
-		{Id: config1Id, OrgId: org1Id, Enabled: true},
-		{Id: config2Id, OrgId: org2Id, Enabled: true},
+		{Id: config1Id, OrgId: org1Id, Enabled: true, Provider: models.ScreeningProviderOpenSanctions},
+		{Id: config2Id, OrgId: org2Id, Enabled: true, Provider: models.ScreeningProviderOpenSanctions},
 	}
 
 	// Expected dataset update
