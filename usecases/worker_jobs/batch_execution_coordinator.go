@@ -22,7 +22,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
-	"github.com/twpayne/go-geos"
+	"github.com/twpayne/go-geom"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -507,7 +507,7 @@ func (c *BatchExecutionCoordinator) evaluateObject(
 				continue
 			}
 			switch typed := v.(type) {
-			case *geos.Geom:
+			case *geom.Point:
 				objectMap[idx].Data[k] = fmt.Sprintf("%f,%f", typed.Y(), typed.X())
 			case netip.Prefix:
 				objectMap[idx].Data[k] = typed.Addr().String()
