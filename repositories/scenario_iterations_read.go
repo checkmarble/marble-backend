@@ -4,17 +4,17 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
-	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 
 	"github.com/Masterminds/squirrel"
 )
 
-var scenarioIterationCache = expirable.NewLRU[string, models.ScenarioIteration](50, nil, utils.GlobalCacheDuration())
+var scenarioIterationCache = expirable.NewLRU[string, models.ScenarioIteration](50, nil, 24*time.Hour)
 
 func (repo *MarbleDbRepository) GetScenarioIteration(
 	ctx context.Context,

@@ -548,6 +548,8 @@ func (e ScenarioEvaluator) EvalScenario(
 	exec := e.executorFactory.NewExecutor()
 
 	// If the scenario has no live version, don't try to Eval() it, return early
+	// It is important to keep this short-circuit. If one day, a draft **can** be executed,
+	// it might be stored in the iteration cache and provide stale data to subsequent queries.
 	var targetVersionId string
 	if params.TargetIterationId != nil {
 		targetVersionId = *params.TargetIterationId

@@ -508,7 +508,7 @@ func createDecisions(
 ) {
 	decisionUsecase := usecasesWithApiCreds.NewDecisionUsecase()
 
-	// Create a decision [DECLINE]
+	// // Create
 	transactionPayloadJson := []byte(`{
 		"object_id": "{transaction_id}",
 		"updated_at": "2020-01-01T00:00:00Z",
