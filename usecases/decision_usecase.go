@@ -13,6 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -28,7 +29,10 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-const PHANTOM_DECISION_TIMEOUT = 5 * time.Second
+const (
+	CONCURRENT_DECISIONS     = 5
+	PHANTOM_DECISION_TIMEOUT = 5 * time.Second
+)
 
 type DecisionUsecaseRepository interface {
 	DecisionWithRuleExecutionsById(
@@ -570,8 +574,15 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		execution       models.ScenarioExecution
 		analyticsFields map[string]any
 	}
-	var items []decisionAndScenario
-	for _, scenario := range filteredScenarios {
+
+	// We don't need a mutex here, each concurrent iteration will access a discrete
+	// index of this slice.
+	allItems := make([]decisionAndScenario, len(filteredScenarios))
+
+	syncer, syncerCtx := errgroup.WithContext(ctx)
+	syncer.SetLimit(CONCURRENT_DECISIONS)
+
+	for scenarioIdx, scenario := range filteredScenarios {
 		evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
 			Scenario:        scenario,
 			ClientObject:    payload,
@@ -580,41 +591,73 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			ConcurrentRules: params.ConcurrentRules,
 		}
 
-		ctx, cancel := context.WithTimeout(ctx, models.DECISION_TIMEOUT)
-		defer cancel()
-		ctx, span := tracer.Start(
-			ctx,
-			"DecisionUsecase.CreateAllDecisions",
-			trace.WithAttributes(attribute.String("scenario_id", scenario.Id)),
-		)
-		defer span.End()
+		syncer.Go(func() error {
+			if err := syncerCtx.Err(); err != nil {
+				return err
+			}
 
-		triggerPassed, scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
-		switch {
-		case err != nil:
-			return nil, 0, errors.Wrapf(err, `error evaluating scenario "%s" in CreateAllDecisions`, scenario.Name)
-		case !triggerPassed:
-			nbSkipped++
-			sinceStart := time.Since(decisionStart)
-			logger.DebugContext(ctx,
-				fmt.Sprintf(`In CreateAllDecisions, skipped scenario "%s" after %dms`,
-					scenario.Name, sinceStart.Milliseconds()),
-				"scenario_id", scenario.Id,
-				"since_start", sinceStart.Milliseconds(),
+			exec := usecase.executorFactory.NewExecutor()
+
+			ctx, cancel := context.WithTimeout(syncerCtx, models.DECISION_TIMEOUT)
+			defer cancel()
+			ctx, span := tracer.Start(
+				ctx,
+				"DecisionUsecase.CreateAllDecisions",
+				trace.WithAttributes(attribute.String("scenario_id", scenario.Id)),
 			)
-			usecase.executeTestRun(ctx, input.OrganizationId,
-				input.TriggerObjectTable, evaluationParameters, scenario, nil)
-		default:
-			decision := models.AdaptScenarExecToDecision(scenarioExecution, payload, nil)
-			items = append(items, decisionAndScenario{
-				decision: decision,
-				scenario: scenario, execution: scenarioExecution,
-				analyticsFields: usecase.scenarioEvaluator.GetDataAccessor(
-					evaluationParameters).GetAnalyticsFields(ctx, exec, usecase.repository, evaluationParameters),
-			})
-			usecase.executeTestRun(ctx, input.OrganizationId, input.TriggerObjectTable,
-				evaluationParameters, scenario, &scenarioExecution)
+			defer span.End()
+
+			triggerPassed, scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
+
+			switch {
+			case err != nil:
+				return errors.Wrapf(err, `error evaluating scenario "%s" in CreateAllDecisions`, scenario.Name)
+
+			case !triggerPassed:
+				sinceStart := time.Since(decisionStart)
+				logger.DebugContext(ctx,
+					fmt.Sprintf(`In CreateAllDecisions, skipped scenario "%s" after %dms`,
+						scenario.Name, sinceStart.Milliseconds()),
+					"scenario_id", scenario.Id,
+					"since_start", sinceStart.Milliseconds(),
+				)
+				usecase.executeTestRun(ctx, input.OrganizationId,
+					input.TriggerObjectTable, evaluationParameters, scenario, nil)
+
+			default:
+				decision := models.AdaptScenarExecToDecision(scenarioExecution, payload, nil)
+
+				allItems[scenarioIdx] = decisionAndScenario{
+					decision: decision,
+					scenario: scenario, execution: scenarioExecution,
+					analyticsFields: usecase.scenarioEvaluator.GetDataAccessor(
+						evaluationParameters).GetAnalyticsFields(ctx, exec, usecase.repository, evaluationParameters),
+				}
+
+				usecase.executeTestRun(ctx, input.OrganizationId, input.TriggerObjectTable,
+					evaluationParameters, scenario, &scenarioExecution)
+			}
+
+			return nil
+		})
+	}
+
+	if err := syncer.Wait(); err != nil {
+		return nil, 0, err
+	}
+
+	items := make([]decisionAndScenario, 0)
+
+	// We have to use a sparse array for concurrency, which means it has zeroed
+	// decisions for those who did not pass the trigger object. Compact the slice
+	// to only keep executed decisions.
+	for _, item := range allItems {
+		if item.decision.DecisionId == uuid.Nil {
+			nbSkipped++
+			continue
 		}
+
+		items = append(items, item)
 	}
 
 	ctx, span2 := tracer.Start(ctx, "DecisionUsecase.CreateAllDecisions - store decisions")
