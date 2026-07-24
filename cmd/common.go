@@ -57,6 +57,7 @@ func IsWebhookSystemMigrated(ctx context.Context, repositories repositories.Repo
 	return metadata.Value == "true"
 }
 
+// Configure AI resources, return (nil, nil) if the license is not valid or the prompts filesystem fails validation.
 func configAiResources(
 	ctx context.Context,
 	license models.LicenseValidation,
@@ -65,19 +66,21 @@ func configAiResources(
 	aiPromptsServingDir string,
 	version string,
 ) (fs.FS, *models.AiAgentModelConfig) {
-	var aiPromptsFS fs.FS
-	if license.LicenseValidationCode == models.VALID {
-		aiPromptsFS = infra.InitAiPromptsFS(ctx, aiPromptsServingDir, version, licenseConfig.LicenseKey)
-		if err := ai_agent.ValidatePromptsFS(aiPromptsFS); err != nil {
-			utils.LoggerFromContext(ctx).WarnContext(ctx, "ai prompts filesystem failed validation, ai features are unavaible", "error", err.Error())
-			aiPromptsFS = nil
-		}
+	if license.LicenseValidationCode != models.VALID {
+		return nil, nil
+	}
+
+	aiPromptsFS := infra.InitAiPromptsFS(ctx, aiPromptsServingDir, version, licenseConfig.LicenseKey)
+	if err := ai_agent.ValidatePromptsFS(aiPromptsFS); err != nil {
+		utils.LoggerFromContext(ctx).WarnContext(ctx, "ai prompts filesystem failed validation, ai features are unavaible", "error", err.Error())
+		return nil, nil
 	}
 
 	aiAgentModelConfig, err := models.LoadAiAgentModelConfig(aiPromptsFS, aiAgentConfig.ModelsConfigOverridePath)
 	if err != nil {
 		utils.LoggerFromContext(ctx).WarnContext(ctx, "failed to load ai agent model configuration, ai features are unavailable", "error", err.Error())
-		aiAgentModelConfig = nil
+		return nil, nil
 	}
+
 	return aiPromptsFS, aiAgentModelConfig
 }
