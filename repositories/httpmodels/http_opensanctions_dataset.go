@@ -39,6 +39,7 @@ type HTTPOpenSanctionCatalogDataset struct {
 	Title        string         `json:"title"`
 	Load         bool           `json:"load"`
 	IndexVersion *string        `json:"index_version"`
+	IndexCurrent bool           `json:"index_current"`
 	Children     []string       `json:"children"`
 	Tags         []string       `json:"tags"`
 	DeltaUrl     *string        `json:"delta_url"`
@@ -55,12 +56,14 @@ func AdaptOpenSanctionCatalogResponse(datasets HTTPOpenSanctionCatalogResponse) 
 
 	for _, dataset := range datasets.Datasets {
 		rawCatalog.Datasets[dataset.Name] = models.OpenSanctionsRawDataset{
-			Name:     dataset.Name,
-			Title:    dataset.Title,
-			Version:  dataset.Version,
-			Load:     dataset.Load,
-			Tags:     dataset.Tags,
-			DeltaUrl: dataset.DeltaUrl,
+			Name:         dataset.Name,
+			Title:        dataset.Title,
+			Version:      dataset.Version,
+			IndexVersion: dataset.IndexVersion,
+			IndexCurrent: dataset.IndexCurrent,
+			Load:         dataset.Load,
+			Tags:         dataset.Tags,
+			DeltaUrl:     dataset.DeltaUrl,
 		}
 	}
 

@@ -176,6 +176,32 @@ type ContinuousScreeningDatasetUpdate struct {
 	CreatedAt     time.Time
 }
 
+type ContinuousScreeningDatasetUpdateJobCounts struct {
+	Completed      int
+	Processing     int
+	Pending        int
+	Failed         int
+	Total          int
+	ItemsProcessed int
+	ItemsTotal     int
+}
+
+// ContinuousScreeningDatasetUpdateEnriched is a stored dataset-update row (from the
+// continuous_screening_dataset_updates table) completed with fresh data from the provider
+// catalog (Title, LiveVersion, IsCurrent) and aggregated processing job status for the org.
+type ContinuousScreeningDatasetUpdateEnriched struct {
+	ContinuousScreeningDatasetUpdate
+	// Fresh, from the provider catalog. Left zero-valued when the dataset is no longer
+	// loaded upstream (still a valid processing-history row).
+	Title       string
+	LiveVersion string
+	IsCurrent   bool
+	// Aggregated processing status for this dataset update and org. Status defaults to Pending
+	// when no job exists yet.
+	Status     ContinuousScreeningUpdateJobStatus
+	Completion ContinuousScreeningDatasetUpdateJobCounts
+}
+
 type CreateContinuousScreeningDatasetUpdate struct {
 	DatasetName   string
 	Version       string
@@ -243,6 +269,41 @@ type CreateContinuousScreeningUpdateJob struct {
 	DatasetUpdateId uuid.UUID
 	ConfigId        uuid.UUID
 	OrgId           uuid.UUID
+}
+
+// ContinuousScreeningUpdateJobSummary is a trimmed, enriched view of an update job,
+// exposing the fields relevant to a monitoring/history listing (joined with its
+// config, dataset update, processing offset and errors).
+type ContinuousScreeningUpdateJobSummary struct {
+	Id             uuid.UUID
+	Status         ContinuousScreeningUpdateJobStatus
+	JobStart       time.Time // update_job.created_at
+	JobEnd         time.Time // update_job.updated_at
+	ConfigName     string
+	Description    string
+	TotalItems     int
+	ReceptionTime  time.Time // dataset_update.created_at
+	Version        string
+	ItemsProcessed *int // nullable: job_offsets may not exist yet
+	Errors         []ContinuousScreeningJobError
+}
+
+type ContinuousScreeningClientDataIndexing struct {
+	PendingItems int
+	Version      string
+	IndexVersion *string
+	IndexCurrent bool
+	Items        Paginated[ContinuousScreeningClientDataIndexingSummary]
+}
+
+// ContinuousScreeningClientDataIndexingSummary is a grouped view of client-data
+// indexing activity for one full dataset file version and object type.
+type ContinuousScreeningClientDataIndexingSummary struct {
+	Id         uuid.UUID // needed for keyset pagination cursor
+	JobDate    time.Time // full dataset file creation time
+	TotalItems int
+	Version    string
+	ObjectType string
 }
 
 type EnrichedContinuousScreeningUpdateJob struct {
