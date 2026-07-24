@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"log/slog"
 	"maps"
 	"net/http"
@@ -22,7 +21,6 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
-	"github.com/checkmarble/marble-backend/usecases/ai_agent"
 	"github.com/checkmarble/marble-backend/usecases/continuous_screening"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
@@ -148,15 +146,15 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		MainAgentProviderType: infra.AIAgentProviderTypeFromString(
 			utils.GetEnv("AI_AGENT_MAIN_AGENT_PROVIDER_TYPE", "openai"),
 		),
-		MainAgentURL:          utils.GetEnv("AI_AGENT_MAIN_AGENT_URL", ""),
-		MainAgentKey:          utils.GetEnv("AI_AGENT_MAIN_AGENT_KEY", ""),
-		MainAgentDefaultModel: utils.GetEnv("AI_AGENT_MAIN_AGENT_DEFAULT_MODEL", "gemini-2.5-flash"),
+		MainAgentURL: utils.GetEnv("AI_AGENT_MAIN_AGENT_URL", ""),
+		MainAgentKey: utils.GetEnv("AI_AGENT_MAIN_AGENT_KEY", ""),
 		MainAgentBackend: infra.AIAgentProviderBackendFromString(
 			utils.GetEnv("AI_AGENT_MAIN_AGENT_BACKEND", ""),
 		),
-		MainAgentProject:  utils.GetEnv("AI_AGENT_MAIN_AGENT_PROJECT", gcpConfig.ProjectId),
-		MainAgentLocation: utils.GetEnv("AI_AGENT_MAIN_AGENT_LOCATION", ""),
-		PerplexityAPIKey:  utils.GetEnv("AI_AGENT_PERPLEXITY_API_KEY", ""),
+		MainAgentProject:         utils.GetEnv("AI_AGENT_MAIN_AGENT_PROJECT", gcpConfig.ProjectId),
+		MainAgentLocation:        utils.GetEnv("AI_AGENT_MAIN_AGENT_LOCATION", ""),
+		PerplexityAPIKey:         utils.GetEnv("AI_AGENT_PERPLEXITY_API_KEY", ""),
+		ModelsConfigOverridePath: utils.GetEnv("AI_AGENT_MODELS_CONFIG_OVERRIDE_FILE", ""),
 	}
 
 	infra.SetupSentry(workerConfig.sentryDsn, workerConfig.env, apiVersion)
@@ -341,15 +339,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	}
 
 	aiPromptsServingDir := utils.GetEnv("AI_PROMPTS_SERVING_DIR", "")
-	var aiPromptsFS fs.FS
-	if license.LicenseValidationCode == models.VALID {
-		aiPromptsFS = infra.InitAiPromptsFS(ctx, aiPromptsServingDir, apiVersion, licenseConfig.LicenseKey)
-		if err := ai_agent.ValidatePromptsFS(aiPromptsFS); err != nil {
-			utils.LoggerFromContext(ctx).WarnContext(ctx, "ai prompts filesystem failed validation, ai features are unavailable",
-				"error", err.Error())
-			aiPromptsFS = nil
-		}
-	}
+	aiPromptsFS, aiAgentModelConfig := configAiResources(ctx, license, licenseConfig, aiAgentConfig, aiPromptsServingDir, apiVersion)
 
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithAppName(appName),
@@ -371,6 +361,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithIpEnrichmentDatabase(ipEnrichmentDatabase),
 		usecases.WithScreeningOffloadingEnabled(utils.GetEnv("SCREENING_OFFLOADING_ENABLED", true)),
 		usecases.WithAIPromptsFS(aiPromptsFS),
+		usecases.WithAIAgentModelConfig(aiAgentModelConfig),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 
