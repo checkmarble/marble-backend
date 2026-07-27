@@ -300,6 +300,7 @@ func prepareOpenSanctionsQuery(
 		Config: models.ScreeningConfig{
 			Datasets: config.Datasets,
 			Filters:  config.Filters,
+			Weights:  config.Weights,
 		},
 		Queries: []models.OpenSanctionsCheckQuery{
 			{

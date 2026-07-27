@@ -163,6 +163,7 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Cont
 			"match_threshold",
 			"match_limit",
 			"object_types",
+			"weights",
 		).
 		Values(
 			pure_utils.NewId(),
@@ -178,6 +179,7 @@ func (repo *MarbleDbRepository) CreateContinuousScreeningConfig(ctx context.Cont
 			input.MatchThreshold,
 			input.MatchLimit,
 			input.ObjectTypes,
+			input.Weights,
 		)
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptContinuousScreeningConfig)

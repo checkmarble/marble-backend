@@ -25,6 +25,7 @@ type DBContinuousScreeningConfig struct {
 	MatchThreshold int                           `db:"match_threshold"`
 	MatchLimit     int                           `db:"match_limit"`
 	Enabled        bool                          `db:"enabled"`
+	Weights        map[string]float64            `db:"weights"`
 	CreatedAt      time.Time                     `db:"created_at"`
 	UpdatedAt      time.Time                     `db:"updated_at"`
 }
@@ -47,6 +48,7 @@ func AdaptContinuousScreeningConfig(db DBContinuousScreeningConfig) (models.Cont
 		MatchThreshold: db.MatchThreshold,
 		MatchLimit:     db.MatchLimit,
 		Enabled:        db.Enabled,
+		Weights:        db.Weights,
 		CreatedAt:      db.CreatedAt,
 		UpdatedAt:      db.UpdatedAt,
 	}, nil

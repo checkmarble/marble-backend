@@ -64,6 +64,7 @@ type OpenSanctionsRepository struct {
 type openSanctionsRequest struct {
 	Queries map[string]openSanctionsRequestQuery `json:"queries"`
 	Params  *motivaRequestParams                 `json:"params,omitempty"`
+	Weights map[string]float64                   `json:"weights,omitempty"`
 }
 
 type motivaRequestParams struct {

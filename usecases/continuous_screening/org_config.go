@@ -411,6 +411,7 @@ func createUpdatedConfig(config models.ContinuousScreeningConfig,
 		MatchLimit:     pure_utils.PtrValueOrDefault(updateInput.MatchLimit, config.MatchLimit),
 		ObjectTypes:    pure_utils.PtrSliceValueOrDefault(updateInput.ObjectTypes, config.ObjectTypes),
 		InboxId:        pure_utils.PtrValueOrDefault(updateInput.InboxId, config.InboxId),
+		Weights:        config.Weights,
 	}
 }
 

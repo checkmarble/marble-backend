@@ -375,6 +375,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 						ForcedOutcome:            &scc.ForcedOutcome,
 						Preprocessing:            &scc.Preprocessing,
 						ConfigVersion:            scc.ConfigVersion,
+						Weights:                  scc.Weights,
 					}
 				})
 
