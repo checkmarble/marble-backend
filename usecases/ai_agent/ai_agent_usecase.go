@@ -193,6 +193,7 @@ type AiAgentUsecase struct {
 	config                             infra.AIAgentConfiguration
 	caseManagerBucketUrl               string
 	promptsFS                          fs.FS
+	aiAgentModelConfig                 *models.AiAgentModelConfig
 
 	caseReviewAdapter *llmberjack.Llmberjack
 	enrichmentAdapter *llmberjack.Llmberjack
@@ -224,6 +225,7 @@ func NewAiAgentUsecase(
 	config infra.AIAgentConfiguration,
 	caseManagerBucketUrl string,
 	promptsFS fs.FS,
+	aiAgentModelConfig *models.AiAgentModelConfig,
 ) AiAgentUsecase {
 	return AiAgentUsecase{
 		enforceSecurityCase:                enforceSecurityCase,
@@ -250,6 +252,7 @@ func NewAiAgentUsecase(
 		config:                             config,
 		caseManagerBucketUrl:               caseManagerBucketUrl,
 		promptsFS:                          promptsFS,
+		aiAgentModelConfig:                 aiAgentModelConfig,
 	}
 }
 
@@ -519,18 +522,19 @@ func providerForModel(model string) string {
 }
 
 // Call preparePrompt and complete the model with the model configuration
-func (uc *AiAgentUsecase) preparePromptWithModel(promptPath string, data map[string]any) (provider string, model string, prompt string, err error) {
-	// Load model configuration on each call
-	// Give the possibility to change the prompt without reloading the application
-	modelConfig, err := models.LoadAiAgentModelConfig(uc.promptsFS, uc.config.MainAgentDefaultModel)
-	if err != nil {
-		return "", "", "", errors.Wrap(err, "could not load AI agent model configuration")
+func (uc *AiAgentUsecase) preparePromptWithModel(spec promptSpec, data map[string]any) (provider string, model string, prompt string, err error) {
+	if uc.aiAgentModelConfig == nil {
+		return "", "", "", errors.Errorf("cannot resolve model for feature %s: ai agent model configuration is not available", spec.Feature)
 	}
 
-	model = modelConfig.GetModelForPrompt(promptPath)
+	model = uc.aiAgentModelConfig.GetModel(spec.Feature, spec.Tier)
+	if model == "" {
+		return "", "", "", errors.Errorf(
+			"cannot resolve model for feature %s at tier %s: no model configured", spec.Feature, spec.Tier)
+	}
 	provider = providerForModel(model)
 
-	prompt, err = uc.preparePrompt(promptPath, data)
+	prompt, err = uc.preparePrompt(spec.Path, data)
 	if err != nil {
 		return "", "", "", errors.Wrap(err, "could not prepare prompt")
 	}
