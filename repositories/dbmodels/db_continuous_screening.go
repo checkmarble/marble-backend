@@ -238,6 +238,10 @@ type DBContinuousScreeningUpdateJob struct {
 	Status                             string                   `db:"status"`
 	CreatedAt                          time.Time                `db:"created_at"`
 	UpdatedAt                          time.Time                `db:"updated_at"`
+	// StartedAt is set when the job enters `processing`, FinishedAt when it reaches a terminal
+	// status. Both are null before those transitions happen.
+	StartedAt  *time.Time `db:"started_at"`
+	FinishedAt *time.Time `db:"finished_at"`
 }
 
 func AdaptContinuousScreeningUpdateJob(dto DBContinuousScreeningUpdateJob) (models.ContinuousScreeningUpdateJob, error) {
@@ -250,6 +254,8 @@ func AdaptContinuousScreeningUpdateJob(dto DBContinuousScreeningUpdateJob) (mode
 		Status:          models.ContinuousScreeningUpdateJobStatusFrom(dto.Status),
 		CreatedAt:       dto.CreatedAt,
 		UpdatedAt:       dto.UpdatedAt,
+		StartedAt:       dto.StartedAt,
+		FinishedAt:      dto.FinishedAt,
 	}, nil
 }
 
@@ -282,8 +288,8 @@ func AdaptEnrichedContinuousScreeningUpdateJob(dto DBEnrichedContinuousScreening
 type DBContinuousScreeningUpdateJobSummary struct {
 	Id             uuid.UUID                       `db:"id"`
 	Status         string                          `db:"status"`
-	JobStart       time.Time                       `db:"job_start"`
-	JobEnd         time.Time                       `db:"job_end"`
+	JobStart       *time.Time                      `db:"job_start"`
+	JobEnd         *time.Time                      `db:"job_end"`
 	ConfigName     string                          `db:"config_name"`
 	Description    string                          `db:"description"`
 	TotalItems     int                             `db:"total_items"`

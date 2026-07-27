@@ -957,8 +957,8 @@ func continuousScreeningUpdateJobDetailsQuery(
 		provider,
 		"ucs.id AS id",
 		"ucs.status AS status",
-		"ucs.created_at AS job_start",
-		"ucs.updated_at AS job_end",
+		"ucs.started_at AS job_start",
+		"ucs.finished_at AS job_end",
 		"cs.name AS config_name",
 		"cs.description AS description",
 		"ds.total_items AS total_items",
@@ -975,6 +975,7 @@ func continuousScreeningUpdateJobDetailsQuery(
 		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_JOB_ERRORS+
 			" AS err ON (err.continuous_screening_update_job_id = ucs.id)").
 		GroupBy("ucs.id", "ucs.status", "ucs.created_at", "ucs.updated_at",
+			"ucs.started_at", "ucs.finished_at",
 			"cs.name", "cs.description", "ds.total_items", "ds.created_at",
 			"ds.version", "off.items_processed").
 		OrderBy(continuousScreeningKeysetOrder("ucs", pagination)).
@@ -1336,13 +1337,39 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningUpdateJob(
 		return err
 	}
 
+	return ExecBuilder(ctx, exec, continuousScreeningUpdateJobStatusQuery(updateId, status))
+}
+
+// continuousScreeningUpdateJobStatusQuery derives the job timing columns from the status being
+// written: a job starts when it enters `processing` and ends when it reaches a terminal status.
+// Neither can be inferred from created_at (enqueue time) or updated_at (bumped on every write).
+func continuousScreeningUpdateJobStatusQuery(
+	updateId uuid.UUID,
+	status models.ContinuousScreeningUpdateJobStatus,
+) squirrel.UpdateBuilder {
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS).
 		Where(squirrel.Eq{"id": updateId}).
 		Set("status", status.String()).
 		Set("updated_at", squirrel.Expr("NOW()"))
 
-	return ExecBuilder(ctx, exec, query)
+	switch status {
+	case models.ContinuousScreeningUpdateJobStatusProcessing:
+		// A re-run (manual single-job replay of a failed job) restarts the timing window: the pair
+		// always describes the latest attempt, so clear the previous attempt's end. Otherwise the
+		// row would report finished_at < started_at for the whole duration of the re-run.
+		query = query.
+			Set("started_at", squirrel.Expr("NOW()")).
+			Set("finished_at", squirrel.Expr("NULL"))
+	case models.ContinuousScreeningUpdateJobStatusCompleted,
+		models.ContinuousScreeningUpdateJobStatusFailed,
+		models.ContinuousScreeningUpdateJobStatusSkipped:
+		// started_at is left alone: a job skipped by the kill switch, or rejected for feature
+		// access, reaches a terminal status without ever having started.
+		query = query.Set("finished_at", squirrel.Expr("NOW()"))
+	}
+
+	return query
 }
 
 func (repo *MarbleDbRepository) GetContinuousScreeningJobOffset(

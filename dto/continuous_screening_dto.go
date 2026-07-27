@@ -73,11 +73,15 @@ func AdaptContinuousScreeningJobErrorDto(e models.ContinuousScreeningJobError) C
 	}
 }
 
+// ContinuousScreeningUpdateJobDto exposes an update job for the observability listing.
+//
+// job_start is null until the job starts processing and job_end is null until it finishes, so a
+// pending job has neither and a running job has only a start.
 type ContinuousScreeningUpdateJobDto struct {
 	Id             uuid.UUID                        `json:"id"`
 	Status         string                           `json:"status"`
-	JobStart       time.Time                        `json:"job_start"`
-	JobEnd         time.Time                        `json:"job_end"`
+	JobStart       *time.Time                       `json:"job_start"`
+	JobEnd         *time.Time                       `json:"job_end"`
 	ConfigName     string                           `json:"config_name"`
 	Description    string                           `json:"description"`
 	TotalItems     int                              `json:"total_items"`

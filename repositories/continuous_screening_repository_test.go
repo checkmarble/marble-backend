@@ -73,6 +73,72 @@ func TestContinuousScreeningUpdateJobDetailsQueryUsesSharedJobScope(t *testing.T
 	require.NotContains(t, sql, "JOIN organizations")
 	require.Contains(t, sql, "ORDER BY ucs.updated_at ASC, ucs.id ASC LIMIT 10")
 	require.Equal(t, []any{orgId.String(), models.ScreeningProviderOpenSanctions}, args)
+
+	// The job timings come from dedicated columns: created_at is the enqueue time and updated_at
+	// moves on every status write, so neither describes when the job ran.
+	require.Contains(t, sql, "ucs.started_at AS job_start")
+	require.Contains(t, sql, "ucs.finished_at AS job_end")
+	require.NotContains(t, sql, "ucs.created_at AS job_start")
+	require.NotContains(t, sql, "ucs.updated_at AS job_end")
+	require.Contains(t, sql, "GROUP BY ucs.id, ucs.status, ucs.created_at, ucs.updated_at, "+
+		"ucs.started_at, ucs.finished_at")
+}
+
+func TestContinuousScreeningUpdateJobStatusQuerySetsTimings(t *testing.T) {
+	updateId := uuid.New()
+
+	tests := []struct {
+		status             models.ContinuousScreeningUpdateJobStatus
+		expectStartedAt    bool
+		expectFinishedAt   bool
+		expectClearedEndAt bool
+	}{
+		// Entering `processing` starts the timing window and clears the end left by a previous
+		// attempt, so a replayed job never reports an end earlier than its start.
+		{
+			status:             models.ContinuousScreeningUpdateJobStatusProcessing,
+			expectStartedAt:    true,
+			expectClearedEndAt: true,
+		},
+		// Terminal statuses only stamp the end: a job skipped by the kill switch, or rejected for
+		// feature access, gets there without ever having started.
+		{status: models.ContinuousScreeningUpdateJobStatusCompleted, expectFinishedAt: true},
+		{status: models.ContinuousScreeningUpdateJobStatusFailed, expectFinishedAt: true},
+		{status: models.ContinuousScreeningUpdateJobStatusSkipped, expectFinishedAt: true},
+		// Nothing writes `pending` today, but it must not be mistaken for a start or an end.
+		{status: models.ContinuousScreeningUpdateJobStatusPending},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.status.String(), func(t *testing.T) {
+			sql, args, err := continuousScreeningUpdateJobStatusQuery(updateId, tc.status).ToSql()
+			require.NoError(t, err)
+
+			require.Contains(t, sql, "UPDATE continuous_screening_update_jobs")
+			require.Contains(t, sql, "status = $1")
+			require.Contains(t, sql, "updated_at = NOW()")
+			require.Contains(t, args, tc.status.String())
+			require.Contains(t, args, updateId.String())
+
+			if tc.expectStartedAt {
+				require.Contains(t, sql, "started_at = NOW()")
+			} else {
+				require.NotContains(t, sql, "started_at")
+			}
+
+			if tc.expectFinishedAt {
+				require.Contains(t, sql, "finished_at = NOW()")
+			}
+
+			if tc.expectClearedEndAt {
+				require.Contains(t, sql, "finished_at = NULL")
+			}
+
+			if !tc.expectFinishedAt && !tc.expectClearedEndAt {
+				require.NotContains(t, sql, "finished_at")
+			}
+		})
+	}
 }
 
 func TestContinuousScreeningListQueriesValidateSorting(t *testing.T) {

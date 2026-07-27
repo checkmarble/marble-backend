@@ -262,6 +262,10 @@ type ContinuousScreeningUpdateJob struct {
 	Status          ContinuousScreeningUpdateJobStatus
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	// StartedAt is set when the job enters `processing`, FinishedAt when it reaches a terminal
+	// status. Both are nil before those transitions happen.
+	StartedAt  *time.Time
+	FinishedAt *time.Time
 }
 
 type CreateContinuousScreeningUpdateJob struct {
@@ -274,11 +278,15 @@ type CreateContinuousScreeningUpdateJob struct {
 // ContinuousScreeningUpdateJobSummary is a trimmed, enriched view of an update job,
 // exposing the fields relevant to a monitoring/history listing (joined with its
 // config, dataset update, processing offset and errors).
+//
+// JobStart is nil until the job starts processing, and JobEnd is nil until it reaches a terminal
+// status, so a non-nil JobEnd means the job is over. A job can have an end without a start when it
+// was skipped by the kill switch or rejected for feature access before it ever ran.
 type ContinuousScreeningUpdateJobSummary struct {
 	Id             uuid.UUID
 	Status         ContinuousScreeningUpdateJobStatus
-	JobStart       time.Time // update_job.created_at
-	JobEnd         time.Time // update_job.updated_at
+	JobStart       *time.Time // update_job.started_at
+	JobEnd         *time.Time // update_job.finished_at
 	ConfigName     string
 	Description    string
 	TotalItems     int
