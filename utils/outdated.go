@@ -62,12 +62,12 @@ func checkOutdated(ctx context.Context, appVersion string) (info OutdatedInfo) {
 	withoutPrerelease, _ := currentSv.SetPrerelease("")
 	currentSv = &withoutPrerelease
 
-	releases, err := fetchReleases(ctx, GithubBackendReleaseUrl)
+	backendReleases, err := fetchReleases(ctx, GithubBackendReleaseUrl)
 	// In case we cannot retrieve releases or the list is empty, bail out.
 	if err != nil {
 		return
 	}
-	if len(releases) == 0 {
+	if len(backendReleases) == 0 {
 		return
 	}
 
@@ -76,7 +76,7 @@ func checkOutdated(ctx context.Context, appVersion string) (info OutdatedInfo) {
 		minorsSince    = 1
 	)
 
-	latest := releases[0]
+	latest := backendReleases[0]
 	latestSv, err := semver.NewVersion(latest.TagName)
 	if err != nil {
 		return
@@ -85,10 +85,14 @@ func checkOutdated(ctx context.Context, appVersion string) (info OutdatedInfo) {
 	// Keep the latest unique minor version found, so we can count them.
 	var seenMinor *semver.Version
 
-	info.ReleaseNotes = make([]string, 0, minorsSince)
-
-	for _, r := range releases {
-		if r.TagName == currentSv.Original() {
+	for _, r := range backendReleases {
+		rSv, err := semver.NewVersion(r.TagName)
+		if err != nil {
+			continue
+		}
+		withoutPrerelease, _ := rSv.SetPrerelease("")
+		rSv = &withoutPrerelease
+		if currentSv.Equal(rSv) {
 			currentRelease = &r
 			break
 		}
@@ -111,6 +115,7 @@ func checkOutdated(ctx context.Context, appVersion string) (info OutdatedInfo) {
 		release := releases[0]
 		info.LatestVersion = release.TagName
 		info.LatestUrl = release.HtmlUrl
+		info.ReleaseNotes = make([]string, 0, len(releases))
 
 		for _, release := range releases {
 			sv, err := semver.NewVersion(release.TagName)

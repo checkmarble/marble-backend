@@ -12,6 +12,18 @@ import (
 func TestOudatedVersion(t *testing.T) {
 	defer gock.Off()
 
+	backendReleases := []GithubRelease{
+		{"v0.11.0-rc.1", true, time.Now().Add(-7 * 24 * time.Hour), "https://v0.11.0-rc.1", "Release notes for v0.11.0"},
+		{"v0.10.0", false, time.Now().Add(-7 * 24 * time.Hour), "https://v0.10.0", "Release notes for v0.10.0"},
+		{"v0.9.2", false, time.Now().Add(-31 * 24 * time.Hour), "https://v0.9.2", "Release notes for v0.9.0"},
+		{"v0.9.1", false, time.Now().Add(-32 * 24 * time.Hour), "https://v0.9.1", "Release notes for v0.9.2"},
+		{"v0.9.0", false, time.Now().Add(-33 * 24 * time.Hour), "https://v0.9.0", "Release notes for v0.9.1"},
+		{"v0.6.0", false, time.Now().Add(-90 * 24 * time.Hour), "https://v0.6.0", "Release notes for v0.6.0"},
+		{"v0.5.0", false, time.Now().Add(-90 * 24 * time.Hour), "https://v0.5.0", "Release notes for v0.5.0"},
+		{"v0.4.0", false, time.Now().Add(-15 * 24 * time.Hour), "https://v0.4.0", "Release notes for v0.4.0"},
+		{"v0.1.0", false, time.Now().Add(-90 * 24 * time.Hour), "https://v0.1.0", "Release notes for v0.1.0"},
+	}
+
 	releases := []GithubRelease{
 		{"v0.10.0", false, time.Now().Add(-7 * 24 * time.Hour), "https://v0.10.0", "Release notes for v0.10.0"},
 		{"v0.9.2", false, time.Now().Add(-31 * 24 * time.Hour), "https://v0.9.2", "Release notes for v0.9.0"},
@@ -27,7 +39,7 @@ func TestOudatedVersion(t *testing.T) {
 		Get("/repos/checkmarble/marble-backend/releases").
 		MatchParam("per_page", "100").
 		Reply(http.StatusOK).
-		JSON(releases)
+		JSON(backendReleases)
 
 	gock.New("https://api.github.com").Persist().
 		Get("/repos/checkmarble/marble/releases").
@@ -39,14 +51,15 @@ func TestOudatedVersion(t *testing.T) {
 		version  string
 		expected bool
 	}{
-		{"dev", false},                 // Development version
-		{"v0.100.0", true},             // Unknown version
-		{"v0.10.0", false},             // Latest version
-		{"v0.10.0-10-abcd1234", false}, // Ahead of latest version
-		{"v0.6.0", false},              // Old version, within minor spread tolerance
-		{"v0.4.0", false},              // Old version, within grace period
-		{"v0.5.0", true},               // Outdated version
-		{"v0.1.0", true},               // Outdated version
+		{"dev", false},                       // Development version
+		{"v0.100.0", true},                   // Unknown version
+		{"v0.11.0-rc.1-20-gf03117ab", false}, // Future version but not yet released
+		{"v0.10.0", false},                   // Latest version
+		{"v0.10.0-10-abcd1234", false},       // Ahead of latest version
+		{"v0.6.0", false},                    // Old version, within minor spread tolerance
+		{"v0.4.0", false},                    // Old version, within grace period
+		{"v0.5.0", true},                     // Outdated version
+		{"v0.1.0", true},                     // Outdated version
 	}
 
 	for _, tt := range tts {
