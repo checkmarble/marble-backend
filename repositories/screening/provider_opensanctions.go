@@ -45,6 +45,10 @@ func (p ScreeningOpenSanctionsProvider) SearchRequest(ctx context.Context,
 		}
 	}
 
+	if p.Config.MotivaFeatures(ctx).CustomWeights && query.Config.Weights != nil {
+		q.Weights = query.Config.Weights
+	}
+
 	for _, subquery := range query.Queries {
 		rq := openSanctionsRequestQuery{
 			Schema:     subquery.Type,

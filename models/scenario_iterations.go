@@ -99,6 +99,7 @@ type ScreeningConfig struct {
 	CounterpartyIdExpression *ast.Node
 	Preprocessing            ScreeningConfigPreprocessing
 	ConfigVersion            string
+	Weights                  map[string]float64
 }
 
 type ScreeningConfigFilters struct {
@@ -371,6 +372,7 @@ type UpdateScreeningConfigInput struct {
 	ForcedOutcome            *Outcome
 	Preprocessing            *ScreeningConfigPreprocessing
 	ConfigVersion            string
+	Weights                  map[string]float64
 }
 
 type RulesAndScreenings struct {

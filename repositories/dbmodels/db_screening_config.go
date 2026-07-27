@@ -32,6 +32,7 @@ type DBScreeningConfigs struct {
 	UpdatedAt           time.Time                           `db:"updated_at"`
 	Preprocessing       models.ScreeningConfigPreprocessing `db:"preprocessing"`
 	ConfigVersion       string                              `db:"config_version"`
+	Weights             map[string]float64                  `db:"weights"`
 }
 
 var ScreeningConfigColumnList = utils.ColumnList[DBScreeningConfigs]()
@@ -52,6 +53,7 @@ func AdaptScreeningConfig(db DBScreeningConfigs) (models.ScreeningConfig, error)
 		ForcedOutcome:       models.OutcomeFrom(db.ForcedOutcome),
 		Preprocessing:       db.Preprocessing,
 		ConfigVersion:       db.ConfigVersion,
+		Weights:             db.Weights,
 	}
 
 	if db.TriggerRule != nil {

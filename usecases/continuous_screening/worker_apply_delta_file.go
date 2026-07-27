@@ -561,6 +561,9 @@ func (w *ApplyDeltaFileWorker) buildOpenSanctionQuery(
 			MatchThreshold: updateJob.Config.MatchThreshold,
 			MatchLimit:     updateJob.Config.MatchLimit,
 		},
+		Config: models.ScreeningConfig{
+			Weights: updateJob.Config.Weights,
+		},
 		Queries: []models.OpenSanctionsCheckQuery{
 			{
 				Type:    record.Entity.Schema,

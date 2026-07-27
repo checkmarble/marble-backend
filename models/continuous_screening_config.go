@@ -26,6 +26,7 @@ type ContinuousScreeningConfig struct {
 	MatchThreshold int
 
 	MatchLimit int
+	Weights    map[string]float64
 	Enabled    bool
 
 	CreatedAt time.Time
@@ -63,6 +64,7 @@ type CreateContinuousScreeningConfig struct {
 	MatchLimit     int
 	ObjectTypes    []string
 	MappingConfigs []ContinuousScreeningMappingConfig
+	Weights        map[string]float64
 }
 
 type UpdateContinuousScreeningConfig struct {

@@ -176,7 +176,8 @@ func (repo *MarbleDbRepository) CreateScreeningConfig(ctx context.Context, exec 
 			"query",
 			"counterparty_id_expression",
 			"preprocessing",
-			"config_version").
+			"config_version",
+			"weights").
 		Values(
 			squirrel.Expr("coalesce(?, gen_random_uuid())", cfg.StableId),
 			scenarioIterationId,
@@ -194,6 +195,7 @@ func (repo *MarbleDbRepository) CreateScreeningConfig(ctx context.Context, exec 
 			counterpartyIdExpr,
 			utils.Or(cfg.Preprocessing, models.ScreeningConfigPreprocessing{}),
 			configVersion,
+			cfg.Weights,
 		).
 		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.ScreeningConfigColumnList, ",")))
 

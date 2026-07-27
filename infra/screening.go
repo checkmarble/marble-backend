@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -54,8 +55,9 @@ type NameRecognitionProvider struct {
 }
 
 type MotivaFeatures struct {
-	BodyParams  bool
-	ScopedIndex bool
+	BodyParams    bool
+	ScopedIndex   bool
+	CustomWeights bool
 }
 
 func InitializeScreening(ctx context.Context, client *http.Client, host, authMethod, creds string) Screening {
@@ -230,14 +232,19 @@ func (os *Screening) MotivaFeatures(ctx context.Context) MotivaFeatures {
 			feats := MotivaFeatures{}
 
 			if resp.StatusCode == http.StatusOK {
+
 				var v motivaVersionInfo
 
 				if err := json.NewDecoder(resp.Body).Decode(&v); err == nil {
+					// Let's ignore prereleases for feature gating
+					version, _, _ := strings.Cut(v.Motiva, "-")
+
 					// Features introduced in motiva v0.7.0
 					//  - transmit unbounded query parameters in request body
 					//  - use scoped index
-					feats.BodyParams = semver.Compare(v.Motiva, "v0.7.0") >= 0
-					feats.ScopedIndex = semver.Compare(v.Motiva, "v0.7.0") >= 0
+					feats.BodyParams = semver.Compare(version, "v0.7.0") >= 0
+					feats.ScopedIndex = semver.Compare(version, "v0.7.0") >= 0
+					feats.CustomWeights = semver.Compare(version, "v0.10.0") >= 0
 				}
 			}
 
