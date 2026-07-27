@@ -11,8 +11,7 @@ import (
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/twpayne/go-geos"
-	pgxgeos "github.com/twpayne/pgx-geos"
+	pgxgeom "github.com/twpayne/pgx-geom"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -63,7 +62,7 @@ func NewPostgresConnectionPool(
 			}
 		}
 
-		if err := pgxgeos.Register(ctx, conn, geos.NewContext()); err != nil {
+		if err := pgxgeom.Register(ctx, conn); err != nil {
 			return err
 		}
 

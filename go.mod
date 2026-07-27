@@ -7,6 +7,7 @@ require (
 	cloud.google.com/go/iam v1.11.0
 	cloud.google.com/go/profiler v0.6.0
 	cloud.google.com/go/storage v1.63.0
+	dario.cat/mergo v1.0.2
 	firebase.google.com/go/v4 v4.20.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.33.0
@@ -30,7 +31,7 @@ require (
 	github.com/exaring/otelpgx v0.11.1
 	github.com/gabriel-vasile/mimetype v1.4.13
 	github.com/gavv/httpexpect/v2 v2.17.0
-	github.com/getkin/kin-openapi v0.140.0
+	github.com/getkin/kin-openapi v0.144.0
 	github.com/getsentry/sentry-go v0.47.0
 	github.com/getsentry/sentry-go/gin v0.47.0
 	github.com/gin-contrib/cors v1.7.7
@@ -69,8 +70,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.43.0
 	github.com/tidwall/gjson v1.19.0
 	github.com/twpayne/go-geom v1.6.1
-	github.com/twpayne/go-geos v0.20.4
-	github.com/twpayne/pgx-geos v1.0.1
+	github.com/twpayne/pgx-geom v1.0.0
 	github.com/vearne/gin-timeout v0.2.3
 	go.opentelemetry.io/contrib/detectors/gcp v1.44.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.69.0
@@ -101,7 +101,6 @@ require (
 	cloud.google.com/go/longrunning v1.0.0 // indirect
 	cloud.google.com/go/monitoring v1.29.0 // indirect
 	cloud.google.com/go/trace v1.16.0 // indirect
-	dario.cat/mergo v1.0.2 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.22.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.12.0 // indirect
@@ -235,8 +234,8 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/oasdiff/yaml v0.1.0 // indirect
-	github.com/oasdiff/yaml3 v0.0.13 // indirect
+	github.com/oasdiff/yaml v0.1.1 // indirect
+	github.com/oasdiff/yaml3 v0.0.14 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/onsi/gomega v1.25.0 // indirect
 	github.com/openai/openai-go v1.9.0 // indirect

@@ -22,7 +22,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
-	"github.com/twpayne/go-geos"
+	"github.com/twpayne/go-geom"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -278,7 +278,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 			}
 
 			switch typed := v.(type) {
-			case *geos.Geom:
+			case *geom.Point:
 				objectMap[idx].Data[k] = fmt.Sprintf("%f,%f", typed.Y(), typed.X())
 			case netip.Prefix:
 				objectMap[idx].Data[k] = typed.Addr().String()

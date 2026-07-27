@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -17,7 +16,6 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
-	"github.com/checkmarble/marble-backend/usecases/ai_agent"
 	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
@@ -202,15 +200,15 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		MainAgentProviderType: infra.AIAgentProviderTypeFromString(
 			utils.GetEnv("AI_AGENT_MAIN_AGENT_PROVIDER_TYPE", "openai"),
 		),
-		MainAgentURL:          utils.GetEnv("AI_AGENT_MAIN_AGENT_URL", ""),
-		MainAgentKey:          utils.GetEnv("AI_AGENT_MAIN_AGENT_KEY", ""),
-		MainAgentDefaultModel: utils.GetEnv("AI_AGENT_MAIN_AGENT_DEFAULT_MODEL", "gemini-2.5-flash"),
+		MainAgentURL: utils.GetEnv("AI_AGENT_MAIN_AGENT_URL", ""),
+		MainAgentKey: utils.GetEnv("AI_AGENT_MAIN_AGENT_KEY", ""),
 		MainAgentBackend: infra.AIAgentProviderBackendFromString(
 			utils.GetEnv("AI_AGENT_MAIN_AGENT_BACKEND", ""),
 		),
-		MainAgentProject:  utils.GetEnv("AI_AGENT_MAIN_AGENT_PROJECT", gcpConfig.ProjectId),
-		MainAgentLocation: utils.GetEnv("AI_AGENT_MAIN_AGENT_LOCATION", ""),
-		PerplexityAPIKey:  utils.GetEnv("AI_AGENT_PERPLEXITY_API_KEY", ""),
+		MainAgentProject:         utils.GetEnv("AI_AGENT_MAIN_AGENT_PROJECT", gcpConfig.ProjectId),
+		MainAgentLocation:        utils.GetEnv("AI_AGENT_MAIN_AGENT_LOCATION", ""),
+		PerplexityAPIKey:         utils.GetEnv("AI_AGENT_PERPLEXITY_API_KEY", ""),
+		ModelsConfigOverridePath: utils.GetEnv("AI_AGENT_MODELS_CONFIG_OVERRIDE_FILE", ""),
 	}
 
 	serverConfig := ServerConfig{
@@ -373,15 +371,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		return errors.Wrap(err, "failed to open ip enrichment database")
 	}
 
-	var aiPromptsFS fs.FS
-	if license.LicenseValidationCode == models.VALID {
-		aiPromptsFS = infra.InitAiPromptsFS(ctx, aiPromptsServingDir, config.Version, licenseConfig.LicenseKey)
-		if err := ai_agent.ValidatePromptsFS(aiPromptsFS); err != nil {
-			utils.LoggerFromContext(ctx).WarnContext(ctx, "ai prompts filesystem failed validation, ai features are unavaible",
-				"error", err.Error())
-			aiPromptsFS = nil
-		}
-	}
+	aiPromptsFS, aiAgentModelConfig := configAiResources(ctx, license, licenseConfig, aiAgentConfig, aiPromptsServingDir, config.Version)
 
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithAppName(appName),
@@ -406,6 +396,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithScreeningOffloadingEnabled(utils.GetEnv("SCREENING_OFFLOADING_ENABLED", true)),
 		usecases.WithAIPromptsServingDir(aiPromptsServingDir),
 		usecases.WithAIPromptsFS(aiPromptsFS),
+		usecases.WithAIAgentModelConfig(aiAgentModelConfig),
 	)
 
 	////////////////////////////////////////////////////////////
