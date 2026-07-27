@@ -18,6 +18,7 @@ type Rule struct {
 	DisplayOrder         int
 	Name                 string
 	Description          string
+	AiDescription        string
 	FormulaAstExpression *ast.Node
 	ScoreModifier        int
 	CreatedAt            time.Time
@@ -34,11 +35,25 @@ func (r Rule) ToMetadata() RuleMetadata {
 		DisplayOrder:        r.DisplayOrder,
 		Name:                r.Name,
 		Description:         r.Description,
+		AiDescription:       r.AiDescription,
 		ScoreModifier:       r.ScoreModifier,
 		CreatedAt:           r.CreatedAt,
 		RuleGroup:           r.RuleGroup,
 		StableRuleId:        r.StableRuleId,
 	}
+}
+
+// HasSameFormula reports whether r and other have structurally identical
+// formulas, ignoring node Index. Used to decide whether an AI-generated
+// description is still valid for a rule carried over into a new iteration.
+func (r Rule) HasSameFormula(other Rule) bool {
+	if (r.FormulaAstExpression == nil) != (other.FormulaAstExpression == nil) {
+		return false
+	}
+	if r.FormulaAstExpression == nil {
+		return true
+	}
+	return r.FormulaAstExpression.Hash() == other.FormulaAstExpression.Hash()
 }
 
 type RuleMetadata struct {
@@ -48,6 +63,7 @@ type RuleMetadata struct {
 	DisplayOrder        int
 	Name                string
 	Description         string
+	AiDescription       string
 	ScoreModifier       int
 	CreatedAt           time.Time
 	RuleGroup           string
@@ -61,6 +77,7 @@ type CreateRuleInput struct {
 	DisplayOrder         int
 	Name                 string
 	Description          string
+	AiDescription        string
 	FormulaAstExpression *ast.Node
 	ScoreModifier        int
 	RuleGroup            string
@@ -73,6 +90,7 @@ type UpdateRuleInput struct {
 	DisplayOrder         *int
 	Name                 *string
 	Description          *string
+	AiDescription        *string
 	FormulaAstExpression *ast.Node
 	ScoreModifier        *int
 	RuleGroup            *string

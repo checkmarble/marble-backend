@@ -321,3 +321,9 @@ type AsyncUploadArgs struct {
 }
 
 func (AsyncUploadArgs) Kind() string { return "async_upload" }
+
+type RuleDescriptionArgs struct {
+	RuleId string `json:"rule_id"`
+}
+
+func (RuleDescriptionArgs) Kind() string { return "rule_description" }

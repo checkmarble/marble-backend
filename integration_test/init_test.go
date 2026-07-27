@@ -184,6 +184,7 @@ func TestMain(m *testing.M) {
 	river.AddWorker(workers, adminUc.NewIndexCreationWorker())
 	river.AddWorker(workers, adminUc.NewIndexCreationStatusWorker())
 	river.AddWorker(workers, adminUc.NewCaseReviewWorker(10*time.Second))
+	river.AddWorker(workers, adminUc.NewRuleDescriptionWorker(10*time.Second))
 	river.AddWorker(workers, adminUc.NewDecisionWorkflowsWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningDoScreeningWorker())
 	river.AddWorker(workers, adminUc.NewWebhookDispatchWorker())

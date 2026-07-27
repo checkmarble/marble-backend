@@ -305,3 +305,38 @@ func (uc *AiAgentUsecase) AiASTDescription(
 		IsRuleValid: true,
 	}, nil
 }
+
+// GenerateAndSaveRuleDescription generates an AI description for the given
+// persisted rule and stores it on the rule's AiDescription column. It never
+// touches the rule's user-authored Description. Returns the underlying error
+// unwrapped-enough for callers to check errors.Is(err, models.LLMRateLimitedError).
+func (uc *AiAgentUsecase) GenerateAndSaveRuleDescription(ctx context.Context, ruleId string) error {
+	exec := uc.executorFactory.NewExecutor()
+
+	rule, err := uc.repository.GetRuleById(ctx, exec, ruleId)
+	if err != nil {
+		return fmt.Errorf("error while getting rule %s: %w", ruleId, err)
+	}
+
+	if rule.FormulaAstExpression == nil {
+		return nil
+	}
+
+	iteration, err := uc.repository.GetScenarioIteration(ctx, exec, rule.ScenarioIterationId, false)
+	if err != nil {
+		return fmt.Errorf("error while getting scenario iteration %s: %w", rule.ScenarioIterationId, err)
+	}
+
+	description, err := uc.AiASTDescription(ctx, rule.OrganizationId, iteration.ScenarioId, rule.FormulaAstExpression)
+	if err != nil {
+		return err
+	}
+	if !description.IsRuleValid || description.Description == "" {
+		return nil
+	}
+
+	return uc.repository.UpdateRule(ctx, exec, models.UpdateRuleInput{
+		Id:            rule.Id,
+		AiDescription: &description.Description,
+	})
+}

@@ -303,6 +303,7 @@ func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterati
 		validateScenarioIteration: usecases.NewValidateScenarioIteration(),
 		executorFactory:           usecases.NewExecutorFactory(),
 		transactionFactory:        usecases.NewTransactionFactory(),
+		taskQueueRepository:       usecases.Repositories.TaskQueueRepository,
 	}
 }
 
@@ -847,6 +848,14 @@ func (usecases *UsecasesWithCreds) NewCaseReviewWorker(timeout time.Duration) *a
 
 func (usecases *UsecasesWithCreds) NewScreeningHitSuggestionWorker(timeout time.Duration) *ai_agent.ScreeningHitSuggestionWorker {
 	w := ai_agent.NewScreeningHitSuggestionWorker(
+		utils.Ptr(usecases.NewAiAgentUsecase()),
+		timeout,
+	)
+	return &w
+}
+
+func (usecases *UsecasesWithCreds) NewRuleDescriptionWorker(timeout time.Duration) *ai_agent.RuleDescriptionWorker {
+	w := ai_agent.NewRuleDescriptionWorker(
 		utils.Ptr(usecases.NewAiAgentUsecase()),
 		timeout,
 	)

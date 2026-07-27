@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -194,6 +195,12 @@ func (usecase *RuleUsecase) UpdateRule(ctx context.Context, updateRule models.Up
 				models.ErrScenarioIterationNotDraft,
 				fmt.Sprintf("can't update rule as iteration %s is not in draft", scenarioAndIteration.Iteration.Id),
 			)
+		}
+
+		// If formula changed, clear AI description since it's no longer valid
+		if updateRule.FormulaAstExpression != nil &&
+			!rule.HasSameFormula(models.Rule{FormulaAstExpression: updateRule.FormulaAstExpression}) {
+			updateRule.AiDescription = utils.Ptr("")
 		}
 
 		err = usecase.repository.UpdateRule(ctx, tx, updateRule)

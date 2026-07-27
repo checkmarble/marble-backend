@@ -15,6 +15,7 @@ type RuleDto struct {
 	DisplayOrder         int       `json:"display_order"`
 	Name                 string    `json:"name"`
 	Description          string    `json:"description"`
+	AiDescription        string    `json:"ai_description"`
 	FormulaAstExpression *NodeDto  `json:"formula_ast_expression"`
 	ScoreModifier        int       `json:"score_modifier"`
 	CreatedAt            time.Time `json:"created_at"`
@@ -27,6 +28,7 @@ type RuleMetadataDto struct {
 	DisplayOrder        int       `json:"display_order"`
 	Name                string    `json:"name"`
 	Description         string    `json:"description"`
+	AiDescription       string    `json:"ai_description"`
 	ScoreModifier       int       `json:"score_modifier"`
 	CreatedAt           time.Time `json:"created_at"`
 	RuleGroup           string    `json:"rule_group"`
@@ -69,6 +71,7 @@ func AdaptRuleDto(rule models.Rule) (RuleDto, error) {
 		DisplayOrder:         rule.DisplayOrder,
 		Name:                 rule.Name,
 		Description:          rule.Description,
+		AiDescription:        rule.AiDescription,
 		FormulaAstExpression: formulaAstExpression,
 		ScoreModifier:        rule.ScoreModifier,
 		CreatedAt:            rule.CreatedAt,
@@ -83,6 +86,7 @@ func AdaptRuleMetadataDto(rule models.RuleMetadata) RuleMetadataDto {
 		DisplayOrder:        rule.DisplayOrder,
 		Name:                rule.Name,
 		Description:         rule.Description,
+		AiDescription:       rule.AiDescription,
 		ScoreModifier:       rule.ScoreModifier,
 		CreatedAt:           rule.CreatedAt,
 		RuleGroup:           rule.RuleGroup,

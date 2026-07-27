@@ -79,6 +79,7 @@ type ScenarioIterationUsecase struct {
 	validateScenarioIteration scenarios.ValidateScenarioIteration
 	executorFactory           executor_factory.ExecutorFactory
 	transactionFactory        executor_factory.TransactionFactory
+	taskQueueRepository       repositories.TaskQueueRepository
 }
 
 func (usecase *ScenarioIterationUsecase) ListScenarioIterations(
@@ -344,6 +345,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 					DisplayOrder:         rule.DisplayOrder,
 					Name:                 rule.Name,
 					Description:          rule.Description,
+					AiDescription:        rule.AiDescription,
 					FormulaAstExpression: rule.FormulaAstExpression,
 					ScoreModifier:        rule.ScoreModifier,
 					RuleGroup:            rule.RuleGroup,
@@ -455,6 +457,11 @@ func (usecase *ScenarioIterationUsecase) CommitScenarioIterationVersion(
 					fmt.Sprintf("Scenario iteration %s is not valid", iterationId),
 				)
 			}
+
+			if err := usecase.enqueueRuleDescriptionJobs(ctx, tx, scenarioAndIteration); err != nil {
+				return iteration, err
+			}
+
 			version, err := usecase.getScenarioVersion(
 				ctx,
 				tx,
@@ -470,6 +477,45 @@ func (usecase *ScenarioIterationUsecase) CommitScenarioIterationVersion(
 			return usecase.repository.GetScenarioIteration(ctx, tx, iterationId, false)
 		},
 	)
+}
+
+// enqueueRuleDescriptionJobs enqueues one background AI-description job per
+// rule in scenarioAndIteration whose formula is new or changed compared to
+// the scenario's previously committed iteration. Must run before the
+// iteration being committed is assigned a version, so it isn't mistaken for
+// an already-committed "previous" iteration.
+func (usecase *ScenarioIterationUsecase) enqueueRuleDescriptionJobs(
+	ctx context.Context,
+	tx repositories.Transaction,
+	scenarioAndIteration models.ScenarioAndIteration,
+) error {
+	scenarioId, err := uuid.Parse(scenarioAndIteration.Scenario.Id)
+	if err != nil {
+		return err
+	}
+
+	previousIterations, err := usecase.repository.ListScenarioIterations(
+		ctx,
+		tx,
+		scenarioAndIteration.Scenario.OrganizationId,
+		models.GetScenarioIterationFilters{ScenarioId: scenarioId},
+	)
+	if err != nil {
+		return err
+	}
+
+	previousRulesByStableId := previousCommittedRulesByStableId(previousIterations)
+	ruleIds := rulesNeedingAiDescriptionGeneration(scenarioAndIteration.Iteration.Rules, previousRulesByStableId)
+
+	for _, ruleId := range ruleIds {
+		if err := usecase.taskQueueRepository.EnqueueRuleDescriptionTask(
+			ctx, tx, scenarioAndIteration.Scenario.OrganizationId, ruleId,
+		); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func replaceTriggerOrRule(scenarioAndIteration models.ScenarioAndIteration,

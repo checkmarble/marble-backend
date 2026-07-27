@@ -71,6 +71,15 @@ func (m *TaskQueueRepository) EnqueueCaseReviewTask(
 	return m.Called(ctx, tx, orgId, caseId, aiCaseReviewId).Error(0)
 }
 
+func (m *TaskQueueRepository) EnqueueRuleDescriptionTask(
+	ctx context.Context,
+	tx repositories.Transaction,
+	organizationId uuid.UUID,
+	ruleId string,
+) error {
+	return m.Called(ctx, tx, organizationId, ruleId).Error(0)
+}
+
 func (m *TaskQueueRepository) EnqueueAutoAssignmentTask(
 	ctx context.Context,
 	tx repositories.Transaction,
