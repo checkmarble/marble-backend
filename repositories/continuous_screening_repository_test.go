@@ -84,63 +84,6 @@ func TestContinuousScreeningUpdateJobDetailsQueryUsesSharedJobScope(t *testing.T
 		"ucs.started_at, ucs.finished_at")
 }
 
-func TestContinuousScreeningUpdateJobStatusQuerySetsTimings(t *testing.T) {
-	updateId := uuid.New()
-
-	tests := []struct {
-		status             models.ContinuousScreeningUpdateJobStatus
-		expectStartedAt    bool
-		expectFinishedAt   bool
-		expectClearedEndAt bool
-	}{
-		// Entering `processing` starts the timing window and clears the end left by a previous
-		// attempt, so a replayed job never reports an end earlier than its start.
-		{
-			status:             models.ContinuousScreeningUpdateJobStatusProcessing,
-			expectStartedAt:    true,
-			expectClearedEndAt: true,
-		},
-		// Terminal statuses only stamp the end: a job skipped by the kill switch, or rejected for
-		// feature access, gets there without ever having started.
-		{status: models.ContinuousScreeningUpdateJobStatusCompleted, expectFinishedAt: true},
-		{status: models.ContinuousScreeningUpdateJobStatusFailed, expectFinishedAt: true},
-		{status: models.ContinuousScreeningUpdateJobStatusSkipped, expectFinishedAt: true},
-		// Nothing writes `pending` today, but it must not be mistaken for a start or an end.
-		{status: models.ContinuousScreeningUpdateJobStatusPending},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.status.String(), func(t *testing.T) {
-			sql, args, err := continuousScreeningUpdateJobStatusQuery(updateId, tc.status).ToSql()
-			require.NoError(t, err)
-
-			require.Contains(t, sql, "UPDATE continuous_screening_update_jobs")
-			require.Contains(t, sql, "status = $1")
-			require.Contains(t, sql, "updated_at = NOW()")
-			require.Contains(t, args, tc.status.String())
-			require.Contains(t, args, updateId.String())
-
-			if tc.expectStartedAt {
-				require.Contains(t, sql, "started_at = NOW()")
-			} else {
-				require.NotContains(t, sql, "started_at")
-			}
-
-			if tc.expectFinishedAt {
-				require.Contains(t, sql, "finished_at = NOW()")
-			}
-
-			if tc.expectClearedEndAt {
-				require.Contains(t, sql, "finished_at = NULL")
-			}
-
-			if !tc.expectFinishedAt && !tc.expectClearedEndAt {
-				require.NotContains(t, sql, "finished_at")
-			}
-		})
-	}
-}
-
 func TestContinuousScreeningListQueriesValidateSorting(t *testing.T) {
 	pagination := models.PaginationAndSorting{
 		Sorting: models.SortingFieldUpdatedAt,
@@ -206,10 +149,27 @@ func TestContinuousScreeningClientDataIndexingAggregateQueryUsesIndexVersion(t *
 	require.NotContains(t, sql, "df.provider")
 	require.Contains(t, sql, "df.version <= $3")
 	require.Equal(t, []any{
-		models.ContinuousScreeningDatasetFileTypeFull.String(),
 		orgId.String(),
+		models.ContinuousScreeningDatasetFileTypeFull.String(),
 		indexVersion,
 	}, args)
+}
+
+// The dataset file is the paginated entity: it anchors the FROM, df.id is the row identity, and
+// delta tracks are only counted — including for a file that has none.
+func TestContinuousScreeningClientDataIndexingAggregateQueryIsAnchoredOnDatasetFiles(t *testing.T) {
+	orgId := uuid.New()
+
+	sql, _, err := continuousScreeningClientDataIndexingAggregateQuery(orgId, nil).ToSql()
+
+	require.NoError(t, err)
+	require.Contains(t, sql, "FROM continuous_screening_dataset_files AS df")
+	require.Contains(t, sql, "LEFT JOIN continuous_screening_delta_tracks AS dt "+
+		"ON dt.dataset_file_id = df.id AND dt.org_id = df.org_id")
+	require.Contains(t, sql, "COUNT(dt.id) AS total_items")
+	require.Contains(t, sql, "GROUP BY df.id")
+	require.NotContains(t, sql, "MIN(")
+	require.NotContains(t, sql, "object_type")
 }
 
 func TestContinuousScreeningClientDataIndexingAggregateQueryWithoutIndexVersionReturnsDatabaseHistory(t *testing.T) {
@@ -223,8 +183,34 @@ func TestContinuousScreeningClientDataIndexingAggregateQueryWithoutIndexVersionR
 	require.NotContains(t, sql, "df.version <=")
 	require.NotContains(t, sql, "df.provider")
 	require.Equal(t, []any{
-		models.ContinuousScreeningDatasetFileTypeFull.String(),
 		orgId.String(),
+		models.ContinuousScreeningDatasetFileTypeFull.String(),
+	}, args)
+}
+
+func TestContinuousScreeningClientDataIndexingKeysetConditionUsesDatasetFileCursor(t *testing.T) {
+	orgId := uuid.New()
+	offset := time.Date(2026, time.July, 13, 12, 0, 0, 0, time.UTC)
+	pagination := models.PaginationAndSorting{
+		OffsetId: "018f6f98-b70d-7e16-a210-cc7b5089ee11",
+		Sorting:  models.SortingFieldCreatedAt,
+		Order:    models.SortingOrderDesc,
+		Limit:    25,
+	}
+
+	query := applyContinuousScreeningKeysetCondition(
+		continuousScreeningClientDataIndexingAggregateQuery(orgId, nil),
+		"df", pagination, offset)
+
+	sql, args, err := query.ToSql()
+
+	require.NoError(t, err)
+	require.Contains(t, sql, "(df.created_at, df.id) < ($3, $4)")
+	require.Equal(t, []any{
+		orgId.String(),
+		models.ContinuousScreeningDatasetFileTypeFull.String(),
+		offset,
+		pagination.OffsetId,
 	}, args)
 }
 

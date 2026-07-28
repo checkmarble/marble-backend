@@ -114,7 +114,6 @@ type ContinuousScreeningClientDataIndexingDto struct {
 	JobDate    time.Time `json:"job_date"`
 	TotalItems int       `json:"total_items"`
 	Version    string    `json:"version"`
-	ObjectType string    `json:"object_type"`
 }
 
 type ContinuousScreeningClientDataIndexingResponseDto struct {
@@ -134,7 +133,6 @@ func AdaptContinuousScreeningClientDataIndexingDto(
 		JobDate:    j.JobDate,
 		TotalItems: j.TotalItems,
 		Version:    j.Version,
-		ObjectType: j.ObjectType,
 	}
 }
 

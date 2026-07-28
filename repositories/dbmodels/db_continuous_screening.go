@@ -329,7 +329,6 @@ type DBContinuousScreeningClientDataIndexingSummary struct {
 	JobDate    time.Time `db:"job_date"`
 	TotalItems int       `db:"total_items"`
 	Version    string    `db:"version"`
-	ObjectType string    `db:"object_type"`
 }
 
 func AdaptContinuousScreeningClientDataIndexingSummary(dto DBContinuousScreeningClientDataIndexingSummary) (models.ContinuousScreeningClientDataIndexingSummary, error) {
@@ -338,7 +337,6 @@ func AdaptContinuousScreeningClientDataIndexingSummary(dto DBContinuousScreening
 		JobDate:    dto.JobDate,
 		TotalItems: dto.TotalItems,
 		Version:    dto.Version,
-		ObjectType: dto.ObjectType,
 	}, nil
 }
 

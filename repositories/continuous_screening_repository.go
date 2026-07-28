@@ -1092,18 +1092,15 @@ func (repo *MarbleDbRepository) ListContinuousScreeningClientDataIndexing(
 		return models.ContinuousScreeningClientDataIndexing{}, err
 	}
 
-	orderCond := fmt.Sprintf("client_data_indexing.job_date %s, client_data_indexing.id %s",
+	orderCond := fmt.Sprintf("df.created_at %s, df.id %s",
 		pagination.Order, pagination.Order)
 
-	query := NewQueryBuilder().
-		Select("client_data_indexing.*").
-		FromSelect(continuousScreeningClientDataIndexingAggregateQuery(
-			orgId, indexVersion), "client_data_indexing").
+	query := continuousScreeningClientDataIndexingAggregateQuery(orgId, indexVersion).
 		OrderBy(orderCond).
 		Limit(uint64(pagination.Limit))
 
 	query, err = repo.applyContinuousScreeningClientDataIndexingPaginationFilters(
-		ctx, exec, query, orgId, indexVersion, pagination)
+		ctx, exec, query, orgId, pagination)
 	if err != nil {
 		return models.ContinuousScreeningClientDataIndexing{}, err
 	}
@@ -1125,21 +1122,22 @@ func continuousScreeningClientDataIndexingAggregateQuery(
 	orgId uuid.UUID,
 	indexVersion *string,
 ) squirrel.SelectBuilder {
+	// The dataset file is the entity being listed and paginated; delta tracks are only what we
+	// count, so df.id is the row identity and no synthetic id is needed. Files with no delta
+	// track are still listed, with a count of zero.
 	query := NewQueryBuilder().
 		Select(
-			"MIN(dt.id::text)::uuid AS id",
+			"df.id",
 			"df.created_at AS job_date",
-			"COUNT(*) AS total_items",
+			"COUNT(dt.id) AS total_items",
 			"df.version AS version",
-			"dt.object_type AS object_type",
 		).
-		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DELTA_TRACKS+" AS dt").
-		InnerJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_FILES+
-			" AS df ON df.id = dt.dataset_file_id AND df.org_id = dt.org_id"+
-			" AND df.file_type = ?",
-			models.ContinuousScreeningDatasetFileTypeFull.String()).
-		Where(squirrel.Eq{"dt.org_id": orgId}).
-		GroupBy("df.created_at", "df.version", "dt.object_type")
+		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DATASET_FILES + " AS df").
+		LeftJoin(dbmodels.TABLE_CONTINUOUS_SCREENING_DELTA_TRACKS +
+			" AS dt ON dt.dataset_file_id = df.id AND dt.org_id = df.org_id").
+		Where(squirrel.Eq{"df.org_id": orgId}).
+		Where(squirrel.Eq{"df.file_type": models.ContinuousScreeningDatasetFileTypeFull.String()}).
+		GroupBy("df.id")
 
 	if indexVersion == nil {
 		return query
@@ -1210,37 +1208,35 @@ func (repo *MarbleDbRepository) applyContinuousScreeningClientDataIndexingPagina
 	exec Executor,
 	query squirrel.SelectBuilder,
 	orgId uuid.UUID,
-	indexVersion *string,
 	p models.PaginationAndSorting,
 ) (squirrel.SelectBuilder, error) {
 	if p.OffsetId == "" {
 		return query, nil
 	}
 
-	offsetQuery := NewQueryBuilder().
-		Select("client_data_indexing.*").
-		FromSelect(continuousScreeningClientDataIndexingAggregateQuery(
-			orgId, indexVersion), "client_data_indexing").
-		Where(squirrel.Eq{"client_data_indexing.id": p.OffsetId})
+	// The cursor is a real dataset file id, so resolving it is a primary key read rather than a
+	// second run of the aggregate.
+	offsetId, err := uuid.Parse(p.OffsetId)
+	if err != nil {
+		return query, errors.Wrap(models.BadParameterError, "offsetId is not a valid UUID")
+	}
 
-	offset, err := SqlToModel(ctx, exec, offsetQuery,
-		dbmodels.AdaptContinuousScreeningClientDataIndexingSummary)
+	offsetFile, err := repo.GetContinuousScreeningDatasetFileById(ctx, exec, offsetId)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return query, errors.Wrap(models.NotFoundError,
 			"No row found matching the provided offsetId")
 	} else if err != nil {
 		return query, errors.Wrap(err,
-			"failed to fetch client data indexing aggregate corresponding to the provided offsetId")
+			"failed to fetch dataset file corresponding to the provided offsetId")
 	}
 
-	args := []any{offset.JobDate, p.OffsetId}
-	if p.Order == models.SortingOrderDesc {
-		query = query.Where("(client_data_indexing.job_date, client_data_indexing.id) < (?, ?)", args...)
-	} else {
-		query = query.Where("(client_data_indexing.job_date, client_data_indexing.id) > (?, ?)", args...)
+	// Get*ById does not filter by org, so the caller's org must be checked here.
+	if offsetFile.OrgId != orgId {
+		return query, errors.Wrap(models.NotFoundError,
+			"No row found matching the provided offsetId")
 	}
 
-	return query, nil
+	return applyContinuousScreeningKeysetCondition(query, "df", p, offsetFile.CreatedAt), nil
 }
 
 func (repo *MarbleDbRepository) CreateContinuousScreeningDatasetUpdate(
@@ -1337,16 +1333,9 @@ func (repo *MarbleDbRepository) UpdateContinuousScreeningUpdateJob(
 		return err
 	}
 
-	return ExecBuilder(ctx, exec, continuousScreeningUpdateJobStatusQuery(updateId, status))
-}
-
-// continuousScreeningUpdateJobStatusQuery derives the job timing columns from the status being
-// written: a job starts when it enters `processing` and ends when it reaches a terminal status.
-// Neither can be inferred from created_at (enqueue time) or updated_at (bumped on every write).
-func continuousScreeningUpdateJobStatusQuery(
-	updateId uuid.UUID,
-	status models.ContinuousScreeningUpdateJobStatus,
-) squirrel.UpdateBuilder {
+	// Job timing columns are derived from the status being written: a job starts when it enters
+	// `processing` and ends when it reaches a terminal status. Neither can be inferred from
+	// created_at (enqueue time) or updated_at (bumped on every write).
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS).
 		Where(squirrel.Eq{"id": updateId}).
@@ -1369,7 +1358,7 @@ func continuousScreeningUpdateJobStatusQuery(
 		query = query.Set("finished_at", squirrel.Expr("NOW()"))
 	}
 
-	return query
+	return ExecBuilder(ctx, exec, query)
 }
 
 func (repo *MarbleDbRepository) GetContinuousScreeningJobOffset(

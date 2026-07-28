@@ -304,14 +304,13 @@ type ContinuousScreeningClientDataIndexing struct {
 	Items        Paginated[ContinuousScreeningClientDataIndexingSummary]
 }
 
-// ContinuousScreeningClientDataIndexingSummary is a grouped view of client-data
-// indexing activity for one full dataset file version and object type.
+// ContinuousScreeningClientDataIndexingSummary is one generated full dataset file,
+// with the number of client-data items it contains.
 type ContinuousScreeningClientDataIndexingSummary struct {
-	Id         uuid.UUID // needed for keyset pagination cursor
+	Id         uuid.UUID // dataset file id, also the keyset pagination cursor
 	JobDate    time.Time // full dataset file creation time
 	TotalItems int
 	Version    string
-	ObjectType string
 }
 
 type EnrichedContinuousScreeningUpdateJob struct {
