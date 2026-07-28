@@ -181,6 +181,50 @@ func AdaptContinuousScreeningDatasetUpdate(dto DBContinuousScreeningDatasetUpdat
 	}, nil
 }
 
+// DBContinuousScreeningDatasetUpdateEnriched is a dataset-update row left-joined to aggregated
+// processing job counts for the org/provider.
+type DBContinuousScreeningDatasetUpdateEnriched struct {
+	Id              uuid.UUID `db:"id"`
+	DatasetName     string    `db:"dataset_name"`
+	Version         string    `db:"version"`
+	DeltaFilePath   string    `db:"delta_file_path"`
+	TotalItems      int       `db:"total_items"`
+	CreatedAt       time.Time `db:"created_at"`
+	Status          string    `db:"status"`
+	CompletedCount  int       `db:"completed_count"`
+	ProcessingCount int       `db:"processing_count"`
+	PendingCount    int       `db:"pending_count"`
+	FailedCount     int       `db:"failed_count"`
+	TotalJobs       int       `db:"total_jobs"`
+	ItemsProcessed  int       `db:"items_processed"`
+	ItemsTotal      int       `db:"items_total"`
+}
+
+func AdaptContinuousScreeningDatasetUpdateEnriched(
+	dto DBContinuousScreeningDatasetUpdateEnriched,
+) (models.ContinuousScreeningDatasetUpdateEnriched, error) {
+	return models.ContinuousScreeningDatasetUpdateEnriched{
+		ContinuousScreeningDatasetUpdate: models.ContinuousScreeningDatasetUpdate{
+			Id:            dto.Id,
+			DatasetName:   dto.DatasetName,
+			Version:       dto.Version,
+			DeltaFilePath: dto.DeltaFilePath,
+			TotalItems:    dto.TotalItems,
+			CreatedAt:     dto.CreatedAt,
+		},
+		Status: models.ContinuousScreeningUpdateJobStatusFrom(dto.Status),
+		Completion: models.ContinuousScreeningDatasetUpdateJobCounts{
+			Completed:      dto.CompletedCount,
+			Processing:     dto.ProcessingCount,
+			Pending:        dto.PendingCount,
+			Failed:         dto.FailedCount,
+			Total:          dto.TotalJobs,
+			ItemsProcessed: dto.ItemsProcessed,
+			ItemsTotal:     dto.ItemsTotal,
+		},
+	}, nil
+}
+
 const TABLE_CONTINUOUS_SCREENING_UPDATE_JOBS = "continuous_screening_update_jobs"
 
 var SelectContinuousScreeningUpdateJobColumn = utils.ColumnList[DBContinuousScreeningUpdateJob]()
@@ -194,6 +238,10 @@ type DBContinuousScreeningUpdateJob struct {
 	Status                             string                   `db:"status"`
 	CreatedAt                          time.Time                `db:"created_at"`
 	UpdatedAt                          time.Time                `db:"updated_at"`
+	// StartedAt is set when the job enters `processing`, FinishedAt when it reaches a terminal
+	// status. Both are null before those transitions happen.
+	StartedAt  *time.Time `db:"started_at"`
+	FinishedAt *time.Time `db:"finished_at"`
 }
 
 func AdaptContinuousScreeningUpdateJob(dto DBContinuousScreeningUpdateJob) (models.ContinuousScreeningUpdateJob, error) {
@@ -206,6 +254,8 @@ func AdaptContinuousScreeningUpdateJob(dto DBContinuousScreeningUpdateJob) (mode
 		Status:          models.ContinuousScreeningUpdateJobStatusFrom(dto.Status),
 		CreatedAt:       dto.CreatedAt,
 		UpdatedAt:       dto.UpdatedAt,
+		StartedAt:       dto.StartedAt,
+		FinishedAt:      dto.FinishedAt,
 	}, nil
 }
 
@@ -232,6 +282,61 @@ func AdaptEnrichedContinuousScreeningUpdateJob(dto DBEnrichedContinuousScreening
 		ContinuousScreeningUpdateJob: updateJob,
 		Config:                       config,
 		DatasetUpdate:                datasetUpdate,
+	}, nil
+}
+
+type DBContinuousScreeningUpdateJobSummary struct {
+	Id             uuid.UUID                       `db:"id"`
+	Status         string                          `db:"status"`
+	JobStart       *time.Time                      `db:"job_start"`
+	JobEnd         *time.Time                      `db:"job_end"`
+	ConfigName     string                          `db:"config_name"`
+	Description    string                          `db:"description"`
+	TotalItems     int                             `db:"total_items"`
+	ReceptionTime  time.Time                       `db:"reception_time"`
+	Version        string                          `db:"version"`
+	ItemsProcessed *int                            `db:"processed"`
+	Errors         []DBContinuousScreeningJobError `db:"errors"`
+}
+
+func AdaptContinuousScreeningUpdateJobSummary(dto DBContinuousScreeningUpdateJobSummary) (models.ContinuousScreeningUpdateJobSummary, error) {
+	errs := make([]models.ContinuousScreeningJobError, 0, len(dto.Errors))
+	for _, e := range dto.Errors {
+		m, err := AdaptContinuousScreeningJobError(e)
+		if err != nil {
+			return models.ContinuousScreeningUpdateJobSummary{}, err
+		}
+		errs = append(errs, m)
+	}
+
+	return models.ContinuousScreeningUpdateJobSummary{
+		Id:             dto.Id,
+		Status:         models.ContinuousScreeningUpdateJobStatusFrom(dto.Status),
+		JobStart:       dto.JobStart,
+		JobEnd:         dto.JobEnd,
+		ConfigName:     dto.ConfigName,
+		Description:    dto.Description,
+		TotalItems:     dto.TotalItems,
+		ReceptionTime:  dto.ReceptionTime,
+		Version:        dto.Version,
+		ItemsProcessed: dto.ItemsProcessed,
+		Errors:         errs,
+	}, nil
+}
+
+type DBContinuousScreeningClientDataIndexingSummary struct {
+	Id         uuid.UUID `db:"id"`
+	JobDate    time.Time `db:"job_date"`
+	TotalItems int       `db:"total_items"`
+	Version    string    `db:"version"`
+}
+
+func AdaptContinuousScreeningClientDataIndexingSummary(dto DBContinuousScreeningClientDataIndexingSummary) (models.ContinuousScreeningClientDataIndexingSummary, error) {
+	return models.ContinuousScreeningClientDataIndexingSummary{
+		Id:         dto.Id,
+		JobDate:    dto.JobDate,
+		TotalItems: dto.TotalItems,
+		Version:    dto.Version,
 	}, nil
 }
 

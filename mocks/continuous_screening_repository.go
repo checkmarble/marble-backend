@@ -185,6 +185,39 @@ func (m *ContinuousScreeningRepository) ListContinuousScreeningsForOrg(
 	return args.Get(0).([]models.ContinuousScreeningWithMatches), args.Error(1)
 }
 
+func (m *ContinuousScreeningRepository) ListContinuousScreeningDatasetUpdates(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	provider models.ScreeningProvider,
+	pagination models.PaginationAndSorting,
+) ([]models.ContinuousScreeningDatasetUpdateEnriched, error) {
+	args := m.Called(ctx, exec, orgId, provider, pagination)
+	return args.Get(0).([]models.ContinuousScreeningDatasetUpdateEnriched), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) ListContinuousScreeningUpdateJobs(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	provider models.ScreeningProvider,
+	pagination models.PaginationAndSorting,
+) ([]models.ContinuousScreeningUpdateJobSummary, error) {
+	args := m.Called(ctx, exec, orgId, provider, pagination)
+	return args.Get(0).([]models.ContinuousScreeningUpdateJobSummary), args.Error(1)
+}
+
+func (m *ContinuousScreeningRepository) ListContinuousScreeningClientDataIndexing(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	indexVersion *string,
+	pagination models.PaginationAndSorting,
+) (models.ContinuousScreeningClientDataIndexing, error) {
+	args := m.Called(ctx, exec, orgId, indexVersion, pagination)
+	return args.Get(0).(models.ContinuousScreeningClientDataIndexing), args.Error(1)
+}
+
 func (m *ContinuousScreeningRepository) GetContinuousScreeningWithMatchesById(
 	ctx context.Context,
 	exec repositories.Executor,

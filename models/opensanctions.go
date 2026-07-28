@@ -19,12 +19,14 @@ const ContinuousScreeningObjectTypeProperty = "programId"
 // Row structure representing a dataset in the OpenSanctions catalog
 // Note: I didn't declare all fields, only those needed for our logic, don't hesitate to add more if needed
 type OpenSanctionsRawDataset struct {
-	Name     string
-	Title    string
-	Version  string
-	Load     bool
-	Tags     []string
-	DeltaUrl *string
+	Name         string
+	Title        string
+	Version      string
+	IndexVersion *string
+	IndexCurrent bool
+	Load         bool
+	Tags         []string
+	DeltaUrl     *string
 }
 
 // Define a raw catalog structure, close to the OpenSanctions API response
