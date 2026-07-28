@@ -85,7 +85,7 @@ services:
       retries: 5
   motiva:
     container_name: motiva
-    image: ghcr.io/apognu/motiva:v0.9.0
+    image: ghcr.io/apognu/motiva:v0.10.1
     platform: linux/x86_64
     ports:
       - "8000:8000"
