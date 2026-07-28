@@ -70,8 +70,8 @@ github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/cloudmock v0
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/cloudmock v0.58.0/go.mod h1:dzcEjy1WJ0Q4u9twNR3LcLhNoYMRCrMCMafpxa0TjPQ=
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.58.0 h1:SBZzZCiPmDrUV7NSCWY54OnKikO/oTydPCvyEyYaDDE=
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.58.0/go.mod h1:YqwkQPrWSC7+byyc1VlKbWLBF5JsW5IoL6xUkemYSXk=
-github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.56.0 h1:uYhkFf0DtbxOa5f2o2BqwMNWzAAhzHn67jukamPtWIA=
-github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.56.0/go.mod h1:sKE2BdlsRRPL7ONGioxJnjUhEA1NbF484vFq8LX6znI=
+github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.58.0 h1:p4AShSHj73soQNs4j0aowCWmMqiCN5sEF6d18Hw6vbA=
+github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.58.0/go.mod h1:gW2WKecnAdBKF4E64jL86UXyvVcsPnNunINOq72OLMk=
 github.com/Masterminds/semver v1.5.0 h1:H65muMkzWKEuNDnfl9d70GUjFniHKHRbFPGBuZ3QEww=
 github.com/Masterminds/semver v1.5.0/go.mod h1:MB6lktGJrhw8PrUyiEoblNEGEQ+RzHPF078ddwwvV3Y=
 github.com/Masterminds/squirrel v1.5.4 h1:uUcX/aBc8O7Fg9kaISIUsHXdKuqehiXAMQTYX8afzqM=
