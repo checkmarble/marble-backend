@@ -125,8 +125,9 @@ func validateScenarioAst(uc usecases.Usecases) func(c *gin.Context) {
 			expectedReturnType = append(expectedReturnType, input.ExpectedReturnType)
 		}
 
+		creds, _ := utils.CredentialsFromCtx(ctx)
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioUsecase()
-		astValidation, err := usecase.ValidateScenarioAst(ctx, scenarioId, &astNode, expectedReturnType...)
+		astValidation, err := usecase.ValidateScenarioAst(ctx, creds.OrganizationId, scenarioId, &astNode, expectedReturnType...)
 
 		if presentError(ctx, c, err) {
 			return

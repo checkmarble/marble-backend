@@ -185,7 +185,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 	}
 
 	astValidation, err := uc.scenarioUsecase.ValidateScenarioAst(ctx,
-		scenario.Id, &ruleAst)
+		orgId, scenario.Id, &ruleAst)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf(
 			"failed to validate generated AST: %w", err,
@@ -240,7 +240,7 @@ func (uc *AiAgentUsecase) AiASTDescription(
 	ruleAST *ast.Node,
 ) (models.AiRuleDescription, error) {
 	// Check if the rule is valid before calling LLM
-	astValidation, err := uc.scenarioUsecase.ValidateScenarioAst(ctx, scenarioId, ruleAST)
+	astValidation, err := uc.scenarioUsecase.ValidateScenarioAst(ctx, orgId, scenarioId, ruleAST)
 	if err != nil {
 		return models.AiRuleDescription{}, err
 	}

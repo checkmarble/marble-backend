@@ -13,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/ai_agent"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -489,23 +490,7 @@ func (usecase *ScenarioIterationUsecase) enqueueRuleDescriptionJobs(
 	tx repositories.Transaction,
 	scenarioAndIteration models.ScenarioAndIteration,
 ) error {
-	scenarioId, err := uuid.Parse(scenarioAndIteration.Scenario.Id)
-	if err != nil {
-		return err
-	}
-
-	previousIterations, err := usecase.repository.ListScenarioIterations(
-		ctx,
-		tx,
-		scenarioAndIteration.Scenario.OrganizationId,
-		models.GetScenarioIterationFilters{ScenarioId: scenarioId},
-	)
-	if err != nil {
-		return err
-	}
-
-	previousRulesByStableId := previousCommittedRulesByStableId(previousIterations)
-	ruleIds := rulesNeedingAiDescriptionGeneration(scenarioAndIteration.Iteration.Rules, previousRulesByStableId)
+	ruleIds := ai_agent.RulesNeedingAiDescriptionGeneration(scenarioAndIteration.Iteration.Rules)
 
 	for _, ruleId := range ruleIds {
 		if err := usecase.taskQueueRepository.EnqueueRuleDescriptionTask(

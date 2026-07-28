@@ -680,6 +680,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion
 	case "scoring_initial_computation":
 		return uc.NewInitialComputationWorker().Work(ctx,
 			singleJobCreate[models.ScoringInitialComputationArgs](ctx, jobArgs))
+	case "rule_description":
+		return uc.NewRuleDescriptionWorker(workerConfig.caseReviewTimeout).Work(ctx,
+			singleJobCreate[models.RuleDescriptionArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}
