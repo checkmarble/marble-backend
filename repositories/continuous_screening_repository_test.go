@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -185,6 +186,33 @@ func TestContinuousScreeningClientDataIndexingAggregateQueryWithoutIndexVersionR
 	require.Equal(t, []any{
 		orgId.String(),
 		models.ContinuousScreeningDatasetFileTypeFull.String(),
+	}, args)
+}
+
+// The cursor lookup shares this scope with the listing, so an id outside the org, of another file
+// type, or above the indexed version cannot be used as a cursor.
+func TestContinuousScreeningClientDataFilesQueryScopesTheCursorLookup(t *testing.T) {
+	orgId := uuid.New()
+	indexVersion := "20260713123000-001"
+	offsetId := "018f6f98-b70d-7e16-a210-cc7b5089ee11"
+
+	sql, args, err := continuousScreeningClientDataFilesQuery(orgId, &indexVersion,
+		"df.created_at AS offset_value").
+		Where(squirrel.Eq{"df.id": offsetId}).
+		ToSql()
+
+	require.NoError(t, err)
+	require.Contains(t, sql, "SELECT df.created_at AS offset_value")
+	require.Contains(t, sql, "FROM continuous_screening_dataset_files AS df")
+	require.Contains(t, sql, "df.org_id = $1")
+	require.Contains(t, sql, "df.file_type = $2")
+	require.Contains(t, sql, "df.version <= $3")
+	require.Contains(t, sql, "df.id = $4")
+	require.Equal(t, []any{
+		orgId.String(),
+		models.ContinuousScreeningDatasetFileTypeFull.String(),
+		indexVersion,
+		offsetId,
 	}, args)
 }
 
