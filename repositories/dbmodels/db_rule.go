@@ -113,6 +113,7 @@ type DBCreateRuleInput struct {
 	DisplayOrder         int       `db:"display_order"`
 	Name                 string    `db:"name"`
 	Description          string    `db:"description"`
+	AiDescription        string    `db:"ai_description"`
 	ScoreModifier        int       `db:"score_modifier"`
 	FormulaAstExpression *[]byte   `db:"formula_ast_expression"`
 	RuleGroup            string    `db:"rule_group"`
@@ -133,6 +134,7 @@ func AdaptDBCreateRuleInput(rule models.CreateRuleInput) (DBCreateRuleInput, err
 		DisplayOrder:         rule.DisplayOrder,
 		Name:                 rule.Name,
 		Description:          rule.Description,
+		AiDescription:        rule.AiDescription,
 		ScoreModifier:        rule.ScoreModifier,
 		FormulaAstExpression: formulaAstExpression,
 		RuleGroup:            rule.RuleGroup,
