@@ -61,6 +61,12 @@ type TaskQueueRepository interface {
 		caseId uuid.UUID,
 		aiCaseReviewId uuid.UUID,
 	) error
+	EnqueueRuleDescriptionTask(
+		ctx context.Context,
+		tx Transaction,
+		organizationId uuid.UUID,
+		ruleId string,
+	) error
 	EnqueueAutoAssignmentTask(
 		ctx context.Context,
 		tx Transaction,
@@ -397,6 +403,32 @@ func (r riverRepository) EnqueueCaseReviewTask(
 
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued case review task", "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueRuleDescriptionTask(
+	ctx context.Context,
+	tx Transaction,
+	organizationId uuid.UUID,
+	ruleId string,
+) error {
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.RuleDescriptionArgs{
+			RuleId: ruleId,
+		},
+		&river.InsertOpts{
+			Queue: organizationId.String(),
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued rule description task", "job_id", res.Job.ID)
+
 	return nil
 }
 

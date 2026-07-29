@@ -102,6 +102,7 @@ type AiAgentUsecaseBillingUsecase interface {
 type AiAgentUsecaseScenarioUsecase interface {
 	ValidateScenarioAst(
 		ctx context.Context,
+		orgId uuid.UUID,
 		scenarioId string,
 		astNode *ast.Node,
 		expectedReturnType ...string,

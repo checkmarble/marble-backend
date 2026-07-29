@@ -98,7 +98,8 @@
         "async_decision_execution_cleanup",
         "score_computation",
         "scoring_initial_insertion",
-        "scoring_initial_computation"
+        "scoring_initial_computation",
+        "rule_description"
       ]
     },
     {

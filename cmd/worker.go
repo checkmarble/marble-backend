@@ -384,6 +384,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewMatchEnrichmentWorker())
 	river.AddWorker(workers, adminUc.NewCaseReviewWorker(workerConfig.caseReviewTimeout))
 	river.AddWorker(workers, adminUc.NewScreeningHitSuggestionWorker(workerConfig.caseReviewTimeout))
+	river.AddWorker(workers, adminUc.NewRuleDescriptionWorker(workerConfig.caseReviewTimeout))
 	river.AddWorker(workers, adminUc.NewAutoAssignmentWorker())
 	river.AddWorker(workers, adminUc.NewDecisionWorkflowsWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningDoScreeningWorker())
@@ -679,6 +680,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion
 	case "scoring_initial_computation":
 		return uc.NewInitialComputationWorker().Work(ctx,
 			singleJobCreate[models.ScoringInitialComputationArgs](ctx, jobArgs))
+	case "rule_description":
+		return uc.NewRuleDescriptionWorker(workerConfig.caseReviewTimeout).Work(ctx,
+			singleJobCreate[models.RuleDescriptionArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}

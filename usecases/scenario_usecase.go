@@ -104,11 +104,11 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 }
 
 func (usecase *ScenarioUsecase) ValidateScenarioAst(ctx context.Context,
-	scenarioId string, astNode *ast.Node, expectedReturnType ...string,
+	orgId uuid.UUID, scenarioId string, astNode *ast.Node, expectedReturnType ...string,
 ) (validation models.AstValidation, err error) {
 	exec := usecase.executorFactory.NewExecutor()
 
-	org, err := usecase.orgRepository.GetOrganizationById(ctx, exec, usecase.enforceSecurity.OrgId())
+	org, err := usecase.orgRepository.GetOrganizationById(ctx, exec, orgId)
 	if err != nil {
 		return validation, err
 	}

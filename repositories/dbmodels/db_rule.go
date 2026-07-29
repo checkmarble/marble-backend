@@ -25,6 +25,7 @@ type DBRule struct {
 	DisplayOrder         int         `db:"display_order"`
 	Name                 string      `db:"name"`
 	Description          string      `db:"description"`
+	AiDescription        string      `db:"ai_description"`
 	ScoreModifier        int         `db:"score_modifier"`
 	FormulaAstExpression []byte      `db:"formula_ast_expression"`
 	CreatedAt            time.Time   `db:"created_at"`
@@ -47,6 +48,7 @@ func AdaptRule(db DBRule) (models.Rule, error) {
 		DisplayOrder:         db.DisplayOrder,
 		Name:                 db.Name,
 		Description:          db.Description,
+		AiDescription:        db.AiDescription,
 		FormulaAstExpression: formulaAstExpression,
 		ScoreModifier:        db.ScoreModifier,
 		CreatedAt:            db.CreatedAt,
@@ -63,6 +65,7 @@ type DBRuleMetadata struct {
 	DisplayOrder        int       `db:"display_order"`
 	Name                string    `db:"name"`
 	Description         string    `db:"description"`
+	AiDescription       string    `db:"ai_description"`
 	ScoreModifier       int       `db:"score_modifier"`
 	CreatedAt           time.Time `db:"created_at"`
 	RuleGroup           string    `db:"rule_group"`
@@ -77,6 +80,7 @@ func AdaptRuleMetadata(db DBRuleMetadata) (models.RuleMetadata, error) {
 		DisplayOrder:        db.DisplayOrder,
 		Name:                db.Name,
 		Description:         db.Description,
+		AiDescription:       db.AiDescription,
 		ScoreModifier:       db.ScoreModifier,
 		CreatedAt:           db.CreatedAt,
 		RuleGroup:           db.RuleGroup,
@@ -109,6 +113,7 @@ type DBCreateRuleInput struct {
 	DisplayOrder         int       `db:"display_order"`
 	Name                 string    `db:"name"`
 	Description          string    `db:"description"`
+	AiDescription        string    `db:"ai_description"`
 	ScoreModifier        int       `db:"score_modifier"`
 	FormulaAstExpression *[]byte   `db:"formula_ast_expression"`
 	RuleGroup            string    `db:"rule_group"`
@@ -129,6 +134,7 @@ func AdaptDBCreateRuleInput(rule models.CreateRuleInput) (DBCreateRuleInput, err
 		DisplayOrder:         rule.DisplayOrder,
 		Name:                 rule.Name,
 		Description:          rule.Description,
+		AiDescription:        rule.AiDescription,
 		ScoreModifier:        rule.ScoreModifier,
 		FormulaAstExpression: formulaAstExpression,
 		RuleGroup:            rule.RuleGroup,
@@ -142,6 +148,7 @@ type DBUpdateRuleInput struct {
 	DisplayOrder         *int    `db:"display_order"`
 	Name                 *string `db:"name"`
 	Description          *string `db:"description"`
+	AiDescription        *string `db:"ai_description"`
 	ScoreModifier        *int    `db:"score_modifier"`
 	FormulaAstExpression *[]byte `db:"formula_ast_expression"`
 	RuleGroup            *string `db:"rule_group"`
@@ -160,6 +167,7 @@ func AdaptDBUpdateRuleInput(rule models.UpdateRuleInput) (DBUpdateRuleInput, err
 		DisplayOrder:         rule.DisplayOrder,
 		Name:                 rule.Name,
 		Description:          rule.Description,
+		AiDescription:        rule.AiDescription,
 		ScoreModifier:        rule.ScoreModifier,
 		FormulaAstExpression: formulaAstExpression,
 		RuleGroup:            rule.RuleGroup,
