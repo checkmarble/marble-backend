@@ -1,10 +1,13 @@
 package usecases
 
 import (
+	"cmp"
 	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -536,22 +539,21 @@ func (uc *OrgImportUsecase) createDataModel(ctx context.Context, tx repositories
 		}
 	}
 
-	// Step G: Create navigation options
-	for navTableId, navOptionsList := range dataModel.NavigationOptions {
-		for _, navOption := range navOptionsList {
-			err := uc.dataModelUsecase.CreateNavigationOption(ctx, models.CreateNavigationOptionInput{
-				Blocking:        true,
-				SourceTableId:   ids[navTableId],
-				SourceFieldId:   ids[navOption.SourceFieldId],
-				TargetTableId:   ids[navOption.TargetTableId],
-				FilterFieldId:   ids[navOption.FilterFieldId],
-				OrderingFieldId: ids[navOption.OrderingFieldId],
-			})
-			if err != nil {
-				// Navigation options are checked for duplication, we want to ignore that
-				if !errors.Is(err, models.ConflictError) {
-					return err
-				}
+	// Step G: Create the navigation options that are not already covered by an index
+	// scheduled in step C (see navOptionsToCreate).
+	for _, navOption := range navOptionsToCreate(dataModel.Tables, includedLinks, dataModel.NavigationOptions) {
+		err := uc.dataModelUsecase.CreateNavigationOption(ctx, models.CreateNavigationOptionInput{
+			Blocking:        true,
+			SourceTableId:   ids[navOption.sourceTableId],
+			SourceFieldId:   ids[navOption.option.SourceFieldId],
+			TargetTableId:   ids[navOption.option.TargetTableId],
+			FilterFieldId:   ids[navOption.option.FilterFieldId],
+			OrderingFieldId: ids[navOption.option.OrderingFieldId],
+		})
+		if err != nil {
+			// Navigation options are checked for duplication, we want to ignore that
+			if !errors.Is(err, models.ConflictError) {
+				return err
 			}
 		}
 	}
@@ -723,6 +725,65 @@ func buildCreateTableLinkInputs(
 		})
 	}
 	return result
+}
+
+type navOptionToCreate struct {
+	sourceTableId string
+	option        dto.CreateNavigationOptionInput
+}
+
+// navIndexSignature identifies the physical index backing a navigation option: an index
+// on the target table over (filter field, ordering field). Several navigation options can
+// share the same index, since the source table plays no part in it.
+func navIndexSignature(targetTableId, filterFieldId, orderingFieldId string) string {
+	return strings.Join([]string{targetTableId, filterFieldId, orderingFieldId}, "|")
+}
+
+// navOptionsToCreate returns the navigation options the import has to create explicitly,
+// in a deterministic order, leaving out those whose index is already accounted for.
+//
+// Creating a link creates its navigation index, so every link passed to
+// CreateDataModelTable in step C already schedules an index on (child field, ordering
+// field) of the child table. That creation goes through the task queue and therefore only
+// happens once the import transaction commits, which makes it invisible to the duplicate
+// detection of CreateNavigationOption: recreating those navigation options here would
+// create each index a second time, under a different name.
+func navOptionsToCreate(
+	tables []dto.Table,
+	includedLinks []dto.LinkToSingle,
+	navOptions map[string][]dto.CreateNavigationOptionInput,
+) []navOptionToCreate {
+	tableById := make(map[string]dto.Table, len(tables))
+	for _, table := range tables {
+		tableById[table.ID] = table
+	}
+
+	covered := make(map[string]struct{}, len(includedLinks))
+	for _, link := range includedLinks {
+		childTable, ok := tableById[link.ChildTableId]
+		if !ok {
+			continue
+		}
+		orderingField, ok := childTable.Fields[cmp.Or(childTable.PrimaryOrderingField, "updated_at")]
+		if !ok {
+			continue
+		}
+		covered[navIndexSignature(link.ChildTableId, link.ChildFieldId, orderingField.ID)] = struct{}{}
+	}
+
+	toCreate := make([]navOptionToCreate, 0, len(navOptions))
+	for _, sourceTableId := range slices.Sorted(maps.Keys(navOptions)) {
+		for _, option := range navOptions[sourceTableId] {
+			sig := navIndexSignature(option.TargetTableId, option.FilterFieldId, option.OrderingFieldId)
+			if _, ok := covered[sig]; ok {
+				continue
+			}
+			covered[sig] = struct{}{}
+			toCreate = append(toCreate, navOptionToCreate{sourceTableId: sourceTableId, option: option})
+		}
+	}
+
+	return toCreate
 }
 
 // pivotSignature creates a string key to identify a pivot by its structure.
