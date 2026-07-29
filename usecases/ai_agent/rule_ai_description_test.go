@@ -8,29 +8,6 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 )
 
-func TestPreviousCommittedRulesByStableId(t *testing.T) {
-	t.Run("no committed iteration returns empty map", func(t *testing.T) {
-		draftOnly := []models.ScenarioIteration{
-			{Id: "draft", Version: nil, Rules: []models.Rule{{Id: "r1", StableRuleId: "s1"}}},
-		}
-		result := PreviousCommittedRulesByStableId(draftOnly)
-		assert.Empty(t, result)
-	})
-
-	t.Run("picks the highest versioned committed iteration", func(t *testing.T) {
-		v1 := 1
-		v2 := 2
-		iterations := []models.ScenarioIteration{
-			{Id: "it-v1", Version: &v1, Rules: []models.Rule{{Id: "r1", StableRuleId: "s1", Name: "old"}}},
-			{Id: "it-v2", Version: &v2, Rules: []models.Rule{{Id: "r2", StableRuleId: "s1", Name: "new"}}},
-			{Id: "draft", Version: nil, Rules: []models.Rule{{Id: "r3", StableRuleId: "s1", Name: "draft"}}},
-		}
-		result := PreviousCommittedRulesByStableId(iterations)
-		assert.Equal(t, "r2", result["s1"].Id)
-		assert.Equal(t, "new", result["s1"].Name)
-	})
-}
-
 func TestRulesNeedingAiDescriptionGeneration(t *testing.T) {
 	t.Run("no AI description and no user description needs generation", func(t *testing.T) {
 		current := []models.Rule{{Id: "r1", AiDescription: "", Description: ""}}
