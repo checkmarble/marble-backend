@@ -760,6 +760,15 @@ func (usecases UsecasesWithCreds) NewIngestedDataReaderUsecase() IngestedDataRea
 	)
 }
 
+func (usecases *UsecasesWithCreds) NewGraphWalkUsecase() GraphWalkUsecase {
+	return GraphWalkUsecase{
+		enforceSecurity:     usecases.NewEnforceSecurity(),
+		executorFactory:     usecases.NewExecutorFactory(),
+		dataModelRepository: usecases.Repositories.MarbleDbRepository,
+		graphRepository:     usecases.Repositories.GraphRepository,
+	}
+}
+
 func (usecases UsecasesWithCreds) NewFeatureAccessReader() feature_access.FeatureAccessReader {
 	return feature_access.NewFeatureAccessReader(
 		usecases.NewEnforceOrganizationSecurity(),
