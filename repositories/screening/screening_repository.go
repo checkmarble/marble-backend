@@ -376,7 +376,7 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, providerName mod
 
 	var subqueryErrors []error
 	for queryId, resp := range matches.Responses {
-		if resp.Status < http.StatusOK || resp.Status >= 300 {
+		if resp.Status != 0 && (resp.Status < http.StatusOK || resp.Status >= 300) {
 			subqueryErrors = append(subqueryErrors, &HTTPError{
 				StatusCode: resp.Status,
 				Message:    fmt.Sprintf("subquery %s failed", queryId),
