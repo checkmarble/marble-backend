@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -494,7 +495,30 @@ func TestOpenSanctionsSearch_PartialSubqueryFailure(t *testing.T) {
 	_, err := repo.Search(context.TODO(), models.ScreeningProviderOpenSanctions, query)
 
 	assert.NotNil(t, err)
-	errStr := err.Error()
-	assert.Contains(t, errStr, "status 400: subquery query_pep failed")
-	assert.Contains(t, errStr, "status 503: subquery query_user failed")
+
+	unwrappedErrs := []error{}
+	var joinErr interface{ Unwrap() []error }
+	if errors.As(err, &joinErr) {
+		unwrappedErrs = joinErr.Unwrap()
+	}
+
+	errorsByMessage := make(map[string]*HTTPError)
+	for _, e := range unwrappedErrs {
+		var httpErr *HTTPError
+		assert.True(t, errors.As(e, &httpErr), "expected HTTPError, got %T", e)
+		errorsByMessage[httpErr.Message] = httpErr
+		assert.True(t,
+			strings.Contains(httpErr.Message, "subquery") && strings.Contains(httpErr.Message, "failed"),
+			"expected message format 'subquery <name> failed', got: %s", httpErr.Message)
+	}
+
+	assert.Len(t, errorsByMessage, 2, "expected 2 distinct error messages")
+
+	assert.Contains(t, errorsByMessage, "subquery query_pep failed")
+	assert.Equal(t, http.StatusBadRequest, errorsByMessage["subquery query_pep failed"].StatusCode,
+		"expected query_pep to have status 400")
+
+	assert.Contains(t, errorsByMessage, "subquery query_user failed")
+	assert.Equal(t, http.StatusServiceUnavailable, errorsByMessage["subquery query_user failed"].StatusCode,
+		"expected query_user to have status 503")
 }
