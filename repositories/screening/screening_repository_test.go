@@ -1,6 +1,7 @@
 package screening
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -464,4 +465,36 @@ func TestDatasetOutdatedDetector(t *testing.T) {
 		assert.NoError(t, dataset.CheckIsUpToDate(now))
 		assert.Equal(t, tt.expected, dataset.UpToDate)
 	}
+}
+
+func TestOpenSanctionsSearch_PartialSubqueryFailure(t *testing.T) {
+	defer gock.Off()
+
+	repo := getMockedOpenSanctionsRepository("", "", "")
+	body, _ := os.ReadFile("../fixtures/opensanctions/response_multi_query_partial_error.json")
+
+	gock.New(infra.OPEN_SANCTIONS_API_HOST).
+		Post("/match/default").
+		Reply(http.StatusOK).
+		Body(bytes.NewReader(body))
+
+	query := models.OpenSanctionsQuery{
+		Config: models.ScreeningConfig{},
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Person",
+				Filters: models.OpenSanctionsFilter{
+					"name": []string{"test"},
+				},
+			},
+		},
+		OrgConfig: models.OrganizationOpenSanctionsConfig{MatchThreshold: 70},
+	}
+
+	_, err := repo.Search(context.TODO(), models.ScreeningProviderOpenSanctions, query)
+
+	assert.NotNil(t, err)
+	errStr := err.Error()
+	assert.Contains(t, errStr, "subquery query_pep failed")
+	assert.Contains(t, errStr, "subquery query_user failed")
 }

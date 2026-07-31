@@ -1,0 +1,43 @@
+{
+  "responses": {
+    "query_sanctions": {
+      "status": 200,
+      "results": [
+        {
+          "id": "ENTITY1",
+          "schema": "Person",
+          "properties": {
+            "name": ["Alice"]
+          },
+          "match": true,
+          "score": 0.95
+        }
+      ],
+      "total": {
+        "value": 1
+      }
+    },
+    "query_pep": {
+      "status": 400,
+      "results": [],
+      "total": {
+        "value": 0
+      }
+    },
+    "query_user": {
+      "status": 503,
+      "results": [],
+      "total": {
+        "value": 0
+      }
+    },
+    "query_company": {
+      "status": 202,
+      "results": [],
+      "total": {
+        "value": 0
+      }
+    }
+  },
+  "limit": 1
+}
