@@ -495,6 +495,6 @@ func TestOpenSanctionsSearch_PartialSubqueryFailure(t *testing.T) {
 
 	assert.NotNil(t, err)
 	errStr := err.Error()
-	assert.Contains(t, errStr, "subquery query_pep failed")
-	assert.Contains(t, errStr, "subquery query_user failed")
+	assert.Contains(t, errStr, "status 400: subquery query_pep failed")
+	assert.Contains(t, errStr, "status 503: subquery query_user failed")
 }
