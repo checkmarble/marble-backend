@@ -374,6 +374,20 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, providerName mod
 			"could not parse screening response")
 	}
 
+	var subqueryErrors []error
+	for queryId, resp := range matches.Responses {
+		if resp.Status < http.StatusOK || resp.Status >= 300 {
+			subqueryErrors = append(subqueryErrors, &HTTPError{
+				StatusCode: resp.Status,
+				Message:    fmt.Sprintf("subquery %s failed", queryId),
+			})
+		}
+	}
+
+	if len(subqueryErrors) > 0 {
+		return models.ScreeningRawSearchResponseWithMatches{}, errors.Join(subqueryErrors...)
+	}
+
 	screening, err := httpmodels.AdaptOpenSanctionsResult(rawQuery, matches)
 	if err != nil {
 		return screening, err

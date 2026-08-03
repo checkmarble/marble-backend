@@ -12,6 +12,7 @@ import (
 
 type HTTPOpenSanctionsResult struct {
 	Responses map[string]struct {
+		Status int `json:"status"`
 		Total struct {
 			Value int `json:"value"`
 		} `json:"total"`

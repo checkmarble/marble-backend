@@ -1,8 +1,10 @@
 package screening
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -464,4 +466,62 @@ func TestDatasetOutdatedDetector(t *testing.T) {
 		assert.NoError(t, dataset.CheckIsUpToDate(now))
 		assert.Equal(t, tt.expected, dataset.UpToDate)
 	}
+}
+
+func TestOpenSanctionsSearch_PartialSubqueryFailure(t *testing.T) {
+	defer gock.Off()
+
+	repo := getMockedOpenSanctionsRepository("", "", "")
+	body, err := os.ReadFile("../fixtures/opensanctions/response_multi_query_partial_error.json")
+	if err != nil {
+		t.Fatalf("failed to read fixture file: %v", err)
+	}
+
+	gock.New(infra.OPEN_SANCTIONS_API_HOST).
+		Post("/match/default").
+		Reply(http.StatusOK).
+		Body(bytes.NewReader(body))
+
+	query := models.OpenSanctionsQuery{
+		Config: models.ScreeningConfig{},
+		Queries: []models.OpenSanctionsCheckQuery{
+			{
+				Type: "Person",
+				Filters: models.OpenSanctionsFilter{
+					"name": []string{"test"},
+				},
+			},
+		},
+		OrgConfig: models.OrganizationOpenSanctionsConfig{MatchThreshold: 70},
+	}
+
+	_, searchErr := repo.Search(context.TODO(), models.ScreeningProviderOpenSanctions, query)
+
+	assert.NotNil(t, searchErr)
+
+	unwrappedErrs := []error{}
+	var joinErr interface{ Unwrap() []error }
+	if errors.As(searchErr, &joinErr) {
+		unwrappedErrs = joinErr.Unwrap()
+	}
+
+	errorsByMessage := make(map[string]*HTTPError)
+	for _, e := range unwrappedErrs {
+		var httpErr *HTTPError
+		assert.True(t, errors.As(e, &httpErr), "expected HTTPError, got %T", e)
+		errorsByMessage[httpErr.Message] = httpErr
+		assert.True(t,
+			strings.Contains(httpErr.Message, "subquery") && strings.Contains(httpErr.Message, "failed"),
+			"expected message format 'subquery <name> failed', got: %s", httpErr.Message)
+	}
+
+	assert.Len(t, errorsByMessage, 2, "expected 2 distinct error messages")
+
+	assert.Contains(t, errorsByMessage, "subquery query_pep failed")
+	assert.Equal(t, http.StatusBadRequest, errorsByMessage["subquery query_pep failed"].StatusCode,
+		"expected query_pep to have status 400")
+
+	assert.Contains(t, errorsByMessage, "subquery query_user failed")
+	assert.Equal(t, http.StatusServiceUnavailable, errorsByMessage["subquery query_user failed"].StatusCode,
+		"expected query_user to have status 503")
 }
