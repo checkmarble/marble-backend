@@ -109,6 +109,7 @@ func testContinuousScreeningAddAndDelete(t *testing.T, e *httpexpect.Expect) {
 		BodyString(`{
 			"responses": {
 				"query": {
+					"status": 200,
 					"total": { "value": 1 },
 					"results": [
 						{
