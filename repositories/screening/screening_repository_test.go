@@ -472,7 +472,10 @@ func TestOpenSanctionsSearch_PartialSubqueryFailure(t *testing.T) {
 	defer gock.Off()
 
 	repo := getMockedOpenSanctionsRepository("", "", "")
-	body, _ := os.ReadFile("../fixtures/opensanctions/response_multi_query_partial_error.json")
+	body, err := os.ReadFile("../fixtures/opensanctions/response_multi_query_partial_error.json")
+	if err != nil {
+		t.Fatalf("failed to read fixture file: %v", err)
+	}
 
 	gock.New(infra.OPEN_SANCTIONS_API_HOST).
 		Post("/match/default").
@@ -492,13 +495,13 @@ func TestOpenSanctionsSearch_PartialSubqueryFailure(t *testing.T) {
 		OrgConfig: models.OrganizationOpenSanctionsConfig{MatchThreshold: 70},
 	}
 
-	_, err := repo.Search(context.TODO(), models.ScreeningProviderOpenSanctions, query)
+	_, searchErr := repo.Search(context.TODO(), models.ScreeningProviderOpenSanctions, query)
 
-	assert.NotNil(t, err)
+	assert.NotNil(t, searchErr)
 
 	unwrappedErrs := []error{}
 	var joinErr interface{ Unwrap() []error }
-	if errors.As(err, &joinErr) {
+	if errors.As(searchErr, &joinErr) {
 		unwrappedErrs = joinErr.Unwrap()
 	}
 
