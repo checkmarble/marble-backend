@@ -336,3 +336,27 @@ func handleDeleteInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 		c.Status(http.StatusOK)
 	}
 }
+
+func handleBulkUpdateInboxSla(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		var input dto.BulkUpdateInboxSlaInput
+		if err := c.ShouldBind(&input); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
+		inboxes, err := usecase.BulkUpdateInboxSla(ctx, organizationId, dto.AdaptBulkUpdateInboxSlaInput(input))
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"inboxes": pure_utils.Map(inboxes, dto.AdaptInboxDto)})
+	}
+}

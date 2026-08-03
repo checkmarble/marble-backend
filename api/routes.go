@@ -329,6 +329,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/inboxes", tom, handleListInboxes(uc))
 	router.GET("/inboxes/metadata", tom, handleListInboxesMetadata(uc))
 	router.POST("/inboxes", tom, handlePostInbox(uc))
+	router.PATCH("/inboxes", tom, handleBulkUpdateInboxSla(uc))
 	router.GET("/inbox_users", tom, handleListAllInboxUsers(uc))
 	router.GET("/inbox_users/:inbox_user_id", tom, handleGetInboxUserById(uc))
 	router.PATCH("/inbox_users/:inbox_user_id", tom, handlePatchInboxUser(uc))

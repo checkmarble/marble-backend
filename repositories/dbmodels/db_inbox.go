@@ -19,6 +19,7 @@ type DBInbox struct {
 	Status            string     `db:"status"`
 	EscalationInboxId *uuid.UUID `db:"escalation_inbox_id"`
 	AutoAssignEnabled bool       `db:"auto_assign_enabled"`
+	Sla               *int       `db:"sla"`
 
 	// Fields for case review (automatic or manual) settings. May be moved to a separate implementation if or when
 	// we have more advanced automations implemented on cases.
@@ -41,6 +42,7 @@ func AdaptInbox(db DBInbox) (models.Inbox, error) {
 		Status:                  models.InboxStatus(db.Status),
 		EscalationInboxId:       db.EscalationInboxId,
 		AutoAssignEnabled:       db.AutoAssignEnabled,
+		Sla:                     db.Sla,
 		CaseReviewManual:        db.CaseReviewManual,
 		CaseReviewOnCaseCreated: db.CaseReviewOnCaseCreated,
 		CaseReviewOnEscalate:    db.CaseReviewOnEscalate,

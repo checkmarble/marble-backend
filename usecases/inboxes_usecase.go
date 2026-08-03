@@ -218,6 +218,50 @@ func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId uuid.UUID)
 	return nil
 }
 
+func (usecase *InboxUsecase) BulkUpdateInboxSla(ctx context.Context, orgId uuid.UUID, items []models.UpdateInboxSlaItem) ([]models.Inbox, error) {
+	inboxes, err := executor_factory.TransactionReturnValue(
+		ctx,
+		usecase.transactionFactory,
+		func(tx repositories.Transaction) ([]models.Inbox, error) {
+			updated := make([]models.Inbox, 0, len(items))
+			for _, item := range items {
+				if item.Sla != nil && *item.Sla < 1 {
+					return nil, errors.Wrap(models.BadParameterError, "sla must be null or >= 1")
+				}
+				inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, item.Id)
+				if err != nil {
+					return nil, err
+				}
+				if inbox.Status != models.InboxStatusActive {
+					return nil, errors.Wrap(models.ForbiddenError, "This inbox is archived and cannot be updated")
+				}
+				if err := usecase.enforceSecurity.UpdateInbox(inbox); err != nil {
+					return nil, err
+				}
+				if err := usecase.inboxRepository.UpdateInbox(ctx, tx, item.Id,
+					models.UpdateInboxInput{Sla: pure_utils.NullFromPtr(item.Sla)}); err != nil {
+					return nil, err
+				}
+				updatedInbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, item.Id)
+				if err != nil {
+					return nil, err
+				}
+				updated = append(updated, updatedInbox)
+			}
+			return updated, nil
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, inbox := range inboxes {
+		tracking.TrackEvent(ctx, models.AnalyticsInboxUpdated, map[string]interface{}{
+			"inbox_id": inbox.Id,
+		})
+	}
+	return inboxes, nil
+}
+
 func (usecase *InboxUsecase) GetInboxUserById(ctx context.Context, inboxUserId uuid.UUID) (models.InboxUser, error) {
 	return usecase.inboxUsers.GetInboxUserById(ctx, inboxUserId)
 }

@@ -25,6 +25,7 @@ type Inbox struct {
 	UpdatedAt         time.Time
 	InboxUsers        []InboxUser
 	CasesCount        *int
+	Sla               *int
 
 	// Fields for case review (automatic or manual) settings. May be moved to a separate implementation if or when
 	// we have more advanced automations implemented on cases.
@@ -60,4 +61,10 @@ type UpdateInboxInput struct {
 	CaseReviewManual        *bool                      `json:"case_review_manual"`
 	CaseReviewOnCaseCreated *bool                      `json:"case_review_on_case_created"`
 	CaseReviewOnEscalate    *bool                      `json:"case_review_on_escalate"`
+	Sla                     pure_utils.Null[int]       `json:"sla"`
+}
+
+type UpdateInboxSlaItem struct {
+	Id  uuid.UUID
+	Sla *int
 }
