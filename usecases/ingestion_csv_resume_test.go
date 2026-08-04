@@ -204,15 +204,19 @@ func TestIngestionDeadline(t *testing.T) {
 			"the ingestion must give up before river cancels the job, not after")
 	})
 
-	t.Run("already past the margin", func(t *testing.T) {
-		ctx, cancel := context.WithDeadline(context.Background(),
-			time.Now().Add(CSV_INGESTION_TIMEOUT_MARGIN/2))
+	t.Run("clamps the margin when the timeout is shorter than it", func(t *testing.T) {
+		riverDeadline := time.Now().Add(CSV_INGESTION_TIMEOUT_MARGIN / 2)
+		ctx, cancel := context.WithDeadline(context.Background(), riverDeadline)
 		defer cancel()
 
 		deadline, ok := ingestionDeadline(ctx)
 		require.True(t, ok)
-		assert.True(t, time.Now().After(deadline),
-			"an attempt starting with less headroom than the margin should checkpoint after its first batch")
+		assert.True(t, deadline.After(time.Now()),
+			"a short timeout must still leave time to ingest, otherwise every attempt snoozes after one batch")
+		assert.True(t, deadline.Before(riverDeadline),
+			"the ingestion must give up before river cancels the job, not after")
+		assert.WithinDuration(t, time.Now().Add(CSV_INGESTION_TIMEOUT_MARGIN/4), deadline, time.Second,
+			"the clamped margin is half the remaining time, leaving the other half to ingest")
 	})
 }
 

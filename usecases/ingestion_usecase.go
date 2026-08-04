@@ -38,9 +38,11 @@ const (
 	CSV_INGESTION_ITERATION_TIMEOUT = 10 * time.Second
 
 	// CSV_INGESTION_TIMEOUT_MARGIN is the headroom reserved before river's own Timeout, so there is
-	// time to save the checkpoint and snooze before river cancels the job. It must exceed the
-	// worst-case duration of one batch: CSV_INGESTION_ITERATION_TIMEOUT times retryIngestion's
-	// attempts, plus one checkpoint write.
+	// time to save the checkpoint and snooze before river cancels the job. The deadline is only
+	// checked once a batch has committed, so the margin must cover one more full iteration: reading
+	// csvIngestionBatchSize rows off the blob reader (bounded by nothing but river's cancellation),
+	// one ingestion batch (bounded by CSV_INGESTION_ITERATION_TIMEOUT, which retryIngestion's two
+	// attempts share as a single deadline), and one checkpoint write.
 	CSV_INGESTION_TIMEOUT_MARGIN = 2 * time.Minute
 	CSV_INGESTION_SNOOZE_DELAY   = 5 * time.Second
 )
@@ -726,7 +728,11 @@ func ingestionDeadline(ctx context.Context) (time.Time, bool) {
 	if !ok {
 		return time.Time{}, false
 	}
-	return deadline.Add(-CSV_INGESTION_TIMEOUT_MARGIN), true
+	// CSV_INGESTION_TIMEOUT is configurable while the margin is not, so guard against a timeout short
+	// enough that the full margin would land before the attempt even starts: that would make every
+	// attempt snooze after a single batch and hit csvIngestionMaxSnoozes instead of ingesting.
+	margin := min(CSV_INGESTION_TIMEOUT_MARGIN, time.Until(deadline)/2)
+	return deadline.Add(-margin), true
 }
 
 type ingestionResult struct {
