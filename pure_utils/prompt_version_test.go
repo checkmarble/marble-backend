@@ -48,4 +48,22 @@ func Test_ResolveBestPromptVersion(t *testing.T) {
 		_, err := ResolveBestPromptVersion([]string{"v1.0"}, "not-a-version")
 		require.Error(t, err)
 	})
+
+	t.Run("prerelease requested version is treated as its release for exact match", func(t *testing.T) {
+		best, err := ResolveBestPromptVersion([]string{"v1.6", "v1.7"}, "1.7.0-rc.1")
+		require.NoError(t, err)
+		assert.Equal(t, "v1.7", best)
+	})
+
+	t.Run("prerelease requested version falls back to nearest earlier when its release isn't published yet", func(t *testing.T) {
+		best, err := ResolveBestPromptVersion([]string{"v1.6"}, "1.7.0-rc.1")
+		require.NoError(t, err)
+		assert.Equal(t, "v1.6", best)
+	})
+
+	t.Run("prerelease requested version below everything resolves to nothing", func(t *testing.T) {
+		best, err := ResolveBestPromptVersion([]string{"v1.8"}, "1.7.0-rc.1")
+		require.NoError(t, err)
+		assert.Equal(t, "", best)
+	})
 }
