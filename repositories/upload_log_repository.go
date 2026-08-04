@@ -14,6 +14,7 @@ import (
 type UploadLogRepository interface {
 	CreateUploadLog(ctx context.Context, exec Executor, log models.UploadLog) error
 	UpdateUploadLogStatus(ctx context.Context, exec Executor, input models.UpdateUploadLogStatusInput) (executed bool, err error)
+	SaveUploadLogCheckpoint(ctx context.Context, exec Executor, id uuid.UUID, byteOffset int64, rowsIngested int) error
 	UploadLogById(ctx context.Context, exec Executor, id uuid.UUID) (models.UploadLog, error)
 	AllUploadLogsByTable(ctx context.Context, exec Executor, organizationId uuid.UUID,
 		tableName string) ([]models.UploadLog, error)
@@ -105,6 +106,30 @@ func (repo *UploadLogRepositoryImpl) UpdateUploadLogStatus(
 	}
 
 	return tag.RowsAffected() > 0, nil
+}
+
+// SaveUploadLogCheckpoint records how far into the CSV the ingestion got, so a later attempt can
+// resume from there rather than restarting the file.
+func (repo *UploadLogRepositoryImpl) SaveUploadLogCheckpoint(
+	ctx context.Context,
+	exec Executor,
+	id uuid.UUID,
+	byteOffset int64,
+	rowsIngested int,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	return ExecBuilder(
+		ctx,
+		exec,
+		NewQueryBuilder().Update(dbmodels.TABLE_UPLOAD_LOGS).
+			Set("byte_offset", byteOffset).
+			Set("num_rows_ingested", rowsIngested).
+			Where(squirrel.Eq{"id": id}).
+			Where(squirrel.Eq{"status": models.UploadProcessing}),
+	)
 }
 
 func (repo *UploadLogRepositoryImpl) UploadLogById(ctx context.Context, exec Executor, id uuid.UUID) (models.UploadLog, error) {

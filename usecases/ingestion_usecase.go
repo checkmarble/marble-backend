@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/riverqueue/river"
+	"github.com/tidwall/gjson"
 	"github.com/twpayne/go-geom"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -35,9 +36,21 @@ const (
 	DefaultApiBatchIngestionSize = 100
 
 	CSV_INGESTION_ITERATION_TIMEOUT = 10 * time.Second
+
+	// CSV_INGESTION_TIMEOUT_MARGIN is the headroom reserved before river's own Timeout, so there is
+	// time to save the checkpoint and snooze before river cancels the job. It must exceed the
+	// worst-case duration of one batch: CSV_INGESTION_ITERATION_TIMEOUT times retryIngestion's
+	// attempts, plus one checkpoint write.
+	CSV_INGESTION_TIMEOUT_MARGIN = 2 * time.Minute
+	CSV_INGESTION_SNOOZE_DELAY   = 5 * time.Second
 )
 
 var csvIngestionBatchSize = utils.GetEnv("CSV_INGESTION_BATCH_SIZE", 1000)
+
+// csvIngestionMaxSnoozes bounds how many times a single upload may be resumed before we give up on
+// it. It is coupled to CSV_INGESTION_TIMEOUT (default 1h), so the default is roughly a 24h ceiling:
+// change one and revisit the other.
+var csvIngestionMaxSnoozes = utils.GetEnv("CSV_INGESTION_MAX_SNOOZES", 24)
 
 type continuousScreeningRepository interface {
 	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) (models.Organization, error)
@@ -511,36 +524,72 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 
 // IngestDataFromCsvByUploadLogId processes a single upload log by its ID.
 // This is the main entry point for the CSV ingestion worker.
+//
+// Large files may not fit in a single job attempt: the returned outcome tells the caller whether the
+// upload finished or whether it was checkpointed part-way and should be resumed later.
 func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(ctx context.Context,
 	uploadLogId uuid.UUID, ingestionOptions models.IngestionOptions,
-) error {
+) (models.CsvIngestionOutcome, error) {
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Start ingesting data from upload log %s", uploadLogId))
 
 	exec := usecase.executorFactory.NewExecutor()
 	uploadLog, err := usecase.uploadLogRepository.UploadLogById(ctx, exec, uploadLogId)
 	if err != nil {
-		return err
+		return models.CsvIngestionCompleted, err
 	}
 
 	return usecase.processUploadLog(ctx, uploadLog, ingestionOptions)
 }
 
-func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog models.UploadLog, ingestionOptions models.IngestionOptions) error {
+// FailUploadLog marks an upload log as failed from outside the ingestion loop, used when the worker
+// gives up on resuming it. byte_offset and num_rows_ingested are deliberately left untouched, so the
+// failure can be diagnosed from where the ingestion stopped.
+func (usecase *IngestionUseCase) FailUploadLog(ctx context.Context, uploadLogId uuid.UUID, reason string) error {
+	exec := usecase.executorFactory.NewExecutor()
+	finishedAt := time.Now()
+
+	_, err := usecase.uploadLogRepository.UpdateUploadLogStatus(ctx, exec, models.UpdateUploadLogStatusInput{
+		Id:                           uploadLogId,
+		CurrentUploadStatusCondition: models.UploadProcessing,
+		UploadStatus:                 models.UploadFailure,
+		FinishedAt:                   &finishedAt,
+		Error:                        &reason,
+	})
+	return err
+}
+
+func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog models.UploadLog,
+	ingestionOptions models.IngestionOptions,
+) (models.CsvIngestionOutcome, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Start processing UploadLog %s", uploadLog.Id))
 
-	done, err := usecase.uploadLogRepository.UpdateUploadLogStatus(ctx, exec, models.UpdateUploadLogStatusInput{
-		Id:                           uploadLog.Id,
-		CurrentUploadStatusCondition: models.UploadPending,
-		UploadStatus:                 models.UploadProcessing,
-	})
-	if err != nil {
-		return err
-	} else if !done {
-		logger.InfoContext(ctx, fmt.Sprintf("UploadLog %s is no longed in pending status", uploadLog.Id))
-		return nil
+	switch uploadLog.UploadStatus {
+	case models.UploadPending:
+		done, err := usecase.uploadLogRepository.UpdateUploadLogStatus(ctx, exec, models.UpdateUploadLogStatusInput{
+			Id:                           uploadLog.Id,
+			CurrentUploadStatusCondition: models.UploadPending,
+			UploadStatus:                 models.UploadProcessing,
+		})
+		if err != nil {
+			return models.CsvIngestionCompleted, err
+		} else if !done {
+			logger.InfoContext(ctx, fmt.Sprintf("UploadLog %s is no longed in pending status", uploadLog.Id))
+			return models.CsvIngestionCompleted, nil
+		}
+	case models.UploadProcessing:
+		// Resuming: either a previous attempt snoozed itself on approaching its timeout, or it was
+		// killed mid-file and river requeued it. Either way the status is already correct and
+		// uploadLog.ByteOffset says where to pick up. River runs at most one attempt of a given job
+		// at a time, so this cannot race with another worker on the same upload log.
+		logger.InfoContext(ctx, fmt.Sprintf("Resuming UploadLog %s", uploadLog.Id),
+			"byte_offset", uploadLog.ByteOffset, "rows_ingested", uploadLog.RowsIngested)
+	default:
+		logger.InfoContext(ctx, fmt.Sprintf("UploadLog %s is in terminal status %s, nothing to do",
+			uploadLog.Id, uploadLog.UploadStatus))
+		return models.CsvIngestionCompleted, nil
 	}
 
 	setToFailed := func(numRowsIngested int, inputErr error, ingestErr error) {
@@ -572,19 +621,52 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		}
 	}
 
-	file, err := usecase.blobRepository.GetBlob(ctx, usecase.ingestionBucketUrl, uploadLog.FileName)
-	if file.ReadCloser != nil {
-		defer file.ReadCloser.Close()
-	}
+	// The header is read from its own reader at the start of the file, so that the data reader can
+	// always be opened at an explicit offset and never has to deal with the header row nor with a
+	// leading BOM, whether this is a first attempt or a resume.
+	header, dataStart, err := usecase.readCsvHeader(ctx, uploadLog.FileName)
 	if err != nil {
-		setToFailed(0, nil, err)
-		return err
+		setToFailed(uploadLog.RowsIngested, nil, err)
+		return models.CsvIngestionCompleted, err
 	}
 
-	out := usecase.readFileIngestObjects(ctx, exec, file.FileName, file.ReadCloser, ingestionOptions)
-	if out.inputErr != nil || out.err != nil {
-		setToFailed(out.numRowsIngested, out.inputErr, out.err)
-		return errors.Join(out.inputErr, out.err)
+	startOffset := max(uploadLog.ByteOffset, dataStart)
+
+	attrs, err := usecase.blobRepository.GetBlobAttributes(ctx, usecase.ingestionBucketUrl, uploadLog.FileName)
+	if err != nil {
+		setToFailed(uploadLog.RowsIngested, nil, err)
+		return models.CsvIngestionCompleted, err
+	}
+
+	// A previous attempt may have checkpointed exactly at EOF and died before marking the log
+	// successful. Requesting a range that starts at the file size is rejected by the storage
+	// backends, so short-circuit straight to the success path: there is nothing left to read.
+	out := ingestionResult{numRowsIngested: uploadLog.RowsIngested}
+	if startOffset < attrs.Size {
+		file, err := usecase.blobRepository.GetBlob(ctx, usecase.ingestionBucketUrl, uploadLog.FileName,
+			repositories.WithBeginOffset(startOffset))
+		if file.ReadCloser != nil {
+			defer file.ReadCloser.Close()
+		}
+		if err != nil {
+			setToFailed(uploadLog.RowsIngested, nil, err)
+			return models.CsvIngestionCompleted, err
+		}
+
+		out = usecase.readFileIngestObjects(ctx, exec, uploadLog, header, startOffset,
+			file.ReadCloser, ingestionOptions)
+		if out.inputErr != nil || out.err != nil {
+			// Failures raised before the ingestion loop is reached report zero rows; don't let that
+			// erase what previous attempts already ingested.
+			setToFailed(max(out.numRowsIngested, uploadLog.RowsIngested), out.inputErr, out.err)
+			return models.CsvIngestionCompleted, errors.Join(out.inputErr, out.err)
+		}
+
+		// Out of time: the loop already saved the checkpoint, so leave the log in `processing` for a
+		// later attempt to resume from it.
+		if out.incomplete {
+			return models.CsvIngestionIncomplete, nil
+		}
 	}
 
 	currentTime := time.Now()
@@ -596,24 +678,74 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		NumRowsIngested:              &out.numRowsIngested,
 	}
 	if _, err = usecase.uploadLogRepository.UpdateUploadLogStatus(ctx, exec, input); err != nil {
-		return err
+		return models.CsvIngestionCompleted, err
 	}
-	return nil
+	return models.CsvIngestionCompleted, nil
+}
+
+// readCsvHeader reads the header row from the start of the file and returns it along with the
+// absolute byte offset at which the first data row begins.
+//
+// The reader is deliberately not wrapped in pure_utils.NewReaderWithoutBom: that wrapper discards the
+// BOM before csv.Reader sees it, which would make InputOffset() relative to the post-BOM stream and
+// leave every offset we persist 3 bytes short. Instead the BOM is trimmed off the one thing it
+// actually breaks, the first header name.
+func (usecase *IngestionUseCase) readCsvHeader(ctx context.Context, fileName string) ([]string, int64, error) {
+	blob, err := usecase.blobRepository.GetBlob(ctx, usecase.ingestionBucketUrl, fileName)
+	if blob.ReadCloser != nil {
+		// Closed as soon as the header is read: the range reader streams lazily, so only the first
+		// buffered chunk of the file is ever transferred, not the whole thing.
+		defer blob.ReadCloser.Close()
+	}
+	if err != nil {
+		return nil, 0, err
+	}
+
+	csvReader := csv.NewReader(blob.ReadCloser)
+	header, err := csvReader.Read()
+	if err != nil {
+		return nil, 0, fmt.Errorf("error reading first row of CSV: %w", err)
+	}
+
+	// Excel and other Windows tools prefix UTF-8 CSVs with a BOM, which lands on the first header
+	// name and would fail the required-field check. Only files uploaded straight to blob storage
+	// through a presigned link can still carry one; the synchronous path strips it on upload.
+	header[0] = strings.TrimPrefix(header[0], "\ufeff")
+
+	return header, csvReader.InputOffset(), nil
+}
+
+// ingestionDeadline returns the point in time past which the ingestion should checkpoint and give up
+// its attempt, keeping CSV_INGESTION_TIMEOUT_MARGIN of headroom before river cancels the job.
+//
+// It is derived from the context rather than recomputed from CsvIngestionWorker.Timeout so that the
+// margin is measured against river's actual cancellation point. Callers without a deadline (the
+// integration tests and the cmd/worker.go single-job path) run to completion and never snooze.
+func ingestionDeadline(ctx context.Context) (time.Time, bool) {
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		return time.Time{}, false
+	}
+	return deadline.Add(-CSV_INGESTION_TIMEOUT_MARGIN), true
 }
 
 type ingestionResult struct {
 	numRowsIngested int
-	inputErr        error
-	err             error
+	// incomplete reports that the file was checkpointed part-way through because the attempt was
+	// running out of time, and that ingestion should be resumed from the saved offset.
+	incomplete bool
+	inputErr   error
+	err        error
 }
 
 // This method uses a return value wrapping an error, because we still want to use the number of rows ingested even if
 // an error occurred.
 func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context,
-	exec repositories.Executor, fileName string, fileReader io.Reader,
-	ingestionOptions models.IngestionOptions,
+	exec repositories.Executor, uploadLog models.UploadLog, header []string,
+	startOffset int64, fileReader io.Reader, ingestionOptions models.IngestionOptions,
 ) ingestionResult {
 	logger := utils.LoggerFromContext(ctx)
+	fileName := uploadLog.FileName
 	logger.InfoContext(ctx, fmt.Sprintf("Ingesting data from CSV %s", fileName))
 
 	var (
@@ -668,12 +800,16 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context,
 		}
 	}
 
-	return usecase.ingestObjectsFromCSV(ctx, organizationId, fileReader, table, ingestionOptions)
+	return usecase.ingestObjectsFromCSV(ctx, organizationId, uploadLog, header, startOffset,
+		fileReader, table, ingestionOptions)
 }
 
 func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 	ctx context.Context,
 	organizationId uuid.UUID,
+	uploadLog models.UploadLog,
+	header []string,
+	startOffset int64,
 	fileReader io.Reader,
 	table models.Table,
 	ingestionOptions models.IngestionOptions,
@@ -701,19 +837,19 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 	}
 	defer printDuration()
 
-	r := csv.NewReader(pure_utils.NewReaderWithoutBom(fileReader))
-
-	firstRow, err := r.Read()
-	if err != nil {
-		return ingestionResult{
-			err: fmt.Errorf("error reading first row of CSV: %w", err),
-		}
-	}
+	// fileReader is positioned on a data row, not on the header: the header was read separately by
+	// readCsvHeader so that this reader can start at an arbitrary offset when resuming. No BOM
+	// handling either, since a BOM can only ever sit at byte 0 of the file.
+	r := csv.NewReader(fileReader)
+	// Normally established by the first row csv.Reader reads, which here is a data row rather than
+	// the header. Setting it explicitly keeps the column-count check identical on a first attempt
+	// and on a resume.
+	r.FieldsPerRecord = len(header)
 
 	// first, check presence of all required fields in the csv
 	for name, field := range table.Fields {
 		if !field.Nullable {
-			if !slices.Contains(firstRow, name) {
+			if !slices.Contains(header, name) {
 				return ingestionResult{
 					inputErr: errors.WithDetailf(models.BadParameterError, "missing required field %s in CSV", name),
 				}
@@ -737,11 +873,16 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 		}
 	}
 
+	// Rows ingested by previous attempts. Kept apart from `total` so printDuration still reports the
+	// throughput of this attempt alone, while the persisted counter accumulates across attempts.
+	previouslyIngested := uploadLog.RowsIngested
+
+	deadline, hasDeadline := ingestionDeadline(ctx)
+
 	keepParsingFile := true
-	objectIdx := 0
+	objectIdx := previouslyIngested
 	for keepParsingFile {
 		iterationCtx, iterationCancel := context.WithTimeout(ctx, CSV_INGESTION_ITERATION_TIMEOUT)
-		defer iterationCancel()
 
 		windowEnd := objectIdx + csvIngestionBatchSize
 		clientObjects := make([]models.ClientObject, 0, csvIngestionBatchSize)
@@ -752,17 +893,22 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 				keepParsingFile = false
 				break
 			} else if err != nil {
+				iterationCancel()
 				return ingestionResult{
-					numRowsIngested: total,
-					err:             fmt.Errorf("error reading line %d of CSV: %w", objectIdx, err),
+					numRowsIngested: previouslyIngested + total,
+					err: fmt.Errorf("error reading line %d of CSV (byte offset %d): %w",
+						objectIdx, startOffset+r.InputOffset(), err),
 				}
 			}
 
-			object, err := parseStringValuesToMap(firstRow, record, table, usecase.payloadEnricher)
+			object, err := parseStringValuesToMap(header, record, table, usecase.payloadEnricher)
 			if err != nil {
+				iterationCancel()
 				return ingestionResult{
-					numRowsIngested: total,
-					inputErr:        errors.WithDetailf(err, "error parsing field value in CSV at line %d: %v", objectIdx, err),
+					numRowsIngested: previouslyIngested + total,
+					inputErr: errors.WithDetailf(err,
+						"error parsing field value in CSV at line %d (byte offset %d): %v",
+						objectIdx, startOffset+r.InputOffset(), err),
 				}
 			}
 			logger.DebugContext(iterationCtx, fmt.Sprintf("Object to ingest %d: %+v", objectIdx, object))
@@ -777,17 +923,44 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 				organizationId, clientObjects, table, ingestionOptions)
 			return err
 		}); err != nil {
+			iterationCancel()
 			return ingestionResult{
-				numRowsIngested: total,
+				numRowsIngested: previouslyIngested + total,
 				err:             err,
 			}
 		}
 		nbInsertedObjects := len(ingestionResults)
 		total += nbInsertedObjects
+		// Cancelled here rather than deferred: this loop body runs once per batch, so on a multi-GB
+		// file deferring would pile up tens of thousands of pending calls until the function returns.
+		iterationCancel()
+
+		// Offset of the first row not ingested yet, saved once the batch has committed. A crash in
+		// that window re-ingests this batch on the next attempt rather than skipping it, which is the
+		// safe direction: upload_logs and the client objects live in different databases, so the two
+		// writes cannot share a transaction.
+		checkpoint := startOffset + r.InputOffset()
+		if err := usecase.uploadLogRepository.SaveUploadLogCheckpoint(ctx, exec, uploadLog.Id,
+			checkpoint, previouslyIngested+total); err != nil {
+			return ingestionResult{
+				numRowsIngested: previouslyIngested + total,
+				err:             errors.Wrap(err, "error saving upload log checkpoint"),
+			}
+		}
+
+		if keepParsingFile && hasDeadline && time.Now().After(deadline) {
+			logger.InfoContext(ctx, "csv ingestion: approaching job timeout, checkpointed and stopping for now",
+				"upload_log_id", uploadLog.Id, "byte_offset", checkpoint,
+				"rows_ingested", previouslyIngested+total)
+			return ingestionResult{
+				numRowsIngested: previouslyIngested + total,
+				incomplete:      true,
+			}
+		}
 	}
 
 	return ingestionResult{
-		numRowsIngested: total,
+		numRowsIngested: previouslyIngested + total,
 	}
 }
 
@@ -1112,5 +1285,28 @@ func (w *CsvIngestionWorker) Timeout(job *river.Job[models.CsvIngestionArgs]) ti
 }
 
 func (w *CsvIngestionWorker) Work(ctx context.Context, job *river.Job[models.CsvIngestionArgs]) error {
-	return w.ingestionUsecase.IngestDataFromCsvByUploadLogId(ctx, job.Args.UploadLogId, job.Args.IngestionOptions)
+	// Reading river's `snoozes` metadata counter and not job.Attempt: JobSnooze deliberately
+	// decrements Attempt so that resuming never consumes a retry, which also means an oversized file
+	// could otherwise be resumed forever.
+	if gjson.GetBytes(job.Metadata, "snoozes").Int() > int64(csvIngestionMaxSnoozes) {
+		utils.LoggerFromContext(ctx).ErrorContext(ctx, "csv ingestion exceeded its maximum number of resumes",
+			"upload_log_id", job.Args.UploadLogId, "max_snoozes", csvIngestionMaxSnoozes)
+
+		if err := w.ingestionUsecase.FailUploadLog(ctx, job.Args.UploadLogId,
+			fmt.Sprintf("ingestion did not complete after %d resumes", csvIngestionMaxSnoozes)); err != nil {
+			return err
+		}
+		return river.JobCancel(errors.New("csv ingestion exceeded its maximum number of resumes"))
+	}
+
+	outcome, err := w.ingestionUsecase.IngestDataFromCsvByUploadLogId(ctx, job.Args.UploadLogId,
+		job.Args.IngestionOptions)
+	if err != nil {
+		return err
+	}
+
+	if outcome == models.CsvIngestionIncomplete {
+		return river.JobSnooze(CSV_INGESTION_SNOOZE_DELAY)
+	}
+	return nil
 }
