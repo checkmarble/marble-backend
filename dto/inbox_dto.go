@@ -85,6 +85,7 @@ type UpdateInboxInput struct {
 	CaseReviewManual        *bool                      `json:"case_review_manual"`
 	CaseReviewOnCaseCreated *bool                      `json:"case_review_on_case_created"`
 	CaseReviewOnEscalate    *bool                      `json:"case_review_on_escalate"`
+	Sla                     pure_utils.Null[int]      `json:"sla" binding:"omitempty,min=1"`
 }
 
 func AdaptUpdateInboxInput(i UpdateInboxInput) models.UpdateInboxInput {
@@ -95,22 +96,22 @@ func AdaptUpdateInboxInput(i UpdateInboxInput) models.UpdateInboxInput {
 		CaseReviewManual:        i.CaseReviewManual,
 		CaseReviewOnCaseCreated: i.CaseReviewOnCaseCreated,
 		CaseReviewOnEscalate:    i.CaseReviewOnEscalate,
-		Sla:                     pure_utils.Null[int]{},
+		Sla:                     i.Sla,
 	}
 }
 
-type UpdateInboxSlaItem struct {
+type UpdateInboxItem struct {
 	Id  uuid.UUID `json:"id" binding:"required"`
 	Sla *int      `json:"sla" binding:"omitempty,min=1"`
 }
 
-type BulkUpdateInboxSlaInput struct {
-	Inboxes []UpdateInboxSlaItem `json:"inboxes" binding:"required"`
+type BulkUpdateInboxInput struct {
+	Inboxes []UpdateInboxItem `json:"inboxes" binding:"required"`
 }
 
-func AdaptBulkUpdateInboxSlaInput(i BulkUpdateInboxSlaInput) []models.UpdateInboxSlaItem {
-	return pure_utils.Map(i.Inboxes, func(item UpdateInboxSlaItem) models.UpdateInboxSlaItem {
-		return models.UpdateInboxSlaItem{
+func AdaptBulkUpdateInboxInput(i BulkUpdateInboxInput) []models.UpdateInboxItem {
+	return pure_utils.Map(i.Inboxes, func(item UpdateInboxItem) models.UpdateInboxItem {
+		return models.UpdateInboxItem{
 			Id:  item.Id,
 			Sla: item.Sla,
 		}

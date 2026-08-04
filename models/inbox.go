@@ -64,7 +64,7 @@ type UpdateInboxInput struct {
 	Sla                     pure_utils.Null[int]       `json:"sla"`
 }
 
-type UpdateInboxSlaItem struct {
+type UpdateInboxItem struct {
 	Id  uuid.UUID
 	Sla *int
 }

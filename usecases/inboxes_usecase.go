@@ -132,40 +132,49 @@ func (usecase *InboxUsecase) CreateInboxWithExecutor(
 	return inbox, nil
 }
 
+func (usecase *InboxUsecase) updateSingleInboxWithValidation(
+	ctx context.Context,
+	tx repositories.Transaction,
+	inboxId uuid.UUID,
+	input models.UpdateInboxInput,
+) (models.Inbox, error) {
+	inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
+	if err != nil {
+		return models.Inbox{}, err
+	}
+
+	if inbox.Status != models.InboxStatusActive {
+		return models.Inbox{}, errors.Wrap(models.ForbiddenError,
+			"This inbox is archived and cannot be updated")
+	}
+
+	if err := usecase.enforceSecurity.UpdateInbox(inbox); err != nil {
+		return models.Inbox{}, err
+	}
+
+	if input.EscalationInboxId.Set && input.EscalationInboxId.Valid {
+		escalationInbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, input.EscalationInboxId.Value())
+		if err != nil {
+			return models.Inbox{}, err
+		}
+		if err := usecase.enforceSecurity.ReadInbox(escalationInbox); err != nil {
+			return models.Inbox{}, err
+		}
+	}
+
+	if err := usecase.inboxRepository.UpdateInbox(ctx, tx, inboxId, input); err != nil {
+		return models.Inbox{}, err
+	}
+
+	return usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
+}
+
 func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId uuid.UUID, input models.UpdateInboxInput) (models.Inbox, error) {
 	inbox, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.Inbox, error) {
-			inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
-			if err != nil {
-				return models.Inbox{}, err
-			}
-
-			if inbox.Status != models.InboxStatusActive {
-				return models.Inbox{}, errors.Wrap(models.ForbiddenError,
-					"This inbox is archived and cannot be updated")
-			}
-
-			if err := usecase.enforceSecurity.UpdateInbox(inbox); err != nil {
-				return models.Inbox{}, err
-			}
-
-			if input.EscalationInboxId.Set && input.EscalationInboxId.Valid {
-				escalationInbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, input.EscalationInboxId.Value())
-				if err != nil {
-					return models.Inbox{}, err
-				}
-				if err := usecase.enforceSecurity.ReadInbox(escalationInbox); err != nil {
-					return models.Inbox{}, err
-				}
-			}
-
-			if err := usecase.inboxRepository.UpdateInbox(ctx, tx, inboxId, input); err != nil {
-				return models.Inbox{}, err
-			}
-
-			return usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
+			return usecase.updateSingleInboxWithValidation(ctx, tx, inboxId, input)
 		})
 	if err != nil {
 		return models.Inbox{}, err
@@ -218,31 +227,17 @@ func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId uuid.UUID)
 	return nil
 }
 
-func (usecase *InboxUsecase) BulkUpdateInboxSla(ctx context.Context, orgId uuid.UUID, items []models.UpdateInboxSlaItem) ([]models.Inbox, error) {
+func (usecase *InboxUsecase) BulkUpdateInbox(ctx context.Context, orgId uuid.UUID, items []models.UpdateInboxItem) ([]models.Inbox, error) {
 	inboxes, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) ([]models.Inbox, error) {
 			updated := make([]models.Inbox, 0, len(items))
 			for _, item := range items {
-				if item.Sla != nil && *item.Sla < 1 {
-					return nil, errors.Wrap(models.BadParameterError, "sla must be null or >= 1")
+				input := models.UpdateInboxInput{
+					Sla: pure_utils.NullFromPtr(item.Sla),
 				}
-				inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, item.Id)
-				if err != nil {
-					return nil, err
-				}
-				if inbox.Status != models.InboxStatusActive {
-					return nil, errors.Wrap(models.ForbiddenError, "This inbox is archived and cannot be updated")
-				}
-				if err := usecase.enforceSecurity.UpdateInbox(inbox); err != nil {
-					return nil, err
-				}
-				if err := usecase.inboxRepository.UpdateInbox(ctx, tx, item.Id,
-					models.UpdateInboxInput{Sla: pure_utils.NullFromPtr(item.Sla)}); err != nil {
-					return nil, err
-				}
-				updatedInbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, item.Id)
+				updatedInbox, err := usecase.updateSingleInboxWithValidation(ctx, tx, item.Id, input)
 				if err != nil {
 					return nil, err
 				}

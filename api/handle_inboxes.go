@@ -337,7 +337,7 @@ func handleDeleteInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleBulkUpdateInboxSla(uc usecases.Usecases) func(c *gin.Context) {
+func handleBulkUpdateInbox(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -345,14 +345,14 @@ func handleBulkUpdateInboxSla(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		var input dto.BulkUpdateInboxSlaInput
+		var input dto.BulkUpdateInboxInput
 		if err := c.ShouldBind(&input); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inboxes, err := usecase.BulkUpdateInboxSla(ctx, organizationId, dto.AdaptBulkUpdateInboxSlaInput(input))
+		inboxes, err := usecase.BulkUpdateInbox(ctx, organizationId, dto.AdaptBulkUpdateInboxInput(input))
 		if presentError(ctx, c, err) {
 			return
 		}
