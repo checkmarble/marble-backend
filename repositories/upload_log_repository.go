@@ -128,7 +128,12 @@ func (repo *UploadLogRepositoryImpl) SaveUploadLogCheckpoint(
 			Set("byte_offset", byteOffset).
 			Set("num_rows_ingested", rowsIngested).
 			Where(squirrel.Eq{"id": id}).
-			Where(squirrel.Eq{"status": models.UploadProcessing}),
+			Where(squirrel.Eq{"status": models.UploadProcessing}).
+			// Never let the offset move backwards. River normally runs a single attempt of a job at a
+			// time, but that has edges — its rescuer requeues at the Timeout boundary while the previous
+			// attempt is still unwinding, and the single-job CLI path can be pointed at a running upload
+			// log — and a stale attempt rewinding the checkpoint would re-ingest everything past it.
+			Where(squirrel.LtOrEq{"byte_offset": byteOffset}),
 	)
 }
 

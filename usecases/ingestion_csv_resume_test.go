@@ -68,6 +68,13 @@ func TestReadCsvHeader(t *testing.T) {
 			name:       "quoted header name",
 			headerLine: "object_id,\"updated_at\",value\n",
 		},
+		{
+			// The combination that trimming the BOM off the *parsed* header name cannot handle:
+			// csv.Reader sees the BOM as the start of an unquoted first field and rejects the quote
+			// that follows it, failing the whole file. The BOM has to go before parsing.
+			name:       "UTF-8 BOM with quoted header names",
+			headerLine: bom + "\"object_id\",\"updated_at\",\"value\"\n",
+		},
 	}
 
 	for _, tc := range tests {
