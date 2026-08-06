@@ -24,9 +24,28 @@ func (r *UploadLogRepository) UpdateUploadLogStatus(ctx context.Context, exec re
 	return true, args.Error(0)
 }
 
-func (r *UploadLogRepository) UploadLogById(ctx context.Context, exec repositories.Executor, id string) (models.UploadLog, error) {
+func (r *UploadLogRepository) SaveUploadLogCheckpoint(ctx context.Context, exec repositories.Executor,
+	id uuid.UUID, byteOffset int64, rowsIngested int,
+) error {
+	args := r.Called(ctx, exec, id, byteOffset, rowsIngested)
+	return args.Error(0)
+}
+
+func (r *UploadLogRepository) UploadLogById(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.UploadLog, error) {
 	args := r.Called(ctx, exec, id)
 	return args.Get(0).(models.UploadLog), args.Error(1)
+}
+
+func (r *UploadLogRepository) ListUploadLogs(
+	ctx context.Context,
+	exec repositories.Executor,
+	organizationId uuid.UUID,
+	tableName string,
+	filters models.UploadLogFilters,
+	pagination models.PaginationAndSorting,
+) ([]models.UploadLog, error) {
+	args := r.Called(ctx, exec, organizationId, tableName, filters, pagination)
+	return args.Get(0).([]models.UploadLog), args.Error(1)
 }
 
 func (r *UploadLogRepository) AllUploadLogsByTable(
