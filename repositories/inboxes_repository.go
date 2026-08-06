@@ -159,6 +159,14 @@ func (repo *MarbleDbRepository) UpdateInbox(
 		sql = sql.Set("case_review_on_escalate", *input.CaseReviewOnEscalate)
 		hasUpdates = true
 	}
+	if input.Sla.Set {
+		if input.Sla.Valid {
+			sql = sql.Set("sla", input.Sla.Value())
+		} else {
+			sql = sql.Set("sla", nil)
+		}
+		hasUpdates = true
+	}
 
 	if !hasUpdates {
 		return nil

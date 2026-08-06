@@ -232,6 +232,15 @@ func (usecase *CaseUseCase) ListCases(
 				return models.CaseListPage{}, nil
 			}
 
+			slaMap, err := usecase.getInboxSlaMap(ctx, tx, organizationId)
+			if err != nil {
+				return models.CaseListPage{}, err
+			}
+
+			for i := range cases {
+				cases[i].DueAt = models.ComputeSlaDueAt(cases[i].CreatedAt, slaMap[cases[i].InboxId])
+			}
+
 			hasNextPage := len(cases) > pagination.Limit
 			if hasNextPage {
 				cases = cases[:len(cases)-1]
@@ -334,6 +343,18 @@ func (usecase *CaseUseCase) getAvailableInboxIds(ctx context.Context, exec repos
 	return availableInboxIds, nil
 }
 
+func (usecase *CaseUseCase) getInboxSlaMap(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (map[uuid.UUID]*int, error) {
+	inboxes, err := usecase.inboxReader.ListInboxes(ctx, exec, orgId, false)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to list inboxes for SLA map")
+	}
+	m := make(map[uuid.UUID]*int, len(inboxes))
+	for _, ib := range inboxes {
+		m[ib.Id] = ib.Sla
+	}
+	return m, nil
+}
+
 func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.Case, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	c, err := usecase.getCaseWithDetails(ctx, exec, caseId)
@@ -372,6 +393,17 @@ func (usecase *CaseUseCase) GetEntityRelatedCases(ctx context.Context, objectTyp
 		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err == nil {
 			allowedCases = append(allowedCases, c)
 		}
+	}
+
+	// Fetch SLA map for computing due dates
+	slaMap, err := usecase.getInboxSlaMap(ctx, exec, orgId)
+	if err != nil {
+		return nil, err
+	}
+
+	// Compute due dates for all cases
+	for i := range allowedCases {
+		allowedCases[i].DueAt = models.ComputeSlaDueAt(allowedCases[i].CreatedAt, slaMap[allowedCases[i].InboxId])
 	}
 
 	return allowedCases, nil
@@ -1456,6 +1488,12 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 	}
 	c.Events = events
 
+	inbox, err := usecase.inboxReader.GetInboxById(ctx, exec, c.InboxId)
+	if err != nil {
+		return models.Case{}, errors.Wrap(err, "could not fetch inbox for SLA calculation")
+	}
+	c.DueAt = models.ComputeSlaDueAt(c.CreatedAt, inbox.Sla)
+
 	return c, nil
 }
 
@@ -2079,6 +2117,15 @@ func (usecase *CaseUseCase) GetRelatedCasesByPivotValue(ctx context.Context, org
 		}
 	}
 
+	slaMap, err := usecase.getInboxSlaMap(ctx, exec, orgId)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range allowedCases {
+		allowedCases[i].DueAt = models.ComputeSlaDueAt(allowedCases[i].CreatedAt, slaMap[allowedCases[i].InboxId])
+	}
+
 	return allowedCases, nil
 }
 
@@ -2124,6 +2171,15 @@ func (usecase *CaseUseCase) GetRelatedContinuousScreeningCasesByObjectAttr(
 		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err == nil {
 			allowedCases = append(allowedCases, c)
 		}
+	}
+
+	slaMap, err := usecase.getInboxSlaMap(ctx, exec, orgId)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range allowedCases {
+		allowedCases[i].DueAt = models.ComputeSlaDueAt(allowedCases[i].CreatedAt, slaMap[allowedCases[i].InboxId])
 	}
 
 	return allowedCases, nil

@@ -17,6 +17,7 @@ type InboxDto struct {
 	EscalationInboxId *uuid.UUID     `json:"escalation_inbox_id"`
 	AutoAssignEnabled bool           `json:"auto_assign_enabled"`
 	Users             []InboxUserDto `json:"users"`
+	Sla               *int           `json:"sla"`
 
 	CaseReviewManual        bool `json:"case_review_manual"`
 	CaseReviewOnCaseCreated bool `json:"case_review_on_case_created"`
@@ -35,6 +36,7 @@ func AdaptInboxDto(i models.Inbox) InboxDto {
 		EscalationInboxId:       i.EscalationInboxId,
 		AutoAssignEnabled:       i.AutoAssignEnabled,
 		Users:                   pure_utils.Map(i.InboxUsers, AdaptInboxUserDto),
+		Sla:                     i.Sla,
 		CaseReviewManual:        i.CaseReviewManual,
 		CaseReviewOnCaseCreated: i.CaseReviewOnCaseCreated,
 		CaseReviewOnEscalate:    i.CaseReviewOnEscalate,
@@ -83,6 +85,7 @@ type UpdateInboxInput struct {
 	CaseReviewManual        *bool                      `json:"case_review_manual"`
 	CaseReviewOnCaseCreated *bool                      `json:"case_review_on_case_created"`
 	CaseReviewOnEscalate    *bool                      `json:"case_review_on_escalate"`
+	Sla                     pure_utils.Null[int]       `json:"sla" binding:"omitempty,min=1"`
 }
 
 func AdaptUpdateInboxInput(i UpdateInboxInput) models.UpdateInboxInput {
@@ -93,5 +96,24 @@ func AdaptUpdateInboxInput(i UpdateInboxInput) models.UpdateInboxInput {
 		CaseReviewManual:        i.CaseReviewManual,
 		CaseReviewOnCaseCreated: i.CaseReviewOnCaseCreated,
 		CaseReviewOnEscalate:    i.CaseReviewOnEscalate,
+		Sla:                     i.Sla,
 	}
+}
+
+type UpdateInboxItem struct {
+	Id  uuid.UUID `json:"id" binding:"required"`
+	Sla *int      `json:"sla" binding:"omitempty,min=1"`
+}
+
+type BulkUpdateInboxInput struct {
+	Inboxes []UpdateInboxItem `json:"inboxes" binding:"required"`
+}
+
+func AdaptBulkUpdateInboxInput(i BulkUpdateInboxInput) []models.UpdateInboxItem {
+	return pure_utils.Map(i.Inboxes, func(item UpdateInboxItem) models.UpdateInboxItem {
+		return models.UpdateInboxItem{
+			Id:  item.Id,
+			Sla: item.Sla,
+		}
+	})
 }

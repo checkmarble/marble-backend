@@ -27,6 +27,7 @@ type APICase struct {
 	Boost          string               `json:"boost,omitempty"`
 	Type           string               `json:"type"`
 	ReviewLevel    *string              `json:"review_level"`
+	DueAt          *time.Time           `json:"due_at,omitempty"`
 }
 
 type APICaseWithDetails struct {
@@ -51,6 +52,7 @@ func AdaptCaseDto(c models.Case) APICase {
 		Boost:          c.Boost.String(),
 		Type:           c.Type.String(),
 		ReviewLevel:    c.ReviewLevel,
+		DueAt:          c.DueAt,
 	}
 
 	if c.SnoozedUntil != nil && c.SnoozedUntil.After(time.Now()) {

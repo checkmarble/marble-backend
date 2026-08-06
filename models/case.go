@@ -58,6 +58,7 @@ type Case struct {
 	Boost                *BoostReason
 	Type                 CaseType
 	ReviewLevel          *string
+	DueAt                *time.Time
 }
 
 type CaseReferents struct {
@@ -309,4 +310,14 @@ func CaseMassUpdateActionFromString(s string) CaseMassUpdateAction {
 	default:
 		return CaseMassUpdateUnknown
 	}
+}
+
+// ComputeSlaDueAt computes the SLA due date as created_at + sla days.
+// Returns nil if sla is nil or zero.
+func ComputeSlaDueAt(createdAt time.Time, sla *int) *time.Time {
+	if sla == nil || *sla == 0 {
+		return nil
+	}
+	dueAt := createdAt.AddDate(0, 0, *sla)
+	return &dueAt
 }

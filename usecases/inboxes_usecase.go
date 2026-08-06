@@ -132,40 +132,59 @@ func (usecase *InboxUsecase) CreateInboxWithExecutor(
 	return inbox, nil
 }
 
+func (usecase *InboxUsecase) updateSingleInbox(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	inboxId uuid.UUID,
+	input models.UpdateInboxInput,
+) (models.Inbox, error) {
+	inbox, err := usecase.inboxRepository.GetInboxById(ctx, exec, inboxId)
+	if err != nil {
+		return models.Inbox{}, err
+	}
+
+	if inbox.OrganizationId != orgId {
+		return models.Inbox{}, models.NotFoundError
+	}
+
+	if inbox.Status != models.InboxStatusActive {
+		return models.Inbox{}, errors.Wrap(models.ForbiddenError,
+			"This inbox is archived and cannot be updated")
+	}
+
+	if err := usecase.enforceSecurity.UpdateInbox(inbox); err != nil {
+		return models.Inbox{}, err
+	}
+
+	if input.EscalationInboxId.Set && input.EscalationInboxId.Valid {
+		escalationInbox, err := usecase.inboxRepository.GetInboxById(ctx, exec, input.EscalationInboxId.Value())
+		if err != nil {
+			return models.Inbox{}, err
+		}
+
+		if escalationInbox.OrganizationId != orgId {
+			return models.Inbox{}, models.NotFoundError
+		}
+
+		if err := usecase.enforceSecurity.ReadInbox(escalationInbox); err != nil {
+			return models.Inbox{}, err
+		}
+	}
+
+	if err := usecase.inboxRepository.UpdateInbox(ctx, exec, inboxId, input); err != nil {
+		return models.Inbox{}, err
+	}
+
+	return usecase.inboxRepository.GetInboxById(ctx, exec, inboxId)
+}
+
 func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId uuid.UUID, input models.UpdateInboxInput) (models.Inbox, error) {
 	inbox, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.Inbox, error) {
-			inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
-			if err != nil {
-				return models.Inbox{}, err
-			}
-
-			if inbox.Status != models.InboxStatusActive {
-				return models.Inbox{}, errors.Wrap(models.ForbiddenError,
-					"This inbox is archived and cannot be updated")
-			}
-
-			if err := usecase.enforceSecurity.UpdateInbox(inbox); err != nil {
-				return models.Inbox{}, err
-			}
-
-			if input.EscalationInboxId.Set && input.EscalationInboxId.Valid {
-				escalationInbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, input.EscalationInboxId.Value())
-				if err != nil {
-					return models.Inbox{}, err
-				}
-				if err := usecase.enforceSecurity.ReadInbox(escalationInbox); err != nil {
-					return models.Inbox{}, err
-				}
-			}
-
-			if err := usecase.inboxRepository.UpdateInbox(ctx, tx, inboxId, input); err != nil {
-				return models.Inbox{}, err
-			}
-
-			return usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
+			return usecase.updateSingleInbox(ctx, tx, usecase.credentials.OrganizationId, inboxId, input)
 		})
 	if err != nil {
 		return models.Inbox{}, err
@@ -216,6 +235,36 @@ func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId uuid.UUID)
 		"inbox_id": inboxId,
 	})
 	return nil
+}
+
+func (usecase *InboxUsecase) BulkUpdateInbox(ctx context.Context, orgId uuid.UUID, items []models.UpdateInboxItem) ([]models.Inbox, error) {
+	inboxes, err := executor_factory.TransactionReturnValue(
+		ctx,
+		usecase.transactionFactory,
+		func(tx repositories.Transaction) ([]models.Inbox, error) {
+			updated := make([]models.Inbox, 0, len(items))
+			for _, item := range items {
+				input := models.UpdateInboxInput{
+					Sla: pure_utils.NullFromPtr(item.Sla),
+				}
+				updatedInbox, err := usecase.updateSingleInbox(ctx, tx, orgId, item.Id, input)
+				if err != nil {
+					return nil, err
+				}
+				updated = append(updated, updatedInbox)
+			}
+			return updated, nil
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, inbox := range inboxes {
+		tracking.TrackEvent(ctx, models.AnalyticsInboxUpdated, map[string]interface{}{
+			"inbox_id": inbox.Id,
+		})
+	}
+	return inboxes, nil
 }
 
 func (usecase *InboxUsecase) GetInboxUserById(ctx context.Context, inboxUserId uuid.UUID) (models.InboxUser, error) {
