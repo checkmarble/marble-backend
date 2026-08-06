@@ -21,9 +21,26 @@ type UploadLog struct {
 	FinishedAt     *time.Time
 	LinesProcessed int
 	RowsIngested   int
-	InputError     *string
-	Error          *string
+	// ByteOffset is the offset of the first CSV row not yet ingested. Zero means the file has not
+	// been read yet; ingestion resumes from here when a previous attempt ran out of time.
+	ByteOffset int64
+	InputError *string
+	Error      *string
 }
+
+// CsvIngestionOutcome tells the CsvIngestionWorker whether an upload log is done with or whether it
+// ran out of time and should be resumed from its checkpoint on a later attempt. It exists so the
+// ingestion usecase does not have to return river.JobSnooze itself.
+type CsvIngestionOutcome int
+
+const (
+	// CsvIngestionCompleted means there is nothing left to do for this upload log, either because
+	// it finished, failed, or was already in a terminal state.
+	CsvIngestionCompleted CsvIngestionOutcome = iota
+	// CsvIngestionIncomplete means the file was checkpointed part-way through and the job should be
+	// snoozed so a later attempt picks up from the saved offset.
+	CsvIngestionIncomplete
+)
 
 type UploadStatus string
 

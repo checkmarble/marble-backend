@@ -14,6 +14,7 @@ import (
 type UploadLogRepository interface {
 	CreateUploadLog(ctx context.Context, exec Executor, log models.UploadLog) error
 	UpdateUploadLogStatus(ctx context.Context, exec Executor, input models.UpdateUploadLogStatusInput) (executed bool, err error)
+	SaveUploadLogCheckpoint(ctx context.Context, exec Executor, id uuid.UUID, byteOffset int64, rowsIngested int) error
 	UploadLogById(ctx context.Context, exec Executor, id uuid.UUID) (models.UploadLog, error)
 	AllUploadLogsByTable(ctx context.Context, exec Executor, organizationId uuid.UUID,
 		tableName string) ([]models.UploadLog, error)
@@ -105,6 +106,35 @@ func (repo *UploadLogRepositoryImpl) UpdateUploadLogStatus(
 	}
 
 	return tag.RowsAffected() > 0, nil
+}
+
+// SaveUploadLogCheckpoint records how far into the CSV the ingestion got, so a later attempt can
+// resume from there rather than restarting the file.
+func (repo *UploadLogRepositoryImpl) SaveUploadLogCheckpoint(
+	ctx context.Context,
+	exec Executor,
+	id uuid.UUID,
+	byteOffset int64,
+	rowsIngested int,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	return ExecBuilder(
+		ctx,
+		exec,
+		NewQueryBuilder().Update(dbmodels.TABLE_UPLOAD_LOGS).
+			Set("byte_offset", byteOffset).
+			Set("num_rows_ingested", rowsIngested).
+			Where(squirrel.Eq{"id": id}).
+			Where(squirrel.Eq{"status": models.UploadProcessing}).
+			// Never let the offset move backwards. River normally runs a single attempt of a job at a
+			// time, but that has edges — its rescuer requeues at the Timeout boundary while the previous
+			// attempt is still unwinding, and the single-job CLI path can be pointed at a running upload
+			// log — and a stale attempt rewinding the checkpoint would re-ingest everything past it.
+			Where(squirrel.LtOrEq{"byte_offset": byteOffset}),
+	)
 }
 
 func (repo *UploadLogRepositoryImpl) UploadLogById(ctx context.Context, exec Executor, id uuid.UUID) (models.UploadLog, error) {
