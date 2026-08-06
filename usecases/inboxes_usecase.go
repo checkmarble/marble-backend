@@ -170,7 +170,12 @@ func (usecase *InboxUsecase) updateSingleInbox(
 }
 
 func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId uuid.UUID, input models.UpdateInboxInput) (models.Inbox, error) {
-	inbox, err := usecase.updateSingleInbox(ctx, usecase.executorFactory.NewExecutor(), inboxId, input)
+	inbox, err := executor_factory.TransactionReturnValue(
+		ctx,
+		usecase.transactionFactory,
+		func(tx repositories.Transaction) (models.Inbox, error) {
+			return usecase.updateSingleInbox(ctx, tx, inboxId, input)
+		})
 	if err != nil {
 		return models.Inbox{}, err
 	}
