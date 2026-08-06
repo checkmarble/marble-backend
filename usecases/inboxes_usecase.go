@@ -132,13 +132,13 @@ func (usecase *InboxUsecase) CreateInboxWithExecutor(
 	return inbox, nil
 }
 
-func (usecase *InboxUsecase) updateSingleInboxWithValidation(
+func (usecase *InboxUsecase) updateSingleInbox(
 	ctx context.Context,
-	tx repositories.Transaction,
+	exec repositories.Executor,
 	inboxId uuid.UUID,
 	input models.UpdateInboxInput,
 ) (models.Inbox, error) {
-	inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
+	inbox, err := usecase.inboxRepository.GetInboxById(ctx, exec, inboxId)
 	if err != nil {
 		return models.Inbox{}, err
 	}
@@ -153,7 +153,7 @@ func (usecase *InboxUsecase) updateSingleInboxWithValidation(
 	}
 
 	if input.EscalationInboxId.Set && input.EscalationInboxId.Valid {
-		escalationInbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, input.EscalationInboxId.Value())
+		escalationInbox, err := usecase.inboxRepository.GetInboxById(ctx, exec, input.EscalationInboxId.Value())
 		if err != nil {
 			return models.Inbox{}, err
 		}
@@ -162,20 +162,15 @@ func (usecase *InboxUsecase) updateSingleInboxWithValidation(
 		}
 	}
 
-	if err := usecase.inboxRepository.UpdateInbox(ctx, tx, inboxId, input); err != nil {
+	if err := usecase.inboxRepository.UpdateInbox(ctx, exec, inboxId, input); err != nil {
 		return models.Inbox{}, err
 	}
 
-	return usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
+	return usecase.inboxRepository.GetInboxById(ctx, exec, inboxId)
 }
 
 func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId uuid.UUID, input models.UpdateInboxInput) (models.Inbox, error) {
-	inbox, err := executor_factory.TransactionReturnValue(
-		ctx,
-		usecase.transactionFactory,
-		func(tx repositories.Transaction) (models.Inbox, error) {
-			return usecase.updateSingleInboxWithValidation(ctx, tx, inboxId, input)
-		})
+	inbox, err := usecase.updateSingleInbox(ctx, usecase.executorFactory.NewExecutor(), inboxId, input)
 	if err != nil {
 		return models.Inbox{}, err
 	}
@@ -237,7 +232,7 @@ func (usecase *InboxUsecase) BulkUpdateInbox(ctx context.Context, orgId uuid.UUI
 				input := models.UpdateInboxInput{
 					Sla: pure_utils.NullFromPtr(item.Sla),
 				}
-				updatedInbox, err := usecase.updateSingleInboxWithValidation(ctx, tx, item.Id, input)
+				updatedInbox, err := usecase.updateSingleInbox(ctx, tx, item.Id, input)
 				if err != nil {
 					return nil, err
 				}
