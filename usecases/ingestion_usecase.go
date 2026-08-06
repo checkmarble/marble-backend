@@ -974,27 +974,15 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 		// file deferring would pile up tens of thousands of pending calls until the function returns.
 		iterationCancel()
 
-		// Offset of the first row not ingested yet, saved once the batch has committed. A crash in
-		// that window re-ingests this batch on the next attempt rather than skipping it, which is the
-		// safe direction: upload_logs and the client objects live in different databases, so the two
-		// writes cannot share a transaction.
-		checkpoint := startOffset + r.InputOffset()
-		if err := usecase.uploadLogRepository.SaveUploadLogCheckpoint(ctx, exec, uploadLog.Id,
-			checkpoint, previouslyIngested+total); err != nil {
-			return ingestionResult{
-				numRowsIngested: previouslyIngested + total,
-				err:             errors.Wrap(err, "error saving upload log checkpoint"),
-			}
-		}
-
-		logger.DebugContext(ctx, "csv ingestion progress",
-			"upload_log_id", uploadLog.Id,
-			"rows_ingested", previouslyIngested+total,
-			"byte_offset", checkpoint,
-			"file_size", fileSize,
-		)
-
 		if keepParsingFile && hasDeadline && time.Now().After(deadline) {
+			checkpoint := startOffset + r.InputOffset()
+			if err := usecase.uploadLogRepository.SaveUploadLogCheckpoint(ctx, exec, uploadLog.Id,
+				checkpoint, previouslyIngested+total); err != nil {
+				return ingestionResult{
+					numRowsIngested: previouslyIngested + total,
+					err:             errors.Wrap(err, "error saving upload log checkpoint"),
+				}
+			}
 			logger.InfoContext(ctx, "csv ingestion: approaching job timeout, checkpointed and stopping for now",
 				"upload_log_id", uploadLog.Id, "byte_offset", checkpoint,
 				"rows_ingested", previouslyIngested+total)
