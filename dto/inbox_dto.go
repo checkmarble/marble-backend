@@ -85,7 +85,7 @@ type UpdateInboxInput struct {
 	CaseReviewManual        *bool                      `json:"case_review_manual"`
 	CaseReviewOnCaseCreated *bool                      `json:"case_review_on_case_created"`
 	CaseReviewOnEscalate    *bool                      `json:"case_review_on_escalate"`
-	Sla                     pure_utils.Null[int]      `json:"sla" binding:"omitempty,min=1"`
+	Sla                     pure_utils.Null[int]       `json:"sla" binding:"omitempty,min=1"`
 }
 
 func AdaptUpdateInboxInput(i UpdateInboxInput) models.UpdateInboxInput {
