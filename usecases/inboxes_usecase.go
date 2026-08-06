@@ -135,12 +135,17 @@ func (usecase *InboxUsecase) CreateInboxWithExecutor(
 func (usecase *InboxUsecase) updateSingleInbox(
 	ctx context.Context,
 	exec repositories.Executor,
+	orgId uuid.UUID,
 	inboxId uuid.UUID,
 	input models.UpdateInboxInput,
 ) (models.Inbox, error) {
 	inbox, err := usecase.inboxRepository.GetInboxById(ctx, exec, inboxId)
 	if err != nil {
 		return models.Inbox{}, err
+	}
+
+	if inbox.OrganizationId != orgId {
+		return models.Inbox{}, models.NotFoundError
 	}
 
 	if inbox.Status != models.InboxStatusActive {
@@ -157,6 +162,11 @@ func (usecase *InboxUsecase) updateSingleInbox(
 		if err != nil {
 			return models.Inbox{}, err
 		}
+
+		if escalationInbox.OrganizationId != orgId {
+			return models.Inbox{}, models.NotFoundError
+		}
+
 		if err := usecase.enforceSecurity.ReadInbox(escalationInbox); err != nil {
 			return models.Inbox{}, err
 		}
@@ -174,7 +184,7 @@ func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId uuid.UUID,
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.Inbox, error) {
-			return usecase.updateSingleInbox(ctx, tx, inboxId, input)
+			return usecase.updateSingleInbox(ctx, tx, usecase.credentials.OrganizationId, inboxId, input)
 		})
 	if err != nil {
 		return models.Inbox{}, err
@@ -237,7 +247,7 @@ func (usecase *InboxUsecase) BulkUpdateInbox(ctx context.Context, orgId uuid.UUI
 				input := models.UpdateInboxInput{
 					Sla: pure_utils.NullFromPtr(item.Sla),
 				}
-				updatedInbox, err := usecase.updateSingleInbox(ctx, tx, item.Id, input)
+				updatedInbox, err := usecase.updateSingleInbox(ctx, tx, orgId, item.Id, input)
 				if err != nil {
 					return nil, err
 				}
