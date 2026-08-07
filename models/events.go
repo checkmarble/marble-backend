@@ -27,7 +27,7 @@ const (
 	AnalyticsTagCreated                 AnalyticsEvent = "Created a Tag"
 	AnalyticsTagUpdated                 AnalyticsEvent = "Updated a Tag"
 	AnalyticsTagDeleted                 AnalyticsEvent = "Deleted a Tag"
-	AnalyticsFirstUserSetup             AnalyticsEvent = "Set up a first User"
+	AnalyticsUserSetup                  AnalyticsEvent = "Set up a User"
 	AnalyticsUserCreated                AnalyticsEvent = "Created a User"
 	AnalyticsUserUpdated                AnalyticsEvent = "Updated a User"
 	AnalyticsUserDeleted                AnalyticsEvent = "Deleted a User"
@@ -39,5 +39,5 @@ const (
 	AnalyticsInboxUserDeleted           AnalyticsEvent = "Deleted an Inbox User"
 	AnalyticsApiKeyCreated              AnalyticsEvent = "Created an Api Key"
 	AnalyticsApiKeyDeleted              AnalyticsEvent = "Deleted an Api Key"
-	AnalyticsFirstTableCreated          AnalyticsEvent = "Created a first Table"
+	AnalyticsTableCreated               AnalyticsEvent = "Created a Table"
 )

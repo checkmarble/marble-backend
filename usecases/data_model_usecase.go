@@ -305,8 +305,6 @@ func (usecase *usecase) CreateDataModelTable(
 	if err != nil {
 		return "", err
 	}
-	// The organization has no table yet, so the one we are about to create is its first one.
-	isFirstTable := len(oldDatamodel.Tables) == 0
 	// input.Links miss the ParentFieldID since we automatically use the `object_id` field of the parent table. Need to retrieve the ID before creating the links
 	tablesById := oldDatamodel.AllTablesAsMap()
 	for i := range input.Links {
@@ -458,11 +456,9 @@ func (usecase *usecase) CreateDataModelTable(
 		return "", err
 	}
 
-	if isFirstTable {
-		tracking.TrackEvent(ctx, models.AnalyticsFirstTableCreated, map[string]interface{}{
-			"table_id": tableId,
-		})
-	}
+	tracking.TrackEvent(ctx, models.AnalyticsTableCreated, map[string]interface{}{
+		"table_id": tableId,
+	})
 
 	return tableId, nil
 }
