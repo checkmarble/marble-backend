@@ -779,6 +779,37 @@ func (repo *MarbleDbRepository) ObjectHasConfirmedRisks(ctx context.Context, exe
 	return hasConfirmedRisks, nil
 }
 
+// Returns whether the organization has at least one case whose status is not the default one
+// ("pending"), meaning a case status was already updated at least once in this organization.
+func (repo *MarbleDbRepository) OrgHasCaseWithUpdatedStatus(ctx context.Context, exec Executor,
+	orgId uuid.UUID,
+) (bool, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return false, err
+	}
+
+	query := NewQueryBuilder().
+		Select("1").
+		Prefix("select exists(").
+		Suffix(")").
+		From(dbmodels.TABLE_CASES).
+		Where(squirrel.Eq{"org_id": orgId}).
+		Where(squirrel.NotEq{"status": models.CasePending})
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return false, err
+	}
+
+	var exists bool
+
+	if err := exec.QueryRow(ctx, sql, args...).Scan(&exists); err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
 // Count the number of cases for each organization in the given time range, return a map of orgId to count
 // From date is inclusive, to date is exclusive
 func (repo *MarbleDbRepository) CountCasesByOrg(ctx context.Context, exec Executor,

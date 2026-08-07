@@ -36,6 +36,7 @@ type CaseUseCaseRepository interface {
 		createCaseAttributes models.CreateCaseAttributes, newCaseId string) error
 	UpdateCase(ctx context.Context, exec repositories.Executor,
 		updateCaseAttributes models.UpdateCaseAttributes) error
+	OrgHasCaseWithUpdatedStatus(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (bool, error)
 	SnoozeCase(ctx context.Context, exec repositories.Executor, snoozeRequest models.CaseSnoozeRequest) error
 	UnsnoozeCase(ctx context.Context, exec repositories.Executor,
 		caseId string) error
@@ -598,6 +599,7 @@ func (usecase *CaseUseCase) UpdateCase(
 	updateCaseAttributes models.UpdateCaseAttributes,
 ) (models.Case, error) {
 	updateDone := false
+	isFirstStatusUpdate := false
 
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
@@ -639,6 +641,18 @@ func (usecase *CaseUseCase) UpdateCase(
 		if updateCaseAttributes.Status != "" && !c.Status.CanTransition(updateCaseAttributes.Status) {
 			return c, errors.Wrap(models.BadParameterError,
 				fmt.Sprintf("invalid case status transition from %s to %s", c.Status, updateCaseAttributes.Status))
+		}
+
+		// Detect the first case status update of the organization: no case has moved out of the
+		// default "pending" status yet. Must be checked before the update below is applied.
+		// If this case is already out of "pending", it is itself the proof that the organization
+		// updated a status before, so the query can be skipped.
+		if updateCaseAttributes.Status != "" && c.Status == models.CasePending {
+			alreadyUpdated, err := usecase.repository.OrgHasCaseWithUpdatedStatus(ctx, tx, c.OrganizationId)
+			if err != nil {
+				return models.Case{}, err
+			}
+			isFirstStatusUpdate = !alreadyUpdated
 		}
 
 		if updateCaseAttributes.Outcome != "" {
@@ -714,7 +728,7 @@ func (usecase *CaseUseCase) UpdateCase(
 	}
 
 	if updateDone {
-		trackCaseUpdatedEvents(ctx, updatedCase.Id, updateCaseAttributes)
+		trackCaseUpdatedEvents(ctx, updatedCase.Id, updateCaseAttributes, isFirstStatusUpdate)
 	}
 
 	return updatedCase, nil
@@ -1649,11 +1663,21 @@ func (usecase *CaseUseCase) createCaseContributorIfNotExist(ctx context.Context,
 	return usecase.repository.CreateCaseContributor(ctx, exec, caseId, userId)
 }
 
-func trackCaseUpdatedEvents(ctx context.Context, caseId string, updateCaseAttributes models.UpdateCaseAttributes) {
+func trackCaseUpdatedEvents(
+	ctx context.Context,
+	caseId string,
+	updateCaseAttributes models.UpdateCaseAttributes,
+	isFirstStatusUpdate bool,
+) {
 	if updateCaseAttributes.Status != "" {
 		tracking.TrackEvent(ctx, models.AnalyticsCaseStatusUpdated, map[string]interface{}{
 			"case_id": caseId,
 		})
+		if isFirstStatusUpdate {
+			tracking.TrackEvent(ctx, models.AnalyticsFirstCaseStatusUpdated, map[string]interface{}{
+				"case_id": caseId,
+			})
+		}
 	}
 	if updateCaseAttributes.Name != "" {
 		tracking.TrackEvent(ctx, models.AnalyticsCaseUpdated, map[string]interface{}{
