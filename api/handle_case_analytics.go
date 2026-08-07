@@ -54,6 +54,8 @@ func handleCaseAnalyticsQuery(uc usecases.Usecases) func(c *gin.Context) {
 			results, err = uc.SarDelayDistribution(ctx, filters)
 		case "case_status_by_date":
 			results, err = uc.CaseStatusByDate(ctx, filters)
+		case "case_sla_status_by_date":
+			results, err = uc.CaseSlaStatusByDate(ctx, filters)
 		case "case_status_by_inbox":
 			results, err = uc.CaseStatusByInbox(ctx, filters)
 		default:

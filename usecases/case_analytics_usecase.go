@@ -56,6 +56,11 @@ type CaseAnalyticsRepository interface {
 		exec repositories.Executor,
 		filters analytics.CaseAnalyticsFilter,
 	) ([]analytics.CaseStatusByDate, error)
+	CaseSlaStatusByDate(
+		ctx context.Context,
+		exec repositories.Executor,
+		filters analytics.CaseAnalyticsFilter,
+	) ([]analytics.CaseSlaStatusByDate, error)
 	CaseStatusByInbox(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -159,6 +164,17 @@ func (uc CaseAnalyticsUsecase) CaseStatusByDate(
 		func(d time.Time) analytics.CaseStatusByDate {
 			return analytics.CaseStatusByDate{Date: d}
 		})
+}
+
+func (uc CaseAnalyticsUsecase) CaseSlaStatusByDate(
+	ctx context.Context,
+	filters dto.CaseAnalyticsFilters,
+) ([]analytics.CaseSlaStatusByDate, error) {
+	if !uc.license.Analytics {
+		return nil, nil
+	}
+	return cachedTimeSeriesQuery(ctx, uc, filters, "case_sla_status_by_date", uc.repository.CaseSlaStatusByDate,
+		func(d time.Time) analytics.CaseSlaStatusByDate { return analytics.CaseSlaStatusByDate{Date: d} })
 }
 
 func (uc CaseAnalyticsUsecase) CaseStatusByInbox(
