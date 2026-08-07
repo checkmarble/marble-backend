@@ -779,9 +779,7 @@ func (repo *MarbleDbRepository) ObjectHasConfirmedRisks(ctx context.Context, exe
 	return hasConfirmedRisks, nil
 }
 
-// Returns whether the organization has at least one case whose status is not the default one
-// ("pending"), meaning a case status was already updated at least once in this organization.
-func (repo *MarbleDbRepository) OrgHasCaseWithUpdatedStatus(ctx context.Context, exec Executor,
+func (repo *MarbleDbRepository) OrgHasClosedCase(ctx context.Context, exec Executor,
 	orgId uuid.UUID,
 ) (bool, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -794,7 +792,7 @@ func (repo *MarbleDbRepository) OrgHasCaseWithUpdatedStatus(ctx context.Context,
 		Suffix(")").
 		From(dbmodels.TABLE_CASES).
 		Where(squirrel.Eq{"org_id": orgId}).
-		Where(squirrel.NotEq{"status": models.CasePending})
+		Where(squirrel.Eq{"status": models.CaseClosed})
 
 	sql, args, err := query.ToSql()
 	if err != nil {

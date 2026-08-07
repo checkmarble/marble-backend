@@ -36,7 +36,7 @@ type CaseUseCaseRepository interface {
 		createCaseAttributes models.CreateCaseAttributes, newCaseId string) error
 	UpdateCase(ctx context.Context, exec repositories.Executor,
 		updateCaseAttributes models.UpdateCaseAttributes) error
-	OrgHasCaseWithUpdatedStatus(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (bool, error)
+	OrgHasClosedCase(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (bool, error)
 	SnoozeCase(ctx context.Context, exec repositories.Executor, snoozeRequest models.CaseSnoozeRequest) error
 	UnsnoozeCase(ctx context.Context, exec repositories.Executor,
 		caseId string) error
@@ -599,7 +599,7 @@ func (usecase *CaseUseCase) UpdateCase(
 	updateCaseAttributes models.UpdateCaseAttributes,
 ) (models.Case, error) {
 	updateDone := false
-	isFirstStatusUpdate := false
+	isFirstCaseClosed := false
 
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
@@ -643,16 +643,14 @@ func (usecase *CaseUseCase) UpdateCase(
 				fmt.Sprintf("invalid case status transition from %s to %s", c.Status, updateCaseAttributes.Status))
 		}
 
-		// Detect the first case status update of the organization: no case has moved out of the
-		// default "pending" status yet. Must be checked before the update below is applied.
-		// If this case is already out of "pending", it is itself the proof that the organization
-		// updated a status before, so the query can be skipped.
-		if updateCaseAttributes.Status != "" && c.Status == models.CasePending {
-			alreadyUpdated, err := usecase.repository.OrgHasCaseWithUpdatedStatus(ctx, tx, c.OrganizationId)
+		// Detect the first case ever closed in the organization. Must be checked before the
+		// update below is applied, otherwise this very case would count as a closed one.
+		if updateCaseAttributes.Status == models.CaseClosed && c.Status != models.CaseClosed {
+			orgHadClosedCase, err := usecase.repository.OrgHasClosedCase(ctx, tx, c.OrganizationId)
 			if err != nil {
 				return models.Case{}, err
 			}
-			isFirstStatusUpdate = !alreadyUpdated
+			isFirstCaseClosed = !orgHadClosedCase
 		}
 
 		if updateCaseAttributes.Outcome != "" {
@@ -728,7 +726,7 @@ func (usecase *CaseUseCase) UpdateCase(
 	}
 
 	if updateDone {
-		trackCaseUpdatedEvents(ctx, updatedCase.Id, updateCaseAttributes, isFirstStatusUpdate)
+		trackCaseUpdatedEvents(ctx, updatedCase.Id, updateCaseAttributes, isFirstCaseClosed)
 	}
 
 	return updatedCase, nil
@@ -1667,23 +1665,27 @@ func trackCaseUpdatedEvents(
 	ctx context.Context,
 	caseId string,
 	updateCaseAttributes models.UpdateCaseAttributes,
-	isFirstStatusUpdate bool,
+	isFirstCaseClosed bool,
 ) {
 	if updateCaseAttributes.Status != "" {
 		tracking.TrackEvent(ctx, models.AnalyticsCaseStatusUpdated, map[string]interface{}{
 			"case_id": caseId,
 		})
-		if isFirstStatusUpdate {
-			tracking.TrackEvent(ctx, models.AnalyticsFirstCaseStatusUpdated, map[string]interface{}{
-				"case_id": caseId,
-			})
-		}
+	}
+	if isFirstCaseClosed {
+		trackFirstCaseClosed(ctx, caseId)
 	}
 	if updateCaseAttributes.Name != "" {
 		tracking.TrackEvent(ctx, models.AnalyticsCaseUpdated, map[string]interface{}{
 			"case_id": caseId,
 		})
 	}
+}
+
+func trackFirstCaseClosed(ctx context.Context, caseId string) {
+	tracking.TrackEvent(ctx, models.AnalyticsFirstCaseClosed, map[string]interface{}{
+		"case_id": caseId,
+	})
 }
 
 func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.CreateCaseFilesInput) (models.Case, []models.CaseFile, error) {
@@ -2437,7 +2439,10 @@ func (usecase *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpda
 	sourceCases := make(map[string]models.Case, len(req.CaseIds))
 	events := make(map[string]models.CreateCaseEventAttributes, len(req.CaseIds))
 
-	var newAssignee models.User
+	var (
+		newAssignee       models.User
+		firstClosedCaseId string
+	)
 
 	cases, err := usecase.repository.GetMassCasesByIds(ctx, exec, req.CaseIds)
 	if err != nil {
@@ -2495,12 +2500,22 @@ func (usecase *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpda
 		}
 	}
 
-	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		switch models.CaseMassUpdateActionFromString(req.Action) {
 		case models.CaseMassUpdateClose:
+			// Checked before the status change, otherwise the cases closed here would count.
+			orgHadClosedCase, err := usecase.repository.OrgHasClosedCase(ctx, tx, orgId)
+			if err != nil {
+				return errors.Wrap(err, "could not check for previously closed cases")
+			}
+
 			updatedIds, err := usecase.repository.CaseMassChangeStatus(ctx, tx, req.CaseIds, models.CaseClosed)
 			if err != nil {
 				return errors.Wrap(err, "could not update case status in mass update")
+			}
+
+			if !orgHadClosedCase && len(updatedIds) > 0 {
+				firstClosedCaseId = updatedIds[0].String()
 			}
 
 			for _, updatedId := range updatedIds {
@@ -2582,4 +2597,13 @@ func (usecase *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpda
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	if firstClosedCaseId != "" {
+		trackFirstCaseClosed(ctx, firstClosedCaseId)
+	}
+
+	return nil
 }
