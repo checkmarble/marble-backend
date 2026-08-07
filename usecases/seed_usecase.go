@@ -130,7 +130,7 @@ func (usecase *SeedUseCase) CreateOrgAndUser(ctx context.Context, input models.I
 				ctx,
 				fmt.Sprintf("Created admin user for organization %s with email %s", targetOrg.Id, input.AdminEmail),
 			)
-			tracking.TrackEventWithUserId(ctx, models.AnalyticsFirstUserSetup, models.UserId(createdUserId),
+			tracking.TrackEventWithUserId(ctx, models.AnalyticsUserSetup, models.UserId(createdUserId),
 				map[string]any{
 					"user_id": createdUserId,
 					"email":   input.AdminEmail,
