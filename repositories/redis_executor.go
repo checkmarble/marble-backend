@@ -150,6 +150,10 @@ func (exec *RedisExecutor) IsInSet(ctx context.Context, key, value string) (bool
 }
 
 func (exec *RedisExecutor) DeletePrefix(ctx context.Context, prefix string) error {
+	if exec == nil {
+		return nil
+	}
+
 	var cursor uint64
 
 	for {
