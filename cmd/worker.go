@@ -84,8 +84,8 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		otelSamplingRates:            utils.GetEnv("TRACING_SAMPLING_RATES", ""),
 		enablePrometheus:             utils.GetEnv("ENABLE_PROMETHEUS", false),
 		enableTracing:                utils.GetEnv("ENABLE_TRACING", false),
-		ScanDatasetUpdatesInterval:   utils.GetEnvDuration("SCAN_DATASET_UPDATES_INTERVAL", 24*time.Hour),
-		CreateFullDatasetInterval:    utils.GetEnvDuration("CREATE_FULL_DATASET_INTERVAL", 24*time.Hour),
+		ScanDatasetUpdatesInterval:   utils.GetEnvDuration("SCAN_DATASET_UPDATES_INTERVAL", 4*time.Hour),
+		CreateFullDatasetInterval:    utils.GetEnvDuration("CREATE_FULL_DATASET_INTERVAL", 8*time.Hour),
 		continuousScreeningBucketUrl: utils.GetEnv("CONTINUOUS_SCREENING_BUCKET_URL", ""),
 	}
 
