@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/idp"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/organization"
+	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 
@@ -109,18 +110,34 @@ func (usecase *SeedUseCase) CreateOrgAndUser(ctx context.Context, input models.I
 	}
 
 	if input.AdminEmail != "" {
-		_, err := usecase.userRepository.CreateUser(ctx, exec, models.CreateUser{
+		createdUserId, err := usecase.userRepository.CreateUser(ctx, exec, models.CreateUser{
 			Email:          input.AdminEmail,
 			OrganizationId: targetOrg.Id,
 			Role:           models.ADMIN,
 		})
-		if err != nil && !repositories.IsUniqueViolationError(err) {
+		userAlreadyExists := repositories.IsUniqueViolationError(err)
+		if err != nil && !userAlreadyExists {
 			return err
 		}
-		logger.InfoContext(
-			ctx,
-			fmt.Sprintf("Created admin user for organization %s with email %s (or already exists)", targetOrg.Id, input.AdminEmail),
-		)
+
+		if userAlreadyExists {
+			logger.InfoContext(
+				ctx,
+				fmt.Sprintf("Admin user with email %s already exists for organization %s", input.AdminEmail, targetOrg.Id),
+			)
+		} else {
+			logger.InfoContext(
+				ctx,
+				fmt.Sprintf("Created admin user for organization %s with email %s", targetOrg.Id, input.AdminEmail),
+			)
+			tracking.TrackEventWithUserId(ctx, models.AnalyticsFirstUserSetup, models.UserId(createdUserId),
+				map[string]any{
+					"user_id": createdUserId,
+					"email":   input.AdminEmail,
+					"org_id":  targetOrg.Id,
+				},
+			)
+		}
 
 		if err := usecase.createFirebaseUser(ctx, input.AdminEmail); err != nil {
 			return err
