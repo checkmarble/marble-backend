@@ -31,9 +31,11 @@ func (uc GraphRelationUsecase) ListGraphRelations(ctx context.Context) ([]models
 }
 
 func (uc GraphRelationUsecase) CreateGraphRelation(ctx context.Context, input models.CreateGraphRelation) (models.GraphRelation, error) {
-	if err := uc.enforceSecurity.WriteDataModel(input.OrgId); err != nil {
+	if err := uc.enforceSecurity.WriteDataModel(uc.enforceSecurity.OrgId()); err != nil {
 		return models.GraphRelation{}, err
 	}
+
+	input.OrgId = uc.enforceSecurity.OrgId()
 
 	exec := uc.executorFactory.NewExecutor()
 
@@ -54,11 +56,11 @@ func (uc GraphRelationUsecase) CreateGraphRelation(ctx context.Context, input mo
 	}
 
 	relation, err := uc.graphRelationRepository.CreateGraphRelation(ctx, exec, input)
-
-	if repositories.IsUniqueViolationError(err) {
-		return models.GraphRelation{}, errors.Wrap(models.ConflictError, "this graph relation already exists")
-	}
 	if err != nil {
+		if repositories.IsUniqueViolationError(err) {
+			return models.GraphRelation{}, errors.Wrap(models.ConflictError, "this graph relation already exists")
+		}
+
 		return models.GraphRelation{}, err
 	}
 
