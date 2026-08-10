@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -16,43 +17,68 @@ import (
 // The builder writes DDL and an INSERT..SELECT that no query builder checks for it, so what it
 // emits is asserted directly.
 
-type recordingExecutor struct {
-	statements []string
+// graphBuilderExecutor adapts a pgxmock pool to repositories.Executor and repositories.Transaction
+// (SwapGraphTable takes a Transaction). Its query matcher always accepts and instead records every
+// statement handed to Exec: several of these tests assert on generated DDL - nonce-suffixed names,
+// a diff between two runs - that isn't known ahead of time to declare as a pgxmock expectation.
+type graphBuilderExecutor struct {
+	pool       pgxmock.PgxPoolIface
 	schemaType models.DatabaseSchemaType
+	statements []string
 }
 
-func newRecordingExecutor() *recordingExecutor {
-	return &recordingExecutor{schemaType: models.DATABASE_SCHEMA_TYPE_CLIENT}
+func newGraphBuilderExecutor(t *testing.T) *graphBuilderExecutor {
+	t.Helper()
+
+	exec := &graphBuilderExecutor{schemaType: models.DATABASE_SCHEMA_TYPE_CLIENT}
+
+	pool, err := pgxmock.NewPool(pgxmock.QueryMatcherOption(pgxmock.QueryMatcherFunc(
+		func(_, actualSQL string) error {
+			exec.statements = append(exec.statements, actualSQL)
+			return nil
+		},
+	)))
+	require.NoError(t, err)
+	exec.pool = pool
+
+	return exec
 }
 
-func (e *recordingExecutor) DatabaseSchema() models.DatabaseSchema {
+// expectStatements queues n Exec expectations, so pgxmock doesn't reject them as unexpected
+// calls. The SQL text itself is asserted afterwards from exec.statements, not here.
+func (e *graphBuilderExecutor) expectStatements(n int) {
+	for range n {
+		e.pool.ExpectExec(".*").WillReturnResult(pgxmock.NewResult("", 0))
+	}
+}
+
+// joined returns every statement recorded, so a test can assert on the sequence as a whole.
+func (e *graphBuilderExecutor) joined() string {
+	return strings.Join(e.statements, "\n;\n")
+}
+
+func (e *graphBuilderExecutor) DatabaseSchema() models.DatabaseSchema {
 	return models.DatabaseSchema{SchemaType: e.schemaType, Schema: "org-test"}
 }
 
-func (e *recordingExecutor) Exec(_ context.Context, sql string, _ ...any) (pgconn.CommandTag, error) {
-	e.statements = append(e.statements, sql)
-	return pgconn.CommandTag{}, nil
+func (e *graphBuilderExecutor) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	return e.pool.Exec(ctx, sql, args...)
 }
 
-func (e *recordingExecutor) Query(_ context.Context, _ string, _ ...any) (pgx.Rows, error) {
+func (e *graphBuilderExecutor) Query(_ context.Context, _ string, _ ...any) (pgx.Rows, error) {
 	return nil, nil
 }
-func (e *recordingExecutor) QueryRow(_ context.Context, _ string, _ ...any) pgx.Row { return nil }
-func (e *recordingExecutor) Begin(_ context.Context) (Transaction, error)           { return nil, nil }
-func (e *recordingExecutor) Cache(_ context.Context) *RedisExecutor                 { return nil }
-func (e *recordingExecutor) RawTx() pgx.Tx                                          { return nil }
-func (e *recordingExecutor) Commit(_ context.Context) error                         { return nil }
-func (e *recordingExecutor) Rollback(_ context.Context) error                       { return nil }
-
-// joined returns every statement recorded, so a test can assert on the sequence as a whole.
-func (e *recordingExecutor) joined() string {
-	return strings.Join(e.statements, "\n;\n")
-}
+func (e *graphBuilderExecutor) QueryRow(_ context.Context, _ string, _ ...any) pgx.Row { return nil }
+func (e *graphBuilderExecutor) Begin(_ context.Context) (Transaction, error)           { return e, nil }
+func (e *graphBuilderExecutor) Cache(_ context.Context) *RedisExecutor                 { return nil }
+func (e *graphBuilderExecutor) RawTx() pgx.Tx                                          { return e.pool }
+func (e *graphBuilderExecutor) Commit(_ context.Context) error                         { return nil }
+func (e *graphBuilderExecutor) Rollback(_ context.Context) error                       { return nil }
 
 func TestGraphBuilder_RefusesAMarbleExecutor(t *testing.T) {
 	// The adjacency table lives in the organization's own schema. Pointing any of this at the
 	// marble database would create tables in it.
-	exec := newRecordingExecutor()
+	exec := newGraphBuilderExecutor(t)
 	exec.schemaType = models.DATABASE_SCHEMA_TYPE_MARBLE
 
 	repo := GraphBuilderRepositoryPostgresql{}
@@ -70,7 +96,8 @@ func TestGraphBuilder_RefusesAMarbleExecutor(t *testing.T) {
 }
 
 func TestGraphBuilder_CreateBuildTableIsUnloggedAndUnindexed(t *testing.T) {
-	exec := newRecordingExecutor()
+	exec := newGraphBuilderExecutor(t)
+	exec.expectStatements(2) // drop-if-exists, then create
 
 	require.NoError(t, GraphBuilderRepositoryPostgresql{}.CreateGraphBuildTable(context.Background(), exec))
 
@@ -83,7 +110,8 @@ func TestGraphBuilder_CreateBuildTableIsUnloggedAndUnindexed(t *testing.T) {
 }
 
 func TestGraphBuilder_PopulateUnpivotsEveryFieldInOneScan(t *testing.T) {
-	exec := newRecordingExecutor()
+	exec := newGraphBuilderExecutor(t)
+	exec.expectStatements(1)
 
 	_, err := GraphBuilderRepositoryPostgresql{}.PopulateGraphBuildTable(context.Background(),
 		exec, "accounts", []models.Field{
@@ -162,7 +190,7 @@ func TestGraphBuilder_ProjectionIsCanonicalPerDataType(t *testing.T) {
 }
 
 func TestGraphBuilder_PopulateSkipsATypeWithNoFields(t *testing.T) {
-	exec := newRecordingExecutor()
+	exec := newGraphBuilderExecutor(t)
 
 	rows, err := GraphBuilderRepositoryPostgresql{}.PopulateGraphBuildTable(context.Background(),
 		exec, "accounts", nil)
@@ -173,7 +201,8 @@ func TestGraphBuilder_PopulateSkipsATypeWithNoFields(t *testing.T) {
 }
 
 func TestGraphBuilder_IndexesMatchTheWalksTwoQueryShapes(t *testing.T) {
-	exec := newRecordingExecutor()
+	exec := newGraphBuilderExecutor(t)
+	exec.expectStatements(4) // primary key, index, statistics, analyze
 
 	require.NoError(t, GraphBuilderRepositoryPostgresql{}.IndexGraphBuildTable(context.Background(), exec))
 
@@ -181,12 +210,24 @@ func TestGraphBuilder_IndexesMatchTheWalksTwoQueryShapes(t *testing.T) {
 	// Hydrating a record's fields, and finding the records carrying a value.
 	assert.Contains(t, sql, "primary key (record_type, record_id, field_name)")
 	assert.Contains(t, sql, "(record_type, field_name, field_value)")
+
+	// The three lookup columns are correlated, so estimating them independently lands orders of
+	// magnitude low — which would make every hypernode count the walk reports meaningless.
+	assert.Contains(t, sql, "create statistics")
+	assert.Contains(t, sql, "(ndistinct, dependencies, mcv) on record_type, field_name, field_value")
+
+	// A freshly built table has no statistics of its own at all until this runs.
+	assert.Contains(t, sql, `analyze "org-test"."_graph_build"`)
+	assert.Less(t, strings.Index(sql, "create statistics"), strings.Index(sql, "analyze "),
+		"the statistics object has to exist before the analyze that populates it")
 }
 
-func TestGraphBuilder_SwapRenamesTheIndexesToo(t *testing.T) {
-	// ALTER TABLE ... RENAME TO leaves constraint and index names alone, and index names are
-	// schema-scoped: without renaming them the *next* build collides when it recreates them.
-	exec := newRecordingExecutor()
+func TestGraphBuilder_SwapDoesNotRenameIndexes(t *testing.T) {
+	// Index/constraint/statistics names are nonce-suffixed at creation time (see
+	// TestGraphBuilder_IndexNamesDoNotCollideAcrossBuilds), so the swap never needs to free up a
+	// fixed name for the next build by renaming them.
+	exec := newGraphBuilderExecutor(t)
+	exec.expectStatements(3) // lock_timeout, drop, rename
 
 	require.NoError(t, GraphBuilderRepositoryPostgresql{}.SwapGraphTable(context.Background(), exec))
 
@@ -195,14 +236,29 @@ func TestGraphBuilder_SwapRenamesTheIndexesToo(t *testing.T) {
 		"a walk in flight must delay the swap, not block every later reader behind it")
 	assert.Contains(t, sql, `drop table if exists "org-test"."_graph"`)
 	assert.Contains(t, sql, `alter table "org-test"."_graph_build" rename to "_graph"`)
-	assert.Contains(t, sql, `alter index "org-test"."_graph_build_pkey" rename to "_graph_pkey"`)
-	assert.Contains(t, sql, `alter index "org-test"."idx__graph_build_lookup" rename to "idx__graph_lookup"`)
+	assert.NotContains(t, sql, "alter index")
+	assert.NotContains(t, sql, "alter statistics")
 
 	// The drop has to precede the rename, or the rename would collide with the live table.
 	assert.Less(t, strings.Index(sql, "drop table"), strings.Index(sql, "rename to"))
 }
 
+func TestGraphBuilder_IndexNamesDoNotCollideAcrossBuilds(t *testing.T) {
+	// Each build must get its own index/constraint/statistics names: since the swap no longer
+	// renames them, a repeated fixed name would collide with the previous cycle's objects still
+	// attached to the live table.
+	first := newGraphBuilderExecutor(t)
+	first.expectStatements(4)
+	second := newGraphBuilderExecutor(t)
+	second.expectStatements(4)
+
+	require.NoError(t, GraphBuilderRepositoryPostgresql{}.IndexGraphBuildTable(context.Background(), first))
+	require.NoError(t, GraphBuilderRepositoryPostgresql{}.IndexGraphBuildTable(context.Background(), second))
+
+	assert.NotEqual(t, first.joined(), second.joined(), "two builds must not produce identical DDL")
+}
+
 func TestPgStringLiteral(t *testing.T) {
-	assert.Equal(t, `'accounts'`, pgStringLiteral("accounts"))
-	assert.Equal(t, `'it''s'`, pgStringLiteral("it's"))
+	assert.Equal(t, `'accounts'`, pgClientDataIdentifierString("accounts"))
+	assert.Equal(t, `'it''s'`, pgClientDataIdentifierString("it's"))
 }

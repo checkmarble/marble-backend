@@ -86,7 +86,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		enableTracing:                utils.GetEnv("ENABLE_TRACING", false),
 		ScanDatasetUpdatesInterval:   utils.GetEnvDuration("SCAN_DATASET_UPDATES_INTERVAL", 4*time.Hour),
 		CreateFullDatasetInterval:    utils.GetEnvDuration("CREATE_FULL_DATASET_INTERVAL", 8*time.Hour),
-		GraphBuildInterval:           utils.GetEnvDuration("GRAPH_BUILD_INTERVAL", worker_jobs.GRAPH_BUILD_DEFAULT_INTERVAL),
+		GraphBuildInterval:           utils.GetEnvDuration("GRAPH_BUILD_INTERVAL", 24*time.Hour),
 		continuousScreeningBucketUrl: utils.GetEnv("CONTINUOUS_SCREENING_BUCKET_URL", ""),
 	}
 

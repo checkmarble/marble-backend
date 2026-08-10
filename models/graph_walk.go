@@ -42,28 +42,33 @@ type GraphEdge struct {
 	Value string
 }
 
-// HyperconnectedRelation records a relationship a node was not expanded through, because a
-// single value of the relationship's field is carried by more records than the walk's
-// cardinality cap. The tax administration's IBAN appears on millions of unrelated
-// transactions and says nothing about who is related to whom, so such a relationship is
-// reported but never walked. Count is the planner's estimate of how many records carry
-// the value.
-type HyperconnectedRelation struct {
-	Label string
-	Kind  string // "link" or "match"
-	Field string // the field the relationship pivots on
-	Count int
-}
-
-// GraphResultNode is a node in the result, enriched with the relationships that were pruned
-// while walking it. Connector marks a synthetic node standing for a shared value rather than
-// a real record: its Type is the configuration's label and its Id the shared value.
-// ConnectorKind is "link" or "match" on such nodes.
+// GraphResultNode is a node in the result. Most are records, reported as they were found. Some
+// are synthetic — see Connector — standing for something the graph needs to show but that is not
+// itself a record.
 type GraphResultNode struct {
 	GraphNode
-	Hyperconnected []HyperconnectedRelation
-	Connector      bool
-	ConnectorKind  string
+
+	// Connector marks a synthetic node rather than a record. There are two kinds, told apart by
+	// ConnectorKind, and both are identified the same way: Type names the relationship and Id
+	// the value it pivots on.
+	//
+	//   - "match": a value two or more records share on a field an organization declared as
+	//     meaningful. Type is the relation's label, Id the shared value. Its edges are the
+	//     records carrying it, so a value shared by n records costs n edges rather than n².
+	//
+	//   - "link": the records hanging off one record through a single data-model link, when
+	//     there are too many of them to pull in. Type is the link's name, Id the value the
+	//     children point at. Such a node exists only when the walk gave up on expanding it, so
+	//     it always carries a HypernodeCount.
+	Connector     bool
+	ConnectorKind string // "link" or "match"
+
+	// HypernodeCount is non-zero on a connector the walk did not expand through, because the
+	// value it stands for is carried by more records than the cardinality cap allows — the tax
+	// administration's IBAN appears on millions of unrelated transactions and says nothing
+	// about who is related to whom. It is the approximate number of records concerned, and its
+	// presence means this node's edges are a sample of what is out there rather than all of it.
+	HypernodeCount int
 }
 
 // GraphResult is the subgraph reached from a starting node, as a flat set of nodes and edges
@@ -148,10 +153,6 @@ func GraphFieldExists(dataModel DataModel, recordType, fieldName string) bool {
 	return ok
 }
 
-// GraphObjectIdField is the field every ingested table carries and that every link resolves
-// against, so it identifies a record in the graph.
-const GraphObjectIdField = "object_id"
-
 // GraphTraversableFields returns, per record type, every field a walk can read on it: both ends of
 // every link, and both endpoints of every relation that still matches the data model. A relation
 // that no longer matches is skipped, since the walk cannot follow it either.
@@ -201,20 +202,20 @@ func GraphIndexedFields(dataModel DataModel, relations []GraphRelation) map[stri
 
 	for recordType, table := range dataModel.Tables {
 		wanted := names[recordType]
-		if !slices.Contains(wanted, GraphObjectIdField) {
-			wanted = append(slices.Clone(wanted), GraphObjectIdField)
+
+		if !slices.Contains(wanted, "object_id") {
+			wanted = append(slices.Clone(wanted), "object_id")
 		}
+
 		slices.Sort(wanted)
 
 		fields := make([]Field, 0, len(wanted))
+
 		for _, name := range wanted {
 			field, ok := table.Fields[name]
-			if !ok {
-				// object_id is created with the table rather than declared, so a data model that
-				// does not list it still has the column, holding text.
-				field = Field{Name: name, DataType: String}
+			if ok {
+				fields = append(fields, field)
 			}
-			fields = append(fields, field)
 		}
 
 		indexed[recordType] = fields

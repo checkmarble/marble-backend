@@ -9,7 +9,6 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
-	"github.com/checkmarble/marble-backend/utils"
 )
 
 func handleListGraphRelations(uc usecases.Usecases) func(c *gin.Context) {
@@ -30,19 +29,14 @@ func handleCreateGraphRelation(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(ctx, c, err) {
-			return
-		}
+		var payload dto.CreateGraphRelationBody
 
-		var body dto.CreateGraphRelationBody
-
-		if err := c.ShouldBindBodyWithJSON(&body); presentError(ctx, c, err) {
+		if err := c.ShouldBindBodyWithJSON(&payload); presentError(ctx, c, err) {
 			return
 		}
 
 		uc := usecasesWithCreds(ctx, uc).NewGraphRelationUsecase()
-		relation, err := uc.CreateGraphRelation(ctx, dto.AdaptCreateGraphRelation(body, organizationId))
+		relation, err := uc.CreateGraphRelation(ctx, dto.AdaptCreateGraphRelation(payload))
 
 		if presentError(ctx, c, err) {
 			return
