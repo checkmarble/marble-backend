@@ -5,61 +5,50 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
-type GraphNode struct {
+type GraphEdgeNode struct {
 	Type string `json:"type"`
 	Id   string `json:"id"`
 }
 
 type GraphEdge struct {
-	From  GraphNode `json:"from"`
-	To    GraphNode `json:"to"`
-	Kind  string    `json:"kind"`
-	Label string    `json:"label"`
-	Field string    `json:"field"`
-	Value string    `json:"value"`
+	From  GraphEdgeNode `json:"from"`
+	To    GraphEdgeNode `json:"to"`
+	Kind  string        `json:"kind"`
+	Label string        `json:"label"`
+	Field string        `json:"field"`
+	Value string        `json:"value"`
 }
 
-type HyperconnectedRelation struct {
-	Label string `json:"label"`
-	Kind  string `json:"kind"`
-	Field string `json:"field"`
-	Count int    `json:"count"`
+type GraphNode struct {
+	Type string `json:"type"`
+	Id   string `json:"id"`
+	// Connector marks a synthetic node rather than a record: either a value records share
+	// ("match") or an un-expanded set of children through one link ("link").
+	Connector     bool   `json:"connector,omitempty"`
+	ConnectorKind string `json:"connector_kind,omitempty"`
+	// HypernodeCount is set only on a connector the walk did not expand through, because what
+	// it stands for is shared too widely: it is the approximate number of records concerned,
+	// and its presence means this node's edges are a sample rather than the whole set.
+	HypernodeCount int `json:"hypernode_count,omitempty"`
 }
 
-type GraphResultNode struct {
-	Type           string                   `json:"type"`
-	Id             string                   `json:"id"`
-	Connector      bool                     `json:"connector,omitempty"`
-	ConnectorKind  string                   `json:"connector_kind,omitempty"`
-	Hyperconnected []HyperconnectedRelation `json:"hyperconnected,omitempty"`
+type Graph struct {
+	Start GraphEdgeNode `json:"start"`
+	Nodes []GraphNode   `json:"nodes"`
+	Edges []GraphEdge   `json:"edges"`
 }
 
-type GraphResult struct {
-	Start GraphNode         `json:"start"`
-	Nodes []GraphResultNode `json:"nodes"`
-	Edges []GraphEdge       `json:"edges"`
+func adaptGraphNode(n models.GraphNode) GraphEdgeNode {
+	return GraphEdgeNode{Type: n.Type, Id: n.Id}
 }
 
-func adaptGraphNode(n models.GraphNode) GraphNode {
-	return GraphNode{Type: n.Type, Id: n.Id}
-}
-
-func adaptHyperconnectedRelation(r models.HyperconnectedRelation) HyperconnectedRelation {
-	return HyperconnectedRelation{
-		Label: r.Label,
-		Kind:  r.Kind,
-		Field: r.Field,
-		Count: r.Count,
-	}
-}
-
-func adaptGraphResultNode(n models.GraphResultNode) GraphResultNode {
-	return GraphResultNode{
+func adaptGraphResultNode(n models.GraphResultNode) GraphNode {
+	return GraphNode{
 		Type:           n.Type,
 		Id:             n.Id,
 		Connector:      n.Connector,
 		ConnectorKind:  n.ConnectorKind,
-		Hyperconnected: pure_utils.Map(n.Hyperconnected, adaptHyperconnectedRelation),
+		HypernodeCount: n.HypernodeCount,
 	}
 }
 
@@ -74,8 +63,8 @@ func adaptGraphEdge(e models.GraphEdge) GraphEdge {
 	}
 }
 
-func AdaptGraphResultDto(r models.GraphResult) GraphResult {
-	return GraphResult{
+func AdaptGraphResultDto(r models.GraphResult) Graph {
+	return Graph{
 		Start: adaptGraphNode(r.Start),
 		Nodes: pure_utils.Map(r.Nodes, adaptGraphResultNode),
 		Edges: pure_utils.Map(r.Edges, adaptGraphEdge),

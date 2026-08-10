@@ -76,17 +76,24 @@ import (
 //	   Account A2       Account A3
 //
 // Bounding the walk. Nothing here is free to spread without limit: every direction the walk can
-// grow in has its own fan-out cap (a "hypernode" — a value carried by more records than its cap
-// allows — is reported but never expanded through, see markHyperconnected), the walk stops
-// after a bounded number of degrees, and the total number of records pulled in is capped
-// regardless of shape (see registerNode). The constants just below give the specific numbers
-// and the reasoning behind each one.
+// grow in has its own fan-out cap, the walk stops after a bounded number of degrees, and the
+// total number of records pulled in is capped regardless of shape (see registerNode). The
+// constants just below give the specific numbers and the reasoning behind each one.
+//
+// Something carried by more records than its cap allows is a "hypernode": it is reported, so the
+// caller knows it is there, but never expanded through. Both kinds report it the same way — as a
+// connector node carrying a HypernodeCount, which says "there are roughly this many of these, and
+// the edges you can see are a sample rather than all of them":
+//
+//   - a MATCH already had a connector standing for the shared value, so it simply gains a count
+//     (matchSameField).
+//   - a LINK gets one synthesised for it, identified by the link's name and the value the
+//     children point at (connectLinkHypernode).
+//
+// So every synthetic node in a result is a connector, and ConnectorKind says which of the two it
+// is. Nothing is reported as a property hanging off the records that led there.
 
 const (
-	// graphDefaultDegrees is how far the walk spreads when the caller does not say. Two is
-	// enough to reach a counterparty in the usual party -> account -> transaction shape:
-	// the first degree reaches the accounts, the second their transactions and, through a
-	// shared attribute, the other side's party.
 	graphDefaultDegrees = 2
 	graphMaxDegrees     = 5
 
@@ -122,8 +129,8 @@ const (
 
 // graphEdgeKindLink and graphEdgeKindMatch are the two kinds of edge a result can contain: a
 // link edge comes from a data-model foreign key, a match edge from a graph relation. The same
-// two strings also label a connector node's ConnectorKind, since a connector only ever exists
-// to stand for a match.
+// two strings label a connector node's ConnectorKind, saying which of the two the synthetic
+// node stands for.
 const (
 	graphEdgeKindLink  = "link"
 	graphEdgeKindMatch = "match"
@@ -137,7 +144,7 @@ type GraphWalkUsecase struct {
 	graphRelationRepository repositories.GraphRelationRepository
 }
 
-// WalkGraph returns the graph of end nodes — party records unless the caller asks for other
+// WalkGraph returns the graph of end nodes — "party" records unless the caller asks for other
 // types — reachable from the start node. Intermediate records such as a party's accounts and
 // transactions are walked through but not reported: two parties related through a chain of
 // them show up as directly connected. Records related by a shared attribute instead of a
@@ -154,8 +161,7 @@ func (uc GraphWalkUsecase) WalkGraph(
 		return models.GraphResult{}, err
 	}
 
-	dataModel, err := uc.dataModelRepository.GetDataModel(ctx,
-		uc.executorFactory.NewExecutor(), organizationId, false, true)
+	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, uc.executorFactory.NewExecutor(), organizationId, false, true)
 	if err != nil {
 		return models.GraphResult{}, err
 	}
@@ -172,8 +178,7 @@ func (uc GraphWalkUsecase) WalkGraph(
 
 	// An organization declares its own shared-attribute relations against its own data model. An
 	// organization that has declared none still gets a walk: it just follows links only.
-	relations, err := uc.graphRelationRepository.ListGraphRelations(ctx,
-		uc.executorFactory.NewExecutor(), organizationId)
+	relations, err := uc.graphRelationRepository.ListGraphRelations(ctx, uc.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
 		return models.GraphResult{}, err
 	}
@@ -183,8 +188,6 @@ func (uc GraphWalkUsecase) WalkGraph(
 		return models.GraphResult{}, err
 	}
 
-	// The bound lives here rather than at the edge, so no caller can ask for a walk that
-	// spreads without limit.
 	degrees := opts.Degrees
 	if degrees <= 0 {
 		degrees = graphDefaultDegrees
@@ -195,7 +198,7 @@ func (uc GraphWalkUsecase) WalkGraph(
 		ctx:                ctx,
 		exec:               exec,
 		repo:               uc.graphRepository,
-		sch:                buildGraphSchema(ctx, dataModel, endTypes, relations),
+		schema:             buildGraphSchema(ctx, dataModel, endTypes, relations),
 		maxNodes:           graphMaxNodes,
 		maxLinkFanout:      graphMaxLinkFanout,
 		maxUpwardFanout:    graphMaxUpwardFanout,
@@ -256,22 +259,22 @@ type graphSchema struct {
 }
 
 func buildGraphSchema(
-	ctx context.Context, dataModel models.DataModel, endTypes map[string]bool,
+	ctx context.Context,
+	dataModel models.DataModel,
+	endTypes map[string]bool,
 	relations []models.GraphRelation,
 ) graphSchema {
-	sch := graphSchema{
-		endTypes:  endTypes,
-		downward:  map[string][]models.LinkToSingle{},
-		upward:    map[string][]models.LinkToSingle{},
-		sameField: map[string][]models.GraphRelation{},
-		// Shared with the worker that builds the adjacency table, so a walk cannot come to read a
-		// field the table was never told to carry.
+	schema := graphSchema{
+		endTypes:     endTypes,
+		downward:     map[string][]models.LinkToSingle{},
+		upward:       map[string][]models.LinkToSingle{},
+		sameField:    map[string][]models.GraphRelation{},
 		neededFields: models.GraphTraversableFields(dataModel, relations),
 	}
 
 	for _, link := range dataModel.AllLinksAsMap() {
-		sch.downward[link.ParentTableName] = append(sch.downward[link.ParentTableName], link)
-		sch.upward[link.ChildTableName] = append(sch.upward[link.ChildTableName], link)
+		schema.downward[link.ParentTableName] = append(schema.downward[link.ParentTableName], link)
+		schema.upward[link.ChildTableName] = append(schema.upward[link.ChildTableName], link)
 	}
 
 	for _, relation := range relations {
@@ -280,9 +283,9 @@ func buildGraphSchema(
 		// renamed, a table dropped. Skip that relation rather than fail the whole walk, but say
 		// so: it is a misconfiguration to fix, not something to expect.
 		if !relation.AppliesTo(dataModel) {
-			utils.LoggerFromContext(ctx).WarnContext(ctx,
-				"graph walk: relation does not match the data model, skipping it",
-				"relation_id", relation.Id, "label", relation.Label)
+			utils.LoggerFromContext(ctx).WarnContext(ctx, "graph walk: relation does not match the data model, skipping it",
+				"relation_id", relation.Id,
+				"label", relation.Label)
 			continue
 		}
 
@@ -292,10 +295,11 @@ func buildGraphSchema(
 			// A relation with both endpoints on the same table — sender and receiver IBAN of a
 			// transaction, say — must be registered once, not once per endpoint: matching
 			// already walks both of its fields.
-			alreadyRegistered := slices.ContainsFunc(sch.sameField[recordType],
+			alreadyRegistered := slices.ContainsFunc(schema.sameField[recordType],
 				func(existing models.GraphRelation) bool { return existing.Id == relation.Id })
+
 			if !alreadyRegistered {
-				sch.sameField[recordType] = append(sch.sameField[recordType], relation)
+				schema.sameField[recordType] = append(schema.sameField[recordType], relation)
 			}
 		}
 	}
@@ -303,14 +307,14 @@ func buildGraphSchema(
 	// The data model is held in maps, so without sorting the order links are visited — and
 	// therefore the order of the resulting nodes and edges — would vary between two walks over
 	// identical data.
-	for recordType := range sch.downward {
-		slices.SortFunc(sch.downward[recordType], graphLinkOrder)
+	for recordType := range schema.downward {
+		slices.SortFunc(schema.downward[recordType], graphLinkOrder)
 	}
-	for recordType := range sch.upward {
-		slices.SortFunc(sch.upward[recordType], graphLinkOrder)
+	for recordType := range schema.upward {
+		slices.SortFunc(schema.upward[recordType], graphLinkOrder)
 	}
 
-	return sch
+	return schema
 }
 
 func graphLinkOrder(a, b models.LinkToSingle) int {
@@ -345,10 +349,10 @@ type rawEdge struct {
 // graphWalker holds everything one call to WalkGraph needs: it is created fresh per call and
 // discarded once result() returns, so its maps never need to be cleared between requests.
 type graphWalker struct {
-	ctx  context.Context
-	exec repositories.Executor
-	repo repositories.GraphRepository
-	sch  graphSchema
+	ctx    context.Context
+	exec   repositories.Executor
+	repo   repositories.GraphRepository
+	schema graphSchema
 
 	// --- fan-out and size limits for this walk, fixed for its whole lifetime (see the
 	// constants near the top of this file for what each one means and why it has its value) ---
@@ -367,17 +371,18 @@ type graphWalker struct {
 	values map[models.GraphNode]map[string]string
 	// adj is the undirected adjacency list of every edge found, keyed by either endpoint.
 	adj map[models.GraphNode][]rawEdge
-	// hyper holds, per node, the hypernode relationships pruned while expanding it.
-	hyper map[models.GraphNode][]models.HyperconnectedRelation
 	// conns marks which nodes are connectors and records their kind (link/match). A
 	// connector's own Type is its relation's label and its Id the shared value, so its kind
 	// is all there is left to remember about one here.
 	conns map[models.GraphNode]string
 
-	// hyperConns are connectors emitted for an over-cardinality value. They have no members
-	// and so would be pruned as unshared, but saying "this value exists and is shared far
-	// too widely to enumerate" is the whole point of reporting them.
-	hyperConns map[models.GraphNode]bool
+	// hyperConns are the connectors emitted for an over-cardinality value, mapped to the
+	// estimated number of records carrying it. They have no members and so would be pruned as
+	// unshared, but saying "this value exists and is shared far too widely to enumerate" is
+	// the whole point of reporting them — which is also why the count lives here, on the one
+	// node standing for the value, rather than being repeated on every record carrying it.
+	// Membership, not the value, is what marks a connector as a hypernode: use comma-ok.
+	hyperConns map[models.GraphNode]int
 
 	// seen / order together are the node set: seen is for membership tests, order is the
 	// (deterministic, discovery-order) sequence result() iterates to build its output.
@@ -427,15 +432,15 @@ type graphWalker struct {
 func (w *graphWalker) run(start models.GraphNode, degrees int) (models.GraphResult, error) {
 	w.values = map[models.GraphNode]map[string]string{}
 	w.adj = map[models.GraphNode][]rawEdge{}
-	w.hyper = map[models.GraphNode][]models.HyperconnectedRelation{}
 	w.conns = map[models.GraphNode]string{}
-	w.hyperConns = map[models.GraphNode]bool{}
+	w.hyperConns = map[models.GraphNode]int{}
 	w.seen = map[models.GraphNode]bool{}
 	w.edgeSeen = map[graphEdgeKey]bool{}
 	w.upwardDone = map[models.GraphNode]bool{}
 	w.sameFieldDone = map[models.GraphNode]bool{}
 
 	w.registerNode(start)
+
 	if err := w.hydrate([]models.GraphNode{start}); err != nil {
 		return models.GraphResult{}, err
 	}
@@ -447,6 +452,7 @@ func (w *graphWalker) run(start models.GraphNode, degrees int) (models.GraphResu
 		if err := w.ctx.Err(); err != nil {
 			return models.GraphResult{}, errors.Wrap(err, "graph walk interrupted")
 		}
+
 		ran = degree
 
 		// A downward link fans out, so it is followed a single level per degree, and only
@@ -505,14 +511,16 @@ func (w *graphWalker) followDownward(frontier []models.GraphNode) ([]models.Grap
 	var discovered []models.GraphNode
 
 	byType := graphGroupByType(frontier)
+
 	for _, recordType := range slices.Sorted(maps.Keys(byType)) {
-		for _, link := range w.sch.downward[recordType] {
+		for _, link := range w.schema.downward[recordType] {
 			found, err := w.followLink(byType[recordType], link,
 				link.ParentFieldName, link.ChildTableName, link.ChildFieldName,
 				w.maxLinkFanout, false)
 			if err != nil {
 				return nil, err
 			}
+
 			discovered = append(discovered, found...)
 		}
 	}
@@ -533,11 +541,14 @@ func (w *graphWalker) followDownward(frontier []models.GraphNode) ([]models.Grap
 // assumption turns out to be false — a parent field that is not actually unique, or a cycle.
 func (w *graphWalker) followUpwardClosure(seeds []models.GraphNode) ([]models.GraphNode, error) {
 	level := make([]models.GraphNode, 0, len(seeds))
+
 	for _, node := range seeds {
 		if w.upwardDone[node] {
 			continue
 		}
+
 		w.upwardDone[node] = true
+
 		level = append(level, node)
 	}
 
@@ -547,19 +558,22 @@ func (w *graphWalker) followUpwardClosure(seeds []models.GraphNode) ([]models.Gr
 		var next []models.GraphNode
 
 		byType := graphGroupByType(level)
+
 		for _, recordType := range slices.Sorted(maps.Keys(byType)) {
-			for _, link := range w.sch.upward[recordType] {
+			for _, link := range w.schema.upward[recordType] {
 				found, err := w.followLink(byType[recordType], link,
 					link.ChildFieldName, link.ParentTableName, link.ParentFieldName,
 					w.maxUpwardFanout, true)
 				if err != nil {
 					return nil, err
 				}
+
 				next = append(next, found...)
 			}
 		}
 
 		next = graphUnion(next)
+
 		for _, node := range next {
 			w.upwardDone[node] = true
 		}
@@ -585,8 +599,11 @@ func (w *graphWalker) followUpwardClosure(seeds []models.GraphNode) ([]models.Gr
 // is "up") is recorded the same way regardless of which direction discovered the edge. It
 // reports the records it saw for the first time.
 func (w *graphWalker) followLink(
-	nodes []models.GraphNode, link models.LinkToSingle,
-	originField, targetType, targetField string, limit int, targetIsParent bool,
+	nodes []models.GraphNode,
+	link models.LinkToSingle,
+	originField, targetType, targetField string,
+	limit int,
+	targetIsParent bool,
 ) ([]models.GraphNode, error) {
 	origins := w.originsByValue(nodes, originField)
 	if len(origins) == 0 {
@@ -603,16 +620,19 @@ func (w *graphWalker) followLink(
 		if err != nil {
 			return nil, err
 		}
-		w.markHyperconnected(origins[value], graphEdgeKindLink, link.Name, originField, count)
+
+		w.connectLinkHypernode(origins[value], link, originField, value, count)
 	}
 
 	var discovered []models.GraphNode
+
 	for _, value := range slices.Sorted(maps.Keys(res.members)) {
 		for _, member := range res.members[value] {
 			admitted, isNew := w.registerNode(member)
 			if !admitted {
 				continue
 			}
+
 			for _, origin := range origins[value] {
 				if targetIsParent {
 					w.addLinkEdge(origin, member, link.Name, link.ChildFieldName, value)
@@ -620,6 +640,7 @@ func (w *graphWalker) followLink(
 					w.addLinkEdge(member, origin, link.Name, link.ChildFieldName, value)
 				}
 			}
+
 			if isNew {
 				discovered = append(discovered, member)
 			}
@@ -642,25 +663,30 @@ func (w *graphWalker) followSameField(nodes []models.GraphNode) ([]models.GraphN
 	var discovered []models.GraphNode
 
 	pending := make([]models.GraphNode, 0, len(nodes))
+
 	for _, node := range nodes {
 		if w.sameFieldDone[node] {
 			continue
 		}
+
 		w.sameFieldDone[node] = true
 		pending = append(pending, node)
 	}
 
 	byType := graphGroupByType(pending)
+
 	for _, recordType := range slices.Sorted(maps.Keys(byType)) {
-		for _, relation := range w.sch.sameField[recordType] {
+		for _, relation := range w.schema.sameField[recordType] {
 			for _, endpoint := range relation.Endpoints() {
 				if endpoint[0] != recordType {
 					continue
 				}
+
 				found, err := w.matchSameField(byType[recordType], relation, recordType, endpoint[1])
 				if err != nil {
 					return nil, err
 				}
+
 				discovered = append(discovered, found...)
 			}
 		}
@@ -674,7 +700,9 @@ func (w *graphWalker) followSameField(nodes []models.GraphNode) ([]models.GraphN
 // every value that connects at least two records, and reports a hypernode instead for any
 // value whose fan-out blew past maxSameFieldFanout.
 func (w *graphWalker) matchSameField(
-	nodes []models.GraphNode, relation models.GraphRelation, recordType, fieldName string,
+	nodes []models.GraphNode,
+	relation models.GraphRelation,
+	recordType, fieldName string,
 ) ([]models.GraphNode, error) {
 	otherType, otherField, ok := relation.OtherEndpoint(recordType, fieldName)
 	if !ok {
@@ -693,27 +721,30 @@ func (w *graphWalker) matchSameField(
 
 	// An over-cardinality value is still worth surfacing — the caller wants to know the
 	// shared IBAN is there — but it is a dead end: the connector is emitted with no members
-	// and is never walked through.
+	// and is never walked through. The count goes on the connector rather than on each record
+	// carrying the value, since the connector is the one node that stands for the value.
 	for _, value := range res.overCap {
 		count, err := w.estimate(otherType, otherField, value, w.maxSameFieldFanout+1)
 		if err != nil {
 			return nil, err
 		}
-		w.markHyperconnected(origins[value], graphEdgeKindMatch, relation.Label, fieldName, count)
 
 		connector := w.connect(relation.Label, value, w.participants(origins[value], fieldName, nil, ""))
-		w.hyperConns[connector] = true
+		w.markHypernode(connector, count)
 	}
 
 	var discovered []models.GraphNode
+
 	for _, value := range slices.Sorted(maps.Keys(res.members)) {
 		participants := w.participants(origins[value], fieldName, res.members[value], otherField)
+
 		if len(participants) < 2 {
 			// Nobody else carries this value, so it does not connect anything.
 			continue
 		}
 
 		w.connect(relation.Label, value, participants)
+
 		for _, p := range participants {
 			if p.isNew {
 				discovered = append(discovered, p.node)
@@ -737,7 +768,10 @@ type graphParticipant struct {
 // "two accounts sharing an IBAN") returns the origins among the matches too, so the
 // deduplication here is what stops a record connecting to itself.
 func (w *graphWalker) participants(
-	origins []models.GraphNode, originField string, members []models.GraphNode, memberField string,
+	origins []models.GraphNode,
+	originField string,
+	members []models.GraphNode,
+	memberField string,
 ) []graphParticipant {
 	participants := make([]graphParticipant, 0, len(origins)+len(members))
 	seen := make(map[models.GraphNode]bool, len(origins)+len(members))
@@ -767,6 +801,7 @@ func (w *graphWalker) connect(label, value string, participants []graphParticipa
 	connector := models.GraphNode{Type: label, Id: value}
 
 	admitted, isNew := w.registerNode(connector)
+
 	if !admitted {
 		return connector
 	}
@@ -779,7 +814,9 @@ func (w *graphWalker) connect(label, value string, participants []graphParticipa
 		if !admitted {
 			continue
 		}
+
 		participants[i].isNew = isNew
+
 		w.addMatchEdge(participants[i].node, connector, label, participants[i].field, value)
 	}
 
@@ -801,33 +838,41 @@ type graphLookupResult struct {
 // equals it — in one query for the whole batch. It asks for one row more than the cap so a
 // value at the limit can be told from a value beyond it.
 func (w *graphWalker) lookup(
-	origins map[string][]models.GraphNode, recordType, fieldName string, limit int,
+	origins map[string][]models.GraphNode,
+	recordType, fieldName string,
+	limit int,
 ) (graphLookupResult, error) {
-	matches, err := w.repo.FindByValues(w.ctx, w.exec, recordType, fieldName,
-		slices.Sorted(maps.Keys(origins)), limit+1)
+	matches, err := w.repo.FindByValues(w.ctx, w.exec, recordType, fieldName, slices.Sorted(maps.Keys(origins)), limit+1)
 	w.queries++
+
 	if err != nil {
 		return graphLookupResult{}, err
 	}
 
 	idsByValue := map[string][]string{}
+
 	for _, match := range matches {
 		idsByValue[match.Value] = append(idsByValue[match.Value], match.RecordId)
 	}
 
 	res := graphLookupResult{members: map[string][]models.GraphNode{}}
+
 	for value, ids := range idsByValue {
 		if len(ids) > limit {
 			res.overCap = append(res.overCap, value)
 			continue
 		}
+
 		slices.Sort(ids)
 		nodes := make([]models.GraphNode, 0, len(ids))
+
 		for _, id := range ids {
 			nodes = append(nodes, models.GraphNode{Type: recordType, Id: id})
 		}
+
 		res.members[value] = nodes
 	}
+
 	slices.Sort(res.overCap)
 
 	return res, nil
@@ -843,6 +888,7 @@ func (w *graphWalker) estimate(recordType, fieldName, value string, lowerBound i
 
 	count, err := w.repo.EstimateValueCount(w.ctx, w.exec, recordType, fieldName, value)
 	w.queries++
+
 	if err != nil {
 		return 0, err
 	}
@@ -867,6 +913,7 @@ func (w *graphWalker) hydrate(nodes []models.GraphNode) error {
 			// A connector stands for a value, not a record: there is nothing to read.
 			continue
 		}
+
 		// Mark it hydrated up front, so a record with no rows in `_graph` is not asked for
 		// again on every later step.
 		w.values[node] = map[string]string{}
@@ -874,7 +921,8 @@ func (w *graphWalker) hydrate(nodes []models.GraphNode) error {
 	}
 
 	for _, recordType := range slices.Sorted(maps.Keys(idsByType)) {
-		fields := w.sch.neededFields[recordType]
+		fields := w.schema.neededFields[recordType]
+
 		if len(fields) == 0 {
 			// Nothing on this record type is traversable.
 			continue
@@ -899,10 +947,9 @@ func (w *graphWalker) hydrate(nodes []models.GraphNode) error {
 
 // originsByValue collects the distinct values the given records carry on a field, each mapped
 // back to the records that carry it, so one lookup can serve the whole batch.
-func (w *graphWalker) originsByValue(
-	nodes []models.GraphNode, fieldName string,
-) map[string][]models.GraphNode {
+func (w *graphWalker) originsByValue(nodes []models.GraphNode, fieldName string) map[string][]models.GraphNode {
 	origins := map[string][]models.GraphNode{}
+
 	for _, node := range nodes {
 		value := w.values[node][fieldName]
 		if value == "" {
@@ -913,6 +960,7 @@ func (w *graphWalker) originsByValue(
 		}
 		origins[value] = append(origins[value], node)
 	}
+
 	return origins
 }
 
@@ -968,28 +1016,45 @@ func (w *graphWalker) addEdge(a, b models.GraphNode, kind, label, field, value s
 	})
 }
 
-func (w *graphWalker) markHyperconnected(
-	nodes []models.GraphNode, kind, label, field string, count int,
-) {
+// connectLinkHypernode stands in for the children the walk refused to pull in, when one value of
+// a link's field turned out to be carried by too many records. Rather than record that fact on
+// every record that led there, it is a node of its own — the link equivalent of the connector a
+// shared value gets — wired to the records concerned:
+//
+//	Account A1 --transactions_account--> (link connector: transactions_account, "A1", ~5000)
+//
+// Contraction then treats it like any other connector: it is kept, it terminates a path, and the
+// party A1 collapses into ends up holding the edge to it.
+func (w *graphWalker) connectLinkHypernode(origins []models.GraphNode, link models.LinkToSingle, originField, value string, count int) {
+	hypernode := models.GraphNode{Type: link.Name, Id: value}
+
+	admitted, isNew := w.registerNode(hypernode)
+	if !admitted {
+		return
+	}
+	if isNew {
+		w.conns[hypernode] = graphEdgeKindLink
+	}
+	w.markHypernode(hypernode, count)
+
+	for _, origin := range origins {
+		// Not addLinkEdge: that marks the far end as the record's parent, which drives ownersOf.
+		// A hypernode owns nothing — it is a leaf standing for what was left out.
+		w.addEdge(origin, hypernode, graphEdgeKindLink, link.Name, originField, value, false)
+	}
+}
+
+// markHypernode records that a connector stands for something too widely shared to expand
+// through, together with the estimated number of records concerned.
+//
+// The same value can be reached again in a later degree, and through two relations sharing a
+// label but pointing at different endpoints, so the largest estimate seen wins: reporting a
+// smaller one afterwards would understate a relationship already known to be bigger than that.
+func (w *graphWalker) markHypernode(connector models.GraphNode, count int) {
 	w.pruned++
 
-	for _, node := range nodes {
-		duplicate := slices.ContainsFunc(w.hyper[node],
-			func(existing models.HyperconnectedRelation) bool {
-				return existing.Kind == kind && existing.Label == label && existing.Field == field
-			})
-		if duplicate {
-			continue
-		}
-
-		w.hyper[node] = append(w.hyper[node], models.HyperconnectedRelation{
-			Label: label,
-			Kind:  kind,
-			Field: field,
-			// The per-value cap short-circuits the lookup as soon as it is crossed, so the
-			// count is always the planner's estimate rather than a real count.
-			Count: count,
-		})
+	if existing, ok := w.hyperConns[connector]; !ok || count > existing {
+		w.hyperConns[connector] = count
 	}
 }
 
@@ -1049,7 +1114,7 @@ func (w *graphWalker) isKept(node, start models.GraphNode) bool {
 	if _, ok := w.conns[node]; ok {
 		return true
 	}
-	return w.sch.endTypes[node.Type]
+	return w.schema.endTypes[node.Type]
 }
 
 // result collapses the raw discovery graph down to what the caller asked for: end nodes,
@@ -1062,20 +1127,21 @@ func (w *graphWalker) isKept(node, start models.GraphNode) bool {
 //     over LINK edges through records that are not kept, until it reaches another kept node
 //     (or gives up on a dead end), turning each path it finds into one direct edge.
 //
-//  2. Every kept node that IS a connector runs attachConnector instead: a connector's
-//     neighbours are the records that carry the shared value, not records it is linked to, so
-//     it is wired to the reported owner of each of those records rather than contracted.
+//  2. Every MATCH connector runs attachConnector instead: its neighbours are the records that
+//     carry the shared value, not records it is linked to, so it is wired to the reported owner
+//     of each of those records rather than contracted. A LINK connector needs neither pass —
+//     step 1 already reached it, since it sits at the end of an ordinary chain of link edges.
 //
 //  3. A connector that ends up next to fewer than two reported nodes after step 2 is dropped —
 //     see the comment on the `dropped` map below for why this can happen even though a
 //     connector is only ever created for a value that, at match time, at least two records
-//     carried.
+//     carried. A hypernode is exempt: saying "there are more of these" is the point of it.
 //
 //  4. The surviving kept nodes and the edges built in steps 1-2 are filtered by the drop list
-//     from step 3, enriched with the hyperconnected relationships each node absorbed from the
-//     records it collapsed, and returned.
+//     from step 3 and returned.
 func (w *graphWalker) result(start models.GraphNode) models.GraphResult {
 	kept := make([]models.GraphNode, 0, len(w.order))
+
 	for _, node := range w.order {
 		if w.isKept(node, start) {
 			kept = append(kept, node)
@@ -1085,15 +1151,13 @@ func (w *graphWalker) result(start models.GraphNode) models.GraphResult {
 	edges := make([]models.GraphEdge, 0)
 	edgeSeen := map[graphEdgeKey]bool{}
 	degrees := map[models.GraphNode]int{}
-	// absorbedInto records which kept nodes a dropped record collapsed into, so a relationship
-	// pruned on that record can still be reported against them.
-	absorbedInto := map[models.GraphNode][]models.GraphNode{}
 
 	add := func(edge models.GraphEdge) {
 		key := newGraphEdgeKey(edge.From, edge.To, edge.Label, edge.Value)
 		if edgeSeen[key] {
 			return
 		}
+
 		edgeSeen[key] = true
 		edges = append(edges, edge)
 		degrees[edge.From]++
@@ -1107,7 +1171,7 @@ func (w *graphWalker) result(start models.GraphNode) models.GraphResult {
 			continue
 		}
 
-		for _, edge := range w.contractFrom(from, start, absorbedInto) {
+		for _, edge := range w.contractFrom(from, start) {
 			add(edge)
 		}
 	}
@@ -1122,6 +1186,7 @@ func (w *graphWalker) result(start models.GraphNode) models.GraphResult {
 	}
 
 	dropped := map[models.GraphNode]bool{}
+
 	for node := range w.conns {
 		// connect only ever creates a connector once at least two records are wired to it (or,
 		// for a hypernode, unconditionally — see matchSameField). But wiring at match time is
@@ -1135,28 +1200,34 @@ func (w *graphWalker) result(start models.GraphNode) models.GraphResult {
 		// next to is not a connection. The one exception is a hypernode connector — reporting
 		// that a value exists and is shared far too widely to enumerate is the whole point of
 		// creating it, regardless of how many edges (if any) survive to describe it.
-		if degrees[node] < 2 && !w.hyperConns[node] {
+		if _, isHypernode := w.hyperConns[node]; degrees[node] < 2 && !isHypernode {
 			dropped[node] = true
 		}
 	}
 
-	hyper := w.hyperconnectedByNode(start, absorbedInto)
-
 	nodes := make([]models.GraphResultNode, 0, len(kept))
+
 	for _, node := range kept {
 		if dropped[node] {
 			continue
 		}
 
-		resultNode := models.GraphResultNode{GraphNode: node, Hyperconnected: hyper[node]}
+		resultNode := models.GraphResultNode{GraphNode: node}
+
 		if kind, ok := w.conns[node]; ok {
 			resultNode.Connector = true
 			resultNode.ConnectorKind = kind
+			// Non-zero only for a connector standing for a value too widely shared to expand
+			// through, which is what tells the caller its edges are a sample and not the
+			// whole set.
+			resultNode.HypernodeCount = w.hyperConns[node]
 		}
+
 		nodes = append(nodes, resultNode)
 	}
 
 	retained := make([]models.GraphEdge, 0, len(edges))
+
 	for _, edge := range edges {
 		if dropped[edge.From] || dropped[edge.To] {
 			continue
@@ -1187,24 +1258,20 @@ type graphContractStep struct {
 // as soon as it reaches one: whatever lies beyond a kept node is that node's own concern once
 // its turn comes to run contractFrom, not `from`'s.
 //
-//	from --L1--> x1 --L2--> x2 --L3--> KEPT      (x1, x2 are not reported: absorbed into `from`)
+//	from --L1--> x1 --L2--> x2 --L3--> KEPT      (x1 and x2 are not reported, so they vanish)
 //
 //	contractFrom(from) reports one edge:  from ---"L1 > L2 > L3"---> KEPT
-//
-// Every record absorbed on the way (x1, x2 above) is recorded in absorbedInto, so a
-// relationship pruned on one of them for being over-cardinality can still be reported against
-// `from` once contraction reaches it — see hyperconnectedByNode.
-func (w *graphWalker) contractFrom(
-	from, start models.GraphNode, absorbedInto map[models.GraphNode][]models.GraphNode,
-) []models.GraphEdge {
+func (w *graphWalker) contractFrom(from, start models.GraphNode) []models.GraphEdge {
 	out := make([]models.GraphEdge, 0)
 
 	visited := map[models.GraphNode]bool{from: true}
 	queue := make([]graphContractStep, 0, len(w.adj[from]))
+
 	for _, edge := range w.adj[from] {
 		if edge.kind != graphEdgeKindLink {
 			continue
 		}
+
 		queue = append(queue, graphContractStep{
 			node:   edge.to,
 			labels: []string{edge.label},
@@ -1220,6 +1287,7 @@ func (w *graphWalker) contractFrom(
 		if visited[cur.node] {
 			continue
 		}
+
 		visited[cur.node] = true
 
 		if w.isKept(cur.node, start) {
@@ -1229,14 +1297,13 @@ func (w *graphWalker) contractFrom(
 			continue
 		}
 
-		absorbedInto[cur.node] = append(absorbedInto[cur.node], from)
-
 		for _, edge := range w.adj[cur.node] {
 			// Only link paths are contracted. A shared attribute is not something to route
 			// through: attachConnector decides which records own the value.
 			if edge.kind != graphEdgeKindLink || visited[edge.to] {
 				continue
 			}
+
 			queue = append(queue, graphContractStep{
 				node:   edge.to,
 				labels: append(slices.Clone(cur.labels), edge.label),
@@ -1279,9 +1346,11 @@ func (w *graphWalker) attachConnector(connector, start models.GraphNode) []model
 
 		for _, owner := range w.ownersOf(member.to, start) {
 			from, to := owner, connector
+
 			if graphNodeLess(to, from) {
 				from, to = to, from
 			}
+
 			out = append(out, models.GraphEdge{
 				From:  from,
 				To:    to,
@@ -1308,6 +1377,7 @@ func (w *graphWalker) ownersOf(record, start models.GraphNode) []models.GraphNod
 	}
 
 	var owners []models.GraphNode
+
 	visited := map[models.GraphNode]bool{record: true}
 	queue := []models.GraphNode{record}
 
@@ -1319,12 +1389,14 @@ func (w *graphWalker) ownersOf(record, start models.GraphNode) []models.GraphNod
 			if edge.kind != graphEdgeKindLink || !edge.toParent || visited[edge.to] {
 				continue
 			}
+
 			visited[edge.to] = true
 
 			if w.isKept(edge.to, start) {
 				owners = append(owners, edge.to)
 				continue
 			}
+
 			queue = append(queue, edge.to)
 		}
 	}
@@ -1378,49 +1450,6 @@ func (w *graphWalker) contractedEdge(from models.GraphNode, step graphContractSt
 		Kind:  graphEdgeKindLink,
 		Label: strings.Join(labels, " > "),
 	}
-}
-
-// hyperconnectedByNode reattaches the relationships pruned during discovery (see
-// markHyperconnected) to the nodes that are actually reported. A hypernode found while
-// expanding, say, a transaction would be pointless to report against the transaction itself,
-// since the transaction never appears in the result — so it is credited instead to whichever
-// kept nodes that transaction was absorbed into (absorbedInto, built by contractFrom), or to a
-// kept node directly if it was the one hyperconnected.
-func (w *graphWalker) hyperconnectedByNode(
-	start models.GraphNode, absorbedInto map[models.GraphNode][]models.GraphNode,
-) map[models.GraphNode][]models.HyperconnectedRelation {
-	hyper := map[models.GraphNode][]models.HyperconnectedRelation{}
-
-	add := func(target models.GraphNode, relations []models.HyperconnectedRelation) {
-		for _, relation := range relations {
-			duplicate := slices.ContainsFunc(hyper[target],
-				func(existing models.HyperconnectedRelation) bool {
-					return existing.Kind == relation.Kind &&
-						existing.Label == relation.Label &&
-						existing.Field == relation.Field
-				})
-			if !duplicate {
-				hyper[target] = append(hyper[target], relation)
-			}
-		}
-	}
-
-	for _, node := range w.order {
-		relations := w.hyper[node]
-		if len(relations) == 0 {
-			continue
-		}
-
-		if w.isKept(node, start) {
-			add(node, relations)
-			continue
-		}
-		for _, target := range absorbedInto[node] {
-			add(target, relations)
-		}
-	}
-
-	return hyper
 }
 
 // graphUnion returns the deduplicated union of any number of node lists, keeping each node's

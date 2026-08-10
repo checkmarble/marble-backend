@@ -26,12 +26,13 @@ func handleGraphWalk(uc usecases.Usecases) func(c *gin.Context) {
 		nodeId := c.Param("node_id")
 
 		opts := models.GraphWalkOptions{
-			EndTypes: parseGraphEndTypes(c.Query("end_types")),
-			Degrees:  parseGraphDegrees(c.Query("degrees"), c.Query("depth")),
+			EndTypes: parseGraphEndTypes(c.Query("types")),
+			Degrees:  parseGraphDegrees(c.Query("degrees")),
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewGraphWalkUsecase()
 		result, err := usecase.WalkGraph(ctx, organizationId, nodeType, nodeId, opts)
+
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -42,27 +43,19 @@ func handleGraphWalk(uc usecases.Usecases) func(c *gin.Context) {
 
 func parseGraphEndTypes(raw string) []string {
 	var endTypes []string
-	for _, part := range strings.Split(raw, ",") {
+
+	for part := range strings.SplitSeq(raw, ",") {
 		if trimmed := strings.TrimSpace(part); trimmed != "" {
 			endTypes = append(endTypes, trimmed)
 		}
 	}
+
 	return endTypes
 }
 
-// parseGraphDegrees reads how many degrees to walk. Zero (missing, unparseable or not a
-// positive number) lets the usecase apply its default; the usecase also owns the upper bound,
-// so an over-large value is passed through and clamped there. `depth` is accepted as an alias
-// so callers written against the earlier parameter name keep working.
-func parseGraphDegrees(raw, alias string) int {
-	if raw == "" {
-		raw = alias
+func parseGraphDegrees(raw string) int {
+	if degrees, err := strconv.Atoi(raw); err == nil && degrees > 0 {
+		return degrees
 	}
-
-	degrees, err := strconv.Atoi(raw)
-	if err != nil || degrees <= 0 {
-		return 0
-	}
-
-	return degrees
+	return 0
 }
