@@ -1,5 +1,11 @@
 package models
 
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
 // GraphRow is a single row of the client-schema `_graph` adjacency table, for one
 // already-known record type. The table holds one row per (record, participating field,
 // value) and is maintained out of band by a dedicated worker.
@@ -78,39 +84,53 @@ type GraphWalkOptions struct {
 	Degrees  int
 }
 
-// SameFieldConfig declares that equal values of two (record type, field) endpoints connect
-// the records carrying them, even though no link exists between those records. An organization
-// defines its own configs against the tables and fields of its own data model.
+// GraphRelation declares that equal values of two (record type, field) endpoints connect the
+// records carrying them, even though no link exists between those records. An organization
+// defines its own relations against the tables and fields of its own data model.
 //
-// Configs are one-to-one: a group of three endpoints that should all count as sharing a
-// value is expressed as three configs (A<->B, B<->C, C<->A). Configs sharing a Label
+// Relations are one-to-one: a group of three endpoints that should all count as sharing a
+// value is expressed as three relations (A<->B, B<->C, C<->A). Relations sharing a Label
 // converge on the same connector node, so such a group still renders as a single star.
-type SameFieldConfig struct {
+type GraphRelation struct {
+	Id         uuid.UUID
+	OrgId      uuid.UUID
 	Label      string
 	LeftType   string
 	LeftField  string
 	RightType  string
 	RightField string
+	CreatedAt  time.Time
 }
 
-// OtherEndpoint returns the endpoint opposite to (recordType, fieldName) when the config
-// applies to that endpoint. A self-config (both endpoints equal) returns that same endpoint,
+// OtherEndpoint returns the endpoint opposite to (recordType, fieldName) when the relation
+// applies to that endpoint. A self-relation (both endpoints equal) returns that same endpoint,
 // so callers must filter the origin record out of the results.
-func (c SameFieldConfig) OtherEndpoint(recordType, fieldName string) (string, string, bool) {
+func (r GraphRelation) OtherEndpoint(recordType, fieldName string) (string, string, bool) {
 	switch {
-	case c.LeftType == recordType && c.LeftField == fieldName:
-		return c.RightType, c.RightField, true
-	case c.RightType == recordType && c.RightField == fieldName:
-		return c.LeftType, c.LeftField, true
+	case r.LeftType == recordType && r.LeftField == fieldName:
+		return r.RightType, r.RightField, true
+	case r.RightType == recordType && r.RightField == fieldName:
+		return r.LeftType, r.LeftField, true
 	default:
 		return "", "", false
 	}
 }
 
-// Endpoints returns the config's two endpoints, deduplicated for a self-config.
-func (c SameFieldConfig) Endpoints() [][2]string {
-	if c.LeftType == c.RightType && c.LeftField == c.RightField {
-		return [][2]string{{c.LeftType, c.LeftField}}
+// Endpoints returns the relation's two endpoints, deduplicated for a self-relation.
+func (r GraphRelation) Endpoints() [][2]string {
+	if r.LeftType == r.RightType && r.LeftField == r.RightField {
+		return [][2]string{{r.LeftType, r.LeftField}}
 	}
-	return [][2]string{{c.LeftType, c.LeftField}, {c.RightType, c.RightField}}
+	return [][2]string{{r.LeftType, r.LeftField}, {r.RightType, r.RightField}}
+}
+
+// CreateGraphRelation is the caller-supplied part of a relation: the rest is assigned by the
+// database.
+type CreateGraphRelation struct {
+	OrgId      uuid.UUID
+	Label      string
+	LeftType   string
+	LeftField  string
+	RightType  string
+	RightField string
 }
