@@ -1,0 +1,85 @@
+package usecases
+
+import (
+	"context"
+
+	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/security"
+)
+
+type GraphRelationUsecase struct {
+	enforceSecurity         security.EnforceSecurityOrganization
+	executorFactory         executor_factory.ExecutorFactory
+	dataModelRepository     repositories.DataModelRepository
+	graphRelationRepository repositories.GraphRelationRepository
+}
+
+func (uc GraphRelationUsecase) ListGraphRelations(ctx context.Context) ([]models.GraphRelation, error) {
+	if err := uc.enforceSecurity.ReadDataModel(); err != nil {
+		return nil, err
+	}
+	if err := uc.enforceSecurity.ReadOrganization(uc.enforceSecurity.OrgId()); err != nil {
+		return nil, err
+	}
+
+	return uc.graphRelationRepository.ListGraphRelations(ctx, uc.executorFactory.NewExecutor(), uc.enforceSecurity.OrgId())
+}
+
+func (uc GraphRelationUsecase) CreateGraphRelation(ctx context.Context, input models.CreateGraphRelation) (models.GraphRelation, error) {
+	if err := uc.enforceSecurity.WriteDataModel(input.OrgId); err != nil {
+		return models.GraphRelation{}, err
+	}
+
+	exec := uc.executorFactory.NewExecutor()
+
+	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, exec, input.OrgId, false, true)
+	if err != nil {
+		return models.GraphRelation{}, err
+	}
+
+	endpoints := [][2]string{
+		{input.LeftType, input.LeftField},
+		{input.RightType, input.RightField},
+	}
+	for _, endpoint := range endpoints {
+		if !graphEndpointApplies(dataModel, endpoint) {
+			return models.GraphRelation{}, errors.Wrapf(models.BadParameterError,
+				"%q is not a field of table %q in the data model", endpoint[1], endpoint[0])
+		}
+	}
+
+	relation, err := uc.graphRelationRepository.CreateGraphRelation(ctx, exec, input)
+
+	if repositories.IsUniqueViolationError(err) {
+		return models.GraphRelation{}, errors.Wrap(models.ConflictError, "this graph relation already exists")
+	}
+	if err != nil {
+		return models.GraphRelation{}, err
+	}
+
+	return relation, nil
+}
+
+func (uc GraphRelationUsecase) DeleteGraphRelation(ctx context.Context, relationId uuid.UUID) error {
+	if err := uc.enforceSecurity.WriteDataModel(uc.enforceSecurity.OrgId()); err != nil {
+		return err
+	}
+
+	exec := uc.executorFactory.NewExecutor()
+
+	relation, err := uc.graphRelationRepository.GetGraphRelation(ctx, exec, relationId)
+	if err != nil {
+		return err
+	}
+
+	if relation.OrgId != uc.enforceSecurity.OrgId() {
+		return errors.Wrapf(models.ForbiddenError, "graph relation %s does not belong to this organization", relationId)
+	}
+
+	return uc.graphRelationRepository.DeleteGraphRelation(ctx, exec, relationId)
+}
