@@ -762,10 +762,20 @@ func (usecases UsecasesWithCreds) NewIngestedDataReaderUsecase() IngestedDataRea
 
 func (usecases *UsecasesWithCreds) NewGraphWalkUsecase() GraphWalkUsecase {
 	return GraphWalkUsecase{
-		enforceSecurity:     usecases.NewEnforceSecurity(),
-		executorFactory:     usecases.NewExecutorFactory(),
-		dataModelRepository: usecases.Repositories.MarbleDbRepository,
-		graphRepository:     usecases.Repositories.GraphRepository,
+		enforceSecurity:         usecases.NewEnforceSecurity(),
+		executorFactory:         usecases.NewExecutorFactory(),
+		dataModelRepository:     usecases.Repositories.MarbleDbRepository,
+		graphRepository:         usecases.Repositories.GraphRepository,
+		graphRelationRepository: usecases.Repositories.MarbleDbRepository,
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewGraphRelationUsecase() GraphRelationUsecase {
+	return GraphRelationUsecase{
+		enforceSecurity:         usecases.NewEnforceOrganizationSecurity(),
+		executorFactory:         usecases.NewExecutorFactory(),
+		dataModelRepository:     usecases.Repositories.MarbleDbRepository,
+		graphRelationRepository: usecases.Repositories.MarbleDbRepository,
 	}
 }
 

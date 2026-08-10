@@ -14,6 +14,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
@@ -169,18 +170,24 @@ func amlDataModel() models.DataModel {
 	)
 }
 
-func sameIbanConfig() models.SameFieldConfig {
-	return models.SameFieldConfig{
-		Label: "same_iban", LeftType: "accounts", LeftField: "iban",
-		RightType: "accounts", RightField: "iban",
+// graphTestRelation builds a relation the way the creation path does, with a generated id.
+func graphTestRelation(label, leftType, leftField, rightType, rightField string) models.GraphRelation {
+	return models.GraphRelation{
+		Id:         pure_utils.NewId(),
+		Label:      label,
+		LeftType:   leftType,
+		LeftField:  leftField,
+		RightType:  rightType,
+		RightField: rightField,
 	}
 }
 
-func sameSwiftConfig() models.SameFieldConfig {
-	return models.SameFieldConfig{
-		Label: "same_swift", LeftType: "accounts", LeftField: "swift",
-		RightType: "accounts", RightField: "swift",
-	}
+func sameIbanConfig() models.GraphRelation {
+	return graphTestRelation("same_iban", "accounts", "iban", "accounts", "iban")
+}
+
+func sameSwiftConfig() models.GraphRelation {
+	return graphTestRelation("same_swift", "accounts", "swift", "accounts", "swift")
 }
 
 ///////////////////////////////
@@ -201,7 +208,7 @@ type graphWalkCase struct {
 	dataModel models.DataModel
 	rows      []fakeGraphRow
 	endTypes  []string
-	configs   []models.SameFieldConfig
+	configs   []models.GraphRelation
 	start     models.GraphNode
 	degrees   int
 	caps      graphCaps
@@ -414,7 +421,7 @@ func TestGraphWalk_SameFieldConnectorJoinsTwoParties(t *testing.T) {
 
 	result, _ := runGraphWalk(t, graphWalkCase{
 		dataModel: amlDataModel(), rows: rows,
-		configs: []models.SameFieldConfig{sameIbanConfig()},
+		configs: []models.GraphRelation{sameIbanConfig()},
 		start:   node("users", "U1"), degrees: 1,
 	})
 
@@ -450,10 +457,7 @@ func TestGraphWalk_SameFieldConnectorJoinsTwoParties(t *testing.T) {
 func TestGraphWalk_PartiesCanShareAnAttributeDirectly(t *testing.T) {
 	// The shared field is on the party itself, so there is no intermediate to contract and the
 	// connector edge is a single hop.
-	config := models.SameFieldConfig{
-		Label: "same_email", LeftType: "users", LeftField: "email",
-		RightType: "users", RightField: "email",
-	}
+	config := graphTestRelation("same_email", "users", "email", "users", "email")
 
 	rows := []fakeGraphRow{
 		{"users", "U1", "object_id", "U1"},
@@ -463,7 +467,7 @@ func TestGraphWalk_PartiesCanShareAnAttributeDirectly(t *testing.T) {
 	}
 
 	result, _ := runGraphWalk(t, graphWalkCase{
-		dataModel: amlDataModel(), rows: rows, configs: []models.SameFieldConfig{config},
+		dataModel: amlDataModel(), rows: rows, configs: []models.GraphRelation{config},
 		start: node("users", "U1"), degrees: 1,
 	})
 
@@ -481,7 +485,7 @@ func TestGraphWalk_PartiesCanShareAnAttributeDirectly(t *testing.T) {
 func TestGraphWalk_UnsharedValueYieldsNoConnector(t *testing.T) {
 	result, _ := runGraphWalk(t, graphWalkCase{
 		dataModel: amlDataModel(), rows: userWithAccount("U1", "A1", "IB1"),
-		configs: []models.SameFieldConfig{sameIbanConfig()},
+		configs: []models.GraphRelation{sameIbanConfig()},
 		start:   node("users", "U1"), degrees: 2,
 	})
 
@@ -502,7 +506,7 @@ func TestGraphWalk_SameFieldResultsAreNotRematchedInTheSameDegree(t *testing.T) 
 		fakeGraphRow{"accounts", "A3", "swift", "SW2"},
 	)
 
-	configs := []models.SameFieldConfig{sameIbanConfig(), sameSwiftConfig()}
+	configs := []models.GraphRelation{sameIbanConfig(), sameSwiftConfig()}
 
 	one, _ := runGraphWalk(t, graphWalkCase{
 		dataModel: amlDataModel(), rows: rows, configs: configs,
@@ -521,13 +525,13 @@ func TestGraphWalk_SameFieldResultsAreNotRematchedInTheSameDegree(t *testing.T) 
 }
 
 func TestGraphWalk_ConfigPairSetConvergesOnOneConnector(t *testing.T) {
-	// One conceptual group of three endpoints, spelled out as the three one-to-one configs it
+	// One conceptual group of three endpoints, spelled out as the three one-to-one relations it
 	// takes to express it. They share a label, so they must collapse onto a single connector.
 	label := "shared_iban"
-	configs := []models.SameFieldConfig{
-		{Label: label, LeftType: "accounts", LeftField: "iban", RightType: "transactions", RightField: "sender_iban"},
-		{Label: label, LeftType: "transactions", LeftField: "sender_iban", RightType: "transactions", RightField: "receiver_iban"},
-		{Label: label, LeftType: "accounts", LeftField: "iban", RightType: "transactions", RightField: "receiver_iban"},
+	configs := []models.GraphRelation{
+		graphTestRelation(label, "accounts", "iban", "transactions", "sender_iban"),
+		graphTestRelation(label, "transactions", "sender_iban", "transactions", "receiver_iban"),
+		graphTestRelation(label, "accounts", "iban", "transactions", "receiver_iban"),
 	}
 
 	rows := append(userWithAccount("U1", "A1", "IB1"), userWithAccount("U2", "A2", "")...)
@@ -585,10 +589,7 @@ func TestGraphWalk_SharedIntermediateDoesNotLeakAnotherPartysAttribute(t *testin
 	// IP2 is carried only by U2's own logins, so U1 must not be reported as matching on it:
 	// reaching it means going up from U1's login to the shared device and back down into U2's,
 	// which is not what a shared attribute claims.
-	config := models.SameFieldConfig{
-		Label: "same_ip", LeftType: "logins", LeftField: "ip",
-		RightType: "logins", RightField: "ip",
-	}
+	config := graphTestRelation("same_ip", "logins", "ip", "logins", "ip")
 
 	rows := []fakeGraphRow{
 		{"users", "U1", "object_id", "U1"},
@@ -602,7 +603,7 @@ func TestGraphWalk_SharedIntermediateDoesNotLeakAnotherPartysAttribute(t *testin
 
 	result, _ := runGraphWalk(t, graphWalkCase{
 		dataModel: loginsDataModel(), rows: rows,
-		configs: []models.SameFieldConfig{config},
+		configs: []models.GraphRelation{config},
 		start:   node("users", "U1"), degrees: 2,
 	})
 
@@ -625,10 +626,7 @@ func TestGraphWalk_SharedIntermediateDoesNotLeakAnotherPartysAttribute(t *testin
 func TestGraphWalk_ConnectorAttachesOnlyToTheOwnersOfItsValue(t *testing.T) {
 	// Same shape, but now the IP really is shared across the two parties, so it must surface —
 	// and the third party, related only through the device, must not be pulled onto it.
-	config := models.SameFieldConfig{
-		Label: "same_ip", LeftType: "logins", LeftField: "ip",
-		RightType: "logins", RightField: "ip",
-	}
+	config := graphTestRelation("same_ip", "logins", "ip", "logins", "ip")
 
 	rows := []fakeGraphRow{
 		{"users", "U1", "object_id", "U1"},
@@ -642,7 +640,7 @@ func TestGraphWalk_ConnectorAttachesOnlyToTheOwnersOfItsValue(t *testing.T) {
 
 	result, _ := runGraphWalk(t, graphWalkCase{
 		dataModel: loginsDataModel(), rows: rows,
-		configs: []models.SameFieldConfig{config},
+		configs: []models.GraphRelation{config},
 		start:   node("users", "U1"), degrees: 2,
 	})
 
@@ -670,7 +668,7 @@ func TestGraphWalk_HypernodeIsReportedButNotWalked(t *testing.T) {
 
 	result, w := runGraphWalk(t, graphWalkCase{
 		dataModel: amlDataModel(), rows: rows,
-		configs: []models.SameFieldConfig{sameIbanConfig()},
+		configs: []models.GraphRelation{sameIbanConfig()},
 		start:   node("users", "U1"), degrees: 2,
 		caps:     graphCaps{sameFieldFanout: 2},
 		estimate: 9999,
@@ -700,7 +698,7 @@ func TestGraphWalk_HypernodeReportsALowerBoundOnceEstimatesRunOut(t *testing.T) 
 
 	result, w := runGraphWalk(t, graphWalkCase{
 		dataModel: amlDataModel(), rows: rows,
-		configs: []models.SameFieldConfig{sameIbanConfig()},
+		configs: []models.GraphRelation{sameIbanConfig()},
 		start:   node("users", "U1"), degrees: 1,
 		caps:     graphCaps{sameFieldFanout: 2, estimates: -1},
 		estimate: 9999,
@@ -722,7 +720,7 @@ func TestGraphWalk_HypernodeNeverReportsFewerThanItProved(t *testing.T) {
 
 	result, _ := runGraphWalk(t, graphWalkCase{
 		dataModel: amlDataModel(), rows: rows,
-		configs: []models.SameFieldConfig{sameIbanConfig()},
+		configs: []models.GraphRelation{sameIbanConfig()},
 		start:   node("users", "U1"), degrees: 1,
 		caps: graphCaps{sameFieldFanout: 2},
 		// The planner routinely lands under the truth, and a count below the threshold that
@@ -886,10 +884,10 @@ func TestBuildGraphSchema_DropsConfigsAbsentFromTheDataModel(t *testing.T) {
 	// A config whose table or field no longer resolves has drifted from the data model it was
 	// defined against. One stale config must not take the whole walk down with it.
 	dataModel := amlDataModel()
-	configs := []models.SameFieldConfig{
+	configs := []models.GraphRelation{
 		sameIbanConfig(),
-		{Label: "same_ip", LeftType: "gadgets", LeftField: "ip", RightType: "gadgets", RightField: "ip"},
-		{Label: "same_x", LeftType: "accounts", LeftField: "nope", RightType: "accounts", RightField: "nope"},
+		graphTestRelation("same_ip", "gadgets", "ip", "gadgets", "ip"),
+		graphTestRelation("same_x", "accounts", "nope", "accounts", "nope"),
 	}
 
 	ctx := utils.StoreLoggerInContext(context.Background(), slog.New(slog.DiscardHandler))
@@ -911,13 +909,11 @@ func TestBuildGraphSchema_RegistersASameTableConfigOnce(t *testing.T) {
 
 	// Both endpoints live on the same table, so it would be easy to register the config twice
 	// and pay for every one of its lookups twice.
-	config := models.SameFieldConfig{
-		Label: "shared_iban", LeftType: "transactions", LeftField: "sender_iban",
-		RightType: "transactions", RightField: "receiver_iban",
-	}
+	config := graphTestRelation("shared_iban", "transactions", "sender_iban",
+		"transactions", "receiver_iban")
 
 	sch := buildGraphSchema(ctx, amlDataModel(), map[string]bool{"users": true},
-		[]models.SameFieldConfig{config})
+		[]models.GraphRelation{config})
 
 	assert.Len(t, sch.sameField["transactions"], 1)
 
@@ -928,10 +924,8 @@ func TestBuildGraphSchema_RegistersASameTableConfigOnce(t *testing.T) {
 }
 
 func TestGraphWalk_SameTableConfigMatchesBothOfItsFields(t *testing.T) {
-	config := models.SameFieldConfig{
-		Label: "shared_iban", LeftType: "transactions", LeftField: "sender_iban",
-		RightType: "transactions", RightField: "receiver_iban",
-	}
+	config := graphTestRelation("shared_iban", "transactions", "sender_iban",
+		"transactions", "receiver_iban")
 
 	rows := append(userWithAccount("U1", "A1", ""), userWithAccount("U2", "A2", "")...)
 	rows = append(rows,
@@ -945,7 +939,7 @@ func TestGraphWalk_SameTableConfigMatchesBothOfItsFields(t *testing.T) {
 
 	// Three degrees: reach the account, then its transaction, then match on the transaction.
 	result, _ := runGraphWalk(t, graphWalkCase{
-		dataModel: amlDataModel(), rows: rows, configs: []models.SameFieldConfig{config},
+		dataModel: amlDataModel(), rows: rows, configs: []models.GraphRelation{config},
 		start: node("users", "U1"), degrees: 3,
 	})
 
@@ -968,10 +962,11 @@ func TestWalkGraph_RejectsAnUnknownStartType(t *testing.T) {
 		Return(amlDataModel(), nil)
 
 	uc := GraphWalkUsecase{
-		enforceSecurity:     enforceSecurity,
-		executorFactory:     executor_factory.NewExecutorFactoryStub(),
-		dataModelRepository: dataModelRepository,
-		graphRepository:     &fakeGraphRepository{},
+		enforceSecurity:         enforceSecurity,
+		executorFactory:         executor_factory.NewExecutorFactoryStub(),
+		dataModelRepository:     dataModelRepository,
+		graphRepository:         &fakeGraphRepository{},
+		graphRelationRepository: &fakeGraphRelationRepository{},
 	}
 
 	_, err := uc.WalkGraph(context.Background(), uuid.New(), "nope", "X1", models.GraphWalkOptions{})
@@ -997,10 +992,11 @@ func TestWalkGraph_ClampsTheRequestedDegrees(t *testing.T) {
 		Return(amlDataModel(), nil)
 
 	uc := GraphWalkUsecase{
-		enforceSecurity:     enforceSecurity,
-		executorFactory:     executor_factory.NewExecutorFactoryStub(),
-		dataModelRepository: dataModelRepository,
-		graphRepository:     &fakeGraphRepository{rows: rows},
+		enforceSecurity:         enforceSecurity,
+		executorFactory:         executor_factory.NewExecutorFactoryStub(),
+		dataModelRepository:     dataModelRepository,
+		graphRepository:         &fakeGraphRepository{rows: rows},
+		graphRelationRepository: &fakeGraphRelationRepository{},
 	}
 
 	// Only that the call succeeds with an absurd request: the ceiling is enforced in the
@@ -1018,10 +1014,11 @@ func TestWalkGraph_StopsOnAForbiddenOrganization(t *testing.T) {
 	dataModelRepository := new(mocks.DataModelRepository)
 
 	uc := GraphWalkUsecase{
-		enforceSecurity:     enforceSecurity,
-		executorFactory:     executor_factory.NewExecutorFactoryStub(),
-		dataModelRepository: dataModelRepository,
-		graphRepository:     &fakeGraphRepository{},
+		enforceSecurity:         enforceSecurity,
+		executorFactory:         executor_factory.NewExecutorFactoryStub(),
+		dataModelRepository:     dataModelRepository,
+		graphRepository:         &fakeGraphRepository{},
+		graphRelationRepository: &fakeGraphRelationRepository{},
 	}
 
 	_, err := uc.WalkGraph(context.Background(), uuid.New(), "users", "U1", models.GraphWalkOptions{})
