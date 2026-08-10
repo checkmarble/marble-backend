@@ -1,6 +1,7 @@
 package models
 
 import (
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -122,6 +123,104 @@ func (r GraphRelation) Endpoints() [][2]string {
 		return [][2]string{{r.LeftType, r.LeftField}}
 	}
 	return [][2]string{{r.LeftType, r.LeftField}, {r.RightType, r.RightField}}
+}
+
+// AppliesTo says whether both of the relation's endpoints still resolve to a field of a table in
+// the data model. A relation is validated when it is created, so a false here means the two have
+// drifted apart since — a field archived or renamed, a table dropped.
+func (r GraphRelation) AppliesTo(dataModel DataModel) bool {
+	for _, endpoint := range r.Endpoints() {
+		if !GraphFieldExists(dataModel, endpoint[0], endpoint[1]) {
+			return false
+		}
+	}
+	return true
+}
+
+// GraphFieldExists says whether a (record type, field) pair names a field of a table in the data
+// model.
+func GraphFieldExists(dataModel DataModel, recordType, fieldName string) bool {
+	table, ok := dataModel.Tables[recordType]
+	if !ok {
+		return false
+	}
+	_, ok = table.Fields[fieldName]
+	return ok
+}
+
+// GraphObjectIdField is the field every ingested table carries and that every link resolves
+// against, so it identifies a record in the graph.
+const GraphObjectIdField = "object_id"
+
+// GraphTraversableFields returns, per record type, every field a walk can read on it: both ends of
+// every link, and both endpoints of every relation that still matches the data model. A relation
+// that no longer matches is skipped, since the walk cannot follow it either.
+func GraphTraversableFields(dataModel DataModel, relations []GraphRelation) map[string][]string {
+	fields := map[string][]string{}
+
+	add := func(recordType, fieldName string) {
+		if !slices.Contains(fields[recordType], fieldName) {
+			fields[recordType] = append(fields[recordType], fieldName)
+		}
+	}
+
+	for _, link := range dataModel.AllLinksAsMap() {
+		add(link.ParentTableName, link.ParentFieldName)
+		add(link.ChildTableName, link.ChildFieldName)
+	}
+
+	for _, relation := range relations {
+		if !relation.AppliesTo(dataModel) {
+			continue
+		}
+		for _, endpoint := range relation.Endpoints() {
+			add(endpoint[0], endpoint[1])
+		}
+	}
+
+	// The data model is held in maps, so without sorting the order fields are visited — and so
+	// the order of the rows and of the resulting graph — would vary between two runs.
+	for recordType := range fields {
+		slices.Sort(fields[recordType])
+	}
+
+	return fields
+}
+
+// GraphIndexedFields returns, per record type, every field the adjacency table must carry: what a
+// walk can read, plus object_id on every table whether or not anything links to it. Fields come
+// back resolved against the data model, since how a value is rendered as text depends on its type.
+//
+// This is deliberately a superset of GraphTraversableFields and must stay one. A field a walk
+// reads but the adjacency table does not carry does not fail — it silently finds nothing — which
+// is why both are derived here rather than listed in two places.
+func GraphIndexedFields(dataModel DataModel, relations []GraphRelation) map[string][]Field {
+	names := GraphTraversableFields(dataModel, relations)
+
+	indexed := make(map[string][]Field, len(dataModel.Tables))
+
+	for recordType, table := range dataModel.Tables {
+		wanted := names[recordType]
+		if !slices.Contains(wanted, GraphObjectIdField) {
+			wanted = append(slices.Clone(wanted), GraphObjectIdField)
+		}
+		slices.Sort(wanted)
+
+		fields := make([]Field, 0, len(wanted))
+		for _, name := range wanted {
+			field, ok := table.Fields[name]
+			if !ok {
+				// object_id is created with the table rather than declared, so a data model that
+				// does not list it still has the column, holding text.
+				field = Field{Name: name, DataType: String}
+			}
+			fields = append(fields, field)
+		}
+
+		indexed[recordType] = fields
+	}
+
+	return indexed
 }
 
 // CreateGraphRelation is the caller-supplied part of a relation: the rest is assigned by the

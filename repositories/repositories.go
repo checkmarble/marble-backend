@@ -103,6 +103,7 @@ type Repositories struct {
 	IngestionRepository           IngestionRepository
 	IngestedDataReadRepository    IngestedDataReadRepository
 	GraphRepository               GraphRepository
+	GraphBuilderRepository        GraphBuilderRepository
 	MarbleDbRepository            *MarbleDbRepository
 	ClientDbRepository            ClientDbRepository
 	ScenarioPublicationRepository ScenarioPublicationRepository
@@ -147,6 +148,7 @@ func NewRepositories(
 		IngestionRepository:           &IngestionRepositoryImpl{},
 		IngestedDataReadRepository:    &IngestedDataReadRepositoryImpl{},
 		GraphRepository:               GraphRepositoryPostgresql{},
+		GraphBuilderRepository:        GraphBuilderRepositoryPostgresql{},
 		MarbleDbRepository:            NewMarbleDbRepository(options.withCache, options.similarityThreshold),
 		ClientDbRepository:            ClientDbRepository{},
 		ScenarioPublicationRepository: &ScenarioPublicationRepositoryPostgresql{},

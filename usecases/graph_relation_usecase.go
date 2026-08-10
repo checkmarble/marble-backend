@@ -47,7 +47,7 @@ func (uc GraphRelationUsecase) CreateGraphRelation(ctx context.Context, input mo
 		{input.RightType, input.RightField},
 	}
 	for _, endpoint := range endpoints {
-		if !graphEndpointApplies(dataModel, endpoint) {
+		if !models.GraphFieldExists(dataModel, endpoint[0], endpoint[1]) {
 			return models.GraphRelation{}, errors.Wrapf(models.BadParameterError,
 				"%q is not a field of table %q in the data model", endpoint[1], endpoint[0])
 		}
