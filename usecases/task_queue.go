@@ -50,11 +50,16 @@ func NewTaskQueueWorker(
 	}
 }
 
+type PeriodicIntervals struct {
+	ContinuousScreeningFullDataset time.Duration
+	GraphBuild                     time.Duration
+}
+
 func (w *TaskQueueWorker) RefreshQueuesFromOrgIds(
 	ctx context.Context,
 	offloadingConfig infra.OffloadingConfig,
 	analyticsConfig infra.AnalyticsConfig,
-	csCreateFullDatasetInterval time.Duration,
+	intervals PeriodicIntervals,
 ) {
 	logger := utils.LoggerFromContext(ctx)
 	refreshOrgs := func() error {
@@ -71,7 +76,7 @@ func (w *TaskQueueWorker) RefreshQueuesFromOrgIds(
 			}
 		}
 
-		err = w.addMissingQueues(ctx, queues, offloadingConfig, analyticsConfig, csCreateFullDatasetInterval)
+		err = w.addMissingQueues(ctx, queues, offloadingConfig, analyticsConfig, intervals)
 		if err != nil {
 			return err
 		}
@@ -103,7 +108,7 @@ func (w *TaskQueueWorker) addMissingQueues(
 	queues map[string]river.QueueConfig,
 	offloadingConfig infra.OffloadingConfig,
 	analyticsConfig infra.AnalyticsConfig,
-	csCreateFullDatasetInterval time.Duration,
+	intervals PeriodicIntervals,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 	w.mu.Lock()
@@ -136,7 +141,7 @@ func (w *TaskQueueWorker) addMissingQueues(
 			}
 			logger.InfoContext(ctx, fmt.Sprintf("Added queue for organization %s to task queue worker", orgId))
 
-			for _, p := range listOrgPeriodics(org, offloadingConfig, analyticsConfig, csCreateFullDatasetInterval) {
+			for _, p := range listOrgPeriodics(org, offloadingConfig, analyticsConfig, intervals) {
 				w.riverClient.PeriodicJobs().Add(p)
 			}
 		}
@@ -186,7 +191,7 @@ func listOrgPeriodics(
 	org models.Organization,
 	offloadingConfig infra.OffloadingConfig,
 	analyticsConfig infra.AnalyticsConfig,
-	csCreateFullDatasetInterval time.Duration,
+	intervals PeriodicIntervals,
 ) []*river.PeriodicJob {
 	periodics := []*river.PeriodicJob{
 		worker_jobs.NewIndexCleanupPeriodicJob(org.Id),
@@ -195,9 +200,10 @@ func listOrgPeriodics(
 		continuous_screening.NewContinuousScreeningCreateFullDatasetPeriodicJob(
 			org.Id,
 			// TODO: Configurable per Org
-			csCreateFullDatasetInterval,
+			intervals.ContinuousScreeningFullDataset,
 		),
 		worker_jobs.NewScheduledScenarioPeriodicJob(org.Id),
+		worker_jobs.NewGraphBuildPeriodicJob(org.Id, intervals.GraphBuild),
 	}
 	if offloadingConfig.Enabled {
 		// Undocumented debug setting to only enable offloading for a specific organization
@@ -225,7 +231,7 @@ func QueuesFromOrgs(
 	execGetter repositories.ExecutorGetter,
 	offloadingConfig infra.OffloadingConfig,
 	analyticsConfig infra.AnalyticsConfig,
-	csCreateFullDatasetInterval time.Duration,
+	intervals PeriodicIntervals,
 ) (queues map[string]river.QueueConfig, periodics []*river.PeriodicJob, err error) {
 	exec_fac := executor_factory.NewDbExecutorFactory(appName, orgsRepo, execGetter, uuid.Nil)
 	orgs, err := orgsRepo.AllOrganizations(ctx, exec_fac.NewExecutor())
@@ -238,7 +244,7 @@ func QueuesFromOrgs(
 
 	for _, org := range orgs {
 		periodics = append(periodics, listOrgPeriodics(org, offloadingConfig,
-			analyticsConfig, csCreateFullDatasetInterval)...)
+			analyticsConfig, intervals)...)
 
 		queues[org.Id.String()] = river.QueueConfig{
 			MaxWorkers: numberWorkersPerQueue,

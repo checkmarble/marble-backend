@@ -327,3 +327,9 @@ type RuleDescriptionArgs struct {
 }
 
 func (RuleDescriptionArgs) Kind() string { return "rule_description" }
+
+type GraphBuildArgs struct {
+	OrgId uuid.UUID `json:"org_id"`
+}
+
+func (GraphBuildArgs) Kind() string { return "graph_build" }

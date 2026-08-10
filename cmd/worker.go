@@ -86,6 +86,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		enableTracing:                utils.GetEnv("ENABLE_TRACING", false),
 		ScanDatasetUpdatesInterval:   utils.GetEnvDuration("SCAN_DATASET_UPDATES_INTERVAL", 4*time.Hour),
 		CreateFullDatasetInterval:    utils.GetEnvDuration("CREATE_FULL_DATASET_INTERVAL", 8*time.Hour),
+		GraphBuildInterval:           utils.GetEnvDuration("GRAPH_BUILD_INTERVAL", worker_jobs.GRAPH_BUILD_DEFAULT_INTERVAL),
 		continuousScreeningBucketUrl: utils.GetEnv("CONTINUOUS_SCREENING_BUCKET_URL", ""),
 	}
 
@@ -238,8 +239,12 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	// Start the task queue workers
 	workers := river.NewWorkers()
+	periodicIntervals := usecases.PeriodicIntervals{
+		ContinuousScreeningFullDataset: workerConfig.CreateFullDatasetInterval,
+		GraphBuild:                     workerConfig.GraphBuildInterval,
+	}
 	queues, orgPeriodics, err := usecases.QueuesFromOrgs(ctx, appName, repositories.MarbleDbRepository,
-		repositories.ExecutorGetter, offloadingConfig, analyticsConfig, workerConfig.CreateFullDatasetInterval)
+		repositories.ExecutorGetter, offloadingConfig, analyticsConfig, periodicIntervals)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err
@@ -378,6 +383,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewIndexCreationWorker())
 	river.AddWorker(workers, adminUc.NewIndexCreationStatusWorker())
 	river.AddWorker(workers, adminUc.NewIndexCleanupWorker())
+	river.AddWorker(workers, adminUc.NewGraphBuildWorker(workerConfig.GraphBuildInterval))
 	river.AddWorker(workers, adminUc.NewIndexDeletionWorker())
 	river.AddWorker(workers, adminUc.NewIndexDeletionByNameWorker())
 	river.AddWorker(workers, adminUc.NewTestRunSummaryWorker())
@@ -446,7 +452,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	taskQueueWorker := uc.NewTaskQueueWorker(riverClient,
 		slices.Collect(maps.Keys(nonOrgQueues)),
 	)
-	go taskQueueWorker.RefreshQueuesFromOrgIds(ctx, offloadingConfig, analyticsConfig, workerConfig.CreateFullDatasetInterval)
+	go taskQueueWorker.RefreshQueuesFromOrgIds(ctx, offloadingConfig, analyticsConfig, periodicIntervals)
 
 	// Teardown sequence
 	sigintOrTerm := make(chan os.Signal, 1)
@@ -581,6 +587,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion
 	case "auto_assignment":
 		return uc.NewAutoAssignmentWorker().Work(ctx,
 			singleJobCreate[models.AutoAssignmentArgs](ctx, jobArgs))
+	case "graph_build":
+		return uc.NewGraphBuildWorker(workerConfig.GraphBuildInterval).Work(ctx,
+			singleJobCreate[models.GraphBuildArgs](ctx, jobArgs))
 	case "index_cleanup":
 		return uc.NewIndexCleanupWorker().Work(ctx,
 			singleJobCreate[models.IndexCleanupArgs](ctx, jobArgs))
