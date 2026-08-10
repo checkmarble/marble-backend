@@ -129,32 +129,12 @@ const (
 	graphEdgeKindMatch = "match"
 )
 
-// sameFieldConfigs declares which fields connect records by equal value even though no link
-// exists between them.
-//
-// Configs are one-to-one, so a group of endpoints that should all count as sharing a value
-// needs every pair spelled out. Because a connector node is identified by (label, value),
-// configs sharing a label still render as a single star.
-//
-// These are placeholders naming tables no particular organization is guaranteed to have. Each
-// organization defines its own against its own data model, so until they are read from the
-// database the walk finds shared attributes only where a data model happens to match.
-//
-// TODO: should be retrieved from database, per organization.
-var sameFieldConfigs = []models.SameFieldConfig{
-	// {Label: "same_iban", LeftType: "accounts", LeftField: "iban", RightType: "accounts", RightField: "iban"},
-	{Label: "same_ip", LeftType: "logins", LeftField: "ip", RightType: "logins", RightField: "ip"},
-}
-
-// ------------------------------------------------------------------------------------------------
-// Entry point
-// ------------------------------------------------------------------------------------------------
-
 type GraphWalkUsecase struct {
-	enforceSecurity     security.EnforceSecurity
-	executorFactory     executor_factory.ExecutorFactory
-	dataModelRepository repositories.DataModelRepository
-	graphRepository     repositories.GraphRepository
+	enforceSecurity         security.EnforceSecurity
+	executorFactory         executor_factory.ExecutorFactory
+	dataModelRepository     repositories.DataModelRepository
+	graphRepository         repositories.GraphRepository
+	graphRelationRepository repositories.GraphRelationRepository
 }
 
 // WalkGraph returns the graph of end nodes — party records unless the caller asks for other
@@ -190,6 +170,14 @@ func (uc GraphWalkUsecase) WalkGraph(
 		return models.GraphResult{}, err
 	}
 
+	// An organization declares its own shared-attribute relations against its own data model. An
+	// organization that has declared none still gets a walk: it just follows links only.
+	relations, err := uc.graphRelationRepository.ListGraphRelations(ctx,
+		uc.executorFactory.NewExecutor(), organizationId)
+	if err != nil {
+		return models.GraphResult{}, err
+	}
+
 	exec, err := uc.executorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
 		return models.GraphResult{}, err
@@ -207,7 +195,7 @@ func (uc GraphWalkUsecase) WalkGraph(
 		ctx:                ctx,
 		exec:               exec,
 		repo:               uc.graphRepository,
-		sch:                buildGraphSchema(ctx, dataModel, endTypes, sameFieldConfigs),
+		sch:                buildGraphSchema(ctx, dataModel, endTypes, relations),
 		maxNodes:           graphMaxNodes,
 		maxLinkFanout:      graphMaxLinkFanout,
 		maxUpwardFanout:    graphMaxUpwardFanout,
@@ -259,7 +247,7 @@ type graphSchema struct {
 	// upward holds the many-to-one direction, keyed by the child table.
 	upward map[string][]models.LinkToSingle
 
-	sameField map[string][]models.SameFieldConfig
+	sameField map[string][]models.GraphRelation
 
 	// neededFields is, per record type, every field the walk can ever read on it. Records
 	// are hydrated with exactly this set, once, so later steps read values from memory
@@ -269,13 +257,13 @@ type graphSchema struct {
 
 func buildGraphSchema(
 	ctx context.Context, dataModel models.DataModel, endTypes map[string]bool,
-	configs []models.SameFieldConfig,
+	relations []models.GraphRelation,
 ) graphSchema {
 	sch := graphSchema{
 		endTypes:     endTypes,
 		downward:     map[string][]models.LinkToSingle{},
 		upward:       map[string][]models.LinkToSingle{},
-		sameField:    map[string][]models.SameFieldConfig{},
+		sameField:    map[string][]models.GraphRelation{},
 		neededFields: map[string][]string{},
 	}
 
@@ -293,27 +281,29 @@ func buildGraphSchema(
 		need(link.ChildTableName, link.ChildFieldName)
 	}
 
-	for _, config := range configs {
-		// An organization defines its configs against its own data model, so an endpoint that
-		// does not resolve means the two have drifted apart — a field archived or renamed, a
-		// table dropped. Skip that config rather than fail the whole walk, but say so: it is a
-		// misconfiguration to fix, not something to expect.
-		if !graphConfigApplies(dataModel, config) {
+	for _, relation := range relations {
+		// A relation is validated against the data model when it is created, so an endpoint that
+		// no longer resolves means the two have drifted apart since — a field archived or
+		// renamed, a table dropped. Skip that relation rather than fail the whole walk, but say
+		// so: it is a misconfiguration to fix, not something to expect.
+		if !graphRelationApplies(dataModel, relation) {
 			utils.LoggerFromContext(ctx).WarnContext(ctx,
-				"graph walk: same-field config does not match the data model, skipping it",
-				"label", config.Label)
+				"graph walk: relation does not match the data model, skipping it",
+				"relation_id", relation.Id, "label", relation.Label)
 			continue
 		}
 
-		for _, endpoint := range config.Endpoints() {
+		for _, endpoint := range relation.Endpoints() {
 			recordType, fieldName := endpoint[0], endpoint[1]
 			need(recordType, fieldName)
 
-			// A config with both endpoints on the same table — sender and receiver IBAN of a
+			// A relation with both endpoints on the same table — sender and receiver IBAN of a
 			// transaction, say — must be registered once, not once per endpoint: matching
 			// already walks both of its fields.
-			if !slices.Contains(sch.sameField[recordType], config) {
-				sch.sameField[recordType] = append(sch.sameField[recordType], config)
+			alreadyRegistered := slices.ContainsFunc(sch.sameField[recordType],
+				func(existing models.GraphRelation) bool { return existing.Id == relation.Id })
+			if !alreadyRegistered {
+				sch.sameField[recordType] = append(sch.sameField[recordType], relation)
 			}
 		}
 	}
@@ -334,17 +324,24 @@ func buildGraphSchema(
 	return sch
 }
 
-func graphConfigApplies(dataModel models.DataModel, config models.SameFieldConfig) bool {
-	for _, endpoint := range config.Endpoints() {
-		table, ok := dataModel.Tables[endpoint[0]]
-		if !ok {
-			return false
-		}
-		if _, ok := table.Fields[endpoint[1]]; !ok {
+// graphRelationApplies says whether both of a relation's endpoints resolve to a field of a table
+// in the data model.
+func graphRelationApplies(dataModel models.DataModel, relation models.GraphRelation) bool {
+	for _, endpoint := range relation.Endpoints() {
+		if !graphEndpointApplies(dataModel, endpoint) {
 			return false
 		}
 	}
 	return true
+}
+
+func graphEndpointApplies(dataModel models.DataModel, endpoint [2]string) bool {
+	table, ok := dataModel.Tables[endpoint[0]]
+	if !ok {
+		return false
+	}
+	_, ok = table.Fields[endpoint[1]]
+	return ok
 }
 
 func graphLinkOrder(a, b models.LinkToSingle) int {
@@ -686,12 +683,12 @@ func (w *graphWalker) followSameField(nodes []models.GraphNode) ([]models.GraphN
 
 	byType := graphGroupByType(pending)
 	for _, recordType := range slices.Sorted(maps.Keys(byType)) {
-		for _, config := range w.sch.sameField[recordType] {
-			for _, endpoint := range config.Endpoints() {
+		for _, relation := range w.sch.sameField[recordType] {
+			for _, endpoint := range relation.Endpoints() {
 				if endpoint[0] != recordType {
 					continue
 				}
-				found, err := w.matchSameField(byType[recordType], config, recordType, endpoint[1])
+				found, err := w.matchSameField(byType[recordType], relation, recordType, endpoint[1])
 				if err != nil {
 					return nil, err
 				}
@@ -708,9 +705,9 @@ func (w *graphWalker) followSameField(nodes []models.GraphNode) ([]models.GraphN
 // every value that connects at least two records, and reports a hypernode instead for any
 // value whose fan-out blew past maxSameFieldFanout.
 func (w *graphWalker) matchSameField(
-	nodes []models.GraphNode, config models.SameFieldConfig, recordType, fieldName string,
+	nodes []models.GraphNode, relation models.GraphRelation, recordType, fieldName string,
 ) ([]models.GraphNode, error) {
-	otherType, otherField, ok := config.OtherEndpoint(recordType, fieldName)
+	otherType, otherField, ok := relation.OtherEndpoint(recordType, fieldName)
 	if !ok {
 		return nil, nil
 	}
@@ -733,9 +730,9 @@ func (w *graphWalker) matchSameField(
 		if err != nil {
 			return nil, err
 		}
-		w.markHyperconnected(origins[value], graphEdgeKindMatch, config.Label, fieldName, count)
+		w.markHyperconnected(origins[value], graphEdgeKindMatch, relation.Label, fieldName, count)
 
-		connector := w.connect(config.Label, value, w.participants(origins[value], fieldName, nil, ""))
+		connector := w.connect(relation.Label, value, w.participants(origins[value], fieldName, nil, ""))
 		w.hyperConns[connector] = true
 	}
 
@@ -747,7 +744,7 @@ func (w *graphWalker) matchSameField(
 			continue
 		}
 
-		w.connect(config.Label, value, participants)
+		w.connect(relation.Label, value, participants)
 		for _, p := range participants {
 			if p.isNew {
 				discovered = append(discovered, p.node)
