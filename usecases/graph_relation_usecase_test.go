@@ -15,62 +15,10 @@ import (
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
-	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 )
 
-type fakeGraphRelationRepository struct {
-	relations []models.GraphRelation
-	createErr error
-	deleted   []uuid.UUID
-}
-
-func (repo *fakeGraphRelationRepository) ListGraphRelations(_ context.Context, _ repositories.Executor, orgId uuid.UUID) ([]models.GraphRelation, error) {
-	out := make([]models.GraphRelation, 0, len(repo.relations))
-	for _, relation := range repo.relations {
-		if relation.OrgId == orgId {
-			out = append(out, relation)
-		}
-	}
-	return out, nil
-}
-
-func (repo *fakeGraphRelationRepository) GetGraphRelation(_ context.Context, _ repositories.Executor, id uuid.UUID) (models.GraphRelation, error) {
-	for _, relation := range repo.relations {
-		if relation.Id == id {
-			return relation, nil
-		}
-	}
-	return models.GraphRelation{}, errors.Wrap(models.NotFoundError, "no such graph relation")
-}
-
-func (repo *fakeGraphRelationRepository) CreateGraphRelation(_ context.Context, _ repositories.Executor, input models.CreateGraphRelation) (models.GraphRelation, error) {
-	if repo.createErr != nil {
-		return models.GraphRelation{}, repo.createErr
-	}
-
-	relation := models.GraphRelation{
-		Id:         pure_utils.NewId(),
-		OrgId:      input.OrgId,
-		Label:      input.Label,
-		LeftType:   input.LeftType,
-		LeftField:  input.LeftField,
-		RightType:  input.RightType,
-		RightField: input.RightField,
-	}
-	repo.relations = append(repo.relations, relation)
-
-	return relation, nil
-}
-
-func (repo *fakeGraphRelationRepository) DeleteGraphRelation(
-	_ context.Context, _ repositories.Executor, id uuid.UUID,
-) error {
-	repo.deleted = append(repo.deleted, id)
-	return nil
-}
-
-func graphRelationUsecase(repo *fakeGraphRelationRepository, orgId uuid.UUID) GraphRelationUsecase {
+func graphRelationUsecase(repo *mocks.GraphRelationRepository, orgId uuid.UUID) GraphRelationUsecase {
 	enforceSecurity := new(mocks.EnforceSecurity)
 	enforceSecurity.On("OrgId").Return(orgId)
 	enforceSecurity.On("ReadDataModel").Return(nil)
@@ -101,15 +49,17 @@ func createGraphRelationInput(orgId uuid.UUID) models.CreateGraphRelation {
 
 func TestCreateGraphRelation_AcceptsEndpointsPresentInTheDataModel(t *testing.T) {
 	orgId := uuid.New()
-	repo := &fakeGraphRelationRepository{}
+	repo := new(mocks.GraphRelationRepository)
+	created := models.GraphRelation{Id: pure_utils.NewId(), OrgId: orgId, Label: "same_iban"}
+	repo.On("CreateGraphRelation", mock.Anything, mock.Anything, mock.AnythingOfType("models.CreateGraphRelation")).
+		Return(created, nil)
 
 	relation, err := graphRelationUsecase(repo, orgId).
 		CreateGraphRelation(context.Background(), createGraphRelationInput(orgId))
 
 	require.NoError(t, err)
-	assert.NotEqual(t, uuid.Nil, relation.Id)
-	assert.Equal(t, orgId, relation.OrgId)
-	assert.Len(t, repo.relations, 1)
+	assert.Equal(t, created, relation)
+	repo.AssertExpectations(t)
 }
 
 func TestCreateGraphRelation_RejectsAnEndpointAbsentFromTheDataModel(t *testing.T) {
@@ -153,13 +103,13 @@ func TestCreateGraphRelation_RejectsAnEndpointAbsentFromTheDataModel(t *testing.
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &fakeGraphRelationRepository{}
+			repo := new(mocks.GraphRelationRepository)
 
 			_, err := graphRelationUsecase(repo, orgId).CreateGraphRelation(context.Background(),
 				tt.input(createGraphRelationInput(uuid.New())))
 
 			assert.ErrorIs(t, err, models.BadParameterError)
-			assert.Empty(t, repo.relations, "nothing is stored when validation fails")
+			repo.AssertNotCalled(t, "CreateGraphRelation", mock.Anything, mock.Anything, mock.Anything)
 		})
 	}
 }
@@ -167,9 +117,9 @@ func TestCreateGraphRelation_RejectsAnEndpointAbsentFromTheDataModel(t *testing.
 func TestCreateGraphRelation_ReportsADuplicateAsAConflict(t *testing.T) {
 	orgId := uuid.New()
 
-	repo := &fakeGraphRelationRepository{
-		createErr: &pgconn.PgError{Code: pgerrcode.UniqueViolation},
-	}
+	repo := new(mocks.GraphRelationRepository)
+	repo.On("CreateGraphRelation", mock.Anything, mock.Anything, mock.AnythingOfType("models.CreateGraphRelation")).
+		Return(models.GraphRelation{}, &pgconn.PgError{Code: pgerrcode.UniqueViolation})
 
 	_, err := graphRelationUsecase(repo, orgId).
 		CreateGraphRelation(context.Background(), createGraphRelationInput(uuid.New()))
@@ -179,41 +129,46 @@ func TestCreateGraphRelation_ReportsADuplicateAsAConflict(t *testing.T) {
 
 func TestDeleteGraphRelation_RefusesAnotherOrganizationsRelation(t *testing.T) {
 	other := models.GraphRelation{Id: pure_utils.NewId(), OrgId: uuid.New(), Label: "same_iban"}
-	repo := &fakeGraphRelationRepository{relations: []models.GraphRelation{other}}
+	repo := new(mocks.GraphRelationRepository)
+	repo.On("GetGraphRelation", mock.Anything, mock.Anything, other.Id).Return(other, nil)
 
 	err := graphRelationUsecase(repo, uuid.New()).
 		DeleteGraphRelation(context.Background(), other.Id)
 
 	assert.ErrorIs(t, err, models.ForbiddenError)
-	assert.Empty(t, repo.deleted, "the relation is left alone")
+	repo.AssertNotCalled(t, "DeleteGraphRelation", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestDeleteGraphRelation_DeletesItsOwnRelation(t *testing.T) {
 	orgId := uuid.New()
 	own := models.GraphRelation{Id: pure_utils.NewId(), OrgId: orgId, Label: "same_iban"}
-	repo := &fakeGraphRelationRepository{relations: []models.GraphRelation{own}}
+	repo := new(mocks.GraphRelationRepository)
+	repo.On("GetGraphRelation", mock.Anything, mock.Anything, own.Id).Return(own, nil)
+	repo.On("DeleteGraphRelation", mock.Anything, mock.Anything, own.Id).Return(nil)
 
 	err := graphRelationUsecase(repo, orgId).DeleteGraphRelation(context.Background(), own.Id)
 
 	require.NoError(t, err)
-	assert.Equal(t, []uuid.UUID{own.Id}, repo.deleted)
+	repo.AssertExpectations(t)
 }
 
 func TestDeleteGraphRelation_ReportsAnUnknownRelationAsNotFound(t *testing.T) {
-	repo := &fakeGraphRelationRepository{}
+	id := pure_utils.NewId()
+	repo := new(mocks.GraphRelationRepository)
+	repo.On("GetGraphRelation", mock.Anything, mock.Anything, id).
+		Return(models.GraphRelation{}, errors.Wrap(models.NotFoundError, "no such graph relation"))
 
 	err := graphRelationUsecase(repo, uuid.New()).
-		DeleteGraphRelation(context.Background(), pure_utils.NewId())
+		DeleteGraphRelation(context.Background(), id)
 
 	assert.ErrorIs(t, err, models.NotFoundError)
 }
 
 func TestListGraphRelations_ReturnsOnlyTheCallersOrganization(t *testing.T) {
 	orgId := uuid.New()
-	repo := &fakeGraphRelationRepository{relations: []models.GraphRelation{
-		{Id: pure_utils.NewId(), OrgId: orgId, Label: "same_iban"},
-		{Id: pure_utils.NewId(), OrgId: uuid.New(), Label: "same_ip"},
-	}}
+	repo := new(mocks.GraphRelationRepository)
+	repo.On("ListGraphRelations", mock.Anything, mock.Anything, orgId).
+		Return([]models.GraphRelation{{Id: pure_utils.NewId(), OrgId: orgId, Label: "same_iban"}}, nil)
 
 	relations, err := graphRelationUsecase(repo, orgId).ListGraphRelations(context.Background())
 

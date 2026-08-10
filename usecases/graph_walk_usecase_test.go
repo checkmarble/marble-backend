@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"testing"
 
 	"github.com/cockroachdb/errors"
@@ -33,6 +34,11 @@ type fakeGraphRow struct {
 
 // fakeGraphRepository is an in-memory `_graph` table. It honours perValueLimit per value, so
 // the fan-out caps are exercised through the same code path production uses.
+//
+// This is a deliberate behavioral fixture, not a stand-in for mocks.GraphRepository: the tests
+// below drive the real graphWalker algorithm over several degrees and assert on the shape of
+// its output graph, rather than on which calls were made — pinning that to argument-by-argument
+// mock expectations would just pin the tests to the algorithm's internal call sequence.
 type fakeGraphRepository struct {
 	rows []fakeGraphRow
 
@@ -49,7 +55,7 @@ func (repo *fakeGraphRepository) FetchFields(
 		if row.recordType != recordType {
 			continue
 		}
-		if !contains(recordIds, row.recordId) || !contains(fieldNames, row.fieldName) {
+		if !slices.Contains(recordIds, row.recordId) || !slices.Contains(fieldNames, row.fieldName) {
 			continue
 		}
 		out = append(out, models.GraphRow{
@@ -72,7 +78,7 @@ func (repo *fakeGraphRepository) FindByValues(
 		if row.recordType != recordType || row.fieldName != fieldName {
 			continue
 		}
-		if !contains(values, row.fieldValue) {
+		if !slices.Contains(values, row.fieldValue) {
 			continue
 		}
 		if taken[row.fieldValue] >= perValueLimit {
@@ -99,15 +105,6 @@ func (repo *fakeGraphRepository) EstimateValueCount(
 		}
 	}
 	return count, nil
-}
-
-func contains(haystack []string, needle string) bool {
-	for _, v := range haystack {
-		if v == needle {
-			return true
-		}
-	}
-	return false
 }
 
 ///////////////////////////////
@@ -218,6 +215,13 @@ type graphWalkCase struct {
 func runGraphWalk(t *testing.T, tc graphWalkCase) (models.GraphResult, *graphWalker) {
 	t.Helper()
 
+	orDefault := func(value, fallback int) int {
+		if value == 0 {
+			return fallback
+		}
+		return value
+	}
+
 	ctx := utils.StoreLoggerInContext(context.Background(),
 		slog.New(slog.DiscardHandler))
 
@@ -229,7 +233,7 @@ func runGraphWalk(t *testing.T, tc graphWalkCase) (models.GraphResult, *graphWal
 	w := &graphWalker{
 		ctx:                ctx,
 		repo:               repo,
-		sch:                buildGraphSchema(ctx, tc.dataModel, endTypes, tc.configs),
+		schema:             buildGraphSchema(ctx, tc.dataModel, endTypes, tc.configs),
 		maxNodes:           orDefault(tc.caps.nodes, graphMaxNodes),
 		maxLinkFanout:      orDefault(tc.caps.linkFanout, graphMaxLinkFanout),
 		maxUpwardFanout:    orDefault(tc.caps.upwardFanout, graphMaxUpwardFanout),
@@ -243,13 +247,6 @@ func runGraphWalk(t *testing.T, tc graphWalkCase) (models.GraphResult, *graphWal
 	require.NoError(t, err)
 
 	return result, w
-}
-
-func orDefault(value, fallback int) int {
-	if value == 0 {
-		return fallback
-	}
-	return value
 }
 
 func node(recordType, id string) models.GraphNode {
@@ -680,14 +677,10 @@ func TestGraphWalk_HypernodeIsReportedButNotWalked(t *testing.T) {
 	require.Len(t, connectors, 1, "the connector is kept as a terminal marker")
 	assert.Equal(t, node("same_iban", "IB1"), connectors[0].GraphNode)
 
-	// The relationship was pruned on the account, which is not reported, so it surfaces on the
-	// party that account collapsed into.
-	start := resultNodes(result)[node("users", "U1")]
-	require.Len(t, start.Hyperconnected, 1)
-	assert.Equal(t, models.HyperconnectedRelation{
-		Label: "same_iban", Kind: graphEdgeKindMatch, Field: "iban",
-		Count: 9999,
-	}, start.Hyperconnected[0])
+	// The connector is the one node standing for the shared value, so the count belongs on it
+	// rather than being repeated on every record that carries the value.
+	assert.Equal(t, graphEdgeKindMatch, connectors[0].ConnectorKind)
+	assert.Equal(t, 9999, connectors[0].HypernodeCount)
 }
 
 func TestGraphWalk_HypernodeReportsALowerBoundOnceEstimatesRunOut(t *testing.T) {
@@ -706,10 +699,10 @@ func TestGraphWalk_HypernodeReportsALowerBoundOnceEstimatesRunOut(t *testing.T) 
 
 	assert.Zero(t, w.estimates, "the estimate budget was already spent")
 
-	start := resultNodes(result)[node("users", "U1")]
-	require.Len(t, start.Hyperconnected, 1)
+	connectors := connectorNodes(result)
+	require.Len(t, connectors, 1)
 	// What the capped lookup proved, rather than the planner's number.
-	assert.Equal(t, 3, start.Hyperconnected[0].Count)
+	assert.Equal(t, 3, connectors[0].HypernodeCount)
 }
 
 func TestGraphWalk_HypernodeNeverReportsFewerThanItProved(t *testing.T) {
@@ -728,9 +721,9 @@ func TestGraphWalk_HypernodeNeverReportsFewerThanItProved(t *testing.T) {
 		estimate: 1,
 	})
 
-	start := resultNodes(result)[node("users", "U1")]
-	require.Len(t, start.Hyperconnected, 1)
-	assert.Equal(t, 3, start.Hyperconnected[0].Count)
+	connectors := connectorNodes(result)
+	require.Len(t, connectors, 1)
+	assert.Equal(t, 3, connectors[0].HypernodeCount)
 }
 
 func TestGraphWalk_LinkFanoutUsesItsOwnHigherCap(t *testing.T) {
@@ -744,14 +737,14 @@ func TestGraphWalk_LinkFanoutUsesItsOwnHigherCap(t *testing.T) {
 
 	// A fan-out well past the shared-attribute threshold is normal for a link: a party
 	// legitimately owns many records.
-	_, generous := runGraphWalk(t, graphWalkCase{
+	generousResult, generous := runGraphWalk(t, graphWalkCase{
 		dataModel: amlDataModel(), rows: rows, start: node("users", "U1"), degrees: 1,
 		caps: graphCaps{sameFieldFanout: 2, linkFanout: 10},
 	})
 	for _, account := range []string{"A1", "A2", "A3", "A4"} {
 		assert.True(t, generous.seen[node("accounts", account)])
 	}
-	assert.Empty(t, generous.hyper[node("users", "U1")])
+	assert.Empty(t, connectorNodes(generousResult), "nothing was pruned, so nothing stands in for it")
 
 	result, strict := runGraphWalk(t, graphWalkCase{
 		dataModel: amlDataModel(), rows: rows, start: node("users", "U1"), degrees: 1,
@@ -759,11 +752,58 @@ func TestGraphWalk_LinkFanoutUsesItsOwnHigherCap(t *testing.T) {
 	})
 	assert.False(t, strict.seen[node("accounts", "A1")])
 
-	start := resultNodes(result)[node("users", "U1")]
-	require.Len(t, start.Hyperconnected, 1)
-	assert.Equal(t, graphEdgeKindLink, start.Hyperconnected[0].Kind)
-	assert.Equal(t, "accounts_user", start.Hyperconnected[0].Label)
-	assert.Equal(t, 4, start.Hyperconnected[0].Count)
+	// The children that were left out get a node of their own, named after the link and the
+	// value they point at, exactly as a shared value gets one.
+	connectors := connectorNodes(result)
+	require.Len(t, connectors, 1)
+	assert.Equal(t, node("accounts_user", "U1"), connectors[0].GraphNode)
+	assert.Equal(t, graphEdgeKindLink, connectors[0].ConnectorKind)
+	assert.Equal(t, 4, connectors[0].HypernodeCount)
+
+	// ...and the party that reached it holds the edge, which names the link it stands for.
+	edge, ok := findEdge(result, node("users", "U1"), connectors[0].GraphNode)
+	require.True(t, ok)
+	assert.Equal(t, graphEdgeKindLink, edge.Kind)
+	assert.Equal(t, "accounts_user", edge.Label)
+}
+
+func TestGraphWalk_HypernodeKeepsBothValuesPrunedOnTheSameLink(t *testing.T) {
+	// One party owning two accounts, each of which has more transactions than the link cap
+	// allows. Both accounts collapse into the same party, and both were pruned on the same link
+	// — differing only in the value they point at. Each set left out is its own node, so
+	// reporting one must not hide the other.
+	rows := []fakeGraphRow{{"users", "U1", "object_id", "U1"}}
+	for _, account := range []string{"A1", "A2"} {
+		rows = append(rows,
+			fakeGraphRow{"accounts", account, "object_id", account},
+			fakeGraphRow{"accounts", account, "user_id", "U1"},
+		)
+		for _, tx := range []string{"T1", "T2", "T3"} {
+			rows = append(rows,
+				fakeGraphRow{"transactions", account + tx, "object_id", account + tx},
+				fakeGraphRow{"transactions", account + tx, "account_id", account},
+			)
+		}
+	}
+
+	result, _ := runGraphWalk(t, graphWalkCase{
+		dataModel: amlDataModel(), rows: rows,
+		start: node("users", "U1"), degrees: 2,
+		caps: graphCaps{linkFanout: 2}, estimate: 3,
+	})
+
+	connectors := connectorNodes(result)
+	require.Len(t, connectors, 2,
+		"both accounts were pruned on transactions_account, for different values")
+
+	ids := []string{connectors[0].Id, connectors[1].Id}
+	slices.Sort(ids)
+	assert.Equal(t, []string{"A1", "A2"}, ids)
+	for _, connector := range connectors {
+		assert.Equal(t, "transactions_account", connector.Type)
+		assert.Equal(t, graphEdgeKindLink, connector.ConnectorKind)
+		assert.Equal(t, 3, connector.HypernodeCount)
+	}
 }
 
 func TestGraphWalk_NodeCapStopsTheWalkWithoutDanglingEdges(t *testing.T) {
@@ -965,8 +1005,8 @@ func TestWalkGraph_RejectsAnUnknownStartType(t *testing.T) {
 		enforceSecurity:         enforceSecurity,
 		executorFactory:         executor_factory.NewExecutorFactoryStub(),
 		dataModelRepository:     dataModelRepository,
-		graphRepository:         &fakeGraphRepository{},
-		graphRelationRepository: &fakeGraphRelationRepository{},
+		graphRepository:         new(mocks.GraphRepository),
+		graphRelationRepository: new(mocks.GraphRelationRepository),
 	}
 
 	_, err := uc.WalkGraph(context.Background(), uuid.New(), "nope", "X1", models.GraphWalkOptions{})
@@ -991,12 +1031,16 @@ func TestWalkGraph_ClampsTheRequestedDegrees(t *testing.T) {
 	dataModelRepository.On("GetDataModel", mock.Anything, mock.Anything, mock.Anything, false, true).
 		Return(amlDataModel(), nil)
 
+	graphRelationRepository := new(mocks.GraphRelationRepository)
+	graphRelationRepository.On("ListGraphRelations", mock.Anything, mock.Anything, mock.Anything).
+		Return([]models.GraphRelation{}, nil)
+
 	uc := GraphWalkUsecase{
 		enforceSecurity:         enforceSecurity,
 		executorFactory:         executor_factory.NewExecutorFactoryStub(),
 		dataModelRepository:     dataModelRepository,
 		graphRepository:         &fakeGraphRepository{rows: rows},
-		graphRelationRepository: &fakeGraphRelationRepository{},
+		graphRelationRepository: graphRelationRepository,
 	}
 
 	// Only that the call succeeds with an absurd request: the ceiling is enforced in the
@@ -1017,8 +1061,8 @@ func TestWalkGraph_StopsOnAForbiddenOrganization(t *testing.T) {
 		enforceSecurity:         enforceSecurity,
 		executorFactory:         executor_factory.NewExecutorFactoryStub(),
 		dataModelRepository:     dataModelRepository,
-		graphRepository:         &fakeGraphRepository{},
-		graphRelationRepository: &fakeGraphRelationRepository{},
+		graphRepository:         new(mocks.GraphRepository),
+		graphRelationRepository: new(mocks.GraphRelationRepository),
 	}
 
 	_, err := uc.WalkGraph(context.Background(), uuid.New(), "users", "U1", models.GraphWalkOptions{})

@@ -17,10 +17,6 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-// A build reads every live record of every table an organization has, so it is deliberately
-// infrequent: the graph is a snapshot, not a live view.
-const GRAPH_BUILD_DEFAULT_INTERVAL = 24 * time.Hour
-
 func NewGraphBuildPeriodicJob(orgId uuid.UUID, interval time.Duration) *river.PeriodicJob {
 	return NewPeriodicJob(
 		river.PeriodicInterval(interval),
@@ -38,8 +34,6 @@ func NewGraphBuildPeriodicJob(orgId uuid.UUID, interval time.Duration) *river.Pe
 	)
 }
 
-// GraphBuilder rebuilds an organization's adjacency table. It is separate from the worker so the
-// build can be driven — and tested — without going through the queue.
 type GraphBuilder struct {
 	executorFactory         executor_factory.ExecutorFactory
 	transactionFactory      executor_factory.TransactionFactory
@@ -64,15 +58,13 @@ func NewGraphBuilder(
 	}
 }
 
-// Build writes a whole new adjacency table and swaps it in once it is complete, so a walk running
-// while a build is in flight keeps reading the previous graph rather than a half-filled one.
-func (b GraphBuilder) Build(ctx context.Context, organizationId uuid.UUID) error {
+func (w GraphBuilder) Build(ctx context.Context, organizationId uuid.UUID) error {
 	logger := utils.LoggerFromContext(ctx)
 	start := time.Now()
 
-	marbleExec := b.executorFactory.NewExecutor()
+	exec := w.executorFactory.NewExecutor()
 
-	dataModel, err := b.dataModelRepository.GetDataModel(ctx, marbleExec, organizationId, false, false)
+	dataModel, err := w.dataModelRepository.GetDataModel(ctx, exec, organizationId, false, false)
 	if err != nil {
 		return errors.Wrap(err, "could not read the data model")
 	}
@@ -82,47 +74,43 @@ func (b GraphBuilder) Build(ctx context.Context, organizationId uuid.UUID) error
 		return nil
 	}
 
-	relations, err := b.graphRelationRepository.ListGraphRelations(ctx, marbleExec, organizationId)
+	relations, err := w.graphRelationRepository.ListGraphRelations(ctx, exec, organizationId)
 	if err != nil {
 		return errors.Wrap(err, "could not read the graph relations")
 	}
 
-	// The same derivation the walk uses to decide what it may read, plus object_id everywhere.
-	// Sharing it is what keeps the walk from reading a field the table was never told to carry.
 	fieldsByType := models.GraphIndexedFields(dataModel, relations)
 
-	clientExec, err := b.executorFactory.NewClientDbExecutor(ctx, organizationId)
+	clientExec, err := w.executorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
 		return err
 	}
 
-	if err := b.graphBuilderRepository.CreateGraphBuildTable(ctx, clientExec); err != nil {
+	if err := w.graphBuilderRepository.CreateGraphBuildTable(ctx, clientExec); err != nil {
 		return err
 	}
 
 	var rows int64
+
 	for _, recordType := range slices.Sorted(maps.Keys(fieldsByType)) {
-		written, err := b.graphBuilderRepository.PopulateGraphBuildTable(ctx,
-			clientExec, recordType, fieldsByType[recordType])
+		written, err := w.graphBuilderRepository.PopulateGraphBuildTable(ctx, clientExec, recordType, fieldsByType[recordType])
 		if err != nil {
-			// Leave nothing behind for the next run to trip over. The live table is untouched.
-			b.dropBuildTable(ctx, clientExec)
+			w.dropBuildTable(ctx, clientExec)
 			return err
 		}
 		rows += written
 	}
 
-	if err := b.graphBuilderRepository.IndexGraphBuildTable(ctx, clientExec); err != nil {
-		b.dropBuildTable(ctx, clientExec)
+	if err := w.graphBuilderRepository.IndexGraphBuildTable(ctx, clientExec); err != nil {
+		w.dropBuildTable(ctx, clientExec)
 		return err
 	}
 
-	err = b.transactionFactory.TransactionInOrgSchema(ctx, organizationId,
-		func(tx repositories.Transaction) error {
-			return b.graphBuilderRepository.SwapGraphTable(ctx, tx)
-		})
+	err = w.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
+		return w.graphBuilderRepository.SwapGraphTable(ctx, tx)
+	})
 	if err != nil {
-		b.dropBuildTable(ctx, clientExec)
+		w.dropBuildTable(ctx, clientExec)
 		return err
 	}
 
@@ -137,11 +125,9 @@ func (b GraphBuilder) Build(ctx context.Context, organizationId uuid.UUID) error
 	return nil
 }
 
-// dropBuildTable cleans up after a failed build. The error is logged rather than returned: it
-// would mask the failure that led here, and the next run drops the table before creating it.
-func (b GraphBuilder) dropBuildTable(ctx context.Context, exec repositories.Executor) {
-	if err := b.graphBuilderRepository.DropGraphBuildTable(ctx, exec); err != nil {
-		utils.LoggerFromContext(ctx).WarnContext(ctx,
+func (w GraphBuilder) dropBuildTable(ctx context.Context, exec repositories.Executor) {
+	if err := w.graphBuilderRepository.DropGraphBuildTable(ctx, exec); err != nil {
+		utils.LoggerFromContext(ctx).ErrorContext(ctx,
 			"graph build: could not drop the build table after a failure", "error", err)
 	}
 }
@@ -167,35 +153,32 @@ func NewGraphBuildWorker(
 }
 
 func (w *GraphBuildWorker) Timeout(job *river.Job[models.GraphBuildArgs]) time.Duration {
-	return time.Hour
+	return time.Hour // TODO: this will probably not be enough
 }
 
 func (w *GraphBuildWorker) Work(ctx context.Context, job *river.Job[models.GraphBuildArgs]) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	// Every organization's job is scheduled on the same interval, so without this they would all
-	// start their scan at the same moment.
+	// Prevent herd effect
 	if err := AddStrideDelay(job, w.interval); err != nil {
 		return err
 	}
 
-	// A build is long enough that the interval-based uniqueness of the periodic job is not on its
-	// own enough to keep two of them off the same organization.
 	exec, release, err := w.executorFactory.NewPinnedExecutor(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to get pinned executor")
 	}
 	defer release()
 
-	// Should the worker be killed without closing the connection, this is what eventually gets
-	// Postgres to release the lock.
 	timeout := w.Timeout(job)
+
 	if _, err := exec.Exec(ctx,
-		fmt.Sprintf("SET idle_session_timeout = '%dms'", timeout.Milliseconds())); err != nil {
+		fmt.Sprintf("set idle_session_timeout = '%dms'", timeout.Milliseconds())); err != nil {
 		return errors.Wrap(err, "failed to set idle_session_timeout")
 	}
 
 	lockKey := fmt.Sprintf("graph-build-%s", job.Args.OrgId)
+
 	unlock, acquired, err := repositories.GetTryAdvisoryLock(ctx, exec, lockKey)
 	if err != nil {
 		return errors.Wrap(err, "failed to acquire advisory lock")

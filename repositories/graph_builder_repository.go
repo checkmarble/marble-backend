@@ -9,21 +9,15 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
-// The adjacency table is rebuilt from scratch rather than updated in place, so a build writes to
-// a table of its own and swaps it in only once it is complete and indexed. Readers keep seeing
-// the previous graph for the whole duration of a build.
 const (
-	graphBuildTable = "_graph_build"
+	graphPkeyName   = "_graph_pkey"
+	graphLookupName = "idx_graph_lookup"
+	graphStatsName  = "_graph_stats"
 
-	// Index names are schema-scoped, so the build table's own indexes have to be named apart from
-	// the live ones and renamed during the swap: ALTER TABLE ... RENAME TO leaves the names of
-	// constraints and indexes alone. Without this, the second build would collide with the first.
-	graphPkeyName       = "_graph_pkey"
-	graphLookupName     = "idx__graph_lookup"
-	graphBuildPkey      = "_graph_build_pkey"
-	graphBuildLookupIdx = "idx__graph_build_lookup"
+	graphBuildTable = "_graph_build"
 
 	// A walk holds the live table open while it reads, and the swap needs an exclusive lock on it.
 	// Rather than queue behind a long walk — and make every later reader queue behind the swap —
@@ -70,7 +64,10 @@ func (repo GraphBuilderRepositoryPostgresql) CreateGraphBuildTable(ctx context.C
 }
 
 func (repo GraphBuilderRepositoryPostgresql) PopulateGraphBuildTable(
-	ctx context.Context, exec Executor, recordType string, fields []models.Field,
+	ctx context.Context,
+	exec Executor,
+	recordType string,
+	fields []models.Field,
 ) (int64, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return 0, err
@@ -79,15 +76,16 @@ func (repo GraphBuilderRepositoryPostgresql) PopulateGraphBuildTable(
 		return 0, nil
 	}
 
+	values := make([]string, 0, len(fields))
+
+	for _, field := range fields {
+		values = append(values, fmt.Sprintf("(%s, %s)",
+			pgClientDataIdentifierString(field.Name), graphFieldProjection(field)))
+	}
+
 	// One row per participating field of a record, produced by unpivoting the columns through a
 	// lateral VALUES list. This reads the source table once, where one statement per field would
 	// read it once per field.
-	values := make([]string, 0, len(fields))
-	for _, field := range fields {
-		values = append(values, fmt.Sprintf("(%s, %s)",
-			pgStringLiteral(field.Name), graphFieldProjection(field)))
-	}
-
 	sql := fmt.Sprintf(`
 		insert into %s (record_type, record_id, field_name, field_value, updated_at)
 		select %s, t.object_id, v.field_name, v.field_value, now()
@@ -97,7 +95,7 @@ func (repo GraphBuilderRepositoryPostgresql) PopulateGraphBuildTable(
 			and v.field_value is not null
 			and v.field_value <> ''`,
 		pgIdentifierWithSchema(exec, graphBuildTable),
-		pgStringLiteral(recordType),
+		pgClientDataIdentifierString(recordType),
 		pgIdentifierWithSchema(exec, recordType),
 		strings.Join(values, ", "))
 
@@ -116,16 +114,35 @@ func (repo GraphBuilderRepositoryPostgresql) IndexGraphBuildTable(ctx context.Co
 
 	buildTable := pgIdentifierWithSchema(exec, graphBuildTable)
 
-	// The primary key doubles as the index for reading a record's fields, which is the walk's
-	// hydration query. It also asserts one live row per object_id: a violation here means the
-	// source table's unique index on object_id is missing or was bypassed, which would make the
-	// graph wrong in ways that are far harder to notice than a failed build.
+	// Index/constraint/statistics names are schema-scoped, not table-scoped, so they survive the
+	// swap's table rename under whatever name they're given here. Suffixing each with a nonce
+	// means this cycle's names can never collide with a still-live previous cycle's, so nothing
+	// needs renaming after the swap.
+	nonce := pure_utils.NewId().String()
+
 	statements := []string{
+		// The primary key doubles as the index for reading a record's fields, which is the walk's
+		// hydration query.
 		fmt.Sprintf("alter table %s add constraint %s primary key (record_type, record_id, field_name)",
-			buildTable, pgx.Identifier.Sanitize([]string{graphBuildPkey})),
+			buildTable, pgx.Identifier.Sanitize([]string{fmt.Sprintf("%s_%s", graphPkeyName, nonce)})),
+
 		// The walk's other query shape: find every record carrying a value on a field.
 		fmt.Sprintf("create index %s on %s (record_type, field_name, field_value)",
-			pgx.Identifier.Sanitize([]string{graphBuildLookupIdx}), buildTable),
+			pgx.Identifier.Sanitize([]string{fmt.Sprintf("%s_%s", graphLookupName, nonce)}), buildTable),
+
+		// These three columns are heavily correlated — every row with field_name 'ip' is also a
+		// row with record_type 'logins' — and the walk sizes a hypernode by asking the planner to
+		// EXPLAIN a lookup keyed on all three at once. Estimating them independently multiplies
+		// their selectivities and lands orders of magnitude low.
+		fmt.Sprintf(
+			"create statistics %s (ndistinct, dependencies, mcv) on record_type, field_name, field_value from %s",
+			pgIdentifierWithSchema(exec, fmt.Sprintf("%s_%s", graphStatsName, nonce)), buildTable),
+
+		// A table this young has no statistics at all, so without this the estimate would be the
+		// planner's no-stats default and every hypernode count the walk reports would be
+		// meaningless. Analyzing here rather than after the swap means the live table is never
+		// briefly without statistics.
+		fmt.Sprintf("analyze %s", buildTable),
 	}
 
 	for _, sql := range statements {
@@ -150,15 +167,6 @@ func (repo GraphBuilderRepositoryPostgresql) SwapGraphTable(ctx context.Context,
 		fmt.Sprintf("alter table %s rename to %s",
 			pgIdentifierWithSchema(tx, graphBuildTable),
 			pgx.Identifier.Sanitize([]string{graphTable})),
-
-		// Renaming the table leaves these behind under their build-time names, and the next build
-		// would then fail to create them.
-		fmt.Sprintf("alter index %s rename to %s",
-			pgIdentifierWithSchema(tx, graphBuildPkey),
-			pgx.Identifier.Sanitize([]string{graphPkeyName})),
-		fmt.Sprintf("alter index %s rename to %s",
-			pgIdentifierWithSchema(tx, graphBuildLookupIdx),
-			pgx.Identifier.Sanitize([]string{graphLookupName})),
 	}
 
 	for _, sql := range statements {
@@ -197,18 +205,8 @@ func graphFieldProjection(field models.Field) string {
 		// match only when identical, never by proximity.
 		return fmt.Sprintf("st_asewkt(%s)", column)
 	case models.Timestamp:
-		// Casting a timestamptz renders it in the session's TimeZone, so the same instant would
-		// be written differently depending on where the worker happened to run.
 		return fmt.Sprintf("(%s at time zone 'utc')::text", column)
 	default:
 		return column + "::text"
 	}
-}
-
-// pgStringLiteral quotes a value for inclusion in a statement that cannot take a parameter. Only
-// the record type and field names go through it, both of which the data model has already
-// constrained to `^[a-z][a-z0-9_]{0,62}$`; the quoting is what keeps that from being the only
-// thing standing between the data model and injected SQL.
-func pgStringLiteral(value string) string {
-	return "'" + strings.ReplaceAll(value, "'", "''") + "'"
 }

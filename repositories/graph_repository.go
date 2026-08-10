@@ -28,16 +28,12 @@ const graphBatchSize = 1000
 type GraphRepository interface {
 	// FetchFields returns the `_graph` rows of recordType for the given record ids,
 	// restricted to fieldNames. One call hydrates a whole frontier of one record type.
-	FetchFields(ctx context.Context, exec Executor, recordType string,
-		recordIds, fieldNames []string,
-	) ([]models.GraphRow, error)
+	FetchFields(ctx context.Context, exec Executor, recordType string, recordIds, fieldNames []string) ([]models.GraphRow, error)
 
 	// FindByValues returns the records of recordType whose fieldName is one of values, at
 	// most perValueLimit of them per requested value. Pass the walk's cap plus one to tell
 	// "exactly at the cap" from "over it".
-	FindByValues(ctx context.Context, exec Executor, recordType, fieldName string,
-		values []string, perValueLimit int,
-	) ([]models.GraphMatch, error)
+	FindByValues(ctx context.Context, exec Executor, recordType, fieldName string, values []string, perValueLimit int) ([]models.GraphMatch, error)
 
 	// EstimateValueCount returns the planner's estimate of how many records carry a value.
 	// It is only called for a relationship already known to be over its cap, to put a
@@ -52,7 +48,10 @@ type GraphRepository interface {
 type GraphRepositoryPostgresql struct{}
 
 func (repo GraphRepositoryPostgresql) FetchFields(
-	ctx context.Context, exec Executor, recordType string, recordIds, fieldNames []string,
+	ctx context.Context,
+	exec Executor,
+	recordType string,
+	recordIds, fieldNames []string,
 ) ([]models.GraphRow, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
@@ -73,10 +72,13 @@ func (repo GraphRepositoryPostgresql) FetchFields(
 
 		err := ForEachRow(ctx, exec, q, func(row pgx.CollectableRow) error {
 			var r models.GraphRow
+
 			if err := row.Scan(&r.RecordId, &r.FieldName, &r.FieldValue); err != nil {
 				return errors.Wrap(err, "error while scanning _graph row")
 			}
+
 			output = append(output, r)
+
 			return nil
 		})
 		if err != nil {
@@ -88,7 +90,11 @@ func (repo GraphRepositoryPostgresql) FetchFields(
 }
 
 func (repo GraphRepositoryPostgresql) FindByValues(
-	ctx context.Context, exec Executor, recordType, fieldName string, values []string, perValueLimit int,
+	ctx context.Context,
+	exec Executor,
+	recordType, fieldName string,
+	values []string,
+	perValueLimit int,
 ) ([]models.GraphMatch, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
@@ -102,13 +108,13 @@ func (repo GraphRepositoryPostgresql) FindByValues(
 	// every value still gets looked up in a single round trip. A grouped count would have
 	// to read all of those rows before it could tell us to skip them.
 	sql := fmt.Sprintf(`
-		SELECT v.val, s.record_id
-		FROM unnest($1::text[]) AS v(val)
-		CROSS JOIN LATERAL (
-			SELECT record_id
-			FROM %s
-			WHERE record_type = $2 AND field_name = $3 AND field_value = v.val
-			LIMIT $4
+		select v.val, s.record_id
+		from unnest($1::text[]) as v(val)
+		cross join lateral (
+			select record_id
+			from %s
+			where record_type = $2 and field_name = $3 and field_value = v.val
+			limit $4
 		) s`, pgIdentifierWithSchema(exec, graphTable))
 
 	output := make([]models.GraphMatch, 0, len(values))
@@ -123,8 +129,13 @@ func (repo GraphRepositoryPostgresql) FindByValues(
 }
 
 func (repo GraphRepositoryPostgresql) collectMatches(
-	ctx context.Context, exec Executor, sql string, values []string,
-	recordType, fieldName string, perValueLimit int, output *[]models.GraphMatch,
+	ctx context.Context,
+	exec Executor,
+	sql string,
+	values []string,
+	recordType, fieldName string,
+	perValueLimit int,
+	output *[]models.GraphMatch,
 ) error {
 	rows, err := exec.Query(ctx, sql, values, recordType, fieldName, perValueLimit)
 	if err != nil {
@@ -134,9 +145,11 @@ func (repo GraphRepositoryPostgresql) collectMatches(
 
 	for rows.Next() {
 		var m models.GraphMatch
+
 		if err := rows.Scan(&m.Value, &m.RecordId); err != nil {
 			return errors.Wrap(err, "error while scanning _graph match")
 		}
+
 		*output = append(*output, m)
 	}
 
@@ -144,7 +157,9 @@ func (repo GraphRepositoryPostgresql) collectMatches(
 }
 
 func (repo GraphRepositoryPostgresql) EstimateValueCount(
-	ctx context.Context, exec Executor, recordType, fieldName, value string,
+	ctx context.Context,
+	exec Executor,
+	recordType, fieldName, value string,
 ) (int, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return 0, err
@@ -165,21 +180,17 @@ func (repo GraphRepositoryPostgresql) EstimateValueCount(
 
 	// EXPLAIN plans with the supplied parameter values, so the estimate is specific to this
 	// value rather than a generic average over the column.
-	//
-	// Note this only works over the extended query protocol, which pgx uses: a SQL-level
-	// `PREPARE ... AS EXPLAIN ...` is a syntax error, since that grammar admits only
-	// SELECT/INSERT/UPDATE/DELETE/MERGE/VALUES. Verified against Postgres 18.
 	var raw []byte
 	if err := exec.QueryRow(ctx, "EXPLAIN (FORMAT JSON) "+sql, args...).Scan(&raw); err != nil {
 		return 0, errors.Wrap(err, "error while estimating _graph matches")
 	}
 
-	// The tags spell Postgres's own EXPLAIN output, which is not snake case.
 	var plans []struct {
 		Plan struct {
 			PlanRows float64 `json:"Plan Rows"` //nolint:tagliatelle
 		} `json:"Plan"` //nolint:tagliatelle
 	}
+
 	if err := json.Unmarshal(raw, &plans); err != nil {
 		return 0, errors.Wrap(err, "error while parsing _graph estimate plan")
 	}

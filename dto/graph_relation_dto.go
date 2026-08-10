@@ -38,9 +38,8 @@ type CreateGraphRelationBody struct {
 	RightField string `json:"right_field" binding:"required"`
 }
 
-func AdaptCreateGraphRelation(body CreateGraphRelationBody, organizationId uuid.UUID) models.CreateGraphRelation {
+func AdaptCreateGraphRelation(body CreateGraphRelationBody) models.CreateGraphRelation {
 	return models.CreateGraphRelation{
-		OrgId:      organizationId,
 		Label:      body.Label,
 		LeftType:   body.LeftType,
 		LeftField:  body.LeftField,
