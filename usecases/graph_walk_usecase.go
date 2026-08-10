@@ -260,25 +260,18 @@ func buildGraphSchema(
 	relations []models.GraphRelation,
 ) graphSchema {
 	sch := graphSchema{
-		endTypes:     endTypes,
-		downward:     map[string][]models.LinkToSingle{},
-		upward:       map[string][]models.LinkToSingle{},
-		sameField:    map[string][]models.GraphRelation{},
-		neededFields: map[string][]string{},
-	}
-
-	need := func(recordType, fieldName string) {
-		if !slices.Contains(sch.neededFields[recordType], fieldName) {
-			sch.neededFields[recordType] = append(sch.neededFields[recordType], fieldName)
-		}
+		endTypes:  endTypes,
+		downward:  map[string][]models.LinkToSingle{},
+		upward:    map[string][]models.LinkToSingle{},
+		sameField: map[string][]models.GraphRelation{},
+		// Shared with the worker that builds the adjacency table, so a walk cannot come to read a
+		// field the table was never told to carry.
+		neededFields: models.GraphTraversableFields(dataModel, relations),
 	}
 
 	for _, link := range dataModel.AllLinksAsMap() {
 		sch.downward[link.ParentTableName] = append(sch.downward[link.ParentTableName], link)
 		sch.upward[link.ChildTableName] = append(sch.upward[link.ChildTableName], link)
-
-		need(link.ParentTableName, link.ParentFieldName)
-		need(link.ChildTableName, link.ChildFieldName)
 	}
 
 	for _, relation := range relations {
@@ -286,7 +279,7 @@ func buildGraphSchema(
 		// no longer resolves means the two have drifted apart since — a field archived or
 		// renamed, a table dropped. Skip that relation rather than fail the whole walk, but say
 		// so: it is a misconfiguration to fix, not something to expect.
-		if !graphRelationApplies(dataModel, relation) {
+		if !relation.AppliesTo(dataModel) {
 			utils.LoggerFromContext(ctx).WarnContext(ctx,
 				"graph walk: relation does not match the data model, skipping it",
 				"relation_id", relation.Id, "label", relation.Label)
@@ -294,8 +287,7 @@ func buildGraphSchema(
 		}
 
 		for _, endpoint := range relation.Endpoints() {
-			recordType, fieldName := endpoint[0], endpoint[1]
-			need(recordType, fieldName)
+			recordType := endpoint[0]
 
 			// A relation with both endpoints on the same table — sender and receiver IBAN of a
 			// transaction, say — must be registered once, not once per endpoint: matching
@@ -308,40 +300,17 @@ func buildGraphSchema(
 		}
 	}
 
-	// The data model is held in maps, so without sorting the order links and fields are
-	// visited — and therefore the order of the resulting nodes and edges — would vary
-	// between two walks over identical data.
+	// The data model is held in maps, so without sorting the order links are visited — and
+	// therefore the order of the resulting nodes and edges — would vary between two walks over
+	// identical data.
 	for recordType := range sch.downward {
 		slices.SortFunc(sch.downward[recordType], graphLinkOrder)
 	}
 	for recordType := range sch.upward {
 		slices.SortFunc(sch.upward[recordType], graphLinkOrder)
 	}
-	for recordType := range sch.neededFields {
-		slices.Sort(sch.neededFields[recordType])
-	}
 
 	return sch
-}
-
-// graphRelationApplies says whether both of a relation's endpoints resolve to a field of a table
-// in the data model.
-func graphRelationApplies(dataModel models.DataModel, relation models.GraphRelation) bool {
-	for _, endpoint := range relation.Endpoints() {
-		if !graphEndpointApplies(dataModel, endpoint) {
-			return false
-		}
-	}
-	return true
-}
-
-func graphEndpointApplies(dataModel models.DataModel, endpoint [2]string) bool {
-	table, ok := dataModel.Tables[endpoint[0]]
-	if !ok {
-		return false
-	}
-	_, ok = table.Fields[endpoint[1]]
-	return ok
 }
 
 func graphLinkOrder(a, b models.LinkToSingle) int {

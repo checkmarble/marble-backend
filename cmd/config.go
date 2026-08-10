@@ -51,5 +51,6 @@ type WorkerConfig struct {
 	enableTracing                bool
 	ScanDatasetUpdatesInterval   time.Duration
 	CreateFullDatasetInterval    time.Duration
+	GraphBuildInterval           time.Duration
 	continuousScreeningBucketUrl string
 }

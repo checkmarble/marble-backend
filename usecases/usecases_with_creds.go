@@ -668,6 +668,17 @@ func (usecases UsecasesWithCreds) NewIndexCreationStatusWorker() *worker_jobs.In
 	return &w
 }
 
+func (usecases UsecasesWithCreds) NewGraphBuildWorker(interval time.Duration) *worker_jobs.GraphBuildWorker {
+	builder := worker_jobs.NewGraphBuilder(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.GraphBuilderRepository,
+	)
+	return worker_jobs.NewGraphBuildWorker(builder, usecases.NewExecutorFactory(), interval)
+}
+
 func (usecases UsecasesWithCreds) NewIndexCleanupWorker() *worker_jobs.IndexCleanupWorker {
 	w := worker_jobs.NewIndexCleanupWorker(
 		usecases.NewExecutorFactory(),
