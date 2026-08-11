@@ -66,6 +66,7 @@ type CaseAnalyticsRepository interface {
 		exec repositories.Executor,
 		filters analytics.CaseAnalyticsFilter,
 	) ([]analytics.CaseStatusByInbox, error)
+	UserById(ctx context.Context, exec repositories.Executor, userId string) (models.User, error)
 }
 
 type CaseAnalyticsUsecase struct {
