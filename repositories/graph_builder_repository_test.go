@@ -81,7 +81,7 @@ func TestGraphBuilder_RefusesAMarbleExecutor(t *testing.T) {
 	exec := newGraphBuilderExecutor(t)
 	exec.schemaType = models.DATABASE_SCHEMA_TYPE_MARBLE
 
-	repo := GraphBuilderRepositoryPostgresql{}
+	repo := MarbleDbRepository{}
 
 	assert.Error(t, repo.CreateGraphBuildTable(context.Background(), exec))
 	assert.Error(t, repo.IndexGraphBuildTable(context.Background(), exec))
@@ -99,7 +99,7 @@ func TestGraphBuilder_CreateBuildTableIsUnloggedAndUnindexed(t *testing.T) {
 	exec := newGraphBuilderExecutor(t)
 	exec.expectStatements(2) // drop-if-exists, then create
 
-	require.NoError(t, GraphBuilderRepositoryPostgresql{}.CreateGraphBuildTable(context.Background(), exec))
+	require.NoError(t, MarbleDbRepository{}.CreateGraphBuildTable(context.Background(), exec))
 
 	sql := exec.joined()
 	assert.Contains(t, sql, `drop table if exists "org-test"."_graph_build"`,
@@ -113,7 +113,7 @@ func TestGraphBuilder_PopulateUnpivotsEveryFieldInOneScan(t *testing.T) {
 	exec := newGraphBuilderExecutor(t)
 	exec.expectStatements(1)
 
-	_, err := GraphBuilderRepositoryPostgresql{}.PopulateGraphBuildTable(context.Background(),
+	_, err := MarbleDbRepository{}.PopulateGraphBuildTable(context.Background(),
 		exec, "accounts", []models.Field{
 			{Name: "iban", DataType: models.String},
 			{Name: "object_id", DataType: models.String},
@@ -192,7 +192,7 @@ func TestGraphBuilder_ProjectionIsCanonicalPerDataType(t *testing.T) {
 func TestGraphBuilder_PopulateSkipsATypeWithNoFields(t *testing.T) {
 	exec := newGraphBuilderExecutor(t)
 
-	rows, err := GraphBuilderRepositoryPostgresql{}.PopulateGraphBuildTable(context.Background(),
+	rows, err := MarbleDbRepository{}.PopulateGraphBuildTable(context.Background(),
 		exec, "accounts", nil)
 
 	require.NoError(t, err)
@@ -204,7 +204,7 @@ func TestGraphBuilder_IndexesMatchTheWalksTwoQueryShapes(t *testing.T) {
 	exec := newGraphBuilderExecutor(t)
 	exec.expectStatements(4) // primary key, index, statistics, analyze
 
-	require.NoError(t, GraphBuilderRepositoryPostgresql{}.IndexGraphBuildTable(context.Background(), exec))
+	require.NoError(t, MarbleDbRepository{}.IndexGraphBuildTable(context.Background(), exec))
 
 	sql := exec.joined()
 	// Hydrating a record's fields, and finding the records carrying a value.
@@ -229,7 +229,7 @@ func TestGraphBuilder_SwapDoesNotRenameIndexes(t *testing.T) {
 	exec := newGraphBuilderExecutor(t)
 	exec.expectStatements(3) // lock_timeout, drop, rename
 
-	require.NoError(t, GraphBuilderRepositoryPostgresql{}.SwapGraphTable(context.Background(), exec))
+	require.NoError(t, MarbleDbRepository{}.SwapGraphTable(context.Background(), exec))
 
 	sql := exec.joined()
 	assert.Contains(t, sql, "set local lock_timeout",
@@ -252,8 +252,8 @@ func TestGraphBuilder_IndexNamesDoNotCollideAcrossBuilds(t *testing.T) {
 	second := newGraphBuilderExecutor(t)
 	second.expectStatements(4)
 
-	require.NoError(t, GraphBuilderRepositoryPostgresql{}.IndexGraphBuildTable(context.Background(), first))
-	require.NoError(t, GraphBuilderRepositoryPostgresql{}.IndexGraphBuildTable(context.Background(), second))
+	require.NoError(t, MarbleDbRepository{}.IndexGraphBuildTable(context.Background(), first))
+	require.NoError(t, MarbleDbRepository{}.IndexGraphBuildTable(context.Background(), second))
 
 	assert.NotEqual(t, first.joined(), second.joined(), "two builds must not produce identical DDL")
 }

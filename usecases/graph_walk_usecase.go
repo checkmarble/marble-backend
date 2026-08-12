@@ -155,7 +155,10 @@ type GraphWalkUsecase struct {
 // shared attributes over all of that, and takes the upward closure of the records those
 // matches reached. Everything newly found feeds the next degree.
 func (uc GraphWalkUsecase) WalkGraph(
-	ctx context.Context, organizationId uuid.UUID, startType, startId string, opts models.GraphWalkOptions,
+	ctx context.Context,
+	organizationId uuid.UUID,
+	startType, startId string,
+	opts models.GraphWalkOptions,
 ) (models.GraphResult, error) {
 	if err := uc.enforceSecurity.ReadOrganization(organizationId); err != nil {
 		return models.GraphResult{}, err
@@ -207,7 +210,45 @@ func (uc GraphWalkUsecase) WalkGraph(
 		maxEstimates:       graphMaxEstimates,
 	}
 
-	return w.run(models.GraphNode{Type: startType, Id: startId}, degrees)
+	graph, err := w.run(models.GraphNode{Type: startType, Id: startId}, degrees)
+	if err != nil {
+		return models.GraphResult{}, err
+	}
+
+	if err := uc.enrichGraph(ctx, organizationId, graph); err != nil {
+		return models.GraphResult{}, err
+	}
+
+	return graph, nil
+}
+
+func (uc GraphWalkUsecase) enrichGraph(ctx context.Context, orgId uuid.UUID, graph models.GraphResult) error {
+	if len(graph.Nodes) == 0 {
+		return nil
+	}
+
+	scoringRecords := make([]models.ScoringRecordRef, len(graph.Nodes))
+
+	for idx, node := range graph.Nodes {
+		scoringRecords[idx] = models.ScoringRecordRef{
+			RecordType: node.GraphNode.Type,
+			RecordId:   node.GraphNode.Id,
+		}
+	}
+
+	scores, err := uc.graphRepository.GetNodeBatchMetadata(ctx, uc.executorFactory.NewExecutor(), orgId, scoringRecords)
+	if err != nil {
+		return err
+	}
+
+	for _, score := range scores {
+		graph.Nodes[score.Index-1].Metadata = models.GraphResultNodeMetadata{
+			RiskLevel: score.RiskLevel,
+			Tags:      score.Tags,
+		}
+	}
+
+	return nil
 }
 
 // resolveGraphEndTypes turns the requested end types into a set of table names. An empty

@@ -674,7 +674,7 @@ func (usecases UsecasesWithCreds) NewGraphBuildWorker(interval time.Duration) *w
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
-		usecases.Repositories.GraphBuilderRepository,
+		usecases.Repositories.MarbleDbRepository,
 	)
 	return worker_jobs.NewGraphBuildWorker(builder, usecases.NewExecutorFactory(), interval)
 }
@@ -776,7 +776,7 @@ func (usecases *UsecasesWithCreds) NewGraphWalkUsecase() GraphWalkUsecase {
 		enforceSecurity:         usecases.NewEnforceSecurity(),
 		executorFactory:         usecases.NewExecutorFactory(),
 		dataModelRepository:     usecases.Repositories.MarbleDbRepository,
-		graphRepository:         usecases.Repositories.GraphRepository,
+		graphRepository:         usecases.Repositories.MarbleDbRepository,
 		graphRelationRepository: usecases.Repositories.MarbleDbRepository,
 	}
 }

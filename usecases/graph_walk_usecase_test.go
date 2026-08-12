@@ -107,6 +107,15 @@ func (repo *fakeGraphRepository) EstimateValueCount(
 	return count, nil
 }
 
+func (repo *fakeGraphRepository) GetNodeBatchMetadata(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	records []models.ScoringRecordRef,
+) ([]models.GraphResultNodeMetadata, error) {
+	return []models.GraphResultNodeMetadata{}, nil
+}
+
 ///////////////////////////////
 // Data model fixtures
 ///////////////////////////////

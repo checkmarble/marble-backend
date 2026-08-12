@@ -83,6 +83,19 @@ func (m *ScoringRepository) GetActiveScore(ctx context.Context, exec repositorie
 	return args.Get(0).(*models.ScoringScore), args.Error(1)
 }
 
+func (m *ScoringRepository) GetAllActiveScores(
+	ctx context.Context,
+	exec repositories.Executor,
+	orgId uuid.UUID,
+	records []models.ScoringRecordRef,
+) ([]models.GraphResultNodeMetadata, error) {
+	args := m.Called(ctx, exec, orgId, records)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.GraphResultNodeMetadata), args.Error(1)
+}
+
 func (m *ScoringRepository) InsertScore(ctx context.Context, tx repositories.Transaction, req models.InsertScoreRequest) (models.ScoringScore, error) {
 	args := m.Called(ctx, tx, req)
 	return args.Get(0).(models.ScoringScore), args.Error(1)
