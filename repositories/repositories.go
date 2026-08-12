@@ -102,8 +102,6 @@ type Repositories struct {
 	RedisClient                   *RedisClient
 	IngestionRepository           IngestionRepository
 	IngestedDataReadRepository    IngestedDataReadRepository
-	GraphRepository               GraphRepository
-	GraphBuilderRepository        GraphBuilderRepository
 	MarbleDbRepository            *MarbleDbRepository
 	ClientDbRepository            ClientDbRepository
 	ScenarioPublicationRepository ScenarioPublicationRepository
@@ -147,8 +145,6 @@ func NewRepositories(
 		RedisClient:                   options.redisClient,
 		IngestionRepository:           &IngestionRepositoryImpl{},
 		IngestedDataReadRepository:    &IngestedDataReadRepositoryImpl{},
-		GraphRepository:               GraphRepositoryPostgresql{},
-		GraphBuilderRepository:        GraphBuilderRepositoryPostgresql{},
 		MarbleDbRepository:            NewMarbleDbRepository(options.withCache, options.similarityThreshold),
 		ClientDbRepository:            ClientDbRepository{},
 		ScenarioPublicationRepository: &ScenarioPublicationRepositoryPostgresql{},
