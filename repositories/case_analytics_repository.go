@@ -321,6 +321,70 @@ func (repo MarbleDbRepository) CaseStatusByDate(
 	})
 }
 
+func (repo MarbleDbRepository) CaseSlaStatusByDate(
+	ctx context.Context,
+	exec Executor,
+	filters analytics.CaseAnalyticsFilter,
+) ([]analytics.CaseSlaStatusByDate, error) {
+	// Same "closed_at" derivation as CasesDurationByTimeStats.
+	closedAtSubq := squirrel.
+		Select("ce.case_id", "max(ce.created_at) as closed_at").
+		From(dbmodels.TABLE_CASE_EVENTS + " ce").
+		Where(squirrel.Eq{
+			"ce.event_type": "status_updated",
+			"ce.new_value":  "closed",
+		}).
+		GroupBy("ce.case_id")
+
+	closedAtSQL, closedAtArgs, err := closedAtSubq.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	// due_at is null (no deadline, never breached) when the inbox has no SLA configured.
+	dueAt := "c.created_at + (i.sla || ' days')::interval"
+
+	query := NewQueryBuilder().
+		Select(
+			fmt.Sprintf("(c.created_at + interval '%d s')::date as date", filters.TzOffsetSeconds),
+			fmt.Sprintf(`count(*) filter (
+				where c.status = 'closed' and (i.sla is null or ce_agg.closed_at <= %s)
+			) as completed_within_sla`, dueAt),
+			fmt.Sprintf(`count(*) filter (
+				where i.sla is not null and (
+					(c.status = 'closed' and ce_agg.closed_at > %s) or
+					(c.status != 'closed' and now() > %s)
+				)
+			) as sla_breached`, dueAt, dueAt),
+			fmt.Sprintf(`count(*) filter (
+				where c.status != 'closed' and (i.sla is null or now() <= %s)
+			) as still_open_within_sla`, dueAt),
+		).
+		From(dbmodels.TABLE_CASES+" c").
+		Join(dbmodels.TABLE_INBOXES+" i on i.id = c.inbox_id").
+		LeftJoin(fmt.Sprintf("(%s) ce_agg on ce_agg.case_id = c.id", closedAtSQL), closedAtArgs...).
+		Where(squirrel.Eq{
+			"c.org_id":   filters.OrgId,
+			"c.inbox_id": filters.InboxIds,
+		}).
+		Where(squirrel.And{
+			squirrel.GtOrEq{"c.created_at": filters.Start},
+			squirrel.Lt{"c.created_at": filters.End},
+		}).
+		GroupBy("date").
+		OrderBy("date")
+
+	if filters.AssignedUserId != nil {
+		query = query.Where(squirrel.Eq{"c.assigned_to": *filters.AssignedUserId})
+	}
+
+	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (analytics.CaseSlaStatusByDate, error) {
+		var res analytics.CaseSlaStatusByDate
+		err := row.Scan(&res.Date, &res.CompletedWithinSla, &res.SlaBreached, &res.StillOpenWithinSla)
+		return res, err
+	})
+}
+
 func (repo MarbleDbRepository) CaseStatusByInbox(
 	ctx context.Context,
 	exec Executor,

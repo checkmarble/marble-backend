@@ -68,6 +68,13 @@ type CaseStatusByDate struct {
 	Snoozed       int       `json:"snoozed"`
 }
 
+type CaseSlaStatusByDate struct {
+	Date               time.Time `json:"date"`
+	CompletedWithinSla int       `json:"completed_within_sla"`
+	SlaBreached        int       `json:"sla_breached"`
+	StillOpenWithinSla int       `json:"still_open_within_sla"`
+}
+
 type CaseStatusByInbox struct {
 	Inbox         string `json:"inbox"`
 	Pending       int    `json:"pending"`
@@ -120,8 +127,9 @@ type Dated interface {
 	GetDate() time.Time
 }
 
-func (r CasesCreated) GetDate() time.Time          { return r.Date }
+func (r CasesCreated) GetDate() time.Time           { return r.Date }
 func (r CasesFalsePositiveRate) GetDate() time.Time { return r.Date }
 func (r CasesDuration) GetDate() time.Time          { return r.Date }
 func (r SarDelay) GetDate() time.Time               { return r.Date }
 func (r CaseStatusByDate) GetDate() time.Time       { return r.Date }
+func (r CaseSlaStatusByDate) GetDate() time.Time    { return r.Date }

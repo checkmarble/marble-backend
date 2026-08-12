@@ -7,12 +7,36 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 )
 
 const caseAnalyticsCacheTTL = 1 * time.Hour
+
+func validateAssignedUserId(
+	ctx context.Context,
+	uc CaseAnalyticsUsecase,
+	exec repositories.Executor,
+	filters dto.CaseAnalyticsFilters,
+) error {
+	if filters.AssignedUserId == nil {
+		return nil
+	}
+
+	user, err := uc.repository.UserById(ctx, exec, *filters.AssignedUserId)
+	switch {
+	case errors.Is(err, models.NotFoundError):
+		return models.ForbiddenError
+	case err != nil:
+		return err
+	case user.OrganizationId != filters.OrgId:
+		return models.ForbiddenError
+	}
+	return nil
+}
 
 // cachedTimeSeriesQuery handles the full cache flow for time-series analytics queries.
 // It loads cached data from Redis, queries the DB only for missing date ranges,
@@ -31,6 +55,11 @@ func cachedTimeSeriesQuery[T analytics.Dated](
 	}
 
 	exec := uc.executorFactory.NewExecutor()
+
+	if err := validateAssignedUserId(ctx, uc, exec, filters); err != nil {
+		return nil, err
+	}
+
 	cache := exec.Cache(ctx)
 	cacheKey, cacheEnabled := buildCaseAnalyticsCacheKey(ctx, cache, queryName, filters, false)
 
@@ -150,6 +179,11 @@ func cachedScalarQuery[T any](
 	}
 
 	exec := uc.executorFactory.NewExecutor()
+
+	if err := validateAssignedUserId(ctx, uc, exec, filters); err != nil {
+		return zero, err
+	}
+
 	cache := exec.Cache(ctx)
 	cacheKey, cacheEnabled := buildCaseAnalyticsCacheKey(ctx, cache, queryName, filters, true)
 
