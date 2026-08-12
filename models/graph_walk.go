@@ -69,6 +69,14 @@ type GraphResultNode struct {
 	// about who is related to whom. It is the approximate number of records concerned, and its
 	// presence means this node's edges are a sample of what is out there rather than all of it.
 	HypernodeCount int
+
+	Metadata GraphResultNodeMetadata
+}
+
+type GraphResultNodeMetadata struct {
+	Index     int
+	RiskLevel int
+	Tags      []uuid.UUID
 }
 
 // GraphResult is the subgraph reached from a starting node, as a flat set of nodes and edges

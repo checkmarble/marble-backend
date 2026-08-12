@@ -8,9 +8,12 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
 // graphTable is the client-schema adjacency table the graph walk reads. It holds one row per
@@ -43,11 +46,16 @@ type GraphRepository interface {
 	// sampled, it also lands under the truth often enough that callers should treat it as an
 	// approximation and never as an upper bound.
 	EstimateValueCount(ctx context.Context, exec Executor, recordType, fieldName, value string) (int, error)
+
+	GetNodeBatchMetadata(
+		ctx context.Context,
+		exec Executor,
+		orgId uuid.UUID,
+		records []models.ScoringRecordRef,
+	) ([]models.GraphResultNodeMetadata, error)
 }
 
-type GraphRepositoryPostgresql struct{}
-
-func (repo GraphRepositoryPostgresql) FetchFields(
+func (repo MarbleDbRepository) FetchFields(
 	ctx context.Context,
 	exec Executor,
 	recordType string,
@@ -89,7 +97,7 @@ func (repo GraphRepositoryPostgresql) FetchFields(
 	return output, nil
 }
 
-func (repo GraphRepositoryPostgresql) FindByValues(
+func (repo MarbleDbRepository) FindByValues(
 	ctx context.Context,
 	exec Executor,
 	recordType, fieldName string,
@@ -128,7 +136,7 @@ func (repo GraphRepositoryPostgresql) FindByValues(
 	return output, nil
 }
 
-func (repo GraphRepositoryPostgresql) collectMatches(
+func (repo MarbleDbRepository) collectMatches(
 	ctx context.Context,
 	exec Executor,
 	sql string,
@@ -156,7 +164,7 @@ func (repo GraphRepositoryPostgresql) collectMatches(
 	return errors.Wrap(rows.Err(), "error while iterating over _graph matches")
 }
 
-func (repo GraphRepositoryPostgresql) EstimateValueCount(
+func (repo MarbleDbRepository) EstimateValueCount(
 	ctx context.Context,
 	exec Executor,
 	recordType, fieldName, value string,
@@ -199,4 +207,72 @@ func (repo GraphRepositoryPostgresql) EstimateValueCount(
 	}
 
 	return int(plans[0].Plan.PlanRows), nil
+}
+
+func (repo MarbleDbRepository) GetNodeBatchMetadata(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	records []models.ScoringRecordRef,
+) ([]models.GraphResultNodeMetadata, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	types := make([]string, len(records))
+	ids := make([]string, len(records))
+
+	for idx, record := range records {
+		types[idx] = record.RecordType
+		ids[idx] = record.RecordId
+	}
+
+	sql := fmt.Sprintf(
+		`
+			with
+		  inputs as (
+		    select type, id, ord
+		    from unnest($2::text[], $3::text[])
+		      with ordinality as input(type, id, ord)
+		  ),
+		  tags as (
+		    select tt.object_type, tt.object_id, array_agg(tt.payload->>'tag_id') AS ids
+		    from %s tt
+		    inner join inputs i on
+					tt.annotation_type = 'tag' and
+		      tt.org_id = $1 and
+		      tt.object_type = i.type and
+		      tt.object_id = i.id
+		    group by tt.object_type, tt.object_id
+		  )
+			select
+		    i.ord,
+		    ts.risk_level,
+		    tt.ids as tags
+			from inputs i
+			left join %s ts on
+			  ts.org_id = $1 and
+			  ts.record_type = i.type and
+			  ts.record_id = i.id and
+				ts.deleted_at is null
+			left join tags tt on
+			  tt.object_type = i.type and
+			  tt.object_id = i.id;
+		`,
+		dbmodels.TABLE_ENTITY_ANNOTATIONS,
+		dbmodels.TABLE_SCORING_SCORES,
+	)
+
+	rows, err := exec.Query(ctx, sql, orgId, types, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	dbMetadata, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbmodels.DbGraphOrderedMetadata])
+	if err != nil {
+		return nil, err
+	}
+
+	return pure_utils.MapErr(dbMetadata, dbmodels.AdaptGraphOrderedMetadata)
 }
