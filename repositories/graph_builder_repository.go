@@ -33,9 +33,7 @@ type GraphBuilderRepository interface {
 	DropGraphBuildTable(ctx context.Context, exec Executor) error
 }
 
-type GraphBuilderRepositoryPostgresql struct{}
-
-func (repo GraphBuilderRepositoryPostgresql) CreateGraphBuildTable(ctx context.Context, exec Executor) error {
+func (repo MarbleDbRepository) CreateGraphBuildTable(ctx context.Context, exec Executor) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
 	}
@@ -63,7 +61,7 @@ func (repo GraphBuilderRepositoryPostgresql) CreateGraphBuildTable(ctx context.C
 	return nil
 }
 
-func (repo GraphBuilderRepositoryPostgresql) PopulateGraphBuildTable(
+func (repo MarbleDbRepository) PopulateGraphBuildTable(
 	ctx context.Context,
 	exec Executor,
 	recordType string,
@@ -107,7 +105,7 @@ func (repo GraphBuilderRepositoryPostgresql) PopulateGraphBuildTable(
 	return tag.RowsAffected(), nil
 }
 
-func (repo GraphBuilderRepositoryPostgresql) IndexGraphBuildTable(ctx context.Context, exec Executor) error {
+func (repo MarbleDbRepository) IndexGraphBuildTable(ctx context.Context, exec Executor) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
 	}
@@ -154,7 +152,7 @@ func (repo GraphBuilderRepositoryPostgresql) IndexGraphBuildTable(ctx context.Co
 	return nil
 }
 
-func (repo GraphBuilderRepositoryPostgresql) SwapGraphTable(ctx context.Context, tx Transaction) error {
+func (repo MarbleDbRepository) SwapGraphTable(ctx context.Context, tx Transaction) error {
 	if err := validateClientDbExecutor(tx); err != nil {
 		return err
 	}
@@ -178,7 +176,7 @@ func (repo GraphBuilderRepositoryPostgresql) SwapGraphTable(ctx context.Context,
 	return nil
 }
 
-func (repo GraphBuilderRepositoryPostgresql) DropGraphBuildTable(ctx context.Context, exec Executor) error {
+func (repo MarbleDbRepository) DropGraphBuildTable(ctx context.Context, exec Executor) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
 	}

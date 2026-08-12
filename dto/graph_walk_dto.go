@@ -3,6 +3,7 @@ package dto
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/google/uuid"
 )
 
 type GraphEdgeNode struct {
@@ -30,6 +31,13 @@ type GraphNode struct {
 	// it stands for is shared too widely: it is the approximate number of records concerned,
 	// and its presence means this node's edges are a sample rather than the whole set.
 	HypernodeCount int `json:"hypernode_count,omitempty"`
+
+	Metadata GraphNodeMetadata `json:"metadata"`
+}
+
+type GraphNodeMetadata struct {
+	RiskLevel int         `json:"risk_level,omitempty"`
+	Tags      []uuid.UUID `json:"tags,omitempty"`
 }
 
 type Graph struct {
@@ -43,13 +51,19 @@ func adaptGraphNode(n models.GraphNode) GraphEdgeNode {
 }
 
 func adaptGraphResultNode(n models.GraphResultNode) GraphNode {
-	return GraphNode{
+	node := GraphNode{
 		Type:           n.Type,
 		Id:             n.Id,
 		Connector:      n.Connector,
 		ConnectorKind:  n.ConnectorKind,
 		HypernodeCount: n.HypernodeCount,
+		Metadata: GraphNodeMetadata{
+			RiskLevel: n.Metadata.RiskLevel,
+			Tags:      n.Metadata.Tags,
+		},
 	}
+
+	return node
 }
 
 func adaptGraphEdge(e models.GraphEdge) GraphEdge {
