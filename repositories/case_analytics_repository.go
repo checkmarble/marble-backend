@@ -7,6 +7,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -337,7 +338,7 @@ func buildCaseSlaStatusByDateQuery(filters analytics.CaseAnalyticsFilter) (squir
 
 	closedAtSQL, closedAtArgs, err := closedAtSubq.ToSql()
 	if err != nil {
-		return squirrel.SelectBuilder{}, err
+		return squirrel.SelectBuilder{}, errors.Wrap(err, "build closed-at subquery")
 	}
 
 	// dueAt calculates the SLA deadline: case created_at + inbox SLA duration (in days).
