@@ -198,16 +198,18 @@ func (uc GraphWalkUsecase) WalkGraph(
 	degrees = min(degrees, graphMaxDegrees)
 
 	w := &graphWalker{
-		ctx:                ctx,
-		exec:               exec,
-		repo:               uc.graphRepository,
-		schema:             buildGraphSchema(ctx, dataModel, endTypes, relations),
-		maxNodes:           graphMaxNodes,
-		maxLinkFanout:      graphMaxLinkFanout,
-		maxUpwardFanout:    graphMaxUpwardFanout,
-		maxSameFieldFanout: graphMaxSameFieldFanout,
-		maxUpwardDepth:     graphMaxUpwardDepth,
-		maxEstimates:       graphMaxEstimates,
+		ctx:                    ctx,
+		exec:                   exec,
+		repo:                   uc.graphRepository,
+		schema:                 buildGraphSchema(ctx, dataModel, endTypes, relations),
+		skipSameFieldRelations: opts.SkipSameFieldRelations,
+		sameFieldRelations:     opts.SameFieldRelations,
+		maxNodes:               graphMaxNodes,
+		maxLinkFanout:          graphMaxLinkFanout,
+		maxUpwardFanout:        graphMaxUpwardFanout,
+		maxSameFieldFanout:     graphMaxSameFieldFanout,
+		maxUpwardDepth:         graphMaxUpwardDepth,
+		maxEstimates:           graphMaxEstimates,
 	}
 
 	graph, err := w.run(models.GraphNode{Type: startType, Id: startId}, degrees)
@@ -390,10 +392,12 @@ type rawEdge struct {
 // graphWalker holds everything one call to WalkGraph needs: it is created fresh per call and
 // discarded once result() returns, so its maps never need to be cleared between requests.
 type graphWalker struct {
-	ctx    context.Context
-	exec   repositories.Executor
-	repo   repositories.GraphRepository
-	schema graphSchema
+	ctx                    context.Context
+	exec                   repositories.Executor
+	repo                   repositories.GraphRepository
+	schema                 graphSchema
+	skipSameFieldRelations bool
+	sameFieldRelations     []string
 
 	// --- fan-out and size limits for this walk, fixed for its whole lifetime (see the
 	// constants near the top of this file for what each one means and why it has its value) ---
@@ -509,17 +513,25 @@ func (w *graphWalker) run(start models.GraphNode, degrees int) (models.GraphResu
 			return models.GraphResult{}, err
 		}
 
-		// Shared attributes are matched over everything found so far this degree...
-		matched, err := w.followSameField(graphUnion(frontier, children, parents))
-		if err != nil {
-			return models.GraphResult{}, err
-		}
+		var (
+			matched        []models.GraphNode
+			matchedParents []models.GraphNode
+		)
 
-		// ...and the records those matches reached get their parents too, but are not
-		// themselves re-matched before the next degree.
-		matchedParents, err := w.followUpwardClosure(matched)
-		if err != nil {
-			return models.GraphResult{}, err
+		// Shared attributes are matched over everything found so far this degree...
+		if !w.skipSameFieldRelations {
+			matched, err = w.followSameField(graphUnion(frontier, children, parents))
+			if err != nil {
+				return models.GraphResult{}, err
+			}
+
+			// ...and the records those matches reached get their parents too, but are not
+			// themselves re-matched before the next degree.
+			matchedParents, err = w.followUpwardClosure(matched)
+			if err != nil {
+				return models.GraphResult{}, err
+			}
+
 		}
 
 		frontier = graphUnion(children, parents, matched, matchedParents)
@@ -718,6 +730,10 @@ func (w *graphWalker) followSameField(nodes []models.GraphNode) ([]models.GraphN
 
 	for _, recordType := range slices.Sorted(maps.Keys(byType)) {
 		for _, relation := range w.schema.sameField[recordType] {
+			if len(w.sameFieldRelations) > 0 && !slices.Contains(w.sameFieldRelations, relation.Label) {
+				continue
+			}
+
 			for _, endpoint := range relation.Endpoints() {
 				if endpoint[0] != recordType {
 					continue
