@@ -26,8 +26,17 @@ func handleGraphWalk(uc usecases.Usecases) func(c *gin.Context) {
 		nodeId := c.Param("node_id")
 
 		opts := models.GraphWalkOptions{
-			EndTypes: parseGraphEndTypes(c.Query("types")),
-			Degrees:  parseGraphDegrees(c.Query("degrees")),
+			EndTypes:               parseGraphEndTypes(c.Query("types")),
+			Degrees:                parseGraphDegrees(c.Query("degrees")),
+			SkipSameFieldRelations: c.Query("skip_same_field_relations") == "true",
+			SameFieldRelations: func() []string {
+				switch sfr := c.Query("same_field_relations"); sfr {
+				case "":
+					return nil
+				default:
+					return strings.Split(sfr, ",")
+				}
+			}(),
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewGraphWalkUsecase()
