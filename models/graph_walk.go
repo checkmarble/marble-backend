@@ -94,8 +94,10 @@ type GraphResult struct {
 // result should be collapsed to (empty means default to the data model's party tables) and
 // the number of degrees to explore from the start (zero means the default).
 type GraphWalkOptions struct {
-	EndTypes []string
-	Degrees  int
+	EndTypes               []string
+	Degrees                int
+	SkipSameFieldRelations bool
+	SameFieldRelations     []string
 }
 
 // GraphRelation declares that equal values of two (record type, field) endpoints connect the
