@@ -224,7 +224,8 @@ func (e ScenarioEvaluator) processScenarioIteration(
 				errPv,
 				"error getting pivot value in EvalScenario")
 		}
-		if value != nil {
+		// We skip this pivot if it was not defined or is an empty-equivalent string.
+		if value != nil && strings.TrimSpace(*value) != "" {
 			eligible = append(eligible, eligiblePivot{
 				pivot:      &params.Pivots[i],
 				value:      *value,
