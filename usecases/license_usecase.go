@@ -2,9 +2,7 @@ package usecases
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"fmt"
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -92,12 +90,7 @@ func (usecase *ProtectedLicenseUseCase) CreateLicense(ctx context.Context, input
 }
 
 func generateLicense() string {
-	key := make([]byte, 32)
-	_, err := rand.Read(key)
-	if err != nil {
-		panic(fmt.Errorf("generateLicense: %w", err))
-	}
-	return hex.EncodeToString(key)
+	return strings.ReplaceAll(uuid.New().String(), "-", "")
 }
 
 func (usecase *ProtectedLicenseUseCase) UpdateLicense(ctx context.Context, input models.UpdateLicenseInput) (models.License, error) {
