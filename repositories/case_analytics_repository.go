@@ -7,6 +7,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -321,11 +322,10 @@ func (repo MarbleDbRepository) CaseStatusByDate(
 	})
 }
 
-func (repo MarbleDbRepository) CaseSlaStatusByDate(
-	ctx context.Context,
-	exec Executor,
-	filters analytics.CaseAnalyticsFilter,
-) ([]analytics.CaseSlaStatusByDate, error) {
+// buildCaseSlaStatusByDateQuery builds the SQL query for SLA status analytics.
+// This is a separate function to allow testing the query structure without a database.
+// Only includes inboxes with SLA configured (i.sla IS NOT NULL).
+func buildCaseSlaStatusByDateQuery(filters analytics.CaseAnalyticsFilter) (squirrel.SelectBuilder, error) {
 	// Same "closed_at" derivation as CasesDurationByTimeStats.
 	closedAtSubq := squirrel.
 		Select("ce.case_id", "max(ce.created_at) as closed_at").
@@ -338,26 +338,25 @@ func (repo MarbleDbRepository) CaseSlaStatusByDate(
 
 	closedAtSQL, closedAtArgs, err := closedAtSubq.ToSql()
 	if err != nil {
-		return nil, err
+		return squirrel.SelectBuilder{}, errors.Wrap(err, "build closed-at subquery")
 	}
 
-	// due_at is null (no deadline, never breached) when the inbox has no SLA configured.
+	// dueAt calculates the SLA deadline: case created_at + inbox SLA duration (in days).
+	// All cases come from inboxes with sla IS NOT NULL, so this is always defined.
 	dueAt := "c.created_at + (i.sla || ' days')::interval"
 
 	query := NewQueryBuilder().
 		Select(
 			fmt.Sprintf("(c.created_at + interval '%d s')::date as date", filters.TzOffsetSeconds),
 			fmt.Sprintf(`count(*) filter (
-				where c.status = 'closed' and (i.sla is null or ce_agg.closed_at <= %s)
+				where c.status = 'closed' and ce_agg.closed_at <= %s
 			) as completed_within_sla`, dueAt),
 			fmt.Sprintf(`count(*) filter (
-				where i.sla is not null and (
-					(c.status = 'closed' and ce_agg.closed_at > %s) or
+				where (c.status = 'closed' and ce_agg.closed_at > %s) or
 					(c.status != 'closed' and now() > %s)
-				)
 			) as sla_breached`, dueAt, dueAt),
 			fmt.Sprintf(`count(*) filter (
-				where c.status != 'closed' and (i.sla is null or now() <= %s)
+				where c.status != 'closed' and now() <= %s
 			) as still_open_within_sla`, dueAt),
 		).
 		From(dbmodels.TABLE_CASES+" c").
@@ -367,6 +366,7 @@ func (repo MarbleDbRepository) CaseSlaStatusByDate(
 			"c.org_id":   filters.OrgId,
 			"c.inbox_id": filters.InboxIds,
 		}).
+		Where(squirrel.NotEq{"i.sla": nil}).
 		Where(squirrel.And{
 			squirrel.GtOrEq{"c.created_at": filters.Start},
 			squirrel.Lt{"c.created_at": filters.End},
@@ -376,6 +376,19 @@ func (repo MarbleDbRepository) CaseSlaStatusByDate(
 
 	if filters.AssignedUserId != nil {
 		query = query.Where(squirrel.Eq{"c.assigned_to": *filters.AssignedUserId})
+	}
+
+	return query, nil
+}
+
+func (repo MarbleDbRepository) CaseSlaStatusByDate(
+	ctx context.Context,
+	exec Executor,
+	filters analytics.CaseAnalyticsFilter,
+) ([]analytics.CaseSlaStatusByDate, error) {
+	query, err := buildCaseSlaStatusByDateQuery(filters)
+	if err != nil {
+		return nil, err
 	}
 
 	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (analytics.CaseSlaStatusByDate, error) {
