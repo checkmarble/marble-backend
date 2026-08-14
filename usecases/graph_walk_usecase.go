@@ -63,11 +63,14 @@ import (
 //	Party A ==== "owns > sent > received_by > owns", through [account transaction account] ====> Party B
 //
 // A MATCH relationship never links two records directly. Instead, a synthetic "connector" node
-// — identified by the relation's label and the shared value, e.g. (same_iban, "FR76...") — is
-// wired to every record that carries the value, so that a value shared by n records costs n
-// edges instead of the n² a fully-connected star would need. The connector itself is always
-// part of the result: it is the visible "why" behind an otherwise unexplained edge between two
-// end nodes.
+// — identified by the relation's group id and the shared value, e.g. (a1b2..., "FR76...") — is
+// wired to every record that carries the value, so that a value shared by n records costs n edges
+// instead of the n² a fully-connected star would need. The connector itself is always part of the
+// result: it is the visible "why" behind an otherwise unexplained edge between two end nodes.
+// Identifying it by group id rather than by label is what lets the several relations spelling out
+// one conceptual group converge on a single connector, and what keeps two groups an organization
+// happened to label the same from collapsing into one. The label is carried alongside, for display
+// only (see GraphResultNode.Label).
 //
 //	   Account A1
 //	        \
@@ -247,13 +250,26 @@ func (uc GraphWalkUsecase) enrichGraph(
 // addNodeScoring attaches the risk level and tags held in the Marble database against each
 // reported record.
 func (uc GraphWalkUsecase) addNodeScoring(ctx context.Context, orgId uuid.UUID, graph models.GraphResult) error {
-	scoringRecords := make([]models.ScoringRecordRef, len(graph.Nodes))
+	// Only records have metadata to look up. A connector's Type is a relation group's id or a
+	// link's name, neither of which is a record type, so asking about them is work that cannot
+	// match: skip them, and keep where each surviving record sat so the answers can be put back.
+	scoringRecords := make([]models.ScoringRecordRef, 0, len(graph.Nodes))
+	nodeIndexes := make([]int, 0, len(graph.Nodes))
 
 	for idx, node := range graph.Nodes {
-		scoringRecords[idx] = models.ScoringRecordRef{
+		if node.Connector {
+			continue
+		}
+
+		scoringRecords = append(scoringRecords, models.ScoringRecordRef{
 			RecordType: node.GraphNode.Type,
 			RecordId:   node.GraphNode.Id,
-		}
+		})
+		nodeIndexes = append(nodeIndexes, idx)
+	}
+
+	if len(scoringRecords) == 0 {
+		return nil
 	}
 
 	scores, err := uc.graphRepository.GetNodeBatchMetadata(ctx, uc.executorFactory.NewExecutor(), orgId, scoringRecords)
@@ -262,16 +278,22 @@ func (uc GraphWalkUsecase) addNodeScoring(ctx context.Context, orgId uuid.UUID, 
 	}
 
 	// The query returns its rows tagged with the position of the record they were asked for, so
-	// the rows are zipped back onto the nodes by that position: it must keep matching the order
-	// scoringRecords was built in above. A position outside the range asked for describes no node
-	// here, and indexing on it would take the whole walk down.
+	// the rows are zipped back onto the nodes through nodeIndexes, which is where each of those
+	// records sat: both must keep matching the order scoringRecords was built in above.
 	for _, score := range scores {
-		if score.Index < 1 || score.Index > len(graph.Nodes) {
+		// Index is the one-based ordinality of the record within scoringRecords, not within the
+		// result's nodes — a connector has no slot there. A position outside the range asked for
+		// describes no node here, and indexing on it would take the whole walk down.
+		if score.Index < 1 || score.Index > len(nodeIndexes) {
 			continue
 		}
 
-		graph.Nodes[score.Index-1].Metadata.RiskLevel = score.RiskLevel
-		graph.Nodes[score.Index-1].Metadata.Tags = score.Tags
+		// Only the scored fields are assigned: the walk has already put what it knows in the same
+		// struct, and replacing it wholesale would drop that.
+		metadata := &graph.Nodes[nodeIndexes[score.Index-1]].Metadata
+
+		metadata.RiskLevel = score.RiskLevel
+		metadata.Tags = score.Tags
 	}
 
 	return nil
@@ -298,7 +320,7 @@ func (uc GraphWalkUsecase) addNodeCaptions(
 		if node.Connector {
 			// A connector is not a record: leave its slot in place so the positions still line up
 			// with the nodes, but name no type for it, so nothing can be read for it. Its type is
-			// a relation's label or a link's name, which could coincide with a table's name.
+			// a relation group's id or a link's name, which could coincide with a table's name.
 			continue
 		}
 
@@ -405,6 +427,7 @@ func buildGraphSchema(
 		if !relation.AppliesTo(dataModel) {
 			utils.LoggerFromContext(ctx).WarnContext(ctx, "graph walk: relation does not match the data model, skipping it",
 				"relation_id", relation.Id,
+				"group_id", relation.GroupId,
 				"label", relation.Label)
 			continue
 		}
@@ -474,7 +497,7 @@ type graphWalker struct {
 	repo                   repositories.GraphRepository
 	schema                 graphSchema
 	skipSameFieldRelations bool
-	sameFieldRelations     []string
+	sameFieldRelations     []uuid.UUID
 
 	// --- fan-out and size limits for this walk, fixed for its whole lifetime (see the
 	// constants near the top of this file for what each one means and why it has its value) ---
@@ -493,10 +516,18 @@ type graphWalker struct {
 	values map[models.GraphNode]map[string]string
 	// adj is the undirected adjacency list of every edge found, keyed by either endpoint.
 	adj map[models.GraphNode][]rawEdge
-	// conns marks which nodes are connectors and records their kind (link/match). A
-	// connector's own Type is its relation's label and its Id the shared value, so its kind
-	// is all there is left to remember about one here.
+	// conns marks which nodes are connectors and records their kind (link/match). A connector's
+	// own Type and Id are what identify it — its relation's group id and the shared value for a
+	// match, its link's name and the parent value for a link — so its kind, plus the label
+	// below, is all there is left to remember about one here.
 	conns map[models.GraphNode]string
+
+	// connLabels is what to call each connector: the group's label for a match connector, whose
+	// Type is a group id and so unfit to show, and the link's name for a link one. result()
+	// reports it as GraphResultNode.Label, next to the identity rather than in place of it.
+	// Relations sharing a group id are guaranteed the same label by the creation path, so which
+	// one first reaches connect() and sets this is not meant to matter.
+	connLabels map[models.GraphNode]string
 
 	// hyperConns are the connectors emitted for an over-cardinality value, mapped to the
 	// estimated number of records carrying it. They have no members and so would be pruned as
@@ -555,6 +586,7 @@ func (w *graphWalker) run(start models.GraphNode, degrees int) (models.GraphResu
 	w.values = map[models.GraphNode]map[string]string{}
 	w.adj = map[models.GraphNode][]rawEdge{}
 	w.conns = map[models.GraphNode]string{}
+	w.connLabels = map[models.GraphNode]string{}
 	w.hyperConns = map[models.GraphNode]int{}
 	w.seen = map[models.GraphNode]bool{}
 	w.edgeSeen = map[graphEdgeKey]bool{}
@@ -807,7 +839,7 @@ func (w *graphWalker) followSameField(nodes []models.GraphNode) ([]models.GraphN
 
 	for _, recordType := range slices.Sorted(maps.Keys(byType)) {
 		for _, relation := range w.schema.sameField[recordType] {
-			if len(w.sameFieldRelations) > 0 && !slices.Contains(w.sameFieldRelations, relation.Label) {
+			if len(w.sameFieldRelations) > 0 && !slices.Contains(w.sameFieldRelations, relation.GroupId) {
 				continue
 			}
 
@@ -863,7 +895,7 @@ func (w *graphWalker) matchSameField(
 			return nil, err
 		}
 
-		connector := w.connect(relation.Label, value, w.participants(origins[value], fieldName, nil, ""))
+		connector := w.connect(relation.GroupId, relation.Label, value, w.participants(origins[value], fieldName, nil, ""))
 		w.markHypernode(connector, count)
 	}
 
@@ -877,7 +909,7 @@ func (w *graphWalker) matchSameField(
 			continue
 		}
 
-		w.connect(relation.Label, value, participants)
+		w.connect(relation.GroupId, relation.Label, value, participants)
 
 		for _, p := range participants {
 			if p.isNew {
@@ -928,11 +960,13 @@ func (w *graphWalker) participants(
 
 // connect wires every participant to the connector node standing for the value they share and
 // returns that node.
-func (w *graphWalker) connect(label, value string, participants []graphParticipant) models.GraphNode {
-	// A connector is identified by its label and the shared value, which is what makes a
-	// group spelled out as several one-to-one relations (see the doc comment on
-	// models.GraphRelation) converge on a single node.
-	connector := models.GraphNode{Type: label, Id: value}
+func (w *graphWalker) connect(groupId uuid.UUID, label, value string, participants []graphParticipant) models.GraphNode {
+	// A connector is identified by its relation's group id and the shared value. That is what
+	// makes a group spelled out as several one-to-one relations (see the doc comment on
+	// models.GraphRelation) converge on a single node regardless of what each relation is
+	// labelled, and equally what keeps two groups that happen to share a label apart. The group
+	// id is not meant to be displayed, so the label rides along in connLabels.
+	connector := models.GraphNode{Type: groupId.String(), Id: value}
 
 	admitted, isNew := w.registerNode(connector)
 
@@ -941,6 +975,7 @@ func (w *graphWalker) connect(label, value string, participants []graphParticipa
 	}
 	if isNew {
 		w.conns[connector] = graphEdgeKindMatch
+		w.connLabels[connector] = label
 	}
 
 	for i := range participants {
@@ -1168,6 +1203,9 @@ func (w *graphWalker) connectLinkHypernode(origins []models.GraphNode, link mode
 	}
 	if isNew {
 		w.conns[hypernode] = graphEdgeKindLink
+		// A link connector's Type is already the link's name and so displayable as it is, but
+		// reporting the label on every connector spares the caller having to know that.
+		w.connLabels[hypernode] = link.Name
 	}
 	w.markHypernode(hypernode, count)
 
@@ -1181,8 +1219,8 @@ func (w *graphWalker) connectLinkHypernode(origins []models.GraphNode, link mode
 // markHypernode records that a connector stands for something too widely shared to expand
 // through, together with the estimated number of records concerned.
 //
-// The same value can be reached again in a later degree, and through two relations sharing a
-// label but pointing at different endpoints, so the largest estimate seen wins: reporting a
+// The same value can be reached again in a later degree, and through two relations of one group
+// pointing at different endpoints, so the largest estimate seen wins: reporting a
 // smaller one afterwards would understate a relationship already known to be bigger than that.
 func (w *graphWalker) markHypernode(connector models.GraphNode, count int) {
 	w.pruned++
@@ -1351,6 +1389,9 @@ func (w *graphWalker) result(start models.GraphNode) models.GraphResult {
 		if kind, ok := w.conns[node]; ok {
 			resultNode.Connector = true
 			resultNode.ConnectorKind = kind
+			// A match connector's Type is its group id, which identifies it but says nothing to
+			// a reader, so what to call it travels next to it rather than in place of it.
+			resultNode.Metadata.Label = w.connLabels[node]
 			// Non-zero only for a connector standing for a value too widely shared to expand
 			// through, which is what tells the caller its edges are a sample and not the
 			// whole set.
