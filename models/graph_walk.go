@@ -74,8 +74,9 @@ type GraphResultNode struct {
 	// the value it pivots on.
 	//
 	//   - "match": a value two or more records share on a field an organization declared as
-	//     meaningful. Type is the relation's label, Id the shared value. Its edges are the
-	//     records carrying it, so a value shared by n records costs n edges rather than n².
+	//     meaningful. Type is the relation's group id, Id the shared value, so relations sharing
+	//     a group converge on one connector whatever each is labelled. Its edges are the records
+	//     carrying it, so a value shared by n records costs n edges rather than n².
 	//
 	//   - "link": the records hanging off one record through a single data-model link, when
 	//     there are too many of them to pull in. Type is the link's name, Id the value the
@@ -94,12 +95,23 @@ type GraphResultNode struct {
 	Metadata GraphResultNodeMetadata
 }
 
+// GraphResultNodeMetadata is what is known about a node beyond its identity: the label to show
+// it under, and — for a record — the risk it carries.
 type GraphResultNodeMetadata struct {
 	Index int
-	// Label is the record's caption: the value it carries on the field its table declares as
-	// its caption field. It is empty on a connector, which is not a record, and on a record
-	// whose table declares no caption field.
-	Label     string
+
+	// Label is what to show the node under, and where it comes from depends on what the node is:
+	//
+	//   - on a record, its caption: the value it carries on the field its table declares as its
+	//     caption field. Empty when its table declares no such field.
+	//   - on a connector, what to call the relationship: the relation group's label for a "match"
+	//     one, the link's name for a "link" one. There it is deliberately not an identity — two
+	//     independent groups may well be labelled the same — so Type still carries the group id,
+	//     and Type/Id is what edges refer to.
+	Label string
+
+	// RiskLevel and Tags come from the records' own scoring, so they are only ever set on a
+	// record node: a connector is not a record and has nothing to score.
 	RiskLevel int
 	Tags      []uuid.UUID
 }
@@ -122,7 +134,7 @@ type GraphWalkOptions struct {
 	EndTypes               []string
 	Degrees                int
 	SkipSameFieldRelations bool
-	SameFieldRelations     []string
+	SameFieldRelations     []uuid.UUID
 }
 
 // GraphRelation declares that equal values of two (record type, field) endpoints connect the
@@ -130,11 +142,14 @@ type GraphWalkOptions struct {
 // defines its own relations against the tables and fields of its own data model.
 //
 // Relations are one-to-one: a group of three endpoints that should all count as sharing a
-// value is expressed as three relations (A<->B, B<->C, C<->A). Relations sharing a Label
-// converge on the same connector node, so such a group still renders as a single star.
+// value is expressed as three relations (A<->B, B<->C, C<->A). Relations sharing a GroupId
+// converge on the same connector node, so such a group still renders as a single star. The
+// creation path keeps Label consistent across a group, but GroupId — not Label — is what
+// identifies it: unlike a label, it survives a rename without splitting or merging groups.
 type GraphRelation struct {
 	Id         uuid.UUID
 	OrgId      uuid.UUID
+	GroupId    uuid.UUID
 	Label      string
 	LeftType   string
 	LeftField  string
@@ -263,6 +278,7 @@ func GraphIndexedFields(dataModel DataModel, relations []GraphRelation) map[stri
 // database.
 type CreateGraphRelation struct {
 	OrgId      uuid.UUID
+	GroupId    uuid.UUID
 	Label      string
 	LeftType   string
 	LeftField  string

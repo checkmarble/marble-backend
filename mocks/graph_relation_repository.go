@@ -21,6 +21,11 @@ func (r *GraphRelationRepository) ListGraphRelations(
 	return args.Get(0).([]models.GraphRelation), args.Error(1)
 }
 
+func (r *GraphRelationRepository) GetGraphRelationGroupLabel(ctx context.Context, exec repositories.Executor, orgId, groupId uuid.UUID) (string, error) {
+	args := r.Called(ctx, exec, orgId, groupId)
+	return args.Get(0).(string), args.Error(1)
+}
+
 func (r *GraphRelationRepository) GetGraphRelation(
 	ctx context.Context, exec repositories.Executor, id uuid.UUID,
 ) (models.GraphRelation, error) {

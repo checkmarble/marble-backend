@@ -16,6 +16,7 @@ var SelectGraphRelationColumn = utils.ColumnList[DBGraphRelation]()
 type DBGraphRelation struct {
 	Id         uuid.UUID `db:"id"`
 	OrgId      uuid.UUID `db:"org_id"`
+	GroupId    uuid.UUID `db:"group_id"`
 	Label      string    `db:"label"`
 	LeftType   string    `db:"left_type"`
 	LeftField  string    `db:"left_field"`
@@ -28,6 +29,7 @@ func AdaptGraphRelation(db DBGraphRelation) (models.GraphRelation, error) {
 	return models.GraphRelation{
 		Id:         db.Id,
 		OrgId:      db.OrgId,
+		GroupId:    db.GroupId,
 		Label:      db.Label,
 		LeftType:   db.LeftType,
 		LeftField:  db.LeftField,

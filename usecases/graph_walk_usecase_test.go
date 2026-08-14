@@ -223,10 +223,13 @@ func amlDataModel() models.DataModel {
 	)
 }
 
-// graphTestRelation builds a relation the way the creation path does, with a generated id.
+// graphTestRelation builds a relation the way the creation path does, with a generated id and,
+// absent an existing group to join, a group of its own — same as CreateGraphRelation defaults a
+// relation created without an explicit group_id.
 func graphTestRelation(label, leftType, leftField, rightType, rightField string) models.GraphRelation {
 	return models.GraphRelation{
 		Id:         pure_utils.NewId(),
+		GroupId:    pure_utils.NewId(),
 		Label:      label,
 		LeftType:   leftType,
 		LeftField:  leftField,
@@ -336,6 +339,13 @@ func throughFrom(edge models.GraphEdge, from models.GraphNode) []string {
 		slices.Reverse(through)
 	}
 	return through
+}
+
+// matchConnector is the node the connector for a value shared through a relation is identified
+// by: the relation's group id and that value — never its label, which two independent groups may
+// share (see connect).
+func matchConnector(relation models.GraphRelation, value string) models.GraphNode {
+	return node(relation.GroupId.String(), value)
 }
 
 func connectorNodes(result models.GraphResult) []models.GraphResultNode {
@@ -486,18 +496,22 @@ func TestGraphWalk_UpwardClosureIsBoundedByDepth(t *testing.T) {
 func TestGraphWalk_SameFieldConnectorJoinsTwoParties(t *testing.T) {
 	rows := append(userWithAccount("U1", "A1", "IB1"), userWithAccount("U2", "A2", "IB1")...)
 
+	config := sameIbanConfig()
+
 	result, _ := runGraphWalk(t, graphWalkCase{
 		dataModel: amlDataModel(), rows: rows,
-		configs: []models.GraphRelation{sameIbanConfig()},
+		configs: []models.GraphRelation{config},
 		start:   node("users", "U1"), degrees: 1,
 	})
 
-	connector := node("same_iban", "IB1")
+	connector := matchConnector(config, "IB1")
 	nodes := resultNodes(result)
 
 	require.Contains(t, nodes, connector)
 	assert.True(t, nodes[connector].Connector)
 	assert.Equal(t, graphEdgeKindMatch, nodes[connector].ConnectorKind)
+	assert.Equal(t, "same_iban", nodes[connector].Metadata.Label,
+		"the connector is identified by its group but reported under its label")
 
 	// The other party is reached in the same degree: the shared attribute finds its account,
 	// and the upward closure that follows finds its owner.
@@ -545,7 +559,7 @@ func TestGraphWalk_PartiesCanShareAnAttributeDirectly(t *testing.T) {
 		start: node("users", "U1"), degrees: 1,
 	})
 
-	connector := node("same_email", "a@b.c")
+	connector := matchConnector(config, "a@b.c")
 	assert.Contains(t, resultNodes(result), connector)
 	assert.Contains(t, resultNodes(result), node("users", "U2"))
 
@@ -605,12 +619,17 @@ func TestGraphWalk_SameFieldResultsAreNotRematchedInTheSameDegree(t *testing.T) 
 
 func TestGraphWalk_ConfigPairSetConvergesOnOneConnector(t *testing.T) {
 	// One conceptual group of three endpoints, spelled out as the three one-to-one relations it
-	// takes to express it. They share a label, so they must collapse onto a single connector.
+	// takes to express it. They share a group id, so they must collapse onto a single connector.
 	label := "shared_iban"
+	groupId := pure_utils.NewId()
+	inGroup := func(r models.GraphRelation) models.GraphRelation {
+		r.GroupId = groupId
+		return r
+	}
 	configs := []models.GraphRelation{
-		graphTestRelation(label, "accounts", "iban", "transactions", "sender_iban"),
-		graphTestRelation(label, "transactions", "sender_iban", "transactions", "receiver_iban"),
-		graphTestRelation(label, "accounts", "iban", "transactions", "receiver_iban"),
+		inGroup(graphTestRelation(label, "accounts", "iban", "transactions", "sender_iban")),
+		inGroup(graphTestRelation(label, "transactions", "sender_iban", "transactions", "receiver_iban")),
+		inGroup(graphTestRelation(label, "accounts", "iban", "transactions", "receiver_iban")),
 	}
 
 	rows := append(userWithAccount("U1", "A1", "IB1"), userWithAccount("U2", "A2", "")...)
@@ -631,13 +650,101 @@ func TestGraphWalk_ConfigPairSetConvergesOnOneConnector(t *testing.T) {
 
 	connectors := connectorNodes(result)
 	require.Len(t, connectors, 1)
-	assert.Equal(t, node(label, "IB1"), connectors[0].GraphNode)
+	assert.Equal(t, matchConnector(configs[0], "IB1"), connectors[0].GraphNode)
+	assert.Equal(t, label, connectors[0].Metadata.Label)
 
 	nodes := resultNodes(result)
 	for _, user := range []string{"U1", "U2", "U3"} {
 		assert.Contains(t, nodes, node("users", user))
 		_, ok := findEdge(result, node("users", user), connectors[0].GraphNode)
 		assert.True(t, ok, "%s hangs off the shared connector", user)
+	}
+}
+
+func TestGraphWalk_DifferentLabelsSameGroupConvergeOnOneConnector(t *testing.T) {
+	// Two relations describing the same shared attribute, given different labels (say, one was
+	// renamed after the other was created against its group), but sharing a group id. Grouping
+	// must go by GroupId, not by Label matching, so they still collapse onto a single connector.
+	// Which of the two labels ends up reported on it is deterministic (whichever relation is
+	// processed first — here, configA) but incidental: the creation path keeps every relation in
+	// a group on the same label, so a real group never actually exercises this choice.
+	groupId := pure_utils.NewId()
+	configA := graphTestRelation("iban_match", "accounts", "iban", "accounts", "iban")
+	configA.GroupId = groupId
+	configB := graphTestRelation("shared_iban_legacy", "accounts", "iban", "accounts", "iban")
+	configB.GroupId = groupId
+
+	rows := append(userWithAccount("U1", "A1", "IB1"), userWithAccount("U2", "A2", "IB1")...)
+
+	result, w := runGraphWalk(t, graphWalkCase{
+		dataModel: amlDataModel(), rows: rows,
+		configs: []models.GraphRelation{configA, configB},
+		start:   node("users", "U1"), degrees: 1,
+	})
+
+	// Internally, both relations resolve to the very same identity: the group id, not the label.
+	assert.True(t, w.seen[node(groupId.String(), "IB1")])
+
+	connectors := connectorNodes(result)
+	require.Len(t, connectors, 1, "a shared group id converges onto one connector regardless of label")
+	assert.Equal(t, matchConnector(configA, "IB1"), connectors[0].GraphNode)
+	assert.Equal(t, "iban_match", connectors[0].Metadata.Label,
+		"the one connector is reported under one of its group's labels")
+}
+
+func TestGraphWalk_SameLabelDifferentGroupsProduceSeparateConnectors(t *testing.T) {
+	// Two groups an organization chose to label the same — say two sets of IBANs it wants
+	// followed independently under one name. Nothing about them may be merged on the strength of
+	// that shared label: they are distinct groups, so they are distinct connectors, all the way
+	// out to the result. This is the case that requires the label to be reported *beside* the
+	// identity rather than as it.
+	configA := graphTestRelation("same_iban", "accounts", "iban", "accounts", "iban")
+	configB := graphTestRelation("same_iban", "accounts", "iban", "accounts", "iban")
+	require.NotEqual(t, configA.GroupId, configB.GroupId)
+
+	rows := append(userWithAccount("U1", "A1", "IB1"), userWithAccount("U2", "A2", "IB1")...)
+
+	result, w := runGraphWalk(t, graphWalkCase{
+		dataModel: amlDataModel(), rows: rows,
+		configs: []models.GraphRelation{configA, configB},
+		start:   node("users", "U1"), degrees: 1,
+	})
+
+	// The two groups never share a node: distinct group ids mean distinct identities, even though
+	// they matched on the exact same value.
+	assert.True(t, w.seen[matchConnector(configA, "IB1")])
+	assert.True(t, w.seen[matchConnector(configB, "IB1")])
+
+	// Both surface in the result as their own connector, each identified by its own group and
+	// each reported under the label they happen to share.
+	connectors := connectorNodes(result)
+	require.Len(t, connectors, 2, "identical labels never converge across distinct group ids")
+
+	assert.ElementsMatch(t,
+		[]models.GraphNode{matchConnector(configA, "IB1"), matchConnector(configB, "IB1")},
+		[]models.GraphNode{connectors[0].GraphNode, connectors[1].GraphNode})
+
+	for _, connector := range connectors {
+		assert.Equal(t, "same_iban", connector.Metadata.Label)
+	}
+
+	// Nothing in the payload is ambiguous: two nodes never answer to the same Type/Id, so a
+	// caller keying nodes by their identity cannot silently merge the two groups.
+	identities := map[models.GraphNode]int{}
+	for _, resultNode := range result.Nodes {
+		identities[resultNode.GraphNode]++
+	}
+	for identity, count := range identities {
+		assert.Equal(t, 1, count, "node %v is reported more than once", identity)
+	}
+
+	// Each connector keeps its own edge to U1 and to U2, and all four are distinct.
+	assert.Len(t, result.Edges, 4)
+	for _, connector := range connectors {
+		for _, user := range []string{"U1", "U2"} {
+			_, ok := findEdge(result, node("users", user), connector.GraphNode)
+			assert.True(t, ok, "%s hangs off connector %v", user, connector.GraphNode)
+		}
 	}
 }
 
@@ -726,7 +833,7 @@ func TestGraphWalk_ConnectorAttachesOnlyToTheOwnersOfItsValue(t *testing.T) {
 		start:   node("users", "U1"), degrees: 2,
 	})
 
-	connector := node("same_ip", "IP1")
+	connector := matchConnector(config, "IP1")
 	require.Contains(t, resultNodes(result), connector)
 
 	for _, user := range []string{"U1", "U2"} {
@@ -748,9 +855,11 @@ func TestGraphWalk_HypernodeIsReportedButNotWalked(t *testing.T) {
 		rows = append(rows, userWithAccount(fmt.Sprintf("U_%s", account), account, "IB1")...)
 	}
 
+	config := sameIbanConfig()
+
 	result, w := runGraphWalk(t, graphWalkCase{
 		dataModel: amlDataModel(), rows: rows,
-		configs: []models.GraphRelation{sameIbanConfig()},
+		configs: []models.GraphRelation{config},
 		start:   node("users", "U1"), degrees: 2,
 		caps:     graphCaps{sameFieldFanout: 2},
 		estimate: 9999,
@@ -760,7 +869,8 @@ func TestGraphWalk_HypernodeIsReportedButNotWalked(t *testing.T) {
 
 	connectors := connectorNodes(result)
 	require.Len(t, connectors, 1, "the connector is kept as a terminal marker")
-	assert.Equal(t, node("same_iban", "IB1"), connectors[0].GraphNode)
+	assert.Equal(t, matchConnector(config, "IB1"), connectors[0].GraphNode)
+	assert.Equal(t, "same_iban", connectors[0].Metadata.Label)
 
 	// The connector is the one node standing for the shared value, so the count belongs on it
 	// rather than being repeated on every record that carries the value.
@@ -844,6 +954,9 @@ func TestGraphWalk_LinkFanoutUsesItsOwnHigherCap(t *testing.T) {
 	assert.Equal(t, node("accounts_user", "U1"), connectors[0].GraphNode)
 	assert.Equal(t, graphEdgeKindLink, connectors[0].ConnectorKind)
 	assert.Equal(t, 4, connectors[0].HypernodeCount)
+	// A link connector is already named after its link, but every connector reports a label, so
+	// a caller never has to know which kinds carry a displayable Type and which do not.
+	assert.Equal(t, "accounts_user", connectors[0].Metadata.Label)
 
 	// ...and the party that reached it holds the edge, which names the link it stands for.
 	edge, ok := findEdge(result, node("users", "U1"), connectors[0].GraphNode)
@@ -1076,7 +1189,8 @@ func TestGraphWalk_SameTableConfigMatchesBothOfItsFields(t *testing.T) {
 
 	connectors := connectorNodes(result)
 	require.Len(t, connectors, 1)
-	assert.Equal(t, node("shared_iban", "IB1"), connectors[0].GraphNode)
+	assert.Equal(t, matchConnector(config, "IB1"), connectors[0].GraphNode)
+	assert.Equal(t, "shared_iban", connectors[0].Metadata.Label)
 	assert.Contains(t, resultNodes(result), node("users", "U2"))
 
 	// Two links below the party, and on a different field on either side of the relation: the
@@ -1209,8 +1323,8 @@ func TestWalkGraph_LabelsRecordsWithTheirCaption(t *testing.T) {
 
 	connectors := connectorNodes(result)
 	require.Len(t, connectors, 1)
-	assert.Empty(t, connectors[0].Metadata.Label,
-		"a connector stands for a value, not a record, so there is nothing to caption")
+	assert.Equal(t, "same_iban", connectors[0].Metadata.Label,
+		"a connector is not a record, so it carries no caption: its label is its relation group's")
 }
 
 func TestWalkGraph_StopsOnAForbiddenOrganization(t *testing.T) {
