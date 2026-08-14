@@ -175,12 +175,14 @@ func TestMain(m *testing.M) {
 		usecases.WithLicense(models.NewFullLicense()),
 		usecases.WithIngestionBucketUrl("file://./tempFiles?create_dir=true"),
 		usecases.WithCaseManagerBucketUrl("file://./tempFiles?create_dir=true"),
+		usecases.WithOffloadingBucketUrl("file://./tempFiles?create_dir=true"),
 		usecases.WithFirebaseAdmin(auth.TokenProviderFirebase, firebaseAdminClient),
 	)
 
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, testUsecases)
 	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())
 	river.AddWorker(workers, adminUc.NewNewAsyncScheduledExecWorker())
+	river.AddWorker(workers, adminUc.NewBatchExecutionCoordinatorWorker())
 	river.AddWorker(workers, adminUc.NewIndexCreationWorker())
 	river.AddWorker(workers, adminUc.NewIndexCreationStatusWorker())
 	river.AddWorker(workers, adminUc.NewCaseReviewWorker(10*time.Second))

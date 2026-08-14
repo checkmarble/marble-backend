@@ -11,15 +11,16 @@ import (
 )
 
 type DBScenario struct {
-	Id                string      `db:"id"`
-	CreatedAt         time.Time   `db:"created_at"`
-	DeletedAt         pgtype.Time `db:"deleted_at"`
-	Description       string      `db:"description"`
-	LiveVersionID     pgtype.Text `db:"live_scenario_iteration_id"`
-	Name              string      `db:"name"`
-	OrganizationId    uuid.UUID   `db:"org_id"`
-	TriggerObjectType string      `db:"trigger_object_type"`
-	Archived          bool        `db:"archived"`
+	Id                      string      `db:"id"`
+	CreatedAt               time.Time   `db:"created_at"`
+	DeletedAt               pgtype.Time `db:"deleted_at"`
+	Description             string      `db:"description"`
+	LiveVersionID           pgtype.Text `db:"live_scenario_iteration_id"`
+	Name                    string      `db:"name"`
+	OrganizationId          uuid.UUID   `db:"org_id"`
+	TriggerObjectType       string      `db:"trigger_object_type"`
+	Archived                bool        `db:"archived"`
+	DeduplicateBatchObjects bool        `db:"deduplicate_batch_objects"`
 }
 
 const TABLE_SCENARIOS = "scenarios"
@@ -28,13 +29,14 @@ var SelectScenarioColumn = utils.ColumnList[DBScenario]()
 
 func AdaptScenario(dto DBScenario) (models.Scenario, error) {
 	scenario := models.Scenario{
-		Id:                dto.Id,
-		CreatedAt:         dto.CreatedAt,
-		Description:       dto.Description,
-		Name:              dto.Name,
-		OrganizationId:    dto.OrganizationId,
-		TriggerObjectType: dto.TriggerObjectType,
-		Archived:          dto.Archived,
+		Id:                      dto.Id,
+		CreatedAt:               dto.CreatedAt,
+		Description:             dto.Description,
+		Name:                    dto.Name,
+		OrganizationId:          dto.OrganizationId,
+		TriggerObjectType:       dto.TriggerObjectType,
+		Archived:                dto.Archived,
+		DeduplicateBatchObjects: dto.DeduplicateBatchObjects,
 	}
 
 	if dto.LiveVersionID.Valid {
