@@ -114,6 +114,97 @@ func TestCreateGraphRelation_RejectsAnEndpointAbsentFromTheDataModel(t *testing.
 	}
 }
 
+func TestCreateGraphRelation_MintsAGroupForARelationJoiningNone(t *testing.T) {
+	// A relation created without a group is a group of its own. The id has to be minted here
+	// rather than left to the caller or the database, because it is the identity the graph walk
+	// collapses connectors onto.
+	orgId := uuid.New()
+	repo := new(mocks.GraphRelationRepository)
+
+	var stored models.CreateGraphRelation
+
+	repo.On("CreateGraphRelation", mock.Anything, mock.Anything, mock.AnythingOfType("models.CreateGraphRelation")).
+		Run(func(args mock.Arguments) {
+			stored = args.Get(2).(models.CreateGraphRelation)
+		}).
+		Return(models.GraphRelation{}, nil)
+
+	_, err := graphRelationUsecase(repo, orgId).
+		CreateGraphRelation(context.Background(), createGraphRelationInput(orgId))
+
+	require.NoError(t, err)
+	assert.NotEqual(t, uuid.Nil, stored.GroupId)
+	repo.AssertNotCalled(t, "GetGraphRelationGroupLabel", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestCreateGraphRelation_JoinsAnExistingGroupUnderItsLabel(t *testing.T) {
+	// Joining a group keeps the group id the caller asked for. Two groups may well be labelled
+	// the same, so the label alone could never have identified which one was meant.
+	orgId := uuid.New()
+	groupId := pure_utils.NewId()
+
+	repo := new(mocks.GraphRelationRepository)
+	repo.On("GetGraphRelationGroupLabel", mock.Anything, mock.Anything, orgId, groupId).
+		Return("same_iban", nil)
+
+	var stored models.CreateGraphRelation
+
+	repo.On("CreateGraphRelation", mock.Anything, mock.Anything, mock.AnythingOfType("models.CreateGraphRelation")).
+		Run(func(args mock.Arguments) {
+			stored = args.Get(2).(models.CreateGraphRelation)
+		}).
+		Return(models.GraphRelation{}, nil)
+
+	input := createGraphRelationInput(orgId)
+	input.GroupId = groupId
+
+	_, err := graphRelationUsecase(repo, orgId).CreateGraphRelation(context.Background(), input)
+
+	require.NoError(t, err)
+	assert.Equal(t, groupId, stored.GroupId)
+	assert.Equal(t, "same_iban", stored.Label)
+	repo.AssertExpectations(t)
+}
+
+func TestCreateGraphRelation_RefusesALabelTheJoinedGroupDoesNotCarry(t *testing.T) {
+	// The label belongs to the group, so a relation cannot bring its own. Taking the group's and
+	// discarding what was sent would leave the caller believing its label took.
+	orgId := uuid.New()
+	groupId := pure_utils.NewId()
+
+	repo := new(mocks.GraphRelationRepository)
+	repo.On("GetGraphRelationGroupLabel", mock.Anything, mock.Anything, orgId, groupId).
+		Return("same_iban", nil)
+
+	input := createGraphRelationInput(orgId)
+	input.GroupId = groupId
+	input.Label = "something_else"
+
+	_, err := graphRelationUsecase(repo, orgId).CreateGraphRelation(context.Background(), input)
+
+	assert.ErrorIs(t, err, models.BadParameterError)
+	repo.AssertNotCalled(t, "CreateGraphRelation", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestCreateGraphRelation_RefusesAGroupOfAnotherOrganization(t *testing.T) {
+	// The group lookup is scoped by organization, so another organization's group reads as one
+	// that does not exist — which is what it should look like from here.
+	orgId := uuid.New()
+	groupId := pure_utils.NewId()
+
+	repo := new(mocks.GraphRelationRepository)
+	repo.On("GetGraphRelationGroupLabel", mock.Anything, mock.Anything, orgId, groupId).
+		Return("", errors.Wrap(models.NotFoundError, "provided group does not exist"))
+
+	input := createGraphRelationInput(orgId)
+	input.GroupId = groupId
+
+	_, err := graphRelationUsecase(repo, orgId).CreateGraphRelation(context.Background(), input)
+
+	assert.ErrorIs(t, err, models.NotFoundError)
+	repo.AssertNotCalled(t, "CreateGraphRelation", mock.Anything, mock.Anything, mock.Anything)
+}
+
 func TestCreateGraphRelation_ReportsADuplicateAsAConflict(t *testing.T) {
 	orgId := uuid.New()
 

@@ -10,6 +10,7 @@ import (
 
 type GraphRelation struct {
 	Id         uuid.UUID `json:"id"`
+	GroupId    uuid.UUID `json:"group_id"`
 	Label      string    `json:"label"`
 	LeftType   string    `json:"left_type"`
 	LeftField  string    `json:"left_field"`
@@ -21,6 +22,7 @@ type GraphRelation struct {
 func AdaptGraphRelationDto(r models.GraphRelation) GraphRelation {
 	return GraphRelation{
 		Id:         r.Id,
+		GroupId:    r.GroupId,
 		Label:      r.Label,
 		LeftType:   r.LeftType,
 		LeftField:  r.LeftField,
@@ -31,15 +33,17 @@ func AdaptGraphRelationDto(r models.GraphRelation) GraphRelation {
 }
 
 type CreateGraphRelationBody struct {
-	Label      string `json:"label" binding:"required"`
-	LeftType   string `json:"left_type" binding:"required"`
-	LeftField  string `json:"left_field" binding:"required"`
-	RightType  string `json:"right_type" binding:"required"`
-	RightField string `json:"right_field" binding:"required"`
+	GroupId    uuid.UUID `json:"group_id"`
+	Label      string    `json:"label" binding:"required"`
+	LeftType   string    `json:"left_type" binding:"required"`
+	LeftField  string    `json:"left_field" binding:"required"`
+	RightType  string    `json:"right_type" binding:"required"`
+	RightField string    `json:"right_field" binding:"required"`
 }
 
 func AdaptCreateGraphRelation(body CreateGraphRelationBody) models.CreateGraphRelation {
 	return models.CreateGraphRelation{
+		GroupId:    body.GroupId,
 		Label:      body.Label,
 		LeftType:   body.LeftType,
 		LeftField:  body.LeftField,

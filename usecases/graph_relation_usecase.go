@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -42,6 +43,24 @@ func (uc GraphRelationUsecase) CreateGraphRelation(ctx context.Context, input mo
 	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, exec, input.OrgId, false, true)
 	if err != nil {
 		return models.GraphRelation{}, err
+	}
+
+	switch input.GroupId {
+	case uuid.Nil:
+		input.GroupId = pure_utils.NewId()
+
+	default:
+		// A label belongs to the group, not to the relation, so joining an existing one adopts
+		// its label rather than setting one. Silently discarding a different label would leave
+		// the caller believing it took, so say so instead.
+		label, err := uc.graphRelationRepository.GetGraphRelationGroupLabel(ctx, exec, input.OrgId, input.GroupId)
+		if err != nil {
+			return models.GraphRelation{}, err
+		}
+		if input.Label != label {
+			return models.GraphRelation{}, errors.Wrapf(models.BadParameterError,
+				"group %s is labelled %q, not %q", input.GroupId, label, input.Label)
+		}
 	}
 
 	endpoints := [][2]string{
