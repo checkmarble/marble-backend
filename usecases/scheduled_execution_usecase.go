@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 )
 
@@ -144,6 +145,11 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.C
 		}
 	}
 
+	// Resolve the effective dedup setting once, here, rather than letting the repository
+	// default a nil: input.DeduplicateObjects is the caller's optional per-run override (nil
+	// = no override), scenario.DeduplicateBatchObjects is the scenario's persistent default.
+	effectiveDeduplicate := utils.Or(input.DeduplicateObjects, scenario.DeduplicateBatchObjects)
+
 	id := pure_utils.NewId().String()
 	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := usecase.repository.CreateScheduledExecution(ctx, tx, models.CreateScheduledExecutionInput{
@@ -151,6 +157,7 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.C
 			ScenarioId:          scenario.Id,
 			ScenarioIterationId: input.ScenarioIterationId,
 			Manual:              true,
+			DeduplicateObjects:  &effectiveDeduplicate,
 		}, id); err != nil {
 			return err
 		}

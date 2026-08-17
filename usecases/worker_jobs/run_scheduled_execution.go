@@ -173,8 +173,9 @@ func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(
 	}
 
 	// The dedup setting is only honoured by the v2 coordinator, so warn loudly rather than
-	// let the toggle sit there doing nothing.
-	if scenario.DeduplicateBatchObjects {
+	// let the toggle sit there doing nothing. Read from the snapshotted per-execution value,
+	// not the scenario's live setting, so the warning reflects what this run will actually do.
+	if scheduledExecution.DeduplicateObjects {
 		logger.WarnContext(ctx, "scenario has batch object deduplication enabled but the org is not on BATCH_EXECUTION_V2; the setting is ignored for this execution")
 	}
 

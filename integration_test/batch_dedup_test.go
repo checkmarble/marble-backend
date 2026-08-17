@@ -50,13 +50,13 @@ func TestBatchExecutionDeduplication(t *testing.T) {
 	ingestAccountsBatch(ctx, t, usecasesWithCreds, organizationId, string(userCreds.ActorIdentity.UserId))
 
 	// First run: the object has never been scored, one decision is created.
-	se1 := runScheduledExecutionToCompletion(ctx, t, usecasesWithCreds, organizationId, scenarioId, scenarioIterationId)
+	se1 := runScheduledExecutionToCompletion(ctx, t, usecasesWithCreds, organizationId, scenarioId, scenarioIterationId, nil)
 	assert.Equal(t, 1, se1.NumberOfCreatedDecisions, "first run should create 1 decision")
 	assert.Equal(t, 1, se1.NumberOfEvaluatedDecisions, "first run should evaluate 1 object")
 
 	// Second run over the same object: it must be skipped before evaluation, not just
 	// before decision creation.
-	se2 := runScheduledExecutionToCompletion(ctx, t, usecasesWithCreds, organizationId, scenarioId, scenarioIterationId)
+	se2 := runScheduledExecutionToCompletion(ctx, t, usecasesWithCreds, organizationId, scenarioId, scenarioIterationId, nil)
 	assert.Equal(t, 0, se2.NumberOfCreatedDecisions, "second run must not recreate a decision for an already-scored object")
 	assert.Equal(t, 0, se2.NumberOfEvaluatedDecisions, "second run must skip the already-scored object before evaluation")
 
@@ -70,16 +70,38 @@ func TestBatchExecutionDeduplication(t *testing.T) {
 	}
 	assert.Equalf(t, 1, len(decisions.Decisions),
 		"expected exactly 1 decision across both runs, got %d", len(decisions.Decisions))
+
+	// Third run, with the scenario's dedup default overridden to false for this run only:
+	// the same object must be scored again, proving the override actually takes effect and
+	// is not just cosmetic on top of the scenario default.
+	noDedup := false
+	se3 := runScheduledExecutionToCompletion(ctx, t, usecasesWithCreds, organizationId, scenarioId, scenarioIterationId, &noDedup)
+	assert.Equal(t, 1, se3.NumberOfCreatedDecisions, "overridden run must recreate a decision despite the object being already scored")
+	assert.Equal(t, 1, se3.NumberOfEvaluatedDecisions, "overridden run must evaluate the object instead of skipping it")
+	assert.False(t, se3.DeduplicateObjects, "the execution must record the overridden value, not the scenario's default")
+
+	decisions, err = decisionsUsecase.ListDecisions(ctx, organizationId,
+		models.NewDefaultPaginationAndSorting("created_at"),
+		dto.DecisionFilters{ScenarioIds: []string{scenarioId}},
+	)
+	if err != nil {
+		assert.FailNow(t, "Error while listing decisions", err)
+	}
+	assert.Equalf(t, 2, len(decisions.Decisions),
+		"expected 2 decisions after the overridden third run, got %d", len(decisions.Decisions))
 }
 
 // runScheduledExecutionToCompletion creates a manual scheduled execution for the given
 // scenario/iteration, runs it, and polls until it reaches a terminal status.
+// deduplicateOverride is passed through as the per-run dedup override (nil = use the
+// scenario's default).
 func runScheduledExecutionToCompletion(
 	ctx context.Context,
 	t *testing.T,
 	usecasesWithCreds usecases.UsecasesWithCreds,
 	organizationId uuid.UUID,
 	scenarioId, scenarioIterationId string,
+	deduplicateOverride *bool,
 ) models.ScheduledExecution {
 	scheduledExecUsecase := usecasesWithCreds.NewScheduledExecutionUsecase()
 
@@ -88,6 +110,7 @@ func runScheduledExecutionToCompletion(
 		ScenarioId:          scenarioId,
 		ScenarioIterationId: scenarioIterationId,
 		Manual:              true,
+		DeduplicateObjects:  deduplicateOverride,
 	})
 	if err != nil {
 		assert.FailNow(t, "Failed to create scheduled execution", err)

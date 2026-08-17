@@ -29,6 +29,13 @@ type ScheduledExecution struct {
 	ManifestByteOffset    int64
 	ManifestRowsProcessed int64
 	Deadline              *time.Time
+
+	// DeduplicateObjects is the effective dedup setting for this run, resolved once at
+	// creation (see CreateScheduledExecutionInput.DeduplicateObjects) from
+	// Scenario.DeduplicateBatchObjects. Deliberately snapshotted rather than read live from
+	// the scenario, since a run can span several River slices and the setting must not
+	// change mid-run (see the scheduled_execution_deduplicate migration).
+	DeduplicateObjects bool
 }
 
 type PaginatedScheduledExecutions struct {
@@ -109,6 +116,16 @@ type CreateScheduledExecutionInput struct {
 	ScenarioId          string
 	ScenarioIterationId string
 	Manual              bool
+
+	// DeduplicateObjects has two roles depending on which layer builds this struct:
+	//   - As the usecase's incoming parameter (from the API body): nil means "no override,
+	//     use the scenario's default"; a non-nil value overrides it for this run only.
+	//   - As the payload the usecase then builds for the repository: always resolved to a
+	//     definite value (nil override folded into Scenario.DeduplicateBatchObjects) before
+	//     the call, so the value snapshotted on scheduled_executions is never ambiguous.
+	// The repository still defaults a stray nil to false (see CreateScheduledExecution) as a
+	// defensive fallback, not as part of the intended resolution path.
+	DeduplicateObjects *bool
 }
 
 type ListScheduledExecutionsFilters struct {

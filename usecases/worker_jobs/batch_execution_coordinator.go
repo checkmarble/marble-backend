@@ -147,8 +147,12 @@ type batchInvariants struct {
 	clientDb             repositories.Executor
 	scheduledExecutionId string
 
-	// deduplicate is scenario-scoped, not iteration-scoped: publishing a new version does
-	// not make previously scored objects eligible again.
+	// deduplicate is the run's snapshotted value (models.ScheduledExecution.DeduplicateObjects),
+	// not read live from the scenario: loadInvariants (and therefore this value) is
+	// recomputed on every Run() re-entry across River slices, so reading the scenario's
+	// current setting each time would let a mid-run toggle change behaviour partway through
+	// a single execution. It is also scenario-scoped rather than iteration-scoped: publishing
+	// a new version does not make previously scored objects eligible again.
 	deduplicate bool
 }
 
@@ -486,7 +490,7 @@ func (c *BatchExecutionCoordinator) loadInvariants(
 		pivots:               pivots,
 		clientDb:             clientDb,
 		scheduledExecutionId: se.Id,
-		deduplicate:          scenario.DeduplicateBatchObjects,
+		deduplicate:          se.DeduplicateObjects,
 	}, nil
 }
 

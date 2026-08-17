@@ -1,8 +1,10 @@
 package api
 
 import (
+	"io"
 	"net/http"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -70,10 +72,19 @@ func handleCreateScheduledExecution(uc usecases.Usecases) func(c *gin.Context) {
 
 		iterationID := c.Param("iteration_id")
 
+		var body dto.CreateScheduledExecutionBody
+		// Body is optional: this endpoint historically took none, so an empty payload must
+		// remain valid.
+		if err := c.ShouldBindJSON(&body); err != nil && !errors.Is(err, io.EOF) {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
 		usecase := usecasesWithCreds(ctx, uc).NewScheduledExecutionUsecase()
 		err = usecase.CreateScheduledExecution(ctx, models.CreateScheduledExecutionInput{
 			OrganizationId:      organizationId,
 			ScenarioIterationId: iterationID,
+			DeduplicateObjects:  body.DeduplicateObjects,
 		})
 
 		if presentError(ctx, c, err) {

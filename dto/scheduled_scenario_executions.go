@@ -34,6 +34,12 @@ type ScheduledExecutionDto struct {
 	// ManifestRowsProcessed still advances every batch regardless of dedup, since it counts
 	// consumed manifest rows, not evaluations.
 	ManifestRowsProcessed int64 `json:"manifest_rows_processed"`
+
+	// DeduplicateObjects is the effective, snapshotted dedup setting for this specific run
+	// (see models.ScheduledExecution.DeduplicateObjects) -- not the scenario's current
+	// setting, which may have changed since. Exposed so a "why did this run create 0
+	// decisions" question can be answered from the execution alone.
+	DeduplicateObjects bool `json:"deduplicate_objects"`
 }
 
 func AdaptScheduledExecutionDto(ExecutionBatch models.ScheduledExecution) ScheduledExecutionDto {
@@ -51,5 +57,15 @@ func AdaptScheduledExecutionDto(ExecutionBatch models.ScheduledExecution) Schedu
 		ScenarioTriggerObjectType:  ExecutionBatch.Scenario.TriggerObjectType,
 		Manual:                     ExecutionBatch.Manual,
 		ManifestRowsProcessed:      ExecutionBatch.ManifestRowsProcessed,
+		DeduplicateObjects:         ExecutionBatch.DeduplicateObjects,
 	}
+}
+
+// CreateScheduledExecutionBody is optional: this endpoint historically took no body, so an
+// empty payload must remain valid (see handleCreateScheduledExecution).
+type CreateScheduledExecutionBody struct {
+	// DeduplicateObjects overrides the scenario's default for this run only. Nil means no
+	// override: the scenario's persistent setting applies. This is the escape hatch to force
+	// a re-score after fixing a faulty trigger condition, without a support-side DB fixup.
+	DeduplicateObjects *bool `json:"deduplicate_objects"`
 }
