@@ -42,7 +42,7 @@ func SemanticTypeFrom(s string) SemanticType {
 
 // Need for validation, some semantic type require a BelongsTo link to a Party
 func (s SemanticType) IsParty() bool {
-	return s == SemanticTypePerson || s == SemanticTypeCompany
+	return s == SemanticTypePerson || s == SemanticTypeCompany || s == SemanticTypePartner
 }
 
 func (s SemanticType) RequiresBelongsToLink() bool {
