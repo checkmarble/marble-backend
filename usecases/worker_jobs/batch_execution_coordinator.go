@@ -385,12 +385,6 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 			}
 
 			for _, r := range results {
-				if r.skipped || !r.triggerPassed {
-					if cb := c.testRunCallback(ctx, inv, r, false); cb != nil {
-						callbacks = append(callbacks, cb)
-					}
-					continue
-				}
 				if inv.deduplicate {
 					if _, ok := claimed[r.objectId]; !ok {
 						// Lost the claim to a concurrent run scoring the same object. Rare
@@ -399,6 +393,12 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 						// no phantom-decision callback since the outcome is not this run's.
 						continue
 					}
+				}
+				if r.skipped || !r.triggerPassed {
+					if cb := c.testRunCallback(ctx, inv, r, false); cb != nil {
+						callbacks = append(callbacks, cb)
+					}
+					continue
 				}
 				err := c.storeDecision(batchCtx, tx, inv, r)
 				if err != nil {
