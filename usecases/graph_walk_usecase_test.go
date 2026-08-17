@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -45,6 +46,13 @@ type fakeGraphRepository struct {
 	// estimateOverride stands in for the planner's estimate, which is deliberately unrelated
 	// to what the capped lookup managed to see.
 	estimateOverride int
+
+	// captions stands in for the records themselves, which is where a caption is read from:
+	// captions[recordType][recordId].
+	captions map[string]map[string]string
+
+	// riskLevels stands in for the scoring table in the Marble database, keyed by record id.
+	riskLevels map[string]int
 }
 
 func (repo *fakeGraphRepository) FetchFields(
@@ -107,13 +115,52 @@ func (repo *fakeGraphRepository) EstimateValueCount(
 	return count, nil
 }
 
+// GetNodeBatchMetadata answers the way the real query does: one row per requested record,
+// tagged with that record's 1-based position in the request.
 func (repo *fakeGraphRepository) GetNodeBatchMetadata(
 	ctx context.Context,
 	exec repositories.Executor,
 	orgId uuid.UUID,
 	records []models.ScoringRecordRef,
 ) ([]models.GraphResultNodeMetadata, error) {
-	return []models.GraphResultNodeMetadata{}, nil
+	if repo.riskLevels == nil {
+		return []models.GraphResultNodeMetadata{}, nil
+	}
+
+	out := make([]models.GraphResultNodeMetadata, 0, len(records))
+
+	for idx, record := range records {
+		out = append(out, models.GraphResultNodeMetadata{
+			Index:     idx + 1,
+			RiskLevel: repo.riskLevels[record.RecordId],
+		})
+	}
+
+	return out, nil
+}
+
+// GetNodeBatchCaptions answers positionally like the real query, and only for the record types it
+// was asked to read a caption field for — so a caller passing no caption field for a type, or a
+// blank slot for a connector, gets nothing back for it.
+func (repo *fakeGraphRepository) GetNodeBatchCaptions(
+	_ context.Context,
+	_ repositories.Executor,
+	captionFields map[string]string,
+	records []models.ScoringRecordRef,
+) ([]models.GraphResultNodeMetadata, error) {
+	out := make([]models.GraphResultNodeMetadata, 0, len(records))
+
+	for idx, record := range records {
+		if _, ok := captionFields[record.RecordType]; !ok {
+			continue
+		}
+
+		if caption := repo.captions[record.RecordType][record.RecordId]; caption != "" {
+			out = append(out, models.GraphResultNodeMetadata{Index: idx + 1, Label: caption})
+		}
+	}
+
+	return out, nil
 }
 
 ///////////////////////////////
@@ -279,6 +326,18 @@ func findEdge(result models.GraphResult, a, b models.GraphNode) (models.GraphEdg
 	return models.GraphEdge{}, false
 }
 
+// throughFrom reads an edge's route starting from the given endpoint, so a test can state the
+// route it expects without depending on which way round the result happened to orient the edge
+// (see graphNodeLess). An edge reaching a connector is always oriented record-first, so those are
+// asserted on directly instead.
+func throughFrom(edge models.GraphEdge, from models.GraphNode) []string {
+	through := slices.Clone(edge.Through)
+	if edge.To == from {
+		slices.Reverse(through)
+	}
+	return through
+}
+
 func connectorNodes(result models.GraphResult) []models.GraphResultNode {
 	var out []models.GraphResultNode
 	for _, n := range result.Nodes {
@@ -357,6 +416,8 @@ func TestGraphWalk_UpwardClosureIsUnbounded(t *testing.T) {
 	require.True(t, ok, "the transaction and the party it belongs to are directly connected")
 	assert.Equal(t, graphEdgeKindLink, edge.Kind)
 	assert.Equal(t, "transactions_account > accounts_user", edge.Label)
+	assert.Equal(t, []string{"accounts"}, throughFrom(edge, node("transactions", "T1")),
+		"the account walked through is reported even though it is not itself a node")
 }
 
 func TestGraphWalk_UpwardLinkCycleTerminates(t *testing.T) {
@@ -450,6 +511,13 @@ func TestGraphWalk_SameFieldConnectorJoinsTwoParties(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, graphEdgeKindMatch, edge.Kind)
 	assert.Equal(t, "same_iban", edge.Label)
+
+	// The edge explains itself: from the party, down to one of its accounts, whose iban carries
+	// the value. It reads that way round because a connector edge is always oriented from the
+	// record, never towards it.
+	assert.Equal(t, node("users", "U1"), edge.From)
+	assert.Equal(t, connector, edge.To)
+	assert.Equal(t, []string{"accounts"}, edge.Through)
 	assert.Equal(t, "iban", edge.Field)
 	assert.Equal(t, "IB1", edge.Value)
 
@@ -486,6 +554,11 @@ func TestGraphWalk_PartiesCanShareAnAttributeDirectly(t *testing.T) {
 	assert.Equal(t, graphEdgeKindMatch, edge.Kind)
 	assert.Equal(t, "email", edge.Field)
 	assert.Equal(t, "a@b.c", edge.Value)
+
+	// Nothing lies between the party and the value: it is carried on the party's own field, which
+	// is what an empty route on a match edge says.
+	assert.Equal(t, node("users", "U2"), edge.From)
+	assert.Empty(t, edge.Through)
 }
 
 func TestGraphWalk_UnsharedValueYieldsNoConnector(t *testing.T) {
@@ -627,6 +700,9 @@ func TestGraphWalk_SharedIntermediateDoesNotLeakAnotherPartysAttribute(t *testin
 	edge, ok := findEdge(result, node("users", "U1"), node("users", "U2"))
 	require.True(t, ok)
 	assert.Equal(t, "login_user > login_device > login_device > login_user", edge.Label)
+	assert.Equal(t, []string{"logins", "devices", "logins"},
+		throughFrom(edge, node("users", "U1")),
+		"the route through the shared device is spelled out table by table")
 }
 
 func TestGraphWalk_ConnectorAttachesOnlyToTheOwnersOfItsValue(t *testing.T) {
@@ -774,6 +850,9 @@ func TestGraphWalk_LinkFanoutUsesItsOwnHigherCap(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, graphEdgeKindLink, edge.Kind)
 	assert.Equal(t, "accounts_user", edge.Label)
+	assert.Equal(t, node("users", "U1"), edge.From, "a connector edge is oriented from the record")
+	assert.Empty(t, edge.Through,
+		"nothing lies between the party and the set of its records that was left out")
 }
 
 func TestGraphWalk_HypernodeKeepsBothValuesPrunedOnTheSameLink(t *testing.T) {
@@ -865,6 +944,8 @@ func TestGraphWalk_LinkedPartiesAreReportedAsDirectlyConnected(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, graphEdgeKindLink, edge.Kind)
 	assert.Equal(t, "accounts_user > transactions_account > transactions_counterparty", edge.Label)
+	assert.Equal(t, []string{"accounts", "transactions"}, throughFrom(edge, node("users", "U1")),
+		"the two records collapsed away, without repeating the parties at either end")
 
 	// The relationship is found once from each end; it must be reported once.
 	assert.Len(t, result.Edges, 1)
@@ -886,6 +967,7 @@ func TestGraphWalk_StartNodeIsReportedEvenWhenNotAParty(t *testing.T) {
 	assert.Equal(t, "accounts_user", edge.Label)
 	assert.Equal(t, "user_id", edge.Field)
 	assert.Equal(t, "U1", edge.Value)
+	assert.Empty(t, edge.Through, "a single hop has nothing between its two ends")
 }
 
 func TestGraphWalk_ExplicitEndTypesReplaceParties(t *testing.T) {
@@ -996,6 +1078,20 @@ func TestGraphWalk_SameTableConfigMatchesBothOfItsFields(t *testing.T) {
 	require.Len(t, connectors, 1)
 	assert.Equal(t, node("shared_iban", "IB1"), connectors[0].GraphNode)
 	assert.Contains(t, resultNodes(result), node("users", "U2"))
+
+	// Two links below the party, and on a different field on either side of the relation: the
+	// route reads top down, from just under the party to the record carrying the value, and the
+	// field is the one that record carries it on.
+	for _, expected := range []struct {
+		party string
+		field string
+	}{{"U1", "sender_iban"}, {"U2", "receiver_iban"}} {
+		edge, ok := findEdge(result, node("users", expected.party), connectors[0].GraphNode)
+		require.True(t, ok)
+		assert.Equal(t, node("users", expected.party), edge.From)
+		assert.Equal(t, []string{"accounts", "transactions"}, edge.Through)
+		assert.Equal(t, expected.field, edge.Field)
+	}
 }
 
 ///////////////////////////////
@@ -1058,6 +1154,63 @@ func TestWalkGraph_ClampsTheRequestedDegrees(t *testing.T) {
 		models.GraphWalkOptions{Degrees: 10_000})
 	require.NoError(t, err)
 	assert.Equal(t, node("users", "U1"), result.Start)
+}
+
+func TestWalkGraph_LabelsRecordsWithTheirCaption(t *testing.T) {
+	// users declares a caption field, accounts does not: a record of a table with nothing to be
+	// called by is reported without a label rather than with an invented one.
+	dataModel := amlDataModel()
+	email := dataModel.Tables["users"].Fields["email"]
+	email.Metadata = json.RawMessage(`{"hidden": false, "semanticSubType": "caption"}`)
+	dataModel.Tables["users"].Fields["email"] = email
+
+	rows := append(userWithAccount("U1", "A1", "IB1"), userWithAccount("U2", "A2", "IB1")...)
+
+	enforceSecurity := new(mocks.EnforceSecurity)
+	enforceSecurity.On("ReadOrganization", mock.Anything).Return(nil)
+
+	dataModelRepository := new(mocks.DataModelRepository)
+	dataModelRepository.On("GetDataModel", mock.Anything, mock.Anything, mock.Anything, false, true).
+		Return(dataModel, nil)
+
+	graphRelationRepository := new(mocks.GraphRelationRepository)
+	graphRelationRepository.On("ListGraphRelations", mock.Anything, mock.Anything, mock.Anything).
+		Return([]models.GraphRelation{sameIbanConfig()}, nil)
+
+	uc := GraphWalkUsecase{
+		enforceSecurity:     enforceSecurity,
+		executorFactory:     executor_factory.NewExecutorFactoryStub(),
+		dataModelRepository: dataModelRepository,
+		graphRepository: &fakeGraphRepository{
+			rows:       rows,
+			captions:   map[string]map[string]string{"users": {"U1": "a@b.c", "U2": "d@e.f"}},
+			riskLevels: map[string]int{"U2": 3},
+		},
+		graphRelationRepository: graphRelationRepository,
+	}
+
+	result, err := uc.WalkGraph(context.Background(), uuid.New(), "users", "U1",
+		models.GraphWalkOptions{EndTypes: []string{"users", "accounts"}, Degrees: 1})
+	require.NoError(t, err)
+
+	nodes := resultNodes(result)
+
+	require.Contains(t, nodes, node("users", "U1"))
+	assert.Equal(t, "a@b.c", nodes[node("users", "U1")].Metadata.Label)
+	assert.Equal(t, "d@e.f", nodes[node("users", "U2")].Metadata.Label)
+
+	// Captions and scoring are two separate passes over the same nodes: neither may overwrite
+	// what the other wrote.
+	assert.Equal(t, 3, nodes[node("users", "U2")].Metadata.RiskLevel)
+	assert.Zero(t, nodes[node("users", "U1")].Metadata.RiskLevel)
+
+	assert.Empty(t, nodes[node("accounts", "A1")].Metadata.Label,
+		"accounts declares no caption field")
+
+	connectors := connectorNodes(result)
+	require.Len(t, connectors, 1)
+	assert.Empty(t, connectors[0].Metadata.Label,
+		"a connector stands for a value, not a record, so there is nothing to caption")
 }
 
 func TestWalkGraph_StopsOnAForbiddenOrganization(t *testing.T) {

@@ -41,3 +41,11 @@ func (r *GraphRepository) GetNodeBatchMetadata(
 	args := r.Called(ctx, exec, orgId, records)
 	return args.Get(0).([]models.GraphResultNodeMetadata), args.Error(1)
 }
+
+func (r *GraphRepository) GetNodeBatchCaptions(
+	ctx context.Context, exec repositories.Executor,
+	captionFields map[string]string, records []models.ScoringRecordRef,
+) ([]models.GraphResultNodeMetadata, error) {
+	args := r.Called(ctx, exec, captionFields, records)
+	return args.Get(0).([]models.GraphResultNodeMetadata), args.Error(1)
+}

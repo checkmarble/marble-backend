@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"testing"
@@ -347,4 +348,53 @@ func TestAstExpressionUsecase_getLinkedDatabaseIdentifiers_with_two_branches_bis
 	indentifiersStr := pure_utils.Map(identifiers, dbAccessNodeToString)
 	sort.Strings(indentifiersStr)
 	assert.Equal(t, expectedStr, indentifiersStr)
+}
+
+func TestFieldWithSemanticSubType(t *testing.T) {
+	field := func(name, metadata string) Field {
+		return Field{Name: name, Metadata: json.RawMessage(metadata)}
+	}
+
+	table := Table{Fields: map[string]Field{
+		"object_id":  field("object_id", ""),
+		"email":      field("email", `{"hidden": true}`),
+		"first_name": field("first_name", `{"semanticSubType": "caption", "hidden": false}`),
+		"iban":       field("iban", `{"semanticSubType": "something_else"}`),
+		"broken":     field("broken", `not json`),
+	}}
+
+	found, ok := table.FieldWithSemanticSubType(FieldSemanticSubTypeCaption)
+	assert.True(t, ok)
+	assert.Equal(t, "first_name", found.Name)
+
+	_, ok = table.FieldWithSemanticSubType(FieldSemanticSubType("nobody_declares_this"))
+	assert.False(t, ok, "a sub-type no field declares resolves to nothing")
+
+	_, ok = table.FieldWithSemanticSubType(FieldSemanticSubTypeUnset)
+	assert.False(t, ok, "every field without a sub-type would otherwise match")
+
+	// A table declaring the same sub-type twice must not depend on map iteration order.
+	twice := Table{Fields: map[string]Field{
+		"b_name": field("b_name", `{"semanticSubType": "caption"}`),
+		"a_name": field("a_name", `{"semanticSubType": "caption"}`),
+	}}
+
+	for range 20 {
+		found, ok := twice.FieldWithSemanticSubType(FieldSemanticSubTypeCaption)
+		assert.True(t, ok)
+		assert.Equal(t, "a_name", found.Name)
+	}
+}
+
+func TestFieldSemanticSubType(t *testing.T) {
+	// The metadata blob is free-form and written by whoever edits the data model, so a field
+	// simply declares no sub-type rather than failing the read.
+	for _, metadata := range []string{"", "null", "{}", "not json", `{"semanticSubType": null}`} {
+		assert.Equal(t, FieldSemanticSubTypeUnset,
+			Field{Metadata: json.RawMessage(metadata)}.SemanticSubType(),
+			"metadata %q", metadata)
+	}
+
+	assert.Equal(t, FieldSemanticSubTypeCaption,
+		Field{Metadata: json.RawMessage(`{"semanticSubType": "caption"}`)}.SemanticSubType())
 }
