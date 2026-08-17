@@ -34,10 +34,31 @@ type GraphNode struct {
 // relationship derived from the data model) or "match" (records sharing a value on a
 // configured field, e.g. same IBAN or same IP).
 type GraphEdge struct {
-	From  GraphNode
-	To    GraphNode
-	Kind  string
+	From GraphNode
+	To   GraphNode
+	Kind string
+
+	// Label names the relationship: the chain of link names for a path contracted through
+	// records that are not reported, the link's own name for a single hop, the relation's label
+	// for a match. It is what tells two distinct relationships between the same pair of nodes
+	// apart, and is what the result's edge deduplication keys on — which is why it stays even
+	// though Through is what the caller is given.
 	Label string
+
+	// Through is the record types the relationship goes *between* its two ends, reading from From
+	// to To. Neither end is in it: both are already named by the edge, and a connector end names
+	// no record type at all. So it is empty on a single hop, and holds the records collapsed away
+	// on a contracted path.
+	//
+	// On an edge reaching a match connector — which is always oriented record to connector — it
+	// is the route from that record down to the one actually carrying the shared value, and Field
+	// is the field carrying it. Empty means the record carries the value itself:
+	//
+	//	Through: []                    Field: "beneficiary_iban"  -> its own field
+	//	Through: ["accounts"]          Field: "iban"              -> its account's field
+	//	Through: ["sessions", "logins"] Field: "ip"               -> a login of one of its sessions
+	Through []string
+
 	Field string
 	Value string
 }
@@ -74,7 +95,11 @@ type GraphResultNode struct {
 }
 
 type GraphResultNodeMetadata struct {
-	Index     int
+	Index int
+	// Label is the record's caption: the value it carries on the field its table declares as
+	// its caption field. It is empty on a connector, which is not a record, and on a record
+	// whose table declares no caption field.
+	Label     string
 	RiskLevel int
 	Tags      []uuid.UUID
 }

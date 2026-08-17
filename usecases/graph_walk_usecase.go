@@ -57,10 +57,10 @@ import (
 //	Party A --owns--> Account A1 --sent--> Transaction T --received_by--> Account B1 <--owns-- Party B
 //
 // Contraction walks the chain looking for the next KEPT node (here, a party) and reports a
-// single edge for the whole path, labelled with the names of the actual links it walked
-// through (see contractedEdge):
+// single edge for the whole path, naming both the links it walked and the record types it
+// collapsed away on the way (see contractedEdge):
 //
-//	Party A ======================= "owns > sent > received_by > owns" =======================> Party B
+//	Party A ==== "owns > sent > received_by > owns", through [account transaction account] ====> Party B
 //
 // A MATCH relationship never links two records directly. Instead, a synthetic "connector" node
 // — identified by the relation's label and the shared value, e.g. (same_iban, "FR76...") — is
@@ -217,18 +217,36 @@ func (uc GraphWalkUsecase) WalkGraph(
 		return models.GraphResult{}, err
 	}
 
-	if err := uc.enrichGraph(ctx, organizationId, graph); err != nil {
+	if err := uc.enrichGraph(ctx, organizationId, exec, dataModel, graph); err != nil {
 		return models.GraphResult{}, err
 	}
 
 	return graph, nil
 }
 
-func (uc GraphWalkUsecase) enrichGraph(ctx context.Context, orgId uuid.UUID, graph models.GraphResult) error {
+// enrichGraph fills in what the reported nodes carry beyond their identity. Each pass writes its
+// own fields of a node's metadata rather than the whole struct, so they compose in any order.
+func (uc GraphWalkUsecase) enrichGraph(
+	ctx context.Context,
+	orgId uuid.UUID,
+	clientExec repositories.Executor,
+	dataModel models.DataModel,
+	graph models.GraphResult,
+) error {
 	if len(graph.Nodes) == 0 {
 		return nil
 	}
 
+	if err := uc.addNodeScoring(ctx, orgId, graph); err != nil {
+		return err
+	}
+
+	return uc.addNodeCaptions(ctx, clientExec, dataModel, graph)
+}
+
+// addNodeScoring attaches the risk level and tags held in the Marble database against each
+// reported record.
+func (uc GraphWalkUsecase) addNodeScoring(ctx context.Context, orgId uuid.UUID, graph models.GraphResult) error {
 	scoringRecords := make([]models.ScoringRecordRef, len(graph.Nodes))
 
 	for idx, node := range graph.Nodes {
@@ -243,11 +261,70 @@ func (uc GraphWalkUsecase) enrichGraph(ctx context.Context, orgId uuid.UUID, gra
 		return err
 	}
 
+	// The query returns its rows tagged with the position of the record they were asked for, so
+	// the rows are zipped back onto the nodes by that position: it must keep matching the order
+	// scoringRecords was built in above. A position outside the range asked for describes no node
+	// here, and indexing on it would take the whole walk down.
 	for _, score := range scores {
-		graph.Nodes[score.Index-1].Metadata = models.GraphResultNodeMetadata{
-			RiskLevel: score.RiskLevel,
-			Tags:      score.Tags,
+		if score.Index < 1 || score.Index > len(graph.Nodes) {
+			continue
 		}
+
+		graph.Nodes[score.Index-1].Metadata.RiskLevel = score.RiskLevel
+		graph.Nodes[score.Index-1].Metadata.Tags = score.Tags
+	}
+
+	return nil
+}
+
+// addNodeCaptions labels each reported record with its caption: the field its table declares as
+// its caption, by carrying the "caption" semantic sub-type. A table declaring no such field has
+// nothing a record of it can be called, so those nodes are reported without a label rather than
+// with an invented one.
+//
+// Which field that is comes out of the data model already in hand — the sub-type lives in the
+// field's metadata, which GetDataModel reads — so resolving it costs nothing on top of the one
+// query that reads the captions themselves.
+func (uc GraphWalkUsecase) addNodeCaptions(
+	ctx context.Context,
+	clientExec repositories.Executor,
+	dataModel models.DataModel,
+	graph models.GraphResult,
+) error {
+	captionRecords := make([]models.ScoringRecordRef, len(graph.Nodes))
+	captionFields := map[string]string{}
+
+	for idx, node := range graph.Nodes {
+		if node.Connector {
+			// A connector is not a record: leave its slot in place so the positions still line up
+			// with the nodes, but name no type for it, so nothing can be read for it. Its type is
+			// a relation's label or a link's name, which could coincide with a table's name.
+			continue
+		}
+
+		captionRecords[idx] = models.ScoringRecordRef{
+			RecordType: node.GraphNode.Type,
+			RecordId:   node.GraphNode.Id,
+		}
+
+		captionField, ok := dataModel.Tables[node.Type].
+			FieldWithSemanticSubType(models.FieldSemanticSubTypeCaption)
+		if ok {
+			captionFields[node.Type] = captionField.Name
+		}
+	}
+
+	captions, err := uc.graphRepository.GetNodeBatchCaptions(ctx, clientExec, captionFields, captionRecords)
+	if err != nil {
+		return err
+	}
+
+	for _, caption := range captions {
+		if caption.Index < 1 || caption.Index > len(graph.Nodes) {
+			continue
+		}
+
+		graph.Nodes[caption.Index-1].Metadata.Label = caption.Label
 	}
 
 	return nil
@@ -1301,6 +1378,10 @@ func (w *graphWalker) result(start models.GraphNode) models.GraphResult {
 type graphContractStep struct {
 	node   models.GraphNode
 	labels []string
+	// tables is the record types the path went through, `from` included, in the order they were
+	// visited. It always has exactly one more entry than labels, since every hop adds the record
+	// it landed on.
+	tables []string
 	first  rawEdge
 	last   rawEdge
 }
@@ -1317,7 +1398,7 @@ type graphContractStep struct {
 //
 //	from --L1--> x1 --L2--> x2 --L3--> KEPT      (x1 and x2 are not reported, so they vanish)
 //
-//	contractFrom(from) reports one edge:  from ---"L1 > L2 > L3"---> KEPT
+//	contractFrom(from) reports one edge:  from ---"L1 > L2 > L3", through [x1 x2]---> KEPT
 func (w *graphWalker) contractFrom(from, start models.GraphNode) []models.GraphEdge {
 	out := make([]models.GraphEdge, 0)
 
@@ -1332,6 +1413,7 @@ func (w *graphWalker) contractFrom(from, start models.GraphNode) []models.GraphE
 		queue = append(queue, graphContractStep{
 			node:   edge.to,
 			labels: []string{edge.label},
+			tables: []string{from.Type, edge.to.Type},
 			first:  edge,
 			last:   edge,
 		})
@@ -1364,6 +1446,7 @@ func (w *graphWalker) contractFrom(from, start models.GraphNode) []models.GraphE
 			queue = append(queue, graphContractStep{
 				node:   edge.to,
 				labels: append(slices.Clone(cur.labels), edge.label),
+				tables: append(slices.Clone(cur.tables), edge.to.Type),
 				first:  cur.first,
 				last:   edge,
 			})
@@ -1402,24 +1485,39 @@ func (w *graphWalker) attachConnector(connector, start models.GraphNode) []model
 		}
 
 		for _, owner := range w.ownersOf(member.to, start) {
-			from, to := owner, connector
+			// The route from the reported node down to the record carrying the value, which is
+			// what lets the edge explain itself: together with Field it says the value sits on
+			// this node's own field, or on that of a record so many links beneath it. ownersOf
+			// climbed the other way, and ends on the node the edge already names.
+			through := make([]string, 0, len(owner.tables)-1)
+			through = append(through, owner.tables[:len(owner.tables)-1]...)
+			slices.Reverse(through)
 
-			if graphNodeLess(to, from) {
-				from, to = to, from
-			}
-
+			// Always oriented record to connector. Unlike a link between two records, this edge
+			// is only ever described from one end, and what it says about the route reads from
+			// that end: there is nothing to normalise here, and flipping it would leave the
+			// route pointing away from the record it belongs to.
 			out = append(out, models.GraphEdge{
-				From:  from,
-				To:    to,
-				Kind:  graphEdgeKindMatch,
-				Label: member.label,
-				Field: member.field,
-				Value: member.value,
+				From:    owner.node,
+				To:      connector,
+				Kind:    graphEdgeKindMatch,
+				Label:   member.label,
+				Through: through,
+				Field:   member.field,
+				Value:   member.value,
 			})
 		}
 	}
 
 	return out
+}
+
+// graphOwner is a reported node a record belongs to, together with the record types climbed to
+// get from that record up to it — the record's own type first, the owner's last. A record that
+// owns itself has a one-entry path.
+type graphOwner struct {
+	node   models.GraphNode
+	tables []string
 }
 
 // ownersOf returns the reported nodes a record belongs to, following links upward only and
@@ -1428,33 +1526,38 @@ func (w *graphWalker) attachConnector(connector, start models.GraphNode) []model
 // The result is a slice, not a single node, because a record can have more than one upward
 // link — a transaction might reference both the account it was sent from and the party it was
 // sent to — and each such link is its own branch, independently climbed to its own owner.
-func (w *graphWalker) ownersOf(record, start models.GraphNode) []models.GraphNode {
+//
+// Each owner carries the path climbed to reach it, so a caller can say not only which reported
+// node a value belongs to but how far beneath it the record carrying that value sits.
+func (w *graphWalker) ownersOf(record, start models.GraphNode) []graphOwner {
 	if w.isKept(record, start) {
-		return []models.GraphNode{record}
+		return []graphOwner{{node: record, tables: []string{record.Type}}}
 	}
 
-	var owners []models.GraphNode
+	var owners []graphOwner
 
 	visited := map[models.GraphNode]bool{record: true}
-	queue := []models.GraphNode{record}
+	queue := []graphOwner{{node: record, tables: []string{record.Type}}}
 
 	for len(queue) > 0 {
 		cur := queue[0]
 		queue = queue[1:]
 
-		for _, edge := range w.adj[cur] {
+		for _, edge := range w.adj[cur.node] {
 			if edge.kind != graphEdgeKindLink || !edge.toParent || visited[edge.to] {
 				continue
 			}
 
 			visited[edge.to] = true
 
+			owner := graphOwner{node: edge.to, tables: append(slices.Clone(cur.tables), edge.to.Type)}
+
 			if w.isKept(edge.to, start) {
-				owners = append(owners, edge.to)
+				owners = append(owners, owner)
 				continue
 			}
 
-			queue = append(queue, edge.to)
+			queue = append(queue, owner)
 		}
 	}
 
@@ -1472,40 +1575,54 @@ func (w *graphWalker) ownersOf(record, start models.GraphNode) []models.GraphNod
 //     what connects the two ends any more, so the edge becomes a link edge whose label is the
 //     chain of the actual link names walked, joined by " > " (the "L1 > L2 > L3" example on
 //     contractFrom above).
+//
+// Either way the edge reports what the path went *between*: the record types it collapsed away,
+// with neither of its own ends among them — they are already named by the edge, and a connector
+// end names no record type at all.
 func (w *graphWalker) contractedEdge(from models.GraphNode, step graphContractStep) models.GraphEdge {
 	to := step.node
 	labels := step.labels
 	_, toConnector := w.conns[to]
 
+	// What the edge reports of its route is what lies between its two ends: both of them are
+	// already named by the edge itself, and a connector end names no record type at all.
+	through := make([]string, 0, len(step.tables)-2)
+	through = append(through, step.tables[1:len(step.tables)-1]...)
+
 	// Both ends of a relationship run their own contraction, so it is found twice. Orient the
 	// edge and its path the same way each time, or it would be reported as two edges whose
-	// labels merely read backwards from one another.
-	if graphNodeLess(to, from) {
+	// labels merely read backwards from one another. An edge reaching a connector is found once,
+	// from the record end, and is left that way round: what it says about the route only reads
+	// one way, away from that record.
+	if !toConnector && graphNodeLess(to, from) {
 		from, to = to, from
 		labels = slices.Clone(labels)
 		slices.Reverse(labels)
+		slices.Reverse(through)
 	}
 
 	// A path ending on a connector is a shared-attribute relationship, however many links were
 	// walked to get to it: the value being shared is the "why", not the route there.
 	if len(labels) == 1 || toConnector {
 		return models.GraphEdge{
-			From:  from,
-			To:    to,
-			Kind:  step.last.kind,
-			Label: step.last.label,
-			Field: step.last.field,
-			Value: step.last.value,
+			From:    from,
+			To:      to,
+			Kind:    step.last.kind,
+			Label:   step.last.label,
+			Through: through,
+			Field:   step.last.field,
+			Value:   step.last.value,
 		}
 	}
 
 	// The path went through records that are not reported, so no single field or value names
 	// the relationship: the chain of link names is what is left of it.
 	return models.GraphEdge{
-		From:  from,
-		To:    to,
-		Kind:  graphEdgeKindLink,
-		Label: strings.Join(labels, " > "),
+		From:    from,
+		To:      to,
+		Kind:    graphEdgeKindLink,
+		Label:   strings.Join(labels, " > "),
+		Through: through,
 	}
 }
 
