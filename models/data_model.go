@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -178,6 +179,24 @@ func (t Table) Copy() Table {
 	out.Fields = fields
 	out.LinksToSingle = links
 	return out
+}
+
+// FieldWithSemanticSubType returns the field of this table declaring the given semantic sub-type.
+// Fields are held in a map, so they are visited in name order: a table declaring the same sub-type
+// on more than one field — which nothing should let it do — resolves to the same one every time
+// rather than to whichever the map happened to yield first.
+func (t Table) FieldWithSemanticSubType(subType FieldSemanticSubType) (Field, bool) {
+	if subType == FieldSemanticSubTypeUnset {
+		return Field{}, false
+	}
+
+	for _, fieldName := range slices.Sorted(maps.Keys(t.Fields)) {
+		if field := t.Fields[fieldName]; field.SemanticSubType() == subType {
+			return field, true
+		}
+	}
+
+	return Field{}, false
 }
 
 func (t Table) GetFieldById(fieldId string) (Field, bool) {
