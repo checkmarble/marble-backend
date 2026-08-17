@@ -12,12 +12,12 @@ type GraphEdgeNode struct {
 }
 
 type GraphEdge struct {
-	From  GraphEdgeNode `json:"from"`
-	To    GraphEdgeNode `json:"to"`
-	Kind  string        `json:"kind"`
-	Label string        `json:"label"`
-	Field string        `json:"field"`
-	Value string        `json:"value"`
+	From    GraphEdgeNode `json:"from"`
+	To      GraphEdgeNode `json:"to"`
+	Kind    string        `json:"kind"`
+	Through []string      `json:"through,omitempty"`
+	Field   string        `json:"field"`
+	Value   string        `json:"value"`
 }
 
 type GraphNode struct {
@@ -32,10 +32,11 @@ type GraphNode struct {
 	// and its presence means this node's edges are a sample rather than the whole set.
 	HypernodeCount int `json:"hypernode_count,omitempty"`
 
-	Metadata GraphNodeMetadata `json:"metadata"`
+	Metadata GraphNodeMetadata `json:"metadata,omitzero"`
 }
 
 type GraphNodeMetadata struct {
+	Label     string      `json:"label,omitempty"`
 	RiskLevel int         `json:"risk_level,omitempty"`
 	Tags      []uuid.UUID `json:"tags,omitempty"`
 }
@@ -58,6 +59,7 @@ func adaptGraphResultNode(n models.GraphResultNode) GraphNode {
 		ConnectorKind:  n.ConnectorKind,
 		HypernodeCount: n.HypernodeCount,
 		Metadata: GraphNodeMetadata{
+			Label:     n.Metadata.Label,
 			RiskLevel: n.Metadata.RiskLevel,
 			Tags:      n.Metadata.Tags,
 		},
@@ -68,12 +70,12 @@ func adaptGraphResultNode(n models.GraphResultNode) GraphNode {
 
 func adaptGraphEdge(e models.GraphEdge) GraphEdge {
 	return GraphEdge{
-		From:  adaptGraphNode(e.From),
-		To:    adaptGraphNode(e.To),
-		Kind:  e.Kind,
-		Label: e.Label,
-		Field: e.Field,
-		Value: e.Value,
+		From:    adaptGraphNode(e.From),
+		To:      adaptGraphNode(e.To),
+		Kind:    e.Kind,
+		Through: e.Through,
+		Field:   e.Field,
+		Value:   e.Value,
 	}
 }
 

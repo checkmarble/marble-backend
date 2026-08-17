@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"slices"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
@@ -51,6 +53,13 @@ type GraphRepository interface {
 		ctx context.Context,
 		exec Executor,
 		orgId uuid.UUID,
+		records []models.ScoringRecordRef,
+	) ([]models.GraphResultNodeMetadata, error)
+
+	GetNodeBatchCaptions(
+		ctx context.Context,
+		exec Executor,
+		captionFields map[string]string,
 		records []models.ScoringRecordRef,
 	) ([]models.GraphResultNodeMetadata, error)
 }
@@ -275,4 +284,73 @@ func (repo MarbleDbRepository) GetNodeBatchMetadata(
 	}
 
 	return pure_utils.MapErr(dbMetadata, dbmodels.AdaptGraphOrderedMetadata)
+}
+
+func (repo MarbleDbRepository) GetNodeBatchCaptions(
+	ctx context.Context,
+	exec Executor,
+	captionFields map[string]string,
+	records []models.ScoringRecordRef,
+) ([]models.GraphResultNodeMetadata, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+	if len(records) == 0 || len(captionFields) == 0 {
+		return nil, nil
+	}
+
+	types := make([]string, len(records))
+	ids := make([]string, len(records))
+
+	for idx, record := range records {
+		types[idx] = record.RecordType
+		ids[idx] = record.RecordId
+	}
+
+	branches := make([]string, 0, len(captionFields))
+
+	for _, recordType := range slices.Sorted(maps.Keys(captionFields)) {
+		branches = append(branches, fmt.Sprintf(`
+			select i.ord, t.%s::text as caption
+			from inputs i
+			inner join %s t on t.object_id = i.id and t.valid_until = 'infinity'
+			where i.type = %s`,
+			pgx.Identifier.Sanitize([]string{captionFields[recordType]}),
+			pgIdentifierWithSchema(exec, recordType),
+			pgClientDataIdentifierString(recordType)))
+	}
+
+	sql := fmt.Sprintf(`
+		with inputs as (
+			select type, id, ord
+			from unnest($1::text[], $2::text[]) with ordinality as input(type, id, ord)
+		)
+		%s`, strings.Join(branches, "\nunion all\n"))
+
+	rows, err := exec.Query(ctx, sql, types, ids)
+	if err != nil {
+		return nil, errors.Wrap(err, "error while querying record captions")
+	}
+	defer rows.Close()
+
+	captions := make([]models.GraphResultNodeMetadata, 0, len(records))
+
+	for rows.Next() {
+		var (
+			index   int
+			caption *string
+		)
+
+		if err := rows.Scan(&index, &caption); err != nil {
+			return nil, errors.Wrap(err, "error while scanning a record caption")
+		}
+
+		if caption == nil || *caption == "" {
+			continue
+		}
+
+		captions = append(captions, models.GraphResultNodeMetadata{Index: index, Label: *caption})
+	}
+
+	return captions, errors.Wrap(rows.Err(), "error while iterating over record captions")
 }
