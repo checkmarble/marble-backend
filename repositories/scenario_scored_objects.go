@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 
+	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -39,11 +40,11 @@ func (repo *MarbleDbRepository) FilterAlreadyScoredObjects(
 
 	sql, args, err := query.ToSql()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to build query for FilterAlreadyScoredObjects")
 	}
 	rows, err := exec.Query(ctx, sql, args...)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to query already scored objects")
 	}
 	defer rows.Close()
 
@@ -51,11 +52,14 @@ func (repo *MarbleDbRepository) FilterAlreadyScoredObjects(
 	var objectId string
 	for rows.Next() {
 		if err := rows.Scan(&objectId); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to scan object_id from already scored objects")
 		}
 		alreadyScored[objectId] = struct{}{}
 	}
-	return alreadyScored, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(err, "error iterating already scored objects")
+	}
+	return alreadyScored, nil
 }
 
 // ClaimScoredObjects atomically reserves the right to create a decision for each of the given
@@ -108,11 +112,11 @@ func (repo *MarbleDbRepository) ClaimScoredObjects(
 
 	sql, args, err := query.ToSql()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to build query for ClaimScoredObjects")
 	}
 	rows, err := tx.Query(ctx, sql, args...)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to claim scored objects")
 	}
 	defer rows.Close()
 
@@ -120,9 +124,12 @@ func (repo *MarbleDbRepository) ClaimScoredObjects(
 	for rows.Next() {
 		objectId, err := pgx.RowTo[string](rows)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to scan claimed object_id")
 		}
 		claimed = append(claimed, objectId)
 	}
-	return claimed, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(err, "error iterating claimed objects")
+	}
+	return claimed, nil
 }
