@@ -65,6 +65,7 @@ type LicenseEntitlements struct {
 	ContinuousScreening bool
 	UserScoring         bool
 	LexisNexis          bool
+	GraphExploration    bool
 }
 
 type LicenseValidation struct {
@@ -91,6 +92,7 @@ func NewFullLicense() LicenseValidation {
 			ContinuousScreening: true,
 			UserScoring:         true,
 			LexisNexis:          true,
+			GraphExploration:    true,
 		},
 	}
 }
