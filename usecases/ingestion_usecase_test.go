@@ -129,6 +129,9 @@ type IngestionUsecaseTestSuite struct {
 	taskQueueRepository                 *mocks.TaskQueueRepository
 	scoringRulesetsUsecase              *mocks.ScoringRulesetsUsecase
 	scoringScoreUsecase                 *mocks.ScoringScoreUsecase
+	featureAccessReader                 *mocks.FeatureAccessReader
+	graphRelationRepository             *mocks.GraphRelationRepository
+	graphIncrementalRepository          *mocks.GraphIncrementalRepository
 
 	organizationId uuid.UUID
 	dataModel      models.DataModel
@@ -148,6 +151,9 @@ func (suite *IngestionUsecaseTestSuite) makeUsecase() *IngestionUseCase {
 		batchIngestionMaxSize:               100,
 		taskEnqueuer:                        suite.taskQueueRepository,
 		scoringScoreUsecase:                 suite.scoringScoreUsecase,
+		featureAccessReader:                 suite.featureAccessReader,
+		graphRelationRepository:             suite.graphRelationRepository,
+		graphIncrementalRepository:          suite.graphIncrementalRepository,
 	}
 }
 
@@ -161,6 +167,17 @@ func (suite *IngestionUsecaseTestSuite) SetupTest() {
 	suite.taskQueueRepository = new(mocks.TaskQueueRepository)
 	suite.scoringScoreUsecase = new(mocks.ScoringScoreUsecase)
 	suite.scoringRulesetsUsecase = new(mocks.ScoringRulesetsUsecase)
+
+	// These tests are about ingestion, not the graph. Reporting the entitlement as restricted makes
+	// the graph maintenance inert so they stay that way; the two repositories are still wired, so a
+	// future change that lets that path run fails on an unexpected call rather than a nil pointer.
+	// TestIngestionGraph_* in ingestion_graph_test.go covers the path itself.
+	suite.featureAccessReader = new(mocks.FeatureAccessReader)
+	suite.featureAccessReader.On("GetOrganizationFeatureAccess",
+		mock.Anything, mock.Anything, (*models.UserId)(nil)).
+		Return(models.OrganizationFeatureAccess{GraphExploration: models.Restricted}, nil)
+	suite.graphRelationRepository = new(mocks.GraphRelationRepository)
+	suite.graphIncrementalRepository = new(mocks.GraphIncrementalRepository)
 
 	suite.organizationId = uuid.MustParse("12345678-1234-5678-9012-345678901234")
 	suite.dataModel = models.DataModel{
