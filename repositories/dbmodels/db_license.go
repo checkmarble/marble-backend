@@ -31,6 +31,7 @@ type DBLicense struct {
 	ContinuousScreening  bool               `db:"continuous_screening"`
 	UserScoring          bool               `db:"user_scoring"`
 	LexisNexis           bool               `db:"lexisnexis"`
+	GraphExploration     bool               `db:"graph_exploration"`
 }
 
 const TABLE_LICENSES = "licenses"
@@ -61,6 +62,7 @@ func AdaptLicense(db DBLicense) (models.License, error) {
 			ContinuousScreening: db.ContinuousScreening,
 			UserScoring:         db.UserScoring,
 			LexisNexis:          db.LexisNexis,
+			GraphExploration:    db.GraphExploration,
 		},
 	}, nil
 }

@@ -23,6 +23,7 @@ type DBOrganizationFeatureAccess struct {
 	AiRuleBuilding      string    `db:"ai_rule_building"`
 	UserScoring         string    `db:"user_scoring"`
 	LexisNexis          string    `db:"lexisnexis"`
+	GraphExploration    string    `db:"graph_exploration"`
 	CreatedAt           time.Time `db:"created_at"`
 	UpdatedAt           time.Time `db:"updated_at"`
 }
@@ -39,6 +40,7 @@ func AdaptOrganizationFeatureAccess(db DBOrganizationFeatureAccess) (models.DbSt
 		AiRuleBuilding:      models.FeatureAccessFrom(db.AiRuleBuilding),
 		UserScoring:         models.FeatureAccessFrom(db.UserScoring),
 		LexisNexis:          models.FeatureAccessFrom(db.LexisNexis),
+		GraphExploration:    models.FeatureAccessFrom(db.GraphExploration),
 		CreatedAt:           db.CreatedAt,
 		UpdatedAt:           db.UpdatedAt,
 	}, nil

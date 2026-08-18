@@ -142,6 +142,7 @@ const (
 type GraphWalkUsecase struct {
 	enforceSecurity         security.EnforceSecurity
 	executorFactory         executor_factory.ExecutorFactory
+	featureAccessReader     OrganizationUsecaseFeatureAccessReader
 	dataModelRepository     repositories.DataModelRepository
 	graphRepository         repositories.GraphRepository
 	graphRelationRepository repositories.GraphRelationRepository
@@ -159,15 +160,25 @@ type GraphWalkUsecase struct {
 // matches reached. Everything newly found feeds the next degree.
 func (uc GraphWalkUsecase) WalkGraph(
 	ctx context.Context,
-	organizationId uuid.UUID,
 	startType, startId string,
 	opts models.GraphWalkOptions,
 ) (models.GraphResult, error) {
-	if err := uc.enforceSecurity.ReadOrganization(organizationId); err != nil {
+	orgId := uc.enforceSecurity.OrgId()
+
+	fa, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
+	if err != nil {
 		return models.GraphResult{}, err
 	}
 
-	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, uc.executorFactory.NewExecutor(), organizationId, false, true)
+	if !fa.GraphExploration.IsAllowed() {
+		return models.GraphResult{}, errors.Wrap(models.ForbiddenError,
+			"organization not allowed to use the graph exploration feature")
+	}
+	if err := uc.enforceSecurity.ReadOrganization(orgId); err != nil {
+		return models.GraphResult{}, err
+	}
+
+	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, uc.executorFactory.NewExecutor(), orgId, false, true)
 	if err != nil {
 		return models.GraphResult{}, err
 	}
@@ -184,12 +195,12 @@ func (uc GraphWalkUsecase) WalkGraph(
 
 	// An organization declares its own shared-attribute relations against its own data model. An
 	// organization that has declared none still gets a walk: it just follows links only.
-	relations, err := uc.graphRelationRepository.ListGraphRelations(ctx, uc.executorFactory.NewExecutor(), organizationId)
+	relations, err := uc.graphRelationRepository.ListGraphRelations(ctx, uc.executorFactory.NewExecutor(), orgId)
 	if err != nil {
 		return models.GraphResult{}, err
 	}
 
-	exec, err := uc.executorFactory.NewClientDbExecutor(ctx, organizationId)
+	exec, err := uc.executorFactory.NewClientDbExecutor(ctx, orgId)
 	if err != nil {
 		return models.GraphResult{}, err
 	}
@@ -220,7 +231,7 @@ func (uc GraphWalkUsecase) WalkGraph(
 		return models.GraphResult{}, err
 	}
 
-	if err := uc.enrichGraph(ctx, organizationId, exec, dataModel, graph); err != nil {
+	if err := uc.enrichGraph(ctx, orgId, exec, dataModel, graph); err != nil {
 		return models.GraphResult{}, err
 	}
 
