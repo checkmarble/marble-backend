@@ -53,12 +53,18 @@ func TestBatchExecutionDeduplication(t *testing.T) {
 	se1 := runScheduledExecutionToCompletion(ctx, t, usecasesWithCreds, organizationId, scenarioId, scenarioIterationId, nil)
 	assert.Equal(t, 1, se1.NumberOfCreatedDecisions, "first run should create 1 decision")
 	assert.Equal(t, 1, se1.NumberOfEvaluatedDecisions, "first run should evaluate 1 object")
+	assert.EqualValues(t, 1, se1.ManifestRowsProcessed, "first run should have consumed the single manifest row")
 
 	// Second run over the same object: it must be skipped before evaluation, not just
 	// before decision creation.
 	se2 := runScheduledExecutionToCompletion(ctx, t, usecasesWithCreds, organizationId, scenarioId, scenarioIterationId, nil)
 	assert.Equal(t, 0, se2.NumberOfCreatedDecisions, "second run must not recreate a decision for an already-scored object")
 	assert.Equal(t, 0, se2.NumberOfEvaluatedDecisions, "second run must skip the already-scored object before evaluation")
+	// ManifestRowsProcessed still advances even though the object was skipped before
+	// evaluation: it counts consumed manifest rows, not evaluations, which is the whole
+	// point of exposing it (see dto.ScheduledExecutionDto.ManifestRowsProcessed) -- it is
+	// the progress signal that keeps moving when NumberOfEvaluatedDecisions is frozen at 0.
+	assert.EqualValues(t, 1, se2.ManifestRowsProcessed, "second run should still report the manifest row as processed despite skipping it")
 
 	decisionsUsecase := usecasesWithCreds.NewDecisionUsecase()
 	decisions, err := decisionsUsecase.ListDecisions(ctx, organizationId,
