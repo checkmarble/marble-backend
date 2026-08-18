@@ -25,6 +25,7 @@ type LicenseEntitlements struct {
 	ContinuousScreening bool `json:"continuous_screening"`
 	UserScoring         bool `json:"user_scoring"`
 	LexisNexis          bool `json:"lexisnexis"` //nolint:tagliatelle
+	GraphExploration    bool `json:"graph_exploration"`
 }
 
 func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) LicenseEntitlements {
@@ -43,6 +44,7 @@ func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) Li
 		ContinuousScreening: licenseEntitlements.ContinuousScreening,
 		UserScoring:         licenseEntitlements.UserScoring,
 		LexisNexis:          licenseEntitlements.LexisNexis,
+		GraphExploration:    licenseEntitlements.GraphExploration,
 	}
 }
 

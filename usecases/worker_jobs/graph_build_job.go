@@ -14,8 +14,17 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/utils"
 )
+
+type featureAccessReader interface {
+	GetOrganizationFeatureAccess(
+		ctx context.Context,
+		organizationId uuid.UUID,
+		user *models.UserId,
+	) (models.OrganizationFeatureAccess, error)
+}
 
 func NewGraphBuildPeriodicJob(orgId uuid.UUID, interval time.Duration) *river.PeriodicJob {
 	return NewPeriodicJob(
@@ -37,6 +46,7 @@ func NewGraphBuildPeriodicJob(orgId uuid.UUID, interval time.Duration) *river.Pe
 type GraphBuilder struct {
 	executorFactory         executor_factory.ExecutorFactory
 	transactionFactory      executor_factory.TransactionFactory
+	featureAccessReader     featureAccessReader
 	dataModelRepository     repositories.DataModelRepository
 	graphRelationRepository repositories.GraphRelationRepository
 	graphBuilderRepository  repositories.GraphBuilderRepository
@@ -45,6 +55,7 @@ type GraphBuilder struct {
 func NewGraphBuilder(
 	executorFactory executor_factory.ExecutorFactory,
 	transactionFactory executor_factory.TransactionFactory,
+	featureAccessReader feature_access.FeatureAccessReader,
 	dataModelRepository repositories.DataModelRepository,
 	graphRelationRepository repositories.GraphRelationRepository,
 	graphBuilderRepository repositories.GraphBuilderRepository,
@@ -52,6 +63,7 @@ func NewGraphBuilder(
 	return GraphBuilder{
 		executorFactory:         executorFactory,
 		transactionFactory:      transactionFactory,
+		featureAccessReader:     featureAccessReader,
 		dataModelRepository:     dataModelRepository,
 		graphRelationRepository: graphRelationRepository,
 		graphBuilderRepository:  graphBuilderRepository,
@@ -59,6 +71,15 @@ func NewGraphBuilder(
 }
 
 func (w GraphBuilder) Build(ctx context.Context, organizationId uuid.UUID) error {
+	fa, err := w.featureAccessReader.GetOrganizationFeatureAccess(ctx, organizationId, nil)
+	if err != nil {
+		return errors.Wrap(err, "could not check organization feature access from worker")
+	}
+
+	if !fa.GraphExploration.IsAllowed() {
+		return nil
+	}
+
 	logger := utils.LoggerFromContext(ctx)
 	start := time.Now()
 
