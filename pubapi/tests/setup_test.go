@@ -27,9 +27,11 @@ import (
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/go-testfixtures/testfixtures/v3"
+	moby "github.com/moby/moby/client"
 	"github.com/pressly/goose/v3"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -64,13 +66,26 @@ func setupPostgres(t *testing.T, ctx context.Context) *postgres.PostgresContaine
 
 	goose.SetLogger(goose.NopLogger())
 
+	provider, err := testcontainers.NewDockerProvider()
+	assert.NoError(t, err)
+	info, err := provider.Client().Info(ctx, moby.InfoOptions{})
+	assert.NoError(t, err)
+
+	image := "postgis/postgis:18-3.6-alpine"
+	platform := "linux/x86_64"
+
+	if info.Info.Architecture == "aarch64" {
+		image = "imresamu/postgis:18-3.6-alpine3.23"
+		platform = "linux/arm64"
+	}
+
 	pg, err := postgres.Run(
 		ctx,
-		"postgis/postgis:18-3.6-alpine",
+		image,
 		postgres.WithDatabase("marble_test"),
 		postgres.WithUsername("postgres"),
 		postgres.WithPassword("marble"),
-		testcontainers.WithImagePlatform("linux/amd64"),
+		testcontainers.WithImagePlatform(platform),
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
