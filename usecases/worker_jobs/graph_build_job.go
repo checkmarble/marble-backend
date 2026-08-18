@@ -112,6 +112,16 @@ func (w GraphBuilder) Build(ctx context.Context, organizationId uuid.UUID) error
 		return err
 	}
 
+	// Read before the first populate, so that everything the incremental ingestion writer commits
+	// from here on is either seen by a populate below or replayed before the swap. Erring early is
+	// free: the replay's upsert is idempotent, so an over-inclusive watermark only costs rows that
+	// restate what the build already has.
+	watermark, err := w.graphBuilderRepository.GraphReplayWatermark(ctx, clientExec)
+	if err != nil {
+		w.dropBuildTable(ctx, clientExec)
+		return err
+	}
+
 	var rows int64
 
 	for _, recordType := range slices.Sorted(maps.Keys(fieldsByType)) {
@@ -123,7 +133,31 @@ func (w GraphBuilder) Build(ctx context.Context, organizationId uuid.UUID) error
 		rows += written
 	}
 
+	// Indexing first: the replay's upsert needs the primary key to have a conflict target.
 	if err := w.graphBuilderRepository.IndexGraphBuildTable(ctx, clientExec); err != nil {
+		w.dropBuildTable(ctx, clientExec)
+		return err
+	}
+
+	// Read before the bulk pass below, and deliberately not after: the reconcile has to cover
+	// everything that pass might have missed, and a row committing just after its snapshot is stamped
+	// around the moment it started. A watermark taken later — after the analyze, say, which on a large
+	// table can exceed the margin — would leave such a row in neither pass.
+	reconcileWatermark, err := w.graphBuilderRepository.GraphReplayWatermark(ctx, clientExec)
+	if err != nil {
+		w.dropBuildTable(ctx, clientExec)
+		return err
+	}
+
+	// The bulk of the catch-up, so the table that goes live is already close to complete. It holds no
+	// lock a walk conflicts with, so its duration is nobody's problem.
+	replayed, err := w.graphBuilderRepository.ReplayGraphRows(ctx, clientExec, watermark)
+	if err != nil {
+		w.dropBuildTable(ctx, clientExec)
+		return err
+	}
+
+	if err := w.graphBuilderRepository.AnalyzeGraphBuildTable(ctx, clientExec); err != nil {
 		w.dropBuildTable(ctx, clientExec)
 		return err
 	}
@@ -136,15 +170,43 @@ func (w GraphBuilder) Build(ctx context.Context, organizationId uuid.UUID) error
 		return err
 	}
 
+	// Past the swap the new table is live, so a failure here is no longer worth failing the build over:
+	// the graph is serving, merely missing the tail this would have carried over, and the next build
+	// regenerates it from source. The previous generation is left behind for that build to clear.
+	written, err := w.reconcile(ctx, organizationId, reconcileWatermark)
+	if err != nil {
+		logger.ErrorContext(ctx, "graph build: could not reconcile the previous generation, the tail is missing until the next build",
+			"org_id", organizationId, "error", err.Error())
+	}
+	replayed += written
+
 	logger.InfoContext(ctx, "graph build completed",
 		"org_id", organizationId,
 		"record_types", len(fieldsByType),
 		"relations", len(relations),
 		"rows", rows,
+		"replayed", replayed,
 		"duration", time.Since(start).String(),
 	)
 
 	return nil
+}
+
+func (w GraphBuilder) reconcile(
+	ctx context.Context,
+	organizationId uuid.UUID,
+	since time.Time,
+) (int64, error) {
+	var replayed int64
+
+	err := w.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
+		var err error
+		replayed, err = w.graphBuilderRepository.ReconcileGraphFromOld(ctx, tx, since)
+
+		return err
+	})
+
+	return replayed, err
 }
 
 func (w GraphBuilder) dropBuildTable(ctx context.Context, exec repositories.Executor) {

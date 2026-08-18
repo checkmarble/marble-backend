@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -52,6 +53,14 @@ func (e *graphBuilderExecutor) expectStatements(n int) {
 	}
 }
 
+// expectStatementsWithArgs is expectStatements for the statements that take bind parameters, which
+// pgxmock rejects as unexpected unless the argument list is declared.
+func (e *graphBuilderExecutor) expectStatementsWithArgs(n int, args ...any) {
+	for range n {
+		e.pool.ExpectExec(".*").WithArgs(args...).WillReturnResult(pgxmock.NewResult("", 0))
+	}
+}
+
 // joined returns every statement recorded, so a test can assert on the sequence as a whole.
 func (e *graphBuilderExecutor) joined() string {
 	return strings.Join(e.statements, "\n;\n")
@@ -65,15 +74,19 @@ func (e *graphBuilderExecutor) Exec(ctx context.Context, sql string, args ...any
 	return e.pool.Exec(ctx, sql, args...)
 }
 
-func (e *graphBuilderExecutor) Query(_ context.Context, _ string, _ ...any) (pgx.Rows, error) {
-	return nil, nil
+func (e *graphBuilderExecutor) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	return e.pool.Query(ctx, sql, args...)
 }
-func (e *graphBuilderExecutor) QueryRow(_ context.Context, _ string, _ ...any) pgx.Row { return nil }
-func (e *graphBuilderExecutor) Begin(_ context.Context) (Transaction, error)           { return e, nil }
-func (e *graphBuilderExecutor) Cache(_ context.Context) *RedisExecutor                 { return nil }
-func (e *graphBuilderExecutor) RawTx() pgx.Tx                                          { return e.pool }
-func (e *graphBuilderExecutor) Commit(_ context.Context) error                         { return nil }
-func (e *graphBuilderExecutor) Rollback(_ context.Context) error                       { return nil }
+
+func (e *graphBuilderExecutor) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	return e.pool.QueryRow(ctx, sql, args...)
+}
+
+func (e *graphBuilderExecutor) Begin(_ context.Context) (Transaction, error) { return e, nil }
+func (e *graphBuilderExecutor) Cache(_ context.Context) *RedisExecutor       { return nil }
+func (e *graphBuilderExecutor) RawTx() pgx.Tx                                { return e.pool }
+func (e *graphBuilderExecutor) Commit(_ context.Context) error               { return nil }
+func (e *graphBuilderExecutor) Rollback(_ context.Context) error             { return nil }
 
 func TestGraphBuilder_RefusesAMarbleExecutor(t *testing.T) {
 	// The adjacency table lives in the organization's own schema. Pointing any of this at the
@@ -85,11 +98,29 @@ func TestGraphBuilder_RefusesAMarbleExecutor(t *testing.T) {
 
 	assert.Error(t, repo.CreateGraphBuildTable(context.Background(), exec))
 	assert.Error(t, repo.IndexGraphBuildTable(context.Background(), exec))
+	assert.Error(t, repo.AnalyzeGraphBuildTable(context.Background(), exec))
 	assert.Error(t, repo.DropGraphBuildTable(context.Background(), exec))
+
 	assert.Error(t, repo.SwapGraphTable(context.Background(), exec))
 
-	_, err := repo.PopulateGraphBuildTable(context.Background(), exec, "accounts",
-		[]models.Field{{Name: "iban", DataType: models.String}})
+	fields := []models.Field{{Name: "iban", DataType: models.String}}
+
+	_, err := repo.PopulateGraphBuildTable(context.Background(), exec, "accounts", fields)
+	assert.Error(t, err)
+
+	_, err = repo.ReplayGraphRows(context.Background(), exec, time.Now())
+	assert.Error(t, err)
+
+	_, err = repo.ReconcileGraphFromOld(context.Background(), exec, time.Now())
+	assert.Error(t, err)
+
+	_, err = repo.GraphReplayWatermark(context.Background(), exec)
+	assert.Error(t, err)
+
+	_, err = repo.UpsertGraphRows(context.Background(), exec, "accounts", fields, []string{"a"})
+	assert.Error(t, err)
+
+	_, err = repo.RetractGraphRows(context.Background(), exec, "accounts", fields, []string{"a"})
 	assert.Error(t, err)
 
 	assert.Empty(t, exec.statements, "nothing is executed against the wrong database")
@@ -97,13 +128,15 @@ func TestGraphBuilder_RefusesAMarbleExecutor(t *testing.T) {
 
 func TestGraphBuilder_CreateBuildTableIsUnloggedAndUnindexed(t *testing.T) {
 	exec := newGraphBuilderExecutor(t)
-	exec.expectStatements(2) // drop-if-exists, then create
+	exec.expectStatements(3) // drop build leftover, drop aside leftover, then create
 
 	require.NoError(t, MarbleDbRepository{}.CreateGraphBuildTable(context.Background(), exec))
 
 	sql := exec.joined()
 	assert.Contains(t, sql, `drop table if exists "org-test"."_graph_build"`,
 		"a table left behind by a failed run is cleared first")
+	assert.Contains(t, sql, `drop table if exists "org-test"."_graph_old"`,
+		"a run that died between the swap and the reconcile orphans the previous generation")
 	assert.Contains(t, sql, `create unlogged table "org-test"."_graph_build"`)
 	assert.NotContains(t, sql, "primary key", "indexes cost less once the rows are in")
 	assert.NotContains(t, sql, "create index")
@@ -200,9 +233,9 @@ func TestGraphBuilder_PopulateSkipsATypeWithNoFields(t *testing.T) {
 	assert.Empty(t, exec.statements, "an empty VALUES list is not valid SQL")
 }
 
-func TestGraphBuilder_IndexesMatchTheWalksTwoQueryShapes(t *testing.T) {
+func TestGraphBuilder_IndexesMatchTheWalksQueryShapes(t *testing.T) {
 	exec := newGraphBuilderExecutor(t)
-	exec.expectStatements(4) // primary key, index, statistics, analyze
+	exec.expectStatements(4) // primary key, lookup index, updated_at index, statistics
 
 	require.NoError(t, MarbleDbRepository{}.IndexGraphBuildTable(context.Background(), exec))
 
@@ -211,36 +244,129 @@ func TestGraphBuilder_IndexesMatchTheWalksTwoQueryShapes(t *testing.T) {
 	assert.Contains(t, sql, "primary key (record_type, record_id, field_name)")
 	assert.Contains(t, sql, "(record_type, field_name, field_value)")
 
+	// Not a walk shape: this one serves the replay that carries incremental rows forward.
+	assert.Contains(t, sql, "using brin (updated_at)",
+		"a btree here would tax every incremental upsert to serve one range scan per build")
+
 	// The three lookup columns are correlated, so estimating them independently lands orders of
 	// magnitude low — which would make every hypernode count the walk reports meaningless.
 	assert.Contains(t, sql, "create statistics")
 	assert.Contains(t, sql, "(ndistinct, dependencies, mcv) on record_type, field_name, field_value")
 
-	// A freshly built table has no statistics of its own at all until this runs.
-	assert.Contains(t, sql, `analyze "org-test"."_graph_build"`)
-	assert.Less(t, strings.Index(sql, "create statistics"), strings.Index(sql, "analyze "),
-		"the statistics object has to exist before the analyze that populates it")
+	// Analyzing is a separate step so the replay can run between the two — it inserts rows, and
+	// statistics gathered before them would not describe the table that gets swapped in.
+	assert.NotContains(t, sql, "analyze ")
 }
 
-func TestGraphBuilder_SwapDoesNotRenameIndexes(t *testing.T) {
-	// Index/constraint/statistics names are nonce-suffixed at creation time (see
-	// TestGraphBuilder_IndexNamesDoNotCollideAcrossBuilds), so the swap never needs to free up a
-	// fixed name for the next build by renaming them.
+func TestGraphBuilder_AnalyzeTargetsTheBuildTable(t *testing.T) {
+	// A freshly built table has no statistics of its own at all until this runs, which would leave
+	// the walk's hypernode estimate at the planner's no-stats default.
 	exec := newGraphBuilderExecutor(t)
-	exec.expectStatements(3) // lock_timeout, drop, rename
+	exec.expectStatements(1)
+
+	require.NoError(t, MarbleDbRepository{}.AnalyzeGraphBuildTable(context.Background(), exec))
+
+	assert.Equal(t, []string{`analyze "org-test"."_graph_build"`}, exec.statements)
+}
+
+// TestGraphBuilder_SwapOnlyRenames is the one that protects walk availability. Graph requests time out
+// at five seconds and the middleware cancels the request context, so a walk stuck behind this lock does
+// not return slowly — it returns HTTP 408. Anything but the renames belongs outside it.
+func TestGraphBuilder_SwapOnlyRenames(t *testing.T) {
+	exec := newGraphBuilderExecutor(t)
+	exec.expectStatements(1) // lock_timeout
+	exec.pool.ExpectQuery(".*").WithArgs(graphTable, "org-test").WillReturnRows(
+		pgxmock.NewRows([]string{"exists"}).AddRow(true))
+	exec.expectStatements(2) // the two renames
 
 	require.NoError(t, MarbleDbRepository{}.SwapGraphTable(context.Background(), exec))
 
 	sql := exec.joined()
 	assert.Contains(t, sql, "set local lock_timeout",
 		"a walk in flight must delay the swap, not block every later reader behind it")
-	assert.Contains(t, sql, `drop table if exists "org-test"."_graph"`)
+
+	// The previous generation is moved aside rather than dropped, which is what lets the catch-up run
+	// after the swap instead of under this lock.
+	assert.Contains(t, sql, `alter table "org-test"."_graph" rename to "_graph_old"`)
 	assert.Contains(t, sql, `alter table "org-test"."_graph_build" rename to "_graph"`)
+
+	assert.NotContains(t, sql, "lock table",
+		"the renames take their own lock; asking for it explicitly would only widen the window")
+	assert.NotContains(t, sql, "insert into", "no catch-up may run under this lock")
+	assert.NotContains(t, sql, "drop table", "dropping here would unlink files while readers wait")
+	assert.NotContains(t, sql, "statement_timeout")
+
+	// Index/constraint/statistics names are nonce-suffixed at creation time (see
+	// TestGraphBuilder_IndexNamesDoNotCollideAcrossBuilds), so nothing needs renaming to free up a
+	// fixed name for the next build.
 	assert.NotContains(t, sql, "alter index")
 	assert.NotContains(t, sql, "alter statistics")
 
-	// The drop has to precede the rename, or the rename would collide with the live table.
-	assert.Less(t, strings.Index(sql, "drop table"), strings.Index(sql, "rename to"))
+	// Aside first: the second rename would otherwise collide with the live name.
+	assert.Less(t, strings.Index(sql, `rename to "_graph_old"`), strings.Index(sql, `rename to "_graph"`))
+}
+
+func TestGraphBuilder_SwapHasNothingToMoveAsideOnAFirstBuild(t *testing.T) {
+	exec := newGraphBuilderExecutor(t)
+	exec.expectStatements(1) // lock_timeout
+	exec.pool.ExpectQuery(".*").WithArgs(graphTable, "org-test").WillReturnRows(
+		pgxmock.NewRows([]string{"exists"}).AddRow(false))
+	exec.expectStatements(1) // the one rename
+
+	require.NoError(t, MarbleDbRepository{}.SwapGraphTable(context.Background(), exec))
+
+	sql := exec.joined()
+	assert.NotContains(t, sql, "_graph_old", "renaming a table that does not exist would fail the build")
+	assert.Contains(t, sql, `alter table "org-test"."_graph_build" rename to "_graph"`)
+
+	require.NoError(t, exec.pool.ExpectationsWereMet())
+}
+
+func TestGraphBuilder_ReconcileLocksOnlyTheDiscardedTable(t *testing.T) {
+	// The lock is what makes one pass complete — a rename does not invalidate an OID, so writers and
+	// readers that resolved the old table are still on it after the swap and this waits for them. It
+	// costs nothing, because no walk reads `_graph_old` by name.
+	exec := newGraphBuilderExecutor(t)
+	exec.pool.ExpectQuery(".*").WithArgs(graphOldTable, "org-test").WillReturnRows(
+		pgxmock.NewRows([]string{"exists"}).AddRow(true))
+	exec.expectStatements(1)                           // lock table
+	exec.expectStatementsWithArgs(1, pgxmock.AnyArg()) // replay
+	exec.expectStatements(1)                           // drop
+
+	_, err := MarbleDbRepository{}.ReconcileGraphFromOld(context.Background(), exec, time.Now())
+	require.NoError(t, err)
+
+	sql := exec.joined()
+	assert.Contains(t, sql, `lock table "org-test"."_graph_old" in access exclusive mode`)
+	assert.NotContains(t, sql, `lock table "org-test"."_graph" in`,
+		"locking the live table is the thing this design exists to avoid")
+
+	// Carrying the rows the other way: out of the previous generation, into the new live table.
+	assert.Contains(t, sql, `insert into "org-test"."_graph" as g`)
+	assert.Contains(t, sql, `from "org-test"."_graph_old"`)
+	assert.Contains(t, sql, "where updated_at >= $1")
+
+	lock := strings.Index(sql, "lock table")
+	replay := strings.Index(sql, "insert into")
+	drop := strings.Index(sql, "drop table")
+
+	require.NotEqual(t, -1, drop)
+	assert.Less(t, lock, replay, "a straggler committing after the replay read would be lost")
+	assert.Less(t, replay, drop, "the rows have to be carried over before their only copy goes away")
+}
+
+func TestGraphBuilder_ReconcileIsANoOpWithoutAPreviousGeneration(t *testing.T) {
+	// A first build renamed nothing aside, and a build whose reconcile already ran has nothing left.
+	exec := newGraphBuilderExecutor(t)
+	exec.pool.ExpectQuery(".*").WithArgs(graphOldTable, "org-test").WillReturnRows(
+		pgxmock.NewRows([]string{"exists"}).AddRow(false))
+
+	replayed, err := MarbleDbRepository{}.ReconcileGraphFromOld(context.Background(), exec, time.Now())
+
+	require.NoError(t, err)
+	assert.Zero(t, replayed)
+	assert.NotContains(t, exec.joined(), "lock table")
+	assert.NotContains(t, exec.joined(), "drop table")
 }
 
 func TestGraphBuilder_IndexNamesDoNotCollideAcrossBuilds(t *testing.T) {
