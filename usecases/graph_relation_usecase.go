@@ -16,11 +16,21 @@ import (
 type GraphRelationUsecase struct {
 	enforceSecurity         security.EnforceSecurityOrganization
 	executorFactory         executor_factory.ExecutorFactory
+	featureAccessReader     OrganizationUsecaseFeatureAccessReader
 	dataModelRepository     repositories.DataModelRepository
 	graphRelationRepository repositories.GraphRelationRepository
 }
 
 func (uc GraphRelationUsecase) ListGraphRelations(ctx context.Context) ([]models.GraphRelation, error) {
+	fa, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, uc.enforceSecurity.OrgId(), nil)
+	if err != nil {
+		return []models.GraphRelation{}, err
+	}
+
+	if !fa.GraphExploration.IsAllowed() {
+		return []models.GraphRelation{}, errors.Wrap(models.ForbiddenError,
+			"organization not allowed to use the graph exploration feature")
+	}
 	if err := uc.enforceSecurity.ReadDataModel(); err != nil {
 		return nil, err
 	}
@@ -32,6 +42,15 @@ func (uc GraphRelationUsecase) ListGraphRelations(ctx context.Context) ([]models
 }
 
 func (uc GraphRelationUsecase) CreateGraphRelation(ctx context.Context, input models.CreateGraphRelation) (models.GraphRelation, error) {
+	fa, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, uc.enforceSecurity.OrgId(), nil)
+	if err != nil {
+		return models.GraphRelation{}, err
+	}
+
+	if !fa.GraphExploration.IsAllowed() {
+		return models.GraphRelation{}, errors.Wrap(models.ForbiddenError,
+			"organization not allowed to use the graph exploration feature")
+	}
 	if err := uc.enforceSecurity.WriteDataModel(uc.enforceSecurity.OrgId()); err != nil {
 		return models.GraphRelation{}, err
 	}
@@ -87,6 +106,15 @@ func (uc GraphRelationUsecase) CreateGraphRelation(ctx context.Context, input mo
 }
 
 func (uc GraphRelationUsecase) DeleteGraphRelation(ctx context.Context, relationId uuid.UUID) error {
+	fa, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, uc.enforceSecurity.OrgId(), nil)
+	if err != nil {
+		return err
+	}
+
+	if !fa.GraphExploration.IsAllowed() {
+		return errors.Wrap(models.ForbiddenError,
+			"organization not allowed to use the graph exploration feature")
+	}
 	if err := uc.enforceSecurity.WriteDataModel(uc.enforceSecurity.OrgId()); err != nil {
 		return err
 	}

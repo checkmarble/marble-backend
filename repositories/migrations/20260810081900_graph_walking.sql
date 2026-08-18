@@ -1,5 +1,11 @@
 -- +goose Up
 
+alter table licenses
+    add column if not exists graph_exploration boolean default false not null;
+
+alter table organization_feature_access
+    add column if not exists graph_exploration text default 'allowed' not null;
+
 create table graph_relations (
     id uuid primary key default gen_random_uuid(),
     org_id uuid not null,
@@ -19,5 +25,11 @@ create table graph_relations (
 create index idx_graph_relations_org_id on graph_relations (org_id);
 
 -- +goose Down
+
+alter table licenses
+    drop column graph_exploration;
+
+alter table organization_feature_access
+    drop column graph_exploration;
 
 drop table graph_relations;

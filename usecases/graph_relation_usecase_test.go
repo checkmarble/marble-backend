@@ -29,9 +29,14 @@ func graphRelationUsecase(repo *mocks.GraphRelationRepository, orgId uuid.UUID) 
 	dataModelRepository.On("GetDataModel", mock.Anything, mock.Anything, mock.Anything, false, true).
 		Return(amlDataModel(), nil)
 
+	featureAccessReader := new(mocks.FeatureAccessReader)
+	featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, mock.Anything, (*models.UserId)(nil)).
+		Return(models.OrganizationFeatureAccess{GraphExploration: models.Allowed}, nil)
+
 	return GraphRelationUsecase{
 		enforceSecurity:         enforceSecurity,
 		executorFactory:         executor_factory.NewExecutorFactoryStub(),
+		featureAccessReader:     featureAccessReader,
 		dataModelRepository:     dataModelRepository,
 		graphRelationRepository: repo,
 	}

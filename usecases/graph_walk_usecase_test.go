@@ -1213,7 +1213,12 @@ func TestGraphWalk_SameTableConfigMatchesBothOfItsFields(t *testing.T) {
 ///////////////////////////////
 
 func TestWalkGraph_RejectsAnUnknownStartType(t *testing.T) {
+	featureAccessReader := new(mocks.FeatureAccessReader)
+	featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, mock.Anything, (*models.UserId)(nil)).
+		Return(models.OrganizationFeatureAccess{GraphExploration: models.Allowed}, nil)
+
 	enforceSecurity := new(mocks.EnforceSecurity)
+	enforceSecurity.On("OrgId").Return(uuid.New())
 	enforceSecurity.On("ReadOrganization", mock.Anything).Return(nil)
 
 	dataModelRepository := new(mocks.DataModelRepository)
@@ -1223,12 +1228,13 @@ func TestWalkGraph_RejectsAnUnknownStartType(t *testing.T) {
 	uc := GraphWalkUsecase{
 		enforceSecurity:         enforceSecurity,
 		executorFactory:         executor_factory.NewExecutorFactoryStub(),
+		featureAccessReader:     featureAccessReader,
 		dataModelRepository:     dataModelRepository,
 		graphRepository:         new(mocks.GraphRepository),
 		graphRelationRepository: new(mocks.GraphRelationRepository),
 	}
 
-	_, err := uc.WalkGraph(context.Background(), uuid.New(), "nope", "X1", models.GraphWalkOptions{})
+	_, err := uc.WalkGraph(context.Background(), "nope", "X1", models.GraphWalkOptions{})
 	assert.ErrorIs(t, err, models.BadParameterError)
 }
 
@@ -1243,7 +1249,12 @@ func TestWalkGraph_ClampsTheRequestedDegrees(t *testing.T) {
 		)
 	}
 
+	featureAccessReader := new(mocks.FeatureAccessReader)
+	featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, mock.Anything, (*models.UserId)(nil)).
+		Return(models.OrganizationFeatureAccess{GraphExploration: models.Allowed}, nil)
+
 	enforceSecurity := new(mocks.EnforceSecurity)
+	enforceSecurity.On("OrgId").Return(uuid.New())
 	enforceSecurity.On("ReadOrganization", mock.Anything).Return(nil)
 
 	dataModelRepository := new(mocks.DataModelRepository)
@@ -1257,6 +1268,7 @@ func TestWalkGraph_ClampsTheRequestedDegrees(t *testing.T) {
 	uc := GraphWalkUsecase{
 		enforceSecurity:         enforceSecurity,
 		executorFactory:         executor_factory.NewExecutorFactoryStub(),
+		featureAccessReader:     featureAccessReader,
 		dataModelRepository:     dataModelRepository,
 		graphRepository:         &fakeGraphRepository{rows: rows},
 		graphRelationRepository: graphRelationRepository,
@@ -1264,7 +1276,7 @@ func TestWalkGraph_ClampsTheRequestedDegrees(t *testing.T) {
 
 	// Only that the call succeeds with an absurd request: the ceiling is enforced in the
 	// usecase, so a caller bypassing the handler cannot ask for an unbounded walk.
-	result, err := uc.WalkGraph(context.Background(), uuid.New(), "users", "U1",
+	result, err := uc.WalkGraph(context.Background(), "users", "U1",
 		models.GraphWalkOptions{Degrees: 10_000})
 	require.NoError(t, err)
 	assert.Equal(t, node("users", "U1"), result.Start)
@@ -1280,7 +1292,12 @@ func TestWalkGraph_LabelsRecordsWithTheirCaption(t *testing.T) {
 
 	rows := append(userWithAccount("U1", "A1", "IB1"), userWithAccount("U2", "A2", "IB1")...)
 
+	featureAccessReader := new(mocks.FeatureAccessReader)
+	featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, mock.Anything, (*models.UserId)(nil)).
+		Return(models.OrganizationFeatureAccess{GraphExploration: models.Allowed}, nil)
+
 	enforceSecurity := new(mocks.EnforceSecurity)
+	enforceSecurity.On("OrgId").Return(uuid.New())
 	enforceSecurity.On("ReadOrganization", mock.Anything).Return(nil)
 
 	dataModelRepository := new(mocks.DataModelRepository)
@@ -1294,6 +1311,7 @@ func TestWalkGraph_LabelsRecordsWithTheirCaption(t *testing.T) {
 	uc := GraphWalkUsecase{
 		enforceSecurity:     enforceSecurity,
 		executorFactory:     executor_factory.NewExecutorFactoryStub(),
+		featureAccessReader: featureAccessReader,
 		dataModelRepository: dataModelRepository,
 		graphRepository: &fakeGraphRepository{
 			rows:       rows,
@@ -1303,7 +1321,7 @@ func TestWalkGraph_LabelsRecordsWithTheirCaption(t *testing.T) {
 		graphRelationRepository: graphRelationRepository,
 	}
 
-	result, err := uc.WalkGraph(context.Background(), uuid.New(), "users", "U1",
+	result, err := uc.WalkGraph(context.Background(), "users", "U1",
 		models.GraphWalkOptions{EndTypes: []string{"users", "accounts"}, Degrees: 1})
 	require.NoError(t, err)
 
@@ -1328,7 +1346,12 @@ func TestWalkGraph_LabelsRecordsWithTheirCaption(t *testing.T) {
 }
 
 func TestWalkGraph_StopsOnAForbiddenOrganization(t *testing.T) {
+	featureAccessReader := new(mocks.FeatureAccessReader)
+	featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, mock.Anything, (*models.UserId)(nil)).
+		Return(models.OrganizationFeatureAccess{GraphExploration: models.Allowed}, nil)
+
 	enforceSecurity := new(mocks.EnforceSecurity)
+	enforceSecurity.On("OrgId").Return(uuid.New())
 	enforceSecurity.On("ReadOrganization", mock.Anything).Return(errors.New("forbidden"))
 
 	dataModelRepository := new(mocks.DataModelRepository)
@@ -1336,12 +1359,13 @@ func TestWalkGraph_StopsOnAForbiddenOrganization(t *testing.T) {
 	uc := GraphWalkUsecase{
 		enforceSecurity:         enforceSecurity,
 		executorFactory:         executor_factory.NewExecutorFactoryStub(),
+		featureAccessReader:     featureAccessReader,
 		dataModelRepository:     dataModelRepository,
 		graphRepository:         new(mocks.GraphRepository),
 		graphRelationRepository: new(mocks.GraphRelationRepository),
 	}
 
-	_, err := uc.WalkGraph(context.Background(), uuid.New(), "users", "U1", models.GraphWalkOptions{})
+	_, err := uc.WalkGraph(context.Background(), "users", "U1", models.GraphWalkOptions{})
 	assert.Error(t, err)
 	dataModelRepository.AssertNotCalled(t, "GetDataModel")
 }
