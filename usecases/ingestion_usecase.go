@@ -82,6 +82,14 @@ type continuousScreeningClientDbRepository interface {
 	IsContinuousScreeningSetup(ctx context.Context, exec repositories.Executor) (bool, error)
 }
 
+type ingestionFeatureAccessReader interface {
+	GetOrganizationFeatureAccess(
+		ctx context.Context,
+		organizationId uuid.UUID,
+		user *models.UserId,
+	) (models.OrganizationFeatureAccess, error)
+}
+
 type taskEnqueuer interface {
 	EnqueueContinuousScreeningDoScreeningTaskMany(
 		ctx context.Context,
@@ -142,6 +150,9 @@ type IngestionUseCase struct {
 	payloadEnricher                     payload_parser.PayloadEnrichementUsecase
 	continuousScreeningRepository       continuousScreeningRepository
 	continuousScreeningClientRepository continuousScreeningClientDbRepository
+	featureAccessReader                 ingestionFeatureAccessReader
+	graphRelationRepository             repositories.GraphRelationRepository
+	graphIncrementalRepository          repositories.GraphIncrementalRepository
 	ingestionBucketUrl                  string
 	batchIngestionMaxSize               int
 	taskEnqueuer                        taskEnqueuer
@@ -1240,7 +1251,15 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 	var err error
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
 		ingestionResults, err = usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table)
-		return err
+		if err != nil {
+			return err
+		}
+
+		// In the transaction so the adjacency table cannot disagree with the version flip it derives
+		// from, and so the existing retries carry it along. Best-effort: it does not return an error.
+		usecase.maintainGraphRows(ctx, tx, organizationId, table, ingestionResults)
+
+		return nil
 	})
 	if err != nil {
 		return nil, err
