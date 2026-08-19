@@ -668,6 +668,18 @@ func (usecases UsecasesWithCreds) NewIndexCreationStatusWorker() *worker_jobs.In
 	return &w
 }
 
+func (usecases UsecasesWithCreds) NewGraphBuildWorker(interval time.Duration) *worker_jobs.GraphBuildWorker {
+	builder := worker_jobs.NewGraphBuilder(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.NewFeatureAccessReader(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+	)
+	return worker_jobs.NewGraphBuildWorker(builder, usecases.NewExecutorFactory(), interval)
+}
+
 func (usecases UsecasesWithCreds) NewIndexCleanupWorker() *worker_jobs.IndexCleanupWorker {
 	w := worker_jobs.NewIndexCleanupWorker(
 		usecases.NewExecutorFactory(),
@@ -758,6 +770,27 @@ func (usecases UsecasesWithCreds) NewIngestedDataReaderUsecase() IngestedDataRea
 		usecases.NewExecutorFactory(),
 		usecases.NewDataModelUseCase(),
 	)
+}
+
+func (usecases *UsecasesWithCreds) NewGraphWalkUsecase() GraphWalkUsecase {
+	return GraphWalkUsecase{
+		enforceSecurity:         usecases.NewEnforceSecurity(),
+		executorFactory:         usecases.NewExecutorFactory(),
+		featureAccessReader:     usecases.NewFeatureAccessReader(),
+		dataModelRepository:     usecases.Repositories.MarbleDbRepository,
+		graphRepository:         usecases.Repositories.MarbleDbRepository,
+		graphRelationRepository: usecases.Repositories.MarbleDbRepository,
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewGraphRelationUsecase() GraphRelationUsecase {
+	return GraphRelationUsecase{
+		enforceSecurity:         usecases.NewEnforceOrganizationSecurity(),
+		executorFactory:         usecases.NewExecutorFactory(),
+		featureAccessReader:     usecases.NewFeatureAccessReader(),
+		dataModelRepository:     usecases.Repositories.MarbleDbRepository,
+		graphRelationRepository: usecases.Repositories.MarbleDbRepository,
+	}
 }
 
 func (usecases UsecasesWithCreds) NewFeatureAccessReader() feature_access.FeatureAccessReader {

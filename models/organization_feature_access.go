@@ -23,6 +23,7 @@ type OrganizationFeatureAccess struct {
 	AiRuleBuilding      FeatureAccess `redis:"ai_rule_building"`
 	UserScoring         FeatureAccess `redis:"user_scoring"`
 	LexisNexis          FeatureAccess `redis:"lexisnexis"`
+	GraphExploration    FeatureAccess `redis:"graph_exploration"`
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 
@@ -41,6 +42,7 @@ type DbStoredOrganizationFeatureAccess struct {
 	AiRuleBuilding      FeatureAccess
 	UserScoring         FeatureAccess
 	LexisNexis          FeatureAccess
+	GraphExploration    FeatureAccess
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }
@@ -55,6 +57,7 @@ type UpdateOrganizationFeatureAccessInput struct {
 	AiRuleBuilding      *FeatureAccess
 	UserScoring         *FeatureAccess
 	LexisNexis          *FeatureAccess
+	GraphExploration    *FeatureAccess
 }
 
 type FeaturesConfiguration struct {
@@ -80,6 +83,7 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 		AiRuleBuilding:      f.AiRuleBuilding,
 		UserScoring:         f.UserScoring,
 		LexisNexis:          f.LexisNexis,
+		GraphExploration:    f.GraphExploration,
 		CreatedAt:           f.CreatedAt,
 		UpdatedAt:           f.UpdatedAt,
 	}
@@ -123,6 +127,10 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(
 	}
 	if !l.LexisNexis {
 		o.LexisNexis = Restricted
+	}
+	// TODO: remove for actual entitlement validation
+	if false && !l.GraphExploration {
+		o.GraphExploration = Restricted
 	}
 
 	// remove the feature accesses that are not allowed by the configuration

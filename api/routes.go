@@ -118,6 +118,12 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/ingestion/:object_type/batch", timeoutMiddleware(conf.BatchTimeout), handlePostCsvIngestion(uc))
 	router.GET("/ingestion/:object_type/upload-logs", tom, handleListUploadLogs(uc))
 
+	router.GET("/graph/relations", tom, handleListGraphRelations(uc))
+	router.POST("/graph/relations", tom, handleCreateGraphRelation(uc))
+	router.DELETE("/graph/relations/:relation_id", tom, handleDeleteGraphRelation(uc))
+
+	router.GET("/graph/:node_type/:node_id", tom, handleGraphWalk(uc))
+
 	router.GET("/client_data/:object_type/:object_id", tom, handleGetIngestedObject(uc))
 	router.GET("/client_data/:object_type/:object_id/annotations", tom, handleListEntityAnnotations(uc))
 	router.GET("/client_data/:object_type/:object_id/cases", tom, handleEntityRelatedCases(uc))
