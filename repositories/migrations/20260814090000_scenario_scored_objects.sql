@@ -15,6 +15,11 @@ alter table scheduled_executions add column deduplicate_objects boolean not null
 
 -- Enforces, for batch executions only, at most one decision per (scenario, data object).
 --
+-- Populated for every v2 batch execution regardless of whether that run enforces dedup
+-- (scheduled_executions.deduplicate_objects): every evaluated object is recorded either
+-- way, so enabling enforcement later is immediately effective for anything already
+-- processed since -- no separate backfill pass needed.
+--
 -- This cannot be an index on `decisions`: that table has no object_id column (only
 -- trigger_object jsonb) and, more decisively, duplicates already exist there -- creating
 -- decisions twice via overlapping batch windows is precisely the workaround this feature

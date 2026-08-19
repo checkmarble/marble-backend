@@ -147,7 +147,13 @@ type batchInvariants struct {
 	clientDb             repositories.Executor
 	scheduledExecutionId string
 
-	// deduplicate is the run's snapshotted value (models.ScheduledExecution.DeduplicateObjects),
+	// deduplicate gates *enforcement* only: pre-filtering objects before evaluation and
+	// requiring a successful claim before storing a decision. It does not gate whether
+	// evaluated objects get recorded into scenario_scored_objects -- that happens
+	// unconditionally for every v2 execution (see the claim in Run), so that enabling
+	// enforcement later is immediately effective for anything already processed.
+	//
+	// This is the run's snapshotted value (models.ScheduledExecution.DeduplicateObjects),
 	// not read live from the scenario: loadInvariants (and therefore this value) is
 	// recomputed on every Run() re-entry across River slices, so reading the scenario's
 	// current setting each time would let a mid-run toggle change behaviour partway through
@@ -361,31 +367,44 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 			batchCreated = 0
 			callbacks = nil
 
-			// Claim first: the returned set decides what may be stored, so it has to
-			// precede the store loop. This holds the claim locks for the duration of the
-			// batch write, bounded by batchExecPerIterTimeout (there is no lock_timeout on
-			// the pool, so the bound is Go-side).
+			// Record every evaluated object unconditionally, regardless of whether this run
+			// enforces deduplication (inv.deduplicate). This keeps scenario_scored_objects
+			// current for every v2 execution, so that turning dedup on later is immediately
+			// effective for any object already processed since -- no need for a first,
+			// wasted no-op pass to "catch up". The insert is idempotent
+			// (ON CONFLICT DO NOTHING), so recording an object already known from a prior
+			// run (dedup on or off) is a harmless no-op.
 			//
-			// Every evaluated object is claimed, trigger passed or not: the point is to
+			// Every evaluated object is recorded, trigger passed or not: the point is to
 			// never re-evaluate it on a later run, not just to avoid duplicate decisions.
-			// Objects not found in the table (r.skipped) are excluded from the claim: they
-			// must stay eligible if they are ingested later.
-			var claimed map[string]struct{}
-			if inv.deduplicate {
-				toClaim := make([]string, 0, len(results))
-				for _, r := range results {
-					if !r.skipped {
-						toClaim = append(toClaim, r.objectId)
-					}
+			// Objects not found in the table (r.skipped) are excluded: they must stay
+			// eligible if they are ingested later.
+			//
+			// The claim locks are held for the duration of the batch write, bounded by
+			// batchExecPerIterTimeout (there is no lock_timeout on the pool, so the bound is
+			// Go-side). A failure here fails the whole batch (same as any other write in
+			// this transaction) even when this run does not enforce dedup: the write is
+			// cheap and reliable (same transaction, same database), and treating it as
+			// best-effort would let scenario_scored_objects silently drift out of sync with
+			// what was actually evaluated, defeating the point of keeping it current.
+			toClaim := make([]string, 0, len(results))
+			for _, r := range results {
+				if !r.skipped {
+					toClaim = append(toClaim, r.objectId)
 				}
-				claimedIds, err := c.repository.ClaimScoredObjects(batchCtx, tx, inv.scenario.Id, toClaim)
-				if err != nil {
-					return err
-				}
-				claimed = make(map[string]struct{}, len(claimedIds))
-				for _, id := range claimedIds {
-					claimed[id] = struct{}{}
-				}
+			}
+			claimedIds, err := c.repository.ClaimScoredObjects(batchCtx, tx, inv.scenario.Id, toClaim)
+			if err != nil {
+				return err
+			}
+			// The claimed set is only consulted below to gate decision storage when this
+			// run enforces dedup (inv.deduplicate). When it does not, decisions are stored
+			// unconditionally regardless of any object's recorded history -- disabling
+			// enforcement must never silently suppress a decision because of a claim from a
+			// dedup-enabled run in the past.
+			claimed := make(map[string]struct{}, len(claimedIds))
+			for _, id := range claimedIds {
+				claimed[id] = struct{}{}
 			}
 
 			for _, r := range results {

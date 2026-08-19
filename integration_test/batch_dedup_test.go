@@ -97,6 +97,65 @@ func TestBatchExecutionDeduplication(t *testing.T) {
 		"expected 2 decisions after the overridden third run, got %d", len(decisions.Decisions))
 }
 
+// TestBatchExecutionDeduplicationRetroactive proves that scenario_scored_objects is
+// populated for every v2 batch execution regardless of whether that run enforces
+// deduplication: an object scored while the setting is off must already be excluded the
+// first time the setting is turned on, with no separate backfill pass required.
+func TestBatchExecutionDeduplicationRetroactive(t *testing.T) {
+	t.Setenv("ENABLE_BATCH_EXECUTION_V2", "all")
+
+	ctx := context.Background()
+	ctx = utils.StoreLoggerInContext(ctx, utils.NewLogger("text"))
+	ctx = utils.StoreSegmentClientInContext(ctx, analytics.New("dummy key"))
+
+	userCreds, _, inboxId := setupOrgAndCreds(ctx, t, "test org with batch dedup retroactive")
+	organizationId := userCreds.OrganizationId
+	usecasesWithCreds := generateUsecaseWithCreds(testUsecases, userCreds)
+
+	rules := getRulesForBatchTest()
+	// Deduplication is left at its default (off) here: setupScenarioAndPublish does not
+	// touch it.
+	scenarioId, scenarioIterationId := setupScenarioAndPublish(ctx, t, usecasesWithCreds, organizationId, inboxId, rules)
+
+	ingestAccountsBatch(ctx, t, usecasesWithCreds, organizationId, string(userCreds.ActorIdentity.UserId))
+
+	// First run: deduplication is off, so this is ordinary behaviour -- but the object
+	// must still be recorded into scenario_scored_objects in the background.
+	se1 := runScheduledExecutionToCompletion(ctx, t, usecasesWithCreds, organizationId, scenarioId, scenarioIterationId, nil)
+	assert.Equal(t, 1, se1.NumberOfCreatedDecisions, "first run should create 1 decision")
+	assert.False(t, se1.DeduplicateObjects, "first run should not enforce dedup, only record")
+
+	// Enable deduplication now, after the object was already processed once with it off.
+	dedup := true
+	scenarioUsecase := usecasesWithCreds.NewScenarioUsecase()
+	_, err := scenarioUsecase.UpdateScenario(ctx, models.UpdateScenarioInput{
+		Id:                      scenarioId,
+		DeduplicateBatchObjects: &dedup,
+	})
+	if err != nil {
+		assert.FailNow(t, "Failed to enable batch deduplication on the scenario", err)
+	}
+
+	// Second run: the first time dedup is enforced for this scenario. If recording during
+	// the first (non-enforcing) run had not happened, this would re-score the object and
+	// create a second decision -- exactly the gap this behaviour closes.
+	se2 := runScheduledExecutionToCompletion(ctx, t, usecasesWithCreds, organizationId, scenarioId, scenarioIterationId, nil)
+	assert.Equal(t, 0, se2.NumberOfCreatedDecisions, "object recorded during the earlier non-enforcing run must already be excluded")
+	assert.Equal(t, 0, se2.NumberOfEvaluatedDecisions, "object must be skipped before evaluation, exactly as if it had been scored under enforcement")
+	assert.True(t, se2.DeduplicateObjects, "second run should be the one enforcing dedup")
+
+	decisionsUsecase := usecasesWithCreds.NewDecisionUsecase()
+	decisions, err := decisionsUsecase.ListDecisions(ctx, organizationId,
+		models.NewDefaultPaginationAndSorting("created_at"),
+		dto.DecisionFilters{ScenarioIds: []string{scenarioId}},
+	)
+	if err != nil {
+		assert.FailNow(t, "Error while listing decisions", err)
+	}
+	assert.Equalf(t, 1, len(decisions.Decisions),
+		"expected exactly 1 decision: the object must not be re-scored once dedup is turned on, got %d", len(decisions.Decisions))
+}
+
 // runScheduledExecutionToCompletion creates a manual scheduled execution for the given
 // scenario/iteration, runs it, and polls until it reaches a terminal status.
 // deduplicateOverride is passed through as the per-run dedup override (nil = use the
