@@ -68,6 +68,18 @@ type batchCoordinatorRepository interface {
 		input models.AdvanceScheduledExecutionManifestInput,
 	) error
 	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (map[string]analytics.Settings, error)
+	FilterAlreadyScoredObjects(
+		ctx context.Context,
+		exec repositories.Executor,
+		scenarioId string,
+		objectIds []string,
+	) (map[string]struct{}, error)
+	ClaimScoredObjects(
+		ctx context.Context,
+		tx repositories.Transaction,
+		scenarioId string,
+		objectIds []string,
+	) ([]string, error)
 }
 
 type BatchExecutionCoordinator struct {
@@ -134,13 +146,27 @@ type batchInvariants struct {
 	pivots               []models.Pivot
 	clientDb             repositories.Executor
 	scheduledExecutionId string
+
+	// deduplicate gates *enforcement* only: pre-filtering objects before evaluation and
+	// requiring a successful claim before storing a decision. It does not gate whether
+	// evaluated objects get recorded into scenario_scored_objects -- that happens
+	// unconditionally for every v2 execution (see the claim in Run), so that enabling
+	// enforcement later is immediately effective for anything already processed.
+	//
+	// This is the run's snapshotted value (models.ScheduledExecution.DeduplicateObjects),
+	// not read live from the scenario: loadInvariants (and therefore this value) is
+	// recomputed on every Run() re-entry across River slices, so reading the scenario's
+	// current setting each time would let a mid-run toggle change behaviour partway through
+	// a single execution. It is also scenario-scoped rather than iteration-scoped: publishing
+	// a new version does not make previously scored objects eligible again.
+	deduplicate bool
 }
 
 // evalOutcome is the result of evaluating one object, outside any transaction.
 type evalOutcome struct {
 	objectId          string
 	triggerPassed     bool
-	skipped           bool // object not found in the table; counts as evaluated, not created
+	skipped           bool // object not found in the table; counts as evaluated, not created, and is never claimed
 	scenarioExecution models.ScenarioExecution
 	evalParams        evaluate_scenario.ScenarioEvaluationParameters
 	object            models.ClientObject
@@ -293,12 +319,37 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 		}
 		newOffset := offset + consumed
 
+		// Objects already scored by a previous run are dropped before evaluation, which is
+		// where the cost is. Two slices are deliberately kept: `ids` is the untouched
+		// manifest batch and remains the only thing driving `consumed`, `newOffset` and
+		// `rows`; `toEvaluate` is what actually gets evaluated. Narrowing `ids` in place
+		// would desynchronise the byte offset from the row count and break the
+		// `rows >= planned` termination below — either looping until the 24h deadline, or
+		// reporting success early.
+		toEvaluate := ids
+		if inv.deduplicate {
+			alreadyScored, filterErr := c.repository.FilterAlreadyScoredObjects(ctx, exec, inv.scenario.Id, ids)
+			if filterErr != nil {
+				resetManifestReader()
+				c.logAndSleepWithBackoff(ctx, filterErr, &consecutiveFailures)
+				continue
+			}
+			if len(alreadyScored) > 0 {
+				toEvaluate = make([]string, 0, len(ids))
+				for _, id := range ids {
+					if _, skip := alreadyScored[id]; !skip {
+						toEvaluate = append(toEvaluate, id)
+					}
+				}
+			}
+		}
+
 		// One per-iteration context bounds evaluation and the persistence transaction — so no
 		// single wedged operation hangs the coordinator until the whole-job timeout. Derived from
 		// the job ctx so a deploy still propagates cancellation. A timeout here is retryable.
 		batchCtx, cancel := context.WithTimeout(ctx, batchExecPerIterTimeout)
 
-		results, retryErr := c.evaluateBatch(batchCtx, inv, ids)
+		results, retryErr := c.evaluateBatch(batchCtx, inv, toEvaluate)
 		if retryErr != nil {
 			cancel()
 			// Offset is not advanced, so the reader (now past this batch) must re-seek to it.
@@ -315,7 +366,57 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 			// Reset accumulators so a retry of the same batch (tx rollback) starts clean.
 			batchCreated = 0
 			callbacks = nil
+
+			// Record every evaluated object unconditionally, regardless of whether this run
+			// enforces deduplication (inv.deduplicate). This keeps scenario_scored_objects
+			// current for every v2 execution, so that turning dedup on later is immediately
+			// effective for any object already processed since -- no need for a first,
+			// wasted no-op pass to "catch up". The insert is idempotent
+			// (ON CONFLICT DO NOTHING), so recording an object already known from a prior
+			// run (dedup on or off) is a harmless no-op.
+			//
+			// Every evaluated object is recorded, trigger passed or not: the point is to
+			// never re-evaluate it on a later run, not just to avoid duplicate decisions.
+			// Objects not found in the table (r.skipped) are excluded: they must stay
+			// eligible if they are ingested later.
+			//
+			// The claim locks are held for the duration of the batch write, bounded by
+			// batchExecPerIterTimeout (there is no lock_timeout on the pool, so the bound is
+			// Go-side). A failure here fails the whole batch (same as any other write in
+			// this transaction) even when this run does not enforce dedup: the write is
+			// cheap and reliable (same transaction, same database), and treating it as
+			// best-effort would let scenario_scored_objects silently drift out of sync with
+			// what was actually evaluated, defeating the point of keeping it current.
+			toClaim := make([]string, 0, len(results))
 			for _, r := range results {
+				if !r.skipped {
+					toClaim = append(toClaim, r.objectId)
+				}
+			}
+			claimedIds, err := c.repository.ClaimScoredObjects(batchCtx, tx, inv.scenario.Id, toClaim)
+			if err != nil {
+				return err
+			}
+			// The claimed set is only consulted below to gate decision storage when this
+			// run enforces dedup (inv.deduplicate). When it does not, decisions are stored
+			// unconditionally regardless of any object's recorded history -- disabling
+			// enforcement must never silently suppress a decision because of a claim from a
+			// dedup-enabled run in the past.
+			claimed := make(map[string]struct{}, len(claimedIds))
+			for _, id := range claimedIds {
+				claimed[id] = struct{}{}
+			}
+
+			for _, r := range results {
+				if inv.deduplicate {
+					if _, ok := claimed[r.objectId]; !ok {
+						// Lost the claim to a concurrent run scoring the same object. Rare
+						// (would require two runs of the same scenario overlapping on the
+						// same object within one batch window); not stored, not counted,
+						// no phantom-decision callback since the outcome is not this run's.
+						continue
+					}
+				}
 				if r.skipped || !r.triggerPassed {
 					if cb := c.testRunCallback(ctx, inv, r, false); cb != nil {
 						callbacks = append(callbacks, cb)
@@ -408,6 +509,7 @@ func (c *BatchExecutionCoordinator) loadInvariants(
 		pivots:               pivots,
 		clientDb:             clientDb,
 		scheduledExecutionId: se.Id,
+		deduplicate:          se.DeduplicateObjects,
 	}, nil
 }
 

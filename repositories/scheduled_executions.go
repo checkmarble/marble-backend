@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type dbJoinScheduledExecutionAndScenario struct {
@@ -120,6 +121,7 @@ func (repo *MarbleDbRepository) CreateScheduledExecution(ctx context.Context, ex
 				"scenario_iteration_id",
 				"status",
 				"manual",
+				"deduplicate_objects",
 			).
 			Values(
 				newScheduledExecutionId,
@@ -128,6 +130,9 @@ func (repo *MarbleDbRepository) CreateScheduledExecution(ctx context.Context, ex
 				createScheduledEx.ScenarioIterationId,
 				models.ScheduledExecutionPending.String(),
 				createScheduledEx.Manual,
+				// Defensive default: callers are expected to have already resolved this to
+				// a definite value (see CreateScheduledExecutionInput.DeduplicateObjects).
+				utils.Or(createScheduledEx.DeduplicateObjects, false),
 			),
 	)
 	return err

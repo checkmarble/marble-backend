@@ -61,11 +61,14 @@ func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context,
 
 	scheduledExecutionId := pure_utils.NewId().String()
 	return true, usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		// Scheduled (cron) runs have no per-run override surface, so the scenario's
+		// persistent default is snapshotted as-is.
 		if err := usecase.repository.CreateScheduledExecution(ctx, tx, models.CreateScheduledExecutionInput{
 			OrganizationId:      scenario.OrganizationId,
 			ScenarioId:          scenario.Id,
 			ScenarioIterationId: publishedVersion.Id,
 			Manual:              false,
+			DeduplicateObjects:  &scenario.DeduplicateBatchObjects,
 		}, scheduledExecutionId); err != nil {
 			return err
 		}
