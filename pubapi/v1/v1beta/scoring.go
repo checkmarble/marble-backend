@@ -2,8 +2,8 @@ package v1beta
 
 import (
 	"context"
-	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/pubapi/v1/dto"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -19,6 +20,13 @@ import (
 func HandleGetObjectRiskLevel(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
+
+		objectId := c.Param("objectId")
+
+		if strings.TrimSpace(objectId) == "" {
+			types.NewErrorResponse().WithError(errors.WithDetail(models.BadParameterError, "objectId cannot be empty")).Serve(c)
+			return
+		}
 
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
@@ -32,7 +40,7 @@ func HandleGetObjectRiskLevel(uc usecases.Usecases) gin.HandlerFunc {
 		record := models.ScoringRecordRef{
 			OrgId:      orgId,
 			RecordType: c.Param("objectType"),
-			RecordId:   c.Param("objectId"),
+			RecordId:   objectId,
 		}
 
 		opts := models.RefreshScoreOptions{
@@ -65,6 +73,13 @@ func HandleOverrideObjectRiskLevel(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
+		objectId := c.Param("objectId")
+
+		if strings.TrimSpace(objectId) == "" {
+			types.NewErrorResponse().WithError(errors.WithDetail(models.BadParameterError, "objectId cannot be empty")).Serve(c)
+			return
+		}
+
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
@@ -84,7 +99,7 @@ func HandleOverrideObjectRiskLevel(uc usecases.Usecases) gin.HandlerFunc {
 		req := models.InsertScoreRequest{
 			OrgId:      orgId,
 			RecordType: c.Param("objectType"),
-			RecordId:   c.Param("objectId"),
+			RecordId:   objectId,
 			RiskLevel:  p.RiskLevel,
 			Source:     models.ScoreSourceOverride,
 		}
