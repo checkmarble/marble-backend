@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -22,6 +23,11 @@ func handleGetIngestedObject(uc usecases.Usecases) func(c *gin.Context) {
 
 		objectType := c.Param("object_type")
 		objectId := c.Param("object_id")
+
+		if strings.TrimSpace(objectId) == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "object_id cannot be empty"))
+			return
+		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestedDataReaderUsecase()
 		objects, err := usecase.GetIngestedObject(ctx, organizationID, nil, objectType, objectId, "object_id")
