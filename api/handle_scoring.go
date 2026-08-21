@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -69,7 +70,14 @@ func handleScoringComputeScore(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		_, eval, err := scoringUsecase.ComputeScore(ctx, orgId, c.Param("recordType"), c.Param("recordId"))
+		recordId := c.Param("recordId")
+
+		if strings.TrimSpace(recordId) == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "recordId cannot be empty"))
+			return
+		}
+
+		_, eval, err := scoringUsecase.ComputeScore(ctx, orgId, c.Param("recordType"), recordId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -312,12 +320,19 @@ func handleScoringScoreHistory(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
+		recordId := c.Param("recordId")
+
+		if strings.TrimSpace(recordId) == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "recordId cannot be empty"))
+			return
+		}
+
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringScoresUsecase()
 
 		record := models.ScoringRecordRef{
 			RecordType: c.Param("recordType"),
-			RecordId:   c.Param("recordId"),
+			RecordId:   recordId,
 		}
 
 		scores, err := scoringUsecase.GetScoreHistory(ctx, record)
@@ -333,6 +348,13 @@ func handleScoringGetActiveScore(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
+		recordId := c.Param("recordId")
+
+		if strings.TrimSpace(recordId) == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "recordId cannot be empty"))
+			return
+		}
+
 		uc := usecasesWithCreds(ctx, uc)
 		scoringUsecase := uc.NewScoringScoresUsecase()
 
@@ -344,7 +366,7 @@ func handleScoringGetActiveScore(uc usecases.Usecases) gin.HandlerFunc {
 		record := models.ScoringRecordRef{
 			OrgId:      orgId,
 			RecordType: c.Param("recordType"),
-			RecordId:   c.Param("recordId"),
+			RecordId:   recordId,
 		}
 
 		opts := models.RefreshScoreOptions{
@@ -372,6 +394,13 @@ func handleOverrideRecordScore(uc usecases.Usecases) gin.HandlerFunc {
 
 		var payload scoring.OverrideScoreRequest
 
+		recordId := c.Param("recordId")
+
+		if strings.TrimSpace(recordId) == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "recordId cannot be empty"))
+			return
+		}
+
 		if err := c.ShouldBindBodyWithJSON(&payload); err != nil {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
@@ -382,7 +411,7 @@ func handleOverrideRecordScore(uc usecases.Usecases) gin.HandlerFunc {
 
 		req := models.InsertScoreRequest{
 			RecordType: c.Param("recordType"),
-			RecordId:   c.Param("recordId"),
+			RecordId:   recordId,
 			RiskLevel:  payload.RiskLevel,
 			Source:     models.ScoreSourceOverride,
 			StaleAt:    payload.StaleAt,
