@@ -9,26 +9,28 @@ import (
 
 // Read DTO
 type ScenarioDto struct {
-	Id                string    `json:"id"`
-	CreatedAt         time.Time `json:"created_at"`
-	Description       string    `json:"description"`
-	LiveVersionID     *string   `json:"live_version_id,omitempty"`
-	Name              string    `json:"name"`
-	OrganizationId    uuid.UUID `json:"organization_id"`
-	TriggerObjectType string    `json:"trigger_object_type"`
-	Archived          bool      `json:"archived"`
+	Id                      string    `json:"id"`
+	CreatedAt               time.Time `json:"created_at"`
+	Description             string    `json:"description"`
+	LiveVersionID           *string   `json:"live_version_id,omitempty"`
+	Name                    string    `json:"name"`
+	OrganizationId          uuid.UUID `json:"organization_id"`
+	TriggerObjectType       string    `json:"trigger_object_type"`
+	Archived                bool      `json:"archived"`
+	DeduplicateBatchObjects bool      `json:"deduplicate_batch_objects"`
 }
 
 func AdaptScenarioDto(scenario models.Scenario) ScenarioDto {
 	return ScenarioDto{
-		Id:                scenario.Id,
-		CreatedAt:         scenario.CreatedAt,
-		Description:       scenario.Description,
-		LiveVersionID:     scenario.LiveVersionID,
-		Name:              scenario.Name,
-		OrganizationId:    scenario.OrganizationId,
-		TriggerObjectType: scenario.TriggerObjectType,
-		Archived:          scenario.Archived,
+		Id:                      scenario.Id,
+		CreatedAt:               scenario.CreatedAt,
+		Description:             scenario.Description,
+		LiveVersionID:           scenario.LiveVersionID,
+		Name:                    scenario.Name,
+		OrganizationId:          scenario.OrganizationId,
+		TriggerObjectType:       scenario.TriggerObjectType,
+		Archived:                scenario.Archived,
+		DeduplicateBatchObjects: scenario.DeduplicateBatchObjects,
 	}
 }
 
@@ -52,17 +54,19 @@ func AdaptCreateScenarioInput(input CreateScenarioBody, organizationId uuid.UUID
 
 // Update scenario DTO
 type UpdateScenarioBody struct {
-	Description *string `json:"description"`
-	Name        *string `json:"name"`
-	Archived    *bool   `json:"archived"`
+	Description             *string `json:"description"`
+	Name                    *string `json:"name"`
+	Archived                *bool   `json:"archived"`
+	DeduplicateBatchObjects *bool   `json:"deduplicate_batch_objects"`
 }
 
 func AdaptUpdateScenarioInput(scenarioId string, input UpdateScenarioBody) models.UpdateScenarioInput {
 	parsedInput := models.UpdateScenarioInput{
-		Id:          scenarioId,
-		Description: input.Description,
-		Name:        input.Name,
-		Archived:    input.Archived,
+		Id:                      scenarioId,
+		Description:             input.Description,
+		Name:                    input.Name,
+		Archived:                input.Archived,
+		DeduplicateBatchObjects: input.DeduplicateBatchObjects,
 	}
 
 	return parsedInput

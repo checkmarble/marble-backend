@@ -25,6 +25,7 @@ type DBScheduledExecution struct {
 	ManifestByteOffset         int64      `db:"manifest_byte_offset"`
 	ManifestRowsProcessed      int64      `db:"manifest_rows_processed"`
 	Deadline                   *time.Time `db:"deadline"`
+	DeduplicateObjects         bool       `db:"deduplicate_objects"`
 }
 
 const TABLE_SCHEDULED_EXECUTIONS = "scheduled_executions"
@@ -52,5 +53,6 @@ func AdaptScheduledExecution(db DBScheduledExecution, scenario models.Scenario,
 		ManifestByteOffset:         db.ManifestByteOffset,
 		ManifestRowsProcessed:      db.ManifestRowsProcessed,
 		Deadline:                   db.Deadline,
+		DeduplicateObjects:         db.DeduplicateObjects,
 	}
 }

@@ -64,6 +64,10 @@ func (repo *MarbleDbRepository) UpdateScenario(ctx context.Context, exec Executo
 		sql = sql.Set("archived", *scenario.Archived)
 		countApply++
 	}
+	if scenario.DeduplicateBatchObjects != nil {
+		sql = sql.Set("deduplicate_batch_objects", *scenario.DeduplicateBatchObjects)
+		countApply++
+	}
 
 	if countApply == 0 {
 		return nil

@@ -40,6 +40,12 @@ type Scenario struct {
 	OrganizationId    uuid.UUID
 	TriggerObjectType string
 	Archived          bool
+
+	// When set, batch executions create at most one decision per data object for this
+	// scenario, keyed on (scenario, object_id) and persisted in scenario_scored_objects.
+	// Enabling it on an existing scenario does not backfill, so the first run after the
+	// toggle scores everything once. Only honoured under the BATCH_EXECUTION_V2 flag.
+	DeduplicateBatchObjects bool
 }
 
 type CreateScenarioInput struct {
@@ -50,10 +56,11 @@ type CreateScenarioInput struct {
 }
 
 type UpdateScenarioInput struct {
-	Id          string
-	Description *string
-	Name        *string
-	Archived    *bool
+	Id                      string
+	Description             *string
+	Name                    *string
+	Archived                *bool
+	DeduplicateBatchObjects *bool
 }
 
 type ListAllScenariosFilters struct {
