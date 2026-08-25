@@ -52,21 +52,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: ./go.mod
+      - name: Install tools (Go, golangci-lint)
+        uses: jdx/mise-action@v4
 
       - name: Build
         run: go build -v ./...
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v9
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-        with:
-          version: v2.11
-          args: --timeout=3m -v
+        run: golangci-lint run --timeout=3m -v
 
   screening_e2e:
     name: E2E Screening
