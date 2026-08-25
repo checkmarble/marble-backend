@@ -7,6 +7,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check_go_mod:
+    name: Check go.mod is tidy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: ./go.mod
+
+      - name: Run go mod tidy
+        run: go mod tidy
+
+      - name: Check for uncommitted changes
+        run: |
+          if ! git diff --quiet go.mod go.sum; then
+            echo "❌ go.mod or go.sum has uncommitted changes after 'go mod tidy'"
+            echo "Please run 'go mod tidy' locally and commit the changes"
+            git diff go.mod go.sum
+            exit 1
+          fi
+          echo "✅ go.mod and go.sum are tidy"
+
   compliance:
     permissions:
       contents: read
