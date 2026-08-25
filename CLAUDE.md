@@ -104,7 +104,7 @@ go mod tidy
 - The file is consistent
 
 The CI will reject PRs if `go.mod` or `go.sum` are not tidy. If you get this error:
-```
+```text
 ❌ go.mod or go.sum has uncommitted changes after 'go mod tidy'
 ```
 
