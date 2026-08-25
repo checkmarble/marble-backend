@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -94,6 +95,11 @@ func handleEntityRelatedCases(uc usecases.Usecases) func(c *gin.Context) {
 		caseUsecase := uc.NewCaseUseCase()
 
 		objectType, objectId := c.Param("object_type"), c.Param("object_id")
+
+		if strings.TrimSpace(objectId) == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "object_id cannot be empty"))
+			return
+		}
 
 		cases, err := caseUsecase.GetEntityRelatedCases(ctx, objectType, objectId)
 		if presentError(ctx, c, err) {

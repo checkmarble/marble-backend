@@ -2,6 +2,7 @@ package v1beta
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
@@ -27,6 +28,11 @@ func HandleGetRecordAnnotations(uc usecases.Usecases) gin.HandlerFunc {
 
 		recordType := c.Param("recordType")
 		recordId := c.Param("recordId")
+
+		if strings.TrimSpace(recordId) == "" {
+			types.NewErrorResponse().WithError(errors.WithDetail(models.BadParameterError, "recordId cannot be empty")).Serve(c)
+			return
+		}
 
 		uc := pubapi.UsecasesWithCreds(ctx, uc).NewEntityAnnotationUsecase()
 		annotations, err := uc.List(
@@ -64,6 +70,11 @@ func HandleAttachRecordAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 
 		recordType := c.Param("recordType")
 		recordId := c.Param("recordId")
+
+		if strings.TrimSpace(recordId) == "" {
+			types.NewErrorResponse().WithError(errors.WithDetail(models.BadParameterError, "recordId cannot be empty")).Serve(c)
+			return
+		}
 
 		var payload params.AttachRecordAnnotationParams
 		if err := c.ShouldBindBodyWithJSON(&payload); err != nil {
@@ -130,6 +141,11 @@ func HandleCreateEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 
 		recordType := c.Param("recordType")
 		recordId := c.Param("recordId")
+
+		if strings.TrimSpace(recordId) == "" {
+			types.NewErrorResponse().WithError(errors.WithDetail(models.BadParameterError, "recordId cannot be empty")).Serve(c)
+			return
+		}
 
 		var payload params.AttachRecordFileAnnotationParams
 

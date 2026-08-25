@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -19,6 +20,11 @@ func handleListEntityAnnotations(uc usecases.Usecases) gin.HandlerFunc {
 
 		objectType := c.Param("object_type")
 		objectId := c.Param("object_id")
+
+		if strings.TrimSpace(objectId) == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "object_id cannot be empty"))
+			return
+		}
 
 		uc := usecasesWithCreds(ctx, uc)
 		annotationsUsecase := uc.NewEntityAnnotationUsecase()
@@ -177,6 +183,11 @@ func handleCreateEntityAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 		objectType := c.Param("object_type")
 		objectId := c.Param("object_id")
 
+		if strings.TrimSpace(objectId) == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "object_id cannot be empty"))
+			return
+		}
+
 		var payload dto.PostEntityAnnotationDto
 
 		if err := c.ShouldBindBodyWithJSON(&payload); err != nil {
@@ -237,6 +248,11 @@ func handleCreateEntityFileAnnotation(uc usecases.Usecases) gin.HandlerFunc {
 
 		objectType := c.Param("object_type")
 		objectId := c.Param("object_id")
+
+		if strings.TrimSpace(objectId) == "" {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "object_id cannot be empty"))
+			return
+		}
 
 		var payload dto.PostEntityFileAnnotationDto
 

@@ -233,7 +233,6 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 		if pivotDetail.pivotField == "object_id" {
 			pivotObject.PivotObjectId = value.PivotValue
 		}
-
 		// Best effort: a pivot object that cannot be enriched (e.g. its pivot definition
 		// references data model elements that no longer exist) is still returned with the
 		// bare pivot value, and must not fail the whole batch.
@@ -250,7 +249,9 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 
 	pivotObjectsAsSlice := make([]models.PivotObject, 0, len(pivotObjectsMap))
 	for _, pivotObject := range pivotObjectsMap {
-		pivotObjectsAsSlice = append(pivotObjectsAsSlice, pivotObject)
+		if pivotObject.PivotType != models.PivotTypeObject || pivotObject.PivotObjectId != "" {
+			pivotObjectsAsSlice = append(pivotObjectsAsSlice, pivotObject)
+		}
 	}
 	return pivotObjectsAsSlice, nil
 }
@@ -264,21 +265,6 @@ func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
 	if pivotObject.PivotType == models.PivotTypeField {
 		return pivotObject, nil
 	}
-
-	// Annotations don't depend on the existence of the pivot object in IngestedData, so we can get them first
-	// to enrich the pivot object data
-	annotations, err := usecase.repository.GetEntityAnnotations(
-		ctx,
-		usecase.executorFactory.NewExecutor(),
-		models.EntityAnnotationRequest{
-			OrgId:      organizationId,
-			ObjectType: pivotObject.PivotObjectName,
-			ObjectId:   pivotObject.PivotObjectId,
-		})
-	if err != nil {
-		return models.PivotObject{}, err
-	}
-	pivotObject.PivotObjectData.Annotations = models.GroupAnnotationsByType(annotations)
 
 	objectDataSlice, err := usecase.GetIngestedObject(
 		ctx,
@@ -299,8 +285,30 @@ func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
 	objectData := objectDataSlice[0]
 
 	pivotObject.PivotObjectData.Data = objectData.Data
+
 	pivotObject.PivotObjectData.Metadata = objectData.Metadata
 	pivotObject.IsIngested = true
+
+	if pivotObject.PivotObjectId == "" {
+		if objectId, ok := objectData.Data["object_id"].(string); ok {
+			pivotObject.PivotObjectId = objectId
+		}
+	}
+
+	// Annotations don't depend on the existence of the pivot object in IngestedData, so we can get them first
+	// to enrich the pivot object data
+	annotations, err := usecase.repository.GetEntityAnnotations(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		models.EntityAnnotationRequest{
+			OrgId:      organizationId,
+			ObjectType: pivotObject.PivotObjectName,
+			ObjectId:   pivotObject.PivotObjectId,
+		})
+	if err != nil {
+		return models.PivotObject{}, err
+	}
+	pivotObject.PivotObjectData.Annotations = models.GroupAnnotationsByType(annotations)
 
 	// Enriches the pivot object with one level of related objects (fiend objects that are linked to the pivot object, without further recursion)
 	pivotObject.PivotObjectData, err = usecase.enrichClientDataObjectWithRelatedObjectsData(
