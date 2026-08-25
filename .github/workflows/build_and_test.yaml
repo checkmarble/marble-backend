@@ -25,18 +25,8 @@ jobs:
         with:
           go-version-file: ./go.mod
 
-      - name: Run go mod tidy
-        run: go mod tidy
-
-      - name: Check for uncommitted changes
-        run: |
-          if ! git diff --quiet go.mod go.sum; then
-            echo "❌ go.mod or go.sum has uncommitted changes after 'go mod tidy'"
-            echo "Please run 'go mod tidy' locally and commit the changes"
-            git diff go.mod go.sum
-            exit 1
-          fi
-          echo "✅ go.mod and go.sum are tidy"
+      - name: Check go.mod is tidy
+        run: go mod tidy -diff
 
   compliance:
     permissions:

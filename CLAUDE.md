@@ -103,12 +103,7 @@ go mod tidy
 - Unused dependencies are removed
 - The file is consistent
 
-The CI will reject PRs if `go.mod` or `go.sum` are not tidy. If you get this error:
-```text
-❌ go.mod or go.sum has uncommitted changes after 'go mod tidy'
-```
-
-Simply run `go mod tidy` locally and commit the changes.
+The CI will reject PRs if `go.mod` or `go.sum` are not tidy. If CI fails with a diff output, run `go mod tidy` locally and commit the changes.
 
 ## Architecture Overview
 
