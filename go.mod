@@ -37,7 +37,7 @@ require (
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-contrib/size v1.0.2
 	github.com/gin-gonic/gin v1.12.0
-	github.com/go-faker/faker/v4 v4.9.0
+	github.com/go-faker/faker/v4 v4.10.1
 	github.com/go-playground/validator/v10 v10.30.3
 	github.com/go-testfixtures/testfixtures/v3 v3.19.0
 	github.com/go-viper/mapstructure/v2 v2.5.0
@@ -53,6 +53,7 @@ require (
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/hashstructure/v2 v2.0.2
+	github.com/moby/moby/client v0.4.0
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/oschwald/maxminddb-golang/v2 v2.4.1
@@ -225,7 +226,6 @@ require (
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.3.0 // indirect
 	github.com/moby/moby/api v1.54.2 // indirect
-	github.com/moby/moby/client v0.4.0 // indirect
 	github.com/moby/patternmatcher v0.6.1 // indirect
 	github.com/moby/sys/sequential v0.7.0 // indirect
 	github.com/moby/sys/user v0.4.1 // indirect
