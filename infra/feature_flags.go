@@ -16,6 +16,7 @@ type featureFlag string
 const (
 	TEST_UNUSED_FEATURE_FLAG        featureFlag = "TEST_UNUSED_FEATURE_FLAG"
 	BATCH_EXECUTION_V2_FEATURE_FLAG featureFlag = "BATCH_EXECUTION_V2"
+	GRAPH_EXPLORATION_FEATURE_FLAG  featureFlag = "GRAPH_EXPLORATION"
 )
 
 func HasGlobalFeatureFlag(flag featureFlag) bool {
@@ -41,12 +42,12 @@ func HasFeatureFlag(flag featureFlag, orgId uuid.UUID) bool {
 	return false
 }
 
-func RouteWithFeatureFlag(parent gin.IRoutes, flag featureFlag, cb func(sub gin.IRoutes)) {
+func RouteWithFeatureFlag(parent gin.IRouter, flag featureFlag, cb func(sub gin.IRoutes)) {
 	if !HasGlobalFeatureFlag(flag) {
 		return
 	}
 
-	sub := parent.Use(featureFlagMiddleware(flag))
+	sub := parent.Group("/", featureFlagMiddleware(flag))
 
 	cb(sub)
 }
