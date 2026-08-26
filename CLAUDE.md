@@ -92,6 +92,19 @@ docker compose down && docker volume rm marble-backend_postgres-db && docker com
 make generate_api_clients
 ```
 
+### Dependency Management
+```bash
+# Tidy up go.mod and go.sum (removes unused deps, updates indirect markers)
+go mod tidy
+```
+
+**Important**: Always run `go mod tidy` before committing any Go code changes. This ensures:
+- Direct vs indirect dependency markers are correct
+- Unused dependencies are removed
+- The file is consistent
+
+The CI will reject PRs if `go.mod` or `go.sum` are not tidy. If CI fails with a diff output, run `go mod tidy` locally and commit the changes.
+
 ## Architecture Overview
 
 ### Component Structure
