@@ -17,6 +17,7 @@ import (
 
 type Adminer interface {
 	CreateUser(ctx context.Context, email, name string) error
+	CreateFirstUser(ctx context.Context, email, password, name string) error
 	ListMfaEnrollment(ctx context.Context, emails []string) (map[string]bool, error)
 }
 
@@ -38,6 +39,42 @@ func (c AdminClient) CreateUser(ctx context.Context, email, name string) error {
 	req := new(auth.UserToCreate).
 		Email(email).
 		EmailVerified(false).
+		DisplayName(name)
+
+	user, err := c.client.CreateUser(ctx, req)
+	if err != nil {
+		if auth.IsEmailAlreadyExists(err) {
+			utils.LoggerFromContext(ctx).InfoContext(ctx, fmt.Sprintf("firebase user already exists for user %s, skipping creating it", email),
+				"email", email)
+
+			return nil
+		}
+
+		utils.LoggerFromContext(ctx).WarnContext(ctx, fmt.Sprintf("could not create firebase user %s, your administrator will need to create it manually", email),
+			"error", err.Error(),
+			"email", email)
+
+		return err
+	}
+
+	utils.LoggerFromContext(ctx).InfoContext(ctx, fmt.Sprintf("firebase user created for user %s", user.Email),
+		"uid", user.UID,
+		"email", user.Email)
+
+	if err := c.SendPasswordResetEmail(ctx, user); err != nil {
+		utils.LoggerFromContext(ctx).WarnContext(ctx, fmt.Sprintf("could not send the password reset email to user %s: %s", user.Email, err.Error()),
+			"uid", user.UID,
+			"email", user.Email)
+	}
+
+	return nil
+}
+
+func (c AdminClient) CreateFirstUser(ctx context.Context, email, password, name string) error {
+	req := new(auth.UserToCreate).
+		Email(email).
+		Password(password).
+		EmailVerified(true).
 		DisplayName(name)
 
 	user, err := c.client.CreateUser(ctx, req)

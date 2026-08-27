@@ -432,7 +432,8 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 		Credentials: enforceSecurity.Credentials,
 	}
 
-	environment.AddEvaluator(ast.FUNC_CUSTOM_LIST_ACCESS,
+	environment.AddEvaluator(
+		ast.FUNC_CUSTOM_LIST_ACCESS,
 		evaluate.NewCustomListValuesAccess(
 			usecases.Repositories.CustomListRepository,
 			enforceSecurity,
@@ -441,7 +442,8 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 		),
 	)
 
-	environment.AddEvaluator(ast.FUNC_DB_ACCESS,
+	environment.AddEvaluator(
+		ast.FUNC_DB_ACCESS,
 		evaluate.DatabaseAccess{
 			OrganizationId:             params.OrganizationId,
 			DataModel:                  params.DataModel,
@@ -472,9 +474,11 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 		evaluate.NewTimestampExtract(
 			usecases.NewExecutorFactory(),
 			usecases.Repositories.MarbleDbRepository,
-			params.OrganizationId))
+			params.OrganizationId,
+		))
 
-	environment.AddEvaluator(ast.FUNC_MONITORING_LIST_CHECK,
+	environment.AddEvaluator(
+		ast.FUNC_MONITORING_LIST_CHECK,
 		evaluate.EntityAnnotationCheck{
 			AnnotationType:     models.EntityAnnotationRiskTag,
 			OrgId:              params.OrganizationId,
@@ -488,7 +492,8 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 		},
 	)
 
-	environment.AddEvaluator(ast.FUNC_RECORD_HAS_TAGS,
+	environment.AddEvaluator(
+		ast.FUNC_RECORD_HAS_TAGS,
 		evaluate.EntityAnnotationCheck{
 			AnnotationType:     models.EntityAnnotationTag,
 			OrgId:              params.OrganizationId,
@@ -502,7 +507,8 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 		},
 	)
 
-	environment.AddEvaluator(ast.FUNC_RECORD_HAS_PAST_ALERTS,
+	environment.AddEvaluator(
+		ast.FUNC_RECORD_HAS_PAST_ALERTS,
 		evaluate.PastAlerts{
 			ExecutorFactory: usecases.NewExecutorFactory(),
 			Repository:      usecases.Repositories.MarbleDbRepository,
@@ -512,7 +518,8 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 		},
 	)
 
-	environment.AddEvaluator(ast.FUNC_RECORD_RISK_LEVEL,
+	environment.AddEvaluator(
+		ast.FUNC_RECORD_RISK_LEVEL,
 		evaluate.NewRecordRiskLevelEvaluator(
 			params.OrganizationId,
 			usecases.NewExecutorFactory(),
@@ -677,5 +684,16 @@ func (usecases *Usecases) NewPayloadEnrichmentUsecase() payload_parser.PayloadEn
 	return payload_parser.NewPayloadEnrichmentUsecase(
 		usecases.coordsEnricher,
 		usecases.ipEnricher,
+	)
+}
+
+func (usecases *Usecases) NewOnboardingUsecase(tokenProvider auth.TokenProvider) OnboardingUsecase {
+	return NewOnboardingUsecase(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		tokenProvider,
+		usecases.firebaseAdmin,
 	)
 }
