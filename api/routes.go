@@ -72,6 +72,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		r.GET("/ai-prompts/download", tom, handleAiPromptsDownload(uc))
 	}
 
+	r.POST("/admin/onboard", tom, handleCreateInitialOrganization(uc, conf))
+
 	// Public API initialization
 	{
 		cfg := pubapi.Config{

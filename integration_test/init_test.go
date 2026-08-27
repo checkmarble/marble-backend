@@ -161,7 +161,8 @@ func TestMain(m *testing.M) {
 	_ = mredis.Start()
 	redisClient, _ := repositories.NewRedisClient(infra.RedisConfig{Address: mredis.Addr()})
 
-	repos := repositories.NewRepositories(dbPool,
+	repos := repositories.NewRepositories(
+		dbPool,
 		infra.GcpConfig{},
 		repositories.WithRiverClient(riverClient),
 		repositories.WithRedisClient(redisClient),
@@ -170,12 +171,13 @@ func TestMain(m *testing.M) {
 	firebaseAdminClient := &mocks.FirebaseAdminClient{}
 	firebaseAdminClient.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-	testUsecases = usecases.NewUsecases(repos,
+	testUsecases = usecases.NewUsecases(
+		repos,
 		usecases.WithAppName("marble-test"),
 		usecases.WithLicense(models.NewFullLicense()),
-		usecases.WithIngestionBucketUrl("file://./tempFiles?create_dir=true"),
-		usecases.WithCaseManagerBucketUrl("file://./tempFiles?create_dir=true"),
-		usecases.WithOffloadingBucketUrl("file://./tempFiles?create_dir=true"),
+		usecases.WithIngestionBucketUrl("file:///tmp/tempFiles?create_dir=true"),
+		usecases.WithCaseManagerBucketUrl("file:///tmp/tempFiles?create_dir=true"),
+		usecases.WithOffloadingBucketUrl("file:///tmp/tempFiles?create_dir=true"),
 		usecases.WithFirebaseAdmin(auth.TokenProviderFirebase, firebaseAdminClient),
 	)
 

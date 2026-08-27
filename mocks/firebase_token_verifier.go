@@ -38,6 +38,12 @@ func (m *FirebaseAdminClient) CreateUser(ctx context.Context, email, name string
 	return args.Error(0)
 }
 
+func (m *FirebaseAdminClient) CreateFirstUser(ctx context.Context, email, password, name string) error {
+	args := m.Called(ctx, email, password, name)
+
+	return args.Error(0)
+}
+
 func (m *FirebaseAdminClient) ListMfaEnrollment(ctx context.Context, emails []string) (map[string]bool, error) {
 	args := m.Called(ctx, emails)
 
