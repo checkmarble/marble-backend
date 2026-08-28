@@ -21,6 +21,7 @@ type APIOrganizationFeatureAccess struct {
 	AiRuleBuilding      string `json:"ai_rule_building"`
 	UserScoring         string `json:"user_scoring"`
 	LexisNexis          string `json:"lexisnexis"` //nolint:tagliatelle
+	GraphExploration    string `json:"graph_exploration"`
 
 	// user-scoped
 	// Currently only used to control display of the AI assist button in the UI - DO NOT use for anything else as it will be removed
@@ -44,6 +45,7 @@ func AdaptOrganizationFeatureAccessDto(f models.OrganizationFeatureAccess) APIOr
 		AiAssist:            f.AiAssist.String(),
 		UserScoring:         f.UserScoring.String(),
 		LexisNexis:          f.LexisNexis.String(),
+		GraphExploration:    f.GraphExploration.String(),
 	}
 }
 
@@ -55,12 +57,13 @@ type UpdateOrganizationFeatureAccessBodyDto struct {
 	ContinuousScreening *string `json:"continuous_screening"`
 	AiRuleBuilding      *string `json:"ai_rule_building"`
 	LexisNexis          *string `json:"lexisnexis"` //nolint:tagliatelle
+	GraphExploration    *string `json:"graph_exploration"`
 }
 
 func AdaptUpdateOrganizationFeatureAccessInput(f UpdateOrganizationFeatureAccessBodyDto,
 	orgId uuid.UUID,
 ) models.UpdateOrganizationFeatureAccessInput {
-	var testRun, sanctions, caseAutoAssign, caseAiAssist, continuousScreening, aiRuleBuilding, lexisNexis *models.FeatureAccess
+	var testRun, sanctions, caseAutoAssign, caseAiAssist, continuousScreening, aiRuleBuilding, lexisNexis, graphExploration *models.FeatureAccess
 	if f.TestRun != nil {
 		testRun = utils.Ptr(models.FeatureAccessFrom(*f.TestRun))
 	}
@@ -82,6 +85,9 @@ func AdaptUpdateOrganizationFeatureAccessInput(f UpdateOrganizationFeatureAccess
 	if f.LexisNexis != nil {
 		lexisNexis = utils.Ptr(models.FeatureAccessFrom(*f.LexisNexis))
 	}
+	if f.GraphExploration != nil {
+		graphExploration = utils.Ptr(models.FeatureAccessFrom(*f.GraphExploration))
+	}
 	return models.UpdateOrganizationFeatureAccessInput{
 		OrganizationId:      orgId,
 		TestRun:             testRun,
@@ -91,5 +97,6 @@ func AdaptUpdateOrganizationFeatureAccessInput(f UpdateOrganizationFeatureAccess
 		ContinuousScreening: continuousScreening,
 		AiRuleBuilding:      aiRuleBuilding,
 		LexisNexis:          lexisNexis,
+		GraphExploration:    graphExploration,
 	}
 }
