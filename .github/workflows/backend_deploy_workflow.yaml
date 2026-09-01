@@ -85,6 +85,7 @@ jobs:
             --quiet \
             --image="$VERSION_IMAGE" \
             --region="europe-west1" \
+            --container=migrations \
             --execute-now \
             --wait
 
