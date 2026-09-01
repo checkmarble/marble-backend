@@ -140,9 +140,10 @@ func (m *ScoringRepository) SetRulesetDryRunStatus(
 	exec repositories.Executor,
 	dryRun models.ScoringDryRun,
 	status models.DryRunStatus,
+	recordCount int,
 	results map[int]int,
 ) (*models.ScoringDryRun, error) {
-	args := m.Called(ctx, exec, dryRun, status, results)
+	args := m.Called(ctx, exec, dryRun, status, recordCount, results)
 	return args.Get(0).(*models.ScoringDryRun), args.Error(1)
 }
 

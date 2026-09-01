@@ -112,7 +112,7 @@ func (w *RulesetDryRunWorker) Work(ctx context.Context, job *river.Job[models.Ru
 					return err
 				}
 
-				newDryRun, err := w.repository.SetRulesetDryRunStatus(ctx, exec, dryRun, models.DryRunRunning, distribution)
+				newDryRun, err := w.repository.SetRulesetDryRunStatus(ctx, exec, dryRun, models.DryRunRunning, len(recordIds), distribution)
 				if err != nil {
 					return err
 				}
@@ -160,7 +160,7 @@ func (w *RulesetDryRunWorker) Work(ctx context.Context, job *river.Job[models.Ru
 
 	wg.Wait()
 
-	if _, err := w.repository.SetRulesetDryRunStatus(ctx, exec, dryRun, models.DryRunCompleted, distribution); err != nil {
+	if _, err := w.repository.SetRulesetDryRunStatus(ctx, exec, dryRun, models.DryRunCompleted, len(recordIds), distribution); err != nil {
 		return err
 	}
 
