@@ -65,6 +65,7 @@ type ScoringRepository interface {
 		exec repositories.Executor,
 		dryRun models.ScoringDryRun,
 		status models.DryRunStatus,
+		recordCount int,
 		results map[int]int,
 	) (*models.ScoringDryRun, error)
 

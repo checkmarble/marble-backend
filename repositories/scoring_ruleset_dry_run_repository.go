@@ -101,6 +101,7 @@ func (repo *MarbleDbRepository) SetRulesetDryRunStatus(
 	exec Executor,
 	dryRun models.ScoringDryRun,
 	status models.DryRunStatus,
+	recordCount int,
 	results map[int]int,
 ) (*models.ScoringDryRun, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -111,6 +112,7 @@ func (repo *MarbleDbRepository) SetRulesetDryRunStatus(
 		Update(dbmodels.TABLE_SCORING_DRY_RUNS).
 		Set("status", status).
 		Set("results", results).
+		Set("record_count", recordCount).
 		Where("id = ?", dryRun.Id).
 		Where("status != ?", models.DryRunCancelled).
 		Suffix("returning *")
