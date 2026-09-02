@@ -1,5 +1,7 @@
 [tools]
-go = "1.26"
+# This is meant for development only. Tools version comments mention their SOT.
+go = "1.27.0" # Sources of truth are in go.mod and the Dockerfile
+golangci-lint = "2.13.1" # Sources of truth are in .github/workflows/*.yaml
 
 [env]
 _.file = '.env'

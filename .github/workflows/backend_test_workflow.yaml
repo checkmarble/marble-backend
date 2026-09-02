@@ -65,7 +65,7 @@ jobs:
         env:
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
-          version: v2.11
+          version: v2.13.1
           args: --timeout=3m -v
 
   screening_e2e:

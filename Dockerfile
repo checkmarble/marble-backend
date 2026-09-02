@@ -1,4 +1,4 @@
-FROM golang:1.26-trixie AS build
+FROM golang:1.27.0-trixie AS build
 
 ARG MARBLE_VERSION=dev
 ARG SEGMENT_WRITE_KEY=
