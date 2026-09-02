@@ -15,7 +15,7 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/TwiN/deepmerge v0.2.2
-	github.com/adhocore/gronx v1.20.0
+	github.com/adhocore/gronx v1.20.3
 	github.com/adrg/strutil v0.3.1
 	github.com/alicebob/miniredis/v2 v2.38.0
 	github.com/authenticvision/rgeo v1.4.0
