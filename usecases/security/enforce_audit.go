@@ -17,7 +17,7 @@ type EnforceSecurityAuditImpl struct {
 }
 
 func (e *EnforceSecurityAuditImpl) ReadAuditEvents() error {
-	if e.Credentials.Role != models.ADMIN {
+	if !e.Credentials.HasRole(models.ADMIN) {
 		return errors.Wrap(models.ForbiddenError, "only admins can read audit events")
 	}
 

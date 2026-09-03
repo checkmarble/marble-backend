@@ -14,7 +14,7 @@ func Test_ReadInbox(t *testing.T) {
 	anotherOrgId := utils.TextToUUID("anotherOrgId")
 
 	t.Run("admin", func(t *testing.T) {
-		creds := models.Credentials{Role: models.ADMIN, OrganizationId: orgId}
+		creds := models.Credentials{Roles: []models.Role{models.ADMIN}, OrganizationId: orgId}
 		sec := security.EnforceSecurityInboxes{
 			EnforceSecurity: &security.EnforceSecurityImpl{Credentials: creds},
 			Credentials:     creds,
@@ -35,7 +35,7 @@ func Test_ReadInbox(t *testing.T) {
 	})
 
 	t.Run("Marble admin", func(t *testing.T) {
-		creds := models.Credentials{Role: models.MARBLE_ADMIN, OrganizationId: orgId}
+		creds := models.Credentials{Roles: []models.Role{models.MARBLE_ADMIN}, OrganizationId: orgId}
 		sec := security.EnforceSecurityInboxes{
 			EnforceSecurity: &security.EnforceSecurityImpl{Credentials: creds},
 			Credentials:     creds,
@@ -60,7 +60,7 @@ func Test_ReadInbox(t *testing.T) {
 		actorParsedUUID := uuid.MustParse(actorUserIdString)
 		specificActorIdentity := models.Identity{UserId: models.UserId(actorUserIdString)}
 
-		creds := models.Credentials{Role: models.BUILDER, OrganizationId: orgId, ActorIdentity: specificActorIdentity}
+		creds := models.Credentials{Roles: []models.Role{models.BUILDER}, OrganizationId: orgId, ActorIdentity: specificActorIdentity}
 		sec := security.EnforceSecurityInboxes{
 			EnforceSecurity: &security.EnforceSecurityImpl{Credentials: creds},
 			Credentials:     creds,
@@ -93,7 +93,7 @@ func Test_CreateInbox(t *testing.T) {
 	}
 
 	t.Run("admin", func(t *testing.T) {
-		creds := models.Credentials{Role: models.ADMIN, OrganizationId: orgId}
+		creds := models.Credentials{Roles: []models.Role{models.ADMIN}, OrganizationId: orgId}
 		sec := security.EnforceSecurityInboxes{
 			EnforceSecurity: &security.EnforceSecurityImpl{Credentials: creds},
 			Credentials:     creds,
@@ -114,7 +114,7 @@ func Test_CreateInbox(t *testing.T) {
 	})
 
 	t.Run("non admin: creating an inbox in the same org should fail", func(t *testing.T) {
-		creds := models.Credentials{Role: models.BUILDER, OrganizationId: orgId, ActorIdentity: actorIdentity}
+		creds := models.Credentials{Roles: []models.Role{models.BUILDER}, OrganizationId: orgId, ActorIdentity: actorIdentity}
 		sec := security.EnforceSecurityInboxes{
 			EnforceSecurity: &security.EnforceSecurityImpl{Credentials: creds},
 			Credentials:     creds,
@@ -139,7 +139,7 @@ func Test_ReadInboxUser(t *testing.T) {
 	inboxId2 := uuid.MustParse("00000000-0000-0000-0000-000000000000")
 
 	t.Run("admin", func(t *testing.T) {
-		creds := models.Credentials{Role: models.ADMIN, OrganizationId: orgId}
+		creds := models.Credentials{Roles: []models.Role{models.ADMIN}, OrganizationId: orgId}
 		sec := security.EnforceSecurityInboxes{
 			EnforceSecurity: &security.EnforceSecurityImpl{Credentials: creds},
 			Credentials:     creds,
@@ -163,7 +163,7 @@ func Test_ReadInboxUser(t *testing.T) {
 	})
 
 	t.Run("non admin", func(t *testing.T) {
-		creds := models.Credentials{Role: models.BUILDER, OrganizationId: orgId, ActorIdentity: actorIdentity}
+		creds := models.Credentials{Roles: []models.Role{models.BUILDER}, OrganizationId: orgId, ActorIdentity: actorIdentity}
 		sec := security.EnforceSecurityInboxes{
 			EnforceSecurity: &security.EnforceSecurityImpl{Credentials: creds},
 			Credentials:     creds,
@@ -195,7 +195,7 @@ func Test_CreateInboxUser(t *testing.T) {
 		adminTestInboxId := uuid.MustParse("00000000-0000-0000-0000-000000000000")
 
 		creds := models.Credentials{
-			Role:           models.ADMIN,
+			Roles:          []models.Role{models.ADMIN},
 			OrganizationId: orgId,
 		}
 
@@ -255,7 +255,7 @@ func Test_CreateInboxUser(t *testing.T) {
 		actorsOwnInboxId := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 
 		creds := models.Credentials{
-			Role:           models.BUILDER,
+			Roles:          []models.Role{models.BUILDER},
 			OrganizationId: utils.TextToUUID(organizationId_nonadmin), ActorIdentity: actorIdentity_nonadmin,
 		}
 		orgIdNonAdmin := creds.OrganizationId

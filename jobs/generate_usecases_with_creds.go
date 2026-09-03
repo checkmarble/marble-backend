@@ -8,7 +8,7 @@ import (
 
 func GenerateUsecaseWithCredForSystem(jobUsecases usecases.Usecases) usecases.UsecasesWithCreds {
 	creds := models.Credentials{
-		Role:           models.SYSTEM,
+		Roles:          []models.Role{models.SYSTEM},
 		OrganizationId: uuid.Nil,
 	}
 	return usecases.UsecasesWithCreds{

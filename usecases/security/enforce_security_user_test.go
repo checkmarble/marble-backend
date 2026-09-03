@@ -61,7 +61,7 @@ func TestUpdateUserRole(t *testing.T) {
 				Credentials: models.Credentials{
 					OrganizationId: utils.TextToUUID("org"),
 					ActorIdentity:  models.Identity{UserId: "principal"},
-					Role:           tt.principal,
+					Roles:          []models.Role{tt.principal},
 				},
 			}
 

@@ -52,7 +52,23 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 				createUser.LastName,
 			),
 	)
-	return userId, err
+	if err != nil {
+		return "", err
+	}
+
+	if createUser.Role == models.MARBLE_ADMIN {
+		return userId, ExecBuilder(ctx, exec, NewQueryBuilder().
+			Insert(dbmodels.TABLE_GRANTS).
+			Columns("id", "principal_type", "principal_id", "principal_authority", "role").
+			Values(pure_utils.NewId(), "user", userId, "marble", createUser.Role.String()).
+			Suffix("ON CONFLICT DO NOTHING"))
+	}
+
+	return userId, ExecBuilder(ctx, exec, NewQueryBuilder().
+		Insert(dbmodels.TABLE_GRANTS).
+		Columns("id", "principal_type", "principal_id", "principal_authority", "organization_id", "role").
+		Values(pure_utils.NewId(), "user", userId, "marble", createUser.OrganizationId, createUser.Role.String()).
+		Suffix("ON CONFLICT DO NOTHING"))
 }
 
 func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, updateUser models.UpdateUser) error {
@@ -77,6 +93,42 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 
 	if err := ExecBuilder(ctx, exec, query); err != nil {
 		return err
+	}
+	if updateUser.Role != nil && *updateUser.Role != models.NO_ROLE {
+		if err := ExecBuilder(ctx, exec, NewQueryBuilder().
+			Delete(dbmodels.TABLE_GRANTS).
+			Where(squirrel.Eq{
+				"principal_type":      "user",
+				"principal_id":        updateUser.UserId,
+				"principal_authority": "marble",
+			}).
+			Where(squirrel.Or{
+				squirrel.Expr("organization_id = (SELECT organization_id FROM users WHERE id = ?)", updateUser.UserId),
+				squirrel.Expr("organization_id IS NULL AND tenant_id IS NULL"),
+			})); err != nil {
+			return err
+		}
+
+		grantQuery := NewQueryBuilder().Insert(dbmodels.TABLE_GRANTS)
+		if *updateUser.Role == models.MARBLE_ADMIN {
+			grantQuery = grantQuery.
+				Columns("id", "principal_type", "principal_id", "principal_authority", "role").
+				Values(pure_utils.NewId(), "user", updateUser.UserId, "marble", updateUser.Role.String())
+		} else {
+			grantQuery = grantQuery.
+				Columns("id", "principal_type", "principal_id", "principal_authority", "organization_id", "role").
+				Values(
+					pure_utils.NewId(),
+					"user",
+					updateUser.UserId,
+					"marble",
+					squirrel.Expr("(SELECT organization_id FROM users WHERE id = ?)", updateUser.UserId),
+					updateUser.Role.String(),
+				)
+		}
+		if err := ExecBuilder(ctx, exec, grantQuery.Suffix("ON CONFLICT DO NOTHING")); err != nil {
+			return err
+		}
 	}
 
 	return exec.Cache(ctx).Exec(func(c *redis.Client) error {
@@ -111,11 +163,7 @@ func (repo *MarbleDbRepository) DeleteUsersOfOrganization(ctx context.Context, e
 		return err
 	}
 
-	err := ExecBuilder(
-		ctx,
-		exec,
-		NewQueryBuilder().Delete(dbmodels.TABLE_USERS).Where("organization_id = ?", organizationId),
-	)
+	err := ExecBuilder(ctx, exec, NewQueryBuilder().Delete("grants").Where("organization_id = ?", organizationId))
 	return err
 }
 

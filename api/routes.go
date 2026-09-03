@@ -110,6 +110,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 
 	router.GET("/credentials", tom, handleGetCredentials())
 	router.PATCH("/config/usage-tracking", tom, handleUpdateUsageTracking(uc))
+	router.GET("/me/organizations", tom, handleMyOrganizations(uc))
 
 	router.GET("/decisions",
 		timeoutMiddleware(conf.DecisionTimeout),
