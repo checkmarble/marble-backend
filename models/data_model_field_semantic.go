@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 
@@ -133,6 +134,44 @@ func (f FieldSemanticType) IsName() bool {
 		f == FieldSemanticTypeFirstName ||
 		f == FieldSemanticTypeMiddleName ||
 		f == FieldSemanticTypeLastName
+}
+
+// FieldSemanticSubType refines what a field means beyond its semantic type. Unlike the semantic
+// type, it is not a column of its own: it lives in the field's metadata blob, under
+// `semanticSubType`, and is written there by whoever edits the data model.
+type FieldSemanticSubType string
+
+const (
+	FieldSemanticSubTypeUnset FieldSemanticSubType = ""
+
+	// FieldSemanticSubTypeCaption marks the field holding what a record of its table is called.
+	// It is what a graph node, for one, is labelled with.
+	FieldSemanticSubTypeCaption FieldSemanticSubType = "caption"
+)
+
+// fieldMetadata is the part of a field's metadata blob this package reads. The blob holds whatever
+// the data model editor put there, so it is decoded key by key rather than replaced: anything not
+// named here is left alone. Its keys are camelCase, unlike the snake_case of the API's own
+// payloads, because they are the editor's and not ours to rename.
+type fieldMetadata struct {
+	SemanticSubType FieldSemanticSubType `json:"semanticSubType"` //nolint:tagliatelle
+}
+
+// SemanticSubType returns the sub-type a field declares in its metadata. A field with no metadata,
+// none declared, or metadata that cannot be read declares none: the blob is free-form, so failing
+// to decode it says nothing more than that this field is not the one being looked for.
+func (f Field) SemanticSubType() FieldSemanticSubType {
+	if len(f.Metadata) == 0 {
+		return FieldSemanticSubTypeUnset
+	}
+
+	var metadata fieldMetadata
+
+	if err := json.Unmarshal(f.Metadata, &metadata); err != nil {
+		return FieldSemanticSubTypeUnset
+	}
+
+	return metadata.SemanticSubType
 }
 
 func ValidateField(field Field) error {

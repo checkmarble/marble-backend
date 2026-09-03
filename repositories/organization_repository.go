@@ -261,6 +261,10 @@ func (repo *MarbleDbRepository) UpdateOrganizationFeatureAccess(
 		query = query.Set("lexisnexis", *updateFeatureAccess.LexisNexis)
 		nbUpdated++
 	}
+	if updateFeatureAccess.GraphExploration != nil {
+		query = query.Set("graph_exploration", *updateFeatureAccess.GraphExploration)
+		nbUpdated++
+	}
 
 	if nbUpdated == 0 {
 		return nil

@@ -105,7 +105,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 			handleGetContinuousScreeningFull(uc))
 	}
 
-	router := r.Use(auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey),
+	router := r.Group("/", auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey),
 		allowedNetworksGuard.Guard(usecases.AllowedNetworksOther))
 
 	router.GET("/credentials", tom, handleGetCredentials())
@@ -119,6 +119,14 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 
 	router.POST("/ingestion/:object_type/batch", timeoutMiddleware(conf.BatchTimeout), handlePostCsvIngestion(uc))
 	router.GET("/ingestion/:object_type/upload-logs", tom, handleListUploadLogs(uc))
+
+	infra.RouteWithFeatureFlag(router, infra.GRAPH_EXPLORATION_FEATURE_FLAG, func(sub gin.IRoutes) {
+		sub.GET("/graph/relations", tom, handleListGraphRelations(uc))
+		sub.POST("/graph/relations", tom, handleCreateGraphRelation(uc))
+		sub.DELETE("/graph/relations/:relation_id", tom, handleDeleteGraphRelation(uc))
+
+		sub.GET("/graph/:node_type/:node_id", tom, handleGraphWalk(uc))
+	})
 
 	router.GET("/client_data/:object_type/:object_id", tom, handleGetIngestedObject(uc))
 	router.GET("/client_data/:object_type/:object_id/annotations", tom, handleListEntityAnnotations(uc))
@@ -418,24 +426,24 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/org-import/archetypes/apply", timeoutMiddleware(conf.BatchTimeout), handleOrgImportFromArchetype(uc))
 	router.GET("/org-export", tom, handleOrgExport(uc))
 
-	r.GET("/scoring/settings", tom, handleScoringGetSettings(uc))
-	r.POST("/scoring/settings", tom, handleScoringUpdateSettings(uc))
-	r.GET("/scoring/rulesets", tom, handleScoringListRulesets(uc))
-	r.GET("/scoring/rulesets/:recordType", tom, handleScoringGetRuleset(uc))
-	r.POST("/scoring/rulesets/:recordType/validate-ast", tom, handleScoringValidateAst(uc))
-	r.GET("/scoring/rulesets/:recordType/versions", tom, handleScoringListRulesetVersions(uc))
-	r.POST("/scoring/rulesets/:recordType", tom, handleScoringCreateRulesetVersion(uc))
-	r.GET("/scoring/rulesets/:recordType/prepare", tom,
+	router.GET("/scoring/settings", tom, handleScoringGetSettings(uc))
+	router.POST("/scoring/settings", tom, handleScoringUpdateSettings(uc))
+	router.GET("/scoring/rulesets", tom, handleScoringListRulesets(uc))
+	router.GET("/scoring/rulesets/:recordType", tom, handleScoringGetRuleset(uc))
+	router.POST("/scoring/rulesets/:recordType/validate-ast", tom, handleScoringValidateAst(uc))
+	router.GET("/scoring/rulesets/:recordType/versions", tom, handleScoringListRulesetVersions(uc))
+	router.POST("/scoring/rulesets/:recordType", tom, handleScoringCreateRulesetVersion(uc))
+	router.GET("/scoring/rulesets/:recordType/prepare", tom,
 		handleScoringGetRulesetPreparationStatus(uc))
-	r.POST("/scoring/rulesets/:recordType/prepare", tom, handleScoringPrepareRuleset(uc))
-	r.POST("/scoring/rulesets/:recordType/dry-run", tom, handleScoringStartDryRun(uc))
-	r.GET("/scoring/rulesets/:recordType/dry-run", tom, handleScoringGetDryRun(uc))
-	r.POST("/scoring/rulesets/:recordType/commit", tom, handleScoringCommitRuleset(uc))
-	r.GET("/scoring/risk-levels/:recordType/:recordId", tom, handleScoringGetActiveScore(uc))
-	r.GET("/scoring/risk-levels/:recordType/:recordId/history", tom, handleScoringScoreHistory(uc))
-	r.POST("/scoring/risk-levels/:recordType/:recordId", tom, handleOverrideRecordScore(uc))
-	r.POST("/scoring/risk-levels/:recordType/:recordId/compute", tom, handleScoringComputeScore(uc))
-	r.GET("/scoring/distribution/:entityType", tom, handleScoringGetDistribution(uc))
+	router.POST("/scoring/rulesets/:recordType/prepare", tom, handleScoringPrepareRuleset(uc))
+	router.POST("/scoring/rulesets/:recordType/dry-run", tom, handleScoringStartDryRun(uc))
+	router.GET("/scoring/rulesets/:recordType/dry-run", tom, handleScoringGetDryRun(uc))
+	router.POST("/scoring/rulesets/:recordType/commit", tom, handleScoringCommitRuleset(uc))
+	router.GET("/scoring/risk-levels/:recordType/:recordId", tom, handleScoringGetActiveScore(uc))
+	router.GET("/scoring/risk-levels/:recordType/:recordId/history", tom, handleScoringScoreHistory(uc))
+	router.POST("/scoring/risk-levels/:recordType/:recordId", tom, handleOverrideRecordScore(uc))
+	router.POST("/scoring/risk-levels/:recordType/:recordId/compute", tom, handleScoringComputeScore(uc))
+	router.GET("/scoring/distribution/:entityType", tom, handleScoringGetDistribution(uc))
 
 	if conf.AnalyticsProxyApiUrl == "" {
 		addCaseAnalyticsRoutes(router, conf, uc)
