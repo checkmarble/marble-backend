@@ -148,6 +148,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	)
 	router.GET("/scenarios/:scenario_id/rules/latest", tom, listLatestScenarioRules(uc))
 
+	router.GET("/scenarios/catalog", tom, getRuleCatalog(uc))
+
 	router.POST("/scenarios/:scenario_id/generate-ast",
 		timeoutMiddleware(conf.BatchTimeout), handleGenerateRule(uc))
 
