@@ -78,20 +78,20 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 						Nullable: false,
 					},
 					"reference_id": {
-						ID:      "transactions-reference-id-field-id",
-						TableId: "transactions-table-id",
+						ID:       "transactions-reference-id-field-id",
+						TableId:  "transactions-table-id",
 						DataType: models.String,
 						Name:     "reference_id",
 					},
 					"not_yet_unique_id": {
-						ID:      "transactions-not-yet-unique-id-field-id",
-						TableId: "transactions-table-id",
+						ID:       "transactions-not-yet-unique-id-field-id",
+						TableId:  "transactions-table-id",
 						DataType: models.String,
 						Name:     "not_yet_unique_id",
 					},
 					"unique_id": {
-						ID:      "transactions-unique-id-field-id",
-						TableId: "transactions-table-id",
+						ID:       "transactions-unique-id-field-id",
+						TableId:  "transactions-table-id",
 						DataType: models.String,
 						Name:     "unique_id",
 					},
@@ -171,8 +171,8 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 						UnicityConstraint: models.PendingUniqueConstraint,
 					},
 					"not_yet_unique_id": {
-						ID:      "transactions-not-yet-unique-id-field-id",
-						TableId: "transactions-table-id",
+						ID:       "transactions-not-yet-unique-id-field-id",
+						TableId:  "transactions-table-id",
 						DataType: models.String,
 						Name:     "not_yet_unique_id",
 					},
@@ -573,7 +573,8 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal() {
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
-	suite.dataModelRepository.On("UpdateDataModelTable",
+	suite.dataModelRepository.On(
+		"UpdateDataModelTable",
 		suite.ctx, suite.transaction, tableId, utils.Ptr("description"),
 		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
 		pure_utils.NullFromPtr[string](nil),
@@ -581,13 +582,15 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal() {
 		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[string](nil),
 		(*json.RawMessage)(nil),
+		(*models.TableLifecycle)(nil),
 	).
 		Return(nil)
 	// validateTableSemanticType: table "name" has SemanticTypeUnset → noOpValidation
 	suite.dataModelRepository.On("GetDataModel", suite.ctx, suite.transaction, suite.organizationId, false, false).
 		Return(models.DataModel{Tables: map[string]models.Table{"name": {Name: "name"}}}, nil)
 
-	err := usecase.UpdateDataModelTable(suite.ctx, tableId,
+	err := usecase.UpdateDataModelTable(
+		suite.ctx, tableId,
 		utils.Ptr("description"),
 		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
 		pure_utils.NullFromPtr[string](nil),
@@ -613,7 +616,8 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_security_error(
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(suite.securityError)
 
-	err := usecase.UpdateDataModelTable(suite.ctx, tableId, utils.Ptr("description"),
+	err := usecase.UpdateDataModelTable(
+		suite.ctx, tableId, utils.Ptr("description"),
 		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
 		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[models.SemanticType](nil),
@@ -638,7 +642,8 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_repository_erro
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
-	suite.dataModelRepository.On("UpdateDataModelTable",
+	suite.dataModelRepository.On(
+		"UpdateDataModelTable",
 		suite.ctx, suite.transaction, tableId, utils.Ptr("description"),
 		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
 		pure_utils.NullFromPtr[string](nil),
@@ -646,10 +651,12 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_repository_erro
 		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[string](nil),
 		(*json.RawMessage)(nil),
+		(*models.TableLifecycle)(nil),
 	).
 		Return(suite.repositoryError)
 
-	err := usecase.UpdateDataModelTable(suite.ctx, tableId,
+	err := usecase.UpdateDataModelTable(
+		suite.ctx, tableId,
 		utils.Ptr("description"),
 		pure_utils.NullFromPtr[models.FollowTheMoneyEntity](nil),
 		pure_utils.NullFromPtr[string](nil),
@@ -677,7 +684,8 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal_set_ftm
 	suite.dataModelRepository.On("GetDataModelTable", suite.ctx, suite.transaction, tableId).
 		Return(table, nil)
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
-	suite.dataModelRepository.On("UpdateDataModelTable",
+	suite.dataModelRepository.On(
+		"UpdateDataModelTable",
 		suite.ctx, suite.transaction, tableId, utils.Ptr("description"),
 		pure_utils.NullFrom(ftmEntity),
 		pure_utils.NullFromPtr[string](nil),
@@ -685,13 +693,15 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelTable_nominal_set_ftm
 		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[string](nil),
 		(*json.RawMessage)(nil),
+		(*models.TableLifecycle)(nil),
 	).
 		Return(nil)
 	// validateTableSemanticType: table "name" has SemanticTypeUnset → noOpValidation
 	suite.dataModelRepository.On("GetDataModel", suite.ctx, suite.transaction, suite.organizationId, false, false).
 		Return(models.DataModel{Tables: map[string]models.Table{"name": {Name: "name"}}}, nil)
 
-	err := usecase.UpdateDataModelTable(suite.ctx, tableId, utils.Ptr("description"),
+	err := usecase.UpdateDataModelTable(
+		suite.ctx, tableId, utils.Ptr("description"),
 		pure_utils.NullFrom(ftmEntity),
 		pure_utils.NullFromPtr[string](nil),
 		pure_utils.NullFromPtr[models.SemanticType](nil),

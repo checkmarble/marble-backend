@@ -333,3 +333,11 @@ type GraphBuildArgs struct {
 }
 
 func (GraphBuildArgs) Kind() string { return "graph_build" }
+
+type ClientDataPurgeArgs struct {
+	OrgId uuid.UUID `json:"org_id"`
+}
+
+func (ClientDataPurgeArgs) Kind() string {
+	return "client_data_purge"
+}
