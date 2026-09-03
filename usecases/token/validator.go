@@ -36,8 +36,8 @@ func (v *Validator) fromAPIKey(ctx context.Context, key string) (models.Credenti
 	}
 
 	apiKey.DisplayString = fmt.Sprintf("Api key %s*** of %s", apiKey.Prefix, organization.Name)
-
 	credentials := apiKey.IntoCredentials()
+	credentials.TenantId = organization.TenantId
 
 	return credentials, nil
 }

@@ -31,6 +31,7 @@ type OrgImportUsecase struct {
 
 	orgRepository        repositories.OrganizationRepository
 	userRepository       repositories.UserRepository
+	grantRepository      repositories.GrantRepository
 	firebaseAdminer      idp.Adminer
 	dataModelRepository  repositories.DataModelRepository
 	dataModelUsecase     usecase
@@ -54,6 +55,7 @@ func NewOrgImportUsecase(
 	security security.EnforceSecurityOrgImportImpl,
 	organizationRepository repositories.OrganizationRepository,
 	userRepository repositories.UserRepository,
+	grantRepository repositories.GrantRepository,
 	firebaseAdminer idp.Adminer,
 	dataModelRepository repositories.DataModelRepository,
 	dataModelUsecase usecase,
@@ -75,6 +77,7 @@ func NewOrgImportUsecase(
 		security:             security,
 		orgRepository:        organizationRepository,
 		userRepository:       userRepository,
+		grantRepository:      grantRepository,
 		firebaseAdminer:      firebaseAdminer,
 		dataModelRepository:  dataModelRepository,
 		dataModelUsecase:     dataModelUsecase,
@@ -295,7 +298,11 @@ func (uc *OrgImportUsecase) createOrganization(ctx context.Context, tx repositor
 	if err != nil {
 		return uuid.Nil, err
 	}
-
+	for _, adminID := range admins {
+		if err := uc.grantRepository.EnsureTenantAdminForOrganization(ctx, tx, adminID, orgId); err != nil {
+			return uuid.Nil, errors.Wrap(err, "could not create tenant admin grant")
+		}
+	}
 	admin, err := uc.userRepository.UserById(ctx, tx, admins[0])
 	if err != nil {
 		return uuid.Nil, err

@@ -24,6 +24,7 @@ type onboardingTestDeps struct {
 	executorFactory    *mocks.ExecutorFactory
 	orgRepository      *mocks.OrganizationRepository
 	userRepository     *mocks.UserRepository
+	grantRepository    *mocks.GrantRepository
 	firebase           *mocks.FirebaseAdminClient
 }
 
@@ -34,6 +35,7 @@ func onboardingUsecaseForTest(tokenProvider auth.TokenProvider) (OnboardingUseca
 		executorFactory: new(mocks.ExecutorFactory),
 		orgRepository:   new(mocks.OrganizationRepository),
 		userRepository:  new(mocks.UserRepository),
+		grantRepository: new(mocks.GrantRepository),
 		firebase:        new(mocks.FirebaseAdminClient),
 	}
 	deps.transactionFactory = &mocks.TransactionFactory{TxMock: deps.transaction}
@@ -43,6 +45,7 @@ func onboardingUsecaseForTest(tokenProvider auth.TokenProvider) (OnboardingUseca
 		deps.transactionFactory,
 		deps.orgRepository,
 		deps.userRepository,
+		deps.grantRepository,
 		tokenProvider,
 		deps.firebase,
 	)
@@ -81,12 +84,14 @@ func TestCreateInitialOrganization(t *testing.T) {
 				return u.Email == "admin@acme.com" && u.Role == models.ADMIN
 			},
 		)).Return("some-user-id", nil)
+		deps.grantRepository.On("EnsureTenantAdminForOrganization", ctx, deps.transaction, "some-user-id", mock.Anything).Return(nil)
 		deps.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
 
 		require.NoError(t, uc.CreateInitialOrganization(ctx, validOnboardingPayload()))
 
 		deps.orgRepository.AssertExpectations(t)
 		deps.userRepository.AssertExpectations(t)
+		deps.grantRepository.AssertExpectations(t)
 	})
 
 	t.Run("normalizes the email before persisting it", func(t *testing.T) {
@@ -100,6 +105,7 @@ func TestCreateInitialOrganization(t *testing.T) {
 			func(u models.CreateUser) bool { return u.Email == "admin@acme.com" },
 		)).
 			Return("some-user-id", nil)
+		deps.grantRepository.On("EnsureTenantAdminForOrganization", mock.Anything, mock.Anything, "some-user-id", mock.Anything).Return(nil)
 		deps.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
 
 		payload := validOnboardingPayload()
@@ -201,6 +207,7 @@ func TestCreateInitialOrganization(t *testing.T) {
 			mock.Anything).Return(nil)
 		deps.userRepository.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).
 			Return("some-user-id", nil)
+		deps.grantRepository.On("EnsureTenantAdminForOrganization", mock.Anything, mock.Anything, "some-user-id", mock.Anything).Return(nil)
 
 		payload := validOnboardingPayload()
 		payload.Password = "hunter2hunter2"
