@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
@@ -26,13 +27,16 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 	}
 
 	organization := models.Organization{
-		Id:   utils.TextToUUID("organization_id"),
-		Name: "organization",
+		Id:       utils.TextToUUID("organization_id"),
+		Name:     "organization",
+		TenantId: utils.TextToUUID("tenant_id"),
 	}
 
 	creds := models.Credentials{
 		OrganizationId: utils.TextToUUID("organization_id"),
+		TenantId:       utils.TextToUUID("tenant_id"),
 		Role:           models.ADMIN,
+		Roles:          []models.Role{models.ADMIN, models.TENANT_ADMIN},
 		ActorIdentity: models.Identity{
 			ApiKeyId:   "api_key_id",
 			ApiKeyName: "Api key abc*** of organization",
@@ -47,6 +51,11 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 			Return(apiKey, nil)
 		mockKeyAndOrganizationGetter.On("GetOrganizationByID", ctx, apiKey.OrganizationId).
 			Return(organization, nil)
+		mockKeyAndOrganizationGetter.On("ActiveGrantsForPrincipal", mock.Anything, "api_key", apiKey.Id).
+			Return([]models.Grant{
+				{Role: models.ADMIN, OrganizationId: apiKey.OrganizationId},
+				{Role: models.TENANT_ADMIN, TenantId: organization.TenantId},
+			}, nil)
 
 		v := Validator{
 			getter: mockKeyAndOrganizationGetter,

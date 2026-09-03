@@ -12,6 +12,7 @@ const (
 	OrganizationEnvironmentUnknown OrganizationEnvironment = iota
 	OrganizationEnvironmentProduction
 	OrganizationEnvironmentDemo
+	OrganizationEnvironmentStaging
 )
 
 func (e OrganizationEnvironment) String() string {
@@ -20,6 +21,8 @@ func (e OrganizationEnvironment) String() string {
 		return "production"
 	case OrganizationEnvironmentDemo:
 		return "demo"
+	case OrganizationEnvironmentStaging:
+		return "staging"
 	default:
 		return "unknown"
 	}
@@ -31,6 +34,8 @@ func ParseOrganizationEnvironment(s string) OrganizationEnvironment {
 		return OrganizationEnvironmentProduction
 	case "demo":
 		return OrganizationEnvironmentDemo
+	case "staging":
+		return OrganizationEnvironmentStaging
 	default:
 		return OrganizationEnvironmentUnknown
 	}
