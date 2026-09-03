@@ -42,6 +42,7 @@ type DataModelRepository interface {
 		captionField pure_utils.Null[string],
 		primaryOrderingField pure_utils.Null[string],
 		metadata *json.RawMessage,
+		lifecycle *models.TableLifecycle,
 	) error
 	GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error)
 	CreateDataModelField(ctx context.Context, exec Executor, organizationId uuid.UUID, fieldId string, field models.CreateFieldInput) error
@@ -147,10 +148,18 @@ func (repo MarbleDbRepository) GetDataModel(
 
 		_, ok := dataModel.Tables[field.TableName]
 		if !ok {
-			var ftmEntity *models.FollowTheMoneyEntity
+			var (
+				ftmEntity *models.FollowTheMoneyEntity
+				lifecycle models.TableLifecycle
+			)
 			if field.TableFTMEntity != nil {
 				entity := models.FollowTheMoneyEntityFrom(*field.TableFTMEntity)
 				ftmEntity = &entity
+			}
+			if field.TableLifecycle != nil {
+				if err = json.Unmarshal(field.TableLifecycle, &lifecycle); err != nil {
+					return models.DataModel{}, err
+				}
 			}
 			dataModel.Tables[field.TableName] = models.Table{
 				ID:                   field.TableID,
@@ -164,6 +173,7 @@ func (repo MarbleDbRepository) GetDataModel(
 				CaptionField:         field.TableCaptionField,
 				PrimaryOrderingField: field.TablePrimaryOrderingField,
 				Metadata:             field.TableMetadata,
+				Lifecycle:            lifecycle,
 			}
 		}
 		dataModel.Tables[field.TableName].Fields[field.FieldName] = models.Field{
@@ -209,11 +219,11 @@ func (repo MarbleDbRepository) CreateDataModelTable(
 	}
 
 	query := `
-		INSERT INTO data_model_tables (id, organization_id, name, description, alias, semantic_type, ftm_entity, metadata, primary_ordering_field)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+		INSERT INTO data_model_tables (id, organization_id, name, description, alias, semantic_type, ftm_entity, metadata, primary_ordering_field, lifecycle)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
 
 	_, err := exec.Exec(ctx, query, tableID, organizationId, input.Name, input.Description, input.Alias,
-		string(input.SemanticType), input.FTMEntity, input.Metadata, input.PrimaryOrderingField)
+		string(input.SemanticType), input.FTMEntity, input.Metadata, input.PrimaryOrderingField, input.Lifecycle)
 	if err != nil {
 		if IsUniqueViolationError(err) {
 			return models.ConflictError
@@ -251,6 +261,7 @@ func (repo MarbleDbRepository) UpdateDataModelTable(
 	captionField pure_utils.Null[string],
 	primaryOrderingField pure_utils.Null[string],
 	metadata *json.RawMessage,
+	lifecycle *models.TableLifecycle,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -290,6 +301,10 @@ func (repo MarbleDbRepository) UpdateDataModelTable(
 		updated = true
 		query = query.Set("metadata", *metadata)
 	}
+	if lifecycle != nil {
+		updated = true
+		query = query.Set("lifecycle", *lifecycle)
+	}
 
 	if !updated {
 		return nil
@@ -324,7 +339,8 @@ func (repo MarbleDbRepository) CreateDataModelField(
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id`
 
-	_, err := exec.Exec(ctx,
+	_, err := exec.Exec(
+		ctx,
 		query,
 		fieldId,
 		field.TableId,
@@ -487,6 +503,7 @@ func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Exec
 			&dbModel.TableCaptionField,
 			&dbModel.TablePrimaryOrderingField,
 			&dbModel.TableMetadata,
+			&dbModel.TableLifecycle,
 			&dbModel.FieldID,
 			&dbModel.FieldName,
 			&dbModel.FieldType,
