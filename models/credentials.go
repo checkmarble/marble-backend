@@ -18,8 +18,25 @@ type Identity struct {
 type Credentials struct {
 	ActorIdentity  Identity // email or api key, for audit log
 	OrganizationId uuid.UUID
-	TenantId       uuid.UUID
-	Role           Role
+	Roles          []Role
+}
+
+func (c Credentials) HasRole(role Role) bool {
+	for _, candidate := range c.Roles {
+		if candidate == role {
+			return true
+		}
+	}
+	return false
+}
+
+func (c Credentials) HasPermission(permission Permission) bool {
+	for _, role := range c.Roles {
+		if role.HasPermission(permission) {
+			return true
+		}
+	}
+	return false
 }
 
 func (u User) IntoCredentials() Credentials {
@@ -31,8 +48,7 @@ func (u User) IntoCredentials() Credentials {
 			LastName:  u.LastName,
 		},
 		OrganizationId: u.OrganizationId,
-		TenantId:       u.TenantId,
-		Role:           u.Role,
+		Roles:          []Role{u.Role},
 	}
 }
 
@@ -43,6 +59,6 @@ func (k ApiKey) IntoCredentials() Credentials {
 			ApiKeyName: k.DisplayString,
 		},
 		OrganizationId: k.OrganizationId,
-		Role:           k.Role,
+		Roles:          []Role{k.Role},
 	}
 }

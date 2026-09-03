@@ -77,8 +77,8 @@ func injectDbSessionConfig(ctx context.Context, exec executor, query string) (pg
 		cmds = append(cmds, auditCommands{"SET_CONFIG($7, $8, false)", []any{
 			postgres_audit_org_id_parameter, creds.OrganizationId,
 		}})
-		cmds = append(cmds, auditCommands{"SET_CONFIG($9, $10, false)", []any{
-			postgres_audit_tenant_id_parameter, creds.TenantId,
+		cmds = append(cmds, auditCommands{"SET_CONFIG($9, (SELECT tenant_id::text FROM organizations WHERE id = $10), false)", []any{
+			postgres_audit_tenant_id_parameter, creds.OrganizationId,
 		}})
 	}
 
