@@ -58,6 +58,7 @@ const (
 	FUNC_RECORD_RISK_LEVEL
 	FUNC_SCORE_COMPUTATION
 	FUNC_SWITCH
+	FUNC_CASE
 
 	FUNC_UNDEFINED Function = -1
 	FUNC_UNKNOWN   Function = -2
@@ -90,6 +91,11 @@ type ScoreComputationResult struct {
 	Branch   *int `json:"branch,omitempty"`
 	Fallback bool `json:"fallback"`
 	Default  bool `json:"default"`
+}
+
+type SwitchCaseResult struct {
+	Matched bool    `json:"matched"`
+	Value   float64 `json:"value"`
 }
 
 // If number of arguments -1 the function can take any number of arguments
@@ -321,8 +327,12 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_SWITCH: {
 		DebugName:           "FUNC_SWITCH",
 		AstName:             "Switch",
-		NamedArguments:      []string{"field", "type"},
-		LazyChildEvaluation: shortCircuitIfScoringTriggered,
+		NamedArguments:      []string{"field", "type", "fallback"},
+		LazyChildEvaluation: shortCircuitIfSwitchTriggered,
+	},
+	FUNC_CASE: {
+		DebugName: "FUNC_CASE",
+		AstName:   "Case",
 	},
 }
 
@@ -374,11 +384,15 @@ func shortCircuitIfFalse(res NodeEvaluation) bool {
 	return true
 }
 
-func shortCircuitIfScoringTriggered(res NodeEvaluation) bool {
-	if s, ok := res.ReturnValue.(ScoreComputationResult); ok {
+func shortCircuitIfSwitchTriggered(res NodeEvaluation) bool {
+	switch s := res.ReturnValue.(type) {
+	case ScoreComputationResult:
 		return !s.Triggered
+	case SwitchCaseResult:
+		return !s.Matched
+	default:
+		return false
 	}
-	return false
 }
 
 func IsLogicalOperation(f Function) bool {

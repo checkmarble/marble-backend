@@ -57,3 +57,34 @@ func TestAstToJson(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, serialized)
 }
+
+func TestNumericSwitchDtoRoundTrip(t *testing.T) {
+	input := NodeDto{
+		Name: "Switch",
+		Children: []NodeDto{
+			{
+				Name: "Case",
+				Children: []NodeDto{
+					{Constant: true},
+					{Constant: 42.0},
+				},
+			},
+		},
+		NamedChildren: map[string]NodeDto{
+			"fallback": {Constant: 10.0},
+		},
+	}
+
+	node, err := AdaptASTNode(input)
+	assert.NoError(t, err)
+	assert.Equal(t, ast.FUNC_SWITCH, node.Function)
+	assert.Equal(t, ast.FUNC_CASE, node.Children[0].Function)
+
+	output, err := AdaptNodeDto(node)
+	assert.NoError(t, err)
+	assert.Equal(t, "Switch", output.Name)
+	assert.Equal(t, "Case", output.Children[0].Name)
+	assert.Equal(t, true, output.Children[0].Children[0].Constant)
+	assert.Equal(t, 42.0, output.Children[0].Children[1].Constant)
+	assert.Equal(t, 10.0, output.NamedChildren["fallback"].Constant)
+}
