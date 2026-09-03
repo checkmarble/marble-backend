@@ -90,7 +90,7 @@ WHERE revoked_at IS NULL
 INSERT INTO grants (id, principal_type, principal_id, principal_authority, tenant_id, role)
 SELECT uuid_generate_v4(), 'user', u.id::text, 'marble', o.tenant_id, 'TENANT_ADMIN'
 FROM users u
-JOIN organizations o ON o.id = u.organization_id
+JOIN organizations o ON o.id = u.organization_id AND o.deleted_at IS NULL
 WHERE u.organization_id IS NOT NULL
   AND u.organization_id <> '00000000-0000-0000-0000-000000000000'
   AND u.deleted_at IS NULL
