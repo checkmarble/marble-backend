@@ -37,7 +37,8 @@ func ParseOrganizationEnvironment(s string) OrganizationEnvironment {
 }
 
 type Organization struct {
-	Id uuid.UUID
+	Id       uuid.UUID
+	TenantId uuid.UUID
 
 	PublicId uuid.UUID
 

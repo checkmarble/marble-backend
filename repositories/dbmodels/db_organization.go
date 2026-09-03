@@ -11,6 +11,7 @@ import (
 
 type DBOrganizationResult struct {
 	Id                      uuid.UUID       `db:"id"`
+	TenantId                uuid.UUID       `db:"tenant_id"`
 	PublicId                uuid.UUID       `db:"public_id"`
 	DeletedAt               *int            `db:"deleted_at"`
 	Name                    string          `db:"name"`
@@ -38,6 +39,7 @@ func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
 
 	return models.Organization{
 		Id:                      db.Id,
+		TenantId:                db.TenantId,
 		PublicId:                db.PublicId,
 		Name:                    db.Name,
 		WhitelistedSubnets:      db.AllowedNetworks,

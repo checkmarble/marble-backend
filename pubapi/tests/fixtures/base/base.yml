@@ -1,6 +1,11 @@
+tenants:
+  - id: 20000000-0000-0000-0000-000000000000
+    name: ACME
+
 organizations:
   - id: 10000000-0000-0000-0000-000000000000
     name: ACME
+    tenant_id: 20000000-0000-0000-0000-000000000000
 
 organization_feature_access:
   - org_id: 10000000-0000-0000-0000-000000000000

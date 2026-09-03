@@ -22,6 +22,7 @@ type OnboardingUsecase struct {
 	transactionFactory executor_factory.TransactionFactory
 	orgRepository      repositories.OrganizationRepository
 	userRepository     repositories.UserRepository
+	grantRepository    repositories.GrantRepository
 	tokenProvider      auth.TokenProvider
 	firebase           idp.Adminer
 }
@@ -31,6 +32,7 @@ func NewOnboardingUsecase(
 	transactionFactory executor_factory.TransactionFactory,
 	orgRepository repositories.OrganizationRepository,
 	userRepository repositories.UserRepository,
+	grantRepository repositories.GrantRepository,
 	tokenProvider auth.TokenProvider,
 	firebase idp.Adminer,
 ) OnboardingUsecase {
@@ -39,6 +41,7 @@ func NewOnboardingUsecase(
 		transactionFactory: transactionFactory,
 		orgRepository:      orgRepository,
 		userRepository:     userRepository,
+		grantRepository:    grantRepository,
 		tokenProvider:      tokenProvider,
 		firebase:           firebase,
 	}
@@ -105,11 +108,15 @@ func (uc OnboardingUsecase) CreateInitialOrganization(ctx context.Context, req d
 			Role:           models.ADMIN,
 		}
 
-		if _, err := uc.userRepository.CreateUser(ctx, tx, userCreate); err != nil {
+		userID, err := uc.userRepository.CreateUser(ctx, tx, userCreate)
+		if err != nil {
 			if repositories.IsUniqueViolationError(err) {
 				return errors.Wrap(models.ConflictError, "user with the same email already exists")
 			}
 			return err
+		}
+		if err := uc.grantRepository.EnsureTenantAdminForOrganization(ctx, tx, userID, orgId); err != nil {
+			return errors.Wrap(err, "could not create tenant admin grant")
 		}
 
 		return nil

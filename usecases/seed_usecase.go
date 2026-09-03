@@ -6,6 +6,7 @@ import (
 	"net/mail"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/idp"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -21,6 +22,7 @@ type SeedUseCase struct {
 	transactionFactory     executor_factory.TransactionFactory
 	executorFactory        executor_factory.ExecutorFactory
 	userRepository         repositories.UserRepository
+	grantRepository        repositories.GrantRepository
 	organizationCreator    organization.OrganizationCreator
 	organizationRepository repositories.OrganizationRepository
 	customListRepository   repositories.CustomListRepository
@@ -31,13 +33,27 @@ func (usecase *SeedUseCase) SeedMarbleAdmins(ctx context.Context, firstMarbleAdm
 	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 
-	_, err := usecase.userRepository.CreateUser(ctx, exec, models.CreateUser{
+	userID, err := usecase.userRepository.CreateUser(ctx, exec, models.CreateUser{
 		Email: firstMarbleAdminEmail,
 		Role:  models.MARBLE_ADMIN,
 	})
 
 	// ignore user already added
 	if err != nil && !repositories.IsUniqueViolationError(err) {
+		return err
+	}
+	if err != nil {
+		user, findErr := usecase.userRepository.UserByEmail(ctx, exec, firstMarbleAdminEmail)
+		if findErr != nil {
+			return findErr
+		}
+		userID = string(user.UserId)
+	}
+	if err := repositories.ExecBuilder(ctx, exec, repositories.NewQueryBuilder().
+		Insert("grants").
+		Columns("id", "principal_type", "principal_id", "principal_authority", "role").
+		Values(pure_utils.NewId(), "user", userID, "marble", models.MARBLE_ADMIN.String()).
+		Suffix("ON CONFLICT DO NOTHING")); err != nil {
 		return err
 	}
 	logger.InfoContext(ctx, fmt.Sprintf("Created marble admin user with email %s (or already exists)", firstMarbleAdminEmail))
@@ -110,7 +126,7 @@ func (usecase *SeedUseCase) CreateOrgAndUser(ctx context.Context, input models.I
 	}
 
 	if input.AdminEmail != "" {
-		createdUserId, err := usecase.userRepository.CreateUser(ctx, exec, models.CreateUser{
+		userID, err := usecase.userRepository.CreateUser(ctx, exec, models.CreateUser{
 			Email:          input.AdminEmail,
 			OrganizationId: targetOrg.Id,
 			Role:           models.ADMIN,
@@ -118,6 +134,20 @@ func (usecase *SeedUseCase) CreateOrgAndUser(ctx context.Context, input models.I
 		userAlreadyExists := repositories.IsUniqueViolationError(err)
 		if err != nil && !userAlreadyExists {
 			return err
+		}
+		if userAlreadyExists {
+			user, findErr := usecase.userRepository.UserByEmail(ctx, exec, input.AdminEmail)
+			if findErr != nil {
+				return findErr
+			}
+			if user.OrganizationId != targetOrg.Id {
+				return errors.Wrap(models.ConflictError,
+					"admin user already belongs to another organization")
+			}
+			userID = string(user.UserId)
+		}
+		if err := usecase.grantRepository.EnsureTenantAdminForOrganization(ctx, exec, userID, targetOrg.Id); err != nil {
+			return errors.Wrap(err, "could not create tenant admin grant")
 		}
 
 		if userAlreadyExists {
@@ -130,9 +160,9 @@ func (usecase *SeedUseCase) CreateOrgAndUser(ctx context.Context, input models.I
 				ctx,
 				fmt.Sprintf("Created admin user for organization %s with email %s", targetOrg.Id, input.AdminEmail),
 			)
-			tracking.TrackEventWithUserId(ctx, models.AnalyticsUserSetup, models.UserId(createdUserId),
+			tracking.TrackEventWithUserId(ctx, models.AnalyticsUserSetup, models.UserId(userID),
 				map[string]any{
-					"user_id": createdUserId,
+					"user_id": userID,
 					"email":   input.AdminEmail,
 					"org_id":  targetOrg.Id,
 				},
