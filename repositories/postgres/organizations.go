@@ -13,7 +13,7 @@ import (
 
 func (db *Database) GetOrganizationByID(ctx context.Context, organizationID uuid.UUID) (models.Organization, error) {
 	query := `
-		SELECT id, name
+		SELECT id, name, tenant_id
 		FROM organizations
 		WHERE id = $1
 	`
@@ -22,6 +22,7 @@ func (db *Database) GetOrganizationByID(ctx context.Context, organizationID uuid
 	err := db.pool.QueryRow(ctx, query, organizationID).Scan(
 		&organization.Id,
 		&organization.Name,
+		&organization.TenantId,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return models.Organization{}, models.NotFoundError

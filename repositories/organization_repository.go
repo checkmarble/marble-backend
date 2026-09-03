@@ -7,6 +7,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
@@ -87,6 +88,13 @@ func (repo *MarbleDbRepository) CreateOrganization(
 	} else {
 		environment = models.OrganizationEnvironmentProduction
 	}
+	tenantId := pure_utils.NewId()
+	if err := ExecBuilder(ctx, exec, NewQueryBuilder().
+		Insert("tenants").
+		Columns("id", "name").
+		Values(tenantId, input.Name)); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,
@@ -96,11 +104,13 @@ func (repo *MarbleDbRepository) CreateOrganization(
 				"id",
 				"name",
 				"environment",
+				"tenant_id",
 			).
 			Values(
 				newOrganizationId,
 				input.Name,
 				environment.String(),
+				tenantId,
 			),
 	)
 	if err != nil {
