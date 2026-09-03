@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // //////////////////////////////////
@@ -43,7 +44,19 @@ func (e PgExecutor) DatabaseSchema() models.DatabaseSchema {
 }
 
 func (e PgExecutor) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
-	if tag, err := injectDbSessionConfig(ctx, e.exec, sql); err != nil {
+	var exec executor = e.exec
+	var release func()
+	if pool, ok := e.exec.(*pgxpool.Pool); ok {
+		conn, err := pool.Acquire(ctx)
+		if err != nil {
+			return pgconn.CommandTag{}, err
+		}
+		exec = conn
+		release = conn.Release
+		defer release()
+	}
+
+	if tag, err := injectDbSessionConfig(ctx, exec, sql); err != nil {
 		return tag, err
 	}
 
@@ -55,7 +68,7 @@ func (e PgExecutor) Exec(ctx context.Context, sql string, args ...any) (pgconn.C
 	return utils.MeasureLatencyErr(utils.MetricQueryLatency, prometheus.Labels{
 		"org_id": orgId.String(), "schema": e.databaseSchema.Schema,
 	}, func() (pgconn.CommandTag, error) {
-		return e.exec.Exec(ctx, sql, args...)
+		return exec.Exec(ctx, sql, args...)
 	})
 }
 
