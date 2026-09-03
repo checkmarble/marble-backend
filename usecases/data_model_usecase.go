@@ -274,7 +274,8 @@ func (usecase *usecase) ensureTableHasPivot(
 				OrganizationId: organizationId,
 				FieldId:        utils.Ptr(fieldIdsByName["object_id"]),
 				PathLinkIds:    pathLinkEmpty,
-			}); err != nil {
+			},
+		); err != nil {
 			return err
 		}
 	}
@@ -308,7 +309,8 @@ func (usecase *usecase) CreateDataModelTable(
 	tablesById := oldDatamodel.AllTablesAsMap()
 	for i := range input.Links {
 		parentFieldId, err := retrieveParentFieldIdForLink(
-			input.Links[i].ParentTableID, tablesById)
+			input.Links[i].ParentTableID, tablesById,
+		)
 		if err != nil {
 			return "", err
 		}
@@ -409,7 +411,8 @@ func (usecase *usecase) CreateDataModelTable(
 		// Enqueue navigation index creation within the transaction
 		if len(navIndexes) > 0 {
 			if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(
-				ctx, tx, organizationId, navIndexes); err != nil {
+				ctx, tx, organizationId, navIndexes,
+			); err != nil {
 				return err
 			}
 		}
@@ -544,7 +547,8 @@ func (usecase *usecase) UpdateDataModelTable(
 						continue
 					}
 					names, err := usecase.clientDbIndexEditor.FindNavigationIndexNames(
-						ctx, table.OrganizationID, table.Name, l.ChildFieldName)
+						ctx, table.OrganizationID, table.Name, l.ChildFieldName,
+					)
 					if err != nil {
 						return err
 					}
@@ -557,13 +561,15 @@ func (usecase *usecase) UpdateDataModelTable(
 				}
 				if len(navIndexNamesToDelete) > 0 {
 					if err := usecase.taskQueueRepository.EnqueueDeleteIndexByNameTask(
-						ctx, tx, table.OrganizationID, navIndexNamesToDelete); err != nil {
+						ctx, tx, table.OrganizationID, navIndexNamesToDelete,
+					); err != nil {
 						return err
 					}
 				}
 				if len(navIndexesToCreate) > 0 {
 					if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(
-						ctx, tx, table.OrganizationID, navIndexesToCreate); err != nil {
+						ctx, tx, table.OrganizationID, navIndexesToCreate,
+					); err != nil {
 						return err
 					}
 				}
@@ -571,7 +577,7 @@ func (usecase *usecase) UpdateDataModelTable(
 		}
 
 		err = usecase.dataModelRepository.UpdateDataModelTable(ctx, tx, tableID, description,
-			ftmEntity, alias, semanticType, captionField, primaryOrderingField, nil)
+			ftmEntity, alias, semanticType, captionField, primaryOrderingField, nil, nil)
 		if err != nil {
 			return err
 		}
@@ -579,7 +585,8 @@ func (usecase *usecase) UpdateDataModelTable(
 		// Validation after update (also revalidates tables that link to this one,
 		// since a semantic type change here can invalidate dependents).
 		if err := usecase.validateTableAndDependentsSemanticType(
-			ctx, tx, table.OrganizationID, table.Name); err != nil {
+			ctx, tx, table.OrganizationID, table.Name,
+		); err != nil {
 			return err
 		}
 		return nil
@@ -611,7 +618,7 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 		oldOrderingField := cmp.Or(table.PrimaryOrderingField, "updated_at")
 		if err := usecase.dataModelRepository.UpdateDataModelTable(ctx, tx, tableID,
 			input.Description, input.FTMEntity, input.Alias, input.SemanticType,
-			input.CaptionField, input.PrimaryOrderingField, input.Metadata); err != nil {
+			input.CaptionField, input.PrimaryOrderingField, input.Metadata, input.Lifecycle); err != nil {
 			return err
 		}
 		table, err = usecase.dataModelRepository.GetDataModelTable(ctx, tx, tableID)
@@ -643,7 +650,8 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			}
 
 			canDelete, report, err := usecase.destroyUsecase.canDeleteLink(
-				ctx, table.OrganizationID, tx, linkId)
+				ctx, table.OrganizationID, tx, linkId,
+			)
 			if err != nil {
 				return err
 			}
@@ -654,7 +662,8 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			}
 			if report.ArchivedIterations.Size() > 0 {
 				if err := usecase.destroyUsecase.ArchiveIterations(
-					ctx, tx, report.ArchivedIterations); err != nil {
+					ctx, tx, report.ArchivedIterations,
+				); err != nil {
 					return err
 				}
 			}
@@ -679,7 +688,8 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 					"cannot delete reserved fields object_id and updated_at")
 			}
 			canDelete, report, err := usecase.destroyUsecase.canDeleteRef(
-				ctx, table.OrganizationID, tx, table, &field)
+				ctx, table.OrganizationID, tx, table, &field,
+			)
 			if err != nil {
 				return err
 			}
@@ -690,7 +700,8 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			}
 			if report.ArchivedIterations.Size() > 0 {
 				if err := usecase.destroyUsecase.ArchiveIterations(
-					ctx, tx, report.ArchivedIterations); err != nil {
+					ctx, tx, report.ArchivedIterations,
+				); err != nil {
 					return err
 				}
 				archivedFields = append(archivedFields, field)
@@ -710,7 +721,8 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 					linkType = l.LinkType
 					// Collect navigation index names to delete
 					names, err := usecase.clientDbIndexEditor.FindNavigationIndexNames(
-						ctx, table.OrganizationID, l.ChildTableName, l.ChildFieldName)
+						ctx, table.OrganizationID, l.ChildTableName, l.ChildFieldName,
+					)
 					if err != nil {
 						return err
 					}
@@ -723,7 +735,8 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			// PathLinkIds. Soft delete because decisions may reference the pivot.
 			if linkType == models.LinkTypeBelongsTo {
 				pivots, err := usecase.dataModelRepository.ListPivots(
-					ctx, tx, table.OrganizationID, nil, false, false)
+					ctx, tx, table.OrganizationID, nil, false, false,
+				)
 				if err != nil {
 					return err
 				}
@@ -731,7 +744,8 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 					for _, pathLinkId := range pivot.PathLinkIds {
 						if pathLinkId == linkId {
 							if err := usecase.dataModelRepository.SoftDeletePivot(
-								ctx, tx, pivot.Id.String()); err != nil {
+								ctx, tx, pivot.Id.String(),
+							); err != nil {
 								return err
 							}
 							break
@@ -786,7 +800,8 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			}
 
 			pivots, err := usecase.dataModelRepository.ListPivots(
-				ctx, tx, table.OrganizationID, nil, false, false)
+				ctx, tx, table.OrganizationID, nil, false, false,
+			)
 			if err != nil {
 				return err
 			}
@@ -800,7 +815,8 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 					for _, pathLinkId := range pivot.PathLinkIds {
 						if pathLinkId == linkUpdate.ID {
 							if err := usecase.dataModelRepository.SoftDeletePivot(
-								ctx, tx, pivot.Id.String()); err != nil {
+								ctx, tx, pivot.Id.String(),
+							); err != nil {
 								return err
 							}
 							break
@@ -818,7 +834,8 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 				for _, pivot := range pivots {
 					if pivot.BaseTableId == existingLink.ChildTableId && pivot.FieldId != nil {
 						if err := usecase.dataModelRepository.SoftDeletePivot(
-							ctx, tx, pivot.Id.String()); err != nil {
+							ctx, tx, pivot.Id.String(),
+						); err != nil {
 							return err
 						}
 					}
@@ -860,7 +877,8 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 
 		dataModel, err := usecase.getDataModelWithExec(
 			ctx, tx, table.OrganizationID,
-			models.DataModelReadOptions{IncludeUnicityConstraints: true}, false)
+			models.DataModelReadOptions{IncludeUnicityConstraints: true}, false,
+		)
 		if err != nil {
 			return err
 		}
@@ -937,7 +955,8 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			}
 
 			if err := usecase.dataModelRepository.UpdateDataModelField(
-				ctx, tx, f.ID, f.UpdateFieldInput); err != nil {
+				ctx, tx, f.ID, f.UpdateFieldInput,
+			); err != nil {
 				return err
 			}
 		}
@@ -946,7 +965,8 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 		if input.CaptionField.Set && input.CaptionField.Valid {
 			// Re-fetch data model to include fields added/updated in steps 6-8
 			freshDataModel, err := usecase.dataModelRepository.GetDataModel(
-				ctx, tx, table.OrganizationID, false, false)
+				ctx, tx, table.OrganizationID, false, false,
+			)
 			if err != nil {
 				return err
 			}
@@ -1005,7 +1025,8 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 					}
 					// Delete old navigation indexes for this link
 					names, err := usecase.clientDbIndexEditor.FindNavigationIndexNames(
-						ctx, table.OrganizationID, table.Name, l.ChildFieldName)
+						ctx, table.OrganizationID, table.Name, l.ChildFieldName,
+					)
 					if err != nil {
 						return err
 					}
@@ -1024,14 +1045,16 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 		// Enqueue navigation index deletion for deleted links
 		if len(navIndexNamesToDelete) > 0 {
 			if err := usecase.taskQueueRepository.EnqueueDeleteIndexByNameTask(
-				ctx, tx, table.OrganizationID, navIndexNamesToDelete); err != nil {
+				ctx, tx, table.OrganizationID, navIndexNamesToDelete,
+			); err != nil {
 				return err
 			}
 		}
 		// Enqueue navigation index creation for new links
 		if len(navIndexesToCreate) > 0 {
 			if err := usecase.taskQueueRepository.EnqueueCreateIndexTask(
-				ctx, tx, table.OrganizationID, navIndexesToCreate); err != nil {
+				ctx, tx, table.OrganizationID, navIndexesToCreate,
+			); err != nil {
 				return err
 			}
 		}
@@ -1040,13 +1063,15 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 		// Also revalidates tables that link to this one, since a semantic type
 		// change here can invalidate dependents.
 		if err := usecase.validateTableAndDependentsSemanticType(
-			ctx, tx, table.OrganizationID, table.Name); err != nil {
+			ctx, tx, table.OrganizationID, table.Name,
+		); err != nil {
 			return err
 		}
 
 		// Ensure the table has a pivot (default object_id pivot when none exist)
 		if err := usecase.ensureTableHasPivot(
-			ctx, tx, table.OrganizationID, tableID, fieldIdsByName); err != nil {
+			ctx, tx, table.OrganizationID, tableID, fieldIdsByName,
+		); err != nil {
 			return err
 		}
 
@@ -1055,14 +1080,16 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			ctx, table.OrganizationID, func(orgTx repositories.Transaction) error {
 				for _, field := range deletedFields {
 					if err := usecase.organizationSchemaRepository.DeleteField(
-						ctx, orgTx, table.Name, field.Name); err != nil {
+						ctx, orgTx, table.Name, field.Name,
+					); err != nil {
 						return err
 					}
 				}
 
 				for _, field := range archivedFields {
 					if err := usecase.organizationSchemaRepository.RenameField(
-						ctx, orgTx, table.Name, field.Name); err != nil {
+						ctx, orgTx, table.Name, field.Name,
+					); err != nil {
 						return err
 					}
 				}
@@ -1072,7 +1099,8 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 						continue
 					}
 					if err := usecase.organizationSchemaRepository.CreateField(
-						ctx, orgTx, table.Name, f); err != nil {
+						ctx, orgTx, table.Name, f,
+					); err != nil {
 						return err
 					}
 				}
@@ -1275,7 +1303,8 @@ func validateFieldUpdateRules(
 	if makeEnum && !slices.Contains(enumTypes, field.DataType) {
 		return false, false, errors.Wrap(
 			models.BadParameterError,
-			"enum fields can only be of type string or numeric")
+			"enum fields can only be of type string or numeric",
+		)
 	}
 
 	currentField := dataModel.Tables[table.Name].Fields[field.Name]
@@ -1287,7 +1316,8 @@ func validateFieldUpdateRules(
 	if makeUnique && !slices.Contains(uniqTypes, field.DataType) {
 		return false, false, errors.Wrap(
 			models.BadParameterError,
-			"unique fields can only be of type string, int or float")
+			"unique fields can only be of type string, int or float",
+		)
 	}
 
 	linksToField := findLinksToField(dataModel, table.Name, field.Name)
@@ -1297,24 +1327,28 @@ func validateFieldUpdateRules(
 	if makeNotUnique && len(linksToField) > 0 {
 		return false, false, errors.Wrap(
 			models.BadParameterError,
-			"cannot remove unicity constraint on a field that is linked to another table")
+			"cannot remove unicity constraint on a field that is linked to another table",
+		)
 	}
 	if makeNotUnique && field.Name == "object_id" {
 		return false, false, errors.Wrap(
 			models.BadParameterError,
-			"cannot remove unicity constraint on the object_id field")
+			"cannot remove unicity constraint on the object_id field",
+		)
 	}
 
 	if makeUnique && (makeEnum || (field.IsEnum && !makeNotEnum)) {
 		return false, false, errors.Wrap(
 			models.BadParameterError,
-			"cannot make a field unique if it is an enum")
+			"cannot make a field unique if it is an enum",
+		)
 	}
 	// if makeEnum && !(currentField.UnicityConstraint == models.NoUnicityConstraint || makeNotUnique) {
 	if makeEnum && (makeUnique || (isUnique && !makeNotUnique)) {
 		return false, false, errors.Wrap(
 			models.BadParameterError,
-			"cannot make a field an enum if it is unique or has a pending unique constraint")
+			"cannot make a field an enum if it is unique or has a pending unique constraint",
+		)
 	}
 
 	return
@@ -1529,7 +1563,8 @@ func (usecase *usecase) CreatePivotWithExec(ctx context.Context, exec repositori
 	// old and new decisions grouped under the same pivot (e.g. when a link is demoted
 	// to "related" then promoted back to "belongs_to").
 	existingPivots, err := usecase.dataModelRepository.ListPivots(
-		ctx, exec, input.OrganizationId, &input.BaseTableId, false, true)
+		ctx, exec, input.OrganizationId, &input.BaseTableId, false, true,
+	)
 	if err != nil {
 		return models.Pivot{}, err
 	}
@@ -1920,7 +1955,8 @@ func (usecase usecase) UpdateDataModelOptions(ctx context.Context,
 	table, ok := dataModel.Tables[tableMeta.Name]
 	if !ok {
 		return models.DataModelOptions{}, errors.Wrap(
-			models.UnprocessableEntityError, "table not found")
+			models.UnprocessableEntityError, "table not found",
+		)
 	}
 
 	if len(req.DisplayedFields) > 0 {
@@ -1936,7 +1972,8 @@ func (usecase usecase) UpdateDataModelOptions(ctx context.Context,
 
 			if !fieldFound {
 				return models.DataModelOptions{}, errors.Wrap(
-					models.UnprocessableEntityError, "provided field does not exist on the table")
+					models.UnprocessableEntityError, "provided field does not exist on the table",
+				)
 			}
 		}
 	}

@@ -54,8 +54,9 @@ func (d *DataModelRepository) UpdateDataModelTable(
 	captionField pure_utils.Null[string],
 	primaryOrderingField pure_utils.Null[string],
 	metadata *json.RawMessage,
+	lifecycle *models.TableLifecycle,
 ) error {
-	args := d.Called(ctx, exec, tableID, description, ftmEntity, alias, semanticType, captionField, primaryOrderingField, metadata)
+	args := d.Called(ctx, exec, tableID, description, ftmEntity, alias, semanticType, captionField, primaryOrderingField, metadata, lifecycle)
 	return args.Error(0)
 }
 
