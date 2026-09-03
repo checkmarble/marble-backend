@@ -162,7 +162,8 @@ func (usecase *IngestionUseCase) IngestObject(
 		ctx,
 		"IngestionUseCase.IngestObject",
 		trace.WithAttributes(attribute.String("object_type", objectType)),
-		trace.WithAttributes(attribute.String("organization_id", organizationId.String())))
+		trace.WithAttributes(attribute.String("organization_id", organizationId.String())),
+	)
 	defer span.End()
 
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
@@ -194,7 +195,8 @@ func (usecase *IngestionUseCase) IngestObject(
 
 	if ingestionOptions.ShouldMonitor {
 		continuousScreeningConfigs, err = usecase.continuousScreeningRepository.ListContinuousScreeningConfigByStableIds(
-			ctx, exec, organizationId, org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring), ingestionOptions.ContinuousScreeningIds)
+			ctx, exec, organizationId, org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring), ingestionOptions.ContinuousScreeningIds,
+		)
 		if err != nil {
 			return 0, err
 		}
@@ -230,7 +232,8 @@ func (usecase *IngestionUseCase) IngestObject(
 	}
 	nbInsertedObjects := len(ingestionResults)
 
-	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nbInsertedObjects),
+	logger.DebugContext(
+		ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nbInsertedObjects),
 		slog.String("organization_id", organizationId.String()),
 		slog.String("object_type", objectType),
 		slog.Int("nb_objects", nbInsertedObjects),
@@ -253,7 +256,8 @@ func (usecase *IngestionUseCase) IngestObjects(
 		ctx,
 		"IngestionUseCase.IngestObjects",
 		trace.WithAttributes(attribute.String("object_type", objectType)),
-		trace.WithAttributes(attribute.String("organization_id", organizationId.String())))
+		trace.WithAttributes(attribute.String("organization_id", organizationId.String())),
+	)
 	defer span.End()
 
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
@@ -293,7 +297,8 @@ func (usecase *IngestionUseCase) IngestObjects(
 
 	if ingestionOptions.ShouldMonitor {
 		continuousScreeningConfigs, err = usecase.continuousScreeningRepository.ListContinuousScreeningConfigByStableIds(
-			ctx, exec, organizationId, org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring), ingestionOptions.ContinuousScreeningIds)
+			ctx, exec, organizationId, org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring), ingestionOptions.ContinuousScreeningIds,
+		)
 		if err != nil {
 			return 0, err
 		}
@@ -344,7 +349,8 @@ func (usecase *IngestionUseCase) IngestObjects(
 	}
 	nbInsertedObjects := len(ingestionResults)
 
-	logger.DebugContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nbInsertedObjects),
+	logger.DebugContext(
+		ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nbInsertedObjects),
 		slog.String("organization_id", organizationId.String()),
 		slog.String("object_type", objectType),
 		slog.Int("nb_objects", nbInsertedObjects),
@@ -384,7 +390,8 @@ func (usecase *IngestionUseCase) ListFilteredUploadLogs(
 	logs, err := usecase.uploadLogRepository.ListUploadLogs(
 		ctx,
 		usecase.executorFactory.NewExecutor(), organizationId, objectType,
-		filters, page)
+		filters, page,
+	)
 	if err != nil {
 		return models.Paginated[models.UploadLog]{}, err
 	}
@@ -617,7 +624,8 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 				NumRowsIngested:              &numRowsIngested,
 				InputError:                   &inputErrorString,
 				Error:                        &errorString,
-			})
+			},
+		)
 		if err != nil {
 			logger.ErrorContext(ctx, fmt.Sprintf("Error setting upload log %s to failed", uploadLog.Id), "error", err.Error())
 		}
@@ -630,7 +638,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 	// that makes the checkpoint unreachable, defeating the point of saving one.
 	failAttempt := func(numRowsIngested int, inputErr error, ingestErr error) (models.CsvIngestionOutcome, error) {
 		err := errors.Join(inputErr, ingestErr)
-		if ctx.Err() != nil {
+		if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			logger.WarnContext(ctx, "csv ingestion attempt was cancelled, leaving the upload log resumable",
 				"upload_log_id", uploadLog.Id, "byte_offset", uploadLog.ByteOffset, "error", err.Error())
 			return models.CsvIngestionCompleted, err
@@ -883,7 +891,8 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 
 	if ingestionOptions.ShouldMonitor {
 		continuousScreeningConfigs, err = usecase.continuousScreeningRepository.ListContinuousScreeningConfigByStableIds(
-			ctx, exec, organizationId, org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring), ingestionOptions.ContinuousScreeningIds)
+			ctx, exec, organizationId, org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring), ingestionOptions.ContinuousScreeningIds,
+		)
 		if err != nil {
 			return ingestionResult{
 				err: err,
@@ -987,7 +996,8 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 			}
 		}
 
-		logger.DebugContext(ctx, "csv ingestion progress",
+		logger.DebugContext(
+			ctx, "csv ingestion progress",
 			"upload_log_id", uploadLog.Id,
 			"rows_ingested", previouslyIngested+total,
 			"byte_offset", checkpoint,
@@ -1215,7 +1225,8 @@ func computeFileName(organizationId, tableName string) string {
 
 func retryIngestion(ctx context.Context, f func() error) error {
 	logger := utils.LoggerFromContext(ctx)
-	return retry.Do(f,
+	return retry.Do(
+		f,
 		retry.Attempts(2),
 		retry.LastErrorOnly(true),
 		retry.RetryIf(func(err error) bool {
