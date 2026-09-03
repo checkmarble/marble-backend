@@ -299,3 +299,82 @@ func TestValidationShouldBypassCircuitBreaking(t *testing.T) {
 	})
 	assert.NotEmpty(t, ScenarioValidationToError(result))
 }
+
+func TestValidateScenarioAstNumericSwitch(t *testing.T) {
+	validator := ValidateScenarioAstImpl{
+		AstValidator: staticAstValidator{
+			environment: ast_eval.NewAstEvaluationEnvironment().WithoutOptimizations(),
+		},
+	}
+
+	t.Run("returns a float that can be used in a boolean comparison", func(t *testing.T) {
+		numericSwitch := ast.Node{Function: ast.FUNC_SWITCH}.
+			AddChild(ast.Node{Function: ast.FUNC_CASE}.
+				AddChild(ast.NewNodeConstant(true)).
+				AddChild(ast.NewNodeConstant(20))).
+			AddNamedChild("fallback", ast.NewNodeConstant(10))
+		switchValidation := validator.Validate(context.Background(), models.Scenario{}, &numericSwitch, "float")
+		assert.Empty(t, switchValidation.Errors)
+		assert.Equal(t, 20.0, switchValidation.Evaluation.ReturnValue)
+
+		formula := ast.Node{Function: ast.FUNC_GREATER}.
+			AddChild(ast.NewNodeConstant(30)).
+			AddChild(numericSwitch)
+
+		validation := validator.Validate(context.Background(), models.Scenario{}, &formula, "bool")
+
+		assert.Empty(t, validation.Errors)
+		assert.Empty(t, validation.Evaluation.FlattenErrors())
+		assert.Equal(t, true, validation.Evaluation.ReturnValue)
+		assert.Equal(t, 20.0, validation.Evaluation.Children[1].ReturnValue)
+	})
+
+	t.Run("targets a malformed case value", func(t *testing.T) {
+		numericSwitch := ast.Node{Function: ast.FUNC_SWITCH}.
+			AddChild(ast.Node{Function: ast.FUNC_CASE}.
+				AddChild(ast.NewNodeConstant(true)).
+				AddChild(ast.NewNodeConstant("not a number"))).
+			AddNamedChild("fallback", ast.NewNodeConstant(10))
+		formula := ast.Node{Function: ast.FUNC_GREATER}.
+			AddChild(ast.NewNodeConstant(30)).
+			AddChild(numericSwitch)
+
+		validation := validator.Validate(context.Background(), models.Scenario{}, &formula, "bool")
+
+		caseErrors := validation.Evaluation.Children[1].Children[0].Errors
+		assert.NotEmpty(t, caseErrors)
+		var argumentErr ast.ArgumentError
+		assert.ErrorAs(t, caseErrors[0], &argumentErr)
+		assert.Equal(t, ast.NewArgumentError(1), argumentErr)
+	})
+
+	t.Run("targets a malformed fallback", func(t *testing.T) {
+		numericSwitch := ast.Node{Function: ast.FUNC_SWITCH}.
+			AddChild(ast.Node{Function: ast.FUNC_CASE}.
+				AddChild(ast.NewNodeConstant(false)).
+				AddChild(ast.NewNodeConstant(20))).
+			AddNamedChild("fallback", ast.NewNodeConstant("not a number"))
+		formula := ast.Node{Function: ast.FUNC_GREATER}.
+			AddChild(ast.NewNodeConstant(30)).
+			AddChild(numericSwitch)
+
+		validation := validator.Validate(context.Background(), models.Scenario{}, &formula, "bool")
+
+		switchErrors := validation.Evaluation.Children[1].Errors
+		assert.NotEmpty(t, switchErrors)
+		var argumentErr ast.ArgumentError
+		assert.ErrorAs(t, switchErrors[0], &argumentErr)
+		assert.Equal(t, ast.NewNamedArgumentError("fallback"), argumentErr)
+	})
+}
+
+type staticAstValidator struct {
+	environment ast_eval.AstEvaluationEnvironment
+}
+
+func (v staticAstValidator) MakeDryRunEnvironment(
+	context.Context,
+	models.Scenario,
+) (ast_eval.AstEvaluationEnvironment, *models.ScenarioValidationError) {
+	return v.environment, nil
+}
