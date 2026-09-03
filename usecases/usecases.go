@@ -394,6 +394,7 @@ func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 		transactionFactory:     usecases.NewTransactionFactory(),
 		executorFactory:        usecases.NewExecutorFactory(),
 		userRepository:         usecases.Repositories.MarbleDbRepository,
+		grantRepository:        usecases.Repositories.MarbleDbRepository,
 		organizationCreator:    usecases.NewOrganizationCreator(),
 		organizationRepository: usecases.Repositories.MarbleDbRepository,
 		customListRepository:   usecases.Repositories.CustomListRepository,
@@ -691,6 +692,7 @@ func (usecases *Usecases) NewOnboardingUsecase(tokenProvider auth.TokenProvider)
 	return NewOnboardingUsecase(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
+		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 		tokenProvider,

@@ -20,6 +20,7 @@ const (
 	DEPREC_ROLE_2 // used in an old product
 	ANALYST
 	SYSTEM // internal principal used by background workers
+	TENANT_ADMIN
 )
 
 func GetValidUserRoles() []Role {
@@ -53,6 +54,8 @@ func (r Role) String() string {
 		return "MARBLE_ADMIN"
 	case SYSTEM:
 		return "SYSTEM"
+	case TENANT_ADMIN:
+		return "TENANT_ADMIN"
 	default:
 		return "UNKNOWN_ROLE"
 	}
@@ -86,6 +89,8 @@ func RoleFromString(s string) Role {
 		return API_CLIENT
 	case "MARBLE_ADMIN":
 		return MARBLE_ADMIN
+	case "TENANT_ADMIN":
+		return TENANT_ADMIN
 	}
 	return NO_ROLE
 }
