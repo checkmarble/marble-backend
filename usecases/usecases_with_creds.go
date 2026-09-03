@@ -1213,6 +1213,7 @@ func (usecases *UsecasesWithCreds) NewOrgImportUsecase() OrgImportUsecase {
 		},
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
 		usecases.firebaseAdmin,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewDataModelUseCase(),

@@ -67,6 +67,7 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 			if err != nil {
 				return Token{}, fmt.Errorf("GetOrganizationByID error: %w", err)
 			}
+			credentials.TenantId = organization.TenantId
 
 			tracking.Identify(ctx, credentials.ActorIdentity.UserId, map[string]any{
 				"email": credentials.ActorIdentity.Email,
