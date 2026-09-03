@@ -3,6 +3,9 @@ package auth
 import (
 	"context"
 	"net/http"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/google/uuid"
 )
 
 type TokenHandler interface {
@@ -24,13 +27,21 @@ func (h MarbleTokenHandler) GetToken(ctx context.Context, r *http.Request) (Toke
 	if err != nil {
 		return Token{}, err
 	}
+	organizationID := uuid.Nil
+	if r != nil && r.URL != nil && r.URL.Query().Get("organization_id") != "" {
+		requestedOrganizationID := r.URL.Query().Get("organization_id")
+		organizationID, err = uuid.Parse(requestedOrganizationID)
+		if err != nil {
+			return Token{}, models.BadParameterError
+		}
+	}
 
 	intoCredentials, claims, err := h.verifier.Verify(ctx, c)
 	if err != nil {
 		return Token{}, err
 	}
 
-	token, err := h.generator.GenerateToken(ctx, c, intoCredentials, claims)
+	token, err := h.generator.GenerateToken(ctx, c, intoCredentials, claims, organizationID)
 	if err != nil {
 		return Token{}, err
 	}
