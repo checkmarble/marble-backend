@@ -1314,3 +1314,11 @@ func (usecases UsecasesWithCreds) NewAsyncUploadWorker() worker_jobs.AsyncUpload
 func (usecases UsecasesWithCreds) NewRuleCatalogUsecase() ai_agent.RuleCatalogUsecase {
 	return ai_agent.NewRuleCatalogUsecase(usecases.aiPromptsFS)
 }
+
+func (usecases UsecasesWithCreds) NewClientDataPurgeWorker() *worker_jobs.ClientDataPurgeWorker {
+	return worker_jobs.NewClientDataPurgeWorker(
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+	)
+}

@@ -316,7 +316,8 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 			}
 
 			// Disable the previous config
-			_, err = uc.repository.UpdateContinuousScreeningConfig(ctx, tx,
+			_, err = uc.repository.UpdateContinuousScreeningConfig(
+				ctx, tx,
 				config.Id, models.UpdateContinuousScreeningConfig{
 					Enabled: utils.Ptr(false),
 				},
@@ -331,7 +332,8 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningConfig(
 				tx,
 				createUpdatedConfig(config, input),
 			)
-		})
+		},
+	)
 }
 
 func (uc *ContinuousScreeningUsecase) checkDataModelConfiguration(ctx context.Context,
@@ -386,7 +388,8 @@ func isUpdateDifferent(currentConfig models.ContinuousScreeningConfig, updateInp
 		return true
 	}
 	if updateInput.ObjectTypes != nil && !pure_utils.ContainsSameElements(
-		currentConfig.ObjectTypes, *updateInput.ObjectTypes) {
+		currentConfig.ObjectTypes, *updateInput.ObjectTypes,
+	) {
 		return true
 	}
 	if updateInput.InboxId != nil && *updateInput.InboxId != currentConfig.InboxId {
@@ -451,6 +454,7 @@ func (uc *ContinuousScreeningUsecase) applyMappingConfiguration(
 				pure_utils.Null[models.SemanticType]{},
 				pure_utils.Null[string]{},
 				pure_utils.Null[string]{},
+				nil,
 				nil,
 			)
 			if err != nil {

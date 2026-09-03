@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/google/uuid"
+	"github.com/sosodev/duration"
 )
 
 // Reserved field names in client data model
@@ -156,6 +157,7 @@ type Table struct {
 	CaptionField         string
 	PrimaryOrderingField string
 	Metadata             json.RawMessage
+	Lifecycle            TableLifecycle
 }
 
 func (t Table) FieldNames() []string {
@@ -229,6 +231,13 @@ type TableMetadata struct {
 	CaptionField         string
 	PrimaryOrderingField string
 	Metadata             json.RawMessage
+	Lifecycle            *TableLifecycle
+}
+
+type TableLifecycle struct {
+	Enabled               bool               `json:"enabled"`
+	DeleteStaleRowsAfter  *duration.Duration `json:"delete_stale_rows_after"`
+	DeleteActiveRowsAfter *duration.Duration `json:"delete_active_rows_after"`
 }
 
 func ColumnNames(table Table) []string {
@@ -439,6 +448,7 @@ type CreateTableInput struct {
 	PrimaryOrderingField string
 	Fields               []CreateFieldInput
 	Links                []CreateTableLinkInput
+	Lifecycle            TableLifecycle
 }
 
 type CreateTableLinkInput struct {
@@ -458,6 +468,7 @@ type UpdateTableCompositeInput struct {
 	CaptionField         pure_utils.Null[string]
 	PrimaryOrderingField pure_utils.Null[string]
 	Metadata             *json.RawMessage
+	Lifecycle            *TableLifecycle
 
 	// Field operations
 	FieldsToAdd    []CreateFieldInput
@@ -592,7 +603,8 @@ func (d DataModel) AddNavigationOptionsToDataModel(indexes []ConcreteIndex, pivo
 				navigationOptions[pivot.BaseTable] = []NavigationOption{}
 			}
 			navigationOptions[pivot.BaseTable] = append(
-				navigationOptions[pivot.BaseTable], navOption)
+				navigationOptions[pivot.BaseTable], navOption,
+			)
 		}
 	}
 
@@ -692,7 +704,8 @@ func GetLinkedDatabaseIdentifiers(scenario Scenario, dataModel DataModel) ([]ast
 			pathForLink = append(pathForLink, linkName)
 
 			for fieldName := range table.Fields {
-				dataAccessors = append(dataAccessors,
+				dataAccessors = append(
+					dataAccessors,
 					ast.NewNodeDatabaseAccess(
 						scenario.TriggerObjectType,
 						fieldName,
@@ -703,7 +716,8 @@ func GetLinkedDatabaseIdentifiers(scenario Scenario, dataModel DataModel) ([]ast
 
 			if err := recursiveDatabaseAccessor(
 				table.Name, pathForLink,
-				table.LinksToSingle, visitedDeepCp); err != nil {
+				table.LinksToSingle, visitedDeepCp,
+			); err != nil {
 				return err
 			}
 		}
@@ -730,7 +744,8 @@ func GetPayloadIdentifiers(scenario Scenario, dataModel DataModel) ([]ast.Node, 
 		return nil, fmt.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)
 	}
 	for fieldName := range triggerObjectTable.Fields {
-		dataAccessors = append(dataAccessors,
+		dataAccessors = append(
+			dataAccessors,
 			ast.Node{
 				Function: ast.FUNC_PAYLOAD,
 				Constant: nil,

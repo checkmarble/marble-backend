@@ -90,7 +90,8 @@ func (w *TaskQueueWorker) RefreshQueuesFromOrgIds(
 
 	for {
 		time.Sleep(1 * time.Minute)
-		err := retry.Do(refreshOrgs,
+		err := retry.Do(
+			refreshOrgs,
 			retry.Attempts(3),
 			retry.LastErrorOnly(true),
 			retry.OnRetry(func(n uint, err error) {
@@ -220,6 +221,8 @@ func listOrgPeriodics(
 	periodics = append(periodics, scoring_jobs.NewScoreComputationJob(org.Id, scoringInterval))
 	periodics = append(periodics, scoring_jobs.NewInitialInsertionJob(org.Id, scoringInterval))
 	periodics = append(periodics, scoring_jobs.NewInitialComputationJob(org.Id, scoringInterval))
+
+	periodics = append(periodics, worker_jobs.NewClientDataPurgeJob(org.Id))
 
 	return periodics
 }
