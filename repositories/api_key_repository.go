@@ -5,6 +5,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/google/uuid"
 )
@@ -88,7 +89,15 @@ func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor,
 				apiKey.Role,
 			),
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return ExecBuilder(ctx, exec, NewQueryBuilder().
+		Insert(dbmodels.TABLE_GRANTS).
+		Columns("id", "principal_type", "principal_id", "principal_authority", "organization_id", "role").
+		Values(pure_utils.NewId(), "api_key", apiKey.Id, "marble", apiKey.OrganizationId, apiKey.Role.String()).
+		Suffix("ON CONFLICT DO NOTHING"))
 }
 
 func (repo *MarbleDbRepository) SoftDeleteApiKey(ctx context.Context, exec Executor, apiKeyId string) error {
