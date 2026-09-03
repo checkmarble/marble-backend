@@ -1273,3 +1273,7 @@ func (usecases UsecasesWithCreds) NewAsyncUploadWorker() worker_jobs.AsyncUpload
 		usecases.ingestionBucketUrl,
 	)
 }
+
+func (usecases UsecasesWithCreds) NewRuleCatalogUsecase() ai_agent.RuleCatalogUsecase {
+	return ai_agent.NewRuleCatalogUsecase(usecases.aiPromptsFS)
+}
