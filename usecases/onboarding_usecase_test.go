@@ -114,6 +114,7 @@ func TestCreateInitialOrganization(t *testing.T) {
 		require.NoError(t, uc.CreateInitialOrganization(ctx, payload))
 
 		deps.userRepository.AssertExpectations(t)
+		deps.grantRepository.AssertExpectations(t)
 	})
 
 	t.Run("rejects onboarding when an organization already exists", func(t *testing.T) {
@@ -215,6 +216,7 @@ func TestCreateInitialOrganization(t *testing.T) {
 		require.NoError(t, uc.CreateInitialOrganization(ctx, payload))
 
 		deps.firebase.AssertExpectations(t)
+		deps.grantRepository.AssertExpectations(t)
 	})
 
 	t.Run("does not create the organization when the Firebase user cannot be created", func(t *testing.T) {
