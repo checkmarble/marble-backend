@@ -16,6 +16,7 @@ const (
 	postgres_audit_org_id_parameter     = "custom.current_org_id"
 	postgres_audit_user_id_parameter    = "custom.current_user_id"
 	postgres_audit_api_key_id_parameter = "custom.current_api_key_id"
+	postgres_audit_tenant_id_parameter  = "custom.current_tenant_id"
 )
 
 type errorRow struct {
@@ -55,25 +56,29 @@ func injectDbSessionConfig(ctx context.Context, exec executor, query string) (pg
 		{"set_config($1, null, false)", []any{postgres_audit_user_id_parameter}},
 		{"set_config($2, null, false)", []any{postgres_audit_api_key_id_parameter}},
 		{"set_config($3, null, false)", []any{postgres_audit_org_id_parameter}},
+		{"set_config($4, null, false)", []any{postgres_audit_tenant_id_parameter}},
 	}
 
 	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
 		switch {
 		case creds.ActorIdentity.UserId != "":
-			cmds = append(cmds, auditCommands{"SET_CONFIG($4, $5, false)", []any{
+			cmds = append(cmds, auditCommands{"SET_CONFIG($5, $6, false)", []any{
 				postgres_audit_user_id_parameter, creds.ActorIdentity.UserId,
 			}})
 		case creds.ActorIdentity.ApiKeyId != "":
-			cmds = append(cmds, auditCommands{"SET_CONFIG($4, $5, false)", []any{
+			cmds = append(cmds, auditCommands{"SET_CONFIG($5, $6, false)", []any{
 				postgres_audit_api_key_id_parameter, creds.ActorIdentity.ApiKeyId,
 			}})
 		default:
 			// We need to select dummy values so we simplify the arguments logic
-			cmds = append(cmds, auditCommands{"$4, $5", []any{0, 0}})
+			cmds = append(cmds, auditCommands{"$5, $6", []any{0, 0}})
 		}
 
-		cmds = append(cmds, auditCommands{"SET_CONFIG($6, $7, false)", []any{
+		cmds = append(cmds, auditCommands{"SET_CONFIG($7, $8, false)", []any{
 			postgres_audit_org_id_parameter, creds.OrganizationId,
+		}})
+		cmds = append(cmds, auditCommands{"SET_CONFIG($9, $10, false)", []any{
+			postgres_audit_tenant_id_parameter, creds.TenantId,
 		}})
 	}
 
