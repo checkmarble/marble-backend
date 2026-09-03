@@ -9,22 +9,26 @@ import (
 
 type Switch struct{}
 
-func (p Switch) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
-	var errs []error
-
+func (Switch) Evaluate(_ context.Context, arguments ast.Arguments) (any, []error) {
 	if len(arguments.Args) == 0 {
-		errs = append(errs, errors.Wrap(ast.ErrWrongNumberOfArgument, "Switch should have at least one branch"))
+		return MakeEvaluateError(errors.Wrap(ast.ErrWrongNumberOfArgument, "Switch should have at least one branch"))
 	}
 
-	if len(errs) > 0 {
-		return nil, errs
+	switch arguments.Args[0].(type) {
+	case ast.ScoreComputationResult:
+		return evaluateScoringSwitch(arguments)
+	case ast.SwitchCaseResult:
+		return evaluateNumericSwitch(arguments)
+	default:
+		return MakeEvaluateError(errors.Wrap(
+			ast.ErrArgumentInvalidType,
+			"Switch branches must return either ScoreComputationResult or SwitchCaseResult",
+		))
 	}
+}
 
-	nodes, err := adaptArgumentToListOfThings[ast.ScoreComputationResult](arguments.Args)
-	if err != nil {
-		errs = append(errs, err)
-	}
-
+func evaluateScoringSwitch(arguments ast.Arguments) (any, []error) {
+	nodes, errs := AdaptArguments(arguments.Args, adaptArgumentToThing[ast.ScoreComputationResult])
 	if len(errs) > 0 {
 		return nil, errs
 	}
@@ -49,4 +53,22 @@ func (p Switch) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []e
 	}
 
 	return ast.ScoreComputationResult{Triggered: true, Default: true}, nil
+}
+
+func evaluateNumericSwitch(arguments ast.Arguments) (any, []error) {
+	cases, errs := AdaptArguments(arguments.Args, adaptArgumentToThing[ast.SwitchCaseResult])
+	fallback, fallbackErr := AdaptNamedArgument(arguments.NamedArgs, "fallback", promoteArgumentToFloat64)
+	errs = append(errs, fallbackErr)
+	errs = filterNilErrors(errs...)
+	if len(errs) > 0 {
+		return nil, errs
+	}
+
+	for _, switchCase := range cases {
+		if switchCase.Matched {
+			return switchCase.Value, nil
+		}
+	}
+
+	return fallback, nil
 }

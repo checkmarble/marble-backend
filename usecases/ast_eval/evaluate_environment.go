@@ -101,6 +101,7 @@ func NewAstEvaluationEnvironment() AstEvaluationEnvironment {
 
 	environment.AddEvaluator(ast.FUNC_SCORE_COMPUTATION, evaluate.ScoreComputation{})
 	environment.AddEvaluator(ast.FUNC_SWITCH, evaluate.Switch{})
+	environment.AddEvaluator(ast.FUNC_CASE, evaluate.Case{})
 
 	return environment
 }
