@@ -5,6 +5,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/google/uuid"
 )
@@ -88,6 +89,10 @@ func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor,
 				apiKey.Role,
 			),
 	)
+	if err != nil {
+		return err
+	}
+	_, err = exec.Exec(ctx, `INSERT INTO grants (id, principal_type, principal_id, principal_authority, organization_id, role) VALUES ($1, 'api_key', $2, 'marble', $3, $4) ON CONFLICT DO NOTHING`, pure_utils.NewId(), apiKey.Id, apiKey.OrganizationId, apiKey.Role.String())
 	return err
 }
 

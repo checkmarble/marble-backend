@@ -52,6 +52,14 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 				createUser.LastName,
 			),
 	)
+	if err != nil {
+		return "", err
+	}
+	if createUser.Role == models.MARBLE_ADMIN {
+		_, err = exec.Exec(ctx, `INSERT INTO grants (id, principal_type, principal_id, principal_authority, role) VALUES ($1, 'user', $2, 'marble', $3) ON CONFLICT DO NOTHING`, pure_utils.NewId(), userId, createUser.Role.String())
+		return userId, err
+	}
+	_, err = exec.Exec(ctx, `INSERT INTO grants (id, principal_type, principal_id, principal_authority, organization_id, role) VALUES ($1, 'user', $2, 'marble', $3, $4) ON CONFLICT DO NOTHING`, pure_utils.NewId(), userId, createUser.OrganizationId, createUser.Role.String())
 	return userId, err
 }
 
@@ -111,11 +119,7 @@ func (repo *MarbleDbRepository) DeleteUsersOfOrganization(ctx context.Context, e
 		return err
 	}
 
-	err := ExecBuilder(
-		ctx,
-		exec,
-		NewQueryBuilder().Delete(dbmodels.TABLE_USERS).Where("organization_id = ?", organizationId),
-	)
+	err := ExecBuilder(ctx, exec, NewQueryBuilder().Delete("grants").Where("organization_id = ?", organizationId))
 	return err
 }
 

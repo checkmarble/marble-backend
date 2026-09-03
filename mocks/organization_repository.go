@@ -35,6 +35,11 @@ func (m *OrganizationRepository) GetOrganizationAllowedNetworks(ctx context.Cont
 	return args.Get(0).([]net.IPNet), args.Error(1)
 }
 
+func (m *OrganizationRepository) GetUserOrganizationAllowedNetworks(ctx context.Context, exec repositories.Executor, userID string) ([]net.IPNet, bool, error) {
+	args := m.Called(ctx, exec, userID)
+	return args.Get(0).([]net.IPNet), args.Bool(1), args.Error(2)
+}
+
 func (m *OrganizationRepository) AllOrganizations(ctx context.Context,
 	exec repositories.Executor,
 ) ([]models.Organization, error) {

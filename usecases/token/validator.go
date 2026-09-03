@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/google/uuid"
@@ -12,6 +13,7 @@ import (
 type keyAndOrganizationGetter interface {
 	GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error)
 	GetOrganizationByID(ctx context.Context, organizationID uuid.UUID) (models.Organization, error)
+	ActiveGrantsForPrincipal(ctx context.Context, principalType, principalID string) ([]models.Grant, error)
 }
 
 type marbleTokenValidator interface {
@@ -38,6 +40,20 @@ func (v *Validator) fromAPIKey(ctx context.Context, key string) (models.Credenti
 	apiKey.DisplayString = fmt.Sprintf("Api key %s*** of %s", apiKey.Prefix, organization.Name)
 	credentials := apiKey.IntoCredentials()
 	credentials.TenantId = organization.TenantId
+	grants, err := v.getter.ActiveGrantsForPrincipal(ctx, "api_key", apiKey.Id)
+	if err != nil {
+		return models.Credentials{}, fmt.Errorf("ActiveGrantsForPrincipal error: %w", err)
+	}
+	// Roles are the union of the legacy role (api_keys.role) and the active
+	// grants, until the authority is switched to grants-only with the backfill.
+	credentials.Roles = []models.Role{apiKey.Role}
+	for _, grant := range grants {
+		if (grant.OrganizationId == apiKey.OrganizationId || grant.TenantId == organization.TenantId) &&
+			!slices.Contains(credentials.Roles, grant.Role) {
+			credentials.Roles = append(credentials.Roles, grant.Role)
+		}
+	}
+	credentials.Role = apiKey.Role
 
 	return credentials, nil
 }
