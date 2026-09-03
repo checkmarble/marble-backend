@@ -37,3 +37,8 @@ func (m *Database) UpdateUserProfileFromClaims(
 
 	return args.Get(0).(models.User), args.Error(1)
 }
+
+func (m *Database) ActiveGrantsForPrincipal(ctx context.Context, principalType, principalID string) ([]models.Grant, error) {
+	args := m.Called(ctx, principalType, principalID)
+	return args.Get(0).([]models.Grant), args.Error(1)
+}

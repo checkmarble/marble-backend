@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -20,8 +21,8 @@ type mockGenerator struct {
 	mock.Mock
 }
 
-func (m *mockGenerator) GenerateToken(ctx context.Context, creds auth.Credentials, intoCredentials models.IntoCredentials, claims models.IdentityClaims) (auth.Token, error) {
-	args := m.Called(ctx, creds, claims)
+func (m *mockGenerator) GenerateToken(ctx context.Context, creds auth.Credentials, intoCredentials models.IntoCredentials, claims models.IdentityClaims, organizationID uuid.UUID) (auth.Token, error) {
+	args := m.Called(ctx, creds, claims, organizationID)
 	return args.Get(0).(auth.Token), args.Error(1)
 }
 
@@ -34,7 +35,7 @@ func TestToken_GenerateToken(t *testing.T) {
 		}
 
 		mGenerator := new(mockGenerator)
-		mGenerator.On("GenerateToken", mock.Anything, auth.Credentials{Value: "token"}, mock.Anything).
+		mGenerator.On("GenerateToken", mock.Anything, auth.Credentials{Value: "token"}, mock.Anything, uuid.Nil).
 			Return(auth.Token{Value: tok.AccessToken, Expiration: tok.ExpiresAt}, nil)
 
 		tokenHandler := NewTokenHandler(auth.NewTokenHandler(
@@ -61,7 +62,7 @@ func TestToken_GenerateToken(t *testing.T) {
 
 	t.Run("GenerateToken error", func(t *testing.T) {
 		mGenerator := new(mockGenerator)
-		mGenerator.On("GenerateToken", mock.Anything, auth.Credentials{Value: "token"}, mock.Anything).
+		mGenerator.On("GenerateToken", mock.Anything, auth.Credentials{Value: "token"}, mock.Anything, uuid.Nil).
 			Return(auth.Token{}, assert.AnError)
 
 		tokenHandler := NewTokenHandler(auth.NewTokenHandler(

@@ -48,7 +48,7 @@ func (e *EnforceSecurityOrganizationImpl) EditOrganization(org models.Organizati
 // For self-hosted deployments, the credentials are used to determine the authority.
 func (e *EnforceSecurityOrganizationImpl) EditOrganizationScreeningProvider(org models.Organization, isManagedMarble bool) error {
 	if isManagedMarble {
-		if e.Credentials.Role != models.MARBLE_ADMIN {
+		if !e.Credentials.HasRole(models.MARBLE_ADMIN) {
 			return errors.Wrap(
 				models.ForbiddenError,
 				"only marble admins can change the screening provider on managed deployments",
