@@ -12,24 +12,24 @@
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
-      "version": "^11.5.0",
+      "version": "^11.25.0",
       "onFail": "download"
     }
   },
   "type": "module",
   "devDependencies": {
-    "@aws-sdk/client-s3": "^3.1075.0",
-    "@aws-sdk/s3-request-presigner": "^3.1075.0",
+    "@aws-sdk/client-s3": "^3.1125.0",
+    "@aws-sdk/s3-request-presigner": "^3.1125.0",
     "@babel/core": "^8.0.1",
     "@babel/preset-env": "^8.0.2",
     "@babel/preset-typescript": "^8.0.1",
-    "@biomejs/biome": "^2.5.1",
-    "@testcontainers/postgresql": "^12.0.3",
+    "@biomejs/biome": "^2.5.12",
+    "@testcontainers/postgresql": "^12.1.0",
     "@types/jest": "^30.0.0",
-    "@types/pg": "^8.20.0",
-    "babel-jest": "^30.4.1",
-    "jest": "^30.4.2",
+    "@types/pg": "^8.23.1",
+    "babel-jest": "^30.5.1",
+    "jest": "^30.5.1",
     "postgres": "^3.4.9",
-    "testcontainers": "^12.0.3"
+    "testcontainers": "^12.1.0"
   }
 }
