@@ -250,9 +250,11 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	globalPeriodics := []*river.PeriodicJob{}
 
 	maps.Copy(nonOrgQueues, usecases.QueueContinuousScreeningDatasetUpdate())
-	globalPeriodics = append(globalPeriodics,
+	globalPeriodics = append(
+		globalPeriodics,
 		continuous_screening.NewContinuousScreeningUpdateDatasetJob(
-			workerConfig.ScanDatasetUpdatesInterval),
+			workerConfig.ScanDatasetUpdatesInterval,
+		),
 	)
 	// Webhook cleanup (30 day retention)
 	maps.Copy(nonOrgQueues, usecases.QueueWebhookCleanup())
@@ -302,25 +304,26 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	cronMonitorMiddleware := jobs.NewCronMonitorMiddleware(demoOrgsFetcher)
 	cronMonitorMiddleware.StartDemoOrgsRefresh(ctx, 1*time.Minute)
 
-	riverClient, err = river.NewClient(riverpgxv5.New(pool), &river.Config{
-		FetchPollInterval: utils.GetEnvDuration("RIVER_FETCH_POLL_INTERVAL", 1*time.Second),
-		Queues:            queues,
-		Logger:            logger,
+	riverClient, err = river.NewClient(
+		riverpgxv5.New(pool), &river.Config{
+			FetchPollInterval: utils.GetEnvDuration("RIVER_FETCH_POLL_INTERVAL", 1*time.Second),
+			Queues:            queues,
+			Logger:            logger,
 
-		// Must be larger than the time it takes to process a job, if the job does not implement Timeout().
-		// Jobs that do not implement this and run for longer than this value will be rescued by the worker, which we should
-		// avoid if it is actually still running.
-		RescueStuckJobsAfter: 2 * time.Minute,
-		WorkerMiddleware: []rivertype.WorkerMiddleware{
-			jobs.NewRecoveredMiddleware(),
-			jobs.NewSentryMiddleware(),
-			cronMonitorMiddleware,
-			jobs.NewTracingMiddleware(telemetryRessources.Tracer),
-			jobs.NewLoggerMiddleware(logger),
+			// Must be larger than the time it takes to process a job, if the job does not implement Timeout().
+			// Jobs that do not implement this and run for longer than this value will be rescued by the worker, which we should
+			// avoid if it is actually still running.
+			RescueStuckJobsAfter: 2 * time.Minute,
+			WorkerMiddleware: []rivertype.WorkerMiddleware{
+				jobs.NewRecoveredMiddleware(),
+				jobs.NewSentryMiddleware(),
+				cronMonitorMiddleware,
+				jobs.NewTracingMiddleware(telemetryRessources.Tracer),
+				jobs.NewLoggerMiddleware(logger),
+			},
+			Workers:      workers,
+			PeriodicJobs: periodics,
 		},
-		Workers:      workers,
-		PeriodicJobs: periodics,
-	},
 	)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -341,7 +344,8 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	aiPromptsServingDir := utils.GetEnv("AI_PROMPTS_SERVING_DIR", "")
 	aiPromptsFS, aiAgentModelConfig := configAiResources(ctx, license, licenseConfig, aiAgentConfig, aiPromptsServingDir, apiVersion)
 
-	uc := usecases.NewUsecases(repositories,
+	uc := usecases.NewUsecases(
+		repositories,
 		usecases.WithAppName(appName),
 		usecases.WithIngestionBucketUrl(workerConfig.ingestionBucketUrl),
 		usecases.WithOffloadingBucketUrl(offloadingConfig.BucketUrl),
@@ -398,6 +402,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewBatchExecutionCoordinatorWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningMatchEnrichmentWorker())
 	river.AddWorker(workers, adminUc.NewGenerateThumbnailWorker())
+	river.AddWorker(workers, adminUc.NewClientDataPurgeWorker())
 
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())
@@ -443,7 +448,8 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	logger.InfoContext(ctx, "starting worker", slog.String("version", apiVersion))
 
 	// Asynchronously keep the task queue workers up to date with the orgs in the database
-	taskQueueWorker := uc.NewTaskQueueWorker(riverClient,
+	taskQueueWorker := uc.NewTaskQueueWorker(
+		riverClient,
 		slices.Collect(maps.Keys(nonOrgQueues)),
 	)
 	go taskQueueWorker.RefreshQueuesFromOrgIds(ctx, offloadingConfig, analyticsConfig, workerConfig.CreateFullDatasetInterval)
@@ -683,6 +689,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion
 	case "rule_description":
 		return uc.NewRuleDescriptionWorker(workerConfig.caseReviewTimeout).Work(ctx,
 			singleJobCreate[models.RuleDescriptionArgs](ctx, jobArgs))
+	case "client_data_purge":
+		return uc.NewClientDataPurgeWorker().Work(ctx,
+			singleJobCreate[models.ClientDataPurgeArgs](ctx, jobArgs))
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}

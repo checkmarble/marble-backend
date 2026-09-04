@@ -1,5 +1,18 @@
 [tools]
 go = "1.26"
+"go:github.com/pressly/goose/v3/cmd/goose" = "3.28.0"
+"go:github.com/go-delve/delve/cmd/dlv" = "latest"
+"go:golang.org/x/tools/gopls" = "latest"
 
 [env]
 _.file = '.env'
+
+[tasks.migrate]
+dir = "repositories/migrations"
+env.GOOSE_DBSTRING = "$PG_CONNECTION_STRING"
+run = "goose postgres up"
+
+[tasks.migrate-down]
+dir = "repositories/migrations"
+env.GOOSE_DBSTRING = "$PG_CONNECTION_STRING"
+run = "goose postgres down"
