@@ -16,6 +16,7 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/riverqueue/river"
 	"github.com/tidwall/gjson"
@@ -53,6 +54,8 @@ var csvIngestionBatchSize = utils.GetEnv("CSV_INGESTION_BATCH_SIZE", 1000)
 // it. It is coupled to CSV_INGESTION_TIMEOUT (default 1h), so the default is roughly a 24h ceiling:
 // change one and revisit the other.
 var csvIngestionMaxSnoozes = utils.GetEnv("CSV_INGESTION_MAX_SNOOZES", 24)
+var csvIngestionMaxRetries = utils.GetEnv("CSV_INGESTION_MAX_RETRIES", 12)
+var csvIngestionTotalTimeout = utils.GetEnvDuration("CSV_INGESTION_TOTAL_TIMEOUT", models.CsvIngestionTotalTimeoutDefault)
 
 type continuousScreeningRepository interface {
 	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) (models.Organization, error)
@@ -106,6 +109,13 @@ type taskEnqueuer interface {
 		uploadLogId uuid.UUID,
 		ingestionOptions models.IngestionOptions,
 	) error
+	EnqueueCsvIngestionDeadlineTask(
+		ctx context.Context,
+		tx repositories.Transaction,
+		organizationId uuid.UUID,
+		uploadLogId uuid.UUID,
+		deadline time.Time,
+	) error
 	EnqueueTriggerScoreComputation(
 		ctx context.Context,
 		tx repositories.Transaction,
@@ -120,6 +130,7 @@ type taskEnqueuer interface {
 		ctx context.Context,
 		tx repositories.Transaction,
 		organizationId uuid.UUID,
+		uploadLogId uuid.UUID,
 		objectType string,
 		key string,
 		ingestionOptions models.IngestionOptions,
@@ -128,6 +139,10 @@ type taskEnqueuer interface {
 
 type scoreComputationUsecase interface {
 	EnqueueComputationForIngestion(ctx context.Context, orgId uuid.UUID, recordType string, records models.IngestionResults) error
+}
+
+type ingestionWebhookEventsUsecase interface {
+	CreateWebhookEvent(ctx context.Context, tx repositories.Transaction, input models.WebhookEventCreate) error
 }
 
 type IngestionUseCase struct {
@@ -145,6 +160,7 @@ type IngestionUseCase struct {
 	ingestionBucketUrl                  string
 	batchIngestionMaxSize               int
 	taskEnqueuer                        taskEnqueuer
+	webhookEventsUsecase                ingestionWebhookEventsUsecase
 	isManagedMarble                     bool
 }
 
@@ -556,32 +572,103 @@ func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(ctx context.Cont
 // failure can be diagnosed from where the ingestion stopped.
 func (usecase *IngestionUseCase) FailUploadLog(ctx context.Context, uploadLogId uuid.UUID, reason string) error {
 	exec := usecase.executorFactory.NewExecutor()
-	finishedAt := time.Now()
+	uploadLog, err := usecase.uploadLogRepository.UploadLogById(ctx, exec, uploadLogId)
+	if err != nil {
+		return err
+	}
+	if uploadLog.UploadStatus == models.UploadSuccess || uploadLog.UploadStatus == models.UploadFailure {
+		return nil
+	}
 
-	_, err := usecase.uploadLogRepository.UpdateUploadLogStatus(ctx, exec, models.UpdateUploadLogStatusInput{
-		Id:                           uploadLogId,
-		CurrentUploadStatusCondition: models.UploadProcessing,
-		UploadStatus:                 models.UploadFailure,
-		FinishedAt:                   &finishedAt,
-		Error:                        &reason,
-	})
+	_, err = usecase.finalizeUploadLog(ctx, uploadLog, uploadLog.UploadStatus, models.UploadFailure,
+		nil, nil, &reason)
 	return err
+}
+
+// finalizeUploadLog atomically transitions an upload to a terminal status and creates its webhook
+// outbox entry. The conditional status update makes retries and deadline workers idempotent.
+func (usecase *IngestionUseCase) finalizeUploadLog(
+	ctx context.Context,
+	uploadLog models.UploadLog,
+	expectedStatus models.UploadStatus,
+	status models.UploadStatus,
+	rowsIngested *int,
+	inputError *string,
+	errorMessage *string,
+) (bool, error) {
+	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Transaction) (bool, error) {
+		finishedAt := time.Now()
+		done, err := usecase.uploadLogRepository.UpdateUploadLogStatus(ctx, tx, models.UpdateUploadLogStatusInput{
+			Id:                           uploadLog.Id,
+			CurrentUploadStatusCondition: expectedStatus,
+			UploadStatus:                 status,
+			FinishedAt:                   &finishedAt,
+			NumRowsIngested:              rowsIngested,
+			InputError:                   inputError,
+			Error:                        errorMessage,
+		})
+		if err != nil || !done {
+			return done, err
+		}
+
+		uploadLog.UploadStatus = status
+		uploadLog.FinishedAt = &finishedAt
+		if rowsIngested != nil {
+			uploadLog.RowsIngested = *rowsIngested
+		}
+		uploadLog.InputError = inputError
+		uploadLog.Error = errorMessage
+
+		var event models.WebhookEventContent
+		if status == models.UploadSuccess {
+			event = models.NewWebhookEventIngestionCompleted(uploadLog)
+		} else {
+			event = models.NewWebhookEventIngestionFailed(uploadLog)
+		}
+		if err := usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+			OrganizationId: uploadLog.OrganizationId,
+			EventContent:   event,
+		}); err != nil {
+			return false, err
+		}
+
+		return true, nil
+	})
+}
+
+func (usecase *IngestionUseCase) startUploadProcessing(ctx context.Context, uploadLog models.UploadLog) (models.UploadLog, bool, error) {
+	deadline := time.Now().Add(csvIngestionTotalTimeout)
+	done, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Transaction) (bool, error) {
+		done, err := usecase.uploadLogRepository.UpdateUploadLogStatus(ctx, tx, models.UpdateUploadLogStatusInput{
+			Id:                           uploadLog.Id,
+			CurrentUploadStatusCondition: uploadLog.UploadStatus,
+			UploadStatus:                 models.UploadProcessing,
+			DeadlineAt:                   &deadline,
+		})
+		if err != nil || !done {
+			return done, err
+		}
+		return true, usecase.taskEnqueuer.EnqueueCsvIngestionDeadlineTask(ctx, tx, uploadLog.OrganizationId, uploadLog.Id, deadline)
+	})
+	if done {
+		uploadLog.UploadStatus = models.UploadProcessing
+		uploadLog.DeadlineAt = &deadline
+	}
+	return uploadLog, done, err
 }
 
 func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog models.UploadLog,
 	ingestionOptions models.IngestionOptions,
 ) (models.CsvIngestionOutcome, error) {
 	exec := usecase.executorFactory.NewExecutor()
+	var err error
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Start processing UploadLog %s", uploadLog.Id))
 
 	switch uploadLog.UploadStatus {
 	case models.UploadPending:
-		done, err := usecase.uploadLogRepository.UpdateUploadLogStatus(ctx, exec, models.UpdateUploadLogStatusInput{
-			Id:                           uploadLog.Id,
-			CurrentUploadStatusCondition: models.UploadPending,
-			UploadStatus:                 models.UploadProcessing,
-		})
+		var done bool
+		uploadLog, done, err = usecase.startUploadProcessing(ctx, uploadLog)
 		if err != nil {
 			return models.CsvIngestionCompleted, err
 		} else if !done {
@@ -595,16 +682,36 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		// at a time, so this cannot race with another worker on the same upload log.
 		logger.InfoContext(ctx, fmt.Sprintf("Resuming UploadLog %s", uploadLog.Id),
 			"byte_offset", uploadLog.ByteOffset, "rows_ingested", uploadLog.RowsIngested)
+		if uploadLog.DeadlineAt == nil {
+			var done bool
+			uploadLog, done, err = usecase.startUploadProcessing(ctx, uploadLog)
+			if err != nil {
+				return models.CsvIngestionCompleted, err
+			}
+			if !done {
+				return models.CsvIngestionCompleted, nil
+			}
+		}
 	default:
 		logger.InfoContext(ctx, fmt.Sprintf("UploadLog %s is in terminal status %s, nothing to do",
 			uploadLog.Id, uploadLog.UploadStatus))
 		return models.CsvIngestionCompleted, nil
 	}
-
-	setToFailed := func(numRowsIngested int, inputErr error, ingestErr error) {
-		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
+	if uploadLog.DeadlineAt != nil {
+		if !time.Now().Before(*uploadLog.DeadlineAt) {
+			if err := usecase.FailUploadLog(ctx, uploadLog.Id, "global ingestion timeout exceeded"); err != nil {
+				return models.CsvIngestionCompleted, err
+			}
+			return models.CsvIngestionCompleted, nil
+		}
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithDeadline(ctx, *uploadLog.DeadlineAt)
 		defer cancel()
+	}
 
+	setToFailed := func(numRowsIngested int, inputErr error, ingestErr error) error {
+		failureCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
+		defer cancel()
 		errorString, inputErrorString := "", ""
 
 		if inputErr != nil {
@@ -614,40 +721,37 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 			errorString = ingestErr.Error()
 		}
 
-		_, err := usecase.uploadLogRepository.UpdateUploadLogStatus(
-			ctx,
-			exec,
-			models.UpdateUploadLogStatusInput{
-				Id:                           uploadLog.Id,
-				CurrentUploadStatusCondition: models.UploadProcessing,
-				UploadStatus:                 models.UploadFailure,
-				NumRowsIngested:              &numRowsIngested,
-				InputError:                   &inputErrorString,
-				Error:                        &errorString,
-			},
-		)
+		_, err := usecase.finalizeUploadLog(failureCtx, uploadLog, models.UploadProcessing, models.UploadFailure,
+			&numRowsIngested, &inputErrorString, &errorString)
 		if err != nil {
-			logger.ErrorContext(ctx, fmt.Sprintf("Error setting upload log %s to failed", uploadLog.Id), "error", err.Error())
+			logger.ErrorContext(failureCtx, fmt.Sprintf("Error setting upload log %s to failed", uploadLog.Id), "error", err.Error())
 		}
+		return err
 	}
 
-	// failAttempt ends the attempt on an error. A cancelled job context means this attempt was cut
-	// short from the outside — a graceful worker shutdown, or river cancelling the job at its
-	// Timeout — and says nothing about the file, so the log must stay in `processing` for the next
-	// attempt to resume from its checkpoint. Marking it `failure` there would be a terminal status
-	// that makes the checkpoint unreachable, defeating the point of saving one.
+	// failAttempt classifies the failure before deciding whether to leave the upload resumable or
+	// terminalize it. Retriable failures keep their checkpoint; deterministic input/configuration
+	// failures become terminal immediately.
 	failAttempt := func(numRowsIngested int, inputErr error, ingestErr error) (models.CsvIngestionOutcome, error) {
 		err := errors.Join(inputErr, ingestErr)
-		if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			logger.WarnContext(ctx, "csv ingestion attempt was cancelled, leaving the upload log resumable",
+		if uploadLog.DeadlineAt != nil && !time.Now().Before(*uploadLog.DeadlineAt) {
+			if finalizeErr := usecase.FailUploadLog(context.WithoutCancel(ctx), uploadLog.Id, "global ingestion timeout exceeded"); finalizeErr != nil {
+				return models.CsvIngestionCompleted, finalizeErr
+			}
+			return models.CsvIngestionCompleted, nil
+		}
+		if isRetryableIngestionError(err, inputErr != nil) {
+			logger.WarnContext(ctx, "csv ingestion attempt failed, leaving the upload log resumable",
 				"upload_log_id", uploadLog.Id, "byte_offset", uploadLog.ByteOffset, "error", err.Error())
 			return models.CsvIngestionCompleted, err
 		}
 
 		// Failures raised before the ingestion loop is reached report zero rows; don't let that
 		// erase what previous attempts already ingested.
-		setToFailed(max(numRowsIngested, uploadLog.RowsIngested), inputErr, ingestErr)
-		return models.CsvIngestionCompleted, err
+		if finalizeErr := setToFailed(max(numRowsIngested, uploadLog.RowsIngested), inputErr, ingestErr); finalizeErr != nil {
+			return models.CsvIngestionCompleted, finalizeErr
+		}
+		return models.CsvIngestionCompleted, nil
 	}
 
 	// The header is read from its own reader at the start of the file, so that the data reader can
@@ -695,18 +799,39 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		return models.CsvIngestionIncomplete, nil
 	}
 
-	currentTime := time.Now()
-	input := models.UpdateUploadLogStatusInput{
-		Id:                           uploadLog.Id,
-		CurrentUploadStatusCondition: models.UploadProcessing,
-		UploadStatus:                 models.UploadSuccess,
-		FinishedAt:                   &currentTime,
-		NumRowsIngested:              &out.numRowsIngested,
-	}
-	if _, err = usecase.uploadLogRepository.UpdateUploadLogStatus(ctx, exec, input); err != nil {
+	if _, err = usecase.finalizeUploadLog(ctx, uploadLog, models.UploadProcessing, models.UploadSuccess,
+		&out.numRowsIngested, nil, nil); err != nil {
 		return models.CsvIngestionCompleted, err
 	}
 	return models.CsvIngestionCompleted, nil
+}
+
+func isRetryableIngestionError(err error, hasInputError bool) bool {
+	if hasInputError || err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	// Domain validation errors and missing ingestion configuration cannot recover on a later run.
+	if errors.Is(err, models.BadParameterError) || errors.Is(err, models.NotFoundError) || errors.Is(err, models.ForbiddenError) {
+		return false
+	}
+	var csvErr *csv.ParseError
+	if errors.As(err, &csvErr) {
+		return false
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && len(pgErr.Code) >= 2 {
+		// Data, integrity, and syntax/configuration failures are deterministic for this upload.
+		switch pgErr.Code[:2] {
+		case "22", "23", "42":
+			return false
+		}
+	}
+	// Unknown failures are intentionally retried by River. This includes transient database, blob,
+	// and network errors that are wrapped differently by each provider.
+	return true
 }
 
 // readCsvHeader reads the header row from the start of the file and returns it along with the
@@ -1342,6 +1467,14 @@ func (w *CsvIngestionWorker) Timeout(job *river.Job[models.CsvIngestionArgs]) ti
 }
 
 func (w *CsvIngestionWorker) Work(ctx context.Context, job *river.Job[models.CsvIngestionArgs]) error {
+	if job.Attempt > csvIngestionMaxRetries {
+		if err := w.ingestionUsecase.FailUploadLog(ctx, job.Args.UploadLogId,
+			"ingestion exhausted its retry budget"); err != nil {
+			return err
+		}
+		return river.JobCancel(errors.New("csv ingestion exhausted its retry budget"))
+	}
+
 	// Reading river's `snoozes` metadata counter and not job.Attempt: JobSnooze deliberately
 	// decrements Attempt so that resuming never consumes a retry, which also means an oversized file
 	// could otherwise be resumed forever. The counter is the number of resumes already granted, so
@@ -1367,4 +1500,19 @@ func (w *CsvIngestionWorker) Work(ctx context.Context, job *river.Job[models.Csv
 		return river.JobSnooze(CSV_INGESTION_SNOOZE_DELAY)
 	}
 	return nil
+}
+
+// CsvIngestionDeadlineWorker finalizes uploads whose persisted lifetime deadline elapsed while a
+// River retry was waiting in backoff. The upload-status CAS makes it harmless after success/failure.
+type CsvIngestionDeadlineWorker struct {
+	river.WorkerDefaults[models.CsvIngestionDeadlineArgs]
+	ingestionUsecase *IngestionUseCase
+}
+
+func NewCsvIngestionDeadlineWorker(ingestionUsecase *IngestionUseCase) *CsvIngestionDeadlineWorker {
+	return &CsvIngestionDeadlineWorker{ingestionUsecase: ingestionUsecase}
+}
+
+func (w *CsvIngestionDeadlineWorker) Work(ctx context.Context, job *river.Job[models.CsvIngestionDeadlineArgs]) error {
+	return w.ingestionUsecase.FailUploadLog(ctx, job.Args.UploadLogId, "global ingestion timeout exceeded")
 }

@@ -39,6 +39,8 @@ const (
 	WebhookEventType_ContinuousScreeningCreated       WebhookEventType = "continuous_screening.created"
 	WebhookEventType_ContinuousScreeningMatchReviewed WebhookEventType = "continuous_screening.match_reviewed"
 	WebhookEventType_ScoringRiskLevelChangedChanged   WebhookEventType = "user_scoring.risk_level_changed"
+	WebhookEventType_IngestionCompleted               WebhookEventType = "ingestion.completed"
+	WebhookEventType_IngestionFailed                  WebhookEventType = "ingestion.failed"
 )
 
 var validWebhookEventTypes = []WebhookEventType{
@@ -56,6 +58,8 @@ var validWebhookEventTypes = []WebhookEventType{
 	WebhookEventType_ContinuousScreeningCreated,
 	WebhookEventType_ContinuousScreeningMatchReviewed,
 	WebhookEventType_ScoringRiskLevelChangedChanged,
+	WebhookEventType_IngestionCompleted,
+	WebhookEventType_IngestionFailed,
 }
 
 type WebhookEventContent struct {
@@ -78,6 +82,7 @@ type WebhookEventData struct {
 	ContinuousScreening      *ContinuousScreeningWithMatches
 	ContinuousScreeningMatch *ContinuousScreeningMatch
 	Score                    *ScoringScore
+	Ingestion                *UploadLog
 }
 
 type WebhookEvent struct {
@@ -246,6 +251,14 @@ func NewWebhookScoringScoreChanged(score ScoringScore) WebhookEventContent {
 	return newWebhookContent(WebhookEventType_ScoringRiskLevelChangedChanged, WebhookEventData{
 		Score: &score,
 	})
+}
+
+func NewWebhookEventIngestionCompleted(upload UploadLog) WebhookEventContent {
+	return newWebhookContent(WebhookEventType_IngestionCompleted, WebhookEventData{Ingestion: &upload})
+}
+
+func NewWebhookEventIngestionFailed(upload UploadLog) WebhookEventContent {
+	return newWebhookContent(WebhookEventType_IngestionFailed, WebhookEventData{Ingestion: &upload})
 }
 
 type Webhook struct {

@@ -409,8 +409,14 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 		continuousScreeningClientRepository: &usecases.Repositories.ClientDbRepository,
 		batchIngestionMaxSize:               usecases.Usecases.batchIngestionMaxSize,
 		taskEnqueuer:                        usecases.Repositories.TaskQueueRepository,
+		webhookEventsUsecase:                usecases.NewWebhookEventsUsecase(),
 		isManagedMarble:                     usecases.license.IsManagedMarble,
 	}
+}
+
+func (usecases *UsecasesWithCreds) NewCsvIngestionDeadlineWorker() *CsvIngestionDeadlineWorker {
+	ingestionUsecase := usecases.NewIngestionUseCase()
+	return NewCsvIngestionDeadlineWorker(&ingestionUsecase)
 }
 
 func (usecases *UsecasesWithCreds) NewRunScheduledExecution() worker_jobs.RunScheduledExecution {
@@ -1265,11 +1271,13 @@ func (usecases *UsecasesWithCreds) NewScoringScoresUsecase() scoring.ScoringScor
 }
 
 func (usecases UsecasesWithCreds) NewAsyncUploadWorker() worker_jobs.AsyncUploadWorker {
+	ingestionUsecase := usecases.NewIngestionUseCase()
 	return worker_jobs.NewAsyncUploadWorker(
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.TaskQueueRepository,
 		usecases.Repositories.BlobRepository,
 		usecases.Repositories.UploadLogRepository,
+		&ingestionUsecase,
 		usecases.ingestionBucketUrl,
 	)
 }

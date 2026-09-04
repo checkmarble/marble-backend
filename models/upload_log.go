@@ -6,6 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const CsvIngestionTotalTimeoutDefault = 12 * time.Hour
+
 type UploadLogFilters struct {
 	Status *UploadStatus
 }
@@ -18,6 +20,7 @@ type UploadLog struct {
 	TableName      string
 	UploadStatus   UploadStatus
 	StartedAt      time.Time
+	DeadlineAt     *time.Time
 	FinishedAt     *time.Time
 	LinesProcessed int
 	RowsIngested   int
@@ -70,6 +73,7 @@ type UpdateUploadLogStatusInput struct {
 	UploadStatus                 UploadStatus
 	CurrentUploadStatusCondition UploadStatus // for optimistic locking. Only rows matching this current status will be updated
 	FinishedAt                   *time.Time
+	DeadlineAt                   *time.Time
 	NumRowsIngested              *int
 	InputError                   *string
 	Error                        *string

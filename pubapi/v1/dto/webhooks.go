@@ -25,6 +25,9 @@ func (p WebhookEventPayload) ApiVersion() string {
 	if p.Content.ContinuousScreening != nil {
 		return p.Content.ContinuousScreening.ApiVersion()
 	}
+	if p.Content.Ingestion != nil {
+		return "v1beta"
+	}
 
 	return "v1"
 }
@@ -38,6 +41,18 @@ type WebhookEventData struct {
 	ContinuousScreening *ContinuousScreening      `json:"continuous_screening,omitzero"`
 	Match               *ContinuousScreeningMatch `json:"match,omitzero"`
 	RiskLevel           *RiskLevel                `json:"risk_level,omitzero"`
+	Ingestion           *WebhookIngestion         `json:"ingestion,omitzero"`
+}
+
+type WebhookIngestion struct {
+	Id           string     `json:"id"`
+	ObjectType   string     `json:"object_type"`
+	Status       string     `json:"status"`
+	StartedAt    time.Time  `json:"started_at"`
+	FinishedAt   *time.Time `json:"finished_at"`
+	RowsIngested int        `json:"rows_ingested"`
+	ErrorCode    string     `json:"error_code,omitempty"`
+	InputError   string     `json:"input_error,omitempty"`
 }
 
 func AdaptWebhookEventData(
@@ -46,14 +61,21 @@ func AdaptWebhookEventData(
 	adapter types.PublicApiDataAdapter,
 	m models.WebhookEventPayload,
 ) (string, json.RawMessage, error) {
-	users, err := adapter.ListUsers(ctx, exec)
-	if err != nil {
-		return "", nil, err
+	var users []models.User
+	var tags []models.Tag
+	if m.Content.Case != nil || m.Content.Comments != nil {
+		var err error
+		users, err = adapter.ListUsers(ctx, exec)
+		if err != nil {
+			return "", nil, err
+		}
 	}
-
-	tags, err := adapter.ListTags(ctx, exec)
-	if err != nil {
-		return "", nil, err
+	if m.Content.Case != nil {
+		var err error
+		tags, err = adapter.ListTags(ctx, exec)
+		if err != nil {
+			return "", nil, err
+		}
 	}
 
 	refs := make(map[string]models.CaseReferents)
@@ -105,6 +127,21 @@ func AdaptWebhookEventData(
 			}),
 			RiskLevel: applyWebhookEventData(m.Content.Score, func(rl models.ScoringScore) RiskLevel {
 				return AdaptRiskLevel(rl, nil)
+			}),
+			Ingestion: applyWebhookEventData(m.Content.Ingestion, func(upload models.UploadLog) WebhookIngestion {
+				inputError := ""
+				if upload.InputError != nil {
+					inputError = *upload.InputError
+				}
+				errorCode := ""
+				if upload.UploadStatus == models.UploadFailure {
+					errorCode = "ingestion_failed"
+				}
+				return WebhookIngestion{
+					Id: upload.Id.String(), ObjectType: upload.TableName, Status: string(upload.UploadStatus),
+					StartedAt: upload.StartedAt, FinishedAt: upload.FinishedAt,
+					RowsIngested: upload.RowsIngested, ErrorCode: errorCode, InputError: inputError,
+				}
 			}),
 		},
 		Timestamp: m.Timestamp,

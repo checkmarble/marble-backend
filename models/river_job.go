@@ -236,6 +236,12 @@ type CsvIngestionArgs struct {
 
 func (CsvIngestionArgs) Kind() string { return "csv_ingestion" }
 
+type CsvIngestionDeadlineArgs struct {
+	UploadLogId uuid.UUID `json:"upload_log_id"`
+}
+
+func (CsvIngestionDeadlineArgs) Kind() string { return "csv_ingestion_deadline" }
+
 type GenerateThumbnailArgs struct {
 	Bucket string `json:"bucket"`
 	Key    string `json:"key"`
@@ -314,6 +320,7 @@ type ScoringInitialComputationArgs struct {
 func (ScoringInitialComputationArgs) Kind() string { return "scoring_initial_computation" }
 
 type AsyncUploadArgs struct {
+	UploadLogId      uuid.UUID        `json:"upload_log_id"`
 	OrgId            uuid.UUID        `json:"org_id"`
 	ObjectType       string           `json:"object_type"`
 	Key              string           `json:"key"`

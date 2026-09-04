@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
@@ -65,7 +66,19 @@ func (usecase *IngestionUseCase) GenerateUploadLink(
 	}
 
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Transaction) (string, error) {
-		if err := usecase.taskEnqueuer.EnqueueAsyncUploadTask(ctx, tx, orgId, recordType, key, ingestionOptions); err != nil {
+		newUploadLog := models.UploadLog{
+			Id:             uploadId,
+			UploadStatus:   models.UploadPending,
+			OrganizationId: orgId,
+			FileName:       key,
+			TableName:      recordType,
+			UserId:         uuid.Max.String(),
+			StartedAt:      time.Now(),
+		}
+		if err := usecase.uploadLogRepository.CreateUploadLog(ctx, tx, newUploadLog); err != nil {
+			return "", err
+		}
+		if err := usecase.taskEnqueuer.EnqueueAsyncUploadTask(ctx, tx, orgId, uploadId, recordType, key, ingestionOptions); err != nil {
 			return "", err
 		}
 
