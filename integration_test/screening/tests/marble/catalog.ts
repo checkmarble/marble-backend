@@ -139,6 +139,7 @@ const client = (network: StartedNetwork, s3: StartedTestContainer) => {
 		endpoint: uri(network, s3, 7070),
 		region: "us-east-1",
 		credentials: { accessKeyId: "root", secretAccessKey: "azertyuiop" },
+		forcePathStyle: true,
 	});
 };
 

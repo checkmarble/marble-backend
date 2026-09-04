@@ -50,7 +50,7 @@ export const startS3 = async (
 ): Promise<StartedTestContainer> => {
 	console.log("starting s3...");
 
-	const s3 = new GenericContainer("ghcr.io/versity/versitygw:v1.6.0")
+	const s3 = new GenericContainer("ghcr.io/versity/versitygw:v1.7.0")
 		.withNetwork(network)
 		.withNetworkAliases("s3")
 		.withExposedPorts(7070)
@@ -69,9 +69,15 @@ export const startS3 = async (
 		endpoint: uri(network, c, 7070),
 		region: "us-east-1",
 		credentials: { accessKeyId: "root", secretAccessKey: "azertyuiop" },
+		forcePathStyle: true,
 	});
 
-	await client.send(new CreateBucketCommand({ Bucket: "marble" }));
+	try {
+		await client.send(new CreateBucketCommand({ Bucket: "marble" }));
+	} catch (error) {
+		await Promise.allSettled([c.stop()]);
+		throw error;
+	}
 
 	return c;
 };
