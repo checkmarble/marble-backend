@@ -67,7 +67,7 @@ func (e *EnforceSecurityImpl) Permission(permission models.Permission) error {
 		return errors.Wrap(err, "failed to adapt permission to string")
 	}
 
-	if !e.Credentials.Role.HasPermission(permission) {
+	if !e.Credentials.HasPermission(permission) {
 		return errors.Wrap(models.ForbiddenError, "missing permission "+permissionStr)
 	}
 	return nil

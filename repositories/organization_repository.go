@@ -306,6 +306,37 @@ func (repo *MarbleDbRepository) GetOrganizationAllowedNetworks(ctx context.Conte
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptOrganizationWhitelistedSubnets)
 }
 
+func (repo *MarbleDbRepository) GetUserOrganizationAllowedNetworks(ctx context.Context, exec Executor, userID string) ([]net.IPNet, bool, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, false, err
+	}
+	rows, err := exec.Query(ctx, `
+		SELECT o.allowed_networks
+		FROM active_grants g
+		JOIN organizations o ON o.id = g.organization_id
+		WHERE g.principal_type = 'user' AND g.principal_id = $1 AND g.principal_authority = 'marble'
+	`, userID)
+	if err != nil {
+		return nil, false, err
+	}
+	defer rows.Close()
+	subnets := []net.IPNet{}
+	for rows.Next() {
+		var networks []net.IPNet
+		if err := rows.Scan(&networks); err != nil {
+			return nil, false, err
+		}
+		if len(networks) == 0 {
+			return nil, true, nil
+		}
+		subnets = append(subnets, networks...)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, false, err
+	}
+	return subnets, false, nil
+}
+
 func (repo *MarbleDbRepository) UpdateOrganizationAllowedNetworks(ctx context.Context,
 	exec Executor, orgId uuid.UUID, subnets []net.IPNet,
 ) ([]net.IPNet, error) {
