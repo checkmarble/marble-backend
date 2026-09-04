@@ -41,6 +41,7 @@ func (repo *UploadLogRepositoryImpl) CreateUploadLog(ctx context.Context, exec E
 				"table_name",
 				"status",
 				"started_at",
+				"deadline_at",
 				"finished_at",
 				"lines_processed",
 				"input_error",
@@ -54,6 +55,7 @@ func (repo *UploadLogRepositoryImpl) CreateUploadLog(ctx context.Context, exec E
 				log.TableName,
 				log.UploadStatus,
 				log.StartedAt,
+				log.DeadlineAt,
 				log.FinishedAt,
 				log.LinesProcessed,
 				log.InputError,
@@ -80,6 +82,9 @@ func (repo *UploadLogRepositoryImpl) UpdateUploadLogStatus(
 	}
 	if input.FinishedAt != nil {
 		updateRequest = updateRequest.Set("finished_at", *input.FinishedAt)
+	}
+	if input.DeadlineAt != nil {
+		updateRequest = updateRequest.Set("deadline_at", *input.DeadlineAt)
 	}
 	if input.NumRowsIngested != nil {
 		updateRequest = updateRequest.Set("num_rows_ingested", *input.NumRowsIngested)

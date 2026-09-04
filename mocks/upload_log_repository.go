@@ -21,7 +21,10 @@ func (r *UploadLogRepository) CreateUploadLog(ctx context.Context, exec reposito
 
 func (r *UploadLogRepository) UpdateUploadLogStatus(ctx context.Context, exec repositories.Executor, input models.UpdateUploadLogStatusInput) (bool, error) {
 	args := r.Called(ctx, exec, input)
-	return true, args.Error(0)
+	if len(args) == 1 {
+		return true, args.Error(0)
+	}
+	return args.Bool(0), args.Error(1)
 }
 
 func (r *UploadLogRepository) SaveUploadLogCheckpoint(ctx context.Context, exec repositories.Executor,
