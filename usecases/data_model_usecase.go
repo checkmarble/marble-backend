@@ -14,6 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -454,6 +455,10 @@ func (usecase *usecase) CreateDataModelTable(
 	if err != nil {
 		return "", err
 	}
+
+	tracking.TrackEvent(ctx, models.AnalyticsTableCreated, map[string]interface{}{
+		"table_id": tableId,
+	})
 
 	return tableId, nil
 }
