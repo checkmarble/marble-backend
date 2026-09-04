@@ -39,12 +39,18 @@ beforeAll(
 
 		await createFakeCatalog(network, s3);
 
-		[, pg, fb, es] = await Promise.all([
+		const startupResults = await Promise.allSettled([
 			buildMarble(),
-			startDatabase(network),
-			startFirebase(network),
-			startElasticsearch(network),
+			startDatabase(network).then((container) => (pg = container)),
+			startFirebase(network).then((container) => (fb = container)),
+			startElasticsearch(network).then((container) => (es = container)),
 		]);
+		const startupFailure = startupResults.find(
+			(result): result is PromiseRejectedResult => result.status === "rejected",
+		);
+		if (startupFailure) {
+			throw startupFailure.reason;
+		}
 
 		sql = postgres(pg.getConnectionUri());
 		motiva = await startMotiva(network);
@@ -58,14 +64,26 @@ beforeAll(
 );
 
 afterAll(async () => {
-	await sql?.end();
-	await worker?.stop();
-	await api?.stop();
-	await motiva?.stop();
-	await s3?.stop();
-	await es?.stop();
-	await pg?.stop();
-	await fb?.stop();
+	const cleanupResults = await Promise.allSettled([
+		sql?.end(),
+		worker?.stop(),
+		api?.stop(),
+		motiva?.stop(),
+		s3?.stop(),
+		es?.stop(),
+		pg?.stop(),
+		fb?.stop(),
+	]);
+
+	const networkResults = network
+		? await Promise.allSettled([network.stop()])
+		: [];
+	const cleanupFailure = [...cleanupResults, ...networkResults].find(
+		(result): result is PromiseRejectedResult => result.status === "rejected",
+	);
+	if (cleanupFailure) {
+		throw cleanupFailure.reason;
+	}
 });
 
 describe("Initial setup", () => {

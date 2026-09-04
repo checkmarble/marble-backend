@@ -9,7 +9,7 @@ import {
 } from "testcontainers";
 import { NATIVE_ARCH } from "./utils";
 
-const BUILDER_IMAGE = "docker.io/golang:1.26.2";
+const BUILDER_IMAGE = "docker.io/library/golang:1.26.2";
 
 export const buildMarble = async () => {
 	if (fs.existsSync("../../marble-backend")) {
@@ -27,14 +27,12 @@ export const buildMarble = async () => {
 		.withPlatform(NATIVE_ARCH)
 		.withEnvironment({ CGO_ENABLED: "1" })
 		.withWaitStrategy(Wait.forOneShotStartup())
-		.withStartupTimeout(5 * 60 * 1000)
+		.withSecurityOpt("label=disable")
+		.withStartupTimeout(10 * 60 * 1000)
 		.withBindMounts([{ source: path.resolve("../.."), target: "/app" }])
 		.withWorkingDir("/app")
-		.withCommand([
-			"sh",
-			"-c",
-			"go build -buildvcs=false -ldflags '-s -w' .",
-		]);
+		.withCommand(["sh", "-c", "go build -buildvcs=false -ldflags '-s -w' ."]);
 
-	await builder.start();
+	const startedBuilder = await builder.start();
+	await startedBuilder.stop();
 };
