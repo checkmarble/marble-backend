@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/cockroachdb/errors"
@@ -28,18 +29,20 @@ func (f StringConcat) Evaluate(ctx context.Context, arguments ast.Arguments) (an
 	}
 
 	for idx, arg := range arguments.Args {
-		switch arg.(type) {
+		switch v := arg.(type) {
 		case nil:
 			continue
 		case string, int, float64:
+			fmt.Fprintf(&sb, "%v", arg)
+
+			if withSeparator && idx < len(arguments.Args)-1 {
+				sb.WriteString(separator)
+			}
+		case time.Time:
+			// If time.Time, get rid of the StringConcat wrapper that will not be used for screenings.
+			return v, nil
 		default:
 			return nil, []error{errors.New("argument is not supported for StringConcat")}
-		}
-
-		fmt.Fprintf(&sb, "%v", arg)
-
-		if withSeparator && idx < len(arguments.Args)-1 {
-			sb.WriteString(separator)
 		}
 	}
 
