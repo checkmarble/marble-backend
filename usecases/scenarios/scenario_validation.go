@@ -174,6 +174,17 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 				if _, ok := queryNameValidation.RuleEvaluation.ReturnValue.(time.Time); ok {
 					returnTypeIsValid = true
 				}
+				if anyList, ok := queryNameValidation.RuleEvaluation.ReturnValue.([]any); ok && len(anyList) > 0 {
+					allValid := true
+					for idx := range anyList {
+						switch anyList[idx].(type) {
+						case string, time.Time:
+						default:
+							allValid = false
+						}
+					}
+					returnTypeIsValid = allValid
+				}
 
 				if !returnTypeIsValid {
 					queryNameValidation.Errors = append(

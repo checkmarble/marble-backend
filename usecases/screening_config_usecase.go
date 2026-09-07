@@ -51,9 +51,10 @@ func (uc ScreeningUsecase) CreateScreeningConfig(ctx context.Context, iterationI
 
 	if scCfg.Query != nil {
 		for field, v := range scCfg.Query {
-			if v.Function != ast.FUNC_STRING_CONCAT {
+			if v.Function != ast.FUNC_STRING_CONCAT && v.Function != ast.FUNC_LIST {
 				return models.ScreeningConfig{}, fmt.Errorf(
-					"query field '%s' is not a StringConcat", field)
+					"query field '%s' is not a StringConcat", field,
+				)
 			}
 		}
 	}
@@ -116,9 +117,10 @@ func (uc ScreeningUsecase) UpdateScreeningConfig(ctx context.Context,
 
 	if scCfg.Query != nil {
 		for field, v := range scCfg.Query {
-			if v.Function != ast.FUNC_STRING_CONCAT {
+			if v.Function != ast.FUNC_STRING_CONCAT && v.Function != ast.FUNC_LIST {
 				return models.ScreeningConfig{}, fmt.Errorf(
-					"query filter '%s' must be a StringConcat", field)
+					"query filter '%s' must be a StringConcat or a List of string-like objects", field,
+				)
 			}
 		}
 	}

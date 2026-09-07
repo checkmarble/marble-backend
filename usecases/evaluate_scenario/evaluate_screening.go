@@ -56,7 +56,8 @@ func (e ScenarioEvaluator) evaluateScreening(
 		defer lock.Unlock()
 
 		utils.LoggerFromContext(ctx).Error(fmt.Sprintf(
-			"screening execution returned some fatal errors: %s", err),
+			"screening execution returned some fatal errors: %s", err,
+		),
 			"screening_config_id", scc.Id)
 
 		screeningErrors = append(screeningErrors, err)
@@ -132,7 +133,7 @@ func (e ScenarioEvaluator) evaluateScreening(
 						fieldAst, iteration.OrganizationId,
 						dataAccessor.ClientObject, dataAccessor.DataModel)
 					if err != nil {
-						addScreeningError(scc, errors.New("could not parse screening counterparty name AST expression"))
+						addScreeningError(scc, errors.New("could not parse field AST expression"))
 						return
 					}
 
@@ -149,6 +150,7 @@ func (e ScenarioEvaluator) evaluateScreening(
 						}
 
 						queriesBeforeProcessing[0].Filters[fieldName] = []string{input}
+
 					case time.Time:
 						if input.IsZero() {
 							numEmptyFields++
@@ -156,6 +158,35 @@ func (e ScenarioEvaluator) evaluateScreening(
 						}
 
 						queriesBeforeProcessing[0].Filters[fieldName] = []string{input.Format("2006-01-02")}
+
+					case []any:
+						values := make([]string, 0, len(input))
+
+						for _, input := range input {
+							switch input := input.(type) {
+							case string:
+								if input != "" {
+									values = append(values, input)
+								}
+
+							case time.Time:
+								if !input.IsZero() {
+									values = append(values, input.Format("2006-01-02"))
+								}
+							}
+						}
+
+						if len(values) == 0 {
+							numEmptyFields++
+							continue
+						}
+
+						switch fieldName {
+						case "name":
+							queriesBeforeProcessing[0].Filters[fieldName] = []string{values[0]}
+						default:
+							queriesBeforeProcessing[0].Filters[fieldName] = values
+						}
 
 					default:
 						addScreeningResult(idx, outcomeError(scc, ErrScreeningFieldsNotString, nil))
