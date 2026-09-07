@@ -144,7 +144,8 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 						Error: errors.Wrap(models.BadParameterError,
 							"screening trigger formula does not return a boolean"),
 						Code: models.FormulaMustReturnBoolean,
-					})
+					},
+				)
 			}
 		}
 
@@ -180,7 +181,8 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 							Error: errors.Wrapf(models.BadParameterError,
 								"screening field filter '%s' does not return a string or a timestamp", field),
 							Code: models.FormulaMustReturnString,
-						})
+						},
+					)
 				}
 
 				scResult.QueryFields[field] = queryNameValidation
@@ -207,7 +209,8 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 						Error: errors.Wrap(models.BadParameterError,
 							"screening counterparty ID expression does not return a string"),
 						Code: models.FormulaMustReturnString,
-					})
+					},
+				)
 			}
 		}
 
