@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -19,6 +20,7 @@ type DbDataModelTable struct {
 	CaptionField         string          `db:"caption_field"`
 	PrimaryOrderingField string          `db:"primary_ordering_field"`
 	Metadata             json.RawMessage `db:"metadata"`
+	Lifecycle            json.RawMessage `db:"lifecycle"`
 }
 
 const (
@@ -29,10 +31,20 @@ const (
 var SelectDataModelTableColumns = utils.ColumnList[DbDataModelTable]()
 
 func AdaptTableMetadata(dbDataModelTable DbDataModelTable) (models.TableMetadata, error) {
-	var fmtEntity *models.FollowTheMoneyEntity
+	var (
+		fmtEntity *models.FollowTheMoneyEntity
+		lifecycle *models.TableLifecycle
+	)
+
 	if dbDataModelTable.FTMEntity != nil {
 		entity := models.FollowTheMoneyEntityFrom(*dbDataModelTable.FTMEntity)
 		fmtEntity = &entity
+	}
+
+	if dbDataModelTable.Lifecycle != nil {
+		if err := json.Unmarshal(dbDataModelTable.Lifecycle, &lifecycle); err != nil {
+			return models.TableMetadata{}, errors.Wrap(err, "cannot unmarshal table lifecycle")
+		}
 	}
 
 	return models.TableMetadata{
@@ -46,6 +58,7 @@ func AdaptTableMetadata(dbDataModelTable DbDataModelTable) (models.TableMetadata
 		CaptionField:         dbDataModelTable.CaptionField,
 		PrimaryOrderingField: dbDataModelTable.PrimaryOrderingField,
 		Metadata:             dbDataModelTable.Metadata,
+		Lifecycle:            lifecycle,
 	}, nil
 }
 
@@ -60,6 +73,7 @@ type DbDataModelTableJoinField struct {
 	TableCaptionField         string          `db:"data_model_tables.caption_field"`
 	TablePrimaryOrderingField string          `db:"data_model_tables.primary_ordering_field"`
 	TableMetadata             json.RawMessage `db:"data_model_tables.metadata"`
+	TableLifecycle            json.RawMessage `db:"data_model_tables.lifecycle"`
 	FieldID                   string          `db:"data_model_fields.id"`
 	FieldName                 string          `db:"data_model_fields.name"`
 	FieldType                 string          `db:"data_model_fields.type"`

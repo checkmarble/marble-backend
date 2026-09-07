@@ -199,6 +199,7 @@ type ContinuousScreeningUsecaseRepository interface {
 		captionField pure_utils.Null[string],
 		primaryOrderingField pure_utils.Null[string],
 		metadata *json.RawMessage,
+		lifecycle *models.TableLifecycle,
 	) error
 	UpdateDataModelField(
 		ctx context.Context,

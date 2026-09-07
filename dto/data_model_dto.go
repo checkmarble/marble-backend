@@ -2,12 +2,14 @@ package dto
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/sosodev/duration"
 )
 
 type LinkToSingle struct {
@@ -67,6 +69,7 @@ type Table struct {
 	CaptionField         string                  `json:"caption_field"`
 	PrimaryOrderingField string                  `json:"primary_ordering_field"`
 	Metadata             json.RawMessage         `json:"metadata,omitempty"`
+	Lifecycle            models.TableLifecycle   `json:"lifecycle"`
 }
 
 type DataModel struct {
@@ -91,6 +94,7 @@ func AdaptTableDto(table models.Table) Table {
 		CaptionField:         table.CaptionField,
 		PrimaryOrderingField: table.PrimaryOrderingField,
 		Metadata:             table.Metadata,
+		Lifecycle:            table.Lifecycle,
 	}
 }
 
@@ -164,6 +168,7 @@ type CreateTableInput struct {
 	PrimaryOrderingField string                 `json:"primary_ordering_field"`
 	Fields               []CreateFieldInput     `json:"fields"`
 	Links                []CreateTableLinkInput `json:"links"`
+	Lifecycle            models.TableLifecycle  `json:"lifecycle"`
 }
 
 func (input CreateTableInput) AdaptToModel() (models.CreateTableInput, error) {
@@ -196,6 +201,17 @@ func (input CreateTableInput) AdaptToModel() (models.CreateTableInput, error) {
 		return models.CreateTableInput{}, errors.Wrap(models.BadParameterError, "table alias cannot be empty")
 	}
 
+	for _, p := range []*duration.Duration{input.Lifecycle.DeleteStaleRowsAfter, input.Lifecycle.DeleteActiveRowsAfter} {
+		if p != nil {
+			if p.Negative {
+				return models.CreateTableInput{}, errors.Wrap(models.BadParameterError, "invalid negative lifecycle duration")
+			}
+			if p.ToTimeDuration() < 30*24*time.Hour {
+				return models.CreateTableInput{}, errors.Wrap(models.BadParameterError, "invalid lifecycle duration, should be at least one month")
+			}
+		}
+	}
+
 	return models.CreateTableInput{
 		Name:                 input.Name,
 		Description:          input.Description,
@@ -206,6 +222,7 @@ func (input CreateTableInput) AdaptToModel() (models.CreateTableInput, error) {
 		Fields:               fields,
 		Links:                links,
 		PrimaryOrderingField: input.PrimaryOrderingField,
+		Lifecycle:            input.Lifecycle,
 	}, nil
 }
 
@@ -241,14 +258,29 @@ type UpdateTableInput struct {
 	Metadata             *json.RawMessage        `json:"metadata"`
 	Fields               []FieldOperation        `json:"fields"`
 	Links                []LinkOperation         `json:"links"`
+	Lifecycle            *models.TableLifecycle  `json:"lifecycle"`
 }
 
 func (input UpdateTableInput) AdaptToUpdateTableCompositeInput() (models.UpdateTableCompositeInput, error) {
+	if input.Lifecycle != nil {
+		for _, p := range []*duration.Duration{input.Lifecycle.DeleteStaleRowsAfter, input.Lifecycle.DeleteActiveRowsAfter} {
+			if p != nil {
+				if p.Negative {
+					return models.UpdateTableCompositeInput{}, errors.Wrap(models.BadParameterError, "invalid negative lifecycle duration")
+				}
+				if p.ToTimeDuration() < 30*24*time.Hour {
+					return models.UpdateTableCompositeInput{}, errors.Wrap(models.BadParameterError, "invalid lifecycle duration, should be at least one month")
+				}
+			}
+		}
+	}
+
 	result := models.UpdateTableCompositeInput{
 		Description:          input.Description,
 		Metadata:             input.Metadata,
 		CaptionField:         input.CaptionField,
 		PrimaryOrderingField: input.PrimaryOrderingField,
+		Lifecycle:            input.Lifecycle,
 	}
 
 	// Table-level optional fields
@@ -508,7 +540,8 @@ func AdaptCreateFieldInputToModel(input CreateFieldInput) (models.CreateFieldInp
 		p := models.FollowTheMoneyPropertyFrom(*input.FTMProperty)
 		if p == models.FollowTheMoneyPropertyUnknown {
 			return models.CreateFieldInput{}, errors.Wrap(
-				models.BadParameterError, "invalid FollowTheMoney property")
+				models.BadParameterError, "invalid FollowTheMoney property",
+			)
 		}
 		ftmProperty = &p
 	}
@@ -517,7 +550,8 @@ func AdaptCreateFieldInputToModel(input CreateFieldInput) (models.CreateFieldInp
 		fieldSemanticType = models.FieldSemanticType(*input.SemanticType)
 		if !fieldSemanticType.IsValid() {
 			return models.CreateFieldInput{}, errors.Wrap(
-				models.BadParameterError, "invalid field semantic type")
+				models.BadParameterError, "invalid field semantic type",
+			)
 		}
 	}
 	if input.Alias == "" {
