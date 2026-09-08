@@ -130,12 +130,24 @@ func (repo MarbleDbRepository) GetDataModel(
 		Tables: make(map[string]models.Table),
 	}
 
+	var fieldEnumValues map[string][]any
+
+	if fetchEnumValues {
+		allFieldIds := pure_utils.Map(fields, func(f dbmodels.DbDataModelTableJoinField) string {
+			return f.FieldID
+		})
+
+		fieldEnumValues, err = repo.GetEnumValues(ctx, exec, allFieldIds)
+		if err != nil {
+			return models.DataModel{}, err
+		}
+	}
+
 	for _, field := range fields {
 		var values []any
 		if field.FieldIsEnum && fetchEnumValues {
-			values, err = repo.GetEnumValues(ctx, exec, field.FieldID)
-			if err != nil {
-				return models.DataModel{}, err
+			if enumValues, ok := fieldEnumValues[field.FieldID]; ok {
+				values = enumValues
 			}
 		}
 
@@ -324,7 +336,8 @@ func (repo MarbleDbRepository) CreateDataModelField(
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id`
 
-	_, err := exec.Exec(ctx,
+	_, err := exec.Exec(
+		ctx,
 		query,
 		fieldId,
 		field.TableId,
@@ -578,39 +591,53 @@ func (repo MarbleDbRepository) DeleteDataModel(ctx context.Context, exec Executo
 	)
 }
 
-func (repo MarbleDbRepository) GetEnumValues(ctx context.Context, exec Executor, fieldID string) ([]any, error) {
+func (repo MarbleDbRepository) GetEnumValues(ctx context.Context, exec Executor, fieldIDs []string) (map[string][]any, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
-	query, args, err := NewQueryBuilder().
-		Select("text_value", "float_value").
-		From("data_model_enum_values").
-		Where(squirrel.Eq{"field_id": fieldID}).
-		Where("(text_value IS NOT NULL OR float_value IS NOT NULL)").
-		Limit(100).
-		ToSql()
+	sql := `
+		select v.field_id, v.text_value, v.float_value
+		from (select unnest($1::uuid[]) as field_id) as ids
+		cross join lateral (
+			select v.field_id, v.text_value, v.float_value
+			from data_model_enum_values v
+			where v.field_id = ids.field_id
+			limit 100
+		) v
+	`
+
+	rows, err := exec.Query(ctx, sql, fieldIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	rows, err := exec.Query(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
+	values := make(map[string][]any)
 
-	values, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (any, error) {
-		var valueString, valueFloat any
-		if err := rows.Scan(&valueString, &valueFloat); err != nil {
-			return "", err
+	var fieldId string
+	var valueString, valueFloat any
+
+	_, err = pgx.ForEachRow(rows, []any{&fieldId, &valueString, &valueFloat}, func() error {
+		if err := rows.Scan(&fieldId, &valueString, &valueFloat); err != nil {
+			return err
 		}
+
+		if _, ok := values[fieldId]; !ok {
+			values[fieldId] = make([]any, 0)
+		}
+
 		// presumably if there is a row, one of the values should be non-nil
 		if valueString != nil {
-			return valueString, nil
+			values[fieldId] = append(values[fieldId], valueString)
 		}
-		return valueFloat, err
+		if valueFloat != nil {
+			values[fieldId] = append(values[fieldId], valueFloat)
+		}
+
+		return nil
 	})
-	return values, nil
+
+	return values, err
 }
 
 func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Executor, fieldId string) (models.FieldMetadata, error) {
