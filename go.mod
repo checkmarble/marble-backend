@@ -62,9 +62,9 @@ require (
 	github.com/pressly/goose/v3 v3.27.0
 	github.com/prometheus/client_golang v1.24.1
 	github.com/redis/go-redis/v9 v9.21.0
-	github.com/riverqueue/river v0.43.0
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.43.0
-	github.com/riverqueue/river/rivertype v0.43.0
+	github.com/riverqueue/river v0.44.1
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.44.1
+	github.com/riverqueue/river/rivertype v0.44.1
 	github.com/segmentio/analytics-go/v3 v3.3.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.44.0
@@ -81,10 +81,10 @@ require (
 	go.opentelemetry.io/otel/sdk v1.45.0
 	go.opentelemetry.io/otel/trace v1.45.0
 	gocloud.dev v0.43.0
-	golang.org/x/mod v0.38.0
+	golang.org/x/mod v0.40.0
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.22.0
-	golang.org/x/text v0.40.0
+	golang.org/x/text v0.41.0
 	golang.org/x/time v0.15.0
 	google.golang.org/api v0.289.0
 	google.golang.org/genai v1.66.0
@@ -254,8 +254,8 @@ require (
 	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.61.0 // indirect
-	github.com/riverqueue/river/riverdriver v0.43.0 // indirect
-	github.com/riverqueue/river/rivershared v0.43.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.44.1 // indirect
+	github.com/riverqueue/river/rivershared v0.44.1 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/samber/lo v1.51.0 // indirect
 	github.com/sanity-io/litter v1.5.5 // indirect
@@ -298,13 +298,13 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.2 // indirect
 	golang.org/x/arch v0.29.0 // indirect
-	golang.org/x/crypto v0.54.0 // indirect
+	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
 	golang.org/x/image v0.41.0 // indirect
-	golang.org/x/net v0.57.0 // indirect
+	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260625142307-59b4966ccb57 // indirect
-	golang.org/x/tools v0.47.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260811182544-a038080d80e5 // indirect
+	golang.org/x/tools v0.49.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/appengine/v2 v2.0.6 // indirect
 	google.golang.org/genproto v0.0.0-20260519071638-aa98bba5eb94 // indirect
