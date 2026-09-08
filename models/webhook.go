@@ -176,11 +176,23 @@ func NewWebhookEventCaseUpdated(c Case) WebhookEventContent {
 }
 
 func NewWebhookEventCaseCreatedManually(c Case) WebhookEventContent {
-	return newWebhookContent(WebhookEventType_CaseCreatedManually, WebhookEventData{Case: &c})
+	var d *DecisionWithRuleExecutions
+
+	if len(c.Decisions) > 0 {
+		d = &DecisionWithRuleExecutions{Decision: c.Decisions[0]}
+	}
+
+	return newWebhookContent(WebhookEventType_CaseCreatedManually, WebhookEventData{Case: &c, Decision: d})
 }
 
 func NewWebhookEventCaseCreatedWorkflow(c Case) WebhookEventContent {
-	return newWebhookContent(WebhookEventType_CaseCreatedWorkflow, WebhookEventData{Case: &c})
+	var d *DecisionWithRuleExecutions
+
+	if len(c.Decisions) > 0 {
+		d = &DecisionWithRuleExecutions{Decision: c.Decisions[0]}
+	}
+
+	return newWebhookContent(WebhookEventType_CaseCreatedWorkflow, WebhookEventData{Case: &c, Decision: d})
 }
 
 func NewWebhookEventCaseCreatedFromContinuousScreening(
