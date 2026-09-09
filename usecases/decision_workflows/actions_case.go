@@ -157,7 +157,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 
 		err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			OrganizationId: matchedCase.OrganizationId,
-			EventContent:   models.NewWebhookEventCaseDecisionsUpdated(c),
+			EventContent:   models.NewWebhookEventCaseDecisionsUpdated(c, decision.Decision),
 		})
 		if err != nil {
 			return models.WorkflowExecution{}, err
@@ -168,7 +168,8 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 		}, nil
 	default:
 		return models.WorkflowExecution{}, errors.New(
-			fmt.Sprintf("unknown workflow type: %s", action.Action))
+			fmt.Sprintf("unknown workflow type: %s", action.Action),
+		)
 	}
 }
 
