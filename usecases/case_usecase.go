@@ -191,7 +191,8 @@ func (usecase *CaseUseCase) ListCases(
 				for _, inboxId := range filters.InboxIds {
 					if !slices.Contains(availableInboxIds, inboxId) {
 						return models.CaseListPage{}, errors.Wrap(
-							models.ForbiddenError, fmt.Sprintf("inbox %s is not accessible", inboxId))
+							models.ForbiddenError, fmt.Sprintf("inbox %s is not accessible", inboxId),
+						)
 					}
 				}
 			}
@@ -614,7 +615,8 @@ func (usecase *CaseUseCase) UpdateCase(
 		availableInboxIds, err := usecase.getAvailableInboxIds(
 			ctx,
 			tx,
-			c.OrganizationId)
+			c.OrganizationId,
+		)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -1059,12 +1061,18 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 			return models.Case{}, err
 		}
 
-		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-			OrganizationId: updatedCase.OrganizationId,
-			EventContent:   models.NewWebhookEventCaseDecisionsUpdated(updatedCase),
-		})
-		if err != nil {
-			return models.Case{}, err
+		for _, decision := range updatedCase.Decisions {
+			if !slices.Contains(decisionIds, decision.DecisionId.String()) {
+				continue
+			}
+
+			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+				OrganizationId: updatedCase.OrganizationId,
+				EventContent:   models.NewWebhookEventCaseDecisionsUpdated(updatedCase, decision),
+			})
+			if err != nil {
+				return models.Case{}, err
+			}
 		}
 
 		return updatedCase, nil
@@ -1154,7 +1162,8 @@ func (usecase *CaseUseCase) UpdateCaseTags(
 		availableInboxIds, err := usecase.getAvailableInboxIds(
 			ctx,
 			usecase.executorFactory.NewExecutor(),
-			c.OrganizationId)
+			c.OrganizationId,
+		)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -1262,7 +1271,8 @@ func (usecase *CaseUseCase) AddCaseTags(ctx context.Context, caseId string, tagI
 		}
 
 		availableInboxIds, err := usecase.getAvailableInboxIds(
-			ctx, usecase.executorFactory.NewExecutor(), caseMeta.OrganizationId)
+			ctx, usecase.executorFactory.NewExecutor(), caseMeta.OrganizationId,
+		)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -1347,7 +1357,8 @@ func (usecase *CaseUseCase) RemoveCaseTag(ctx context.Context, caseId string, ta
 		}
 
 		availableInboxIds, err := usecase.getAvailableInboxIds(
-			ctx, usecase.executorFactory.NewExecutor(), caseMeta.OrganizationId)
+			ctx, usecase.executorFactory.NewExecutor(), caseMeta.OrganizationId,
+		)
 		if err != nil {
 			return err
 		}
@@ -2456,7 +2467,8 @@ func (usecase *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpda
 		// If we are trying to mass-assign, we need to check, for each case, that the target user can manage the case.
 		if req.Action == models.CaseMassUpdateAssign.String() {
 			if err := security.EnforceSecurityCaseForUser(newAssignee).ReadOrUpdateCase(
-				c.GetMetadata(), availableInboxIds); err != nil {
+				c.GetMetadata(), availableInboxIds,
+			); err != nil {
 				return errors.Wrap(err, "target user lacks case permissions for assignment")
 			}
 		}

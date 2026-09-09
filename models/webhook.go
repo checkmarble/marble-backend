@@ -213,8 +213,10 @@ func NewWebhookEventCaseContinuousScreeningMatchReviewed(
 	)
 }
 
-func NewWebhookEventCaseDecisionsUpdated(c Case) WebhookEventContent {
-	return newWebhookContent(WebhookEventType_CaseDecisionsUpdated, WebhookEventData{Case: &c})
+func NewWebhookEventCaseDecisionsUpdated(c Case, decision Decision) WebhookEventContent {
+	d := &DecisionWithRuleExecutions{Decision: decision}
+
+	return newWebhookContent(WebhookEventType_CaseDecisionsUpdated, WebhookEventData{Case: &c, Decision: d})
 }
 
 func NewWebhookEventCaseTagsUpdated(c Case) WebhookEventContent {
