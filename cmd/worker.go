@@ -311,7 +311,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		// Jobs that do not implement this and run for longer than this value will be rescued by the worker, which we should
 		// avoid if it is actually still running.
 		RescueStuckJobsAfter: 2 * time.Minute,
-		WorkerMiddleware: []rivertype.WorkerMiddleware{
+		Middleware: []rivertype.Middleware{
 			jobs.NewRecoveredMiddleware(),
 			jobs.NewSentryMiddleware(),
 			cronMonitorMiddleware,

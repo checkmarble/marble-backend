@@ -34,7 +34,7 @@ func ColumnValueMap(input any) map[string]any {
 		switch colValue.Kind() {
 		case reflect.Struct:
 			continue
-		case reflect.Ptr, reflect.Map, reflect.Chan, reflect.Slice:
+		case reflect.Pointer, reflect.Map, reflect.Chan, reflect.Slice:
 			if colValue.IsNil() {
 				continue
 			}
