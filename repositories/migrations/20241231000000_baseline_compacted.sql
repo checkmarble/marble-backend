@@ -20,12 +20,6 @@ $$;
 
 DO $$
 BEGIN
-   EXECUTE 'ALTER DATABASE ' || current_database() || ' SET search_path TO marble, public';
-END
-$$;
-
-DO $$
-BEGIN
    EXECUTE format('ALTER ROLE %I SET search_path = marble, public;', current_user);
 END
 $$;
@@ -87,7 +81,7 @@ $$;
 --
 CREATE TABLE
     marble.api_keys (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         org_id uuid NOT NULL,
         prefix character varying NOT NULL,
         deleted_at timestamp with time zone,
@@ -103,7 +97,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.case_contributors (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         case_id uuid NOT NULL,
         user_id uuid NOT NULL,
         created_at timestamp with time zone DEFAULT now() NOT NULL
@@ -114,7 +108,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.case_events (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         case_id uuid NOT NULL,
         user_id uuid,
         event_type character varying NOT NULL,
@@ -131,7 +125,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.case_files (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         created_at timestamp with time zone DEFAULT now() NOT NULL,
         case_id uuid NOT NULL,
         bucket_name character varying(255) NOT NULL,
@@ -144,7 +138,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.case_tags (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         case_id uuid NOT NULL,
         tag_id uuid NOT NULL,
         created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -156,7 +150,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.cases (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         org_id uuid NOT NULL,
         name text NOT NULL,
         status character varying DEFAULT 'open'::character varying NOT NULL,
@@ -169,7 +163,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.custom_list_values (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         custom_list_id uuid NOT NULL,
         value character varying NOT NULL,
         created_at timestamp with time zone DEFAULT now(),
@@ -181,7 +175,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.custom_lists (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         organization_id uuid NOT NULL,
         name character varying NOT NULL,
         description character varying NOT NULL,
@@ -207,7 +201,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.data_model_fields (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         table_id uuid NOT NULL,
         name text NOT NULL,
         type marble.data_model_types NOT NULL,
@@ -221,7 +215,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.data_model_links (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         organization_id uuid NOT NULL,
         name text NOT NULL,
         parent_table_id uuid NOT NULL,
@@ -235,7 +229,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.data_model_pivots (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         base_table_id uuid NOT NULL,
         created_at timestamp with time zone DEFAULT now() NOT NULL,
         field_id uuid,
@@ -248,7 +242,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.data_model_tables (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         organization_id uuid NOT NULL,
         name text NOT NULL,
         description text
@@ -259,7 +253,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.decision_rules (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         org_id uuid NOT NULL,
         decision_id uuid NOT NULL,
         score_modifier integer NOT NULL,
@@ -277,7 +271,7 @@ WITH
 --
 CREATE TABLE
     marble.decisions (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         org_id uuid NOT NULL,
         created_at timestamp with time zone DEFAULT now() NOT NULL,
         outcome marble.decision_outcome NOT NULL,
@@ -301,7 +295,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.decisions_to_create (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         scheduled_execution_id uuid,
         object_id character varying(100) NOT NULL,
         status character varying(20) DEFAULT 'pending'::character varying NOT NULL,
@@ -329,7 +323,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.inbox_users (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         created_at timestamp with time zone DEFAULT now() NOT NULL,
         updated_at timestamp with time zone DEFAULT now() NOT NULL,
         inbox_id uuid NOT NULL,
@@ -342,7 +336,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.inboxes (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         name character varying(255) NOT NULL,
         created_at timestamp with time zone DEFAULT now() NOT NULL,
         updated_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -355,7 +349,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.licenses (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         key character varying NOT NULL,
         created_at timestamp with time zone DEFAULT now() NOT NULL,
         suspended_at timestamp with time zone,
@@ -377,7 +371,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.organizations (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         name character varying NOT NULL,
         deleted_at timestamp with time zone,
         transfer_check_scenario_id uuid,
@@ -390,7 +384,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.organizations_schema (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         org_id uuid,
         schema_name character varying(255) NOT NULL
     );
@@ -400,7 +394,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.partners (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         created_at timestamp with time zone DEFAULT now() NOT NULL,
         name character varying(255) NOT NULL,
         bic character varying DEFAULT ''::character varying NOT NULL
@@ -411,7 +405,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.phantom_decisions (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         org_id uuid NOT NULL,
         created_at timestamp with time zone DEFAULT now() NOT NULL,
         outcome marble.decision_outcome NOT NULL,
@@ -427,7 +421,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.rule_snoozes (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         created_at timestamp with time zone DEFAULT now() NOT NULL,
         created_by_user uuid NOT NULL,
         snooze_group_id uuid NOT NULL,
@@ -443,7 +437,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.scenario_iteration_rules (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         org_id uuid NOT NULL,
         scenario_iteration_id uuid NOT NULL,
         display_order smallint NOT NULL,
@@ -463,7 +457,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.scenario_iterations (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         org_id uuid NOT NULL,
         scenario_id uuid NOT NULL,
         version smallint,
@@ -482,7 +476,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.scenario_publications (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         rank SERIAL NOT NULL,
         org_id uuid NOT NULL,
         scenario_id uuid NOT NULL,
@@ -496,7 +490,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.scenario_test_run (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         scenario_iteration_id uuid NOT NULL,
         live_scenario_iteration_id uuid NOT NULL,
         created_at timestamp with time zone DEFAULT now(),
@@ -509,7 +503,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.scenarios (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         org_id uuid NOT NULL,
         name character varying NOT NULL,
         description character varying NOT NULL,
@@ -527,7 +521,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.scheduled_executions (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         organization_id uuid NOT NULL,
         scenario_id uuid NOT NULL,
         scenario_iteration_id uuid NOT NULL,
@@ -545,7 +539,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.snooze_groups (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         created_at timestamp with time zone DEFAULT now() NOT NULL,
         organization_id uuid NOT NULL
     );
@@ -555,7 +549,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.tags (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         name character varying(255) NOT NULL,
         color character varying(255) NOT NULL,
         created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -569,7 +563,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.transfer_alerts (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         transfer_id uuid NOT NULL,
         organization_id uuid NOT NULL,
         sender_partner_id uuid NOT NULL,
@@ -587,7 +581,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.transfer_mappings (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         created_at timestamp with time zone DEFAULT now() NOT NULL,
         organization_id uuid NOT NULL,
         client_transfer_id character varying(60) NOT NULL,
@@ -599,7 +593,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.upload_logs (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         org_id uuid NOT NULL,
         user_id uuid NOT NULL,
         file_name character varying NOT NULL,
@@ -616,7 +610,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.users (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         email character varying NOT NULL,
         role integer NOT NULL,
         organization_id uuid,
@@ -631,7 +625,7 @@ CREATE TABLE
 --
 CREATE TABLE
     marble.webhook_events (
-        id uuid DEFAULT marble.uuid_generate_v4 () NOT NULL,
+        id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         created_at timestamp with time zone DEFAULT now() NOT NULL,
         updated_at timestamp with time zone DEFAULT now() NOT NULL,
         retry_count integer DEFAULT 0 NOT NULL,
