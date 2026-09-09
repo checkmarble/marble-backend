@@ -75,6 +75,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Cache
+        uses: actions/cache@v6
+        with:
+          path: integration_test/screening/node_modules
+          key: marble-${{ github.job }}-${{ hashFiles('integration_test/screening/pnpm-lock.yaml') }}
+          restore-keys: |
+            marble-${{ github.job }}
+
       - uses: pnpm/action-setup@v6
         with:
           version: 11.25.0

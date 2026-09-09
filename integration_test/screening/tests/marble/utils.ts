@@ -8,7 +8,5 @@ export const uri = (
 	container: StartedTestContainer,
 	port: number,
 ): string => {
-	const host = container.getIpAddress(network.getName());
-
-	return `http://${host}:${port}`;
+	return `http://localhost:${container.getMappedPort(port)}`;
 };
