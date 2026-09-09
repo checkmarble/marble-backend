@@ -779,6 +779,35 @@ func (repo *MarbleDbRepository) ObjectHasConfirmedRisks(ctx context.Context, exe
 	return hasConfirmedRisks, nil
 }
 
+func (repo *MarbleDbRepository) OrgHasClosedCase(ctx context.Context, exec Executor,
+	orgId uuid.UUID,
+) (bool, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return false, err
+	}
+
+	query := NewQueryBuilder().
+		Select("1").
+		Prefix("select exists(").
+		Suffix(")").
+		From(dbmodels.TABLE_CASES).
+		Where(squirrel.Eq{"org_id": orgId}).
+		Where(squirrel.Eq{"status": models.CaseClosed})
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return false, err
+	}
+
+	var exists bool
+
+	if err := exec.QueryRow(ctx, sql, args...).Scan(&exists); err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
 // Count the number of cases for each organization in the given time range, return a map of orgId to count
 // From date is inclusive, to date is exclusive
 func (repo *MarbleDbRepository) CountCasesByOrg(ctx context.Context, exec Executor,

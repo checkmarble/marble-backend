@@ -19,6 +19,7 @@ const (
 	AnalyticsCaseCreated                AnalyticsEvent = "Created a Case"
 	AnalyticsCaseUpdated                AnalyticsEvent = "Updated a Case"
 	AnalyticsCaseStatusUpdated          AnalyticsEvent = "Updated Case Status"
+	AnalyticsFirstCaseClosed            AnalyticsEvent = "Closed a first Case"
 	AnalyticsCaseCommentCreated         AnalyticsEvent = "Created a Case Comment"
 	AnalyticsCaseTagsUpdated            AnalyticsEvent = "Updated Case Tags on Case"
 	AnalyticsCaseFileCreated            AnalyticsEvent = "Created a Case File"
@@ -26,6 +27,7 @@ const (
 	AnalyticsTagCreated                 AnalyticsEvent = "Created a Tag"
 	AnalyticsTagUpdated                 AnalyticsEvent = "Updated a Tag"
 	AnalyticsTagDeleted                 AnalyticsEvent = "Deleted a Tag"
+	AnalyticsUserSetup                  AnalyticsEvent = "Set up a User"
 	AnalyticsUserCreated                AnalyticsEvent = "Created a User"
 	AnalyticsUserUpdated                AnalyticsEvent = "Updated a User"
 	AnalyticsUserDeleted                AnalyticsEvent = "Deleted a User"
@@ -37,4 +39,5 @@ const (
 	AnalyticsInboxUserDeleted           AnalyticsEvent = "Deleted an Inbox User"
 	AnalyticsApiKeyCreated              AnalyticsEvent = "Created an Api Key"
 	AnalyticsApiKeyDeleted              AnalyticsEvent = "Deleted an Api Key"
+	AnalyticsTableCreated               AnalyticsEvent = "Created a Table"
 )

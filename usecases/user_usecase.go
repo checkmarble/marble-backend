@@ -20,17 +20,24 @@ import (
 )
 
 type UserUseCase struct {
-	enforceUserSecurity security.EnforceSecurityUser
-	executorFactory     executor_factory.ExecutorFactory
-	transactionFactory  executor_factory.TransactionFactory
-	userRepository      repositories.UserRepository
-	firebaseAdmin       idp.Adminer
+	enforceUserSecurity    security.EnforceSecurityUser
+	executorFactory        executor_factory.ExecutorFactory
+	transactionFactory     executor_factory.TransactionFactory
+	userRepository         repositories.UserRepository
+	organizationRepository repositories.OrganizationRepository
+	firebaseAdmin          idp.Adminer
 }
 
 func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.CreateUser) (models.User, error) {
 	if err := usecase.enforceUserSecurity.CreateUser(createUser); err != nil {
 		return models.User{}, err
 	}
+
+	org, err := usecase.organizationRepository.GetOrganizationById(ctx, usecase.executorFactory.NewExecutor(), createUser.OrganizationId)
+	if err != nil {
+		return models.User{}, errors.Wrap(err, "GetOrganizationById error")
+	}
+
 	createdUser, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
@@ -61,8 +68,19 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 	if err != nil {
 		return models.User{}, err
 	}
+	tracking.Identify(ctx, createdUser.UserId, map[string]interface{}{
+		"email":           createdUser.Email,
+		"organization_id": createdUser.OrganizationId,
+		"first_name":      createdUser.FirstName,
+		"last_name":       createdUser.LastName,
+	})
+	tracking.Group(ctx, createdUser.UserId, createdUser.OrganizationId, map[string]any{
+		"name": org.Name,
+	})
 	tracking.TrackEvent(ctx, models.AnalyticsUserCreated, map[string]interface{}{
-		"user_id": createdUser.UserId,
+		"user_id":         createdUser.UserId,
+		"email":           createdUser.Email,
+		"organization_id": createdUser.OrganizationId,
 	})
 
 	return createdUser, nil
@@ -93,8 +111,16 @@ func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.Up
 	if err != nil {
 		return models.User{}, err
 	}
+	tracking.Identify(ctx, updatedUser.UserId, map[string]interface{}{
+		"email":           updatedUser.Email,
+		"organization_id": updatedUser.OrganizationId,
+		"first_name":      updatedUser.FirstName,
+		"last_name":       updatedUser.LastName,
+	})
 	tracking.TrackEvent(ctx, models.AnalyticsUserUpdated, map[string]interface{}{
-		"user_id": updatedUser.UserId,
+		"user_id":         updatedUser.UserId,
+		"email":           updatedUser.Email,
+		"organization_id": updatedUser.OrganizationId,
 	})
 
 	return updatedUser, nil
