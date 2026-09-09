@@ -14,10 +14,10 @@ type CaseRepository struct {
 	mock.Mock
 }
 
-func (r *CaseRepository) ListOrganizationCases(ctx context.Context, exec repositories.Executor,
+func (r *CaseRepository) ListOrganizationCases(ctx context.Context, tx repositories.Transaction,
 	filters models.CaseFilters, pagination models.PaginationAndSorting,
 ) ([]models.Case, error) {
-	args := r.Called(ctx, exec, filters, pagination)
+	args := r.Called(ctx, tx, filters, pagination)
 	return args.Get(0).([]models.Case), args.Error(1)
 }
 

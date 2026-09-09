@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,13 +17,16 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
+// ListOrganizationCases lists cases for an organization.
+// It expects a transaction as input, because (in the case a name filter is used) we need to SET LOCAL for the similarity threshold.
+// If this ever becomes inconvenient, we could use the GetPinnedExecutor method to get a stable session instead.
 func (repo *MarbleDbRepository) ListOrganizationCases(
 	ctx context.Context,
-	exec Executor,
+	tx Transaction,
 	filters models.CaseFilters,
 	pagination models.PaginationAndSorting,
 ) ([]models.Case, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
+	if err := validateMarbleDbExecutor(tx); err != nil {
 		return nil, err
 	}
 
@@ -70,11 +74,17 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 		query = query.Where(squirrel.Eq{"c.inbox_id": filters.InboxIds})
 	}
 	if filters.Name != "" {
-		// Straight from the Postgres doc,
-		// "Same as word_similarity, but forces extent boundaries to match word boundaries. Since we don't have cross-word trigrams,
-		// this function actually returns greatest similarity between first string and any continuous extent of words of the second string."
-		// Hence, the (presumably shorter) string received as input should be used as the first argument.
-		query = query.Where("word_similarity(?, c.name) > ?", filters.Name, repo.similarityThreshold)
+		_, err := tx.Exec(
+			ctx,
+			`SELECT set_config('pg_trgm.word_similarity_threshold', $1, true)`,
+			strconv.FormatFloat(repo.similarityThreshold, 'f', -1, 64),
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to configure similarity threshold")
+		}
+		// word_similarity finds the greatest similarity between the search term and any continuous extent of the case name.
+		// It is asymmetric, so the shorter search term must be the first argument.
+		query = query.Where("? <% c.name", filters.Name)
 	}
 	if !filters.IncludeSnoozed {
 		query = query.Where(squirrel.Or{
@@ -104,7 +114,7 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 	var offsetCase models.Case
 	if pagination.OffsetId != "" {
 		var err error
-		offsetCase, err = repo.GetCaseById(ctx, exec, pagination.OffsetId)
+		offsetCase, err = repo.GetCaseById(ctx, tx, pagination.OffsetId)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return []models.Case{}, errors.Wrap(models.NotFoundError,
 				"No row found matching the provided offset case Id")
@@ -119,7 +129,7 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 	}
 
 	// Then, fetch the cases
-	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.Case, error) {
+	return SqlToListOfRow(ctx, tx, query, func(row pgx.CollectableRow) (models.Case, error) {
 		db, err := pgx.RowToStructByPos[dbmodels.DBCaseWithContributorsAndTags](row)
 		if err != nil {
 			return models.Case{}, err
@@ -279,7 +289,8 @@ func (repo *MarbleDbRepository) GetCaseReferents(ctx context.Context, exec Execu
 		Column(fmt.Sprintf("case when c.assigned_to is null then null else row(%s) end as assignee",
 			strings.Join(columnsNames("u", dbmodels.UserFields), ","))).
 		Column(fmt.Sprintf("row(%s) as inbox", strings.Join(
-			columnsNames("i", dbmodels.SelectInboxColumn), ","))).
+			columnsNames("i", dbmodels.SelectInboxColumn), ",",
+		))).
 		From(dbmodels.TABLE_CASES + " c").
 		LeftJoin(dbmodels.TABLE_USERS + " u on u.id = c.assigned_to").
 		InnerJoin(dbmodels.TABLE_INBOXES + " i on i.id = c.inbox_id").
@@ -449,7 +460,8 @@ func (repo *MarbleDbRepository) ListCaseTagsByCaseId(ctx context.Context, exec E
 		return nil, err
 	}
 
-	return SqlToListOfModels(ctx, exec,
+	return SqlToListOfModels(
+		ctx, exec,
 		NewQueryBuilder().
 			Select(dbmodels.SelectCaseTagColumn...).
 			From(dbmodels.TABLE_CASE_TAGS).
@@ -464,7 +476,8 @@ func (repo *MarbleDbRepository) ListCaseTagsByTagId(ctx context.Context, exec Ex
 		return nil, err
 	}
 
-	return SqlToListOfModels(ctx, exec,
+	return SqlToListOfModels(
+		ctx, exec,
 		NewQueryBuilder().
 			Select(dbmodels.SelectCaseTagColumn...).
 			From(dbmodels.TABLE_CASE_TAGS).

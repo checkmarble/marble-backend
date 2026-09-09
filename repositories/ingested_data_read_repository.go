@@ -211,7 +211,8 @@ func addJoinsOnIntermediateTables(
 		link, ok := currentTable.LinksToSingle[linkName]
 		if !ok {
 			return squirrel.SelectBuilder{}, fmt.Errorf(
-				"no link with name %s on table %s: %w", linkName, currentTable.Name, models.NotFoundError)
+				"no link with name %s on table %s: %w", linkName, currentTable.Name, models.NotFoundError,
+			)
 		}
 		nextTable, ok := readParams.DataModel.Tables[link.ParentTableName]
 		if !ok {
@@ -230,7 +231,8 @@ func addJoinsOnIntermediateTables(
 			aliasCurrentTable,
 			link.ChildFieldName,
 			aliastNextTable,
-			link.ParentFieldName)
+			link.ParentFieldName,
+		)
 		query = query.
 			Join(joinClause).
 			Where(rowIsValid(aliastNextTable))
@@ -698,7 +700,8 @@ func addConditionForOperator(query squirrel.SelectBuilder, fieldName string, fie
 			squirrel.NotEq{fieldName: nil},
 		}
 		if fieldType == models.String {
-			andCondition = append(andCondition,
+			andCondition = append(
+				andCondition,
 				squirrel.NotEq{fieldName: ""},
 			)
 		}
@@ -716,7 +719,8 @@ func addConditionForOperator(query squirrel.SelectBuilder, fieldName string, fie
 		switch fuzzyFilterOptions.Algorithm {
 		case "bag_of_words_similarity_db":
 			// Basic word_similarity is not symmetric. Make it symmetric, checking if the shorter string is "mostly" included in the longer one.
-			condition := fmt.Sprintf(`
+			condition := fmt.Sprintf(
+				`
 			CASE
 				WHEN length(%s) < length(?) THEN word_similarity(%s, ?)
 				ELSE word_similarity(?, %s)
@@ -732,7 +736,8 @@ func addConditionForOperator(query squirrel.SelectBuilder, fieldName string, fie
 			// - string length below which the trigram similarity is boosted by an arbitrary value: 11
 			// - amount by which the trigram similarity is boosted: 0.05 times a factor, that is maximal when strings are the shortest (6 chars => 0.25 score bump)
 			//   and maximal when strings are just below the boost threshold (10 chars => 0.05 score bump)
-			condition := fmt.Sprintf(`
+			condition := fmt.Sprintf(
+				`
 			CASE
 				WHEN GREATEST(LENGTH(%s), LENGTH(?)) < 6 THEN 1.0 - (levenshtein(%s, ?)::float / GREATEST(LENGTH(%s), LENGTH(?)))
 				WHEN GREATEST(LENGTH(%s), LENGTH(?)) < 11 THEN LEAST(1.0, SIMILARITY(%s, ?) + 0.05 * (11 - LEAST(1, LENGTH(%s), LENGTH(?))))
@@ -989,7 +994,7 @@ func (repo *IngestedDataReadRepositoryImpl) SearchObjects(
 				squirrel.Expr(fmt.Sprintf("%s %%> ?", field), terms),
 			},
 		}).
-		OrderByClause(squirrel.Expr(fmt.Sprintf("object_id = ? desc, %s <<-> ? asc", field), terms, terms)).
+		OrderByClause(squirrel.Expr(fmt.Sprintf("object_id = ? desc, %s <->> ? asc", field), terms, terms)).
 		Limit(pageSize).
 		Offset(offset)
 

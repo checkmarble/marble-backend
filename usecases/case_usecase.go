@@ -27,7 +27,7 @@ import (
 )
 
 type CaseUseCaseRepository interface {
-	ListOrganizationCases(ctx context.Context, exec repositories.Executor, filters models.CaseFilters,
+	ListOrganizationCases(ctx context.Context, tx repositories.Transaction, filters models.CaseFilters,
 		pagination models.PaginationAndSorting) ([]models.Case, error)
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
 	GetCaseByIdForUpdate(ctx context.Context, exec repositories.Executor, caseId string) (models.CaseMetadata, error)
