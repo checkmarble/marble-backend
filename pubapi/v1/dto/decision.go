@@ -51,6 +51,7 @@ type DecisionRuleError struct {
 
 func AdaptDecision(
 	includeRules bool,
+	includeScreeningMatches bool,
 	ruleExecutions []models.RuleExecution,
 	screening []models.ScreeningWithMatches,
 ) func(models.Decision) Decision {
@@ -83,7 +84,7 @@ func AdaptDecision(
 			}
 
 			if screening != nil {
-				d.Screenings = pure_utils.Map(screening, AdaptScreening(false))
+				d.Screenings = pure_utils.Map(screening, AdaptScreening(includeScreeningMatches))
 			}
 		}
 

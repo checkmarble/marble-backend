@@ -79,7 +79,7 @@ func AdaptWebhookEventData(
 			Decision: applyWebhookEventData(m.Content.Decision, func(
 				d models.DecisionWithRuleExecutions,
 			) Decision {
-				return AdaptDecision(true, m.Content.Decision.RuleExecutions,
+				return AdaptDecision(true, false, m.Content.Decision.RuleExecutions,
 					m.Content.Decision.ScreeningExecutions)(m.Content.Decision.Decision)
 			}),
 			Case: applyWebhookEventData(m.Content.Case, func(c models.Case) Case {

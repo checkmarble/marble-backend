@@ -73,7 +73,7 @@ func HandleListDecisions(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		types.
-			NewResponse(pure_utils.Map(decisions.Decisions, dto.AdaptDecision(false, nil, nil))).
+			NewResponse(pure_utils.Map(decisions.Decisions, dto.AdaptDecision(false, false, nil, nil))).
 			WithPagination(decisions.HasNextPage, nextPageId).
 			Serve(c)
 	}
@@ -99,10 +99,14 @@ func HandleGetDecision(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		types.
-			NewResponse(dto.AdaptDecision(true, decision.RuleExecutions,
+			NewResponse(dto.AdaptDecision(true, false, decision.RuleExecutions,
 				decision.ScreeningExecutions)(decision.Decision)).
 			Serve(c)
 	}
+}
+
+type CreateDecisionParams struct {
+	IncludeScreeningMatches bool `form:"include_screening_matches"`
 }
 
 func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
@@ -115,8 +119,15 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		var payload params.CreateDecisionParams
+		var (
+			payload params.CreateDecisionParams
+			opts    CreateDecisionParams
+		)
 
+		if err := c.ShouldBindQuery(&opts); err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
 		if err := c.ShouldBindJSON(&payload); err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -184,7 +195,7 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		types.
-			NewResponse([]dto.Decision{dto.AdaptDecision(true, decision.RuleExecutions,
+			NewResponse([]dto.Decision{dto.AdaptDecision(true, opts.IncludeScreeningMatches, decision.RuleExecutions,
 				decision.ScreeningExecutions)(decision.Decision)}).
 			WithMetadata(dto.AdaptDecisionsMetadata(stats)).
 			Serve(c)
@@ -232,7 +243,7 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		dtos := pure_utils.Map(decisions, func(d models.DecisionWithRuleExecutions) dto.Decision {
-			return dto.AdaptDecision(true, d.RuleExecutions, d.ScreeningExecutions)(d.Decision)
+			return dto.AdaptDecision(true, false, d.RuleExecutions, d.ScreeningExecutions)(d.Decision)
 		})
 
 		stats := gdto.AdaptDecisionsMetadata(decisions, skipped)
@@ -278,6 +289,6 @@ func HandleAddDecisionToCase(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		types.NewResponse(dto.AdaptDecision(false, nil, nil)(decision.Decision)).Serve(c)
+		types.NewResponse(dto.AdaptDecision(false, false, nil, nil)(decision.Decision)).Serve(c)
 	}
 }
