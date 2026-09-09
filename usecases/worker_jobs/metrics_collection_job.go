@@ -71,7 +71,7 @@ func NewMetricCollectionWorker(
 }
 
 func (w MetricCollectionWorker) Timeout(job *river.Job[models.MetricsCollectionArgs]) time.Duration {
-	return time.Minute
+	return 3 * time.Minute
 }
 
 // Work executes the metrics collection job by collecting both global and organization-specific metrics
