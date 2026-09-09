@@ -134,6 +134,15 @@ paths:
       summary: Create decision
       description: |
         Create a decision by running a trigger object through a scenario
+      parameters:
+        - name: include_screening_matches
+          description: |
+            Whether or not to include the details of all screening matches.
+
+            This can increase the response size by a moderate to large margin and increase request latency.
+          in: query
+          schema:
+            type: boolean
       requestBody:
         content:
           application/json:
