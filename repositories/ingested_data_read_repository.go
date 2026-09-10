@@ -968,6 +968,9 @@ func (repo *IngestedDataReadRepositoryImpl) GatherFieldStatistics(ctx context.Co
 	return fieldStats, nil
 }
 
+// Filters on "field_name" %> 'search term', which is equivalent to word_similarity('search term', "field_name") > threshold
+// which means "look for rows where the search termis 'included' in the field".
+// The <->> operator in the ordering orders by (ascending) distance using the same metric as in the filter.
 func (repo *IngestedDataReadRepositoryImpl) SearchObjects(
 	ctx context.Context,
 	exec Executor,
@@ -992,6 +995,8 @@ func (repo *IngestedDataReadRepositoryImpl) SearchObjects(
 			squirrel.Or{
 				squirrel.Eq{"object_id": terms},
 				squirrel.Expr(fmt.Sprintf("%s %%> ?", field), terms),
+				// AKA "field" %> 'name input'
+				// which is equivalent to 'name input' <% "field"
 			},
 		}).
 		OrderByClause(squirrel.Expr(fmt.Sprintf("object_id = ? desc, %s <->> ? asc", field), terms, terms)).
