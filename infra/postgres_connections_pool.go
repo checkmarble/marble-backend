@@ -57,7 +57,7 @@ func NewPostgresConnectionPool(
 
 	cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
 		if impersonateRole != "" {
-			if _, err := conn.Exec(ctx, "SET ROLE "+impersonateRole); err != nil {
+			if _, err := conn.Exec(ctx, "SET ROLE "+pgx.Identifier([]string{impersonateRole}).Sanitize()); err != nil {
 				return err
 			}
 		}
