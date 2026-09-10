@@ -13,6 +13,7 @@ import (
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivermigrate"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -63,7 +64,7 @@ func (m *Migrater) Run(ctx context.Context, migrateDownTo *int64) error {
 	}
 	if m.pgConfig.ImpersonateRole != "" {
 		cfg.ConnConfig.Config.AfterConnect = func(ctx context.Context, conn *pgconn.PgConn) error {
-			res := conn.Exec(ctx, "SET ROLE "+m.pgConfig.ImpersonateRole)
+			res := conn.Exec(ctx, "SET ROLE "+pgx.Identifier([]string{m.pgConfig.ImpersonateRole}).Sanitize())
 			_, err := res.ReadAll()
 			return err
 		}
@@ -221,7 +222,8 @@ func (m *Migrater) handleMigrationCompaction(ctx context.Context) error {
 func (m *Migrater) getMaxAppliedVersion(ctx context.Context) (int64, error) {
 	// First check if the goose_db_version table exists
 	var tableExists bool
-	err := m.db.QueryRowContext(ctx,
+	err := m.db.QueryRowContext(
+		ctx,
 		"SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'goose_db_version')",
 	).Scan(&tableExists)
 	if err != nil {
@@ -233,7 +235,8 @@ func (m *Migrater) getMaxAppliedVersion(ctx context.Context) (int64, error) {
 	}
 
 	var maxVersion sql.NullInt64
-	err = m.db.QueryRowContext(ctx,
+	err = m.db.QueryRowContext(
+		ctx,
 		"SELECT MAX(version_id) FROM goose_db_version WHERE is_applied = true",
 	).Scan(&maxVersion)
 	if err != nil {
@@ -248,7 +251,8 @@ func (m *Migrater) getMaxAppliedVersion(ctx context.Context) (int64, error) {
 // baselineMigrationExists checks if the baseline migration version is recorded in goose's version table.
 func (m *Migrater) baselineMigrationExists(ctx context.Context) (bool, error) {
 	var count int
-	err := m.db.QueryRowContext(ctx,
+	err := m.db.QueryRowContext(
+		ctx,
 		"SELECT COUNT(*) FROM goose_db_version WHERE version_id = $1",
 		BaselineMigrationVersion,
 	).Scan(&count)
@@ -262,7 +266,8 @@ func (m *Migrater) baselineMigrationExists(ctx context.Context) (bool, error) {
 // This is needed for existing databases that were migrated using the individual migrations
 // that have now been compacted into the baseline.
 func (m *Migrater) insertBaselineMigration(ctx context.Context) error {
-	_, err := m.db.ExecContext(ctx,
+	_, err := m.db.ExecContext(
+		ctx,
 		"INSERT INTO goose_db_version (version_id, is_applied) VALUES ($1, true)",
 		BaselineMigrationVersion,
 	)
