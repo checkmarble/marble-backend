@@ -249,8 +249,12 @@ func (repo MarbleDbRepository) GraphReplayWatermark(ctx context.Context, exec Ex
 	}
 
 	var watermark time.Time
-	if err := exec.QueryRow(ctx, "select now() - $1::interval",
-		graphReplayWatermarkMargin).Scan(&watermark); err != nil {
+	row, release, err := exec.QueryRow(ctx, "select now() - $1::interval", graphReplayWatermarkMargin)
+	if err != nil {
+		return time.Time{}, errors.Wrap(err, "error while computing the graph replay watermark")
+	}
+	defer release()
+	if err := row.Scan(&watermark); err != nil {
 		return time.Time{}, errors.Wrap(err, "error while computing the graph replay watermark")
 	}
 
@@ -263,7 +267,12 @@ func (repo MarbleDbRepository) tableExists(ctx context.Context, exec Executor, t
 
 	var exists bool
 
-	if err := exec.QueryRow(ctx, sql, table, exec.DatabaseSchema().Schema).Scan(&exists); err != nil {
+	row, release, err := exec.QueryRow(ctx, sql, table, exec.DatabaseSchema().Schema)
+	if err != nil {
+		return false, errors.Wrapf(err, "error while checking whether %q exists", table)
+	}
+	defer release()
+	if err := row.Scan(&exists); err != nil {
 		return false, errors.Wrapf(err, "error while checking whether %q exists", table)
 	}
 

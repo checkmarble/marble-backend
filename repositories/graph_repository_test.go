@@ -44,16 +44,19 @@ func (e *graphQueryExecutor) DatabaseSchema() models.DatabaseSchema {
 	return models.DatabaseSchema{SchemaType: e.schemaType, Schema: "org-test"}
 }
 
-func (e *graphQueryExecutor) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
-	return e.pool.Query(ctx, sql, args...)
+func (e *graphQueryExecutor) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, func(), error) {
+	rows, err := e.pool.Query(ctx, sql, args...)
+	return rows, func() {}, err
 }
 
 func (e *graphQueryExecutor) Exec(_ context.Context, _ string, _ ...any) (pgconn.CommandTag, error) {
 	return pgconn.CommandTag{}, nil
 }
-func (e *graphQueryExecutor) QueryRow(_ context.Context, _ string, _ ...any) pgx.Row { return nil }
-func (e *graphQueryExecutor) Begin(_ context.Context) (Transaction, error)           { return nil, nil }
-func (e *graphQueryExecutor) Cache(_ context.Context) *RedisExecutor                 { return nil }
+func (e *graphQueryExecutor) QueryRow(_ context.Context, _ string, _ ...any) (pgx.Row, func(), error) {
+	return nil, func() {}, nil
+}
+func (e *graphQueryExecutor) Begin(_ context.Context) (Transaction, error) { return nil, nil }
+func (e *graphQueryExecutor) Cache(_ context.Context) *RedisExecutor       { return nil }
 
 func TestGetNodeBatchCaptions_ReadsEveryTypeInOneQuery(t *testing.T) {
 	exec := newGraphQueryExecutor(t)

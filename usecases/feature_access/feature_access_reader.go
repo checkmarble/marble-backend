@@ -82,7 +82,7 @@ func (f FeatureAccessReader) GetOrganizationFeatureAccess(
 
 	var user *models.User
 	if userId != nil {
-		u, err := f.repository.UserById(ctx, f.executorFactory.NewExecutor(), string(*userId))
+		u, err := f.repository.UserById(ctx, f.executorFactory.NewUnauditedExecutor(), string(*userId))
 		if err != nil {
 			return models.OrganizationFeatureAccess{}, err
 		}

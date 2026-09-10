@@ -54,8 +54,8 @@ type Transaction interface {
 	databaseSchemaGetter
 	cacheGetter
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
-	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
-	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, func(), error)
+	QueryRow(ctx context.Context, sql string, args ...any) (pgx.Row, func(), error)
 	RawTx() pgx.Tx
 	Begin(ctx context.Context) (Transaction, error)
 	Commit(ctx context.Context) error
@@ -200,6 +200,7 @@ func (g ExecutorGetter) GetExecutor(
 	ctx context.Context,
 	typ models.DatabaseSchemaType,
 	org *models.Organization,
+	skipAudit bool,
 ) (Executor, error) {
 	pool, databaseSchema, err := g.getPoolAndSchema(ctx, typ, org)
 	if err != nil {
@@ -214,6 +215,7 @@ func (g ExecutorGetter) GetExecutor(
 	return &PgExecutor{
 		databaseSchema: databaseSchema,
 		exec:           pool,
+		skipAudit:      skipAudit,
 		cache:          g.redisClient.NewExecutor(orgId),
 	}, nil
 }
@@ -222,6 +224,7 @@ func (g ExecutorGetter) GetPinnedExecutor(
 	ctx context.Context,
 	typ models.DatabaseSchemaType,
 	org *models.Organization,
+	skipAudit bool,
 ) (Executor, func(), error) {
 	pool, databaseSchema, err := g.getPoolAndSchema(ctx, typ, org)
 	if err != nil {
@@ -236,6 +239,7 @@ func (g ExecutorGetter) GetPinnedExecutor(
 	return &PgExecutor{
 			databaseSchema: databaseSchema,
 			exec:           conn,
+			skipAudit:      skipAudit,
 		}, func() {
 			conn.Release()
 		}, nil

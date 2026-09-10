@@ -24,7 +24,11 @@ func (repo *ClientDbRepository) IsContinuousScreeningSetup(ctx context.Context, 
 	}
 
 	sql := `select exists(select 1 from information_schema.tables where table_name = '_monitored_objects' and table_schema = $1)`
-	row := exec.QueryRow(ctx, sql, exec.DatabaseSchema().Schema)
+	row, release, err := exec.QueryRow(ctx, sql, exec.DatabaseSchema().Schema)
+	if err != nil {
+		return false, err
+	}
+	defer release()
 
 	var exists bool
 
@@ -435,7 +439,12 @@ func (repo *ClientDbRepository) CountActiveMonitoredObjects(
 	`, monitoredObjectsTable, auditTable)
 
 	var count int
-	if err := exec.QueryRow(ctx, sql, yearStart, yearEnd).Scan(&count); err != nil {
+	row, release, err := exec.QueryRow(ctx, sql, yearStart, yearEnd)
+	if err != nil {
+		return 0, err
+	}
+	defer release()
+	if err := row.Scan(&count); err != nil {
 		return 0, err
 	}
 
@@ -467,7 +476,12 @@ func (repo *ClientDbRepository) CountMonitoredObjectsByConfigStableIds(
 		return 0, err
 	}
 
-	err = exec.QueryRow(ctx, sql, args...).Scan(&count)
+	row, release, err := exec.QueryRow(ctx, sql, args...)
+	if err != nil {
+		return 0, err
+	}
+	defer release()
+	err = row.Scan(&count)
 	if err != nil {
 		return 0, err
 	}

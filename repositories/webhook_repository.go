@@ -218,7 +218,12 @@ func (repo *MarbleDbRepository) CountPermanentWebhookSecrets(ctx context.Context
 	}
 
 	var count int
-	err = exec.QueryRow(ctx, sql, args...).Scan(&count)
+	row, release, err := exec.QueryRow(ctx, sql, args...)
+	if err != nil {
+		return 0, errors.Wrap(err, "error counting permanent secrets")
+	}
+	defer release()
+	err = row.Scan(&count)
 	if err != nil {
 		return 0, errors.Wrap(err, "error counting permanent secrets")
 	}
@@ -311,7 +316,12 @@ func (repo *MarbleDbRepository) WebhookDeliveryExists(ctx context.Context, exec 
 	}
 
 	var exists int
-	err = exec.QueryRow(ctx, sql, args...).Scan(&exists)
+	row, release, err := exec.QueryRow(ctx, sql, args...)
+	if err != nil {
+		return false, err
+	}
+	defer release()
+	err = row.Scan(&exists)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}

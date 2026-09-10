@@ -18,14 +18,6 @@ const (
 	postgres_audit_api_key_id_parameter = "custom.current_api_key_id"
 )
 
-type errorRow struct {
-	err error
-}
-
-func (e errorRow) Scan(args ...any) error {
-	return e.err
-}
-
 type executor interface {
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 }

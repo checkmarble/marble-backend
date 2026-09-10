@@ -41,14 +41,29 @@ func (stub ExecutorFactoryStub) NewExecutor() repositories.Executor {
 	}
 }
 
-func (stub ExecutorFactoryStub) NewPinnedExecutor(ctx context.Context) (repositories.Executor, func(), error) {
+func (stub ExecutorFactoryStub) NewPinnedExecutor(ctx context.Context, skipAudit bool) (repositories.Executor, func(), error) {
 	return PgExecutorStub{
 		stub.Mock,
 	}, func() {}, nil
 }
 
+func (stub ExecutorFactoryStub) NewUnauditedExecutor() repositories.Executor {
+	return PgExecutorStub{
+		stub.Mock,
+	}
+}
+
 func (stub PgExecutorStub) DatabaseSchema() models.DatabaseSchema {
-	return models.DatabaseSchema{}
+	return models.DATABASE_MARBLE_SCHEMA
+}
+
+func (stub PgExecutorStub) Query(ctx context.Context, sql string, arguments ...interface{}) (pgx.Rows, func(), error) {
+	rows, err := stub.PgxPoolIface.Query(ctx, sql, arguments...)
+	return rows, func() {}, err
+}
+
+func (stub PgExecutorStub) QueryRow(ctx context.Context, sql string, arguments ...interface{}) (pgx.Row, func(), error) {
+	return stub.PgxPoolIface.QueryRow(ctx, sql, arguments...), func() {}, nil
 }
 
 func (stub PgExecutorStub) Cache(ctx context.Context) *repositories.RedisExecutor {
@@ -115,12 +130,13 @@ func (stub dbExecFactoryStub) Exec(ctx context.Context, sql string, arguments ..
 	return stub.exec.Exec(ctx, sql, arguments...)
 }
 
-func (stub dbExecFactoryStub) Query(ctx context.Context, sql string, arguments ...interface{}) (pgx.Rows, error) {
-	return stub.exec.Query(ctx, sql, arguments...)
+func (stub dbExecFactoryStub) Query(ctx context.Context, sql string, arguments ...interface{}) (pgx.Rows, func(), error) {
+	rows, err := stub.exec.Query(ctx, sql, arguments...)
+	return rows, func() {}, err
 }
 
-func (stub dbExecFactoryStub) QueryRow(ctx context.Context, sql string, arguments ...interface{}) pgx.Row {
-	return stub.exec.QueryRow(ctx, sql, arguments...)
+func (stub dbExecFactoryStub) QueryRow(ctx context.Context, sql string, arguments ...interface{}) (pgx.Row, func(), error) {
+	return stub.exec.QueryRow(ctx, sql, arguments...), func() {}, nil
 }
 
 func (stub dbExecFactoryStub) Begin(ctx context.Context) (repositories.Transaction, error) {

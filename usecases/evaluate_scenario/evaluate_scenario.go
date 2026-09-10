@@ -450,7 +450,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 		}
 	}()
 	logger.DebugContext(ctx, "Evaluating scenario test run", "scenarioId", params.Scenario.Id)
-	exec := e.executorFactory.NewExecutor()
+	exec := e.executorFactory.NewUnauditedExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.EvalTestRunScenario",
 		trace.WithAttributes(
@@ -546,7 +546,7 @@ func (e ScenarioEvaluator) EvalScenario(
 	}()
 
 	logger.DebugContext(ctx, "Evaluating scenario", "scenarioId", params.Scenario.Id)
-	exec := e.executorFactory.NewExecutor()
+	exec := e.executorFactory.NewUnauditedExecutor()
 
 	// If the scenario has no live version, don't try to Eval() it, return early
 	// It is important to keep this short-circuit. If one day, a draft **can** be executed,

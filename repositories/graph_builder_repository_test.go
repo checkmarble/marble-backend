@@ -74,12 +74,13 @@ func (e *graphBuilderExecutor) Exec(ctx context.Context, sql string, args ...any
 	return e.pool.Exec(ctx, sql, args...)
 }
 
-func (e *graphBuilderExecutor) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
-	return e.pool.Query(ctx, sql, args...)
+func (e *graphBuilderExecutor) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, func(), error) {
+	rows, err := e.pool.Query(ctx, sql, args...)
+	return rows, func() {}, err
 }
 
-func (e *graphBuilderExecutor) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
-	return e.pool.QueryRow(ctx, sql, args...)
+func (e *graphBuilderExecutor) QueryRow(ctx context.Context, sql string, args ...any) (pgx.Row, func(), error) {
+	return e.pool.QueryRow(ctx, sql, args...), func() {}, nil
 }
 
 func (e *graphBuilderExecutor) Begin(_ context.Context) (Transaction, error) { return e, nil }

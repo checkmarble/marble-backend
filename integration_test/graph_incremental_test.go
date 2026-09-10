@@ -242,10 +242,13 @@ func TestGraphReconcileCarriesRowsIngestedMidBuild(t *testing.T) {
 
 	// And the previous generation is gone, so the next build starts clean.
 	var oldExists bool
-	require.NoError(t, clientExec.QueryRow(ctx,
+	row, release, err := clientExec.QueryRow(ctx,
 		`select exists(select 1 from information_schema.tables
 			where table_name = '_graph_old' and table_schema = $1)`,
-		clientExec.DatabaseSchema().Schema).Scan(&oldExists))
+		clientExec.DatabaseSchema().Schema)
+	require.NoError(t, err)
+	defer release()
+	require.NoError(t, row.Scan(&oldExists))
 	assert.False(t, oldExists, "the reconcile discards the generation it drained")
 }
 
@@ -298,7 +301,8 @@ func readGraphRows(ctx context.Context, t *testing.T, orgId uuid.UUID) []graphTe
 		pgx.Identifier{exec.DatabaseSchema().Schema, "_graph"}.Sanitize(),
 	)
 
-	rows, err := exec.Query(ctx, sql)
+	rows, release, err := exec.Query(ctx, sql)
+	defer release()
 	require.NoError(t, err)
 	defer rows.Close()
 

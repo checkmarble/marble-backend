@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // //////////////////////////////////
@@ -26,8 +27,8 @@ type pgxTxOrPool interface {
 
 type TransactionOrPool interface {
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
-	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
-	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, func(), error)
+	QueryRow(ctx context.Context, sql string, args ...any) (pgx.Row, func(), error)
 	Begin(ctx context.Context) (Transaction, error)
 }
 
@@ -35,7 +36,8 @@ type PgExecutor struct {
 	databaseSchema models.DatabaseSchema
 	exec           pgxTxOrPool
 
-	cache *RedisExecutor
+	skipAudit bool
+	cache     *RedisExecutor
 }
 
 func (e PgExecutor) DatabaseSchema() models.DatabaseSchema {
@@ -43,8 +45,25 @@ func (e PgExecutor) DatabaseSchema() models.DatabaseSchema {
 }
 
 func (e PgExecutor) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
-	if tag, err := injectDbSessionConfig(ctx, e.exec, sql); err != nil {
-		return tag, err
+	var exec = e.exec
+	var release func()
+
+	if pool, ok := e.exec.(*pgxpool.Pool); ok {
+		conn, err := pool.Acquire(ctx)
+		if err != nil {
+			return pgconn.CommandTag{}, err
+		}
+
+		exec = conn
+		release = conn.Release
+
+		defer release()
+	}
+
+	if !e.skipAudit {
+		if tag, err := injectDbSessionConfig(ctx, exec, sql); err != nil {
+			return tag, err
+		}
 	}
 
 	orgId := uuid.Nil
@@ -55,29 +74,69 @@ func (e PgExecutor) Exec(ctx context.Context, sql string, args ...any) (pgconn.C
 	return utils.MeasureLatencyErr(utils.MetricQueryLatency, prometheus.Labels{
 		"org_id": orgId.String(), "schema": e.databaseSchema.Schema,
 	}, func() (pgconn.CommandTag, error) {
-		return e.exec.Exec(ctx, sql, args...)
+		return exec.Exec(ctx, sql, args...)
 	})
 }
 
-func (e PgExecutor) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
-	if _, err := injectDbSessionConfig(ctx, e.exec, sql); err != nil {
-		return nil, err
+func (e PgExecutor) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, func(), error) {
+	var exec = e.exec
+
+	release := func() {}
+
+	if pool, ok := e.exec.(*pgxpool.Pool); ok {
+		conn, err := pool.Acquire(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		exec = conn
+		release = conn.Release
+	}
+
+	if !e.skipAudit {
+		if _, err := injectDbSessionConfig(ctx, exec, sql); err != nil {
+			release()
+			return nil, nil, err
+		}
 	}
 
 	orgId := uuid.Nil
 	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
 		orgId = creds.OrganizationId
 	}
-	return utils.MeasureLatencyErr(utils.MetricQueryLatency, prometheus.Labels{
+
+	rows, err := utils.MeasureLatencyErr(utils.MetricQueryLatency, prometheus.Labels{
 		"org_id": orgId.String(), "schema": e.databaseSchema.Schema,
 	}, func() (pgx.Rows, error) {
-		return e.exec.Query(ctx, sql, args...)
+		return exec.Query(ctx, sql, args...)
 	})
+
+	if err != nil {
+		release()
+	}
+
+	return rows, release, err
 }
 
-func (e PgExecutor) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
-	if _, err := injectDbSessionConfig(ctx, e.exec, sql); err != nil {
-		return errorRow{err}
+func (e PgExecutor) QueryRow(ctx context.Context, sql string, args ...any) (pgx.Row, func(), error) {
+	var exec = e.exec
+	release := func() {}
+
+	if pool, ok := e.exec.(*pgxpool.Pool); ok {
+		conn, err := pool.Acquire(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		exec = conn
+		release = conn.Release
+	}
+
+	if !e.skipAudit {
+		if _, err := injectDbSessionConfig(ctx, exec, sql); err != nil {
+			release()
+			return nil, nil, err
+		}
 	}
 
 	orgId := uuid.Nil
@@ -85,11 +144,13 @@ func (e PgExecutor) QueryRow(ctx context.Context, sql string, args ...any) pgx.R
 		orgId = creds.OrganizationId
 	}
 
-	return utils.MeasureLatency(utils.MetricQueryLatency, prometheus.Labels{
+	row := utils.MeasureLatency(utils.MetricQueryLatency, prometheus.Labels{
 		"org_id": orgId.String(), "schema": e.databaseSchema.Schema,
 	}, func() pgx.Row {
-		return e.exec.QueryRow(ctx, sql, args...)
+		return exec.QueryRow(ctx, sql, args...)
 	})
+
+	return row, release, nil
 }
 
 func (e PgExecutor) Begin(ctx context.Context) (Transaction, error) {
@@ -139,30 +200,34 @@ func (t PgTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.Command
 	})
 }
 
-func (t PgTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+func (t PgTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, func(), error) {
 	orgId := uuid.Nil
 	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
 		orgId = creds.OrganizationId
 	}
 
-	return utils.MeasureLatencyErr(utils.MetricQueryLatency, prometheus.Labels{
+	rows, err := utils.MeasureLatencyErr(utils.MetricQueryLatency, prometheus.Labels{
 		"org_id": orgId.String(), "schema": t.databaseSchema.Schema,
 	}, func() (pgx.Rows, error) {
 		return t.tx.Query(ctx, sql, args...)
 	})
+
+	return rows, func() {}, err
 }
 
-func (t PgTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+func (t PgTx) QueryRow(ctx context.Context, sql string, args ...any) (pgx.Row, func(), error) {
 	orgId := uuid.Nil
 	if creds, ok := utils.CredentialsFromCtx(ctx); ok {
 		orgId = creds.OrganizationId
 	}
 
-	return utils.MeasureLatency(utils.MetricQueryLatency, prometheus.Labels{
+	row := utils.MeasureLatency(utils.MetricQueryLatency, prometheus.Labels{
 		"org_id": orgId.String(), "schema": t.databaseSchema.Schema,
 	}, func() pgx.Row {
 		return t.tx.QueryRow(ctx, sql, args...)
 	})
+
+	return row, func() {}, nil
 }
 
 func (t PgTx) RawTx() pgx.Tx {

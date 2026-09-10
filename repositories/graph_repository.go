@@ -154,10 +154,11 @@ func (repo MarbleDbRepository) collectMatches(
 	perValueLimit int,
 	output *[]models.GraphMatch,
 ) error {
-	rows, err := exec.Query(ctx, sql, values, recordType, fieldName, perValueLimit)
+	rows, release, err := exec.Query(ctx, sql, values, recordType, fieldName, perValueLimit)
 	if err != nil {
 		return errors.Wrap(err, "error while querying _graph by field values")
 	}
+	defer release()
 	defer rows.Close()
 
 	for rows.Next() {
@@ -198,7 +199,12 @@ func (repo MarbleDbRepository) EstimateValueCount(
 	// EXPLAIN plans with the supplied parameter values, so the estimate is specific to this
 	// value rather than a generic average over the column.
 	var raw []byte
-	if err := exec.QueryRow(ctx, "EXPLAIN (FORMAT JSON) "+sql, args...).Scan(&raw); err != nil {
+	row, release, err := exec.QueryRow(ctx, "EXPLAIN (FORMAT JSON) "+sql, args...)
+	if err != nil {
+		return 0, errors.Wrap(err, "error while estimating _graph matches")
+	}
+	defer release()
+	if err := row.Scan(&raw); err != nil {
 		return 0, errors.Wrap(err, "error while estimating _graph matches")
 	}
 
@@ -272,10 +278,11 @@ func (repo MarbleDbRepository) GetNodeBatchMetadata(
 		dbmodels.TABLE_SCORING_SCORES,
 	)
 
-	rows, err := exec.Query(ctx, sql, orgId, types, ids)
+	rows, release, err := exec.Query(ctx, sql, orgId, types, ids)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 	defer rows.Close()
 
 	dbMetadata, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbmodels.DbGraphOrderedMetadata])
@@ -327,10 +334,11 @@ func (repo MarbleDbRepository) GetNodeBatchCaptions(
 		)
 		%s`, strings.Join(branches, "\nunion all\n"))
 
-	rows, err := exec.Query(ctx, sql, types, ids)
+	rows, release, err := exec.Query(ctx, sql, types, ids)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while querying record captions")
 	}
+	defer release()
 	defer rows.Close()
 
 	captions := make([]models.GraphResultNodeMetadata, 0, len(records))

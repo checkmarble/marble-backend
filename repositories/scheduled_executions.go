@@ -266,10 +266,11 @@ func (repo *MarbleDbRepository) StoreDecisionsToCreate(
 		return nil, err
 	}
 
-	rows, err := exec.Query(ctx, sql, args...)
+	rows, release, err := exec.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 
 	var decisions []models.DecisionToCreate
 	for rows.Next() {
@@ -386,10 +387,11 @@ func (repo *MarbleDbRepository) CountCompletedDecisionsByStatus(
 		return models.DecisionToCreateCountMetadata{}, err
 	}
 
-	rows, err := exec.Query(ctx, sql, args...)
+	rows, release, err := exec.Query(ctx, sql, args...)
 	if err != nil {
 		return models.DecisionToCreateCountMetadata{}, err
 	}
+	defer release()
 
 	counts := models.DecisionToCreateCountMetadata{}
 	for rows.Next() {

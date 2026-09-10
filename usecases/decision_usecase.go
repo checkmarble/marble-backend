@@ -307,7 +307,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 	decisionStart := time.Now()
 
-	exec := usecase.executorFactory.NewExecutor()
+	exec := usecase.executorFactory.NewUnauditedExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(
 		ctx,
@@ -509,7 +509,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		)
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 	decisionStart := time.Now()
-	exec := usecase.executorFactory.NewExecutor()
+	exec := usecase.executorFactory.NewUnauditedExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "DecisionUsecase.CreateAllDecisions",
 		trace.WithAttributes(attribute.String("trigger_object_table", input.TriggerObjectTable)),
@@ -596,7 +596,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				return err
 			}
 
-			exec := usecase.executorFactory.NewExecutor()
+			exec := usecase.executorFactory.NewUnauditedExecutor()
 
 			ctx, cancel := context.WithTimeout(syncerCtx, models.DECISION_TIMEOUT)
 			defer cancel()

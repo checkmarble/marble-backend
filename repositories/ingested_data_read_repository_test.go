@@ -24,12 +24,12 @@ func (tx TransactionTest) DatabaseSchema() models.DatabaseSchema {
 	}
 }
 
-func (tx TransactionTest) QueryRow(ctx context.Context, query string, args ...interface{}) pgx.Row {
-	return nil
+func (tx TransactionTest) QueryRow(ctx context.Context, query string, args ...interface{}) (pgx.Row, func(), error) {
+	return nil, func() {}, nil
 }
 
-func (tx TransactionTest) Query(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error) {
-	return nil, nil
+func (tx TransactionTest) Query(ctx context.Context, query string, args ...interface{}) (pgx.Rows, func(), error) {
+	return nil, func() {}, nil
 }
 
 func (tx TransactionTest) Exec(ctx context.Context, query string, args ...interface{}) (pgconn.CommandTag, error) {

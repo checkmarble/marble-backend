@@ -663,7 +663,11 @@ func (repo *MarbleDbRepository) GetNextCase(ctx context.Context, exec Executor, 
 		return "", err
 	}
 
-	row := exec.QueryRow(ctx, sql, args...)
+	row, release, err := exec.QueryRow(ctx, sql, args...)
+	if err != nil {
+		return "", err
+	}
+	defer release()
 
 	var nextCaseId string
 
@@ -733,7 +737,7 @@ func (repo *MarbleDbRepository) GetCasesRelatedToObject(ctx context.Context, exe
 		limit %d
 	`, casesRelatedToObjectCTE, strings.Join(dbmodels.SelectCaseColumn, ","), 200)
 
-	rows, err := exec.Query(
+	rows, release, err := exec.Query(
 		ctx,
 		sql,
 		orgId,
@@ -743,6 +747,7 @@ func (repo *MarbleDbRepository) GetCasesRelatedToObject(ctx context.Context, exe
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 
 	cases, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbmodels.DBCase])
 	if err != nil {
@@ -762,13 +767,17 @@ func (repo *MarbleDbRepository) ObjectHasConfirmedRisks(ctx context.Context, exe
 		)
 	`
 
-	row := exec.QueryRow(
+	row, release, err := exec.QueryRow(
 		ctx,
 		sql,
 		orgId,
 		objectType,
 		objectId,
 	)
+	if err != nil {
+		return false, err
+	}
+	defer release()
 
 	var hasConfirmedRisks bool
 

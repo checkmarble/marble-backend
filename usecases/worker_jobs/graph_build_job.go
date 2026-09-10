@@ -32,14 +32,14 @@ func NewGraphBuildPeriodicJob(orgId uuid.UUID, interval time.Duration) *river.Pe
 		river.PeriodicInterval(interval),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.GraphBuildArgs{
-					OrgId: orgId,
-				}, &river.InsertOpts{
-					Queue: orgId.String(),
-					UniqueOpts: river.UniqueOpts{
-						ByQueue:  true,
-						ByPeriod: interval,
-					},
-				}
+				OrgId: orgId,
+			}, &river.InsertOpts{
+				Queue: orgId.String(),
+				UniqueOpts: river.UniqueOpts{
+					ByQueue:  true,
+					ByPeriod: interval,
+				},
+			}
 		},
 	)
 }
@@ -252,7 +252,7 @@ func (w *GraphBuildWorker) Work(ctx context.Context, job *river.Job[models.Graph
 		return err
 	}
 
-	exec, release, err := w.executorFactory.NewPinnedExecutor(ctx)
+	exec, release, err := w.executorFactory.NewPinnedExecutor(ctx, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to get pinned executor")
 	}

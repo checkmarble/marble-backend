@@ -282,8 +282,13 @@ func (repo *MarbleDbRepository) HasOrganizations(ctx context.Context, exec Execu
 	}
 
 	var exists bool
-	err := exec.QueryRow(ctx, fmt.Sprintf("SELECT EXISTS (SELECT 1 FROM %s LIMIT 1)",
-		dbmodels.TABLE_ORGANIZATION)).Scan(&exists)
+	row, release, err := exec.QueryRow(ctx, fmt.Sprintf("SELECT EXISTS (SELECT 1 FROM %s LIMIT 1)",
+		dbmodels.TABLE_ORGANIZATION))
+	if err != nil {
+		return false, err
+	}
+	defer release()
+	err = row.Scan(&exists)
 	if err != nil {
 		return false, err
 	}

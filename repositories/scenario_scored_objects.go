@@ -42,10 +42,11 @@ func (repo *MarbleDbRepository) FilterAlreadyScoredObjects(
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build query for FilterAlreadyScoredObjects")
 	}
-	rows, err := exec.Query(ctx, sql, args...)
+	rows, release, err := exec.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to query already scored objects")
 	}
+	defer release()
 	defer rows.Close()
 
 	alreadyScored := make(map[string]struct{})
@@ -114,10 +115,11 @@ func (repo *MarbleDbRepository) ClaimScoredObjects(
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build query for ClaimScoredObjects")
 	}
-	rows, err := tx.Query(ctx, sql, args...)
+	rows, release, err := tx.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to claim scored objects")
 	}
+	defer release()
 	defer rows.Close()
 
 	claimed := make([]string, 0, len(sorted))
