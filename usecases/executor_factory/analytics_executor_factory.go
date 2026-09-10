@@ -52,13 +52,7 @@ func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (repositories
 		// compared to the native httpfs cache. We will come back to this in the future to give an option for deployments of
 		// Marble that have a persistent disk. It should then be setup at connection dial and configured here.
 		ddb, err = duckdb.NewConnector("", func(execer driver.ExecerContext) error {
-			if f.config.PgConfig.ImpersonateRole != "" {
-				_, err := execer.ExecContext(ctx, "set role "+pgx.Identifier([]string{f.config.PgConfig.ImpersonateRole}).Sanitize(), nil)
-				if err != nil {
-					return err
-				}
-			}
-			_, err = execer.ExecContext(ctx, `set threads = $1;`, []driver.NamedValue{
+			_, err := execer.ExecContext(ctx, `set threads = $1;`, []driver.NamedValue{
 				{
 					// We use a number of threads higher than the number of CPUs to account for the fact that, on the volumes we have been testing,
 					// the response time is IO rather than CPU bound. An even higher value may even make sense.
@@ -267,8 +261,23 @@ func (f AnalyticsExecutorFactory) buildUpstreamAttachStatement(alias string) str
 	// transactions, so we need to set query options on the connections
 	// directly.
 	q := dsn.Query()
-	q.Set("options", `-cenable_seqscan=0`)
-	dsn.RawQuery = q.Encode()
+	options := `-cenable_seqscan=0`
+	if f.config.PgConfig.ImpersonateRole != "" {
+		role := strings.NewReplacer(
+			`\`, `\\`,
+			" ", "\\ ",
+			"\t", "\\\t",
+			"\n", "\\\n",
+			"\v", "\\\v",
+			"\f", "\\\f",
+			"\r", "\\\r",
+		).Replace(f.config.PgConfig.ImpersonateRole)
+		options += ` -c role=` + role
+	}
+	q.Set("options", options)
+	// PostgreSQL connection URIs require RFC percent-encoding and do not
+	// interpret '+' as a space like application/x-www-form-urlencoded does.
+	dsn.RawQuery = strings.ReplaceAll(q.Encode(), "+", "%20")
 
 	return fmt.Sprintf(
 		`attach or replace '%s' as %s (type postgres, read_only)`,
