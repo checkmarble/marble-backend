@@ -5,9 +5,26 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/google/uuid"
 	"gotest.tools/v3/assert"
 )
+
+func TestBuildUpstreamAttachStatementWithImpersonateRole(t *testing.T) {
+	f := AnalyticsExecutorFactory{config: infra.AnalyticsConfig{
+		PgConfig: infra.PgConfig{
+			ConnectionString: "postgres://iam:secret@localhost/marble?sslmode=require",
+			ImpersonateRole:  `marble app\reader`,
+		},
+	}}
+
+	statement := f.buildUpstreamAttachStatement("pg")
+
+	assert.Equal(t,
+		"attach or replace 'postgres://iam:secret@localhost/marble?options=-cenable_seqscan%3D0%20-c%20role%3Dmarble%5C%20app%5C%5Creader&sslmode=require' as pg (type postgres, read_only)",
+		statement,
+	)
+}
 
 func TestDifferentSeparateYears(t *testing.T) {
 	f := AnalyticsExecutorFactory{}
