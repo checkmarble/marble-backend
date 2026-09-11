@@ -104,6 +104,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 				Code: models.FormulaMustReturnBoolean,
 			})
 		}
+		appendNumericSwitchValidationErrors(trigger, &result.Trigger.Errors)
 	}
 
 	// validate each rule
@@ -125,6 +126,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 					Code: models.FormulaMustReturnBoolean,
 				})
 			}
+			appendNumericSwitchValidationErrors(formula, &ruleValidation.Errors)
 			result.Rules.Rules[rule.Id] = ruleValidation
 		}
 	}
@@ -147,6 +149,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 					},
 				)
 			}
+			appendNumericSwitchValidationErrors(scc.TriggerRule, &scResult.TriggerRule.Errors)
 		}
 
 		queryValidation := models.NewRuleValidation()
@@ -184,6 +187,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 						},
 					)
 				}
+				appendNumericSwitchValidationErrors(&fieldAst, &queryNameValidation.Errors)
 
 				scResult.QueryFields[field] = queryNameValidation
 			}
@@ -212,6 +216,7 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 					},
 				)
 			}
+			appendNumericSwitchValidationErrors(scc.CounterpartyIdExpression, &counterpartyIdValidation.Errors)
 		}
 
 		scResult.Query = queryValidation
@@ -246,6 +251,7 @@ func (self *ValidateScenarioAstImpl) Validate(ctx context.Context,
 	}
 
 	result.Evaluation, _ = ast_eval.EvaluateAst(ctx, nil, dryRunEnvironment, *astNode)
+	appendNumericSwitchValidationErrors(astNode, &result.Errors)
 
 	if len(expectedReturnTypeStr) == 1 {
 		expectedReturnType, ok := getTypeFromString(expectedReturnTypeStr[0])
