@@ -18,6 +18,7 @@ type Identity struct {
 type Credentials struct {
 	ActorIdentity  Identity // email or api key, for audit log
 	OrganizationId uuid.UUID
+	TenantId       uuid.UUID
 	Role           Role
 }
 
@@ -30,6 +31,7 @@ func (u User) IntoCredentials() Credentials {
 			LastName:  u.LastName,
 		},
 		OrganizationId: u.OrganizationId,
+		TenantId:       u.TenantId,
 		Role:           u.Role,
 	}
 }

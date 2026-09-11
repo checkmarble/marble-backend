@@ -16,14 +16,16 @@ import (
 
 func (db *Database) UserByEmail(ctx context.Context, email string) (models.User, error) {
 	query := `
-		SELECT id, email, first_name, last_name, role, organization_id
-		FROM users
-		WHERE email = $1
-		AND deleted_at IS NULL
+		SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.organization_id, o.tenant_id
+		FROM users u
+		LEFT JOIN organizations o ON o.id = u.organization_id
+		WHERE u.email = $1
+		AND u.deleted_at IS NULL
 	`
 
 	var user models.User
 	var organizationID *string
+	var tenantID *uuid.UUID
 	var firstName, lastName pgtype.Text
 	err := db.pool.QueryRow(ctx, query, email).
 		Scan(&user.UserId,
@@ -32,6 +34,7 @@ func (db *Database) UserByEmail(ctx context.Context, email string) (models.User,
 			&lastName,
 			&user.Role,
 			&organizationID,
+			&tenantID,
 		)
 	if firstName.Valid {
 		user.FirstName = firstName.String
@@ -51,6 +54,9 @@ func (db *Database) UserByEmail(ctx context.Context, email string) (models.User,
 			return models.User{}, fmt.Errorf("uuid.Parse error: %w", err)
 		}
 		user.OrganizationId = orgId
+	}
+	if tenantID != nil {
+		user.TenantId = *tenantID
 	}
 	return user, nil
 }
