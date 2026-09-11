@@ -22,6 +22,7 @@ const (
 
 type ipWhitelistRepository interface {
 	GetOrganizationAllowedNetworks(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]net.IPNet, error)
+	GetUserOrganizationAllowedNetworks(ctx context.Context, exec repositories.Executor, userID string) ([]net.IPNet, bool, error)
 }
 
 type AllowedNetworksUsecase struct {
@@ -82,12 +83,20 @@ func (uc AllowedNetworksUsecase) Guard(use AllowedNetworksUse) gin.HandlerFunc {
 		// let the user configure the feature.
 		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), utils.ContextKeyClientIp, clientIp))
 
-		subnets, err := uc.repository.GetOrganizationAllowedNetworks(ctx,
-			uc.executorFactory.NewExecutor(), creds.OrganizationId)
+		var subnets []net.IPNet
+		var unrestricted bool
+		var err error
+		if creds.OrganizationId == uuid.Nil && creds.ActorIdentity.UserId != "" {
+			subnets, unrestricted, err = uc.repository.GetUserOrganizationAllowedNetworks(
+				ctx, uc.executorFactory.NewExecutor(), string(creds.ActorIdentity.UserId))
+		} else {
+			subnets, err = uc.repository.GetOrganizationAllowedNetworks(ctx,
+				uc.executorFactory.NewExecutor(), creds.OrganizationId)
+		}
 
 		// TODO: here we might want to separate those two predicates, fail close
 		// on error but open on empty whitelist.
-		if err != nil || len(subnets) == 0 {
+		if err != nil || unrestricted || len(subnets) == 0 {
 			if use == AllowedNetworksLogin {
 				buf.Restore(c)
 			}

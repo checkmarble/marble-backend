@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"slices"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/google/uuid"
@@ -17,13 +19,15 @@ type Identity struct {
 type Credentials struct {
 	ActorIdentity  Identity  `json:"actor_identity"`
 	OrganizationId uuid.UUID `json:"organization_id"`
+	TenantId       uuid.UUID `json:"tenant_id"`
 	Permissions    []string  `json:"permissions"`
-	Role           string    `json:"role"`
+	Role           string    `json:"role,omitempty"`
+	Roles          []string  `json:"roles,omitempty"`
 }
 
 func AdaptCredentialDto(creds models.Credentials) (Credentials, error) {
 	permissions, err := pure_utils.MapErr(
-		creds.Role.Permissions(),
+		permissionsForCredentials(creds),
 		func(p models.Permission) (string, error) { return p.String() },
 	)
 	if err != nil {
@@ -39,8 +43,10 @@ func AdaptCredentialDto(creds models.Credentials) (Credentials, error) {
 			ApiKeyName: creds.ActorIdentity.ApiKeyName,
 		},
 		OrganizationId: creds.OrganizationId,
+		TenantId:       creds.TenantId,
 		Permissions:    permissions,
 		Role:           creds.Role.String(),
+		Roles:          pure_utils.Map(creds.Roles, func(role models.Role) string { return role.String() }),
 	}, nil
 }
 
@@ -54,6 +60,23 @@ func AdaptCredential(dto Credentials) models.Credentials {
 			ApiKeyName: dto.ActorIdentity.ApiKeyName,
 		},
 		OrganizationId: dto.OrganizationId,
+		TenantId:       dto.TenantId,
 		Role:           models.RoleFromString(dto.Role),
+		Roles:          pure_utils.Map(dto.Roles, models.RoleFromString),
 	}
+}
+
+func permissionsForCredentials(creds models.Credentials) []models.Permission {
+	permissions := []models.Permission{}
+	for _, role := range creds.Roles {
+		for _, permission := range role.Permissions() {
+			if !slices.Contains(permissions, permission) {
+				permissions = append(permissions, permission)
+			}
+		}
+	}
+	if len(creds.Roles) == 0 {
+		return creds.Role.Permissions()
+	}
+	return permissions
 }

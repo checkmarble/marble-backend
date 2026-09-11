@@ -109,6 +109,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		allowedNetworksGuard.Guard(usecases.AllowedNetworksOther))
 
 	router.GET("/credentials", tom, handleGetCredentials())
+	router.GET("/me/organizations", tom, handleMyOrganizations(uc))
 
 	router.GET("/decisions",
 		timeoutMiddleware(conf.DecisionTimeout),

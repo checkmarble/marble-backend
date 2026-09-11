@@ -29,6 +29,12 @@ type User struct {
 	TfaEnabled *bool
 }
 
+type Grant struct {
+	Role           Role
+	TenantId       uuid.UUID
+	OrganizationId uuid.UUID
+}
+
 func (u User) FullName() string {
 	if u.FirstName == "" && u.LastName == "" {
 		return ""
