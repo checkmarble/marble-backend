@@ -265,6 +265,10 @@ func (repo *MarbleDbRepository) UpdateOrganizationFeatureAccess(
 		query = query.Set("graph_exploration", *updateFeatureAccess.GraphExploration)
 		nbUpdated++
 	}
+	if updateFeatureAccess.UserScoring != nil {
+		query = query.Set("user_scoring", *updateFeatureAccess.UserScoring)
+		nbUpdated++
+	}
 
 	if nbUpdated == 0 {
 		return nil
