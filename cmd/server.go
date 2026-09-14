@@ -403,15 +403,21 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	// Seed the database
 	////////////////////////////////////////////////////////////
 	seedUsecase := uc.NewSeedUseCase()
+	// The seeding runs outside of the HTTP middleware stack, so the Segment client has to be
+	// injected in the context explicitly for the seeding analytics events to be sent.
+	seedCtx := ctx
+	if !apiConfig.DisableSegment {
+		seedCtx = utils.StoreSegmentClientInContext(ctx, deps.SegmentClient)
+	}
 	marbleAdminEmail := seedOrgConfig.CreateGlobalAdminEmail
 	if marbleAdminEmail != "" {
-		if err := seedUsecase.SeedMarbleAdmins(ctx, marbleAdminEmail); err != nil {
+		if err := seedUsecase.SeedMarbleAdmins(seedCtx, marbleAdminEmail); err != nil {
 			utils.LogAndReportSentryError(ctx, err)
 			return err
 		}
 	}
 	if seedOrgConfig.CreateOrgName != "" {
-		if err := seedUsecase.CreateOrgAndUser(ctx, models.InitOrgInput{
+		if err := seedUsecase.CreateOrgAndUser(seedCtx, models.InitOrgInput{
 			OrgName:    seedOrgConfig.CreateOrgName,
 			AdminEmail: seedOrgConfig.CreateOrgAdminEmail,
 		}); err != nil {
