@@ -33,7 +33,12 @@ export const startElasticsearch = async (
 
 	const es = await container.start();
 
-	await triggerIndexing(network, DEFAULT_MANIFEST);
+	try {
+		await triggerIndexing(network, DEFAULT_MANIFEST);
+	} catch (error) {
+		await Promise.allSettled([es.stop()]);
+		throw error;
+	}
 
 	return es;
 };
@@ -44,7 +49,9 @@ export const triggerIndexing = async (
 ) => {
 	console.log("starting indexer...");
 
-	await new GenericContainer("ghcr.io/opensanctions/yente:5.3.0")
+	const indexer = await new GenericContainer(
+		"ghcr.io/opensanctions/yente:5.3.0",
+	)
 		.withNetwork(network)
 		.withCopyContentToContainer([
 			{
@@ -59,6 +66,8 @@ export const triggerIndexing = async (
 		.withWaitStrategy(Wait.forOneShotStartup())
 		.withCommand(["yente", "reindex"])
 		.start();
+
+	await indexer.stop();
 };
 
 export const startMotiva = async (
