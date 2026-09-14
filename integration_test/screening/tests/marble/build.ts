@@ -9,7 +9,7 @@ import {
 } from "testcontainers";
 import { NATIVE_ARCH } from "./utils";
 
-const BUILDER_IMAGE = "docker.io/golang:1.26.2";
+const BUILDER_IMAGE = "docker.io/golang:1.27.1";
 
 export const buildMarble = async () => {
 	if (fs.existsSync("../../marble-backend")) {
