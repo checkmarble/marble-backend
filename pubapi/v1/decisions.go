@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"strconv"
 	"time"
 
 	gdto "github.com/checkmarble/marble-backend/dto"
@@ -106,7 +107,7 @@ func HandleGetDecision(uc usecases.Usecases) gin.HandlerFunc {
 }
 
 type CreateDecisionParams struct {
-	IncludeScreeningMatches bool `form:"include_screening_matches"`
+	IncludeScreeningMatches string `form:"include_screening_matches" binding:"omitempty,boolean"`
 }
 
 func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
@@ -194,8 +195,10 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 			stats.Count.Decline = 1
 		}
 
+		includeScreeningMatches, _ := strconv.ParseBool(opts.IncludeScreeningMatches)
+
 		types.
-			NewResponse([]dto.Decision{dto.AdaptDecision(true, opts.IncludeScreeningMatches, decision.RuleExecutions,
+			NewResponse([]dto.Decision{dto.AdaptDecision(true, includeScreeningMatches, decision.RuleExecutions,
 				decision.ScreeningExecutions)(decision.Decision)}).
 			WithMetadata(dto.AdaptDecisionsMetadata(stats)).
 			Serve(c)
