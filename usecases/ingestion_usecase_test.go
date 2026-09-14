@@ -130,6 +130,7 @@ type IngestionUsecaseTestSuite struct {
 	scoringRulesetsUsecase              *mocks.ScoringRulesetsUsecase
 	scoringScoreUsecase                 *mocks.ScoringScoreUsecase
 	featureAccessReader                 *mocks.FeatureAccessReader
+	graphRepository                     *mocks.GraphRepository
 	graphRelationRepository             *mocks.GraphRelationRepository
 	graphIncrementalRepository          *mocks.GraphIncrementalRepository
 
@@ -152,6 +153,7 @@ func (suite *IngestionUsecaseTestSuite) makeUsecase() *IngestionUseCase {
 		taskEnqueuer:                        suite.taskQueueRepository,
 		scoringScoreUsecase:                 suite.scoringScoreUsecase,
 		featureAccessReader:                 suite.featureAccessReader,
+		graphRepository:                     suite.graphRepository,
 		graphRelationRepository:             suite.graphRelationRepository,
 		graphIncrementalRepository:          suite.graphIncrementalRepository,
 	}
@@ -176,6 +178,7 @@ func (suite *IngestionUsecaseTestSuite) SetupTest() {
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess",
 		mock.Anything, mock.Anything, (*models.UserId)(nil)).
 		Return(models.OrganizationFeatureAccess{GraphExploration: models.Restricted}, nil)
+	suite.graphRepository = new(mocks.GraphRepository)
 	suite.graphRelationRepository = new(mocks.GraphRelationRepository)
 	suite.graphIncrementalRepository = new(mocks.GraphIncrementalRepository)
 
@@ -235,6 +238,8 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
 		Return([]models.ContinuousScreeningConfig{}, nil)
 
+	suite.graphRepository.On("TableExists", mock.MatchedBy(matchContext), mock.MatchedBy(matchExec)).Return(false, nil)
+
 	rowIdStr := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
 	rowId := utils.ByteUuid(rowIdStr)
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
@@ -292,6 +297,8 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
 		Return([]models.ContinuousScreeningConfig{}, nil)
+
+	suite.graphRepository.On("TableExists", mock.MatchedBy(matchContext), mock.MatchedBy(matchExec)).Return(false, nil)
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is no previous version for this object
@@ -351,6 +358,8 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
 		Return([]models.ContinuousScreeningConfig{}, nil)
 
+	suite.graphRepository.On("TableExists", mock.MatchedBy(matchContext), mock.MatchedBy(matchExec)).Return(false, nil)
+
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is no previous version for this object
 	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, updated_at, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
@@ -405,6 +414,8 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
 		Return([]models.ContinuousScreeningConfig{}, nil)
 
+	suite.graphRepository.On("TableExists", mock.MatchedBy(matchContext), mock.MatchedBy(matchExec)).Return(false, nil)
+
 	rowIdStr := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
 	rowId := utils.ByteUuid(rowIdStr)
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
@@ -455,6 +466,8 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
 		Return([]models.ContinuousScreeningConfig{}, nil)
+
+	suite.graphRepository.On("TableExists", mock.MatchedBy(matchContext), mock.MatchedBy(matchExec)).Return(false, nil)
 
 	rowIdStr := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
 	rowId := utils.ByteUuid(rowIdStr)
@@ -515,6 +528,8 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_withou
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
 		Return([]models.ContinuousScreeningConfig{}, nil)
 
+	suite.graphRepository.On("TableExists", mock.MatchedBy(matchContext), mock.MatchedBy(matchExec)).Return(false, nil)
+
 	// there is a previous version for this object
 	suite.executorFactory.Mock.ExpectQuery(escapeSql(`SELECT object_id, status, updated_at, value, id FROM "test"."transactions" WHERE "test"."transactions".valid_until = $1 AND object_id IN ($2)`)).
 		WithArgs("Infinity", "1").
@@ -546,6 +561,8 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_nomin
 	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
 		Return([]models.ContinuousScreeningConfig{}, nil)
+
+	suite.graphRepository.On("TableExists", mock.MatchedBy(matchContext), mock.MatchedBy(matchExec)).Return(false, nil)
 
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
 	// there is no previous version for these objects
@@ -600,6 +617,8 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 	suite.continuousScreeningRepository.On("ListContinuousScreeningConfigByObjectType",
 		mock.MatchedBy(matchContext), mock.MatchedBy(matchExec), mock.Anything, "transactions").
 		Return([]models.ContinuousScreeningConfig{}, nil)
+
+	suite.graphRepository.On("TableExists", mock.MatchedBy(matchContext), mock.MatchedBy(matchExec)).Return(false, nil)
 
 	rowIdStr1 := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
 	rowId1 := utils.ByteUuid(rowIdStr1)
@@ -661,6 +680,8 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		mock.MatchedBy(matchContext), mock.Anything, suite.organizationId).
 		Return(models.Organization{}, nil)
 
+	suite.graphRepository.On("TableExists", mock.MatchedBy(matchContext), mock.MatchedBy(matchExec)).Return(false, nil)
+
 	rowIdStr1 := "17c5805e-eb8f-48f1-afd4-10ad5494954b"
 	rowId1 := utils.ByteUuid(rowIdStr1)
 	updAt, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
@@ -718,6 +739,8 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 	suite.dataModelRepository.On("GetDataModel", mock.MatchedBy(matchContext),
 		mock.MatchedBy(matchExec), suite.organizationId, false, mock.Anything).
 		Return(dataModel, nil)
+
+	suite.graphRepository.On("TableExists", mock.MatchedBy(matchContext), mock.MatchedBy(matchExec)).Return(false, nil)
 
 	// Setup continuous screening mocks - only objects "1" and "3" are monitored out of 5 total
 	monitoringId1 := pure_utils.NewId()

@@ -152,6 +152,7 @@ type IngestionUseCase struct {
 	continuousScreeningRepository       continuousScreeningRepository
 	continuousScreeningClientRepository continuousScreeningClientDbRepository
 	featureAccessReader                 ingestionFeatureAccessReader
+	graphRepository                     repositories.GraphRepository
 	graphRelationRepository             repositories.GraphRelationRepository
 	graphIncrementalRepository          repositories.GraphIncrementalRepository
 	ingestionBucketUrl                  string
@@ -1268,9 +1269,15 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 		}
 
 		if infra.HasFeatureFlag(infra.GRAPH_EXPLORATION_FEATURE_FLAG, organizationId) {
-			// In the transaction so the adjacency table cannot disagree with the version flip it derives
-			// from, and so the existing retries carry it along. Best-effort: it does not return an error.
-			usecase.maintainGraphRows(ctx, tx, organizationId, table, ingestionResults)
+			isGraphSetup, err := usecase.graphRepository.TableExists(ctx, tx)
+			if err != nil {
+				return err
+			}
+			if isGraphSetup {
+				// In the transaction so the adjacency table cannot disagree with the version flip it derives
+				// from, and so the existing retries carry it along. Best-effort: it does not return an error.
+				usecase.maintainGraphRows(ctx, tx, organizationId, table, ingestionResults)
+			}
 		}
 
 		return nil
