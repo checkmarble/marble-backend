@@ -1,6 +1,6 @@
 [tools]
 # This is meant for development only. Tools version comments mention their SOT.
-go = "1.27.0" # Sources of truth are in go.mod and the Dockerfile
+go = "1.27.1" # Sources of truth are in go.mod, the Dockerfile and integration_test/screening/tests/marble/build.ts
 golangci-lint = "2.13.1" # Sources of truth are in .github/workflows/*.yaml
 
 [env]
