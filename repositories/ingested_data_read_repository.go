@@ -137,7 +137,11 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(ctx context.Context, exec
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
-	row := exec.QueryRow(ctx, sql, args...)
+	row, release, err := exec.QueryRow(ctx, sql, args...)
+	if err != nil {
+		return nil, fmt.Errorf("error while querying DB: %w", err)
+	}
+	defer release()
 
 	var output any
 	err = row.Scan(&output)
@@ -270,10 +274,11 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectIdsFromTable(
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
-	rows, err := exec.Query(ctx, sql, args...)
+	rows, release, err := exec.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, fmt.Errorf("error while querying DB: %w", err)
 	}
+	defer release()
 	defer rows.Close()
 
 	output := make([]string, 0)
@@ -325,10 +330,11 @@ func (repo *IngestedDataReadRepositoryImpl) StreamAllObjectIdsFromTable(
 	if err != nil {
 		return 0, fmt.Errorf("error while building SQL query: %w", err)
 	}
-	rows, err := exec.Query(ctx, sql, args...)
+	rows, release, err := exec.Query(ctx, sql, args...)
 	if err != nil {
 		return 0, fmt.Errorf("error while querying DB: %w", err)
 	}
+	defer release()
 	defer rows.Close()
 
 	buf := bufio.NewWriter(w)
@@ -552,10 +558,11 @@ func queryWithDynamicColumnList(
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
-	rows, err := exec.Query(ctx, sql, args...)
+	rows, release, err := exec.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, fmt.Errorf("error while querying DB: %w", err)
 	}
+	defer release()
 	defer rows.Close()
 	output := make([]map[string]any, 0)
 	for rows.Next() {
@@ -661,7 +668,12 @@ func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
 	var result any
-	err = exec.QueryRow(ctx, sql, args...).Scan(&result)
+	row, release, err := exec.QueryRow(ctx, sql, args...)
+	if err != nil {
+		return nil, fmt.Errorf("error while querying DB: %w", err)
+	}
+	defer release()
+	err = row.Scan(&result)
 	if err != nil {
 		return nil, fmt.Errorf("error while querying DB: %w", err)
 	}
@@ -846,10 +858,11 @@ func (repo *IngestedDataReadRepositoryImpl) ListIngestedObjects(
 		return nil, errors.Wrap(err, "error while building SQL query in ListIngestedObjects")
 	}
 
-	rows, err := exec.Query(ctx, sql, args...)
+	rows, release, err := exec.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while querying DB in ListIngestedObjects")
 	}
+	defer release()
 
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.DataModelObject, error) {
 		values, err := row.Values()
@@ -1008,10 +1021,11 @@ func (repo *IngestedDataReadRepositoryImpl) SearchObjects(
 		return nil, err
 	}
 
-	rows, err := exec.Query(ctx, sql, args...)
+	rows, release, err := exec.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 	defer rows.Close()
 
 	ingestedObjects := make([]models.DataModelObject, 0)
@@ -1062,10 +1076,11 @@ func (repo *IngestedDataReadRepositoryImpl) SampleObjectIds(
 		return nil, err
 	}
 
-	rows, err := exec.Query(ctx, sql, args...)
+	rows, release, err := exec.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 	defer rows.Close()
 
 	recordIds := make([]string, 0, size)
@@ -1113,10 +1128,11 @@ func (repo *IngestedDataReadRepositoryImpl) GetObjectsFromInternalId(
 		return nil, nil, err
 	}
 
-	rows, err := exec.Query(ctx, sql, args...)
+	rows, release, err := exec.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, nil, err
 	}
+	defer release()
 	defer rows.Close()
 
 	ids := make([]uuid.UUID, 0, limit)

@@ -90,12 +90,13 @@ func caseMassUpdateExecAndReturnedChanged(ctx context.Context, tx Transaction, q
 		return nil, err
 	}
 
-	rows, err := tx.Query(ctx, sql, args...)
+	rows, release, err := tx.Query(ctx, sql, args...)
 
 	if err != nil {
 		return nil, err
 	}
 
+	defer release()
 	defer rows.Close()
 
 	var tmp uuid.UUID

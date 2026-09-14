@@ -18,7 +18,7 @@ func GetDeploymentMetadata(ctx context.Context, repositories repositories.Reposi
 		ctx,
 		models.DATABASE_SCHEMA_TYPE_MARBLE,
 		nil,
-	)
+		true)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return models.Metadata{}, errors.Wrap(err, "failed to get executor from Marble DB")
@@ -44,7 +44,7 @@ func IsWebhookSystemMigrated(ctx context.Context, repositories repositories.Repo
 		ctx,
 		models.DATABASE_SCHEMA_TYPE_MARBLE,
 		nil,
-	)
+		true)
 	if err != nil {
 		return false
 	}

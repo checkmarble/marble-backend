@@ -354,10 +354,11 @@ func (uc AnalyticsQueryUsecase) CaseStatusByDate(ctx context.Context,
 		return nil, err
 	}
 
-	rows, err := exec.Query(ctx, sql, args...)
+	rows, release, err := exec.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 
 	output, err := pgx.CollectRows[analytics.CaseStatusByDate](rows, pgx.RowToStructByName)
 	if err != nil {
@@ -408,10 +409,11 @@ func (uc AnalyticsQueryUsecase) CaseStatusByInbox(ctx context.Context,
 		order by count(*) desc, i.name;
 	`
 
-	rows, err := exec.Query(ctx, sql, filters.OrgId, inboxes)
+	rows, release, err := exec.Query(ctx, sql, filters.OrgId, inboxes)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 
 	output, err := pgx.CollectRows[analytics.CaseStatusByInbox](rows, pgx.RowToStructByName)
 	if err != nil {

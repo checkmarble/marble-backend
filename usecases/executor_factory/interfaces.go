@@ -18,5 +18,6 @@ type TransactionFactory interface {
 type ExecutorFactory interface {
 	NewClientDbExecutor(ctx context.Context, organizationId uuid.UUID) (repositories.Executor, error)
 	NewExecutor() repositories.Executor
-	NewPinnedExecutor(ctx context.Context) (repositories.Executor, func(), error)
+	NewUnauditedExecutor() repositories.Executor
+	NewPinnedExecutor(ctx context.Context, skipAudit bool) (repositories.Executor, func(), error)
 }

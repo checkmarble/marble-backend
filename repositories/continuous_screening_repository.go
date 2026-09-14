@@ -1175,7 +1175,12 @@ func (repo *MarbleDbRepository) countPendingContinuousScreeningClientDataIndexin
 	}
 
 	var count int
-	if err := exec.QueryRow(ctx, sql, args...).Scan(&count); err != nil {
+	row, release, err := exec.QueryRow(ctx, sql, args...)
+	if err != nil {
+		return 0, errors.Wrap(err, "error counting pending client data indexing items")
+	}
+	defer release()
+	if err := row.Scan(&count); err != nil {
 		return 0, errors.Wrap(err, "error counting pending client data indexing items")
 	}
 

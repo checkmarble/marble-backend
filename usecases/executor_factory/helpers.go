@@ -37,3 +37,20 @@ func TransactionReturnValue[ReturnType any](
 	})
 	return value, transactionErr
 }
+
+func QueryGroup[R any](
+	ctx context.Context,
+	factory ExecutorFactory,
+	skipAudit bool,
+	fn func(conn repositories.Executor) (R, error),
+) (value R, err error) {
+	conn, release, err := factory.NewPinnedExecutor(ctx, skipAudit)
+	if err != nil {
+		return value, err
+	}
+	defer release()
+
+	value, err = fn(conn)
+
+	return
+}

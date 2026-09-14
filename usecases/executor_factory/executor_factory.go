@@ -10,9 +10,8 @@ import (
 
 // interfaces used by the class
 type executorFactoryRepository interface {
-	GetExecutor(ctx context.Context, typ models.DatabaseSchemaType, org *models.Organization) (repositories.Executor, error)
-	GetPinnedExecutor(ctx context.Context, typ models.DatabaseSchemaType, org *models.Organization) (repositories.Executor, func(), error)
-	// GetExecutor(ctx context.Context, typ models.DatabaseSchemaType, org *models.Organization, orgId uuid.UUID) (repositories.Executor, error)
+	GetExecutor(ctx context.Context, typ models.DatabaseSchemaType, org *models.Organization, skipAudit bool) (repositories.Executor, error)
+	GetPinnedExecutor(ctx context.Context, typ models.DatabaseSchemaType, org *models.Organization, skipAudit bool) (repositories.Executor, func(), error)
 	Transaction(
 		ctx context.Context,
 		typ models.DatabaseSchemaType,
@@ -85,17 +84,17 @@ func (factory DbExecutorFactory) NewClientDbExecutor(
 		ctx,
 		models.DATABASE_SCHEMA_TYPE_CLIENT,
 		&org,
-	)
+		false)
 }
 
 func (factory DbExecutorFactory) NewPinnedExecutor(
-	ctx context.Context,
+	ctx context.Context, skipAudit bool,
 ) (repositories.Executor, func(), error) {
 	return factory.transactionFactoryRepository.GetPinnedExecutor(
 		ctx,
 		models.DATABASE_SCHEMA_TYPE_MARBLE,
 		nil,
-	)
+		skipAudit)
 }
 
 func (factory DbExecutorFactory) NewExecutor() repositories.Executor {
@@ -103,6 +102,16 @@ func (factory DbExecutorFactory) NewExecutor() repositories.Executor {
 	exec, _ := factory.transactionFactoryRepository.GetExecutor(
 		context.Background(),
 		models.DATABASE_SCHEMA_TYPE_MARBLE,
-		nil)
+		nil,
+		false)
+	return exec
+}
+
+func (factory DbExecutorFactory) NewUnauditedExecutor() repositories.Executor {
+	exec, _ := factory.transactionFactoryRepository.GetExecutor(
+		context.Background(),
+		models.DATABASE_SCHEMA_TYPE_MARBLE,
+		nil,
+		true)
 	return exec
 }

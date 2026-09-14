@@ -37,10 +37,11 @@ func (repo *MarbleDbRepository) SelectCasesWithPivot(
 
 	query, args, _ := sql.ToSql()
 
-	rows, err := exec.Query(ctx, query, args...)
+	rows, release, err := exec.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 	cases, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.CaseMetadata, error) {
 		var c models.CaseMetadata
 		err := row.Scan(&c.Id, &c.Status, &c.CreatedAt, &c.OrganizationId)
@@ -61,10 +62,11 @@ func (repo *MarbleDbRepository) CountDecisionsByCaseIds(
 	}
 
 	query := `SELECT case_id, COUNT(DISTINCT pivot_value) AS nb FROM decisions WHERE org_id = $1 AND case_id = ANY($2) GROUP BY case_id`
-	rows, err := exec.Query(ctx, query, organizationId, caseIds)
+	rows, release, err := exec.Query(ctx, query, organizationId, caseIds)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 
 	counts := make(map[string]int)
 	var caseId string

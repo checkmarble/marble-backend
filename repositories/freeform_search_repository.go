@@ -163,7 +163,12 @@ func (*MarbleDbRepository) ListFreeformSearches(
 		}
 
 		var offsetCreatedAt time.Time
-		err = exec.QueryRow(ctx, sql, args...).Scan(&offsetCreatedAt)
+		row, release, queryErr := exec.QueryRow(ctx, sql, args...)
+		if queryErr != nil {
+			return nil, queryErr
+		}
+		err = row.Scan(&offsetCreatedAt)
+		release()
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.Wrap(models.NotFoundError,
 				"No row found matching the provided offsetId")

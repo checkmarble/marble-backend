@@ -242,10 +242,15 @@ func (repo *MarbleDbRepository) HasPendingCaseReview(
 	}
 
 	var exists bool
-	err := exec.QueryRow(ctx,
+	row, release, err := exec.QueryRow(ctx,
 		"SELECT EXISTS (SELECT 1 FROM "+dbmodels.TABLE_AI_CASE_REVIEWS+
 			" WHERE case_id = $1 AND status = $2)",
 		caseId, models.AiCaseReviewStatusPending.String(),
-	).Scan(&exists)
+	)
+	if err != nil {
+		return false, err
+	}
+	defer release()
+	err = row.Scan(&exists)
 	return exists, err
 }

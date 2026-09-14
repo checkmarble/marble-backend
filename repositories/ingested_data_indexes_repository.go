@@ -136,7 +136,7 @@ func (repo *ClientDbRepository) listAllPgIndexes(
 	INNER JOIN pg_class AS pg_class_idx ON(pgidx.indexrelid=pg_class_idx.oid)
 	WHERE nspname=$1
 `
-	rows, err := exec.Query(ctx, sql, exec.DatabaseSchema().Schema)
+	rows, release, err := exec.Query(ctx, sql, exec.DatabaseSchema().Schema)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while querying DB to read indexes")
 	}
@@ -145,15 +145,17 @@ func (repo *ClientDbRepository) listAllPgIndexes(
 		err := row.Scan(&index.Definition, &index.Name, &index.IsValid, &index.RelationId, &index.IsUnique, &index.TableName)
 		return index, err
 	})
+	release()
 	if err != nil {
 		return nil, errors.Wrap(err, "error while collecting rows for indexes")
 	}
 
 	// Now read indexes that are currently being created
-	rows, err = exec.Query(ctx, "SELECT index_relid FROM pg_stat_progress_create_index")
+	rows, release, err = exec.Query(ctx, "SELECT index_relid FROM pg_stat_progress_create_index")
 	if err != nil {
 		return nil, errors.Wrap(err, "error while querying DB to read indexes in creation")
 	}
+	defer release()
 	creationInProgressIdxOids, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (uint32, error) {
 		var indexRelid uint32
 		err := row.Scan(&indexRelid)
@@ -471,10 +473,11 @@ func (repo *ClientDbRepository) ListIndicesPendingCreation(ctx context.Context, 
 		;
 	`
 
-	rows, err := exec.Query(ctx, sql, exec.DatabaseSchema().Schema)
+	rows, release, err := exec.Query(ctx, sql, exec.DatabaseSchema().Schema)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while querying DB to read indexes")
 	}
+	defer release()
 
 	indices, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (string, error) {
 		var indexName string
@@ -502,10 +505,11 @@ func (repo *ClientDbRepository) ListInvalidIndices(ctx context.Context, exec Exe
 			pgi.indisvalid = false;
 	`
 
-	rows, err := exec.Query(ctx, sql, exec.DatabaseSchema().Schema)
+	rows, release, err := exec.Query(ctx, sql, exec.DatabaseSchema().Schema)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while querying DB to read indexes")
 	}
+	defer release()
 
 	indices, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (string, error) {
 		var indexName string

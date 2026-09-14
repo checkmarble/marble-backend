@@ -330,9 +330,13 @@ func AnalyticsCopyScreenings(ctx context.Context, exec AnalyticsExecutor, dbExec
 	// This is to avoid running large queries in a loop for organizations (or tables) that are used with decisions but not with screenings.
 	sql, args := generateMinimialLookupScreeningsQuery(req)
 
-	row := dbExec.QueryRow(ctx, sql, args...)
+	row, release, err := dbExec.QueryRow(ctx, sql, args...)
+	if err != nil {
+		return 0, err
+	}
 	found := false
-	err := row.Scan(&found)
+	err = row.Scan(&found)
+	release()
 	if err != nil {
 		return 0, err
 	}

@@ -55,7 +55,12 @@ func GetTryAdvisoryLock(ctx context.Context, exec Executor, key string) (func() 
 	}
 
 	var acquired bool
-	err = exec.QueryRow(ctx, "SELECT pg_try_advisory_lock($1)", keyInt).Scan(&acquired)
+	row, release, err := exec.QueryRow(ctx, "SELECT pg_try_advisory_lock($1)", keyInt)
+	if err != nil {
+		return nil, false, err
+	}
+	defer release()
+	err = row.Scan(&acquired)
 	if err != nil {
 		return nil, false, err
 	}

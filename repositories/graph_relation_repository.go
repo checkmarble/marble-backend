@@ -57,7 +57,11 @@ func (repo *MarbleDbRepository) GetGraphRelationGroupLabel(ctx context.Context, 
 		return "", err
 	}
 
-	row := exec.QueryRow(ctx, query, args...)
+	row, release, err := exec.QueryRow(ctx, query, args...)
+	if err != nil {
+		return "", err
+	}
+	defer release()
 
 	var label string
 

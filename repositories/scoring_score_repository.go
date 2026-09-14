@@ -208,10 +208,11 @@ func (repo *MarbleDbRepository) GetUnscoredBatch(
 		return nil, err
 	}
 
-	rows, err := exec.Query(ctx, sql, args...)
+	rows, release, err := exec.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 	defer rows.Close()
 
 	recordIds := make([]string, 0, limit)
@@ -271,10 +272,11 @@ func (repo *MarbleDbRepository) GetStaleScoreBatch(
 		return nil, err
 	}
 
-	rows, err := exec.Query(ctx, sql, args...)
+	rows, release, err := exec.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 	defer rows.Close()
 
 	recordIds := make([]string, 0, limit)

@@ -188,10 +188,11 @@ func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
-	rows, err := tx.Query(ctx, sql, args...)
+	rows, release, err := tx.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, fmt.Errorf("error while querying DB: %w", err)
 	}
+	defer release()
 	defer rows.Close()
 	output := make([]ingestedObject, 0, len(objectIds))
 	for rows.Next() {
