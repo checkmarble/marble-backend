@@ -58,7 +58,7 @@ func (repo *MarbleDbRepository) DeleteActiveRowsBefore(ctx context.Context, exec
 			Select("id").
 			From(tableName).
 			Where("valid_from < ? and valid_until = 'infinity'", before.UTC()).
-			OrderBy("valid_until").
+			OrderBy("valid_from").
 			Limit(5000)
 	})
 
