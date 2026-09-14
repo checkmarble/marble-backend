@@ -205,6 +205,16 @@ func (uc GraphWalkUsecase) WalkGraph(
 		return models.GraphResult{}, err
 	}
 
+	startNode := models.GraphNode{Type: startType, Id: startId}
+
+	isGraphSetup, err := uc.graphRepository.TableExists(ctx, exec)
+	if err != nil {
+		return models.GraphResult{}, err
+	}
+	if !isGraphSetup {
+		return models.GraphResult{Start: startNode}, nil
+	}
+
 	degrees := opts.Degrees
 	if degrees <= 0 {
 		degrees = graphDefaultDegrees
@@ -226,7 +236,7 @@ func (uc GraphWalkUsecase) WalkGraph(
 		maxEstimates:           graphMaxEstimates,
 	}
 
-	graph, err := w.run(models.GraphNode{Type: startType, Id: startId}, degrees)
+	graph, err := w.run(startNode, degrees)
 	if err != nil {
 		return models.GraphResult{}, err
 	}

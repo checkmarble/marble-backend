@@ -408,6 +408,7 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 		continuousScreeningRepository:       usecases.Repositories.MarbleDbRepository,
 		continuousScreeningClientRepository: &usecases.Repositories.ClientDbRepository,
 		featureAccessReader:                 usecases.NewFeatureAccessReader(),
+		graphRepository:                     usecases.Repositories.MarbleDbRepository,
 		graphRelationRepository:             usecases.Repositories.MarbleDbRepository,
 		graphIncrementalRepository:          usecases.Repositories.MarbleDbRepository,
 		batchIngestionMaxSize:               usecases.Usecases.batchIngestionMaxSize,

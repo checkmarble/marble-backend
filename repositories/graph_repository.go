@@ -31,6 +31,8 @@ const graphTable = "_graph"
 const graphBatchSize = 1000
 
 type GraphRepository interface {
+	TableExists(ctx context.Context, exec Executor) (bool, error)
+
 	// FetchFields returns the `_graph` rows of recordType for the given record ids,
 	// restricted to fieldNames. One call hydrates a whole frontier of one record type.
 	FetchFields(ctx context.Context, exec Executor, recordType string, recordIds, fieldNames []string) ([]models.GraphRow, error)
@@ -62,6 +64,14 @@ type GraphRepository interface {
 		captionFields map[string]string,
 		records []models.ScoringRecordRef,
 	) ([]models.GraphResultNodeMetadata, error)
+}
+
+func (repo MarbleDbRepository) TableExists(ctx context.Context, exec Executor) (bool, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return false, err
+	}
+
+	return repo.tableExists(ctx, exec, graphTable)
 }
 
 func (repo MarbleDbRepository) FetchFields(

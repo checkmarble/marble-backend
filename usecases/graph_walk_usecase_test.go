@@ -55,6 +55,10 @@ type fakeGraphRepository struct {
 	riskLevels map[string]int
 }
 
+func (repo *fakeGraphRepository) TableExists(ctx context.Context, exec repositories.Executor) (bool, error) {
+	return true, nil
+}
+
 func (repo *fakeGraphRepository) FetchFields(
 	_ context.Context, _ repositories.Executor, recordType string, recordIds, fieldNames []string,
 ) ([]models.GraphRow, error) {
