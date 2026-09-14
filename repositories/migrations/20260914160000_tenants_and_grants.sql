@@ -40,7 +40,7 @@ WHERE o.id = no.id;
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM organizations WHERE tenant_id IS NULL) THEN
-        RAISE EXCEPTION 'organization backfill left orphan organizations';
+        RAISE EXCEPTION 'tenant backfill left orphan organizations';
     END IF;
 END
 $$;
