@@ -377,8 +377,9 @@ func (m *ContinuousScreeningRepository) UpdateDataModelTable(
 	captionField pure_utils.Null[string],
 	primaryOrderingField pure_utils.Null[string],
 	metadata *json.RawMessage,
+	lifecycle *models.TableLifecycle,
 ) error {
-	args := m.Called(ctx, exec, tableID, description, ftmEntity, alias, semanticType, captionField, primaryOrderingField, metadata)
+	args := m.Called(ctx, exec, tableID, description, ftmEntity, alias, semanticType, captionField, primaryOrderingField, metadata, lifecycle)
 	return args.Error(0)
 }
 
