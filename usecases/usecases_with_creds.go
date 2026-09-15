@@ -1322,3 +1322,13 @@ func (usecases UsecasesWithCreds) NewClientDataPurgeWorker() *worker_jobs.Client
 		usecases.Repositories.MarbleDbRepository,
 	)
 }
+
+func (usecases UsecasesWithCreds) NewScreeningSavedSearchesUsecase() ScreeningSearchesUsecase {
+	return NewScreeningSearchesUsecase(
+		usecases.NewEnforceScreeningSecurity(),
+		usecases.NewFeatureAccessReader(),
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+	)
+}

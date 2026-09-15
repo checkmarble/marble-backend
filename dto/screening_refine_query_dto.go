@@ -33,6 +33,29 @@ func (dto RefineQueryDto) Type() string {
 	return "Thing"
 }
 
+func (dto *RefineQueryDto) ClearFields() {
+	if dto.Thing != nil {
+		dto.Thing.Name = ""
+	}
+	if dto.Person != nil {
+		dto.Person.Name = ""
+		dto.Person.BirthDate = ""
+		dto.Person.Nationality = ""
+		dto.Person.PassportNumber = ""
+		dto.Person.Address = ""
+	}
+	if dto.Organization != nil {
+		dto.Organization.Name = ""
+		dto.Organization.Country = ""
+		dto.Organization.RegistrationNumber = ""
+		dto.Organization.Address = ""
+	}
+	if dto.Vehicle != nil {
+		dto.Vehicle.Name = ""
+		dto.Vehicle.RegistrationNumber = ""
+	}
+}
+
 type RefineQueryBase struct {
 	Name string `json:"name"`
 }
