@@ -45,6 +45,7 @@ type ScreeningEnforceSecurity interface {
 	PerformFreeformSearch(context.Context) error
 	ReadFreeformSearch(s models.FreeformSearch) error
 	SaveFreeformSearch(s models.FreeformSearch) error
+	SaveScreeningSearch() error
 }
 
 type ScreeningProvider interface {
