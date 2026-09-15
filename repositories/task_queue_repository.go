@@ -116,10 +116,18 @@ type TaskQueueRepository interface {
 		uploadLogId uuid.UUID,
 		ingestionOptions models.IngestionOptions,
 	) error
+	EnqueueCsvIngestionDeadlineTask(
+		ctx context.Context,
+		tx Transaction,
+		organizationId uuid.UUID,
+		uploadLogId uuid.UUID,
+		deadline time.Time,
+	) error
 	EnqueueAsyncUploadTask(
 		ctx context.Context,
 		tx Transaction,
 		organizationId uuid.UUID,
+		uploadLogId uuid.UUID,
 		objectType string,
 		key string,
 		ingestionOptions models.IngestionOptions,
@@ -660,15 +668,31 @@ func (r riverRepository) EnqueueCsvIngestionTask(
 	return nil
 }
 
+func (r riverRepository) EnqueueCsvIngestionDeadlineTask(
+	ctx context.Context,
+	tx Transaction,
+	organizationId uuid.UUID,
+	uploadLogId uuid.UUID,
+	deadline time.Time,
+) error {
+	_, err := r.client.InsertTx(ctx, tx.RawTx(), models.CsvIngestionDeadlineArgs{UploadLogId: uploadLogId}, &river.InsertOpts{
+		Queue:       organizationId.String(),
+		ScheduledAt: deadline,
+	})
+	return err
+}
+
 func (r riverRepository) EnqueueAsyncUploadTask(
 	ctx context.Context,
 	tx Transaction,
 	organizationId uuid.UUID,
+	uploadLogId uuid.UUID,
 	objectType string,
 	key string,
 	ingestionOptions models.IngestionOptions,
 ) error {
 	args := models.AsyncUploadArgs{
+		UploadLogId:      uploadLogId,
 		OrgId:            organizationId,
 		ObjectType:       objectType,
 		Key:              key,

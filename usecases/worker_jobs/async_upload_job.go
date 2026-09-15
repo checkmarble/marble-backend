@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
@@ -31,6 +30,17 @@ type asyncUploadTaskEnqueuer interface {
 		uploadLogId uuid.UUID,
 		ingestionOptions models.IngestionOptions,
 	) error
+	EnqueueCsvIngestionDeadlineTask(
+		ctx context.Context,
+		tx repositories.Transaction,
+		organizationId uuid.UUID,
+		uploadLogId uuid.UUID,
+		deadline time.Time,
+	) error
+}
+
+type asyncUploadFinalizer interface {
+	FailUploadLog(ctx context.Context, uploadLogId uuid.UUID, reason string) error
 }
 
 type AsyncUploadWorker struct {
@@ -40,6 +50,7 @@ type AsyncUploadWorker struct {
 	taskQueueRepository asyncUploadTaskEnqueuer
 	blobRepository      repositories.BlobRepository
 	uploadLogRepository repositories.UploadLogRepository
+	finalizer           asyncUploadFinalizer
 	ingestionBucketUrl  string
 }
 
@@ -48,6 +59,7 @@ func NewAsyncUploadWorker(
 	taskQueueRepository asyncUploadTaskEnqueuer,
 	blobRepository repositories.BlobRepository,
 	uploadLogRepository repositories.UploadLogRepository,
+	finalizer asyncUploadFinalizer,
 	ingestionBucketUrl string,
 ) AsyncUploadWorker {
 	return AsyncUploadWorker{
@@ -55,6 +67,7 @@ func NewAsyncUploadWorker(
 		taskQueueRepository: taskQueueRepository,
 		blobRepository:      blobRepository,
 		uploadLogRepository: uploadLogRepository,
+		finalizer:           finalizer,
 		ingestionBucketUrl:  ingestionBucketUrl,
 	}
 }
@@ -67,6 +80,9 @@ func (w AsyncUploadWorker) Work(ctx context.Context, job *river.Job[models.Async
 		if gcerrors.Code(err) == gcerrors.NotFound {
 			// If we passed the token validity period, it won't be uploaded, so we cancel the job
 			if time.Now().After(job.CreatedAt.Add(ASYNC_UPLOAD_TIMEOUT)) {
+				if err := w.finalizer.FailUploadLog(ctx, job.Args.UploadLogId, "upload was not received before its deadline"); err != nil {
+					return err
+				}
 				return river.JobCancel(
 					errors.Newf("async upload: no file uploaded to blob storage after %s, cancelling watchdog", ASYNC_UPLOAD_TIMEOUT))
 			}
@@ -89,23 +105,20 @@ func (w AsyncUploadWorker) Work(ctx context.Context, job *river.Job[models.Async
 	}
 
 	return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		uploadLogId := pure_utils.NewId()
-
-		newUploadLoad := models.UploadLog{
-			Id:             uploadLogId,
-			UploadStatus:   models.UploadPending,
-			OrganizationId: job.Args.OrgId,
-			FileName:       job.Args.Key,
-			TableName:      job.Args.ObjectType,
-			UserId:         uuid.Max.String(),
-			StartedAt:      time.Now(),
-			LinesProcessed: 0,
-		}
-		if err := w.uploadLogRepository.CreateUploadLog(ctx, tx, newUploadLoad); err != nil {
+		deadline := time.Now().Add(utils.GetEnvDuration("CSV_INGESTION_TOTAL_TIMEOUT", models.CsvIngestionTotalTimeoutDefault))
+		done, err := w.uploadLogRepository.UpdateUploadLogStatus(ctx, tx, models.UpdateUploadLogStatusInput{
+			Id:                           job.Args.UploadLogId,
+			CurrentUploadStatusCondition: models.UploadPending,
+			UploadStatus:                 models.UploadProcessing,
+			DeadlineAt:                   &deadline,
+		})
+		if err != nil || !done {
 			return err
 		}
-
-		return w.taskQueueRepository.EnqueueCsvIngestionTask(ctx, tx, job.Args.OrgId, uploadLogId, models.IngestionOptions{
+		if err := w.taskQueueRepository.EnqueueCsvIngestionDeadlineTask(ctx, tx, job.Args.OrgId, job.Args.UploadLogId, deadline); err != nil {
+			return err
+		}
+		return w.taskQueueRepository.EnqueueCsvIngestionTask(ctx, tx, job.Args.OrgId, job.Args.UploadLogId, models.IngestionOptions{
 			ShouldMonitor:          job.Args.IngestionOptions.ShouldMonitor,
 			ContinuousScreeningIds: job.Args.IngestionOptions.ContinuousScreeningIds,
 			ShouldScreen:           job.Args.IngestionOptions.ShouldScreen,
@@ -114,37 +127,13 @@ func (w AsyncUploadWorker) Work(ctx context.Context, job *river.Job[models.Async
 }
 
 func (w AsyncUploadWorker) createUploadError(ctx context.Context, job *river.Job[models.AsyncUploadArgs], err string) error {
-	return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		newUploadLoad := models.UploadLog{
-			Id:             pure_utils.NewId(),
-			UploadStatus:   models.UploadFailure,
-			OrganizationId: job.Args.OrgId,
-			FileName:       job.Args.Key,
-			TableName:      job.Args.ObjectType,
-			UserId:         uuid.Max.String(),
-			StartedAt:      time.Now(),
-			LinesProcessed: 0,
-			Error:          &err,
-		}
-
-		if err := w.uploadLogRepository.CreateUploadLog(ctx, tx, newUploadLoad); err != nil {
-			utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not insert failed upload log",
-				"org_id", job.Args.OrgId,
-				"key", job.Args.Key,
-				"error", err.Error())
-
-			return err
-		}
-
-		if err := w.blobRepository.DeleteFile(ctx, w.ingestionBucketUrl, job.Args.Key); err != nil {
-			utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not delete uploaded file",
-				"org_id", job.Args.OrgId,
-				"key", job.Args.Key,
-				"error", err.Error())
-
-			return err
-		}
-
-		return nil
-	})
+	if finalizationErr := w.finalizer.FailUploadLog(ctx, job.Args.UploadLogId, err); finalizationErr != nil {
+		return finalizationErr
+	}
+	if err := w.blobRepository.DeleteFile(ctx, w.ingestionBucketUrl, job.Args.Key); err != nil {
+		utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not delete uploaded file",
+			"org_id", job.Args.OrgId, "key", job.Args.Key, "error", err.Error())
+		return err
+	}
+	return nil
 }
