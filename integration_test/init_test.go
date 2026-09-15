@@ -206,7 +206,7 @@ func TestMain(m *testing.M) {
 		usecases.WithFirebaseAdmin(auth.TokenProviderFirebase, firebaseAdminClient),
 	)
 
-	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, testUsecases)
+	adminUc := jobs.GenerateUsecaseWithCredForSystem(testUsecases)
 	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())
 	river.AddWorker(workers, adminUc.NewNewAsyncScheduledExecWorker())
 	river.AddWorker(workers, adminUc.NewBatchExecutionCoordinatorWorker())

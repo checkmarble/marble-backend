@@ -372,7 +372,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		usecases.WithAIPromptsFS(aiPromptsFS),
 		usecases.WithAIAgentModelConfig(aiAgentModelConfig),
 	)
-	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
+	adminUc := jobs.GenerateUsecaseWithCredForSystem(uc)
 
 	if only != "" {
 		if err := singleJobRun(ctx, adminUc, apiVersion, workerConfig, gcpConfig, only, onlyArgs); err != nil {
