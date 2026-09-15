@@ -205,6 +205,10 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.PATCH("/screenings/matches/:id", tom, handleUpdateScreeningMatchStatus(uc))
 	router.POST("/screenings/matches/:id/enrich", tom, handleEnrichScreeningMatch(uc))
 
+	router.POST("/screenings/searches", tom, handleSaveScreeningManualSearch(uc))
+	router.GET("/screenings/searches", tom, handleListScreeningManualSearch(uc))
+	router.DELETE("/screenings/searches/:id", tom, handleDeleteScreeningSavedSearch(uc))
+
 	router.POST("/screenings/freeform-search", tom, handleFreeformSearch(uc))
 	router.GET("/screenings/freeform-search", tom, handleListFreeformSearch(uc))
 	router.GET("/screenings/freeform-search/:id", tom, handleGetFreeformSearch(uc))

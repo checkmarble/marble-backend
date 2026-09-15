@@ -15,6 +15,7 @@ type EnforceSecurityScreening interface {
 	PerformFreeformSearch(ctx context.Context) error
 	ReadFreeformSearch(s models.FreeformSearch) error
 	SaveFreeformSearch(s models.FreeformSearch) error
+	SaveScreeningSearch() error
 }
 
 func (e *EnforceSecurityImpl) ReadWhitelist(ctx context.Context) error {
@@ -59,4 +60,8 @@ func (e *EnforceSecurityImpl) SaveFreeformSearch(s models.FreeformSearch) error 
 	}
 
 	return errors.Wrap(models.ForbiddenError, "freeform search can only be saved by the actor who performed it")
+}
+
+func (e *EnforceSecurityImpl) SaveScreeningSearch() error {
+	return e.Permission(models.SCREENING_SAVE_SEARCHES)
 }
