@@ -85,10 +85,14 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not start resource: %s", err)
 	}
 
-	err = resource.Expire(testDbLifetime) // Tell docker to hard kill the container in testDbLifetime seconds
-	if err != nil {
-		log.Fatalf("Could not set container lifetime: %s", err)
-	}
+	dbDeadline := time.AfterFunc(testDbLifetime*time.Second, func() {
+		log.Printf("integration-test database lifetime reached after %s; removing PostgreSQL container %s",
+			testDbLifetime*time.Second, resource.Container.ID)
+
+		if err := pool.Purge(resource); err != nil {
+			log.Printf("failed to remove timed-out PostgreSQL container: %v", err)
+		}
+	})
 
 	pool.MaxWait = testDbLifetime * time.Second
 
@@ -252,6 +256,8 @@ func TestMain(m *testing.M) {
 	_ = server.Shutdown(ctx)
 
 	_ = riverClient.Stop(ctx)
+
+	dbDeadline.Stop()
 
 	// You can't defer this because os.Exit doesn't care for defer
 	if err := pool.Purge(resource); err != nil {
