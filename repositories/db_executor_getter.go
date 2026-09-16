@@ -169,10 +169,15 @@ func (g ExecutorGetter) getPoolAndSchema(
 		config.SchemaName = models.OrgSchemaName(org.Name)
 	}
 
+	connectionId := config.ConnectionString
+	if config.CloudSqlConnectionName != "" {
+		connectionId += ":" + config.CloudSqlConnectionName
+	}
+
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	pool, ok := g.clientDbPools[config.ConnectionString]
+	pool, ok := g.clientDbPools[connectionId]
 	if !ok {
 		var err error
 		pool, err = infra.NewPostgresConnectionPool(
@@ -182,12 +187,13 @@ func (g ExecutorGetter) getPoolAndSchema(
 			g.tp,
 			config.MaxConns,
 			config.ImpersonateRole,
+			config.CloudSqlConnectionName,
 		)
 		if err != nil {
 			return nil, models.DatabaseSchema{}, errors.Wrap(err, "Error creating connection pool")
 		}
 
-		g.clientDbPools[config.ConnectionString] = pool
+		g.clientDbPools[connectionId] = pool
 	}
 
 	return pool, models.DatabaseSchema{
@@ -234,11 +240,11 @@ func (g ExecutorGetter) GetPinnedExecutor(
 	}
 
 	return &PgExecutor{
-			databaseSchema: databaseSchema,
-			exec:           conn,
-		}, func() {
-			conn.Release()
-		}, nil
+		databaseSchema: databaseSchema,
+		exec:           conn,
+	}, func() {
+		conn.Release()
+	}, nil
 }
 
 func validateClientDbExecutor(exec databaseSchemaGetter) error {

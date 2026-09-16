@@ -4,10 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"net"
 	"os"
 	"time"
 
+	"cloud.google.com/go/cloudsqlconn"
 	"github.com/avast/retry-go/v4"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -21,10 +25,19 @@ const (
 )
 
 type ClientDbConfig struct {
-	ConnectionString string `json:"connection_string"`
-	MaxConns         int    `json:"max_conns"`
-	SchemaName       string `json:"schema_name"`
-	ImpersonateRole  string `json:"impersonate_role"`
+	ConnectionString       string `json:"connection_string"`
+	CloudSqlConnectionName string `json:"cloudsql_connection_name"` //nolint:tagliatelle
+	MaxConns               int    `json:"max_conns"`
+	SchemaName             string `json:"schema_name"`
+	ImpersonateRole        string `json:"impersonate_role"`
+}
+
+type CloudSqlLogger struct {
+	*slog.Logger
+}
+
+func (l CloudSqlLogger) Debugf(ctx context.Context, format string, args ...any) {
+	l.DebugContext(ctx, fmt.Sprintf(format, args...))
 }
 
 func NewPostgresConnectionPool(
@@ -34,11 +47,42 @@ func NewPostgresConnectionPool(
 	tp trace.TracerProvider,
 	maxConnections int,
 	impersonateRole string,
+	cloudsqlConnectionName string,
 ) (*pgxpool.Pool, error) {
+	logger := CloudSqlLogger{utils.LoggerFromContext(ctx)}
+
 	cfg, err := pgxpool.ParseConfig(connectionString)
 	if err != nil {
 		return nil, fmt.Errorf("create connection pool: %w", err)
 	}
+
+	var poolDialer *cloudsqlconn.Dialer
+
+	if cloudsqlConnectionName != "" {
+		// Cloud SQL proxy does not support Postgres-native TLS, since the whole TCP connection is
+		// wrapped in a mTLS tunnel.
+		cfg.ConnConfig.TLSConfig = nil
+
+		opts := []cloudsqlconn.Option{
+			cloudsqlconn.WithContextDebugLogger(logger),
+		}
+
+		if cfg.ConnConfig.Password == "" {
+			opts = append(opts, cloudsqlconn.WithIAMAuthN())
+		}
+
+		dialer, err := cloudsqlconn.NewDialer(context.Background(), opts...)
+		if err != nil {
+			return nil, fmt.Errorf("create cloudsql dialer: %w", err)
+		}
+
+		cfg.ConnConfig.DialFunc = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return dialer.Dial(ctx, cloudsqlConnectionName)
+		}
+
+		poolDialer = dialer
+	}
+
 	ops := []otelpgx.Option{}
 	if tp != nil {
 		ops = append(ops, otelpgx.WithTracerProvider(tp))
@@ -71,13 +115,17 @@ func NewPostgresConnectionPool(
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
+		if poolDialer != nil {
+			poolDialer.Close()
+		}
+
 		return nil, fmt.Errorf("unable to create connection pool: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	return pool, retry.Do(
+	err = retry.Do(
 		func() error {
 			if err := pool.Ping(ctx); err != nil {
 				return fmt.Errorf("NewPostgresConnectionPool.Ping error: %w", err)
@@ -87,6 +135,17 @@ func NewPostgresConnectionPool(
 		retry.Attempts(3),
 		retry.LastErrorOnly(true),
 	)
+
+	if err != nil {
+		pool.Close()
+		if poolDialer != nil {
+			poolDialer.Close()
+		}
+
+		return nil, err
+	}
+
+	return pool, nil
 }
 
 func ParseClientDbConfig(filename string) (map[string]ClientDbConfig, error) {

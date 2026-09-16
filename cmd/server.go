@@ -133,16 +133,17 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	}
 
 	pgConfig := infra.PgConfig{
-		ConnectionString:   utils.GetEnv("PG_CONNECTION_STRING", ""),
-		Database:           utils.GetEnv("PG_DATABASE", "marble"),
-		Hostname:           utils.GetEnv("PG_HOSTNAME", ""),
-		Password:           utils.GetEnv("PG_PASSWORD", ""),
-		Port:               utils.GetEnv("PG_PORT", "5432"),
-		User:               utils.GetEnv("PG_USER", ""),
-		MaxPoolConnections: utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
-		ClientDbConfigFile: utils.GetEnv("CLIENT_DB_CONFIG_FILE", ""),
-		SslMode:            utils.GetEnv("PG_SSL_MODE", "prefer"),
-		ImpersonateRole:    utils.GetEnv("PG_IMPERSONATE_ROLE", ""),
+		CloudSqlConnectionName: utils.GetEnv("CLOUDSQL_CONNECTION_NAME", ""),
+		ConnectionString:       utils.GetEnv("PG_CONNECTION_STRING", ""),
+		Database:               utils.GetEnv("PG_DATABASE", "marble"),
+		Hostname:               utils.GetEnv("PG_HOSTNAME", ""),
+		Password:               utils.GetEnv("PG_PASSWORD", ""),
+		Port:                   utils.GetEnv("PG_PORT", "5432"),
+		User:                   utils.GetEnv("PG_USER", ""),
+		MaxPoolConnections:     utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
+		ClientDbConfigFile:     utils.GetEnv("CLIENT_DB_CONFIG_FILE", ""),
+		SslMode:                utils.GetEnv("PG_SSL_MODE", "prefer"),
+		ImpersonateRole:        utils.GetEnv("PG_IMPERSONATE_ROLE", ""),
 	}
 	if pgConfig.ConnectionString != "" {
 		if u, err := url.Parse(pgConfig.ConnectionString); err != nil || !u.IsAbs() {
@@ -255,18 +256,22 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	}
 
 	pool, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
-		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections, pgConfig.ImpersonateRole)
+		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections, pgConfig.ImpersonateRole,
+		pgConfig.CloudSqlConnectionName)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
+		return err
 	}
 
 	// TODO: this is a temporary fixup until we can merge `repositories/postgres` into our usual
 	// repositories setup. As it is, it does not use the query injecter for audit events and would
 	// produce invalid values.
 	authPool, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
-		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections, pgConfig.ImpersonateRole)
+		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections, pgConfig.ImpersonateRole,
+		pgConfig.CloudSqlConnectionName)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
+		return err
 	}
 
 	clientDbConfig, err := infra.ParseClientDbConfig(pgConfig.ClientDbConfigFile)
