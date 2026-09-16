@@ -31,8 +31,19 @@ jobs:
       - name: Build
         run: go build -v ./...
 
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@v1.13.0
+
       - name: Test
-        run: go test ./...
+        run: 'gotestsum --format github-actions --rerun-fails=2 --rerun-fails-report=/tmp/flaky-go-tests.txt --packages="./..." -- ./...'
+
+      - name: Report flaky tests
+        if: always()
+        run: |
+          if [ -s /tmp/flaky-go-tests.txt ]; then
+            cat /tmp/flaky-go-tests.txt
+            echo "::warning title=Flaky Go tests::See gotestsum output for tests retried after failure"
+          fi
 
       - name: Generate Marble API OpenAPI as temporary file
         run: |
