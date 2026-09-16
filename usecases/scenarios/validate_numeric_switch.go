@@ -160,10 +160,14 @@ func classifyNumericSwitchCase(caseNode ast.Node) classifiedNumericSwitchCase {
 	}
 
 	fieldHash, threshold, ok := parseNumericLessOrEqual(predicate.Children[0])
-	if !ok {
-		return classifiedNumericSwitchCase{kind: numericSwitchCaseOther}
-	}
 	second := predicate.Children[1]
+	if !ok {
+		fieldHash, threshold, ok = parseNumericLessOrEqual(predicate.Children[1])
+		second = predicate.Children[0]
+		if !ok {
+			return classifiedNumericSwitchCase{kind: numericSwitchCaseOther}
+		}
+	}
 	if second.Function != ast.FUNC_EQUAL || len(second.Children) != 2 {
 		return classifiedNumericSwitchCase{kind: numericSwitchCaseOther}
 	}
