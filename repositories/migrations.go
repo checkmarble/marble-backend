@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"net"
 	"time"
 
+	"cloud.google.com/go/cloudsqlconn"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -61,6 +63,33 @@ func (m *Migrater) Run(ctx context.Context, migrateDownTo *int64) error {
 	if err != nil {
 		return errors.Wrap(err, "unable to parse connection string")
 	}
+
+	if m.pgConfig.CloudSqlConnectionName != "" {
+		logger := infra.CloudSqlLogger{Logger: utils.LoggerFromContext(ctx)}
+
+		// Cloud SQL proxy does not support Postgres-native TLS, since the whole TCP connection is
+		// wrapped in a mTLS tunnel.
+		cfg.ConnConfig.TLSConfig = nil
+
+		opts := []cloudsqlconn.Option{
+			cloudsqlconn.WithContextDebugLogger(logger),
+		}
+
+		if cfg.ConnConfig.Password == "" {
+			opts = append(opts, cloudsqlconn.WithIAMAuthN())
+		}
+
+		dialer, err := cloudsqlconn.NewDialer(context.Background(), opts...)
+		if err != nil {
+			return errors.Errorf("create cloudsql dialer: %w", err)
+		}
+		defer dialer.Close()
+
+		cfg.ConnConfig.DialFunc = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return dialer.Dial(ctx, m.pgConfig.CloudSqlConnectionName)
+		}
+	}
+
 	if m.pgConfig.ImpersonateRole != "" {
 		cfg.ConnConfig.Config.AfterConnect = func(ctx context.Context, conn *pgconn.PgConn) error {
 			res := conn.Exec(ctx, "SET ROLE "+pgx.Identifier([]string{m.pgConfig.ImpersonateRole}).Sanitize())
@@ -73,10 +102,12 @@ func (m *Migrater) Run(ctx context.Context, migrateDownTo *int64) error {
 	// It works by setting the config as a global variable and then using the stdlib driver to open the connection.
 	// The DSN created by the driver is only used as a lookup key for the config within sql.Open().
 	registeredConfig := stdlib.RegisterConnConfig(cfg.ConnConfig)
+	defer stdlib.UnregisterConnConfig(registeredConfig)
 
 	if err := m.openDb(ctx, registeredConfig); err != nil {
 		return errors.Wrap(err, "unable to open db in Migrater")
 	}
+	defer m.db.Close()
 
 	// Now run the migrations
 	if err := m.runMarbleDbMigrations(ctx, migrateDownTo); err != nil {
@@ -88,6 +119,7 @@ func (m *Migrater) Run(ctx context.Context, migrateDownTo *int64) error {
 		if err != nil {
 			return errors.Wrap(err, "unable to open db in Migrater")
 		}
+		defer pgxPool.Close()
 		migrator, err := rivermigrate.New(riverpgxv5.New(pgxPool), nil)
 		if err != nil {
 			return errors.Wrap(err, "unable to create migrator")
@@ -112,6 +144,7 @@ func (m *Migrater) openDb(ctx context.Context, connectionDsn string) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if err = m.db.PingContext(ctx); err != nil {
+		db.Close()
 		return errors.Wrap(err, "unable to ping database")
 	}
 	return nil
@@ -126,6 +159,7 @@ func (m *Migrater) openDbPgx(ctx context.Context, cfg *pgxpool.Config) (*pgxpool
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if err = pool.Ping(ctx); err != nil {
+		pool.Close()
 		return nil, errors.Errorf("unable to ping database: %w", err)
 	}
 

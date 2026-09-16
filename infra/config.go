@@ -99,15 +99,16 @@ func FindServiceAccountPrincipal(ctx context.Context) (string, string, error) {
 }
 
 type PgConfig struct {
-	ConnectionString   string
-	Database           string
-	Hostname           string
-	Password           string
-	Port               string
-	User               string
-	MaxPoolConnections int
-	ClientDbConfigFile string
-	SslMode            string
+	CloudSqlConnectionName string
+	ConnectionString       string
+	Database               string
+	Hostname               string
+	Password               string
+	Port                   string
+	User                   string
+	MaxPoolConnections     int
+	ClientDbConfigFile     string
+	SslMode                string
 
 	// Role to impersonate when connecting to the database. To be used in particular with IAM authentication t
 	// handle role based access control. Ignored if empty.
@@ -119,7 +120,7 @@ func (config PgConfig) GetConnectionString() string {
 		return config.ConnectionString
 	}
 
-	if config.Hostname == "" || config.User == "" || config.Password == "" || config.Database == "" {
+	if config.Hostname == "" || config.User == "" || config.Database == "" {
 		panic("Missing required configuration for connecting to PostgreSQL in PgConfig")
 	}
 
@@ -127,8 +128,15 @@ func (config PgConfig) GetConnectionString() string {
 		config.SslMode = "prefer"
 	}
 
-	connectionString := fmt.Sprintf("host=%s user=%s password=%s database=%s sslmode=%s",
-		config.Hostname, config.User, config.Password, config.Database, config.SslMode)
+	connectionString := fmt.Sprintf("host=%s user=%s database=%s sslmode=%s",
+		config.Hostname, config.User, config.Database, config.SslMode)
+
+	// Some methods of authentication do not use passwords, such as GCP IAM authentication. In that
+	// case, it needs to be omited from the DSN to prevent invalid parsing.
+	if config.Password != "" {
+		connectionString = fmt.Sprintf("%s password=%s", connectionString, config.Password)
+	}
+
 	if config.Port != "" {
 		// In some cases, the port is not required. E.g. Cloud Run connects to the DB through a managed proxy
 		// and a unix socket, so we don't need need to specify the port in that case.

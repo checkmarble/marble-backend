@@ -32,12 +32,20 @@ type ExecutorGetter struct {
 	// uses the organizationId as the key
 	clientDbConfigs map[string]infra.ClientDbConfig
 
-	// uses the connection string as a key
+	// uses the connection string and Cloud SQL instance as a key
 	clientDbPools map[string]*pgxpool.Pool
 	// used to make the clientDbPools map thread-safe
 	mu *sync.Mutex
 
 	tp trace.TracerProvider
+}
+
+func clientDbPoolKey(config infra.ClientDbConfig) string {
+	if config.CloudSqlConnectionName != "" {
+		return config.ConnectionString + ":" + config.CloudSqlConnectionName
+	}
+
+	return config.ConnectionString
 }
 
 type databaseSchemaGetter interface {
@@ -173,10 +181,12 @@ func (g ExecutorGetter) getPoolAndSchema(
 		config.SchemaName = models.OrgSchemaName(org.Name)
 	}
 
+	connectionId := clientDbPoolKey(config)
+
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	pool, ok := g.clientDbPools[config.ConnectionString]
+	pool, ok := g.clientDbPools[connectionId]
 	if !ok {
 		var err error
 		pool, err = g.newClientDbPool(ctx, config)
@@ -184,7 +194,7 @@ func (g ExecutorGetter) getPoolAndSchema(
 			return nil, models.DatabaseSchema{}, err
 		}
 
-		g.clientDbPools[config.ConnectionString] = pool
+		g.clientDbPools[connectionId] = pool
 	}
 
 	return pool, models.DatabaseSchema{
@@ -194,7 +204,8 @@ func (g ExecutorGetter) getPoolAndSchema(
 }
 
 func (g ExecutorGetter) newClientDbPool(ctx context.Context, config infra.ClientDbConfig) (*pgxpool.Pool, error) {
-	pool, err := infra.NewPostgresConnectionPool(ctx, g.appName, config.ConnectionString, g.tp, infra.DEFAULT_CLIENTDB_MIN_CONNECTIONS, config.MaxConns, config.ImpersonateRole)
+	pool, err := infra.NewPostgresConnectionPool(ctx, g.appName, config.ConnectionString, g.tp,
+		infra.DEFAULT_CLIENTDB_MIN_CONNECTIONS, config.MaxConns, config.ImpersonateRole, config.CloudSqlConnectionName)
 	if err != nil {
 		// A pool that failed its initial ping would otherwise keep trying to open its minimum connections forever.
 		if pool != nil {
@@ -210,21 +221,23 @@ func (g ExecutorGetter) newClientDbPool(ctx context.Context, config infra.Client
 // WarmupClientDbPools opens every configured client database pool along with its minimum connections, so the
 // first request to each organization does not pay for the connection setup. A database that cannot be reached
 // is only logged, and will be retried lazily on its first use. It must be called before the executor getter is
-// used, since it overwrites any pool already registered for the same connection string.
+// used, since it overwrites any pool already registered for the same database.
 func (g ExecutorGetter) WarmupClientDbPools(ctx context.Context) {
 	configs := make(map[string]infra.ClientDbConfig, len(g.clientDbConfigs))
-	connectionStrings := make(map[string]struct{}, len(g.clientDbConfigs))
+	connectionIds := make(map[string]struct{}, len(g.clientDbConfigs))
 
 	for configKey, config := range g.clientDbConfigs {
 		if config.ConnectionString == "" {
 			continue
 		}
 
-		if _, ok := connectionStrings[config.ConnectionString]; ok {
+		connectionId := clientDbPoolKey(config)
+
+		if _, ok := connectionIds[connectionId]; ok {
 			continue
 		}
 
-		connectionStrings[config.ConnectionString] = struct{}{}
+		connectionIds[connectionId] = struct{}{}
 		configs[configKey] = config
 	}
 
@@ -260,7 +273,7 @@ func (g ExecutorGetter) warmupClientDbPool(ctx context.Context, configKey string
 	}
 
 	g.mu.Lock()
-	g.clientDbPools[config.ConnectionString] = pool
+	g.clientDbPools[clientDbPoolKey(config)] = pool
 	g.mu.Unlock()
 
 	ticker := time.NewTicker(25 * time.Millisecond)
