@@ -212,7 +212,7 @@ func (uc GraphWalkUsecase) WalkGraph(
 		return models.GraphResult{}, err
 	}
 	if !isGraphSetup {
-		return models.GraphResult{Start: startNode}, nil
+		return models.GraphResult{Start: startNode, Nodes: []models.GraphResultNode{{GraphNode: startNode}}}, nil
 	}
 
 	degrees := opts.Degrees
