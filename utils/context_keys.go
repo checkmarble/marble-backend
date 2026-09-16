@@ -8,4 +8,5 @@ const (
 	ContextKeyLogger
 	ContextKeySegmentClient
 	ContextKeyOpenTelemetryTracer
+	ContextKeyExecutionSource
 )

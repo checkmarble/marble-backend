@@ -36,6 +36,11 @@ type LoggerMiddleware struct {
 func (m LoggerMiddleware) IsMiddleware() bool { return true }
 
 func (m LoggerMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInner func(context.Context) error) error {
+	ctx = utils.StoreExecutionSourceInContext(ctx, utils.ExecutionSource{
+		Type:    utils.ExecutionSourceRiverJob,
+		JobID:   job.ID,
+		JobKind: job.Kind,
+	})
 	logger := m.l.With(
 		"job_id", job.ID,
 		"job_kind", job.Kind,

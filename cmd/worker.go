@@ -579,6 +579,11 @@ func ensureGlobalQueuesAreActive(ctx context.Context, riverClient *river.Client[
 }
 
 func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion string, workerConfig WorkerConfig, gcpConfig infra.GcpConfig, jobName, jobArgs string) error {
+	ctx = utils.StoreExecutionSourceInContext(ctx, utils.ExecutionSource{
+		Type:    utils.ExecutionSourceManualJob,
+		JobKind: jobName,
+	})
+
 	if workerConfig.cloudRunProbePort != "" {
 		runHealthcheckServer(ctx, uc.Usecases, apiVersion, gcpConfig, workerConfig)
 	}
