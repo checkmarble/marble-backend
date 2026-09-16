@@ -15,14 +15,15 @@ func TestSystemRoleIsInternal(t *testing.T) {
 func TestSystemRoleHasWorkerPermissionsOnly(t *testing.T) {
 	for _, permission := range []Permission{
 		ANY_ORGANIZATION_ID_IN_CONTEXT,
-		PHANTOM_DECISION_CREATE,
-		WEBHOOK_EVENT,
 		CASE_READ_WRITE,
-		INBOX_EDITOR,
-		DECISION_READ,
+		DATA_MODEL_READ,
 		DECISION_CREATE,
-		SCENARIO_READ,
+		DECISION_READ,
+		INBOX_EDITOR,
 		INGESTION,
+		PHANTOM_DECISION_CREATE,
+		SCENARIO_READ,
+		WEBHOOK_EVENT,
 	} {
 		assert.True(t, SYSTEM.HasPermission(permission), permission)
 	}
