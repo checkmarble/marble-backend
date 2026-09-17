@@ -244,7 +244,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 		mockEncoder.AssertExpectations(t)
 	})
 
-	t.Run("legacy role and grants union", func(t *testing.T) {
+	t.Run("grants union", func(t *testing.T) {
 		tenantId := utils.TextToUUID("tenant_id")
 
 		mockVerifier := new(mocks.FirebaseTokenVerifier)
@@ -303,7 +303,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(admin.UserId)).
-			Return([]models.Grant{}, nil)
+			Return([]models.Grant{{Role: models.MARBLE_ADMIN}}, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{

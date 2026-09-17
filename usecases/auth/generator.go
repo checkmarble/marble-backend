@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"sort"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -61,12 +62,6 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 ) (Token, error) {
 	expirationTime := g.clock.Now().Add(g.tokenLifetime)
 	baseCredentials := intoCredentials.IntoCredentials()
-	// Roles are the union of the legacy role (users.role / api_keys.role) and the
-	// active grants, until the authority is switched to grants-only together with
-	// the backfill. The legacy role only enters a token of its own scope.
-	legacyOrganizationID := baseCredentials.OrganizationId
-	legacyRole := baseCredentials.Role
-
 	principalType, principalID := "user", string(baseCredentials.ActorIdentity.UserId)
 	if creds.Type == CredentialsApiKey {
 		principalType, principalID = "api_key", baseCredentials.ActorIdentity.ApiKeyId
@@ -78,12 +73,9 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 
 	selectedOrganizationID := requestedOrganizationID
 	if creds.Type == CredentialsApiKey {
-		selectedOrganizationID = legacyOrganizationID
+		selectedOrganizationID = baseCredentials.OrganizationId
 	} else if selectedOrganizationID == uuid.Nil {
 		organizationIDs := []uuid.UUID{}
-		if legacyOrganizationID != uuid.Nil {
-			organizationIDs = append(organizationIDs, legacyOrganizationID)
-		}
 		for _, grant := range grants {
 			if grant.OrganizationId != uuid.Nil && !slices.Contains(organizationIDs, grant.OrganizationId) {
 				organizationIDs = append(organizationIDs, grant.OrganizationId)
@@ -101,8 +93,6 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 			return Token{}, fmt.Errorf("GetOrganizationByID error: %w", err)
 		}
 
-		legacyOrganizationAccess := selectedOrganizationID == legacyOrganizationID &&
-			legacyRole != models.NO_ROLE && legacyRole != models.MARBLE_ADMIN
 		grantOrganizationAccess := false
 		for _, grant := range grants {
 			if grant.OrganizationId == selectedOrganizationID || grant.TenantId == selectedOrganization.TenantId {
@@ -110,7 +100,7 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 				break
 			}
 		}
-		if !legacyOrganizationAccess && !grantOrganizationAccess {
+		if !grantOrganizationAccess {
 			return Token{}, fmt.Errorf("%w: no access to organization", models.ForbiddenError)
 		}
 	}
@@ -126,19 +116,12 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 		}
 	}
 	if selectedOrganizationID == uuid.Nil {
-		if legacyRole == models.MARBLE_ADMIN {
-			addRole(legacyRole)
-		}
 		for _, grant := range grants {
 			if grant.TenantId == uuid.Nil && grant.OrganizationId == uuid.Nil {
 				addRole(grant.Role)
 			}
 		}
 	} else {
-		if legacyRole != models.NO_ROLE && legacyRole != models.MARBLE_ADMIN &&
-			legacyOrganizationID == selectedOrganizationID {
-			addRole(legacyRole)
-		}
 		for _, grant := range grants {
 			if grant.OrganizationId == selectedOrganizationID || grant.TenantId == selectedOrganization.TenantId {
 				addRole(grant.Role)
@@ -146,7 +129,14 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 		}
 	}
 	tokenCredentials.Roles = roles
-	tokenCredentials.Role = legacyRole
+	sort.Slice(tokenCredentials.Roles, func(i, j int) bool { return tokenCredentials.Roles[i] < tokenCredentials.Roles[j] })
+	if len(grants) == 0 {
+		return Token{}, fmt.Errorf("%w: principal has no active grant", models.ForbiddenError)
+	}
+	if len(tokenCredentials.Roles) == 0 {
+		// Do not let HasRole fall back to an out-of-scope legacy role on platform tokens.
+		tokenCredentials.Role = models.NO_ROLE
+	}
 
 	switch creds.Type {
 	case CredentialsBearer:

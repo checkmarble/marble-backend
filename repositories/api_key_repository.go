@@ -93,7 +93,10 @@ func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor,
 		return err
 	}
 	_, err = exec.Exec(ctx, `INSERT INTO grants (id, principal_type, principal_id, principal_authority, organization_id, role) VALUES ($1, 'api_key', $2, 'marble', $3, $4) ON CONFLICT DO NOTHING`, pure_utils.NewId(), apiKey.Id, apiKey.OrganizationId, apiKey.Role.String())
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (repo *MarbleDbRepository) SoftDeleteApiKey(ctx context.Context, exec Executor, apiKeyId string) error {
@@ -109,5 +112,18 @@ func (repo *MarbleDbRepository) SoftDeleteApiKey(ctx context.Context, exec Execu
 			Where(squirrel.Eq{"id": apiKeyId}).
 			Set("deleted_at", squirrel.Expr("NOW()")),
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	// TODO(MAR-2251): remove api_keys.role once legacy JWTs have expired.
+	return ExecBuilder(ctx, exec,
+		NewQueryBuilder().
+			Update("grants").
+			Set("revoked_at", squirrel.Expr("NOW()")).
+			Where(squirrel.Eq{
+				"principal_type": "api_key",
+				"principal_id":   apiKeyId,
+				"revoked_at":     nil,
+			}),
+	)
 }

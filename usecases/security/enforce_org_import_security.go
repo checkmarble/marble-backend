@@ -13,7 +13,7 @@ type EnforceSecurityOrgImportImpl struct {
 }
 
 func (e *EnforceSecurityOrgImportImpl) ImportOrg() error {
-	if e.Credentials.Role != models.MARBLE_ADMIN {
+	if !e.Credentials.HasRole(models.MARBLE_ADMIN) {
 		return errors.Wrap(models.UnAuthorizedError,
 			"only admins can import an organization")
 	}
