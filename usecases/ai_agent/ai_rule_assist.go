@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/checkmarble/llmberjack"
 	"github.com/checkmarble/marble-backend/dto"
@@ -105,6 +106,10 @@ func (uc *AiAgentUsecase) GenerateRule(
 	if err != nil {
 		return dto.GenerateRuleResponse{}, err
 	}
+	ruleGenerationThinkingLevel := llmberjack.ThinkingLevel(utils.GetEnv(
+		"AI_RULE_GENERATION_THINKING_LEVEL",
+		string(llmberjack.ThinkingLevelLow),
+	))
 
 	provider, model, ruleGenerationPrompt, err := uc.preparePromptWithModel(
 		RULE_GENERATION_PROMPT_STEP1, map[string]any{
@@ -120,16 +125,29 @@ func (uc *AiAgentUsecase) GenerateRule(
 		return dto.GenerateRuleResponse{}, err
 	}
 
+	startedAt := time.Now()
 	resp, err := DoLLMRequest(ctx, client, llmberjack.NewRequest[string]().
 		WithProvider(provider).
 		WithModel(model).
+		WithThinkingLevel(ruleGenerationThinkingLevel).
+		WithPromptCaching(true).
 		WithText(llmberjack.RoleUser, ruleGenerationPrompt).
-		WithThinking(true))
+		CreateThread())
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf(
 			"failed to generate rule from LLM: %w", err,
 		)
 	}
+	logger.DebugContext(ctx, "Rule generation LLM request completed",
+		"step", 1,
+		"provider", provider,
+		"model", resp.Model,
+		"duration_ms", time.Since(startedAt).Milliseconds(),
+		"input_tokens", resp.Usage.InputTokens,
+		"output_tokens", resp.Usage.OutputTokens,
+		"cache_write_tokens", resp.Usage.CacheWriteTokens,
+		"cache_read_tokens", resp.Usage.CacheReadTokens,
+	)
 
 	ruleAsString, err := resp.Get(0)
 	if err != nil {
@@ -139,30 +157,35 @@ func (uc *AiAgentUsecase) GenerateRule(
 	logger.DebugContext(ctx, fmt.Sprintf("LLM response as string:\n%s\n", ruleAsString))
 
 	provider, model, ruleGenerationPrompt, err = uc.preparePromptWithModel(
-		RULE_GENERATION_PROMPT_STEP2, map[string]any{
-			"data_model":         dataModelDto,
-			"custom_list":        customListsDto,
-			"instruction":        instruction,
-			"trigger_type":       scenario.TriggerObjectType,
-			"database_accessors": databaseNodes,
-			"payload_accessors":  payloadNodes,
-			"rule_plan":          ruleAsString,
-		},
+		RULE_GENERATION_PROMPT_STEP2, nil,
 	)
 	if err != nil {
 		return dto.GenerateRuleResponse{}, err
 	}
 
+	startedAt = time.Now()
 	resp, err = DoLLMRequest(ctx, client, llmberjack.NewRequest[string]().
+		FromCandidate(resp, 0).
 		WithProvider(provider).
 		WithModel(model).
-		WithSchemaDescription("NodeDto", "The AST node of the rule").
+		WithThinkingLevel(ruleGenerationThinkingLevel).
+		WithPromptCaching(true).
 		WithText(llmberjack.RoleUser, ruleGenerationPrompt))
 	if err != nil {
 		return dto.GenerateRuleResponse{}, fmt.Errorf(
 			"failed to generate rule from LLM: %w", err,
 		)
 	}
+	logger.DebugContext(ctx, "Rule generation LLM request completed",
+		"step", 2,
+		"provider", provider,
+		"model", resp.Model,
+		"duration_ms", time.Since(startedAt).Milliseconds(),
+		"input_tokens", resp.Usage.InputTokens,
+		"output_tokens", resp.Usage.OutputTokens,
+		"cache_write_tokens", resp.Usage.CacheWriteTokens,
+		"cache_read_tokens", resp.Usage.CacheReadTokens,
+	)
 
 	ruleAsStringStep2, err := resp.Get(0)
 	if err != nil {
