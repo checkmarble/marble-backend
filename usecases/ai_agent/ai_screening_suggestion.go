@@ -148,7 +148,8 @@ func (uc *AiAgentUsecase) AnalyseScreeningHits(ctx context.Context, screeningId 
 		suggestionsGenerated++
 	}
 
-	logger.InfoContext(ctx, "Completed screening hit suggestions",
+	logger.InfoContext(
+		ctx, "Completed screening hit suggestions",
 		"screening_id", screeningId,
 		"total_pending", len(pendingMatches),
 		"suggestions_generated", suggestionsGenerated,
@@ -214,8 +215,8 @@ func (uc *AiAgentUsecase) analyseScreeningMatch(
 	response, err := DoLLMRequest(ctx, client, llmberjack.NewRequest[screeningHitLlmOutput]().
 		WithInstruction(systemInstruction).
 		WithModel(model).
-		WithText(llmberjack.RoleUser, userMessage).
-		WithThinking(false))
+		WithThinkingLevel(llmberjack.ThinkingLevelMedium).
+		WithText(llmberjack.RoleUser, userMessage))
 	if err != nil {
 		return nil, errors.Wrap(err, "LLM call failed")
 	}
@@ -312,7 +313,8 @@ func (uc *AiAgentUsecase) buildScreeningStaticContext(
 			PivotValue: *decision.PivotValue,
 		}}
 		pivotObjects, err := uc.ingestedDataReader.ReadPivotObjectsFromValues(
-			ctx, decision.OrganizationId, pivotValues)
+			ctx, decision.OrganizationId, pivotValues,
+		)
 		if err != nil {
 			logger.WarnContext(ctx, "could not fetch pivot data for screening context",
 				"pivot_value", *decision.PivotValue, "error", err)

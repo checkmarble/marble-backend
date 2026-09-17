@@ -468,7 +468,8 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			ctx,
 			caseData.organizationId,
 			subscriptionId,
-			billing.AI_CASE_REVIEW)
+			billing.AI_CASE_REVIEW,
+		)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not check if enough funds in wallet")
 		}
@@ -497,7 +498,8 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		providerDataModelSummary, modelDataModelSummary, promptDataModelSummary, err := uc.preparePromptWithModel(
 			PROMPT_DATA_MODEL_SUMMARY, map[string]any{
 				"data_model": caseData.dataModelDto,
-			})
+			},
+		)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not prepare data model summary request")
 		}
@@ -788,6 +790,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			OverrideResponseSchema(schema).
 			WithProvider(providerCaseReview).
 			WithModel(modelCaseReview).
+			WithThinkingLevel(llmberjack.ThinkingLevelHigh).
 			WithInstruction(systemInstruction).
 			WithText(llmberjack.RoleUser, promptCaseReview))
 		if err != nil {
@@ -854,6 +857,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 		requestSanityCheck, err := DoLLMRequest(ctx, client, llmberjack.NewRequest[sanityCheckOutput]().
 			WithProvider(providerSanityCheck).
 			WithModel(modelSanityCheck).
+			WithThinkingLevel(llmberjack.ThinkingLevelHigh).
 			WithInstruction(systemInstruction).
 			WithText(llmberjack.RoleUser, promptSanityCheck))
 		if err != nil {
