@@ -176,8 +176,8 @@ github.com/cenkalti/backoff/v5 v5.0.3 h1:ZN+IMa753KfX5hd8vVaMixjnqRZ3y8CuJKRKj1x
 github.com/cenkalti/backoff/v5 v5.0.3/go.mod h1:rkhZdG3JZukswDf7f0cwqPNk4K0sa+F97BxZthm/crw=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
-github.com/checkmarble/llmberjack v0.0.0-20260917135612-a7fe227ac986 h1:5xT/7SzpRZVoaRUml/ApZ4kIyTDCnqJ0P3L4hzRkHLM=
-github.com/checkmarble/llmberjack v0.0.0-20260917135612-a7fe227ac986/go.mod h1:LWCO1zmVfcEEuqwJgPsA8PWVld1wyKpwSCy+c0rKGJw=
+github.com/checkmarble/llmberjack v0.0.0-20260917164714-cdc16047e091 h1:ATcDqD7hUxLTWqMGOdmqRCvjXLvlHtQohCKPjyjNaBo=
+github.com/checkmarble/llmberjack v0.0.0-20260917164714-cdc16047e091/go.mod h1:LWCO1zmVfcEEuqwJgPsA8PWVld1wyKpwSCy+c0rKGJw=
 github.com/cloudwego/base64x v0.1.7 h1:NppS+Fgzg5ovhn4NkUXaDT3x9jldgH5ToMCqzBSi2zI=
 github.com/cloudwego/base64x v0.1.7/go.mod h1:Cu1PV9zfrSf7ET2tIbWbbEy7jO7HHJ13q4X2SQ8aWYg=
 github.com/cncf/xds/go v0.0.0-20260202195803-dba9d589def2 h1:aBangftG7EVZoUb69Os8IaYg++6uMOdKK83QtkkvJik=
