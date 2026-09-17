@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -85,11 +86,31 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not start resource: %s", err)
 	}
 
-	dbDeadline := time.AfterFunc(testDbLifetime*time.Second, func() {
+	var purgeOnce sync.Once
+	var purgeErr error
+	purgeResource := func() error {
+		purgeOnce.Do(func() {
+			purgeErr = pool.Purge(resource)
+		})
+		return purgeErr
+	}
+
+	var dbDeadline *time.Timer
+	cleanupAndFatal := func(format string, args ...any) {
+		if dbDeadline != nil {
+			dbDeadline.Stop()
+		}
+		if err := purgeResource(); err != nil {
+			log.Printf("failed to purge PostgreSQL container during setup failure: %v", err)
+		}
+		log.Fatalf(format, args...)
+	}
+
+	dbDeadline = time.AfterFunc(testDbLifetime*time.Second, func() {
 		log.Printf("integration-test database lifetime reached after %s; removing PostgreSQL container %s",
 			testDbLifetime*time.Second, resource.Container.ID)
 
-		if err := pool.Purge(resource); err != nil {
+		if err := purgeResource(); err != nil {
 			log.Printf("failed to remove timed-out PostgreSQL container: %v", err)
 		}
 	})
@@ -105,7 +126,7 @@ func TestMain(m *testing.M) {
 	connectionString := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", testUser, testPassword, hostAndPort, testDbName)
 	testDbPool, err := pgxpool.New(context.Background(), connectionString)
 	if err != nil {
-		log.Fatalf("Could not connect to database: %s", err)
+		cleanupAndFatal("Could not connect to database: %s", err)
 	}
 	log.Printf("DB connection pool created.")
 
@@ -117,7 +138,7 @@ func TestMain(m *testing.M) {
 		}
 		return nil
 	}); err != nil {
-		log.Fatalf("Could not connect to db: %s", err)
+		cleanupAndFatal("Could not connect to db: %s", err)
 	}
 
 	pgConfig := infra.PgConfig{ConnectionString: connectionString}
@@ -127,14 +148,14 @@ func TestMain(m *testing.M) {
 
 	err = migrater.Run(ctx, nil)
 	if err != nil {
-		log.Fatalf("Could not run migrations: %s", err)
+		cleanupAndFatal("Could not run migrations: %s", err)
 	}
 
 	// Need to declare this after the migrations, to have the correct search path
 	dbPool, err := infra.NewPostgresConnectionPool(ctx, "marble-test",
 		pgConfig.GetConnectionString(), nil, pgConfig.MaxPoolConnections, "")
 	if err != nil {
-		log.Fatalf("Could not create connection pool: %s", err)
+		cleanupAndFatal("Could not create connection pool: %s", err)
 	}
 
 	pgPool = dbPool
@@ -158,7 +179,7 @@ func TestMain(m *testing.M) {
 	})
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
-		log.Fatalf("Could not create river client: %s", err)
+		cleanupAndFatal("Could not create river client: %s", err)
 	}
 
 	mredis := miniredis.NewMiniRedis()
@@ -198,7 +219,7 @@ func TestMain(m *testing.M) {
 	river.AddWorker(workers, adminUc.NewWebhookDispatchWorker())
 
 	if err := riverClient.Start(ctx); err != nil {
-		log.Fatalln("Could not start river client:", err)
+		cleanupAndFatal("Could not start river client: %s", err)
 	}
 
 	apiConfig := api.Configuration{
@@ -232,7 +253,7 @@ func TestMain(m *testing.M) {
 	jwtRepository := repositories.NewJWTRepository(infra.MockFirebaseIssuer, privateKey)
 	database := postgres.New(dbPool)
 	if err != nil {
-		panic(err)
+		cleanupAndFatal("Could not initialize API dependencies: %s", err)
 	}
 
 	apiKeyVerifier = auth.NewVerifier(auth.TokenProviderFirebase, firebaseClient, database, nil)
@@ -242,7 +263,7 @@ func TestMain(m *testing.M) {
 	seedUsecase := testUsecases.NewSeedUseCase()
 	if err := seedUsecase.SeedMarbleAdmins(ctx, marbleAdminEmail); err != nil {
 		logger.ErrorContext(ctx, "Error seeding marble admin", "error", err)
-		panic(err)
+		cleanupAndFatal("Could not seed marble admin: %s", err)
 	}
 
 	testServer = httptest.NewServer(server.Handler)
@@ -260,7 +281,7 @@ func TestMain(m *testing.M) {
 	dbDeadline.Stop()
 
 	// You can't defer this because os.Exit doesn't care for defer
-	if err := pool.Purge(resource); err != nil {
+	if err := purgeResource(); err != nil {
 		log.Fatalf("Could not purge resource: %s", err)
 	}
 
