@@ -165,6 +165,17 @@ func (m *TaskQueueRepository) EnqueueCsvIngestionTask(
 	return args.Error(0)
 }
 
+func (m *TaskQueueRepository) EnqueueCsvIngestionDeadlineTask(
+	ctx context.Context,
+	tx repositories.Transaction,
+	organizationId uuid.UUID,
+	uploadLogId uuid.UUID,
+	deadline time.Time,
+) error {
+	args := m.Called(ctx, tx, organizationId, uploadLogId, deadline)
+	return args.Error(0)
+}
+
 func (m *TaskQueueRepository) EnqueueScheduledExecutionTask(
 	ctx context.Context,
 	tx repositories.Transaction,
@@ -287,10 +298,11 @@ func (m *TaskQueueRepository) EnqueueAsyncUploadTask(
 	ctx context.Context,
 	tx repositories.Transaction,
 	organizationId uuid.UUID,
+	uploadLogId uuid.UUID,
 	objectType string,
 	key string,
 	ingestionOptions models.IngestionOptions,
 ) error {
-	args := m.Called(ctx, tx, organizationId, objectType, key, ingestionOptions)
+	args := m.Called(ctx, tx, organizationId, uploadLogId, objectType, key, ingestionOptions)
 	return args.Error(0)
 }

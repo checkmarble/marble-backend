@@ -399,6 +399,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewContinuousScreeningApplyDeltaFileWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningScanDatasetUpdatesWorker())
 	river.AddWorker(workers, adminUc.NewCsvIngestionWorker())
+	river.AddWorker(workers, adminUc.NewCsvIngestionDeadlineWorker())
 	river.AddWorker(workers, adminUc.NewAsyncUploadWorker())
 	river.AddWorker(workers, adminUc.NewScheduledExecutionWorker())
 	river.AddWorker(workers, adminUc.NewBatchExecutionCoordinatorWorker())
