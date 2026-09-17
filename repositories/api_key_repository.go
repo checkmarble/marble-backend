@@ -113,5 +113,18 @@ func (repo *MarbleDbRepository) SoftDeleteApiKey(ctx context.Context, exec Execu
 			Where(squirrel.Eq{"id": apiKeyId}).
 			Set("deleted_at", squirrel.Expr("NOW()")),
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	// TODO(MAR-2251): remove api_keys.role once legacy JWTs have expired.
+	return ExecBuilder(ctx, exec,
+		NewQueryBuilder().
+			Update("grants").
+			Set("revoked_at", squirrel.Expr("NOW()")).
+			Where(squirrel.Eq{
+				"principal_type": "api_key",
+				"principal_id":   apiKeyId,
+				"revoked_at":     nil,
+			}),
+	)
 }

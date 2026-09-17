@@ -21,6 +21,7 @@ type Credentials struct {
 	OrganizationId uuid.UUID `json:"organization_id"`
 	TenantId       uuid.UUID `json:"tenant_id"`
 	Permissions    []string  `json:"permissions"`
+	// TODO(MAR-2251): remove Role after the legacy JWT compatibility window.
 	// Role is kept to read tokens issued before Roles became the source of truth.
 	Role           string    `json:"role,omitempty"`
 	Roles          []string  `json:"roles,omitempty"`
