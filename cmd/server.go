@@ -255,7 +255,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		utils.LogAndReportSentryError(ctx, err)
 	}
 
-	pool, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
+	pool, csqlDialer, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
 		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections, pgConfig.ImpersonateRole,
 		pgConfig.CloudSqlConnectionName)
 	if err != nil {
@@ -263,10 +263,21 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		return err
 	}
 
+	if csqlDialer != nil {
+		bridge, err := infra.StartCloudSqlBridge(ctx, csqlDialer, pgConfig.CloudSqlConnectionName)
+		if err != nil {
+			utils.LogAndReportSentryError(ctx, err)
+			return err
+		}
+		defer bridge.Close()
+
+		pgConfig.CloudSqlBridge = bridge
+	}
+
 	// TODO: this is a temporary fixup until we can merge `repositories/postgres` into our usual
 	// repositories setup. As it is, it does not use the query injecter for audit events and would
 	// produce invalid values.
-	authPool, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
+	authPool, _, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
 		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections, pgConfig.ImpersonateRole,
 		pgConfig.CloudSqlConnectionName)
 	if err != nil {

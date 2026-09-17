@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/cloudsqlconn"
@@ -36,8 +37,21 @@ type CloudSqlLogger struct {
 	*slog.Logger
 }
 
+var CLOUD_SQL_OMIT_MESSAGES = []string{
+	"dial succesful",
+	"i/o timeout",
+}
+
 func (l CloudSqlLogger) Debugf(ctx context.Context, format string, args ...any) {
-	l.DebugContext(ctx, fmt.Sprintf(format, args...))
+	msg := fmt.Sprintf(format, args...)
+
+	for _, banned := range CLOUD_SQL_OMIT_MESSAGES {
+		if strings.Contains(msg, banned) {
+			return
+		}
+	}
+
+	l.InfoContext(ctx, msg)
 }
 
 func NewPostgresConnectionPool(
@@ -48,12 +62,12 @@ func NewPostgresConnectionPool(
 	maxConnections int,
 	impersonateRole string,
 	cloudsqlConnectionName string,
-) (*pgxpool.Pool, error) {
+) (*pgxpool.Pool, *cloudsqlconn.Dialer, error) {
 	logger := CloudSqlLogger{utils.LoggerFromContext(ctx)}
 
 	cfg, err := pgxpool.ParseConfig(connectionString)
 	if err != nil {
-		return nil, fmt.Errorf("create connection pool: %w", err)
+		return nil, nil, fmt.Errorf("create connection pool: %w", err)
 	}
 
 	var poolDialer *cloudsqlconn.Dialer
@@ -73,7 +87,7 @@ func NewPostgresConnectionPool(
 
 		dialer, err := cloudsqlconn.NewDialer(context.Background(), opts...)
 		if err != nil {
-			return nil, fmt.Errorf("create cloudsql dialer: %w", err)
+			return nil, nil, fmt.Errorf("create cloudsql dialer: %w", err)
 		}
 
 		cfg.ConnConfig.DialFunc = func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -119,7 +133,7 @@ func NewPostgresConnectionPool(
 			poolDialer.Close()
 		}
 
-		return nil, fmt.Errorf("unable to create connection pool: %w", err)
+		return nil, nil, fmt.Errorf("unable to create connection pool: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
@@ -142,10 +156,10 @@ func NewPostgresConnectionPool(
 			poolDialer.Close()
 		}
 
-		return nil, err
+		return nil, nil, err
 	}
 
-	return pool, nil
+	return pool, poolDialer, nil
 }
 
 func ParseClientDbConfig(filename string) (map[string]ClientDbConfig, error) {

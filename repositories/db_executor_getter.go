@@ -29,11 +29,17 @@ type ExecutorGetter struct {
 	clientDbConfigs map[string]infra.ClientDbConfig
 
 	// uses the connection string as a key
-	clientDbPools map[string]*pgxpool.Pool
+	clientDbPools map[clientDatabaseIdent]*pgxpool.Pool
 	// used to make the clientDbPools map thread-safe
 	mu *sync.Mutex
 
 	tp trace.TracerProvider
+}
+
+type clientDatabaseIdent struct {
+	CloudSqlConnectionName string
+	ConnectionString       string
+	Role                   string
 }
 
 type databaseSchemaGetter interface {
@@ -71,7 +77,7 @@ func NewExecutorGetter(
 	return ExecutorGetter{
 		clientDbConfigs:      clientDbConfigs,
 		redisClient:          redisClient,
-		clientDbPools:        make(map[string]*pgxpool.Pool, len(clientDbConfigs)),
+		clientDbPools:        make(map[clientDatabaseIdent]*pgxpool.Pool, len(clientDbConfigs)),
 		marbleConnectionPool: pool,
 		tp:                   tp,
 		mu:                   &sync.Mutex{},
@@ -169,9 +175,10 @@ func (g ExecutorGetter) getPoolAndSchema(
 		config.SchemaName = models.OrgSchemaName(org.Name)
 	}
 
-	connectionId := config.ConnectionString
-	if config.CloudSqlConnectionName != "" {
-		connectionId += ":" + config.CloudSqlConnectionName
+	connectionId := clientDatabaseIdent{
+		CloudSqlConnectionName: config.CloudSqlConnectionName,
+		ConnectionString:       config.ConnectionString,
+		Role:                   config.ImpersonateRole,
 	}
 
 	g.mu.Lock()
@@ -180,7 +187,7 @@ func (g ExecutorGetter) getPoolAndSchema(
 	pool, ok := g.clientDbPools[connectionId]
 	if !ok {
 		var err error
-		pool, err = infra.NewPostgresConnectionPool(
+		pool, _, err = infra.NewPostgresConnectionPool(
 			ctx,
 			g.appName,
 			config.ConnectionString,

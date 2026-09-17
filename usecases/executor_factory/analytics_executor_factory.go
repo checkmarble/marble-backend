@@ -257,6 +257,14 @@ func (f AnalyticsExecutorFactory) buildUpstreamAttachStatement(alias string) str
 		dsn.RawQuery = q.Encode()
 	}
 
+	if f.config.PgConfig.CloudSqlBridge != nil {
+		q, _ := url.ParseQuery(dsn.RawQuery)
+		q.Set("sslmode", "disable")
+
+		dsn.Host = f.config.PgConfig.CloudSqlBridge.Addr()
+		dsn.RawQuery = q.Encode()
+	}
+
 	// We cannot control how DuckDB will create connections from the pool or
 	// transactions, so we need to set query options on the connections
 	// directly.

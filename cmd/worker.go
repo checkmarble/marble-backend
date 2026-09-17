@@ -130,11 +130,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		WritesPerSecond: utils.GetEnv("OFFLOADING_WRITES_PER_SEC", 200),
 	}
 
-	analyticsConfig, err := infra.InitAnalyticsConfig(pgConfig, workerConfig.analyticsBucket)
-	if err != nil {
-		return err
-	}
-
 	offloadingConfig.ValidateAndFix(ctx)
 
 	metricCollectionConfig := infra.MetricCollectionConfig{
@@ -175,11 +170,27 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	}
 	ctx = utils.StoreOpenTelemetryTracerInContext(ctx, telemetryRessources.Tracer)
 
-	pool, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
+	pool, csqlDialer, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
 		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections, pgConfig.ImpersonateRole,
 		pgConfig.CloudSqlConnectionName)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
+		return err
+	}
+
+	if csqlDialer != nil {
+		bridge, err := infra.StartCloudSqlBridge(ctx, csqlDialer, pgConfig.CloudSqlConnectionName)
+		if err != nil {
+			utils.LogAndReportSentryError(ctx, err)
+			return err
+		}
+		defer bridge.Close()
+
+		pgConfig.CloudSqlBridge = bridge
+	}
+
+	analyticsConfig, err := infra.InitAnalyticsConfig(pgConfig, workerConfig.analyticsBucket)
+	if err != nil {
 		return err
 	}
 
