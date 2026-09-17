@@ -16,6 +16,7 @@ const (
 	FormulaMustReturnBoolean
 	FormulaMustReturnString
 	FormulaIncorrectReturnType
+	NumericSwitchInvalid
 	// Decision
 	ScoreThresholdMissing
 	ScoreThresholdsMismatch
@@ -38,6 +39,8 @@ func (e ScenarioValidationErrorCode) String() string {
 		return "FORMULA_MUST_RETURN_STRING"
 	case FormulaIncorrectReturnType:
 		return "FORMULA_INCORRECT_RETURN_TYPE"
+	case NumericSwitchInvalid:
+		return "NUMERIC_SWITCH_INVALID"
 	case ScoreThresholdMissing:
 		return "SCORE_THRESHOLD_MISSING"
 	case ScoreThresholdsMismatch:
