@@ -42,16 +42,17 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	// This is where we read the environment variables and set up the configuration for the application.
 	pgConfig := infra.PgConfig{
-		ConnectionString:   utils.GetEnv("PG_CONNECTION_STRING", ""),
-		Database:           utils.GetEnv("PG_DATABASE", "marble"),
-		Hostname:           utils.GetEnv("PG_HOSTNAME", ""),
-		Password:           utils.GetEnv("PG_PASSWORD", ""),
-		Port:               utils.GetEnv("PG_PORT", "5432"),
-		User:               utils.GetEnv("PG_USER", ""),
-		MaxPoolConnections: utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
-		ClientDbConfigFile: utils.GetEnv("CLIENT_DB_CONFIG_FILE", ""),
-		SslMode:            utils.GetEnv("PG_SSL_MODE", "prefer"),
-		ImpersonateRole:    utils.GetEnv("PG_IMPERSONATE_ROLE", ""),
+		CloudSqlConnectionName: utils.GetEnv("CLOUDSQL_CONNECTION_NAME", ""),
+		ConnectionString:       utils.GetEnv("PG_CONNECTION_STRING", ""),
+		Database:               utils.GetEnv("PG_DATABASE", "marble"),
+		Hostname:               utils.GetEnv("PG_HOSTNAME", ""),
+		Password:               utils.GetEnv("PG_PASSWORD", ""),
+		Port:                   utils.GetEnv("PG_PORT", "5432"),
+		User:                   utils.GetEnv("PG_USER", ""),
+		MaxPoolConnections:     utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
+		ClientDbConfigFile:     utils.GetEnv("CLIENT_DB_CONFIG_FILE", ""),
+		SslMode:                utils.GetEnv("PG_SSL_MODE", "prefer"),
+		ImpersonateRole:        utils.GetEnv("PG_IMPERSONATE_ROLE", ""),
 	}
 	if pgConfig.ConnectionString != "" {
 		if u, err := url.Parse(pgConfig.ConnectionString); err != nil || !u.IsAbs() {
@@ -129,11 +130,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		WritesPerSecond: utils.GetEnv("OFFLOADING_WRITES_PER_SEC", 200),
 	}
 
-	analyticsConfig, err := infra.InitAnalyticsConfig(pgConfig, workerConfig.analyticsBucket)
-	if err != nil {
-		return err
-	}
-
 	offloadingConfig.ValidateAndFix(ctx)
 
 	metricCollectionConfig := infra.MetricCollectionConfig{
@@ -174,10 +170,28 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	}
 	ctx = utils.StoreOpenTelemetryTracerInContext(ctx, telemetryRessources.Tracer)
 
-	pool, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
-		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections, pgConfig.ImpersonateRole)
+	pool, csqlDialer, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
+		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections, pgConfig.ImpersonateRole,
+		pgConfig.CloudSqlConnectionName)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
+		return err
+	}
+
+	if csqlDialer != nil {
+		bridge, err := infra.StartCloudSqlBridge(ctx, csqlDialer, pgConfig.CloudSqlConnectionName)
+		if err != nil {
+			utils.LogAndReportSentryError(ctx, err)
+			return err
+		}
+		defer bridge.Close()
+
+		pgConfig.CloudSqlBridge = bridge
+	}
+
+	analyticsConfig, err := infra.InitAnalyticsConfig(pgConfig, workerConfig.analyticsBucket)
+	if err != nil {
+		return err
 	}
 
 	// First, create an insert-only client to pass to the repos. Later we create another client with a list of queues (org_ids)

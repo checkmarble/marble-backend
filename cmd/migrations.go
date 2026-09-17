@@ -17,14 +17,15 @@ import (
 
 func RunMigrations(apiVersion string, migrateDownTo *int64) error {
 	pgConfig := infra.PgConfig{
-		ConnectionString: utils.GetEnv("PG_CONNECTION_STRING", ""),
-		Database:         utils.GetEnv("PG_DATABASE", "marble"),
-		Hostname:         utils.GetEnv("PG_HOSTNAME", ""),
-		Password:         utils.GetEnv("PG_PASSWORD", ""),
-		Port:             utils.GetEnv("PG_PORT", "5432"),
-		User:             utils.GetEnv("PG_USER", ""),
-		SslMode:          utils.GetEnv("PG_SSL_MODE", "prefer"),
-		ImpersonateRole:  utils.GetEnv("PG_IMPERSONATE_ROLE", ""),
+		CloudSqlConnectionName: utils.GetEnv("CLOUDSQL_CONNECTION_NAME", ""),
+		ConnectionString:       utils.GetEnv("PG_CONNECTION_STRING", ""),
+		Database:               utils.GetEnv("PG_DATABASE", "marble"),
+		Hostname:               utils.GetEnv("PG_HOSTNAME", ""),
+		Password:               utils.GetEnv("PG_PASSWORD", ""),
+		Port:                   utils.GetEnv("PG_PORT", "5432"),
+		User:                   utils.GetEnv("PG_USER", ""),
+		SslMode:                utils.GetEnv("PG_SSL_MODE", "prefer"),
+		ImpersonateRole:        utils.GetEnv("PG_IMPERSONATE_ROLE", ""),
 	}
 	if pgConfig.ConnectionString != "" {
 		if u, err := url.Parse(pgConfig.ConnectionString); err != nil || !u.IsAbs() {

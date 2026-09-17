@@ -29,11 +29,17 @@ type ExecutorGetter struct {
 	clientDbConfigs map[string]infra.ClientDbConfig
 
 	// uses the connection string as a key
-	clientDbPools map[string]*pgxpool.Pool
+	clientDbPools map[clientDatabaseIdent]*pgxpool.Pool
 	// used to make the clientDbPools map thread-safe
 	mu *sync.Mutex
 
 	tp trace.TracerProvider
+}
+
+type clientDatabaseIdent struct {
+	CloudSqlConnectionName string
+	ConnectionString       string
+	Role                   string
 }
 
 type databaseSchemaGetter interface {
@@ -71,7 +77,7 @@ func NewExecutorGetter(
 	return ExecutorGetter{
 		clientDbConfigs:      clientDbConfigs,
 		redisClient:          redisClient,
-		clientDbPools:        make(map[string]*pgxpool.Pool, len(clientDbConfigs)),
+		clientDbPools:        make(map[clientDatabaseIdent]*pgxpool.Pool, len(clientDbConfigs)),
 		marbleConnectionPool: pool,
 		tp:                   tp,
 		mu:                   &sync.Mutex{},
@@ -169,25 +175,32 @@ func (g ExecutorGetter) getPoolAndSchema(
 		config.SchemaName = models.OrgSchemaName(org.Name)
 	}
 
+	connectionId := clientDatabaseIdent{
+		CloudSqlConnectionName: config.CloudSqlConnectionName,
+		ConnectionString:       config.ConnectionString,
+		Role:                   config.ImpersonateRole,
+	}
+
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	pool, ok := g.clientDbPools[config.ConnectionString]
+	pool, ok := g.clientDbPools[connectionId]
 	if !ok {
 		var err error
-		pool, err = infra.NewPostgresConnectionPool(
+		pool, _, err = infra.NewPostgresConnectionPool(
 			ctx,
 			g.appName,
 			config.ConnectionString,
 			g.tp,
 			config.MaxConns,
 			config.ImpersonateRole,
+			config.CloudSqlConnectionName,
 		)
 		if err != nil {
 			return nil, models.DatabaseSchema{}, errors.Wrap(err, "Error creating connection pool")
 		}
 
-		g.clientDbPools[config.ConnectionString] = pool
+		g.clientDbPools[connectionId] = pool
 	}
 
 	return pool, models.DatabaseSchema{
@@ -234,11 +247,11 @@ func (g ExecutorGetter) GetPinnedExecutor(
 	}
 
 	return &PgExecutor{
-			databaseSchema: databaseSchema,
-			exec:           conn,
-		}, func() {
-			conn.Release()
-		}, nil
+		databaseSchema: databaseSchema,
+		exec:           conn,
+	}, func() {
+		conn.Release()
+	}, nil
 }
 
 func validateClientDbExecutor(exec databaseSchemaGetter) error {

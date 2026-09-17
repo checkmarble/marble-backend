@@ -14,7 +14,7 @@ CREATE SCHEMA marble;
 
 DO $$
 BEGIN
-   EXECUTE 'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA marble TO ' || current_user;
+   EXECUTE format('GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA marble TO %I;', current_user);
 END
 $$;
 
