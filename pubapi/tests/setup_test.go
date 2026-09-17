@@ -136,6 +136,14 @@ func setupPostgres(t *testing.T, ctx context.Context) *postgres.PostgresContaine
 	if err := fixtures.Load(); err != nil {
 		t.Fatal(err)
 	}
+	// API keys now authenticate through grants rather than api_keys.role.
+	if _, err := conn.Exec(`
+		INSERT INTO grants (id, principal_type, principal_id, principal_authority, organization_id, role)
+		SELECT gen_random_uuid(), 'api_key', id::text, 'marble', org_id, 'API_CLIENT'
+		FROM api_keys
+	`); err != nil {
+		t.Fatal(err)
+	}
 
 	setupClientDbSchema(t, ctx, conn)
 

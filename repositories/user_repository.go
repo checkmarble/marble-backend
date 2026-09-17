@@ -26,6 +26,7 @@ type UserRepository interface {
 
 func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (string, error) {
 	userId := pure_utils.NewId().String()
+	createUser.Email = pure_utils.NormalizeEmail(createUser.Email)
 
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return "", err
@@ -71,7 +72,7 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 	query := NewQueryBuilder().Update(dbmodels.TABLE_USERS).Where(squirrel.Eq{"id": updateUser.UserId})
 
 	if updateUser.Email != nil {
-		query = query.Set("email", *updateUser.Email)
+		query = query.Set("email", pure_utils.NormalizeEmail(*updateUser.Email))
 	}
 	if updateUser.Role != nil && *updateUser.Role != models.NO_ROLE {
 		query = query.Set("role", int(*updateUser.Role))
@@ -85,6 +86,19 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 
 	if err := ExecBuilder(ctx, exec, query); err != nil {
 		return err
+	}
+	if updateUser.Role != nil && *updateUser.Role != models.NO_ROLE {
+		// TODO(MAR-2251): remove users.role once legacy JWTs have expired.
+		if _, err := exec.Exec(ctx, `UPDATE grants SET revoked_at = NOW() WHERE principal_type = 'user' AND principal_id = $1 AND revoked_at IS NULL`, updateUser.UserId); err != nil {
+			return err
+		}
+		if _, err := exec.Exec(ctx, `
+			INSERT INTO grants (id, principal_type, principal_id, principal_authority, organization_id, role)
+			SELECT $1, 'user', u.id, 'marble', CASE WHEN $2 = 'MARBLE_ADMIN' THEN NULL ELSE u.organization_id END, $2
+			FROM users u WHERE u.id = $3
+		`, pure_utils.NewId(), updateUser.Role.String(), updateUser.UserId); err != nil {
+			return err
+		}
 	}
 
 	return exec.Cache(ctx).Exec(func(c *redis.Client) error {
@@ -106,6 +120,9 @@ func (repo *MarbleDbRepository) DeleteUser(ctx context.Context, exec Executor, u
 			Set("deleted_at", squirrel.Expr("NOW()")),
 	)
 	if err != nil {
+		return err
+	}
+	if _, err := exec.Exec(ctx, `UPDATE grants SET revoked_at = NOW() WHERE principal_type = 'user' AND principal_id = $1 AND revoked_at IS NULL`, userID); err != nil {
 		return err
 	}
 
@@ -187,7 +204,7 @@ func (repo *MarbleDbRepository) UserByEmail(ctx context.Context, exec Executor, 
 		NewQueryBuilder().
 			Select(dbmodels.UserFields...).
 			From(dbmodels.TABLE_USERS).
-			Where("email = ?", email).
+			Where("email = ?", pure_utils.NormalizeEmail(email)).
 			Where("deleted_at IS NULL").
 			OrderBy("id"),
 		dbmodels.AdaptUser,

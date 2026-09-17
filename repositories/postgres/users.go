@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
@@ -27,7 +28,7 @@ func (db *Database) UserByEmail(ctx context.Context, email string) (models.User,
 	var organizationID *string
 	var tenantID *uuid.UUID
 	var firstName, lastName pgtype.Text
-	err := db.pool.QueryRow(ctx, query, email).
+	err := db.pool.QueryRow(ctx, query, pure_utils.NormalizeEmail(email)).
 		Scan(&user.UserId,
 			&user.Email,
 			&firstName,
