@@ -495,10 +495,11 @@ func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Exec
 		return nil, err
 	}
 
-	rows, err := exec.Query(ctx, query, args...)
+	rows, release, err := exec.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 
 	fields, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (
 		dbmodels.DbDataModelTableJoinField, error,
@@ -566,10 +567,11 @@ func (repo MarbleDbRepository) GetLinks(ctx context.Context, exec Executor, orga
     	JOIN data_model_fields AS child_field ON (links.child_field_id = child_field.id)
     	WHERE links.organization_id = $1`
 
-	rows, err := exec.Query(ctx, query, organizationID)
+	rows, release, err := exec.Query(ctx, query, organizationID)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.LinkToSingle, error) {
 		var dbLinks dbmodels.DbDataModelLink
@@ -623,10 +625,11 @@ func (repo MarbleDbRepository) GetEnumValues(ctx context.Context, exec Executor,
 		) v
 	`
 
-	rows, err := exec.Query(ctx, sql, fieldIDs)
+	rows, release, err := exec.Query(ctx, sql, fieldIDs)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 
 	values := make(map[string][]any)
 
@@ -678,7 +681,11 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 		WHERE id = $1 and archived is false
 	`
 
-	row := exec.QueryRow(ctx, query, fieldId)
+	row, release, err := exec.QueryRow(ctx, query, fieldId)
+	if err != nil {
+		return models.FieldMetadata{}, err
+	}
+	defer release()
 
 	var field models.FieldMetadata
 	var dataType string

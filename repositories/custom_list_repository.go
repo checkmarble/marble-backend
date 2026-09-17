@@ -82,10 +82,11 @@ func (repo *CustomListRepositoryPostgresql) AllCustomLists(
 				AND cl.deleted_at IS NULL
 			ORDER BY cl.name
 	`
-	rows, err := exec.Query(ctx, query, organizationId, models.VALUES_COUNT_LIMIT+1)
+	rows, release, err := exec.Query(ctx, query, organizationId, models.VALUES_COUNT_LIMIT+1)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 	defer rows.Close()
 	customsList, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.CustomList, error) {
 		customList, err := adaptModelUsingRowToStruct(row, dbmodels.AdaptCustomList)
@@ -128,10 +129,11 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListById(ctx context.Contex
 		query = query + "AND cl.deleted_at IS NULL"
 	}
 
-	rows, err := exec.Query(ctx, query, id, models.VALUES_COUNT_LIMIT+1)
+	rows, release, err := exec.Query(ctx, query, id, models.VALUES_COUNT_LIMIT+1)
 	if err != nil {
 		return models.CustomList{}, err
 	}
+	defer release()
 	defer rows.Close()
 	customsList, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.CustomList, error) {
 		customList, err := adaptModelUsingRowToStruct(row, dbmodels.AdaptCustomList)
@@ -410,10 +412,11 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListByName(ctx context.Cont
 			AND cl.deleted_at IS NULL
 	`
 
-	rows, err := exec.Query(ctx, query, name, organizationId, models.VALUES_COUNT_LIMIT+1)
+	rows, release, err := exec.Query(ctx, query, name, organizationId, models.VALUES_COUNT_LIMIT+1)
 	if err != nil {
 		return models.CustomList{}, err
 	}
+	defer release()
 	defer rows.Close()
 	customsList, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.CustomList, error) {
 		customList, err := adaptModelUsingRowToStruct(row, dbmodels.AdaptCustomList)

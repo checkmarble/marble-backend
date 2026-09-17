@@ -275,10 +275,11 @@ func (repo *MarbleDbRepository) ListScenarioLatestRuleVersions(ctx context.Conte
 		order by rules.version desc, rules.name asc
 	`
 
-	rows, err := exec.Query(ctx, sql, scenarioId, scenarioId)
+	rows, release, err := exec.Query(ctx, sql, scenarioId, scenarioId)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 
 	rules := make([]models.ScenarioRuleLatestVersion, 0)
 

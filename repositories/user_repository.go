@@ -195,7 +195,12 @@ func (repo *MarbleDbRepository) HasUsers(ctx context.Context, exec Executor) (bo
 		return false, err
 	}
 	var exists bool
-	err := exec.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM "+dbmodels.TABLE_USERS+" LIMIT 1)").Scan(&exists)
+	row, release, err := exec.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM "+dbmodels.TABLE_USERS+" LIMIT 1)")
+	if err != nil {
+		return false, err
+	}
+	defer release()
+	err = row.Scan(&exists)
 	if err != nil {
 		return false, err
 	}

@@ -55,11 +55,12 @@ func (repo *MarbleDbRepository) FindAutoAssignableUsers(ctx context.Context, exe
 		order by case_count
 	`, userColumns)
 
-	rows, err := exec.Query(ctx, sql, orgId, limit)
+	rows, release, err := exec.Query(ctx, sql, orgId, limit)
 	if err != nil {
 		return nil, err
 	}
 
+	defer release()
 	defer rows.Close()
 
 	dbUsers, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbmodels.DbAssignableUserWithCaseCount])
@@ -113,10 +114,11 @@ func (repo *MarbleDbRepository) FindNextAutoAssignableUserForInbox(ctx context.C
 		limit 1
 	`, userColumns)
 
-	rows, err := exec.Query(ctx, sql, orgId, inboxId, limit)
+	rows, release, err := exec.Query(ctx, sql, orgId, inboxId, limit)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 
 	row, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbmodels.DbAssignableUserWithCaseCount])
 	if err != nil {
@@ -184,11 +186,12 @@ func (repo *MarbleDbRepository) FindAutoAssignableCases(ctx context.Context, exe
 		order by c.created_at asc
 	`, caseColumns, caseColumns)
 
-	rows, err := exec.Query(ctx, sql, orgId, limit)
+	rows, release, err := exec.Query(ctx, sql, orgId, limit)
 	if err != nil {
 		return nil, err
 	}
 
+	defer release()
 	defer rows.Close()
 
 	dbCases, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbmodels.DBCase])

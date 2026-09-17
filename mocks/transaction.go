@@ -26,14 +26,14 @@ func (e *Executor) Exec(ctx context.Context, sql string, args ...any) (pgconn.Co
 	return arguments.Get(0).(pgconn.CommandTag), arguments.Error(1)
 }
 
-func (e *Executor) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+func (e *Executor) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, func(), error) {
 	arguments := e.Called(ctx, sql, args)
-	return arguments.Get(0).(pgx.Rows), arguments.Error(1)
+	return arguments.Get(0).(pgx.Rows), func() {}, arguments.Error(1)
 }
 
-func (e *Executor) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+func (e *Executor) QueryRow(ctx context.Context, sql string, args ...any) (pgx.Row, func(), error) {
 	arguments := e.Called(ctx, sql, args)
-	return arguments.Get(0).(pgx.Row)
+	return arguments.Get(0).(pgx.Row), func() {}, arguments.Error(1)
 }
 
 func (e *Executor) Begin(ctx context.Context) (repositories.Transaction, error) {
@@ -60,14 +60,14 @@ func (e *Transaction) Exec(ctx context.Context, sql string, args ...any) (pgconn
 	return arguments.Get(0).(pgconn.CommandTag), arguments.Error(1)
 }
 
-func (e *Transaction) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+func (e *Transaction) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, func(), error) {
 	arguments := e.Called(ctx, sql, args)
-	return arguments.Get(0).(pgx.Rows), arguments.Error(1)
+	return arguments.Get(0).(pgx.Rows), func() {}, arguments.Error(1)
 }
 
-func (e *Transaction) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+func (e *Transaction) QueryRow(ctx context.Context, sql string, args ...any) (pgx.Row, func(), error) {
 	arguments := e.Called(ctx, sql, args)
-	return arguments.Get(0).(pgx.Row)
+	return arguments.Get(0).(pgx.Row), func() {}, arguments.Error(1)
 }
 
 func (e *Transaction) Commit(ctx context.Context) error {

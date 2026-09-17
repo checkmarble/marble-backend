@@ -181,7 +181,12 @@ func (repo *MarbleDbRepository) ScreeningExecutionStats(
 
 	sqlVersion := "SELECT version FROM scenario_iterations WHERE id = $1"
 	var version string
-	err := exec.QueryRow(ctx, sqlVersion, iterationId).Scan(&version)
+	row, release, err := exec.QueryRow(ctx, sqlVersion, iterationId)
+	if err != nil {
+		return nil, err
+	}
+	err = row.Scan(&version)
+	release()
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +194,12 @@ func (repo *MarbleDbRepository) ScreeningExecutionStats(
 	screeningRuleName := "SELECT stable_id, name FROM screening_configs WHERE scenario_iteration_id = $1"
 	var stableId string
 	var name string
-	err = exec.QueryRow(ctx, screeningRuleName, iterationId).Scan(&stableId, &name)
+	row, release, err = exec.QueryRow(ctx, screeningRuleName, iterationId)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	err = row.Scan(&stableId, &name)
 	// All iterations don't have a screening config enabled. If there is none, just early exit
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -213,10 +223,11 @@ func (repo *MarbleDbRepository) ScreeningExecutionStats(
 	if err != nil {
 		return nil, err
 	}
-	rows, err := exec.Query(ctx, sql, args...)
+	rows, release, err := exec.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 	defer rows.Close()
 
 	var stats []models.RuleExecutionStat

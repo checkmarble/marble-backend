@@ -36,14 +36,14 @@ func NewContinuousScreeningCreateFullDatasetPeriodicJob(orgId uuid.UUID, interva
 		river.PeriodicInterval(interval),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.ContinuousScreeningCreateFullDatasetArgs{
-					OrgId: orgId.String(),
-				}, &river.InsertOpts{
-					Queue: orgId.String(),
-					UniqueOpts: river.UniqueOpts{
-						ByQueue:  true,
-						ByPeriod: interval,
-					},
-				}
+				OrgId: orgId.String(),
+			}, &river.InsertOpts{
+				Queue: orgId.String(),
+				UniqueOpts: river.UniqueOpts{
+					ByQueue:  true,
+					ByPeriod: interval,
+				},
+			}
 		},
 	)
 }
@@ -171,7 +171,7 @@ func (w *CreateFullDatasetWorker) Work(ctx context.Context,
 	}
 
 	// Use a pinned connection to ensure the advisory lock is tied to this session
-	exec, release, err := w.executorFactory.NewPinnedExecutor(ctx)
+	exec, release, err := w.executorFactory.NewPinnedExecutor(ctx, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to get pinned executor")
 	}

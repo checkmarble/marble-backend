@@ -44,7 +44,12 @@ func (repo *MarbleDbRepository) HasScreeningConfigs(
 
 	var exists bool
 
-	if err = exec.QueryRow(ctx, sql, args...).Scan(&exists); err != nil {
+	row, release, err := exec.QueryRow(ctx, sql, args...)
+	if err != nil {
+		return false, err
+	}
+	defer release()
+	if err = row.Scan(&exists); err != nil {
 		return false, err
 	}
 

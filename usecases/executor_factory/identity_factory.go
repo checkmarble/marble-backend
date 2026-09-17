@@ -39,11 +39,19 @@ func (f IdentityExecutorFactory) NewClientDbExecutor(ctx context.Context, orgId 
 		ctx,
 		models.DATABASE_SCHEMA_TYPE_CLIENT,
 		&f.org,
-	)
+		true)
 }
 
-func (f IdentityExecutorFactory) NewPinnedExecutor(ctx context.Context) (repositories.Executor, func(), error) {
+func (f IdentityExecutorFactory) NewPinnedExecutor(ctx context.Context, skipAudit bool) (repositories.Executor, func(), error) {
 	return nil, nil, errors.New("cannot create pinned executor on identity factory")
+}
+
+func (f IdentityExecutorFactory) NewUnauditedExecutor() repositories.Executor {
+	return nil
+}
+
+func (f IdentityExecutorFactory) Acquire(ctx context.Context) (repositories.Executor, error) {
+	return nil, errors.New("cannot acquire connection on identity factory")
 }
 
 func (f IdentityExecutorFactory) Transaction(ctx context.Context, cb func(tx repositories.Transaction) error) error {

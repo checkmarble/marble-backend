@@ -168,7 +168,12 @@ func (repo MarbleDbRepository) SarCompletedCount(
 	}
 
 	var res analytics.SarCompletedCount
-	err = exec.QueryRow(ctx, sql, args...).Scan(&res.Count)
+	row, release, err := exec.QueryRow(ctx, sql, args...)
+	if err != nil {
+		return res, err
+	}
+	defer release()
+	err = row.Scan(&res.Count)
 	return res, err
 }
 

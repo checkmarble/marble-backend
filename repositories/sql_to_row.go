@@ -110,11 +110,12 @@ func ForEachRow(ctx context.Context, exec Executor, query squirrel.Sqlizer, fn f
 		return errors.Wrap(err, "can't build sql query")
 	}
 
-	rows, err := exec.Query(ctx, sql, args...)
+	rows, release, err := exec.Query(ctx, sql, args...)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("error executing sql query: %s", sql))
 	}
 
+	defer release()
 	defer rows.Close()
 
 	for rows.Next() {

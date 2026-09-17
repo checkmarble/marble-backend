@@ -303,7 +303,11 @@ func (repo *MarbleDbRepository) ReadLatestUpdatedAt(ctx context.Context, exec Ex
 		return time.Time{}, err
 	}
 
-	row := exec.QueryRow(ctx, query, args...)
+	row, release, err := exec.QueryRow(ctx, query, args...)
+	if err != nil {
+		return time.Time{}, err
+	}
+	defer release()
 
 	var updatedAt time.Time
 

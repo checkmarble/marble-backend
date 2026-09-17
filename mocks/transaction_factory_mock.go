@@ -49,10 +49,20 @@ func (e *ExecutorFactory) NewExecutor() repositories.Executor {
 	return args.Get(0).(repositories.Executor)
 }
 
-func (e *ExecutorFactory) NewPinnedExecutor(ctx context.Context) (repositories.Executor, func(), error) {
-	args := e.Called(ctx)
+func (e *ExecutorFactory) NewPinnedExecutor(ctx context.Context, skipAudit bool) (repositories.Executor, func(), error) {
+	args := e.Called(ctx, skipAudit)
 	if args.Get(0) == nil {
 		return nil, args.Get(1).(func()), args.Error(2)
 	}
 	return args.Get(0).(repositories.Executor), args.Get(1).(func()), args.Error(2)
+}
+
+func (e *ExecutorFactory) NewUnauditedExecutor() repositories.Executor {
+	args := e.Called()
+	return args.Get(0).(repositories.Executor)
+}
+
+func (e *ExecutorFactory) Acquire(ctx context.Context) (repositories.Executor, error) {
+	args := e.Called(ctx)
+	return args.Get(0).(repositories.Executor), args.Error(1)
 }

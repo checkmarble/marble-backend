@@ -39,7 +39,11 @@ func (repo *MarbleDbRepository) GetSnoozeById(ctx context.Context, exec Executor
 	WHERE rs.id = $1
 	`
 
-	row := exec.QueryRow(ctx, sql, id)
+	row, release, err := exec.QueryRow(ctx, sql, id)
+	if err != nil {
+		return models.RuleSnooze{}, err
+	}
+	defer release()
 	s := models.RuleSnooze{}
 	if err := row.Scan(
 		&s.Id,
@@ -196,10 +200,11 @@ func (repo *MarbleDbRepository) AnySnoozesForIteration(
 	AND expires_at > NOW()
 	GROUP BY snooze_group_id`
 
-	rows, err := exec.Query(ctx, query, snoozeGroupIds)
+	rows, release, err := exec.Query(ctx, query, snoozeGroupIds)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 	defer rows.Close()
 
 	for rows.Next() {
