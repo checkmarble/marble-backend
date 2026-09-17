@@ -338,6 +338,27 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 	claims := models.FirebaseIdentity{Issuer: infra.MockFirebaseIssuer}
 	now := time.Now()
 
+	t.Run("rejects a principal without active grants", func(t *testing.T) {
+		mockRepository := new(mocks.Database)
+		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
+			Return([]models.Grant{}, nil)
+		mockEncoder := new(mocks.JWTEncoderValidator)
+
+		generator := auth.NewGenerator(mockRepository, mockEncoder, time.Minute, clock.NewMock(now))
+		token, err := generator.GenerateToken(
+			context.Background(),
+			auth.Credentials{Type: auth.CredentialsBearer},
+			user,
+			claims,
+			uuid.Nil,
+		)
+
+		assert.ErrorIs(t, err, models.ForbiddenError)
+		assert.Empty(t, token)
+		mockRepository.AssertExpectations(t)
+		mockEncoder.AssertNotCalled(t, "EncodeMarbleToken", mock.Anything, mock.Anything, mock.Anything)
+	})
+
 	t.Run("auto selects the only accessible organization", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).

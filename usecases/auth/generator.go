@@ -61,7 +61,6 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 ) (Token, error) {
 	expirationTime := g.clock.Now().Add(g.tokenLifetime)
 	baseCredentials := intoCredentials.IntoCredentials()
-
 	principalType, principalID := "user", string(baseCredentials.ActorIdentity.UserId)
 	if creds.Type == CredentialsApiKey {
 		principalType, principalID = "api_key", baseCredentials.ActorIdentity.ApiKeyId
@@ -133,6 +132,9 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 	}
 	slices.Sort(roles)
 	tokenCredentials.Roles = roles
+	if len(grants) == 0 {
+		return Token{}, fmt.Errorf("%w: principal has no active grant", models.ForbiddenError)
+	}
 
 	switch creds.Type {
 	case CredentialsBearer:

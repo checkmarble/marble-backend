@@ -9,9 +9,11 @@ import (
 type UserId string
 
 type User struct {
-	UserId         UserId
-	Email          string
-	Role           Role
+	UserId UserId
+	Email  string
+	// TODO(MAR-2251): remove Role after legacy JWT expiry; use grants.
+	Role Role
+	// TODO(MAR-2251): remove OrganizationId after legacy JWT expiry; use grants.
 	OrganizationId uuid.UUID
 	TenantId       uuid.UUID
 	FirstName      string

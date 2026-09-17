@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -26,7 +27,6 @@ type UserRepository interface {
 
 func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (string, error) {
 	userId := pure_utils.NewId().String()
-
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return "", err
 	}
@@ -77,6 +77,26 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 	}
 
 	query := NewQueryBuilder().Update(dbmodels.TABLE_USERS).Where(squirrel.Eq{"id": updateUser.UserId})
+	var previousRole models.Role
+	var previousOrganizationID *uuid.UUID
+	if updateUser.Role != nil && *updateUser.Role != models.NO_ROLE {
+		var role int
+		selectQuery, args, err := NewQueryBuilder().
+			Select("role", "organization_id").
+			From(dbmodels.TABLE_USERS).
+			Where(squirrel.Eq{"id": updateUser.UserId}).
+			ToSql()
+		if err != nil {
+			return err
+		}
+		if err := exec.QueryRow(ctx, selectQuery, args...).Scan(&role, &previousOrganizationID); err != nil {
+			return err
+		}
+		previousRole = models.Role(role)
+		if previousOrganizationID == nil && *updateUser.Role != models.MARBLE_ADMIN {
+			return fmt.Errorf("cannot assign an organization role to a platform user without an organization")
+		}
+	}
 
 	if updateUser.Email != nil {
 		query = query.Set("email", *updateUser.Email)
@@ -95,20 +115,27 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 		return err
 	}
 	if updateUser.Role != nil && *updateUser.Role != models.NO_ROLE {
-		if err := ExecBuilder(ctx, exec, NewQueryBuilder().
-			Delete(dbmodels.TABLE_GRANTS).
+		revokeQuery := NewQueryBuilder().
+			Update(dbmodels.TABLE_GRANTS).
+			Set("revoked_at", squirrel.Expr("NOW()")).
 			Where(squirrel.Eq{
 				"principal_type":      "user",
 				"principal_id":        updateUser.UserId,
 				"principal_authority": "marble",
-			}).
-			Where(squirrel.Or{
-				squirrel.Expr("organization_id = (SELECT organization_id FROM users WHERE id = ?)", updateUser.UserId),
-				squirrel.Expr("organization_id IS NULL AND tenant_id IS NULL"),
-			})); err != nil {
+				"role":                previousRole.String(),
+				"revoked_at":          nil,
+			})
+		if previousOrganizationID == nil {
+			revokeQuery = revokeQuery.Where(squirrel.Eq{
+				"organization_id": nil,
+				"tenant_id":       nil,
+			})
+		} else {
+			revokeQuery = revokeQuery.Where(squirrel.Eq{"organization_id": *previousOrganizationID})
+		}
+		if err := ExecBuilder(ctx, exec, revokeQuery); err != nil {
 			return err
 		}
-
 		grantQuery := NewQueryBuilder().Insert(dbmodels.TABLE_GRANTS)
 		if *updateUser.Role == models.MARBLE_ADMIN {
 			grantQuery = grantQuery.
@@ -117,14 +144,7 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 		} else {
 			grantQuery = grantQuery.
 				Columns("id", "principal_type", "principal_id", "principal_authority", "organization_id", "role").
-				Values(
-					pure_utils.NewId(),
-					"user",
-					updateUser.UserId,
-					"marble",
-					squirrel.Expr("(SELECT organization_id FROM users WHERE id = ?)", updateUser.UserId),
-					updateUser.Role.String(),
-				)
+				Values(pure_utils.NewId(), "user", updateUser.UserId, "marble", previousOrganizationID, updateUser.Role.String())
 		}
 		if err := ExecBuilder(ctx, exec, grantQuery.Suffix("ON CONFLICT DO NOTHING")); err != nil {
 			return err
@@ -150,6 +170,18 @@ func (repo *MarbleDbRepository) DeleteUser(ctx context.Context, exec Executor, u
 			Set("deleted_at", squirrel.Expr("NOW()")),
 	)
 	if err != nil {
+		return err
+	}
+	if err := ExecBuilder(ctx, exec,
+		NewQueryBuilder().
+			Update("grants").
+			Set("revoked_at", squirrel.Expr("NOW()")).
+			Where(squirrel.Eq{
+				"principal_type": "user",
+				"principal_id":   userID,
+				"revoked_at":     nil,
+			}),
+	); err != nil {
 		return err
 	}
 
