@@ -113,6 +113,8 @@ type PgConfig struct {
 	// Role to impersonate when connecting to the database. To be used in particular with IAM authentication t
 	// handle role based access control. Ignored if empty.
 	ImpersonateRole string
+
+	CloudSqlBridge *CloudSqlBridge
 }
 
 func (config PgConfig) GetConnectionString() string {
