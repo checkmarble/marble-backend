@@ -51,6 +51,9 @@ func (v *Validator) fromAPIKey(ctx context.Context, key string) (models.Credenti
 		}
 	}
 	slices.Sort(credentials.Roles)
+	if len(credentials.Roles) == 0 {
+		return models.Credentials{}, fmt.Errorf("%w: API key has no active grant", models.UnAuthorizedError)
+	}
 	return credentials, nil
 }
 

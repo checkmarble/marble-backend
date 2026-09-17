@@ -28,6 +28,9 @@ type OidcConfig struct {
 func InitializeOidc(ctx context.Context, marbleAppUrl string) (OidcConfig, error) {
 	issuer := utils.GetEnv("AUTH_OIDC_ISSUER", "")
 	clientId := utils.GetEnv("AUTH_OIDC_CLIENT_ID", "")
+	if issuer == "" || clientId == "" {
+		return OidcConfig{}, fmt.Errorf("AUTH_OIDC_ISSUER and AUTH_OIDC_CLIENT_ID are required")
+	}
 	extraParams := map[string]string{}
 
 	if params, err := url.ParseQuery(utils.GetEnv("AUTH_OIDC_EXTRA_PARAMS", "")); err == nil {
@@ -50,14 +53,20 @@ func InitializeOidc(ctx context.Context, marbleAppUrl string) (OidcConfig, error
 	}
 
 	for idx, domain := range allowedDomains {
-		allowedDomains[idx] = "@" + domain
+		allowedDomains[idx] = "@" + strings.TrimSpace(strings.ToLower(domain))
+	}
+	scopes := []string{}
+	for _, scope := range strings.Split(utils.GetEnv("AUTH_OIDC_SCOPE", ""), ",") {
+		if scope = strings.TrimSpace(scope); scope != "" {
+			scopes = append(scopes, scope)
+		}
 	}
 
 	return OidcConfig{
 		Issuer:       issuer,
 		ClientId:     clientId,
 		ClientSecret: utils.GetEnv("AUTH_OIDC_CLIENT_SECRET", ""),
-		Scopes:       strings.Split(utils.GetEnv("AUTH_OIDC_SCOPE", ""), ","),
+		Scopes:       scopes,
 		RedirectUri:  fmt.Sprintf("%s/oidc/callback", marbleAppUrl),
 		ExtraParams:  extraParams,
 		EmailClaim:   utils.GetEnv("AUTH_OIDC_EMAIL_CLAIM", ""),
