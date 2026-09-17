@@ -43,7 +43,7 @@ func (repo MarbleDbRepository) UpsertGraphRows(ctx context.Context, exec Executo
 				updated_at = excluded.updated_at
 			where g.field_value <> excluded.field_value`,
 		pgIdentifierWithSchema(exec, graphTable),
-		pgClientDataIdentifierString(recordType),
+		pgClientDataIdentifierString(truncatePostgresIdentifier(recordType)),
 		pgIdentifierWithSchema(exec, recordType),
 		graphFieldUnpivot(fields))
 
@@ -81,7 +81,7 @@ func (repo MarbleDbRepository) RetractGraphRows(ctx context.Context, exec Execut
 					and v.field_value <> ''
 			)`,
 		pgIdentifierWithSchema(exec, graphTable),
-		pgClientDataIdentifierString(recordType),
+		pgClientDataIdentifierString(truncatePostgresIdentifier(recordType)),
 		pgIdentifierWithSchema(exec, recordType),
 		graphFieldUnpivot(fields))
 

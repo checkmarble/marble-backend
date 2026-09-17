@@ -176,6 +176,38 @@ func TestGraphIncremental_RendersValuesExactlyAsTheBuildDoes(t *testing.T) {
 		"the retraction decides what to keep, so it must agree on rendering too")
 }
 
+func TestGraphIncremental_StoresPhysicalPostgresIdentifiers(t *testing.T) {
+	recordType := strings.Repeat("record", 12)
+	fieldName := strings.Repeat("field", 15)
+	fields := []models.Field{{Name: fieldName, DataType: models.String}}
+
+	upsert := newGraphBuilderExecutor(t)
+	upsert.expectStatementsWithArgs(1, pgxmock.AnyArg())
+	_, err := MarbleDbRepository{}.UpsertGraphRows(context.Background(), upsert, recordType,
+		fields, []string{"id"})
+	require.NoError(t, err)
+
+	retract := newGraphBuilderExecutor(t)
+	retract.expectStatementsWithArgs(1, pgxmock.AnyArg())
+	_, err = MarbleDbRepository{}.RetractGraphRows(context.Background(), retract, recordType,
+		fields, []string{"id"})
+	require.NoError(t, err)
+
+	physicalRecordType := truncatePostgresIdentifier(recordType)
+	physicalFieldName := truncatePostgresIdentifier(fieldName)
+	for _, sql := range []string{upsert.statements[0], retract.statements[0]} {
+		assert.Contains(t, sql, "'"+physicalRecordType+"'")
+		assert.Contains(t, sql, "('"+physicalFieldName+"', t.\""+fieldName+"\"::text)")
+		assert.NotContains(t, sql, "'"+recordType+"'")
+	}
+
+	assert.Equal(
+		t,
+		"ewqweqweqweqweqweqweqweqwewqeqweqwewqewqeqwejiofhjdosihfidsahfi",
+		truncatePostgresIdentifier("ewqweqweqweqweqweqweqweqwewqeqweqwewqewqeqwejiofhjdosihfidsahfiosdhfisahfishfisdhfiashfiashfisdhfiashpfihapsdfhasdfhpashfpasdhfiosadhfiosdahfisohfiashfposahfpahsifoahsdfioahsiofhsaidofhaioshfiosdhfioashfioasdhfiosadhfiosdahfiodsh"),
+	)
+}
+
 // graphUnpivotClause extracts the `values (...)` list that turns a record's columns into one row per
 // field, so two statements can be compared on that fragment alone.
 func graphUnpivotClause(t *testing.T, sql string) string {
