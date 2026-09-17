@@ -88,20 +88,31 @@ func (repo MarbleDbRepository) FetchFields(
 	}
 
 	output := make([]models.GraphRow, 0, len(recordIds)*len(fieldNames))
+	physicalFieldNames := make([]string, 0, len(fieldNames))
+	logicalFieldNames := make(map[string]string, len(fieldNames))
+
+	for _, fieldName := range fieldNames {
+		physicalName := truncatePostgresIdentifier(fieldName)
+		physicalFieldNames = append(physicalFieldNames, physicalName)
+		logicalFieldNames[physicalName] = fieldName
+	}
 
 	for ids := range slices.Chunk(recordIds, graphBatchSize) {
 		q := NewQueryBuilder().
 			Select("record_id", "field_name", "field_value").
 			From(pgIdentifierWithSchema(exec, graphTable)).
-			Where(squirrel.Eq{"record_type": recordType}).
+			Where(squirrel.Eq{"record_type": truncatePostgresIdentifier(recordType)}).
 			Where("record_id = ANY(?)", ids).
-			Where("field_name = ANY(?)", fieldNames)
+			Where("field_name = ANY(?)", physicalFieldNames)
 
 		err := ForEachRow(ctx, exec, q, func(row pgx.CollectableRow) error {
 			var r models.GraphRow
 
 			if err := row.Scan(&r.RecordId, &r.FieldName, &r.FieldValue); err != nil {
 				return errors.Wrap(err, "error while scanning _graph row")
+			}
+			if logicalName, ok := logicalFieldNames[r.FieldName]; ok {
+				r.FieldName = logicalName
 			}
 
 			output = append(output, r)
@@ -147,7 +158,9 @@ func (repo MarbleDbRepository) FindByValues(
 	output := make([]models.GraphMatch, 0, len(values))
 
 	for batch := range slices.Chunk(values, graphBatchSize) {
-		if err := repo.collectMatches(ctx, exec, sql, batch, recordType, fieldName, perValueLimit, &output); err != nil {
+		if err := repo.collectMatches(ctx, exec, sql, batch,
+			truncatePostgresIdentifier(recordType), truncatePostgresIdentifier(fieldName),
+			perValueLimit, &output); err != nil {
 			return nil, err
 		}
 	}
@@ -196,8 +209,8 @@ func (repo MarbleDbRepository) EstimateValueCount(
 		Select("1").
 		From(pgIdentifierWithSchema(exec, graphTable)).
 		Where(squirrel.Eq{
-			"record_type": recordType,
-			"field_name":  fieldName,
+			"record_type": truncatePostgresIdentifier(recordType),
+			"field_name":  truncatePostgresIdentifier(fieldName),
 			"field_value": value,
 		})
 	sql, args, err := q.ToSql()

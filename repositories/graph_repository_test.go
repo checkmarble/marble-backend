@@ -51,9 +51,11 @@ func (e *graphQueryExecutor) Query(ctx context.Context, sql string, args ...any)
 func (e *graphQueryExecutor) Exec(_ context.Context, _ string, _ ...any) (pgconn.CommandTag, error) {
 	return pgconn.CommandTag{}, nil
 }
-func (e *graphQueryExecutor) QueryRow(_ context.Context, _ string, _ ...any) pgx.Row { return nil }
-func (e *graphQueryExecutor) Begin(_ context.Context) (Transaction, error)           { return nil, nil }
-func (e *graphQueryExecutor) Cache(_ context.Context) *RedisExecutor                 { return nil }
+func (e *graphQueryExecutor) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	return e.pool.QueryRow(ctx, sql, args...)
+}
+func (e *graphQueryExecutor) Begin(_ context.Context) (Transaction, error) { return nil, nil }
+func (e *graphQueryExecutor) Cache(_ context.Context) *RedisExecutor       { return nil }
 
 func TestGetNodeBatchCaptions_ReadsEveryTypeInOneQuery(t *testing.T) {
 	exec := newGraphQueryExecutor(t)
@@ -130,6 +132,55 @@ func TestGetNodeBatchCaptions_RefusesAMarbleExecutor(t *testing.T) {
 		[]models.ScoringRecordRef{{RecordType: "users", RecordId: "U1"}})
 	assert.Error(t, err)
 	assert.Empty(t, exec.queries)
+}
+
+func TestGraphRepository_FetchFieldsUsesPhysicalIdentifiersAndReturnsLogicalNames(t *testing.T) {
+	exec := newGraphQueryExecutor(t)
+	recordType := strings.Repeat("record", 12)
+	fieldName := strings.Repeat("field", 15)
+	physicalRecordType := truncatePostgresIdentifier(recordType)
+	physicalFieldName := truncatePostgresIdentifier(fieldName)
+
+	exec.pool.ExpectQuery(".*").
+		WithArgs(physicalRecordType, pgxmock.AnyArg(), pgxmock.AnyArg()).
+		WillReturnRows(pgxmock.NewRows([]string{"record_id", "field_name", "field_value"}).
+			AddRow("id-1", physicalFieldName, "value"))
+
+	rows, err := MarbleDbRepository{}.FetchFields(context.Background(), exec, recordType,
+		[]string{"id-1"}, []string{fieldName})
+	require.NoError(t, err)
+
+	assert.Equal(t, []models.GraphRow{{
+		RecordId: "id-1", FieldName: fieldName, FieldValue: "value",
+	}}, rows)
+	require.NoError(t, exec.pool.ExpectationsWereMet())
+}
+
+func TestGraphRepository_LookupsUsePhysicalIdentifiers(t *testing.T) {
+	exec := newGraphQueryExecutor(t)
+	recordType := strings.Repeat("record", 12)
+	fieldName := strings.Repeat("field", 15)
+	physicalRecordType := truncatePostgresIdentifier(recordType)
+	physicalFieldName := truncatePostgresIdentifier(fieldName)
+
+	exec.pool.ExpectQuery(".*").
+		WithArgs(pgxmock.AnyArg(), physicalRecordType, physicalFieldName, 2).
+		WillReturnRows(pgxmock.NewRows([]string{"val", "record_id"}))
+
+	_, err := MarbleDbRepository{}.FindByValues(context.Background(), exec, recordType, fieldName,
+		[]string{"value"}, 2)
+	require.NoError(t, err)
+
+	exec.pool.ExpectQuery(".*").
+		WithArgs(physicalFieldName, "value", physicalRecordType).
+		WillReturnRows(pgxmock.NewRows([]string{"QUERY PLAN"}).
+			AddRow([]byte(`[{"Plan":{"Plan Rows":1}}]`)))
+
+	count, err := MarbleDbRepository{}.EstimateValueCount(context.Background(), exec,
+		recordType, fieldName, "value")
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
+	require.NoError(t, exec.pool.ExpectationsWereMet())
 }
 
 func ptr[T any](value T) *T {

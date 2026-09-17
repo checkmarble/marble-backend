@@ -174,6 +174,26 @@ func TestGraphBuilder_PopulateUnpivotsEveryFieldInOneScan(t *testing.T) {
 		"the walk treats an empty value as absent, so it must not be stored")
 }
 
+func TestGraphBuilder_PopulateStoresPhysicalPostgresIdentifiers(t *testing.T) {
+	exec := newGraphBuilderExecutor(t)
+	exec.expectStatements(1)
+
+	recordType := strings.Repeat("record", 12)
+	fieldName := strings.Repeat("field", 15)
+
+	_, err := MarbleDbRepository{}.PopulateGraphBuildTable(context.Background(), exec, recordType,
+		[]models.Field{{Name: fieldName, DataType: models.String}})
+	require.NoError(t, err)
+
+	physicalRecordType := truncatePostgresIdentifier(recordType)
+	physicalFieldName := truncatePostgresIdentifier(fieldName)
+	sql := exec.statements[0]
+
+	assert.Contains(t, sql, "select '"+physicalRecordType+"', t.object_id")
+	assert.Contains(t, sql, "('"+physicalFieldName+"', t.\""+fieldName+"\"::text)")
+	assert.NotContains(t, sql, "select '"+recordType+"', t.object_id")
+}
+
 func TestGraphBuilder_ProjectionIsCanonicalPerDataType(t *testing.T) {
 	// This projection is the equality function of the whole graph: two records are related when
 	// their projections are byte-equal. Each type therefore needs the representation that makes
@@ -387,4 +407,16 @@ func TestGraphBuilder_IndexNamesDoNotCollideAcrossBuilds(t *testing.T) {
 func TestPgStringLiteral(t *testing.T) {
 	assert.Equal(t, `'accounts'`, pgClientDataIdentifierString("accounts"))
 	assert.Equal(t, `'it''s'`, pgClientDataIdentifierString("it's"))
+}
+
+func TestTruncatePostgresIdentifier(t *testing.T) {
+	assert.Equal(t, strings.Repeat("a", 63), truncatePostgresIdentifier(strings.Repeat("a", 63)))
+	assert.Equal(t, strings.Repeat("a", 63), truncatePostgresIdentifier(strings.Repeat("a", 64)))
+
+	// PostgreSQL clips at a complete character, even when the 63-byte boundary lands in the
+	// middle of a multibyte encoding.
+	assert.Equal(t, strings.Repeat("a", 62),
+		truncatePostgresIdentifier(strings.Repeat("a", 62)+"é"))
+	assert.Equal(t, strings.Repeat("a", 61)+"é",
+		truncatePostgresIdentifier(strings.Repeat("a", 61)+"éx"))
 }

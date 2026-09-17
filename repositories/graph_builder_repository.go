@@ -115,7 +115,7 @@ func (repo MarbleDbRepository) PopulateGraphBuildTable(
 			and v.field_value is not null
 			and v.field_value <> ''`,
 		pgIdentifierWithSchema(exec, graphBuildTable),
-		pgClientDataIdentifierString(recordType),
+		pgClientDataIdentifierString(truncatePostgresIdentifier(recordType)),
 		pgIdentifierWithSchema(exec, recordType),
 		graphFieldUnpivot(fields))
 
@@ -383,7 +383,7 @@ func graphFieldUnpivot(fields []models.Field) string {
 
 	for _, field := range fields {
 		values = append(values, fmt.Sprintf("(%s, %s)",
-			pgClientDataIdentifierString(field.Name), graphFieldProjection(field)))
+			pgClientDataIdentifierString(truncatePostgresIdentifier(field.Name)), graphFieldProjection(field)))
 	}
 
 	return strings.Join(values, ", ")
