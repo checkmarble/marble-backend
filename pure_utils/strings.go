@@ -12,6 +12,10 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
+func NormalizeEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
+}
+
 func Normalize(s string) string {
 	result, _, _ := transform.String(norm.NFC, s)
 	return result

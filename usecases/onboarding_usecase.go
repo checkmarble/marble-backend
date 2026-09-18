@@ -3,7 +3,6 @@ package usecases
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -68,7 +67,7 @@ func (uc OnboardingUsecase) CreateInitialOrganization(ctx context.Context, req d
 		return errors.Wrap(models.ConflictError, "an organization already exists on this instance")
 	}
 
-	email := strings.TrimSpace(strings.ToLower(req.Email))
+	email := pure_utils.NormalizeEmail(req.Email)
 
 	if usesFirebase {
 		if err := uc.firebase.CreateFirstUser(ctx, email, req.Password,

@@ -9,6 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestNormalizeEmail(t *testing.T) {
+	if got := NormalizeEmail("  User@Example.COM "); got != "user@example.com" {
+		t.Fatalf("NormalizeEmail() = %q", got)
+	}
+}
+
 func TestBagOfWordsSimilarity(t *testing.T) {
 	examples := []struct {
 		s1       string

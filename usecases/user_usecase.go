@@ -35,10 +35,7 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.User, error) {
-			// cleanup spaces
-			createUser.Email = strings.TrimSpace(createUser.Email)
-			// lowercase email to maintain uniqueness
-			createUser.Email = strings.ToLower(createUser.Email)
+			createUser.Email = pure_utils.NormalizeEmail(createUser.Email)
 
 			createdUserUuid, err := usecase.userRepository.CreateUser(ctx, tx, createUser)
 			if repositories.IsUniqueViolationError(err) {
@@ -69,6 +66,10 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 }
 
 func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.UpdateUser) (models.User, error) {
+	if updateUser.Email != nil {
+		normalized := pure_utils.NormalizeEmail(*updateUser.Email)
+		updateUser.Email = &normalized
+	}
 	if updateUser.Role != nil && !slices.Contains(models.GetValidUserRoles(), *updateUser.Role) {
 		return models.User{}, errors.Wrap(models.BadParameterError, "Invalid role received")
 	}

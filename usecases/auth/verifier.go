@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/idp"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -84,7 +85,7 @@ func (v MarbleVerifier) Verify(ctx context.Context, creds Credentials) (models.I
 			}
 		}
 
-		user, err := v.repository.UserByEmail(ctx, identity.GetEmail())
+		user, err := v.repository.UserByEmail(ctx, pure_utils.NormalizeEmail(identity.GetEmail()))
 		if errors.Is(err, models.NotFoundError) {
 			return nil, nil, fmt.Errorf("%w: %w", models.ErrUnknownUser, err)
 		} else if err != nil {

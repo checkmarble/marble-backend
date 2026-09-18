@@ -42,7 +42,9 @@ func (usecases *UsecasesWithCreds) NewWithRootImpersonatedExecutor(tx repositori
 		Usecases: usecases.Usecases.WithRootExecutor(executorFactory),
 		Credentials: models.Credentials{
 			OrganizationId: org.Id,
+			TenantId:       org.TenantId,
 			Role:           usecases.Credentials.Role,
+			Roles:          usecases.Credentials.Roles,
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
 			},
