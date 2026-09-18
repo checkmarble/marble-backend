@@ -8,7 +8,7 @@ import (
 )
 
 func EnforceOrganizationAccess(creds models.Credentials, organizationId uuid.UUID) error {
-	noOrgIdSecurity := creds.Role.HasPermission(models.ANY_ORGANIZATION_ID_IN_CONTEXT)
+	noOrgIdSecurity := creds.HasPermission(models.ANY_ORGANIZATION_ID_IN_CONTEXT)
 	if noOrgIdSecurity {
 		return nil
 	}
