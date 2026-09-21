@@ -25,6 +25,7 @@ type Inbox struct {
 	UpdatedAt         time.Time
 	InboxUsers        []InboxUser
 	CasesCount        *int
+	HasCases          bool
 	Sla               *int
 
 	// Fields for case review (automatic or manual) settings. May be moved to a separate implementation if or when

@@ -78,6 +78,14 @@ func selectInboxesJoinUsers() squirrel.SelectBuilder {
 				strings.Join(columnsNames("u", dbmodels.SelectInboxUserColumn), ","),
 			),
 		).
+		Column(`(
+	SELECT EXISTS (
+		SELECT 1
+		FROM cases AS c
+		WHERE c.org_id = i.organization_id
+			AND c.inbox_id = i.id
+	)
+) AS has_cases`).
 		From(dbmodels.TABLE_INBOXES + " AS i").
 		LeftJoin(dbmodels.TABLE_INBOX_USERS + " AS u ON u.inbox_id = i.id").
 		GroupBy("i.id").
