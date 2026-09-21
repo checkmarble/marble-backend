@@ -55,7 +55,8 @@ func (usecase *IngestionUseCase) GenerateUploadLink(
 
 	if ingestionOptions.ShouldMonitor {
 		continuousScreeningConfigs, err := usecase.continuousScreeningRepository.ListContinuousScreeningConfigByStableIds(
-			ctx, exec, orgId, org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring), ingestionOptions.ContinuousScreeningIds)
+			ctx, exec, orgId, org.GetScreeningProviderFor(models.ScreeningFeatureContinuousMonitoring), ingestionOptions.ContinuousScreeningIds,
+		)
 		if err != nil {
 			return "", err
 		}
@@ -74,6 +75,7 @@ func (usecase *IngestionUseCase) GenerateUploadLink(
 			TableName:      recordType,
 			UserId:         uuid.Max.String(),
 			StartedAt:      time.Now(),
+			DeadlineAt:     time.Now().Add(csvIngestionTotalTimeout),
 		}
 		if err := usecase.uploadLogRepository.CreateUploadLog(ctx, tx, newUploadLog); err != nil {
 			return "", err

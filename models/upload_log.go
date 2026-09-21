@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const CsvIngestionTotalTimeoutDefault = 12 * time.Hour
+const CsvIngestionTotalTimeoutDefault = 50 * time.Second
 
 type UploadLogFilters struct {
 	Status *UploadStatus
@@ -20,7 +20,7 @@ type UploadLog struct {
 	TableName      string
 	UploadStatus   UploadStatus
 	StartedAt      time.Time
-	DeadlineAt     *time.Time
+	DeadlineAt     time.Time
 	FinishedAt     *time.Time
 	LinesProcessed int
 	RowsIngested   int

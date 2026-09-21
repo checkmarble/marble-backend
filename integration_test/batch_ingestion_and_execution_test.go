@@ -161,7 +161,8 @@ func createDecisionsBatch(
 	assert.Equal(t, 1, *se.NumberOfPlannedDecisions, "Should have planned 1 decision")
 
 	decisionsUsecase := usecasesWithUserCreds.NewDecisionUsecase()
-	decisions, err := decisionsUsecase.ListDecisions(ctx, organizationId,
+	decisions, err := decisionsUsecase.ListDecisions(
+		ctx, organizationId,
 		models.NewDefaultPaginationAndSorting("created_at"), dto.DecisionFilters{
 			ScheduledExecutionIds: []string{se.Id},
 		},

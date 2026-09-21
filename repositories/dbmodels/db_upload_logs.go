@@ -30,6 +30,10 @@ const TABLE_UPLOAD_LOGS = "upload_logs"
 var SelectUploadLogColumn = utils.ColumnList[DBUploadLog]()
 
 func AdaptUploadLog(db DBUploadLog) (models.UploadLog, error) {
+	deadline := time.Now().Add(models.CsvIngestionTotalTimeoutDefault)
+	if db.DeadlineAt != nil {
+		deadline = *db.DeadlineAt
+	}
 	return models.UploadLog{
 		Id:             db.Id,
 		OrganizationId: db.OrganizationId,
@@ -38,7 +42,7 @@ func AdaptUploadLog(db DBUploadLog) (models.UploadLog, error) {
 		TableName:      db.TableName,
 		UploadStatus:   models.UploadStatusFrom(db.Status),
 		StartedAt:      db.StartedAt,
-		DeadlineAt:     db.DeadlineAt,
+		DeadlineAt:     deadline,
 		FinishedAt:     db.FinishedAt,
 		LinesProcessed: db.LinesProcessed,
 		RowsIngested:   db.NumRowsIngested,

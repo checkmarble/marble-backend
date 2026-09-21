@@ -116,13 +116,6 @@ type TaskQueueRepository interface {
 		uploadLogId uuid.UUID,
 		ingestionOptions models.IngestionOptions,
 	) error
-	EnqueueCsvIngestionDeadlineTask(
-		ctx context.Context,
-		tx Transaction,
-		organizationId uuid.UUID,
-		uploadLogId uuid.UUID,
-		deadline time.Time,
-	) error
 	EnqueueAsyncUploadTask(
 		ctx context.Context,
 		tx Transaction,
@@ -335,7 +328,8 @@ func (r riverRepository) EnqueueCreateIndexTask(
 		},
 		&river.InsertOpts{
 			Queue: organizationId.String(),
-		})
+		},
+	)
 	if err != nil {
 		return err
 	}
@@ -361,7 +355,8 @@ func (r riverRepository) EnqueueDeleteIndexByNameTask(
 		},
 		&river.InsertOpts{
 			Queue: organizationId.String(),
-		})
+		},
+	)
 	return err
 }
 
@@ -465,7 +460,8 @@ func (r riverRepository) EnqueueAutoAssignmentTask(
 				ByQueue:  true,
 				ByPeriod: 2 * time.Minute,
 			},
-		})
+		},
+	)
 	if err != nil {
 		return err
 	}
@@ -671,20 +667,6 @@ func (r riverRepository) EnqueueCsvIngestionTask(
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued CSV ingestion task", "upload_log_id", uploadLogId, "job_id", res.Job.ID)
 	return nil
-}
-
-func (r riverRepository) EnqueueCsvIngestionDeadlineTask(
-	ctx context.Context,
-	tx Transaction,
-	organizationId uuid.UUID,
-	uploadLogId uuid.UUID,
-	deadline time.Time,
-) error {
-	_, err := r.client.InsertTx(ctx, tx.RawTx(), models.CsvIngestionDeadlineArgs{UploadLogId: uploadLogId}, &river.InsertOpts{
-		Queue:       organizationId.String(),
-		ScheduledAt: deadline,
-	})
-	return err
 }
 
 func (r riverRepository) EnqueueAsyncUploadTask(
