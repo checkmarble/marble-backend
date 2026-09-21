@@ -94,6 +94,7 @@ func AdaptInboxUserWithOrgId(db DBInboxUserWithOrgId) (models.InboxUser, error) 
 type DBInboxWithUsers struct {
 	DBInbox
 	InboxUsers []DBInboxUser `db:"inbox_users"`
+	HasCases   bool          `db:"has_cases"`
 }
 
 func AdaptInboxWithUsers(db DBInboxWithUsers) (models.Inbox, error) {
@@ -112,6 +113,7 @@ func AdaptInboxWithUsers(db DBInboxWithUsers) (models.Inbox, error) {
 	}
 
 	inbox.InboxUsers = inboxUsers
+	inbox.HasCases = db.HasCases
 	return inbox, nil
 }
 

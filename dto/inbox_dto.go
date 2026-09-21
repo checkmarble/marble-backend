@@ -24,6 +24,7 @@ type InboxDto struct {
 	CaseReviewOnEscalate    bool `json:"case_review_on_escalate"`
 
 	CasesCount *int `json:"cases_count"`
+	HasCases   bool `json:"has_cases"`
 }
 
 func AdaptInboxDto(i models.Inbox) InboxDto {
@@ -41,6 +42,7 @@ func AdaptInboxDto(i models.Inbox) InboxDto {
 		CaseReviewOnCaseCreated: i.CaseReviewOnCaseCreated,
 		CaseReviewOnEscalate:    i.CaseReviewOnEscalate,
 		CasesCount:              i.CasesCount,
+		HasCases:                i.HasCases,
 	}
 }
 
