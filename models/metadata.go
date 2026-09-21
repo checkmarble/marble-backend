@@ -11,9 +11,10 @@ import (
 type MetadataKey string
 
 const (
-	MetadataKeyDeploymentID          MetadataKey = "deployment_id"
-	MetadataKeyWebhookSystemMigrated MetadataKey = "webhook_system_migrated"
-	ScoringInitialInsertionDone      MetadataKey = "scoring_initial_insertion_done"
+	MetadataKeyDeploymentID              MetadataKey = "deployment_id"
+	MetadataKeyWebhookSystemMigrated     MetadataKey = "webhook_system_migrated"
+	MetadataKeyStaffAccountsConsolidated MetadataKey = "staff_accounts_consolidated"
+	ScoringInitialInsertionDone          MetadataKey = "scoring_initial_insertion_done"
 )
 
 type Metadata struct {
@@ -32,6 +33,8 @@ func MetadataKeyFromString(key string) (MetadataKey, error) {
 		return MetadataKeyDeploymentID, nil
 	case "webhook_system_migrated":
 		return MetadataKeyWebhookSystemMigrated, nil
+	case "staff_accounts_consolidated":
+		return MetadataKeyStaffAccountsConsolidated, nil
 	case "scoring_initial_insertion_done":
 		return ScoringInitialInsertionDone, nil
 	default:

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"firebase.google.com/go/v4/auth"
 	"github.com/checkmarble/marble-backend/utils"
@@ -19,6 +20,41 @@ type Adminer interface {
 	CreateUser(ctx context.Context, email, name string) error
 	CreateFirstUser(ctx context.Context, email, password, name string) error
 	ListMfaEnrollment(ctx context.Context, emails []string) (map[string]bool, error)
+	EnsureUser(ctx context.Context, email, name string) (bool, error)
+}
+
+const firebaseOperationTimeout = 10 * time.Second
+
+// EnsureUser creates a missing Firebase account and sends its initial password reset email.
+func (c AdminClient) EnsureUser(ctx context.Context, email, name string) (bool, error) {
+	lookupCtx, cancel := context.WithTimeout(ctx, firebaseOperationTimeout)
+	_, err := c.client.GetUserByEmail(lookupCtx, email)
+	cancel()
+	if err != nil {
+		if !auth.IsUserNotFound(err) {
+			return false, errors.Wrap(err, "could not find firebase user")
+		}
+		createCtx, cancel := context.WithTimeout(ctx, firebaseOperationTimeout)
+		user, err := c.client.CreateUser(createCtx, new(auth.UserToCreate).Email(email).DisplayName(name).EmailVerified(false))
+		cancel()
+		if err != nil {
+			return false, errors.Wrap(err, "could not create firebase user")
+		}
+		resetCtx, cancel := context.WithTimeout(ctx, firebaseOperationTimeout)
+		resetErr := c.SendPasswordResetEmail(resetCtx, user)
+		cancel()
+		if resetErr != nil {
+			deleteCtx, cancel := context.WithTimeout(ctx, firebaseOperationTimeout)
+			deleteErr := c.client.DeleteUser(deleteCtx, user.UID)
+			cancel()
+			if deleteErr != nil {
+				return false, errors.Join(resetErr, errors.Wrap(deleteErr, "could not delete firebase user after password reset failure"))
+			}
+			return false, resetErr
+		}
+		return true, nil
+	}
+	return false, nil
 }
 
 type AdminClient struct {

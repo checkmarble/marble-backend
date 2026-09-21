@@ -53,3 +53,8 @@ func (m *FirebaseAdminClient) ListMfaEnrollment(ctx context.Context, emails []st
 
 	return args.Get(0).(map[string]bool), args.Error(1)
 }
+
+func (m *FirebaseAdminClient) EnsureUser(ctx context.Context, email, name string) (bool, error) {
+	args := m.Called(ctx, email, name)
+	return args.Bool(0), args.Error(1)
+}

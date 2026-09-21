@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/api"
+	"github.com/checkmarble/marble-backend/cmd/staffconsolidation"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -335,7 +336,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		}
 	}
 
-	repositories := repositories.NewRepositories(
+	repositorySet := repositories.NewRepositories(
 		pool,
 		gcpConfig,
 		repositories.WithRedisClient(redisClient),
@@ -355,7 +356,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		return err
 	}
 
-	deploymentMetadata, err := GetDeploymentMetadata(ctx, repositories)
+	deploymentMetadata, err := GetDeploymentMetadata(ctx, repositorySet)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return errors.Wrap(err, "failed to get deployment ID from Marble DB")
@@ -373,7 +374,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 
 	aiPromptsFS, aiAgentModelConfig := configAiResources(ctx, license, licenseConfig, aiAgentConfig, aiPromptsServingDir, config.Version)
 
-	uc := usecases.NewUsecases(repositories,
+	uc := usecases.NewUsecases(repositorySet,
 		usecases.WithAppName(appName),
 		usecases.WithApiVersion(config.Version),
 		usecases.WithBatchIngestionMaxSize(serverConfig.batchIngestionMaxSize),
@@ -417,6 +418,25 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		}); err != nil {
 			utils.LogAndReportSentryError(ctx, err)
 			return err
+		}
+	}
+	if isMarbleSaasProject && mode == api.ServerModeDefault {
+		marbleExecutor := func(ctx context.Context) repositories.Executor {
+			exec, _ := repositorySet.ExecutorGetter.GetExecutor(ctx, models.DATABASE_SCHEMA_TYPE_MARBLE, nil)
+			return exec
+		}
+		clientExecutor := func(ctx context.Context, organizationID uuid.UUID) (repositories.Executor, error) {
+			org, err := repositorySet.MarbleDbRepository.GetOrganizationById(ctx, marbleExecutor(ctx), organizationID)
+			if err != nil {
+				return nil, err
+			}
+			return repositorySet.ExecutorGetter.GetExecutor(ctx, models.DATABASE_SCHEMA_TYPE_CLIENT, &org)
+		}
+		if err := staffconsolidation.RunOnce(ctx, staffconsolidation.Config{
+			MarblePool: pool, ClientExecutor: clientExecutor, FirebaseAdmin: deps.FirebaseAdmin, Logger: logger,
+		}); err != nil {
+			utils.LogAndReportSentryError(ctx, err)
+			return errors.Wrap(err, "failed to consolidate staff accounts")
 		}
 	}
 
