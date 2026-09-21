@@ -7,21 +7,25 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-// Structural validation for numeric-first-dimension Switches stored in rule formulas.
+// Validates Switch nodes in rule formulas whose cases look like numeric ranges.
+// Called at publish and dry-run from ValidateScenarioAstImpl and
+// ValidateScenarioIterationImpl via appendNumericSwitchValidationErrors.
+// Walks the stored AST. Does not change evaluate.Switch, which still returns
+// the first Case whose predicate is true.
 //
-// Evaluation is first-match on boolean Case predicates (see evaluate.Switch). Overlapping
-// `<=` thresholds become ranges only if Cases are ordered and homogeneous. This file does
-// not change eval: it walks the unevaluated AST at publish / dry-run time.
+// One-variable switch. Cases must share one field and list thresholds in
+// non-decreasing order, so first-match `<=` behaves as ranges:
 //
-// Stored shapes this validates:
-//   - 1-variable: Case(<=(F, t), returnValue)
-//   - matrix:     Case(And(<=(F, t), =(G, v)), returnValue)
+//	Case(<=(amount, 100), 4)   // amount <= 100
+//	Case(<=(amount, 200), 6)   // 100 < amount <= 200
 //
-// String / risk-level / two-string switches and scoring Switches (ScoreComputation
-// children) do not match those shapes and are left alone.
+// Matrix switch. Same numeric field, plus an equality on a second field:
 //
-// Called from ValidateScenarioAstImpl and ValidateScenarioIterationImpl via
-// appendNumericSwitchValidationErrors.
+//	Case(And(<=(amount, 100), =(org, "orga1")), 4)
+//	Case(And(<=(amount, 200), =(org, "orga1")), 6)
+//
+// String, risk-level, two-string, and scoring switches (ScoreComputation
+// children) do not match these shapes and are skipped.
 
 type numericSwitchCaseKind int
 
