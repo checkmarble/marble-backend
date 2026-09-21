@@ -17,7 +17,11 @@
             ".env": "env"
       },
       "github.copilot.enable": {
-            "env": false,
+            "*": true,
+            "plaintext": false,
+            "markdown": false,
+            "scminput": false,
+            "env": false
       },
       "Prettier-SQL.expressionWidth": 80,
       "Prettier-SQL.SQLFlavourOverride": "postgresql",

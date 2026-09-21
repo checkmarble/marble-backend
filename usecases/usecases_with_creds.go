@@ -419,11 +419,6 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewCsvIngestionDeadlineWorker() *CsvIngestionDeadlineWorker {
-	ingestionUsecase := usecases.NewIngestionUseCase()
-	return NewCsvIngestionDeadlineWorker(&ingestionUsecase)
-}
-
 func (usecases *UsecasesWithCreds) NewRunScheduledExecution() worker_jobs.RunScheduledExecution {
 	return *worker_jobs.NewRunScheduledExecution(
 		usecases.Repositories.MarbleDbRepository,

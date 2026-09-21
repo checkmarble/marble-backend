@@ -236,12 +236,6 @@ type CsvIngestionArgs struct {
 
 func (CsvIngestionArgs) Kind() string { return "csv_ingestion" }
 
-type CsvIngestionDeadlineArgs struct {
-	UploadLogId uuid.UUID `json:"upload_log_id"`
-}
-
-func (CsvIngestionDeadlineArgs) Kind() string { return "csv_ingestion_deadline" }
-
 type GenerateThumbnailArgs struct {
 	Bucket string `json:"bucket"`
 	Key    string `json:"key"`

@@ -30,13 +30,6 @@ type asyncUploadTaskEnqueuer interface {
 		uploadLogId uuid.UUID,
 		ingestionOptions models.IngestionOptions,
 	) error
-	EnqueueCsvIngestionDeadlineTask(
-		ctx context.Context,
-		tx repositories.Transaction,
-		organizationId uuid.UUID,
-		uploadLogId uuid.UUID,
-		deadline time.Time,
-	) error
 }
 
 type asyncUploadFinalizer interface {
@@ -84,7 +77,8 @@ func (w AsyncUploadWorker) Work(ctx context.Context, job *river.Job[models.Async
 					return err
 				}
 				return river.JobCancel(
-					errors.Newf("async upload: no file uploaded to blob storage after %s, cancelling watchdog", ASYNC_UPLOAD_TIMEOUT))
+					errors.Newf("async upload: no file uploaded to blob storage after %s, cancelling watchdog", ASYNC_UPLOAD_TIMEOUT),
+				)
 			}
 
 			// Otherwise, we snooze the job
@@ -96,44 +90,35 @@ func (w AsyncUploadWorker) Work(ctx context.Context, job *river.Job[models.Async
 	}
 
 	if blobAttrs.Size > ASYNC_UPLOAD_MAX_SIZE {
-		utils.LoggerFromContext(ctx).WarnContext(ctx, "uploaded file for async ingestion was too large",
-			"org_id", job.Args.OrgId,
-			"key", job.Args.Key,
-			"size", blobAttrs.Size)
+		utils.LoggerFromContext(ctx).
+			WarnContext(
+				ctx, "uploaded file for async ingestion was too large",
+				"org_id", job.Args.OrgId,
+				"key", job.Args.Key,
+				"size_GB", blobAttrs.Size%10<<30,
+			)
 
-		return w.createUploadError(ctx, job, fmt.Sprintf("maximum allowed file size is 10GB, provided file was %d GB", blobAttrs.Size%10<<30))
+		if err := w.finalizer.FailUploadLog(ctx, job.Args.UploadLogId, fmt.Sprintf("maximum allowed file size is 10GB, provided file was %d GB", blobAttrs.Size%10<<30)); err != nil {
+			return err
+		}
+		if err := w.blobRepository.DeleteFile(ctx, w.ingestionBucketUrl, job.Args.Key); err != nil {
+			utils.LoggerFromContext(ctx).
+				ErrorContext(
+					ctx, "could not delete uploaded file",
+					"org_id", job.Args.OrgId,
+					"key", job.Args.Key,
+					"error", err.Error(),
+				)
+			return err
+		}
+		return nil
 	}
 
 	return w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		deadline := time.Now().Add(utils.GetEnvDuration("CSV_INGESTION_TOTAL_TIMEOUT", models.CsvIngestionTotalTimeoutDefault))
-		done, err := w.uploadLogRepository.UpdateUploadLogStatus(ctx, tx, models.UpdateUploadLogStatusInput{
-			Id:                           job.Args.UploadLogId,
-			CurrentUploadStatusCondition: models.UploadPending,
-			UploadStatus:                 models.UploadProcessing,
-			DeadlineAt:                   &deadline,
-		})
-		if err != nil || !done {
-			return err
-		}
-		if err := w.taskQueueRepository.EnqueueCsvIngestionDeadlineTask(ctx, tx, job.Args.OrgId, job.Args.UploadLogId, deadline); err != nil {
-			return err
-		}
 		return w.taskQueueRepository.EnqueueCsvIngestionTask(ctx, tx, job.Args.OrgId, job.Args.UploadLogId, models.IngestionOptions{
 			ShouldMonitor:          job.Args.IngestionOptions.ShouldMonitor,
 			ContinuousScreeningIds: job.Args.IngestionOptions.ContinuousScreeningIds,
 			ShouldScreen:           job.Args.IngestionOptions.ShouldScreen,
 		})
 	})
-}
-
-func (w AsyncUploadWorker) createUploadError(ctx context.Context, job *river.Job[models.AsyncUploadArgs], err string) error {
-	if finalizationErr := w.finalizer.FailUploadLog(ctx, job.Args.UploadLogId, err); finalizationErr != nil {
-		return finalizationErr
-	}
-	if err := w.blobRepository.DeleteFile(ctx, w.ingestionBucketUrl, job.Args.Key); err != nil {
-		utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not delete uploaded file",
-			"org_id", job.Args.OrgId, "key", job.Args.Key, "error", err.Error())
-		return err
-	}
-	return nil
 }
