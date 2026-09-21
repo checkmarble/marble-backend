@@ -19,6 +19,8 @@ const (
 	FILTER_ENDS_WITH         FilterOperator = "StringEndsWith"
 	FILTER_UNKNOWN_OPERATION FilterOperator = "FILTER_UNKNOWN_OPERATION"
 	FILTER_FUZZY_MATCH       FilterOperator = "FuzzyMatch"
+	FILTER_IS_MULTIPLE_OF    FilterOperator = "IsMultipleOf"
+	FILTER_TIMESTAMP_EXTRACT FilterOperator = "TimestampExtract"
 )
 
 func (op FilterOperator) IsUnary() bool {
@@ -39,4 +41,10 @@ type FuzzyMatchOptions struct {
 	Threshold float64
 
 	Value string
+}
+
+type TimestampExtractOptions struct {
+	Part     string
+	Ranges   [][2]int
+	Timezone string
 }

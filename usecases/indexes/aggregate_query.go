@@ -164,7 +164,8 @@ func aggregationNodeToQueryFamily(node ast.Node) (models.AggregateQueryFamily, e
 			}
 		case ast.FILTER_IS_IN_LIST, ast.FILTER_IS_NOT_IN_LIST, ast.FILTER_NOT_EQUAL,
 			ast.FILTER_IS_EMPTY, ast.FILTER_IS_NOT_EMPTY, ast.FILTER_ENDS_WITH,
-			ast.FILTER_STARTS_WITH, ast.FILTER_FUZZY_MATCH:
+			ast.FILTER_STARTS_WITH, ast.FILTER_FUZZY_MATCH,
+			ast.FILTER_IS_MULTIPLE_OF, ast.FILTER_TIMESTAMP_EXTRACT:
 			if !family.EqConditions.Contains(fieldName) &&
 				!family.IneqConditions.Contains(fieldName) {
 				family.SelectOrOtherConditions.Insert(fieldName)

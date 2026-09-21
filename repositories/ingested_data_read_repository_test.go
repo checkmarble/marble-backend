@@ -315,6 +315,146 @@ AND CASE
 	assert.Equal(t, stripQuery(expected), stripQuery(sql))
 }
 
+func TestIngestedDataQueryAggregatedValueWithIsMultipleOfFilter(t *testing.T) {
+	tests := []struct {
+		name         string
+		value        any
+		expectedSQL  string
+		expectedArgs []any
+	}{
+		{
+			name:  "non-zero divisor",
+			value: 10,
+			expectedSQL: `
+				SELECT COUNT(*)
+				FROM "test_schema"."first"
+				WHERE "test_schema"."first".valid_until = $1
+				AND "test_schema"."first"."int_var"::numeric % $2 = 0
+			`,
+			expectedArgs: []any{"Infinity", 10},
+		},
+		{
+			name:  "zero integer divisor",
+			value: 0,
+			expectedSQL: `
+				SELECT COUNT(*)
+				FROM "test_schema"."first"
+				WHERE "test_schema"."first".valid_until = $1
+				AND false
+			`,
+			expectedArgs: []any{"Infinity"},
+		},
+		{
+			name:  "zero floating-point divisor",
+			value: 0.0,
+			expectedSQL: `
+				SELECT COUNT(*)
+				FROM "test_schema"."first"
+				WHERE "test_schema"."first".valid_until = $1
+				AND false
+			`,
+			expectedArgs: []any{"Infinity"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			query, err := createQueryAggregated(
+				TransactionTest{},
+				utils.DummyTableNameFirst,
+				utils.DummyFieldNameForInt,
+				models.Int,
+				ast.AGGREGATOR_COUNT,
+				[]models.FilterWithType{{
+					Filter: ast.Filter{
+						TableName: utils.DummyTableNameFirst,
+						FieldName: utils.DummyFieldNameForInt,
+						Operator:  ast.FILTER_IS_MULTIPLE_OF,
+						Value:     tt.value,
+					},
+					FieldType: models.Int,
+				}},
+				map[string]any{},
+			)
+			assert.NoError(t, err)
+
+			sql, args, err := query.ToSql()
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedArgs, args)
+			assert.Equal(t, stripQuery(tt.expectedSQL), stripQuery(sql))
+		})
+	}
+}
+
+func TestIngestedDataQueryAggregatedValueWithTimestampExtractFilter(t *testing.T) {
+	tests := []struct {
+		name         string
+		options      ast.TimestampExtractOptions
+		expectedSQL  string
+		expectedArgs []any
+	}{
+		{
+			name: "day of month",
+			options: ast.TimestampExtractOptions{
+				Part:     "day_of_month",
+				Ranges:   [][2]int{{1, 10}},
+				Timezone: "Europe/Paris",
+			},
+			expectedSQL: `
+				SELECT COUNT(*)
+				FROM "test_schema"."first"
+				WHERE "test_schema"."first".valid_until = $1
+				AND (extract(day from "test_schema"."first"."time_var" at time zone $2) between $3 and $4)
+			`,
+			expectedArgs: []any{"Infinity", "Europe/Paris", 1, 10},
+		},
+		{
+			name: "day of week with multiple ranges",
+			options: ast.TimestampExtractOptions{
+				Part:     "day_of_week",
+				Ranges:   [][2]int{{1, 2}, {6, 7}},
+				Timezone: "Europe/Paris",
+			},
+			expectedSQL: `
+				SELECT COUNT(*)
+				FROM "test_schema"."first"
+				WHERE "test_schema"."first".valid_until = $1
+				AND (extract(isodow from "test_schema"."first"."time_var" at time zone $2) between $3 and $4
+					OR extract(isodow from "test_schema"."first"."time_var" at time zone $5) between $6 and $7)
+			`,
+			expectedArgs: []any{"Infinity", "Europe/Paris", 1, 2, "Europe/Paris", 6, 7},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			query, err := createQueryAggregated(
+				TransactionTest{},
+				utils.DummyTableNameFirst,
+				utils.DummyFieldNameForInt,
+				models.Int,
+				ast.AGGREGATOR_COUNT,
+				[]models.FilterWithType{{
+					Filter: ast.Filter{
+						TableName: utils.DummyTableNameFirst,
+						FieldName: utils.DummyFieldNameForTimestamp,
+						Operator:  ast.FILTER_TIMESTAMP_EXTRACT,
+						Value:     tt.options,
+					},
+					FieldType: models.Timestamp,
+				}},
+				map[string]any{},
+			)
+			assert.NoError(t, err)
+
+			sql, args, err := query.ToSql()
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedArgs, args)
+			assert.Equal(t, stripQuery(tt.expectedSQL), stripQuery(sql))
+		})
+	}
+}
+
 var normalizeWhitespaceRe = regexp.MustCompile(`\s+`)
 
 func stripQuery(q string) (s string) {
