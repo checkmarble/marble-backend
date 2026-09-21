@@ -17,19 +17,21 @@ type FilterEvaluator struct {
 }
 
 var validTypeForFilterOperators = map[ast.FilterOperator][]models.DataType{
-	ast.FILTER_EQUAL:            {models.Bool, models.Int, models.Float, models.String, models.Timestamp},
-	ast.FILTER_NOT_EQUAL:        {models.Bool, models.Int, models.Float, models.String, models.Timestamp},
-	ast.FILTER_GREATER:          {models.Int, models.Float, models.String, models.Timestamp},
-	ast.FILTER_GREATER_OR_EQUAL: {models.Int, models.Float, models.String, models.Timestamp},
-	ast.FILTER_LESSER:           {models.Int, models.Float, models.String, models.Timestamp},
-	ast.FILTER_LESSER_OR_EQUAL:  {models.Int, models.Float, models.String, models.Timestamp},
-	ast.FILTER_IS_IN_LIST:       {models.String},
-	ast.FILTER_IS_NOT_IN_LIST:   {models.String},
-	ast.FILTER_IS_EMPTY:         {models.Bool, models.Int, models.Float, models.String, models.Timestamp},
-	ast.FILTER_IS_NOT_EMPTY:     {models.Bool, models.Int, models.Float, models.String, models.Timestamp},
-	ast.FILTER_STARTS_WITH:      {models.String},
-	ast.FILTER_ENDS_WITH:        {models.String},
-	ast.FILTER_FUZZY_MATCH:      {models.String},
+	ast.FILTER_EQUAL:             {models.Bool, models.Int, models.Float, models.String, models.Timestamp},
+	ast.FILTER_NOT_EQUAL:         {models.Bool, models.Int, models.Float, models.String, models.Timestamp},
+	ast.FILTER_GREATER:           {models.Int, models.Float, models.String, models.Timestamp},
+	ast.FILTER_GREATER_OR_EQUAL:  {models.Int, models.Float, models.String, models.Timestamp},
+	ast.FILTER_LESSER:            {models.Int, models.Float, models.String, models.Timestamp},
+	ast.FILTER_LESSER_OR_EQUAL:   {models.Int, models.Float, models.String, models.Timestamp},
+	ast.FILTER_IS_IN_LIST:        {models.String},
+	ast.FILTER_IS_NOT_IN_LIST:    {models.String},
+	ast.FILTER_IS_EMPTY:          {models.Bool, models.Int, models.Float, models.String, models.Timestamp},
+	ast.FILTER_IS_NOT_EMPTY:      {models.Bool, models.Int, models.Float, models.String, models.Timestamp},
+	ast.FILTER_STARTS_WITH:       {models.String},
+	ast.FILTER_ENDS_WITH:         {models.String},
+	ast.FILTER_FUZZY_MATCH:       {models.String},
+	ast.FILTER_IS_MULTIPLE_OF:    {models.Int, models.Float},
+	ast.FILTER_TIMESTAMP_EXTRACT: {models.Timestamp},
 }
 
 func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
@@ -83,7 +85,7 @@ func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) 
 	// The value that is promoted here is then passed directly to the ingested data read repository to be used as a filter value in the sql query.
 	var promotedValue any
 	switch {
-	case operator == ast.FILTER_FUZZY_MATCH:
+	case operator == ast.FILTER_FUZZY_MATCH, operator == ast.FILTER_TIMESTAMP_EXTRACT:
 		// fuzzy match filter takes a custom type (ast.FuzzyMatchOptions), pass it through as it is.
 		promotedValue = value
 	case fieldType == models.Int && reflect.TypeOf(value) == reflect.TypeOf(float64(0)):

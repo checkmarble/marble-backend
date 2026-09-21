@@ -48,3 +48,46 @@ func TestAdaptArgumentToListOfThings_list_of_different_types(t *testing.T) {
 	_, err := adaptArgumentToListOfThings[Thing](things)
 	assert.Error(t, err)
 }
+
+func TestAdaptArgumentToListOfRanges(t *testing.T) {
+	tests := []struct {
+		name     string
+		argument any
+		expected [][2]int
+		wantErr  bool
+	}{
+		{
+			name:     "typed ranges",
+			argument: [][2]int{{1, 3}, {5, 8}},
+			expected: [][2]int{{1, 3}, {5, 8}},
+		},
+		{
+			name:     "JSON-shaped ranges",
+			argument: []any{[]any{float64(1), float64(3)}, []any{5, 8}},
+			expected: [][2]int{{1, 3}, {5, 8}},
+		},
+		{
+			name:     "reversed typed range",
+			argument: [][2]int{{3, 1}},
+			wantErr:  true,
+		},
+		{
+			name:     "reversed JSON-shaped range",
+			argument: []any{[]any{3, 1}},
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := adaptArgumentToListOfRanges(tt.argument)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}

@@ -477,6 +477,12 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 			params.OrganizationId,
 		))
 
+	environment.AddEvaluator(ast.FUNC_TIMESTAMP_EXTRACT_FILTER_OPTIONS, evaluate.NewTimestampExtractOptionsEvaluator(
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		params.OrganizationId,
+	))
+
 	environment.AddEvaluator(
 		ast.FUNC_MONITORING_LIST_CHECK,
 		evaluate.EntityAnnotationCheck{

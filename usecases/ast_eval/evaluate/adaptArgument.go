@@ -235,3 +235,46 @@ func adaptArgumentToJSONStruct[T any](argument any) (T, error) {
 
 	return result, nil
 }
+
+func adaptArgumentToListOfRanges(argument any) ([][2]int, error) {
+	result, ok := argument.([][2]int)
+
+	if !ok {
+		rows, ok := argument.([]any)
+		if !ok {
+			return nil, fmt.Errorf("expected outer slice, got %T", argument)
+		}
+
+		result = make([][2]int, len(rows))
+
+		for i, row := range rows {
+			switch r := row.(type) {
+			case []any:
+				if len(r) != 2 {
+					return nil, fmt.Errorf("invalid range size at [%d]: %v", i, row)
+				}
+
+				for j, elem := range r {
+					switch v := elem.(type) {
+					case int:
+						result[i][j] = v
+					case float64:
+						result[i][j] = int(v)
+					default:
+						return nil, fmt.Errorf("unexpected element type at [%d][%d]: %T", i, j, elem)
+					}
+				}
+			default:
+				return nil, fmt.Errorf("unexpected row type at [%d]: %T", i, row)
+			}
+		}
+	}
+
+	for i, r := range result {
+		if r[0] > r[1] {
+			return nil, fmt.Errorf("invalid reverse range at [%d]: %v", i, r)
+		}
+	}
+
+	return result, nil
+}

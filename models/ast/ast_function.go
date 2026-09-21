@@ -51,6 +51,7 @@ const (
 	FUNC_STRING_TEMPLATE
 	FUNC_STRING_CONCAT
 	FUNC_FUZZY_MATCH_FILTER_OPTIONS
+	FUNC_TIMESTAMP_EXTRACT_FILTER_OPTIONS
 	FUNC_MONITORING_LIST_CHECK
 	FUNC_RECORD_HAS_TAGS
 	FUNC_RECORD_HAS_PAST_ALERTS
@@ -255,6 +256,11 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		DebugName:      "FUNC_FUZZY_MATCH_FILTER_OPTIONS",
 		AstName:        "FuzzyMatchOptions",
 		NamedArguments: []string{"algorithm", "threshold", "value"},
+	},
+	FUNC_TIMESTAMP_EXTRACT_FILTER_OPTIONS: {
+		DebugName:      "FUNC_TIMESTAMP_EXTRACT_FILTER_OPTIONS",
+		AstName:        "TimestampExtractOptions",
+		NamedArguments: []string{"part", "ranges"},
 	},
 	FUNC_IS_EMPTY: {
 		DebugName: "FUNC_IS_EMPTY",
