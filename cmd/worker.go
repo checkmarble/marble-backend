@@ -168,7 +168,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		Exporter:        workerConfig.telemetryExporter,
 		SamplingMap:     infra.NewTelemetrySamplingMap(ctx, workerConfig.otelSamplingRates),
 	}
-	telemetryRessources, err := infra.InitTelemetry(tracingConfig, apiVersion)
+	telemetryRessources, err := infra.InitTelemetry(ctx, tracingConfig, apiVersion)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 	}

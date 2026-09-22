@@ -7,12 +7,14 @@ import (
 	"math"
 	"strings"
 
-	texporter "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace"
 	gcppropagator "github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator"
-	"google.golang.org/api/option"
+	"github.com/cockroachdb/errors"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/oauth"
 
 	"go.opentelemetry.io/contrib/detectors/gcp"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -36,21 +38,36 @@ func NoopTelemetry() TelemetryRessources {
 	}
 }
 
-func InitTelemetry(configuration TelemetryConfiguration, apiVersion string) (TelemetryRessources, error) {
+func InitTelemetry(ctx context.Context, configuration TelemetryConfiguration, apiVersion string) (TelemetryRessources, error) {
 	if !configuration.Enabled {
 		return NoopTelemetry(), nil
 	}
 
 	var exporter sdktrace.SpanExporter
 
+	attrs := []attribute.KeyValue{
+		semconv.ServiceNameKey.String(configuration.ApplicationName),
+		semconv.ServiceVersion(apiVersion),
+	}
+
 	switch configuration.Exporter {
 	case "gcp":
-		gcpExporter, err := texporter.New(
-			texporter.WithProjectID(configuration.ProjectID), // If empty (env variable GOOGLE_CLOUD_PROJECT not set), it will try to determine the project id from the GCP metadata server
-			texporter.WithTraceClientOptions([]option.ClientOption{option.WithTelemetryDisabled()}),
+		creds, err := oauth.NewApplicationDefault(ctx)
+		if err != nil {
+			return TelemetryRessources{}, errors.Wrap(err, "could not get application default credentials for tracing provider")
+		}
+
+		gcpExporter, err := otlptracegrpc.New(
+			ctx,
+			otlptracegrpc.WithEndpoint("telemetry.googleapis.com:443"),
+			otlptracegrpc.WithDialOption(grpc.WithPerRPCCredentials(creds)),
 		)
 		if err != nil {
-			return TelemetryRessources{}, fmt.Errorf("texporter.New error: %w", err)
+			return TelemetryRessources{}, fmt.Errorf("otlptracegrpc.New error: %w", err)
+		}
+
+		if configuration.ProjectID != "" {
+			attrs = append(attrs, attribute.KeyValue{Key: "gcp.project_id", Value: attribute.StringValue(configuration.ProjectID)})
 		}
 
 		exporter = gcpExporter
@@ -67,10 +84,7 @@ func InitTelemetry(configuration TelemetryConfiguration, apiVersion string) (Tel
 	res, err := resource.New(context.Background(),
 		resource.WithDetectors(gcp.NewDetector()),
 		resource.WithTelemetrySDK(),
-		resource.WithAttributes(
-			semconv.ServiceNameKey.String(configuration.ApplicationName),
-			semconv.ServiceVersion(apiVersion),
-		),
+		resource.WithAttributes(attrs...),
 	)
 	if err != nil {
 		return TelemetryRessources{}, fmt.Errorf("resource.New error: %w", err)
