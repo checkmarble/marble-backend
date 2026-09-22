@@ -23,6 +23,7 @@ type DBUploadLog struct {
 	ByteOffset      int64      `db:"byte_offset"`
 	InputError      *string    `db:"input_error"`
 	Error           *string    `db:"error"`
+	ErrorCode       *string    `db:"error_code"`
 }
 
 const TABLE_UPLOAD_LOGS = "upload_logs"
@@ -34,7 +35,7 @@ func AdaptUploadLog(db DBUploadLog) (models.UploadLog, error) {
 	if db.DeadlineAt != nil {
 		deadline = *db.DeadlineAt
 	}
-	return models.UploadLog{
+	uploadLog := models.UploadLog{
 		Id:             db.Id,
 		OrganizationId: db.OrganizationId,
 		UserId:         db.UserId,
@@ -49,5 +50,9 @@ func AdaptUploadLog(db DBUploadLog) (models.UploadLog, error) {
 		ByteOffset:     db.ByteOffset,
 		InputError:     db.InputError,
 		Error:          db.Error,
-	}, nil
+	}
+	if db.ErrorCode != nil {
+		uploadLog.ErrorCode = models.IngestionFailureCode(*db.ErrorCode)
+	}
+	return uploadLog, nil
 }

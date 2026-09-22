@@ -36,7 +36,7 @@ import (
 const (
 	DefaultApiBatchIngestionSize = 100
 
-	CSV_INGESTION_ITERATION_TIMEOUT = 10 * time.Millisecond
+	CSV_INGESTION_ITERATION_TIMEOUT = 10 * time.Second
 
 	// CSV_INGESTION_TIMEOUT_MARGIN is the headroom reserved before river's own Timeout, so there is
 	// time to save the checkpoint and snooze before river cancels the job. The deadline is only
@@ -569,8 +569,7 @@ func (usecase *IngestionUseCase) FailUploadLog(
 		return nil
 	}
 
-	err = usecase.finalizeUploadLog(ctx, uploadLog, uploadLog.UploadStatus, models.UploadFailure,
-		nil, nil, &reason, failureCode, reason)
+	err = usecase.finalizeUploadLog(ctx, uploadLog, uploadLog.UploadStatus, models.UploadFailure, nil, nil, &reason, failureCode)
 	return err
 }
 
@@ -585,12 +584,15 @@ func (usecase *IngestionUseCase) finalizeUploadLog(
 	inputError *string,
 	errorMessage *string,
 	failureCode models.IngestionFailureCode,
-	publicMessage string,
 ) error {
 	return usecase.transactionFactory.Transaction(
 		ctx,
 		func(tx repositories.Transaction) error {
 			finishedAt := time.Now()
+			var errorCode *models.IngestionFailureCode
+			if failureCode != "" {
+				errorCode = &failureCode
+			}
 			done, err := usecase.uploadLogRepository.UpdateUploadLogStatus(ctx, tx, models.UpdateUploadLogStatusInput{
 				Id:                           uploadLog.Id,
 				CurrentUploadStatusCondition: expectedStatus,
@@ -599,6 +601,7 @@ func (usecase *IngestionUseCase) finalizeUploadLog(
 				NumRowsIngested:              rowsIngested,
 				InputError:                   inputError,
 				Error:                        errorMessage,
+				ErrorCode:                    errorCode,
 			})
 			if err != nil || !done {
 				return err
@@ -611,12 +614,13 @@ func (usecase *IngestionUseCase) finalizeUploadLog(
 			}
 			uploadLog.InputError = inputError
 			uploadLog.Error = errorMessage
+			uploadLog.ErrorCode = failureCode
 
 			var event models.WebhookEventContent
 			if status == models.UploadSuccess {
 				event = models.NewWebhookEventIngestionCompleted(uploadLog)
 			} else {
-				event = models.NewWebhookEventIngestionFailed(uploadLog, failureCode, publicMessage)
+				event = models.NewWebhookEventIngestionFailed(uploadLog)
 			}
 			if err := usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				OrganizationId: uploadLog.OrganizationId,
@@ -717,6 +721,9 @@ func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(
 
 		if inputErr != nil {
 			inputErrorString = strings.Join(errors.GetAllDetails(inputErr), ": ")
+			if inputErrorString == "" {
+				inputErrorString = inputErr.Error()
+			}
 		}
 		if ingestErr != nil {
 			errorString = ingestErr.Error()
@@ -731,7 +738,6 @@ func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(
 			&inputErrorString,
 			&errorString,
 			ingestionFailureCode(inputErr, ingestErr),
-			publicIngestionErrorMessage(inputErr, ingestErr),
 		)
 		if err != nil {
 			logger.ErrorContext(failureCtx, fmt.Sprintf("Error setting upload log %s to failed", uploadLog.Id), "error", err.Error())
@@ -785,7 +791,8 @@ func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(
 		return models.CsvIngestionIncomplete, nil
 	}
 
-	err = usecase.finalizeUploadLog(ctx, uploadLog, models.UploadProcessing, models.UploadSuccess, &out.numRowsIngested, nil, nil, "", "")
+	err = usecase.finalizeUploadLog(ctx, uploadLog, models.UploadProcessing, models.UploadSuccess,
+		&out.numRowsIngested, nil, nil, "")
 	if err != nil {
 		return models.CsvIngestionCompleted, err
 	}
@@ -830,20 +837,6 @@ func ingestionFailureCode(inputErr, ingestErr error) models.IngestionFailureCode
 		return models.IngestionFailureInvalidInput
 	}
 	return models.IngestionFailureInternalError
-}
-
-func publicIngestionErrorMessage(inputErr, ingestErr error) string {
-	err := inputErr
-	if err == nil && ingestionFailureCode(nil, ingestErr) == models.IngestionFailureInvalidInput {
-		err = ingestErr
-	}
-	if err == nil {
-		return ""
-	}
-	if details := errors.GetAllDetails(err); len(details) > 0 {
-		return strings.Join(details, ": ")
-	}
-	return err.Error()
 }
 
 // readCsvHeader reads the header row from the start of the file and returns it along with the

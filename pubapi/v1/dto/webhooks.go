@@ -41,23 +41,7 @@ type WebhookEventData struct {
 	ContinuousScreening *ContinuousScreening      `json:"continuous_screening,omitzero"`
 	Match               *ContinuousScreeningMatch `json:"match,omitzero"`
 	RiskLevel           *RiskLevel                `json:"risk_level,omitzero"`
-	Ingestion           *WebhookIngestion         `json:"ingestion,omitzero"`
-}
-
-type WebhookIngestion struct {
-	Id            string                 `json:"id"`
-	ObjectType    string                 `json:"object_type"`
-	Status        string                 `json:"status"`
-	StartedAt     time.Time              `json:"started_at"`
-	FinishedAt    *time.Time             `json:"finished_at"`
-	RowsProcessed int                    `json:"rows_processed"`
-	RowsIngested  int                    `json:"rows_ingested"`
-	Error         *WebhookIngestionError `json:"error,omitempty"`
-}
-
-type WebhookIngestionError struct {
-	Code    string `json:"code"`
-	Message string `json:"message,omitempty"`
+	Ingestion           *UploadLog                `json:"ingestion,omitzero"`
 }
 
 func AdaptWebhookEventData(
@@ -133,23 +117,7 @@ func AdaptWebhookEventData(
 			RiskLevel: applyWebhookEventData(m.Content.Score, func(rl models.ScoringScore) RiskLevel {
 				return AdaptRiskLevel(rl, nil)
 			}),
-			Ingestion: applyWebhookEventData(m.Content.Ingestion, func(event models.IngestionWebhookEvent) WebhookIngestion {
-				upload := event.UploadLog
-				var webhookError *WebhookIngestionError
-				if event.ErrorCode != "" {
-					webhookError = &WebhookIngestionError{Code: string(event.ErrorCode), Message: event.Message}
-				}
-				return WebhookIngestion{
-					Id:            upload.Id.String(),
-					ObjectType:    upload.TableName,
-					Status:        string(upload.UploadStatus),
-					StartedAt:     upload.StartedAt,
-					FinishedAt:    upload.FinishedAt,
-					RowsProcessed: max(upload.LinesProcessed, upload.RowsIngested),
-					RowsIngested:  upload.RowsIngested,
-					Error:         webhookError,
-				}
-			}),
+			Ingestion: applyWebhookEventData(m.Content.Ingestion, AdaptUploadLog),
 		},
 		Timestamp: m.Timestamp,
 	}
