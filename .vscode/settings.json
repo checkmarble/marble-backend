@@ -17,10 +17,6 @@
             ".env": "env"
       },
       "github.copilot.enable": {
-            "*": true,
-            "plaintext": false,
-            "markdown": false,
-            "scminput": false,
             "env": false
       },
       "Prettier-SQL.expressionWidth": 80,
