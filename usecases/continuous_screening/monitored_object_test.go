@@ -959,10 +959,8 @@ func TestPrepareScreeningFilters(t *testing.T) {
 			dataModelMapping: map[string]string{
 				"name": "name",
 			},
-			expectedFilters: models.OpenSanctionsFilter{
-				"name": []string{""},
-			},
-			wantError: false,
+			expectedFilters: models.OpenSanctionsFilter{},
+			wantError:       false,
 		},
 		{
 			name: "with timestamp value",

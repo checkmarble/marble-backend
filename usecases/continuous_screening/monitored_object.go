@@ -270,7 +270,9 @@ func prepareScreeningFilters(
 	for _, modelField := range keys {
 		property := dataModelMapping[modelField]
 		if value, ok := ingestedObject.Data[modelField]; ok {
-			filters[property] = append(filters[property], stringRepresentation(value))
+			if s := stringRepresentation(value); s != "" {
+				filters[property] = append(filters[property], stringRepresentation(value))
+			}
 		} else {
 			return nil, errors.Newf("field %s not found in ingested object", modelField)
 		}
