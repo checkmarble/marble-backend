@@ -9,6 +9,14 @@ update upload_logs
     where deadline_at is null;
 
 update upload_logs
+    set error = case
+        when coalesce(input_error, '') <> '' then input_error
+        else 'ingestion failed due to an internal error'
+    end
+    where status = 'failure'
+    and error is null;
+
+update upload_logs
     set error_code = case
         when coalesce(input_error, '') <> '' then 'invalid_input'
         else 'internal_error'

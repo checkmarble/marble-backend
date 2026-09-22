@@ -2,7 +2,6 @@ package worker_jobs
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -33,7 +32,7 @@ type asyncUploadTaskEnqueuer interface {
 }
 
 type asyncUploadFinalizer interface {
-	FailUploadLog(ctx context.Context, uploadLogId uuid.UUID, failureCode models.IngestionFailureCode, reason string) error
+	FailUploadLog(ctx context.Context, uploadLogId uuid.UUID, failureCode models.IngestionFailureCode) error
 }
 
 type AsyncUploadWorker struct {
@@ -77,7 +76,6 @@ func (w AsyncUploadWorker) Work(ctx context.Context, job *river.Job[models.Async
 					ctx,
 					job.Args.UploadLogId,
 					models.IngestionFailureUploadNotReceived,
-					"upload was not received before its deadline",
 				); err != nil {
 					return err
 				}
@@ -107,7 +105,6 @@ func (w AsyncUploadWorker) Work(ctx context.Context, job *river.Job[models.Async
 			ctx,
 			job.Args.UploadLogId,
 			models.IngestionFailureFileTooLarge,
-			fmt.Sprintf("uploaded file exceeds the 10 GB limit (received %.2f GB)", float64(blobAttrs.Size)/(1<<30)),
 		); err != nil {
 			return err
 		}

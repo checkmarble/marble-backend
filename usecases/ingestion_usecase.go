@@ -558,7 +558,6 @@ func (usecase *IngestionUseCase) FailUploadLog(
 	ctx context.Context,
 	uploadLogId uuid.UUID,
 	failureCode models.IngestionFailureCode,
-	reason string,
 ) error {
 	exec := usecase.executorFactory.NewExecutor()
 	uploadLog, err := usecase.uploadLogRepository.UploadLogById(ctx, exec, uploadLogId)
@@ -569,7 +568,8 @@ func (usecase *IngestionUseCase) FailUploadLog(
 		return nil
 	}
 
-	err = usecase.finalizeUploadLog(ctx, uploadLog, uploadLog.UploadStatus, models.UploadFailure, nil, nil, &reason, failureCode)
+	publicError := ingestionFailureMessage(failureCode)
+	err = usecase.finalizeUploadLog(ctx, uploadLog, uploadLog.UploadStatus, models.UploadFailure, nil, &publicError, failureCode)
 	return err
 }
 
@@ -581,7 +581,6 @@ func (usecase *IngestionUseCase) finalizeUploadLog(
 	expectedStatus models.UploadStatus,
 	status models.UploadStatus,
 	rowsIngested *int,
-	inputError *string,
 	errorMessage *string,
 	failureCode models.IngestionFailureCode,
 ) error {
@@ -599,7 +598,6 @@ func (usecase *IngestionUseCase) finalizeUploadLog(
 				UploadStatus:                 status,
 				FinishedAt:                   &finishedAt,
 				NumRowsIngested:              rowsIngested,
-				InputError:                   inputError,
 				Error:                        errorMessage,
 				ErrorCode:                    errorCode,
 			})
@@ -612,7 +610,6 @@ func (usecase *IngestionUseCase) finalizeUploadLog(
 			if rowsIngested != nil {
 				uploadLog.RowsIngested = *rowsIngested
 			}
-			uploadLog.InputError = inputError
 			uploadLog.Error = errorMessage
 			uploadLog.ErrorCode = failureCode
 
@@ -683,8 +680,7 @@ func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(
 	}
 
 	if time.Now().After(uploadLog.DeadlineAt) {
-		if err := usecase.FailUploadLog(ctx, uploadLog.Id, models.IngestionFailureGlobalTimeout,
-			"ingestion did not complete before its deadline"); err != nil {
+		if err := usecase.FailUploadLog(ctx, uploadLog.Id, models.IngestionFailureGlobalTimeout); err != nil {
 			return models.CsvIngestionCompleted, err
 		}
 		return models.CsvIngestionCompleted, nil
@@ -711,23 +707,14 @@ func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(
 
 		failureCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
 		defer cancel()
-		errorString, inputErrorString := "", ""
 		logger.ErrorContext(
 			ctx, "Ingestion attempt failed",
 			"upload_log_id", uploadLog.Id,
-			"input_error", inputErr,
+			"validation_error", inputErr,
 			"ingest_error", ingestErr,
 		)
 
-		if inputErr != nil {
-			inputErrorString = strings.Join(errors.GetAllDetails(inputErr), ": ")
-			if inputErrorString == "" {
-				inputErrorString = inputErr.Error()
-			}
-		}
-		if ingestErr != nil {
-			errorString = ingestErr.Error()
-		}
+		failureCode, publicError := ingestionFailureDetails(inputErr, ingestErr)
 
 		err := usecase.finalizeUploadLog(
 			failureCtx,
@@ -735,9 +722,8 @@ func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(
 			models.UploadProcessing,
 			models.UploadFailure,
 			&numRowsIngested,
-			&inputErrorString,
-			&errorString,
-			ingestionFailureCode(inputErr, ingestErr),
+			&publicError,
+			failureCode,
 		)
 		if err != nil {
 			logger.ErrorContext(failureCtx, fmt.Sprintf("Error setting upload log %s to failed", uploadLog.Id), "error", err.Error())
@@ -791,8 +777,7 @@ func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(
 		return models.CsvIngestionIncomplete, nil
 	}
 
-	err = usecase.finalizeUploadLog(ctx, uploadLog, models.UploadProcessing, models.UploadSuccess,
-		&out.numRowsIngested, nil, nil, "")
+	err = usecase.finalizeUploadLog(ctx, uploadLog, models.UploadProcessing, models.UploadSuccess, &out.numRowsIngested, nil, "")
 	if err != nil {
 		return models.CsvIngestionCompleted, err
 	}
@@ -828,15 +813,40 @@ func isRetryableIngestionError(err error) bool {
 	return true
 }
 
-func ingestionFailureCode(inputErr, ingestErr error) models.IngestionFailureCode {
-	if inputErr != nil || errors.Is(ingestErr, models.BadParameterError) || errors.Is(ingestErr, models.NotFoundError) {
-		return models.IngestionFailureInvalidInput
+func ingestionFailureDetails(inputErr, ingestErr error) (models.IngestionFailureCode, string) {
+	if inputErr != nil {
+		message := strings.Join(errors.GetAllDetails(inputErr), ": ")
+		if message == "" {
+			message = inputErr.Error()
+		}
+		return models.IngestionFailureInvalidInput, message
+	}
+	if errors.Is(ingestErr, models.BadParameterError) {
+		return models.IngestionFailureInvalidInput, ingestErr.Error()
+	}
+	if errors.Is(ingestErr, models.NotFoundError) {
+		return models.IngestionFailureInvalidInput, "a resource required for this ingestion was not found"
 	}
 	var csvErr *csv.ParseError
 	if errors.As(ingestErr, &csvErr) {
-		return models.IngestionFailureInvalidInput
+		return models.IngestionFailureInvalidInput, ingestErr.Error()
 	}
-	return models.IngestionFailureInternalError
+	return models.IngestionFailureInternalError, ingestionFailureMessage(models.IngestionFailureInternalError)
+}
+
+func ingestionFailureMessage(code models.IngestionFailureCode) string {
+	switch code {
+	case models.IngestionFailureGlobalTimeout:
+		return "ingestion did not complete before its deadline"
+	case models.IngestionFailureUploadNotReceived:
+		return "upload was not received before its deadline"
+	case models.IngestionFailureFileTooLarge:
+		return "uploaded file exceeds the 10 GB limit"
+	case models.IngestionFailureInvalidInput:
+		return "the ingestion input is invalid"
+	default:
+		return "ingestion failed due to an internal error"
+	}
 }
 
 // readCsvHeader reads the header row from the start of the file and returns it along with the
