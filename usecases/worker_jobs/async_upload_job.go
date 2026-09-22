@@ -33,7 +33,7 @@ type asyncUploadTaskEnqueuer interface {
 }
 
 type asyncUploadFinalizer interface {
-	FailUploadLog(ctx context.Context, uploadLogId uuid.UUID, reason string) error
+	FailUploadLog(ctx context.Context, uploadLogId uuid.UUID, failureCode models.IngestionFailureCode, reason string) error
 }
 
 type AsyncUploadWorker struct {
@@ -73,7 +73,12 @@ func (w AsyncUploadWorker) Work(ctx context.Context, job *river.Job[models.Async
 		if gcerrors.Code(err) == gcerrors.NotFound {
 			// If we passed the token validity period, it won't be uploaded, so we cancel the job
 			if time.Now().After(job.CreatedAt.Add(ASYNC_UPLOAD_TIMEOUT)) {
-				if err := w.finalizer.FailUploadLog(ctx, job.Args.UploadLogId, "upload was not received before its deadline"); err != nil {
+				if err := w.finalizer.FailUploadLog(
+					ctx,
+					job.Args.UploadLogId,
+					models.IngestionFailureUploadNotReceived,
+					"upload was not received before its deadline",
+				); err != nil {
 					return err
 				}
 				return river.JobCancel(
@@ -95,10 +100,15 @@ func (w AsyncUploadWorker) Work(ctx context.Context, job *river.Job[models.Async
 				ctx, "uploaded file for async ingestion was too large",
 				"org_id", job.Args.OrgId,
 				"key", job.Args.Key,
-				"size_GB", blobAttrs.Size%10<<30,
+				"size_GB", float64(blobAttrs.Size)/(1<<30),
 			)
 
-		if err := w.finalizer.FailUploadLog(ctx, job.Args.UploadLogId, fmt.Sprintf("maximum allowed file size is 10GB, provided file was %d GB", blobAttrs.Size%10<<30)); err != nil {
+		if err := w.finalizer.FailUploadLog(
+			ctx,
+			job.Args.UploadLogId,
+			models.IngestionFailureFileTooLarge,
+			fmt.Sprintf("uploaded file exceeds the 10 GB limit (received %.2f GB)", float64(blobAttrs.Size)/(1<<30)),
+		); err != nil {
 			return err
 		}
 		if err := w.blobRepository.DeleteFile(ctx, w.ingestionBucketUrl, job.Args.Key); err != nil {

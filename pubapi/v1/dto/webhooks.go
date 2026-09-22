@@ -45,14 +45,19 @@ type WebhookEventData struct {
 }
 
 type WebhookIngestion struct {
-	Id           string     `json:"id"`
-	ObjectType   string     `json:"object_type"`
-	Status       string     `json:"status"`
-	StartedAt    time.Time  `json:"started_at"`
-	FinishedAt   *time.Time `json:"finished_at"`
-	RowsIngested int        `json:"rows_ingested"`
-	ErrorCode    string     `json:"error_code,omitempty"`
-	InputError   string     `json:"input_error,omitempty"`
+	Id            string                 `json:"id"`
+	ObjectType    string                 `json:"object_type"`
+	Status        string                 `json:"status"`
+	StartedAt     time.Time              `json:"started_at"`
+	FinishedAt    *time.Time             `json:"finished_at"`
+	RowsProcessed int                    `json:"rows_processed"`
+	RowsIngested  int                    `json:"rows_ingested"`
+	Error         *WebhookIngestionError `json:"error,omitempty"`
+}
+
+type WebhookIngestionError struct {
+	Code    string `json:"code"`
+	Message string `json:"message,omitempty"`
 }
 
 func AdaptWebhookEventData(
@@ -128,19 +133,21 @@ func AdaptWebhookEventData(
 			RiskLevel: applyWebhookEventData(m.Content.Score, func(rl models.ScoringScore) RiskLevel {
 				return AdaptRiskLevel(rl, nil)
 			}),
-			Ingestion: applyWebhookEventData(m.Content.Ingestion, func(upload models.UploadLog) WebhookIngestion {
-				inputError := ""
-				if upload.InputError != nil {
-					inputError = *upload.InputError
-				}
-				errorCode := ""
-				if upload.UploadStatus == models.UploadFailure {
-					errorCode = "ingestion_failed"
+			Ingestion: applyWebhookEventData(m.Content.Ingestion, func(event models.IngestionWebhookEvent) WebhookIngestion {
+				upload := event.UploadLog
+				var webhookError *WebhookIngestionError
+				if event.ErrorCode != "" {
+					webhookError = &WebhookIngestionError{Code: string(event.ErrorCode), Message: event.Message}
 				}
 				return WebhookIngestion{
-					Id: upload.Id.String(), ObjectType: upload.TableName, Status: string(upload.UploadStatus),
-					StartedAt: upload.StartedAt, FinishedAt: upload.FinishedAt,
-					RowsIngested: upload.RowsIngested, ErrorCode: errorCode, InputError: inputError,
+					Id:            upload.Id.String(),
+					ObjectType:    upload.TableName,
+					Status:        string(upload.UploadStatus),
+					StartedAt:     upload.StartedAt,
+					FinishedAt:    upload.FinishedAt,
+					RowsProcessed: max(upload.LinesProcessed, upload.RowsIngested),
+					RowsIngested:  upload.RowsIngested,
+					Error:         webhookError,
 				}
 			}),
 		},
