@@ -249,7 +249,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		Exporter:        serverConfig.telemetryExporter,
 		SamplingMap:     infra.NewTelemetrySamplingMap(ctx, serverConfig.otelSamplingRates),
 	}
-	telemetryRessources, err := infra.InitTelemetry(tracingConfig, config.Version)
+	telemetryRessources, err := infra.InitTelemetry(ctx, tracingConfig, config.Version)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 	}
