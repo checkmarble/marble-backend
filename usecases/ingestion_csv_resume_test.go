@@ -99,11 +99,22 @@ func TestReadCsvHeader(t *testing.T) {
 }
 
 func TestReadCsvHeaderEmptyFile(t *testing.T) {
-	uc, _ := makeHeaderReadUsecase("")
+	for name, content := range map[string]string{
+		"empty":      "",
+		"blank rows": "\n\r\n",
+		"BOM only":   "\ufeff",
+	} {
+		t.Run(name, func(t *testing.T) {
+			uc, _ := makeHeaderReadUsecase(content)
 
-	_, _, err := uc.readCsvHeader(context.Background(), testResumeKey)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "error reading first row of CSV")
+			_, _, err := uc.readCsvHeader(context.Background(), testResumeKey)
+			require.ErrorIs(t, err, models.BadParameterError)
+			assert.False(t, isRetryableIngestionError(err))
+			code, message := ingestionFailureDetails(nil, err)
+			assert.Equal(t, models.IngestionFailureInvalidInput, code)
+			assert.Contains(t, message, "missing header")
+		})
+	}
 }
 
 // TestCsvResumeFromCheckpointOffset covers the core invariant of resumable ingestion: the offset the

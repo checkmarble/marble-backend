@@ -873,6 +873,9 @@ func (usecase *IngestionUseCase) readCsvHeader(ctx context.Context, fileName str
 	reader, bomLen := pure_utils.TrimBom(blob.ReadCloser)
 	csvReader := csv.NewReader(reader)
 	header, err := csvReader.Read()
+	if errors.Is(err, io.EOF) {
+		return nil, 0, errors.Wrap(models.BadParameterError, "error reading first row of CSV: missing header")
+	}
 	if err != nil {
 		return nil, 0, fmt.Errorf("error reading first row of CSV: %w", err)
 	}
