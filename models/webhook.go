@@ -73,22 +73,6 @@ type WebhookEventPayload struct {
 	Timestamp time.Time
 }
 
-type IngestionFailureCode string
-
-const (
-	IngestionFailureInvalidInput      IngestionFailureCode = "invalid_input"
-	IngestionFailureGlobalTimeout     IngestionFailureCode = "global_timeout"
-	IngestionFailureUploadNotReceived IngestionFailureCode = "upload_not_received"
-	IngestionFailureFileTooLarge      IngestionFailureCode = "file_too_large"
-	IngestionFailureInternalError     IngestionFailureCode = "internal_error"
-)
-
-type IngestionWebhookEvent struct {
-	UploadLog UploadLog
-	ErrorCode IngestionFailureCode
-	Message   string
-}
-
 type WebhookEventData struct {
 	Decision                 *DecisionWithRuleExecutions
 	Case                     *Case
@@ -98,7 +82,7 @@ type WebhookEventData struct {
 	ContinuousScreening      *ContinuousScreeningWithMatches
 	ContinuousScreeningMatch *ContinuousScreeningMatch
 	Score                    *ScoringScore
-	Ingestion                *IngestionWebhookEvent
+	Ingestion                *UploadLog
 }
 
 type WebhookEvent struct {
@@ -284,17 +268,11 @@ func NewWebhookScoringScoreChanged(score ScoringScore) WebhookEventContent {
 }
 
 func NewWebhookEventIngestionCompleted(upload UploadLog) WebhookEventContent {
-	ingestion := IngestionWebhookEvent{UploadLog: upload}
-	return newWebhookContent(WebhookEventType_IngestionCompleted, WebhookEventData{Ingestion: &ingestion})
+	return newWebhookContent(WebhookEventType_IngestionCompleted, WebhookEventData{Ingestion: &upload})
 }
 
-func NewWebhookEventIngestionFailed(
-	upload UploadLog,
-	errorCode IngestionFailureCode,
-	message string,
-) WebhookEventContent {
-	ingestion := IngestionWebhookEvent{UploadLog: upload, ErrorCode: errorCode, Message: message}
-	return newWebhookContent(WebhookEventType_IngestionFailed, WebhookEventData{Ingestion: &ingestion})
+func NewWebhookEventIngestionFailed(upload UploadLog) WebhookEventContent {
+	return newWebhookContent(WebhookEventType_IngestionFailed, WebhookEventData{Ingestion: &upload})
 }
 
 type Webhook struct {

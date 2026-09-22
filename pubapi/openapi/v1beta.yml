@@ -1579,6 +1579,7 @@ components:
       type: object
       required:
         - id
+        - object_type
         - status
         - started_at
         - rows_processed
@@ -1587,6 +1588,9 @@ components:
         id:
           type: string
           format: uuid
+        object_type:
+          description: Name of the object type being ingested.
+          type: string
         status:
           type: string
           enum: [pending, processing, success, failure]
@@ -1603,6 +1607,10 @@ components:
           type: integer
         error:
           type: string
+        error_code:
+          description: Stable machine-readable failure reason.
+          type: string
+          enum: [invalid_input, global_timeout, upload_not_received, file_too_large, internal_error]
 
     AsyncUploadCreated:
       title: Upload URL signed and generated

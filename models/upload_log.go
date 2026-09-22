@@ -6,7 +6,17 @@ import (
 	"github.com/google/uuid"
 )
 
-const CsvIngestionTotalTimeoutDefault = 50 * time.Second
+const CsvIngestionTotalTimeoutDefault = 12 * time.Hour
+
+type IngestionFailureCode string
+
+const (
+	IngestionFailureInvalidInput      IngestionFailureCode = "invalid_input"
+	IngestionFailureGlobalTimeout     IngestionFailureCode = "global_timeout"
+	IngestionFailureUploadNotReceived IngestionFailureCode = "upload_not_received"
+	IngestionFailureFileTooLarge      IngestionFailureCode = "file_too_large"
+	IngestionFailureInternalError     IngestionFailureCode = "internal_error"
+)
 
 type UploadLogFilters struct {
 	Status *UploadStatus
@@ -29,6 +39,7 @@ type UploadLog struct {
 	ByteOffset int64
 	InputError *string
 	Error      *string
+	ErrorCode  IngestionFailureCode
 }
 
 // CsvIngestionOutcome tells the CsvIngestionWorker whether an upload log is done with or whether it
@@ -77,4 +88,5 @@ type UpdateUploadLogStatusInput struct {
 	NumRowsIngested              *int
 	InputError                   *string
 	Error                        *string
+	ErrorCode                    *IngestionFailureCode
 }

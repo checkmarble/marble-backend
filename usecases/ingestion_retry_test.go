@@ -24,9 +24,7 @@ func TestIsRetryableIngestionError(t *testing.T) {
 func TestIngestionFailureDetails(t *testing.T) {
 	inputErr := errors.WithDetail(models.BadParameterError, "invalid amount at line 42")
 	assert.Equal(t, models.IngestionFailureInvalidInput, ingestionFailureCode(inputErr, nil))
-	assert.Contains(t, publicIngestionErrorMessage(inputErr, nil), "invalid amount at line 42")
 
 	internalErr := errors.New("relation private_schema.internal_table does not exist")
 	assert.Equal(t, models.IngestionFailureInternalError, ingestionFailureCode(nil, internalErr))
-	assert.Empty(t, publicIngestionErrorMessage(nil, internalErr))
 }

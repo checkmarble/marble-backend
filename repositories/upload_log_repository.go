@@ -46,6 +46,7 @@ func (repo *UploadLogRepositoryImpl) CreateUploadLog(ctx context.Context, exec E
 				"lines_processed",
 				"input_error",
 				"error",
+				"error_code",
 			).
 			Values(
 				log.Id,
@@ -60,6 +61,7 @@ func (repo *UploadLogRepositoryImpl) CreateUploadLog(ctx context.Context, exec E
 				log.LinesProcessed,
 				log.InputError,
 				log.Error,
+				log.ErrorCode,
 			),
 	)
 	return err
@@ -94,6 +96,9 @@ func (repo *UploadLogRepositoryImpl) UpdateUploadLogStatus(
 	}
 	if input.Error != nil {
 		updateRequest = updateRequest.Set("error", *input.Error)
+	}
+	if input.ErrorCode != nil {
+		updateRequest = updateRequest.Set("error_code", *input.ErrorCode)
 	}
 
 	updateRequest = updateRequest.
