@@ -178,6 +178,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		taskQueueRepository:       usecases.Repositories.TaskQueueRepository,
 		offloadedReader:           usecases.NewOffloadedReader(),
 		payloadEnricher:           usecases.NewPayloadEnrichmentUsecase(),
+		redisClient:               usecases.Repositories.RedisClient,
 	}
 }
 
@@ -1330,5 +1331,13 @@ func (usecases UsecasesWithCreds) NewScreeningSavedSearchesUsecase() ScreeningSe
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
+	)
+}
+
+func (usecases UsecasesWithCreds) NewAsyncDecisionStorageWorker() worker_jobs.AsyncDecisionStorageWorker {
+	return worker_jobs.NewAsyncDecisionStorageWorker(
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.RedisClient,
+		usecases.NewDecisionUsecase(),
 	)
 }

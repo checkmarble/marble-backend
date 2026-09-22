@@ -50,6 +50,9 @@ type ScenarioEvaluationParameters struct {
 	Pivots           []models.Pivot
 	CachedScreenings map[string]models.ScreeningWithMatches
 	ConcurrentRules  int
+	// Asynchronously write the decision. If set, persisting the decision will be done in
+	// a worker.
+	// AsyncStorage bool
 }
 
 type EvalScreeningUsecase interface {

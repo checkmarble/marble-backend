@@ -294,3 +294,12 @@ func (m *TaskQueueRepository) EnqueueAsyncUploadTask(
 	args := m.Called(ctx, tx, organizationId, objectType, key, ingestionOptions)
 	return args.Error(0)
 }
+
+func (m *TaskQueueRepository) EnqueueAsyncDecisionStorage(
+	ctx context.Context,
+	tx repositories.Transaction,
+	bundle models.DecisionBundle,
+) error {
+	args := m.Called(ctx, tx, bundle)
+	return args.Error(0)
+}

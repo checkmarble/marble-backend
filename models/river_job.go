@@ -341,3 +341,11 @@ type ClientDataPurgeArgs struct {
 func (ClientDataPurgeArgs) Kind() string {
 	return "client_data_purge"
 }
+
+type AsyncDecisionStorageArgs struct {
+	Bundle DecisionBundle `json:"bundle"`
+}
+
+func (AsyncDecisionStorageArgs) Kind() string {
+	return "async_decision_storage"
+}

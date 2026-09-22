@@ -134,7 +134,7 @@ type Screening struct {
 	RequestedBy                  *string
 	Partial                      bool
 	ErrorCodes                   []string
-	ErrorDetail                  error
+	ErrorDetail                  error `json:"-"` // Only used inline to propagate an error, should not be persisted
 
 	NumberOfMatches int
 	CreatedAt       time.Time

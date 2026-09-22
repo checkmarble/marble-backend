@@ -11,6 +11,14 @@ func IsUniqueViolationError(err error) bool {
 	return errors.As(err, &pgxErr) && pgxErr.Code == pgerrcode.UniqueViolation
 }
 
+func IsUniqueViolationErrorOf(err error, constraint string) bool {
+	var pgxErr *pgconn.PgError
+
+	return errors.As(err, &pgxErr) &&
+		pgxErr.Code == pgerrcode.UniqueViolation &&
+		pgxErr.ConstraintName == constraint
+}
+
 func IsDeadlockError(err error) bool {
 	var pgxErr *pgconn.PgError
 	return errors.As(err, &pgxErr) && pgxErr.Code == pgerrcode.DeadlockDetected
