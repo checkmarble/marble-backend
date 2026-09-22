@@ -36,7 +36,7 @@ import (
 const (
 	DefaultApiBatchIngestionSize = 100
 
-	CSV_INGESTION_ITERATION_TIMEOUT = 10 * time.Second
+	CSV_INGESTION_ITERATION_TIMEOUT = 10 * time.Millisecond
 
 	// CSV_INGESTION_TIMEOUT_MARGIN is the headroom reserved before river's own Timeout, so there is
 	// time to save the checkpoint and snooze before river cancels the job. The deadline is only
@@ -554,7 +554,12 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 // FailUploadLog marks an upload log as failed from outside the ingestion loop, used when the worker
 // gives up on resuming it. byte_offset and num_rows_ingested are deliberately left untouched, so the
 // failure can be diagnosed from where the ingestion stopped.
-func (usecase *IngestionUseCase) FailUploadLog(ctx context.Context, uploadLogId uuid.UUID, reason string) error {
+func (usecase *IngestionUseCase) FailUploadLog(
+	ctx context.Context,
+	uploadLogId uuid.UUID,
+	failureCode models.IngestionFailureCode,
+	reason string,
+) error {
 	exec := usecase.executorFactory.NewExecutor()
 	uploadLog, err := usecase.uploadLogRepository.UploadLogById(ctx, exec, uploadLogId)
 	if err != nil {
@@ -564,7 +569,8 @@ func (usecase *IngestionUseCase) FailUploadLog(ctx context.Context, uploadLogId 
 		return nil
 	}
 
-	err = usecase.finalizeUploadLog(ctx, uploadLog, uploadLog.UploadStatus, models.UploadFailure, nil, nil, &reason)
+	err = usecase.finalizeUploadLog(ctx, uploadLog, uploadLog.UploadStatus, models.UploadFailure,
+		nil, nil, &reason, failureCode, reason)
 	return err
 }
 
@@ -578,6 +584,8 @@ func (usecase *IngestionUseCase) finalizeUploadLog(
 	rowsIngested *int,
 	inputError *string,
 	errorMessage *string,
+	failureCode models.IngestionFailureCode,
+	publicMessage string,
 ) error {
 	return usecase.transactionFactory.Transaction(
 		ctx,
@@ -608,7 +616,7 @@ func (usecase *IngestionUseCase) finalizeUploadLog(
 			if status == models.UploadSuccess {
 				event = models.NewWebhookEventIngestionCompleted(uploadLog)
 			} else {
-				event = models.NewWebhookEventIngestionFailed(uploadLog)
+				event = models.NewWebhookEventIngestionFailed(uploadLog, failureCode, publicMessage)
 			}
 			if err := usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				OrganizationId: uploadLog.OrganizationId,
@@ -671,7 +679,8 @@ func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(
 	}
 
 	if time.Now().After(uploadLog.DeadlineAt) {
-		if err := usecase.FailUploadLog(ctx, uploadLog.Id, "global ingestion timeout exceeded"); err != nil {
+		if err := usecase.FailUploadLog(ctx, uploadLog.Id, models.IngestionFailureGlobalTimeout,
+			"ingestion did not complete before its deadline"); err != nil {
 			return models.CsvIngestionCompleted, err
 		}
 		return models.CsvIngestionCompleted, nil
@@ -721,6 +730,8 @@ func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(
 			&numRowsIngested,
 			&inputErrorString,
 			&errorString,
+			ingestionFailureCode(inputErr, ingestErr),
+			publicIngestionErrorMessage(inputErr, ingestErr),
 		)
 		if err != nil {
 			logger.ErrorContext(failureCtx, fmt.Sprintf("Error setting upload log %s to failed", uploadLog.Id), "error", err.Error())
@@ -774,7 +785,7 @@ func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(
 		return models.CsvIngestionIncomplete, nil
 	}
 
-	err = usecase.finalizeUploadLog(ctx, uploadLog, models.UploadProcessing, models.UploadSuccess, &out.numRowsIngested, nil, nil)
+	err = usecase.finalizeUploadLog(ctx, uploadLog, models.UploadProcessing, models.UploadSuccess, &out.numRowsIngested, nil, nil, "", "")
 	if err != nil {
 		return models.CsvIngestionCompleted, err
 	}
@@ -808,6 +819,31 @@ func isRetryableIngestionError(err error) bool {
 	// Unknown failures are intentionally retried by River. This includes transient database, blob,
 	// and network errors that are wrapped differently by each provider.
 	return true
+}
+
+func ingestionFailureCode(inputErr, ingestErr error) models.IngestionFailureCode {
+	if inputErr != nil || errors.Is(ingestErr, models.BadParameterError) || errors.Is(ingestErr, models.NotFoundError) {
+		return models.IngestionFailureInvalidInput
+	}
+	var csvErr *csv.ParseError
+	if errors.As(ingestErr, &csvErr) {
+		return models.IngestionFailureInvalidInput
+	}
+	return models.IngestionFailureInternalError
+}
+
+func publicIngestionErrorMessage(inputErr, ingestErr error) string {
+	err := inputErr
+	if err == nil && ingestionFailureCode(nil, ingestErr) == models.IngestionFailureInvalidInput {
+		err = ingestErr
+	}
+	if err == nil {
+		return ""
+	}
+	if details := errors.GetAllDetails(err); len(details) > 0 {
+		return strings.Join(details, ": ")
+	}
+	return err.Error()
 }
 
 // readCsvHeader reads the header row from the start of the file and returns it along with the
@@ -890,9 +926,9 @@ func (usecase *IngestionUseCase) readFileIngestObjects(
 	fileName := uploadLog.FileName
 	logger.InfoContext(ctx, fmt.Sprintf("Ingesting data from CSV %s", fileName))
 
-	return ingestionResult{
-		err: fmt.Errorf("unexpected state in readFileIngestObjects"),
-	}
+	// return ingestionResult{
+	// 	err: fmt.Errorf("unexpected state in readFileIngestObjects"),
+	// }
 
 	var (
 		organizationIdStr string
