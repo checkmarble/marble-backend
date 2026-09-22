@@ -201,6 +201,11 @@ type TaskQueueRepository interface {
 		organizationId uuid.UUID,
 		indexNames []string,
 	) error
+	EnqueueAsyncDecisionStorage(
+		ctx context.Context,
+		tx Transaction,
+		bundle models.DecisionBundle,
+	) error
 }
 
 type riverRepository struct {
@@ -1032,5 +1037,30 @@ func (r riverRepository) EnqueueScreeningHitSuggestionTask(
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued screening hit suggestion task",
 		"screening_id", screeningId, "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueAsyncDecisionStorage(
+	ctx context.Context,
+	tx Transaction,
+	bundle models.DecisionBundle,
+) error {
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.AsyncDecisionStorageArgs{Bundle: bundle},
+		&river.InsertOpts{
+			Queue: bundle.Decision.OrganizationId.String(),
+		},
+	)
+
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued async decision storage task",
+		"decision_id", bundle.Decision.DecisionId, "job_id", res.Job.ID)
+
 	return nil
 }

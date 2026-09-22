@@ -13,6 +13,15 @@ const (
 	DECISION_TIMEOUT = 10 * time.Second
 )
 
+type DecisionBundle struct {
+	Decision        DecisionWithRuleExecutions
+	Scenario        Scenario
+	Execution       ScenarioExecution
+	AnalyticsFields map[string]any
+	ObjectId        string
+	StoreAsync      bool
+}
+
 // Decision models
 type Decision struct {
 	DecisionId     uuid.UUID
@@ -196,6 +205,7 @@ type CreateDecisionInput struct {
 type CreateDecisionParams struct {
 	WithDisallowUnknownFields bool
 	ConcurrentRules           int
+	AsyncStorage              bool
 }
 
 type CreateAllDecisionsInput struct {

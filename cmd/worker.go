@@ -409,6 +409,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewContinuousScreeningMatchEnrichmentWorker())
 	river.AddWorker(workers, adminUc.NewGenerateThumbnailWorker())
 	river.AddWorker(workers, adminUc.NewClientDataPurgeWorker())
+	river.AddWorker(workers, adminUc.NewAsyncDecisionStorageWorker())
 
 	if offloadingConfig.Enabled {
 		river.AddWorker(workers, adminUc.NewOffloadingWorker())

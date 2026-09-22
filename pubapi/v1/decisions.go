@@ -107,6 +107,7 @@ func HandleGetDecision(uc usecases.Usecases) gin.HandlerFunc {
 }
 
 type CreateDecisionParams struct {
+	AsyncStorage            string `form:"async_storage" binding:"omitempty,boolean"`
 	IncludeScreeningMatches string `form:"include_screening_matches" binding:"omitempty,boolean"`
 }
 
@@ -137,6 +138,7 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
 		scenariosUsecase := uc.NewScenarioUsecase()
 		decisionsUsecase := uc.NewDecisionUsecase()
+		asyncStorage, _ := strconv.ParseBool(opts.AsyncStorage)
 
 		scenario, err := scenariosUsecase.GetScenario(ctx, payload.ScenarioId)
 		if err != nil {
@@ -159,6 +161,7 @@ func HandleCreateDecision(uc usecases.Usecases) gin.HandlerFunc {
 			},
 			models.CreateDecisionParams{
 				WithDisallowUnknownFields: true,
+				AsyncStorage:              asyncStorage,
 			},
 		)
 		if err != nil {
@@ -215,8 +218,15 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		var payload params.CreateAllDecisionsParams
+		var (
+			payload params.CreateAllDecisionsParams
+			opts    CreateDecisionParams
+		)
 
+		if err := c.ShouldBindQuery(&opts); err != nil {
+			types.NewErrorResponse().WithError(err).Serve(c)
+			return
+		}
 		if err := c.ShouldBindJSON(&payload); err != nil {
 			types.NewErrorResponse().WithError(err).Serve(c)
 			return
@@ -224,6 +234,7 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 
 		uc := pubapi.UsecasesWithCreds(ctx, uc)
 		decisionsUsecase := uc.NewDecisionUsecase()
+		asyncStorage, _ := strconv.ParseBool(opts.AsyncStorage)
 
 		decisions, skipped, err := decisionsUsecase.CreateAllDecisions(
 			ctx,
@@ -234,6 +245,7 @@ func HandleCreateAllDecisions(uc usecases.Usecases) gin.HandlerFunc {
 			},
 			models.CreateDecisionParams{
 				WithDisallowUnknownFields: true,
+				AsyncStorage:              asyncStorage,
 			},
 		)
 		if err != nil {

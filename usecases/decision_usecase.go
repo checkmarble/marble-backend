@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"slices"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/analytics"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -106,6 +108,7 @@ type DecisionUsecase struct {
 	openSanctionsRepository   screening.OpenSanctionsRepository
 	taskQueueRepository       repositories.TaskQueueRepository
 	payloadEnricher           payload_parser.PayloadEnrichementUsecase
+	redisClient               *repositories.RedisClient
 }
 
 var (
@@ -114,14 +117,37 @@ var (
 )
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.DecisionWithRuleExecutions, error) {
+	orgId := usecase.enforceSecurity.OrgId()
 	exec := usecase.executorFactory.NewExecutor()
+	redisTransientUsed := false
+
 	decision, err := usecase.repository.DecisionWithRuleExecutionsById(ctx, exec, decisionId)
 	if err != nil {
-		return models.DecisionWithRuleExecutions{}, err
+
+		// If a decision is not found in the database, it might be an asynchronously stored decision
+		// that was not yet reconciled by its job. This yet-to-be-stored decision might be present
+		// in the cache.
+		if errors.Is(err, models.NotFoundError) && usecase.redisClient != nil {
+			redisExec := usecase.redisClient.NewExecutor(orgId)
+			key := redisExec.Key("decision", decisionId)
+
+			if d, err := repositories.RedisLoadModel[models.DecisionWithRuleExecutions](ctx, redisExec, key); err == nil {
+				redisTransientUsed = true
+				decision = d
+			}
+		}
+
+		if !redisTransientUsed {
+			return models.DecisionWithRuleExecutions{}, err
+		}
 	}
 
 	if err := usecase.enforceSecurity.ReadDecision(decision.Decision); err != nil {
 		return models.DecisionWithRuleExecutions{}, err
+	}
+
+	if redisTransientUsed {
+		return decision, nil
 	}
 
 	if err := usecase.offloadedReader.MutateWithOffloadedDecisionRules(ctx, exec,
@@ -295,6 +321,87 @@ func (usecase *DecisionUsecase) validateTriggerObjects(ctx context.Context,
 	return triggerObjectTypes, nil
 }
 
+func (usecase DecisionUsecase) StoreDecision(
+	ctx context.Context,
+	logger *slog.Logger,
+	tx repositories.Transaction,
+	item models.DecisionBundle,
+) (models.DecisionWithRuleExecutions, error) {
+	orgId := item.Decision.OrganizationId
+
+	err := usecase.repository.StoreDecision(
+		ctx,
+		tx,
+		usecase.offloadedReader,
+		item.Decision,
+		orgId,
+		item.Decision.DecisionId.String(),
+		item.AnalyticsFields,
+	)
+
+	if err != nil {
+		return models.DecisionWithRuleExecutions{},
+			fmt.Errorf("error storing decision: %w", err)
+	}
+
+	for _, sce := range item.Decision.ScreeningExecutions {
+		matchesToInsert, offloadErr := usecase.offloadedReader.OffloadScreeningMatches(ctx, sce)
+		if offloadErr != nil {
+			return models.DecisionWithRuleExecutions{},
+				errors.Wrapf(offloadErr, "could not offload screening match payloads in CreateDecision")
+		}
+		sce.Matches = matchesToInsert
+
+		err := usecase.screeningRepository.InsertScreening(ctx, tx, sce)
+		if err != nil {
+			return models.DecisionWithRuleExecutions{},
+				errors.Wrapf(err, "error storing screening execution in CreateDecision")
+		}
+
+		if usecase.openSanctionsRepository.IsSelfHosted(ctx) {
+			if err := usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(
+				ctx, tx, orgId, sce.Id); err != nil {
+				utils.LogAndReportSentryError(ctx, errors.Wrap(err,
+					"could not enqueue screening for refinement"))
+			}
+		}
+	}
+
+	err = usecase.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringRecordRef{
+		OrgId:      orgId,
+		RecordType: item.Scenario.TriggerObjectType,
+		RecordId:   item.ObjectId,
+	})
+
+	if err != nil {
+		logger.ErrorContext(ctx,
+			"could not trigger score computation job",
+			"error", err.Error())
+	}
+
+	err = usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+		OrganizationId: item.Decision.OrganizationId,
+		EventContent:   models.NewWebhookEventDecisionCreated(item.Decision),
+	})
+
+	if err != nil {
+		return models.DecisionWithRuleExecutions{}, err
+	}
+
+	err = usecase.taskQueueRepository.EnqueueDecisionWorkflowTask(
+		ctx,
+		tx,
+		item.Decision.OrganizationId,
+		item.Decision.DecisionId.String(),
+	)
+	if err != nil {
+		return models.DecisionWithRuleExecutions{},
+			errors.Wrap(err, "could not execute decision workflows")
+	}
+
+	return item.Decision, nil
+}
+
 func (usecase *DecisionUsecase) CreateDecision(
 	ctx context.Context,
 	input models.CreateDecisionInput,
@@ -389,79 +496,46 @@ func (usecase *DecisionUsecase) CreateDecision(
 	defer span.End()
 
 	storageStart := time.Now()
+	stored := false
+
 	newDecision, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.DecisionWithRuleExecutions, error) {
-		if err = usecase.repository.StoreDecision(
-			ctx,
-			tx,
-			usecase.offloadedReader,
-			decision,
-			input.OrganizationId,
-			decision.DecisionId.String(),
-			usecase.scenarioEvaluator.GetDataAccessor(evaluationParameters).GetAnalyticsFields(
+		item := models.DecisionBundle{
+			Decision:  decision,
+			Scenario:  scenario,
+			Execution: scenarioExecution,
+			AnalyticsFields: usecase.scenarioEvaluator.GetDataAccessor(evaluationParameters).GetAnalyticsFields(
 				ctx, exec, usecase.repository, evaluationParameters),
-		); err != nil {
-			return models.DecisionWithRuleExecutions{},
-				fmt.Errorf("error storing decision: %w", err)
+			ObjectId: evaluationParameters.ClientObject.Data["object_id"].(string),
 		}
 
-		for _, sce := range decision.ScreeningExecutions {
-			matchesToInsert, offloadErr := usecase.offloadedReader.OffloadScreeningMatches(ctx, sce)
-			if offloadErr != nil {
-				return models.DecisionWithRuleExecutions{},
-					errors.Wrapf(offloadErr, "could not offload screening match payloads in CreateDecision")
-			}
-			sce.Matches = matchesToInsert
-
-			err := usecase.screeningRepository.InsertScreening(ctx, tx, sce)
-			if err != nil {
-				return models.DecisionWithRuleExecutions{},
-					errors.Wrapf(err, "error storing screening execution in CreateDecision")
+		if infra.HasFeatureFlag(infra.ASYNC_DECISION_STORAGE_FEATURE_FLAG, org.Id) && params.AsyncStorage && usecase.redisClient != nil {
+			if err := usecase.taskQueueRepository.EnqueueAsyncDecisionStorage(ctx, tx, item); err != nil {
+				return decision, err
 			}
 
-			if usecase.openSanctionsRepository.IsSelfHosted(ctx) {
-				if err := usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(
-					ctx, tx, input.OrganizationId, sce.Id); err != nil {
-					utils.LogAndReportSentryError(ctx, errors.Wrap(err,
-						"could not enqueue screening for refinement"))
-				}
-			}
+			return decision, nil
 		}
 
-		if err := usecase.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringRecordRef{
-			OrgId:      scenario.OrganizationId,
-			RecordType: scenario.TriggerObjectType,
-			RecordId:   payload.Data["object_id"].(string),
-		}); err != nil {
-			logger.ErrorContext(ctx,
-				"could not trigger score computation job",
-				"error", err.Error())
-		}
+		stored = true
 
-		err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-			OrganizationId: decision.OrganizationId,
-			EventContent:   models.NewWebhookEventDecisionCreated(decision),
-		})
-		if err != nil {
-			return models.DecisionWithRuleExecutions{}, err
-		}
-
-		err = usecase.taskQueueRepository.EnqueueDecisionWorkflowTask(
-			ctx,
-			tx,
-			decision.OrganizationId,
-			decision.DecisionId.String(),
-		)
-		if err != nil {
-			return models.DecisionWithRuleExecutions{},
-				errors.Wrap(err, "could not execute decision workflows")
-		}
-
-		return decision, nil
+		return usecase.StoreDecision(ctx, logger, tx, item)
 	})
+
 	if err != nil {
 		return false, models.DecisionWithRuleExecutions{}, err
+	}
+
+	if infra.HasFeatureFlag(infra.ASYNC_DECISION_STORAGE_FEATURE_FLAG, org.Id) && params.AsyncStorage && usecase.redisClient != nil {
+		redisExec := usecase.redisClient.NewExecutor(decision.OrganizationId)
+		key := redisExec.Key("decision", decision.DecisionId.String())
+
+		if err := redisExec.SaveModel(ctx, nil, key, newDecision, time.Hour); err != nil {
+			logger.Warn("could not save asynchronous decision to redis, decision will be missing until persistance",
+				"decision", decision.DecisionId,
+				"err", err.Error())
+		}
 	}
 
 	if scenarioExecution.ExecutionMetrics != nil {
@@ -485,7 +559,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 			"outcome", scenarioExecution.Outcome,
 			"duration", decisionDuration.Milliseconds(),
 			"rules", scenarioExecution.ExecutionMetrics.Rules,
-			"steps", scenarioExecution.ExecutionMetrics.Steps)
+			"steps", scenarioExecution.ExecutionMetrics.Steps,
+			"stored", stored)
 
 	}
 
@@ -568,16 +643,9 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		}
 	}
 
-	type decisionAndScenario struct {
-		decision        models.DecisionWithRuleExecutions
-		scenario        models.Scenario
-		execution       models.ScenarioExecution
-		analyticsFields map[string]any
-	}
-
 	// We don't need a mutex here, each concurrent iteration will access a discrete
 	// index of this slice.
-	allItems := make([]decisionAndScenario, len(filteredScenarios))
+	allItems := make([]models.DecisionBundle, len(filteredScenarios))
 
 	syncer, syncerCtx := errgroup.WithContext(ctx)
 	syncer.SetLimit(CONCURRENT_DECISIONS)
@@ -627,11 +695,12 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			default:
 				decision := models.AdaptScenarExecToDecision(scenarioExecution, payload, nil)
 
-				allItems[scenarioIdx] = decisionAndScenario{
-					decision: decision,
-					scenario: scenario, execution: scenarioExecution,
-					analyticsFields: usecase.scenarioEvaluator.GetDataAccessor(
+				allItems[scenarioIdx] = models.DecisionBundle{
+					Decision: decision,
+					Scenario: scenario, Execution: scenarioExecution,
+					AnalyticsFields: usecase.scenarioEvaluator.GetDataAccessor(
 						evaluationParameters).GetAnalyticsFields(ctx, exec, usecase.repository, evaluationParameters),
+					ObjectId: evaluationParameters.ClientObject.Data["object_id"].(string),
 				}
 
 				usecase.executeTestRun(ctx, input.OrganizationId, input.TriggerObjectTable,
@@ -646,13 +715,13 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		return nil, 0, err
 	}
 
-	items := make([]decisionAndScenario, 0)
+	items := make([]models.DecisionBundle, 0)
 
 	// We have to use a sparse array for concurrency, which means it has zeroed
 	// decisions for those who did not pass the trigger object. Compact the slice
 	// to only keep executed decisions.
 	for _, item := range allItems {
-		if item.decision.DecisionId == uuid.Nil {
+		if item.Decision.DecisionId == uuid.Nil {
 			nbSkipped++
 			continue
 		}
@@ -665,7 +734,6 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 
 	// gather the decisions to return in this slice
 	decisions = make([]models.DecisionWithRuleExecutions, len(items))
-	sendWebhookEventIds := make([]string, 0)
 	lastWriteTime := time.Now()
 
 	// Determine whether to use an externally-provided transaction or create our own.
@@ -673,93 +741,62 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	var externalTx repositories.Transaction
 	if len(optTx) > 0 && optTx[0] != nil {
 		externalTx = optTx[0]
+		params.AsyncStorage = false
 	}
 
 	storeDecisions := func(tx repositories.Transaction) error {
 		for i, item := range items {
 			thisStorageStart := time.Now()
+			stored := false
+			decisions[i] = item.Decision
 
-			if err = usecase.repository.StoreDecision(
-				ctx,
-				tx,
-				usecase.offloadedReader,
-				item.decision,
-				input.OrganizationId,
-				item.decision.DecisionId.String(),
-				item.analyticsFields,
-			); err != nil {
-				return fmt.Errorf("error storing decision in CreateAllDecisions: %w", err)
-			}
+			shouldStoreAsync := infra.HasFeatureFlag(infra.ASYNC_DECISION_STORAGE_FEATURE_FLAG, org.Id) && params.AsyncStorage && usecase.redisClient != nil
 
-			utils.MetricDecisionCount.
-				With(prometheus.Labels{"org_id": item.decision.OrganizationId.String()}).
-				Inc()
-
-			utils.MetricDecisionLatency.
-				With(prometheus.Labels{"org_id": item.decision.OrganizationId.String()}).
-				Observe(time.Since(decisionStart).Seconds())
-
-			for _, sce := range item.decision.ScreeningExecutions {
-				matchesToInsert, offloadErr := usecase.offloadedReader.OffloadScreeningMatches(ctx, sce)
-				if offloadErr != nil {
-					return errors.Wrapf(offloadErr, "could not offload screening match payloads in CreateAllDecisions")
+			switch shouldStoreAsync {
+			case true:
+				if err := usecase.taskQueueRepository.EnqueueAsyncDecisionStorage(ctx, tx, item); err != nil {
+					return err
 				}
-				sce.Matches = matchesToInsert
 
-				err := usecase.screeningRepository.InsertScreening(ctx, tx, sce)
+			case false:
+				stored = true
+
+				_, err := usecase.StoreDecision(
+					ctx,
+					logger,
+					tx,
+					item,
+				)
+
 				if err != nil {
-					return errors.Wrapf(err, "error storing screening execution in CreateAllDecisions")
-				}
-
-				if usecase.openSanctionsRepository.IsSelfHosted(ctx) {
-					if err := usecase.taskQueueRepository.EnqueueMatchEnrichmentTask(
-						ctx,
-						tx,
-						input.OrganizationId,
-						sce.Id,
-					); err != nil {
-						utils.LogAndReportSentryError(ctx, errors.Wrap(err,
-							"could not enqueue screening for refinement"))
-					}
+					return err
 				}
 			}
-			decisions[i] = item.decision
 
-			webhookEventId := uuid.NewString()
-			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-				OrganizationId: item.decision.OrganizationId,
-				EventContent:   models.NewWebhookEventDecisionCreated(item.decision),
-			})
-			if err != nil {
-				return err
-			}
-			sendWebhookEventIds = append(sendWebhookEventIds, webhookEventId)
-
-			err = usecase.taskQueueRepository.EnqueueDecisionWorkflowTask(
-				ctx,
-				tx,
-				item.decision.OrganizationId,
-				item.decision.DecisionId.String(),
-			)
-			if err != nil {
-				return errors.Wrapf(err, `Failed to execute decision workflows for decision on scenario "%s"`, item.scenario.Name)
-			}
-
-			if item.execution.ExecutionMetrics != nil {
+			if item.Execution.ExecutionMetrics != nil {
 				storageDuration := time.Since(thisStorageStart)
 				sinceStart := time.Since(decisionStart)
-				item.execution.ExecutionMetrics.Steps[evaluate_scenario.LogStorageDurationKey] = storageDuration.Milliseconds()
+				item.Execution.ExecutionMetrics.Steps[evaluate_scenario.LogStorageDurationKey] = storageDuration.Milliseconds()
+
+				utils.MetricDecisionCount.
+					With(prometheus.Labels{"org_id": item.Decision.OrganizationId.String()}).
+					Inc()
+
+				utils.MetricDecisionLatency.
+					With(prometheus.Labels{"org_id": item.Decision.OrganizationId.String()}).
+					Observe(sinceStart.Seconds())
 
 				logger.InfoContext(ctx,
 					fmt.Sprintf(`In CreateAllDecisions, created decision for scenario "%s" after %dms`,
-						item.scenario.Name, sinceStart.Milliseconds()),
-					"decision_id", item.decision.DecisionId,
-					"scenario_id", item.scenario.Id,
-					"score", item.execution.Score,
-					"outcome", item.execution.Outcome,
+						item.Scenario.Name, sinceStart.Milliseconds()),
+					"decision_id", item.Decision.DecisionId,
+					"scenario_id", item.Scenario.Id,
+					"score", item.Execution.Score,
+					"outcome", item.Execution.Outcome,
 					"since_start", sinceStart.Milliseconds(),
-					"rules", item.execution.ExecutionMetrics.Rules,
-					"steps", item.execution.ExecutionMetrics.Steps,
+					"rules", item.Execution.ExecutionMetrics.Rules,
+					"steps", item.Execution.ExecutionMetrics.Steps,
+					"stored", stored,
 				)
 			}
 		}
@@ -778,6 +815,21 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			return nil, 0, err
 		}
 	}
+
+	if infra.HasFeatureFlag(infra.ASYNC_DECISION_STORAGE_FEATURE_FLAG, org.Id) && params.AsyncStorage && usecase.redisClient != nil {
+		redisExec := usecase.redisClient.NewExecutor(org.Id)
+
+		for _, item := range items {
+			key := redisExec.Key("decision", item.Decision.DecisionId.String())
+
+			if err := redisExec.SaveModel(ctx, nil, key, item.Decision, time.Hour); err != nil {
+				logger.Warn("could not save asynchronous decision to redis, decision will be missing until persistance",
+					"decision", item.Decision.DecisionId,
+					"err", err.Error())
+			}
+		}
+	}
+
 	// Note: do not do anything that may take time after this, otherwise the info logs about decision execution time will be incorrect.
 
 	sinceLastWrite := time.Since(lastWriteTime)
