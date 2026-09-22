@@ -23,6 +23,6 @@ func AdaptUploadLogDto(log models.UploadLog) UploadLogDto {
 		FinishedAt:      log.FinishedAt,
 		LinesProcessed:  max(log.LinesProcessed, log.RowsIngested),
 		NumRowsIngested: log.RowsIngested,
-		Error:           utils.Or(log.InputError, ""),
+		Error:           utils.Or(log.Error, ""),
 	}
 }

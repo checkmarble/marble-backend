@@ -25,16 +25,6 @@ type UploadLog struct {
 }
 
 func AdaptUploadLog(log models.UploadLog) UploadLog {
-	errorMessage := pure_utils.PtrValueOrDefault(log.InputError, "")
-	if errorMessage == "" {
-		switch log.ErrorCode {
-		case models.IngestionFailureInvalidInput,
-			models.IngestionFailureGlobalTimeout,
-			models.IngestionFailureUploadNotReceived,
-			models.IngestionFailureFileTooLarge:
-			errorMessage = pure_utils.PtrValueOrDefault(log.Error, "")
-		}
-	}
 	return UploadLog{
 		Id:            log.Id,
 		ObjectType:    log.TableName,
@@ -43,7 +33,7 @@ func AdaptUploadLog(log models.UploadLog) UploadLog {
 		FinishedAt:    log.FinishedAt,
 		RowsProcessed: max(log.LinesProcessed, log.RowsIngested),
 		RowsIngested:  log.RowsIngested,
-		Error:         errorMessage,
+		Error:         pure_utils.PtrValueOrDefault(log.Error, ""),
 		ErrorCode:     string(log.ErrorCode),
 	}
 }

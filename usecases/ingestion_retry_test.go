@@ -23,8 +23,31 @@ func TestIsRetryableIngestionError(t *testing.T) {
 
 func TestIngestionFailureDetails(t *testing.T) {
 	inputErr := errors.WithDetail(models.BadParameterError, "invalid amount at line 42")
-	assert.Equal(t, models.IngestionFailureInvalidInput, ingestionFailureCode(inputErr, nil))
+	code, message := ingestionFailureDetails(inputErr, nil)
+	assert.Equal(t, models.IngestionFailureInvalidInput, code)
+	assert.Equal(t, "invalid amount at line 42", message)
 
 	internalErr := errors.New("relation private_schema.internal_table does not exist")
-	assert.Equal(t, models.IngestionFailureInternalError, ingestionFailureCode(nil, internalErr))
+	code, message = ingestionFailureDetails(nil, internalErr)
+	assert.Equal(t, models.IngestionFailureInternalError, code)
+	assert.Equal(t, "ingestion failed due to an internal error", message)
+
+	code, message = ingestionFailureDetails(nil, errors.Wrap(models.NotFoundError, "private resource name"))
+	assert.Equal(t, models.IngestionFailureInvalidInput, code)
+	assert.Equal(t, "a resource required for this ingestion was not found", message)
+}
+
+func TestIngestionFailureMessage(t *testing.T) {
+	tests := map[models.IngestionFailureCode]string{
+		models.IngestionFailureGlobalTimeout:     "ingestion did not complete before its deadline",
+		models.IngestionFailureUploadNotReceived: "upload was not received before its deadline",
+		models.IngestionFailureFileTooLarge:      "uploaded file exceeds the 10 GB limit",
+		models.IngestionFailureInvalidInput:      "the ingestion input is invalid",
+		models.IngestionFailureInternalError:     "ingestion failed due to an internal error",
+	}
+	for code, expected := range tests {
+		t.Run(string(code), func(t *testing.T) {
+			assert.Equal(t, expected, ingestionFailureMessage(code))
+		})
+	}
 }

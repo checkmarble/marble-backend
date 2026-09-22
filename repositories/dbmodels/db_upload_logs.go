@@ -21,7 +21,6 @@ type DBUploadLog struct {
 	LinesProcessed  int        `db:"lines_processed"`
 	NumRowsIngested int        `db:"num_rows_ingested"`
 	ByteOffset      int64      `db:"byte_offset"`
-	InputError      *string    `db:"input_error"`
 	Error           *string    `db:"error"`
 	ErrorCode       *string    `db:"error_code"`
 }
@@ -48,7 +47,6 @@ func AdaptUploadLog(db DBUploadLog) (models.UploadLog, error) {
 		LinesProcessed: db.LinesProcessed,
 		RowsIngested:   db.NumRowsIngested,
 		ByteOffset:     db.ByteOffset,
-		InputError:     db.InputError,
 		Error:          db.Error,
 	}
 	if db.ErrorCode != nil {

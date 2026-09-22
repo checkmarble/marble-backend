@@ -37,7 +37,6 @@ type UploadLog struct {
 	// ByteOffset is the offset of the first CSV row not yet ingested. Zero means the file has not
 	// been read yet; ingestion resumes from here when a previous attempt ran out of time.
 	ByteOffset int64
-	InputError *string
 	Error      *string
 	ErrorCode  IngestionFailureCode
 }
@@ -86,7 +85,6 @@ type UpdateUploadLogStatusInput struct {
 	FinishedAt                   *time.Time
 	DeadlineAt                   *time.Time
 	NumRowsIngested              *int
-	InputError                   *string
 	Error                        *string
 	ErrorCode                    *IngestionFailureCode
 }
