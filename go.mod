@@ -88,7 +88,7 @@ require (
 	golang.org/x/time v0.16.0
 	google.golang.org/api v0.297.0
 	google.golang.org/genai v1.71.0
-	google.golang.org/grpc v1.84.0
+	google.golang.org/grpc v1.83.2
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.2
 )
