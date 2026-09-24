@@ -141,6 +141,11 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/client360/tables", tom, handleClient360ListTables(uc))
 	router.POST("/client360/search", tom, handleClient360SearchObjects(uc))
 
+	router.GET("/client360/:recordType/aggregates/:recordId/compute", tom, handleGetCustomerAggregates(uc))
+	router.POST("/client360/:recordType/aggregates", tom, handleCreateCustomerAggregate(uc))
+	router.PUT("/client360/:recordType/aggregates/:id", tom, handleUpdateCustomerAggregate(uc))
+	router.DELETE("/client360/:recordType/aggregates/:id", tom, handleDeleteCustomerAggregate(uc))
+
 	router.GET("/annotations/file/:annotationId/:partId", tom, handleGetEntityFileAnnotation(uc))
 	router.DELETE("/annotations/:annotationId", tom, handleDeleteEntityAnnotation(uc))
 
