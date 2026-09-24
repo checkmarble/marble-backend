@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
@@ -28,6 +29,33 @@ func handleGetOrganizations(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"organizations": pure_utils.Map(organizations, dto.AdaptOrganizationDto),
 		})
+	}
+}
+
+func handleMyOrganizations(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		creds, found := utils.CredentialsFromCtx(ctx)
+		if !found || creds.ActorIdentity.UserId == "" {
+			c.Status(http.StatusUnauthorized)
+			return
+		}
+		exec, err := uc.Repositories.ExecutorGetter.GetExecutor(ctx, models.DATABASE_SCHEMA_TYPE_MARBLE, nil)
+		if presentError(ctx, c, err) {
+			return
+		}
+		organizations, err := uc.Repositories.MarbleDbRepository.ListOrganizationsForUser(ctx, exec, string(creds.ActorIdentity.UserId))
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"organizations": pure_utils.Map(organizations, func(membership models.OrganizationMembership) gin.H {
+			return gin.H{
+				"id":          membership.Organization.Id,
+				"name":        membership.Organization.Name,
+				"environment": membership.Organization.Environment.String(),
+				"roles":       pure_utils.Map(membership.Roles, func(role models.Role) string { return role.String() }),
+			}
+		})})
 	}
 }
 

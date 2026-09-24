@@ -52,7 +52,23 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 				createUser.LastName,
 			),
 	)
-	return userId, err
+	if err != nil {
+		return "", err
+	}
+
+	if createUser.Role == models.MARBLE_ADMIN {
+		return userId, ExecBuilder(ctx, exec, NewQueryBuilder().
+			Insert(dbmodels.TABLE_GRANTS).
+			Columns("id", "principal_type", "principal_id", "principal_authority", "role").
+			Values(pure_utils.NewId(), "user", userId, "marble", createUser.Role.String()).
+			Suffix("ON CONFLICT DO NOTHING"))
+	}
+
+	return userId, ExecBuilder(ctx, exec, NewQueryBuilder().
+		Insert(dbmodels.TABLE_GRANTS).
+		Columns("id", "principal_type", "principal_id", "principal_authority", "organization_id", "role").
+		Values(pure_utils.NewId(), "user", userId, "marble", createUser.OrganizationId, createUser.Role.String()).
+		Suffix("ON CONFLICT DO NOTHING"))
 }
 
 func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, updateUser models.UpdateUser) error {
@@ -111,11 +127,7 @@ func (repo *MarbleDbRepository) DeleteUsersOfOrganization(ctx context.Context, e
 		return err
 	}
 
-	err := ExecBuilder(
-		ctx,
-		exec,
-		NewQueryBuilder().Delete(dbmodels.TABLE_USERS).Where("organization_id = ?", organizationId),
-	)
+	err := ExecBuilder(ctx, exec, NewQueryBuilder().Delete("grants").Where("organization_id = ?", organizationId))
 	return err
 }
 
