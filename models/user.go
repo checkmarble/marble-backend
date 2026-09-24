@@ -11,7 +11,7 @@ type UserId string
 type User struct {
 	UserId         UserId
 	Email          string
-	Roles          []Role
+	RoleBindings   []RoleBinding
 	OrganizationId uuid.UUID
 	FirstName      string
 	LastName       string
@@ -37,16 +37,16 @@ func (u User) FullName() string {
 
 type CreateUser struct {
 	Email          string
-	Roles          []Role
+	RoleBindings   []RoleBinding
 	OrganizationId uuid.UUID
 	FirstName      string
 	LastName       string
 }
 
 type UpdateUser struct {
-	UserId    string
-	Email     *string
-	Roles     *[]Role
-	FirstName *string
-	LastName  *string
+	UserId       string
+	Email        *string
+	RoleBindings *[]RoleBinding
+	FirstName    *string
+	LastName     *string
 }

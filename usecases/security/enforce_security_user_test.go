@@ -62,19 +62,20 @@ func TestUpdateUserRole(t *testing.T) {
 				Credentials: models.Credentials{
 					OrganizationId: utils.TextToUUID("org"),
 					ActorIdentity:  models.Identity{UserId: "principal"},
-					Roles:          []models.Role{tt.principal},
+					RoleBindings:   models.NativeRoleBindings([]models.Role{tt.principal}),
 				},
 			}
 
-			target := models.User{OrganizationId: utils.TextToUUID("org"), UserId: "target", Roles: []models.Role{tt.from}}
+			target := models.User{OrganizationId: utils.TextToUUID("org"), UserId: "target", RoleBindings: models.NativeRoleBindings([]models.Role{tt.from})}
 			if tt.sameUser {
 				target.UserId = "principal"
-				target.Roles = []models.Role{tt.principal}
+				target.RoleBindings = models.NativeRoleBindings([]models.Role{tt.principal})
 			}
 
-			update := models.UpdateUser{UserId: string(target.UserId), Roles: &[]models.Role{tt.to}}
-			if slices.Equal([]models.Role{tt.principal}, *update.Roles) {
-				update.Roles = nil
+			bindings := models.NativeRoleBindings([]models.Role{tt.to})
+			update := models.UpdateUser{UserId: string(target.UserId), RoleBindings: &bindings}
+			if slices.Equal([]models.Role{tt.principal}, models.RoleNames(bindings)) {
+				update.RoleBindings = nil
 			}
 
 			outcome := e.UpdateUser(target, update)

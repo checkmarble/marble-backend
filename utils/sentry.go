@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"runtime/debug"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/getsentry/sentry-go"
 )
 
@@ -53,7 +54,7 @@ func CaptureSentryException(ctx context.Context, hub *sentry.Hub, err error) {
 			})
 		}
 		hub.Scope().SetTag("organization_id", creds.OrganizationId.String())
-		hub.Scope().SetTag("role", fmt.Sprintf("%s", creds.Roles))
+		hub.Scope().SetTag("role", fmt.Sprintf("%s", models.RoleNames(creds.RoleBindings)))
 	}
 	hub.CaptureException(err)
 }

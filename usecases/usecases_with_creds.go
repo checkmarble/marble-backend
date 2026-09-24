@@ -42,7 +42,8 @@ func (usecases *UsecasesWithCreds) NewWithRootImpersonatedExecutor(tx repositori
 		Usecases: usecases.Usecases.WithRootExecutor(executorFactory),
 		Credentials: models.Credentials{
 			OrganizationId: org.Id,
-			Roles:          usecases.Credentials.Roles,
+			RoleBindings:   usecases.Credentials.RoleBindings,
+			Permissions:    usecases.Credentials.Permissions,
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
 			},
@@ -51,9 +52,7 @@ func (usecases *UsecasesWithCreds) NewWithRootImpersonatedExecutor(tx repositori
 }
 
 func (usecases *UsecasesWithCreds) NewEnforceSecurity() security.EnforceSecurity {
-	return &security.EnforceSecurityImpl{
-		Credentials: usecases.Credentials,
-	}
+	return security.NewEnforceSecurity(usecases.Credentials)
 }
 
 func (usecases *UsecasesWithCreds) NewEnforceScenarioSecurity() security.EnforceSecurityScenario {
@@ -563,7 +562,8 @@ func (usecases *UsecasesWithCreds) NewTagUseCase() TagUseCase {
 
 func (usecases *UsecasesWithCreds) NewApiKeyUseCase() ApiKeyUseCase {
 	return ApiKeyUseCase{
-		executorFactory: usecases.NewExecutorFactory(),
+		executorFactory:    usecases.NewExecutorFactory(),
+		transactionFactory: usecases.NewTransactionFactory(),
 		enforceSecurity: &security.EnforceSecurityApiKeyImpl{
 			EnforceSecurity: usecases.NewEnforceSecurity(),
 			Credentials:     usecases.Credentials,

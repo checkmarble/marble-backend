@@ -21,6 +21,7 @@ type ApiKeyRepository interface {
 	ListApiKeys(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) ([]models.ApiKey, error)
 	CreateApiKey(ctx context.Context, exec repositories.Executor, apiKey models.ApiKey) error
 	SoftDeleteApiKey(ctx context.Context, exec repositories.Executor, apiKeyId string) error
+	GetRoleBySlug(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, slug models.Role) (models.RbacRole, error)
 }
 
 type EnforceSecurityApiKey interface {
@@ -30,9 +31,10 @@ type EnforceSecurityApiKey interface {
 }
 
 type ApiKeyUseCase struct {
-	executorFactory  executor_factory.ExecutorFactory
-	enforceSecurity  EnforceSecurityApiKey
-	apiKeyRepository ApiKeyRepository
+	executorFactory    executor_factory.ExecutorFactory
+	transactionFactory executor_factory.TransactionFactory
+	enforceSecurity    EnforceSecurityApiKey
+	apiKeyRepository   ApiKeyRepository
 }
 
 func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context, organizationId uuid.UUID) ([]models.ApiKey, error) {
@@ -53,31 +55,66 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 	apiKeyId := pure_utils.NewId().String()
 	key := generateAPiKey()
 	hash := sha256.Sum256([]byte(key))
+	if err := usecase.enforceSecurity.CreateApiKey(input.OrganizationId); err != nil {
+		return models.CreatedApiKey{}, err
+	}
+
+	if len(input.RoleBindings) == 0 {
+		return models.CreatedApiKey{}, errors.Wrap(models.BadParameterError, "at least one role binding is required")
+	}
+
+	bindings := append([]models.RoleBinding(nil), input.RoleBindings...)
+	for idx := range bindings {
+		binding := &bindings[idx]
+		if binding.Role == "" {
+			return models.CreatedApiKey{}, errors.Wrap(models.BadParameterError, "role binding must reference a role")
+		}
+		if err := binding.Conditions.Validate(); err != nil {
+			return models.CreatedApiKey{}, err
+		}
+		if !binding.Role.IsCustom() && binding.Role != models.API_CLIENT {
+			return models.CreatedApiKey{}, errors.Wrap(models.BadParameterError, "only API_CLIENT is supported as a native API key role")
+		}
+		if binding.Role.IsCustom() {
+			if !binding.Role.IsValidCustom() {
+				return models.CreatedApiKey{}, errors.Wrap(models.BadParameterError, "invalid custom role slug")
+			}
+			role, err := usecase.apiKeyRepository.GetRoleBySlug(
+				ctx,
+				usecase.executorFactory.NewExecutor(),
+				input.OrganizationId,
+				binding.Role,
+			)
+			if err != nil {
+				return models.CreatedApiKey{}, err
+			}
+			binding.CustomRoleId = &role.Id
+			binding.Permissions = role.Permissions
+		} else {
+			binding.CustomRoleId = nil
+			binding.Permissions = binding.Role.Permissions()
+		}
+	}
+
 	apiKey := models.ApiKey{
 		Id:             apiKeyId,
 		Description:    input.Description,
 		Hash:           hash[:],
 		Prefix:         key[:3],
 		OrganizationId: input.OrganizationId,
-		Roles:          input.Roles,
+		RoleBindings:   bindings,
 	}
 
-	if err := usecase.enforceSecurity.CreateApiKey(input.OrganizationId); err != nil {
-		return models.CreatedApiKey{}, err
+	var err error
+
+	if usecase.transactionFactory != nil {
+		err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+			return usecase.apiKeyRepository.CreateApiKey(ctx, tx, apiKey)
+		})
+	} else {
+		err = usecase.apiKeyRepository.CreateApiKey(ctx, usecase.executorFactory.NewExecutor(), apiKey)
 	}
 
-	if len(input.Roles) > 1 || input.Roles[0] != models.API_CLIENT {
-		return models.CreatedApiKey{}, errors.Wrap(
-			models.BadParameterError,
-			fmt.Sprintf("roles %s are not supported", input.Roles),
-		)
-	}
-
-	err := usecase.apiKeyRepository.CreateApiKey(
-		ctx,
-		usecase.executorFactory.NewExecutor(),
-		apiKey,
-	)
 	if err != nil {
 		return models.CreatedApiKey{}, err
 	}

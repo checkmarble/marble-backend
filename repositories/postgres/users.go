@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -12,13 +11,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
 func (db *Database) UserByEmail(ctx context.Context, email string) (models.User, error) {
 	query := `
-		SELECT id, email, first_name, last_name, roles, organization_id
+		SELECT id, email, first_name, last_name, organization_id
 		FROM users
 		WHERE email = $1
 		AND deleted_at IS NULL
@@ -32,7 +30,6 @@ func (db *Database) UserByEmail(ctx context.Context, email string) (models.User,
 			&user.Email,
 			&firstName,
 			&lastName,
-			&user.Roles,
 			&organizationID,
 		)
 	if firstName.Valid {
@@ -54,6 +51,14 @@ func (db *Database) UserByEmail(ctx context.Context, email string) (models.User,
 		}
 		user.OrganizationId = orgId
 	}
+
+	bindings, err := db.FetchRoleBindings(ctx, user.OrganizationId, string(user.UserId), "")
+	if err != nil {
+		return models.User{}, err
+	}
+
+	user.RoleBindings = bindings
+
 	return user, nil
 }
 
@@ -100,30 +105,62 @@ func (db *Database) UpdateUserProfileFromClaims(
 	return db.UserByEmail(ctx, user.Email)
 }
 
-func (db *Database) FetchPermissions(ctx context.Context, orgId uuid.UUID, roles []models.Role) ([]models.Permission, error) {
-	query := fmt.Sprintf(`
-		select %s
-		from permissions
-		where role_id in (
-			select id
-      from roles
-      where
-      	org_id = $1 and
-        name = any($2)
-    )
-	`, strings.Join(dbmodels.SelectPermissionColumn, ","))
+func (db *Database) FetchRoleBindings(
+	ctx context.Context,
+	_ uuid.UUID,
+	userId, apiKeyId string,
+) ([]models.RoleBinding, error) {
+	principalColumn := "user_id"
+	principalId := userId
 
-	rows, err := db.pool.Query(ctx, query, orgId, roles)
+	if apiKeyId != "" {
+		principalColumn = "api_key_id"
+		principalId = apiKeyId
+	}
+
+	query, args, err := NewQueryBuilder().
+		Select(
+			"rb.id",
+			"rb.org_id",
+			"rb.user_id",
+			"rb.api_key_id",
+			"rb.native_role",
+			"rb.custom_role_id",
+			"rb.conditions",
+			"r.slug as custom_role_slug",
+			"coalesce(r.permissions, array[]::text[]) as custom_permissions",
+		).
+		From(dbmodels.TABLE_ROLE_BINDINGS + " rb").
+		LeftJoin(dbmodels.TABLE_ROLES + " r on r.id = rb.custom_role_id and r.org_id = rb.org_id").
+		Where(squirrel.Eq{"rb." + principalColumn: principalId}).
+		OrderBy("rb.id").
+		ToSql()
+
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	permissions, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbmodels.DbPermission])
+	dbBindings, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbmodels.DbRoleBinding])
+	if err != nil {
+		return nil, err
+	}
 
-	perms := pure_utils.Map(permissions, func(p dbmodels.DbPermission) models.Permission {
-		return models.Permission(p.Name)
-	})
+	bindings := make([]models.RoleBinding, 0, len(dbBindings))
 
-	return perms, nil
+	for _, binding := range dbBindings {
+		adapted, err := dbmodels.AdaptRoleBinding(binding)
+		if err != nil {
+			return nil, err
+		}
+
+		bindings = append(bindings, adapted)
+	}
+
+	return bindings, nil
 }

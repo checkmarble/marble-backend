@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -28,9 +27,10 @@ type UserRepository interface {
 	HasUsers(ctx context.Context, exec Executor) (bool, error)
 
 	ListRoles(ctx context.Context, exec Executor, orgId uuid.UUID) ([]models.RbacRole, error)
-	GetRole(ctx context.Context, exec Executor, orgId, roleId uuid.UUID) (models.RbacRole, error)
+	GetRoleBySlug(ctx context.Context, exec Executor, orgId uuid.UUID, slug models.Role) (models.RbacRole, error)
 	CreateRole(ctx context.Context, exec Executor, orgId uuid.UUID, slug, name string) (models.RbacRole, error)
-	UpdateRolePermissions(ctx context.Context, exec Executor, orgId, roleId uuid.UUID, permissions []dto.RoleGrantPermission) error
+	UpdateRolePermissions(ctx context.Context, exec Executor, orgId uuid.UUID, slug models.Role, permissions []dto.RoleGrantPermission) error
+	ReplaceUserRoleBindings(ctx context.Context, exec Executor, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error
 }
 
 func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (string, error) {
@@ -48,7 +48,6 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 				"id",
 				"email",
 				"role",
-				"roles",
 				"organization_id",
 				"first_name",
 				"last_name",
@@ -56,14 +55,21 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 			Values(
 				userId,
 				createUser.Email,
-				0,
-				createUser.Roles,
+				models.LegacyRoleValue(createUser.RoleBindings),
 				createUser.OrganizationId,
 				createUser.FirstName,
 				createUser.LastName,
 			),
 	)
-	return userId, err
+	if err != nil {
+		return "", err
+	}
+
+	if err := repo.ReplaceUserRoleBindings(ctx, exec, createUser.OrganizationId, userId, createUser.RoleBindings); err != nil {
+		return "", err
+	}
+
+	return userId, nil
 }
 
 func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, updateUser models.UpdateUser) error {
@@ -72,22 +78,51 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 	}
 
 	query := NewQueryBuilder().Update(dbmodels.TABLE_USERS).Where(squirrel.Eq{"id": updateUser.UserId})
+	updateProfile := false
 
 	if updateUser.Email != nil {
 		query = query.Set("email", *updateUser.Email)
-	}
-	if updateUser.Roles != nil {
-		query = query.Set("roles", *updateUser.Roles)
+		updateProfile = true
 	}
 	if updateUser.FirstName != nil {
 		query = query.Set("first_name", *updateUser.FirstName)
+		updateProfile = true
 	}
 	if updateUser.LastName != nil {
 		query = query.Set("last_name", *updateUser.LastName)
+		updateProfile = true
+	}
+	if updateProfile {
+		if err := ExecBuilder(ctx, exec, query); err != nil {
+			return err
+		}
 	}
 
-	if err := ExecBuilder(ctx, exec, query); err != nil {
-		return err
+	if updateUser.RoleBindings != nil {
+		var persistedOrgId *uuid.UUID
+
+		query, args, err := NewQueryBuilder().
+			Select("organization_id").
+			From(dbmodels.TABLE_USERS).
+			Where(squirrel.Eq{"id": updateUser.UserId}).
+			ToSql()
+		if err != nil {
+			return err
+		}
+
+		if err := exec.QueryRow(ctx, query, args...).Scan(&persistedOrgId); err != nil {
+			return err
+		}
+
+		orgId := uuid.Nil
+
+		if persistedOrgId != nil {
+			orgId = *persistedOrgId
+		}
+
+		if err := repo.ReplaceUserRoleBindings(ctx, exec, orgId, updateUser.UserId, *updateUser.RoleBindings); err != nil {
+			return err
+		}
 	}
 
 	return exec.Cache(ctx).Exec(func(c *redis.Client) error {
@@ -155,6 +190,13 @@ func (repo *MarbleDbRepository) UserById(ctx context.Context, exec Executor, use
 		return user, err
 	}
 
+	bindings, err := repo.ListUserRoleBindings(ctx, exec, string(user.UserId))
+	if err != nil {
+		return user, err
+	}
+
+	user.RoleBindings = bindings
+
 	_ = exec.Cache(ctx).SaveModel(ctx, exec, exec.Cache(ctx).Key("user", userId), user, time.Hour)
 
 	return user, nil
@@ -175,12 +217,26 @@ func (repo *MarbleDbRepository) ListUsers(ctx context.Context, exec Executor, or
 		query = query.Where(squirrel.Eq{"organization_id": *orgId})
 	}
 
-	return SqlToListOfModels(
+	users, err := SqlToListOfModels(
 		ctx,
 		exec,
 		query,
 		dbmodels.AdaptUser,
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	for idx := range users {
+		bindings, err := repo.ListUserRoleBindings(ctx, exec, string(users[idx].UserId))
+		if err != nil {
+			return nil, err
+		}
+
+		users[idx].RoleBindings = bindings
+	}
+
+	return users, nil
 }
 
 func (repo *MarbleDbRepository) UserByEmail(ctx context.Context, exec Executor, email string) (*models.User, error) {
@@ -188,7 +244,7 @@ func (repo *MarbleDbRepository) UserByEmail(ctx context.Context, exec Executor, 
 		return nil, err
 	}
 
-	return SqlToOptionalModel(
+	user, err := SqlToOptionalModel(
 		ctx,
 		exec,
 		NewQueryBuilder().
@@ -199,6 +255,18 @@ func (repo *MarbleDbRepository) UserByEmail(ctx context.Context, exec Executor, 
 			OrderBy("id"),
 		dbmodels.AdaptUser,
 	)
+	if err != nil || user == nil {
+		return user, err
+	}
+
+	bindings, err := repo.ListUserRoleBindings(ctx, exec, string(user.UserId))
+	if err != nil {
+		return nil, err
+	}
+
+	user.RoleBindings = bindings
+
+	return user, nil
 }
 
 func (repo *MarbleDbRepository) HasUsers(ctx context.Context, exec Executor) (bool, error) {
@@ -214,7 +282,7 @@ func (repo *MarbleDbRepository) HasUsers(ctx context.Context, exec Executor) (bo
 	return exists, nil
 }
 
-func (repo *MarbleDbRepository) GetRole(ctx context.Context, exec Executor, orgId, roleId uuid.UUID) (models.RbacRole, error) {
+func (repo *MarbleDbRepository) GetRoleBySlug(ctx context.Context, exec Executor, orgId uuid.UUID, slug models.Role) (models.RbacRole, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.RbacRole{}, err
 	}
@@ -224,10 +292,9 @@ func (repo *MarbleDbRepository) GetRole(ctx context.Context, exec Executor, orgI
 		exec,
 		NewQueryBuilder().
 			Select(dbmodels.SelectRoleColumn...).
-			Column(fmt.Sprintf(`(select array_agg(row(%s)) from permissions p where p.role_id = r.id) as permissions`, strings.Join(dbmodels.SelectPermissionColumn, ","))).
 			From(dbmodels.TABLE_ROLES+" r").
-			Where("org_id = ? and id = ?", orgId, roleId),
-		dbmodels.AdaptRoleWithPermissions,
+			Where(squirrel.Eq{"org_id": orgId, "slug": slug}),
+		dbmodels.AdaptRole,
 	)
 }
 
@@ -241,10 +308,9 @@ func (repo *MarbleDbRepository) ListRoles(ctx context.Context, exec Executor, or
 		exec,
 		NewQueryBuilder().
 			Select(dbmodels.SelectRoleColumn...).
-			Column(fmt.Sprintf(`(select array_agg(row(%s)) from permissions p where p.role_id = r.id) as permissions`, strings.Join(dbmodels.SelectPermissionColumn, ","))).
 			From(dbmodels.TABLE_ROLES+" r").
 			Where("org_id = ?", orgId),
-		dbmodels.AdaptRoleWithPermissions,
+		dbmodels.AdaptRole,
 	)
 }
 
@@ -252,8 +318,6 @@ func (repo *MarbleDbRepository) CreateRole(ctx context.Context, exec Executor, o
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.RbacRole{}, err
 	}
-
-	slug = "org/" + slug
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_ROLES).
@@ -264,38 +328,32 @@ func (repo *MarbleDbRepository) CreateRole(ctx context.Context, exec Executor, o
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptRole)
 }
 
-func (repo *MarbleDbRepository) UpdateRolePermissions(ctx context.Context, exec Executor, orgId, roleId uuid.UUID, permissions []dto.RoleGrantPermission) error {
+func (repo *MarbleDbRepository) UpdateRolePermissions(ctx context.Context, exec Executor, orgId uuid.UUID, slug models.Role, permissions []dto.RoleGrantPermission) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
 
-	inputs := make([]dbmodels.DbPermission, len(permissions))
+	names := pure_utils.Map(permissions, func(permission dto.RoleGrantPermission) string {
+		return permission.Name
+	})
 
-	for idx, perm := range permissions {
-		inputs[idx] = dbmodels.DbPermission{
-			Id:     pure_utils.NewId(),
-			OrgId:  orgId,
-			RoleId: roleId,
-			Name:   perm.Name,
-		}
-	}
-
-	jsonb, err := json.Marshal(inputs)
+	query, args, err := NewQueryBuilder().
+		Update(dbmodels.TABLE_ROLES).
+		Set("permissions", names).
+		Where(squirrel.Eq{"org_id": orgId, "slug": slug}).
+		ToSql()
 	if err != nil {
 		return err
 	}
 
-	sql := fmt.Sprintf(`
-		merge into permissions as p
-		using jsonb_populate_recordset(null::permissions, $1::jsonb) as s (%[1]s)
-		on p.role_id = s.role_id::uuid and p.name = s.name
-		when not matched then
-		  insert (%[1]s) values (s.id, s.org_id::uuid, s.role_id::uuid, s.name, s.condition)
-		when not matched by source and p.org_id = $2::uuid and p.role_id = $3 then
-		  delete;
-	`, strings.Join(dbmodels.SelectPermissionColumn, ","))
+	result, err := exec.Exec(ctx, query, args...)
+	if err != nil {
+		return err
+	}
 
-	_, err = exec.Exec(ctx, sql, jsonb, orgId, roleId)
+	if result.RowsAffected() == 0 {
+		return models.NotFoundError
+	}
 
-	return err
+	return nil
 }

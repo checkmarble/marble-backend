@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/google/uuid"
 )
 
@@ -13,7 +14,7 @@ type ApiKey struct {
 	Description    string        `json:"description"`
 	OrganizationId uuid.UUID     `json:"organization_id"`
 	Prefix         string        `json:"prefix"`
-	Roles          []models.Role `json:"roles"`
+	RoleBindings   []RoleBinding `json:"roles"`
 }
 
 func AdaptApiKeyDto(apiKey models.ApiKey) ApiKey {
@@ -23,7 +24,7 @@ func AdaptApiKeyDto(apiKey models.ApiKey) ApiKey {
 		Description:    apiKey.Description,
 		OrganizationId: apiKey.OrganizationId,
 		Prefix:         apiKey.Prefix,
-		Roles:          apiKey.Roles,
+		RoleBindings:   pure_utils.Map(apiKey.RoleBindings, AdaptRoleBinding),
 	}
 }
 
@@ -40,6 +41,6 @@ func AdaptCreatedApiKeyDto(apiKey models.CreatedApiKey) CreatedApiKey {
 }
 
 type CreateApiKeyBody struct {
-	Description string `json:"description"`
-	Role        string `json:"role"`
+	Description  string        `json:"description"`
+	RoleBindings []RoleBinding `json:"roles,omitempty"`
 }

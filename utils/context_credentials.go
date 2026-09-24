@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
@@ -47,7 +46,7 @@ func OrganizationIdFromRequest(request *http.Request) (organizationId uuid.UUID,
 	}
 
 	if creds.OrganizationId == uuid.Nil {
-		if slices.Contains(creds.Roles, models.MARBLE_ADMIN) {
+		if creds.HasRole(models.MARBLE_ADMIN) {
 			return uuid.Nil, errors.Wrap(
 				models.ForbiddenError,
 				"An organizationId must be passed in the request query params for MARBLE_ADMIN to use this endpoint")

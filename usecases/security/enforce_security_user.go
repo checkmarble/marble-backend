@@ -34,7 +34,9 @@ func (e *EnforceSecurityUserImpl) ReadUser(user models.User) error {
 }
 
 func (e *EnforceSecurityUserImpl) CreateUser(input models.CreateUser) error {
-	if slices.Contains(input.Roles, models.MARBLE_ADMIN) && !slices.Contains(e.Credentials.Roles, models.MARBLE_ADMIN) {
+	roles := models.RoleNames(input.RoleBindings)
+
+	if slices.Contains(roles, models.MARBLE_ADMIN) && !e.Credentials.HasRole(models.MARBLE_ADMIN) {
 		return errors.Wrap(
 			models.ForbiddenError,
 			"only marble admins can create marble admins",
@@ -43,7 +45,7 @@ func (e *EnforceSecurityUserImpl) CreateUser(input models.CreateUser) error {
 
 	// should already be handled by the fact that only the ADMIN & MARBLE_ADMIN roles have the
 	// MARBLE_USER_CREATE permission, but make double sure
-	if slices.Contains(input.Roles, models.ADMIN) &&
+	if slices.Contains(roles, models.ADMIN) &&
 		!e.Credentials.HasRole(models.ADMIN, models.MARBLE_ADMIN) {
 		return errors.Wrap(
 			models.ForbiddenError,
@@ -58,9 +60,15 @@ func (e *EnforceSecurityUserImpl) CreateUser(input models.CreateUser) error {
 }
 
 func (e *EnforceSecurityUserImpl) UpdateUser(targetUser models.User, updateUser models.UpdateUser) error {
+	var updatedRoles []models.Role
+
+	if updateUser.RoleBindings != nil {
+		updatedRoles = models.RoleNames(*updateUser.RoleBindings)
+	}
+
 	// Only marble admins can create marble admins
-	if updateUser.Roles != nil &&
-		slices.Contains(*updateUser.Roles, models.MARBLE_ADMIN) &&
+	if updateUser.RoleBindings != nil &&
+		slices.Contains(updatedRoles, models.MARBLE_ADMIN) &&
 		!e.Credentials.HasRole(models.MARBLE_ADMIN) {
 		return errors.Wrap(
 			models.BadParameterError,
@@ -68,22 +76,22 @@ func (e *EnforceSecurityUserImpl) UpdateUser(targetUser models.User, updateUser 
 	}
 
 	// Fail early if current user is not an ADMIN and they try to change a user's role.
-	if updateUser.Roles != nil && !slices.Contains(e.Credentials.Roles, models.ADMIN) &&
+	if updateUser.RoleBindings != nil && !e.Credentials.HasRole(models.ADMIN) &&
 		!e.Credentials.HasRole(models.MARBLE_ADMIN) {
 		return errors.Wrap(models.UnAuthorizedError, "only admins can change a user's role")
 	}
 
 	// An admin cannot strip their own ADMIN role.
-	if updateUser.Roles != nil &&
+	if updateUser.RoleBindings != nil &&
 		e.Credentials.HasRole(models.ADMIN) &&
 		e.Credentials.ActorIdentity.UserId == targetUser.UserId &&
-		!slices.Contains(*updateUser.Roles, models.ADMIN) {
+		!slices.Contains(updatedRoles, models.ADMIN) {
 		return errors.Wrap(models.BadParameterError, "Cannot remove yourself as an admin")
 	}
 
 	// Only org admins and marble admins can create org admins
-	if updateUser.Roles != nil &&
-		slices.Contains(*updateUser.Roles, models.ADMIN) &&
+	if updateUser.RoleBindings != nil &&
+		slices.Contains(updatedRoles, models.ADMIN) &&
 		!e.Credentials.HasRole(models.ADMIN, models.MARBLE_ADMIN) {
 		return errors.Wrap(models.BadParameterError,
 			"Only org admins and marble admins can create org admins")

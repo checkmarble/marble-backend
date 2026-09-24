@@ -79,7 +79,7 @@ func TestCreateInitialOrganization(t *testing.T) {
 			models.CreateOrganizationInput{Name: "Acme"}).Return(nil)
 		deps.userRepository.On("CreateUser", ctx, deps.transaction, mock.MatchedBy(
 			func(u models.CreateUser) bool {
-				return u.Email == "admin@acme.com" && slices.Contains(u.Roles, models.ADMIN)
+				return u.Email == "admin@acme.com" && slices.Contains(models.RoleNames(u.RoleBindings), models.ADMIN)
 			},
 		)).Return("some-user-id", nil)
 		deps.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)

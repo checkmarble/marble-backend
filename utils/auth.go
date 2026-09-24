@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/google/uuid"
@@ -45,13 +46,13 @@ type tokenAndKeyValidator interface {
 	ValidateTokenOrKey(ctx context.Context, marbleToken, apiKey string) (models.Credentials, error)
 }
 
-type permissionFetcher interface {
-	FetchPermissions(ctx context.Context, orgId uuid.UUID, roles []models.Role) ([]models.Permission, error)
+type roleBindingFetcher interface {
+	FetchRoleBindings(ctx context.Context, orgId uuid.UUID, userId, apiKeyId string) ([]models.RoleBinding, error)
 }
 
 type Authentication struct {
 	validator             tokenAndKeyValidator
-	permissionFetcher     permissionFetcher
+	roleBindingFetcher    roleBindingFetcher
 	screeningIndexerToken string
 }
 
@@ -128,40 +129,49 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 			return
 		}
 
-		permissions := set.New[models.Permission](10)
-
-		for _, role := range credentials.Roles {
-			permissions.InsertSlice(role.Permissions())
-		}
-
-		if a.permissionFetcher != nil {
-			customPermissions, err := a.permissionFetcher.FetchPermissions(ctx, credentials.OrganizationId, credentials.Roles)
+		bindings := credentials.RoleBindings
+		if a.roleBindingFetcher != nil {
+			bindings, err = a.roleBindingFetcher.FetchRoleBindings(
+				ctx,
+				credentials.OrganizationId,
+				string(credentials.ActorIdentity.UserId),
+				credentials.ActorIdentity.ApiKeyId,
+			)
 			if err != nil {
-				LoggerFromContext(ctx).ErrorContext(ctx, "could not retrieve custom permissions for principal", "error", err.Error())
+				LoggerFromContext(ctx).ErrorContext(ctx, "could not retrieve role bindings for principal", "error", err.Error())
 				c.AbortWithStatus(http.StatusInternalServerError)
 				return
 			}
-
-			permissions.InsertSlice(customPermissions)
 		}
-
+		credentials.RoleBindings = bindings
+		permissions := set.New[models.Permission](10)
+		activeRoles := set.New[models.Role](len(bindings))
+		now := time.Now()
+		for _, binding := range bindings {
+			if binding.IsActive(now) {
+				permissions.InsertSlice(binding.Permissions)
+				if role := binding.RoleName(); role != "" {
+					activeRoles.Insert(role)
+				}
+			}
+		}
 		credentials.Permissions = permissions.Slice()
 
 		newContext := context.WithValue(ctx, ContextKeyCredentials, credentials)
 		if attr, ok := identityAttr(credentials.ActorIdentity); ok {
 			logger := LoggerFromContext(newContext).
 				With(attr).
-				With(slog.Any("Roles", credentials.Roles))
+				With(slog.Any("Roles", activeRoles.Slice()))
 			c.Request = c.Request.WithContext(context.WithValue(newContext, ContextKeyLogger, logger))
 		}
 		c.Next()
 	}
 }
 
-func NewAuthentication(validator tokenAndKeyValidator, permissionFetcher permissionFetcher, screeningIndexerToken string) Authentication {
+func NewAuthentication(validator tokenAndKeyValidator, roleBindingFetcher roleBindingFetcher, screeningIndexerToken string) Authentication {
 	return Authentication{
 		validator:             validator,
-		permissionFetcher:     permissionFetcher,
+		roleBindingFetcher:    roleBindingFetcher,
 		screeningIndexerToken: screeningIndexerToken,
 	}
 }

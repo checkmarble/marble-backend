@@ -8,34 +8,19 @@ import (
 )
 
 type DbRole struct {
-	Id    uuid.UUID `db:"id"`
-	OrgId uuid.UUID `db:"org_id"`
-	Slug  string    `db:"slug"`
-	Name  string    `db:"name"`
-}
-
-type DbPermission struct {
-	Id        uuid.UUID `db:"id" json:"id"`
-	OrgId     uuid.UUID `db:"org_id" json:"org_id"`
-	RoleId    uuid.UUID `db:"role_id" json:"role_id"`
-	Name      string    `db:"name" json:"name"`
-	Condition *string   `db:"condition" json:"condition"`
-}
-
-type DbRoleWithPermissions struct {
-	DbRole
-	Permissions []DbPermission `db:"permissions"`
+	Id          uuid.UUID `db:"id"`
+	OrgId       uuid.UUID `db:"org_id"`
+	Slug        string    `db:"slug"`
+	Name        string    `db:"name"`
+	Permissions []string  `db:"permissions"`
 }
 
 const (
-	TABLE_ROLES       = "roles"
-	TABLE_PERMISSIONS = "permissions"
+	TABLE_ROLES         = "roles"
+	TABLE_ROLE_BINDINGS = "role_bindings"
 )
 
-var (
-	SelectRoleColumn       = utils.ColumnList[DbRole]()
-	SelectPermissionColumn = utils.ColumnList[DbPermission]()
-)
+var SelectRoleColumn = utils.ColumnList[DbRole]()
 
 func AdaptRole(db DbRole) (models.RbacRole, error) {
 	return models.RbacRole{
@@ -43,23 +28,8 @@ func AdaptRole(db DbRole) (models.RbacRole, error) {
 		OrgId: db.OrgId,
 		Slug:  db.Slug,
 		Name:  db.Name,
+		Permissions: pure_utils.Map(db.Permissions, func(permission string) models.Permission {
+			return models.Permission(permission)
+		}),
 	}, nil
-}
-
-func AdaptRoleWithPermissions(db DbRoleWithPermissions) (models.RbacRole, error) {
-	role, err := AdaptRole(db.DbRole)
-	if err != nil {
-		return models.RbacRole{}, err
-	}
-
-	role.Permissions = pure_utils.Map(db.Permissions, func(p DbPermission) models.RbacPermission {
-		return models.RbacPermission{
-			Id:        p.Id,
-			OrgId:     p.OrgId,
-			Name:      p.Name,
-			Condition: p.Condition,
-		}
-	})
-
-	return role, nil
 }

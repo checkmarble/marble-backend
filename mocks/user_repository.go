@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/google/uuid"
@@ -58,18 +59,23 @@ func (r *UserRepository) ListCustomRoles(ctx context.Context, exec repositories.
 	return args.Get(0).([]models.RbacRole), args.Error(1)
 }
 
-func (r *UserRepository) CreateRole(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, name string) (models.RbacRole, error) {
-	args := r.Called(ctx, exec, orgId, name)
+func (r *UserRepository) CreateRole(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, slug, name string) (models.RbacRole, error) {
+	args := r.Called(ctx, exec, orgId, slug, name)
 	return args.Get(0).(models.RbacRole), args.Error(1)
 }
 
-func (r *UserRepository) UpdateRolePermissions(ctx context.Context, exec repositories.Executor, orgId, roleId uuid.UUID, permissions []string) error {
-	args := r.Called(ctx, exec, orgId, roleId, permissions)
+func (r *UserRepository) UpdateRolePermissions(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, slug models.Role, permissions []dto.RoleGrantPermission) error {
+	args := r.Called(ctx, exec, orgId, slug, permissions)
 	return args.Error(0)
 }
 
-func (r *UserRepository) GetRole(ctx context.Context, exec repositories.Executor, orgId, roleId uuid.UUID) (models.RbacRole, error) {
-	args := r.Called(ctx, exec, orgId, roleId)
+func (r *UserRepository) ReplaceUserRoleBindings(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error {
+	args := r.Called(ctx, exec, orgId, userId, bindings)
+	return args.Error(0)
+}
+
+func (r *UserRepository) GetRoleBySlug(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, slug models.Role) (models.RbacRole, error) {
+	args := r.Called(ctx, exec, orgId, slug)
 	return args.Get(0).(models.RbacRole), args.Error(1)
 }
 

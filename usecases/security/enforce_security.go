@@ -1,7 +1,11 @@
 package security
 
 import (
+	"slices"
+	"time"
+
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories/clock"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 
@@ -20,11 +24,13 @@ type EnforceSecurity interface {
 
 type EnforceSecurityImpl struct {
 	Credentials models.Credentials
+	Clock       clock.Clock
 }
 
 func NewEnforceSecurity(credentials models.Credentials) *EnforceSecurityImpl {
 	return &EnforceSecurityImpl{
 		Credentials: credentials,
+		Clock:       clock.New(),
 	}
 }
 
@@ -62,8 +68,28 @@ func (e *EnforceSecurityImpl) Permissions(permissions []models.Permission) error
 }
 
 func (e *EnforceSecurityImpl) Permission(permission models.Permission) error {
-	if !e.Credentials.HasPermission(permission) {
+	allowed := false
+
+	if len(e.Credentials.RoleBindings) > 0 {
+		now := time.Now()
+
+		if e.Clock != nil {
+			now = e.Clock.Now()
+		}
+
+		for _, binding := range e.Credentials.RoleBindings {
+			if binding.IsActive(now) && slices.Contains(binding.Permissions, permission) {
+				allowed = true
+				break
+			}
+		}
+	} else {
+		allowed = e.Credentials.HasPermission(permission)
+	}
+
+	if !allowed {
 		return errors.Wrap(models.ForbiddenError, "missing permission "+string(permission))
 	}
+
 	return nil
 }

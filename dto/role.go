@@ -2,8 +2,6 @@ package dto
 
 import (
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
-	"github.com/google/uuid"
 )
 
 type RolesAndPermissions struct {
@@ -12,10 +10,9 @@ type RolesAndPermissions struct {
 }
 
 type Role struct {
-	Id          uuid.UUID    `json:"id"`
-	Slug        string       `json:"slug"`
-	Name        string       `json:"name"`
-	Permissions []Permission `json:"permissions"`
+	Slug        string              `json:"slug"`
+	Name        string              `json:"name"`
+	Permissions []models.Permission `json:"permissions"`
 }
 
 type RoleCreateInput struct {
@@ -24,6 +21,7 @@ type RoleCreateInput struct {
 }
 
 type RoleGrant struct {
+	Role        models.Role           `json:"role" binding:"required"`
 	Permissions []RoleGrantPermission `json:"permissions"`
 }
 
@@ -31,21 +29,10 @@ type RoleGrantPermission struct {
 	Name string `json:"name"`
 }
 
-type Permission struct {
-	Id   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
-}
-
 func AdaptRole(role models.RbacRole) Role {
 	return Role{
-		Id:   role.Id,
-		Slug: role.Slug,
-		Name: role.Name,
-		Permissions: pure_utils.Map(role.Permissions, func(p models.RbacPermission) Permission {
-			return Permission{
-				Id:   p.Id,
-				Name: p.Name,
-			}
-		}),
+		Slug:        role.Slug,
+		Name:        role.Name,
+		Permissions: role.Permissions,
 	}
 }

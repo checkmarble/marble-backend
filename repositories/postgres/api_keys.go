@@ -13,7 +13,7 @@ import (
 
 func (db *Database) GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error) {
 	query := `
-		SELECT id, org_id, prefix, description, roles
+		SELECT id, org_id, prefix, description
 		FROM api_keys
 		WHERE key_hash = $1
 		AND deleted_at IS NULL
@@ -25,7 +25,6 @@ func (db *Database) GetApiKeyByHash(ctx context.Context, hash []byte) (models.Ap
 		&apiKey.OrganizationId,
 		&apiKey.Prefix,
 		&apiKey.Description,
-		&apiKey.Roles,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return models.ApiKey{}, models.NotFoundError
@@ -33,5 +32,17 @@ func (db *Database) GetApiKeyByHash(ctx context.Context, hash []byte) (models.Ap
 	if err != nil {
 		return models.ApiKey{}, fmt.Errorf("pool.QueryRow error: %w", err)
 	}
-	return dbmodels.AdaptApikey(apiKey)
+
+	result, err := dbmodels.AdaptApikey(apiKey)
+	if err != nil {
+		return models.ApiKey{}, err
+	}
+
+	bindings, err := db.FetchRoleBindings(ctx, result.OrganizationId, "", result.Id)
+	if err != nil {
+		return models.ApiKey{}, err
+	}
+
+	result.RoleBindings = bindings
+	return result, nil
 }

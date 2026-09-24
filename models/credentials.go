@@ -2,6 +2,7 @@ package models
 
 import (
 	"slices"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -22,20 +23,35 @@ type Identity struct {
 type Credentials struct {
 	ActorIdentity  Identity // email or api key, for audit log
 	OrganizationId uuid.UUID
-	Roles          []Role
+	RoleBindings   []RoleBinding
 	Permissions    []Permission
 }
 
 func (c Credentials) HasRole(roles ...Role) bool {
-	for _, role := range roles {
-		if slices.Contains(c.Roles, role) {
+	now := time.Now()
+
+	for _, binding := range c.RoleBindings {
+		if binding.IsActive(now) && slices.Contains(roles, binding.RoleName()) {
 			return true
 		}
 	}
+
 	return false
 }
 
 func (c Credentials) HasPermission(perm Permission) bool {
+	if len(c.RoleBindings) > 0 {
+		now := time.Now()
+
+		for _, binding := range c.RoleBindings {
+			if binding.IsActive(now) && slices.Contains(binding.Permissions, perm) {
+				return true
+			}
+		}
+
+		return false
+	}
+
 	return slices.Contains(c.Permissions, perm)
 }
 
@@ -48,7 +64,7 @@ func (u User) IntoCredentials() Credentials {
 			LastName:  u.LastName,
 		},
 		OrganizationId: u.OrganizationId,
-		Roles:          u.Roles,
+		RoleBindings:   u.RoleBindings,
 	}
 }
 
@@ -59,6 +75,6 @@ func (k ApiKey) IntoCredentials() Credentials {
 			ApiKeyName: k.DisplayString,
 		},
 		OrganizationId: k.OrganizationId,
-		Roles:          k.Roles,
+		RoleBindings:   k.RoleBindings,
 	}
 }

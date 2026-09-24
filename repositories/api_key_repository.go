@@ -14,7 +14,7 @@ func (repo *MarbleDbRepository) GetApiKeyById(ctx context.Context, exec Executor
 		return models.ApiKey{}, err
 	}
 
-	return SqlToModel(
+	apiKey, err := SqlToModel(
 		ctx,
 		exec,
 		NewQueryBuilder().
@@ -24,6 +24,15 @@ func (repo *MarbleDbRepository) GetApiKeyById(ctx context.Context, exec Executor
 			Where("deleted_at IS NULL"),
 		dbmodels.AdaptApikey,
 	)
+	if err != nil {
+		return apiKey, err
+	}
+	bindings, err := repo.ListApiKeyRoleBindings(ctx, exec, apiKey.Id)
+	if err != nil {
+		return apiKey, err
+	}
+	apiKey.RoleBindings = bindings
+	return apiKey, nil
 }
 
 func (repo *MarbleDbRepository) GetApiKeyByHash(ctx context.Context, exec Executor, hash []byte) (models.ApiKey, error) {
@@ -31,7 +40,7 @@ func (repo *MarbleDbRepository) GetApiKeyByHash(ctx context.Context, exec Execut
 		return models.ApiKey{}, err
 	}
 
-	return SqlToModel(
+	apiKey, err := SqlToModel(
 		ctx,
 		exec,
 		NewQueryBuilder().
@@ -41,6 +50,15 @@ func (repo *MarbleDbRepository) GetApiKeyByHash(ctx context.Context, exec Execut
 			Where("deleted_at IS NULL"),
 		dbmodels.AdaptApikey,
 	)
+	if err != nil {
+		return apiKey, err
+	}
+	bindings, err := repo.ListApiKeyRoleBindings(ctx, exec, apiKey.Id)
+	if err != nil {
+		return apiKey, err
+	}
+	apiKey.RoleBindings = bindings
+	return apiKey, nil
 }
 
 func (repo *MarbleDbRepository) ListApiKeys(ctx context.Context, exec Executor, organizationId uuid.UUID) ([]models.ApiKey, error) {
@@ -48,7 +66,7 @@ func (repo *MarbleDbRepository) ListApiKeys(ctx context.Context, exec Executor, 
 		return nil, err
 	}
 
-	return SqlToListOfModels(
+	apiKeys, err := SqlToListOfModels(
 		ctx,
 		exec,
 		NewQueryBuilder().
@@ -59,6 +77,17 @@ func (repo *MarbleDbRepository) ListApiKeys(ctx context.Context, exec Executor, 
 			OrderBy("created_at DESC"),
 		dbmodels.AdaptApikey,
 	)
+	if err != nil {
+		return nil, err
+	}
+	for idx := range apiKeys {
+		bindings, err := repo.ListApiKeyRoleBindings(ctx, exec, apiKeys[idx].Id)
+		if err != nil {
+			return nil, err
+		}
+		apiKeys[idx].RoleBindings = bindings
+	}
+	return apiKeys, nil
 }
 
 func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor, apiKey models.ApiKey) error {
@@ -77,7 +106,7 @@ func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor,
 				"prefix",
 				"key_hash",
 				"description",
-				"roles",
+				"role",
 			).
 			Values(
 				apiKey.Id,
@@ -85,10 +114,14 @@ func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor,
 				apiKey.Prefix,
 				apiKey.Hash,
 				apiKey.Description,
-				apiKey.Roles,
+				models.LegacyRoleValue(apiKey.RoleBindings),
 			),
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return repo.ReplaceApiKeyRoleBindings(ctx, exec, apiKey.OrganizationId, apiKey.Id, apiKey.RoleBindings)
 }
 
 func (repo *MarbleDbRepository) SoftDeleteApiKey(ctx context.Context, exec Executor, apiKeyId string) error {

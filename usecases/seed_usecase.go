@@ -27,12 +27,14 @@ type SeedUseCase struct {
 }
 
 func (usecase *SeedUseCase) SeedMarbleAdmins(ctx context.Context, firstMarbleAdminEmail string) error {
-	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 
-	_, err := usecase.userRepository.CreateUser(ctx, exec, models.CreateUser{
-		Email: firstMarbleAdminEmail,
-		Roles: []models.Role{models.MARBLE_ADMIN},
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		_, err := usecase.userRepository.CreateUser(ctx, tx, models.CreateUser{
+			Email:        firstMarbleAdminEmail,
+			RoleBindings: models.NativeRoleBindings([]models.Role{models.MARBLE_ADMIN}),
+		})
+		return err
 	})
 
 	// ignore user already added
@@ -109,10 +111,14 @@ func (usecase *SeedUseCase) CreateOrgAndUser(ctx context.Context, input models.I
 	}
 
 	if input.AdminEmail != "" {
-		_, err := usecase.userRepository.CreateUser(ctx, exec, models.CreateUser{
-			Email:          input.AdminEmail,
-			OrganizationId: targetOrg.Id,
-			Roles:          []models.Role{models.ADMIN},
+		err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+			_, err := usecase.userRepository.CreateUser(ctx, tx, models.CreateUser{
+				Email:          input.AdminEmail,
+				OrganizationId: targetOrg.Id,
+				RoleBindings:   models.NativeRoleBindings([]models.Role{models.ADMIN}),
+			})
+
+			return err
 		})
 		if err != nil && !repositories.IsUniqueViolationError(err) {
 			return err

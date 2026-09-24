@@ -5,66 +5,56 @@ create table roles (
     org_id uuid not null,
     slug text not null,
     name text not null,
+    permissions text[] not null default '{}',
 
     unique (org_id, slug),
     unique (org_id, name)
 );
 
-create table permissions (
+create table role_bindings (
     id uuid primary key default gen_random_uuid(),
-    org_id uuid not null,
-    role_id uuid not null references roles (id),
-    name text not null,
-    condition text,
+    org_id uuid,
+    user_id uuid references users (id) on delete cascade,
+    api_key_id uuid references api_keys (id) on delete cascade,
+    native_role text,
+    custom_role_id uuid references roles (id) on delete cascade,
+    conditions jsonb not null default '{}',
 
-    unique (org_id, role_id, name)
+	constraint role_bindings_one_principal check (num_nonnulls(user_id, api_key_id) = 1),
+	constraint role_bindings_one_role check (num_nonnulls(native_role, custom_role_id) = 1),
+	constraint role_bindings_custom_role_has_org check (custom_role_id is null or org_id is not null)
 );
 
-alter table users
-    add column roles text[] not null default '{}';
+create index idx_role_bindings_user on role_bindings (user_id) where user_id is not null;
+create index idx_role_bindings_api_key on role_bindings (api_key_id) where api_key_id is not null;
 
-alter table api_keys
-    add column roles text[] not null default '{}';
+insert into role_bindings (org_id, user_id, native_role)
+select organization_id, id, case role
+    when 1 then 'VIEWER'
+    when 2 then 'BUILDER'
+    when 3 then 'PUBLISHER'
+    when 4 then 'ADMIN'
+    when 5 then 'API_CLIENT'
+    when 6 then 'MARBLE_ADMIN'
+    when 9 then 'ANALYST'
+end
+from users
+where role in (1, 2, 3, 4, 5, 6, 9);
 
-alter table users
-    alter column role drop not null;
-
-update users
-    set roles = (case
-        when role = 0 then '{}'
-        when role = 1 then array['VIEWER']
-        when role = 2 then array['BUILDER']
-        when role = 3 then array['PUBLISHER']
-        when role = 4 then array['ADMIN']
-        when role = 5 then array['API_CLIENT']
-        when role = 6 then array['MARBLE_ADMIN']
-        when role = 9 then array['ANALYST']
-        else '{}'
-    end);
-
-update api_keys
-    set roles = (case
-        when role = 0 then '{}'
-        when role = 1 then array['VIEWER']
-        when role = 2 then array['BUILDER']
-        when role = 3 then array['PUBLISHER']
-        when role = 4 then array['ADMIN']
-        when role = 5 then array['API_CLIENT']
-        when role = 6 then array['MARBLE_ADMIN']
-        when role = 9 then array['ANALYST']
-        else '{}'
-    end);
+insert into role_bindings (org_id, api_key_id, native_role)
+select org_id, id, case role
+    when 1 then 'VIEWER'
+    when 2 then 'BUILDER'
+    when 3 then 'PUBLISHER'
+    when 4 then 'ADMIN'
+    when 5 then 'API_CLIENT'
+    when 6 then 'MARBLE_ADMIN'
+    when 9 then 'ANALYST'
+end
+from api_keys
+where role in (1, 2, 3, 4, 5, 6, 9);
 
 -- +goose Down
 
-alter table users
-    drop column roles;
-
-alter table api_keys
-    drop column roles;
-
-alter table users
-    alter column role set not null;
-
-drop table permissions;
+drop table role_bindings;
 drop table roles;

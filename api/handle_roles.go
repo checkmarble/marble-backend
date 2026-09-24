@@ -2,17 +2,13 @@ package api
 
 import (
 	"net/http"
-	"regexp"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
-
-var ROLE_PATTERN = regexp.MustCompile(`[a-zA-Z\.]+`)
 
 func handleGetRoles(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -45,7 +41,7 @@ func handleCreateRole(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 
-		if !ROLE_PATTERN.MatchString(p.Slug) {
+		if !models.Role(p.Slug).IsValidCustom() {
 			c.Status(http.StatusBadRequest)
 			return
 		}
@@ -66,11 +62,6 @@ func handleUpdateRolePermissions(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		roleId, err := uuid.Parse(c.Param("roleId"))
-		if presentError(ctx, c, err) {
-			return
-		}
-
 		var p dto.RoleGrant
 
 		if err := c.ShouldBindJSON(&p); presentError(ctx, c, err) {
@@ -80,7 +71,7 @@ func handleUpdateRolePermissions(uc usecases.Usecases) gin.HandlerFunc {
 		uc := usecasesWithCreds(ctx, uc)
 		userUsecase := uc.NewUserUseCase()
 
-		role, err := userUsecase.UpdateRolePermissions(ctx, roleId, p.Permissions)
+		role, err := userUsecase.UpdateRolePermissions(ctx, p.Role, p.Permissions)
 		if presentError(ctx, c, err) {
 			return
 		}

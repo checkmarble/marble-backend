@@ -29,6 +29,14 @@ type UserUseCase struct {
 }
 
 func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.CreateUser) (models.User, error) {
+	if len(createUser.RoleBindings) > 0 {
+		bindings, err := usecase.resolveUserRoleBindings(ctx, createUser.OrganizationId, createUser.RoleBindings)
+		if err != nil {
+			return models.User{}, err
+		}
+		createUser.RoleBindings = bindings
+	}
+
 	if err := usecase.enforceUserSecurity.CreateUser(createUser); err != nil {
 		return models.User{}, err
 	}
@@ -70,17 +78,16 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 }
 
 func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.UpdateUser) (models.User, error) {
-	if updateUser.Roles != nil {
-		allValidRoles := true
-
-		for _, role := range *updateUser.Roles {
-			if !strings.HasPrefix(string(role), "org/") && !slices.Contains(models.GetValidUserRoles(), role) {
-				allValidRoles = false
-			}
+	if updateUser.RoleBindings != nil {
+		user, err := usecase.userRepository.UserById(ctx, usecase.executorFactory.NewExecutor(), updateUser.UserId)
+		if err != nil {
+			return models.User{}, err
 		}
-		if !allValidRoles {
-			return models.User{}, errors.Wrap(models.BadParameterError, "Invalid role received")
+		bindings, err := usecase.resolveUserRoleBindings(ctx, user.OrganizationId, *updateUser.RoleBindings)
+		if err != nil {
+			return models.User{}, err
 		}
+		updateUser.RoleBindings = &bindings
 	}
 
 	updatedUser, err := executor_factory.TransactionReturnValue(
@@ -108,6 +115,47 @@ func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.Up
 	})
 
 	return updatedUser, nil
+}
+
+func (usecase *UserUseCase) resolveUserRoleBindings(
+	ctx context.Context,
+	orgId uuid.UUID,
+	bindings []models.RoleBinding,
+) ([]models.RoleBinding, error) {
+	exec := usecase.executorFactory.NewExecutor()
+	resolved := append([]models.RoleBinding(nil), bindings...)
+
+	for idx := range resolved {
+		binding := &resolved[idx]
+		if binding.Role == "" {
+			return nil, errors.Wrap(models.BadParameterError, "role binding must reference a role")
+		}
+
+		if err := binding.Conditions.Validate(); err != nil {
+			return nil, err
+		}
+
+		if !binding.Role.IsCustom() {
+			if !slices.Contains(models.GetValidUserRoles(), binding.Role) {
+				return nil, errors.Wrap(models.BadParameterError, "invalid native role")
+			}
+			binding.CustomRoleId = nil
+			binding.Permissions = binding.Role.Permissions()
+			continue
+		}
+		if !binding.Role.IsValidCustom() {
+			return nil, errors.Wrap(models.BadParameterError, "invalid custom role slug")
+		}
+
+		role, err := usecase.userRepository.GetRoleBySlug(ctx, exec, orgId, binding.Role)
+		if err != nil {
+			return nil, err
+		}
+		binding.CustomRoleId = &role.Id
+		binding.Permissions = role.Permissions
+	}
+
+	return resolved, nil
 }
 
 func (usecase *UserUseCase) DeleteUser(ctx context.Context, userId, currentUserId string) error {
@@ -232,6 +280,10 @@ func (usecase *UserUseCase) CreateRole(ctx context.Context, slug, name string) (
 		return models.RbacRole{}, err
 	}
 
+	if !models.Role(slug).IsValidCustom() {
+		return models.RbacRole{}, errors.Wrap(models.BadParameterError, "invalid custom role slug")
+	}
+
 	role, err := usecase.userRepository.CreateRole(
 		ctx,
 		usecase.executorFactory.NewExecutor(),
@@ -249,18 +301,36 @@ func (usecase *UserUseCase) CreateRole(ctx context.Context, slug, name string) (
 	return role, nil
 }
 
-func (usecase *UserUseCase) UpdateRolePermissions(ctx context.Context, roleId uuid.UUID, permissions []dto.RoleGrantPermission) (models.RbacRole, error) {
+func (usecase *UserUseCase) UpdateRolePermissions(ctx context.Context, slug models.Role, permissions []dto.RoleGrantPermission) (models.RbacRole, error) {
 	if err := usecase.enforceUserSecurity.ManageRoles(); err != nil {
 		return models.RbacRole{}, err
 	}
+	if !slug.IsValidCustom() {
+		return models.RbacRole{}, errors.Wrap(models.BadParameterError, "invalid custom role slug")
+	}
 
 	exec := usecase.executorFactory.NewExecutor()
+	seen := make(map[models.Permission]struct{}, len(permissions))
+
+	for _, input := range permissions {
+		permission := models.Permission(input.Name)
+
+		if !slices.Contains(models.ValidPermissions, permission) {
+			return models.RbacRole{}, errors.Wrap(models.BadParameterError, "invalid permission "+input.Name)
+		}
+
+		if _, exists := seen[permission]; exists {
+			return models.RbacRole{}, errors.Wrap(models.BadParameterError, "duplicate permission "+input.Name)
+		}
+
+		seen[permission] = struct{}{}
+	}
 
 	err := usecase.userRepository.UpdateRolePermissions(
 		ctx,
 		exec,
 		usecase.enforceUserSecurity.OrgId(),
-		roleId,
+		slug,
 		permissions)
 	if err != nil {
 		if repositories.IsUniqueViolationError(err) {
@@ -270,5 +340,5 @@ func (usecase *UserUseCase) UpdateRolePermissions(ctx context.Context, roleId uu
 		return models.RbacRole{}, err
 	}
 
-	return usecase.userRepository.GetRole(ctx, exec, usecase.enforceUserSecurity.OrgId(), roleId)
+	return usecase.userRepository.GetRoleBySlug(ctx, exec, usecase.enforceUserSecurity.OrgId(), slug)
 }
