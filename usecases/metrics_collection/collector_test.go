@@ -93,6 +93,11 @@ func (m *MockCollectorRepository) CountFreeformSearchesByProvider(ctx context.Co
 	return args.Get(0).(models.ByOrgByProviderCounter), args.Error(1)
 }
 
+func (m *MockCollectorRepository) GetPostgresVersion(ctx context.Context, exec repositories.Executor) (int, error) {
+	args := m.Called(ctx, exec)
+	return args.Get(0).(int), args.Error(1)
+}
+
 type MockCollectorClientRepository struct {
 	mock.Mock
 }
@@ -433,7 +438,7 @@ func TestNewCollectorsV1(t *testing.T) {
 
 	// Assert
 	assert.Equal(t, "v1", collectors.version)
-	assert.Len(t, collectors.globalCollectors, 1)
+	assert.Len(t, collectors.globalCollectors, 2)
 	assert.Len(t, collectors.collectors, 8)
 	assert.Equal(t, mockRepository, collectors.repository)
 	assert.Equal(t, mockExecutorFactory, collectors.executorFactory)
@@ -441,6 +446,8 @@ func TestNewCollectorsV1(t *testing.T) {
 	// Verify the collectors are of the expected stub types
 	_, isAppVersionCollector := collectors.globalCollectors[0].(AppVersionCollector)
 	assert.True(t, isAppVersionCollector, "Should contain AppVersionCollector")
+	_, isPostgresVersionCollector := collectors.globalCollectors[1].(PostgresVersionCollector)
+	assert.True(t, isPostgresVersionCollector, "Should contain PostgresVersionCollector")
 
 	_, isDecisionCollector := collectors.collectors[0].(DecisionCollector)
 	assert.True(t, isDecisionCollector, "Should contain DecisionCollector")

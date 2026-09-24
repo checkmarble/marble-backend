@@ -28,6 +28,7 @@ type CollectorRepository interface {
 	AllOrganizations(ctx context.Context, exec repositories.Executor) ([]models.Organization, error)
 	GetMetadata(ctx context.Context, exec repositories.Executor, orgID *uuid.UUID,
 		key models.MetadataKey) (*models.Metadata, error)
+	PostgresVersionRepository
 	CaseCollectorRepository
 	DecisionCollectorRepository
 	ScreeningCollectorRepository
@@ -196,6 +197,7 @@ func NewCollectorsV1(
 		},
 		globalCollectors: []GlobalCollector{
 			NewAppVersionCollector(apiVersion),
+			NewPostgresVersionCollector(repository, executorFactory),
 		},
 		executorFactory: executorFactory,
 		licenseConfig:   licenseConfig,
