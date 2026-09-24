@@ -13,6 +13,7 @@ import (
 
 type APIOrganization struct {
 	Id                      string                                               `json:"id"`
+	TenantId                string                                               `json:"tenant_id"`
 	Name                    string                                               `json:"name"`
 	DefaultScenarioTimezone *string                                              `json:"default_scenario_timezone"`
 	ScreeningProviders      map[models.ScreeningFeature]models.ScreeningProvider `json:"screening_providers"`
@@ -27,6 +28,7 @@ type APIOrganization struct {
 func AdaptOrganizationDto(org models.Organization) APIOrganization {
 	return APIOrganization{
 		Id:                      org.Id.String(),
+		TenantId:                org.TenantId.String(),
 		Name:                    org.Name,
 		DefaultScenarioTimezone: org.DefaultScenarioTimezone,
 		ScreeningProviders:      org.OpenSanctionsConfig.Providers,

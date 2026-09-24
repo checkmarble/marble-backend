@@ -37,6 +37,22 @@ type OrganizationRepository interface {
 	HasOrganizations(ctx context.Context, exec Executor) (bool, error)
 	UpdateOrganizationAllowedNetworks(ctx context.Context, exec Executor, orgId uuid.UUID,
 		subnets []net.IPNet) ([]net.IPNet, error)
+	ReassignOrganizationsToTenant(ctx context.Context, exec Executor, targetId uuid.UUID, sourceIds []uuid.UUID) error
+}
+
+func (repo *MarbleDbRepository) ReassignOrganizationsToTenant(
+	ctx context.Context,
+	exec Executor,
+	targetId uuid.UUID,
+	sourceIds []uuid.UUID,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+	return ExecBuilder(ctx, exec, NewQueryBuilder().
+		Update(dbmodels.TABLE_ORGANIZATION).
+		Set("tenant_id", targetId).
+		Where(squirrel.Eq{"tenant_id": sourceIds}))
 }
 
 func (repo *MarbleDbRepository) AllOrganizations(ctx context.Context, exec Executor) ([]models.Organization, error) {
