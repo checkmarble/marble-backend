@@ -752,6 +752,36 @@ func addConditionForOperator(query squirrel.SelectBuilder, fieldName string, fie
 				fuzzyFilterOptions.Algorithm, models.BadParameterError)
 		}
 
+	case ast.FILTER_IS_MULTIPLE_OF:
+		if value == 0.0 || value == 0 {
+			return query.Where(squirrel.Expr("false")), nil
+		}
+
+		condition := fmt.Sprintf(`%s::numeric %% ? = 0`, fieldName)
+
+		return query.Where(condition, value), nil
+
+	case ast.FILTER_TIMESTAMP_EXTRACT:
+		opts, ok := value.(ast.TimestampExtractOptions)
+		if !ok {
+			return query, fmt.Errorf("invalid value type for FuzzyMatchFilter")
+		}
+
+		dbPart := opts.Part
+
+		switch opts.Part {
+		case "day_of_month":
+			dbPart = "day"
+		case "day_of_week":
+			dbPart = "isodow"
+		}
+
+		condition := pure_utils.Map(opts.Ranges, func(r [2]int) squirrel.Sqlizer {
+			return squirrel.Expr(fmt.Sprintf(`extract(%s from %s at time zone ?) between ? and ?`, dbPart, fieldName), opts.Timezone, r[0], r[1])
+		})
+
+		return query.Where(squirrel.Or(condition), value), nil
+
 	default:
 		return query, fmt.Errorf("unknown operator %s: %w", operator, models.BadParameterError)
 	}
