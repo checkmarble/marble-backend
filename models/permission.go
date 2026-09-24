@@ -64,6 +64,11 @@ const (
 	SCORING_UPDATE_SETTINGS
 	SCORING_UPDATE_RULESETS
 	SCORING_OVERRIDE_SCORE
+	TENANTS_MERGE
+	TENANTS_LIST
+	TENANTS_CREATE
+	TENANTS_UPDATE
+	TENANTS_DELETE
 )
 
 func (r Permission) String() (string, error) {
@@ -125,6 +130,9 @@ func (r Permission) String() (string, error) {
 		"SCORING_UPDATE_SETTINGS",
 		"SCORING_UPDATE_RULESETS",
 		"SCORING_OVERRIDE_SCORE",
+		"TENANTS_MERGE",
+		"TENANTS_LIST",
+		"TENANTS_UPDATE",
 	}
 	if int(r) > len(permissions)-1 {
 		return "", errors.New("Invalid permission: no string representation has been set")
