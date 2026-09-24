@@ -46,7 +46,7 @@ func OrganizationIdFromRequest(request *http.Request) (organizationId uuid.UUID,
 	}
 
 	if creds.OrganizationId == uuid.Nil {
-		if creds.Role == models.MARBLE_ADMIN {
+		if creds.HasRole(models.MARBLE_ADMIN) {
 			return uuid.Nil, errors.Wrap(
 				models.ForbiddenError,
 				"An organizationId must be passed in the request query params for MARBLE_ADMIN to use this endpoint")

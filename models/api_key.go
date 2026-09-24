@@ -13,7 +13,8 @@ type ApiKey struct {
 	Hash           []byte
 	OrganizationId uuid.UUID
 	Prefix         string
-	Role           Role
+	// TODO(MAR-2251): deprecated authorization field; use grants after legacy JWT expiry.
+	Role Role
 
 	DisplayString string
 }

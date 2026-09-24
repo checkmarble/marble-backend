@@ -26,7 +26,6 @@ type UserRepository interface {
 
 func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (string, error) {
 	userId := pure_utils.NewId().String()
-
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return "", err
 	}
@@ -77,6 +76,23 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 	}
 
 	query := NewQueryBuilder().Update(dbmodels.TABLE_USERS).Where(squirrel.Eq{"id": updateUser.UserId})
+	var previousRole models.Role
+	var previousOrganizationID *uuid.UUID
+	if updateUser.Role != nil && *updateUser.Role != models.NO_ROLE {
+		var role int
+		query, args, err := NewQueryBuilder().
+			Select("role", "organization_id").
+			From(dbmodels.TABLE_USERS).
+			Where(squirrel.Eq{"id": updateUser.UserId}).
+			ToSql()
+		if err != nil {
+			return err
+		}
+		if err := exec.QueryRow(ctx, query, args...).Scan(&role, &previousOrganizationID); err != nil {
+			return err
+		}
+		previousRole = models.Role(role)
+	}
 
 	if updateUser.Email != nil {
 		query = query.Set("email", *updateUser.Email)
@@ -93,6 +109,42 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 
 	if err := ExecBuilder(ctx, exec, query); err != nil {
 		return err
+	}
+	if updateUser.Role != nil && *updateUser.Role != models.NO_ROLE {
+		// TODO(MAR-2251): remove users.role once legacy JWTs have expired.
+		revokeQuery := NewQueryBuilder().
+			Update("grants").
+			Set("revoked_at", squirrel.Expr("NOW()")).
+			Where(squirrel.Eq{
+				"principal_type": "user",
+				"principal_id":   updateUser.UserId,
+				"role":           previousRole.String(),
+				"revoked_at":     nil,
+			})
+		if previousOrganizationID == nil {
+			revokeQuery = revokeQuery.Where(squirrel.Eq{
+				"organization_id": nil,
+				"tenant_id":       nil,
+			})
+		} else {
+			revokeQuery = revokeQuery.Where(squirrel.Eq{"organization_id": *previousOrganizationID})
+		}
+		if err := ExecBuilder(ctx, exec, revokeQuery); err != nil {
+			return err
+		}
+		organizationID := any(nil)
+		if *updateUser.Role != models.MARBLE_ADMIN {
+			organizationID = previousOrganizationID
+		}
+		if err := ExecBuilder(ctx, exec,
+			NewQueryBuilder().
+				Insert("grants").
+				Columns("id", "principal_type", "principal_id", "principal_authority", "organization_id", "role").
+				Values(pure_utils.NewId(), "user", updateUser.UserId, "marble", organizationID, updateUser.Role.String()).
+				Suffix("ON CONFLICT DO NOTHING"),
+		); err != nil {
+			return err
+		}
 	}
 
 	return exec.Cache(ctx).Exec(func(c *redis.Client) error {
@@ -114,6 +166,18 @@ func (repo *MarbleDbRepository) DeleteUser(ctx context.Context, exec Executor, u
 			Set("deleted_at", squirrel.Expr("NOW()")),
 	)
 	if err != nil {
+		return err
+	}
+	if err := ExecBuilder(ctx, exec,
+		NewQueryBuilder().
+			Update("grants").
+			Set("revoked_at", squirrel.Expr("NOW()")).
+			Where(squirrel.Eq{
+				"principal_type": "user",
+				"principal_id":   userID,
+				"revoked_at":     nil,
+			}),
+	); err != nil {
 		return err
 	}
 

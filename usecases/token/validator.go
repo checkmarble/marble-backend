@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"slices"
+	"sort"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/google/uuid"
@@ -44,16 +45,17 @@ func (v *Validator) fromAPIKey(ctx context.Context, key string) (models.Credenti
 	if err != nil {
 		return models.Credentials{}, fmt.Errorf("ActiveGrantsForPrincipal error: %w", err)
 	}
-	// Roles are the union of the legacy role (api_keys.role) and the active
-	// grants, until the authority is switched to grants-only with the backfill.
-	credentials.Roles = []models.Role{apiKey.Role}
+	credentials.Roles = []models.Role{}
 	for _, grant := range grants {
 		if (grant.OrganizationId == apiKey.OrganizationId || grant.TenantId == organization.TenantId) &&
 			!slices.Contains(credentials.Roles, grant.Role) {
 			credentials.Roles = append(credentials.Roles, grant.Role)
 		}
 	}
-	credentials.Role = apiKey.Role
+	if len(credentials.Roles) == 0 {
+		return models.Credentials{}, fmt.Errorf("%w: API key has no active grant", models.UnAuthorizedError)
+	}
+	sort.Slice(credentials.Roles, func(i, j int) bool { return credentials.Roles[i] < credentials.Roles[j] })
 
 	return credentials, nil
 }
