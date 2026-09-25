@@ -883,6 +883,7 @@ func continuousScreeningDatasetUpdatesQuery(
 			WHEN COUNT(*) FILTER (WHERE ucs.status = 'pending') > 0 THEN 'pending'
 			WHEN COUNT(*) FILTER (WHERE ucs.status = 'processing') > 0 THEN 'processing'
 			WHEN COUNT(*) FILTER (WHERE ucs.status = 'completed') > 0 THEN 'completed'
+			WHEN COUNT(*) FILTER (WHERE ucs.status = 'skipped') > 0 THEN 'skipped'
 			ELSE 'pending'
 		END AS status`,
 	).

@@ -391,15 +391,41 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 			retry.Context(iterCtx),
 		)
 		if err != nil {
+			switch {
+			// Handle missing scope error.
+			// This can happen when the organization's index does not exist, either because its first indexing did not
+			// happen yet, or there are no entities to index.
+			// We immediately mark the job as skipped and kill it, to prevent hundreds of requests to be sent that have
+			// no chance if succeeding.
+			case isMissingScopeError(err):
+				iterLogger.WarnContext(iterCtx, "organization index did not exist, motiva returned a missing scope error, skipping",
+					"error", err.Error())
+
+				err = w.repository.UpdateContinuousScreeningUpdateJob(
+					ctx,
+					exec,
+					updateJob.Id,
+					models.ContinuousScreeningUpdateJobStatusSkipped,
+				)
+				if err != nil {
+					if hErr := w.handleError(ctx, exec, job, err, true); hErr != nil {
+						return hErr
+					}
+					return err
+				}
+				return nil
+
 			// Handle transient screening API errors (408 timeout, 502 bad gateway) gracefully
-			if isTransientScreeningError(err) {
+			case isTransientScreeningError(err):
 				iterLogger.WarnContext(iterCtx, "Screening API transient error, rescheduling job", "error", err.Error())
 				return river.JobSnooze(5 * time.Minute)
+
+			default:
+				if hErr := w.handleError(ctx, exec, job, err, true); hErr != nil {
+					return hErr
+				}
+				return err
 			}
-			if hErr := w.handleError(ctx, exec, job, err, true); hErr != nil {
-				return hErr
-			}
-			return err
 		}
 
 		screening := screeningResponse.AdaptScreeningFromSearchResponse(query)
@@ -639,6 +665,17 @@ func isTransientScreeningError(err error) bool {
 	var httpErr *screening.HTTPError
 	if errors.As(err, &httpErr) {
 		return httpErr.IsTransient()
+	}
+	return false
+}
+
+// isMissingScopeError returns true when motiva returns a specific error on an request targetting
+// an unknown scope. This can happen for continuous screening when the current organization has
+// no data in the index.
+func isMissingScopeError(err error) bool {
+	var httpErr *screening.HTTPError
+	if errors.As(err, &httpErr) {
+		return httpErr.IsMissingScope()
 	}
 	return false
 }
