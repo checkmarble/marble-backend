@@ -20,3 +20,8 @@ func (r *GrantRepository) ListOrganizationsForUser(ctx context.Context, exec rep
 	args := r.Called(ctx, exec, userID)
 	return args.Get(0).([]models.OrganizationMembership), args.Error(1)
 }
+
+func (r *GrantRepository) ReassignTenantGrants(ctx context.Context, exec repositories.Executor, targetId uuid.UUID, sourceIds []uuid.UUID) error {
+	args := r.Called(ctx, exec, targetId, sourceIds)
+	return args.Error(0)
+}

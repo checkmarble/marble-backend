@@ -15,6 +15,7 @@ import (
 type GrantRepository interface {
 	EnsureTenantAdminForOrganization(ctx context.Context, exec Executor, userID string, organizationID uuid.UUID) error
 	ListOrganizationsForUser(ctx context.Context, exec Executor, userID string) ([]models.OrganizationMembership, error)
+	ReassignTenantGrants(ctx context.Context, exec Executor, targetId uuid.UUID, sourceIds []uuid.UUID) error
 }
 
 func (repo *MarbleDbRepository) EnsureTenantAdminForOrganization(ctx context.Context, exec Executor, userID string, organizationID uuid.UUID) error {
@@ -87,4 +88,71 @@ func (repo *MarbleDbRepository) ListOrganizationsForUser(ctx context.Context, ex
 		}
 		return membership, nil
 	})
+}
+
+func (repo *MarbleDbRepository) ReassignTenantGrants(ctx context.Context, exec Executor, targetId uuid.UUID, sourceIds []uuid.UUID) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	tenantIds := append([]uuid.UUID{targetId}, sourceIds...)
+	grantQuery := NewQueryBuilder().
+		Select("id", "principal_type", "principal_id", "principal_authority", "tenant_id", "role").
+		From("grants").
+		Where(squirrel.And{
+			squirrel.Eq{"revoked_at": nil},
+			squirrel.Eq{"tenant_id": tenantIds},
+		}).
+		OrderBy("id").
+		Suffix("FOR UPDATE")
+
+	roles := make(map[string]string)
+	duplicates := make([]uuid.UUID, 0)
+	seen := make(map[string]uuid.UUID)
+	err := ForEachRow(ctx, exec, grantQuery, func(row pgx.CollectableRow) error {
+		var grant dbmodels.DbTenantGrant
+		if err := row.Scan(
+			&grant.Id,
+			&grant.PrincipalType,
+			&grant.PrincipalId,
+			&grant.PrincipalAuthority,
+			&grant.TenantId,
+			&grant.Role,
+		); err != nil {
+			return fmt.Errorf("scanning tenant grant: %w", err)
+		}
+
+		principal := grant.PrincipalType + "\x00" + grant.PrincipalId + "\x00" + grant.PrincipalAuthority
+		if previousRole, ok := roles[principal]; ok && previousRole != grant.Role {
+			return models.ConflictError
+		}
+		roles[principal] = grant.Role
+
+		key := principal + "\x00" + grant.Role
+		if previousId, ok := seen[key]; ok && previousId != grant.Id {
+			duplicates = append(duplicates, grant.Id)
+		} else {
+			seen[key] = grant.Id
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(duplicates) > 0 {
+		if err := ExecBuilder(ctx, exec, NewQueryBuilder().
+			Update("grants").
+			Set("revoked_at", squirrel.Expr("now()")).
+			Where(squirrel.Eq{"id": duplicates})); err != nil {
+			return err
+		}
+	}
+	return ExecBuilder(ctx, exec, NewQueryBuilder().
+		Update("grants").
+		Set("tenant_id", targetId).
+		Where(squirrel.And{
+			squirrel.Eq{"tenant_id": sourceIds},
+			squirrel.Eq{"revoked_at": nil},
+		}))
 }

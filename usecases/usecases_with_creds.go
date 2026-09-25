@@ -373,6 +373,17 @@ func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase 
 	)
 }
 
+func (usecases *UsecasesWithCreds) NewTenantUsecase() TenantUsecase {
+	return NewTenantUsecase(
+		usecases.NewEnforceSecurity(),
+		usecases.NewTransactionFactory(),
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+	)
+}
+
 func (usecases *UsecasesWithCreds) NewDataModelUseCase() usecase {
 	return usecase{
 		clientDbIndexEditor:           usecases.NewClientDbIndexEditor(),
