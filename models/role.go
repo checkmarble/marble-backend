@@ -22,15 +22,30 @@ type RbacRole struct {
 }
 
 type RoleBindingConditions struct {
-	NotBefore        *time.Time `json:"notBefore,omitempty"`        //nolint:tagliatelle
-	NotAfter         *time.Time `json:"notAfter,omitempty"`         //nolint:tagliatelle
-	UsedSecondFactor *bool      `json:"usedSecondFactor,omitempty"` //nolint:tagliatelle
-	Networks         []Subnet   `json:"networks,omitempty"`
+	NotBefore        *time.Time      `json:"notBefore,omitempty"`        //nolint:tagliatelle
+	NotAfter         *time.Time      `json:"notAfter,omitempty"`         //nolint:tagliatelle
+	DayOfWeek        *[]time.Weekday `json:"dayOfWeek,omitempty"`        //nolint:tagliatelle
+	TimeOfDay        *TimeOfDayRange `json:"timeOfDay,omitempty"`        //nolint:tagliatelle
+	UsedSecondFactor *bool           `json:"usedSecondFactor,omitempty"` //nolint:tagliatelle
+	Networks         []Subnet        `json:"networks,omitempty"`
 }
 
 func (conditions RoleBindingConditions) Validate() error {
 	if conditions.NotBefore != nil && conditions.NotAfter != nil && !conditions.NotBefore.Before(*conditions.NotAfter) {
 		return errors.Errorf("notBefore must be before notAfter: %w", BadParameterError)
+	}
+	if conditions.TimeOfDay != nil {
+		if err := conditions.TimeOfDay.Validate(); err != nil {
+			return err
+		}
+	}
+	if conditions.DayOfWeek != nil {
+		for _, day := range *conditions.DayOfWeek {
+			if day < time.Sunday || day > time.Saturday {
+				return errors.Errorf("invalid day of week %d, expected 0 (Sunday) to 6 (Saturday): %w",
+					int(day), BadParameterError)
+			}
+		}
 	}
 
 	return nil
@@ -63,6 +78,15 @@ type RoleBindingBundle struct {
 	UsedSecondFactor bool
 	// ClientIp is resolved on every request and is never part of the token.
 	ClientIp net.IP
+	// Location is the time zone of the organization the caveats are evaluated
+	// for, used for calendar-based caveats. A nil location means UTC.
+	Location *time.Location
+	// Potential evaluates the caveats of a principal outside of its own
+	// requests, for instance to check whether a user can be assigned a case.
+	// Caveats depending on the request (second factor, network) or on when it
+	// is made (day of week, time of day) are then considered satisfied, while
+	// the validity period of the binding is still enforced.
+	Potential bool
 }
 
 // Now returns the time caveats are evaluated at.
@@ -72,6 +96,16 @@ func (bundle RoleBindingBundle) Now() time.Time {
 	}
 
 	return bundle.Clock.Now()
+}
+
+// LocalNow returns the evaluation time in the bundle's time zone, or in UTC
+// when no time zone is known.
+func (bundle RoleBindingBundle) LocalNow() time.Time {
+	if bundle.Location == nil {
+		return bundle.Now().In(time.UTC)
+	}
+
+	return bundle.Now().In(bundle.Location)
 }
 
 func (b RoleBinding) IsActive(bundle RoleBindingBundle) bool {
@@ -84,6 +118,21 @@ func (b RoleBinding) IsActive(bundle RoleBindingBundle) bool {
 		return false
 	}
 
+	if bundle.Potential {
+		return true
+	}
+
+	// An empty list of week days is unrestricted, like an empty list of
+	// networks. Days are evaluated in the organization's time zone if
+	// available.
+	if b.Conditions.DayOfWeek != nil && len(*b.Conditions.DayOfWeek) > 0 &&
+		!slices.Contains(*b.Conditions.DayOfWeek, bundle.LocalNow().Weekday()) {
+		return false
+	}
+	// The time of day is also evaluated in the organization's time zone.
+	if b.Conditions.TimeOfDay != nil && !b.Conditions.TimeOfDay.Contains(bundle.LocalNow()) {
+		return false
+	}
 	if b.Conditions.UsedSecondFactor != nil && *b.Conditions.UsedSecondFactor && !bundle.UsedSecondFactor {
 		return false
 	}

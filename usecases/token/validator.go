@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"net"
+	"slices"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
@@ -41,6 +43,7 @@ func (v *Validator) fromAPIKey(ctx context.Context, key string, clientIp net.IP)
 	apiKey.DisplayString = fmt.Sprintf("Api key %s*** of %s", apiKey.Prefix, organization.Name)
 	credentials := apiKey.IntoCredentials()
 	credentials.RoleBindingBundle.ClientIp = clientIp
+	credentials.RoleBindingBundle.Location = organization.Timezone()
 
 	return v.withRoleBindings(ctx, credentials, organization.TenantId)
 }
@@ -53,14 +56,16 @@ func (v *Validator) fromMarbleToken(ctx context.Context, marbleToken string, cli
 	credentials.RoleBindingBundle.ClientIp = clientIp
 
 	// Tokens do not carry the tenant, which is needed to apply tenant-scoped
-	// grants.
+	// grants, nor the organization's time zone, used to evaluate caveats.
 	tenantId := uuid.Nil
+	credentials.RoleBindingBundle.Location = time.UTC
 	if credentials.OrganizationId != uuid.Nil {
 		organization, err := v.getter.GetOrganizationByID(ctx, credentials.OrganizationId)
 		if err != nil {
 			return models.Credentials{}, errors.Errorf("getter.GetOrganizationByID error: %w", err)
 		}
 		tenantId = organization.TenantId
+		credentials.RoleBindingBundle.Location = organization.Timezone()
 	}
 
 	return v.withRoleBindings(ctx, credentials, tenantId)
@@ -97,6 +102,17 @@ func (v *Validator) withRoleBindings(ctx context.Context, credentials models.Cre
 	if (principalType == "api_key" || credentials.OrganizationId != uuid.Nil) &&
 		len(credentials.RoleBindings) == 0 {
 		return models.Credentials{}, errors.Errorf("%w: no applicable grant", models.UnAuthorizedError)
+	}
+
+	// Likewise, bindings whose caveats are not satisfied by this request (second
+	// factor, network, time windows) do not grant access to the organization.
+	// Organization access checks rely on the organization of the credentials
+	// alone, so they must not be issued without an active binding.
+	if credentials.OrganizationId != uuid.Nil &&
+		!slices.ContainsFunc(credentials.RoleBindings, func(binding models.RoleBinding) bool {
+			return binding.IsActive(credentials.RoleBindingBundle)
+		}) {
+		return models.Credentials{}, errors.Errorf("%w: no active role binding for this request", models.ForbiddenError)
 	}
 
 	credentials.TenantId = tenantId
