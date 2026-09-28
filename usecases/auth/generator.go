@@ -113,6 +113,8 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 	tokenCredentials.RoleBindingBundle = models.RoleBindingBundle{
 		UsedSecondFactor: claims.GetUsedSecondFactor(),
 		ClientIp:         creds.ClientIp,
+		// Platform tokens have no organization, and so fall back to UTC.
+		Location: selectedOrganization.Timezone(),
 	}
 	tokenCredentials.RoleBindings = models.ScopeRoleBindings(grants, selectedOrganizationID, selectedOrganization.TenantId)
 	// Caveats are evaluated with the generator's clock, which is not kept in

@@ -39,9 +39,10 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", "", mock.Anything, models.Credentials{
-			OrganizationId: utils.TextToUUID("organization_id"),
-			RoleBindings:   []models.RoleBinding{grant(models.ADMIN, apiKey.OrganizationId, uuid.Nil)},
-			Permissions:    models.ADMIN.Permissions(),
+			OrganizationId:    utils.TextToUUID("organization_id"),
+			RoleBindings:      []models.RoleBinding{grant(models.ADMIN, apiKey.OrganizationId, uuid.Nil)},
+			Permissions:       models.ADMIN.Permissions(),
+			RoleBindingBundle: models.RoleBindingBundle{Location: time.UTC},
 			ActorIdentity: models.Identity{
 				ApiKeyId:   "api_key_id",
 				ApiKeyName: "Api key abc*** of organization",
@@ -75,9 +76,10 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", "", mock.Anything, models.Credentials{
-			OrganizationId: utils.TextToUUID("organization_id"),
-			RoleBindings:   []models.RoleBinding{grant(models.ADMIN, apiKey.OrganizationId, uuid.Nil)},
-			Permissions:    models.ADMIN.Permissions(),
+			OrganizationId:    utils.TextToUUID("organization_id"),
+			RoleBindings:      []models.RoleBinding{grant(models.ADMIN, apiKey.OrganizationId, uuid.Nil)},
+			Permissions:       models.ADMIN.Permissions(),
+			RoleBindingBundle: models.RoleBindingBundle{Location: time.UTC},
 			ActorIdentity: models.Identity{
 				ApiKeyId:   "api_key_id",
 				ApiKeyName: "Api key abc*** of organization",
@@ -137,9 +139,10 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
-			OrganizationId: utils.TextToUUID("organization_id"),
-			RoleBindings:   []models.RoleBinding{grant(models.ADMIN, user.OrganizationId, uuid.Nil)},
-			Permissions:    models.ADMIN.Permissions(),
+			RoleBindingBundle: models.RoleBindingBundle{Location: time.UTC},
+			OrganizationId:    utils.TextToUUID("organization_id"),
+			RoleBindings:      []models.RoleBinding{grant(models.ADMIN, user.OrganizationId, uuid.Nil)},
+			Permissions:       models.ADMIN.Permissions(),
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
 				Email:  user.Email,
@@ -178,9 +181,10 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
-			OrganizationId: utils.TextToUUID("organization_id"),
-			RoleBindings:   []models.RoleBinding{grant(models.ADMIN, user.OrganizationId, uuid.Nil)},
-			Permissions:    models.ADMIN.Permissions(),
+			RoleBindingBundle: models.RoleBindingBundle{Location: time.UTC},
+			OrganizationId:    utils.TextToUUID("organization_id"),
+			RoleBindings:      []models.RoleBinding{grant(models.ADMIN, user.OrganizationId, uuid.Nil)},
+			Permissions:       models.ADMIN.Permissions(),
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
 				Email:  user.Email,
@@ -219,9 +223,10 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
-			OrganizationId: utils.TextToUUID("organization_id"),
-			RoleBindings:   []models.RoleBinding{grant(models.ADMIN, user.OrganizationId, uuid.Nil)},
-			Permissions:    models.ADMIN.Permissions(),
+			RoleBindingBundle: models.RoleBindingBundle{Location: time.UTC},
+			OrganizationId:    utils.TextToUUID("organization_id"),
+			RoleBindings:      []models.RoleBinding{grant(models.ADMIN, user.OrganizationId, uuid.Nil)},
+			Permissions:       models.ADMIN.Permissions(),
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
 				Email:  user.Email,
@@ -263,7 +268,8 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
-			OrganizationId: orgIdString,
+			RoleBindingBundle: models.RoleBindingBundle{Location: time.UTC},
+			OrganizationId:    orgIdString,
 			RoleBindings: []models.RoleBinding{
 				grant(models.TENANT_ADMIN, uuid.Nil, tenantId),
 				grant(models.ADMIN, user.OrganizationId, uuid.Nil),
@@ -311,8 +317,9 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
-			RoleBindings: []models.RoleBinding{grant(models.MARBLE_ADMIN, uuid.Nil, uuid.Nil)},
-			Permissions:  models.RoleBindingsPermissions([]models.RoleBinding{grant(models.MARBLE_ADMIN, uuid.Nil, uuid.Nil)}, roleBindingBundle),
+			RoleBindingBundle: models.RoleBindingBundle{Location: time.UTC},
+			RoleBindings:      []models.RoleBinding{grant(models.MARBLE_ADMIN, uuid.Nil, uuid.Nil)},
+			Permissions:       models.RoleBindingsPermissions([]models.RoleBinding{grant(models.MARBLE_ADMIN, uuid.Nil, uuid.Nil)}, roleBindingBundle),
 			ActorIdentity: models.Identity{
 				UserId: admin.UserId,
 				Email:  admin.Email,
@@ -407,6 +414,31 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 					}))
 			})
 		}
+	})
+
+	t.Run("uses the organization's time zone for caveats", func(t *testing.T) {
+		paris := "Europe/Paris"
+
+		mockRepository := new(mocks.Database)
+		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
+			Return([]models.RoleBinding{grant(models.ADMIN, organizationID, uuid.Nil)}, nil)
+		mockRepository.On("GetOrganizationByID", mock.Anything, organizationID).
+			Return(models.Organization{Id: organizationID, TenantId: tenantID, DefaultScenarioTimezone: &paris}, nil)
+		mockEncoder := new(mocks.JWTEncoderValidator)
+		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, mock.Anything).
+			Return("token", nil)
+
+		generator := auth.NewGenerator(mockRepository, mockEncoder, time.Minute, clock.NewMock(now))
+		token, err := generator.GenerateToken(
+			context.Background(),
+			auth.Credentials{Type: auth.CredentialsBearer},
+			user,
+			claims,
+			uuid.Nil,
+		)
+
+		assert.NoError(t, err)
+		assert.Equal(t, "Europe/Paris", token.Credentials.RoleBindingBundle.Location.String())
 	})
 
 	t.Run("auto selects the only accessible organization", func(t *testing.T) {
