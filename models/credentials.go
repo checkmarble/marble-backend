@@ -28,9 +28,9 @@ type Credentials struct {
 	// relies on RoleBindings.
 	Permissions []Permission
 	// RoleBindingBundle holds what the caveats of role bindings are evaluated
-	// against, coming from the token (second factor). It holds no evaluation
-	// time, since credentials can outlive the request they were built for: its
-	// clock is read at every check.
+	// against, coming either from the token (second factor) or from the current
+	// request (client IP). It holds no evaluation time, since credentials can
+	// outlive the request they were built for: its clock is read at every check.
 	RoleBindingBundle RoleBindingBundle
 }
 

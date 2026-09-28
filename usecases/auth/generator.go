@@ -112,6 +112,7 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 	tokenCredentials.OrganizationId = selectedOrganizationID
 	tokenCredentials.RoleBindingBundle = models.RoleBindingBundle{
 		UsedSecondFactor: claims.GetUsedSecondFactor(),
+		ClientIp:         creds.ClientIp,
 	}
 	tokenCredentials.RoleBindings = models.ScopeRoleBindings(grants, selectedOrganizationID, selectedOrganization.TenantId)
 	// Caveats are evaluated with the generator's clock, which is not kept in

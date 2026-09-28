@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"net"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/google/uuid"
@@ -24,7 +25,7 @@ type Validator struct {
 	validator marbleTokenValidator
 }
 
-func (v *Validator) fromAPIKey(ctx context.Context, key string) (models.Credentials, error) {
+func (v *Validator) fromAPIKey(ctx context.Context, key string, clientIp net.IP) (models.Credentials, error) {
 	hash := sha256.Sum256([]byte(key))
 	apiKey, err := v.getter.GetApiKeyByHash(ctx, hash[:])
 	if err != nil {
@@ -38,15 +39,17 @@ func (v *Validator) fromAPIKey(ctx context.Context, key string) (models.Credenti
 
 	apiKey.DisplayString = fmt.Sprintf("Api key %s*** of %s", apiKey.Prefix, organization.Name)
 	credentials := apiKey.IntoCredentials()
+	credentials.RoleBindingBundle.ClientIp = clientIp
 
 	return v.withRoleBindings(ctx, credentials, organization.TenantId)
 }
 
-func (v *Validator) fromMarbleToken(ctx context.Context, marbleToken string) (models.Credentials, error) {
+func (v *Validator) fromMarbleToken(ctx context.Context, marbleToken string, clientIp net.IP) (models.Credentials, error) {
 	credentials, err := v.validator.ValidateMarbleToken(marbleToken)
 	if err != nil {
 		return models.Credentials{}, err
 	}
+	credentials.RoleBindingBundle.ClientIp = clientIp
 
 	// Tokens do not carry the tenant, which is needed to apply tenant-scoped
 	// grants.
@@ -99,11 +102,11 @@ func (v *Validator) withRoleBindings(ctx context.Context, credentials models.Cre
 	return credentials, nil
 }
 
-func (v *Validator) ValidateTokenOrKey(ctx context.Context, marbleToken, apiKey string) (models.Credentials, error) {
+func (v *Validator) ValidateTokenOrKey(ctx context.Context, marbleToken, apiKey string, clientIp net.IP) (models.Credentials, error) {
 	if apiKey != "" {
-		return v.fromAPIKey(ctx, apiKey)
+		return v.fromAPIKey(ctx, apiKey, clientIp)
 	}
-	return v.fromMarbleToken(ctx, marbleToken)
+	return v.fromMarbleToken(ctx, marbleToken, clientIp)
 }
 
 func NewValidator(getter keyAndOrganizationGetter, validator marbleTokenValidator) *Validator {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net"
 	"regexp"
 	"slices"
 	"strings"
@@ -24,6 +25,7 @@ type RoleBindingConditions struct {
 	NotBefore        *time.Time `json:"notBefore,omitempty"`        //nolint:tagliatelle
 	NotAfter         *time.Time `json:"notAfter,omitempty"`         //nolint:tagliatelle
 	UsedSecondFactor *bool      `json:"usedSecondFactor,omitempty"` //nolint:tagliatelle
+	Networks         []Subnet   `json:"networks,omitempty"`
 }
 
 func (conditions RoleBindingConditions) Validate() error {
@@ -59,6 +61,8 @@ type RoleBindingBundle struct {
 	// means the current time.
 	Clock            Clock
 	UsedSecondFactor bool
+	// ClientIp is resolved on every request and is never part of the token.
+	ClientIp net.IP
 }
 
 // Now returns the time caveats are evaluated at.
@@ -82,6 +86,18 @@ func (b RoleBinding) IsActive(bundle RoleBindingBundle) bool {
 
 	if b.Conditions.UsedSecondFactor != nil && *b.Conditions.UsedSecondFactor && !bundle.UsedSecondFactor {
 		return false
+	}
+
+	// Like the organization allowed networks guard, an empty list is
+	// unrestricted, and an unknown client IP fails open.
+	if len(b.Conditions.Networks) > 0 && bundle.ClientIp != nil {
+		inNetworks := slices.ContainsFunc(b.Conditions.Networks, func(subnet Subnet) bool {
+			return subnet.Contains(bundle.ClientIp)
+		})
+
+		if !inNetworks {
+			return false
+		}
 	}
 
 	return true

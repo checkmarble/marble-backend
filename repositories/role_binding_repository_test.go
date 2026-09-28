@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"net"
 	"testing"
 	"time"
 
@@ -15,6 +16,9 @@ func TestSameRoleBinding(t *testing.T) {
 	required := true
 	notRequired := false
 
+	office := models.Subnet{IPNet: net.IPNet{IP: net.IPv4(10, 0, 0, 0).To4(), Mask: net.CIDRMask(8, 32)}}
+	home := models.Subnet{IPNet: net.IPNet{IP: net.IPv4(192, 168, 0, 0).To4(), Mask: net.CIDRMask(16, 32)}}
+
 	binding := func(conditions models.RoleBindingConditions) models.RoleBinding {
 		return models.RoleBinding{Role: models.VIEWER, Conditions: conditions}
 	}
@@ -22,6 +26,7 @@ func TestSameRoleBinding(t *testing.T) {
 	current := binding(models.RoleBindingConditions{
 		NotBefore:        &notBefore,
 		UsedSecondFactor: &required,
+		Networks:         []models.Subnet{office},
 	})
 
 	with := func(change func(c *models.RoleBindingConditions)) models.RoleBinding {
@@ -41,6 +46,7 @@ func TestSameRoleBinding(t *testing.T) {
 		{"not before changed", with(func(c *models.RoleBindingConditions) { c.NotBefore = &later }), false},
 		{"not after added", with(func(c *models.RoleBindingConditions) { c.NotAfter = &later }), false},
 		{"second factor changed", with(func(c *models.RoleBindingConditions) { c.UsedSecondFactor = &notRequired }), false},
+		{"networks changed", with(func(c *models.RoleBindingConditions) { c.Networks = []models.Subnet{home} }), false},
 		{"all conditions removed", binding(models.RoleBindingConditions{}), false},
 	}
 
