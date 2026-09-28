@@ -30,6 +30,7 @@ type UserRepository interface {
 	CreateRole(ctx context.Context, exec Executor, orgId uuid.UUID, slug, name string) (models.RbacRole, error)
 	UpdateRolePermissions(ctx context.Context, exec Executor, orgId uuid.UUID, slug models.Role, permissions []models.Permission) error
 	ReplaceUserRoleBindings(ctx context.Context, tx Transaction, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error
+	ListUserOrganizationRoleBindings(ctx context.Context, exec Executor, orgId uuid.UUID, userId string) ([]models.RoleBinding, error)
 	ReplaceUserOrganizationRoleBindings(ctx context.Context, tx Transaction, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error
 }
 

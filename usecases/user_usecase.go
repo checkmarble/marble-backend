@@ -272,6 +272,15 @@ func (usecase *UserUseCase) ReplaceOrganizationGrant(
 		if err := usecase.ensureUserBelongsToOrganizationTenant(ctx, tx, user, organizationID); err != nil {
 			return err
 		}
+
+		current, err := usecase.userRepository.ListUserOrganizationRoleBindings(ctx, tx, organizationID, userID)
+		if err != nil {
+			return err
+		}
+		if err := usecase.enforceUserSecurity.GrantOrganizationRoleBindings(current, resolved); err != nil {
+			return err
+		}
+
 		return usecase.userRepository.ReplaceUserOrganizationRoleBindings(ctx, tx, organizationID, userID, resolved)
 	})
 }
@@ -432,9 +441,23 @@ func (usecase *UserUseCase) UpdateRolePermissions(ctx context.Context, slug mode
 	exec := usecase.executorFactory.NewExecutor()
 	seen := make(map[models.Permission]struct{}, len(permissions))
 
+	current, err := usecase.userRepository.GetRoleBySlug(ctx, exec, usecase.enforceUserSecurity.OrgId(), slug)
+	if err != nil {
+		return models.RbacRole{}, err
+	}
+
+	added := make([]models.Permission, 0, len(permissions))
+
 	for _, permission := range permissions {
+		if permission.IsPlatform() {
+			return models.RbacRole{}, errors.Wrap(models.BadParameterError,
+				"platform permission "+string(permission)+" cannot be granted through custom roles")
+		}
 		if !slices.Contains(models.ValidPermissions, permission) {
 			return models.RbacRole{}, errors.Wrap(models.BadParameterError, "invalid permission "+string(permission))
+		}
+		if !slices.Contains(current.Permissions, permission) {
+			added = append(added, permission)
 		}
 
 		if _, exists := seen[permission]; exists {
@@ -444,7 +467,14 @@ func (usecase *UserUseCase) UpdateRolePermissions(ctx context.Context, slug mode
 		seen[permission] = struct{}{}
 	}
 
-	err := usecase.userRepository.UpdateRolePermissions(
+	// Permissions can only be added to a custom role by principals holding
+	// them. Those the role already has are left alone, so that a role can be
+	// edited by someone not holding all of its permissions.
+	if err := usecase.enforceUserSecurity.Permissions(added); err != nil {
+		return models.RbacRole{}, errors.Wrap(err, "custom roles can only grant permissions you hold")
+	}
+
+	err = usecase.userRepository.UpdateRolePermissions(
 		ctx,
 		exec,
 		usecase.enforceUserSecurity.OrgId(),

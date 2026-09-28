@@ -31,6 +31,9 @@ func (allowOrganizationGrantSecurity) ManageOrganizationGrant(uuid.UUID, models.
 	return nil
 }
 func (allowOrganizationGrantSecurity) ManageRoles() error { return nil }
+func (allowOrganizationGrantSecurity) GrantOrganizationRoleBindings([]models.RoleBinding, []models.RoleBinding) error {
+	return nil
+}
 
 var _ security.EnforceSecurityUser = allowOrganizationGrantSecurity{}
 
@@ -68,6 +71,8 @@ func TestUserUseCaseReplaceOrganizationGrant(t *testing.T) {
 			}
 			transactionFactory.On("Transaction", mock.Anything, mock.Anything).Return(nil)
 			if tt.wantError == nil {
+				userRepository.On("ListUserOrganizationRoleBindings", mock.Anything, mock.Anything, targetOrganizationID, userID).
+					Return([]models.RoleBinding{}, nil)
 				userRepository.On("ReplaceUserOrganizationRoleBindings", mock.Anything, mock.Anything, targetOrganizationID, userID,
 					[]models.RoleBinding{models.NewNativeRoleBinding(models.VIEWER), models.NewNativeRoleBinding(models.ANALYST)}).
 					Return(nil)
@@ -121,6 +126,8 @@ func TestUserUseCaseRevokePlatformUserGrant(t *testing.T) {
 	organizationRepository.On("GetOrganizationById", mock.Anything, mock.Anything, organizationID).
 		Return(models.Organization{Id: organizationID}, nil)
 	transactionFactory.On("Transaction", mock.Anything, mock.Anything).Return(nil)
+	userRepository.On("ListUserOrganizationRoleBindings", mock.Anything, mock.Anything, organizationID, userID).
+		Return(models.NativeRoleBindings([]models.Role{models.VIEWER}), nil)
 	// Revoking replaces the user's bindings in the organization with none.
 	userRepository.On("ReplaceUserOrganizationRoleBindings", mock.Anything, mock.Anything, organizationID, userID,
 		mock.MatchedBy(func(bindings []models.RoleBinding) bool { return len(bindings) == 0 })).Return(nil)
@@ -159,6 +166,8 @@ func TestUserUseCaseReplaceOrganizationGrantResolvesCustomRolesInTargetOrganizat
 	organizationRepository.On("GetOrganizationById", mock.Anything, mock.Anything, homeOrganizationID).
 		Return(models.Organization{Id: homeOrganizationID, TenantId: tenantID}, nil)
 	transactionFactory.On("Transaction", mock.Anything, mock.Anything).Return(nil)
+	userRepository.On("ListUserOrganizationRoleBindings", mock.Anything, mock.Anything, targetOrganizationID, userID).
+		Return([]models.RoleBinding{}, nil)
 	userRepository.On("ReplaceUserOrganizationRoleBindings", mock.Anything, mock.Anything, targetOrganizationID, userID,
 		[]models.RoleBinding{{
 			Role:         "org/reviewer",

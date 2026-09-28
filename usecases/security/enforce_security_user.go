@@ -18,6 +18,7 @@ type EnforceSecurityUser interface {
 	ListUsers(organizationId *uuid.UUID) error
 	ListTenantUsers(organizationId uuid.UUID) error
 	ManageOrganizationGrant(organizationId uuid.UUID, targetUser models.User) error
+	GrantOrganizationRoleBindings(current, next []models.RoleBinding) error
 	ManageRoles() error
 }
 
@@ -53,6 +54,10 @@ func (e *EnforceSecurityUserImpl) CreateUser(input models.CreateUser) error {
 			models.ForbiddenError,
 			"only org admins and marble admins can create org admins",
 		)
+	}
+
+	if err := enforceCanGrant(e, grantedCustomRolePermissions(nil, input.RoleBindings)); err != nil {
+		return err
 	}
 
 	return errors.Join(
@@ -108,6 +113,13 @@ func (e *EnforceSecurityUserImpl) UpdateUser(targetUser models.User, updateUser 
 		return errors.Wrap(models.ForbiddenError, "non-admins can only update themselves")
 	}
 
+	if updateUser.RoleBindings != nil {
+		granted := grantedCustomRolePermissions(targetUser.RoleBindings, *updateUser.RoleBindings)
+		if err := enforceCanGrant(e, granted); err != nil {
+			return err
+		}
+	}
+
 	// lastly, in the most general case allow updates only on users of the same org
 	return errors.Join(
 		e.Permission(models.MARBLE_USER_UPDATE),
@@ -161,6 +173,13 @@ func (e *EnforceSecurityUserImpl) ManageOrganizationGrant(organizationId uuid.UU
 		e.Permission(models.MARBLE_USER_UPDATE),
 		e.ReadOrganization(organizationId),
 	)
+}
+
+// GrantOrganizationRoleBindings only lets principals give a user, in an
+// organization of its tenant, custom roles whose permissions they hold.
+// Bindings left unchanged are not checked again.
+func (e *EnforceSecurityUserImpl) GrantOrganizationRoleBindings(current, next []models.RoleBinding) error {
+	return enforceCanGrant(e, grantedCustomRolePermissions(current, next))
 }
 
 func (e *EnforceSecurityUserImpl) ManageRoles() error {

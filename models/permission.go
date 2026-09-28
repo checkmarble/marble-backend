@@ -1,5 +1,7 @@
 package models
 
+import "slices"
+
 type Permission string
 
 const (
@@ -68,6 +70,8 @@ const (
 	TENANTS_DELETE                    Permission = "TENANTS_DELETE"
 )
 
+// ValidPermissions are the permissions that can be granted through custom
+// roles. They never include PLATFORM_PERMISSIONS.
 var ValidPermissions = []Permission{
 	DECISION_READ,
 	DECISION_CREATE,
@@ -81,24 +85,17 @@ var ValidPermissions = []Permission{
 	APIKEY_READ,
 	APIKEY_CREATE,
 	ANALYTICS_READ,
-	ORGANIZATIONS_LIST,
-	ORGANIZATIONS_CREATE,
 	ORGANIZATIONS_UPDATE,
-	ORGANIZATIONS_DELETE,
 	USER_CREATE,
 	MARBLE_USER_READ,
 	MARBLE_USER_CREATE,
 	MARBLE_USER_UPDATE,
 	MARBLE_USER_DELETE,
-	ANY_ORGANIZATION_ID_IN_CONTEXT,
 	CUSTOM_LISTS_READ,
 	CUSTOM_LISTS_EDIT,
 	MARBLE_USER_LIST,
 	CASE_READ_WRITE,
 	INBOX_EDITOR,
-	LICENSE_LIST,
-	LICENSE_CREATE,
-	LICENSE_UPDATE,
 	WEBHOOK_EVENT,
 	WEBHOOK,
 	READ_SNOOZES,
@@ -127,4 +124,32 @@ var ValidPermissions = []Permission{
 	SCORING_OVERRIDE_SCORE,
 	SCREENING_SAVE_SEARCHES,
 	MANAGE_ROLES,
+}
+
+// PLATFORM_PERMISSIONS act beyond a single organization. They are only held
+// through platform roles, and never granted through custom roles, which are
+// scoped to an organization.
+var PLATFORM_PERMISSIONS = []Permission{
+	ANY_ORGANIZATION_ID_IN_CONTEXT,
+	ORGANIZATIONS_LIST,
+	ORGANIZATIONS_CREATE,
+	ORGANIZATIONS_DELETE,
+	LICENSE_LIST,
+	LICENSE_CREATE,
+	LICENSE_UPDATE,
+	TENANTS_MERGE,
+	TENANTS_LIST,
+	TENANTS_CREATE,
+	TENANTS_UPDATE,
+	TENANTS_DELETE,
+}
+
+func (p Permission) IsPlatform() bool {
+	return slices.Contains(PLATFORM_PERMISSIONS, p)
+}
+
+// WithoutPlatformPermissions drops the platform permissions from a custom
+// role's permissions, in case some were stored nonetheless.
+func WithoutPlatformPermissions(permissions []Permission) []Permission {
+	return slices.DeleteFunc(slices.Clone(permissions), Permission.IsPlatform)
 }
