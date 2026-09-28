@@ -31,6 +31,18 @@ func (repo *MarbleDbRepository) ReplaceUserRoleBindings(
 	return repo.replaceRoleBindings(ctx, tx, homeScope(orgId), dbmodels.GrantPrincipalUser, userId, bindings)
 }
 
+// ListUserOrganizationRoleBindings returns the role bindings of a user in an
+// organization that may not be its home organization, without its platform
+// bindings.
+func (repo *MarbleDbRepository) ListUserOrganizationRoleBindings(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	userId string,
+) ([]models.RoleBinding, error) {
+	return repo.listScopedRoleBindings(ctx, exec, organizationScope(orgId), dbmodels.GrantPrincipalUser, userId)
+}
+
 // ReplaceUserOrganizationRoleBindings replaces the role bindings of a user in
 // an organization that may not be its home organization. Its platform bindings
 // and its bindings in other organizations are left untouched.
