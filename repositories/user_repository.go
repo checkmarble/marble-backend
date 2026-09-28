@@ -46,7 +46,7 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 			Values(
 				userId,
 				createUser.Email,
-				int(createUser.Role),
+				createUser.Role.LegacyValue(),
 				createUser.OrganizationId,
 				createUser.FirstName,
 				createUser.LastName,
@@ -92,7 +92,7 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 		if err := exec.QueryRow(ctx, selectQuery, args...).Scan(&role, &previousOrganizationID); err != nil {
 			return err
 		}
-		previousRole = models.Role(role)
+		previousRole = models.RoleFromLegacyValue(role)
 		if previousOrganizationID == nil && *updateUser.Role != models.MARBLE_ADMIN {
 			return fmt.Errorf("cannot assign an organization role to a platform user without an organization")
 		}
@@ -102,7 +102,7 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 		query = query.Set("email", *updateUser.Email)
 	}
 	if updateUser.Role != nil && *updateUser.Role != models.NO_ROLE {
-		query = query.Set("role", int(*updateUser.Role))
+		query = query.Set("role", updateUser.Role.LegacyValue())
 	}
 	if updateUser.FirstName != nil {
 		query = query.Set("first_name", *updateUser.FirstName)

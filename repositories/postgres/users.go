@@ -24,6 +24,7 @@ func (db *Database) UserByEmail(ctx context.Context, email string) (models.User,
 	`
 
 	var user models.User
+	var role int
 	var organizationID *string
 	var tenantID *uuid.UUID
 	var firstName, lastName pgtype.Text
@@ -32,10 +33,11 @@ func (db *Database) UserByEmail(ctx context.Context, email string) (models.User,
 			&user.Email,
 			&firstName,
 			&lastName,
-			&user.Role,
+			&role,
 			&organizationID,
 			&tenantID,
 		)
+	user.Role = models.RoleFromLegacyValue(role)
 	if firstName.Valid {
 		user.FirstName = firstName.String
 	}

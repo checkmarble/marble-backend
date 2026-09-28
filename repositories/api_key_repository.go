@@ -86,7 +86,7 @@ func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor,
 				apiKey.Prefix,
 				apiKey.Hash,
 				apiKey.Description,
-				apiKey.Role,
+				apiKey.Role.LegacyValue(),
 			),
 	)
 	if err != nil {

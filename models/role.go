@@ -4,24 +4,55 @@ import (
 	"slices"
 )
 
-type Role int
+type Role string
 
 // Do not remove or reorder entries here, even if a role if deleted, since the
 // value is used for identity.
 const (
-	NO_ROLE Role = iota
-	VIEWER
-	BUILDER
-	PUBLISHER
-	ADMIN
-	API_CLIENT
-	MARBLE_ADMIN
-	DEPREC_ROLE_1 // used in an old product
-	DEPREC_ROLE_2 // used in an old product
-	ANALYST
-	SYSTEM // internal principal used by background workers
-	TENANT_ADMIN
+	NO_ROLE      Role = ""
+	SYSTEM       Role = "SYSTEM"
+	VIEWER       Role = "VIEWER"
+	BUILDER      Role = "BUILDER"
+	PUBLISHER    Role = "PUBLISHER"
+	ADMIN        Role = "ADMIN"
+	API_CLIENT   Role = "API_CLIENT"
+	MARBLE_ADMIN Role = "MARBLE_ADMIN"
+	ANALYST      Role = "ANALYST"
+	TENANT_ADMIN Role = "TENANT_ADMIN"
 )
+
+// legacyRoleValues are the values roles had as integers, still stored in the
+// role column of users and API keys.
+var legacyRoleValues = map[Role]int{
+	NO_ROLE:      0,
+	VIEWER:       1,
+	BUILDER:      2,
+	PUBLISHER:    3,
+	ADMIN:        4,
+	API_CLIENT:   5,
+	MARBLE_ADMIN: 6,
+	ANALYST:      9,
+	SYSTEM:       10,
+	TENANT_ADMIN: 11,
+}
+
+// LegacyValue returns the integer value of the role, for the legacy role
+// column of users and API keys.
+func (r Role) LegacyValue() int {
+	return legacyRoleValues[r]
+}
+
+// RoleFromLegacyValue returns the role stored as an integer in the legacy role
+// column of users and API keys.
+func RoleFromLegacyValue(value int) Role {
+	for role, legacyValue := range legacyRoleValues {
+		if legacyValue == value {
+			return role
+		}
+	}
+
+	return NO_ROLE
+}
 
 func GetValidUserRoles() []Role {
 	return []Role{
@@ -45,30 +76,17 @@ func GetValidOrganizationGrantRoles() []Role {
 }
 
 func (r Role) String() string {
-	switch r {
-	case NO_ROLE:
-		return "NO_ROLE"
-	case VIEWER:
-		return "VIEWER"
-	case ANALYST:
-		return "ANALYST"
-	case BUILDER:
-		return "BUILDER"
-	case PUBLISHER:
-		return "PUBLISHER"
-	case ADMIN:
-		return "ADMIN"
-	case API_CLIENT:
-		return "API_CLIENT"
-	case MARBLE_ADMIN:
-		return "MARBLE_ADMIN"
-	case SYSTEM:
-		return "SYSTEM"
-	case TENANT_ADMIN:
-		return "TENANT_ADMIN"
-	default:
-		return "UNKNOWN_ROLE"
+	return string(r)
+}
+
+// RoleFromString parses a native role name, returning an empty role for
+// unknown or internal (SYSTEM) roles.
+func RoleFromString(s string) Role {
+	switch role := Role(s); role {
+	case VIEWER, BUILDER, PUBLISHER, ADMIN, API_CLIENT, MARBLE_ADMIN, ANALYST, TENANT_ADMIN:
+		return role
 	}
+	return NO_ROLE
 }
 
 func (r Role) Permissions() []Permission {
@@ -81,26 +99,4 @@ func (r Role) Permissions() []Permission {
 
 func (r Role) HasPermission(permission Permission) bool {
 	return slices.Contains(r.Permissions(), permission)
-}
-
-func RoleFromString(s string) Role {
-	switch s {
-	case "VIEWER":
-		return VIEWER
-	case "ANALYST":
-		return ANALYST
-	case "BUILDER":
-		return BUILDER
-	case "PUBLISHER":
-		return PUBLISHER
-	case "ADMIN":
-		return ADMIN
-	case "API_CLIENT":
-		return API_CLIENT
-	case "MARBLE_ADMIN":
-		return MARBLE_ADMIN
-	case "TENANT_ADMIN":
-		return TENANT_ADMIN
-	}
-	return NO_ROLE
 }
