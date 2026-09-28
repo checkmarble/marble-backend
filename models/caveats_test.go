@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"net"
 	"testing"
 	"time"
 
@@ -98,19 +99,73 @@ func TestRoleBindingSecondFactorDecoding(t *testing.T) {
 
 	assert.Error(t, json.Unmarshal([]byte(`{"usedSecondFactor":"yes"}`), &conditions))
 }
+
+func TestRoleBindingNetworksCaveat(t *testing.T) {
+	subnet := func(cidr string) Subnet {
+		s, err := ParseSubnet(cidr)
+		assert.NoError(t, err)
+		return s
+	}
+
+	restricted := RoleBinding{Conditions: RoleBindingConditions{
+		Networks: []Subnet{subnet("10.0.0.0/8"), subnet("2001:db8::/32")},
+	}}
+
+	tests := []struct {
+		name     string
+		binding  RoleBinding
+		clientIp net.IP
+		active   bool
+	}{
+		{"ipv4 inside", restricted, net.ParseIP("10.1.2.3"), true},
+		{"ipv6 inside", restricted, net.ParseIP("2001:db8::1"), true},
+		{"ipv4-mapped ipv6 inside", restricted, net.ParseIP("::ffff:10.1.2.3"), true},
+		{"outside", restricted, net.ParseIP("192.168.1.1"), false},
+		{"unknown client IP fails open", restricted, nil, true},
+		{"empty list is unrestricted", RoleBinding{Conditions: RoleBindingConditions{Networks: []Subnet{}}}, net.ParseIP("192.168.1.1"), true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.active, test.binding.IsActive(RoleBindingBundle{ClientIp: test.clientIp}))
+		})
+	}
+}
+
+func TestRoleBindingNetworksDecoding(t *testing.T) {
+	var conditions RoleBindingConditions
+
+	assert.NoError(t, json.Unmarshal([]byte(`{"networks":["10.0.0.1","10.1.0.0/16"]}`), &conditions))
+	assert.Equal(t, "10.0.0.1/32", conditions.Networks[0].String())
+	assert.Equal(t, "10.1.0.0/16", conditions.Networks[1].String())
+
+	encoded, err := json.Marshal(conditions)
+	assert.NoError(t, err)
+	assert.JSONEq(t, `{"networks":["10.0.0.1/32","10.1.0.0/16"]}`, string(encoded))
+
+	assert.Error(t, json.Unmarshal([]byte(`{"networks":["nope"]}`), &conditions))
+	assert.Error(t, json.Unmarshal([]byte(`{"networks":["10.0.0.0/33"]}`), &conditions))
+}
+
 func TestCredentialsEvaluateCaveatsAgainstTheirBundle(t *testing.T) {
 	required := true
+	office, err := ParseSubnet("10.0.0.0/8")
+	assert.NoError(t, err)
 
 	binding := NewNativeRoleBinding(ADMIN)
-	binding.Conditions = RoleBindingConditions{UsedSecondFactor: &required}
+	binding.Conditions = RoleBindingConditions{
+		UsedSecondFactor: &required,
+		Networks:         []Subnet{office},
+	}
 
 	tests := []struct {
 		name   string
 		bundle RoleBindingBundle
 		active bool
 	}{
-		{"second factor", RoleBindingBundle{UsedSecondFactor: true}, true},
-		{"no second factor", RoleBindingBundle{UsedSecondFactor: false}, false},
+		{"second factor from the office", RoleBindingBundle{UsedSecondFactor: true, ClientIp: net.ParseIP("10.1.2.3")}, true},
+		{"no second factor", RoleBindingBundle{UsedSecondFactor: false, ClientIp: net.ParseIP("10.1.2.3")}, false},
+		{"outside the office", RoleBindingBundle{UsedSecondFactor: true, ClientIp: net.ParseIP("192.168.1.1")}, false},
 	}
 
 	for _, test := range tests {

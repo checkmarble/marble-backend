@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"net"
 	"net/http"
 	"strings"
 
@@ -24,6 +25,8 @@ type Credentials struct {
 	Value    string
 	Fallback string
 	TenantId uuid.UUID
+	// ClientIp is the address the request came from, if known.
+	ClientIp net.IP
 }
 
 type MarbleExtractor struct{}
@@ -38,14 +41,21 @@ func (e MarbleExtractor) Extract(r *http.Request) (Credentials, error) {
 	}
 
 	if header := r.Header.Get("authorization"); header != "" && strings.HasPrefix(header, "Bearer ") {
-		credentials := Credentials{Type: CredentialsBearer, Value: strings.TrimPrefix(header, "Bearer "), Fallback: r.Header.Get("x-oidc-access-token")}
+		credentials := Credentials{
+			Type:     CredentialsBearer,
+			Value:    strings.TrimPrefix(header, "Bearer "),
+			Fallback: r.Header.Get("x-oidc-access-token"),
+		}
+
 		if tenantId := r.Header.Get("x-marble-tenant-id"); tenantId != "" {
 			parsedTenantId, err := uuid.Parse(tenantId)
 			if err != nil {
 				return Credentials{}, errors.New("invalid tenant ID")
 			}
+
 			credentials.TenantId = parsedTenantId
 		}
+
 		return credentials, nil
 	}
 
