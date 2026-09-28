@@ -8,10 +8,12 @@ import (
 )
 
 type RoleBindingConditions struct {
-	NotBefore        *time.Time  `json:"not_before,omitempty"`
-	NotAfter         *time.Time  `json:"not_after,omitempty"`
-	Networks         []SubnetDto `json:"networks,omitempty"`
-	UsedSecondFactor *bool       `json:"used_second_factor,omitempty"`
+	NotBefore        *time.Time             `json:"not_before,omitempty"`
+	NotAfter         *time.Time             `json:"not_after,omitempty"`
+	DayOfWeek        *[]time.Weekday        `json:"day_of_week,omitempty"`
+	TimeOfDay        *models.TimeOfDayRange `json:"time_of_day,omitempty"`
+	Networks         []SubnetDto            `json:"networks,omitempty"`
+	UsedSecondFactor *bool                  `json:"used_second_factor,omitempty"`
 }
 
 type RoleBinding struct {
@@ -27,6 +29,8 @@ func AdaptRoleBinding(binding models.RoleBinding) RoleBinding {
 		Conditions: RoleBindingConditions{
 			NotBefore:        binding.Conditions.NotBefore,
 			NotAfter:         binding.Conditions.NotAfter,
+			DayOfWeek:        binding.Conditions.DayOfWeek,
+			TimeOfDay:        binding.Conditions.TimeOfDay,
 			Networks:         binding.Conditions.Networks,
 			UsedSecondFactor: binding.Conditions.UsedSecondFactor,
 		},
@@ -40,6 +44,8 @@ func AdaptRoleBindingInput(binding RoleBinding) models.RoleBinding {
 		Conditions: models.RoleBindingConditions{
 			NotBefore:        binding.Conditions.NotBefore,
 			NotAfter:         binding.Conditions.NotAfter,
+			DayOfWeek:        binding.Conditions.DayOfWeek,
+			TimeOfDay:        binding.Conditions.TimeOfDay,
 			Networks:         binding.Conditions.Networks,
 			UsedSecondFactor: binding.Conditions.UsedSecondFactor,
 		},

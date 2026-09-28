@@ -122,9 +122,10 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
-			OrganizationId: utils.TextToUUID("organization_id"),
-			RoleBindings:   []models.RoleBinding{grant(models.ADMIN, user.OrganizationId, uuid.Nil)},
-			Permissions:    models.ADMIN.Permissions(),
+			RoleBindingBundle: models.RoleBindingBundle{Location: time.UTC},
+			OrganizationId:    utils.TextToUUID("organization_id"),
+			RoleBindings:      []models.RoleBinding{grant(models.ADMIN, user.OrganizationId, uuid.Nil)},
+			Permissions:       models.ADMIN.Permissions(),
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
 				Email:  user.Email,

@@ -63,6 +63,190 @@ func TestRoleBindingValidityDecoding(t *testing.T) {
 
 	assert.Error(t, json.Unmarshal([]byte(`{"notBefore":"yesterday"}`), &conditions))
 }
+
+func TestRoleBindingWeekDaysCaveat(t *testing.T) {
+	// 2026-09-28 is a Monday.
+	monday := time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name     string
+		weekDays *[]time.Weekday
+		now      time.Time
+		active   bool
+	}{
+		{"unrestricted", nil, monday, true},
+		{"allowed day", &[]time.Weekday{time.Monday, time.Tuesday}, monday, true},
+		{"other day", &[]time.Weekday{time.Tuesday}, monday, false},
+		{"weekend only", &[]time.Weekday{time.Saturday, time.Sunday}, monday.AddDate(0, 0, 5), true},
+		{"empty list is unrestricted", &[]time.Weekday{}, monday, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			binding := RoleBinding{Conditions: RoleBindingConditions{DayOfWeek: test.weekDays}}
+			assert.Equal(t, test.active, binding.IsActive(RoleBindingBundle{Clock: clock.NewMock(test.now)}))
+		})
+	}
+}
+
+func TestRoleBindingWeekDaysTimeZone(t *testing.T) {
+	// 2026-09-28 23:30 UTC is Monday in UTC, but already Tuesday in Paris.
+	now := time.Date(2026, 9, 28, 23, 30, 0, 0, time.UTC)
+	paris := time.FixedZone("Europe/Paris", 2*60*60)
+	tokyo := time.FixedZone("Asia/Tokyo", 9*60*60)
+
+	mondayOnly := RoleBinding{Conditions: RoleBindingConditions{DayOfWeek: &[]time.Weekday{time.Monday}}}
+
+	tests := []struct {
+		name     string
+		now      time.Time
+		location *time.Location
+		active   bool
+	}{
+		{"organization in UTC", now, time.UTC, true},
+		{"organization in Paris", now, paris, false},
+		{"no time zone falls back to UTC", now, nil, true},
+		{"no time zone ignores the evaluation time's zone", now.In(tokyo), nil, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			bundle := RoleBindingBundle{Clock: clock.NewMock(test.now), Location: test.location}
+			assert.Equal(t, test.active, mondayOnly.IsActive(bundle))
+		})
+	}
+}
+
+func TestOrganizationTimeZone(t *testing.T) {
+	zone := func(name string) *string { return &name }
+
+	assert.Equal(t, time.UTC, Organization{}.Timezone())
+	assert.Equal(t, time.UTC, Organization{DefaultScenarioTimezone: zone("")}.Timezone())
+	assert.Equal(t, time.UTC, Organization{DefaultScenarioTimezone: zone("Mars/Olympus_Mons")}.Timezone())
+	assert.Equal(t, "Europe/Paris", Organization{DefaultScenarioTimezone: zone("Europe/Paris")}.Timezone().String())
+}
+
+func TestRoleBindingWeekDaysDecoding(t *testing.T) {
+	var conditions RoleBindingConditions
+
+	assert.NoError(t, json.Unmarshal([]byte(`{"dayOfWeek":[1,5]}`), &conditions))
+	assert.Equal(t, []time.Weekday{time.Monday, time.Friday}, *conditions.DayOfWeek)
+
+	encoded, err := json.Marshal(conditions)
+	assert.NoError(t, err)
+	assert.JSONEq(t, `{"dayOfWeek":[1,5]}`, string(encoded))
+
+	assert.Error(t, json.Unmarshal([]byte(`{"dayOfWeek":["monday"]}`), &conditions))
+}
+
+func TestRoleBindingTimeOfDayCaveat(t *testing.T) {
+	at := func(hour, minute int) time.Time {
+		return time.Date(2026, 9, 28, hour, minute, 0, 0, time.UTC)
+	}
+	timeOfDay := func(start, end int) *TimeOfDayRange {
+		r, err := NewTimeOfDayRange(start, end)
+		assert.NoError(t, err)
+		return &r
+	}
+
+	officeHours := timeOfDay(900, 1750)
+	nightShift := timeOfDay(2200, 600)
+
+	tests := []struct {
+		name      string
+		timeOfDay *TimeOfDayRange
+		now       time.Time
+		active    bool
+	}{
+		{"unrestricted", nil, at(3, 0), true},
+		{"within office hours", officeHours, at(12, 30), true},
+		{"at the start, inclusive", officeHours, at(9, 0), true},
+		{"at the end, inclusive", officeHours, at(17, 50), true},
+		{"just after the end", officeHours, at(17, 51), false},
+		{"before office hours", officeHours, at(8, 59), false},
+		{"after office hours", officeHours, at(19, 50), false},
+		{"night shift, before midnight", nightShift, at(23, 0), true},
+		{"night shift, at midnight", nightShift, at(0, 0), true},
+		{"night shift, after midnight", nightShift, at(5, 59), true},
+		{"night shift, at the end", nightShift, at(6, 0), true},
+		{"night shift, just after the end", nightShift, at(6, 1), false},
+		{"outside the night shift", nightShift, at(12, 0), false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			binding := RoleBinding{Conditions: RoleBindingConditions{TimeOfDay: test.timeOfDay}}
+			assert.Equal(t, test.active, binding.IsActive(RoleBindingBundle{Clock: clock.NewMock(test.now)}))
+		})
+	}
+}
+
+func TestRoleBindingTimeOfDayTimeZone(t *testing.T) {
+	// 07:30 UTC is 09:30 in Paris.
+	now := time.Date(2026, 9, 28, 7, 30, 0, 0, time.UTC)
+	paris := time.FixedZone("Europe/Paris", 2*60*60)
+	tokyo := time.FixedZone("Asia/Tokyo", 9*60*60)
+
+	officeHours := RoleBinding{Conditions: RoleBindingConditions{TimeOfDay: &TimeOfDayRange{900, 1750}}}
+
+	tests := []struct {
+		name     string
+		now      time.Time
+		location *time.Location
+		active   bool
+	}{
+		{"organization in UTC", now, time.UTC, false},
+		{"organization in Paris", now, paris, true},
+		{"no time zone falls back to UTC", now, nil, false},
+		{"no time zone ignores the evaluation time's zone", now.In(tokyo), nil, false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			bundle := RoleBindingBundle{Clock: clock.NewMock(test.now), Location: test.location}
+			assert.Equal(t, test.active, officeHours.IsActive(bundle))
+		})
+	}
+}
+
+func TestRoleBindingTimeOfDayValidation(t *testing.T) {
+	valid := [][2]int{{0, 2359}, {900, 1750}, {2200, 600}, {1950, 0}, {900, 900}}
+	invalid := [][2]int{{-1, 900}, {900, 2400}, {960, 1700}, {900, 1760}, {2500, 100}}
+
+	for _, times := range valid {
+		_, err := NewTimeOfDayRange(times[0], times[1])
+		assert.NoError(t, err, times)
+		assert.NoError(t, RoleBindingConditions{TimeOfDay: &TimeOfDayRange{times[0], times[1]}}.Validate(), times)
+	}
+
+	for _, times := range invalid {
+		_, err := NewTimeOfDayRange(times[0], times[1])
+		assert.ErrorIs(t, err, BadParameterError, times)
+		assert.ErrorIs(t, RoleBindingConditions{TimeOfDay: &TimeOfDayRange{times[0], times[1]}}.Validate(), BadParameterError, times)
+	}
+}
+
+func TestRoleBindingTimeOfDayDecoding(t *testing.T) {
+	var conditions RoleBindingConditions
+
+	assert.NoError(t, json.Unmarshal([]byte(`{"timeOfDay":[900,1950]}`), &conditions))
+	assert.Equal(t, TimeOfDayRange{900, 1950}, *conditions.TimeOfDay)
+
+	encoded, err := json.Marshal(conditions)
+	assert.NoError(t, err)
+	assert.JSONEq(t, `{"timeOfDay":[900,1950]}`, string(encoded))
+
+	for _, input := range []string{
+		`{"timeOfDay":[900]}`,
+		`{"timeOfDay":[900,1200,1700]}`,
+		`{"timeOfDay":[900,1960]}`,
+		`{"timeOfDay":["9:00","17:50"]}`,
+		`{"timeOfDay":900}`,
+	} {
+		assert.Error(t, json.Unmarshal([]byte(input), &RoleBindingConditions{}), input)
+	}
+}
+
 func TestRoleBindingSecondFactorCaveat(t *testing.T) {
 	required, notRequired := true, false
 
