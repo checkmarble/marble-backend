@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/hex"
 	"net"
+	"slices"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -44,6 +46,9 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 		TenantId:       organization.TenantId,
 		RoleBindings:   grants[:2],
 		Permissions:    models.ADMIN.Permissions(),
+		RoleBindingBundle: models.RoleBindingBundle{
+			Location: time.UTC,
+		},
 		ActorIdentity: models.Identity{
 			ApiKeyId:   "api_key_id",
 			ApiKeyName: "Api key abc*** of organization",
@@ -120,6 +125,11 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 				v := Validator{getter: mockKeyAndOrganizationGetter}
 
 				credentials, err := v.ValidateTokenOrKey(ctx, "", key, test.clientIp)
+				if len(test.permissions) == 0 {
+					// No binding is active for this request.
+					assert.ErrorIs(t, err, models.ForbiddenError)
+					return
+				}
 				assert.NoError(t, err)
 				assert.Equal(t, test.clientIp, credentials.RoleBindingBundle.ClientIp)
 				assert.Equal(t, test.permissions, credentials.Permissions)
@@ -200,6 +210,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 		expected.TenantId = tenantId
 		expected.RoleBindings = grants[:1]
 		expected.Permissions = models.VIEWER.Permissions()
+		expected.RoleBindingBundle.Location = time.UTC
 
 		credentials, err := v.ValidateTokenOrKey(ctx, token, "", nil)
 		assert.NoError(t, err)
@@ -331,12 +342,24 @@ func TestValidator_Validate_Token(t *testing.T) {
 			Conditions:  models.RoleBindingConditions{UsedSecondFactor: &required},
 		}}
 
+		unrestrictedGrant := models.RoleBinding{
+			Role:        "org/custom",
+			OrgId:       organizationId,
+			Permissions: []models.Permission{models.CASE_READ_WRITE},
+		}
+
 		for name, test := range map[string]struct {
 			usedSecondFactor bool
+			grants           []models.RoleBinding
 			permissions      []models.Permission
 		}{
-			"used":     {true, models.VIEWER.Permissions()},
-			"not used": {false, []models.Permission{}},
+			"used":     {true, mfaGrants, models.VIEWER.Permissions()},
+			"not used": {false, mfaGrants, nil},
+			"not used, with an unrestricted binding": {
+				false,
+				append(slices.Clone(mfaGrants), unrestrictedGrant),
+				[]models.Permission{models.CASE_READ_WRITE},
+			},
 		} {
 			t.Run(name, func(t *testing.T) {
 				mfaCreds := tokenCreds
@@ -349,7 +372,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 				mockGetter.On("GetOrganizationByID", ctx, organizationId).
 					Return(models.Organization{Id: organizationId, TenantId: tenantId}, nil)
 				mockGetter.On("ActiveGrantsForPrincipal", ctx, "user", "user_id").
-					Return(mfaGrants, nil)
+					Return(test.grants, nil)
 
 				v := Validator{
 					getter:    mockGetter,
@@ -357,11 +380,38 @@ func TestValidator_Validate_Token(t *testing.T) {
 				}
 
 				credentials, err := v.ValidateTokenOrKey(ctx, token, "", nil)
+				if test.permissions == nil {
+					// No binding is active for this request.
+					assert.ErrorIs(t, err, models.ForbiddenError)
+					return
+				}
 				assert.NoError(t, err)
 				assert.Equal(t, test.permissions, credentials.Permissions)
 				assert.Equal(t, test.usedSecondFactor, credentials.HasRole(models.VIEWER))
 			})
 		}
+	})
+
+	t.Run("uses the organization's time zone for caveats", func(t *testing.T) {
+		paris := "Europe/Paris"
+
+		mockValidator := new(mocks.JWTEncoderValidator)
+		mockValidator.On("ValidateMarbleToken", token).
+			Return(tokenCreds, nil)
+		mockGetter := new(mocks.Database)
+		mockGetter.On("GetOrganizationByID", ctx, organizationId).
+			Return(models.Organization{Id: organizationId, TenantId: tenantId, DefaultScenarioTimezone: &paris}, nil)
+		mockGetter.On("ActiveGrantsForPrincipal", ctx, "user", "user_id").
+			Return(grants, nil)
+
+		v := Validator{
+			getter:    mockGetter,
+			validator: mockValidator,
+		}
+
+		credentials, err := v.ValidateTokenOrKey(ctx, token, "", nil)
+		assert.NoError(t, err)
+		assert.Equal(t, "Europe/Paris", credentials.RoleBindingBundle.Location.String())
 	})
 
 	t.Run("ValidateMarbleToken error", func(t *testing.T) {

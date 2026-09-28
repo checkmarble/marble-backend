@@ -25,6 +25,8 @@ func TestSameRoleBinding(t *testing.T) {
 
 	current := binding(models.RoleBindingConditions{
 		NotBefore:        &notBefore,
+		DayOfWeek:        &[]time.Weekday{time.Monday},
+		TimeOfDay:        &models.TimeOfDayRange{900, 1800},
 		UsedSecondFactor: &required,
 		Networks:         []models.Subnet{office},
 	})
@@ -45,6 +47,9 @@ func TestSameRoleBinding(t *testing.T) {
 		{"other role", models.RoleBinding{Role: models.ADMIN, Conditions: current.Conditions}, false},
 		{"not before changed", with(func(c *models.RoleBindingConditions) { c.NotBefore = &later }), false},
 		{"not after added", with(func(c *models.RoleBindingConditions) { c.NotAfter = &later }), false},
+		{"day of week changed", with(func(c *models.RoleBindingConditions) { c.DayOfWeek = &[]time.Weekday{time.Friday} }), false},
+		{"time of day changed", with(func(c *models.RoleBindingConditions) { c.TimeOfDay = &models.TimeOfDayRange{900, 2000} }), false},
+		{"time of day removed", with(func(c *models.RoleBindingConditions) { c.TimeOfDay = nil }), false},
 		{"second factor changed", with(func(c *models.RoleBindingConditions) { c.UsedSecondFactor = &notRequired }), false},
 		{"networks changed", with(func(c *models.RoleBindingConditions) { c.Networks = []models.Subnet{home} }), false},
 		{"all conditions removed", binding(models.RoleBindingConditions{}), false},
