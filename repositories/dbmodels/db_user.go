@@ -27,7 +27,7 @@ func AdaptUser(db DBUserResult) (models.User, error) {
 	user := models.User{
 		UserId:          models.UserId(db.Id),
 		Email:           db.Email,
-		Role:            models.Role(db.Role),
+		Role:            models.RoleFromLegacyValue(db.Role),
 		AiAssistEnabled: db.AiAssistEnabled,
 		Picture:         db.Picture,
 	}

@@ -30,7 +30,7 @@ func TestAdaptOrganizationUserGrant(t *testing.T) {
 				DBUserResult: DBUserResult{
 					Id:              "user-id",
 					Email:           "user@example.com",
-					Role:            int(models.ADMIN),
+					Role:            models.ADMIN.LegacyValue(),
 					FirstName:       pgtype.Text{String: "Test", Valid: true},
 					LastName:        pgtype.Text{String: "User", Valid: true},
 					AiAssistEnabled: true,
