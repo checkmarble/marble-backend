@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -42,6 +43,9 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 		OrganizationId: utils.TextToUUID("organization_id"),
 		RoleBindings:   grants[:2],
 		Permissions:    models.ADMIN.Permissions(),
+		RoleBindingBundle: models.RoleBindingBundle{
+			Location: time.UTC,
+		},
 		ActorIdentity: models.Identity{
 			ApiKeyId:   "api_key_id",
 			ApiKeyName: "Api key abc*** of organization",
@@ -197,6 +201,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 		expected := tokenCreds
 		expected.RoleBindings = grants[:1]
 		expected.Permissions = models.VIEWER.Permissions()
+		expected.RoleBindingBundle.Location = time.UTC
 
 		credentials, err := v.ValidateTokenOrKey(ctx, token, "", nil)
 		assert.NoError(t, err)
@@ -335,6 +340,28 @@ func TestValidator_Validate_Token(t *testing.T) {
 				assert.Equal(t, test.usedSecondFactor, credentials.HasRole(models.VIEWER))
 			})
 		}
+	})
+
+	t.Run("uses the organization's time zone for caveats", func(t *testing.T) {
+		paris := "Europe/Paris"
+
+		mockValidator := new(mocks.JWTEncoderValidator)
+		mockValidator.On("ValidateMarbleToken", token).
+			Return(tokenCreds, nil)
+		mockGetter := new(mocks.Database)
+		mockGetter.On("GetOrganizationByID", ctx, organizationId).
+			Return(models.Organization{Id: organizationId, TenantId: tenantId, DefaultScenarioTimezone: &paris}, nil)
+		mockGetter.On("ActiveGrantsForPrincipal", ctx, "user", "user_id").
+			Return(grants, nil)
+
+		v := Validator{
+			getter:    mockGetter,
+			validator: mockValidator,
+		}
+
+		credentials, err := v.ValidateTokenOrKey(ctx, token, "", nil)
+		assert.NoError(t, err)
+		assert.Equal(t, "Europe/Paris", credentials.RoleBindingBundle.Location.String())
 	})
 
 	t.Run("ValidateMarbleToken error", func(t *testing.T) {
