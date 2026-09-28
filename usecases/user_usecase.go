@@ -318,6 +318,15 @@ func (usecase *UserUseCase) ReplaceOrganizationGrant(
 		if err := usecase.ensureUserBelongsToOrganizationTenant(ctx, tx, user, targetOrganization); err != nil {
 			return err
 		}
+
+		current, err := usecase.userRepository.ListUserOrganizationRoleBindings(ctx, tx, organizationID, userID)
+		if err != nil {
+			return err
+		}
+		if err := usecase.enforceUserSecurity.GrantOrganizationRoleBindings(current, resolved); err != nil {
+			return err
+		}
+
 		return usecase.userRepository.ReplaceUserOrganizationRoleBindings(ctx, tx, organizationID, userID, resolved)
 	})
 }
@@ -477,14 +486,16 @@ func (usecase *UserUseCase) UpdateRolePermissions(ctx context.Context, slug mode
 		return models.RbacRole{}, errors.Wrap(models.BadParameterError, "invalid custom role slug")
 	}
 
-	exec := usecase.executorFactory.NewExecutor()
 	seen := make(map[models.Permission]struct{}, len(permissions))
 
 	for _, permission := range permissions {
+		if permission.IsPlatform() {
+			return models.RbacRole{}, errors.Wrap(models.BadParameterError,
+				"platform permission "+string(permission)+" cannot be granted through custom roles")
+		}
 		if !slices.Contains(models.ValidPermissions, permission) {
 			return models.RbacRole{}, errors.Wrap(models.BadParameterError, "invalid permission "+string(permission))
 		}
-
 		if _, exists := seen[permission]; exists {
 			return models.RbacRole{}, errors.Wrap(models.BadParameterError, "duplicate permission "+string(permission))
 		}
@@ -492,19 +503,36 @@ func (usecase *UserUseCase) UpdateRolePermissions(ctx context.Context, slug mode
 		seen[permission] = struct{}{}
 	}
 
-	err := usecase.userRepository.UpdateRolePermissions(
-		ctx,
-		exec,
-		usecase.enforceUserSecurity.OrgId(),
-		slug,
-		permissions)
-	if err != nil {
-		if repositories.IsUniqueViolationError(err) {
-			return models.RbacRole{}, errors.Wrap(models.ConflictError, "duplicate permission")
+	orgId := usecase.enforceUserSecurity.OrgId()
+
+	// The role is locked so that the permissions considered as already held by
+	// the role cannot be revoked concurrently, which would let them be granted
+	// back by someone not holding them.
+	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Transaction) (models.RbacRole, error) {
+		current, err := usecase.userRepository.GetRoleBySlugForUpdate(ctx, tx, orgId, slug)
+		if err != nil {
+			return models.RbacRole{}, err
 		}
 
-		return models.RbacRole{}, err
-	}
+		added := make([]models.Permission, 0, len(permissions))
 
-	return usecase.userRepository.GetRoleBySlug(ctx, exec, usecase.enforceUserSecurity.OrgId(), slug)
+		for _, permission := range permissions {
+			if !slices.Contains(current.Permissions, permission) {
+				added = append(added, permission)
+			}
+		}
+
+		// Permissions can only be added to a custom role by principals holding
+		// them. Those the role already has are left alone, so that a role can be
+		// edited by someone not holding all of its permissions.
+		if err := usecase.enforceUserSecurity.Permissions(added); err != nil {
+			return models.RbacRole{}, errors.Wrap(err, "custom roles can only grant permissions you hold")
+		}
+
+		if err := usecase.userRepository.UpdateRolePermissions(ctx, tx, orgId, slug, permissions); err != nil {
+			return models.RbacRole{}, err
+		}
+
+		return usecase.userRepository.GetRoleBySlug(ctx, tx, orgId, slug)
+	})
 }

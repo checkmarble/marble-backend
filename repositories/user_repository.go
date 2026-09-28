@@ -27,9 +27,11 @@ type UserRepository interface {
 
 	ListRoles(ctx context.Context, exec Executor, orgId uuid.UUID) ([]models.RbacRole, error)
 	GetRoleBySlug(ctx context.Context, exec Executor, orgId uuid.UUID, slug models.Role) (models.RbacRole, error)
+	GetRoleBySlugForUpdate(ctx context.Context, tx Transaction, orgId uuid.UUID, slug models.Role) (models.RbacRole, error)
 	CreateRole(ctx context.Context, exec Executor, orgId uuid.UUID, slug, name string) (models.RbacRole, error)
 	UpdateRolePermissions(ctx context.Context, exec Executor, orgId uuid.UUID, slug models.Role, permissions []models.Permission) error
 	ReplaceUserRoleBindings(ctx context.Context, tx Transaction, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error
+	ListUserOrganizationRoleBindings(ctx context.Context, exec Executor, orgId uuid.UUID, userId string) ([]models.RoleBinding, error)
 	ReplaceUserOrganizationRoleBindings(ctx context.Context, tx Transaction, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error
 }
 
@@ -348,6 +350,23 @@ func (repo *MarbleDbRepository) GetRoleBySlug(ctx context.Context, exec Executor
 			Select(dbmodels.SelectRoleColumn...).
 			From(dbmodels.TABLE_ROLES).
 			Where(squirrel.Eq{"org_id": orgId, "slug": slug}),
+		dbmodels.AdaptRole,
+	)
+}
+
+func (repo *MarbleDbRepository) GetRoleBySlugForUpdate(ctx context.Context, tx Transaction, orgId uuid.UUID, slug models.Role) (models.RbacRole, error) {
+	if err := validateMarbleDbExecutor(tx); err != nil {
+		return models.RbacRole{}, err
+	}
+
+	return SqlToModel(
+		ctx,
+		tx,
+		NewQueryBuilder().
+			Select(dbmodels.SelectRoleColumn...).
+			From(dbmodels.TABLE_ROLES).
+			Where(squirrel.Eq{"org_id": orgId, "slug": slug}).
+			Suffix("FOR UPDATE"),
 		dbmodels.AdaptRole,
 	)
 }

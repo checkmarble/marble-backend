@@ -27,8 +27,9 @@ func AdaptRole(db DbRole) (models.RbacRole, error) {
 		OrgId: db.OrgId,
 		Slug:  db.Slug,
 		Name:  db.Name,
-		Permissions: pure_utils.Map(db.Permissions, func(permission string) models.Permission {
-			return models.Permission(permission)
-		}),
+		Permissions: models.WithoutPlatformPermissions(
+			pure_utils.Map(db.Permissions, func(permission string) models.Permission {
+				return models.Permission(permission)
+			})),
 	}, nil
 }
