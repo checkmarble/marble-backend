@@ -24,13 +24,10 @@ type Credentials struct {
 }
 
 func AdaptCredentialDto(creds models.Credentials) (Credentials, error) {
-	permissions, err := pure_utils.MapErr(
+	permissions := pure_utils.Map(
 		permissionsForCredentials(creds),
-		func(p models.Permission) (string, error) { return p.String() },
+		func(p models.Permission) string { return string(p) },
 	)
-	if err != nil {
-		return Credentials{}, err
-	}
 
 	return Credentials{
 		ActorIdentity: Identity{
