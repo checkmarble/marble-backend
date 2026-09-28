@@ -94,7 +94,7 @@ func (v *Validator) withRoleBindings(ctx context.Context, credentials models.Cre
 		return models.Credentials{}, fmt.Errorf("%w: API key has no applicable grant", models.UnAuthorizedError)
 	}
 
-	credentials.Permissions = models.RoleBindingsPermissions(credentials.RoleBindings)
+	credentials.Permissions = models.RoleBindingsPermissions(credentials.RoleBindings, credentials.RoleBindingBundle)
 
 	return credentials, nil
 }

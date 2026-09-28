@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -16,13 +17,13 @@ import (
 
 var roleBindingRowColumns = []string{
 	"id", "principal_type", "principal_id", "tenant_id", "organization_id",
-	"role", "custom_role_id", "custom_permissions",
+	"role", "custom_role_id", "conditions", "custom_permissions",
 }
 
 func roleBindingRow(principalType, principalId string, orgId *uuid.UUID, role models.Role) []any {
 	return []any{
 		uuid.New(), principalType, principalId, (*uuid.UUID)(nil), orgId,
-		string(role), (*uuid.UUID)(nil), []string{},
+		string(role), (*uuid.UUID)(nil), json.RawMessage(`{}`), []string{},
 	}
 }
 

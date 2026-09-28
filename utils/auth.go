@@ -124,8 +124,10 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 
 		activeRoles := set.New[models.Role](len(credentials.RoleBindings))
 		for _, binding := range credentials.RoleBindings {
-			if role := binding.RoleName(); role != "" {
-				activeRoles.Insert(role)
+			if binding.IsActive(credentials.RoleBindingBundle) {
+				if role := binding.RoleName(); role != "" {
+					activeRoles.Insert(role)
+				}
 			}
 		}
 

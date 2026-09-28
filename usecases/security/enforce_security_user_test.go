@@ -3,6 +3,7 @@ package security
 import (
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
@@ -183,6 +184,66 @@ func TestUpdateUserMarbleAdminRole(t *testing.T) {
 
 			target := models.User{OrganizationId: utils.TextToUUID("org"), UserId: "target", RoleBindings: roles(tt.from...)}
 			bindings := roles(tt.to...)
+
+			outcome := e.UpdateUser(target, models.UpdateUser{UserId: string(target.UserId), RoleBindings: &bindings})
+
+			if tt.allowed {
+				assert.NoError(t, outcome)
+			} else {
+				assert.ErrorIs(t, outcome, models.BadParameterError)
+			}
+		})
+	}
+}
+
+func TestUpdateUserMarbleAdminConditions(t *testing.T) {
+	start := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	past := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	marbleAdmin := func(conditions models.RoleBindingConditions) models.RoleBinding {
+		binding := models.NewNativeRoleBinding(models.MARBLE_ADMIN)
+		binding.Conditions = conditions
+		return binding
+	}
+	current := []models.RoleBinding{
+		models.NewNativeRoleBinding(models.ADMIN),
+		marbleAdmin(models.RoleBindingConditions{NotBefore: &start}),
+	}
+
+	tts := []struct {
+		name      string
+		principal models.Role
+		to        []models.RoleBinding
+		allowed   bool
+	}{
+		{"admin can keep the marble admin binding unchanged", models.ADMIN, current, true},
+		{"admin cannot expire the marble admin binding", models.ADMIN, []models.RoleBinding{
+			models.NewNativeRoleBinding(models.ADMIN),
+			marbleAdmin(models.RoleBindingConditions{NotBefore: &start, NotAfter: &past}),
+		}, false},
+		{"admin cannot remove the marble admin caveats", models.ADMIN, []models.RoleBinding{
+			models.NewNativeRoleBinding(models.ADMIN),
+			marbleAdmin(models.RoleBindingConditions{}),
+		}, false},
+		{"marble admin can change the marble admin caveats", models.MARBLE_ADMIN, []models.RoleBinding{
+			models.NewNativeRoleBinding(models.ADMIN),
+			marbleAdmin(models.RoleBindingConditions{}),
+		}, true},
+	}
+
+	for _, tt := range tts {
+		t.Run(tt.name, func(t *testing.T) {
+			e := EnforceSecurityUserImpl{
+				EnforceSecurity: mockUserEnforceSecurity{},
+				Credentials: models.Credentials{
+					OrganizationId: utils.TextToUUID("org"),
+					ActorIdentity:  models.Identity{UserId: "principal"},
+					RoleBindings:   models.NativeRoleBindings([]models.Role{tt.principal}),
+				},
+			}
+
+			target := models.User{OrganizationId: utils.TextToUUID("org"), UserId: "target", RoleBindings: current}
+			bindings := tt.to
 
 			outcome := e.UpdateUser(target, models.UpdateUser{UserId: string(target.UserId), RoleBindings: &bindings})
 

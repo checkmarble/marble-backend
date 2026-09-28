@@ -110,7 +110,11 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 	tokenCredentials := baseCredentials
 	tokenCredentials.OrganizationId = selectedOrganizationID
 	tokenCredentials.RoleBindings = models.ScopeRoleBindings(grants, selectedOrganizationID, selectedOrganization.TenantId)
-	tokenCredentials.Permissions = models.RoleBindingsPermissions(tokenCredentials.RoleBindings)
+	// Caveats are evaluated with the generator's clock, which is not kept in
+	// the token's credentials.
+	bundle := tokenCredentials.RoleBindingBundle
+	bundle.Clock = g.clock
+	tokenCredentials.Permissions = models.RoleBindingsPermissions(tokenCredentials.RoleBindings, bundle)
 
 	switch creds.Type {
 	case CredentialsBearer:
