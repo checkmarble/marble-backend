@@ -21,7 +21,8 @@ type Credentials struct {
 	AuthTenantId   uuid.UUID           `json:"auth_tenant_id,omitempty"`
 	Permissions    []models.Permission `json:"permissions"`
 	// Roles is informative: authorization is resolved from grants on every request.
-	Roles []models.Role `json:"roles,omitempty"`
+	Roles            []models.Role `json:"roles,omitempty"`
+	UsedSecondFactor bool          `json:"used_second_factor"`
 }
 
 type CredentialsResponse struct {
@@ -51,10 +52,11 @@ func AdaptCredentialDto(creds models.Credentials) (Credentials, error) {
 			ApiKeyId:   creds.ActorIdentity.ApiKeyId,
 			ApiKeyName: creds.ActorIdentity.ApiKeyName,
 		},
-		OrganizationId: creds.OrganizationId,
-		AuthTenantId:   creds.AuthTenantId,
-		Permissions:    creds.Permissions,
-		Roles:          models.RoleNames(creds.RoleBindings),
+		OrganizationId:   creds.OrganizationId,
+		AuthTenantId:     creds.AuthTenantId,
+		Permissions:      creds.Permissions,
+		Roles:            models.RoleNames(creds.RoleBindings),
+		UsedSecondFactor: creds.RoleBindingBundle.UsedSecondFactor,
 	}, nil
 }
 
@@ -71,5 +73,8 @@ func AdaptCredential(dto Credentials) models.Credentials {
 		OrganizationId: dto.OrganizationId,
 		AuthTenantId:   dto.AuthTenantId,
 		Permissions:    dto.Permissions,
+		RoleBindingBundle: models.RoleBindingBundle{
+			UsedSecondFactor: dto.UsedSecondFactor,
+		},
 	}
 }

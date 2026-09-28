@@ -8,8 +8,9 @@ import (
 )
 
 type RoleBindingConditions struct {
-	NotBefore *time.Time `json:"not_before,omitempty"`
-	NotAfter  *time.Time `json:"not_after,omitempty"`
+	NotBefore        *time.Time `json:"not_before,omitempty"`
+	NotAfter         *time.Time `json:"not_after,omitempty"`
+	UsedSecondFactor *bool      `json:"used_second_factor,omitempty"`
 }
 
 type RoleBinding struct {
@@ -23,8 +24,9 @@ func AdaptRoleBinding(binding models.RoleBinding) RoleBinding {
 		Id:   binding.Id,
 		Role: binding.Role,
 		Conditions: RoleBindingConditions{
-			NotBefore: binding.Conditions.NotBefore,
-			NotAfter:  binding.Conditions.NotAfter,
+			NotBefore:        binding.Conditions.NotBefore,
+			NotAfter:         binding.Conditions.NotAfter,
+			UsedSecondFactor: binding.Conditions.UsedSecondFactor,
 		},
 	}
 }
@@ -34,8 +36,9 @@ func AdaptRoleBindingInput(binding RoleBinding) models.RoleBinding {
 		Id:   binding.Id,
 		Role: binding.Role,
 		Conditions: models.RoleBindingConditions{
-			NotBefore: binding.Conditions.NotBefore,
-			NotAfter:  binding.Conditions.NotAfter,
+			NotBefore:        binding.Conditions.NotBefore,
+			NotAfter:         binding.Conditions.NotAfter,
+			UsedSecondFactor: binding.Conditions.UsedSecondFactor,
 		},
 	}
 	return result
