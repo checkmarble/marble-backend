@@ -1,9 +1,13 @@
 package models
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -16,6 +20,19 @@ type RbacRole struct {
 	Permissions []Permission
 }
 
+type RoleBindingConditions struct {
+	NotBefore *time.Time `json:"notBefore,omitempty"` //nolint:tagliatelle
+	NotAfter  *time.Time `json:"notAfter,omitempty"`  //nolint:tagliatelle
+}
+
+func (conditions RoleBindingConditions) Validate() error {
+	if conditions.NotBefore != nil && conditions.NotAfter != nil && !conditions.NotBefore.Before(*conditions.NotAfter) {
+		return fmt.Errorf("notBefore must be before notAfter: %w", BadParameterError)
+	}
+
+	return nil
+}
+
 type RoleBinding struct {
 	Id           uuid.UUID
 	TenantId     uuid.UUID
@@ -24,12 +41,72 @@ type RoleBinding struct {
 	ApiKeyId     *uuid.UUID
 	Role         Role
 	CustomRoleId *uuid.UUID
+	Conditions   RoleBindingConditions
 	Permissions  []Permission
 }
 
-// Equivalent reports whether two bindings grant the same role.
+// Clock is the time source caveats are evaluated against, satisfied by
+// repositories/clock.Clock.
+type Clock interface {
+	Now() time.Time
+}
+
+// RoleBindingBundle holds what the caveats of role bindings are evaluated
+// against.
+type RoleBindingBundle struct {
+	// Clock is the time source caveats are evaluated against. A nil clock
+	// means the current time.
+	Clock Clock
+}
+
+// Now returns the time caveats are evaluated at.
+func (bundle RoleBindingBundle) Now() time.Time {
+	if bundle.Clock == nil {
+		return time.Now()
+	}
+
+	return bundle.Clock.Now()
+}
+
+func (b RoleBinding) IsActive(bundle RoleBindingBundle) bool {
+	now := bundle.Now()
+
+	if b.Conditions.NotBefore != nil && now.Before(*b.Conditions.NotBefore) {
+		return false
+	}
+	if b.Conditions.NotAfter != nil && now.After(*b.Conditions.NotAfter) {
+		return false
+	}
+
+	return true
+}
+
+// Equivalent reports whether two bindings grant the same role under the same
+// conditions. Conditions are compared through their stored JSON form, which
+// covers every caveat, after normalizing timestamps: the same instant may be
+// read back from the database with a different offset than it was given.
 func (b RoleBinding) Equivalent(other RoleBinding) bool {
-	return b.Role == other.Role
+	if b.Role != other.Role {
+		return false
+	}
+
+	left, errLeft := json.Marshal(b.Conditions.normalized())
+	right, errRight := json.Marshal(other.Conditions.normalized())
+
+	return errLeft == nil && errRight == nil && bytes.Equal(left, right)
+}
+
+func (conditions RoleBindingConditions) normalized() RoleBindingConditions {
+	if conditions.NotBefore != nil {
+		notBefore := conditions.NotBefore.UTC()
+		conditions.NotBefore = &notBefore
+	}
+	if conditions.NotAfter != nil {
+		notAfter := conditions.NotAfter.UTC()
+		conditions.NotAfter = &notAfter
+	}
+
+	return conditions
 }
 
 // AppliesTo reports whether the binding grants its role when acting within
