@@ -11,11 +11,12 @@ import (
 )
 
 // ActiveGrantsForPrincipal returns every currently active grant of a principal,
-// across all scopes.
+// across all scopes, with custom role permissions resolved.
 func (db *Database) ActiveGrantsForPrincipal(ctx context.Context, principalType, principalID string) ([]models.RoleBinding, error) {
 	query, args, err := NewQueryBuilder().
 		Select(dbmodels.SelectRoleBindingColumns...).
 		From("active_grants g").
+		LeftJoin(dbmodels.TABLE_ROLES+" r on r.id = g.custom_role_id and r.org_id = g.organization_id").
 		Where(squirrel.Eq{
 			"g.principal_type":      principalType,
 			"g.principal_id":        principalID,

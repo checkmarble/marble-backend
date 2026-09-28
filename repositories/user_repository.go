@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -23,6 +25,10 @@ type UserRepository interface {
 	UserByEmail(ctx context.Context, exec Executor, email string) (*models.User, error)
 	HasUsers(ctx context.Context, exec Executor) (bool, error)
 
+	ListRoles(ctx context.Context, exec Executor, orgId uuid.UUID) ([]models.RbacRole, error)
+	GetRoleBySlug(ctx context.Context, exec Executor, orgId uuid.UUID, slug models.Role) (models.RbacRole, error)
+	CreateRole(ctx context.Context, exec Executor, orgId uuid.UUID, slug, name string) (models.RbacRole, error)
+	UpdateRolePermissions(ctx context.Context, exec Executor, orgId uuid.UUID, slug models.Role, permissions []models.Permission) error
 	ReplaceUserRoleBindings(ctx context.Context, tx Transaction, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error
 	ReplaceUserOrganizationRoleBindings(ctx context.Context, tx Transaction, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error
 }
@@ -290,4 +296,76 @@ func (repo *MarbleDbRepository) HasUsers(ctx context.Context, exec Executor) (bo
 	}
 
 	return exists, nil
+}
+
+func (repo *MarbleDbRepository) GetRoleBySlug(ctx context.Context, exec Executor, orgId uuid.UUID, slug models.Role) (models.RbacRole, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.RbacRole{}, err
+	}
+
+	return SqlToModel(
+		ctx,
+		exec,
+		NewQueryBuilder().
+			Select(dbmodels.SelectRoleColumn...).
+			From(dbmodels.TABLE_ROLES).
+			Where(squirrel.Eq{"org_id": orgId, "slug": slug}),
+		dbmodels.AdaptRole,
+	)
+}
+
+func (repo *MarbleDbRepository) ListRoles(ctx context.Context, exec Executor, orgId uuid.UUID) ([]models.RbacRole, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	return SqlToListOfModels(
+		ctx,
+		exec,
+		NewQueryBuilder().
+			Select(dbmodels.SelectRoleColumn...).
+			From(dbmodels.TABLE_ROLES).
+			Where("org_id = ?", orgId),
+		dbmodels.AdaptRole,
+	)
+}
+
+func (repo *MarbleDbRepository) CreateRole(ctx context.Context, exec Executor, orgId uuid.UUID, slug, name string) (models.RbacRole, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.RbacRole{}, err
+	}
+
+	sql := NewQueryBuilder().
+		Insert(dbmodels.TABLE_ROLES).
+		Columns("id", "org_id", "slug", "name").
+		Values(pure_utils.NewId(), orgId, slug, name).
+		Suffix(fmt.Sprintf("returning %s", strings.Join(dbmodels.SelectRoleColumn, ",")))
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptRole)
+}
+
+func (repo *MarbleDbRepository) UpdateRolePermissions(ctx context.Context, exec Executor, orgId uuid.UUID, slug models.Role, permissions []models.Permission) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query, args, err := NewQueryBuilder().
+		Update(dbmodels.TABLE_ROLES).
+		Set("permissions", permissions).
+		Where(squirrel.Eq{"org_id": orgId, "slug": slug}).
+		ToSql()
+	if err != nil {
+		return err
+	}
+
+	result, err := exec.Exec(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return models.NotFoundError
+	}
+
+	return nil
 }

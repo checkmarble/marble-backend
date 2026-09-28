@@ -30,6 +30,7 @@ func (allowOrganizationGrantSecurity) ListTenantUsers(uuid.UUID) error          
 func (allowOrganizationGrantSecurity) ManageOrganizationGrant(uuid.UUID, models.User) error {
 	return nil
 }
+func (allowOrganizationGrantSecurity) ManageRoles() error { return nil }
 
 var _ security.EnforceSecurityUser = allowOrganizationGrantSecurity{}
 
@@ -74,6 +75,7 @@ func TestUserUseCaseReplaceOrganizationGrant(t *testing.T) {
 
 			usecase := UserUseCase{
 				enforceUserSecurity:    allowOrganizationGrantSecurity{},
+				executorFactory:        newExecutorFactory(),
 				transactionFactory:     transactionFactory,
 				userRepository:         userRepository,
 				organizationRepository: organizationRepository,
@@ -96,6 +98,7 @@ func TestUserUseCaseReplaceOrganizationGrantRefusesPlatformRoles(t *testing.T) {
 	userRepository := &mocks.UserRepository{}
 	usecase := UserUseCase{
 		enforceUserSecurity: allowOrganizationGrantSecurity{},
+		executorFactory:     newExecutorFactory(),
 		userRepository:      userRepository,
 	}
 
@@ -124,6 +127,7 @@ func TestUserUseCaseRevokePlatformUserGrant(t *testing.T) {
 
 	usecase := UserUseCase{
 		enforceUserSecurity:    allowOrganizationGrantSecurity{},
+		executorFactory:        newExecutorFactory(),
 		transactionFactory:     transactionFactory,
 		userRepository:         userRepository,
 		organizationRepository: organizationRepository,
@@ -131,6 +135,55 @@ func TestUserUseCaseRevokePlatformUserGrant(t *testing.T) {
 
 	require.NoError(t, usecase.RevokeOrganizationGrant(context.Background(), userID, organizationID))
 	userRepository.AssertExpectations(t)
+}
+
+func TestUserUseCaseReplaceOrganizationGrantResolvesCustomRolesInTargetOrganization(t *testing.T) {
+	userID := uuid.NewString()
+	homeOrganizationID := uuid.New()
+	targetOrganizationID := uuid.New()
+	tenantID := uuid.New()
+	customRoleId := uuid.New()
+
+	transactionFactory := &mocks.TransactionFactory{TxMock: &mocks.Transaction{}}
+	userRepository := &mocks.UserRepository{}
+	organizationRepository := &mocks.OrganizationRepository{}
+
+	// The slug is looked up in the organization the binding is granted in, not
+	// in the user's home organization.
+	userRepository.On("GetRoleBySlug", mock.Anything, mock.Anything, targetOrganizationID, models.Role("org/reviewer")).
+		Return(models.RbacRole{Id: customRoleId, Permissions: []models.Permission{models.CASE_READ_WRITE}}, nil)
+	userRepository.On("UserById", mock.Anything, mock.Anything, userID).
+		Return(models.User{OrganizationId: homeOrganizationID}, nil)
+	organizationRepository.On("GetOrganizationById", mock.Anything, mock.Anything, targetOrganizationID).
+		Return(models.Organization{Id: targetOrganizationID, TenantId: tenantID}, nil)
+	organizationRepository.On("GetOrganizationById", mock.Anything, mock.Anything, homeOrganizationID).
+		Return(models.Organization{Id: homeOrganizationID, TenantId: tenantID}, nil)
+	transactionFactory.On("Transaction", mock.Anything, mock.Anything).Return(nil)
+	userRepository.On("ReplaceUserOrganizationRoleBindings", mock.Anything, mock.Anything, targetOrganizationID, userID,
+		[]models.RoleBinding{{
+			Role:         "org/reviewer",
+			CustomRoleId: &customRoleId,
+			Permissions:  []models.Permission{models.CASE_READ_WRITE},
+		}}).Return(nil)
+
+	usecase := UserUseCase{
+		enforceUserSecurity:    allowOrganizationGrantSecurity{},
+		executorFactory:        newExecutorFactory(),
+		transactionFactory:     transactionFactory,
+		userRepository:         userRepository,
+		organizationRepository: organizationRepository,
+	}
+
+	require.NoError(t, usecase.ReplaceOrganizationGrant(context.Background(), userID, targetOrganizationID,
+		[]models.RoleBinding{{Role: "org/reviewer"}}))
+	userRepository.AssertExpectations(t)
+}
+
+func newExecutorFactory() *mocks.ExecutorFactory {
+	executorFactory := new(mocks.ExecutorFactory)
+	executorFactory.On("NewExecutor").Return(new(mocks.Executor))
+
+	return executorFactory
 }
 
 var _ repositories.GrantRepository = (*mocks.GrantRepository)(nil)

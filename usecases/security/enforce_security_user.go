@@ -18,6 +18,7 @@ type EnforceSecurityUser interface {
 	ListUsers(organizationId *uuid.UUID) error
 	ListTenantUsers(organizationId uuid.UUID) error
 	ManageOrganizationGrant(organizationId uuid.UUID, targetUser models.User) error
+	ManageRoles() error
 }
 
 type EnforceSecurityUserImpl struct {
@@ -159,6 +160,13 @@ func (e *EnforceSecurityUserImpl) ManageOrganizationGrant(organizationId uuid.UU
 	return errors.Join(
 		e.Permission(models.MARBLE_USER_UPDATE),
 		e.ReadOrganization(organizationId),
+	)
+}
+
+func (e *EnforceSecurityUserImpl) ManageRoles() error {
+	return errors.Join(
+		e.Permission(models.MANAGE_ROLES),
+		e.ReadOrganization(e.OrgId()),
 	)
 }
 
