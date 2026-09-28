@@ -309,3 +309,8 @@ func (e *EnforceSecurity) SaveScreeningSearch() error {
 	args := e.Called()
 	return args.Error(0)
 }
+
+func (e *EnforceSecurity) ManageRoles() error {
+	args := e.Called()
+	return args.Error(0)
+}

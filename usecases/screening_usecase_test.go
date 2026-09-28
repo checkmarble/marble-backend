@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
 	ops "github.com/go-faker/faker/v4/pkg/options"
 	"github.com/google/uuid"
@@ -225,4 +226,43 @@ func TestHydrateAndSortMatches(t *testing.T) {
 		"no_hit_high", "no_hit_low",
 		"skipped_high", "skipped_low",
 	}, got)
+}
+
+func TestEnforceCanReadOrUpdateCaseApiKey(t *testing.T) {
+	tts := []struct {
+		name        string
+		orgId       uuid.UUID
+		permissions []models.Permission
+		err         error
+	}{
+		{"inbox editor with case write", utils.TextToUUID("orgid"), []models.Permission{models.INBOX_EDITOR, models.CASE_READ_WRITE}, nil},
+		{"inbox editor without case write", utils.TextToUUID("orgid"), []models.Permission{models.INBOX_EDITOR}, models.ForbiddenError},
+		{"inbox editor from another org", utils.TextToUUID("otherorgid"), []models.Permission{models.INBOX_EDITOR, models.CASE_READ_WRITE}, models.ForbiddenError},
+	}
+
+	for _, tt := range tts {
+		t.Run(tt.name, func(t *testing.T) {
+			creds := models.Credentials{
+				ActorIdentity:  models.Identity{ApiKeyId: "apikeyid"},
+				OrganizationId: tt.orgId,
+				RoleBindings:   []models.RoleBinding{{Role: "org/custom", Permissions: tt.permissions}},
+			}
+
+			uc, _ := buildScreeningUsecaseMock()
+			uc.enforceSecurityCase = &security.EnforceSecurityCaseImpl{
+				EnforceSecurity: security.NewEnforceSecurity(creds),
+				Credentials:     creds,
+			}
+
+			ctx := context.WithValue(context.Background(), utils.ContextKeyCredentials, creds)
+
+			_, err := uc.enforceCanReadOrUpdateCase(ctx, utils.TextToUUID("decisionid").String())
+
+			if tt.err == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.ErrorIs(t, err, tt.err)
+			}
+		})
+	}
 }

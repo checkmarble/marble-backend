@@ -105,14 +105,23 @@ func (i *InboxReader) ListInboxes(
 	return inboxes, nil
 }
 
+// isAdminHasAccessToAllInboxes relies on the permission rather than on roles,
+// so that custom roles (for users and API keys) are handled the same way as
+// native ones, consistently with EnforceSecurityInboxes.
 func (i *InboxReader) isAdminHasAccessToAllInboxes() bool {
-	return i.Credentials.HasRole(models.ADMIN, models.MARBLE_ADMIN, models.API_CLIENT, models.SYSTEM)
+	return i.Credentials.HasPermission(models.INBOX_EDITOR)
 }
 
 func (i *InboxReader) getAvailableInboxes(ctx context.Context, exec repositories.Executor) ([]uuid.UUID, error) {
 	availableInboxIds := make([]uuid.UUID, 0)
 
+	// Only users can be members of inboxes. An empty user ID would not filter
+	// the inbox users at all.
 	userId := i.Credentials.ActorIdentity.UserId
+	if userId == "" {
+		return availableInboxIds, nil
+	}
+
 	inboxUsers, err := i.InboxRepository.ListInboxUsers(ctx, exec, models.InboxUserFilterInput{
 		UserId: userId,
 	})
