@@ -66,17 +66,16 @@ func (repo *MarbleDbRepository) ReplaceApiKeyRoleBindings(
 	return repo.replaceRoleBindings(ctx, tx, homeScope(orgId), dbmodels.GrantPrincipalApiKey, apiKeyId, bindings)
 }
 
-// roleBindingsQuery selects the role bindings of one principal, or of several
-// when given a list of IDs.
+// roleBindingsQuery selects the active grants (neither revoked nor expired)
+// of one principal, or of several when given a list of IDs.
 func roleBindingsQuery(principalType string, principalId any) squirrel.SelectBuilder {
 	return NewQueryBuilder().
 		Select(dbmodels.SelectRoleBindingColumns...).
-		From(dbmodels.TABLE_GRANTS+" g").
+		From("active_grants g").
 		Where(squirrel.Eq{
 			"g.principal_type":      principalType,
 			"g.principal_id":        principalId,
 			"g.principal_authority": dbmodels.GrantAuthorityMarble,
-			"g.revoked_at":          nil,
 		}).
 		OrderBy("g.created_at", "g.id")
 }
@@ -194,6 +193,30 @@ func (repo *MarbleDbRepository) replaceRoleBindings(
 	}
 
 	orgId := scope.orgId
+
+	// Concurrent replacements for the same principal must be serialized:
+	// otherwise both would read the same grants, and the second would fail on
+	// the unique indexes when inserting.
+	if err := GetAdvisoryLockTx(ctx, tx, "role_bindings:"+principalType+":"+principalId); err != nil {
+		return err
+	}
+
+	// Expired grants are not role bindings anymore, but as long as they are not
+	// revoked they still occupy the unique indexes, and would prevent binding
+	// the same role again. They are revoked before diffing the active ones.
+	if err := ExecBuilder(ctx, tx, NewQueryBuilder().
+		Update(dbmodels.TABLE_GRANTS).
+		Set("revoked_at", squirrel.Expr("now()")).
+		Where(squirrel.Eq{
+			"principal_type":      principalType,
+			"principal_id":        principalId,
+			"principal_authority": dbmodels.GrantAuthorityMarble,
+			"revoked_at":          nil,
+		}).
+		Where("expires_at <= now()").
+		Where(scope.where(""))); err != nil {
+		return err
+	}
 
 	existing, err := repo.listScopedRoleBindings(ctx, tx, scope, principalType, principalId)
 	if err != nil {
