@@ -307,10 +307,12 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(admin.UserId)).
 			Return([]models.RoleBinding{grant(models.MARBLE_ADMIN, uuid.Nil, uuid.Nil)}, nil)
 
+		roleBindingBundle := models.RoleBindingBundle{Clock: clock.NewMock(now)}
+
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
 			RoleBindings: []models.RoleBinding{grant(models.MARBLE_ADMIN, uuid.Nil, uuid.Nil)},
-			Permissions:  models.RoleBindingsPermissions([]models.RoleBinding{grant(models.MARBLE_ADMIN, uuid.Nil, uuid.Nil)}),
+			Permissions:  models.RoleBindingsPermissions([]models.RoleBinding{grant(models.MARBLE_ADMIN, uuid.Nil, uuid.Nil)}, roleBindingBundle),
 			ActorIdentity: models.Identity{
 				UserId: admin.UserId,
 				Email:  admin.Email,
