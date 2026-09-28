@@ -148,3 +148,49 @@ func TestManageOrganizationGrantForMarbleAdmin(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateUserMarbleAdminRole(t *testing.T) {
+	roles := func(roles ...models.Role) []models.RoleBinding { return models.NativeRoleBindings(roles) }
+
+	tts := []struct {
+		name      string
+		principal []models.Role
+		from, to  []models.Role
+		allowed   bool
+	}{
+		{"admin cannot revoke marble admin", []models.Role{models.ADMIN},
+			[]models.Role{models.ADMIN, models.MARBLE_ADMIN}, []models.Role{models.ADMIN}, false},
+		{"admin cannot grant marble admin", []models.Role{models.ADMIN},
+			[]models.Role{models.VIEWER}, []models.Role{models.VIEWER, models.MARBLE_ADMIN}, false},
+		{"admin can change other roles of a marble admin", []models.Role{models.ADMIN},
+			[]models.Role{models.VIEWER, models.MARBLE_ADMIN}, []models.Role{models.PUBLISHER, models.MARBLE_ADMIN}, true},
+		{"marble admin can revoke marble admin", []models.Role{models.MARBLE_ADMIN},
+			[]models.Role{models.ADMIN, models.MARBLE_ADMIN}, []models.Role{models.ADMIN}, true},
+		{"marble admin can grant marble admin", []models.Role{models.MARBLE_ADMIN},
+			[]models.Role{models.VIEWER}, []models.Role{models.VIEWER, models.MARBLE_ADMIN}, true},
+	}
+
+	for _, tt := range tts {
+		t.Run(tt.name, func(t *testing.T) {
+			e := EnforceSecurityUserImpl{
+				EnforceSecurity: mockUserEnforceSecurity{},
+				Credentials: models.Credentials{
+					OrganizationId: utils.TextToUUID("org"),
+					ActorIdentity:  models.Identity{UserId: "principal"},
+					RoleBindings:   roles(tt.principal...),
+				},
+			}
+
+			target := models.User{OrganizationId: utils.TextToUUID("org"), UserId: "target", RoleBindings: roles(tt.from...)}
+			bindings := roles(tt.to...)
+
+			outcome := e.UpdateUser(target, models.UpdateUser{UserId: string(target.UserId), RoleBindings: &bindings})
+
+			if tt.allowed {
+				assert.NoError(t, outcome)
+			} else {
+				assert.ErrorIs(t, outcome, models.BadParameterError)
+			}
+		})
+	}
+}

@@ -67,13 +67,16 @@ func (e *EnforceSecurityUserImpl) UpdateUser(targetUser models.User, updateUser 
 		updatedRoles = models.RoleNames(*updateUser.RoleBindings)
 	}
 
-	// Only marble admins can create marble admins
+	// Only marble admins can grant or revoke the marble admin role. Others may
+	// update the roles of a marble admin as long as they leave it in place:
+	// role bindings are replaced as a whole, including the platform-scoped
+	// marble admin grant.
 	if updateUser.RoleBindings != nil &&
-		slices.Contains(updatedRoles, models.MARBLE_ADMIN) &&
-		!e.Credentials.HasRole(models.MARBLE_ADMIN) {
+		!e.Credentials.HasRole(models.MARBLE_ADMIN) &&
+		!sameBindingsOfRole(targetUser.RoleBindings, *updateUser.RoleBindings, models.MARBLE_ADMIN) {
 		return errors.Wrap(
 			models.BadParameterError,
-			"only marble admins can create marble admins")
+			"only marble admins can grant or revoke the marble admin role")
 	}
 
 	// Fail early if current user is not an ADMIN and they try to change a user's role.
@@ -157,4 +160,32 @@ func (e *EnforceSecurityUserImpl) ManageOrganizationGrant(organizationId uuid.UU
 		e.Permission(models.MARBLE_USER_UPDATE),
 		e.ReadOrganization(organizationId),
 	)
+}
+
+// sameBindingsOfRole reports whether both sets hold equivalent bindings of the
+// given role.
+func sameBindingsOfRole(current, next []models.RoleBinding, role models.Role) bool {
+	currentOfRole := slices.DeleteFunc(slices.Clone(current), func(b models.RoleBinding) bool { return b.Role != role })
+	nextOfRole := slices.DeleteFunc(slices.Clone(next), func(b models.RoleBinding) bool { return b.Role != role })
+
+	if len(currentOfRole) != len(nextOfRole) {
+		return false
+	}
+
+	matched := make([]bool, len(currentOfRole))
+	for _, binding := range nextOfRole {
+		found := false
+		for idx, candidate := range currentOfRole {
+			if !matched[idx] && candidate.Equivalent(binding) {
+				matched[idx] = true
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+
+	return true
 }
