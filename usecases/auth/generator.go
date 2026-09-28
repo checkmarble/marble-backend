@@ -16,7 +16,7 @@ type marbleRepository interface {
 	GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error)
 	GetOrganizationByID(ctx context.Context, organizationID uuid.UUID) (models.Organization, error)
 	UserByEmail(ctx context.Context, email string) (models.User, error)
-	ActiveGrantsForPrincipal(ctx context.Context, principalType, principalID string) ([]models.Grant, error)
+	ActiveGrantsForPrincipal(ctx context.Context, principalType, principalID string) ([]models.RoleBinding, error)
 	UpdateUserProfileFromClaims(
 		ctx context.Context,
 		user models.User,
@@ -77,11 +77,11 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 		organizationIDs := []uuid.UUID{}
 		hasPlatformGrant := false
 		for _, grant := range grants {
-			if grant.TenantId == uuid.Nil && grant.OrganizationId == uuid.Nil {
+			if grant.TenantId == uuid.Nil && grant.OrgId == uuid.Nil {
 				hasPlatformGrant = true
 			}
-			if grant.OrganizationId != uuid.Nil && !slices.Contains(organizationIDs, grant.OrganizationId) {
-				organizationIDs = append(organizationIDs, grant.OrganizationId)
+			if grant.OrgId != uuid.Nil && !slices.Contains(organizationIDs, grant.OrgId) {
+				organizationIDs = append(organizationIDs, grant.OrgId)
 			}
 		}
 		if !hasPlatformGrant && len(organizationIDs) == 1 {
@@ -96,45 +96,21 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 			return Token{}, fmt.Errorf("GetOrganizationByID error: %w", err)
 		}
 
-		grantOrganizationAccess := false
-		for _, grant := range grants {
-			if grant.OrganizationId == selectedOrganizationID || grant.TenantId == selectedOrganization.TenantId {
-				grantOrganizationAccess = true
-				break
-			}
-		}
-		if !grantOrganizationAccess {
+		if len(models.ScopeRoleBindings(grants, selectedOrganizationID, selectedOrganization.TenantId)) == 0 {
 			return Token{}, fmt.Errorf("%w: no access to organization", models.ForbiddenError)
 		}
 	}
 
-	tokenCredentials := baseCredentials
-	tokenCredentials.OrganizationId = selectedOrganizationID
-
-	roles := []models.Role{}
-	addRole := func(role models.Role) {
-		if !slices.Contains(roles, role) {
-			roles = append(roles, role)
-		}
-	}
-	if selectedOrganizationID == uuid.Nil {
-		for _, grant := range grants {
-			if grant.TenantId == uuid.Nil && grant.OrganizationId == uuid.Nil {
-				addRole(grant.Role)
-			}
-		}
-	} else {
-		for _, grant := range grants {
-			if grant.OrganizationId == selectedOrganizationID || grant.TenantId == selectedOrganization.TenantId {
-				addRole(grant.Role)
-			}
-		}
-	}
-	slices.Sort(roles)
-	tokenCredentials.Roles = roles
 	if len(grants) == 0 {
 		return Token{}, fmt.Errorf("%w: principal has no active grant", models.ForbiddenError)
 	}
+
+	// Role bindings and permissions are informative here: they are resolved
+	// again from grants on every authenticated request.
+	tokenCredentials := baseCredentials
+	tokenCredentials.OrganizationId = selectedOrganizationID
+	tokenCredentials.RoleBindings = models.ScopeRoleBindings(grants, selectedOrganizationID, selectedOrganization.TenantId)
+	tokenCredentials.Permissions = models.RoleBindingsPermissions(tokenCredentials.RoleBindings)
 
 	switch creds.Type {
 	case CredentialsBearer:

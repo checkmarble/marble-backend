@@ -23,7 +23,6 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 		Id:             "api_key_id",
 		OrganizationId: utils.TextToUUID("organization_id"),
 		Prefix:         "abc",
-		Role:           models.ADMIN,
 	}
 
 	organization := models.Organization{
@@ -32,9 +31,16 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 		TenantId: utils.TextToUUID("tenant_id"),
 	}
 
+	grants := []models.RoleBinding{
+		{Role: models.ADMIN, OrgId: apiKey.OrganizationId, Permissions: models.ADMIN.Permissions()},
+		{Role: models.TENANT_ADMIN, TenantId: organization.TenantId, Permissions: models.TENANT_ADMIN.Permissions()},
+		{Role: models.VIEWER, OrgId: utils.TextToUUID("other_organization_id"), Permissions: models.VIEWER.Permissions()},
+	}
+
 	creds := models.Credentials{
 		OrganizationId: utils.TextToUUID("organization_id"),
-		Roles:          []models.Role{models.ADMIN, models.TENANT_ADMIN},
+		RoleBindings:   grants[:2],
+		Permissions:    models.ADMIN.Permissions(),
 		ActorIdentity: models.Identity{
 			ApiKeyId:   "api_key_id",
 			ApiKeyName: "Api key abc*** of organization",
@@ -50,10 +56,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 		mockKeyAndOrganizationGetter.On("GetOrganizationByID", ctx, apiKey.OrganizationId).
 			Return(organization, nil)
 		mockKeyAndOrganizationGetter.On("ActiveGrantsForPrincipal", mock.Anything, "api_key", apiKey.Id).
-			Return([]models.Grant{
-				{Role: models.ADMIN, OrganizationId: apiKey.OrganizationId},
-				{Role: models.TENANT_ADMIN, TenantId: organization.TenantId},
-			}, nil)
+			Return(grants, nil)
 
 		v := Validator{
 			getter: mockKeyAndOrganizationGetter,
@@ -62,6 +65,24 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 		credentials, err := v.ValidateTokenOrKey(ctx, "", key)
 		assert.NoError(t, err)
 		assert.Equal(t, creds, credentials)
+		mockKeyAndOrganizationGetter.AssertExpectations(t)
+	})
+
+	t.Run("no active grant", func(t *testing.T) {
+		mockKeyAndOrganizationGetter := new(mocks.Database)
+		mockKeyAndOrganizationGetter.On("GetApiKeyByHash", ctx, keyHash).
+			Return(apiKey, nil)
+		mockKeyAndOrganizationGetter.On("GetOrganizationByID", ctx, apiKey.OrganizationId).
+			Return(organization, nil)
+		mockKeyAndOrganizationGetter.On("ActiveGrantsForPrincipal", mock.Anything, "api_key", apiKey.Id).
+			Return(grants[2:], nil)
+
+		v := Validator{
+			getter: mockKeyAndOrganizationGetter,
+		}
+
+		_, err := v.ValidateTokenOrKey(ctx, "", key)
+		assert.ErrorIs(t, err, models.UnAuthorizedError)
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
 	})
 
@@ -79,21 +100,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
 	})
 
-	t.Run("rejects an API key without an applicable grant", func(t *testing.T) {
-		mockKeyAndOrganizationGetter := new(mocks.Database)
-		mockKeyAndOrganizationGetter.On("GetApiKeyByHash", ctx, keyHash).Return(apiKey, nil)
-		mockKeyAndOrganizationGetter.On("GetOrganizationByID", ctx, apiKey.OrganizationId).Return(organization, nil)
-		mockKeyAndOrganizationGetter.On("ActiveGrantsForPrincipal", mock.Anything, "api_key", apiKey.Id).
-			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: utils.TextToUUID("another_organization")}}, nil)
-
-		v := Validator{getter: mockKeyAndOrganizationGetter}
-		_, err := v.ValidateTokenOrKey(ctx, "", key)
-
-		assert.ErrorIs(t, err, models.UnAuthorizedError)
-		mockKeyAndOrganizationGetter.AssertExpectations(t)
-	})
-
-	t.Run("nominal", func(t *testing.T) {
+	t.Run("GetOrganizationByID error", func(t *testing.T) {
 		mockKeyAndOrganizationGetter := new(mocks.Database)
 		mockKeyAndOrganizationGetter.On("GetApiKeyByHash", ctx, keyHash).
 			Return(apiKey, nil)
@@ -112,29 +119,140 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 
 func TestValidator_Validate_Token(t *testing.T) {
 	token := "token"
+	ctx := context.Background()
+
+	organizationId := utils.TextToUUID("organization_id")
+	tenantId := utils.TextToUUID("tenant_id")
+
+	tokenCreds := models.Credentials{
+		OrganizationId: organizationId,
+		// Bindings embedded in the token are ignored in favor of current grants.
+		RoleBindings: models.NativeRoleBindings([]models.Role{models.ADMIN}),
+		ActorIdentity: models.Identity{
+			UserId: "user_id",
+			Email:  "user@email.com",
+		},
+	}
+
+	grants := []models.RoleBinding{
+		{Role: models.VIEWER, OrgId: organizationId, Permissions: models.VIEWER.Permissions()},
+		{Role: models.MARBLE_ADMIN, Permissions: models.MARBLE_ADMIN.Permissions()},
+	}
 
 	t.Run("nominal", func(t *testing.T) {
-		creds := models.Credentials{
-			OrganizationId: utils.TextToUUID("organization_id"),
-			Roles:          []models.Role{models.ADMIN},
-			ActorIdentity: models.Identity{
-				UserId: "user_id",
-				Email:  "user@email.com",
-			},
-		}
-
 		mockValidator := new(mocks.JWTEncoderValidator)
 		mockValidator.On("ValidateMarbleToken", token).
-			Return(creds, nil)
+			Return(tokenCreds, nil)
+		mockGetter := new(mocks.Database)
+		mockGetter.On("GetOrganizationByID", ctx, organizationId).
+			Return(models.Organization{Id: organizationId, TenantId: tenantId}, nil)
+		mockGetter.On("ActiveGrantsForPrincipal", ctx, "user", "user_id").
+			Return(grants, nil)
 
 		v := Validator{
+			getter:    mockGetter,
 			validator: mockValidator,
 		}
 
-		credentials, err := v.ValidateTokenOrKey(context.Background(), token, "")
+		expected := tokenCreds
+		expected.RoleBindings = grants[:1]
+		expected.Permissions = models.VIEWER.Permissions()
+
+		credentials, err := v.ValidateTokenOrKey(ctx, token, "")
 		assert.NoError(t, err)
-		assert.Equal(t, creds, credentials)
+		assert.Equal(t, expected, credentials)
 		mockValidator.AssertExpectations(t)
+		mockGetter.AssertExpectations(t)
+	})
+
+	t.Run("tenant grant", func(t *testing.T) {
+		mockValidator := new(mocks.JWTEncoderValidator)
+		mockValidator.On("ValidateMarbleToken", token).
+			Return(tokenCreds, nil)
+		mockGetter := new(mocks.Database)
+		mockGetter.On("GetOrganizationByID", ctx, organizationId).
+			Return(models.Organization{Id: organizationId, TenantId: tenantId}, nil)
+		mockGetter.On("ActiveGrantsForPrincipal", ctx, "user", "user_id").
+			Return([]models.RoleBinding{{Role: models.TENANT_ADMIN, TenantId: tenantId}}, nil)
+
+		v := Validator{
+			getter:    mockGetter,
+			validator: mockValidator,
+		}
+
+		credentials, err := v.ValidateTokenOrKey(ctx, token, "")
+		assert.NoError(t, err)
+		assert.True(t, credentials.HasRole(models.TENANT_ADMIN))
+		mockGetter.AssertExpectations(t)
+	})
+
+	t.Run("revoked grants", func(t *testing.T) {
+		mockValidator := new(mocks.JWTEncoderValidator)
+		mockValidator.On("ValidateMarbleToken", token).
+			Return(tokenCreds, nil)
+		mockGetter := new(mocks.Database)
+		mockGetter.On("GetOrganizationByID", ctx, organizationId).
+			Return(models.Organization{Id: organizationId, TenantId: tenantId}, nil)
+		mockGetter.On("ActiveGrantsForPrincipal", ctx, "user", "user_id").
+			Return([]models.RoleBinding{}, nil)
+
+		v := Validator{
+			getter:    mockGetter,
+			validator: mockValidator,
+		}
+
+		_, err := v.ValidateTokenOrKey(ctx, token, "")
+		assert.ErrorIs(t, err, models.UnAuthorizedError)
+	})
+
+	t.Run("platform token", func(t *testing.T) {
+		platformCreds := tokenCreds
+		platformCreds.OrganizationId = [16]byte{}
+
+		mockValidator := new(mocks.JWTEncoderValidator)
+		mockValidator.On("ValidateMarbleToken", token).
+			Return(platformCreds, nil)
+		mockGetter := new(mocks.Database)
+		mockGetter.On("ActiveGrantsForPrincipal", ctx, "user", "user_id").
+			Return(grants, nil)
+
+		v := Validator{
+			getter:    mockGetter,
+			validator: mockValidator,
+		}
+
+		credentials, err := v.ValidateTokenOrKey(ctx, token, "")
+		assert.NoError(t, err)
+		assert.Equal(t, grants[1:], credentials.RoleBindings)
+		mockGetter.AssertExpectations(t)
+	})
+
+	t.Run("platform token without platform grants", func(t *testing.T) {
+		platformCreds := tokenCreds
+		platformCreds.OrganizationId = [16]byte{}
+
+		mockValidator := new(mocks.JWTEncoderValidator)
+		mockValidator.On("ValidateMarbleToken", token).
+			Return(platformCreds, nil)
+		mockGetter := new(mocks.Database)
+		mockGetter.On("ActiveGrantsForPrincipal", ctx, "user", "user_id").
+			Return([]models.RoleBinding{
+				{Role: models.VIEWER, OrgId: organizationId, Permissions: models.VIEWER.Permissions()},
+				{Role: models.TENANT_ADMIN, TenantId: tenantId},
+			}, nil)
+
+		v := Validator{
+			getter:    mockGetter,
+			validator: mockValidator,
+		}
+
+		// The user can still authenticate to select an organization, but holds
+		// no role nor permission until then.
+		credentials, err := v.ValidateTokenOrKey(ctx, token, "")
+		assert.NoError(t, err)
+		assert.Empty(t, credentials.RoleBindings)
+		assert.Empty(t, credentials.Permissions)
+		mockGetter.AssertExpectations(t)
 	})
 
 	t.Run("ValidateMarbleToken error", func(t *testing.T) {
@@ -146,7 +264,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 			validator: mockValidator,
 		}
 
-		_, err := v.ValidateTokenOrKey(context.Background(), token, "")
+		_, err := v.ValidateTokenOrKey(ctx, token, "")
 		assert.Error(t, err)
 		mockValidator.AssertExpectations(t)
 	})

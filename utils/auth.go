@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/hashicorp/go-set/v2"
 
 	"github.com/gin-gonic/gin"
 )
@@ -121,11 +122,18 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 			return
 		}
 
+		activeRoles := set.New[models.Role](len(credentials.RoleBindings))
+		for _, binding := range credentials.RoleBindings {
+			if role := binding.RoleName(); role != "" {
+				activeRoles.Insert(role)
+			}
+		}
+
 		newContext := context.WithValue(ctx, ContextKeyCredentials, credentials)
 		if attr, ok := identityAttr(credentials.ActorIdentity); ok {
 			logger := LoggerFromContext(newContext).
 				With(attr).
-				With(slog.Any("Roles", credentials.Roles))
+				With(slog.Any("Roles", activeRoles.Slice()))
 			c.Request = c.Request.WithContext(context.WithValue(newContext, ContextKeyLogger, logger))
 		}
 		c.Next()
