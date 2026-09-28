@@ -66,14 +66,14 @@ func (suite *InboxReaderTestSuite) SetupTest() {
 			UserId: suite.nonAdminUserId,
 		},
 		OrganizationId: suite.organizationId,
-		Roles:          []models.Role{models.BUILDER},
+		RoleBindings:   models.NativeRoleBindings([]models.Role{models.BUILDER}),
 	}
 	suite.adminCredentials = models.Credentials{
 		ActorIdentity: models.Identity{
 			UserId: suite.adminUserId,
 		},
 		OrganizationId: suite.organizationId,
-		Roles:          []models.Role{models.ADMIN},
+		RoleBindings:   models.NativeRoleBindings([]models.Role{models.ADMIN}),
 	}
 	suite.repositoryError = errors.New("some repository error")
 	suite.securityError = errors.New("some security error")

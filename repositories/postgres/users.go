@@ -16,7 +16,7 @@ import (
 
 func (db *Database) UserByEmail(ctx context.Context, email string) (models.User, error) {
 	query := `
-		SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.organization_id, o.tenant_id
+		SELECT u.id, u.email, u.first_name, u.last_name, u.organization_id, o.tenant_id
 		FROM users u
 		LEFT JOIN organizations o ON o.id = u.organization_id
 		WHERE u.email = $1
@@ -24,7 +24,6 @@ func (db *Database) UserByEmail(ctx context.Context, email string) (models.User,
 	`
 
 	var user models.User
-	var role int
 	var organizationID *string
 	var tenantID *uuid.UUID
 	var firstName, lastName pgtype.Text
@@ -33,11 +32,9 @@ func (db *Database) UserByEmail(ctx context.Context, email string) (models.User,
 			&user.Email,
 			&firstName,
 			&lastName,
-			&role,
 			&organizationID,
 			&tenantID,
 		)
-	user.Role = models.RoleFromLegacyValue(role)
 	if firstName.Valid {
 		user.FirstName = firstName.String
 	}
