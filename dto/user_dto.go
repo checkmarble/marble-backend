@@ -4,29 +4,32 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/google/uuid"
 )
 
 type User struct {
-	UserId         string     `json:"user_id"`
-	Email          string     `json:"email"`
-	Role           string     `json:"role"`
-	OrganizationId uuid.UUID  `json:"organization_id"`
-	FirstName      string     `json:"first_name"`
-	LastName       string     `json:"last_name"`
-	Picture        string     `json:"picture"`
-	DeletedAt      *time.Time `json:"deleted_at,omitempty"`
-	TfaEnabled     *bool      `json:"tfa_enabled,omitempty"`
+	UserId         string        `json:"user_id"`
+	Email          string        `json:"email"`
+	RoleBindings   []RoleBinding `json:"roles"` //nolint:tagliatelle
+	OrganizationId uuid.UUID     `json:"organization_id"`
+	FirstName      string        `json:"first_name"`
+	LastName       string        `json:"last_name"`
+	Picture        string        `json:"picture"`
+	DeletedAt      *time.Time    `json:"deleted_at,omitempty"`
+	TfaEnabled     *bool         `json:"tfa_enabled,omitempty"`
 }
 
 type TenantUser struct {
-	UserId                string    `json:"user_id"`
-	Email                 string    `json:"email"`
-	OrganizationId        uuid.UUID `json:"organization_id"`
-	FirstName             string    `json:"first_name"`
-	LastName              string    `json:"last_name"`
-	Picture               string    `json:"picture"`
-	OrganizationGrantRole *string   `json:"organization_grant_role,omitempty"`
+	UserId         string    `json:"user_id"`
+	Email          string    `json:"email"`
+	OrganizationId uuid.UUID `json:"organization_id"`
+	FirstName      string    `json:"first_name"`
+	LastName       string    `json:"last_name"`
+	Picture        string    `json:"picture"`
+	// RoleBindings are the user's role bindings in the listed organization,
+	// which may not be its home organization.
+	RoleBindings []RoleBinding `json:"roles"` //nolint:tagliatelle
 }
 
 type TenantUsersResponse struct {
@@ -35,26 +38,22 @@ type TenantUsersResponse struct {
 
 func AdaptTenantUserDto(grant models.OrganizationUserGrant) TenantUser {
 	user := grant.User
-	dto := TenantUser{
+	return TenantUser{
 		UserId:         string(user.UserId),
 		Email:          user.Email,
 		OrganizationId: user.OrganizationId,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
 		Picture:        user.Picture,
+		RoleBindings:   pure_utils.Map(grant.RoleBindings, AdaptRoleBinding),
 	}
-	if grant.OrganizationGrantRole != nil {
-		role := grant.OrganizationGrantRole.String()
-		dto.OrganizationGrantRole = &role
-	}
-	return dto
 }
 
 func AdaptUserDto(user models.User) User {
 	return User{
 		UserId:         string(user.UserId),
 		Email:          user.Email,
-		Role:           user.Role.String(),
+		RoleBindings:   pure_utils.Map(user.RoleBindings, AdaptRoleBinding),
 		OrganizationId: user.OrganizationId,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
@@ -65,28 +64,30 @@ func AdaptUserDto(user models.User) User {
 }
 
 type CreateUser struct {
-	Email          string    `json:"email"`
-	Role           string    `json:"role"`
-	OrganizationId uuid.UUID `json:"organization_id"`
-	FirstName      string    `json:"first_name"`
-	LastName       string    `json:"last_name"`
+	Email          string        `json:"email"`
+	RoleBindings   []RoleBinding `json:"roles"` //nolint:tagliatelle
+	OrganizationId uuid.UUID     `json:"organization_id"`
+	FirstName      string        `json:"first_name"`
+	LastName       string        `json:"last_name"`
 }
 
 type UpdateUser struct {
-	Email     *string `json:"email"`
-	Role      *string `json:"role"`
-	FirstName *string `json:"first_name"`
-	LastName  *string `json:"last_name"`
+	Email        *string        `json:"email"`
+	RoleBindings *[]RoleBinding `json:"roles"` //nolint:tagliatelle
+	FirstName    *string        `json:"first_name"`
+	LastName     *string        `json:"last_name"`
 }
 
+// ReplaceOrganizationGrant replaces the role bindings of a user in an
+// organization of its tenant. An empty list removes them all.
 type ReplaceOrganizationGrant struct {
-	Role string `json:"role" binding:"required"`
+	RoleBindings []RoleBinding `json:"roles" binding:"required"` //nolint:tagliatelle
 }
 
 func AdaptCreateUser(dto CreateUser) models.CreateUser {
 	return models.CreateUser{
 		Email:          dto.Email,
-		Role:           models.RoleFromString(dto.Role),
+		RoleBindings:   pure_utils.Map(dto.RoleBindings, AdaptRoleBindingInput),
 		OrganizationId: dto.OrganizationId,
 		FirstName:      dto.FirstName,
 		LastName:       dto.LastName,
@@ -94,17 +95,17 @@ func AdaptCreateUser(dto CreateUser) models.CreateUser {
 }
 
 func AdaptUpdateUser(dto UpdateUser, userId string) models.UpdateUser {
-	var updatedRole *models.Role
-	if dto.Role != nil {
-		new := models.RoleFromString(*dto.Role)
-		updatedRole = &new
+	var updatedBindings *[]models.RoleBinding
+	if dto.RoleBindings != nil {
+		bindings := pure_utils.Map(*dto.RoleBindings, AdaptRoleBindingInput)
+		updatedBindings = &bindings
 	}
 
 	return models.UpdateUser{
-		UserId:    userId,
-		Email:     dto.Email,
-		Role:      updatedRole,
-		FirstName: dto.FirstName,
-		LastName:  dto.LastName,
+		UserId:       userId,
+		Email:        dto.Email,
+		RoleBindings: updatedBindings,
+		FirstName:    dto.FirstName,
+		LastName:     dto.LastName,
 	}
 }

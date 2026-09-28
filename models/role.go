@@ -2,14 +2,107 @@ package models
 
 import (
 	"slices"
+
+	"github.com/google/uuid"
 )
+
+type RoleBinding struct {
+	Id          uuid.UUID
+	TenantId    uuid.UUID
+	OrgId       uuid.UUID
+	UserId      *UserId
+	ApiKeyId    *uuid.UUID
+	Role        Role
+	Permissions []Permission
+}
+
+// Equivalent reports whether two bindings grant the same role.
+func (b RoleBinding) Equivalent(other RoleBinding) bool {
+	return b.Role == other.Role
+}
+
+// AppliesTo reports whether the binding grants its role when acting within
+// the given organization (and its tenant). Without an organization, only
+// platform-scoped bindings apply.
+func (b RoleBinding) AppliesTo(orgId, tenantId uuid.UUID) bool {
+	if orgId == uuid.Nil {
+		return b.OrgId == uuid.Nil && b.TenantId == uuid.Nil
+	}
+
+	return b.OrgId == orgId || (b.TenantId != uuid.Nil && b.TenantId == tenantId)
+}
+
+func ScopeRoleBindings(bindings []RoleBinding, orgId, tenantId uuid.UUID) []RoleBinding {
+	scoped := make([]RoleBinding, 0, len(bindings))
+
+	for _, binding := range bindings {
+		if binding.AppliesTo(orgId, tenantId) {
+			scoped = append(scoped, binding)
+		}
+	}
+
+	return scoped
+}
+
+func (b RoleBinding) RoleName() Role {
+	return b.Role
+}
+
+func NewNativeRoleBinding(role Role) RoleBinding {
+	return RoleBinding{Role: role, Permissions: role.Permissions()}
+}
+
+func RoleNames(bindings []RoleBinding) []Role {
+	roles := make([]Role, 0, len(bindings))
+
+	for _, binding := range bindings {
+		if role := binding.RoleName(); role != "" && !slices.Contains(roles, role) {
+			roles = append(roles, role)
+		}
+	}
+
+	return roles
+}
+
+func NativeRoleBindings(roles []Role) []RoleBinding {
+	bindings := make([]RoleBinding, 0, len(roles))
+
+	for _, role := range roles {
+		bindings = append(bindings, NewNativeRoleBinding(role))
+	}
+
+	return bindings
+}
+
+// LegacyRoleValue returns the value stored in the singular role column for
+// rollback compatibility. The legacy schema can represent only one native
+// role, so the first native binding is used.
+func LegacyRoleValue(bindings []RoleBinding) int {
+	values := map[Role]int{
+		SYSTEM:       0,
+		VIEWER:       1,
+		BUILDER:      2,
+		PUBLISHER:    3,
+		ADMIN:        4,
+		API_CLIENT:   5,
+		MARBLE_ADMIN: 6,
+		ANALYST:      9,
+	}
+
+	for _, binding := range bindings {
+		if value, ok := values[binding.Role]; ok {
+			return value
+		}
+	}
+
+	return 0
+}
 
 type Role string
 
 // Do not remove or reorder entries here, even if a role if deleted, since the
 // value is used for identity.
 const (
-	NO_ROLE      Role = ""
 	SYSTEM       Role = "SYSTEM"
 	VIEWER       Role = "VIEWER"
 	BUILDER      Role = "BUILDER"
@@ -20,39 +113,6 @@ const (
 	ANALYST      Role = "ANALYST"
 	TENANT_ADMIN Role = "TENANT_ADMIN"
 )
-
-// legacyRoleValues are the values roles had as integers, still stored in the
-// role column of users and API keys.
-var legacyRoleValues = map[Role]int{
-	NO_ROLE:      0,
-	VIEWER:       1,
-	BUILDER:      2,
-	PUBLISHER:    3,
-	ADMIN:        4,
-	API_CLIENT:   5,
-	MARBLE_ADMIN: 6,
-	ANALYST:      9,
-	SYSTEM:       10,
-	TENANT_ADMIN: 11,
-}
-
-// LegacyValue returns the integer value of the role, for the legacy role
-// column of users and API keys.
-func (r Role) LegacyValue() int {
-	return legacyRoleValues[r]
-}
-
-// RoleFromLegacyValue returns the role stored as an integer in the legacy role
-// column of users and API keys.
-func RoleFromLegacyValue(value int) Role {
-	for role, legacyValue := range legacyRoleValues {
-		if legacyValue == value {
-			return role
-		}
-	}
-
-	return NO_ROLE
-}
 
 func GetValidUserRoles() []Role {
 	return []Role{
@@ -86,7 +146,7 @@ func RoleFromString(s string) Role {
 	case VIEWER, BUILDER, PUBLISHER, ADMIN, API_CLIENT, MARBLE_ADMIN, ANALYST, TENANT_ADMIN:
 		return role
 	}
-	return NO_ROLE
+	return ""
 }
 
 func (r Role) Permissions() []Permission {

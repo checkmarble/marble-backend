@@ -66,7 +66,7 @@ func setupOrgAndUser(e *httpexpect.Expect) (authOrgAdmin *httpexpect.Expect, aut
 
 	orgAdminEmail := "test@email.com"
 	auth.POST("/users").
-		WithJSON(map[string]any{"email": orgAdminEmail, "organization_id": orgId, "role": "ADMIN"}).
+		WithJSON(map[string]any{"email": orgAdminEmail, "organization_id": orgId, "roles": []map[string]any{{"role": "ADMIN"}}}).
 		Expect().Status(http.StatusOK).
 		JSON().
 		Object().Value("user").
@@ -99,13 +99,13 @@ func setupOrgAndUser(e *httpexpect.Expect) (authOrgAdmin *httpexpect.Expect, aut
 
 	// org admin cannot create Marble admin
 	authOrgAdmin.POST("/users").
-		WithJSON(map[string]any{"email": "reject@reject.com", "role": "MARBLE_ADMIN"}).
+		WithJSON(map[string]any{"email": "reject@reject.com", "roles": []map[string]any{{"role": "MARBLE_ADMIN"}}}).
 		Expect().Status(http.StatusForbidden)
 
 	// create a viewer user
 	viewerEmail := "viewer@email.com"
 	authOrgAdmin.POST("/users").
-		WithJSON(map[string]any{"email": viewerEmail, "organization_id": orgId, "role": "VIEWER"}).
+		WithJSON(map[string]any{"email": viewerEmail, "organization_id": orgId, "roles": []map[string]any{{"role": "VIEWER"}}}).
 		Expect().Status(http.StatusOK)
 	orgViewerToken := e.POST("/token").
 		WithHeader("Authorization", fmt.Sprintf("Bearer %s", firebaseDummyToken(viewerEmail))).
@@ -261,7 +261,7 @@ func setupTestScenarioAndPublish(authOrgAdmin *httpexpect.Expect, authOrgViewer 
 
 func setupApiKey(e *httpexpect.Expect, authOrgAdmin *httpexpect.Expect) *httpexpect.Expect {
 	apiKey := authOrgAdmin.POST("/apikeys").
-		WithJSON(map[string]any{"role": "API_CLIENT", "description": "test api key"}).
+		WithJSON(map[string]any{"roles": []map[string]any{{"role": "API_CLIENT"}}, "description": "test api key"}).
 		Expect().Status(http.StatusCreated).
 		JSON().
 		Object().Value("api_key").

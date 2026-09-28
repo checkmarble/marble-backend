@@ -9,5 +9,44 @@ import (
 func TestSystemRoleIsInternal(t *testing.T) {
 	assert.Equal(t, "SYSTEM", SYSTEM.String())
 	assert.NotContains(t, GetValidUserRoles(), SYSTEM)
-	assert.Equal(t, NO_ROLE, RoleFromString("SYSTEM"))
+	assert.Equal(t, Role(""), RoleFromString("SYSTEM"))
+}
+
+func TestSystemRoleHasWorkerPermissionsOnly(t *testing.T) {
+	for _, permission := range []Permission{
+		ANY_ORGANIZATION_ID_IN_CONTEXT,
+		CASE_READ_WRITE,
+		DATA_MODEL_READ,
+		DECISION_CREATE,
+		DECISION_READ,
+		INBOX_EDITOR,
+		INGESTION,
+		PHANTOM_DECISION_CREATE,
+		SCENARIO_READ,
+		WEBHOOK_EVENT,
+	} {
+		assert.True(t, SYSTEM.HasPermission(permission), permission)
+	}
+}
+
+func TestLegacyRoleValue(t *testing.T) {
+	tests := []struct {
+		role     Role
+		expected int
+	}{
+		{VIEWER, 1},
+		{BUILDER, 2},
+		{PUBLISHER, 3},
+		{ADMIN, 4},
+		{API_CLIENT, 5},
+		{MARBLE_ADMIN, 6},
+		{ANALYST, 9},
+	}
+
+	for _, test := range tests {
+		t.Run(string(test.role), func(t *testing.T) {
+			assert.Equal(t, test.expected, LegacyRoleValue([]RoleBinding{NewNativeRoleBinding(test.role)}))
+		})
+	}
+	assert.Zero(t, LegacyRoleValue(nil))
 }

@@ -65,5 +65,6 @@ func (e *EnforceSecurityImpl) Permission(permission models.Permission) error {
 	if !e.Credentials.HasPermission(permission) {
 		return errors.Wrap(models.ForbiddenError, "missing permission "+string(permission))
 	}
+
 	return nil
 }

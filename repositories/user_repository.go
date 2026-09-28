@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -15,25 +14,28 @@ import (
 )
 
 type UserRepository interface {
-	CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (string, error)
-	UpdateUser(ctx context.Context, exec Executor, updateUser models.UpdateUser) error
+	CreateUser(ctx context.Context, tx Transaction, createUser models.CreateUser) (string, error)
+	UpdateUser(ctx context.Context, tx Transaction, updateUser models.UpdateUser) error
 	DeleteUser(ctx context.Context, exec Executor, userID models.UserId) error
 	DeleteUsersOfOrganization(ctx context.Context, exec Executor, organizationId uuid.UUID) error
 	UserById(ctx context.Context, exec Executor, userId string) (models.User, error)
 	ListUsers(ctx context.Context, exec Executor, organizationId *uuid.UUID) ([]models.User, error)
 	UserByEmail(ctx context.Context, exec Executor, email string) (*models.User, error)
 	HasUsers(ctx context.Context, exec Executor) (bool, error)
+
+	ReplaceUserRoleBindings(ctx context.Context, tx Transaction, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error
+	ReplaceUserOrganizationRoleBindings(ctx context.Context, tx Transaction, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error
 }
 
-func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (string, error) {
+func (repo *MarbleDbRepository) CreateUser(ctx context.Context, tx Transaction, createUser models.CreateUser) (string, error) {
 	userId := pure_utils.NewId().String()
-	if err := validateMarbleDbExecutor(exec); err != nil {
+	if err := validateMarbleDbExecutor(tx); err != nil {
 		return "", err
 	}
 
 	err := ExecBuilder(
 		ctx,
-		exec,
+		tx,
 		NewQueryBuilder().Insert(dbmodels.TABLE_USERS).
 			Columns(
 				"id",
@@ -46,7 +48,7 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 			Values(
 				userId,
 				createUser.Email,
-				createUser.Role.LegacyValue(),
+				models.LegacyRoleValue(createUser.RoleBindings),
 				createUser.OrganizationId,
 				createUser.FirstName,
 				createUser.LastName,
@@ -56,103 +58,76 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 		return "", err
 	}
 
-	if createUser.Role == models.MARBLE_ADMIN {
-		return userId, ExecBuilder(ctx, exec, NewQueryBuilder().
-			Insert(dbmodels.TABLE_GRANTS).
-			Columns("id", "principal_type", "principal_id", "principal_authority", "role").
-			Values(pure_utils.NewId(), "user", userId, "marble", createUser.Role.String()).
-			Suffix("ON CONFLICT DO NOTHING"))
+	if err := repo.ReplaceUserRoleBindings(ctx, tx, createUser.OrganizationId, userId, createUser.RoleBindings); err != nil {
+		return "", err
 	}
 
-	return userId, ExecBuilder(ctx, exec, NewQueryBuilder().
-		Insert(dbmodels.TABLE_GRANTS).
-		Columns("id", "principal_type", "principal_id", "principal_authority", "organization_id", "role").
-		Values(pure_utils.NewId(), "user", userId, "marble", createUser.OrganizationId, createUser.Role.String()).
-		Suffix("ON CONFLICT DO NOTHING"))
+	return userId, nil
 }
 
-func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, updateUser models.UpdateUser) error {
-	if err := validateMarbleDbExecutor(exec); err != nil {
+func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, tx Transaction, updateUser models.UpdateUser) error {
+	if err := validateMarbleDbExecutor(tx); err != nil {
 		return err
 	}
 
 	query := NewQueryBuilder().Update(dbmodels.TABLE_USERS).Where(squirrel.Eq{"id": updateUser.UserId})
-	var previousRole models.Role
-	var previousOrganizationID *uuid.UUID
-	if updateUser.Role != nil && *updateUser.Role != models.NO_ROLE {
-		var role int
-		selectQuery, args, err := NewQueryBuilder().
-			Select("role", "organization_id").
+	updateProfile := false
+
+	if updateUser.Email != nil {
+		query = query.Set("email", *updateUser.Email)
+		updateProfile = true
+	}
+	if updateUser.FirstName != nil {
+		query = query.Set("first_name", *updateUser.FirstName)
+		updateProfile = true
+	}
+	if updateUser.LastName != nil {
+		query = query.Set("last_name", *updateUser.LastName)
+		updateProfile = true
+	}
+	if updateProfile {
+		if err := ExecBuilder(ctx, tx, query); err != nil {
+			return err
+		}
+	}
+
+	if updateUser.RoleBindings != nil {
+		var persistedOrgId *uuid.UUID
+
+		query, args, err := NewQueryBuilder().
+			Select("organization_id").
 			From(dbmodels.TABLE_USERS).
 			Where(squirrel.Eq{"id": updateUser.UserId}).
 			ToSql()
 		if err != nil {
 			return err
 		}
-		if err := exec.QueryRow(ctx, selectQuery, args...).Scan(&role, &previousOrganizationID); err != nil {
+
+		if err := tx.QueryRow(ctx, query, args...).Scan(&persistedOrgId); err != nil {
 			return err
 		}
-		previousRole = models.RoleFromLegacyValue(role)
-		if previousOrganizationID == nil && *updateUser.Role != models.MARBLE_ADMIN {
-			return fmt.Errorf("cannot assign an organization role to a platform user without an organization")
-		}
-	}
 
-	if updateUser.Email != nil {
-		query = query.Set("email", *updateUser.Email)
-	}
-	if updateUser.Role != nil && *updateUser.Role != models.NO_ROLE {
-		query = query.Set("role", updateUser.Role.LegacyValue())
-	}
-	if updateUser.FirstName != nil {
-		query = query.Set("first_name", *updateUser.FirstName)
-	}
-	if updateUser.LastName != nil {
-		query = query.Set("last_name", *updateUser.LastName)
-	}
+		orgId := uuid.Nil
 
-	if err := ExecBuilder(ctx, exec, query); err != nil {
-		return err
-	}
-	if updateUser.Role != nil && *updateUser.Role != models.NO_ROLE {
-		revokeQuery := NewQueryBuilder().
-			Update(dbmodels.TABLE_GRANTS).
-			Set("revoked_at", squirrel.Expr("NOW()")).
-			Where(squirrel.Eq{
-				"principal_type":      "user",
-				"principal_id":        updateUser.UserId,
-				"principal_authority": "marble",
-				"role":                previousRole.String(),
-				"revoked_at":          nil,
-			})
-		if previousOrganizationID == nil {
-			revokeQuery = revokeQuery.Where(squirrel.Eq{
-				"organization_id": nil,
-				"tenant_id":       nil,
-			})
-		} else {
-			revokeQuery = revokeQuery.Where(squirrel.Eq{"organization_id": *previousOrganizationID})
+		if persistedOrgId != nil {
+			orgId = *persistedOrgId
 		}
-		if err := ExecBuilder(ctx, exec, revokeQuery); err != nil {
+
+		if err := repo.ReplaceUserRoleBindings(ctx, tx, orgId, updateUser.UserId, *updateUser.RoleBindings); err != nil {
 			return err
 		}
-		grantQuery := NewQueryBuilder().Insert(dbmodels.TABLE_GRANTS)
-		if *updateUser.Role == models.MARBLE_ADMIN {
-			grantQuery = grantQuery.
-				Columns("id", "principal_type", "principal_id", "principal_authority", "role").
-				Values(pure_utils.NewId(), "user", updateUser.UserId, "marble", updateUser.Role.String())
-		} else {
-			grantQuery = grantQuery.
-				Columns("id", "principal_type", "principal_id", "principal_authority", "organization_id", "role").
-				Values(pure_utils.NewId(), "user", updateUser.UserId, "marble", previousOrganizationID, updateUser.Role.String())
-		}
-		if err := ExecBuilder(ctx, exec, grantQuery.Suffix("ON CONFLICT DO NOTHING")); err != nil {
+
+		// TODO(MAR-2251): remove users.role once legacy JWTs have expired.
+		if err := ExecBuilder(ctx, tx, NewQueryBuilder().
+			Update(dbmodels.TABLE_USERS).
+			Set("role", models.LegacyRoleValue(*updateUser.RoleBindings)).
+			Where(squirrel.Eq{"id": updateUser.UserId})); err != nil {
 			return err
 		}
 	}
 
-	return exec.Cache(ctx).Exec(func(c *redis.Client) error {
-		return c.Del(ctx, exec.Cache(ctx).Key("user", updateUser.UserId)).Err()
+	return tx.Cache(ctx).Exec(func(c *redis.Client) error {
+		return c.Del(ctx, tx.Cache(ctx).Key("user", updateUser.UserId)).Err()
 	})
 }
 
@@ -224,6 +199,13 @@ func (repo *MarbleDbRepository) UserById(ctx context.Context, exec Executor, use
 		return user, err
 	}
 
+	bindings, err := repo.ListUserRoleBindings(ctx, exec, user.OrganizationId, string(user.UserId))
+	if err != nil {
+		return user, err
+	}
+
+	user.RoleBindings = bindings
+
 	_ = exec.Cache(ctx).SaveModel(ctx, exec, exec.Cache(ctx).Key("user", userId), user, time.Hour)
 
 	return user, nil
@@ -244,12 +226,26 @@ func (repo *MarbleDbRepository) ListUsers(ctx context.Context, exec Executor, or
 		query = query.Where(squirrel.Eq{"organization_id": *orgId})
 	}
 
-	return SqlToListOfModels(
+	users, err := SqlToListOfModels(
 		ctx,
 		exec,
 		query,
 		dbmodels.AdaptUser,
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	for idx := range users {
+		bindings, err := repo.ListUserRoleBindings(ctx, exec, users[idx].OrganizationId, string(users[idx].UserId))
+		if err != nil {
+			return nil, err
+		}
+
+		users[idx].RoleBindings = bindings
+	}
+
+	return users, nil
 }
 
 func (repo *MarbleDbRepository) UserByEmail(ctx context.Context, exec Executor, email string) (*models.User, error) {
@@ -257,7 +253,7 @@ func (repo *MarbleDbRepository) UserByEmail(ctx context.Context, exec Executor, 
 		return nil, err
 	}
 
-	return SqlToOptionalModel(
+	user, err := SqlToOptionalModel(
 		ctx,
 		exec,
 		NewQueryBuilder().
@@ -268,6 +264,18 @@ func (repo *MarbleDbRepository) UserByEmail(ctx context.Context, exec Executor, 
 			OrderBy("id"),
 		dbmodels.AdaptUser,
 	)
+	if err != nil || user == nil {
+		return user, err
+	}
+
+	bindings, err := repo.ListUserRoleBindings(ctx, exec, user.OrganizationId, string(user.UserId))
+	if err != nil {
+		return nil, err
+	}
+
+	user.RoleBindings = bindings
+
+	return user, nil
 }
 
 func (repo *MarbleDbRepository) HasUsers(ctx context.Context, exec Executor) (bool, error) {
