@@ -3,6 +3,7 @@ package token
 import (
 	"context"
 	"encoding/hex"
+	"net"
 	"testing"
 
 	"github.com/google/uuid"
@@ -64,7 +65,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 			getter: mockKeyAndOrganizationGetter,
 		}
 
-		credentials, err := v.ValidateTokenOrKey(ctx, "", key)
+		credentials, err := v.ValidateTokenOrKey(ctx, "", key, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, creds, credentials)
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
@@ -83,9 +84,48 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 			getter: mockKeyAndOrganizationGetter,
 		}
 
-		_, err := v.ValidateTokenOrKey(ctx, "", key)
+		_, err := v.ValidateTokenOrKey(ctx, "", key, nil)
 		assert.ErrorIs(t, err, models.UnAuthorizedError)
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
+	})
+
+	t.Run("network caveat", func(t *testing.T) {
+		officeNetwork, err := models.ParseSubnet("10.0.0.0/8")
+		assert.NoError(t, err)
+
+		restrictedGrants := []models.RoleBinding{{
+			Role:        models.ADMIN,
+			OrgId:       apiKey.OrganizationId,
+			Permissions: models.ADMIN.Permissions(),
+			Conditions:  models.RoleBindingConditions{Networks: []models.Subnet{officeNetwork}},
+		}}
+
+		for name, test := range map[string]struct {
+			clientIp    net.IP
+			permissions []models.Permission
+		}{
+			"inside":  {net.ParseIP("10.1.2.3"), models.ADMIN.Permissions()},
+			"outside": {net.ParseIP("192.168.1.1"), []models.Permission{}},
+			"unknown": {nil, models.ADMIN.Permissions()},
+		} {
+			t.Run(name, func(t *testing.T) {
+				mockKeyAndOrganizationGetter := new(mocks.Database)
+				mockKeyAndOrganizationGetter.On("GetApiKeyByHash", ctx, keyHash).
+					Return(apiKey, nil)
+				mockKeyAndOrganizationGetter.On("GetOrganizationByID", ctx, apiKey.OrganizationId).
+					Return(organization, nil)
+				mockKeyAndOrganizationGetter.On("ActiveGrantsForPrincipal", mock.Anything, "api_key", apiKey.Id).
+					Return(restrictedGrants, nil)
+
+				v := Validator{getter: mockKeyAndOrganizationGetter}
+
+				credentials, err := v.ValidateTokenOrKey(ctx, "", key, test.clientIp)
+				assert.NoError(t, err)
+				assert.Equal(t, test.clientIp, credentials.RoleBindingBundle.ClientIp)
+				assert.Equal(t, test.permissions, credentials.Permissions)
+				assert.Equal(t, len(test.permissions) > 0, credentials.HasRole(models.ADMIN))
+			})
+		}
 	})
 
 	t.Run("GetApiKeyByHash error", func(t *testing.T) {
@@ -97,7 +137,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 			getter: mockKeyAndOrganizationGetter,
 		}
 
-		_, err := v.ValidateTokenOrKey(ctx, "", key)
+		_, err := v.ValidateTokenOrKey(ctx, "", key, nil)
 		assert.Error(t, err)
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
 	})
@@ -113,7 +153,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 			getter: mockKeyAndOrganizationGetter,
 		}
 
-		_, err := v.ValidateTokenOrKey(ctx, "", key)
+		_, err := v.ValidateTokenOrKey(ctx, "", key, nil)
 		assert.Error(t, err)
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
 	})
@@ -161,7 +201,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 		expected.RoleBindings = grants[:1]
 		expected.Permissions = models.VIEWER.Permissions()
 
-		credentials, err := v.ValidateTokenOrKey(ctx, token, "")
+		credentials, err := v.ValidateTokenOrKey(ctx, token, "", nil)
 		assert.NoError(t, err)
 		assert.Equal(t, expected, credentials)
 		mockValidator.AssertExpectations(t)
@@ -183,7 +223,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 			validator: mockValidator,
 		}
 
-		credentials, err := v.ValidateTokenOrKey(ctx, token, "")
+		credentials, err := v.ValidateTokenOrKey(ctx, token, "", nil)
 		assert.NoError(t, err)
 		assert.True(t, credentials.HasRole(models.TENANT_ADMIN))
 		mockGetter.AssertExpectations(t)
@@ -204,7 +244,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 			validator: mockValidator,
 		}
 
-		_, err := v.ValidateTokenOrKey(ctx, token, "")
+		_, err := v.ValidateTokenOrKey(ctx, token, "", nil)
 		assert.ErrorIs(t, err, models.UnAuthorizedError)
 	})
 
@@ -227,7 +267,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 			validator: mockValidator,
 		}
 
-		_, err := v.ValidateTokenOrKey(ctx, token, "")
+		_, err := v.ValidateTokenOrKey(ctx, token, "", nil)
 		assert.ErrorIs(t, err, models.UnAuthorizedError)
 	})
 
@@ -247,7 +287,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 			validator: mockValidator,
 		}
 
-		credentials, err := v.ValidateTokenOrKey(ctx, token, "")
+		credentials, err := v.ValidateTokenOrKey(ctx, token, "", nil)
 		assert.NoError(t, err)
 		assert.Equal(t, grants[1:], credentials.RoleBindings)
 		assert.Equal(t, uuid.Nil, credentials.TenantId)
@@ -275,7 +315,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 
 		// The user can still authenticate to select an organization, but holds
 		// no role nor permission until then.
-		credentials, err := v.ValidateTokenOrKey(ctx, token, "")
+		credentials, err := v.ValidateTokenOrKey(ctx, token, "", nil)
 		assert.NoError(t, err)
 		assert.Empty(t, credentials.RoleBindings)
 		assert.Empty(t, credentials.Permissions)
@@ -316,7 +356,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 					validator: mockValidator,
 				}
 
-				credentials, err := v.ValidateTokenOrKey(ctx, token, "")
+				credentials, err := v.ValidateTokenOrKey(ctx, token, "", nil)
 				assert.NoError(t, err)
 				assert.Equal(t, test.permissions, credentials.Permissions)
 				assert.Equal(t, test.usedSecondFactor, credentials.HasRole(models.VIEWER))
@@ -333,7 +373,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 			validator: mockValidator,
 		}
 
-		_, err := v.ValidateTokenOrKey(ctx, token, "")
+		_, err := v.ValidateTokenOrKey(ctx, token, "", nil)
 		assert.Error(t, err)
 		mockValidator.AssertExpectations(t)
 	})
