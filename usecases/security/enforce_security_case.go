@@ -20,6 +20,9 @@ type EnforceSecurityCaseImpl struct {
 
 func EnforceSecurityCaseForUser(user models.User) *EnforceSecurityCaseImpl {
 	creds := user.IntoCredentials()
+	// The user is not the one making the request: caveats bound to a request
+	// context cannot be evaluated against the current one.
+	creds.RoleBindingBundle = models.RoleBindingBundle{Potential: true}
 
 	return &EnforceSecurityCaseImpl{
 		EnforceSecurity: NewEnforceSecurity(creds),
