@@ -61,7 +61,7 @@ func (uc AllowedNetworksUsecase) Guard(use AllowedNetworksUse) gin.HandlerFunc {
 			return
 		}
 
-		clientIp := net.ParseIP(c.Request.Header.Get("x-real-ip"))
+		clientIp := utils.ClientIpFromRequest(c.Request)
 
 		// Self-hosted users might not have set the header on their reverse
 		// proxy, so we fail open if it is not set.
