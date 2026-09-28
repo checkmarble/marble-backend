@@ -198,16 +198,18 @@ func userByID(ctx context.Context, db userGetter, userID string) (models.User, e
 	}
 
 	var user models.User
+	var role int
 	var organizationID *string
 	var tenantID *uuid.UUID
 	var firstName, lastName pgtype.Text
-	err = db.QueryRow(ctx, query, args...).Scan(&user.UserId, &user.Email, &firstName, &lastName, &user.Role, &organizationID, &tenantID)
+	err = db.QueryRow(ctx, query, args...).Scan(&user.UserId, &user.Email, &firstName, &lastName, &role, &organizationID, &tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return models.User{}, models.NotFoundError
 	}
 	if err != nil {
 		return models.User{}, errors.Wrap(err, "scanning user")
 	}
+	user.Role = models.RoleFromLegacyValue(role)
 	if firstName.Valid {
 		user.FirstName = firstName.String
 	}
