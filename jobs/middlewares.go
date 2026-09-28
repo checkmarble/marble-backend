@@ -31,7 +31,7 @@ func (m OrganizationCredentialsMiddleware) IsMiddleware() bool {
 
 func (m OrganizationCredentialsMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInner func(context.Context) error) error {
 	// Organization queues are UUIDs; named global queues keep an empty organization.
-	creds := models.Credentials{Roles: []models.Role{models.SYSTEM}}
+	creds := models.Credentials{RoleBindings: models.NativeRoleBindings([]models.Role{models.SYSTEM})}
 	if orgID, err := uuid.Parse(job.Queue); err == nil {
 		creds.OrganizationId = orgID
 	}

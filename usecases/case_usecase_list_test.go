@@ -41,7 +41,7 @@ func TestListCases_ForwardsTypeFilterToRepository(t *testing.T) {
 		inboxReader: inboxes.InboxReader{
 			EnforceSecurity: security,
 			InboxRepository: inboxRepository,
-			Credentials:     models.Credentials{Roles: []models.Role{models.ADMIN}},
+			Credentials:     models.Credentials{RoleBindings: models.NativeRoleBindings([]models.Role{models.ADMIN})},
 		},
 		transactionFactory: transactionFactory,
 	}

@@ -39,7 +39,7 @@ func TestListUsersOfOrganizationFollowsGrants(t *testing.T) {
 		t.Helper()
 		userID := uuid.NewString()
 		_, err := pgPool.Exec(ctx, "INSERT INTO users (id, email, role, organization_id) VALUES ($1, $2, $3, $4)",
-			userID, "org-users-"+userID+"@example.test", int(homeRole), homeOrganizationID)
+			userID, "org-users-"+userID+"@example.test", models.LegacyRoleValue(models.NativeRoleBindings([]models.Role{homeRole})), homeOrganizationID)
 		require.NoError(t, err)
 		return userID
 	}
@@ -82,15 +82,15 @@ func TestListUsersOfOrganizationFollowsGrants(t *testing.T) {
 	users, err := repo.ListUsers(ctx, testUsecases.NewExecutorFactory().NewExecutor(), &organizationID)
 	require.NoError(t, err)
 
-	rolesByUser := make(map[string]models.Role, len(users))
+	rolesByUser := make(map[string][]models.Role, len(users))
 	for _, user := range users {
 		assert.Equal(t, organizationID, user.OrganizationId, "user %s should be seen from the listed organization", user.UserId)
-		rolesByUser[string(user.UserId)] = user.Role
+		rolesByUser[string(user.UserId)] = models.RoleNames(user.RoleBindings)
 	}
 
-	assert.Equal(t, map[string]models.Role{
-		homeUser: models.BUILDER,
-		guest:    models.PUBLISHER,
+	assert.Equal(t, map[string][]models.Role{
+		homeUser: {models.BUILDER},
+		guest:    {models.PUBLISHER},
 	}, rolesByUser)
 	for _, excluded := range []string{homeWithoutGrant, revoked, expired, deleted, tenantOnly} {
 		assert.NotContains(t, rolesByUser, excluded)

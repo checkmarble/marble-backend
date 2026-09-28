@@ -626,7 +626,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_NoActiveConfigs_Returns
 }
 
 func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_OrgMissingFeature_SkipsEnqueueing() {
-	suite.ctx = context.WithValue(suite.ctx, utils.ContextKeyCredentials, models.Credentials{Roles: []models.Role{models.SYSTEM}})
+	suite.ctx = context.WithValue(suite.ctx, utils.ContextKeyCredentials, models.Credentials{RoleBindings: models.NativeRoleBindings([]models.Role{models.SYSTEM})})
 	datasetName := "test-dataset"
 	oldVersion := "2024-01-01"
 	newVersion := "2024-01-02"

@@ -92,7 +92,7 @@ func TestTenantOIDCReadsRejectUnauthorizedTenant(t *testing.T) {
 
 func TestTenantOIDCReadsAsGlobalAdmin(t *testing.T) {
 	tenant := uuid.New()
-	creds := models.Credentials{Roles: []models.Role{models.MARBLE_ADMIN}}
+	creds := models.Credentials{RoleBindings: models.NativeRoleBindings([]models.Role{models.MARBLE_ADMIN})}
 	guard := &security.EnforceSecurityTenantImpl{EnforceSecurity: security.NewEnforceSecurity(creds), Credentials: creds}
 	exec := &mocks.Executor{}
 	factory := &mocks.ExecutorFactory{}

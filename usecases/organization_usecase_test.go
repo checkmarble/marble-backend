@@ -40,7 +40,7 @@ func TestUpdateOrganizationRestrictedSettings(t *testing.T) {
 			ctx := t.Context()
 			orgID := uuid.New()
 			org := models.Organization{Id: orgID, Environment: models.OrganizationEnvironmentProduction}
-			creds := models.Credentials{OrganizationId: orgID, Roles: tt.roles}
+			creds := models.Credentials{OrganizationId: orgID, RoleBindings: models.NativeRoleBindings(tt.roles)}
 			enforcer := &security.EnforceSecurityOrganizationImpl{
 				EnforceSecurity: security.NewEnforceSecurity(creds),
 				Credentials:     creds,

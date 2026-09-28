@@ -35,7 +35,7 @@ func TestAutoAssignmentFollowsOrganizationGrants(t *testing.T) {
 		_, err = pgPool.Exec(ctx, "INSERT INTO inboxes (id, organization_id, name, auto_assign_enabled) VALUES ($1, $2, 'inbox', true)", inbox.id, inbox.org)
 		require.NoError(t, err)
 	}
-	_, err = pgPool.Exec(ctx, "INSERT INTO users (id, email, role, organization_id) VALUES ($1, $2, $3, $4)", userID, userID.String()+"@example.test", int(models.VIEWER), homeOrgID)
+	_, err = pgPool.Exec(ctx, "INSERT INTO users (id, email, role, organization_id) VALUES ($1, $2, $3, $4)", userID, userID.String()+"@example.test", models.LegacyRoleValue(models.NativeRoleBindings([]models.Role{models.VIEWER})), homeOrgID)
 	require.NoError(t, err)
 	for _, id := range []uuid.UUID{inboxID, otherInboxID, homeInboxID} {
 		_, err = pgPool.Exec(ctx, "INSERT INTO inbox_users (inbox_id, user_id, auto_assignable) VALUES ($1, $2, true)", id, userID)

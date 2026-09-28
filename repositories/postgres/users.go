@@ -188,7 +188,7 @@ type userGetter interface {
 
 func userByID(ctx context.Context, db userGetter, userID string) (models.User, error) {
 	query, args, err := NewQueryBuilder().
-		Select("u.id", "u.email", "u.first_name", "u.last_name", "u.role", "u.organization_id", "o.tenant_id").
+		Select("u.id", "u.email", "u.first_name", "u.last_name", "u.organization_id", "o.tenant_id").
 		From("users u").
 		LeftJoin("organizations o ON o.id = u.organization_id").
 		Where(squirrel.Eq{"u.id": userID, "u.deleted_at": nil}).
@@ -198,18 +198,16 @@ func userByID(ctx context.Context, db userGetter, userID string) (models.User, e
 	}
 
 	var user models.User
-	var role int
 	var organizationID *string
 	var tenantID *uuid.UUID
 	var firstName, lastName pgtype.Text
-	err = db.QueryRow(ctx, query, args...).Scan(&user.UserId, &user.Email, &firstName, &lastName, &role, &organizationID, &tenantID)
+	err = db.QueryRow(ctx, query, args...).Scan(&user.UserId, &user.Email, &firstName, &lastName, &organizationID, &tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return models.User{}, models.NotFoundError
 	}
 	if err != nil {
 		return models.User{}, errors.Wrap(err, "scanning user")
 	}
-	user.Role = models.RoleFromLegacyValue(role)
 	if firstName.Valid {
 		user.FirstName = firstName.String
 	}

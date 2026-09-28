@@ -12,7 +12,7 @@ import (
 
 func TestSingleJobContext(t *testing.T) {
 	orgID := uuid.MustParse("11111111-1111-4111-8111-111111111111")
-	creds := models.Credentials{Roles: []models.Role{models.SYSTEM}}
+	creds := models.Credentials{RoleBindings: models.NativeRoleBindings([]models.Role{models.SYSTEM})}
 	for _, tc := range []struct {
 		name, args string
 		orgID      uuid.UUID
@@ -34,7 +34,7 @@ func TestSingleJobContext(t *testing.T) {
 			got, found := utils.CredentialsFromCtx(ctx)
 			require.True(t, found)
 			require.Equal(t, tc.orgID, got.OrganizationId)
-			require.Equal(t, []models.Role{models.SYSTEM}, got.Roles)
+			require.Equal(t, []models.Role{models.SYSTEM}, models.RoleNames(got.RoleBindings))
 		})
 	}
 }
