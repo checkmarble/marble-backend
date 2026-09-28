@@ -62,6 +62,67 @@ func TestRoleBindingValidityDecoding(t *testing.T) {
 
 	assert.Error(t, json.Unmarshal([]byte(`{"notBefore":"yesterday"}`), &conditions))
 }
+func TestRoleBindingSecondFactorCaveat(t *testing.T) {
+	required, notRequired := true, false
+
+	tests := []struct {
+		name             string
+		requirement      *bool
+		usedSecondFactor bool
+		active           bool
+	}{
+		{"required and used", &required, true, true},
+		{"required but not used", &required, false, false},
+		{"explicitly not required", &notRequired, false, true},
+		{"unrestricted", nil, false, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			binding := RoleBinding{Conditions: RoleBindingConditions{UsedSecondFactor: test.requirement}}
+			bundle := RoleBindingBundle{UsedSecondFactor: test.usedSecondFactor}
+			assert.Equal(t, test.active, binding.IsActive(bundle))
+		})
+	}
+}
+
+func TestRoleBindingSecondFactorDecoding(t *testing.T) {
+	var conditions RoleBindingConditions
+
+	assert.NoError(t, json.Unmarshal([]byte(`{"usedSecondFactor":true}`), &conditions))
+	assert.True(t, *conditions.UsedSecondFactor)
+
+	encoded, err := json.Marshal(conditions)
+	assert.NoError(t, err)
+	assert.JSONEq(t, `{"usedSecondFactor":true}`, string(encoded))
+
+	assert.Error(t, json.Unmarshal([]byte(`{"usedSecondFactor":"yes"}`), &conditions))
+}
+func TestCredentialsEvaluateCaveatsAgainstTheirBundle(t *testing.T) {
+	required := true
+
+	binding := NewNativeRoleBinding(ADMIN)
+	binding.Conditions = RoleBindingConditions{UsedSecondFactor: &required}
+
+	tests := []struct {
+		name   string
+		bundle RoleBindingBundle
+		active bool
+	}{
+		{"second factor", RoleBindingBundle{UsedSecondFactor: true}, true},
+		{"no second factor", RoleBindingBundle{UsedSecondFactor: false}, false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			credentials := Credentials{RoleBindings: []RoleBinding{binding}, RoleBindingBundle: test.bundle}
+
+			assert.Equal(t, test.active, credentials.HasRole(ADMIN))
+			assert.Equal(t, test.active, credentials.HasPermission(APIKEY_CREATE))
+		})
+	}
+}
+
 func TestCredentialsEvaluateCaveatsWithTheirClock(t *testing.T) {
 	now := time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)
 	notAfter := now.Add(time.Hour)

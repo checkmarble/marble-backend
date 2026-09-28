@@ -197,8 +197,8 @@ func TestUpdateUserMarbleAdminRole(t *testing.T) {
 }
 
 func TestUpdateUserMarbleAdminConditions(t *testing.T) {
-	start := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	past := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	required := true
 
 	marbleAdmin := func(conditions models.RoleBindingConditions) models.RoleBinding {
 		binding := models.NewNativeRoleBinding(models.MARBLE_ADMIN)
@@ -207,7 +207,7 @@ func TestUpdateUserMarbleAdminConditions(t *testing.T) {
 	}
 	current := []models.RoleBinding{
 		models.NewNativeRoleBinding(models.ADMIN),
-		marbleAdmin(models.RoleBindingConditions{NotBefore: &start}),
+		marbleAdmin(models.RoleBindingConditions{UsedSecondFactor: &required}),
 	}
 
 	tts := []struct {
@@ -219,7 +219,7 @@ func TestUpdateUserMarbleAdminConditions(t *testing.T) {
 		{"admin can keep the marble admin binding unchanged", models.ADMIN, current, true},
 		{"admin cannot expire the marble admin binding", models.ADMIN, []models.RoleBinding{
 			models.NewNativeRoleBinding(models.ADMIN),
-			marbleAdmin(models.RoleBindingConditions{NotBefore: &start, NotAfter: &past}),
+			marbleAdmin(models.RoleBindingConditions{UsedSecondFactor: &required, NotAfter: &past}),
 		}, false},
 		{"admin cannot remove the marble admin caveats", models.ADMIN, []models.RoleBinding{
 			models.NewNativeRoleBinding(models.ADMIN),

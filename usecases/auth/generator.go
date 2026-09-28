@@ -34,9 +34,10 @@ type TokenGenerator interface {
 }
 
 type Token struct {
-	Credentials models.Credentials
-	Value       string
-	Expiration  time.Time
+	Credentials      models.Credentials
+	Value            string
+	Expiration       time.Time
+	UsedSecondFactor bool
 }
 
 type MarbleTokenGenerator struct {
@@ -109,6 +110,9 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 	// again from grants on every authenticated request.
 	tokenCredentials := baseCredentials
 	tokenCredentials.OrganizationId = selectedOrganizationID
+	tokenCredentials.RoleBindingBundle = models.RoleBindingBundle{
+		UsedSecondFactor: claims.GetUsedSecondFactor(),
+	}
 	tokenCredentials.RoleBindings = models.ScopeRoleBindings(grants, selectedOrganizationID, selectedOrganization.TenantId)
 	// Caveats are evaluated with the generator's clock, which is not kept in
 	// the token's credentials.
@@ -138,5 +142,5 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 		return Token{}, fmt.Errorf("encoder.EncodeMarbleToken error: %w", err)
 	}
 
-	return Token{tokenCredentials, token, expirationTime}, nil
+	return Token{tokenCredentials, token, expirationTime, claims.GetUsedSecondFactor()}, nil
 }

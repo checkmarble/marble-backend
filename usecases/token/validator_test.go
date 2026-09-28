@@ -255,6 +255,48 @@ func TestValidator_Validate_Token(t *testing.T) {
 		mockGetter.AssertExpectations(t)
 	})
 
+	t.Run("second factor caveat", func(t *testing.T) {
+		required := true
+		mfaGrants := []models.RoleBinding{{
+			Role:        models.VIEWER,
+			OrgId:       organizationId,
+			Permissions: models.VIEWER.Permissions(),
+			Conditions:  models.RoleBindingConditions{UsedSecondFactor: &required},
+		}}
+
+		for name, test := range map[string]struct {
+			usedSecondFactor bool
+			permissions      []models.Permission
+		}{
+			"used":     {true, models.VIEWER.Permissions()},
+			"not used": {false, []models.Permission{}},
+		} {
+			t.Run(name, func(t *testing.T) {
+				mfaCreds := tokenCreds
+				mfaCreds.RoleBindingBundle.UsedSecondFactor = test.usedSecondFactor
+
+				mockValidator := new(mocks.JWTEncoderValidator)
+				mockValidator.On("ValidateMarbleToken", token).
+					Return(mfaCreds, nil)
+				mockGetter := new(mocks.Database)
+				mockGetter.On("GetOrganizationByID", ctx, organizationId).
+					Return(models.Organization{Id: organizationId, TenantId: tenantId}, nil)
+				mockGetter.On("ActiveGrantsForPrincipal", ctx, "user", "user_id").
+					Return(mfaGrants, nil)
+
+				v := Validator{
+					getter:    mockGetter,
+					validator: mockValidator,
+				}
+
+				credentials, err := v.ValidateTokenOrKey(ctx, token, "")
+				assert.NoError(t, err)
+				assert.Equal(t, test.permissions, credentials.Permissions)
+				assert.Equal(t, test.usedSecondFactor, credentials.HasRole(models.VIEWER))
+			})
+		}
+	})
+
 	t.Run("ValidateMarbleToken error", func(t *testing.T) {
 		mockValidator := new(mocks.JWTEncoderValidator)
 		mockValidator.On("ValidateMarbleToken", token).

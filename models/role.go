@@ -21,8 +21,9 @@ type RbacRole struct {
 }
 
 type RoleBindingConditions struct {
-	NotBefore *time.Time `json:"notBefore,omitempty"` //nolint:tagliatelle
-	NotAfter  *time.Time `json:"notAfter,omitempty"`  //nolint:tagliatelle
+	NotBefore        *time.Time `json:"notBefore,omitempty"`        //nolint:tagliatelle
+	NotAfter         *time.Time `json:"notAfter,omitempty"`         //nolint:tagliatelle
+	UsedSecondFactor *bool      `json:"usedSecondFactor,omitempty"` //nolint:tagliatelle
 }
 
 func (conditions RoleBindingConditions) Validate() error {
@@ -56,7 +57,8 @@ type Clock interface {
 type RoleBindingBundle struct {
 	// Clock is the time source caveats are evaluated against. A nil clock
 	// means the current time.
-	Clock Clock
+	Clock            Clock
+	UsedSecondFactor bool
 }
 
 // Now returns the time caveats are evaluated at.
@@ -75,6 +77,10 @@ func (b RoleBinding) IsActive(bundle RoleBindingBundle) bool {
 		return false
 	}
 	if b.Conditions.NotAfter != nil && now.After(*b.Conditions.NotAfter) {
+		return false
+	}
+
+	if b.Conditions.UsedSecondFactor != nil && *b.Conditions.UsedSecondFactor && !bundle.UsedSecondFactor {
 		return false
 	}
 
