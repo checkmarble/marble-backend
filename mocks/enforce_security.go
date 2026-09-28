@@ -160,6 +160,11 @@ func (e *EnforceSecurity) CreateApiKey(organizationId uuid.UUID) error {
 	return args.Error(0)
 }
 
+func (e *EnforceSecurity) GrantRoleBindings(bindings []models.RoleBinding) error {
+	args := e.Called(bindings)
+	return args.Error(0)
+}
+
 func (e *EnforceSecurity) DeleteApiKey(apiKey models.ApiKey) error {
 	args := e.Called(apiKey)
 	return args.Error(0)
@@ -307,6 +312,11 @@ func (e *EnforceSecurity) OverrideScore(ref models.ScoringRecordRef) error {
 
 func (e *EnforceSecurity) SaveScreeningSearch() error {
 	args := e.Called()
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) GrantOrganizationRoleBindings(current, next []models.RoleBinding) error {
+	args := e.Called(current, next)
 	return args.Error(0)
 }
 

@@ -62,9 +62,10 @@ func AdaptRoleBinding(db DbRoleBinding) (models.RoleBinding, error) {
 	}
 
 	if db.CustomRoleId != nil {
-		binding.Permissions = pure_utils.Map(db.CustomPermissions, func(permission string) models.Permission {
-			return models.Permission(permission)
-		})
+		binding.Permissions = models.WithoutPlatformPermissions(
+			pure_utils.Map(db.CustomPermissions, func(permission string) models.Permission {
+				return models.Permission(permission)
+			}))
 	} else {
 		binding.Permissions = binding.Role.Permissions()
 	}
