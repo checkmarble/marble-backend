@@ -24,6 +24,23 @@ type Credentials struct {
 	Roles []models.Role `json:"roles,omitempty"`
 }
 
+type CredentialsResponse struct {
+	Credentials Credentials                `json:"credentials"`
+	Sections    map[models.AppSection]bool `json:"sections"`
+}
+
+func AdaptCredentialsResponse(creds models.Credentials) (CredentialsResponse, error) {
+	credentials, err := AdaptCredentialDto(creds)
+	if err != nil {
+		return CredentialsResponse{}, err
+	}
+
+	return CredentialsResponse{
+		Credentials: credentials,
+		Sections:    models.RoleBindingsSections(creds.RoleBindings, creds.RoleBindingBundle),
+	}, nil
+}
+
 func AdaptCredentialDto(creds models.Credentials) (Credentials, error) {
 	return Credentials{
 		ActorIdentity: Identity{

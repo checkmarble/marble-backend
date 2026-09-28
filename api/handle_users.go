@@ -249,15 +249,12 @@ func handleGetCredentials() func(c *gin.Context) {
 			presentError(ctx, c, errors.Errorf("no credentials in context %w", models.NotFoundError))
 			return
 		}
-		credDto, err := dto.AdaptCredentialDto(creds)
+		response, err := dto.AdaptCredentialsResponse(creds)
 		if err != nil {
 			presentError(ctx, c, err)
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"credentials": credDto,
-			"sections":    models.RoleBindingsSections(creds.RoleBindings),
-		})
+		c.JSON(http.StatusOK, response)
 	}
 }

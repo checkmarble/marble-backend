@@ -101,7 +101,7 @@ func (v *Validator) withRoleBindings(ctx context.Context, credentials models.Cre
 	}
 
 	credentials.TenantId = tenantId
-	credentials.Permissions = models.RoleBindingsPermissions(credentials.RoleBindings)
+	credentials.Permissions = models.RoleBindingsPermissions(credentials.RoleBindings, credentials.RoleBindingBundle)
 
 	return credentials, nil
 }

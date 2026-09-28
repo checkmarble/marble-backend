@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
@@ -381,6 +382,11 @@ func (repo *MarbleDbRepository) replaceRoleBindings(
 				models.BadParameterError)
 		}
 
+		conditions, err := json.Marshal(binding.Conditions)
+		if err != nil {
+			return err
+		}
+
 		if err := ExecBuilder(ctx, tx, NewQueryBuilder().
 			Insert(dbmodels.TABLE_GRANTS).
 			Columns(
@@ -391,6 +397,7 @@ func (repo *MarbleDbRepository) replaceRoleBindings(
 				"organization_id",
 				"role",
 				"custom_role_id",
+				"conditions",
 			).
 			Values(
 				pure_utils.NewId(),
@@ -400,6 +407,7 @@ func (repo *MarbleDbRepository) replaceRoleBindings(
 				organizationId,
 				binding.Role.String(),
 				binding.CustomRoleId,
+				squirrel.Expr("?::jsonb", conditions),
 			)); err != nil {
 			return err
 		}
@@ -411,6 +419,10 @@ func (repo *MarbleDbRepository) replaceRoleBindings(
 func validateRoleBinding(binding models.RoleBinding) error {
 	if binding.Role == "" {
 		return errors.Errorf("role binding must reference a role: %w", models.BadParameterError)
+	}
+
+	if err := binding.Conditions.Validate(); err != nil {
+		return err
 	}
 
 	if binding.Role.IsCustom() {

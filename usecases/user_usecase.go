@@ -175,6 +175,10 @@ func (usecase *UserUseCase) resolveUserRoleBindings(
 			return nil, err
 		}
 
+		if err := binding.Conditions.Validate(); err != nil {
+			return nil, err
+		}
+
 		if !binding.Role.IsCustom() {
 			if !slices.Contains(models.GetValidUserRoles(), binding.Role) {
 				return nil, errors.Wrap(models.BadParameterError, "invalid native role")
