@@ -19,6 +19,7 @@ type EnforceSecurityUser interface {
 	ListTenantUsers(organizationId uuid.UUID) error
 	ManageOrganizationGrant(organizationId uuid.UUID, targetUser models.User) error
 	ListUserGrants() error
+	ManageRoles() error
 }
 
 type EnforceSecurityUserImpl struct {
@@ -169,6 +170,13 @@ func (e *EnforceSecurityUserImpl) ListUserGrants() error {
 		return errors.Wrap(models.ForbiddenError, "only marble admins can list user grants")
 	}
 	return e.Permission(models.MARBLE_USER_LIST)
+}
+
+func (e *EnforceSecurityUserImpl) ManageRoles() error {
+	return errors.Join(
+		e.Permission(models.MANAGE_ROLES),
+		e.ReadOrganization(e.OrgId()),
+	)
 }
 
 // sameBindingsOfRole reports whether both sets hold equivalent bindings of the

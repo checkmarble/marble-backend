@@ -16,13 +16,13 @@ import (
 
 var roleBindingRowColumns = []string{
 	"id", "principal_type", "principal_id", "tenant_id", "organization_id",
-	"role",
+	"role", "custom_role_id", "custom_permissions",
 }
 
 func roleBindingRow(principalType, principalId string, orgId *uuid.UUID, role models.Role) []any {
 	return []any{
 		uuid.New(), principalType, principalId, (*uuid.UUID)(nil), orgId,
-		string(role),
+		string(role), (*uuid.UUID)(nil), []string{},
 	}
 }
 

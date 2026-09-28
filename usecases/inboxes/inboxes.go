@@ -77,7 +77,7 @@ func (i *InboxReader) ListInboxes(
 ) ([]models.Inbox, error) {
 	var inboxes []models.Inbox
 	var err error
-	if i.isAdminHasAccessToAllInboxes() {
+	if i.canAccessAllInboxes() {
 		inboxes, err = i.InboxRepository.ListInboxes(ctx, exec, organizationId, nil, withCaseCount)
 		if err != nil {
 			return nil, err
@@ -105,14 +105,20 @@ func (i *InboxReader) ListInboxes(
 	return inboxes, nil
 }
 
-func (i *InboxReader) isAdminHasAccessToAllInboxes() bool {
-	return i.Credentials.HasRole(models.ADMIN, models.MARBLE_ADMIN, models.API_CLIENT, models.SYSTEM)
+func (i *InboxReader) canAccessAllInboxes() bool {
+	return i.Credentials.HasPermission(models.INBOX_EDITOR)
 }
 
 func (i *InboxReader) getAvailableInboxes(ctx context.Context, exec repositories.Executor) ([]uuid.UUID, error) {
 	availableInboxIds := make([]uuid.UUID, 0)
 
+	// Only users can be members of inboxes. An empty user ID would not filter
+	// the inbox users at all.
 	userId := i.Credentials.ActorIdentity.UserId
+	if userId == "" {
+		return availableInboxIds, nil
+	}
+
 	inboxUsers, err := i.InboxRepository.ListInboxUsers(ctx, exec, models.InboxUserFilterInput{
 		UserId: userId,
 	})

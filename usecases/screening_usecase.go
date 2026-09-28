@@ -35,6 +35,8 @@ type ScreeningEnforceSecurityDecision interface {
 }
 
 type ScreeningEnforceSecurityCase interface {
+	Permission(models.Permission) error
+	ReadOrganization(uuid.UUID) error
 	ReadOrUpdateCase(models.CaseMetadata, []uuid.UUID) error
 }
 
@@ -1223,26 +1225,35 @@ func (uc ScreeningUsecase) enforceCanReadOrUpdateCase(ctx context.Context, decis
 		return models.Decision{}, err
 	}
 
-	if !creds.HasRole(models.API_CLIENT) {
-		if decision[0].Case == nil {
-			return decision[0], errors.Wrap(models.UnprocessableEntityError,
-				"this screening is not linked to a case")
-		}
-
-		inboxes, err := uc.inboxReader.ListInboxes(ctx, exec,
-			decision[0].OrganizationId, false)
-		if err != nil {
-			return models.Decision{}, errors.Wrap(err,
-				"could not retrieve organization inboxes")
-		}
-
-		inboxIds := pure_utils.Map(inboxes, func(inbox models.Inbox) uuid.UUID {
-			return inbox.Id
-		})
-
-		if err := uc.enforceSecurityCase.ReadOrUpdateCase((*decision[0].Case).GetMetadata(), inboxIds); err != nil {
+	// API keys with access to all inboxes may act on screenings that are not
+	// linked to a case. This is checked through the permission, since API
+	// keys can hold custom roles.
+	if creds.ActorIdentity.ApiKeyId != "" && creds.HasPermission(models.INBOX_EDITOR) {
+		if err := errors.Join(uc.enforceSecurityCase.ReadOrganization(decision[0].OrganizationId), uc.enforceSecurityCase.Permission(models.CASE_READ_WRITE)); err != nil {
 			return decision[0], err
 		}
+
+		return decision[0], nil
+	}
+
+	if decision[0].Case == nil {
+		return decision[0], errors.Wrap(models.UnprocessableEntityError,
+			"this screening is not linked to a case")
+	}
+
+	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec,
+		decision[0].OrganizationId, false)
+	if err != nil {
+		return models.Decision{}, errors.Wrap(err,
+			"could not retrieve organization inboxes")
+	}
+
+	inboxIds := pure_utils.Map(inboxes, func(inbox models.Inbox) uuid.UUID {
+		return inbox.Id
+	})
+
+	if err := uc.enforceSecurityCase.ReadOrUpdateCase((*decision[0].Case).GetMetadata(), inboxIds); err != nil {
+		return decision[0], err
 	}
 
 	return decision[0], nil

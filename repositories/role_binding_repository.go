@@ -72,6 +72,7 @@ func roleBindingsQuery(principalType string, principalId any) squirrel.SelectBui
 	return NewQueryBuilder().
 		Select(dbmodels.SelectRoleBindingColumns...).
 		From("active_grants g").
+		LeftJoin(dbmodels.TABLE_ROLES+" r on r.id = g.custom_role_id and r.org_id = g.organization_id").
 		Where(squirrel.Eq{
 			"g.principal_type":      principalType,
 			"g.principal_id":        principalId,
@@ -208,6 +209,7 @@ func (repo *MarbleDbRepository) listUsersRoleBindings(ctx context.Context, exec 
 			Select(dbmodels.SelectRoleBindingColumns...).
 			From("active_grants g").
 			Join(dbmodels.TABLE_USERS+" u on u.id::text = g.principal_id").
+			LeftJoin(dbmodels.TABLE_ROLES+" r on r.id = g.custom_role_id and r.org_id = g.organization_id").
 			Where(squirrel.Eq{
 				"g.principal_type":      dbmodels.GrantPrincipalUser,
 				"g.principal_id":        userIds,
@@ -247,6 +249,7 @@ func (repo *MarbleDbRepository) listApiKeysRoleBindings(
 		NewQueryBuilder().
 			Select(dbmodels.SelectRoleBindingColumns...).
 			From("active_grants g").
+			LeftJoin(dbmodels.TABLE_ROLES+" r on r.id = g.custom_role_id and r.org_id = g.organization_id").
 			Where(squirrel.Eq{
 				"g.principal_type":      dbmodels.GrantPrincipalApiKey,
 				"g.principal_id":        apiKeyIds,
@@ -375,6 +378,7 @@ func (repo *MarbleDbRepository) replaceRoleBindings(
 				"principal_authority",
 				"organization_id",
 				"role",
+				"custom_role_id",
 			).
 			Values(
 				pure_utils.NewId(),
@@ -383,6 +387,7 @@ func (repo *MarbleDbRepository) replaceRoleBindings(
 				dbmodels.GrantAuthorityMarble,
 				organizationId,
 				binding.Role.String(),
+				binding.CustomRoleId,
 			)); err != nil {
 			return err
 		}
@@ -394,6 +399,14 @@ func (repo *MarbleDbRepository) replaceRoleBindings(
 func validateRoleBinding(binding models.RoleBinding) error {
 	if binding.Role == "" {
 		return errors.Errorf("role binding must reference a role: %w", models.BadParameterError)
+	}
+
+	if binding.Role.IsCustom() {
+		if binding.CustomRoleId == nil {
+			return errors.Errorf("custom role binding must be resolved: %w", models.BadParameterError)
+		}
+	} else if binding.CustomRoleId != nil {
+		return errors.Errorf("native role binding cannot reference a custom role: %w", models.BadParameterError)
 	}
 
 	return nil
