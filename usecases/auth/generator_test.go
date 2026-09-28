@@ -370,6 +370,45 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 		mockEncoder.AssertNotCalled(t, "EncodeMarbleToken", mock.Anything, mock.Anything, mock.Anything)
 	})
 
+	t.Run("second factor caveat", func(t *testing.T) {
+		required := true
+		mfaGrant := grant(models.ADMIN, organizationID, uuid.Nil)
+		mfaGrant.Conditions = models.RoleBindingConditions{UsedSecondFactor: &required}
+
+		for name, usedSecondFactor := range map[string]bool{"used": true, "not used": false} {
+			t.Run(name, func(t *testing.T) {
+				mockRepository := new(mocks.Database)
+				mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
+					Return([]models.RoleBinding{mfaGrant}, nil)
+				mockRepository.On("GetOrganizationByID", mock.Anything, organizationID).
+					Return(models.Organization{Id: organizationID, TenantId: tenantID, Name: "Acme"}, nil)
+				mockEncoder := new(mocks.JWTEncoderValidator)
+				mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, mock.Anything).
+					Return("token", nil)
+
+				mfaClaims := claims
+				mfaClaims.UsedSecondFactor = usedSecondFactor
+
+				generator := auth.NewGenerator(mockRepository, mockEncoder, time.Minute, clock.NewMock(now))
+				token, err := generator.GenerateToken(
+					context.Background(),
+					auth.Credentials{Type: auth.CredentialsBearer},
+					user,
+					mfaClaims,
+					uuid.Nil,
+				)
+
+				assert.NoError(t, err)
+				assert.Equal(t, usedSecondFactor, token.Credentials.RoleBindingBundle.UsedSecondFactor)
+				assert.Equal(t, usedSecondFactor, len(token.Credentials.Permissions) > 0)
+				mockEncoder.AssertCalled(t, "EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything,
+					mock.MatchedBy(func(creds models.Credentials) bool {
+						return creds.RoleBindingBundle.UsedSecondFactor == usedSecondFactor
+					}))
+			})
+		}
+	})
+
 	t.Run("auto selects the only accessible organization", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
