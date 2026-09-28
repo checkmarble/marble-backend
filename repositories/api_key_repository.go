@@ -5,6 +5,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/google/uuid"
 )
@@ -80,12 +81,13 @@ func (repo *MarbleDbRepository) ListApiKeys(ctx context.Context, exec Executor, 
 	if err != nil {
 		return nil, err
 	}
+	bindings, err := repo.listApiKeysRoleBindings(ctx, exec, organizationId,
+		pure_utils.Map(apiKeys, func(apiKey models.ApiKey) string { return apiKey.Id }))
+	if err != nil {
+		return nil, err
+	}
 	for idx := range apiKeys {
-		bindings, err := repo.ListApiKeyRoleBindings(ctx, exec, apiKeys[idx].OrganizationId, apiKeys[idx].Id)
-		if err != nil {
-			return nil, err
-		}
-		apiKeys[idx].RoleBindings = bindings
+		apiKeys[idx].RoleBindings = bindings[apiKeys[idx].Id]
 	}
 	return apiKeys, nil
 }
