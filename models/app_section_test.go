@@ -2,11 +2,14 @@ package models
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRoleBindingsSections(t *testing.T) {
+	expired := time.Now().Add(-time.Hour)
+
 	for _, tt := range []struct {
 		name     string
 		bindings []RoleBinding
@@ -20,9 +23,13 @@ func TestRoleBindingsSections(t *testing.T) {
 			{HiddenSections: []AppSection{SCENARIOS, SETTINGS}},
 			{HiddenSections: []AppSection{SCENARIOS, DATA_MODEL}},
 		}, hidden: []AppSection{SCENARIOS}},
+		{name: "inactive binding ignored", bindings: []RoleBinding{
+			{HiddenSections: []AppSection{SETTINGS}},
+			{Conditions: RoleBindingConditions{NotAfter: &expired}},
+		}, hidden: []AppSection{SETTINGS}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, SectionsVisibility(tt.hidden), RoleBindingsSections(tt.bindings))
+			assert.Equal(t, SectionsVisibility(tt.hidden), RoleBindingsSections(tt.bindings, RoleBindingBundle{}))
 		})
 	}
 }
