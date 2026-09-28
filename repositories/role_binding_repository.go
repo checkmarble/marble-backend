@@ -181,6 +181,85 @@ func (repo *MarbleDbRepository) listUsersOrganizationRoleBindings(
 	return byUser, nil
 }
 
+func (repo *MarbleDbRepository) listUsersRoleBindings(ctx context.Context, exec Executor, userIds []string) (map[string][]models.RoleBinding, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+	if len(userIds) == 0 {
+		return map[string][]models.RoleBinding{}, nil
+	}
+
+	userScope := squirrel.Or{
+		squirrel.Expr("g.organization_id = u.organization_id"),
+		squirrel.Eq{"g.organization_id": nil, "g.tenant_id": nil},
+	}
+
+	bindings, err := SqlToListOfModels(ctx, exec,
+		NewQueryBuilder().
+			Select(dbmodels.SelectRoleBindingColumns...).
+			From("active_grants g").
+			Join(dbmodels.TABLE_USERS+" u on u.id::text = g.principal_id").
+			Where(squirrel.Eq{
+				"g.principal_type":      dbmodels.GrantPrincipalUser,
+				"g.principal_id":        userIds,
+				"g.principal_authority": dbmodels.GrantAuthorityMarble,
+			}).
+			Where(userScope).
+			OrderBy("g.created_at", "g.id"),
+		dbmodels.AdaptRoleBinding)
+	if err != nil {
+		return nil, err
+	}
+
+	byUser := make(map[string][]models.RoleBinding, len(userIds))
+	for _, binding := range bindings {
+		if binding.UserId != nil {
+			byUser[string(*binding.UserId)] = append(byUser[string(*binding.UserId)], binding)
+		}
+	}
+
+	return byUser, nil
+}
+
+func (repo *MarbleDbRepository) listApiKeysRoleBindings(
+	ctx context.Context,
+	exec Executor,
+	orgId uuid.UUID,
+	apiKeyIds []string,
+) (map[string][]models.RoleBinding, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+	if len(apiKeyIds) == 0 {
+		return map[string][]models.RoleBinding{}, nil
+	}
+
+	bindings, err := SqlToListOfModels(ctx, exec,
+		NewQueryBuilder().
+			Select(dbmodels.SelectRoleBindingColumns...).
+			From("active_grants g").
+			Where(squirrel.Eq{
+				"g.principal_type":      dbmodels.GrantPrincipalApiKey,
+				"g.principal_id":        apiKeyIds,
+				"g.principal_authority": dbmodels.GrantAuthorityMarble,
+			}).
+			Where(managedScope("g.", orgId)).
+			OrderBy("g.created_at", "g.id"),
+		dbmodels.AdaptRoleBinding)
+	if err != nil {
+		return nil, err
+	}
+
+	byApiKey := make(map[string][]models.RoleBinding, len(apiKeyIds))
+	for _, binding := range bindings {
+		if binding.ApiKeyId != nil {
+			byApiKey[binding.ApiKeyId.String()] = append(byApiKey[binding.ApiKeyId.String()], binding)
+		}
+	}
+
+	return byApiKey, nil
+}
+
 func (repo *MarbleDbRepository) replaceRoleBindings(
 	ctx context.Context,
 	tx Transaction,
