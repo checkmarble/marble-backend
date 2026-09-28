@@ -26,6 +26,7 @@ type ApiKeyRepository interface {
 type EnforceSecurityApiKey interface {
 	ReadApiKey(apiKey models.ApiKey) error
 	CreateApiKey(organizationId uuid.UUID) error
+	GrantRoleBindings(bindings []models.RoleBinding) error
 	DeleteApiKey(apiKey models.ApiKey) error
 }
 
@@ -90,6 +91,10 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 			binding.CustomRoleId = nil
 			binding.Permissions = binding.Role.Permissions()
 		}
+	}
+
+	if err := usecase.enforceSecurity.GrantRoleBindings(bindings); err != nil {
+		return models.CreatedApiKey{}, err
 	}
 
 	apiKey := models.ApiKey{
