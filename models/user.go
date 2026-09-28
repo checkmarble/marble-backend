@@ -9,10 +9,9 @@ import (
 type UserId string
 
 type User struct {
-	UserId UserId
-	Email  string
-	// TODO(MAR-2251): remove Role after legacy JWT expiry; use grants.
-	Role Role
+	UserId       UserId
+	Email        string
+	RoleBindings []RoleBinding
 	// TODO(MAR-2251): remove OrganizationId after legacy JWT expiry; use grants.
 	OrganizationId uuid.UUID
 	TenantId       uuid.UUID
@@ -40,16 +39,16 @@ func (u User) FullName() string {
 
 type CreateUser struct {
 	Email          string
-	Role           Role
+	RoleBindings   []RoleBinding
 	OrganizationId uuid.UUID
 	FirstName      string
 	LastName       string
 }
 
 type UpdateUser struct {
-	UserId    string
-	Email     *string
-	Role      *Role
-	FirstName *string
-	LastName  *string
+	UserId       string
+	Email        *string
+	RoleBindings *[]RoleBinding
+	FirstName    *string
+	LastName     *string
 }
