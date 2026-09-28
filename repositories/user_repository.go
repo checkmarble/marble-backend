@@ -238,13 +238,14 @@ func (repo *MarbleDbRepository) ListUsers(ctx context.Context, exec Executor, or
 		return nil, err
 	}
 
-	for idx := range users {
-		bindings, err := repo.ListUserRoleBindings(ctx, exec, users[idx].OrganizationId, string(users[idx].UserId))
-		if err != nil {
-			return nil, err
-		}
+	bindings, err := repo.listUsersRoleBindings(ctx, exec,
+		pure_utils.Map(users, func(user models.User) string { return string(user.UserId) }))
+	if err != nil {
+		return nil, err
+	}
 
-		users[idx].RoleBindings = bindings
+	for idx := range users {
+		users[idx].RoleBindings = bindings[string(users[idx].UserId)]
 	}
 
 	return users, nil
@@ -272,15 +273,15 @@ func (repo *MarbleDbRepository) listOrganizationUsers(ctx context.Context, exec 
 		return nil, err
 	}
 
+	bindings, err := repo.listUsersScopedRoleBindings(ctx, exec, homeScope(orgId),
+		pure_utils.Map(users, func(user models.User) string { return string(user.UserId) }))
+	if err != nil {
+		return nil, err
+	}
+
 	for idx := range users {
 		users[idx].OrganizationId = orgId
-
-		bindings, err := repo.ListUserRoleBindings(ctx, exec, orgId, string(users[idx].UserId))
-		if err != nil {
-			return nil, err
-		}
-
-		users[idx].RoleBindings = bindings
+		users[idx].RoleBindings = bindings[string(users[idx].UserId)]
 	}
 
 	return users, nil
