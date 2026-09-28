@@ -257,7 +257,7 @@ func handleGetCredentials() func(c *gin.Context) {
 
 		c.JSON(http.StatusOK, gin.H{
 			"credentials": credDto,
-			"sections":    models.RoleBindingsSections(creds.RoleBindings),
+			"sections":    models.RoleBindingsSections(creds.RoleBindings, creds.RoleBindingBundle),
 		})
 	}
 }
