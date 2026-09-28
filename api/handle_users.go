@@ -118,9 +118,9 @@ func handlePutOrganizationGrant(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		role := models.RoleFromString(data.Role)
+		bindings := pure_utils.Map(data.RoleBindings, dto.AdaptRoleBindingInput)
 		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
-		if presentError(ctx, c, usecase.ReplaceOrganizationGrant(ctx, userID, tenantID, organizationID, role)) {
+		if presentError(ctx, c, usecase.ReplaceOrganizationGrant(ctx, userID, tenantID, organizationID, bindings)) {
 			return
 		}
 		c.Status(http.StatusNoContent)

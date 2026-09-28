@@ -62,7 +62,7 @@ func TestListScenariosReturnsTheLatestVersion(t *testing.T) {
 	creds := models.Credentials{
 		ActorIdentity:  models.Identity{UserId: "scenarios-latest-version-test-user"},
 		OrganizationId: orgId,
-		Roles:          []models.Role{models.ADMIN},
+		RoleBindings:   models.NativeRoleBindings([]models.Role{models.ADMIN}),
 	}
 	ctx := context.WithValue(bg, utils.ContextKeyCredentials, creds)
 	usecasesWithCreds := generateUsecaseWithCreds(testUsecases, creds)

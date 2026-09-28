@@ -33,7 +33,6 @@ func AdaptApikey(db DBApiKey) (models.ApiKey, error) {
 		Hash:           db.Hash,
 		OrganizationId: db.OrganizationId,
 		Prefix:         db.Prefix,
-		Role:           models.RoleFromLegacyValue(db.Role),
 	}
 
 	return out, nil

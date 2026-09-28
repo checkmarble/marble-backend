@@ -889,7 +889,6 @@ func (uc ScreeningUsecase) UpdateMatchStatus(
 			return nil
 		},
 	)
-
 	if err != nil {
 		return models.ScreeningMatch{}, err
 	}

@@ -39,7 +39,7 @@ func TestLoggerMiddlewareStoresExecutionSource(t *testing.T) {
 
 func TestOrganizationCredentialsMiddleware(t *testing.T) {
 	orgID := uuid.New()
-	parentCreds := models.Credentials{OrganizationId: uuid.New(), Roles: []models.Role{models.VIEWER}}
+	parentCreds := models.Credentials{OrganizationId: uuid.New(), RoleBindings: models.NativeRoleBindings([]models.Role{models.VIEWER})}
 	parent := context.WithValue(context.Background(), utils.ContextKeyCredentials, parentCreds)
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
@@ -61,7 +61,7 @@ func TestOrganizationCredentialsMiddleware(t *testing.T) {
 				creds, found := utils.CredentialsFromCtx(jobCtx)
 				require.True(t, found)
 				require.Equal(t, tc.orgID, creds.OrganizationId)
-				require.Equal(t, []models.Role{models.SYSTEM}, creds.Roles)
+				require.Equal(t, []models.Role{models.SYSTEM}, models.RoleNames(creds.RoleBindings))
 				require.Empty(t, creds.ActorIdentity)
 				require.Equal(t, ctx.Done(), jobCtx.Done())
 				return wantErr

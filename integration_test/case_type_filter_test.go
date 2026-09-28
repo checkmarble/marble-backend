@@ -46,7 +46,7 @@ func TestListCasesFiltersByTypeAcrossPages(t *testing.T) {
 	creds := models.Credentials{
 		ActorIdentity:  models.Identity{UserId: "case-type-test-user"},
 		OrganizationId: orgId,
-		Roles:          []models.Role{models.ADMIN},
+		RoleBindings:   models.NativeRoleBindings([]models.Role{models.ADMIN}),
 	}
 	ctx := context.WithValue(bg, utils.ContextKeyCredentials, creds)
 	uc := generateUsecaseWithCreds(testUsecases, creds)

@@ -25,12 +25,12 @@ func TestUpdateTenant(t *testing.T) {
 		err    error
 		allow  bool
 	}{
-		{name: "permission denied", creds: models.Credentials{Roles: []models.Role{models.MARBLE_ADMIN}}, target: tenant, err: models.ForbiddenError},
-		{name: "global admin", creds: models.Credentials{Roles: []models.Role{models.MARBLE_ADMIN}}, target: tenant, allow: true},
+		{name: "permission denied", creds: models.Credentials{RoleBindings: models.NativeRoleBindings([]models.Role{models.MARBLE_ADMIN})}, target: tenant, err: models.ForbiddenError},
+		{name: "global admin", creds: models.Credentials{RoleBindings: models.NativeRoleBindings([]models.Role{models.MARBLE_ADMIN})}, target: tenant, allow: true},
 		{name: "matching tenant", creds: models.Credentials{TenantId: tenant}, target: tenant, allow: true},
 		{name: "different tenant", creds: models.Credentials{TenantId: other}, target: tenant},
 		{name: "no tenant", target: tenant},
-		{name: "empty target", creds: models.Credentials{Roles: []models.Role{models.MARBLE_ADMIN}}},
+		{name: "empty target", creds: models.Credentials{RoleBindings: models.NativeRoleBindings([]models.Role{models.MARBLE_ADMIN})}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			enforcer := EnforceSecurityTenantImpl{EnforceSecurity: tenantPermissionMock{err: tt.err}, Credentials: tt.creds}
