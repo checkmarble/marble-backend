@@ -8,7 +8,7 @@ require (
 	cloud.google.com/go/profiler v0.6.0
 	cloud.google.com/go/storage v1.65.0
 	dario.cat/mergo v1.0.2
-	firebase.google.com/go/v4 v4.20.0
+	firebase.google.com/go/v4 v4.21.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.58.0
 	github.com/Masterminds/semver v1.5.0
