@@ -38,7 +38,9 @@ const (
 
 	// batchExecPerIterTimeout caps a single loop iteration so a wedged DB/blob/screening
 	// call cannot hang the coordinator until the whole-job timeout. A timeout is retryable.
-	batchExecPerIterTimeout = 1 * time.Minute
+	// TODO: this has not aged well, the initial timeout of 1min timed out more than expected on scenarios with screening,
+	// due to a stampede of offloading requests calling the blob storage. To improve later.
+	batchExecPerIterTimeout = 3 * time.Minute
 
 	// batchExecDefaultRunDuration is the wall-clock budget for a whole run when no deadline
 	// was recorded at setup. The deadline is the only termination on sustained failure.
@@ -288,7 +290,8 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 		}
 		if current.Status != models.ScheduledExecutionProcessing {
 			logger.InfoContext(ctx, fmt.Sprintf(
-				"batch execution no longer processing (status %s), coordinator exiting", current.Status))
+				"batch execution no longer processing (status %s), coordinator exiting", current.Status,
+			))
 			return nil
 		}
 
@@ -314,7 +317,8 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 			// Manifest drained earlier than the planned count predicted. Finalize rather than
 			// loop forever; log because counts should have matched.
 			logger.WarnContext(ctx, fmt.Sprintf(
-				"manifest exhausted at %d rows but %d were planned; finalizing", rows, planned))
+				"manifest exhausted at %d rows but %d were planned; finalizing", rows, planned,
+			))
 			return c.repository.UpdateScheduledExecutionStatus(ctx, exec, models.UpdateScheduledExecutionStatusInput{Id: se.Id, Status: models.ScheduledExecutionSuccess})
 		}
 		newOffset := offset + consumed
