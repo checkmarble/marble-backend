@@ -47,6 +47,8 @@ const (
 	CaseEscalated            CaseEventType = "case_escalated"
 	CaseEntityAnnotated      CaseEventType = "entity_annotated"
 	ContinuousScreeningAdded CaseEventType = "continuous_screening_added"
+	CaseEntityAdded          CaseEventType = "entity_added"
+	CaseEntityRemoved        CaseEventType = "entity_removed"
 )
 
 type CaseEventResourceType string
@@ -60,6 +62,7 @@ const (
 	RuleSnoozeResourceType               CaseEventResourceType = "rule_snooze"
 	SarResourceType                      CaseEventResourceType = "sar"
 	AnnotationResourceType               CaseEventResourceType = "annotation"
+	CaseManualEntityResourceType         CaseEventResourceType = "case_manual_entity"
 )
 
 type CaseCommentEvent struct {

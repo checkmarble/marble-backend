@@ -144,6 +144,7 @@ var ValidCaseOutcomes = []CaseOutcome{CaseOutcomeUnset, CaseConfirmedRisk, CaseV
 
 type CreateCaseAttributes struct {
 	DecisionIds            []string
+	Entities               []CaseEntityRef
 	ContinuousScreeningIds []uuid.UUID
 	InboxId                uuid.UUID
 	Name                   string
