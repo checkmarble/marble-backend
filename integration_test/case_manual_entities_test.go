@@ -2,11 +2,13 @@ package integration
 
 import (
 	"context"
+	"net/http"
 	"sync"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/gavv/httpexpect/v2"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -69,4 +71,24 @@ func boolToInt(v bool) int {
 		return 1
 	}
 	return 0
+}
+
+func TestCaseEntityLookupWithoutCaption(t *testing.T) {
+	e := httpexpect.Default(t, testServer.URL)
+	admin, _ := setupOrgAndUser(e)
+	tableResp := admin.POST("/data-model/tables").WithJSON(map[string]any{
+		"name": "customers", "alias": "Customers", "description": "Customers without caption or index", "semantic_type": "person",
+		"fields": []map[string]any{
+			{"name": "object_id", "alias": "Object ID", "type": "String", "nullable": false},
+			{"name": "updated_at", "alias": "Updated At", "type": "Timestamp", "nullable": false},
+			{"name": "name", "alias": "Name", "type": "String", "semantic_type": "name"},
+		},
+	}).Expect()
+	tableResp.Status(http.StatusCreated)
+	apiKey := setupApiKey(e, admin)
+	apiKey.POST("/v1/ingest/customers").WithJSON(map[string]any{
+		"object_id": "c-123", "updated_at": "2026-09-29T00:00:00Z", "name": "Alice",
+	}).Expect().Status(http.StatusCreated)
+	admin.GET("/client_data/customers/c-123").Expect().Status(http.StatusOK).
+		JSON().Object().Value("data").Object().Value("object_id").String().IsEqual("c-123")
 }
