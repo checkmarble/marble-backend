@@ -27,6 +27,9 @@ import (
 )
 
 type CaseUseCaseRepository interface {
+	ListCaseManualEntities(context.Context, repositories.Executor, uuid.UUID, string) ([]models.CaseManualEntity, error)
+	InsertCaseManualEntity(context.Context, repositories.Executor, uuid.UUID, string, models.CaseEntityRef) (*models.CaseManualEntity, error)
+	DeleteCaseManualEntity(context.Context, repositories.Executor, uuid.UUID, string, models.CaseEntityRef) (*models.CaseManualEntity, error)
 	ListOrganizationCases(ctx context.Context, tx repositories.Transaction, filters models.CaseFilters,
 		pagination models.PaginationAndSorting) ([]models.Case, error)
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
@@ -137,6 +140,8 @@ type webhookEventsUsecase interface {
 }
 
 type caseUsecaseIngestedDataReader interface {
+	RequireActiveCaseEntity(context.Context, uuid.UUID, models.CaseEntityRef) error
+	ReadCaseEntityObjects(context.Context, uuid.UUID, []models.CaseEntityRef) (map[models.CaseEntityRef]models.DataModelObject, error)
 	ReadPivotObjectsFromValues(
 		ctx context.Context,
 		organizationId uuid.UUID,
@@ -434,6 +439,14 @@ func (usecase *CaseUseCase) CreateCase(
 	createCaseAttributes models.CreateCaseAttributes,
 	fromEndUser bool,
 ) (models.Case, error) {
+	if err := validateCaseEntityRefs(createCaseAttributes.Entities, false); err != nil {
+		return models.Case{}, err
+	}
+	for _, ref := range createCaseAttributes.Entities {
+		if err := usecase.ingestedDataReader.RequireActiveCaseEntity(ctx, createCaseAttributes.OrganizationId, ref); err != nil {
+			return models.Case{}, err
+		}
+	}
 	if err := usecase.validateDecisions(ctx, tx, createCaseAttributes.OrganizationId,
 		createCaseAttributes.DecisionIds); err != nil {
 		return models.Case{}, err
@@ -504,6 +517,9 @@ func (usecase *CaseUseCase) CreateCase(
 		createCaseAttributes.ContinuousScreeningIds,
 	)
 	if err != nil {
+		return models.Case{}, err
+	}
+	if err := usecase.applyCaseEntityChanges(ctx, tx, createCaseAttributes.OrganizationId, newCaseId, userId, createCaseAttributes.Entities, true); err != nil {
 		return models.Case{}, err
 	}
 
