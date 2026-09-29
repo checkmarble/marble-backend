@@ -13,6 +13,7 @@ type MetadataKey string
 const (
 	MetadataKeyDeploymentID          MetadataKey = "deployment_id"
 	MetadataKeyWebhookSystemMigrated MetadataKey = "webhook_system_migrated"
+	MetadataKeyFirstCaseClosed       MetadataKey = "first_case_closed"
 	ScoringInitialInsertionDone      MetadataKey = "scoring_initial_insertion_done"
 )
 
@@ -32,6 +33,8 @@ func MetadataKeyFromString(key string) (MetadataKey, error) {
 		return MetadataKeyDeploymentID, nil
 	case "webhook_system_migrated":
 		return MetadataKeyWebhookSystemMigrated, nil
+	case "first_case_closed":
+		return MetadataKeyFirstCaseClosed, nil
 	case "scoring_initial_insertion_done":
 		return ScoringInitialInsertionDone, nil
 	default:

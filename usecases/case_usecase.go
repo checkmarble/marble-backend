@@ -36,7 +36,8 @@ type CaseUseCaseRepository interface {
 		createCaseAttributes models.CreateCaseAttributes, newCaseId string) error
 	UpdateCase(ctx context.Context, exec repositories.Executor,
 		updateCaseAttributes models.UpdateCaseAttributes) error
-	OrgHasClosedCase(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (bool, error)
+	GetMetadata(ctx context.Context, exec repositories.Executor, orgID *uuid.UUID, key models.MetadataKey) (*models.Metadata, error)
+	UpsertMetadata(ctx context.Context, exec repositories.Executor, metadata models.Metadata) error
 	SnoozeCase(ctx context.Context, exec repositories.Executor, snoozeRequest models.CaseSnoozeRequest) error
 	UnsnoozeCase(ctx context.Context, exec repositories.Executor,
 		caseId string) error
@@ -645,16 +646,6 @@ func (usecase *CaseUseCase) UpdateCase(
 				fmt.Sprintf("invalid case status transition from %s to %s", c.Status, updateCaseAttributes.Status))
 		}
 
-		// Detect the first case ever closed in the organization. Must be checked before the
-		// update below is applied, otherwise this very case would count as a closed one.
-		if updateCaseAttributes.Status == models.CaseClosed && c.Status != models.CaseClosed {
-			orgHadClosedCase, err := usecase.repository.OrgHasClosedCase(ctx, tx, c.OrganizationId)
-			if err != nil {
-				return models.Case{}, err
-			}
-			isFirstCaseClosed = !orgHadClosedCase
-		}
-
 		if updateCaseAttributes.Outcome != "" {
 			if !slices.Contains(models.ValidCaseOutcomes, updateCaseAttributes.Outcome) {
 				return c, errors.Wrap(models.BadParameterError,
@@ -721,6 +712,12 @@ func (usecase *CaseUseCase) UpdateCase(
 		}
 
 		updateDone = true
+		if updateCaseAttributes.Status == models.CaseClosed && c.Status != models.CaseClosed {
+			isFirstCaseClosed, err = usecase.recordFirstCaseClosed(ctx, tx, c.OrganizationId)
+			if err != nil {
+				return models.Case{}, err
+			}
+		}
 		return updatedCase, nil
 	})
 	if err != nil {
@@ -1693,6 +1690,28 @@ func trackCaseUpdatedEvents(
 	}
 }
 
+// Persist the milestone with the case update
+// Could have concurrency issues if multiple cases are closed at the same time, but it's not a big deal if we emit duplicated event.
+func (usecase *CaseUseCase) recordFirstCaseClosed(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID) (bool, error) {
+	metadata, err := usecase.repository.GetMetadata(ctx, tx, &orgId, models.MetadataKeyFirstCaseClosed)
+	if err != nil {
+		return false, errors.Wrap(err, "could not read first case closed metadata")
+	}
+	if metadata != nil && metadata.Value == "true" {
+		return false, nil
+	}
+
+	err = usecase.repository.UpsertMetadata(ctx, tx, models.Metadata{
+		OrgID: &orgId,
+		Key:   models.MetadataKeyFirstCaseClosed,
+		Value: "true",
+	})
+	if err != nil {
+		return false, errors.Wrap(err, "could not save first case closed metadata")
+	}
+	return true, nil
+}
+
 func trackFirstCaseClosed(ctx context.Context, caseId string) {
 	tracking.TrackEvent(ctx, models.AnalyticsFirstCaseClosed, map[string]interface{}{
 		"case_id": caseId,
@@ -2513,20 +2532,16 @@ func (usecase *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpda
 	}
 
 	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		firstClosedCaseId = ""
+
 		switch models.CaseMassUpdateActionFromString(req.Action) {
 		case models.CaseMassUpdateClose:
-			// Checked before the status change, otherwise the cases closed here would count.
-			orgHadClosedCase, err := usecase.repository.OrgHasClosedCase(ctx, tx, orgId)
-			if err != nil {
-				return errors.Wrap(err, "could not check for previously closed cases")
-			}
-
 			updatedIds, err := usecase.repository.CaseMassChangeStatus(ctx, tx, req.CaseIds, models.CaseClosed)
 			if err != nil {
 				return errors.Wrap(err, "could not update case status in mass update")
 			}
 
-			if !orgHadClosedCase && len(updatedIds) > 0 {
+			if len(updatedIds) > 0 {
 				firstClosedCaseId = updatedIds[0].String()
 			}
 
@@ -2605,6 +2620,17 @@ func (usecase *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpda
 		if _, err := usecase.repository.BatchCreateCaseEvents(ctx, tx,
 			slices.Collect(maps.Values(events))); err != nil {
 			return errors.Wrap(err, "could not create case events in mass update")
+		}
+
+		if firstClosedCaseId != "" {
+			first, err := usecase.recordFirstCaseClosed(ctx, tx, orgId)
+			if err != nil {
+				return err
+			}
+			if !first {
+				// Already recorded a first case closed event for this organization, so we don't need to track it again.
+				firstClosedCaseId = ""
+			}
 		}
 
 		return nil
