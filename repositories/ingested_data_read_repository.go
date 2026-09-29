@@ -24,6 +24,7 @@ import (
 var NAVIGATION_FIELD_STATS_CACHE = expirable.NewLRU[string, []models.FieldStatistics](100, nil, time.Hour)
 
 type IngestedDataReadRepository interface {
+	QueryIngestedObjectsByIds(context.Context, Executor, models.Table, []string) ([]models.DataModelObject, error)
 	GetDbField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (any, error)
 	ListAllObjectIdsFromTable(
 		ctx context.Context,
@@ -112,6 +113,45 @@ type IngestedDataReadRepository interface {
 		from uuid.UUID,
 		limit int,
 	) ([]uuid.UUID, []string, error)
+}
+
+func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectsByIds(ctx context.Context, exec Executor, table models.Table, ids []string) ([]models.DataModelObject, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return []models.DataModelObject{}, nil
+	}
+	columns := models.ColumnNames(table)
+	if !slices.Contains(columns, "object_id") {
+		columns = append(columns, "object_id")
+	}
+	qualifiedTableName := pgIdentifierWithSchema(exec, table.Name)
+	q := NewQueryBuilder().Select(columns...).From(qualifiedTableName).
+		Where(rowIsValid(qualifiedTableName)).
+		Where(squirrel.Eq{qualifiedTableName + ".object_id": ids})
+	sql, args, err := q.ToSql()
+	if err != nil {
+		return nil, err
+	}
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make([]models.DataModelObject, 0)
+	for rows.Next() {
+		values, err := rows.Values()
+		if err != nil {
+			return nil, err
+		}
+		data := make(map[string]any, len(columns))
+		for i, name := range columns {
+			data[name] = values[i]
+		}
+		result = append(result, models.DataModelObject{Data: data})
+	}
+	return result, rows.Err()
 }
 
 type IngestedDataReadRepositoryImpl struct{}
