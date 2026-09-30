@@ -81,11 +81,11 @@ func (factory DbExecutorFactory) NewClientDbExecutor(
 		return nil, err
 	}
 
-	return factory.transactionFactoryRepository.GetExecutor(
-		ctx,
-		models.DATABASE_SCHEMA_TYPE_CLIENT,
-		&org,
-	)
+	exec, err := factory.transactionFactoryRepository.GetExecutor(ctx, models.DATABASE_SCHEMA_TYPE_CLIENT, &org)
+	if err != nil {
+		return nil, repositories.ClientDatabaseError{Err: err}
+	}
+	return exec, nil
 }
 
 func (factory DbExecutorFactory) NewPinnedExecutor(

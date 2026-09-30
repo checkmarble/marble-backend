@@ -39,6 +39,7 @@ func CaseTypeFromString(s string) CaseType {
 }
 
 type Case struct {
+	Entities             []CaseEntity
 	Id                   string
 	Contributors         []CaseContributor
 	CreatedAt            time.Time

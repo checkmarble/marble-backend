@@ -96,7 +96,7 @@ func (usecase IngestedDataReaderUsecase) ReadCaseEntityObjects(ctx context.Conte
 		}
 		objects, err := usecase.clientDbRepository.QueryIngestedObjectsByIds(ctx, exec, dataModel.Tables[tableName], objectIds)
 		if err != nil {
-			return nil, err
+			return nil, repositories.ClientDatabaseError{Err: err}
 		}
 		for _, object := range objects {
 			id, ok := object.Data["object_id"].(string)

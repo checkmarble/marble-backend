@@ -14,6 +14,7 @@ type APICaseEvent struct {
 	CreatedAt      time.Time   `json:"created_at"`
 	EventType      string      `json:"event_type"`
 	AdditionalNote string      `json:"additional_note"`
+	PreviousValue  string      `json:"previous_value"`
 	NewValue       string      `json:"new_value"`
 	ResourceType   string      `json:"resource_type"`
 	ResourceId     string      `json:"resource_id"`
@@ -28,6 +29,7 @@ func NewAPICaseEvent(caseEvent models.CaseEvent) APICaseEvent {
 		EventType:      string(caseEvent.EventType),
 		AdditionalNote: caseEvent.AdditionalNote,
 		NewValue:       caseEvent.NewValue,
+		PreviousValue:  caseEvent.PreviousValue,
 		ResourceType:   string(caseEvent.ResourceType),
 		ResourceId:     caseEvent.ResourceId,
 	}
