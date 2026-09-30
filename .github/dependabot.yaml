@@ -22,3 +22,13 @@ updates:
           - "github.com/testcontainers/testcontainers-go*"
     cooldown:
       default-days: 14
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
