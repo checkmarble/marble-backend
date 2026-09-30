@@ -366,7 +366,7 @@ func (usecase *CaseUseCase) getInboxSlaMap(ctx context.Context, exec repositorie
 
 func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.Case, error) {
 	exec := usecase.executorFactory.NewExecutor()
-	c, err := usecase.getCaseWithDetails(ctx, exec, caseId)
+	c, err := usecase.repository.GetCaseMetadataById(ctx, exec, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -375,11 +375,11 @@ func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.
 	if err != nil {
 		return models.Case{}, err
 	}
-	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
 		return models.Case{}, err
 	}
 
-	return c, nil
+	return usecase.getCaseWithDetails(ctx, exec, caseId)
 }
 
 func (usecase *CaseUseCase) GetEntityRelatedCases(ctx context.Context, objectType, objectId string) ([]models.Case, error) {
@@ -440,6 +440,7 @@ func (usecase *CaseUseCase) CreateCase(
 	createCaseAttributes models.CreateCaseAttributes,
 	fromEndUser bool,
 ) (models.Case, error) {
+	// Entities can be empty
 	if err := validateCaseEntityRefs(createCaseAttributes.Entities, false); err != nil {
 		return models.Case{}, err
 	}
@@ -515,6 +516,7 @@ func (usecase *CaseUseCase) CreateCase(
 	if err != nil {
 		return models.Case{}, err
 	}
+
 	if err := usecase.applyCaseEntityChanges(ctx, tx, createCaseAttributes.OrganizationId, newCaseId, userId, createCaseAttributes.Entities, true); err != nil {
 		return models.Case{}, err
 	}
@@ -1525,7 +1527,18 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 		return models.Case{}, errors.Wrap(err, "could not fetch inbox for SLA calculation")
 	}
 	c.DueAt = models.ComputeSlaDueAt(c.CreatedAt, inbox.Sla)
-
+	manual, err := usecase.repository.ListCaseManualEntities(ctx, exec, c.OrganizationId, caseId)
+	if err != nil {
+		return models.Case{}, err
+	}
+	values, err := usecase.repository.DecisionPivotValuesByCase(ctx, exec, caseId)
+	if err != nil {
+		return models.Case{}, err
+	}
+	c.Entities, err = usecase.assembleCaseEntities(ctx, c.OrganizationId, manual, values)
+	if err != nil {
+		return models.Case{}, err
+	}
 	return c, nil
 }
 
@@ -1992,15 +2005,8 @@ func (usecase *CaseUseCase) GetCaseFileUrl(ctx context.Context, caseFileId strin
 		return "", err
 	}
 
-	c, err := usecase.getCaseWithDetails(ctx, exec, cf.CaseId)
+	_, err = usecase.GetCase(ctx, cf.CaseId)
 	if err != nil {
-		return "", err
-	}
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
-	if err != nil {
-		return "", err
-	}
-	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 		return "", err
 	}
 

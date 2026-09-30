@@ -24,7 +24,7 @@ import (
 var NAVIGATION_FIELD_STATS_CACHE = expirable.NewLRU[string, []models.FieldStatistics](100, nil, time.Hour)
 
 type IngestedDataReadRepository interface {
-	QueryIngestedObjectsByIds(context.Context, Executor, models.Table, []string) ([]models.DataModelObject, error)
+	QueryIngestedObjectsByIds(context.Context, Executor, models.Table, []string, ...string) ([]models.DataModelObject, error)
 	GetDbField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (any, error)
 	ListAllObjectIdsFromTable(
 		ctx context.Context,
@@ -115,43 +115,56 @@ type IngestedDataReadRepository interface {
 	) ([]uuid.UUID, []string, error)
 }
 
-func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectsByIds(ctx context.Context, exec Executor, table models.Table, ids []string) ([]models.DataModelObject, error) {
+// Return active ingested objects by object ids.
+// Use metadataFields to return internal fields in Metadata (e.g. valid_from, id).
+func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectsByIds(
+	ctx context.Context,
+	exec Executor,
+	table models.Table,
+	objectIds []string,
+	metadataFields ...string,
+) ([]models.DataModelObject, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
 	}
-	if len(ids) == 0 {
+	if len(objectIds) == 0 {
 		return []models.DataModelObject{}, nil
 	}
-	columns := models.ColumnNames(table)
-	if !slices.Contains(columns, "object_id") {
-		columns = append(columns, "object_id")
+
+	columnNames := models.ColumnNames(table)
+	if !slices.Contains(columnNames, "object_id") {
+		columnNames = append(columnNames, "object_id")
 	}
 	qualifiedTableName := pgIdentifierWithSchema(exec, table.Name)
-	q := NewQueryBuilder().Select(columns...).From(qualifiedTableName).
-		Where(rowIsValid(qualifiedTableName)).
-		Where(squirrel.Eq{qualifiedTableName + ".object_id": ids})
-	sql, args, err := q.ToSql()
+	objectsAsMap, err := queryWithDynamicColumnList(
+		ctx,
+		exec,
+		qualifiedTableName,
+		append(columnNames, metadataFields...),
+		false,
+		models.Filter{
+			LeftSql:    fmt.Sprintf("%s.object_id", qualifiedTableName),
+			Operator:   ast.FUNC_IS_IN_LIST,
+			RightValue: objectIds,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := exec.Query(ctx, sql, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	result := make([]models.DataModelObject, 0)
-	for rows.Next() {
-		values, err := rows.Values()
-		if err != nil {
-			return nil, err
+
+	ingestedObjects := make([]models.DataModelObject, len(objectsAsMap))
+	for i, object := range objectsAsMap {
+		ingestedObject := models.DataModelObject{Data: map[string]any{}, Metadata: map[string]any{}}
+		for fieldName, fieldValue := range object {
+			if slices.Contains(columnNames, fieldName) {
+				ingestedObject.Data[fieldName] = fieldValue
+			} else {
+				ingestedObject.Metadata[fieldName] = fieldValue
+			}
 		}
-		data := make(map[string]any, len(columns))
-		for i, name := range columns {
-			data[name] = values[i]
-		}
-		result = append(result, models.DataModelObject{Data: data})
+		ingestedObjects[i] = ingestedObject
 	}
-	return result, rows.Err()
+	return ingestedObjects, nil
 }
 
 type IngestedDataReadRepositoryImpl struct{}

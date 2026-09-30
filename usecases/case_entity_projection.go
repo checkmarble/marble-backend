@@ -2,50 +2,17 @@ package usecases
 
 import (
 	"context"
-	"errors"
 	"slices"
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/google/uuid"
 )
 
-func isCaseEntityClientDBError(err error) bool {
-	var clientError repositories.ClientDatabaseError
-	return errors.As(err, &clientError)
-}
-
-// GetCaseWithEntities assembles external responses after the mutation transaction commits.
-// Only ClientDB failures may degrade committed mutation responses to identity-only data.
-func (usecase *CaseUseCase) GetCaseWithEntities(ctx context.Context, caseId string, bestEffortHydration bool) (models.Case, error) {
-	c, err := usecase.GetCase(ctx, caseId)
-	if err != nil {
-		return models.Case{}, err
-	}
-	exec := usecase.executorFactory.NewExecutor()
-	manual, err := usecase.repository.ListCaseManualEntities(ctx, exec, c.OrganizationId, caseId)
-	if err != nil {
-		return models.Case{}, err
-	}
-	values, err := usecase.repository.DecisionPivotValuesByCase(ctx, exec, caseId)
-	if err != nil {
-		return models.Case{}, err
-	}
-	c.Entities, err = usecase.assembleCaseEntities(ctx, c.OrganizationId, manual, values, bestEffortHydration)
-	if err != nil {
-		return models.Case{}, err
-	}
-	return c, nil
-}
-
-func (usecase *CaseUseCase) assembleCaseEntities(ctx context.Context, orgId uuid.UUID, manual []models.CaseManualEntity, values []models.PivotDataWithCount, bestEffortHydration bool) ([]models.CaseEntity, error) {
+func (usecase *CaseUseCase) assembleCaseEntities(ctx context.Context, orgId uuid.UUID, manual []models.CaseManualEntity, values []models.PivotDataWithCount) ([]models.CaseEntity, error) {
 	refs, err := usecase.ingestedDataReader.ReadCaseDecisionEntityRefs(ctx, orgId, values)
 	if err != nil {
-		if !bestEffortHydration || !isCaseEntityClientDBError(err) {
-			return nil, err
-		}
-		return mergeCaseEntities(manual, refs, nil), nil
+		return nil, err
 	}
 	entities := mergeCaseEntities(manual, refs, nil)
 	allRefs := make([]models.CaseEntityRef, len(entities))
@@ -53,7 +20,7 @@ func (usecase *CaseUseCase) assembleCaseEntities(ctx context.Context, orgId uuid
 		allRefs[i] = e.CaseEntityRef
 	}
 	data, err := usecase.ingestedDataReader.ReadCaseEntityObjects(ctx, orgId, allRefs)
-	if err != nil && (!bestEffortHydration || !isCaseEntityClientDBError(err)) {
+	if err != nil {
 		return nil, err
 	}
 	return mergeCaseEntities(manual, refs, data), nil

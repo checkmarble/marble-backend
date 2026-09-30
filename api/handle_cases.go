@@ -81,7 +81,7 @@ func handleGetCase(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		inboxCase, err := usecase.GetCaseWithEntities(ctx, caseInput.Id, false)
+		inboxCase, err := usecase.GetCase(ctx, caseInput.Id)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -123,13 +123,9 @@ func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
 				Name:           data.Name,
 				OrganizationId: organizationId,
 				AssigneeId:     &userId,
-				Type:           models.CaseTypeDecision,
+				Type:           models.CaseTypeDecision, // By default, we can only create cases from decisions
 			})
 
-		if presentError(ctx, c, err) {
-			return
-		}
-		inboxCase, err = usecase.GetCaseWithEntities(ctx, inboxCase.Id, true)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -170,10 +166,6 @@ func handlePatchCase(uc usecases.Usecases) func(c *gin.Context) {
 			InboxId: data.InboxId,
 		})
 
-		if presentError(ctx, c, err) {
-			return
-		}
-		inboxCase, err = usecase.GetCaseWithEntities(ctx, inboxCase.Id, true)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -330,10 +322,6 @@ func handlePostCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
-		inboxCase, err = usecase.GetCaseWithEntities(ctx, inboxCase.Id, true)
-		if presentError(ctx, c, err) {
-			return
-		}
 		c.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseWithDetailsDto(inboxCase)})
 	}
 }
@@ -366,10 +354,6 @@ func handlePostCaseComment(uc usecases.Usecases) func(c *gin.Context) {
 			Comment: data.Comment,
 		})
 
-		if presentError(ctx, c, err) {
-			return
-		}
-		inboxCase, err = usecase.GetCaseWithEntities(ctx, inboxCase.Id, true)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -407,10 +391,6 @@ func handlePostCaseTags(uc usecases.Usecases) func(c *gin.Context) {
 			TagIds: data.TagIds,
 		})
 
-		if presentError(ctx, c, err) {
-			return
-		}
-		inboxCase, err = usecase.GetCaseWithEntities(ctx, inboxCase.Id, true)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -504,10 +484,6 @@ func handlePostCaseFile(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		cs, err = usecase.GetCaseWithEntities(ctx, cs.Id, true)
-		if presentError(ctx, c, err) {
-			return
-		}
 		c.JSON(http.StatusCreated, gin.H{"case": dto.AdaptCaseWithDetailsDto(cs)})
 	}
 }
@@ -560,10 +536,6 @@ func handleReviewCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 				UserId:        userId,
 			})
 
-		if presentError(ctx, c, err) {
-			return
-		}
-		case_, err = usecase.GetCaseWithEntities(ctx, case_.Id, true)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -878,15 +850,12 @@ func handleUpdateCaseEntities(uc usecases.Usecases, add bool) func(c *gin.Contex
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
 		refs := dto.AdaptCaseEntityRefs(body.Entities)
 		var err error
+		var result models.Case
 		if add {
-			_, err = usecase.AddCaseEntities(ctx, string(creds.ActorIdentity.UserId), input.Id, refs)
+			result, err = usecase.AddCaseEntities(ctx, string(creds.ActorIdentity.UserId), input.Id, refs)
 		} else {
-			_, err = usecase.RemoveCaseEntities(ctx, string(creds.ActorIdentity.UserId), input.Id, refs)
+			result, err = usecase.RemoveCaseEntities(ctx, string(creds.ActorIdentity.UserId), input.Id, refs)
 		}
-		if presentError(ctx, c, err) {
-			return
-		}
-		result, err := usecase.GetCaseWithEntities(ctx, input.Id, true)
 		if presentError(ctx, c, err) {
 			return
 		}

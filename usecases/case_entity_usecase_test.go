@@ -4,79 +4,125 @@ import (
 	"context"
 	"testing"
 
+	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 )
 
-type caseEntityModelStub struct {
-	ingestedDataReaderDataModelUsecase
-	model       models.DataModel
-	uniqueError error
+type CaseEntityReaderSuite struct {
+	suite.Suite
+	ctx      context.Context
+	org      uuid.UUID
+	model    *mocks.DataModelRepository
+	security *mocks.EnforceSecurity
+	factory  *mocks.ExecutorFactory
+	objects  *mocks.IngestedDataReader
+	indexes  *mocks.ClientDbIndexEditor
+	exec     *mocks.Executor
+	reader   IngestedDataReaderUsecase
 }
 
-func (s caseEntityModelStub) GetDataModel(_ context.Context, _ uuid.UUID, options models.DataModelReadOptions, _ bool) (models.DataModel, error) {
-	if options.IncludeUnicityConstraints && s.uniqueError != nil {
-		return models.DataModel{}, s.uniqueError
-	}
-	return s.model, nil
+func (s *CaseEntityReaderSuite) SetupTest() {
+	s.ctx = context.Background()
+	s.org = uuid.New()
+	s.model = new(mocks.DataModelRepository)
+	s.security = new(mocks.EnforceSecurity)
+	s.factory = new(mocks.ExecutorFactory)
+	s.objects = new(mocks.IngestedDataReader)
+	s.indexes = new(mocks.ClientDbIndexEditor)
+	s.exec = new(mocks.Executor)
+	dm := usecase{dataModelRepository: s.model, enforceSecurity: s.security, executorFactory: s.factory, clientDbIndexEditor: s.indexes}
+	s.reader = IngestedDataReaderUsecase{repository: s.model, dataModelUsecase: dm, clientDbRepository: s.objects, executorFactory: s.factory}
 }
+func (s *CaseEntityReaderSuite) TearDownTest() {
+	s.model.AssertExpectations(s.T())
+	s.security.AssertExpectations(s.T())
+	s.factory.AssertExpectations(s.T())
+	s.objects.AssertExpectations(s.T())
+	s.indexes.AssertExpectations(s.T())
+}
+func (s *CaseEntityReaderSuite) expectModel(dm models.DataModel) {
+	s.factory.On("NewExecutor").Return(s.exec).Once()
+	s.model.On("GetDataModel", s.ctx, s.exec, s.org, false, true).Return(dm, nil).Once()
+}
+func (s *CaseEntityReaderSuite) SetupSubTest()    { s.SetupTest() }
+func (s *CaseEntityReaderSuite) TearDownSubTest() { s.TearDownTest() }
 
-type caseEntityExecutorStub struct {
-	executor_factory.ExecutorFactory
-	connectionError error
-}
-
-func (s caseEntityExecutorStub) NewClientDbExecutor(context.Context, uuid.UUID) (repositories.Executor, error) {
-	return nil, s.connectionError
-}
-
-type caseEntityObjectsStub struct {
-	ingestedDataReaderClientDbRepository
-	objects []models.DataModelObject
-	reads   int
-}
-
-func (s *caseEntityObjectsStub) QueryIngestedObjectByUniqueField(context.Context, repositories.Executor, models.Table, string, string, ...string) ([]models.DataModelObject, error) {
-	return s.objects, nil
-}
-func (s *caseEntityObjectsStub) QueryIngestedObjectsByIds(context.Context, repositories.Executor, models.Table, []string) ([]models.DataModelObject, error) {
-	s.reads++
-	return s.objects, nil
-}
-
-func TestCaseEntityObjectValidation(t *testing.T) {
-	ctx := context.Background()
-	org := uuid.New()
+func (s *CaseEntityReaderSuite) TestEligibility() {
 	ref := models.CaseEntityRef{TableName: "customers", ObjectId: "c-123"}
-	for _, semantic := range []models.SemanticType{models.SemanticTypePerson, models.SemanticTypeCompany, models.SemanticTypePartner} {
-		stub := &caseEntityObjectsStub{objects: []models.DataModelObject{{Data: map[string]any{"object_id": "c-123"}}}}
-		uc := IngestedDataReaderUsecase{clientDbRepository: stub, dataModelUsecase: caseEntityModelStub{model: models.DataModel{Tables: map[string]models.Table{"customers": {Name: "customers", SemanticType: semantic}}}}, executorFactory: caseEntityExecutorStub{}}
-		require.NoError(t, uc.RequireActiveCaseEntity(ctx, org, ref), semantic)
+	tests := []struct {
+		name     string
+		semantic models.SemanticType
+		eligible bool
+	}{
+		{name: "person", semantic: models.SemanticTypePerson, eligible: true},
+		{name: "company", semantic: models.SemanticTypeCompany, eligible: true},
+		{name: "partner", semantic: models.SemanticTypePartner, eligible: true},
+		{name: "account", semantic: models.SemanticTypeAccount},
+		{name: "transaction", semantic: models.SemanticTypeTransaction},
+		{name: "other", semantic: models.SemanticTypeOther},
 	}
-	for _, semantic := range []models.SemanticType{models.SemanticTypeAccount, models.SemanticTypeTransaction, models.SemanticTypeOther} {
-		stub := &caseEntityObjectsStub{objects: []models.DataModelObject{{Data: map[string]any{"object_id": "c-123"}}}}
-		uc := IngestedDataReaderUsecase{clientDbRepository: stub, dataModelUsecase: caseEntityModelStub{model: models.DataModel{Tables: map[string]models.Table{"customers": {Name: "customers", SemanticType: semantic}}}}, executorFactory: caseEntityExecutorStub{}}
-		require.Error(t, uc.RequireActiveCaseEntity(ctx, org, ref), semantic)
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			table := models.Table{Name: ref.TableName, SemanticType: tt.semantic}
+			s.expectModel(models.DataModel{Tables: map[string]models.Table{ref.TableName: table}})
+			if tt.eligible {
+				s.factory.On("NewClientDbExecutor", s.ctx, s.org).Return(s.exec, nil).Once()
+				s.objects.On("QueryIngestedObjectByUniqueField", s.ctx, s.exec, table, ref.ObjectId, "object_id", []string(nil)).Return([]models.DataModelObject{{Data: map[string]any{"object_id": ref.ObjectId}}}, nil).Once()
+				s.NoError(s.reader.RequireActiveCaseEntity(s.ctx, s.org, ref))
+			} else {
+				s.ErrorIs(s.reader.RequireActiveCaseEntity(s.ctx, s.org, ref), models.UnprocessableEntityError)
+				s.factory.AssertNotCalled(s.T(), "NewClientDbExecutor", mock.Anything, mock.Anything)
+				s.objects.AssertNotCalled(s.T(), "QueryIngestedObjectByUniqueField", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+			}
+		})
 	}
-	for _, objects := range [][]models.DataModelObject{nil, {{Data: map[string]any{"object_id": "c-123"}}, {Data: map[string]any{"object_id": "c-123"}}}} {
-		stub := &caseEntityObjectsStub{objects: objects}
-		uc := IngestedDataReaderUsecase{clientDbRepository: stub, dataModelUsecase: caseEntityModelStub{model: models.DataModel{Tables: map[string]models.Table{"customers": {Name: "customers", SemanticType: models.SemanticTypePerson}}}}, executorFactory: caseEntityExecutorStub{}}
-		require.Error(t, uc.RequireActiveCaseEntity(ctx, org, ref))
-	}
-	missing := IngestedDataReaderUsecase{clientDbRepository: &caseEntityObjectsStub{}, dataModelUsecase: caseEntityModelStub{model: models.DataModel{Tables: map[string]models.Table{}}}, executorFactory: caseEntityExecutorStub{}}
-	require.Error(t, missing.RequireActiveCaseEntity(ctx, org, ref))
 }
+func TestCaseEntityReaderSuite(t *testing.T) { suite.Run(t, new(CaseEntityReaderSuite)) }
 
-func TestCaseEntityObjectBatchReadKeepsHistoricalReferences(t *testing.T) {
-	stub := &caseEntityObjectsStub{objects: []models.DataModelObject{{Data: map[string]any{"object_id": "c-123", "name": "Alice"}}}}
-	uc := IngestedDataReaderUsecase{clientDbRepository: stub, dataModelUsecase: caseEntityModelStub{model: models.DataModel{Tables: map[string]models.Table{"customers": {Name: "customers"}}}}, executorFactory: caseEntityExecutorStub{}}
-	refs := []models.CaseEntityRef{{TableName: "customers", ObjectId: "c-123"}, {TableName: "customers", ObjectId: "missing"}, {TableName: "old_table", ObjectId: "old"}, {TableName: "customers", ObjectId: "c-123"}}
-	got, err := uc.ReadCaseEntityObjects(context.Background(), uuid.New(), refs)
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-	require.Equal(t, "Alice", got[refs[0]].Data["name"])
-	require.Equal(t, 1, stub.reads)
+type CaseEntityMutationSuite struct{ suite.Suite }
+
+func (s *CaseEntityMutationSuite) TestClosedCaseAdditionAndRemoval() {
+	tests := []struct {
+		name   string
+		mutate func(*CaseUseCase, context.Context, string, string, []models.CaseEntityRef) (models.Case, error)
+	}{
+		{name: "addition", mutate: (*CaseUseCase).AddCaseEntities},
+		{name: "removal", mutate: (*CaseUseCase).RemoveCaseEntities},
+	}
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			ctx := context.Background()
+			org := uuid.New()
+			inbox := uuid.New()
+			c := models.Case{Id: uuid.NewString(), OrganizationId: org, InboxId: inbox, Status: models.CaseClosed}
+			refs := []models.CaseEntityRef{{TableName: "customers", ObjectId: "c-123"}}
+			repo := new(mocks.CaseRepository)
+			security := new(mocks.EnforceSecurity)
+			inboxRepo := new(mocks.InboxRepository)
+			tx := new(mocks.Transaction)
+			factory := &mocks.TransactionFactory{TxMock: tx}
+			factory.On("Transaction", ctx, mock.Anything).Return(nil).Once()
+			repo.On("GetCaseByIdForUpdate", ctx, tx, c.Id).Return(c.GetMetadata(), nil).Once()
+			inboxRepo.On("ListInboxes", ctx, tx, org, []uuid.UUID(nil), false).Return([]models.Inbox{{Id: inbox}}, nil).Once()
+			security.On("ReadInbox", models.Inbox{Id: inbox}).Return(nil).Once()
+			security.On("ReadOrUpdateCase", c.GetMetadata(), []uuid.UUID{inbox}).Return(nil).Once()
+			uc := CaseUseCase{repository: repo, enforceSecurity: security, inboxReader: inboxes.InboxReader{EnforceSecurity: security, InboxRepository: inboxRepo, Credentials: models.Credentials{Role: models.API_CLIENT}}, transactionFactory: factory}
+
+			_, err := tt.mutate(&uc, ctx, "actor", c.Id, refs)
+
+			s.ErrorIs(err, models.BadParameterError)
+			repo.AssertNotCalled(s.T(), "InsertCaseManualEntity", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+			repo.AssertNotCalled(s.T(), "DeleteCaseManualEntity", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+			repo.AssertNotCalled(s.T(), "CreateCaseEvent", mock.Anything, mock.Anything, mock.Anything)
+			repo.AssertExpectations(s.T())
+			security.AssertExpectations(s.T())
+			inboxRepo.AssertExpectations(s.T())
+			factory.AssertExpectations(s.T())
+		})
+	}
 }
+func TestCaseEntityMutationSuite(t *testing.T) { suite.Run(t, new(CaseEntityMutationSuite)) }
