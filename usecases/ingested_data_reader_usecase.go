@@ -201,6 +201,9 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 	orgId uuid.UUID,
 	values []models.PivotDataWithCount,
 ) ([]models.PivotObject, error) {
+	if err := usecase.dataModelUsecase.enforceSecurity.ReadDataModel(); err != nil {
+		return nil, err
+	}
 	return usecase.readPivotObjectsFromValues(ctx, orgId, values, true)
 }
 
@@ -211,14 +214,10 @@ func (usecase IngestedDataReaderUsecase) readPivotObjectsFromValues(ctx context.
 	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 
-	var dataModel models.DataModel
-	var err error
-	options := models.DataModelReadOptions{IncludeUnicityConstraints: true}
-	if includeDetails {
-		dataModel, err = usecase.dataModelUsecase.GetDataModel(ctx, orgId, options, true)
-	} else {
-		dataModel, err = usecase.dataModelUsecase.getDataModelWithExec(ctx, exec, orgId, options, true)
-	}
+	// Authorization is enforced by the caller: data model access for the public
+	// pivot reader, or case access when resolving the case's entities.
+	dataModel, err := usecase.dataModelUsecase.getDataModelWithExec(ctx, exec, orgId,
+		models.DataModelReadOptions{IncludeUnicityConstraints: true}, true)
 	if err != nil {
 		return nil, err
 	}
