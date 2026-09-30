@@ -9,6 +9,9 @@ CREATE TABLE case_manual_entities (
     CONSTRAINT case_manual_entities_unique_ref UNIQUE (case_id, table_name, object_id)
 );
 
+CREATE INDEX case_manual_entities_case_idx
+    ON case_manual_entities (org_id, case_id);
+
 CREATE INDEX case_manual_entities_object_idx
     ON case_manual_entities (org_id, table_name, object_id, case_id);
 

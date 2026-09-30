@@ -43,6 +43,19 @@ func (r *CaseRepository) UpdateCase(ctx context.Context, exec repositories.Execu
 	return args.Error(0)
 }
 
+func (r *CaseRepository) GetMetadata(ctx context.Context, exec repositories.Executor, orgID *uuid.UUID, key models.MetadataKey) (*models.Metadata, error) {
+	args := r.Called(ctx, exec, orgID, key)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Metadata), args.Error(1)
+}
+
+func (r *CaseRepository) UpsertMetadata(ctx context.Context, exec repositories.Executor, metadata models.Metadata) error {
+	args := r.Called(ctx, exec, metadata)
+	return args.Error(0)
+}
+
 func (r *CaseRepository) SnoozeCase(ctx context.Context, exec repositories.Executor, snoozeRequest models.CaseSnoozeRequest) error {
 	args := r.Called(ctx, exec, snoozeRequest)
 	return args.Error(0)
