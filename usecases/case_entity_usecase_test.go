@@ -13,19 +13,24 @@ import (
 
 type caseEntityModelStub struct {
 	ingestedDataReaderDataModelUsecase
-	model models.DataModel
+	model       models.DataModel
+	uniqueError error
 }
 
-func (s caseEntityModelStub) GetDataModel(context.Context, uuid.UUID, models.DataModelReadOptions, bool) (models.DataModel, error) {
+func (s caseEntityModelStub) GetDataModel(_ context.Context, _ uuid.UUID, options models.DataModelReadOptions, _ bool) (models.DataModel, error) {
+	if options.IncludeUnicityConstraints && s.uniqueError != nil {
+		return models.DataModel{}, s.uniqueError
+	}
 	return s.model, nil
 }
 
 type caseEntityExecutorStub struct {
 	executor_factory.ExecutorFactory
+	connectionError error
 }
 
 func (s caseEntityExecutorStub) NewClientDbExecutor(context.Context, uuid.UUID) (repositories.Executor, error) {
-	return nil, nil
+	return nil, s.connectionError
 }
 
 type caseEntityObjectsStub struct {

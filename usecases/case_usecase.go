@@ -140,6 +140,7 @@ type webhookEventsUsecase interface {
 }
 
 type caseUsecaseIngestedDataReader interface {
+	ReadCaseDecisionEntityRefs(context.Context, uuid.UUID, []models.PivotDataWithCount) ([]models.CaseEntityRef, error)
 	RequireActiveCaseEntity(context.Context, uuid.UUID, models.CaseEntityRef) error
 	ReadCaseEntityObjects(context.Context, uuid.UUID, []models.CaseEntityRef) (map[models.CaseEntityRef]models.DataModelObject, error)
 	ReadPivotObjectsFromValues(
@@ -441,11 +442,6 @@ func (usecase *CaseUseCase) CreateCase(
 ) (models.Case, error) {
 	if err := validateCaseEntityRefs(createCaseAttributes.Entities, false); err != nil {
 		return models.Case{}, err
-	}
-	for _, ref := range createCaseAttributes.Entities {
-		if err := usecase.ingestedDataReader.RequireActiveCaseEntity(ctx, createCaseAttributes.OrganizationId, ref); err != nil {
-			return models.Case{}, err
-		}
 	}
 	if err := usecase.validateDecisions(ctx, tx, createCaseAttributes.OrganizationId,
 		createCaseAttributes.DecisionIds); err != nil {

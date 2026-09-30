@@ -34,6 +34,7 @@ type APICaseWithDetails struct {
 	APICase
 	Decisions            []Decision               `json:"decisions"`
 	ContinuousScreenings []ContinuousScreeningDto `json:"continuous_screenings"`
+	Entities             []CaseEntityDto          `json:"entities"`
 }
 
 func AdaptCaseDto(c models.Case) APICase {
@@ -79,7 +80,8 @@ func AdaptCaseListPage(casesPage models.CaseListPage) CastListPage {
 
 func AdaptCaseWithDetailsDto(c models.Case) APICaseWithDetails {
 	return APICaseWithDetails{
-		APICase: AdaptCaseDto(c),
+		APICase:  AdaptCaseDto(c),
+		Entities: adaptCaseEntities(c.Entities),
 		Decisions: pure_utils.Map(c.Decisions, func(d models.Decision) Decision {
 			return NewDecisionDto(d, nil)
 		}),
@@ -88,9 +90,10 @@ func AdaptCaseWithDetailsDto(c models.Case) APICaseWithDetails {
 }
 
 type CreateCaseBody struct {
-	DecisionIds []string  `json:"decision_ids"`
-	InboxId     uuid.UUID `json:"inbox_id" binding:"required"`
-	Name        string    `json:"name" binding:"required"`
+	Entities    []CaseEntityRefBody `json:"entities"`
+	DecisionIds []string            `json:"decision_ids"`
+	InboxId     uuid.UUID           `json:"inbox_id" binding:"required"`
+	Name        string              `json:"name" binding:"required"`
 }
 
 type UpdateCaseBody struct {

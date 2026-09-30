@@ -59,6 +59,11 @@ func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repos
 		if link == nil {
 			continue
 		}
+		if add {
+			if err := usecase.ingestedDataReader.RequireActiveCaseEntity(ctx, orgId, ref); err != nil {
+				return fmt.Errorf("cannot add entity %s/%s: %w", ref.TableName, ref.ObjectId, err)
+			}
+		}
 		changed = true
 		eventType := models.CaseEntityAdded
 		capture := caseEntitySnapshot(ref)
@@ -107,13 +112,6 @@ func (usecase *CaseUseCase) updateCaseEntities(ctx context.Context, userId, case
 		}
 		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 			return models.Case{}, err
-		}
-		if add {
-			for _, ref := range refs {
-				if err := usecase.ingestedDataReader.RequireActiveCaseEntity(ctx, c.OrganizationId, ref); err != nil {
-					return models.Case{}, fmt.Errorf("cannot add entity %s/%s: %w", ref.TableName, ref.ObjectId, err)
-				}
-			}
 		}
 		if err := usecase.applyCaseEntityChanges(ctx, tx, c.OrganizationId, caseId, userId, refs, add); err != nil {
 			return models.Case{}, err

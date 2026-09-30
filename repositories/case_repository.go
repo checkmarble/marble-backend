@@ -741,8 +741,11 @@ func (repo *MarbleDbRepository) GetCasesRelatedToObject(ctx context.Context, exe
 		%s
 		select %s
 		from cases c
-		inner join decisions on c.id = decisions.case_id
-		order by c.created_at desc
+		where c.org_id = $1 and (
+   exists (select 1 from decisions where decisions.case_id = c.id)
+   or exists (select 1 from case_manual_entities m where m.org_id = $1 and m.case_id = c.id and m.table_name = $2 and m.object_id = $3)
+  )
+		order by c.created_at desc, c.id desc
 		limit %d
 	`, casesRelatedToObjectCTE, strings.Join(dbmodels.SelectCaseColumn, ","), 200)
 

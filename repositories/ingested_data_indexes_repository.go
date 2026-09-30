@@ -138,7 +138,7 @@ func (repo *ClientDbRepository) listAllPgIndexes(
 `
 	rows, err := exec.Query(ctx, sql, exec.DatabaseSchema().Schema)
 	if err != nil {
-		return nil, errors.Wrap(err, "error while querying DB to read indexes")
+		return nil, ClientDatabaseError{Err: errors.Wrap(err, "error while querying DB to read indexes")}
 	}
 	pgIndexRows, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (pg_indexes.PGIndex, error) {
 		var index pg_indexes.PGIndex
@@ -146,13 +146,13 @@ func (repo *ClientDbRepository) listAllPgIndexes(
 		return index, err
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "error while collecting rows for indexes")
+		return nil, ClientDatabaseError{Err: errors.Wrap(err, "error while collecting rows for indexes")}
 	}
 
 	// Now read indexes that are currently being created
 	rows, err = exec.Query(ctx, "SELECT index_relid FROM pg_stat_progress_create_index")
 	if err != nil {
-		return nil, errors.Wrap(err, "error while querying DB to read indexes in creation")
+		return nil, ClientDatabaseError{Err: errors.Wrap(err, "error while querying DB to read indexes in creation")}
 	}
 	creationInProgressIdxOids, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (uint32, error) {
 		var indexRelid uint32
@@ -160,7 +160,7 @@ func (repo *ClientDbRepository) listAllPgIndexes(
 		return indexRelid, err
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "error while collecting rows for indexes in creation")
+		return nil, ClientDatabaseError{Err: errors.Wrap(err, "error while collecting rows for indexes in creation")}
 	}
 
 	// Now update the list of indexes with their "in creation" status

@@ -121,3 +121,10 @@ func (m *IngestedDataReader) GetObjectsFromInternalId(
 	args := m.Called(ctx, exec, recordType, from, limit)
 	return args.Get(0).([]uuid.UUID), args.Get(1).([]string), args.Error(2)
 }
+
+func (m *IngestedDataReader) QueryIngestedObjectsByIds(ctx context.Context,
+	exec repositories.Executor, table models.Table, objectIds []string,
+) ([]models.DataModelObject, error) {
+	args := m.Called(ctx, exec, table, objectIds)
+	return args.Get(0).([]models.DataModelObject), args.Error(1)
+}
