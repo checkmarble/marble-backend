@@ -3,16 +3,15 @@ package dto
 import "github.com/checkmarble/marble-backend/models"
 
 type CaseEntityDto struct {
-	TableName string                    `json:"table_name"`
-	ObjectId  string                    `json:"object_id"`
-	Sources   []models.CaseEntitySource `json:"sources"`
-	Data      map[string]any            `json:"data"`
+	TableName string         `json:"table_name"`
+	ObjectId  string         `json:"object_id"`
+	Data      map[string]any `json:"data"`
 }
 
 func adaptCaseEntities(entities []models.CaseEntity) []CaseEntityDto {
 	result := make([]CaseEntityDto, 0, len(entities))
 	for _, entity := range entities {
-		result = append(result, CaseEntityDto{TableName: entity.TableName, ObjectId: entity.ObjectId, Sources: entity.Sources, Data: adaptClientObjectData(entity.Data)})
+		result = append(result, CaseEntityDto{TableName: entity.TableName, ObjectId: entity.ObjectId, Data: adaptClientObjectData(entity.Data)})
 	}
 	return result
 }

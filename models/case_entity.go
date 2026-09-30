@@ -14,15 +14,7 @@ type CaseManualEntity struct {
 	CaseEntityRef
 }
 
-type CaseEntitySource string
-
-const (
-	CaseEntitySourceManual   CaseEntitySource = "manual"
-	CaseEntitySourceDecision CaseEntitySource = "decision"
-)
-
 type CaseEntity struct {
 	CaseEntityRef
-	Sources []CaseEntitySource
-	Data    map[string]any
+	Data map[string]any
 }

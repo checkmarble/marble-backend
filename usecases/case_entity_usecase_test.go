@@ -22,7 +22,7 @@ type CaseEntityReaderSuite struct {
 	objects  *mocks.IngestedDataReader
 	indexes  *mocks.ClientDbIndexEditor
 	exec     *mocks.Executor
-	reader   IngestedDataReaderUsecase
+	reader   caseEntityReader
 }
 
 func (s *CaseEntityReaderSuite) SetupTest() {
@@ -35,7 +35,7 @@ func (s *CaseEntityReaderSuite) SetupTest() {
 	s.indexes = new(mocks.ClientDbIndexEditor)
 	s.exec = new(mocks.Executor)
 	dm := usecase{dataModelRepository: s.model, enforceSecurity: s.security, executorFactory: s.factory, clientDbIndexEditor: s.indexes}
-	s.reader = IngestedDataReaderUsecase{repository: s.model, dataModelUsecase: dm, clientDbRepository: s.objects, executorFactory: s.factory}
+	s.reader = caseEntityReader{dataModelUsecase: dm, clientDbRepository: s.objects, executorFactory: s.factory}
 }
 func (s *CaseEntityReaderSuite) TearDownTest() {
 	s.model.AssertExpectations(s.T())
@@ -81,6 +81,41 @@ func (s *CaseEntityReaderSuite) TestEligibility() {
 		})
 	}
 }
+func (s *CaseEntityReaderSuite) TestManualLinksProjection() {
+	s.Run("empty links", func() {
+		uc := CaseUseCase{caseEntityReader: s.reader}
+
+		entities, err := uc.readCaseEntities(s.ctx, s.org, nil)
+
+		s.NoError(err)
+		s.NotNil(entities)
+		s.Empty(entities)
+		s.factory.AssertNotCalled(s.T(), "NewExecutor")
+	})
+	s.Run("customer data and missing historical object", func() {
+		table := models.Table{Name: "customers"}
+		known := models.CaseEntityRef{TableName: table.Name, ObjectId: "c-123"}
+		missing := models.CaseEntityRef{TableName: table.Name, ObjectId: "c-456"}
+		s.expectModel(models.DataModel{Tables: map[string]models.Table{table.Name: table}})
+		s.factory.On("NewClientDbExecutor", s.ctx, s.org).Return(s.exec, nil).Once()
+		ids := mock.MatchedBy(func(ids []string) bool {
+			return len(ids) == 2 && ((ids[0] == known.ObjectId && ids[1] == missing.ObjectId) || (ids[1] == known.ObjectId && ids[0] == missing.ObjectId))
+		})
+		s.objects.On("QueryIngestedObjectsByIds", s.ctx, s.exec, table, ids, []string(nil)).Return([]models.DataModelObject{{Data: map[string]any{"object_id": known.ObjectId, "name": "Alice"}}}, nil).Once()
+		uc := CaseUseCase{caseEntityReader: s.reader}
+
+		entities, err := uc.readCaseEntities(s.ctx, s.org, []models.CaseManualEntity{{CaseEntityRef: missing}, {CaseEntityRef: known}})
+
+		s.NoError(err)
+		s.Require().Len(entities, 2)
+		s.Equal(known, entities[0].CaseEntityRef)
+		s.Equal("Alice", entities[0].Data["name"])
+		s.Equal(missing, entities[1].CaseEntityRef)
+		s.Nil(entities[1].Data)
+		s.model.AssertNotCalled(s.T(), "ListPivots", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+}
+
 func TestCaseEntityReaderSuite(t *testing.T) { suite.Run(t, new(CaseEntityReaderSuite)) }
 
 type CaseEntityMutationSuite struct{ suite.Suite }

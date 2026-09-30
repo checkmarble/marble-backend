@@ -9,12 +9,11 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 )
 
 type ingestedDataReaderClientDbRepository interface {
-	QueryIngestedObjectsByIds(context.Context, repositories.Executor, models.Table, []string, ...string) ([]models.DataModelObject, error)
 	ListIngestedObjects(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -36,79 +35,6 @@ type ingestedDataReaderClientDbRepository interface {
 		orgId uuid.UUID) ([]models.FieldStatistics, error)
 }
 
-func (usecase IngestedDataReaderUsecase) RequireActiveCaseEntity(ctx context.Context, orgId uuid.UUID, ref models.CaseEntityRef) error {
-	dataModel, err := usecase.dataModelUsecase.getDataModelWithExec(ctx, usecase.executorFactory.NewExecutor(), orgId, models.DataModelReadOptions{}, true)
-	if err != nil {
-		return err
-	}
-	table, ok := dataModel.Tables[ref.TableName]
-	if !ok || !table.SemanticType.IsParty() {
-		return errors.Wrapf(models.UnprocessableEntityError, "table %q cannot be linked to a case", ref.TableName)
-	}
-	exec, err := usecase.executorFactory.NewClientDbExecutor(ctx, orgId)
-	if err != nil {
-		return err
-	}
-	objects, err := usecase.clientDbRepository.QueryIngestedObjectByUniqueField(ctx, exec, table, ref.ObjectId, "object_id")
-	if err != nil {
-		return err
-	}
-	if len(objects) != 1 {
-		return errors.Wrapf(models.UnprocessableEntityError, "expected one active object for %s/%s, got %d", ref.TableName, ref.ObjectId, len(objects))
-	}
-	return nil
-}
-
-// ReadCaseEntityObjects hydrates known references in one ClientDB query per table.
-// Missing tables and inactive rows are historical references and are simply omitted.
-func (usecase IngestedDataReaderUsecase) ReadCaseEntityObjects(ctx context.Context, orgId uuid.UUID, refs []models.CaseEntityRef) (map[models.CaseEntityRef]models.DataModelObject, error) {
-	result := make(map[models.CaseEntityRef]models.DataModelObject)
-	if len(refs) == 0 {
-		return result, nil
-	}
-	dataModel, err := usecase.dataModelUsecase.getDataModelWithExec(ctx, usecase.executorFactory.NewExecutor(), orgId, models.DataModelReadOptions{}, true)
-	if err != nil {
-		return nil, err
-	}
-	grouped := make(map[string]map[string]struct{})
-	for _, ref := range refs {
-		if _, ok := dataModel.Tables[ref.TableName]; !ok {
-			continue
-		}
-		if grouped[ref.TableName] == nil {
-			grouped[ref.TableName] = make(map[string]struct{})
-		}
-		grouped[ref.TableName][ref.ObjectId] = struct{}{}
-	}
-	if len(grouped) == 0 {
-		return result, nil
-	}
-	exec, err := usecase.executorFactory.NewClientDbExecutor(ctx, orgId)
-	if err != nil {
-		return nil, err
-	}
-	for tableName, ids := range grouped {
-		objectIds := make([]string, 0, len(ids))
-		for id := range ids {
-			objectIds = append(objectIds, id)
-		}
-		objects, err := usecase.clientDbRepository.QueryIngestedObjectsByIds(ctx, exec, dataModel.Tables[tableName], objectIds)
-		if err != nil {
-			return nil, err
-		}
-		for _, object := range objects {
-			id, ok := object.Data["object_id"].(string)
-			if !ok {
-				continue
-			}
-			if _, wanted := ids[id]; wanted {
-				result[models.CaseEntityRef{TableName: tableName, ObjectId: id}] = object
-			}
-		}
-	}
-	return result, nil
-}
-
 type ingestedDataReaderRepository interface {
 	ListPivots(
 		ctx context.Context,
@@ -125,18 +51,23 @@ type ingestedDataReaderRepository interface {
 	) ([]models.EntityAnnotation, error)
 }
 
+type ingestedDataReaderDataModelUsecase interface {
+	GetDataModel(ctx context.Context, organizationID uuid.UUID, options models.DataModelReadOptions,
+		useCache bool) (models.DataModel, error)
+}
+
 type IngestedDataReaderUsecase struct {
 	clientDbRepository ingestedDataReaderClientDbRepository
 	repository         ingestedDataReaderRepository
 	executorFactory    executor_factory.ExecutorFactory
-	dataModelUsecase   usecase
+	dataModelUsecase   ingestedDataReaderDataModelUsecase
 }
 
 func NewIngestedDataReaderUsecase(
 	clientDbRepository ingestedDataReaderClientDbRepository,
 	repository ingestedDataReaderRepository,
 	executorFactory executor_factory.ExecutorFactory,
-	dataModelUsecase usecase,
+	dataModelUsecase ingestedDataReaderDataModelUsecase,
 ) IngestedDataReaderUsecase {
 	return IngestedDataReaderUsecase{
 		clientDbRepository: clientDbRepository,
@@ -201,23 +132,12 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 	orgId uuid.UUID,
 	values []models.PivotDataWithCount,
 ) ([]models.PivotObject, error) {
-	if err := usecase.dataModelUsecase.enforceSecurity.ReadDataModel(); err != nil {
-		return nil, err
-	}
-	return usecase.readPivotObjectsFromValues(ctx, orgId, values, true)
-}
-
-func (usecase IngestedDataReaderUsecase) readPivotObjectsFromValues(ctx context.Context, orgId uuid.UUID, values []models.PivotDataWithCount, includeDetails bool) ([]models.PivotObject, error) {
-	if !includeDetails && len(values) == 0 {
-		return []models.PivotObject{}, nil
-	}
 	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 
-	// Authorization is enforced by the caller: data model access for the public
-	// pivot reader, or case access when resolving the case's entities.
-	dataModel, err := usecase.dataModelUsecase.getDataModelWithExec(ctx, exec, orgId,
-		models.DataModelReadOptions{IncludeUnicityConstraints: true}, true)
+	dataModel, err := usecase.dataModelUsecase.GetDataModel(ctx, orgId, models.DataModelReadOptions{
+		IncludeUnicityConstraints: true,
+	}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -230,21 +150,6 @@ func (usecase IngestedDataReaderUsecase) readPivotObjectsFromValues(ctx context.
 	}
 	pivots := make([]models.Pivot, 0, len(pivotsMeta))
 	for _, pivot := range pivotsMeta {
-		if pivot.FieldId == nil && len(pivot.PathLinkIds) == 0 {
-			continue
-		}
-		if !includeDetails {
-			valid := true
-			for _, id := range pivot.PathLinkIds {
-				if _, ok := dataModel.AllLinksAsMap()[id]; !ok {
-					valid = false
-					break
-				}
-			}
-			if !valid {
-				continue
-			}
-		}
 		pivots = append(pivots, pivot.Enrich(dataModel))
 	}
 
@@ -257,11 +162,8 @@ func (usecase IngestedDataReaderUsecase) readPivotObjectsFromValues(ctx context.
 	for _, pivot := range pivots {
 		var t models.PivotType
 		pivotField := dataModel.AllFieldsAsMap()[pivot.FieldId]
-		if !includeDetails && (pivot.PivotTable == "" || pivotField.Name == "" || dataModel.AllTablesAsMap()[pivot.PivotTableId].Name == "") {
-			continue
-		}
 		switch {
-		case len(pivot.PathLinks) > 0 || pivotField.UnicityConstraint == models.ActiveUniqueConstraint || (!includeDetails && pivot.Field == "object_id"):
+		case len(pivot.PathLinks) > 0 || pivotField.UnicityConstraint == models.ActiveUniqueConstraint:
 			t = models.PivotTypeObject
 		default:
 			t = models.PivotTypeField
@@ -271,7 +173,7 @@ func (usecase IngestedDataReaderUsecase) readPivotObjectsFromValues(ctx context.
 		switch {
 		case pivot.Field != "":
 			fieldName = pivot.Field
-		case len(pivot.PathLinkIds) > 0:
+		default:
 			lastLink := dataModel.AllLinksAsMap()[pivot.PathLinkIds[len(pivot.PathLinkIds)-1]]
 			lastField := dataModel.AllFieldsAsMap()[lastLink.ParentFieldId]
 			fieldName = lastField.Name
@@ -334,19 +236,8 @@ func (usecase IngestedDataReaderUsecase) readPivotObjectsFromValues(ctx context.
 		// Best effort: a pivot object that cannot be enriched (e.g. its pivot definition
 		// references data model elements that no longer exist) is still returned with the
 		// bare pivot value, and must not fail the whole batch.
-		var enrichedPivotObject models.PivotObject
-		var err error
-		if includeDetails {
-			enrichedPivotObject, err = usecase.enrichPivotObjectWithData(ctx, pivotObject, orgId, dataModel)
-		} else if pivotObject.PivotFieldName == "object_id" {
-			enrichedPivotObject = pivotObject
-		} else {
-			enrichedPivotObject, err = usecase.readPivotObjectData(ctx, pivotObject, orgId, dataModel, true)
-		}
+		enrichedPivotObject, err := usecase.enrichPivotObjectWithData(ctx, pivotObject, orgId, dataModel)
 		if err != nil {
-			if !includeDetails {
-				return nil, err
-			}
 			logger.WarnContext(ctx,
 				"failed to read data for pivot object in ReadPivotObjectsFromValues, returning it without enrichment",
 				"pivotId", pivotObject.PivotId, "pivotValue", pivotObject.PivotValue, "error", err.Error())
@@ -365,7 +256,12 @@ func (usecase IngestedDataReaderUsecase) readPivotObjectsFromValues(ctx context.
 	return pivotObjectsAsSlice, nil
 }
 
-func (usecase IngestedDataReaderUsecase) readPivotObjectData(ctx context.Context, pivotObject models.PivotObject, organizationId uuid.UUID, dataModel models.DataModel, requireUniqueObject bool) (models.PivotObject, error) {
+func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
+	ctx context.Context,
+	pivotObject models.PivotObject,
+	organizationId uuid.UUID,
+	dataModel models.DataModel,
+) (models.PivotObject, error) {
 	if pivotObject.PivotType == models.PivotTypeField {
 		return pivotObject, nil
 	}
@@ -386,9 +282,6 @@ func (usecase IngestedDataReaderUsecase) readPivotObjectData(ctx context.Context
 		}
 		return pivotObject, nil
 	}
-	if requireUniqueObject && pivotObject.PivotFieldName != "object_id" && len(objectDataSlice) != 1 {
-		return pivotObject, nil
-	}
 	objectData := objectDataSlice[0]
 
 	pivotObject.PivotObjectData.Data = objectData.Data
@@ -400,24 +293,6 @@ func (usecase IngestedDataReaderUsecase) readPivotObjectData(ctx context.Context
 		if objectId, ok := objectData.Data["object_id"].(string); ok {
 			pivotObject.PivotObjectId = objectId
 		}
-	}
-
-	return pivotObject, nil
-}
-
-func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
-	ctx context.Context,
-	pivotObject models.PivotObject,
-	organizationId uuid.UUID,
-	dataModel models.DataModel,
-) (models.PivotObject, error) {
-	var err error
-	pivotObject, err = usecase.readPivotObjectData(ctx, pivotObject, organizationId, dataModel, false)
-	if err != nil {
-		return models.PivotObject{}, err
-	}
-	if !pivotObject.IsIngested {
-		return pivotObject, nil
 	}
 
 	// Annotations don't depend on the existence of the pivot object in IngestedData, so we can get them first
