@@ -56,7 +56,7 @@ func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repos
 			continue
 		}
 		if add {
-			if err := usecase.ingestedDataReader.RequireActiveCaseEntity(ctx, orgId, ref); err != nil {
+			if err := usecase.caseEntityReader.RequireActiveCaseEntity(ctx, orgId, ref); err != nil {
 				return errors.Wrapf(err, "cannot add entity %s/%s", ref.TableName, ref.ObjectId)
 			}
 		}

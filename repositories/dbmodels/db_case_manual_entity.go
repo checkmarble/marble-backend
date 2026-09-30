@@ -14,6 +14,8 @@ type DBCaseManualEntity struct {
 	ObjectId  string    `db:"object_id"`
 }
 
+const TABLE_CASE_MANUAL_ENTITIES = "case_manual_entities"
+
 var CaseManualEntityColumns = utils.ColumnList[DBCaseManualEntity]()
 
 func AdaptCaseManualEntity(db DBCaseManualEntity) (models.CaseManualEntity, error) {

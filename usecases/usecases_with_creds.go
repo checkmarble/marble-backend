@@ -507,6 +507,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		webhookEventsUsecase:    usecases.NewWebhookEventsUsecase(),
 		screeningRepository:     usecases.Repositories.MarbleDbRepository,
 		ingestedDataReader:      usecases.NewIngestedDataReaderUsecase(),
+		caseEntityReader:        usecases.NewCaseEntityReader(),
 		taskQueueRepository:     usecases.Repositories.TaskQueueRepository,
 		featureAccessReader:     usecases.NewFeatureAccessReader(),
 		publicApiAdapterUsecase: usecases.NewPublicApiAdapterUsecase(),
@@ -768,6 +769,14 @@ func (usecases UsecasesWithCreds) NewAnalyticsMergeWorker() *worker_jobs.Analyti
 		usecases.analyticsConfig,
 		usecases.Repositories.BlobRepository,
 	)
+}
+
+func (usecases UsecasesWithCreds) NewCaseEntityReader() caseEntityReader {
+	return caseEntityReader{
+		clientDbRepository: usecases.Repositories.IngestedDataReadRepository,
+		executorFactory:    usecases.NewExecutorFactory(),
+		dataModelUsecase:   usecases.NewDataModelUseCase(),
+	}
 }
 
 func (usecases UsecasesWithCreds) NewIngestedDataReaderUsecase() IngestedDataReaderUsecase {

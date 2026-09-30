@@ -140,9 +140,6 @@ type webhookEventsUsecase interface {
 }
 
 type caseUsecaseIngestedDataReader interface {
-	ReadCaseDecisionEntityRefs(context.Context, uuid.UUID, []models.PivotDataWithCount) ([]models.CaseEntityRef, error)
-	RequireActiveCaseEntity(context.Context, uuid.UUID, models.CaseEntityRef) error
-	ReadCaseEntityObjects(context.Context, uuid.UUID, []models.CaseEntityRef) (map[models.CaseEntityRef]models.DataModelObject, error)
 	ReadPivotObjectsFromValues(
 		ctx context.Context,
 		organizationId uuid.UUID,
@@ -165,6 +162,7 @@ type CaseUseCase struct {
 	webhookEventsUsecase    webhookEventsUsecase
 	screeningRepository     CaseUsecaseScreeningRepository
 	ingestedDataReader      caseUsecaseIngestedDataReader
+	caseEntityReader        caseEntityReader
 	taskQueueRepository     repositories.TaskQueueRepository
 	featureAccessReader     feature_access.FeatureAccessReader
 	publicApiAdapterUsecase PublicApiAdapterUsecase
@@ -366,7 +364,7 @@ func (usecase *CaseUseCase) getInboxSlaMap(ctx context.Context, exec repositorie
 
 func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.Case, error) {
 	exec := usecase.executorFactory.NewExecutor()
-	c, err := usecase.repository.GetCaseMetadataById(ctx, exec, caseId)
+	c, err := usecase.getCaseWithDetails(ctx, exec, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -375,11 +373,11 @@ func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.
 	if err != nil {
 		return models.Case{}, err
 	}
-	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 		return models.Case{}, err
 	}
 
-	return usecase.getCaseWithDetails(ctx, exec, caseId)
+	return c, nil
 }
 
 func (usecase *CaseUseCase) GetEntityRelatedCases(ctx context.Context, objectType, objectId string) ([]models.Case, error) {
@@ -1531,11 +1529,7 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 	if err != nil {
 		return models.Case{}, err
 	}
-	values, err := usecase.repository.DecisionPivotValuesByCase(ctx, exec, caseId)
-	if err != nil {
-		return models.Case{}, err
-	}
-	c.Entities, err = usecase.assembleCaseEntities(ctx, c.OrganizationId, manual, values)
+	c.Entities, err = usecase.readCaseEntities(ctx, c.OrganizationId, manual)
 	if err != nil {
 		return models.Case{}, err
 	}
