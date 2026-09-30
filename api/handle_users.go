@@ -39,6 +39,20 @@ func handleListUsers(uc usecases.Usecases) func(c *gin.Context) {
 		withTfa := c.Query("with_tfa") == "true"
 
 		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
+		if tenantAccess := c.Query("tenant_access"); tenantAccess != "" {
+			if organizationId == nil {
+				c.JSON(http.StatusBadRequest, dto.APIErrorResponse{Message: "organization_id is required for tenant_access"})
+				return
+			}
+			users, err := usecase.ListTenantUsers(ctx, *organizationId, tenantAccess)
+			if presentError(ctx, c, err) {
+				return
+			}
+			c.JSON(http.StatusOK, dto.TenantUsersResponse{
+				Users: pure_utils.Map(users, dto.AdaptTenantUserDto),
+			})
+			return
+		}
 		users, err := usecase.ListUsers(ctx, organizationId, withTfa)
 		if presentError(ctx, c, err) {
 			return
@@ -46,6 +60,66 @@ func handleListUsers(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"users": pure_utils.Map(users, dto.AdaptUserDto),
 		})
+	}
+}
+
+func handlePutOrganizationGrant(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		tenantID, err := uuid.Parse(c.Param("tenant_id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{Message: "invalid tenant_id format"})
+			return
+		}
+		userID := c.Param("user_id")
+		if _, err := uuid.Parse(userID); err != nil {
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{Message: "invalid user_id format"})
+			return
+		}
+		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
+		if err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+		var data dto.ReplaceOrganizationGrant
+		if err := c.ShouldBindJSON(&data); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		role := models.RoleFromString(data.Role)
+		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
+		if presentError(ctx, c, usecase.ReplaceOrganizationGrant(ctx, userID, tenantID, organizationID, role)) {
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func handleDeleteOrganizationGrant(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		tenantID, err := uuid.Parse(c.Param("tenant_id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{Message: "invalid tenant_id format"})
+			return
+		}
+		userID := c.Param("user_id")
+		if _, err := uuid.Parse(userID); err != nil {
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{Message: "invalid user_id format"})
+			return
+		}
+		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
+		if err != nil {
+			presentError(ctx, c, err)
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
+		if presentError(ctx, c, usecase.RevokeOrganizationGrant(ctx, userID, tenantID, organizationID)) {
+			return
+		}
+		c.Status(http.StatusNoContent)
 	}
 }
 
