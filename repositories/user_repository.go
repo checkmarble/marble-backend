@@ -174,7 +174,7 @@ func (repo *MarbleDbRepository) DeleteUser(ctx context.Context, exec Executor, u
 	}
 	if err := ExecBuilder(ctx, exec,
 		NewQueryBuilder().
-			Update("grants").
+			Update(dbmodels.TABLE_GRANTS).
 			Set("revoked_at", squirrel.Expr("NOW()")).
 			Where(squirrel.Eq{
 				"principal_type": "user",

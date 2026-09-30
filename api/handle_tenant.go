@@ -3,17 +3,14 @@ package api
 import (
 	"net/http"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
-
-type tenantDto struct {
-	Id   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
-}
 
 func handleListTenants(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -22,11 +19,7 @@ func handleListTenants(uc usecases.Usecases) gin.HandlerFunc {
 		if presentError(ctx, c, err) {
 			return
 		}
-		out := make([]tenantDto, len(tenants))
-		for i, tenant := range tenants {
-			out[i] = tenantDto{Id: tenant.Id, Name: tenant.Name}
-		}
-		c.JSON(http.StatusOK, out)
+		c.JSON(http.StatusOK, pure_utils.Map(tenants, dto.AdaptTenant))
 	}
 }
 
