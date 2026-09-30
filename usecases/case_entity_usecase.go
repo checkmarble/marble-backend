@@ -3,7 +3,6 @@ package usecases
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -31,10 +30,7 @@ func validateCaseEntityRefs(refs []models.CaseEntityRef, requireNonEmpty bool) e
 }
 
 func caseEntitySnapshot(ref models.CaseEntityRef) string {
-	value, _ := json.Marshal(struct {
-		TableName string `json:"table_name"`
-		ObjectId  string `json:"object_id"`
-	}{ref.TableName, ref.ObjectId})
+	value, _ := json.Marshal(ref)
 	return string(value)
 }
 
@@ -61,20 +57,24 @@ func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repos
 		}
 		if add {
 			if err := usecase.ingestedDataReader.RequireActiveCaseEntity(ctx, orgId, ref); err != nil {
-				return fmt.Errorf("cannot add entity %s/%s: %w", ref.TableName, ref.ObjectId, err)
+				return errors.Wrapf(err, "cannot add entity %s/%s", ref.TableName, ref.ObjectId)
 			}
 		}
 		changed = true
 		eventType := models.CaseEntityAdded
+		if !add {
+			eventType = models.CaseEntityRemoved
+		}
 		capture := caseEntitySnapshot(ref)
-		event := models.CreateCaseEventAttributes{OrgId: orgId, CaseId: caseId, UserId: actor,
-			EventType: eventType, ResourceId: &link.Id}
+		event := models.CreateCaseEventAttributes{
+			OrgId: orgId, CaseId: caseId, UserId: actor,
+			EventType: eventType, ResourceId: &link.Id,
+		}
 		resourceType := models.CaseManualEntityResourceType
 		event.ResourceType = &resourceType
 		if add {
 			event.NewValue = &capture
 		} else {
-			event.EventType = models.CaseEntityRemoved
 			event.PreviousValue = &capture
 		}
 		if _, err := usecase.repository.CreateCaseEvent(ctx, tx, event); err != nil {
@@ -102,7 +102,7 @@ func (usecase *CaseUseCase) updateCaseEntities(ctx context.Context, userId, case
 		return models.Case{}, err
 	}
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Transaction) (models.Case, error) {
-		c, err := usecase.repository.GetCaseById(ctx, tx, caseId)
+		c, err := usecase.repository.GetCaseByIdForUpdate(ctx, tx, caseId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -110,8 +110,11 @@ func (usecase *CaseUseCase) updateCaseEntities(ctx context.Context, userId, case
 		if err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.enforceSecurity.ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
 			return models.Case{}, err
+		}
+		if c.Status == models.CaseClosed {
+			return models.Case{}, errors.Wrap(models.BadParameterError, "cannot update entities of a closed case")
 		}
 		if err := usecase.applyCaseEntityChanges(ctx, tx, c.OrganizationId, caseId, userId, refs, add); err != nil {
 			return models.Case{}, err

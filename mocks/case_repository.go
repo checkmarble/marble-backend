@@ -65,9 +65,9 @@ func (r *CaseRepository) DecisionPivotValuesByCase(ctx context.Context, exec rep
 
 func (r *CaseRepository) CreateCaseEvent(ctx context.Context, exec repositories.Executor,
 	createCaseEventAttributes models.CreateCaseEventAttributes,
-) error {
+) (models.CaseEvent, error) {
 	args := r.Called(ctx, exec, createCaseEventAttributes)
-	return args.Error(0)
+	return args.Get(0).(models.CaseEvent), args.Error(1)
 }
 
 func (r *CaseRepository) BatchCreateCaseEvents(ctx context.Context, exec repositories.Executor,
@@ -164,13 +164,13 @@ func (r *CaseRepository) EscalateCase(ctx context.Context, exec repositories.Exe
 	return args.Error(0)
 }
 
-func (r *CaseRepository) GetCasesWithPivotValue(ctx context.Context, exec repositories.Executor, orgId, pivotValue string) ([]models.Case, error) {
+func (r *CaseRepository) GetCasesWithPivotValue(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, pivotValue string) ([]models.Case, error) {
 	args := r.Called(ctx, exec, orgId, pivotValue)
 	return args.Get(0).([]models.Case), args.Error(1)
 }
 
 func (r *CaseRepository) GetContinuousScreeningCasesWithObjectAttr(ctx context.Context,
-	exec repositories.Executor, orgId, objectType, objectId string,
+	exec repositories.Executor, orgId uuid.UUID, objectType, objectId string,
 ) ([]models.Case, error) {
 	args := r.Called(ctx, exec, orgId, objectType, objectId)
 	return args.Get(0).([]models.Case), args.Error(1)
@@ -252,4 +252,72 @@ func (r *CaseRepository) ListContinuousScreeningMatchCommentsByMatchIds(
 func (r *CaseRepository) GetInboxById(ctx context.Context, exec repositories.Executor, inboxId uuid.UUID) (models.Inbox, error) {
 	args := r.Called(ctx, exec, inboxId)
 	return args.Get(0).(models.Inbox), args.Error(1)
+}
+
+func (r *CaseRepository) ListCaseManualEntities(arg0 context.Context, arg1 repositories.Executor, arg2 uuid.UUID, caseId string) ([]models.CaseManualEntity, error) {
+	args := r.Called(arg0, arg1, arg2, caseId)
+	var value0 []models.CaseManualEntity
+	if args.Get(0) != nil {
+		value0 = args.Get(0).([]models.CaseManualEntity)
+	}
+	return value0, args.Error(1)
+}
+
+func (r *CaseRepository) InsertCaseManualEntity(arg0 context.Context, arg1 repositories.Executor, arg2 uuid.UUID, caseId string, arg4 models.CaseEntityRef) (*models.CaseManualEntity, error) {
+	args := r.Called(arg0, arg1, arg2, caseId, arg4)
+	var value0 *models.CaseManualEntity
+	if args.Get(0) != nil {
+		value0 = args.Get(0).(*models.CaseManualEntity)
+	}
+	return value0, args.Error(1)
+}
+
+func (r *CaseRepository) DeleteCaseManualEntity(arg0 context.Context, arg1 repositories.Executor, arg2 uuid.UUID, caseId string, arg4 models.CaseEntityRef) (*models.CaseManualEntity, error) {
+	args := r.Called(arg0, arg1, arg2, caseId, arg4)
+	var value0 *models.CaseManualEntity
+	if args.Get(0) != nil {
+		value0 = args.Get(0).(*models.CaseManualEntity)
+	}
+	return value0, args.Error(1)
+}
+
+func (r *CaseRepository) GetCaseByIdForUpdate(ctx context.Context, exec repositories.Executor, caseId string) (models.CaseMetadata, error) {
+	args := r.Called(ctx, exec, caseId)
+	return args.Get(0).(models.CaseMetadata), args.Error(1)
+}
+
+func (r *CaseRepository) DecisionsById(ctx context.Context, exec repositories.Executor, decisionIds []string) ([]models.Decision, error) {
+	args := r.Called(ctx, exec, decisionIds)
+	var value0 []models.Decision
+	if args.Get(0) != nil {
+		value0 = args.Get(0).([]models.Decision)
+	}
+	return value0, args.Error(1)
+}
+
+func (r *CaseRepository) ListCaseCommentEvents(ctx context.Context, exec repositories.Executor, caseId string, paging models.PaginationAndSorting) ([]models.CaseCommentEvent, error) {
+	args := r.Called(ctx, exec, caseId, paging)
+	var value0 []models.CaseCommentEvent
+	if args.Get(0) != nil {
+		value0 = args.Get(0).([]models.CaseCommentEvent)
+	}
+	return value0, args.Error(1)
+}
+
+func (r *CaseRepository) GetContinuousScreeningCasesByEntityIdInMatches(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, entityId string) ([]models.Case, error) {
+	args := r.Called(ctx, exec, orgId, entityId)
+	var value0 []models.Case
+	if args.Get(0) != nil {
+		value0 = args.Get(0).([]models.Case)
+	}
+	return value0, args.Error(1)
+}
+
+func (r *CaseRepository) GetCasesRelatedToObject(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, objectType string, objectId string) ([]models.Case, error) {
+	args := r.Called(ctx, exec, orgId, objectType, objectId)
+	var value0 []models.Case
+	if args.Get(0) != nil {
+		value0 = args.Get(0).([]models.Case)
+	}
+	return value0, args.Error(1)
 }

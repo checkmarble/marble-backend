@@ -1,11 +1,11 @@
 -- +goose Up
 CREATE TABLE case_manual_entities (
     id uuid PRIMARY KEY,
-    org_id uuid NOT NULL,
+    org_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     case_id uuid NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
     table_name text NOT NULL,
     object_id text NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now(),
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
     CONSTRAINT case_manual_entities_unique_ref UNIQUE (case_id, table_name, object_id)
 );
 

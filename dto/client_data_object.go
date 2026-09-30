@@ -59,17 +59,7 @@ func (c ClientObjectDetail) MarshalJSON() ([]byte, error) {
 		c.Data = make(map[string]any)
 	}
 
-	for k, v := range c.Data {
-		switch v := v.(type) {
-		case *geom.Point:
-			c.Data[k] = fmt.Sprintf("%f,%f", v.Y(), v.X())
-		}
-
-		if strings.Contains(k, `"`) {
-			c.Data[strings.ReplaceAll(k, `"`, "")] = c.Data[k]
-			delete(c.Data, k)
-		}
-	}
+	c.Data = adaptClientObjectData(c.Data)
 
 	return json.Marshal(struct {
 		Metadata       ClientObjectMetadata     `json:"metadata"`
@@ -82,6 +72,20 @@ func (c ClientObjectDetail) MarshalJSON() ([]byte, error) {
 		RelatedObjects: c.RelatedObjects,
 		Annotations:    c.Annotations,
 	})
+}
+
+func adaptClientObjectData(data map[string]any) map[string]any {
+	if data == nil {
+		return nil
+	}
+	out := make(map[string]any, len(data))
+	for k, v := range data {
+		if point, ok := v.(*geom.Point); ok {
+			v = fmt.Sprintf("%f,%f", point.Y(), point.X())
+		}
+		out[strings.ReplaceAll(k, `"`, "")] = v
+	}
+	return out
 }
 
 type RelatedObject struct {

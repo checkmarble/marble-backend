@@ -188,3 +188,8 @@ func (d *DataModelRepository) RestorePivot(ctx context.Context, exec repositorie
 	args := d.Called(ctx, exec, id)
 	return args.Error(0)
 }
+
+func (d *DataModelRepository) GetEntityAnnotations(ctx context.Context, exec repositories.Executor, req models.EntityAnnotationRequest) ([]models.EntityAnnotation, error) {
+	args := d.Called(ctx, exec, req)
+	return args.Get(0).([]models.EntityAnnotation), args.Error(1)
+}

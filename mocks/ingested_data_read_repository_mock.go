@@ -123,8 +123,8 @@ func (m *IngestedDataReader) GetObjectsFromInternalId(
 }
 
 func (m *IngestedDataReader) QueryIngestedObjectsByIds(ctx context.Context,
-	exec repositories.Executor, table models.Table, objectIds []string,
+	exec repositories.Executor, table models.Table, objectIds []string, metadataFields ...string,
 ) ([]models.DataModelObject, error) {
-	args := m.Called(ctx, exec, table, objectIds)
+	args := m.Called(ctx, exec, table, objectIds, metadataFields)
 	return args.Get(0).([]models.DataModelObject), args.Error(1)
 }

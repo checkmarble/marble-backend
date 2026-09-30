@@ -2,10 +2,9 @@ package models
 
 import "github.com/google/uuid"
 
-// CaseEntityRef is the canonical identity of an ingested object within a case's organization.
 type CaseEntityRef struct {
-	TableName string
-	ObjectId  string
+	TableName string `json:"table_name"`
+	ObjectId  string `json:"object_id"`
 }
 
 type CaseManualEntity struct {
