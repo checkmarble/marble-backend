@@ -25,6 +25,7 @@ func (s *CaseEntityReaderSuite) TestManualDecisionMerge() {
 	s.Require().Len(got, 1)
 	s.Equal([]models.CaseEntitySource{models.CaseEntitySourceManual, models.CaseEntitySourceDecision}, got[0].Sources)
 	s.Equal("Alice", got[0].Data["name"])
+	s.security.AssertNotCalled(s.T(), "ReadDataModel")
 	remaining := mergeCaseEntities(nil, []models.CaseEntityRef{ref}, nil)
 	s.Equal([]models.CaseEntitySource{models.CaseEntitySourceDecision}, remaining[0].Sources)
 	s.Nil(remaining[0].Data)
@@ -40,4 +41,25 @@ func (s *CaseEntityReaderSuite) TestHydrationFailureIsStrict() {
 	uc := CaseUseCase{ingestedDataReader: s.reader}
 	_, err := uc.assembleCaseEntities(s.ctx, s.org, []models.CaseManualEntity{{CaseEntityRef: ref}}, nil)
 	s.ErrorIs(err, failure)
+}
+
+func (s *CaseEntityReaderSuite) TestPivotReaderRejectsMissingDataModelPermission() {
+	s.security.On("ReadDataModel").Return(models.ForbiddenError).Once()
+
+	_, err := s.reader.ReadPivotObjectsFromValues(s.ctx, s.org, nil)
+
+	s.ErrorIs(err, models.ForbiddenError)
+	s.factory.AssertNotCalled(s.T(), "NewExecutor")
+}
+
+func (s *CaseEntityReaderSuite) TestPivotReaderChecksDataModelPermission() {
+	s.security.On("ReadDataModel").Return(nil).Once()
+	s.expectModel(models.DataModel{})
+	s.indexes.On("ListAllUniqueIndexes", s.ctx, s.org).Return([]models.UnicityIndex{}, nil).Once()
+	s.model.On("ListPivots", s.ctx, s.exec, s.org, (*string)(nil), true, true).Return([]models.PivotMetadata{}, nil).Once()
+
+	objects, err := s.reader.ReadPivotObjectsFromValues(s.ctx, s.org, nil)
+
+	s.NoError(err)
+	s.Empty(objects)
 }
