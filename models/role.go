@@ -34,6 +34,16 @@ func GetValidUserRoles() []Role {
 	}
 }
 
+func GetValidOrganizationGrantRoles() []Role {
+	return []Role{
+		VIEWER,
+		BUILDER,
+		PUBLISHER,
+		ADMIN,
+		ANALYST,
+	}
+}
+
 func (r Role) String() string {
 	switch r {
 	case NO_ROLE:

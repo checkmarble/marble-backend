@@ -2,13 +2,13 @@ package usecases
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -57,7 +57,7 @@ func (usecase TenantUsecase) UpdateName(ctx context.Context, tenantId uuid.UUID,
 		return err
 	}
 	if strings.TrimSpace(name) == "" {
-		return fmt.Errorf("%w: tenant name cannot be empty", models.BadParameterError)
+		return errors.Wrap(models.BadParameterError, "tenant name cannot be empty")
 	}
 	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := usecase.tenantRepository.LockAndValidateUpdate(ctx, tx, tenantId); err != nil {
@@ -72,15 +72,15 @@ func (usecase TenantUsecase) Merge(ctx context.Context, input TenantMergeInput) 
 		return err
 	}
 	if input.TargetTenantId == uuid.Nil || len(input.SourceTenantIds) == 0 {
-		return fmt.Errorf("%w: target tenant and source tenants are required", models.BadParameterError)
+		return errors.Wrap(models.BadParameterError, "target tenant and source tenants are required")
 	}
 	seen := make(map[uuid.UUID]struct{}, len(input.SourceTenantIds))
 	for _, sourceId := range input.SourceTenantIds {
 		if sourceId == uuid.Nil || sourceId == input.TargetTenantId {
-			return fmt.Errorf("%w: invalid source tenant", models.BadParameterError)
+			return errors.Wrap(models.BadParameterError, "invalid source tenant")
 		}
 		if _, ok := seen[sourceId]; ok {
-			return fmt.Errorf("%w: duplicate source tenant", models.BadParameterError)
+			return errors.Wrap(models.BadParameterError, "duplicate source tenant")
 		}
 		seen[sourceId] = struct{}{}
 	}

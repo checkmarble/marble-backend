@@ -86,3 +86,62 @@ func TestUpdateUserRole(t *testing.T) {
 		})
 	}
 }
+
+func TestTenantUserAccessRequiresAdmin(t *testing.T) {
+	organizationID := uuid.New()
+	tests := []struct {
+		name    string
+		role    models.Role
+		allowed bool
+	}{
+		{name: "viewer", role: models.VIEWER},
+		{name: "admin", role: models.ADMIN, allowed: true},
+		{name: "marble admin", role: models.MARBLE_ADMIN, allowed: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			enforcer := EnforceSecurityUserImpl{
+				EnforceSecurity: mockUserEnforceSecurity{},
+				Credentials:     models.Credentials{Roles: []models.Role{tt.role}},
+			}
+
+			for _, operation := range []error{
+				enforcer.ListTenantUsers(organizationID),
+				enforcer.ManageOrganizationGrant(organizationID, models.User{}),
+			} {
+				if tt.allowed {
+					assert.NoError(t, operation)
+				} else {
+					assert.ErrorIs(t, operation, models.ForbiddenError)
+				}
+			}
+		})
+	}
+}
+func TestManageOrganizationGrantForMarbleAdmin(t *testing.T) {
+	organizationID := uuid.New()
+	target := models.User{Role: models.MARBLE_ADMIN}
+
+	for _, tt := range []struct {
+		name    string
+		role    models.Role
+		allowed bool
+	}{
+		{name: "organization admin", role: models.ADMIN},
+		{name: "marble admin", role: models.MARBLE_ADMIN, allowed: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			enforcer := EnforceSecurityUserImpl{
+				EnforceSecurity: mockUserEnforceSecurity{},
+				Credentials:     models.Credentials{Roles: []models.Role{tt.role}},
+			}
+			err := enforcer.ManageOrganizationGrant(organizationID, target)
+			if tt.allowed {
+				assert.NoError(t, err)
+				return
+			}
+			assert.ErrorIs(t, err, models.ForbiddenError)
+		})
+	}
+}

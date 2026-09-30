@@ -14,6 +14,8 @@ type EnforceSecurityUser interface {
 	UpdateUser(targetUser models.User, updateUser models.UpdateUser) error
 	DeleteUser(user models.User) error
 	ListUsers(organizationId *uuid.UUID) error
+	ListTenantUsers(organizationId uuid.UUID) error
+	ManageOrganizationGrant(organizationId uuid.UUID, targetUser models.User) error
 }
 
 type EnforceSecurityUserImpl struct {
@@ -120,5 +122,28 @@ func (e *EnforceSecurityUserImpl) ListUsers(organizationId *uuid.UUID) error {
 	return errors.Join(
 		e.Permission(models.MARBLE_USER_LIST),
 		e.ReadOrganization(*organizationId),
+	)
+}
+
+func (e *EnforceSecurityUserImpl) ListTenantUsers(organizationId uuid.UUID) error {
+	if !e.Credentials.HasRole(models.ADMIN) && !e.Credentials.HasRole(models.MARBLE_ADMIN) {
+		return errors.Wrap(models.ForbiddenError, "only admins can list tenant users")
+	}
+	return errors.Join(
+		e.Permission(models.MARBLE_USER_LIST),
+		e.ReadOrganization(organizationId),
+	)
+}
+
+func (e *EnforceSecurityUserImpl) ManageOrganizationGrant(organizationId uuid.UUID, targetUser models.User) error {
+	if targetUser.Role == models.MARBLE_ADMIN && !e.Credentials.HasRole(models.MARBLE_ADMIN) {
+		return errors.Wrap(models.ForbiddenError, "only marble admins can manage grants for marble admins")
+	}
+	if !e.Credentials.HasRole(models.ADMIN) && !e.Credentials.HasRole(models.MARBLE_ADMIN) {
+		return errors.Wrap(models.ForbiddenError, "only admins can manage organization grants")
+	}
+	return errors.Join(
+		e.Permission(models.MARBLE_USER_UPDATE),
+		e.ReadOrganization(organizationId),
 	)
 }

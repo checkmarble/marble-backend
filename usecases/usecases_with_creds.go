@@ -484,6 +484,7 @@ func (usecases *UsecasesWithCreds) NewUserUseCase() UserUseCase {
 		executorFactory:        usecases.NewExecutorFactory(),
 		transactionFactory:     usecases.NewTransactionFactory(),
 		userRepository:         usecases.Repositories.MarbleDbRepository,
+		grantRepository:        usecases.Repositories.MarbleDbRepository,
 		organizationRepository: usecases.Repositories.MarbleDbRepository,
 		firebaseAdmin:          usecases.firebaseAdmin,
 	}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -22,17 +23,11 @@ func (repo *MarbleDbRepository) ListActive(ctx context.Context, exec Executor) (
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
-	return SqlToListOfRow(ctx, exec, NewQueryBuilder().
-		Select("id", "name").
-		From("tenants").
+	return SqlToListOfModels(ctx, exec, NewQueryBuilder().
+		Select(dbmodels.TenantColumns...).
+		From(dbmodels.TABLE_TENANTS).
 		Where(squirrel.Eq{"deleted_at": nil}).
-		OrderBy("name", "id"), func(row pgx.CollectableRow) (models.Tenant, error) {
-		var tenant models.Tenant
-		if err := row.Scan(&tenant.Id, &tenant.Name); err != nil {
-			return models.Tenant{}, fmt.Errorf("scanning tenant: %w", err)
-		}
-		return tenant, nil
-	})
+		OrderBy("name", "id"), dbmodels.AdaptTenant)
 }
 
 func (repo *MarbleDbRepository) LockAndValidateMerge(ctx context.Context, exec Executor, targetId uuid.UUID, sourceIds []uuid.UUID) error {
@@ -43,7 +38,7 @@ func (repo *MarbleDbRepository) LockAndValidateMerge(ctx context.Context, exec E
 	tenantIds := append([]uuid.UUID{targetId}, sourceIds...)
 	query := NewQueryBuilder().
 		Select("id", "deleted_at IS NOT NULL").
-		From("tenants").
+		From(dbmodels.TABLE_TENANTS).
 		Where(squirrel.Eq{"id": tenantIds}).
 		OrderBy("id").
 		Suffix("FOR UPDATE")
@@ -80,7 +75,7 @@ func (repo *MarbleDbRepository) LockAndValidateUpdate(ctx context.Context, exec 
 	}
 	_, err := SqlToRow(ctx, exec, NewQueryBuilder().
 		Select("id").
-		From("tenants").
+		From(dbmodels.TABLE_TENANTS).
 		Where(squirrel.And{
 			squirrel.Eq{"id": tenantId},
 			squirrel.Eq{"deleted_at": nil},
@@ -97,7 +92,7 @@ func (repo *MarbleDbRepository) SoftDelete(ctx context.Context, exec Executor, t
 		return err
 	}
 	return ExecBuilder(ctx, exec, NewQueryBuilder().
-		Update("tenants").
+		Update(dbmodels.TABLE_TENANTS).
 		Set("deleted_at", squirrel.Expr("now()")).
 		Where(squirrel.And{
 			squirrel.Eq{"id": tenantIds},
@@ -110,7 +105,7 @@ func (repo *MarbleDbRepository) Rename(ctx context.Context, exec Executor, tenan
 		return err
 	}
 	return ExecBuilder(ctx, exec, NewQueryBuilder().
-		Update("tenants").
+		Update(dbmodels.TABLE_TENANTS).
 		Set("name", name).
 		Where(squirrel.Eq{"id": tenantId}))
 }

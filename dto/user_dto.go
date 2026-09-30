@@ -19,6 +19,37 @@ type User struct {
 	TfaEnabled     *bool      `json:"tfa_enabled,omitempty"`
 }
 
+type TenantUser struct {
+	UserId                string    `json:"user_id"`
+	Email                 string    `json:"email"`
+	OrganizationId        uuid.UUID `json:"organization_id"`
+	FirstName             string    `json:"first_name"`
+	LastName              string    `json:"last_name"`
+	Picture               string    `json:"picture"`
+	OrganizationGrantRole *string   `json:"organization_grant_role,omitempty"`
+}
+
+type TenantUsersResponse struct {
+	Users []TenantUser `json:"users"`
+}
+
+func AdaptTenantUserDto(grant models.OrganizationUserGrant) TenantUser {
+	user := grant.User
+	dto := TenantUser{
+		UserId:         string(user.UserId),
+		Email:          user.Email,
+		OrganizationId: user.OrganizationId,
+		FirstName:      user.FirstName,
+		LastName:       user.LastName,
+		Picture:        user.Picture,
+	}
+	if grant.OrganizationGrantRole != nil {
+		role := grant.OrganizationGrantRole.String()
+		dto.OrganizationGrantRole = &role
+	}
+	return dto
+}
+
 func AdaptUserDto(user models.User) User {
 	return User{
 		UserId:         string(user.UserId),
@@ -46,6 +77,10 @@ type UpdateUser struct {
 	Role      *string `json:"role"`
 	FirstName *string `json:"first_name"`
 	LastName  *string `json:"last_name"`
+}
+
+type ReplaceOrganizationGrant struct {
+	Role string `json:"role" binding:"required"`
 }
 
 func AdaptCreateUser(dto CreateUser) models.CreateUser {
