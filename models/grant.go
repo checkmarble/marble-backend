@@ -8,6 +8,11 @@ type Grant struct {
 	OrganizationId uuid.UUID
 }
 
+type OrganizationUserGrant struct {
+	User                  User
+	OrganizationGrantRole *Role
+}
+
 type OrganizationMembership struct {
 	Organization Organization
 	Roles        []Role

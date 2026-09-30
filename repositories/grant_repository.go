@@ -15,6 +15,10 @@ import (
 type GrantRepository interface {
 	EnsureTenantAdminForOrganization(ctx context.Context, exec Executor, userID string, organizationID uuid.UUID) error
 	ListOrganizationsForUser(ctx context.Context, exec Executor, userID string) ([]models.OrganizationMembership, error)
+	ListTenantUsersWithDirectOrganizationGrant(ctx context.Context, exec Executor, tenantID, organizationID uuid.UUID) ([]models.OrganizationUserGrant, error)
+	ListTenantUsersWithoutOrganizationAccess(ctx context.Context, exec Executor, tenantID, organizationID uuid.UUID) ([]models.OrganizationUserGrant, error)
+	ReplaceOrganizationGrant(ctx context.Context, tx Transaction, userID string, organizationID uuid.UUID, role models.Role) error
+	RevokeOrganizationGrant(ctx context.Context, tx Transaction, userID string, organizationID uuid.UUID) error
 	ReassignTenantGrants(ctx context.Context, tx Transaction, targetId uuid.UUID, sourceIds []uuid.UUID) error
 }
 
@@ -88,6 +92,111 @@ func (repo *MarbleDbRepository) ListOrganizationsForUser(ctx context.Context, ex
 		}
 		return membership, nil
 	})
+}
+
+func (repo *MarbleDbRepository) ListTenantUsersWithDirectOrganizationGrant(ctx context.Context, exec Executor, tenantID, organizationID uuid.UUID) ([]models.OrganizationUserGrant, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(
+			"u.id", "u.email", "u.role", "u.organization_id", "u.first_name", "u.last_name",
+			"u.deleted_at", "u.ai_assist_enabled", "u.picture", "g.role",
+		).
+		From("users u").
+		Join("organizations home_org ON home_org.id = u.organization_id").
+		Join("active_grants g ON g.principal_type = 'user' AND g.principal_id = u.id::text AND g.principal_authority = 'marble' AND g.organization_id = ?", organizationID).
+		Where(squirrel.Eq{"home_org.tenant_id": tenantID}).
+		Where("u.deleted_at IS NULL").
+		Where("home_org.deleted_at IS NULL").
+		OrderBy("u.id")
+
+	return listOrganizationUserGrants(ctx, exec, query)
+}
+
+func (repo *MarbleDbRepository) ListTenantUsersWithoutOrganizationAccess(ctx context.Context, exec Executor, tenantID, organizationID uuid.UUID) ([]models.OrganizationUserGrant, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(
+			"u.id", "u.email", "u.role", "u.organization_id", "u.first_name", "u.last_name",
+			"u.deleted_at", "u.ai_assist_enabled", "u.picture", "NULL::text",
+		).
+		From("users u").
+		Join("organizations home_org ON home_org.id = u.organization_id").
+		Where(squirrel.Eq{"home_org.tenant_id": tenantID}).
+		Where("u.deleted_at IS NULL").
+		Where("home_org.deleted_at IS NULL").
+		Where(`NOT EXISTS (
+			SELECT 1 FROM active_grants g
+			WHERE g.principal_type = 'user'
+				AND g.principal_id = u.id::text
+				AND g.principal_authority = 'marble'
+				AND (g.organization_id = ? OR g.tenant_id = ?)
+		)`, organizationID, tenantID).
+		OrderBy("u.id")
+
+	return listOrganizationUserGrants(ctx, exec, query)
+}
+
+func listOrganizationUserGrants(ctx context.Context, exec Executor, query squirrel.SelectBuilder) ([]models.OrganizationUserGrant, error) {
+	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.OrganizationUserGrant, error) {
+		var user dbmodels.DBUserResult
+		var role *string
+		if err := row.Scan(
+			&user.Id,
+			&user.Email,
+			&user.Role,
+			&user.OrganizationId,
+			&user.FirstName,
+			&user.LastName,
+			&user.DeletedAt,
+			&user.AiAssistEnabled,
+			&user.Picture,
+			&role,
+		); err != nil {
+			return models.OrganizationUserGrant{}, fmt.Errorf("scanning tenant user grant: %w", err)
+		}
+		adaptedUser, err := dbmodels.AdaptUser(user)
+		if err != nil {
+			return models.OrganizationUserGrant{}, err
+		}
+		grant := models.OrganizationUserGrant{User: adaptedUser}
+		if role != nil {
+			adaptedRole := models.RoleFromString(*role)
+			grant.OrganizationGrantRole = &adaptedRole
+		}
+		return grant, nil
+	})
+}
+
+func (repo *MarbleDbRepository) ReplaceOrganizationGrant(ctx context.Context, tx Transaction, userID string, organizationID uuid.UUID, role models.Role) error {
+	if err := repo.RevokeOrganizationGrant(ctx, tx, userID, organizationID); err != nil {
+		return err
+	}
+	return ExecBuilder(ctx, tx, NewQueryBuilder().
+		Insert(dbmodels.TABLE_GRANTS).
+		Columns("id", "principal_type", "principal_id", "principal_authority", "organization_id", "role").
+		Values(pure_utils.NewId(), "user", userID, "marble", organizationID, role.String()))
+}
+
+func (repo *MarbleDbRepository) RevokeOrganizationGrant(ctx context.Context, tx Transaction, userID string, organizationID uuid.UUID) error {
+	if err := validateMarbleDbExecutor(tx); err != nil {
+		return err
+	}
+	return ExecBuilder(ctx, tx, NewQueryBuilder().
+		Update(dbmodels.TABLE_GRANTS).
+		Set("revoked_at", squirrel.Expr("NOW()")).
+		Where(squirrel.Eq{
+			"principal_type":      "user",
+			"principal_id":        userID,
+			"principal_authority": "marble",
+			"organization_id":     organizationID,
+			"revoked_at":          nil,
+		}))
 }
 
 func (repo *MarbleDbRepository) ReassignTenantGrants(ctx context.Context, tx Transaction, targetId uuid.UUID, sourceIds []uuid.UUID) error {

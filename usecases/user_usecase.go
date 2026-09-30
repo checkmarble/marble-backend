@@ -24,6 +24,7 @@ type UserUseCase struct {
 	executorFactory        executor_factory.ExecutorFactory
 	transactionFactory     executor_factory.TransactionFactory
 	userRepository         repositories.UserRepository
+	grantRepository        repositories.GrantRepository
 	organizationRepository repositories.OrganizationRepository
 	firebaseAdmin          idp.Adminer
 }
@@ -171,6 +172,83 @@ func (usecase *UserUseCase) ListUsers(ctx context.Context, organisationId *uuid.
 	}
 
 	return users, nil
+}
+
+func (usecase *UserUseCase) ListTenantUsers(ctx context.Context, organizationID uuid.UUID, access string) ([]models.OrganizationUserGrant, error) {
+	if err := usecase.enforceUserSecurity.ListTenantUsers(organizationID); err != nil {
+		return nil, err
+	}
+	exec := usecase.executorFactory.NewExecutor()
+	organization, err := usecase.organizationRepository.GetOrganizationById(ctx, exec, organizationID)
+	if err != nil {
+		return nil, err
+	}
+
+	switch access {
+	case "direct":
+		return usecase.grantRepository.ListTenantUsersWithDirectOrganizationGrant(ctx, exec, organization.TenantId, organizationID)
+	case "missing":
+		return usecase.grantRepository.ListTenantUsersWithoutOrganizationAccess(ctx, exec, organization.TenantId, organizationID)
+	default:
+		return nil, errors.Wrap(models.BadParameterError, "invalid tenant_access")
+	}
+}
+
+func (usecase *UserUseCase) ReplaceOrganizationGrant(ctx context.Context, userID string, organizationID uuid.UUID, role models.Role) error {
+	if !slices.Contains(models.GetValidOrganizationGrantRoles(), role) {
+		return errors.Wrap(models.BadParameterError, "invalid organization grant role")
+	}
+
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		user, err := usecase.userRepository.UserById(ctx, tx, userID)
+		if err != nil {
+			return err
+		}
+		if err := usecase.enforceUserSecurity.ManageOrganizationGrant(organizationID, user); err != nil {
+			return err
+		}
+		if err := usecase.ensureUserBelongsToOrganizationTenant(ctx, tx, user, organizationID); err != nil {
+			return err
+		}
+		return usecase.grantRepository.ReplaceOrganizationGrant(ctx, tx, userID, organizationID, role)
+	})
+}
+
+func (usecase *UserUseCase) RevokeOrganizationGrant(ctx context.Context, userID string, organizationID uuid.UUID) error {
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		user, err := usecase.userRepository.UserById(ctx, tx, userID)
+		if err != nil {
+			return err
+		}
+		if err := usecase.enforceUserSecurity.ManageOrganizationGrant(organizationID, user); err != nil {
+			return err
+		}
+		if err := usecase.ensureUserBelongsToOrganizationTenant(ctx, tx, user, organizationID); err != nil {
+			return err
+		}
+		return usecase.grantRepository.RevokeOrganizationGrant(ctx, tx, userID, organizationID)
+	})
+}
+
+func (usecase *UserUseCase) ensureUserBelongsToOrganizationTenant(ctx context.Context, exec repositories.Executor, user models.User, organizationID uuid.UUID) error {
+	targetOrganization, err := usecase.organizationRepository.GetOrganizationById(ctx, exec, organizationID)
+	if err != nil {
+		return err
+	}
+	if user.Role == models.MARBLE_ADMIN {
+		return nil
+	}
+	if user.OrganizationId == uuid.Nil {
+		return errors.Wrap(models.NotFoundError, "user has no organization")
+	}
+	homeOrganization, err := usecase.organizationRepository.GetOrganizationById(ctx, exec, user.OrganizationId)
+	if err != nil {
+		return err
+	}
+	if homeOrganization.TenantId != targetOrganization.TenantId {
+		return errors.Wrap(models.NotFoundError, "user does not belong to organization tenant")
+	}
+	return nil
 }
 
 // enrichWithTfa populates the TfaEnabled field on each user from the identity
