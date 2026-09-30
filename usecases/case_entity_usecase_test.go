@@ -145,7 +145,16 @@ func (s *CaseEntityMutationSuite) TestClosedCaseAdditionAndRemoval() {
 			inboxRepo.On("ListInboxes", ctx, tx, org, []uuid.UUID(nil), false).Return([]models.Inbox{{Id: inbox}}, nil).Once()
 			security.On("ReadInbox", models.Inbox{Id: inbox}).Return(nil).Once()
 			security.On("ReadOrUpdateCase", c.GetMetadata(), []uuid.UUID{inbox}).Return(nil).Once()
-			uc := CaseUseCase{repository: repo, enforceSecurity: security, inboxReader: inboxes.InboxReader{EnforceSecurity: security, InboxRepository: inboxRepo, Credentials: models.Credentials{Role: models.API_CLIENT}}, transactionFactory: factory}
+			uc := CaseUseCase{
+				repository:      repo,
+				enforceSecurity: security,
+				inboxReader: inboxes.InboxReader{
+					EnforceSecurity: security,
+					InboxRepository: inboxRepo,
+					Credentials:     models.Credentials{Role: models.API_CLIENT},
+				},
+				transactionFactory: factory,
+			}
 
 			_, err := tt.mutate(&uc, ctx, "actor", c.Id, refs)
 

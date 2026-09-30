@@ -20,7 +20,12 @@ var CaseManualEntityColumns = utils.ColumnList[DBCaseManualEntity]()
 
 func AdaptCaseManualEntity(db DBCaseManualEntity) (models.CaseManualEntity, error) {
 	return models.CaseManualEntity{
-		Id: db.Id.String(), OrganizationId: db.OrgId, CaseId: db.CaseId.String(),
-		CaseEntityRef: models.CaseEntityRef{TableName: db.TableName, ObjectId: db.ObjectId},
+		Id:             db.Id.String(),
+		OrganizationId: db.OrgId,
+		CaseId:         db.CaseId.String(),
+		CaseEntityRef: models.CaseEntityRef{
+			TableName: db.TableName,
+			ObjectId:  db.ObjectId,
+		},
 	}, nil
 }

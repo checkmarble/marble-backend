@@ -11,15 +11,22 @@ import (
 	"github.com/google/uuid"
 )
 
-func (repo *MarbleDbRepository) ListCaseManualEntities(ctx context.Context, exec Executor, orgId uuid.UUID, caseId string) ([]models.CaseManualEntity, error) {
+func (repo *MarbleDbRepository) ListCaseManualEntities(
+	ctx context.Context, exec Executor, orgId uuid.UUID, caseId string,
+) ([]models.CaseManualEntity, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
-	query := NewQueryBuilder().Select(dbmodels.CaseManualEntityColumns...).From(dbmodels.TABLE_CASE_MANUAL_ENTITIES).Where(squirrel.Eq{"org_id": orgId, "case_id": caseId})
+	query := NewQueryBuilder().
+		Select(dbmodels.CaseManualEntityColumns...).
+		From(dbmodels.TABLE_CASE_MANUAL_ENTITIES).
+		Where(squirrel.Eq{"org_id": orgId, "case_id": caseId})
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptCaseManualEntity)
 }
 
-func (repo *MarbleDbRepository) InsertCaseManualEntity(ctx context.Context, exec Executor, orgId uuid.UUID, caseId string, ref models.CaseEntityRef) (*models.CaseManualEntity, error) {
+func (repo *MarbleDbRepository) InsertCaseManualEntity(
+	ctx context.Context, exec Executor, orgId uuid.UUID, caseId string, ref models.CaseEntityRef,
+) (*models.CaseManualEntity, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -30,10 +37,15 @@ func (repo *MarbleDbRepository) InsertCaseManualEntity(ctx context.Context, exec
 	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptCaseManualEntity)
 }
 
-func (repo *MarbleDbRepository) DeleteCaseManualEntity(ctx context.Context, exec Executor, orgId uuid.UUID, caseId string, ref models.CaseEntityRef) (*models.CaseManualEntity, error) {
+func (repo *MarbleDbRepository) DeleteCaseManualEntity(
+	ctx context.Context, exec Executor, orgId uuid.UUID, caseId string, ref models.CaseEntityRef,
+) (*models.CaseManualEntity, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
-	query := NewQueryBuilder().Delete(dbmodels.TABLE_CASE_MANUAL_ENTITIES).Where(squirrel.Eq{"org_id": orgId, "case_id": caseId, "table_name": ref.TableName, "object_id": ref.ObjectId}).Suffix("RETURNING " + strings.Join(dbmodels.CaseManualEntityColumns, ","))
+	query := NewQueryBuilder().
+		Delete(dbmodels.TABLE_CASE_MANUAL_ENTITIES).
+		Where(squirrel.Eq{"org_id": orgId, "case_id": caseId, "table_name": ref.TableName, "object_id": ref.ObjectId}).
+		Suffix("RETURNING " + strings.Join(dbmodels.CaseManualEntityColumns, ","))
 	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptCaseManualEntity)
 }
