@@ -28,6 +28,10 @@ type CaseEntityReaderSuite struct {
 	indexes  *mocks.ClientDbIndexEditor
 	exec     *mocks.Executor
 	reader   caseEntityReader
+	caseRepo *mocks.CaseRepository
+	feature  *mocks.FeatureAccessReader
+	queue    *mocks.TaskQueueRepository
+	tx       *mocks.Transaction
 }
 
 func (s *CaseEntityReaderSuite) SetupTest() {
@@ -39,6 +43,10 @@ func (s *CaseEntityReaderSuite) SetupTest() {
 	s.objects = new(mocks.IngestedDataReader)
 	s.indexes = new(mocks.ClientDbIndexEditor)
 	s.exec = new(mocks.Executor)
+	s.caseRepo = new(mocks.CaseRepository)
+	s.feature = new(mocks.FeatureAccessReader)
+	s.queue = new(mocks.TaskQueueRepository)
+	s.tx = new(mocks.Transaction)
 	dm := usecase{dataModelRepository: s.model, enforceSecurity: s.security, executorFactory: s.factory, clientDbIndexEditor: s.indexes}
 	s.reader = caseEntityReader{dataModelUsecase: dm, clientDbRepository: s.objects, executorFactory: s.factory}
 }
@@ -48,6 +56,10 @@ func (s *CaseEntityReaderSuite) TearDownTest() {
 	s.factory.AssertExpectations(s.T())
 	s.objects.AssertExpectations(s.T())
 	s.indexes.AssertExpectations(s.T())
+	s.caseRepo.AssertExpectations(s.T())
+	s.feature.AssertExpectations(s.T())
+	s.queue.AssertExpectations(s.T())
+	s.tx.AssertExpectations(s.T())
 }
 func (s *CaseEntityReaderSuite) expectModel(dm models.DataModel) {
 	s.factory.On("NewExecutor").Return(s.exec).Once()
@@ -55,6 +67,15 @@ func (s *CaseEntityReaderSuite) expectModel(dm models.DataModel) {
 }
 func (s *CaseEntityReaderSuite) SetupSubTest()    { s.SetupTest() }
 func (s *CaseEntityReaderSuite) TearDownSubTest() { s.TearDownTest() }
+
+func (s *CaseEntityReaderSuite) makeCaseUsecase() CaseUseCase {
+	return CaseUseCase{
+		repository:          s.caseRepo,
+		caseEntityReader:    s.reader,
+		featureAccessReader: s.feature,
+		taskQueueRepository: s.queue,
+	}
+}
 
 func (s *CaseEntityReaderSuite) TestEligibility() {
 	ref := models.CaseEntityRef{TableName: "customers", ObjectId: "c-123"}
@@ -137,10 +158,6 @@ func (s *CaseEntityReaderSuite) TestLinkChangesDoNotRefreshScores() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			ref := models.CaseEntityRef{TableName: "customers", ObjectId: "c-123"}
-			repo := new(mocks.CaseRepository)
-			feature := new(mocks.FeatureAccessReader)
-			queue := new(mocks.TaskQueueRepository)
-			tx := new(mocks.Transaction)
 			var link *models.CaseManualEntity
 			if tt.changed {
 				link = &models.CaseManualEntity{Id: uuid.NewString(), CaseEntityRef: ref}
@@ -149,7 +166,7 @@ func (s *CaseEntityReaderSuite) TestLinkChangesDoNotRefreshScores() {
 			if tt.add {
 				method = "InsertCaseManualEntity"
 			}
-			repo.On(method, s.ctx, tx, s.org, "case", ref).Return(link, nil).Once()
+			s.caseRepo.On(method, s.ctx, s.tx, s.org, "case", ref).Return(link, nil).Once()
 			if tt.changed {
 				if tt.add {
 					table := models.Table{Name: ref.TableName, SemanticType: models.SemanticTypePerson}
@@ -157,21 +174,77 @@ func (s *CaseEntityReaderSuite) TestLinkChangesDoNotRefreshScores() {
 					s.factory.On("NewClientDbExecutor", s.ctx, s.org).Return(s.exec, nil).Once()
 					s.objects.On("QueryIngestedObjectByUniqueField", s.ctx, s.exec, table, ref.ObjectId, "object_id", []string(nil)).Return([]models.DataModelObject{{}}, nil).Once()
 				}
-				repo.On("CreateCaseEvent", s.ctx, tx, mock.Anything).Return(models.CaseEvent{}, nil).Once()
+				s.caseRepo.On("CreateCaseEvent", s.ctx, s.tx, mock.Anything).Return(models.CaseEvent{}, nil).Once()
 			}
-			uc := CaseUseCase{repository: repo, caseEntityReader: s.reader, featureAccessReader: feature, taskQueueRepository: queue}
-			err := uc.applyCaseEntityChanges(s.ctx, tx, s.org, "case", "", []models.CaseEntityRef{ref}, tt.add)
+			uc := s.makeCaseUsecase()
+			err := uc.applyCaseEntityChanges(s.ctx, s.tx, s.org, "case", "", []models.CaseEntityRef{ref}, tt.add)
 			s.NoError(err)
-			repo.AssertExpectations(s.T())
-			feature.AssertExpectations(s.T())
-			queue.AssertExpectations(s.T())
-			feature.AssertNotCalled(s.T(), "GetOrganizationFeatureAccess", mock.Anything, mock.Anything, mock.Anything)
-			queue.AssertNotCalled(s.T(), "EnqueueTriggerScoreComputation", mock.Anything, mock.Anything, mock.Anything)
+			s.feature.AssertNotCalled(s.T(), "GetOrganizationFeatureAccess", mock.Anything, mock.Anything, mock.Anything)
+			s.queue.AssertNotCalled(s.T(), "EnqueueTriggerScoreComputation", mock.Anything, mock.Anything, mock.Anything)
 		})
 	}
 }
 
-type CaseEntityMutationSuite struct{ suite.Suite }
+type CaseEntityMutationSuite struct {
+	suite.Suite
+	ctx         context.Context
+	orgId       uuid.UUID
+	inboxId     uuid.UUID
+	repo        *mocks.CaseRepository
+	decisions   *mocks.CaseEntityDecisionsRepository
+	security    *mocks.EnforceSecurity
+	inboxRepo   *mocks.InboxRepository
+	feature     *mocks.FeatureAccessReader
+	queue       *mocks.TaskQueueRepository
+	dataModel   *mocks.DataModelRepository
+	scoringRepo *mocks.ScoringRepository
+	execFactory *mocks.ExecutorFactory
+	exec        *mocks.Executor
+	tx          *mocks.Transaction
+	factory     *mocks.TransactionFactory
+}
+
+func (s *CaseEntityMutationSuite) SetupTest() {
+	s.ctx = context.Background()
+	s.orgId, s.inboxId = uuid.New(), uuid.New()
+	s.repo = new(mocks.CaseRepository)
+	s.decisions = new(mocks.CaseEntityDecisionsRepository)
+	s.security = new(mocks.EnforceSecurity)
+	s.inboxRepo = new(mocks.InboxRepository)
+	s.feature = new(mocks.FeatureAccessReader)
+	s.queue = new(mocks.TaskQueueRepository)
+	s.dataModel = new(mocks.DataModelRepository)
+	s.scoringRepo = new(mocks.ScoringRepository)
+	s.execFactory = new(mocks.ExecutorFactory)
+	s.exec = new(mocks.Executor)
+	s.tx = new(mocks.Transaction)
+	s.factory = &mocks.TransactionFactory{TxMock: s.tx}
+}
+
+func (s *CaseEntityMutationSuite) TearDownTest() {
+	for _, m := range []*mock.Mock{&s.repo.Mock, &s.decisions.Mock, &s.security.Mock, &s.inboxRepo.Mock,
+		&s.feature.Mock, &s.queue.Mock, &s.dataModel.Mock, &s.scoringRepo.Mock, &s.execFactory.Mock,
+		&s.exec.Mock, &s.tx.Mock, &s.factory.Mock} {
+		m.AssertExpectations(s.T())
+	}
+}
+
+func (s *CaseEntityMutationSuite) SetupSubTest()    { s.SetupTest() }
+func (s *CaseEntityMutationSuite) TearDownSubTest() { s.TearDownTest() }
+
+func (s *CaseEntityMutationSuite) makeUsecase() CaseUseCase {
+	rulesets := scoring.NewScoringRulesetsUsecase(nil, s.execFactory, nil,
+		feature_access.FeatureAccessReader{}, nil, s.scoringRepo, nil, nil, nil)
+	return CaseUseCase{
+		repository: s.repo, decisionRepository: s.decisions, enforceSecurity: s.security,
+		inboxReader: inboxes.InboxReader{EnforceSecurity: s.security, InboxRepository: s.inboxRepo,
+			Credentials: models.Credentials{Role: models.API_CLIENT}},
+		transactionFactory: s.factory, featureAccessReader: s.feature, taskQueueRepository: s.queue,
+		scoringScoreUsecase: scoring.NewScoringScoresUsecase(nil, nil, nil, nil,
+			rulesets, nil, s.dataModel, repositories.OffloadedReadWriter{}, nil, s.queue,
+			ast_eval.EvaluateAstExpression{}, nil),
+	}
+}
 
 func (s *CaseEntityMutationSuite) TestScoresRefreshWhenOutcomeProvided() {
 	for _, tt := range []struct {
@@ -182,59 +255,30 @@ func (s *CaseEntityMutationSuite) TestScoresRefreshWhenOutcomeProvided() {
 		{name: "unchanged outcome with a name change", outcome: models.CaseConfirmedRisk},
 	} {
 		s.Run(tt.name, func() {
-			ctx := context.Background()
-			orgId, inboxId := uuid.New(), uuid.New()
-			c := models.Case{Id: uuid.NewString(), OrganizationId: orgId, InboxId: inboxId,
+			c := models.Case{Id: uuid.NewString(), OrganizationId: s.orgId, InboxId: s.inboxId,
 				Status: models.CaseClosed, Outcome: models.CaseConfirmedRisk}
 			ref := models.CaseEntityRef{TableName: "customers", ObjectId: "customer-1"}
-			repo := new(mocks.CaseRepository)
-			decisions := new(mocks.CaseEntityDecisionsRepository)
-			security := new(mocks.EnforceSecurity)
-			inboxRepo := new(mocks.InboxRepository)
-			feature := new(mocks.FeatureAccessReader)
-			queue := new(mocks.TaskQueueRepository)
-			dataModel := new(mocks.DataModelRepository)
-			scoringRepo := new(mocks.ScoringRepository)
-			execFactory := new(mocks.ExecutorFactory)
-			exec := new(mocks.Executor)
-			tx := new(mocks.Transaction)
-			factory := &mocks.TransactionFactory{TxMock: tx}
-			factory.On("Transaction", ctx, mock.Anything).Return(nil).Once()
-			repo.On("GetCaseById", ctx, tx, c.Id).Return(c, nil).Once()
-			inboxRepo.On("ListInboxes", ctx, tx, orgId, []uuid.UUID(nil), false).Return([]models.Inbox{{Id: inboxId}}, nil).Once()
-			security.On("ReadInbox", models.Inbox{Id: inboxId}).Return(nil).Once()
-			security.On("ReadOrUpdateCase", c.GetMetadata(), []uuid.UUID{inboxId}).Return(nil).Once()
-			feature.On("GetOrganizationFeatureAccess", ctx, orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{UserScoring: models.Allowed}, nil).Once()
+			s.factory.On("Transaction", s.ctx, mock.Anything).Return(nil).Once()
+			s.repo.On("GetCaseById", s.ctx, s.tx, c.Id).Return(c, nil).Once()
+			s.inboxRepo.On("ListInboxes", s.ctx, s.tx, s.orgId, []uuid.UUID(nil), false).Return([]models.Inbox{{Id: s.inboxId}}, nil).Once()
+			s.security.On("ReadInbox", models.Inbox{Id: s.inboxId}).Return(nil).Once()
+			s.security.On("ReadOrUpdateCase", c.GetMetadata(), []uuid.UUID{s.inboxId}).Return(nil).Once()
+			s.feature.On("GetOrganizationFeatureAccess", s.ctx, s.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{UserScoring: models.Allowed}, nil).Once()
 			expectedErr := fmt.Errorf("stop before case side effects")
-			repo.On("UpdateCase", ctx, tx, mock.Anything).Return(expectedErr).Once()
-			decisions.On("DecisionsByCaseId", ctx, tx, orgId, c.Id).Return([]models.Decision{}, nil).Once()
-			dataModel.On("GetDataModel", ctx, tx, orgId, false, false).Return(models.DataModel{}, nil).Once()
-			repo.On("ListCaseManualEntities", ctx, tx, orgId, c.Id).Return([]models.CaseManualEntity{{CaseEntityRef: ref}}, nil).Once()
-			execFactory.On("NewExecutor").Return(exec).Once()
-			scoringRepo.On("GetScoringRuleset", ctx, exec, orgId, ref.TableName, models.ScoreRulesetCommitted, 0).
+			s.repo.On("UpdateCase", s.ctx, s.tx, mock.Anything).Return(expectedErr).Once()
+			s.decisions.On("DecisionsByCaseId", s.ctx, s.tx, s.orgId, c.Id).Return([]models.Decision{}, nil).Once()
+			s.dataModel.On("GetDataModel", s.ctx, s.tx, s.orgId, false, false).Return(models.DataModel{}, nil).Once()
+			s.repo.On("ListCaseManualEntities", s.ctx, s.tx, s.orgId, c.Id).Return([]models.CaseManualEntity{{CaseEntityRef: ref}}, nil).Once()
+			s.execFactory.On("NewExecutor").Return(s.exec).Once()
+			s.scoringRepo.On("GetScoringRuleset", s.ctx, s.exec, s.orgId, ref.TableName, models.ScoreRulesetCommitted, 0).
 				Return(models.ScoringRuleset{}, nil).Once()
 			// An enqueue failure is logged and does not prevent the outcome update.
-			queue.On("EnqueueTriggerScoreComputation", ctx, tx, models.ScoringRecordRef{
-				OrgId: orgId, RecordType: ref.TableName, RecordId: ref.ObjectId,
+			s.queue.On("EnqueueTriggerScoreComputation", s.ctx, s.tx, models.ScoringRecordRef{
+				OrgId: s.orgId, RecordType: ref.TableName, RecordId: ref.ObjectId,
 			}).Return(fmt.Errorf("queue unavailable")).Once()
-			rulesets := scoring.NewScoringRulesetsUsecase(nil, execFactory, nil,
-				feature_access.FeatureAccessReader{}, nil, scoringRepo, nil, nil, nil)
-			uc := CaseUseCase{
-				repository: repo, decisionRepository: decisions, enforceSecurity: security,
-				inboxReader: inboxes.InboxReader{EnforceSecurity: security, InboxRepository: inboxRepo,
-					Credentials: models.Credentials{Role: models.API_CLIENT}},
-				transactionFactory: factory, featureAccessReader: feature, taskQueueRepository: queue,
-				scoringScoreUsecase: scoring.NewScoringScoresUsecase(nil, nil, nil, nil,
-					rulesets, nil, dataModel, repositories.OffloadedReadWriter{}, nil, queue,
-					ast_eval.EvaluateAstExpression{}, nil),
-			}
-			_, err := uc.UpdateCase(ctx, "", models.UpdateCaseAttributes{Id: c.Id, Name: "Updated name", Outcome: tt.outcome})
+			uc := s.makeUsecase()
+			_, err := uc.UpdateCase(s.ctx, "", models.UpdateCaseAttributes{Id: c.Id, Name: "Updated name", Outcome: tt.outcome})
 			s.ErrorIs(err, expectedErr)
-
-			for _, m := range []*mock.Mock{&repo.Mock, &decisions.Mock, &security.Mock, &inboxRepo.Mock,
-				&feature.Mock, &queue.Mock, &dataModel.Mock, &factory.Mock, &scoringRepo.Mock, &execFactory.Mock} {
-				m.AssertExpectations(s.T())
-			}
 		})
 	}
 }
@@ -249,42 +293,21 @@ func (s *CaseEntityMutationSuite) TestClosedCaseAdditionAndRemoval() {
 	}
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			ctx := context.Background()
-			org := uuid.New()
-			inbox := uuid.New()
-			c := models.Case{Id: uuid.NewString(), OrganizationId: org, InboxId: inbox, Status: models.CaseClosed}
+			c := models.Case{Id: uuid.NewString(), OrganizationId: s.orgId, InboxId: s.inboxId, Status: models.CaseClosed}
 			refs := []models.CaseEntityRef{{TableName: "customers", ObjectId: "c-123"}}
-			repo := new(mocks.CaseRepository)
-			security := new(mocks.EnforceSecurity)
-			inboxRepo := new(mocks.InboxRepository)
-			tx := new(mocks.Transaction)
-			factory := &mocks.TransactionFactory{TxMock: tx}
-			factory.On("Transaction", ctx, mock.Anything).Return(nil).Once()
-			repo.On("GetCaseByIdForUpdate", ctx, tx, c.Id).Return(c.GetMetadata(), nil).Once()
-			inboxRepo.On("ListInboxes", ctx, tx, org, []uuid.UUID(nil), false).Return([]models.Inbox{{Id: inbox}}, nil).Once()
-			security.On("ReadInbox", models.Inbox{Id: inbox}).Return(nil).Once()
-			security.On("ReadOrUpdateCase", c.GetMetadata(), []uuid.UUID{inbox}).Return(nil).Once()
-			uc := CaseUseCase{
-				repository:      repo,
-				enforceSecurity: security,
-				inboxReader: inboxes.InboxReader{
-					EnforceSecurity: security,
-					InboxRepository: inboxRepo,
-					Credentials:     models.Credentials{Role: models.API_CLIENT},
-				},
-				transactionFactory: factory,
-			}
+			s.factory.On("Transaction", s.ctx, mock.Anything).Return(nil).Once()
+			s.repo.On("GetCaseByIdForUpdate", s.ctx, s.tx, c.Id).Return(c.GetMetadata(), nil).Once()
+			s.inboxRepo.On("ListInboxes", s.ctx, s.tx, s.orgId, []uuid.UUID(nil), false).Return([]models.Inbox{{Id: s.inboxId}}, nil).Once()
+			s.security.On("ReadInbox", models.Inbox{Id: s.inboxId}).Return(nil).Once()
+			s.security.On("ReadOrUpdateCase", c.GetMetadata(), []uuid.UUID{s.inboxId}).Return(nil).Once()
+			uc := s.makeUsecase()
 
-			_, err := tt.mutate(&uc, ctx, "actor", c.Id, refs)
+			_, err := tt.mutate(&uc, s.ctx, "actor", c.Id, refs)
 
 			s.ErrorIs(err, models.BadParameterError)
-			repo.AssertNotCalled(s.T(), "InsertCaseManualEntity", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-			repo.AssertNotCalled(s.T(), "DeleteCaseManualEntity", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-			repo.AssertNotCalled(s.T(), "CreateCaseEvent", mock.Anything, mock.Anything, mock.Anything)
-			repo.AssertExpectations(s.T())
-			security.AssertExpectations(s.T())
-			inboxRepo.AssertExpectations(s.T())
-			factory.AssertExpectations(s.T())
+			s.repo.AssertNotCalled(s.T(), "InsertCaseManualEntity", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+			s.repo.AssertNotCalled(s.T(), "DeleteCaseManualEntity", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+			s.repo.AssertNotCalled(s.T(), "CreateCaseEvent", mock.Anything, mock.Anything, mock.Anything)
 		})
 	}
 }
