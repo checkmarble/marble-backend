@@ -183,7 +183,7 @@ func (m *caseEntityDecisionsRepositoryMock) DecisionsByCaseId(ctx context.Contex
 	return args.Get(0).([]models.Decision), args.Error(1)
 }
 
-func (s *CaseEntityMutationSuite) TestScoresRefreshOnlyWhenOutcomeChanges() {
+func (s *CaseEntityMutationSuite) TestScoresRefreshWhenOutcomeProvided() {
 	for _, tt := range []struct {
 		name    string
 		outcome models.CaseOutcome
@@ -217,18 +217,16 @@ func (s *CaseEntityMutationSuite) TestScoresRefreshOnlyWhenOutcomeChanges() {
 			feature.On("GetOrganizationFeatureAccess", ctx, orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{UserScoring: models.Allowed}, nil).Once()
 			expectedErr := fmt.Errorf("stop before case side effects")
 			repo.On("UpdateCase", ctx, tx, mock.Anything).Return(expectedErr).Once()
-			if tt.outcome != c.Outcome {
-				decisions.On("DecisionsByCaseId", ctx, tx, orgId, c.Id).Return([]models.Decision{}, nil).Once()
-				dataModel.On("GetDataModel", ctx, tx, orgId, false, false).Return(models.DataModel{}, nil).Once()
-				repo.On("ListCaseManualEntities", ctx, tx, orgId, c.Id).Return([]models.CaseManualEntity{{CaseEntityRef: ref}}, nil).Once()
-				execFactory.On("NewExecutor").Return(exec).Once()
-				scoringRepo.On("GetScoringRuleset", ctx, exec, orgId, ref.TableName, models.ScoreRulesetCommitted, 0).
-					Return(models.ScoringRuleset{}, nil).Once()
-				// An enqueue failure is logged and does not prevent the outcome update.
-				queue.On("EnqueueTriggerScoreComputation", ctx, tx, models.ScoringRecordRef{
-					OrgId: orgId, RecordType: ref.TableName, RecordId: ref.ObjectId,
-				}).Return(fmt.Errorf("queue unavailable")).Once()
-			}
+			decisions.On("DecisionsByCaseId", ctx, tx, orgId, c.Id).Return([]models.Decision{}, nil).Once()
+			dataModel.On("GetDataModel", ctx, tx, orgId, false, false).Return(models.DataModel{}, nil).Once()
+			repo.On("ListCaseManualEntities", ctx, tx, orgId, c.Id).Return([]models.CaseManualEntity{{CaseEntityRef: ref}}, nil).Once()
+			execFactory.On("NewExecutor").Return(exec).Once()
+			scoringRepo.On("GetScoringRuleset", ctx, exec, orgId, ref.TableName, models.ScoreRulesetCommitted, 0).
+				Return(models.ScoringRuleset{}, nil).Once()
+			// An enqueue failure is logged and does not prevent the outcome update.
+			queue.On("EnqueueTriggerScoreComputation", ctx, tx, models.ScoringRecordRef{
+				OrgId: orgId, RecordType: ref.TableName, RecordId: ref.ObjectId,
+			}).Return(fmt.Errorf("queue unavailable")).Once()
 			rulesets := scoring.NewScoringRulesetsUsecase(nil, execFactory, nil,
 				feature_access.FeatureAccessReader{}, nil, scoringRepo, nil, nil, nil)
 			uc := CaseUseCase{
@@ -242,11 +240,7 @@ func (s *CaseEntityMutationSuite) TestScoresRefreshOnlyWhenOutcomeChanges() {
 			}
 			_, err := uc.UpdateCase(ctx, "", models.UpdateCaseAttributes{Id: c.Id, Name: "Updated name", Outcome: tt.outcome})
 			s.ErrorIs(err, expectedErr)
-			if tt.outcome == c.Outcome {
-				decisions.AssertNotCalled(s.T(), "DecisionsByCaseId", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-				repo.AssertNotCalled(s.T(), "ListCaseManualEntities", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-				queue.AssertNotCalled(s.T(), "EnqueueTriggerScoreComputation", mock.Anything, mock.Anything, mock.Anything)
-			}
+
 			for _, m := range []*mock.Mock{&repo.Mock, &decisions.Mock, &security.Mock, &inboxRepo.Mock,
 				&feature.Mock, &queue.Mock, &dataModel.Mock, &factory.Mock, &scoringRepo.Mock, &execFactory.Mock} {
 				m.AssertExpectations(s.T())
