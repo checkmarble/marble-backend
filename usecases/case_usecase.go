@@ -16,7 +16,6 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
-	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -148,6 +147,10 @@ type caseUsecaseIngestedDataReader interface {
 	) ([]models.PivotObject, error)
 }
 
+type caseFeatureAccessReader interface {
+	GetOrganizationFeatureAccess(ctx context.Context, orgId uuid.UUID, userId *models.UserId) (models.OrganizationFeatureAccess, error)
+}
+
 type CaseUseCase struct {
 	enforceSecurity         security.EnforceSecurityCase
 	enforceSecurityTags     security.EnforceSecurityTags
@@ -165,7 +168,7 @@ type CaseUseCase struct {
 	ingestedDataReader      caseUsecaseIngestedDataReader
 	caseEntityReader        caseEntityReader
 	taskQueueRepository     repositories.TaskQueueRepository
-	featureAccessReader     feature_access.FeatureAccessReader
+	featureAccessReader     caseFeatureAccessReader
 	publicApiAdapterUsecase PublicApiAdapterUsecase
 	scoringScoreUsecase     scoring.ScoringScoresUsecase
 	offloadedReader         repositories.OffloadedReadWriter
@@ -687,6 +690,18 @@ func (usecase *CaseUseCase) UpdateCase(
 		err = usecase.repository.UpdateCase(ctx, tx, updateCaseAttributes)
 		if err != nil {
 			return models.Case{}, err
+		}
+		if updateCaseAttributes.Outcome != "" && updateCaseAttributes.Outcome != c.Outcome {
+			manual, err := usecase.repository.ListCaseManualEntities(ctx, tx, c.OrganizationId, c.Id)
+			if err != nil {
+				return models.Case{}, err
+			}
+			refs := pure_utils.Map(manual, func(link models.CaseManualEntity) models.CaseEntityRef {
+				return link.CaseEntityRef
+			})
+			if err := usecase.enqueueCaseEntityScoreComputations(ctx, tx, c.OrganizationId, refs); err != nil {
+				return models.Case{}, err
+			}
 		}
 
 		switch updateCaseAttributes.Status {
@@ -2713,7 +2728,7 @@ func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repos
 	if userId != "" {
 		actor = &userId
 	}
-	changed := false
+	changed := make([]models.CaseEntityRef, 0, len(refs))
 	for _, ref := range refs {
 		var link *models.CaseManualEntity
 		var err error
@@ -2733,7 +2748,7 @@ func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repos
 				return errors.Wrapf(err, "cannot add entity %s/%s", ref.TableName, ref.ObjectId)
 			}
 		}
-		changed = true
+		changed = append(changed, ref)
 		eventType := models.CaseEntityAdded
 		if !add {
 			eventType = models.CaseEntityRemoved
@@ -2754,12 +2769,40 @@ func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repos
 			return err
 		}
 	}
-	if changed && actor != nil {
+	if len(changed) > 0 && actor != nil {
 		if err := usecase.createCaseContributorIfNotExist(ctx, tx, caseId, userId); err != nil {
 			return err
 		}
 	}
-	return nil
+	return usecase.enqueueCaseEntityScoreComputations(ctx, tx, orgId, changed)
+}
+
+// enqueueCaseEntityScoreComputations uses the mutation's transaction, so workers see
+// committed links and outcomes. Removed links must also refresh their former entities.
+// The worker skips entities without a committed ruleset and preserves score overrides.
+func (usecase *CaseUseCase) enqueueCaseEntityScoreComputations(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, refs []models.CaseEntityRef) error {
+	if len(refs) == 0 {
+		return nil
+	}
+	features, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
+	if err != nil {
+		return err
+	}
+	if !features.UserScoring.IsAllowed() {
+		return nil
+	}
+	records := make([]models.ScoringRecordRef, 0, len(refs))
+	seen := make(map[models.CaseEntityRef]struct{}, len(refs))
+	for _, ref := range refs {
+		if _, ok := seen[ref]; ok {
+			continue
+		}
+		seen[ref] = struct{}{}
+		records = append(records, models.ScoringRecordRef{
+			OrgId: orgId, RecordType: ref.TableName, RecordId: ref.ObjectId,
+		})
+	}
+	return usecase.taskQueueRepository.EnqueueManyTriggerScoreComputation(ctx, tx, records)
 }
 
 func (usecase *CaseUseCase) AddCaseEntities(ctx context.Context, userId, caseId string, refs []models.CaseEntityRef) (models.Case, error) {

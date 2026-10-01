@@ -698,12 +698,13 @@ func (repo *MarbleDbRepository) GetNextCase(ctx context.Context, exec Executor, 
 //  2. Find all pivots whose path ends with one of those links, effectively finding the pivots to that table,
 //     plus pivots defined directly on a field of that table (no belongs_to link, pivot uses field_id instead of a path)
 //  3. Find all decisions whose pivot ID is one of those pivots, and whose pivot value is the record under evaluation
+//  4. Include explicit manual links, deduplicating cases also found through decisions.
 //
 // Soft-deleted pivots are intentionally included: historical decisions keep referencing
 // their pivot_id after the pivot is deleted, and must still surface related cases.
 //
 // Parameters: $1 = orgId, $2 = objectType (table name), $3 = objectId (pivot value).
-// Exposes a `decisions(case_id)` CTE for the caller to join against.
+// Exposes a `related_cases(case_id)` CTE for both case listing and past-alert checks.
 const casesRelatedToObjectCTE = `
 	with
 		target_table_id as (
@@ -733,6 +734,12 @@ const casesRelatedToObjectCTE = `
 			from decisions d
 			inner join pivot_ids as p on d.pivot_id = p.id and d.pivot_value = $3
 			where org_id = $1
+		),
+		related_cases as (
+			select case_id from decisions
+			union
+			select case_id from case_manual_entities
+			where org_id = $1 and table_name = $2 and object_id = $3
 		)
 `
 
@@ -741,10 +748,8 @@ func (repo *MarbleDbRepository) GetCasesRelatedToObject(ctx context.Context, exe
 		%s
 		select %s
 		from cases c
-		where c.org_id = $1 and (
-   exists (select 1 from decisions where decisions.case_id = c.id)
-   or exists (select 1 from case_manual_entities m where m.org_id = $1 and m.case_id = c.id and m.table_name = $2 and m.object_id = $3)
-  )
+		inner join related_cases r on c.id = r.case_id
+		where c.org_id = $1
 		order by c.created_at desc, c.id desc
 		limit %d
 	`, casesRelatedToObjectCTE, strings.Join(dbmodels.SelectCaseColumn, ","), 200)
@@ -773,8 +778,8 @@ func (repo *MarbleDbRepository) ObjectHasConfirmedRisks(ctx context.Context, exe
 		select exists(
 			select 1
 			from cases c
-			inner join decisions on c.id = decisions.case_id
-			where c.outcome = 'confirmed_risk'
+			inner join related_cases r on c.id = r.case_id
+			where c.org_id = $1 and c.outcome = 'confirmed_risk'
 		)
 	`
 

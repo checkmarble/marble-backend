@@ -373,6 +373,9 @@ func (uc ScoringScoresUsecase) GetScoreDistribution(ctx context.Context, entityT
 }
 
 func (uc ScoringScoresUsecase) EnqueueComputationForDecisions(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, decisions []models.Decision) error {
+	if len(decisions) == 0 {
+		return nil
+	}
 	dataModel, err := uc.dataModelRepository.GetDataModel(ctx, tx, orgId, false, false)
 	if err != nil {
 		return err
