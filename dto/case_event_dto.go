@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 )
 
@@ -18,6 +20,7 @@ type APICaseEvent struct {
 	NewValue       string      `json:"new_value"`
 	ResourceType   string      `json:"resource_type"`
 	ResourceId     string      `json:"resource_id"`
+	InboxId        *uuid.UUID  `json:"inbox_id,omitempty"`
 }
 
 func NewAPICaseEvent(caseEvent models.CaseEvent) APICaseEvent {
@@ -33,4 +36,24 @@ func NewAPICaseEvent(caseEvent models.CaseEvent) APICaseEvent {
 		ResourceType:   string(caseEvent.ResourceType),
 		ResourceId:     caseEvent.ResourceId,
 	}
+}
+
+func AdaptCaseEvents(caseEvents []models.CaseEvent, currentInboxId uuid.UUID) []APICaseEvent {
+	inboxId := currentInboxId
+
+	return pure_utils.Map(caseEvents, func(caseEvent models.CaseEvent) APICaseEvent {
+		event := NewAPICaseEvent(caseEvent)
+		if caseEvent.EventType != models.CaseEscalated && caseEvent.EventType != models.CaseInboxChanged {
+			eventInboxId := inboxId
+			event.InboxId = &eventInboxId
+		}
+
+		if caseEvent.EventType == models.CaseInboxChanged {
+			if previousInboxId, err := uuid.Parse(caseEvent.PreviousValue); err == nil {
+				inboxId = previousInboxId
+			}
+		}
+
+		return event
+	})
 }
