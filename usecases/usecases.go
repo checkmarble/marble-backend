@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"io/fs"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 	"github.com/google/uuid"
 	"github.com/oschwald/maxminddb-golang/v2"
@@ -61,7 +63,8 @@ type Usecases struct {
 	coordsEnricher *rgeo.Rgeo
 	ipEnricher     *maxminddb.Reader
 
-	rootExecutorFactory *executor_factory.IdentityExecutorFactory
+	rootExecutorFactory   *executor_factory.IdentityExecutorFactory
+	usageTrackingSettings *tracking.Settings
 }
 
 type Option func(*options)
@@ -318,7 +321,14 @@ func NewUsecases(repositories repositories.Repositories, opts ...Option) Usecase
 	for _, opt := range opts {
 		opt(o)
 	}
-	return newUsecasesWithOptions(repositories, o)
+	uc := newUsecasesWithOptions(repositories, o)
+	uc.usageTrackingSettings = tracking.NewSettings(
+		repositories.MarbleDbRepository, uc.NewExecutorFactory(), infra.IsMarbleSaasProject())
+	return uc
+}
+
+func (usecases Usecases) UsageTrackingEnabled(ctx context.Context) bool {
+	return usecases.usageTrackingSettings.Enabled(ctx)
 }
 
 func (usecases Usecases) WithRootExecutor(exec executor_factory.IdentityExecutorFactory) Usecases {

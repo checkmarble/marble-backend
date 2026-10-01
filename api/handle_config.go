@@ -10,6 +10,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func handleUpdateUsageTracking(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		var data dto.UpdateUsageTrackingDto
+		if err := c.ShouldBindJSON(&data); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		if presentError(ctx, c, usecasesWithCreds(ctx, uc).SetUsageTrackingEnabled(ctx, *data.Enabled)) {
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
+
 func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Context) {
 	go utils.RunCheckOutdated(cfg.AppVersion)
 
@@ -77,7 +93,7 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 			},
 			Features: dto.ConfigFeaturesDto{
 				Sso:                   licenseUsecase.HasSsoEnabled(),
-				Segment:               !cfg.DisableSegment,
+				Segment:               !cfg.DisableSegment && uc.UsageTrackingEnabled(ctx),
 				WebhookSecretRotation: true,
 			},
 		}
