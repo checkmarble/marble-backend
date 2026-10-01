@@ -2789,7 +2789,7 @@ func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repos
 // the case transaction so it evaluates the updated links/outcome after commit.
 func (usecase *CaseUseCase) enqueueCaseEntityScoreComputations(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, refs []models.CaseEntityRef) error {
 	for _, ref := range refs {
-		if err := usecase.taskQueueRepository.EnqueueScoreComputationForCase(ctx, tx, models.ScoringRecordRef{
+		if err := usecase.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringRecordRef{
 			OrgId: orgId, RecordType: ref.TableName, RecordId: ref.ObjectId,
 		}); err != nil {
 			return errors.Wrap(err, "could not trigger case entity score computation")

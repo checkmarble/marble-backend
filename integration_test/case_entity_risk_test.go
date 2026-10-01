@@ -154,7 +154,7 @@ func TestCaseEntityConfirmedRisk(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestCaseScoreComputationsAreNotThrottled(t *testing.T) {
+func TestCaseScoreComputationsKeepHourlyDeduplication(t *testing.T) {
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	// A producer-only client and a unique organization queue keep the jobs from
 	// running while we verify scheduling and transaction rollback.
@@ -170,7 +170,7 @@ func TestCaseScoreComputationsAreNotThrottled(t *testing.T) {
 	enqueue := func() {
 		t.Helper()
 		require.NoError(t, admin.NewTransactionFactory().Transaction(ctx, func(tx repositories.Transaction) error {
-			return queue.EnqueueScoreComputationForCase(ctx, tx, record)
+			return queue.EnqueueTriggerScoreComputation(ctx, tx, record)
 		}))
 	}
 	count := func(want int) {
@@ -180,19 +180,24 @@ func TestCaseScoreComputationsAreNotThrottled(t *testing.T) {
 		require.Equal(t, want, got)
 	}
 	enqueue()
-	for i, state := range []string{"available", "running", "completed"} {
+	for _, state := range []string{"available", "running", "completed"} {
 		_, err := pgPool.Exec(ctx, `update river_job set state = $2::river_job_state,
 			finalized_at = case when $2 = 'completed' then now() else null end
 			where queue = $1`, record.OrgId.String(), state)
 		require.NoError(t, err)
 		enqueue()
-		count(i + 2)
+		count(1)
 	}
 	rollback := fmt.Errorf("case mutation failed")
 	err = admin.NewTransactionFactory().Transaction(ctx, func(tx repositories.Transaction) error {
-		require.NoError(t, queue.EnqueueScoreComputationForCase(ctx, tx, record))
+		anotherRecord := record
+		anotherRecord.RecordId = "customer-2"
+		require.NoError(t, queue.EnqueueTriggerScoreComputation(ctx, tx, anotherRecord))
+		var got int
+		require.NoError(t, tx.QueryRow(ctx, `select count(*) from river_job where queue = $1`, record.OrgId.String()).Scan(&got))
+		require.Equal(t, 2, got)
 		return rollback
 	})
 	require.ErrorIs(t, err, rollback)
-	count(4)
+	count(1)
 }
