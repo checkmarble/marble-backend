@@ -460,6 +460,35 @@ func (uc ScoringScoresUsecase) EnqueueComputationForIngestion(ctx context.Contex
 	})
 }
 
+func (uc ScoringScoresUsecase) EnqueueComputationForCaseEntities(
+	ctx context.Context,
+	tx repositories.Transaction,
+	orgId uuid.UUID,
+	caseEntities []models.CaseEntityRef,
+) error {
+	for _, ce := range caseEntities {
+		exists, err := uc.scoringRulesetsUsecase.CommittedRulesetExists(ctx, orgId, ce.TableName)
+		if err != nil {
+			utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not check if scoring ruleset exists", "error", err.Error())
+			continue
+		}
+		if !exists {
+			continue
+		}
+
+		err = uc.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringRecordRef{
+			OrgId:      orgId,
+			RecordType: ce.TableName,
+			RecordId:   ce.ObjectId,
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (uc ScoringScoresUsecase) getPayloadObject(ctx context.Context, orgId uuid.UUID, dataModel models.DataModel, recordType, recordId string) (models.ClientObject, error) {
 	table, ok := dataModel.Tables[recordType]
 	if !ok {

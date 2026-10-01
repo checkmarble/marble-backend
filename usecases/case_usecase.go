@@ -692,8 +692,11 @@ func (usecase *CaseUseCase) UpdateCase(
 				refs := pure_utils.Map(entities, func(entity models.CaseManualEntity) models.CaseEntityRef {
 					return entity.CaseEntityRef
 				})
-				if err := usecase.enqueueCaseEntityScoreComputations(ctx, tx, c.OrganizationId, refs); err != nil {
-					return models.Case{}, err
+				if err := usecase.scoringScoreUsecase.EnqueueComputationForCaseEntities(ctx, tx, c.OrganizationId, refs); err != nil {
+					utils.LoggerFromContext(ctx).ErrorContext(ctx,
+						"could not trigger score computation job",
+						"error", err.Error(),
+					)
 				}
 			}
 		}
@@ -2771,23 +2774,6 @@ func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repos
 	if changed && actor != nil {
 		if err := usecase.createCaseContributorIfNotExist(ctx, tx, caseId, userId); err != nil {
 			return err
-		}
-	}
-	return nil
-}
-
-func (usecase *CaseUseCase) enqueueCaseEntityScoreComputations(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, refs []models.CaseEntityRef) error {
-	for _, ref := range refs {
-		if err := usecase.taskQueueRepository.EnqueueTriggerScoreComputation(
-			ctx,
-			tx,
-			models.ScoringRecordRef{
-				OrgId:      orgId,
-				RecordType: ref.TableName,
-				RecordId:   ref.ObjectId,
-			},
-		); err != nil {
-			return errors.Wrap(err, "could not trigger case entity score computation")
 		}
 	}
 	return nil
