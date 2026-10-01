@@ -222,9 +222,20 @@ func (s *CaseEntityMutationSuite) SetupTest() {
 }
 
 func (s *CaseEntityMutationSuite) TearDownTest() {
-	for _, m := range []*mock.Mock{&s.repo.Mock, &s.decisions.Mock, &s.security.Mock, &s.inboxRepo.Mock,
-		&s.feature.Mock, &s.queue.Mock, &s.dataModel.Mock, &s.scoringRepo.Mock, &s.execFactory.Mock,
-		&s.exec.Mock, &s.tx.Mock, &s.factory.Mock} {
+	for _, m := range []*mock.Mock{
+		&s.repo.Mock,
+		&s.decisions.Mock,
+		&s.security.Mock,
+		&s.inboxRepo.Mock,
+		&s.feature.Mock,
+		&s.queue.Mock,
+		&s.dataModel.Mock,
+		&s.scoringRepo.Mock,
+		&s.execFactory.Mock,
+		&s.exec.Mock,
+		&s.tx.Mock,
+		&s.factory.Mock,
+	} {
 		m.AssertExpectations(s.T())
 	}
 }
@@ -236,13 +247,20 @@ func (s *CaseEntityMutationSuite) makeUsecase() CaseUseCase {
 	rulesets := scoring.NewScoringRulesetsUsecase(nil, s.execFactory, nil,
 		feature_access.FeatureAccessReader{}, nil, s.scoringRepo, nil, nil, nil)
 	return CaseUseCase{
-		repository: s.repo, decisionRepository: s.decisions, enforceSecurity: s.security,
-		inboxReader: inboxes.InboxReader{EnforceSecurity: s.security, InboxRepository: s.inboxRepo,
-			Credentials: models.Credentials{Role: models.API_CLIENT}},
-		transactionFactory: s.factory, featureAccessReader: s.feature, taskQueueRepository: s.queue,
-		scoringScoreUsecase: scoring.NewScoringScoresUsecase(nil, nil, nil, nil,
-			rulesets, nil, s.dataModel, repositories.OffloadedReadWriter{}, nil, s.queue,
-			ast_eval.EvaluateAstExpression{}, nil),
+		repository:         s.repo,
+		decisionRepository: s.decisions,
+		enforceSecurity:    s.security,
+		inboxReader: inboxes.InboxReader{
+			EnforceSecurity: s.security,
+			InboxRepository: s.inboxRepo,
+			Credentials:     models.Credentials{Role: models.API_CLIENT},
+		},
+		transactionFactory:  s.factory,
+		featureAccessReader: s.feature,
+		taskQueueRepository: s.queue,
+		scoringScoreUsecase: scoring.NewScoringScoresUsecase(
+			nil, nil, nil, nil, rulesets, nil, s.dataModel, repositories.OffloadedReadWriter{}, nil, s.queue, ast_eval.EvaluateAstExpression{}, nil,
+		),
 	}
 }
 
