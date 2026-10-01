@@ -673,7 +673,7 @@ func (usecase *CaseUseCase) UpdateCase(
 				return models.Case{}, err
 			}
 
-			if featureAccess.UserScoring.IsAllowed() && updateCaseAttributes.Outcome != c.Outcome {
+			if featureAccess.UserScoring.IsAllowed() {
 				decisions, err := usecase.decisionRepository.DecisionsByCaseId(ctx, tx, c.OrganizationId, c.Id)
 				if err != nil {
 					return models.Case{}, err
