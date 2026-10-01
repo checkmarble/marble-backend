@@ -173,16 +173,6 @@ func (s *CaseEntityReaderSuite) TestLinkChangesDoNotRefreshScores() {
 
 type CaseEntityMutationSuite struct{ suite.Suite }
 
-type caseEntityDecisionsRepositoryMock struct {
-	repositories.DecisionRepository
-	mock.Mock
-}
-
-func (m *caseEntityDecisionsRepositoryMock) DecisionsByCaseId(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, caseId string) ([]models.Decision, error) {
-	args := m.Called(ctx, exec, orgId, caseId)
-	return args.Get(0).([]models.Decision), args.Error(1)
-}
-
 func (s *CaseEntityMutationSuite) TestScoresRefreshWhenOutcomeProvided() {
 	for _, tt := range []struct {
 		name    string
@@ -198,7 +188,7 @@ func (s *CaseEntityMutationSuite) TestScoresRefreshWhenOutcomeProvided() {
 				Status: models.CaseClosed, Outcome: models.CaseConfirmedRisk}
 			ref := models.CaseEntityRef{TableName: "customers", ObjectId: "customer-1"}
 			repo := new(mocks.CaseRepository)
-			decisions := new(caseEntityDecisionsRepositoryMock)
+			decisions := new(mocks.CaseEntityDecisionsRepository)
 			security := new(mocks.EnforceSecurity)
 			inboxRepo := new(mocks.InboxRepository)
 			feature := new(mocks.FeatureAccessReader)
