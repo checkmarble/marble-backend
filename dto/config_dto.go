@@ -74,5 +74,6 @@ type ConfigFeaturesDto struct {
 }
 
 type UpdateUsageTrackingDto struct {
+	// A pointer lets required accept false while rejecting an absent or null field.
 	Enabled *bool `json:"enabled" binding:"required"`
 }

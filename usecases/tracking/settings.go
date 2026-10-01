@@ -9,7 +9,6 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
-	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -34,7 +33,7 @@ func NewSettings(repository metadataRepository, executorFactory executor_factory
 		repository:      repository,
 		executorFactory: executorFactory,
 		isMarbleSaas:    isMarbleSaas,
-		cache:           expirable.NewLRU[models.MetadataKey, bool](1, nil, time.Minute),
+		cache:           expirable.NewLRU[models.MetadataKey, bool](1, nil, 24*time.Hour),
 	}
 }
 
@@ -68,10 +67,7 @@ func (s *Settings) Enabled(ctx context.Context) bool {
 	return enabled
 }
 
-func (s *Settings) SetEnabled(ctx context.Context, credentials models.Credentials, enabled bool) error {
-	if err := security.NewEnforceSecurity(credentials).Permission(models.ORGANIZATIONS_UPDATE); err != nil {
-		return err
-	}
+func (s *Settings) SetEnabled(ctx context.Context, enabled bool) error {
 	if s.isMarbleSaas {
 		return errors.Wrap(models.ForbiddenError, "usage tracking cannot be changed on Marble SaaS")
 	}

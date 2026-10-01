@@ -1,7 +1,6 @@
 package usecases
 
 import (
-	"context"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -28,8 +27,11 @@ type UsecasesWithCreds struct {
 	Credentials models.Credentials
 }
 
-func (usecases *UsecasesWithCreds) SetUsageTrackingEnabled(ctx context.Context, enabled bool) error {
-	return usecases.usageTrackingSettings.SetEnabled(ctx, usecases.Credentials, enabled)
+func (usecases *UsecasesWithCreds) NewUsageTrackingUsecase() UsageTrackingUsecase {
+	return UsageTrackingUsecase{
+		settings:        usecases.usageTrackingSettings,
+		enforceSecurity: usecases.NewEnforceSecurity(),
+	}
 }
 
 type UsecaseTransactionWrapper func(tx repositories.Transaction, org models.Organization, user models.User) *UsecasesWithCreds

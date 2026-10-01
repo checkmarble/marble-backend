@@ -17,6 +17,8 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/auth"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
@@ -373,7 +375,13 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 
 	aiPromptsFS, aiAgentModelConfig := configAiResources(ctx, license, licenseConfig, aiAgentConfig, aiPromptsServingDir, config.Version)
 
+	executorFactory := executor_factory.NewDbExecutorFactory(
+		appName, repositories.MarbleDbRepository, repositories.ExecutorGetter, uuid.Nil)
+	usageTrackingSettings := tracking.NewSettings(
+		repositories.MarbleDbRepository, executorFactory, isMarbleSaasProject)
+
 	uc := usecases.NewUsecases(repositories,
+		usecases.WithUsageTracking(usageTrackingSettings),
 		usecases.WithAppName(appName),
 		usecases.WithApiVersion(config.Version),
 		usecases.WithBatchIngestionMaxSize(serverConfig.batchIngestionMaxSize),

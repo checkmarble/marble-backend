@@ -19,10 +19,12 @@ func handleUpdateUsageTracking(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		if presentError(ctx, c, usecasesWithCreds(ctx, uc).SetUsageTrackingEnabled(ctx, *data.Enabled)) {
+		usecase := usecasesWithCreds(ctx, uc).NewUsageTrackingUsecase()
+		err := usecase.SetEnabled(ctx, *data.Enabled)
+		if presentError(ctx, c, err) {
 			return
 		}
-		c.Status(http.StatusNoContent)
+		c.JSON(http.StatusOK, data)
 	}
 }
 
