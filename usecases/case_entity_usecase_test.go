@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
+	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/google/uuid"
@@ -203,6 +204,9 @@ func (s *CaseEntityMutationSuite) TestScoresRefreshOnlyWhenOutcomeChanges() {
 			feature := new(mocks.FeatureAccessReader)
 			queue := new(mocks.TaskQueueRepository)
 			dataModel := new(mocks.DataModelRepository)
+			scoringRepo := new(mocks.ScoringRepository)
+			execFactory := new(mocks.ExecutorFactory)
+			exec := new(mocks.Executor)
 			tx := new(mocks.Transaction)
 			factory := &mocks.TransactionFactory{TxMock: tx}
 			factory.On("Transaction", ctx, mock.Anything).Return(nil).Once()
@@ -212,24 +216,28 @@ func (s *CaseEntityMutationSuite) TestScoresRefreshOnlyWhenOutcomeChanges() {
 			security.On("ReadOrUpdateCase", c.GetMetadata(), []uuid.UUID{inboxId}).Return(nil).Once()
 			feature.On("GetOrganizationFeatureAccess", ctx, orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{UserScoring: models.Allowed}, nil).Once()
 			expectedErr := fmt.Errorf("stop before case side effects")
+			repo.On("UpdateCase", ctx, tx, mock.Anything).Return(expectedErr).Once()
 			if tt.outcome != c.Outcome {
 				decisions.On("DecisionsByCaseId", ctx, tx, orgId, c.Id).Return([]models.Decision{}, nil).Once()
 				dataModel.On("GetDataModel", ctx, tx, orgId, false, false).Return(models.DataModel{}, nil).Once()
 				repo.On("ListCaseManualEntities", ctx, tx, orgId, c.Id).Return([]models.CaseManualEntity{{CaseEntityRef: ref}}, nil).Once()
-				// An enqueue failure aborts before writing the changed outcome.
+				execFactory.On("NewExecutor").Return(exec).Once()
+				scoringRepo.On("GetScoringRuleset", ctx, exec, orgId, ref.TableName, models.ScoreRulesetCommitted, 0).
+					Return(models.ScoringRuleset{}, nil).Once()
+				// An enqueue failure is logged and does not prevent the outcome update.
 				queue.On("EnqueueTriggerScoreComputation", ctx, tx, models.ScoringRecordRef{
 					OrgId: orgId, RecordType: ref.TableName, RecordId: ref.ObjectId,
-				}).Return(expectedErr).Once()
-			} else {
-				repo.On("UpdateCase", ctx, tx, mock.Anything).Return(expectedErr).Once()
+				}).Return(fmt.Errorf("queue unavailable")).Once()
 			}
+			rulesets := scoring.NewScoringRulesetsUsecase(nil, execFactory, nil,
+				feature_access.FeatureAccessReader{}, nil, scoringRepo, nil, nil, nil)
 			uc := CaseUseCase{
 				repository: repo, decisionRepository: decisions, enforceSecurity: security,
 				inboxReader: inboxes.InboxReader{EnforceSecurity: security, InboxRepository: inboxRepo,
 					Credentials: models.Credentials{Role: models.API_CLIENT}},
 				transactionFactory: factory, featureAccessReader: feature, taskQueueRepository: queue,
 				scoringScoreUsecase: scoring.NewScoringScoresUsecase(nil, nil, nil, nil,
-					scoring.ScoringRulesetsUsecase{}, nil, dataModel, repositories.OffloadedReadWriter{}, nil, nil,
+					rulesets, nil, dataModel, repositories.OffloadedReadWriter{}, nil, queue,
 					ast_eval.EvaluateAstExpression{}, nil),
 			}
 			_, err := uc.UpdateCase(ctx, "", models.UpdateCaseAttributes{Id: c.Id, Name: "Updated name", Outcome: tt.outcome})
@@ -238,11 +246,9 @@ func (s *CaseEntityMutationSuite) TestScoresRefreshOnlyWhenOutcomeChanges() {
 				decisions.AssertNotCalled(s.T(), "DecisionsByCaseId", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 				repo.AssertNotCalled(s.T(), "ListCaseManualEntities", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 				queue.AssertNotCalled(s.T(), "EnqueueTriggerScoreComputation", mock.Anything, mock.Anything, mock.Anything)
-			} else {
-				repo.AssertNotCalled(s.T(), "UpdateCase", mock.Anything, mock.Anything, mock.Anything)
 			}
 			for _, m := range []*mock.Mock{&repo.Mock, &decisions.Mock, &security.Mock, &inboxRepo.Mock,
-				&feature.Mock, &queue.Mock, &dataModel.Mock, &factory.Mock} {
+				&feature.Mock, &queue.Mock, &dataModel.Mock, &factory.Mock, &scoringRepo.Mock, &execFactory.Mock} {
 				m.AssertExpectations(s.T())
 			}
 		})
