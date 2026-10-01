@@ -27,12 +27,6 @@ type UsecasesWithCreds struct {
 	Credentials models.Credentials
 }
 
-func (usecases *UsecasesWithCreds) NewUsageTrackingUsecase() UsageTrackingUsecase {
-	uc := *usecases.usageTracking
-	uc.enforceSecurity = usecases.NewEnforceSecurity()
-	return uc
-}
-
 type UsecaseTransactionWrapper func(tx repositories.Transaction, org models.Organization, user models.User) *UsecasesWithCreds
 
 // Used to recreate the whole usecase hierarchy from a transaction for Marble
@@ -1359,4 +1353,16 @@ func (usecases UsecasesWithCreds) NewAsyncDecisionStorageWorker() worker_jobs.As
 		usecases.Repositories.RedisClient,
 		usecases.NewDecisionUsecase(),
 	)
+}
+
+func (usecases *UsecasesWithCreds) NewUsageTrackingUsecase() UsageTrackingUsecase {
+	return UsageTrackingUsecase{
+		repository:      usecases.Repositories.MarbleDbRepository,
+		executorFactory: usecases.NewExecutorFactory(),
+		enforceSecurity: usecases.NewEnforceSecurity(),
+		isMarbleSaas:    usecases.usageTracking.isMarbleSaas,
+		disableSegment:  usecases.usageTracking.disableSegment,
+		cache:           usecases.usageTracking.cache,
+		mu:              usecases.usageTracking.mu,
+	}
 }

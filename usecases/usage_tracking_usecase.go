@@ -3,7 +3,6 @@ package usecases
 import (
 	"context"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -14,6 +13,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/hashicorp/golang-lru/v2/expirable"
+	"golang.org/x/sync/semaphore"
 )
 
 type usageTrackingRepository interface {
@@ -28,7 +28,7 @@ type UsageTrackingUsecase struct {
 	isMarbleSaas    bool
 	disableSegment  bool
 	cache           *expirable.LRU[models.MetadataKey, bool]
-	mu              *sync.Mutex
+	mu              *semaphore.Weighted
 }
 
 func NewUsageTrackingUsecase(repository usageTrackingRepository, executorFactory executor_factory.ExecutorFactory,
@@ -41,7 +41,7 @@ func NewUsageTrackingUsecase(repository usageTrackingRepository, executorFactory
 		isMarbleSaas:    isMarbleSaas,
 		disableSegment:  disableSegment,
 		cache:           expirable.NewLRU[models.MetadataKey, bool](1, nil, 24*time.Hour),
-		mu:              &sync.Mutex{},
+		mu:              semaphore.NewWeighted(1),
 	}
 }
 
@@ -52,8 +52,13 @@ func (uc UsageTrackingUsecase) Enabled(ctx context.Context) bool {
 	if uc.isMarbleSaas {
 		return true
 	}
-	uc.mu.Lock()
-	defer uc.mu.Unlock()
+	// This runs before the HTTP timeout middleware, so bound both locking and the DB read.
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	if err := uc.mu.Acquire(ctx, 1); err != nil {
+		return false
+	}
+	defer uc.mu.Release(1)
 
 	key := models.MetadataKeyUsageTrackingEnabled
 	if enabled, found := uc.cache.Get(key); found {
@@ -86,9 +91,11 @@ func (uc UsageTrackingUsecase) SetEnabled(ctx context.Context, enabled bool) err
 		return errors.Wrap(models.ForbiddenError, "usage tracking cannot be changed on Marble SaaS")
 	}
 
-	// The cache and mutex are shared by the usecases created with credentials.
-	uc.mu.Lock()
-	defer uc.mu.Unlock()
+	// The cache and lock are shared by the usecases created with credentials.
+	if err := uc.mu.Acquire(ctx, 1); err != nil {
+		return err
+	}
+	defer uc.mu.Release(1)
 
 	key := models.MetadataKeyUsageTrackingEnabled
 	if err := uc.repository.UpsertMetadata(ctx, uc.executorFactory.NewExecutor(), models.Metadata{
