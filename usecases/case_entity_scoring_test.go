@@ -126,8 +126,17 @@ func TestCaseOutcomeChangeRefreshesManualEntities(t *testing.T) {
 }
 
 func TestRemovedCaseEntityRefreshesScore(t *testing.T) {
-	for _, changed := range []bool{true, false} {
-		t.Run(map[bool]string{true: "effective removal", false: "already absent"}[changed], func(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		changed bool
+		outcome models.CaseOutcome
+	}{
+		{name: "effective removal from confirmed risk", changed: true, outcome: models.CaseConfirmedRisk},
+		{name: "removal from unset case", changed: true, outcome: models.CaseOutcomeUnset},
+		{name: "removal from false positive case", changed: true, outcome: models.CaseFalsePositive},
+		{name: "already absent", outcome: models.CaseConfirmedRisk},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			org := pure_utils.NewId()
 			caseID := pure_utils.NewId().String()
@@ -137,11 +146,13 @@ func TestRemovedCaseEntityRefreshesScore(t *testing.T) {
 			features := new(mocks.FeatureAccessReader)
 			queue := new(mocks.TaskQueueRepository)
 			var link *models.CaseManualEntity
-			if changed {
+			if tt.changed {
 				link = &models.CaseManualEntity{Id: pure_utils.NewId().String(), CaseEntityRef: ref}
 				repo.On("CreateCaseEvent", ctx, tx, mock.MatchedBy(func(event models.CreateCaseEventAttributes) bool {
 					return event.EventType == models.CaseEntityRemoved && event.PreviousValue != nil
 				})).Return(models.CaseEvent{}, nil).Once()
+			}
+			if tt.changed && tt.outcome == models.CaseConfirmedRisk {
 				features.On("GetOrganizationFeatureAccess", ctx, org, (*models.UserId)(nil)).
 					Return(models.OrganizationFeatureAccess{UserScoring: models.Allowed}, nil).Once()
 				queue.On("EnqueueManyTriggerScoreComputation", ctx, tx, []models.ScoringRecordRef{
@@ -150,7 +161,7 @@ func TestRemovedCaseEntityRefreshesScore(t *testing.T) {
 			}
 			repo.On("DeleteCaseManualEntity", ctx, tx, org, caseID, ref).Return(link, nil).Once()
 			uc := CaseUseCase{repository: repo, featureAccessReader: features, taskQueueRepository: queue}
-			require.NoError(t, uc.applyCaseEntityChanges(ctx, tx, org, caseID, "", []models.CaseEntityRef{ref}, false))
+			require.NoError(t, uc.applyCaseEntityChanges(ctx, tx, org, caseID, "", tt.outcome, []models.CaseEntityRef{ref}, false))
 			repo.AssertExpectations(t)
 			features.AssertExpectations(t)
 			queue.AssertExpectations(t)
@@ -159,30 +170,36 @@ func TestRemovedCaseEntityRefreshesScore(t *testing.T) {
 }
 
 func (s *CaseEntityReaderSuite) TestAddedCaseEntityRefreshesScore() {
-	table := models.Table{Name: "customers", SemanticType: models.SemanticTypePerson}
-	ref := models.CaseEntityRef{TableName: table.Name, ObjectId: "c-123"}
-	s.expectModel(models.DataModel{Tables: map[string]models.Table{table.Name: table}})
-	s.factory.On("NewClientDbExecutor", s.ctx, s.org).Return(s.exec, nil).Once()
-	s.objects.On("QueryIngestedObjectByUniqueField", s.ctx, s.exec, table, ref.ObjectId, "object_id", []string(nil)).
-		Return([]models.DataModelObject{{Data: map[string]any{"object_id": ref.ObjectId}}}, nil).Once()
-	caseID := pure_utils.NewId().String()
-	link := &models.CaseManualEntity{Id: pure_utils.NewId().String(), CaseEntityRef: ref}
-	tx := new(mocks.Transaction)
-	repo := new(mocks.CaseRepository)
-	features := new(mocks.FeatureAccessReader)
-	queue := new(mocks.TaskQueueRepository)
-	repo.On("InsertCaseManualEntity", s.ctx, tx, s.org, caseID, ref).Return(link, nil).Once()
-	repo.On("CreateCaseEvent", s.ctx, tx, mock.MatchedBy(func(event models.CreateCaseEventAttributes) bool {
-		return event.EventType == models.CaseEntityAdded && event.NewValue != nil
-	})).Return(models.CaseEvent{}, nil).Once()
-	features.On("GetOrganizationFeatureAccess", s.ctx, s.org, (*models.UserId)(nil)).
-		Return(models.OrganizationFeatureAccess{UserScoring: models.Allowed}, nil).Once()
-	queue.On("EnqueueManyTriggerScoreComputation", s.ctx, tx, []models.ScoringRecordRef{
-		{OrgId: s.org, RecordType: ref.TableName, RecordId: ref.ObjectId},
-	}).Return(nil).Once()
-	uc := CaseUseCase{repository: repo, caseEntityReader: s.reader, featureAccessReader: features, taskQueueRepository: queue}
-	s.NoError(uc.applyCaseEntityChanges(s.ctx, tx, s.org, caseID, "", []models.CaseEntityRef{ref}, true))
-	repo.AssertExpectations(s.T())
-	features.AssertExpectations(s.T())
-	queue.AssertExpectations(s.T())
+	for _, outcome := range []models.CaseOutcome{models.CaseOutcomeUnset, models.CaseConfirmedRisk} {
+		s.Run(string(outcome), func() {
+			table := models.Table{Name: "customers", SemanticType: models.SemanticTypePerson}
+			ref := models.CaseEntityRef{TableName: table.Name, ObjectId: "c-123"}
+			s.expectModel(models.DataModel{Tables: map[string]models.Table{table.Name: table}})
+			s.factory.On("NewClientDbExecutor", s.ctx, s.org).Return(s.exec, nil).Once()
+			s.objects.On("QueryIngestedObjectByUniqueField", s.ctx, s.exec, table, ref.ObjectId, "object_id", []string(nil)).
+				Return([]models.DataModelObject{{Data: map[string]any{"object_id": ref.ObjectId}}}, nil).Once()
+			caseID := pure_utils.NewId().String()
+			link := &models.CaseManualEntity{Id: pure_utils.NewId().String(), CaseEntityRef: ref}
+			tx := new(mocks.Transaction)
+			repo := new(mocks.CaseRepository)
+			features := new(mocks.FeatureAccessReader)
+			queue := new(mocks.TaskQueueRepository)
+			repo.On("InsertCaseManualEntity", s.ctx, tx, s.org, caseID, ref).Return(link, nil).Once()
+			repo.On("CreateCaseEvent", s.ctx, tx, mock.MatchedBy(func(event models.CreateCaseEventAttributes) bool {
+				return event.EventType == models.CaseEntityAdded && event.NewValue != nil
+			})).Return(models.CaseEvent{}, nil).Once()
+			if outcome == models.CaseConfirmedRisk {
+				features.On("GetOrganizationFeatureAccess", s.ctx, s.org, (*models.UserId)(nil)).
+					Return(models.OrganizationFeatureAccess{UserScoring: models.Allowed}, nil).Once()
+				queue.On("EnqueueManyTriggerScoreComputation", s.ctx, tx, []models.ScoringRecordRef{
+					{OrgId: s.org, RecordType: ref.TableName, RecordId: ref.ObjectId},
+				}).Return(nil).Once()
+			}
+			uc := CaseUseCase{repository: repo, caseEntityReader: s.reader, featureAccessReader: features, taskQueueRepository: queue}
+			s.NoError(uc.applyCaseEntityChanges(s.ctx, tx, s.org, caseID, "", outcome, []models.CaseEntityRef{ref}, true))
+			repo.AssertExpectations(s.T())
+			features.AssertExpectations(s.T())
+			queue.AssertExpectations(s.T())
+		})
+	}
 }
