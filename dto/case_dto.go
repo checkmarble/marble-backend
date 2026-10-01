@@ -43,7 +43,7 @@ func AdaptCaseDto(c models.Case) APICase {
 		Contributors:   pure_utils.Map(c.Contributors, NewAPICaseContributor),
 		CreatedAt:      c.CreatedAt,
 		DecisionsCount: c.DecisionsCount,
-		Events:         pure_utils.Map(c.Events, NewAPICaseEvent),
+		Events:         AdaptCaseEvents(c.Events, c.InboxId),
 		InboxId:        c.InboxId,
 		Name:           c.Name,
 		Status:         c.Status.EnrichedStatus(c.SnoozedUntil, c.Boost),
