@@ -771,15 +771,13 @@ func (repo *MarbleDbRepository) GetCasesRelatedToObject(ctx context.Context, exe
 	return pure_utils.MapErr(cases, dbmodels.AdaptCase)
 }
 
-// ObjectHasConfirmedRisks considers the outcome regardless of the case's status,
-// including a confirmed risk on an open or reopened case.
 func (repo *MarbleDbRepository) ObjectHasConfirmedRisks(ctx context.Context, exec Executor, orgId uuid.UUID, objectType, objectId string) (bool, error) {
 	sql := casesRelatedToObjectCTE + `
 		select exists(
 			select 1
 			from cases c
 			inner join related_cases on c.id = related_cases.case_id
-			where c.org_id = $1 and c.outcome = 'confirmed_risk'
+			where c.outcome = 'confirmed_risk'
 		)
 	`
 
