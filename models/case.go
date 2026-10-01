@@ -75,6 +75,7 @@ func (c Case) GetMetadata() CaseMetadata {
 		OrganizationId: c.OrganizationId,
 		Status:         c.Status,
 		InboxId:        c.InboxId,
+		Type:           c.Type,
 	}
 }
 
@@ -93,6 +94,7 @@ type CaseMetadata struct {
 	Status         CaseStatus
 	InboxId        uuid.UUID
 	Outcome        CaseOutcome
+	Type           CaseType
 }
 
 type CaseStatus string

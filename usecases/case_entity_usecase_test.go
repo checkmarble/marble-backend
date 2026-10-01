@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -50,6 +51,7 @@ func (s *CaseEntityReaderSuite) SetupTest() {
 	dm := usecase{dataModelRepository: s.model, enforceSecurity: s.security, executorFactory: s.factory, clientDbIndexEditor: s.indexes}
 	s.reader = caseEntityReader{dataModelUsecase: dm, clientDbRepository: s.objects, executorFactory: s.factory}
 }
+
 func (s *CaseEntityReaderSuite) TearDownTest() {
 	s.model.AssertExpectations(s.T())
 	s.security.AssertExpectations(s.T())
@@ -61,6 +63,7 @@ func (s *CaseEntityReaderSuite) TearDownTest() {
 	s.queue.AssertExpectations(s.T())
 	s.tx.AssertExpectations(s.T())
 }
+
 func (s *CaseEntityReaderSuite) expectModel(dm models.DataModel) {
 	s.factory.On("NewExecutor").Return(s.exec).Once()
 	s.model.On("GetDataModel", s.ctx, s.exec, s.org, false, true).Return(dm, nil).Once()
@@ -107,6 +110,7 @@ func (s *CaseEntityReaderSuite) TestEligibility() {
 		})
 	}
 }
+
 func (s *CaseEntityReaderSuite) TestManualLinksProjection() {
 	s.Run("empty links", func() {
 		uc := CaseUseCase{caseEntityReader: s.reader}
@@ -273,8 +277,10 @@ func (s *CaseEntityMutationSuite) TestScoresRefreshWhenOutcomeProvided() {
 		{name: "unchanged outcome with a name change", outcome: models.CaseConfirmedRisk},
 	} {
 		s.Run(tt.name, func() {
-			c := models.Case{Id: uuid.NewString(), OrganizationId: s.orgId, InboxId: s.inboxId,
-				Status: models.CaseClosed, Outcome: models.CaseConfirmedRisk}
+			c := models.Case{
+				Id: uuid.NewString(), OrganizationId: s.orgId, InboxId: s.inboxId,
+				Status: models.CaseClosed, Outcome: models.CaseConfirmedRisk,
+			}
 			ref := models.CaseEntityRef{TableName: "customers", ObjectId: "customer-1"}
 			s.factory.On("Transaction", s.ctx, mock.Anything).Return(nil).Once()
 			s.repo.On("GetCaseById", s.ctx, s.tx, c.Id).Return(c, nil).Once()
@@ -301,30 +307,48 @@ func (s *CaseEntityMutationSuite) TestScoresRefreshWhenOutcomeProvided() {
 	}
 }
 
-func (s *CaseEntityMutationSuite) TestClosedCaseAdditionAndRemoval() {
+func (s *CaseEntityMutationSuite) TestMutationRestrictions() {
 	tests := []struct {
-		name   string
-		mutate func(*CaseUseCase, context.Context, string, string, []models.CaseEntityRef) (models.Case, error)
+		name     string
+		caseType models.CaseType
+		status   models.CaseStatus
+		mutate   func(*CaseUseCase, context.Context, string, string, []models.CaseEntityRef) (models.Case, error)
+		write    string
 	}{
-		{name: "addition", mutate: (*CaseUseCase).AddCaseEntities},
-		{name: "removal", mutate: (*CaseUseCase).RemoveCaseEntities},
+		{name: "closed case addition", caseType: models.CaseTypeDecision, status: models.CaseClosed, mutate: (*CaseUseCase).AddCaseEntities},
+		{name: "closed case removal", caseType: models.CaseTypeDecision, status: models.CaseClosed, mutate: (*CaseUseCase).RemoveCaseEntities},
+		{name: "continuous screening case addition", caseType: models.CaseTypeContinuousScreening, status: models.CasePending, mutate: (*CaseUseCase).AddCaseEntities},
+		{name: "continuous screening case removal", caseType: models.CaseTypeContinuousScreening, status: models.CasePending, mutate: (*CaseUseCase).RemoveCaseEntities},
+		{name: "unknown case type addition", caseType: models.CaseTypeUnknown, status: models.CasePending, mutate: (*CaseUseCase).AddCaseEntities},
+		{name: "unknown case type removal", caseType: models.CaseTypeUnknown, status: models.CasePending, mutate: (*CaseUseCase).RemoveCaseEntities},
+		{name: "decision case addition", caseType: models.CaseTypeDecision, status: models.CasePending, mutate: (*CaseUseCase).AddCaseEntities, write: "InsertCaseManualEntity"},
+		{name: "decision case removal", caseType: models.CaseTypeDecision, status: models.CasePending, mutate: (*CaseUseCase).RemoveCaseEntities, write: "DeleteCaseManualEntity"},
 	}
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			c := models.Case{Id: uuid.NewString(), OrganizationId: s.orgId, InboxId: s.inboxId, Status: models.CaseClosed}
+			c := models.Case{Id: uuid.NewString(), OrganizationId: s.orgId, InboxId: s.inboxId, Status: tt.status, Type: tt.caseType}
 			refs := []models.CaseEntityRef{{TableName: "customers", ObjectId: "c-123"}}
 			s.factory.On("Transaction", s.ctx, mock.Anything).Return(nil).Once()
 			s.repo.On("GetCaseByIdForUpdate", s.ctx, s.tx, c.Id).Return(c.GetMetadata(), nil).Once()
 			s.inboxRepo.On("ListInboxes", s.ctx, s.tx, s.orgId, []uuid.UUID(nil), false).Return([]models.Inbox{{Id: s.inboxId}}, nil).Once()
 			s.security.On("ReadInbox", models.Inbox{Id: s.inboxId}).Return(nil).Once()
 			s.security.On("ReadOrUpdateCase", c.GetMetadata(), []uuid.UUID{s.inboxId}).Return(nil).Once()
+			writeErr := errors.New("entity write failed")
+			if tt.write != "" {
+				s.repo.On(tt.write, s.ctx, s.tx, s.orgId, c.Id, refs[0]).Return((*models.CaseManualEntity)(nil), writeErr).Once()
+			}
 			uc := s.makeUsecase()
 
 			_, err := tt.mutate(&uc, s.ctx, "actor", c.Id, refs)
 
-			s.ErrorIs(err, models.BadParameterError)
-			s.repo.AssertNotCalled(s.T(), "InsertCaseManualEntity", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-			s.repo.AssertNotCalled(s.T(), "DeleteCaseManualEntity", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+			if tt.write == "" {
+				s.ErrorIs(err, models.BadParameterError)
+				s.repo.AssertNotCalled(s.T(), "InsertCaseManualEntity", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+				s.repo.AssertNotCalled(s.T(), "DeleteCaseManualEntity", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+			} else {
+				// Allowed mutations reach the repository rather than failing case validation.
+				s.ErrorIs(err, writeErr)
+			}
 			s.repo.AssertNotCalled(s.T(), "CreateCaseEvent", mock.Anything, mock.Anything, mock.Anything)
 		})
 	}

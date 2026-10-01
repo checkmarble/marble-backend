@@ -2806,6 +2806,9 @@ func (usecase *CaseUseCase) updateCaseEntities(ctx context.Context, userId, case
 		if c.Status == models.CaseClosed {
 			return models.Case{}, errors.Wrap(models.BadParameterError, "cannot update entities of a closed case")
 		}
+		if c.Type != models.CaseTypeDecision {
+			return models.Case{}, errors.Wrap(models.BadParameterError, "can only update entities of decision cases")
+		}
 		if err := usecase.applyCaseEntityChanges(ctx, tx, c.OrganizationId, caseId, userId, refs, add); err != nil {
 			return models.Case{}, err
 		}
