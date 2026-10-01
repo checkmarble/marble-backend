@@ -519,7 +519,7 @@ func (usecase *CaseUseCase) CreateCase(
 		return models.Case{}, err
 	}
 
-	if err := usecase.applyCaseEntityChanges(ctx, tx, createCaseAttributes.OrganizationId, newCaseId, userId, models.CaseOutcomeUnset, createCaseAttributes.Entities, true); err != nil {
+	if err := usecase.applyCaseEntityChanges(ctx, tx, createCaseAttributes.OrganizationId, newCaseId, userId, createCaseAttributes.Entities, true); err != nil {
 		return models.Case{}, err
 	}
 
@@ -691,8 +691,9 @@ func (usecase *CaseUseCase) UpdateCase(
 		if err != nil {
 			return models.Case{}, err
 		}
-		if updateCaseAttributes.Outcome != "" &&
-			(updateCaseAttributes.Outcome == models.CaseConfirmedRisk) != (c.Outcome == models.CaseConfirmedRisk) {
+		outcomeChanged := updateCaseAttributes.Outcome != "" && updateCaseAttributes.Outcome != c.Outcome
+		caseClosed := updateCaseAttributes.Status == models.CaseClosed && c.Status != models.CaseClosed
+		if outcomeChanged || caseClosed {
 			manual, err := usecase.repository.ListCaseManualEntities(ctx, tx, c.OrganizationId, c.Id)
 			if err != nil {
 				return models.Case{}, err
@@ -2724,12 +2725,12 @@ func caseEntitySnapshot(ref models.CaseEntityRef) string {
 }
 
 // applyCaseEntityChanges runs only in the Marble transaction that writes the case/event.
-func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, caseId, userId string, outcome models.CaseOutcome, refs []models.CaseEntityRef, add bool) error {
+func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, caseId, userId string, refs []models.CaseEntityRef, add bool) error {
 	var actor *string
 	if userId != "" {
 		actor = &userId
 	}
-	changed := make([]models.CaseEntityRef, 0, len(refs))
+	changed := false
 	for _, ref := range refs {
 		var link *models.CaseManualEntity
 		var err error
@@ -2749,7 +2750,7 @@ func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repos
 				return errors.Wrapf(err, "cannot add entity %s/%s", ref.TableName, ref.ObjectId)
 			}
 		}
-		changed = append(changed, ref)
+		changed = true
 		eventType := models.CaseEntityAdded
 		if !add {
 			eventType = models.CaseEntityRemoved
@@ -2770,21 +2771,16 @@ func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repos
 			return err
 		}
 	}
-	if len(changed) > 0 && actor != nil {
+	if changed && actor != nil {
 		if err := usecase.createCaseContributorIfNotExist(ctx, tx, caseId, userId); err != nil {
 			return err
 		}
-	}
-	// Ordinary open cases have an unset outcome and cannot affect past alerts.
-	// A reopened case retains its outcome, so changing its links can still matter.
-	if outcome == models.CaseConfirmedRisk {
-		return usecase.enqueueCaseEntityScoreComputations(ctx, tx, orgId, changed)
 	}
 	return nil
 }
 
 // enqueueCaseEntityScoreComputations uses the mutation's transaction, so workers see
-// committed links and outcomes. Removed links must also refresh their former entities.
+// committed links and outcomes after an outcome change or case closure.
 // The worker skips entities without a committed ruleset and preserves score overrides.
 func (usecase *CaseUseCase) enqueueCaseEntityScoreComputations(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, refs []models.CaseEntityRef) error {
 	if len(refs) == 0 {
@@ -2838,7 +2834,7 @@ func (usecase *CaseUseCase) updateCaseEntities(ctx context.Context, userId, case
 		if c.Status == models.CaseClosed {
 			return models.Case{}, errors.Wrap(models.BadParameterError, "cannot update entities of a closed case")
 		}
-		if err := usecase.applyCaseEntityChanges(ctx, tx, c.OrganizationId, caseId, userId, c.Outcome, refs, add); err != nil {
+		if err := usecase.applyCaseEntityChanges(ctx, tx, c.OrganizationId, caseId, userId, refs, add); err != nil {
 			return models.Case{}, err
 		}
 		return usecase.getCaseWithDetails(ctx, tx, caseId)
