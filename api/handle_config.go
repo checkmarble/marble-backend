@@ -24,7 +24,7 @@ func handleUpdateUsageTracking(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, data)
+		c.Status(http.StatusNoContent)
 	}
 }
 

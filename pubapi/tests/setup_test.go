@@ -24,11 +24,9 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/auth"
-	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/go-testfixtures/testfixtures/v3"
-	"github.com/google/uuid"
 	moby "github.com/moby/moby/client"
 	"github.com/pressly/goose/v3"
 	"github.com/riverqueue/river"
@@ -265,16 +263,12 @@ func setupApi(t *testing.T, ctx context.Context, dsn string) string {
 		repositories.WithOpenSanctions(openSanctions),
 		repositories.WithRiverClient(riverClient),
 		repositories.WithRedisClient(redisClient))
-	executorFactory := executor_factory.NewDbExecutorFactory(
-		cfg.AppName, repos.MarbleDbRepository, repos.ExecutorGetter, uuid.Nil)
-	usageTrackingUsecase := usecases.NewUsageTrackingUsecase(
-		repos.MarbleDbRepository, executorFactory, false, cfg.DisableSegment)
 	uc := usecases.NewUsecases(repos,
-		usecases.WithUsageTracking(usageTrackingUsecase),
+		usecases.WithDisableSegment(cfg.DisableSegment),
 		usecases.WithLicense(models.NewFullLicense()),
 		usecases.WithOpensanctions(true),
 	)
-	router := api.InitRouterMiddlewares(ctx, cfg, usageTrackingUsecase.Enabled, nil, infra.TelemetryRessources{})
+	router := api.InitRouterMiddlewares(ctx, cfg, uc.NewUsageTrackingUsecase().Enabled, nil, infra.TelemetryRessources{})
 
 	server := api.NewServer(
 		router,

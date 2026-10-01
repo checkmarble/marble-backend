@@ -67,9 +67,9 @@ type Usecases struct {
 
 type Option func(*options)
 
-func WithUsageTracking(usageTracking *UsageTrackingUsecase) Option {
+func WithDisableSegment(disableSegment bool) Option {
 	return func(o *options) {
-		o.usageTracking = usageTracking
+		o.disableSegment = disableSegment
 	}
 }
 
@@ -274,18 +274,12 @@ type options struct {
 	aiPromptsServingDir          string
 	aiPromptsFS                  fs.FS
 	aiAgentModelConfig           *models.AiAgentModelConfig
-	usageTracking                *UsageTrackingUsecase
+	disableSegment               bool
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
 	if o.batchIngestionMaxSize == 0 {
 		o.batchIngestionMaxSize = DefaultApiBatchIngestionSize
-	}
-	if o.usageTracking == nil {
-		executorFactory := executor_factory.NewDbExecutorFactory(
-			o.appName, repositories.MarbleDbRepository, repositories.ExecutorGetter, uuid.Nil)
-		o.usageTracking = NewUsageTrackingUsecase(
-			repositories.MarbleDbRepository, executorFactory, o.license.IsManagedMarble, false)
 	}
 
 	coordsEnricher, err := rgeo.New(rgeo.Countries110)
@@ -321,7 +315,6 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		aiPromptsServingDir:          o.aiPromptsServingDir,
 		aiPromptsFS:                  o.aiPromptsFS,
 		aiAgentModelConfig:           o.aiAgentModelConfig,
-		usageTracking:                o.usageTracking,
 
 		coordsEnricher: coordsEnricher,
 		ipEnricher:     o.ipEnricher,
@@ -333,7 +326,10 @@ func NewUsecases(repositories repositories.Repositories, opts ...Option) Usecase
 	for _, opt := range opts {
 		opt(o)
 	}
-	return newUsecasesWithOptions(repositories, o)
+	uc := newUsecasesWithOptions(repositories, o)
+	uc.usageTracking = NewUsageTrackingUsecase(
+		repositories.MarbleDbRepository, uc.NewExecutorFactory(), infra.IsMarbleSaasProject(), o.disableSegment)
+	return uc
 }
 
 func (usecases Usecases) NewUsageTrackingUsecase() *UsageTrackingUsecase {

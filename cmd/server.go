@@ -17,7 +17,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/auth"
-	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
@@ -371,13 +370,8 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 
 	aiPromptsFS, aiAgentModelConfig := configAiResources(ctx, license, licenseConfig, aiAgentConfig, aiPromptsServingDir, config.Version)
 
-	executorFactory := executor_factory.NewDbExecutorFactory(
-		appName, repositories.MarbleDbRepository, repositories.ExecutorGetter, uuid.Nil)
-	usageTrackingUsecase := usecases.NewUsageTrackingUsecase(
-		repositories.MarbleDbRepository, executorFactory, isMarbleSaasProject, apiConfig.DisableSegment)
-
 	uc := usecases.NewUsecases(repositories,
-		usecases.WithUsageTracking(usageTrackingUsecase),
+		usecases.WithDisableSegment(apiConfig.DisableSegment),
 		usecases.WithAppName(appName),
 		usecases.WithApiVersion(config.Version),
 		usecases.WithBatchIngestionMaxSize(serverConfig.batchIngestionMaxSize),
@@ -406,6 +400,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	////////////////////////////////////////////////////////////
 	// Seed the database
 	////////////////////////////////////////////////////////////
+	usageTrackingUsecase := uc.NewUsageTrackingUsecase()
 	seedUsecase := uc.NewSeedUseCase()
 	// The seeding runs outside of the HTTP middleware stack, so the Segment client has to be
 	// injected in the context explicitly for the seeding analytics events to be sent.

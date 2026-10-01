@@ -351,6 +351,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	uc := usecases.NewUsecases(
 		repositories,
+		usecases.WithDisableSegment(utils.GetEnv("DISABLE_SEGMENT", false)),
 		usecases.WithAppName(appName),
 		usecases.WithIngestionBucketUrl(workerConfig.ingestionBucketUrl),
 		usecases.WithOffloadingBucketUrl(offloadingConfig.BucketUrl),

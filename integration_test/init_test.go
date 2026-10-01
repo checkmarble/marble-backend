@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/dockertest/v3"
@@ -32,7 +31,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/postgres"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/auth"
-	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -214,14 +212,9 @@ func TestMain(m *testing.M) {
 			ProjectId: "project",
 		},
 	}
-	executorFactory := executor_factory.NewDbExecutorFactory(
-		apiConfig.AppName, repos.MarbleDbRepository, repos.ExecutorGetter, uuid.Nil)
-	usageTrackingUsecase := usecases.NewUsageTrackingUsecase(
-		repos.MarbleDbRepository, executorFactory, false, apiConfig.DisableSegment)
-
 	testUsecases = usecases.NewUsecases(
 		repos,
-		usecases.WithUsageTracking(usageTrackingUsecase),
+		usecases.WithDisableSegment(apiConfig.DisableSegment),
 		usecases.WithAppName("marble-test"),
 		usecases.WithLicense(models.NewFullLicense()),
 		usecases.WithIngestionBucketUrl("file:///tmp/tempFiles?create_dir=true"),
@@ -252,7 +245,7 @@ func TestMain(m *testing.M) {
 	deps, _ := api.InitDependencies(ctx, apiConfig, dbPool, privateKey, tokenVerifier)
 
 	telemetryRessources, _ := infra.InitTelemetry(ctx, infra.TelemetryConfiguration{Enabled: false}, "")
-	router := api.InitRouterMiddlewares(ctx, apiConfig, usageTrackingUsecase.Enabled,
+	router := api.InitRouterMiddlewares(ctx, apiConfig, testUsecases.NewUsageTrackingUsecase().Enabled,
 		deps.SegmentClient, telemetryRessources)
 	server := api.NewServer(router, apiConfig, testUsecases,
 		deps.Authentication, deps.TokenHandler, logger, api.WithLocalTest(true))
