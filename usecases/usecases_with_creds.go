@@ -1354,3 +1354,14 @@ func (usecases UsecasesWithCreds) NewAsyncDecisionStorageWorker() worker_jobs.As
 		usecases.NewDecisionUsecase(),
 	)
 }
+
+func (usecases UsecasesWithCreds) NewCustomerAggregateUsecase() CustomerAggregateUsecase {
+	return NewCustomerAggregateUsecase(
+		usecases.NewEnforceOrganizationSecurity(),
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.RedisClient,
+		usecases.NewDataModelUseCase(),
+		usecases.Usecases.AstEvaluationEnvironmentFactory,
+		usecases.Repositories.MarbleDbRepository,
+	)
+}
