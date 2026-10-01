@@ -180,11 +180,6 @@ type TaskQueueRepository interface {
 		tx Transaction,
 		score models.ScoringRecordRef,
 	) error
-	EnqueueScoreComputationForCase(
-		ctx context.Context,
-		tx Transaction,
-		score models.ScoringRecordRef,
-	) error
 	EnqueueManyTriggerScoreComputation(
 		ctx context.Context,
 		tx Transaction,
@@ -929,26 +924,17 @@ func (r riverRepository) EnqueueTriggerScoreComputation(
 	tx Transaction,
 	record models.ScoringRecordRef,
 ) error {
-	return r.enqueueTriggerScoreComputation(ctx, tx, record, river.UniqueOpts{
-		ByArgs: true, ByPeriod: time.Hour,
-	})
-}
-
-// Case edits must each trigger a computation, including when a previous job has
-// already completed or is running against the state before this transaction.
-func (r riverRepository) EnqueueScoreComputationForCase(ctx context.Context, tx Transaction, record models.ScoringRecordRef) error {
-	return r.enqueueTriggerScoreComputation(ctx, tx, record, river.UniqueOpts{})
-}
-
-func (r riverRepository) enqueueTriggerScoreComputation(ctx context.Context, tx Transaction, record models.ScoringRecordRef, uniqueOpts river.UniqueOpts) error {
 	res, err := r.client.InsertTx(
 		ctx,
 		tx.RawTx(),
 		models.TriggeredScoreComputationArgs(record),
 		&river.InsertOpts{
-			Queue:      record.OrgId.String(),
-			Priority:   4, // Low priority
-			UniqueOpts: uniqueOpts,
+			Queue:    record.OrgId.String(),
+			Priority: 4, // Low priority
+			UniqueOpts: river.UniqueOpts{
+				ByArgs:   true,
+				ByPeriod: time.Hour,
+			},
 		},
 	)
 	if err != nil {

@@ -171,7 +171,7 @@ func (s *CaseEntityReaderSuite) TestScoreRefreshOnLinkChanges() {
 				}
 				feature.On("GetOrganizationFeatureAccess", s.ctx, s.org, (*models.UserId)(nil)).Return(access, nil).Once()
 				if tt.allowed {
-					queue.On("EnqueueScoreComputationForCase", s.ctx, tx, models.ScoringRecordRef{
+					queue.On("EnqueueTriggerScoreComputation", s.ctx, tx, models.ScoringRecordRef{
 						OrgId: s.org, RecordType: ref.TableName, RecordId: ref.ObjectId,
 					}).Return(queueErr).Once()
 				}
@@ -187,7 +187,7 @@ func (s *CaseEntityReaderSuite) TestScoreRefreshOnLinkChanges() {
 			feature.AssertExpectations(s.T())
 			queue.AssertExpectations(s.T())
 			if !tt.changed || !tt.allowed {
-				queue.AssertNotCalled(s.T(), "EnqueueScoreComputationForCase", mock.Anything, mock.Anything, mock.Anything)
+				queue.AssertNotCalled(s.T(), "EnqueueTriggerScoreComputation", mock.Anything, mock.Anything, mock.Anything)
 			}
 		})
 	}
@@ -231,7 +231,7 @@ func (s *CaseEntityMutationSuite) TestOutcomeChangeRefreshesManualEntitiesWithou
 	repo.On("ListCaseManualEntities", ctx, tx, orgId, c.Id).Return([]models.CaseManualEntity{{CaseEntityRef: ref}}, nil).Once()
 	// A queue failure must abort the transaction before writing the new outcome.
 	queueErr := fmt.Errorf("queue unavailable")
-	queue.On("EnqueueScoreComputationForCase", ctx, tx, models.ScoringRecordRef{
+	queue.On("EnqueueTriggerScoreComputation", ctx, tx, models.ScoringRecordRef{
 		OrgId: orgId, RecordType: ref.TableName, RecordId: ref.ObjectId,
 	}).Return(queueErr).Once()
 	uc := CaseUseCase{
