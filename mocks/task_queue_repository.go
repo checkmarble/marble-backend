@@ -245,6 +245,11 @@ func (m *TaskQueueRepository) EnqueueTriggerScoreComputation(
 	return args.Error(0)
 }
 
+func (m *TaskQueueRepository) EnqueueScoreComputationForCase(ctx context.Context, tx repositories.Transaction, record models.ScoringRecordRef) error {
+	args := m.Called(ctx, tx, record)
+	return args.Error(0)
+}
+
 func (m *TaskQueueRepository) EnqueueManyTriggerScoreComputation(
 	ctx context.Context,
 	tx repositories.Transaction,
