@@ -16,7 +16,6 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
-	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -148,6 +147,10 @@ type caseUsecaseIngestedDataReader interface {
 	) ([]models.PivotObject, error)
 }
 
+type caseFeatureAccessReader interface {
+	GetOrganizationFeatureAccess(context.Context, uuid.UUID, *models.UserId) (models.OrganizationFeatureAccess, error)
+}
+
 type CaseUseCase struct {
 	enforceSecurity         security.EnforceSecurityCase
 	enforceSecurityTags     security.EnforceSecurityTags
@@ -165,7 +168,7 @@ type CaseUseCase struct {
 	ingestedDataReader      caseUsecaseIngestedDataReader
 	caseEntityReader        caseEntityReader
 	taskQueueRepository     repositories.TaskQueueRepository
-	featureAccessReader     feature_access.FeatureAccessReader
+	featureAccessReader     caseFeatureAccessReader
 	publicApiAdapterUsecase PublicApiAdapterUsecase
 	scoringScoreUsecase     scoring.ScoringScoresUsecase
 	offloadedReader         repositories.OffloadedReadWriter
@@ -680,6 +683,17 @@ func (usecase *CaseUseCase) UpdateCase(
 					utils.LoggerFromContext(ctx).ErrorContext(ctx,
 						"could not trigger score computation job",
 						"error", err.Error())
+				}
+
+				entities, err := usecase.repository.ListCaseManualEntities(ctx, tx, c.OrganizationId, c.Id)
+				if err != nil {
+					return models.Case{}, err
+				}
+				refs := pure_utils.Map(entities, func(entity models.CaseManualEntity) models.CaseEntityRef {
+					return entity.CaseEntityRef
+				})
+				if err := usecase.enqueueCaseEntityScoreComputations(ctx, tx, c.OrganizationId, refs); err != nil {
+					return models.Case{}, err
 				}
 			}
 		}
@@ -2713,7 +2727,7 @@ func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repos
 	if userId != "" {
 		actor = &userId
 	}
-	changed := false
+	changedRefs := make([]models.CaseEntityRef, 0, len(refs))
 	for _, ref := range refs {
 		var link *models.CaseManualEntity
 		var err error
@@ -2733,7 +2747,7 @@ func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repos
 				return errors.Wrapf(err, "cannot add entity %s/%s", ref.TableName, ref.ObjectId)
 			}
 		}
-		changed = true
+		changedRefs = append(changedRefs, ref)
 		eventType := models.CaseEntityAdded
 		if !add {
 			eventType = models.CaseEntityRemoved
@@ -2754,9 +2768,31 @@ func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repos
 			return err
 		}
 	}
-	if changed && actor != nil {
+	if len(changedRefs) > 0 && actor != nil {
 		if err := usecase.createCaseContributorIfNotExist(ctx, tx, caseId, userId); err != nil {
 			return err
+		}
+	}
+	if len(changedRefs) > 0 {
+		featureAccess, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
+		if err != nil {
+			return err
+		}
+		if featureAccess.UserScoring.IsAllowed() {
+			return usecase.enqueueCaseEntityScoreComputations(ctx, tx, orgId, changedRefs)
+		}
+	}
+	return nil
+}
+
+// The worker skips tables without a committed scoring ruleset. Enqueue inside
+// the case transaction so it evaluates the updated links/outcome after commit.
+func (usecase *CaseUseCase) enqueueCaseEntityScoreComputations(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, refs []models.CaseEntityRef) error {
+	for _, ref := range refs {
+		if err := usecase.taskQueueRepository.EnqueueScoreComputationForCase(ctx, tx, models.ScoringRecordRef{
+			OrgId: orgId, RecordType: ref.TableName, RecordId: ref.ObjectId,
+		}); err != nil {
+			return errors.Wrap(err, "could not trigger case entity score computation")
 		}
 	}
 	return nil
