@@ -18,7 +18,6 @@ import (
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
-	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
@@ -124,9 +123,6 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		TokenProvider:  authProvider,
 		FirebaseConfig: firebaseConfig,
 		OidcConfig:     oidcProvider,
-	}
-	if apiConfig.DisableSegment {
-		apiConfig.SegmentWriteKey = ""
 	}
 	if apiConfig.MarbleApiInternalUrl == "" {
 		// Fallback on the regular API URL if the internal one is not set
@@ -377,11 +373,11 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 
 	executorFactory := executor_factory.NewDbExecutorFactory(
 		appName, repositories.MarbleDbRepository, repositories.ExecutorGetter, uuid.Nil)
-	usageTrackingSettings := tracking.NewSettings(
-		repositories.MarbleDbRepository, executorFactory, isMarbleSaasProject)
+	usageTrackingUsecase := usecases.NewUsageTrackingUsecase(
+		repositories.MarbleDbRepository, executorFactory, isMarbleSaasProject, apiConfig.DisableSegment)
 
 	uc := usecases.NewUsecases(repositories,
-		usecases.WithUsageTracking(usageTrackingSettings),
+		usecases.WithUsageTracking(usageTrackingUsecase),
 		usecases.WithAppName(appName),
 		usecases.WithApiVersion(config.Version),
 		usecases.WithBatchIngestionMaxSize(serverConfig.batchIngestionMaxSize),
@@ -414,7 +410,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	// The seeding runs outside of the HTTP middleware stack, so the Segment client has to be
 	// injected in the context explicitly for the seeding analytics events to be sent.
 	seedCtx := ctx
-	if !apiConfig.DisableSegment {
+	if usageTrackingUsecase.Enabled(ctx) {
 		seedCtx = utils.StoreSegmentClientInContext(ctx, deps.SegmentClient)
 	}
 	marbleAdminEmail := seedOrgConfig.CreateGlobalAdminEmail
@@ -434,7 +430,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		}
 	}
 
-	router := api.InitRouterMiddlewares(ctx, apiConfig, uc.UsageTrackingEnabled,
+	router := api.InitRouterMiddlewares(ctx, apiConfig, usageTrackingUsecase.Enabled,
 		deps.SegmentClient, telemetryRessources)
 	server := api.NewServer(router, apiConfig, uc, deps.Authentication, deps.TokenHandler, logger)
 

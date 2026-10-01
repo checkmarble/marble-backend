@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/dockertest/v3"
@@ -31,6 +32,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/postgres"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/auth"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -196,8 +198,30 @@ func TestMain(m *testing.M) {
 	firebaseAdminClient := &mocks.FirebaseAdminClient{}
 	firebaseAdminClient.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
+	apiConfig := api.Configuration{
+		Env:                 "development",
+		AppName:             "marble-backend",
+		MarbleAppUrl:        "http://localhost:3000",
+		RequestLoggingLevel: "all",
+		TokenProvider:       auth.TokenProviderFirebase,
+		TokenLifetimeMinute: 60,
+		DisableSegment:      true,
+		SegmentWriteKey:     "",
+		BatchTimeout:        55 * time.Second,
+		DecisionTimeout:     10 * time.Second,
+		DefaultTimeout:      5 * time.Second,
+		FirebaseConfig: api.FirebaseConfig{
+			ProjectId: "project",
+		},
+	}
+	executorFactory := executor_factory.NewDbExecutorFactory(
+		apiConfig.AppName, repos.MarbleDbRepository, repos.ExecutorGetter, uuid.Nil)
+	usageTrackingUsecase := usecases.NewUsageTrackingUsecase(
+		repos.MarbleDbRepository, executorFactory, false, apiConfig.DisableSegment)
+
 	testUsecases = usecases.NewUsecases(
 		repos,
+		usecases.WithUsageTracking(usageTrackingUsecase),
 		usecases.WithAppName("marble-test"),
 		usecases.WithLicense(models.NewFullLicense()),
 		usecases.WithIngestionBucketUrl("file:///tmp/tempFiles?create_dir=true"),
@@ -222,30 +246,13 @@ func TestMain(m *testing.M) {
 		cleanupAndFatal("Could not start river client: %s", err)
 	}
 
-	apiConfig := api.Configuration{
-		Env:                 "development",
-		AppName:             "marble-backend",
-		MarbleAppUrl:        "http://localhost:3000",
-		RequestLoggingLevel: "all",
-		TokenProvider:       auth.TokenProviderFirebase,
-		TokenLifetimeMinute: 60,
-		DisableSegment:      true,
-		SegmentWriteKey:     "",
-		BatchTimeout:        55 * time.Second,
-		DecisionTimeout:     10 * time.Second,
-		DefaultTimeout:      5 * time.Second,
-		FirebaseConfig: api.FirebaseConfig{
-			ProjectId: "project",
-		},
-	}
-
 	tokenVerifier := infra.NewMockedFirebaseTokenVerifier()
 	firebaseClient := idp.NewFirebaseClient("project", tokenVerifier)
 
 	deps, _ := api.InitDependencies(ctx, apiConfig, dbPool, privateKey, tokenVerifier)
 
 	telemetryRessources, _ := infra.InitTelemetry(ctx, infra.TelemetryConfiguration{Enabled: false}, "")
-	router := api.InitRouterMiddlewares(ctx, apiConfig, testUsecases.UsageTrackingEnabled,
+	router := api.InitRouterMiddlewares(ctx, apiConfig, usageTrackingUsecase.Enabled,
 		deps.SegmentClient, telemetryRessources)
 	server := api.NewServer(router, apiConfig, testUsecases,
 		deps.Authentication, deps.TokenHandler, logger, api.WithLocalTest(true))

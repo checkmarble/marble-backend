@@ -28,10 +28,9 @@ type UsecasesWithCreds struct {
 }
 
 func (usecases *UsecasesWithCreds) NewUsageTrackingUsecase() UsageTrackingUsecase {
-	return UsageTrackingUsecase{
-		settings:        usecases.usageTrackingSettings,
-		enforceSecurity: usecases.NewEnforceSecurity(),
-	}
+	uc := *usecases.usageTracking
+	uc.enforceSecurity = usecases.NewEnforceSecurity()
+	return uc
 }
 
 type UsecaseTransactionWrapper func(tx repositories.Transaction, org models.Organization, user models.User) *UsecasesWithCreds

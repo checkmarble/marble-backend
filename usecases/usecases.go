@@ -1,7 +1,6 @@
 package usecases
 
 import (
-	"context"
 	"io/fs"
 	"time"
 
@@ -22,7 +21,6 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
-	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 	"github.com/google/uuid"
 	"github.com/oschwald/maxminddb-golang/v2"
@@ -63,15 +61,15 @@ type Usecases struct {
 	coordsEnricher *rgeo.Rgeo
 	ipEnricher     *maxminddb.Reader
 
-	rootExecutorFactory   *executor_factory.IdentityExecutorFactory
-	usageTrackingSettings *tracking.Settings
+	rootExecutorFactory *executor_factory.IdentityExecutorFactory
+	usageTracking       *UsageTrackingUsecase
 }
 
 type Option func(*options)
 
-func WithUsageTracking(settings *tracking.Settings) Option {
+func WithUsageTracking(usageTracking *UsageTrackingUsecase) Option {
 	return func(o *options) {
-		o.usageTrackingSettings = settings
+		o.usageTracking = usageTracking
 	}
 }
 
@@ -276,18 +274,18 @@ type options struct {
 	aiPromptsServingDir          string
 	aiPromptsFS                  fs.FS
 	aiAgentModelConfig           *models.AiAgentModelConfig
-	usageTrackingSettings        *tracking.Settings
+	usageTracking                *UsageTrackingUsecase
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
 	if o.batchIngestionMaxSize == 0 {
 		o.batchIngestionMaxSize = DefaultApiBatchIngestionSize
 	}
-	if o.usageTrackingSettings == nil {
+	if o.usageTracking == nil {
 		executorFactory := executor_factory.NewDbExecutorFactory(
 			o.appName, repositories.MarbleDbRepository, repositories.ExecutorGetter, uuid.Nil)
-		o.usageTrackingSettings = tracking.NewSettings(
-			repositories.MarbleDbRepository, executorFactory, o.license.IsManagedMarble)
+		o.usageTracking = NewUsageTrackingUsecase(
+			repositories.MarbleDbRepository, executorFactory, o.license.IsManagedMarble, false)
 	}
 
 	coordsEnricher, err := rgeo.New(rgeo.Countries110)
@@ -323,7 +321,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		aiPromptsServingDir:          o.aiPromptsServingDir,
 		aiPromptsFS:                  o.aiPromptsFS,
 		aiAgentModelConfig:           o.aiAgentModelConfig,
-		usageTrackingSettings:        o.usageTrackingSettings,
+		usageTracking:                o.usageTracking,
 
 		coordsEnricher: coordsEnricher,
 		ipEnricher:     o.ipEnricher,
@@ -338,8 +336,8 @@ func NewUsecases(repositories repositories.Repositories, opts ...Option) Usecase
 	return newUsecasesWithOptions(repositories, o)
 }
 
-func (usecases Usecases) UsageTrackingEnabled(ctx context.Context) bool {
-	return usecases.usageTrackingSettings.Enabled(ctx)
+func (usecases Usecases) NewUsageTrackingUsecase() *UsageTrackingUsecase {
+	return usecases.usageTracking
 }
 
 func (usecases Usecases) WithRootExecutor(exec executor_factory.IdentityExecutorFactory) Usecases {

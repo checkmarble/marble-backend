@@ -36,6 +36,7 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 
 		licenseUsecase := uc.NewLicenseUsecase()
 		versionUsecase := uc.NewVersionUsecase()
+		usageTrackingUsecase := uc.NewUsageTrackingUsecase()
 
 		signupUsecase := usecases.NewSignupUsecase(uc.NewExecutorFactory(),
 			uc.Repositories.MarbleDbRepository,
@@ -95,7 +96,7 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 			},
 			Features: dto.ConfigFeaturesDto{
 				Sso:                   licenseUsecase.HasSsoEnabled(),
-				Segment:               !cfg.DisableSegment && uc.UsageTrackingEnabled(ctx),
+				Segment:               usageTrackingUsecase.Enabled(ctx),
 				WebhookSecretRotation: true,
 			},
 		}

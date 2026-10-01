@@ -41,9 +41,6 @@ func InitDependencies(
 
 	var firebaseAdmin idp.Adminer
 
-	if conf.DisableSegment {
-		conf.SegmentWriteKey = ""
-	}
 	segmentClient := analytics.New(conf.SegmentWriteKey)
 
 	var (
