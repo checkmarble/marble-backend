@@ -673,7 +673,7 @@ func (usecase *CaseUseCase) UpdateCase(
 				return models.Case{}, err
 			}
 
-			if featureAccess.UserScoring.IsAllowed() {
+			if featureAccess.UserScoring.IsAllowed() && updateCaseAttributes.Outcome != c.Outcome {
 				decisions, err := usecase.decisionRepository.DecisionsByCaseId(ctx, tx, c.OrganizationId, c.Id)
 				if err != nil {
 					return models.Case{}, err
@@ -2727,7 +2727,7 @@ func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repos
 	if userId != "" {
 		actor = &userId
 	}
-	changedRefs := make([]models.CaseEntityRef, 0, len(refs))
+	changed := false
 	for _, ref := range refs {
 		var link *models.CaseManualEntity
 		var err error
@@ -2747,7 +2747,7 @@ func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repos
 				return errors.Wrapf(err, "cannot add entity %s/%s", ref.TableName, ref.ObjectId)
 			}
 		}
-		changedRefs = append(changedRefs, ref)
+		changed = true
 		eventType := models.CaseEntityAdded
 		if !add {
 			eventType = models.CaseEntityRemoved
@@ -2768,30 +2768,25 @@ func (usecase *CaseUseCase) applyCaseEntityChanges(ctx context.Context, tx repos
 			return err
 		}
 	}
-	if len(changedRefs) > 0 && actor != nil {
+	if changed && actor != nil {
 		if err := usecase.createCaseContributorIfNotExist(ctx, tx, caseId, userId); err != nil {
 			return err
-		}
-	}
-	if len(changedRefs) > 0 {
-		featureAccess, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
-		if err != nil {
-			return err
-		}
-		if featureAccess.UserScoring.IsAllowed() {
-			return usecase.enqueueCaseEntityScoreComputations(ctx, tx, orgId, changedRefs)
 		}
 	}
 	return nil
 }
 
-// The worker skips tables without a committed scoring ruleset. Enqueue inside
-// the case transaction so it evaluates the updated links/outcome after commit.
 func (usecase *CaseUseCase) enqueueCaseEntityScoreComputations(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, refs []models.CaseEntityRef) error {
 	for _, ref := range refs {
-		if err := usecase.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, models.ScoringRecordRef{
-			OrgId: orgId, RecordType: ref.TableName, RecordId: ref.ObjectId,
-		}); err != nil {
+		if err := usecase.taskQueueRepository.EnqueueTriggerScoreComputation(
+			ctx,
+			tx,
+			models.ScoringRecordRef{
+				OrgId:      orgId,
+				RecordType: ref.TableName,
+				RecordId:   ref.ObjectId,
+			},
+		); err != nil {
 			return errors.Wrap(err, "could not trigger case entity score computation")
 		}
 	}
