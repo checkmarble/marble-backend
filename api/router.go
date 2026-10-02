@@ -16,6 +16,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/api/middleware"
 	"github.com/checkmarble/marble-backend/infra"
+	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -65,7 +66,7 @@ func buildCorsOptions(ctx context.Context, conf Configuration) (cors.Config, boo
 func InitRouterMiddlewares(
 	ctx context.Context,
 	conf Configuration,
-	usageTrackingEnabled func(context.Context) bool,
+	usageTrackingUsecase *usecases.UsageTrackingUsecase,
 	segmentClient analytics.Client,
 	telemetryRessources infra.TelemetryRessources,
 ) *gin.Engine {
@@ -87,7 +88,7 @@ func InitRouterMiddlewares(
 	r.Use(middleware.NewLogging(logger, conf.RequestLoggingLevel))
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
 	if segmentClient != nil {
-		r.Use(utils.StoreSegmentClientInContextMiddleware(segmentClient, usageTrackingEnabled))
+		r.Use(utils.StoreSegmentClientInContextMiddleware(segmentClient, usageTrackingUsecase.Enabled))
 	}
 	r.Use(otelgin.Middleware(
 		conf.AppName,

@@ -423,7 +423,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		}
 	}
 
-	router := api.InitRouterMiddlewares(ctx, apiConfig, usageTrackingUsecase.Enabled,
+	router := api.InitRouterMiddlewares(ctx, apiConfig, usageTrackingUsecase,
 		deps.SegmentClient, telemetryRessources)
 	server := api.NewServer(router, apiConfig, uc, deps.Authentication, deps.TokenHandler, logger)
 

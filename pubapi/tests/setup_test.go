@@ -268,7 +268,7 @@ func setupApi(t *testing.T, ctx context.Context, dsn string) string {
 		usecases.WithLicense(models.NewFullLicense()),
 		usecases.WithOpensanctions(true),
 	)
-	router := api.InitRouterMiddlewares(ctx, cfg, uc.NewUsageTrackingUsecase().Enabled, nil, infra.TelemetryRessources{})
+	router := api.InitRouterMiddlewares(ctx, cfg, uc.NewUsageTrackingUsecase(), nil, infra.TelemetryRessources{})
 
 	server := api.NewServer(
 		router,
