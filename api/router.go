@@ -87,7 +87,7 @@ func InitRouterMiddlewares(
 	}
 	r.Use(middleware.NewLogging(logger, conf.RequestLoggingLevel))
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
-	if segmentClient != nil {
+	if !conf.DisableSegment && segmentClient != nil {
 		r.Use(utils.StoreSegmentClientInContextMiddleware(segmentClient, usageTrackingReader))
 	}
 	r.Use(otelgin.Middleware(
