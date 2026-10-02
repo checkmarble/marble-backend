@@ -7,6 +7,10 @@ import (
 	"github.com/segmentio/analytics-go/v3"
 )
 
+type UsageTracking interface {
+	Enabled(context.Context) bool
+}
+
 func SegmentClientFromContext(ctx context.Context) (analytics.Client, bool) {
 	client, found := ctx.Value(ContextKeySegmentClient).(analytics.Client)
 	return client, found
@@ -16,20 +20,20 @@ func StoreSegmentClientInContext(ctx context.Context, client analytics.Client) c
 	return context.WithValue(ctx, ContextKeySegmentClient, client)
 }
 
-func StoreUsageTrackingEnabledInContext(ctx context.Context, enabled func(context.Context) bool) context.Context {
-	return context.WithValue(ctx, ContextKeyUsageTrackingEnabled, enabled)
+func StoreUsageTrackingInContext(ctx context.Context, usageTracking UsageTracking) context.Context {
+	return context.WithValue(ctx, ContextKeyUsageTracking, usageTracking)
 }
 
-func UsageTrackingEnabledFromContext(ctx context.Context) (func(context.Context) bool, bool) {
-	enabled, found := ctx.Value(ContextKeyUsageTrackingEnabled).(func(context.Context) bool)
-	return enabled, found
+func UsageTrackingFromContext(ctx context.Context) (UsageTracking, bool) {
+	usageTracking, found := ctx.Value(ContextKeyUsageTracking).(UsageTracking)
+	return usageTracking, found
 }
 
-func StoreSegmentClientInContextMiddleware(client analytics.Client, enabled func(context.Context) bool) gin.HandlerFunc {
+func StoreSegmentClientInContextMiddleware(client analytics.Client, usageTracking UsageTracking) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		ctxWithSegment := StoreSegmentClientInContext(ctx, client)
-		ctxWithSegment = StoreUsageTrackingEnabledInContext(ctxWithSegment, enabled)
+		ctxWithSegment = StoreUsageTrackingInContext(ctxWithSegment, usageTracking)
 		c.Request = c.Request.WithContext(ctxWithSegment)
 		c.Next()
 	}

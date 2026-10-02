@@ -9,5 +9,5 @@ const (
 	ContextKeySegmentClient
 	ContextKeyOpenTelemetryTracer
 	ContextKeyExecutionSource
-	ContextKeyUsageTrackingEnabled
+	ContextKeyUsageTracking
 )

@@ -115,7 +115,7 @@ func getAnalyticsClientFromContext(ctx context.Context) (analytics.Client, bool)
 	if !found || segmentClient == nil {
 		return nil, false
 	}
-	if enabled, found := utils.UsageTrackingEnabledFromContext(ctx); found && !enabled(ctx) {
+	if usageTracking, found := utils.UsageTrackingFromContext(ctx); found && !usageTracking.Enabled(ctx) {
 		return nil, false
 	}
 	return segmentClient, true
