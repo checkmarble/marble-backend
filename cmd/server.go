@@ -425,8 +425,12 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		}
 	}
 
-	router := api.InitRouterMiddlewares(ctx, apiConfig, usageTrackingReader,
-		deps.SegmentClient, telemetryRessources)
+	router := api.InitRouterMiddlewares(
+		ctx, apiConfig,
+		usageTrackingReader,
+		deps.SegmentClient,
+		telemetryRessources,
+	)
 	server := api.NewServer(router, apiConfig, uc, deps.Authentication, deps.TokenHandler, logger)
 
 	notify, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
