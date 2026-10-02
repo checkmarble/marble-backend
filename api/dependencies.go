@@ -63,12 +63,7 @@ func InitDependencies(
 		idpTokenVerifier = idp.NewFirebaseClient(conf.FirebaseConfig.ProjectId, optTokenVerifier[0])
 		tokenIssuer = idpTokenVerifier.Issuer()
 	case auth.TokenProviderOidc:
-		oidcConfig, err := infra.InitializeOidc(ctx, conf.MarbleAppUrl)
-		if err != nil {
-			return dependencies{}, err
-		}
-
-		idpTokenVerifier = idp.NewOidcClient(oidcConfig, oidcConfig.Provider, oidcConfig.Issuer, oidcConfig.Verifier)
+		idpTokenVerifier = idp.NewOidcClient(conf.OidcConfig, conf.OidcConfig.Provider, conf.OidcConfig.Issuer, conf.OidcConfig.Verifier)
 		tokenIssuer = idpTokenVerifier.Issuer()
 	}
 
