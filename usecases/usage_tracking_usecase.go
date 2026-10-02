@@ -46,7 +46,7 @@ func (uc UsageTrackingReader) Enabled(ctx context.Context) bool {
 		return false
 	}
 
-	enabled := false
+	enabled := true
 	if metadata != nil {
 		enabled, err = strconv.ParseBool(metadata.Value)
 		if err != nil {
