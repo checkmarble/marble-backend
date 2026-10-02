@@ -3,6 +3,7 @@ package usecases
 import (
 	"time"
 
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ai_agent"
@@ -1353,4 +1354,13 @@ func (usecases UsecasesWithCreds) NewAsyncDecisionStorageWorker() worker_jobs.As
 		usecases.Repositories.RedisClient,
 		usecases.NewDecisionUsecase(),
 	)
+}
+
+func (usecases *UsecasesWithCreds) NewUsageTrackingWriter() UsageTrackingWriter {
+	return UsageTrackingWriter{
+		repository:      usecases.Repositories.MarbleDbRepository,
+		executorFactory: usecases.NewExecutorFactory(),
+		enforceSecurity: usecases.NewEnforceSecurity(),
+		isMarbleSaas:    infra.IsMarbleSaasProject(),
+	}
 }

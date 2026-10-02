@@ -196,8 +196,25 @@ func TestMain(m *testing.M) {
 	firebaseAdminClient := &mocks.FirebaseAdminClient{}
 	firebaseAdminClient.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
+	apiConfig := api.Configuration{
+		Env:                 "development",
+		AppName:             "marble-backend",
+		MarbleAppUrl:        "http://localhost:3000",
+		RequestLoggingLevel: "all",
+		TokenProvider:       auth.TokenProviderFirebase,
+		TokenLifetimeMinute: 60,
+		DisableSegment:      true,
+		SegmentWriteKey:     "",
+		BatchTimeout:        55 * time.Second,
+		DecisionTimeout:     10 * time.Second,
+		DefaultTimeout:      5 * time.Second,
+		FirebaseConfig: api.FirebaseConfig{
+			ProjectId: "project",
+		},
+	}
 	testUsecases = usecases.NewUsecases(
 		repos,
+		usecases.WithDisableSegment(apiConfig.DisableSegment),
 		usecases.WithAppName("marble-test"),
 		usecases.WithLicense(models.NewFullLicense()),
 		usecases.WithIngestionBucketUrl("file:///tmp/tempFiles?create_dir=true"),
@@ -222,30 +239,13 @@ func TestMain(m *testing.M) {
 		cleanupAndFatal("Could not start river client: %s", err)
 	}
 
-	apiConfig := api.Configuration{
-		Env:                 "development",
-		AppName:             "marble-backend",
-		MarbleAppUrl:        "http://localhost:3000",
-		RequestLoggingLevel: "all",
-		TokenProvider:       auth.TokenProviderFirebase,
-		TokenLifetimeMinute: 60,
-		DisableSegment:      true,
-		SegmentWriteKey:     "",
-		BatchTimeout:        55 * time.Second,
-		DecisionTimeout:     10 * time.Second,
-		DefaultTimeout:      5 * time.Second,
-		FirebaseConfig: api.FirebaseConfig{
-			ProjectId: "project",
-		},
-	}
-
 	tokenVerifier := infra.NewMockedFirebaseTokenVerifier()
 	firebaseClient := idp.NewFirebaseClient("project", tokenVerifier)
 
 	deps, _ := api.InitDependencies(ctx, apiConfig, dbPool, privateKey, tokenVerifier)
 
 	telemetryRessources, _ := infra.InitTelemetry(ctx, infra.TelemetryConfiguration{Enabled: false}, "")
-	router := api.InitRouterMiddlewares(ctx, apiConfig, apiConfig.DisableSegment,
+	router := api.InitRouterMiddlewares(ctx, apiConfig, testUsecases.NewUsageTrackingReader(),
 		deps.SegmentClient, telemetryRessources)
 	server := api.NewServer(router, apiConfig, testUsecases,
 		deps.Authentication, deps.TokenHandler, logger, api.WithLocalTest(true))

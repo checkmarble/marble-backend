@@ -374,6 +374,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	aiPromptsFS, aiAgentModelConfig := configAiResources(ctx, license, licenseConfig, aiAgentConfig, aiPromptsServingDir, config.Version)
 
 	uc := usecases.NewUsecases(repositories,
+		usecases.WithDisableSegment(apiConfig.DisableSegment),
 		usecases.WithAppName(appName),
 		usecases.WithApiVersion(config.Version),
 		usecases.WithBatchIngestionMaxSize(serverConfig.batchIngestionMaxSize),
@@ -402,13 +403,11 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	////////////////////////////////////////////////////////////
 	// Seed the database
 	////////////////////////////////////////////////////////////
+	usageTrackingReader := uc.NewUsageTrackingReader()
 	seedUsecase := uc.NewSeedUseCase()
 	// The seeding runs outside of the HTTP middleware stack, so the Segment client has to be
 	// injected in the context explicitly for the seeding analytics events to be sent.
-	seedCtx := ctx
-	if !apiConfig.DisableSegment {
-		seedCtx = utils.StoreSegmentClientInContext(ctx, deps.SegmentClient)
-	}
+	seedCtx := utils.StoreUsageTrackingInContext(ctx, deps.SegmentClient, usageTrackingReader)
 	marbleAdminEmail := seedOrgConfig.CreateGlobalAdminEmail
 	if marbleAdminEmail != "" {
 		if err := seedUsecase.SeedMarbleAdmins(seedCtx, marbleAdminEmail); err != nil {
@@ -426,8 +425,12 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		}
 	}
 
-	router := api.InitRouterMiddlewares(ctx, apiConfig, apiConfig.DisableSegment,
-		deps.SegmentClient, telemetryRessources)
+	router := api.InitRouterMiddlewares(
+		ctx, apiConfig,
+		usageTrackingReader,
+		deps.SegmentClient,
+		telemetryRessources,
+	)
 	server := api.NewServer(router, apiConfig, uc, deps.Authentication, deps.TokenHandler, logger)
 
 	notify, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)

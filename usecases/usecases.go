@@ -33,6 +33,7 @@ type Usecases struct {
 	Repositories                 repositories.Repositories
 	appName                      string
 	apiVersion                   string
+	disableSegment               bool
 	batchIngestionMaxSize        int
 	ingestionBucketUrl           string
 	caseManagerBucketUrl         string
@@ -65,6 +66,12 @@ type Usecases struct {
 }
 
 type Option func(*options)
+
+func WithDisableSegment(disableSegment bool) Option {
+	return func(o *options) {
+		o.disableSegment = disableSegment
+	}
+}
 
 func WithAppName(appName string) Option {
 	return func(o *options) {
@@ -267,6 +274,7 @@ type options struct {
 	aiPromptsServingDir          string
 	aiPromptsFS                  fs.FS
 	aiAgentModelConfig           *models.AiAgentModelConfig
+	disableSegment               bool
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -283,6 +291,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		Repositories:                 repositories,
 		appName:                      o.appName,
 		apiVersion:                   o.apiVersion,
+		disableSegment:               o.disableSegment,
 		batchIngestionMaxSize:        o.batchIngestionMaxSize,
 		ingestionBucketUrl:           o.ingestionBucketUrl,
 		caseManagerBucketUrl:         o.caseManagerBucketUrl,
@@ -702,4 +711,13 @@ func (usecases *Usecases) NewOnboardingUsecase(tokenProvider auth.TokenProvider)
 		tokenProvider,
 		usecases.firebaseAdmin,
 	)
+}
+
+func (usecases *Usecases) NewUsageTrackingReader() UsageTrackingReader {
+	return UsageTrackingReader{
+		repository:      usecases.Repositories.MarbleDbRepository,
+		executorFactory: usecases.NewExecutorFactory(),
+		isMarbleSaas:    infra.IsMarbleSaasProject(),
+		disableSegment:  usecases.disableSegment,
+	}
 }

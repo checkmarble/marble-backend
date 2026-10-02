@@ -72,3 +72,7 @@ type ConfigFeaturesDto struct {
 	Segment               bool `json:"segment"`
 	WebhookSecretRotation bool `json:"webhook_secret_rotation"`
 }
+
+type UpdateUsageTrackingDto struct {
+	Enabled *bool `json:"enabled" binding:"required"`
+}

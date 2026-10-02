@@ -54,8 +54,8 @@ func TrackEventWithUserId(ctx context.Context, event models.AnalyticsEvent, user
 }
 
 func Identify(ctx context.Context, userId models.UserId, traits map[string]interface{}) {
-	segmentClient, found := utils.SegmentClientFromContext(ctx)
-	if !found || segmentClient == nil {
+	segmentClient, found := getAnalyticsClientFromContext(ctx)
+	if !found {
 		return
 	}
 
@@ -75,8 +75,8 @@ func Identify(ctx context.Context, userId models.UserId, traits map[string]inter
 }
 
 func Group(ctx context.Context, userId models.UserId, organizationId uuid.UUID, traits map[string]interface{}) {
-	segmentClient, found := utils.SegmentClientFromContext(ctx)
-	if !found || segmentClient == nil {
+	segmentClient, found := getAnalyticsClientFromContext(ctx)
+	if !found {
 		return
 	}
 
@@ -113,6 +113,9 @@ func getCredentialsAndAnalyticsClientFromContext(ctx context.Context) (models.Cr
 func getAnalyticsClientFromContext(ctx context.Context) (analytics.Client, bool) {
 	segmentClient, found := utils.SegmentClientFromContext(ctx)
 	if !found || segmentClient == nil {
+		return nil, false
+	}
+	if usageTracking, found := utils.UsageTrackingFromContext(ctx); found && !usageTracking.Enabled(ctx) {
 		return nil, false
 	}
 	return segmentClient, true
