@@ -1,5 +1,7 @@
 package models
 
+import "slices"
+
 type Permission string
 
 const (
@@ -60,9 +62,94 @@ const (
 	SCORING_UPDATE_RULESETS           Permission = "SCORING_UPDATE_RULESETS"
 	SCORING_OVERRIDE_SCORE            Permission = "SCORING_OVERRIDE_SCORE"
 	SCREENING_SAVE_SEARCHES           Permission = "SCREENING_SAVE_SEARCHES"
+	MANAGE_ROLES                      Permission = "MANAGE_ROLES"
 	TENANTS_MERGE                     Permission = "TENANTS_MERGE"
 	TENANTS_LIST                      Permission = "TENANTS_LIST"
 	TENANTS_CREATE                    Permission = "TENANTS_CREATE"
 	TENANTS_UPDATE                    Permission = "TENANTS_UPDATE"
 	TENANTS_DELETE                    Permission = "TENANTS_DELETE"
 )
+
+// ValidPermissions are the permissions that can be granted through custom
+// roles. They never include PLATFORM_PERMISSIONS.
+var ValidPermissions = []Permission{
+	DECISION_READ,
+	DECISION_CREATE,
+	PHANTOM_DECISION_CREATE,
+	INGESTION,
+	SCENARIO_READ,
+	SCENARIO_CREATE,
+	SCENARIO_PUBLISH,
+	DATA_MODEL_READ,
+	DATA_MODEL_WRITE,
+	APIKEY_READ,
+	APIKEY_CREATE,
+	ANALYTICS_READ,
+	ORGANIZATIONS_UPDATE,
+	USER_CREATE,
+	MARBLE_USER_READ,
+	MARBLE_USER_CREATE,
+	MARBLE_USER_UPDATE,
+	MARBLE_USER_DELETE,
+	CUSTOM_LISTS_READ,
+	CUSTOM_LISTS_EDIT,
+	MARBLE_USER_LIST,
+	CASE_READ_WRITE,
+	INBOX_EDITOR,
+	WEBHOOK_EVENT,
+	WEBHOOK,
+	READ_SNOOZES,
+	CREATE_SNOOZE,
+	TAG_READ,
+	TAG_CREATE,
+	TAG_UPDATE,
+	TAG_DELETE,
+	SCREENING_WHITELIST_READ,
+	SCREENING_WHITELIST_WRITE,
+	SCREENING_FREEFORM_SEARCH,
+	CONTINUOUS_SCREENING_CONFIG_READ,
+	CONTINUOUS_SCREENING_CONFIG_WRITE,
+	CONTINUOUS_SCREENING_HIT_READ,
+	CONTINUOUS_SCREENING_HIT_WRITE,
+	CONTINUOUS_SCREENING_HIT_DISMISS,
+	CONTINUOUS_SCREENING_OBJECT_READ,
+	CONTINUOUS_SCREENING_OBJECT_WRITE,
+	ANNOTATION_DELETE,
+	ANNOTATION_RISK_TAG_WRITE,
+	ORG_IMPORT_ARCHETYPE_READ,
+	ORG_IMPORT_INTO_EXISTING,
+	ORG_EXPORT,
+	SCORING_UPDATE_SETTINGS,
+	SCORING_UPDATE_RULESETS,
+	SCORING_OVERRIDE_SCORE,
+	SCREENING_SAVE_SEARCHES,
+	MANAGE_ROLES,
+}
+
+// PLATFORM_PERMISSIONS act beyond a single organization. They are only held
+// through platform roles, and never granted through custom roles, which are
+// scoped to an organization.
+var PLATFORM_PERMISSIONS = []Permission{
+	ANY_ORGANIZATION_ID_IN_CONTEXT,
+	ORGANIZATIONS_LIST,
+	ORGANIZATIONS_CREATE,
+	ORGANIZATIONS_DELETE,
+	LICENSE_LIST,
+	LICENSE_CREATE,
+	LICENSE_UPDATE,
+	TENANTS_MERGE,
+	TENANTS_LIST,
+	TENANTS_CREATE,
+	TENANTS_UPDATE,
+	TENANTS_DELETE,
+}
+
+func (p Permission) IsPlatform() bool {
+	return slices.Contains(PLATFORM_PERMISSIONS, p)
+}
+
+// WithoutPlatformPermissions drops the platform permissions from a custom
+// role's permissions, in case some were stored nonetheless.
+func WithoutPlatformPermissions(permissions []Permission) []Permission {
+	return slices.DeleteFunc(slices.Clone(permissions), Permission.IsPlatform)
+}

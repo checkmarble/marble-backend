@@ -53,12 +53,42 @@ func (r *UserRepository) HasUsers(ctx context.Context, exec repositories.Executo
 	return args.Bool(0), args.Error(1)
 }
 
+func (r *UserRepository) ListCustomRoles(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.RbacRole, error) {
+	args := r.Called(ctx, exec)
+	return args.Get(0).([]models.RbacRole), args.Error(1)
+}
+
+func (r *UserRepository) CreateRole(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, slug, name string) (models.RbacRole, error) {
+	args := r.Called(ctx, exec, orgId, slug, name)
+	return args.Get(0).(models.RbacRole), args.Error(1)
+}
+
+func (r *UserRepository) UpdateRolePermissions(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, slug models.Role, permissions []models.Permission) error {
+	args := r.Called(ctx, exec, orgId, slug, permissions)
+	return args.Error(0)
+}
+
 func (r *UserRepository) ReplaceUserRoleBindings(ctx context.Context, exec repositories.Transaction, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error {
 	args := r.Called(ctx, exec, orgId, userId, bindings)
 	return args.Error(0)
 }
 
+func (r *UserRepository) ListUserOrganizationRoleBindings(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, userId string) ([]models.RoleBinding, error) {
+	args := r.Called(ctx, exec, orgId, userId)
+	return args.Get(0).([]models.RoleBinding), args.Error(1)
+}
+
 func (r *UserRepository) ReplaceUserOrganizationRoleBindings(ctx context.Context, exec repositories.Transaction, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error {
 	args := r.Called(ctx, exec, orgId, userId, bindings)
 	return args.Error(0)
+}
+
+func (r *UserRepository) GetRoleBySlug(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, slug models.Role) (models.RbacRole, error) {
+	args := r.Called(ctx, exec, orgId, slug)
+	return args.Get(0).(models.RbacRole), args.Error(1)
+}
+
+func (r *UserRepository) ListRoles(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.RbacRole, error) {
+	args := r.Called(ctx, exec, orgId)
+	return args.Get(0).([]models.RbacRole), args.Error(1)
 }

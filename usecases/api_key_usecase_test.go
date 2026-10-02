@@ -67,6 +67,7 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_nominal() {
 	}
 	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
 	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
+	suite.enforceSecurity.On("GrantRoleBindings", mock.Anything).Return(nil)
 	suite.apiKeyRepository.On(
 		"CreateApiKey",
 		suite.tx,
@@ -80,6 +81,49 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_nominal() {
 	suite.Equal(64, len(createdApiKey.Key))
 	hash := sha256.Sum256([]byte(createdApiKey.Key))
 	suite.Equal(createdApiKey.Hash, hash[:])
+	suite.AssertExpectations()
+}
+
+func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_resolves_custom_role_slug() {
+	ctx := context.Background()
+	slug := models.Role("org/custom.name")
+	role := models.RbacRole{
+		Id:          uuid.New(),
+		OrgId:       suite.organizationId,
+		Slug:        string(slug),
+		Permissions: []models.Permission{models.CASE_READ_WRITE},
+	}
+	input := models.CreateApiKeyInput{
+		OrganizationId: suite.organizationId,
+		Description:    "test key",
+		RoleBindings:   []models.RoleBinding{{Role: slug}},
+	}
+
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction).Once()
+	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
+	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
+	suite.apiKeyRepository.
+		On("GetRoleBySlug", ctx, suite.transaction, suite.organizationId, slug).
+		Return(role, nil)
+	suite.enforceSecurity.
+		On("GrantRoleBindings", mock.MatchedBy(func(bindings []models.RoleBinding) bool {
+			return len(bindings) == 1 && suite.Equal(role.Permissions, bindings[0].Permissions)
+		})).
+		Return(nil)
+	suite.apiKeyRepository.
+		On("CreateApiKey", suite.tx, mock.MatchedBy(func(apiKey models.ApiKey) bool {
+			binding := apiKey.RoleBindings[0]
+			return binding.Role == slug &&
+				binding.CustomRoleId != nil && *binding.CustomRoleId == role.Id &&
+				suite.Equal(role.Permissions, binding.Permissions)
+		})).
+		Return(nil)
+
+	createdApiKey, err := suite.makeUsecase().CreateApiKey(ctx, input)
+
+	suite.NoError(err)
+	suite.Equal(slug, createdApiKey.RoleBindings[0].Role)
+	suite.Equal(role.Id, *createdApiKey.RoleBindings[0].CustomRoleId)
 	suite.AssertExpectations()
 }
 
@@ -121,6 +165,7 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_repository_error() {
 	}
 	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
 	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
+	suite.enforceSecurity.On("GrantRoleBindings", mock.Anything).Return(nil)
 	suite.apiKeyRepository.On("CreateApiKey", suite.tx,
 		mock.AnythingOfType("models.ApiKey")).Return(suite.repositoryError)
 
@@ -128,6 +173,35 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_repository_error() {
 
 	suite.ErrorIs(err, suite.repositoryError)
 
+	suite.AssertExpectations()
+}
+
+func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_cannot_grant_custom_role() {
+	ctx := context.Background()
+	slug := models.Role("org/custom.name")
+	role := models.RbacRole{
+		Id:          uuid.New(),
+		OrgId:       suite.organizationId,
+		Slug:        string(slug),
+		Permissions: []models.Permission{models.DATA_MODEL_WRITE},
+	}
+	input := models.CreateApiKeyInput{
+		OrganizationId: suite.organizationId,
+		Description:    "test key",
+		RoleBindings:   []models.RoleBinding{{Role: slug}},
+	}
+
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
+	suite.apiKeyRepository.
+		On("GetRoleBySlug", ctx, suite.transaction, suite.organizationId, slug).
+		Return(role, nil)
+	suite.enforceSecurity.On("GrantRoleBindings", mock.Anything).Return(suite.securityError)
+
+	_, err := suite.makeUsecase().CreateApiKey(ctx, input)
+
+	suite.ErrorIs(err, suite.securityError)
+	suite.apiKeyRepository.AssertNotCalled(suite.T(), "CreateApiKey", mock.Anything, mock.Anything)
 	suite.AssertExpectations()
 }
 

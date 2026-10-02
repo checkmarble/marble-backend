@@ -111,6 +111,10 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/credentials", tom, handleGetCredentials())
 	router.GET("/me/organizations", tom, handleMyOrganizations(uc))
 
+	router.GET("/roles", tom, handleGetRoles(uc))
+	router.POST("/roles", handleCreateRole(uc))
+	router.PUT("/roles/permissions", handleUpdateRolePermissions(uc))
+
 	router.GET("/decisions",
 		timeoutMiddleware(conf.DecisionTimeout),
 		handleListDecisions(uc, parsedAppUrl))

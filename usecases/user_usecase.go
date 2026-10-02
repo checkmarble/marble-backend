@@ -148,6 +148,7 @@ func (usecase *UserUseCase) resolveUserRoleBindings(
 	orgId uuid.UUID,
 	bindings []models.RoleBinding,
 ) ([]models.RoleBinding, error) {
+	exec := usecase.executorFactory.NewExecutor()
 	resolved := append([]models.RoleBinding(nil), bindings...)
 
 	for idx := range resolved {
@@ -156,10 +157,24 @@ func (usecase *UserUseCase) resolveUserRoleBindings(
 			return nil, errors.Wrap(models.BadParameterError, "role binding must reference a role")
 		}
 
-		if !slices.Contains(models.GetValidUserRoles(), binding.Role) {
-			return nil, errors.Wrap(models.BadParameterError, "invalid role")
+		if !binding.Role.IsCustom() {
+			if !slices.Contains(models.GetValidUserRoles(), binding.Role) {
+				return nil, errors.Wrap(models.BadParameterError, "invalid native role")
+			}
+			binding.CustomRoleId = nil
+			binding.Permissions = binding.Role.Permissions()
+			continue
 		}
-		binding.Permissions = binding.Role.Permissions()
+		if !binding.Role.IsValidCustom() {
+			return nil, errors.Wrap(models.BadParameterError, "invalid custom role slug")
+		}
+
+		role, err := usecase.userRepository.GetRoleBySlug(ctx, exec, orgId, binding.Role)
+		if err != nil {
+			return nil, err
+		}
+		binding.CustomRoleId = &role.Id
+		binding.Permissions = role.Permissions
 	}
 
 	return resolved, nil
@@ -257,6 +272,15 @@ func (usecase *UserUseCase) ReplaceOrganizationGrant(
 		if err := usecase.ensureUserBelongsToOrganizationTenant(ctx, tx, user, organizationID); err != nil {
 			return err
 		}
+
+		current, err := usecase.userRepository.ListUserOrganizationRoleBindings(ctx, tx, organizationID, userID)
+		if err != nil {
+			return err
+		}
+		if err := usecase.enforceUserSecurity.GrantOrganizationRoleBindings(current, resolved); err != nil {
+			return err
+		}
+
 		return usecase.userRepository.ReplaceUserOrganizationRoleBindings(ctx, tx, organizationID, userID, resolved)
 	})
 }
@@ -280,7 +304,7 @@ func (usecase *UserUseCase) resolveOrganizationRoleBindings(
 	}
 
 	for _, binding := range resolved {
-		if !slices.Contains(models.GetValidOrganizationGrantRoles(), binding.Role) {
+		if !binding.Role.IsCustom() && !slices.Contains(models.GetValidOrganizationGrantRoles(), binding.Role) {
 			return nil, errors.Wrapf(models.BadParameterError, "role %s cannot be granted in an organization", binding.Role)
 		}
 	}
@@ -362,4 +386,107 @@ func (usecase *UserUseCase) GetUserByEmail(ctx context.Context, email string) (m
 	}
 
 	return *user, nil
+}
+
+func (usecase *UserUseCase) GetRoles(ctx context.Context) ([]models.RbacRole, error) {
+	if err := usecase.enforceUserSecurity.ManageRoles(); err != nil {
+		return nil, err
+	}
+
+	roles, err := usecase.userRepository.ListRoles(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		usecase.enforceUserSecurity.OrgId())
+	if err != nil {
+		return nil, err
+	}
+
+	return roles, nil
+}
+
+func (usecase *UserUseCase) CreateRole(ctx context.Context, slug, name string) (models.RbacRole, error) {
+	if err := usecase.enforceUserSecurity.ManageRoles(); err != nil {
+		return models.RbacRole{}, err
+	}
+
+	if !models.Role(slug).IsValidCustom() {
+		return models.RbacRole{}, errors.Wrap(models.BadParameterError, "invalid custom role slug")
+	}
+
+	role, err := usecase.userRepository.CreateRole(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		usecase.enforceUserSecurity.OrgId(),
+		slug,
+		name)
+	if err != nil {
+		if repositories.IsUniqueViolationError(err) {
+			return models.RbacRole{}, errors.Wrap(models.ConflictError, "role already exists")
+		}
+
+		return models.RbacRole{}, err
+	}
+
+	return role, nil
+}
+
+func (usecase *UserUseCase) UpdateRolePermissions(ctx context.Context, slug models.Role, permissions []models.Permission) (models.RbacRole, error) {
+	if err := usecase.enforceUserSecurity.ManageRoles(); err != nil {
+		return models.RbacRole{}, err
+	}
+	if !slug.IsValidCustom() {
+		return models.RbacRole{}, errors.Wrap(models.BadParameterError, "invalid custom role slug")
+	}
+
+	exec := usecase.executorFactory.NewExecutor()
+	seen := make(map[models.Permission]struct{}, len(permissions))
+
+	current, err := usecase.userRepository.GetRoleBySlug(ctx, exec, usecase.enforceUserSecurity.OrgId(), slug)
+	if err != nil {
+		return models.RbacRole{}, err
+	}
+
+	added := make([]models.Permission, 0, len(permissions))
+
+	for _, permission := range permissions {
+		if permission.IsPlatform() {
+			return models.RbacRole{}, errors.Wrap(models.BadParameterError,
+				"platform permission "+string(permission)+" cannot be granted through custom roles")
+		}
+		if !slices.Contains(models.ValidPermissions, permission) {
+			return models.RbacRole{}, errors.Wrap(models.BadParameterError, "invalid permission "+string(permission))
+		}
+		if !slices.Contains(current.Permissions, permission) {
+			added = append(added, permission)
+		}
+
+		if _, exists := seen[permission]; exists {
+			return models.RbacRole{}, errors.Wrap(models.BadParameterError, "duplicate permission "+string(permission))
+		}
+
+		seen[permission] = struct{}{}
+	}
+
+	// Permissions can only be added to a custom role by principals holding
+	// them. Those the role already has are left alone, so that a role can be
+	// edited by someone not holding all of its permissions.
+	if err := usecase.enforceUserSecurity.Permissions(added); err != nil {
+		return models.RbacRole{}, errors.Wrap(err, "custom roles can only grant permissions you hold")
+	}
+
+	err = usecase.userRepository.UpdateRolePermissions(
+		ctx,
+		exec,
+		usecase.enforceUserSecurity.OrgId(),
+		slug,
+		permissions)
+	if err != nil {
+		if repositories.IsUniqueViolationError(err) {
+			return models.RbacRole{}, errors.Wrap(models.ConflictError, "duplicate permission")
+		}
+
+		return models.RbacRole{}, err
+	}
+
+	return usecase.userRepository.GetRoleBySlug(ctx, exec, usecase.enforceUserSecurity.OrgId(), slug)
 }
