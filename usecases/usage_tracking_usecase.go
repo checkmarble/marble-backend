@@ -40,9 +40,6 @@ func (uc UsageTrackingReader) Enabled(ctx context.Context) bool {
 		return enabled
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
-
 	metadata, err := uc.repository.GetMetadata(ctx, uc.executorFactory.NewExecutor(), nil, key)
 	if err != nil {
 		utils.LoggerFromContext(ctx).ErrorContext(ctx, "Failed to read usage tracking setting", "error", err)
