@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 )
 
@@ -27,6 +28,7 @@ func (h MarbleTokenHandler) GetToken(ctx context.Context, r *http.Request) (Toke
 	if err != nil {
 		return Token{}, err
 	}
+	c.ClientIp = utils.ClientIpFromRequest(r)
 	organizationID := uuid.Nil
 	if r != nil && r.URL != nil && r.URL.Query().Get("organization_id") != "" {
 		requestedOrganizationID := r.URL.Query().Get("organization_id")

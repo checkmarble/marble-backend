@@ -70,6 +70,9 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 		if binding.Role == "" {
 			return models.CreatedApiKey{}, errors.Wrap(models.BadParameterError, "role binding must reference a role")
 		}
+		if err := binding.Conditions.Validate(); err != nil {
+			return models.CreatedApiKey{}, err
+		}
 		if !binding.Role.IsCustom() && binding.Role != models.API_CLIENT {
 			return models.CreatedApiKey{}, errors.Wrap(models.BadParameterError, "only API_CLIENT is supported as a native API key role")
 		}

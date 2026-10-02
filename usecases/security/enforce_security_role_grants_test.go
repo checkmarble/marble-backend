@@ -2,6 +2,7 @@ package security
 
 import (
 	"testing"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
@@ -59,6 +60,9 @@ func TestCreateUserCustomRoleGrants(t *testing.T) {
 
 func TestUpdateUserCustomRoleGrants(t *testing.T) {
 	phantom := customRole("org/phantom", models.PHANTOM_DECISION_CREATE)
+	later := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)
+	phantomUntilLater := phantom
+	phantomUntilLater.Conditions = models.RoleBindingConditions{NotAfter: &later}
 
 	current := []models.RoleBinding{models.NewNativeRoleBinding(models.VIEWER), phantom}
 
@@ -73,6 +77,9 @@ func TestUpdateUserCustomRoleGrants(t *testing.T) {
 		{"removing a custom role the admin could not grant", []models.RoleBinding{
 			models.NewNativeRoleBinding(models.VIEWER),
 		}, true},
+		{"changing the conditions of a custom role the admin could not grant", []models.RoleBinding{
+			models.NewNativeRoleBinding(models.VIEWER), phantomUntilLater,
+		}, false},
 		{"granting a custom role the admin holds", []models.RoleBinding{
 			models.NewNativeRoleBinding(models.VIEWER), phantom, customRole("org/editor", models.DATA_MODEL_WRITE),
 		}, true},

@@ -3,7 +3,9 @@ package token
 import (
 	"context"
 	"encoding/hex"
+	"net"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -41,6 +43,9 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 		OrganizationId: utils.TextToUUID("organization_id"),
 		RoleBindings:   grants[:2],
 		Permissions:    models.ADMIN.Permissions(),
+		RoleBindingBundle: models.RoleBindingBundle{
+			Location: time.UTC,
+		},
 		ActorIdentity: models.Identity{
 			ApiKeyId:   "api_key_id",
 			ApiKeyName: "Api key abc*** of organization",
@@ -62,7 +67,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 			getter: mockKeyAndOrganizationGetter,
 		}
 
-		credentials, err := v.ValidateTokenOrKey(ctx, "", key)
+		credentials, err := v.ValidateTokenOrKey(ctx, "", key, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, creds, credentials)
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
@@ -81,9 +86,48 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 			getter: mockKeyAndOrganizationGetter,
 		}
 
-		_, err := v.ValidateTokenOrKey(ctx, "", key)
+		_, err := v.ValidateTokenOrKey(ctx, "", key, nil)
 		assert.ErrorIs(t, err, models.UnAuthorizedError)
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
+	})
+
+	t.Run("network caveat", func(t *testing.T) {
+		officeNetwork, err := models.ParseSubnet("10.0.0.0/8")
+		assert.NoError(t, err)
+
+		restrictedGrants := []models.RoleBinding{{
+			Role:        models.ADMIN,
+			OrgId:       apiKey.OrganizationId,
+			Permissions: models.ADMIN.Permissions(),
+			Conditions:  models.RoleBindingConditions{Networks: []models.Subnet{officeNetwork}},
+		}}
+
+		for name, test := range map[string]struct {
+			clientIp    net.IP
+			permissions []models.Permission
+		}{
+			"inside":  {net.ParseIP("10.1.2.3"), models.ADMIN.Permissions()},
+			"outside": {net.ParseIP("192.168.1.1"), []models.Permission{}},
+			"unknown": {nil, models.ADMIN.Permissions()},
+		} {
+			t.Run(name, func(t *testing.T) {
+				mockKeyAndOrganizationGetter := new(mocks.Database)
+				mockKeyAndOrganizationGetter.On("GetApiKeyByHash", ctx, keyHash).
+					Return(apiKey, nil)
+				mockKeyAndOrganizationGetter.On("GetOrganizationByID", ctx, apiKey.OrganizationId).
+					Return(organization, nil)
+				mockKeyAndOrganizationGetter.On("ActiveGrantsForPrincipal", mock.Anything, "api_key", apiKey.Id).
+					Return(restrictedGrants, nil)
+
+				v := Validator{getter: mockKeyAndOrganizationGetter}
+
+				credentials, err := v.ValidateTokenOrKey(ctx, "", key, test.clientIp)
+				assert.NoError(t, err)
+				assert.Equal(t, test.clientIp, credentials.RoleBindingBundle.ClientIp)
+				assert.Equal(t, test.permissions, credentials.Permissions)
+				assert.Equal(t, len(test.permissions) > 0, credentials.HasRole(models.ADMIN))
+			})
+		}
 	})
 
 	t.Run("GetApiKeyByHash error", func(t *testing.T) {
@@ -95,7 +139,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 			getter: mockKeyAndOrganizationGetter,
 		}
 
-		_, err := v.ValidateTokenOrKey(ctx, "", key)
+		_, err := v.ValidateTokenOrKey(ctx, "", key, nil)
 		assert.Error(t, err)
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
 	})
@@ -111,7 +155,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 			getter: mockKeyAndOrganizationGetter,
 		}
 
-		_, err := v.ValidateTokenOrKey(ctx, "", key)
+		_, err := v.ValidateTokenOrKey(ctx, "", key, nil)
 		assert.Error(t, err)
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
 	})
@@ -157,8 +201,9 @@ func TestValidator_Validate_Token(t *testing.T) {
 		expected := tokenCreds
 		expected.RoleBindings = grants[:1]
 		expected.Permissions = models.VIEWER.Permissions()
+		expected.RoleBindingBundle.Location = time.UTC
 
-		credentials, err := v.ValidateTokenOrKey(ctx, token, "")
+		credentials, err := v.ValidateTokenOrKey(ctx, token, "", nil)
 		assert.NoError(t, err)
 		assert.Equal(t, expected, credentials)
 		mockValidator.AssertExpectations(t)
@@ -180,7 +225,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 			validator: mockValidator,
 		}
 
-		credentials, err := v.ValidateTokenOrKey(ctx, token, "")
+		credentials, err := v.ValidateTokenOrKey(ctx, token, "", nil)
 		assert.NoError(t, err)
 		assert.True(t, credentials.HasRole(models.TENANT_ADMIN))
 		mockGetter.AssertExpectations(t)
@@ -201,7 +246,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 			validator: mockValidator,
 		}
 
-		_, err := v.ValidateTokenOrKey(ctx, token, "")
+		_, err := v.ValidateTokenOrKey(ctx, token, "", nil)
 		assert.ErrorIs(t, err, models.UnAuthorizedError)
 	})
 
@@ -221,7 +266,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 			validator: mockValidator,
 		}
 
-		credentials, err := v.ValidateTokenOrKey(ctx, token, "")
+		credentials, err := v.ValidateTokenOrKey(ctx, token, "", nil)
 		assert.NoError(t, err)
 		assert.Equal(t, grants[1:], credentials.RoleBindings)
 		mockGetter.AssertExpectations(t)
@@ -248,11 +293,75 @@ func TestValidator_Validate_Token(t *testing.T) {
 
 		// The user can still authenticate to select an organization, but holds
 		// no role nor permission until then.
-		credentials, err := v.ValidateTokenOrKey(ctx, token, "")
+		credentials, err := v.ValidateTokenOrKey(ctx, token, "", nil)
 		assert.NoError(t, err)
 		assert.Empty(t, credentials.RoleBindings)
 		assert.Empty(t, credentials.Permissions)
 		mockGetter.AssertExpectations(t)
+	})
+
+	t.Run("second factor caveat", func(t *testing.T) {
+		required := true
+		mfaGrants := []models.RoleBinding{{
+			Role:        models.VIEWER,
+			OrgId:       organizationId,
+			Permissions: models.VIEWER.Permissions(),
+			Conditions:  models.RoleBindingConditions{UsedSecondFactor: &required},
+		}}
+
+		for name, test := range map[string]struct {
+			usedSecondFactor bool
+			permissions      []models.Permission
+		}{
+			"used":     {true, models.VIEWER.Permissions()},
+			"not used": {false, []models.Permission{}},
+		} {
+			t.Run(name, func(t *testing.T) {
+				mfaCreds := tokenCreds
+				mfaCreds.RoleBindingBundle.UsedSecondFactor = test.usedSecondFactor
+
+				mockValidator := new(mocks.JWTEncoderValidator)
+				mockValidator.On("ValidateMarbleToken", token).
+					Return(mfaCreds, nil)
+				mockGetter := new(mocks.Database)
+				mockGetter.On("GetOrganizationByID", ctx, organizationId).
+					Return(models.Organization{Id: organizationId, TenantId: tenantId}, nil)
+				mockGetter.On("ActiveGrantsForPrincipal", ctx, "user", "user_id").
+					Return(mfaGrants, nil)
+
+				v := Validator{
+					getter:    mockGetter,
+					validator: mockValidator,
+				}
+
+				credentials, err := v.ValidateTokenOrKey(ctx, token, "", nil)
+				assert.NoError(t, err)
+				assert.Equal(t, test.permissions, credentials.Permissions)
+				assert.Equal(t, test.usedSecondFactor, credentials.HasRole(models.VIEWER))
+			})
+		}
+	})
+
+	t.Run("uses the organization's time zone for caveats", func(t *testing.T) {
+		paris := "Europe/Paris"
+
+		mockValidator := new(mocks.JWTEncoderValidator)
+		mockValidator.On("ValidateMarbleToken", token).
+			Return(tokenCreds, nil)
+		mockGetter := new(mocks.Database)
+		mockGetter.On("GetOrganizationByID", ctx, organizationId).
+			Return(models.Organization{Id: organizationId, TenantId: tenantId, DefaultScenarioTimezone: &paris}, nil)
+		mockGetter.On("ActiveGrantsForPrincipal", ctx, "user", "user_id").
+			Return(grants, nil)
+
+		v := Validator{
+			getter:    mockGetter,
+			validator: mockValidator,
+		}
+
+		credentials, err := v.ValidateTokenOrKey(ctx, token, "", nil)
+		assert.NoError(t, err)
+		assert.Equal(t, "Europe/Paris", credentials.RoleBindingBundle.Location.String())
 	})
 
 	t.Run("ValidateMarbleToken error", func(t *testing.T) {
@@ -264,7 +373,7 @@ func TestValidator_Validate_Token(t *testing.T) {
 			validator: mockValidator,
 		}
 
-		_, err := v.ValidateTokenOrKey(ctx, token, "")
+		_, err := v.ValidateTokenOrKey(ctx, token, "", nil)
 		assert.Error(t, err)
 		mockValidator.AssertExpectations(t)
 	})

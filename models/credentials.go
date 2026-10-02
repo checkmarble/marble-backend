@@ -27,11 +27,16 @@ type Credentials struct {
 	// information only (it is returned to the frontend). Authorization always
 	// relies on RoleBindings.
 	Permissions []Permission
+	// RoleBindingBundle holds what the caveats of role bindings are evaluated
+	// against, coming either from the token (second factor) or from the current
+	// request (client IP). It holds no evaluation time, since credentials can
+	// outlive the request they were built for: its clock is read at every check.
+	RoleBindingBundle RoleBindingBundle
 }
 
 func (c Credentials) HasRole(roles ...Role) bool {
 	for _, binding := range c.RoleBindings {
-		if slices.Contains(roles, binding.RoleName()) {
+		if binding.IsActive(c.RoleBindingBundle) && slices.Contains(roles, binding.RoleName()) {
 			return true
 		}
 	}
@@ -41,7 +46,7 @@ func (c Credentials) HasRole(roles ...Role) bool {
 
 func (c Credentials) HasPermission(perm Permission) bool {
 	for _, binding := range c.RoleBindings {
-		if slices.Contains(binding.Permissions, perm) {
+		if binding.IsActive(c.RoleBindingBundle) && slices.Contains(binding.Permissions, perm) {
 			return true
 		}
 	}
@@ -74,11 +79,14 @@ func (k ApiKey) IntoCredentials() Credentials {
 }
 
 // RoleBindingsPermissions returns the deduplicated permissions granted by the
-// bindings.
-func RoleBindingsPermissions(bindings []RoleBinding) []Permission {
+// bindings that are active in the given bundle.
+func RoleBindingsPermissions(bindings []RoleBinding, bundle RoleBindingBundle) []Permission {
 	permissions := make([]Permission, 0)
 
 	for _, binding := range bindings {
+		if !binding.IsActive(bundle) {
+			continue
+		}
 		for _, permission := range binding.Permissions {
 			if !slices.Contains(permissions, permission) {
 				permissions = append(permissions, permission)

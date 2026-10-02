@@ -54,9 +54,10 @@ func (c *FirebaseClient) VerifyToken(ctx context.Context, firebaseToken, _access
 	}
 
 	return models.FirebaseIdentity{
-		Issuer:  token.Issuer,
-		Email:   email,
-		Picture: picture,
+		Issuer:           token.Issuer,
+		Email:            email,
+		Picture:          picture,
+		UsedSecondFactor: didUseSecondFactor(token),
 	}, nil
 }
 
@@ -69,4 +70,21 @@ func NewFirebaseClient(projectId string, verifier firebaseTokenVerifier) *Fireba
 		projectId: projectId,
 		verifier:  verifier,
 	}
+}
+
+func didUseSecondFactor(token *auth.Token) bool {
+	if token == nil || token.Claims == nil {
+		return false
+	}
+
+	firebaseClaim, ok := token.Claims["firebase"].(map[string]any)
+	if !ok {
+		return false
+	}
+
+	if factor, ok := firebaseClaim["sign_in_second_factor"].(string); ok && factor == "totp" {
+		return true
+	}
+
+	return false
 }
