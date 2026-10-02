@@ -86,12 +86,9 @@ func InitRouterMiddlewares(
 	}
 	r.Use(middleware.NewLogging(logger, conf.RequestLoggingLevel))
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
-	r.Use(func(c *gin.Context) {
-		if segmentClient != nil && usageTrackingEnabled(c.Request.Context()) {
-			c.Request = c.Request.WithContext(utils.StoreSegmentClientInContext(c.Request.Context(), segmentClient))
-		}
-		c.Next()
-	})
+	if segmentClient != nil {
+		r.Use(utils.StoreSegmentClientInContextMiddleware(segmentClient, usageTrackingEnabled))
+	}
 	r.Use(otelgin.Middleware(
 		conf.AppName,
 		otelgin.WithTracerProvider(telemetryRessources.TracerProvider),

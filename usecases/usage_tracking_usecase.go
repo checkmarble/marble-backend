@@ -52,7 +52,7 @@ func (uc UsageTrackingUsecase) Enabled(ctx context.Context) bool {
 	if uc.isMarbleSaas {
 		return true
 	}
-	// This runs before the HTTP timeout middleware, so bound both locking and the DB read.
+	// Bound both locking and the DB read so slow metadata does not block tracking indefinitely.
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 	if err := uc.mu.Acquire(ctx, 1); err != nil {

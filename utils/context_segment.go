@@ -16,9 +16,27 @@ func StoreSegmentClientInContext(ctx context.Context, client analytics.Client) c
 	return context.WithValue(ctx, ContextKeySegmentClient, client)
 }
 
-func StoreSegmentClientInContextMiddleware(client analytics.Client) gin.HandlerFunc {
+type conditionalSegmentClient struct {
+	analytics.Client
+	ctx     context.Context
+	enabled func(context.Context) bool
+}
+
+func (client conditionalSegmentClient) Enqueue(message analytics.Message) error {
+	if !client.enabled(client.ctx) {
+		return nil
+	}
+	return client.Client.Enqueue(message)
+}
+
+func StoreSegmentClientInContextMiddleware(client analytics.Client, enabled func(context.Context) bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ctxWithSegment := StoreSegmentClientInContext(c.Request.Context(), client)
+		ctx := c.Request.Context()
+		ctxWithSegment := StoreSegmentClientInContext(ctx, conditionalSegmentClient{
+			Client:  client,
+			ctx:     ctx,
+			enabled: enabled,
+		})
 		c.Request = c.Request.WithContext(ctxWithSegment)
 		c.Next()
 	}
