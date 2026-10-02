@@ -123,6 +123,9 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		FirebaseConfig: firebaseConfig,
 		OidcConfig:     oidcProvider,
 	}
+	if apiConfig.DisableSegment {
+		apiConfig.SegmentWriteKey = ""
+	}
 	if apiConfig.MarbleApiInternalUrl == "" {
 		// Fallback on the regular API URL if the internal one is not set
 		// Don't fail if the config is missing as some environment use the same URL
