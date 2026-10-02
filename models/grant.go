@@ -1,16 +1,10 @@
 package models
 
-import "github.com/google/uuid"
-
-type Grant struct {
-	Role           Role
-	TenantId       uuid.UUID
-	OrganizationId uuid.UUID
-}
-
+// OrganizationUserGrant is a user of a tenant, with its role bindings in one
+// organization of the tenant, which may not be its home organization.
 type OrganizationUserGrant struct {
-	User                  User
-	OrganizationGrantRole *Role
+	User         User
+	RoleBindings []RoleBinding
 }
 
 type OrganizationMembership struct {

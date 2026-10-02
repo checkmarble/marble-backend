@@ -42,7 +42,7 @@ func TestAuthedBy(t *testing.T) {
 				v.On("ValidateTokenOrKey", mock.Anything, "", "test-api-key").
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{ApiKeyName: "test"},
-						Roles:         []models.Role{models.ADMIN},
+						RoleBindings:  models.NativeRoleBindings([]models.Role{models.ADMIN}),
 					}, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -57,7 +57,7 @@ func TestAuthedBy(t *testing.T) {
 				v.On("ValidateTokenOrKey", mock.Anything, "", "test-token").
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{Email: "test@example.com"},
-						Roles:         []models.Role{models.VIEWER},
+						RoleBindings:  models.NativeRoleBindings([]models.Role{models.VIEWER}),
 					}, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -72,7 +72,7 @@ func TestAuthedBy(t *testing.T) {
 				v.On("ValidateTokenOrKey", mock.Anything, "test-jwt", "").
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{Email: "test@example.com"},
-						Roles:         []models.Role{models.VIEWER},
+						RoleBindings:  models.NativeRoleBindings([]models.Role{models.VIEWER}),
 					}, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -126,7 +126,7 @@ func TestAuthedBy(t *testing.T) {
 				v.On("ValidateTokenOrKey", mock.Anything, "", "test-api-key").
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{ApiKeyName: "test"},
-						Roles:         []models.Role{models.ADMIN},
+						RoleBindings:  models.NativeRoleBindings([]models.Role{models.ADMIN}),
 					}, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -168,7 +168,7 @@ func TestAuthedBy(t *testing.T) {
 				v.On("ValidateTokenOrKey", mock.Anything, "", "test-api-key").
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{ApiKeyName: "test"},
-						Roles:         []models.Role{models.ADMIN},
+						RoleBindings:  models.NativeRoleBindings([]models.Role{models.ADMIN}),
 					}, nil)
 			},
 			expectedStatus: http.StatusOK,

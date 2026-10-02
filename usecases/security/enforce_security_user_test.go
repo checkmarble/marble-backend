@@ -1,6 +1,7 @@
 package security
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -61,19 +62,20 @@ func TestUpdateUserRole(t *testing.T) {
 				Credentials: models.Credentials{
 					OrganizationId: utils.TextToUUID("org"),
 					ActorIdentity:  models.Identity{UserId: "principal"},
-					Roles:          []models.Role{tt.principal},
+					RoleBindings:   models.NativeRoleBindings([]models.Role{tt.principal}),
 				},
 			}
 
-			target := models.User{OrganizationId: utils.TextToUUID("org"), UserId: "target", Role: tt.from}
+			target := models.User{OrganizationId: utils.TextToUUID("org"), UserId: "target", RoleBindings: models.NativeRoleBindings([]models.Role{tt.from})}
 			if tt.sameUser {
 				target.UserId = "principal"
-				target.Role = tt.principal
+				target.RoleBindings = models.NativeRoleBindings([]models.Role{tt.principal})
 			}
 
-			update := models.UpdateUser{UserId: string(target.UserId), Role: &tt.to}
-			if tt.principal == *update.Role {
-				update.Role = nil
+			bindings := models.NativeRoleBindings([]models.Role{tt.to})
+			update := models.UpdateUser{UserId: string(target.UserId), RoleBindings: &bindings}
+			if slices.Equal([]models.Role{tt.principal}, models.RoleNames(bindings)) {
+				update.RoleBindings = nil
 			}
 
 			outcome := e.UpdateUser(target, update)
@@ -103,7 +105,7 @@ func TestTenantUserAccessRequiresAdmin(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			enforcer := EnforceSecurityUserImpl{
 				EnforceSecurity: mockUserEnforceSecurity{},
-				Credentials:     models.Credentials{Roles: []models.Role{tt.role}},
+				Credentials:     models.Credentials{RoleBindings: models.NativeRoleBindings([]models.Role{tt.role})},
 			}
 
 			for _, operation := range []error{
@@ -119,9 +121,10 @@ func TestTenantUserAccessRequiresAdmin(t *testing.T) {
 		})
 	}
 }
+
 func TestManageOrganizationGrantForMarbleAdmin(t *testing.T) {
 	organizationID := uuid.New()
-	target := models.User{Role: models.MARBLE_ADMIN}
+	target := models.User{RoleBindings: models.NativeRoleBindings([]models.Role{models.MARBLE_ADMIN})}
 
 	for _, tt := range []struct {
 		name    string
@@ -134,7 +137,7 @@ func TestManageOrganizationGrantForMarbleAdmin(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			enforcer := EnforceSecurityUserImpl{
 				EnforceSecurity: mockUserEnforceSecurity{},
-				Credentials:     models.Credentials{Roles: []models.Role{tt.role}},
+				Credentials:     models.Credentials{RoleBindings: models.NativeRoleBindings([]models.Role{tt.role})},
 			}
 			err := enforcer.ManageOrganizationGrant(organizationID, target)
 			if tt.allowed {
@@ -142,6 +145,52 @@ func TestManageOrganizationGrantForMarbleAdmin(t *testing.T) {
 				return
 			}
 			assert.ErrorIs(t, err, models.ForbiddenError)
+		})
+	}
+}
+
+func TestUpdateUserMarbleAdminRole(t *testing.T) {
+	roles := func(roles ...models.Role) []models.RoleBinding { return models.NativeRoleBindings(roles) }
+
+	tts := []struct {
+		name      string
+		principal []models.Role
+		from, to  []models.Role
+		allowed   bool
+	}{
+		{"admin cannot revoke marble admin", []models.Role{models.ADMIN},
+			[]models.Role{models.ADMIN, models.MARBLE_ADMIN}, []models.Role{models.ADMIN}, false},
+		{"admin cannot grant marble admin", []models.Role{models.ADMIN},
+			[]models.Role{models.VIEWER}, []models.Role{models.VIEWER, models.MARBLE_ADMIN}, false},
+		{"admin can change other roles of a marble admin", []models.Role{models.ADMIN},
+			[]models.Role{models.VIEWER, models.MARBLE_ADMIN}, []models.Role{models.PUBLISHER, models.MARBLE_ADMIN}, true},
+		{"marble admin can revoke marble admin", []models.Role{models.MARBLE_ADMIN},
+			[]models.Role{models.ADMIN, models.MARBLE_ADMIN}, []models.Role{models.ADMIN}, true},
+		{"marble admin can grant marble admin", []models.Role{models.MARBLE_ADMIN},
+			[]models.Role{models.VIEWER}, []models.Role{models.VIEWER, models.MARBLE_ADMIN}, true},
+	}
+
+	for _, tt := range tts {
+		t.Run(tt.name, func(t *testing.T) {
+			e := EnforceSecurityUserImpl{
+				EnforceSecurity: mockUserEnforceSecurity{},
+				Credentials: models.Credentials{
+					OrganizationId: utils.TextToUUID("org"),
+					ActorIdentity:  models.Identity{UserId: "principal"},
+					RoleBindings:   roles(tt.principal...),
+				},
+			}
+
+			target := models.User{OrganizationId: utils.TextToUUID("org"), UserId: "target", RoleBindings: roles(tt.from...)}
+			bindings := roles(tt.to...)
+
+			outcome := e.UpdateUser(target, models.UpdateUser{UserId: string(target.UserId), RoleBindings: &bindings})
+
+			if tt.allowed {
+				assert.NoError(t, outcome)
+			} else {
+				assert.ErrorIs(t, outcome, models.BadParameterError)
+			}
 		})
 	}
 }

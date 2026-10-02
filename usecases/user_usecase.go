@@ -30,6 +30,14 @@ type UserUseCase struct {
 }
 
 func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.CreateUser) (models.User, error) {
+	if len(createUser.RoleBindings) > 0 {
+		bindings, err := usecase.resolveUserRoleBindings(ctx, createUser.OrganizationId, createUser.RoleBindings)
+		if err != nil {
+			return models.User{}, err
+		}
+		createUser.RoleBindings = bindings
+	}
+
 	if err := usecase.enforceUserSecurity.CreateUser(createUser); err != nil {
 		return models.User{}, err
 	}
@@ -88,8 +96,16 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 }
 
 func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.UpdateUser) (models.User, error) {
-	if updateUser.Role != nil && !slices.Contains(models.GetValidUserRoles(), *updateUser.Role) {
-		return models.User{}, errors.Wrap(models.BadParameterError, "Invalid role received")
+	if updateUser.RoleBindings != nil {
+		user, err := usecase.userRepository.UserById(ctx, usecase.executorFactory.NewExecutor(), updateUser.UserId)
+		if err != nil {
+			return models.User{}, err
+		}
+		bindings, err := usecase.resolveUserRoleBindings(ctx, user.OrganizationId, *updateUser.RoleBindings)
+		if err != nil {
+			return models.User{}, err
+		}
+		updateUser.RoleBindings = &bindings
 	}
 
 	updatedUser, err := executor_factory.TransactionReturnValue(
@@ -125,6 +141,28 @@ func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.Up
 	})
 
 	return updatedUser, nil
+}
+
+func (usecase *UserUseCase) resolveUserRoleBindings(
+	ctx context.Context,
+	orgId uuid.UUID,
+	bindings []models.RoleBinding,
+) ([]models.RoleBinding, error) {
+	resolved := append([]models.RoleBinding(nil), bindings...)
+
+	for idx := range resolved {
+		binding := &resolved[idx]
+		if binding.Role == "" {
+			return nil, errors.Wrap(models.BadParameterError, "role binding must reference a role")
+		}
+
+		if !slices.Contains(models.GetValidUserRoles(), binding.Role) {
+			return nil, errors.Wrap(models.BadParameterError, "invalid role")
+		}
+		binding.Permissions = binding.Role.Permissions()
+	}
+
+	return resolved, nil
 }
 
 func (usecase *UserUseCase) DeleteUser(ctx context.Context, userId, currentUserId string) error {
@@ -194,9 +232,18 @@ func (usecase *UserUseCase) ListTenantUsers(ctx context.Context, organizationID 
 	}
 }
 
-func (usecase *UserUseCase) ReplaceOrganizationGrant(ctx context.Context, userID string, organizationID uuid.UUID, role models.Role) error {
-	if !slices.Contains(models.GetValidOrganizationGrantRoles(), role) {
-		return errors.Wrap(models.BadParameterError, "invalid organization grant role")
+// ReplaceOrganizationGrant replaces the role bindings of a user in an
+// organization of its tenant, which may not be its home organization. An empty
+// list of bindings removes the user's access to the organization.
+func (usecase *UserUseCase) ReplaceOrganizationGrant(
+	ctx context.Context,
+	userID string,
+	organizationID uuid.UUID,
+	bindings []models.RoleBinding,
+) error {
+	resolved, err := usecase.resolveOrganizationRoleBindings(ctx, organizationID, bindings)
+	if err != nil {
+		return err
 	}
 
 	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
@@ -210,24 +257,35 @@ func (usecase *UserUseCase) ReplaceOrganizationGrant(ctx context.Context, userID
 		if err := usecase.ensureUserBelongsToOrganizationTenant(ctx, tx, user, organizationID); err != nil {
 			return err
 		}
-		return usecase.grantRepository.ReplaceOrganizationGrant(ctx, tx, userID, organizationID, role)
+		return usecase.userRepository.ReplaceUserOrganizationRoleBindings(ctx, tx, organizationID, userID, resolved)
 	})
 }
 
+// RevokeOrganizationGrant removes all role bindings of a user in an
+// organization of its tenant.
 func (usecase *UserUseCase) RevokeOrganizationGrant(ctx context.Context, userID string, organizationID uuid.UUID) error {
-	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		user, err := usecase.userRepository.UserById(ctx, tx, userID)
-		if err != nil {
-			return err
+	return usecase.ReplaceOrganizationGrant(ctx, userID, organizationID, []models.RoleBinding{})
+}
+
+// resolveOrganizationRoleBindings resolves bindings for an organization a user
+// may not belong to, where platform roles cannot be bound.
+func (usecase *UserUseCase) resolveOrganizationRoleBindings(
+	ctx context.Context,
+	organizationID uuid.UUID,
+	bindings []models.RoleBinding,
+) ([]models.RoleBinding, error) {
+	resolved, err := usecase.resolveUserRoleBindings(ctx, organizationID, bindings)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, binding := range resolved {
+		if !slices.Contains(models.GetValidOrganizationGrantRoles(), binding.Role) {
+			return nil, errors.Wrapf(models.BadParameterError, "role %s cannot be granted in an organization", binding.Role)
 		}
-		if err := usecase.enforceUserSecurity.ManageOrganizationGrant(organizationID, user); err != nil {
-			return err
-		}
-		if err := usecase.ensureUserBelongsToOrganizationTenant(ctx, tx, user, organizationID); err != nil {
-			return err
-		}
-		return usecase.grantRepository.RevokeOrganizationGrant(ctx, tx, userID, organizationID)
-	})
+	}
+
+	return resolved, nil
 }
 
 func (usecase *UserUseCase) ensureUserBelongsToOrganizationTenant(ctx context.Context, exec repositories.Executor, user models.User, organizationID uuid.UUID) error {
@@ -235,7 +293,8 @@ func (usecase *UserUseCase) ensureUserBelongsToOrganizationTenant(ctx context.Co
 	if err != nil {
 		return err
 	}
-	if user.Role == models.MARBLE_ADMIN {
+	// Marble admins do not belong to a tenant.
+	if slices.Contains(models.RoleNames(user.RoleBindings), models.MARBLE_ADMIN) {
 		return nil
 	}
 	if user.OrganizationId == uuid.Nil {

@@ -1,6 +1,8 @@
 package security
 
 import (
+	"slices"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/google/uuid"
 
@@ -33,7 +35,9 @@ func (e *EnforceSecurityUserImpl) ReadUser(user models.User) error {
 }
 
 func (e *EnforceSecurityUserImpl) CreateUser(input models.CreateUser) error {
-	if input.Role == models.MARBLE_ADMIN && !e.Credentials.HasRole(models.MARBLE_ADMIN) {
+	roles := models.RoleNames(input.RoleBindings)
+
+	if slices.Contains(roles, models.MARBLE_ADMIN) && !e.Credentials.HasRole(models.MARBLE_ADMIN) {
 		return errors.Wrap(
 			models.ForbiddenError,
 			"only marble admins can create marble admins",
@@ -42,8 +46,8 @@ func (e *EnforceSecurityUserImpl) CreateUser(input models.CreateUser) error {
 
 	// should already be handled by the fact that only the ADMIN & MARBLE_ADMIN roles have the
 	// MARBLE_USER_CREATE permission, but make double sure
-	if input.Role == models.ADMIN &&
-		!(e.Credentials.HasRole(models.ADMIN) || e.Credentials.HasRole(models.MARBLE_ADMIN)) {
+	if slices.Contains(roles, models.ADMIN) &&
+		!e.Credentials.HasRole(models.ADMIN, models.MARBLE_ADMIN) {
 		return errors.Wrap(
 			models.ForbiddenError,
 			"only org admins and marble admins can create org admins",
@@ -57,39 +61,48 @@ func (e *EnforceSecurityUserImpl) CreateUser(input models.CreateUser) error {
 }
 
 func (e *EnforceSecurityUserImpl) UpdateUser(targetUser models.User, updateUser models.UpdateUser) error {
-	// Only marble admins can create marble admins
-	if updateUser.Role != nil &&
-		*updateUser.Role == models.MARBLE_ADMIN &&
-		!e.Credentials.HasRole(models.MARBLE_ADMIN) {
+	var updatedRoles []models.Role
+
+	if updateUser.RoleBindings != nil {
+		updatedRoles = models.RoleNames(*updateUser.RoleBindings)
+	}
+
+	// Only marble admins can grant or revoke the marble admin role. Others may
+	// update the roles of a marble admin as long as they leave it in place:
+	// role bindings are replaced as a whole, including the platform-scoped
+	// marble admin grant.
+	if updateUser.RoleBindings != nil &&
+		!e.Credentials.HasRole(models.MARBLE_ADMIN) &&
+		!sameBindingsOfRole(targetUser.RoleBindings, *updateUser.RoleBindings, models.MARBLE_ADMIN) {
 		return errors.Wrap(
 			models.BadParameterError,
-			"only marble admins can create marble admins")
+			"only marble admins can grant or revoke the marble admin role")
 	}
 
 	// Fail early if current user is not an ADMIN and they try to change a user's role.
-	if updateUser.Role != nil && !e.Credentials.HasRole(models.ADMIN) &&
+	if updateUser.RoleBindings != nil && !e.Credentials.HasRole(models.ADMIN) &&
 		!e.Credentials.HasRole(models.MARBLE_ADMIN) {
 		return errors.Wrap(models.UnAuthorizedError, "only admins can change a user's role")
 	}
 
 	// An admin cannot strip their own ADMIN role.
-	if updateUser.Role != nil &&
+	if updateUser.RoleBindings != nil &&
 		e.Credentials.HasRole(models.ADMIN) &&
 		e.Credentials.ActorIdentity.UserId == targetUser.UserId &&
-		*updateUser.Role != models.ADMIN {
+		!slices.Contains(updatedRoles, models.ADMIN) {
 		return errors.Wrap(models.BadParameterError, "Cannot remove yourself as an admin")
 	}
 
 	// Only org admins and marble admins can create org admins
-	if updateUser.Role != nil &&
-		*updateUser.Role == models.ADMIN &&
-		!(e.Credentials.HasRole(models.ADMIN) || e.Credentials.HasRole(models.MARBLE_ADMIN)) {
+	if updateUser.RoleBindings != nil &&
+		slices.Contains(updatedRoles, models.ADMIN) &&
+		!e.Credentials.HasRole(models.ADMIN, models.MARBLE_ADMIN) {
 		return errors.Wrap(models.BadParameterError,
 			"Only org admins and marble admins can create org admins")
 	}
 
 	// non admins can only update themselves
-	if !e.Credentials.HasRole(models.MARBLE_ADMIN) && !e.Credentials.HasRole(models.ADMIN) &&
+	if !e.Credentials.HasRole(models.MARBLE_ADMIN, models.ADMIN) &&
 		e.Credentials.ActorIdentity.UserId != targetUser.UserId {
 		return errors.Wrap(models.ForbiddenError, "non-admins can only update themselves")
 	}
@@ -136,7 +149,8 @@ func (e *EnforceSecurityUserImpl) ListTenantUsers(organizationId uuid.UUID) erro
 }
 
 func (e *EnforceSecurityUserImpl) ManageOrganizationGrant(organizationId uuid.UUID, targetUser models.User) error {
-	if targetUser.Role == models.MARBLE_ADMIN && !e.Credentials.HasRole(models.MARBLE_ADMIN) {
+	if slices.Contains(models.RoleNames(targetUser.RoleBindings), models.MARBLE_ADMIN) &&
+		!e.Credentials.HasRole(models.MARBLE_ADMIN) {
 		return errors.Wrap(models.ForbiddenError, "only marble admins can manage grants for marble admins")
 	}
 	if !e.Credentials.HasRole(models.ADMIN) && !e.Credentials.HasRole(models.MARBLE_ADMIN) {
@@ -146,4 +160,32 @@ func (e *EnforceSecurityUserImpl) ManageOrganizationGrant(organizationId uuid.UU
 		e.Permission(models.MARBLE_USER_UPDATE),
 		e.ReadOrganization(organizationId),
 	)
+}
+
+// sameBindingsOfRole reports whether both sets hold equivalent bindings of the
+// given role.
+func sameBindingsOfRole(current, next []models.RoleBinding, role models.Role) bool {
+	currentOfRole := slices.DeleteFunc(slices.Clone(current), func(b models.RoleBinding) bool { return b.Role != role })
+	nextOfRole := slices.DeleteFunc(slices.Clone(next), func(b models.RoleBinding) bool { return b.Role != role })
+
+	if len(currentOfRole) != len(nextOfRole) {
+		return false
+	}
+
+	matched := make([]bool, len(currentOfRole))
+	for _, binding := range nextOfRole {
+		found := false
+		for idx, candidate := range currentOfRole {
+			if !matched[idx] && candidate.Equivalent(binding) {
+				matched[idx] = true
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+
+	return true
 }
