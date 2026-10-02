@@ -33,6 +33,7 @@ type Usecases struct {
 	Repositories                 repositories.Repositories
 	appName                      string
 	apiVersion                   string
+	disableSegment               bool
 	batchIngestionMaxSize        int
 	ingestionBucketUrl           string
 	caseManagerBucketUrl         string
@@ -62,7 +63,6 @@ type Usecases struct {
 	ipEnricher     *maxminddb.Reader
 
 	rootExecutorFactory *executor_factory.IdentityExecutorFactory
-	usageTracking       *UsageTrackingUsecase
 }
 
 type Option func(*options)
@@ -291,6 +291,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		Repositories:                 repositories,
 		appName:                      o.appName,
 		apiVersion:                   o.apiVersion,
+		disableSegment:               o.disableSegment,
 		batchIngestionMaxSize:        o.batchIngestionMaxSize,
 		ingestionBucketUrl:           o.ingestionBucketUrl,
 		caseManagerBucketUrl:         o.caseManagerBucketUrl,
@@ -326,14 +327,7 @@ func NewUsecases(repositories repositories.Repositories, opts ...Option) Usecase
 	for _, opt := range opts {
 		opt(o)
 	}
-	uc := newUsecasesWithOptions(repositories, o)
-	uc.usageTracking = NewUsageTrackingUsecase(
-		repositories.MarbleDbRepository, uc.NewExecutorFactory(), infra.IsMarbleSaasProject(), o.disableSegment)
-	return uc
-}
-
-func (usecases Usecases) NewUsageTrackingUsecase() *UsageTrackingUsecase {
-	return usecases.usageTracking
+	return newUsecasesWithOptions(repositories, o)
 }
 
 func (usecases Usecases) WithRootExecutor(exec executor_factory.IdentityExecutorFactory) Usecases {
@@ -717,4 +711,13 @@ func (usecases *Usecases) NewOnboardingUsecase(tokenProvider auth.TokenProvider)
 		tokenProvider,
 		usecases.firebaseAdmin,
 	)
+}
+
+func (usecases *Usecases) NewUsageTrackingReader() UsageTrackingReader {
+	return UsageTrackingReader{
+		repository:      usecases.Repositories.MarbleDbRepository,
+		executorFactory: usecases.NewExecutorFactory(),
+		isMarbleSaas:    infra.IsMarbleSaasProject(),
+		disableSegment:  usecases.disableSegment,
+	}
 }

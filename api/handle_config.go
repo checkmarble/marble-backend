@@ -19,7 +19,7 @@ func handleUpdateUsageTracking(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(ctx, uc).NewUsageTrackingUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewUsageTrackingWriter()
 		err := usecase.SetEnabled(ctx, *data.Enabled)
 		if presentError(ctx, c, err) {
 			return
@@ -36,7 +36,7 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 
 		licenseUsecase := uc.NewLicenseUsecase()
 		versionUsecase := uc.NewVersionUsecase()
-		usageTrackingUsecase := uc.NewUsageTrackingUsecase()
+		usageTrackingReader := uc.NewUsageTrackingReader()
 
 		signupUsecase := usecases.NewSignupUsecase(uc.NewExecutorFactory(),
 			uc.Repositories.MarbleDbRepository,
@@ -96,7 +96,7 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 			},
 			Features: dto.ConfigFeaturesDto{
 				Sso:                   licenseUsecase.HasSsoEnabled(),
-				Segment:               usageTrackingUsecase.Enabled(ctx),
+				Segment:               usageTrackingReader.Enabled(ctx),
 				WebhookSecretRotation: true,
 			},
 		}

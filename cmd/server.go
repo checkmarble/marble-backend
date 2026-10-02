@@ -400,12 +400,12 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	////////////////////////////////////////////////////////////
 	// Seed the database
 	////////////////////////////////////////////////////////////
-	usageTrackingUsecase := uc.NewUsageTrackingUsecase()
+	usageTrackingReader := uc.NewUsageTrackingReader()
 	seedUsecase := uc.NewSeedUseCase()
 	// The seeding runs outside of the HTTP middleware stack, so the Segment client has to be
 	// injected in the context explicitly for the seeding analytics events to be sent.
 	seedCtx := utils.StoreSegmentClientInContext(ctx, deps.SegmentClient)
-	seedCtx = utils.StoreUsageTrackingInContext(seedCtx, usageTrackingUsecase)
+	seedCtx = utils.StoreUsageTrackingInContext(seedCtx, usageTrackingReader)
 	marbleAdminEmail := seedOrgConfig.CreateGlobalAdminEmail
 	if marbleAdminEmail != "" {
 		if err := seedUsecase.SeedMarbleAdmins(seedCtx, marbleAdminEmail); err != nil {
@@ -423,7 +423,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		}
 	}
 
-	router := api.InitRouterMiddlewares(ctx, apiConfig, usageTrackingUsecase,
+	router := api.InitRouterMiddlewares(ctx, apiConfig, usageTrackingReader,
 		deps.SegmentClient, telemetryRessources)
 	server := api.NewServer(router, apiConfig, uc, deps.Authentication, deps.TokenHandler, logger)
 

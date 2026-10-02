@@ -245,7 +245,7 @@ func TestMain(m *testing.M) {
 	deps, _ := api.InitDependencies(ctx, apiConfig, dbPool, privateKey, tokenVerifier)
 
 	telemetryRessources, _ := infra.InitTelemetry(ctx, infra.TelemetryConfiguration{Enabled: false}, "")
-	router := api.InitRouterMiddlewares(ctx, apiConfig, testUsecases.NewUsageTrackingUsecase(),
+	router := api.InitRouterMiddlewares(ctx, apiConfig, testUsecases.NewUsageTrackingReader(),
 		deps.SegmentClient, telemetryRessources)
 	server := api.NewServer(router, apiConfig, testUsecases,
 		deps.Authentication, deps.TokenHandler, logger, api.WithLocalTest(true))
