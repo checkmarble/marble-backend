@@ -404,8 +404,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	seedUsecase := uc.NewSeedUseCase()
 	// The seeding runs outside of the HTTP middleware stack, so the Segment client has to be
 	// injected in the context explicitly for the seeding analytics events to be sent.
-	seedCtx := utils.StoreSegmentClientInContext(ctx, deps.SegmentClient)
-	seedCtx = utils.StoreUsageTrackingInContext(seedCtx, usageTrackingReader)
+	seedCtx := utils.StoreUsageTrackingInContext(ctx, deps.SegmentClient, usageTrackingReader)
 	marbleAdminEmail := seedOrgConfig.CreateGlobalAdminEmail
 	if marbleAdminEmail != "" {
 		if err := seedUsecase.SeedMarbleAdmins(seedCtx, marbleAdminEmail); err != nil {

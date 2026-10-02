@@ -20,7 +20,8 @@ func StoreSegmentClientInContext(ctx context.Context, client analytics.Client) c
 	return context.WithValue(ctx, ContextKeySegmentClient, client)
 }
 
-func StoreUsageTrackingInContext(ctx context.Context, usageTracking UsageTracking) context.Context {
+func StoreUsageTrackingInContext(ctx context.Context, client analytics.Client, usageTracking UsageTracking) context.Context {
+	ctx = StoreSegmentClientInContext(ctx, client)
 	return context.WithValue(ctx, ContextKeyUsageTracking, usageTracking)
 }
 
@@ -31,10 +32,8 @@ func UsageTrackingFromContext(ctx context.Context) (UsageTracking, bool) {
 
 func StoreSegmentClientInContextMiddleware(client analytics.Client, usageTracking UsageTracking) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ctx := c.Request.Context()
-		ctxWithSegment := StoreSegmentClientInContext(ctx, client)
-		ctxWithSegment = StoreUsageTrackingInContext(ctxWithSegment, usageTracking)
-		c.Request = c.Request.WithContext(ctxWithSegment)
+		ctx := StoreUsageTrackingInContext(c.Request.Context(), client, usageTracking)
+		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
 }
