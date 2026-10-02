@@ -1,4 +1,4 @@
-package token
+package auth_test
 
 import (
 	"context"
@@ -109,6 +109,8 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 
 	t.Run("nominal", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
+		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
+			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: user.OrganizationId}}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, userOrgIdString).
 			Return(models.Organization{}, nil)
 		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
@@ -119,7 +121,7 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
 			OrganizationId: utils.TextToUUID("organization_id"),
-			Role:           models.ADMIN,
+			Roles:          []models.Role{models.ADMIN},
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
 				Email:  user.Email,

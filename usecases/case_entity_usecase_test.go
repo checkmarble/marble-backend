@@ -253,7 +253,7 @@ func (s *CaseEntityMutationSuite) makeUsecase() CaseUseCase {
 		inboxReader: inboxes.InboxReader{
 			EnforceSecurity: s.security,
 			InboxRepository: s.inboxRepo,
-			Credentials:     models.Credentials{Role: models.API_CLIENT},
+			Credentials:     models.Credentials{Roles: []models.Role{models.API_CLIENT}},
 		},
 		transactionFactory:  s.factory,
 		featureAccessReader: s.feature,

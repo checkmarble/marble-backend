@@ -77,14 +77,14 @@ func (suite *InboxUsecaseTestSuite) SetupTest() {
 			UserId: models.UserId(suite.nonAdminUserId),
 		},
 		OrganizationId: suite.organizationId,
-		Role:           models.BUILDER,
+		Roles:          []models.Role{models.BUILDER},
 	}
 	suite.adminCredentials = models.Credentials{
 		ActorIdentity: models.Identity{
 			UserId: models.UserId(suite.adminUserId),
 		},
 		OrganizationId: suite.organizationId,
-		Role:           models.ADMIN,
+		Roles:          []models.Role{models.ADMIN},
 	}
 	suite.repositoryError = errors.New("some repository error")
 	suite.securityError = errors.New("some security error")

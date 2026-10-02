@@ -125,7 +125,7 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 		if attr, ok := identityAttr(credentials.ActorIdentity); ok {
 			logger := LoggerFromContext(newContext).
 				With(attr).
-				With(slog.String("Role", credentials.Role.String()))
+				With(slog.Any("Roles", credentials.Roles))
 			c.Request = c.Request.WithContext(context.WithValue(newContext, ContextKeyLogger, logger))
 		}
 		c.Next()

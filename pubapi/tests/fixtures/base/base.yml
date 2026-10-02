@@ -11,7 +11,8 @@ organization_feature_access:
   - org_id: 10000000-0000-0000-0000-000000000000
 
 api_keys:
-  - org_id: 10000000-0000-0000-0000-000000000000
+  - id: 30000000-0000-0000-0000-000000000000
+    org_id: 10000000-0000-0000-0000-000000000000
     prefix: abc
     role: 5
     key_hash: RAW=sha256('testapikey')
@@ -40,3 +41,11 @@ users:
     first_name: Bob
     last_name: Example
     role: 4
+
+grants:
+  - id: 40000000-0000-0000-0000-000000000000
+    principal_type: api_key
+    principal_id: 30000000-0000-0000-0000-000000000000
+    principal_authority: marble
+    organization_id: 10000000-0000-0000-0000-000000000000
+    role: API_CLIENT
