@@ -16,27 +16,20 @@ func StoreSegmentClientInContext(ctx context.Context, client analytics.Client) c
 	return context.WithValue(ctx, ContextKeySegmentClient, client)
 }
 
-type conditionalSegmentClient struct {
-	analytics.Client
-	ctx     context.Context
-	enabled func(context.Context) bool
+func StoreUsageTrackingEnabledInContext(ctx context.Context, enabled func(context.Context) bool) context.Context {
+	return context.WithValue(ctx, ContextKeyUsageTrackingEnabled, enabled)
 }
 
-func (client conditionalSegmentClient) Enqueue(message analytics.Message) error {
-	if !client.enabled(client.ctx) {
-		return nil
-	}
-	return client.Client.Enqueue(message)
+func UsageTrackingEnabledFromContext(ctx context.Context) (func(context.Context) bool, bool) {
+	enabled, found := ctx.Value(ContextKeyUsageTrackingEnabled).(func(context.Context) bool)
+	return enabled, found
 }
 
 func StoreSegmentClientInContextMiddleware(client analytics.Client, enabled func(context.Context) bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		ctxWithSegment := StoreSegmentClientInContext(ctx, conditionalSegmentClient{
-			Client:  client,
-			ctx:     ctx,
-			enabled: enabled,
-		})
+		ctxWithSegment := StoreSegmentClientInContext(ctx, client)
+		ctxWithSegment = StoreUsageTrackingEnabledInContext(ctxWithSegment, enabled)
 		c.Request = c.Request.WithContext(ctxWithSegment)
 		c.Next()
 	}

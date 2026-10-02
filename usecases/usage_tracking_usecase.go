@@ -40,7 +40,7 @@ func NewUsageTrackingUsecase(repository usageTrackingRepository, executorFactory
 		enforceSecurity: security.NewEnforceSecurity(models.Credentials{}),
 		isMarbleSaas:    isMarbleSaas,
 		disableSegment:  disableSegment,
-		cache:           expirable.NewLRU[models.MetadataKey, bool](1, nil, 24*time.Hour),
+		cache:           expirable.NewLRU[models.MetadataKey, bool](1, nil, 10*time.Minute),
 		mu:              semaphore.NewWeighted(1),
 	}
 }
@@ -52,6 +52,11 @@ func (uc UsageTrackingUsecase) Enabled(ctx context.Context) bool {
 	if uc.isMarbleSaas {
 		return true
 	}
+	key := models.MetadataKeyUsageTrackingEnabled
+	if enabled, found := uc.cache.Get(key); found {
+		return enabled
+	}
+
 	// Bound both locking and the DB read so slow metadata does not block tracking indefinitely.
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
@@ -60,7 +65,6 @@ func (uc UsageTrackingUsecase) Enabled(ctx context.Context) bool {
 	}
 	defer uc.mu.Release(1)
 
-	key := models.MetadataKeyUsageTrackingEnabled
 	if enabled, found := uc.cache.Get(key); found {
 		return enabled
 	}
