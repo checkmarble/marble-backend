@@ -241,7 +241,6 @@ func setupApi(t *testing.T, ctx context.Context, dsn string) string {
 	cfg := api.Configuration{
 		Env: "development", MarbleAppUrl: "http://x",
 		DefaultTimeout: 5 * time.Second, TokenProvider: auth.TokenProviderFirebase,
-		DisableSegment: true,
 	}
 	key, err := rsa.GenerateKey(rand.Reader, 128)
 	if err != nil {
@@ -263,11 +262,7 @@ func setupApi(t *testing.T, ctx context.Context, dsn string) string {
 		repositories.WithOpenSanctions(openSanctions),
 		repositories.WithRiverClient(riverClient),
 		repositories.WithRedisClient(redisClient))
-	uc := usecases.NewUsecases(repos,
-		usecases.WithDisableSegment(cfg.DisableSegment),
-		usecases.WithLicense(models.NewFullLicense()),
-		usecases.WithOpensanctions(true),
-	)
+	uc := usecases.NewUsecases(repos, usecases.WithLicense(models.NewFullLicense()), usecases.WithOpensanctions(true))
 	router := api.InitRouterMiddlewares(ctx, cfg, uc.NewUsageTrackingReader(), nil, infra.TelemetryRessources{})
 
 	server := api.NewServer(
