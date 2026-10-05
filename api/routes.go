@@ -287,6 +287,12 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.DELETE("/users/:user_id", tom, handleDeleteUser(uc))
 	router.GET("/organizations/:organization_id/users", tom, handleListUsers(uc)) // TODO: deprecated, use GET /users instead (with query param)
 
+	router.GET("/tenants", tom, handleListTenants(uc))
+	router.PATCH("/tenants/:tenant_id", tom, handlePatchTenant(uc))
+	router.POST("/tenants/:tenant_id/merge", tom, handlePostTenantMerge(uc))
+	router.PUT("/tenants/:tenant_id/users/:user_id/grants", tom, handlePutOrganizationGrant(uc))
+	router.DELETE("/tenants/:tenant_id/users/:user_id/grants", tom, handleDeleteOrganizationGrant(uc))
+
 	router.GET("/organizations", tom, handleGetOrganizations(uc))
 	router.POST("/organizations", tom, handlePostOrganization(uc))
 	router.GET("/organizations/:organization_id", tom, handleGetOrganization(uc))

@@ -2,6 +2,7 @@ package auth_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -463,6 +464,59 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 		assert.Equal(t, []models.Role{models.TENANT_ADMIN}, token.Credentials.Roles)
 		mockRepository.AssertExpectations(t)
 		mockEncoder.AssertExpectations(t)
+	})
+
+	t.Run("marble admin selects an organization with an explicit grant", func(t *testing.T) {
+		mockRepository := new(mocks.Database)
+		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
+			Return([]models.Grant{
+				{Role: models.MARBLE_ADMIN},
+				{Role: models.ADMIN, OrganizationId: organizationID},
+			}, nil)
+		mockRepository.On("GetOrganizationByID", mock.Anything, organizationID).
+			Return(models.Organization{Id: organizationID, TenantId: tenantID, Name: "Acme"}, nil)
+		mockEncoder := new(mocks.JWTEncoderValidator)
+		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, mock.MatchedBy(func(creds models.Credentials) bool {
+			return creds.OrganizationId == organizationID && slices.Equal(creds.Roles, []models.Role{models.ADMIN})
+		})).Return("token", nil)
+
+		generator := auth.NewGenerator(mockRepository, mockEncoder, time.Minute, clock.NewMock(now))
+		token, err := generator.GenerateToken(
+			context.Background(),
+			auth.Credentials{Type: auth.CredentialsBearer},
+			user,
+			claims,
+			organizationID,
+		)
+
+		assert.NoError(t, err)
+		assert.Equal(t, organizationID, token.Credentials.OrganizationId)
+		assert.Equal(t, []models.Role{models.ADMIN}, token.Credentials.Roles)
+		mockRepository.AssertExpectations(t)
+		mockEncoder.AssertExpectations(t)
+	})
+
+	t.Run("marble admin cannot select an organization without an explicit grant", func(t *testing.T) {
+		mockRepository := new(mocks.Database)
+		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
+			Return([]models.Grant{{Role: models.MARBLE_ADMIN}}, nil)
+		mockRepository.On("GetOrganizationByID", mock.Anything, organizationID).
+			Return(models.Organization{Id: organizationID, TenantId: tenantID, Name: "Acme"}, nil)
+		mockEncoder := new(mocks.JWTEncoderValidator)
+
+		generator := auth.NewGenerator(mockRepository, mockEncoder, time.Minute, clock.NewMock(now))
+		token, err := generator.GenerateToken(
+			context.Background(),
+			auth.Credentials{Type: auth.CredentialsBearer},
+			user,
+			claims,
+			organizationID,
+		)
+
+		assert.ErrorIs(t, err, models.ForbiddenError)
+		assert.Empty(t, token)
+		mockRepository.AssertExpectations(t)
+		mockEncoder.AssertNotCalled(t, "EncodeMarbleToken", mock.Anything, mock.Anything, mock.Anything)
 	})
 
 	t.Run("rejects an explicitly selected organization without an applicable grant", func(t *testing.T) {
