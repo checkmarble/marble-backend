@@ -21,6 +21,11 @@ func (r *GrantRepository) ListOrganizationsForUser(ctx context.Context, exec rep
 	return args.Get(0).([]models.OrganizationMembership), args.Error(1)
 }
 
+func (r *GrantRepository) ListOrganizationGrantsByUser(ctx context.Context, exec repositories.Executor, userIDs []string) (map[string][]models.Grant, error) {
+	args := r.Called(ctx, exec, userIDs)
+	return args.Get(0).(map[string][]models.Grant), args.Error(1)
+}
+
 func (r *GrantRepository) ListTenantUsersWithDirectOrganizationGrant(ctx context.Context, exec repositories.Executor, tenantID, organizationID uuid.UUID) ([]models.OrganizationUserGrant, error) {
 	args := r.Called(ctx, exec, tenantID, organizationID)
 	return args.Get(0).([]models.OrganizationUserGrant), args.Error(1)

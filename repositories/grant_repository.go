@@ -15,6 +15,7 @@ import (
 type GrantRepository interface {
 	EnsureTenantAdminForOrganization(ctx context.Context, exec Executor, userID string, organizationID uuid.UUID) error
 	ListOrganizationsForUser(ctx context.Context, exec Executor, userID string) ([]models.OrganizationMembership, error)
+	ListOrganizationGrantsByUser(ctx context.Context, exec Executor, userIDs []string) (map[string][]models.Grant, error)
 	ListTenantUsersWithDirectOrganizationGrant(ctx context.Context, exec Executor, tenantID, organizationID uuid.UUID) ([]models.OrganizationUserGrant, error)
 	ListTenantUsersWithoutOrganizationAccess(ctx context.Context, exec Executor, tenantID, organizationID uuid.UUID) ([]models.OrganizationUserGrant, error)
 	ReplaceOrganizationGrant(ctx context.Context, tx Transaction, userID string, organizationID uuid.UUID, role models.Role) error
@@ -92,6 +93,52 @@ func (repo *MarbleDbRepository) ListOrganizationsForUser(ctx context.Context, ex
 		}
 		return membership, nil
 	})
+}
+
+// ListOrganizationGrantsByUser returns the users' active direct grants on organizations, keyed by
+// user id, leaving out tenant-scoped and platform grants.
+func (repo *MarbleDbRepository) ListOrganizationGrantsByUser(ctx context.Context, exec Executor, userIDs []string) (map[string][]models.Grant, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	grantsByUser := make(map[string][]models.Grant, len(userIDs))
+	if len(userIDs) == 0 {
+		return grantsByUser, nil
+	}
+
+	query := NewQueryBuilder().
+		Select("g.principal_id", "g.role", "o.tenant_id", "o.id").
+		From("active_grants g").
+		Join("organizations o ON o.id = g.organization_id").
+		Where(squirrel.Eq{
+			"g.principal_type":      "user",
+			"g.principal_id":        userIDs,
+			"g.principal_authority": "marble",
+		}).
+		Where("o.deleted_at IS NULL").
+		OrderBy("o.name", "o.id")
+
+	type userGrant struct {
+		userID string
+		grant  models.Grant
+	}
+	rows, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (userGrant, error) {
+		var result userGrant
+		var role string
+		if err := row.Scan(&result.userID, &role, &result.grant.TenantId, &result.grant.OrganizationId); err != nil {
+			return userGrant{}, fmt.Errorf("scanning user organization grant: %w", err)
+		}
+		result.grant.Role = models.RoleFromString(role)
+		return result, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		grantsByUser[row.userID] = append(grantsByUser[row.userID], row.grant)
+	}
+	return grantsByUser, nil
 }
 
 func (repo *MarbleDbRepository) ListTenantUsersWithDirectOrganizationGrant(ctx context.Context, exec Executor, tenantID, organizationID uuid.UUID) ([]models.OrganizationUserGrant, error) {
