@@ -57,6 +57,9 @@ var OpenSanctionsTopicMapping = map[string]RiskTag{
 	"list.regulatory":       RiskTagAdverseMedia,
 	"list.risk":             RiskTagAdverseMedia,
 	"list.wanted":           RiskTagAdverseMedia,
+
+	// OpenSanctions entity tags
+	"role.pep": RiskTagPEPs,
 }
 
 // MapOpenSanctionsTopicToRiskTag converts an OpenSanctions tag to a Marble RiskTag.
