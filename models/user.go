@@ -13,6 +13,7 @@ type User struct {
 	Email          string
 	Role           Role
 	OrganizationId uuid.UUID
+	TenantId       uuid.UUID
 	FirstName      string
 	LastName       string
 	DeletedAt      *time.Time
