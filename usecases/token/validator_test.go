@@ -79,6 +79,20 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
 	})
 
+	t.Run("rejects an API key without an applicable grant", func(t *testing.T) {
+		mockKeyAndOrganizationGetter := new(mocks.Database)
+		mockKeyAndOrganizationGetter.On("GetApiKeyByHash", ctx, keyHash).Return(apiKey, nil)
+		mockKeyAndOrganizationGetter.On("GetOrganizationByID", ctx, apiKey.OrganizationId).Return(organization, nil)
+		mockKeyAndOrganizationGetter.On("ActiveGrantsForPrincipal", mock.Anything, "api_key", apiKey.Id).
+			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: utils.TextToUUID("another_organization")}}, nil)
+
+		v := Validator{getter: mockKeyAndOrganizationGetter}
+		_, err := v.ValidateTokenOrKey(ctx, "", key)
+
+		assert.ErrorIs(t, err, models.UnAuthorizedError)
+		mockKeyAndOrganizationGetter.AssertExpectations(t)
+	})
+
 	t.Run("nominal", func(t *testing.T) {
 		mockKeyAndOrganizationGetter := new(mocks.Database)
 		mockKeyAndOrganizationGetter.On("GetApiKeyByHash", ctx, keyHash).

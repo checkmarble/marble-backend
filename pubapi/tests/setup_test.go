@@ -136,7 +136,6 @@ func setupPostgres(t *testing.T, ctx context.Context) *postgres.PostgresContaine
 	if err := fixtures.Load(); err != nil {
 		t.Fatal(err)
 	}
-
 	setupClientDbSchema(t, ctx, conn)
 
 	fixturesClient, err := testfixtures.New(
