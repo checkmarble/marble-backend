@@ -146,7 +146,7 @@ func (p ScreeningLexisNexisProvider) BuildQueryString(ctx context.Context,
 	}
 
 	if !p.Config.MotivaFeatures(ctx).BodyParams && cfg != nil && len(cfg.Datasets) > 0 {
-		qs["include_dataset"] = []string{"lexisnexis"}
+		qs["include_dataset"] = []string{p.Config.Scope(models.ScreeningProviderLexisNexis)}
 	}
 
 	qs.Set("algorithm", p.Config.Algorithm())
@@ -295,6 +295,7 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context, f
 
 	if len(values.CustomDatasets) > 0 {
 		for _, ds := range values.CustomDatasets {
+			// Do not report a `lexisnexis` dataset, child of a custom collection, as a custom dataset.
 			if ds == "lexisnexis" {
 				continue
 			}
@@ -403,7 +404,7 @@ func (p ScreeningLexisNexisProvider) GetLexisNexisCatalog(ctx context.Context) (
 	}
 
 	for _, ds := range catalog.Datasets {
-		if ds.Name == "lexisnexis" {
+		if ds.Name == p.Config.Scope(models.ScreeningProviderLexisNexis) {
 			return ds, nil
 		}
 	}
