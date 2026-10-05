@@ -19,7 +19,7 @@ require (
 	github.com/alicebob/miniredis/v2 v2.38.0
 	github.com/authenticvision/rgeo v1.4.0
 	github.com/avast/retry-go/v4 v4.7.0
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.113.1
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.113.2
 	github.com/biter777/countries v1.7.5
 	github.com/buger/jsonparser v1.6.1
 	github.com/checkmarble/llmberjack v0.0.0-20260917164714-cdc16047e091
