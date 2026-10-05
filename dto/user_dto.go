@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/google/uuid"
 )
 
@@ -77,6 +78,33 @@ type UpdateUser struct {
 	Role      *string `json:"role"`
 	FirstName *string `json:"first_name"`
 	LastName  *string `json:"last_name"`
+}
+
+type UserGrantDto struct {
+	OrganizationId uuid.UUID `json:"organization_id"`
+	TenantId       uuid.UUID `json:"tenant_id"`
+	Role           string    `json:"role"`
+}
+
+// UserWithGrants is a user listed with `with_grants=true`.
+type UserWithGrants struct {
+	User
+	Grants []UserGrantDto `json:"grants"`
+}
+
+func AdaptUserWithGrantsDto(user models.User, grants []models.Grant) UserWithGrants {
+	return UserWithGrants{
+		User:   AdaptUserDto(user),
+		Grants: pure_utils.Map(grants, AdaptUserGrantDto),
+	}
+}
+
+func AdaptUserGrantDto(grant models.Grant) UserGrantDto {
+	return UserGrantDto{
+		OrganizationId: grant.OrganizationId,
+		TenantId:       grant.TenantId,
+		Role:           grant.Role.String(),
+	}
 }
 
 type ReplaceOrganizationGrant struct {

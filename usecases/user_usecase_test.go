@@ -30,6 +30,11 @@ func (allowOrganizationGrantSecurity) ListTenantUsers(uuid.UUID) error          
 func (allowOrganizationGrantSecurity) ManageOrganizationGrant(uuid.UUID, models.User) error {
 	return nil
 }
+func (allowOrganizationGrantSecurity) ListUserGrants() error { return nil }
+
+type denyListUserGrantsSecurity struct{ allowOrganizationGrantSecurity }
+
+func (denyListUserGrantsSecurity) ListUserGrants() error { return models.ForbiddenError }
 
 var _ security.EnforceSecurityUser = allowOrganizationGrantSecurity{}
 
@@ -145,6 +150,91 @@ func TestUserUseCaseRevokeOrganizationGrantRejectsOrganizationOutsideRouteTenant
 	require.ErrorIs(t, err, models.NotFoundError)
 	userRepository.AssertNotCalled(t, "UserById", mock.Anything, mock.Anything, mock.Anything)
 	grantRepository.AssertNotCalled(t, "RevokeOrganizationGrant", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestUserUseCaseListUserGrants(t *testing.T) {
+	userID := uuid.NewString()
+	grants := []models.Grant{
+		{Role: models.VIEWER, TenantId: uuid.New(), OrganizationId: uuid.New()},
+		{Role: models.ADMIN, TenantId: uuid.New(), OrganizationId: uuid.New()},
+	}
+
+	tests := []struct {
+		name      string
+		security  security.EnforceSecurityUser
+		userErr   error
+		wantError error
+	}{
+		{name: "lists grants across tenants", security: allowOrganizationGrantSecurity{}},
+		{name: "unknown user", security: allowOrganizationGrantSecurity{}, userErr: models.NotFoundError, wantError: models.NotFoundError},
+		{name: "forbidden", security: denyListUserGrantsSecurity{}, wantError: models.ForbiddenError},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			executorFactory := &mocks.ExecutorFactory{}
+			userRepository := &mocks.UserRepository{}
+			grantRepository := &mocks.GrantRepository{}
+			exec := &mocks.Executor{}
+
+			executorFactory.On("NewExecutor").Return(exec)
+			userRepository.On("UserById", mock.Anything, exec, userID).Return(models.User{UserId: models.UserId(userID)}, tt.userErr)
+			grantRepository.On("ListOrganizationGrantsByUser", mock.Anything, exec, []string{userID}).
+				Return(map[string][]models.Grant{userID: grants}, nil)
+
+			usecase := UserUseCase{
+				enforceUserSecurity: tt.security,
+				executorFactory:     executorFactory,
+				userRepository:      userRepository,
+				grantRepository:     grantRepository,
+			}
+			got, err := usecase.ListUserGrants(context.Background(), userID)
+			if tt.wantError != nil {
+				require.ErrorIs(t, err, tt.wantError)
+				grantRepository.AssertNotCalled(t, "ListOrganizationGrantsByUser", mock.Anything, mock.Anything, mock.Anything)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, grants, got)
+		})
+	}
+}
+
+func TestUserUseCaseListGrantsOfUsers(t *testing.T) {
+	users := []models.User{{UserId: models.UserId(uuid.NewString())}, {UserId: models.UserId(uuid.NewString())}}
+	userIDs := []string{string(users[0].UserId), string(users[1].UserId)}
+	grantsByUser := map[string][]models.Grant{
+		userIDs[0]: {{Role: models.VIEWER, TenantId: uuid.New(), OrganizationId: uuid.New()}},
+	}
+
+	t.Run("lists grants of every user in one query", func(t *testing.T) {
+		executorFactory := &mocks.ExecutorFactory{}
+		grantRepository := &mocks.GrantRepository{}
+		exec := &mocks.Executor{}
+		executorFactory.On("NewExecutor").Return(exec)
+		grantRepository.On("ListOrganizationGrantsByUser", mock.Anything, exec, userIDs).Return(grantsByUser, nil).Once()
+
+		usecase := UserUseCase{
+			enforceUserSecurity: allowOrganizationGrantSecurity{},
+			executorFactory:     executorFactory,
+			grantRepository:     grantRepository,
+		}
+		got, err := usecase.ListGrantsOfUsers(context.Background(), users)
+		require.NoError(t, err)
+		require.Equal(t, grantsByUser, got)
+		grantRepository.AssertExpectations(t)
+	})
+
+	t.Run("forbidden", func(t *testing.T) {
+		grantRepository := &mocks.GrantRepository{}
+		usecase := UserUseCase{
+			enforceUserSecurity: denyListUserGrantsSecurity{},
+			grantRepository:     grantRepository,
+		}
+		_, err := usecase.ListGrantsOfUsers(context.Background(), users)
+		require.ErrorIs(t, err, models.ForbiddenError)
+		grantRepository.AssertNotCalled(t, "ListOrganizationGrantsByUser", mock.Anything, mock.Anything, mock.Anything)
+	})
 }
 
 var _ repositories.GrantRepository = (*mocks.GrantRepository)(nil)

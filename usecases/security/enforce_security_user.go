@@ -16,6 +16,7 @@ type EnforceSecurityUser interface {
 	ListUsers(organizationId *uuid.UUID) error
 	ListTenantUsers(organizationId uuid.UUID) error
 	ManageOrganizationGrant(organizationId uuid.UUID, targetUser models.User) error
+	ListUserGrants() error
 }
 
 type EnforceSecurityUserImpl struct {
@@ -146,4 +147,12 @@ func (e *EnforceSecurityUserImpl) ManageOrganizationGrant(organizationId uuid.UU
 		e.Permission(models.MARBLE_USER_UPDATE),
 		e.ReadOrganization(organizationId),
 	)
+}
+
+// ListUserGrants guards the cross-tenant view of a user's grants, which only the backoffice uses.
+func (e *EnforceSecurityUserImpl) ListUserGrants() error {
+	if !e.Credentials.HasRole(models.MARBLE_ADMIN) {
+		return errors.Wrap(models.ForbiddenError, "only marble admins can list user grants")
+	}
+	return e.Permission(models.MARBLE_USER_LIST)
 }
