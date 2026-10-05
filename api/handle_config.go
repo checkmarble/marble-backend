@@ -10,6 +10,24 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func handleUpdateUsageTracking(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		var data dto.UpdateUsageTrackingDto
+		if err := c.ShouldBindJSON(&data); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewUsageTrackingWriter()
+		err := usecase.SetEnabled(ctx, *data.Enabled)
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
+
 func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Context) {
 	go utils.RunCheckOutdated(cfg.AppVersion)
 
@@ -18,6 +36,7 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 
 		licenseUsecase := uc.NewLicenseUsecase()
 		versionUsecase := uc.NewVersionUsecase()
+		usageTrackingReader := uc.NewUsageTrackingReader()
 
 		signupUsecase := usecases.NewSignupUsecase(uc.NewExecutorFactory(),
 			uc.Repositories.MarbleDbRepository,
@@ -77,7 +96,7 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 			},
 			Features: dto.ConfigFeaturesDto{
 				Sso:                   licenseUsecase.HasSsoEnabled(),
-				Segment:               !cfg.DisableSegment,
+				Segment:               usageTrackingReader.Enabled(ctx),
 				WebhookSecretRotation: true,
 			},
 		}

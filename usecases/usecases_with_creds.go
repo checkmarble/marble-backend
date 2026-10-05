@@ -1354,3 +1354,12 @@ func (usecases UsecasesWithCreds) NewAsyncDecisionStorageWorker() worker_jobs.As
 		usecases.NewDecisionUsecase(),
 	)
 }
+
+func (usecases *UsecasesWithCreds) NewUsageTrackingWriter() UsageTrackingWriter {
+	return UsageTrackingWriter{
+		repository:      usecases.Repositories.MarbleDbRepository,
+		executorFactory: usecases.NewExecutorFactory(),
+		enforceSecurity: usecases.NewEnforceSecurity(),
+		isMarbleSaas:    usecases.isMarbleSaas,
+	}
+}
