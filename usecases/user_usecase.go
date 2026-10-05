@@ -194,6 +194,30 @@ func (usecase *UserUseCase) ListTenantUsers(ctx context.Context, organizationID 
 	}
 }
 
+func (usecase *UserUseCase) ListUserGrants(ctx context.Context, userID string) ([]models.Grant, error) {
+	if err := usecase.enforceUserSecurity.ListUserGrants(); err != nil {
+		return nil, err
+	}
+	exec := usecase.executorFactory.NewExecutor()
+	if _, err := usecase.userRepository.UserById(ctx, exec, userID); err != nil {
+		return nil, err
+	}
+	grantsByUser, err := usecase.grantRepository.ListOrganizationGrantsByUser(ctx, exec, []string{userID})
+	if err != nil {
+		return nil, err
+	}
+	return grantsByUser[userID], nil
+}
+
+// ListGrantsOfUsers returns the organization grants of the given users, keyed by user id.
+func (usecase *UserUseCase) ListGrantsOfUsers(ctx context.Context, users []models.User) (map[string][]models.Grant, error) {
+	if err := usecase.enforceUserSecurity.ListUserGrants(); err != nil {
+		return nil, err
+	}
+	userIDs := pure_utils.Map(users, func(user models.User) string { return string(user.UserId) })
+	return usecase.grantRepository.ListOrganizationGrantsByUser(ctx, usecase.executorFactory.NewExecutor(), userIDs)
+}
+
 func (usecase *UserUseCase) ReplaceOrganizationGrant(ctx context.Context, userID string, tenantID, organizationID uuid.UUID, role models.Role) error {
 	if !slices.Contains(models.GetValidOrganizationGrantRoles(), role) {
 		return errors.Wrap(models.BadParameterError, "invalid organization grant role")
