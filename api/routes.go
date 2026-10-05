@@ -283,6 +283,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/users", tom, handleListUsers(uc))
 	router.POST("/users", tom, handlePostUser(uc))
 	router.GET("/users/:user_id", tom, handleGetUser(uc))
+	router.GET("/users/:user_id/grants", tom, handleListUserGrants(uc))
 	router.PATCH("/users/:user_id", tom, handlePatchUser(uc))
 	router.DELETE("/users/:user_id", tom, handleDeleteUser(uc))
 	router.GET("/organizations/:organization_id/users", tom, handleListUsers(uc)) // TODO: deprecated, use GET /users instead (with query param)

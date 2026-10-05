@@ -37,6 +37,7 @@ func handleListUsers(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		withTfa := c.Query("with_tfa") == "true"
+		withGrants := c.Query("with_grants") == "true"
 
 		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
 		if tenantAccess := c.Query("tenant_access"); tenantAccess != "" {
@@ -57,9 +58,39 @@ func handleListUsers(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
+		if withGrants {
+			grantsByUser, err := usecase.ListGrantsOfUsers(ctx, users)
+			if presentError(ctx, c, err) {
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"users": pure_utils.Map(users, func(user models.User) dto.UserWithGrants {
+					return dto.AdaptUserWithGrantsDto(user, grantsByUser[string(user.UserId)])
+				}),
+			})
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{
 			"users": pure_utils.Map(users, dto.AdaptUserDto),
 		})
+	}
+}
+
+func handleListUserGrants(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		userID := c.Param("user_id")
+		if _, err := uuid.Parse(userID); err != nil {
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{Message: "invalid user_id format"})
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
+		grants, err := usecase.ListUserGrants(ctx, userID)
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"grants": pure_utils.Map(grants, dto.AdaptUserGrantDto)})
 	}
 }
 
