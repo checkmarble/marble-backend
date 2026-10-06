@@ -75,10 +75,15 @@ func InitDependencies(
 	jwtRepository := repositories.NewJWTRepository(tokenIssuer, signingKey)
 	tokenValidator := token.NewValidator(database, jwtRepository)
 
+	tokenLifetime := time.Duration(conf.TokenLifetimeMinute) * time.Minute
+	if tokenLifetime <= 0 {
+		tokenLifetime = time.Hour
+	}
+
 	tokenHandler := auth.NewTokenHandler(
 		auth.DefaultExtractor(),
 		auth.NewVerifier(conf.TokenProvider, idpTokenVerifier, database, conf.OidcConfig.AllowedDomains),
-		auth.NewGenerator(database, jwtRepository, time.Hour, clock.New()),
+		auth.NewGenerator(database, jwtRepository, tokenLifetime, clock.New()),
 	)
 
 	return dependencies{

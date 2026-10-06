@@ -39,7 +39,7 @@ func (uc OidcUsecase) ExchangeToken(ctx context.Context, cfg infra.OidcConfig, r
 			return nil, err
 		}
 
-		if tokens.Extra("id_token") == "" {
+		if idToken, ok := tokens.Extra("id_token").(string); !ok || idToken == "" {
 			return nil, errors.New("ID token was not reissued during refresh")
 		}
 
