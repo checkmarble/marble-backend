@@ -152,6 +152,13 @@ func (usecases *UsecasesWithCreds) NewEnforceSecurityAudit() security.EnforceSec
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewEnforceSecurityDashboard() security.EnforceSecurityDashboard {
+	return &security.EnforceSecurityDashboardImpl{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewEnforceSecurityScoring() security.EnforceSecurityScoring {
 	return &security.EnforceSecurityScoringImpl{
 		EnforceSecurity: usecases.NewEnforceSecurity(),
@@ -1365,5 +1372,13 @@ func (usecases UsecasesWithCreds) NewAsyncDecisionStorageWorker() worker_jobs.As
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.RedisClient,
 		usecases.NewDecisionUsecase(),
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewDashboardUsecase() DashboardUsecase {
+	return NewDashboardUsecase(
+		usecases.NewEnforceSecurityDashboard(),
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.MarbleDbRepository,
 	)
 }
