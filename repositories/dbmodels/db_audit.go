@@ -65,6 +65,9 @@ func AdaptAuditEventWithActor(db DbAuditEventWithActor) (models.AuditEvent, erro
 			Id:   *db.ApiKeyId,
 			Name: pure_utils.PtrValueOrDefault(db.ApiKeyName, "n/a"),
 		}
+
+	default:
+		event.Actor = models.AuditEventActor{Type: "system", Name: "System"}
 	}
 
 	return event, nil
