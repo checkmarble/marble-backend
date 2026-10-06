@@ -238,3 +238,37 @@ func TestUserUseCaseListGrantsOfUsers(t *testing.T) {
 }
 
 var _ repositories.GrantRepository = (*mocks.GrantRepository)(nil)
+
+func TestUserUseCaseAddUserWithoutOrganization(t *testing.T) {
+	for _, role := range []models.Role{models.VIEWER, models.MARBLE_ADMIN} {
+		t.Run(role.String(), func(t *testing.T) {
+			userID := uuid.NewString()
+			createUser := models.CreateUser{
+				Email:     "new.user@example.com",
+				Role:      role,
+				FirstName: "New",
+				LastName:  "User",
+			}
+			transactionFactory := &mocks.TransactionFactory{TxMock: &mocks.Transaction{}}
+			userRepository := &mocks.UserRepository{}
+			organizationRepository := &mocks.OrganizationRepository{}
+
+			transactionFactory.On("Transaction", mock.Anything, mock.Anything).Return(nil)
+			userRepository.On("CreateUser", mock.Anything, mock.Anything, createUser).Return(userID, nil)
+			userRepository.On("UserById", mock.Anything, mock.Anything, userID).
+				Return(models.User{UserId: models.UserId(userID), Email: createUser.Email, Role: role}, nil)
+
+			usecase := UserUseCase{
+				enforceUserSecurity:    allowOrganizationGrantSecurity{},
+				transactionFactory:     transactionFactory,
+				userRepository:         userRepository,
+				organizationRepository: organizationRepository,
+			}
+			user, err := usecase.AddUser(context.Background(), createUser)
+			require.NoError(t, err)
+			require.Equal(t, uuid.Nil, user.OrganizationId)
+			organizationRepository.AssertNotCalled(t, "GetOrganizationById", mock.Anything, mock.Anything, mock.Anything)
+			userRepository.AssertExpectations(t)
+		})
+	}
+}

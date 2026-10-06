@@ -31,6 +31,11 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 		return "", err
 	}
 
+	var organizationId *uuid.UUID
+	if createUser.OrganizationId != uuid.Nil {
+		organizationId = &createUser.OrganizationId
+	}
+
 	err := ExecBuilder(
 		ctx,
 		exec,
@@ -47,7 +52,7 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 				userId,
 				createUser.Email,
 				int(createUser.Role),
-				createUser.OrganizationId,
+				organizationId,
 				createUser.FirstName,
 				createUser.LastName,
 			),
@@ -62,6 +67,11 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 			Columns("id", "principal_type", "principal_id", "principal_authority", "role").
 			Values(pure_utils.NewId(), "user", userId, "marble", createUser.Role.String()).
 			Suffix("ON CONFLICT DO NOTHING"))
+	}
+
+	// Users created without an organization get their organization grants later.
+	if organizationId == nil {
+		return userId, nil
 	}
 
 	return userId, ExecBuilder(ctx, exec, NewQueryBuilder().
