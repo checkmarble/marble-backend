@@ -170,3 +170,28 @@ func TestListUserGrantsRequiresMarbleAdmin(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateUserWithoutOrganizationRequiresMarbleAdmin(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		role    models.Role
+		allowed bool
+	}{
+		{name: "organization admin", role: models.ADMIN},
+		{name: "tenant admin", role: models.TENANT_ADMIN},
+		{name: "marble admin", role: models.MARBLE_ADMIN, allowed: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			enforcer := EnforceSecurityUserImpl{
+				EnforceSecurity: mockUserEnforceSecurity{},
+				Credentials:     models.Credentials{Roles: []models.Role{tt.role}},
+			}
+			err := enforcer.CreateUser(models.CreateUser{Role: models.VIEWER})
+			if tt.allowed {
+				assert.NoError(t, err)
+				return
+			}
+			assert.ErrorIs(t, err, models.ForbiddenError)
+		})
+	}
+}

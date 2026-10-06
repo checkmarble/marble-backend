@@ -34,9 +34,16 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 		return models.User{}, err
 	}
 
-	org, err := usecase.organizationRepository.GetOrganizationById(ctx, usecase.executorFactory.NewExecutor(), createUser.OrganizationId)
-	if err != nil {
-		return models.User{}, errors.Wrap(err, "GetOrganizationById error")
+	// Platform users (e.g. marble admins) can be created without an organization.
+	hasOrganization := createUser.OrganizationId != uuid.Nil
+	var org models.Organization
+	if hasOrganization {
+		var err error
+		org, err = usecase.organizationRepository.GetOrganizationById(ctx,
+			usecase.executorFactory.NewExecutor(), createUser.OrganizationId)
+		if err != nil {
+			return models.User{}, errors.Wrap(err, "GetOrganizationById error")
+		}
 	}
 
 	createdUser, err := executor_factory.TransactionReturnValue(
@@ -75,9 +82,11 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 		"first_name":      createdUser.FirstName,
 		"last_name":       createdUser.LastName,
 	})
-	tracking.Group(ctx, createdUser.UserId, createdUser.OrganizationId, map[string]any{
-		"name": org.Name,
-	})
+	if hasOrganization {
+		tracking.Group(ctx, createdUser.UserId, createdUser.OrganizationId, map[string]any{
+			"name": org.Name,
+		})
+	}
 	tracking.TrackEvent(ctx, models.AnalyticsUserCreated, map[string]interface{}{
 		"user_id":         createdUser.UserId,
 		"email":           createdUser.Email,

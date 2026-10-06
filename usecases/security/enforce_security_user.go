@@ -51,6 +51,16 @@ func (e *EnforceSecurityUserImpl) CreateUser(input models.CreateUser) error {
 		)
 	}
 
+	if input.OrganizationId == uuid.Nil {
+		if !e.Credentials.HasPermission(models.ANY_ORGANIZATION_ID_IN_CONTEXT) {
+			return errors.Wrap(
+				models.ForbiddenError,
+				"only marble admins can create users without an organization",
+			)
+		}
+		return e.Permission(models.MARBLE_USER_CREATE)
+	}
+
 	return errors.Join(
 		e.Permission(models.MARBLE_USER_CREATE),
 		e.ReadOrganization(input.OrganizationId),
