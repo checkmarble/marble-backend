@@ -55,7 +55,7 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 
 		var oidcConfig *dto.ConfigAuthOidcDto
 
-		if cfg.TokenProvider == auth.TokenProviderOidc {
+		if cfg.TokenProviders.Has(auth.TokenProviderOidc) {
 			oidcConfig = &dto.ConfigAuthOidcDto{
 				Issuer:      cfg.OidcConfig.Issuer,
 				ClientId:    cfg.OidcConfig.ClientId,
@@ -84,7 +84,7 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 				Blobs:     uc.GetBlobHosts(),
 			},
 			Auth: dto.ConfigAuthDto{
-				Provider: cfg.TokenProvider.String(),
+				Providers: cfg.TokenProviders.Strings(),
 				Firebase: dto.ConfigAuthFirebaseDto{
 					IsEmulator:   cfg.FirebaseConfig.EmulatorHost != "",
 					EmulatorHost: cfg.FirebaseConfig.EmulatorHost,

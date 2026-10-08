@@ -35,7 +35,11 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	isMarbleSaasProject := infra.IsMarbleSaasProject()
 	marbleAppUrl := utils.GetEnv("MARBLE_APP_URL", "")
 
-	authProvider := auth.ParseTokenProvider(utils.GetEnv("AUTH_PROVIDER", "firebase"))
+	authProviders, err := auth.ParseTokenProviders(utils.GetEnv("AUTH_PROVIDER", "firebase"))
+	if err != nil {
+		return err
+	}
+
 	oidcProvider := infra.OidcConfig{}
 	firebaseConfig := api.FirebaseConfig{}
 
@@ -47,15 +51,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	}
 	gcpProjectId = gcpConfig.ProjectId
 
-	switch authProvider {
-	case auth.TokenProviderOidc:
-		oidc, err := infra.InitializeOidc(ctx, marbleAppUrl)
-		if err != nil {
-			return err
-		}
-
-		oidcProvider = oidc
-	case auth.TokenProviderFirebase:
+	if authProviders.Has(auth.TokenProviderFirebase) {
 		firebaseConfig = api.FirebaseConfig{
 			ProjectId:    utils.GetEnv("FIREBASE_PROJECT_ID", ""),
 			EmulatorHost: utils.GetEnv("FIREBASE_AUTH_EMULATOR_HOST", ""),
@@ -79,8 +75,6 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		}
 
 		logger.Info("firebase project configured", "project", firebaseConfig.ProjectId)
-	default:
-		return errors.Newf("unsupported token provider: %s", authProvider)
 	}
 
 	// This is where we read the environment variables and set up the configuration for the application.
@@ -119,7 +113,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 
 		ScreeningIndexerToken: utils.GetEnv("SCREENING_INDEXER_TOKEN", ""),
 
-		TokenProvider:  authProvider,
+		TokenProviders: authProviders,
 		FirebaseConfig: firebaseConfig,
 		OidcConfig:     oidcProvider,
 	}
@@ -350,11 +344,6 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		repositories.WithLagoConfig(lagoConfig),
 	)
 
-	deps, err := api.InitDependencies(ctx, apiConfig, authPool, marbleJwtSigningKey)
-	if err != nil {
-		return err
-	}
-
 	deploymentMetadata, err := GetDeploymentMetadata(ctx, repositories)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -362,8 +351,27 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	}
 	license := infra.VerifyLicense(licenseConfig, deploymentMetadata.Value)
 
-	if apiConfig.TokenProvider == auth.TokenProviderOidc && !license.Sso {
-		return errors.New("cannot use OpenID Connect configuration without the appropriate license entitlement")
+	if apiConfig.TokenProviders.Has(auth.TokenProviderOidc) && !license.Sso {
+		if !apiConfig.TokenProviders.Has(auth.TokenProviderFirebase) {
+			logger.Error("OpenID Connect provider cannot be started because the SSO license entitlement is missing")
+			return errors.New("cannot use OpenID Connect configuration without the appropriate license entitlement")
+		}
+
+		apiConfig.TokenProviders = apiConfig.TokenProviders.Without(auth.TokenProviderOidc)
+		logger.Warn("OpenID Connect provider disabled because the SSO license entitlement is missing")
+	}
+
+	if apiConfig.TokenProviders.Has(auth.TokenProviderOidc) {
+		oidcProvider, err = infra.InitializeOidc(ctx, marbleAppUrl)
+		if err != nil {
+			return err
+		}
+		apiConfig.OidcConfig = oidcProvider
+	}
+
+	deps, err := api.InitDependencies(ctx, apiConfig, authPool, marbleJwtSigningKey)
+	if err != nil {
+		return err
 	}
 
 	ipEnrichmentDatabase, err := infra.InitIpEnrichmentDatabase(ctx, license)
@@ -389,7 +397,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithWebhookIPWhitelist(os.Getenv("WEBHOOK_IP_WHITELIST")),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithNameRecognition(openSanctionsConfig.IsNameRecognitionSet()),
-		usecases.WithFirebaseAdmin(apiConfig.TokenProvider, deps.FirebaseAdmin),
+		usecases.WithFirebaseAdmin(apiConfig.TokenProviders.Has(auth.TokenProviderFirebase), deps.FirebaseAdmin),
 		usecases.WithAIAgentConfig(aiAgentConfig),
 		usecases.WithAnalyticsConfig(analyticsConfig),
 		usecases.WithContinuousScreeningBucketUrl(serverConfig.continuousScreeningBucketUrl),

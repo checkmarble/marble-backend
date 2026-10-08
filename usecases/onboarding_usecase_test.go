@@ -46,7 +46,7 @@ func onboardingUsecaseForTest(tokenProvider auth.TokenProvider) (OnboardingUseca
 		deps.orgRepository,
 		deps.userRepository,
 		deps.grantRepository,
-		tokenProvider,
+		tokenProvider == auth.TokenProviderFirebase,
 		deps.firebase,
 	)
 

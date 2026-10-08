@@ -10,10 +10,13 @@ import (
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/clock"
+	"github.com/checkmarble/marble-backend/repositories/idp"
 	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGenerator_VerifyToken_APIKey(t *testing.T) {
@@ -49,7 +52,7 @@ func TestGenerator_VerifyToken_APIKey(t *testing.T) {
 		mockRepository.On("GetOrganizationByID", ctx, orgIdString).
 			Return(organization, nil)
 
-		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository, nil)
+		verifier := auth.NewVerifier(map[string]idp.TokenRepository{infra.MockFirebaseIssuer: idpTokenVerifier}, mockRepository, "", nil)
 		intoCreds, _, err := verifier.Verify(ctx, auth.Credentials{
 			Type: auth.CredentialsApiKey, Value: key,
 		})
@@ -64,7 +67,7 @@ func TestGenerator_VerifyToken_APIKey(t *testing.T) {
 		mockRepository.On("GetApiKeyByHash", ctx, keyHash).
 			Return(models.ApiKey{}, assert.AnError)
 
-		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository, nil)
+		verifier := auth.NewVerifier(map[string]idp.TokenRepository{infra.MockFirebaseIssuer: idpTokenVerifier}, mockRepository, "", nil)
 		_, _, err := verifier.Verify(ctx, auth.Credentials{Type: auth.CredentialsApiKey, Value: key})
 
 		assert.Error(t, err)
@@ -79,7 +82,7 @@ func TestGenerator_VerifyToken_APIKey(t *testing.T) {
 		mockRepository.On("GetOrganizationByID", ctx, orgIdString).
 			Return(models.Organization{}, assert.AnError)
 
-		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository, nil)
+		verifier := auth.NewVerifier(map[string]idp.TokenRepository{infra.MockFirebaseIssuer: idpTokenVerifier}, mockRepository, "", nil)
 		_, _, err := verifier.Verify(ctx, auth.Credentials{Type: auth.CredentialsApiKey, Value: key})
 
 		assert.Error(t, err)
@@ -88,8 +91,48 @@ func TestGenerator_VerifyToken_APIKey(t *testing.T) {
 	})
 }
 
+func TestParseTokenProviders(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   string
+		want    auth.TokenProviders
+		wantErr bool
+	}{
+		{name: "defaults to Firebase", want: auth.TokenProviders{auth.TokenProviderFirebase}},
+		{name: "supports multiple providers", value: "firebase,oidc", want: auth.TokenProviders{auth.TokenProviderFirebase, auth.TokenProviderOidc}},
+		{name: "trims whitespace", value: " firebase, oidc ", want: auth.TokenProviders{auth.TokenProviderFirebase, auth.TokenProviderOidc}},
+		{name: "rejects unknown provider", value: "firebase,unknown", wantErr: true},
+		{name: "rejects duplicate provider", value: "firebase,firebase", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := auth.ParseTokenProviders(tt.value)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestMarbleVerifier_Verify_RejectsUnconfiguredIssuer(t *testing.T) {
+	token, err := jwt.NewWithClaims(jwt.SigningMethodNone, auth.BaseClaims{Issuer: "https://unknown.example.com"}).SignedString(jwt.UnsafeAllowNoneSignatureType)
+	require.NoError(t, err)
+
+	verifier := auth.NewVerifier(map[string]idp.TokenRepository{}, new(mocks.Database), "", nil)
+	_, _, err = verifier.Verify(t.Context(), auth.Credentials{Type: auth.CredentialsBearer, Value: token})
+
+	assert.ErrorContains(t, err, "no identity provider is configured")
+}
+
 func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
-	firebaseToken := auth.Credentials{Type: auth.CredentialsBearer, Value: "firebaseToken"}
+	firebaseJWT, err := jwt.NewWithClaims(jwt.SigningMethodNone, auth.BaseClaims{Issuer: infra.MockFirebaseIssuer}).SignedString(jwt.UnsafeAllowNoneSignatureType)
+	assert.NoError(t, err)
+	firebaseToken := auth.Credentials{Type: auth.CredentialsBearer, Value: firebaseJWT}
 	firebaseIdentity := models.FirebaseIdentity{
 		Issuer: infra.MockFirebaseIssuer,
 		Email:  "user@email.com",
@@ -129,7 +172,7 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 		}).
 			Return(token, nil)
 
-		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository, nil)
+		verifier := auth.NewVerifier(map[string]idp.TokenRepository{infra.MockFirebaseIssuer: idpTokenVerifier}, mockRepository, "", nil)
 		generator := auth.NewGenerator(
 			mockRepository,
 			mockEncoder,
@@ -171,7 +214,7 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
 			Return(models.User{}, assert.AnError)
 
-		verifier := auth.NewVerifier(auth.TokenProviderFirebase, idpTokenVerifier, mockRepository, nil)
+		verifier := auth.NewVerifier(map[string]idp.TokenRepository{infra.MockFirebaseIssuer: idpTokenVerifier}, mockRepository, "", nil)
 		generator := auth.NewGenerator(
 			mockRepository,
 			nil,
