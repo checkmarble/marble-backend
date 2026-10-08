@@ -11,7 +11,6 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi"
 	pubapiv1 "github.com/checkmarble/marble-backend/pubapi/v1"
-	uauth "github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -55,7 +54,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	r.GET("/signup-status", tom, handleSignupStatus(uc))
 	r.GET("/validate-license/*license_key", tom, handleValidateLicense(uc))
 
-	if conf.TokenProvider == uauth.TokenProviderOidc {
+	if conf.OidcConfig.Provider != nil {
 		r.POST("/oidc/token", tom, handleOidcTokenExchange(uc, conf.OidcConfig))
 	}
 
