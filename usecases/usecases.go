@@ -12,7 +12,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/idp"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
-	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/usecases/billing"
 	"github.com/checkmarble/marble-backend/usecases/continuous_screening"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -156,9 +155,9 @@ func WithNameRecognition(isSet bool) Option {
 	}
 }
 
-func WithFirebaseAdmin(provider auth.TokenProvider, client idp.Adminer) Option {
+func WithFirebaseAdmin(enabled bool, client idp.Adminer) Option {
 	return func(o *options) {
-		if provider == auth.TokenProviderFirebase {
+		if enabled {
 			o.firebaseClient = client
 		}
 	}
@@ -712,14 +711,14 @@ func (usecases *Usecases) NewPayloadEnrichmentUsecase() payload_parser.PayloadEn
 	)
 }
 
-func (usecases *Usecases) NewOnboardingUsecase(tokenProvider auth.TokenProvider) OnboardingUsecase {
+func (usecases *Usecases) NewOnboardingUsecase(usesFirebase bool) OnboardingUsecase {
 	return NewOnboardingUsecase(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
-		tokenProvider,
+		usesFirebase,
 		usecases.firebaseAdmin,
 	)
 }

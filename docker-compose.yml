@@ -83,6 +83,15 @@ services:
       interval: 2s
       timeout: 1s
       retries: 5
+  dex:
+    profiles: [oidc]
+    container_name: dex
+    image: ghcr.io/dexidp/dex:v2.41.1
+    command: [dex, serve, /etc/dex/config.yaml]
+    ports:
+      - "5556:5556"
+    volumes:
+      - ./contrib/dex/config.yaml:/etc/dex/config.yaml:ro
   motiva:
     container_name: motiva
     image: ghcr.io/apognu/motiva:v0.10.1

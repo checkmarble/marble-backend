@@ -31,6 +31,68 @@ func ParseTokenProvider(prv string) TokenProvider {
 	}
 }
 
+type TokenProviders []TokenProvider
+
+func ParseTokenProviders(raw string) (TokenProviders, error) {
+	if raw == "" {
+		raw = TokenProviderFirebase.String()
+	}
+
+	providers := make(TokenProviders, 0, 2)
+	seen := make(map[TokenProvider]struct{})
+	for _, value := range strings.Split(raw, ",") {
+		var provider TokenProvider
+
+		switch value = strings.TrimSpace(value); value {
+		case TokenProviderFirebase.String():
+			provider = TokenProviderFirebase
+		case TokenProviderOidc.String():
+			provider = TokenProviderOidc
+		default:
+			return nil, errors.Newf("unsupported token provider: %s", value)
+		}
+
+		if _, ok := seen[provider]; ok {
+			return nil, errors.Newf("token provider %s is configured more than once", provider)
+		}
+
+		seen[provider] = struct{}{}
+		providers = append(providers, provider)
+	}
+
+	return providers, nil
+}
+
+func (providers TokenProviders) Has(provider TokenProvider) bool {
+	for _, configuredProvider := range providers {
+		if configuredProvider == provider {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (providers TokenProviders) Strings() []string {
+	values := make([]string, 0, len(providers))
+	for _, provider := range providers {
+		values = append(values, provider.String())
+	}
+
+	return values
+}
+
+func (providers TokenProviders) Without(provider TokenProvider) TokenProviders {
+	filtered := make(TokenProviders, 0, len(providers))
+	for _, configuredProvider := range providers {
+		if configuredProvider != provider {
+			filtered = append(filtered, configuredProvider)
+		}
+	}
+
+	return filtered
+}
+
 func (p TokenProvider) String() string {
 	switch p {
 	case TokenProviderFirebase:
@@ -43,9 +105,11 @@ func (p TokenProvider) String() string {
 }
 
 type BaseClaims struct {
-	jwt.RegisteredClaims
-
 	Issuer string `json:"iss"` //nolint:tagliatelle
+}
+
+func (BaseClaims) Valid() error {
+	return nil
 }
 
 type Verifier interface {
@@ -53,25 +117,40 @@ type Verifier interface {
 }
 
 type MarbleVerifier struct {
-	flavor         TokenProvider
-	verifier       idp.TokenRepository
+	verifiers      map[string]idp.TokenRepository
 	repository     marbleRepository
+	oidcIssuer     string
 	allowedDomains []string
 }
 
-func NewVerifier(flavor TokenProvider, verifier idp.TokenRepository, repository marbleRepository, allowedDomains []string) Verifier {
-	return MarbleVerifier{flavor: flavor, verifier: verifier, repository: repository, allowedDomains: allowedDomains}
+func NewVerifier(verifiers map[string]idp.TokenRepository, repository marbleRepository, oidcIssuer string, allowedDomains []string) Verifier {
+	return MarbleVerifier{
+		verifiers:      verifiers,
+		repository:     repository,
+		oidcIssuer:     oidcIssuer,
+		allowedDomains: allowedDomains,
+	}
 }
 
 func (v MarbleVerifier) Verify(ctx context.Context, creds Credentials) (models.IntoCredentials, models.IdentityClaims, error) {
 	switch creds.Type {
 	case CredentialsBearer:
-		identity, err := v.verifier.VerifyToken(ctx, creds.Value, creds.Fallback)
+		var claims BaseClaims
+		if _, _, err := new(jwt.Parser).ParseUnverified(creds.Value, &claims); err != nil {
+			return nil, nil, errors.Wrap(err, "could not read token issuer")
+		}
+
+		verifier, ok := v.verifiers[claims.Issuer]
+		if !ok {
+			return nil, nil, errors.Newf("no identity provider is configured for issuer %q", claims.Issuer)
+		}
+
+		identity, err := verifier.VerifyToken(ctx, creds.Value, creds.Fallback)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		if len(v.allowedDomains) > 0 {
+		if claims.Issuer == v.oidcIssuer && len(v.allowedDomains) > 0 {
 			domainIsAllowed := false
 
 			for _, domain := range v.allowedDomains {

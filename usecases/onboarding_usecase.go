@@ -10,7 +10,6 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/idp"
-	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/cockroachdb/errors"
 )
@@ -23,7 +22,7 @@ type OnboardingUsecase struct {
 	orgRepository      repositories.OrganizationRepository
 	userRepository     repositories.UserRepository
 	grantRepository    repositories.GrantRepository
-	tokenProvider      auth.TokenProvider
+	usesFirebase       bool
 	firebase           idp.Adminer
 }
 
@@ -33,7 +32,7 @@ func NewOnboardingUsecase(
 	orgRepository repositories.OrganizationRepository,
 	userRepository repositories.UserRepository,
 	grantRepository repositories.GrantRepository,
-	tokenProvider auth.TokenProvider,
+	usesFirebase bool,
 	firebase idp.Adminer,
 ) OnboardingUsecase {
 	return OnboardingUsecase{
@@ -42,15 +41,13 @@ func NewOnboardingUsecase(
 		orgRepository:      orgRepository,
 		userRepository:     userRepository,
 		grantRepository:    grantRepository,
-		tokenProvider:      tokenProvider,
+		usesFirebase:       usesFirebase,
 		firebase:           firebase,
 	}
 }
 
 func (uc OnboardingUsecase) CreateInitialOrganization(ctx context.Context, req dto.CreateInitialOrg) error {
-	usesFirebase := uc.tokenProvider == auth.TokenProviderFirebase
-
-	if usesFirebase {
+	if uc.usesFirebase {
 		if req.Password == "" {
 			return errors.Wrap(models.BadParameterError,
 				"a password is required when configured to use Firebase authentication")
@@ -70,7 +67,7 @@ func (uc OnboardingUsecase) CreateInitialOrganization(ctx context.Context, req d
 
 	email := strings.TrimSpace(strings.ToLower(req.Email))
 
-	if usesFirebase {
+	if uc.usesFirebase {
 		if err := uc.firebase.CreateFirstUser(ctx, email, req.Password,
 			fmt.Sprintf("%s %s", req.Firstname, req.Lastname)); err != nil {
 			return errors.Wrap(err, "could not create Firebase user")
