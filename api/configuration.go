@@ -36,7 +36,7 @@ type Configuration struct {
 	AnalyticsTimeout     time.Duration
 	AnalyticsProxyApiUrl string
 
-	TokenProvider  auth.TokenProvider
+	TokenProviders auth.TokenProviders
 	FirebaseConfig FirebaseConfig
 	OidcConfig     infra.OidcConfig
 

@@ -13,7 +13,7 @@ import (
 )
 
 type MarbleJwtRepository struct {
-	issuer               string
+	issuers              map[string]struct{}
 	jwtSigningPrivateKey rsa.PrivateKey
 }
 
@@ -69,7 +69,7 @@ func (repo *MarbleJwtRepository) ValidateMarbleToken(marbleToken string) (models
 	}
 
 	claims, ok := token.Claims.(*Claims)
-	if claims.Issuer != repo.issuer {
+	if _, ok := repo.issuers[claims.Issuer]; !ok {
 		return models.Credentials{}, errors.Newf("invalid token issuer '%s'", claims.Issuer)
 	}
 
@@ -80,8 +80,17 @@ func (repo *MarbleJwtRepository) ValidateMarbleToken(marbleToken string) (models
 }
 
 func NewJWTRepository(issuer string, key *rsa.PrivateKey) *MarbleJwtRepository {
+	return NewJWTRepositoryForIssuers([]string{issuer}, key)
+}
+
+func NewJWTRepositoryForIssuers(issuers []string, key *rsa.PrivateKey) *MarbleJwtRepository {
+	issuerSet := make(map[string]struct{}, len(issuers))
+	for _, issuer := range issuers {
+		issuerSet[issuer] = struct{}{}
+	}
+
 	return &MarbleJwtRepository{
-		issuer:               issuer,
+		issuers:              issuerSet,
 		jwtSigningPrivateKey: *key,
 	}
 }

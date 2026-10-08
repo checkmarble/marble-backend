@@ -39,6 +39,8 @@ go.work
 docker-compose.dev.yml
 *.log
 
+contrib/dex/config.yaml
+
 /.firebase
 /firebase-local-data
 
