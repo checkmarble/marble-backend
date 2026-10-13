@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 )
 
 type OrganizationCreator struct {
@@ -29,6 +30,10 @@ func (creator *OrganizationCreator) CreateOrganization(ctx context.Context,
 				tx,
 				newOrganizationId,
 				input); err != nil {
+				if repositories.IsUniqueViolationError(err) {
+					return models.Organization{}, errors.Wrap(models.ConflictError,
+						"an organization or tenant with the same name already exists")
+				}
 				return models.Organization{}, err
 			}
 			return creator.OrganizationRepository.GetOrganizationById(ctx, tx, newOrganizationId)
