@@ -163,11 +163,17 @@ func (v MarbleVerifier) Verify(ctx context.Context, creds Credentials) (models.I
 			}
 		}
 
-		user, err := v.repository.UserByEmail(ctx, identity.GetEmail())
+		user, err := v.repository.ResolveUserIdentity(ctx, identity.GetIssuer(), identity.GetSubject(), identity.GetEmail())
 		if errors.Is(err, models.NotFoundError) {
-			return nil, nil, fmt.Errorf("%w: %w", models.ErrUnknownUser, err)
+			return nil, nil, models.ErrUnknownUser
 		} else if err != nil {
-			return nil, nil, fmt.Errorf("repository.UserByEmail error: %w", err)
+			return nil, nil, errors.Wrap(err, "repository.ResolveUserIdentity")
+		}
+		if identity.GetEmail() != "" && identity.GetEmail() != user.Email {
+			utils.LoggerFromContext(ctx).InfoContext(ctx, "identity email mismatch",
+				"issuer", identity.GetIssuer(),
+				"user_id", user.UserId,
+			)
 		}
 
 		if p := identity.GetProfile(); p != nil {

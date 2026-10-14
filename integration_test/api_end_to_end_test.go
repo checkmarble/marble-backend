@@ -32,7 +32,7 @@ func TestApiEndToEnd(t *testing.T) {
 }
 
 func firebaseDummyToken(email string) string {
-	token, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{"email": email, "iss": infra.MockFirebaseIssuer}).SignedString([]byte("key"))
+	token, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{"email": email, "iss": infra.MockFirebaseIssuer, "sub": email}).SignedString([]byte("key"))
 
 	return token
 }
