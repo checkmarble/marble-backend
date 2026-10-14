@@ -30,13 +30,23 @@ type UserUseCase struct {
 }
 
 func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.CreateUser) (models.User, error) {
+	// Only marble admins can exist outside of an organization
+	if createUser.OrganizationId == uuid.Nil && createUser.Role != models.MARBLE_ADMIN {
+		return models.User{}, errors.Wrap(models.BadParameterError,
+			"organization_id is required unless the role is MARBLE_ADMIN")
+	}
+
 	if err := usecase.enforceUserSecurity.CreateUser(createUser); err != nil {
 		return models.User{}, err
 	}
 
-	org, err := usecase.organizationRepository.GetOrganizationById(ctx, usecase.executorFactory.NewExecutor(), createUser.OrganizationId)
-	if err != nil {
-		return models.User{}, errors.Wrap(err, "GetOrganizationById error")
+	var org models.Organization
+	if createUser.OrganizationId != uuid.Nil {
+		var err error
+		org, err = usecase.organizationRepository.GetOrganizationById(ctx, usecase.executorFactory.NewExecutor(), createUser.OrganizationId)
+		if err != nil {
+			return models.User{}, errors.Wrap(err, "GetOrganizationById error")
+		}
 	}
 
 	createdUser, err := executor_factory.TransactionReturnValue(
@@ -75,9 +85,11 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 		"first_name":      createdUser.FirstName,
 		"last_name":       createdUser.LastName,
 	})
-	tracking.Group(ctx, createdUser.UserId, createdUser.OrganizationId, map[string]any{
-		"name": org.Name,
-	})
+	if createdUser.OrganizationId != uuid.Nil {
+		tracking.Group(ctx, createdUser.UserId, createdUser.OrganizationId, map[string]any{
+			"name": org.Name,
+		})
+	}
 	tracking.TrackEvent(ctx, models.AnalyticsUserCreated, map[string]interface{}{
 		"user_id":         createdUser.UserId,
 		"email":           createdUser.Email,
