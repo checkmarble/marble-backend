@@ -152,6 +152,71 @@ func TestUserUseCaseRevokeOrganizationGrantRejectsOrganizationOutsideRouteTenant
 	grantRepository.AssertNotCalled(t, "RevokeOrganizationGrant", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
+func TestUserUseCaseAddUser(t *testing.T) {
+	organizationID := uuid.New()
+
+	tests := []struct {
+		name         string
+		role         models.Role
+		organization uuid.UUID
+		wantError    error
+	}{
+		{name: "marble admin without organization", role: models.MARBLE_ADMIN},
+		{name: "marble admin with organization", role: models.MARBLE_ADMIN, organization: organizationID},
+		{name: "admin with organization", role: models.ADMIN, organization: organizationID},
+		{name: "admin without organization", role: models.ADMIN, wantError: models.BadParameterError},
+		{name: "viewer without organization", role: models.VIEWER, wantError: models.BadParameterError},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			createUser := models.CreateUser{
+				Email:          "user@example.com",
+				Role:           tt.role,
+				OrganizationId: tt.organization,
+				FirstName:      "First",
+				LastName:       "Last",
+			}
+			userID := uuid.NewString()
+
+			executorFactory := &mocks.ExecutorFactory{}
+			transactionFactory := &mocks.TransactionFactory{TxMock: &mocks.Transaction{}}
+			userRepository := &mocks.UserRepository{}
+			organizationRepository := &mocks.OrganizationRepository{}
+			exec := &mocks.Executor{}
+
+			executorFactory.On("NewExecutor").Return(exec)
+			organizationRepository.On("GetOrganizationById", mock.Anything, exec, organizationID).
+				Return(models.Organization{Id: organizationID}, nil)
+			transactionFactory.On("Transaction", mock.Anything, mock.Anything).Return(nil)
+			userRepository.On("CreateUser", mock.Anything, mock.Anything, createUser).Return(userID, nil)
+			userRepository.On("UserById", mock.Anything, mock.Anything, userID).
+				Return(models.User{UserId: models.UserId(userID), Role: tt.role, OrganizationId: tt.organization}, nil)
+
+			usecase := UserUseCase{
+				enforceUserSecurity:    allowOrganizationGrantSecurity{},
+				executorFactory:        executorFactory,
+				transactionFactory:     transactionFactory,
+				userRepository:         userRepository,
+				organizationRepository: organizationRepository,
+			}
+			got, err := usecase.AddUser(context.Background(), createUser)
+			if tt.wantError != nil {
+				require.ErrorIs(t, err, tt.wantError)
+				userRepository.AssertNotCalled(t, "CreateUser", mock.Anything, mock.Anything, mock.Anything)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, models.UserId(userID), got.UserId)
+			if tt.organization == uuid.Nil {
+				organizationRepository.AssertNotCalled(t, "GetOrganizationById", mock.Anything, mock.Anything, mock.Anything)
+			} else {
+				organizationRepository.AssertExpectations(t)
+			}
+		})
+	}
+}
+
 func TestUserUseCaseListUserGrants(t *testing.T) {
 	userID := uuid.NewString()
 	grants := []models.Grant{
