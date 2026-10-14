@@ -48,51 +48,69 @@ func TestUserUseCaseReplaceOrganizationGrant(t *testing.T) {
 		name       string
 		tenant     uuid.UUID
 		homeTenant uuid.UUID
-		userRole   models.Role
+		userRoles  []models.Role
 		homeOrg    uuid.UUID
 		wantError  error
 	}{
 		{name: "same tenant", tenant: tenantID, homeTenant: tenantID, homeOrg: homeOrganizationID},
 		{name: "route tenant differs from organization", tenant: uuid.New(), homeTenant: tenantID, homeOrg: homeOrganizationID, wantError: models.NotFoundError},
 		{name: "different tenant", tenant: tenantID, homeTenant: uuid.New(), homeOrg: homeOrganizationID, wantError: models.NotFoundError},
-		{name: "platform user", tenant: tenantID, userRole: models.MARBLE_ADMIN},
+		{name: "platform user", tenant: tenantID, userRoles: []models.Role{models.MARBLE_ADMIN}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			transactionFactory := &mocks.TransactionFactory{TxMock: &mocks.Transaction{}}
 			userRepository := &mocks.UserRepository{}
-			grantRepository := &mocks.GrantRepository{}
 			organizationRepository := &mocks.OrganizationRepository{}
 
-			userRepository.On("UserById", mock.Anything, mock.Anything, userID).Return(models.User{OrganizationId: tt.homeOrg, Role: tt.userRole}, nil)
+			userRepository.On("UserById", mock.Anything, mock.Anything, userID).Return(models.User{
+				OrganizationId: tt.homeOrg,
+				RoleBindings:   models.NativeRoleBindings(tt.userRoles),
+			}, nil)
 			organizationRepository.On("GetOrganizationById", mock.Anything, mock.Anything, targetOrganizationID).Return(models.Organization{Id: targetOrganizationID, TenantId: tenantID}, nil)
 			if tt.homeOrg != uuid.Nil {
 				organizationRepository.On("GetOrganizationById", mock.Anything, mock.Anything, tt.homeOrg).Return(models.Organization{Id: tt.homeOrg, TenantId: tt.homeTenant}, nil)
 			}
 			transactionFactory.On("Transaction", mock.Anything, mock.Anything).Return(nil)
 			if tt.wantError == nil {
-				grantRepository.On("ReplaceOrganizationGrant", mock.Anything, mock.Anything, userID, targetOrganizationID, models.VIEWER).Return(nil)
+				userRepository.On("ReplaceUserOrganizationRoleBindings", mock.Anything, mock.Anything, targetOrganizationID, userID,
+					[]models.RoleBinding{models.NewNativeRoleBinding(models.VIEWER), models.NewNativeRoleBinding(models.ANALYST)}).
+					Return(nil)
 			}
 
 			usecase := UserUseCase{
 				enforceUserSecurity:    allowOrganizationGrantSecurity{},
 				transactionFactory:     transactionFactory,
 				userRepository:         userRepository,
-				grantRepository:        grantRepository,
 				organizationRepository: organizationRepository,
 			}
-			err := usecase.ReplaceOrganizationGrant(context.Background(), userID, tt.tenant, targetOrganizationID, models.VIEWER)
+			err := usecase.ReplaceOrganizationGrant(context.Background(), userID, tt.tenant, targetOrganizationID,
+				[]models.RoleBinding{{Role: models.VIEWER}, {Role: models.ANALYST}})
 			if tt.wantError != nil {
 				require.ErrorIs(t, err, tt.wantError)
-				grantRepository.AssertNotCalled(t, "ReplaceOrganizationGrant", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+				userRepository.AssertNotCalled(t, "ReplaceUserOrganizationRoleBindings", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 				return
 			}
 			require.NoError(t, err)
-			grantRepository.AssertExpectations(t)
+			userRepository.AssertExpectations(t)
 			transactionFactory.AssertExpectations(t)
 		})
 	}
+}
+
+func TestUserUseCaseReplaceOrganizationGrantRefusesPlatformRoles(t *testing.T) {
+	userRepository := &mocks.UserRepository{}
+	usecase := UserUseCase{
+		enforceUserSecurity: allowOrganizationGrantSecurity{},
+		userRepository:      userRepository,
+	}
+
+	err := usecase.ReplaceOrganizationGrant(context.Background(), uuid.NewString(), uuid.New(), uuid.New(),
+		[]models.RoleBinding{{Role: models.MARBLE_ADMIN}})
+
+	require.ErrorIs(t, err, models.BadParameterError)
+	userRepository.AssertNotCalled(t, "ReplaceUserOrganizationRoleBindings", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestUserUseCaseRevokePlatformUserGrant(t *testing.T) {
@@ -101,27 +119,26 @@ func TestUserUseCaseRevokePlatformUserGrant(t *testing.T) {
 	tenantID := uuid.New()
 	transactionFactory := &mocks.TransactionFactory{TxMock: &mocks.Transaction{}}
 	userRepository := &mocks.UserRepository{}
-	grantRepository := &mocks.GrantRepository{}
 	organizationRepository := &mocks.OrganizationRepository{}
 
 	userRepository.On("UserById", mock.Anything, mock.Anything, userID).
-		Return(models.User{Role: models.MARBLE_ADMIN}, nil)
+		Return(models.User{RoleBindings: models.NativeRoleBindings([]models.Role{models.MARBLE_ADMIN})}, nil)
 	organizationRepository.On("GetOrganizationById", mock.Anything, mock.Anything, organizationID).
 		Return(models.Organization{Id: organizationID, TenantId: tenantID}, nil)
 	transactionFactory.On("Transaction", mock.Anything, mock.Anything).Return(nil)
-	grantRepository.On("RevokeOrganizationGrant", mock.Anything, mock.Anything, userID, organizationID).
-		Return(nil)
+	// Revoking replaces the user's bindings in the organization with none.
+	userRepository.On("ReplaceUserOrganizationRoleBindings", mock.Anything, mock.Anything, organizationID, userID,
+		mock.MatchedBy(func(bindings []models.RoleBinding) bool { return len(bindings) == 0 })).Return(nil)
 
 	usecase := UserUseCase{
 		enforceUserSecurity:    allowOrganizationGrantSecurity{},
 		transactionFactory:     transactionFactory,
 		userRepository:         userRepository,
-		grantRepository:        grantRepository,
 		organizationRepository: organizationRepository,
 	}
 
 	require.NoError(t, usecase.RevokeOrganizationGrant(context.Background(), userID, tenantID, organizationID))
-	grantRepository.AssertExpectations(t)
+	userRepository.AssertExpectations(t)
 }
 
 func TestUserUseCaseRevokeOrganizationGrantRejectsOrganizationOutsideRouteTenant(t *testing.T) {
@@ -131,7 +148,6 @@ func TestUserUseCaseRevokeOrganizationGrantRejectsOrganizationOutsideRouteTenant
 
 	transactionFactory := &mocks.TransactionFactory{TxMock: &mocks.Transaction{}}
 	userRepository := &mocks.UserRepository{}
-	grantRepository := &mocks.GrantRepository{}
 	organizationRepository := &mocks.OrganizationRepository{}
 
 	organizationRepository.On("GetOrganizationById", mock.Anything, mock.Anything, organizationID).
@@ -142,21 +158,20 @@ func TestUserUseCaseRevokeOrganizationGrantRejectsOrganizationOutsideRouteTenant
 		enforceUserSecurity:    allowOrganizationGrantSecurity{},
 		transactionFactory:     transactionFactory,
 		userRepository:         userRepository,
-		grantRepository:        grantRepository,
 		organizationRepository: organizationRepository,
 	}
 
 	err := usecase.RevokeOrganizationGrant(context.Background(), userID, uuid.New(), organizationID)
 	require.ErrorIs(t, err, models.NotFoundError)
 	userRepository.AssertNotCalled(t, "UserById", mock.Anything, mock.Anything, mock.Anything)
-	grantRepository.AssertNotCalled(t, "RevokeOrganizationGrant", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	userRepository.AssertNotCalled(t, "ReplaceUserOrganizationRoleBindings", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestUserUseCaseListUserGrants(t *testing.T) {
 	userID := uuid.NewString()
 	grants := []models.Grant{
-		{Role: models.VIEWER, TenantId: uuid.New(), OrganizationId: uuid.New()},
-		{Role: models.ADMIN, TenantId: uuid.New(), OrganizationId: uuid.New()},
+		{RoleBindings: models.NativeRoleBindings([]models.Role{models.VIEWER}), TenantId: uuid.New(), OrganizationId: uuid.New()},
+		{RoleBindings: models.NativeRoleBindings([]models.Role{models.ADMIN}), TenantId: uuid.New(), OrganizationId: uuid.New()},
 	}
 
 	tests := []struct {
@@ -204,7 +219,7 @@ func TestUserUseCaseListGrantsOfUsers(t *testing.T) {
 	users := []models.User{{UserId: models.UserId(uuid.NewString())}, {UserId: models.UserId(uuid.NewString())}}
 	userIDs := []string{string(users[0].UserId), string(users[1].UserId)}
 	grantsByUser := map[string][]models.Grant{
-		userIDs[0]: {{Role: models.VIEWER, TenantId: uuid.New(), OrganizationId: uuid.New()}},
+		userIDs[0]: {{RoleBindings: models.NativeRoleBindings([]models.Role{models.VIEWER}), TenantId: uuid.New(), OrganizationId: uuid.New()}},
 	}
 
 	t.Run("lists grants of every user in one query", func(t *testing.T) {

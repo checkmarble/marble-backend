@@ -25,7 +25,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 		Id:             "api_key_id",
 		OrganizationId: utils.TextToUUID("organization_id"),
 		Prefix:         "abc",
-		Role:           models.ADMIN,
+		RoleBindings:   models.NativeRoleBindings([]models.Role{models.ADMIN}),
 		DisplayString:  "Api key abc*** of organization",
 	}
 
@@ -40,7 +40,8 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", "", mock.Anything, models.Credentials{
 			OrganizationId: utils.TextToUUID("organization_id"),
-			Roles:          []models.Role{models.ADMIN},
+			RoleBindings:   []models.RoleBinding{grant(models.ADMIN, apiKey.OrganizationId, uuid.Nil)},
+			Permissions:    models.ADMIN.Permissions(),
 			ActorIdentity: models.Identity{
 				ApiKeyId:   "api_key_id",
 				ApiKeyName: "Api key abc*** of organization",
@@ -56,7 +57,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 		)
 
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "api_key", apiKey.Id).
-			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: apiKey.OrganizationId}}, nil)
+			Return([]models.RoleBinding{grant(models.ADMIN, apiKey.OrganizationId, uuid.Nil)}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, apiKey.OrganizationId).Return(models.Organization{}, nil)
 		creds, err := generator.GenerateToken(ctx, auth.Credentials{
 			Type: auth.CredentialsApiKey, Value: key,
@@ -75,7 +76,8 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", "", mock.Anything, models.Credentials{
 			OrganizationId: utils.TextToUUID("organization_id"),
-			Roles:          []models.Role{models.ADMIN},
+			RoleBindings:   []models.RoleBinding{grant(models.ADMIN, apiKey.OrganizationId, uuid.Nil)},
+			Permissions:    models.ADMIN.Permissions(),
 			ActorIdentity: models.Identity{
 				ApiKeyId:   "api_key_id",
 				ApiKeyName: "Api key abc*** of organization",
@@ -91,7 +93,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 		)
 
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "api_key", apiKey.Id).
-			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: apiKey.OrganizationId}}, nil)
+			Return([]models.RoleBinding{grant(models.ADMIN, apiKey.OrganizationId, uuid.Nil)}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, apiKey.OrganizationId).Return(models.Organization{}, nil)
 		receivedToken, err := generator.GenerateToken(ctx, auth.Credentials{
 			Type: auth.CredentialsApiKey, Value: key,
@@ -117,7 +119,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 	user := models.User{
 		UserId:         "user_id",
 		Email:          "user@email.com",
-		Role:           models.ADMIN,
+		RoleBindings:   models.NativeRoleBindings([]models.Role{models.ADMIN}),
 		OrganizationId: utils.TextToUUID("organization_id"),
 	}
 	orgIdString := user.OrganizationId
@@ -129,14 +131,15 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
-			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: user.OrganizationId}}, nil)
+			Return([]models.RoleBinding{grant(models.ADMIN, user.OrganizationId, uuid.Nil)}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, orgIdString).
 			Return(models.Organization{}, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
 			OrganizationId: utils.TextToUUID("organization_id"),
-			Roles:          []models.Role{models.ADMIN},
+			RoleBindings:   []models.RoleBinding{grant(models.ADMIN, user.OrganizationId, uuid.Nil)},
+			Permissions:    models.ADMIN.Permissions(),
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
 				Email:  user.Email,
@@ -169,14 +172,15 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
-			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: user.OrganizationId}}, nil)
+			Return([]models.RoleBinding{grant(models.ADMIN, user.OrganizationId, uuid.Nil)}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, orgIdString).
 			Return(models.Organization{}, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
 			OrganizationId: utils.TextToUUID("organization_id"),
-			Roles:          []models.Role{models.ADMIN},
+			RoleBindings:   []models.RoleBinding{grant(models.ADMIN, user.OrganizationId, uuid.Nil)},
+			Permissions:    models.ADMIN.Permissions(),
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
 				Email:  user.Email,
@@ -209,14 +213,15 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
-			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: user.OrganizationId}}, nil)
+			Return([]models.RoleBinding{grant(models.ADMIN, user.OrganizationId, uuid.Nil)}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, orgIdString).
 			Return(models.Organization{}, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
 			OrganizationId: utils.TextToUUID("organization_id"),
-			Roles:          []models.Role{models.ADMIN},
+			RoleBindings:   []models.RoleBinding{grant(models.ADMIN, user.OrganizationId, uuid.Nil)},
+			Permissions:    models.ADMIN.Permissions(),
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
 				Email:  user.Email,
@@ -249,9 +254,9 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
-			Return([]models.Grant{
-				{Role: models.TENANT_ADMIN, TenantId: tenantId},
-				{Role: models.ADMIN, OrganizationId: user.OrganizationId},
+			Return([]models.RoleBinding{
+				grant(models.TENANT_ADMIN, uuid.Nil, tenantId),
+				grant(models.ADMIN, user.OrganizationId, uuid.Nil),
 			}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, orgIdString).
 			Return(models.Organization{TenantId: tenantId}, nil)
@@ -259,7 +264,11 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
 			OrganizationId: orgIdString,
-			Roles:          []models.Role{models.ADMIN, models.TENANT_ADMIN},
+			RoleBindings: []models.RoleBinding{
+				grant(models.TENANT_ADMIN, uuid.Nil, tenantId),
+				grant(models.ADMIN, user.OrganizationId, uuid.Nil),
+			},
+			Permissions: models.ADMIN.Permissions(),
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
 				Email:  user.Email,
@@ -288,7 +297,6 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 		admin := models.User{
 			UserId: "admin_id",
 			Email:  "admin@email.com",
-			Role:   models.MARBLE_ADMIN,
 		}
 
 		mockVerifier := new(mocks.FirebaseTokenVerifier)
@@ -297,11 +305,12 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(admin.UserId)).
-			Return([]models.Grant{{Role: models.MARBLE_ADMIN}}, nil)
+			Return([]models.RoleBinding{grant(models.MARBLE_ADMIN, uuid.Nil, uuid.Nil)}, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
-			Roles: []models.Role{models.MARBLE_ADMIN},
+			RoleBindings: []models.RoleBinding{grant(models.MARBLE_ADMIN, uuid.Nil, uuid.Nil)},
+			Permissions:  models.RoleBindingsPermissions([]models.RoleBinding{grant(models.MARBLE_ADMIN, uuid.Nil, uuid.Nil)}),
 			ActorIdentity: models.Identity{
 				UserId: admin.UserId,
 				Email:  admin.Email,
@@ -334,7 +343,6 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 	user := models.User{
 		UserId: "user_id",
 		Email:  "user@email.com",
-		Role:   models.NO_ROLE,
 	}
 	claims := models.FirebaseIdentity{Issuer: infra.MockFirebaseIssuer}
 	now := time.Now()
@@ -342,7 +350,7 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 	t.Run("rejects a principal without active grants", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
-			Return([]models.Grant{}, nil)
+			Return([]models.RoleBinding{}, nil)
 		mockEncoder := new(mocks.JWTEncoderValidator)
 
 		generator := auth.NewGenerator(mockRepository, mockEncoder, time.Minute, clock.NewMock(now))
@@ -363,7 +371,7 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 	t.Run("auto selects the only accessible organization", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
-			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: organizationID}}, nil)
+			Return([]models.RoleBinding{grant(models.ADMIN, organizationID, uuid.Nil)}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, organizationID).
 			Return(models.Organization{Id: organizationID, TenantId: tenantID, Name: "Acme"}, nil)
 		mockEncoder := new(mocks.JWTEncoderValidator)
@@ -381,7 +389,7 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, organizationID, token.Credentials.OrganizationId)
-		assert.Equal(t, []models.Role{models.ADMIN}, token.Credentials.Roles)
+		assert.Equal(t, []models.Role{models.ADMIN}, models.RoleNames(token.Credentials.RoleBindings))
 		mockRepository.AssertExpectations(t)
 		mockEncoder.AssertExpectations(t)
 	})
@@ -389,9 +397,9 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 	t.Run("keeps a platform token for a marble admin with one accessible organization", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
-			Return([]models.Grant{
-				{Role: models.MARBLE_ADMIN},
-				{Role: models.ADMIN, OrganizationId: organizationID},
+			Return([]models.RoleBinding{
+				models.NewNativeRoleBinding(models.MARBLE_ADMIN),
+				{Role: models.ADMIN, OrgId: organizationID, Permissions: models.ADMIN.Permissions()},
 			}, nil)
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, mock.Anything).
@@ -408,7 +416,7 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, uuid.Nil, token.Credentials.OrganizationId)
-		assert.Equal(t, []models.Role{models.MARBLE_ADMIN}, token.Credentials.Roles)
+		assert.Equal(t, []models.Role{models.MARBLE_ADMIN}, models.RoleNames(token.Credentials.RoleBindings))
 		mockRepository.AssertExpectations(t)
 		mockEncoder.AssertExpectations(t)
 	})
@@ -416,9 +424,9 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 	t.Run("keeps a platform token when several organizations are accessible", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
-			Return([]models.Grant{
-				{Role: models.ADMIN, OrganizationId: organizationID},
-				{Role: models.VIEWER, OrganizationId: secondOrganizationID},
+			Return([]models.RoleBinding{
+				grant(models.ADMIN, organizationID, uuid.Nil),
+				grant(models.VIEWER, secondOrganizationID, uuid.Nil),
 			}, nil)
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, mock.Anything).
@@ -435,7 +443,7 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, uuid.Nil, token.Credentials.OrganizationId)
-		assert.Empty(t, token.Credentials.Roles)
+		assert.Empty(t, token.Credentials.RoleBindings)
 		mockRepository.AssertExpectations(t)
 		mockEncoder.AssertExpectations(t)
 	})
@@ -443,7 +451,7 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 	t.Run("uses a tenant grant for an explicitly selected organization", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
-			Return([]models.Grant{{Role: models.TENANT_ADMIN, TenantId: tenantID}}, nil)
+			Return([]models.RoleBinding{grant(models.TENANT_ADMIN, uuid.Nil, tenantID)}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, organizationID).
 			Return(models.Organization{Id: organizationID, TenantId: tenantID, Name: "Acme"}, nil)
 		mockEncoder := new(mocks.JWTEncoderValidator)
@@ -461,7 +469,7 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, organizationID, token.Credentials.OrganizationId)
-		assert.Equal(t, []models.Role{models.TENANT_ADMIN}, token.Credentials.Roles)
+		assert.Equal(t, []models.Role{models.TENANT_ADMIN}, models.RoleNames(token.Credentials.RoleBindings))
 		mockRepository.AssertExpectations(t)
 		mockEncoder.AssertExpectations(t)
 	})
@@ -469,15 +477,16 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 	t.Run("marble admin selects an organization with an explicit grant", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
-			Return([]models.Grant{
-				{Role: models.MARBLE_ADMIN},
-				{Role: models.ADMIN, OrganizationId: organizationID},
+			Return([]models.RoleBinding{
+				models.NewNativeRoleBinding(models.MARBLE_ADMIN),
+				{Role: models.ADMIN, OrgId: organizationID, Permissions: models.ADMIN.Permissions()},
 			}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, organizationID).
 			Return(models.Organization{Id: organizationID, TenantId: tenantID, Name: "Acme"}, nil)
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, mock.MatchedBy(func(creds models.Credentials) bool {
-			return creds.OrganizationId == organizationID && slices.Equal(creds.Roles, []models.Role{models.ADMIN})
+			return creds.OrganizationId == organizationID &&
+				slices.Equal(models.RoleNames(creds.RoleBindings), []models.Role{models.ADMIN})
 		})).Return("token", nil)
 
 		generator := auth.NewGenerator(mockRepository, mockEncoder, time.Minute, clock.NewMock(now))
@@ -491,7 +500,7 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, organizationID, token.Credentials.OrganizationId)
-		assert.Equal(t, []models.Role{models.ADMIN}, token.Credentials.Roles)
+		assert.Equal(t, []models.Role{models.ADMIN}, models.RoleNames(token.Credentials.RoleBindings))
 		mockRepository.AssertExpectations(t)
 		mockEncoder.AssertExpectations(t)
 	})
@@ -499,7 +508,7 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 	t.Run("marble admin cannot select an organization without an explicit grant", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
-			Return([]models.Grant{{Role: models.MARBLE_ADMIN}}, nil)
+			Return([]models.RoleBinding{models.NewNativeRoleBinding(models.MARBLE_ADMIN)}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, organizationID).
 			Return(models.Organization{Id: organizationID, TenantId: tenantID, Name: "Acme"}, nil)
 		mockEncoder := new(mocks.JWTEncoderValidator)
@@ -522,7 +531,7 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 	t.Run("rejects an explicitly selected organization without an applicable grant", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
-			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: organizationID}}, nil)
+			Return([]models.RoleBinding{grant(models.ADMIN, organizationID, uuid.Nil)}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, secondOrganizationID).
 			Return(models.Organization{Id: secondOrganizationID, TenantId: tenantID, Name: "Other"}, nil)
 		mockEncoder := new(mocks.JWTEncoderValidator)
@@ -541,4 +550,8 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 		mockRepository.AssertExpectations(t)
 		mockEncoder.AssertNotCalled(t, "EncodeMarbleToken", mock.Anything, mock.Anything, mock.Anything)
 	})
+}
+
+func grant(role models.Role, orgId, tenantId uuid.UUID) models.RoleBinding {
+	return models.RoleBinding{Role: role, OrgId: orgId, TenantId: tenantId, Permissions: role.Permissions()}
 }

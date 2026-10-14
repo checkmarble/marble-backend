@@ -13,12 +13,12 @@ type UserRepository struct {
 	mock.Mock
 }
 
-func (r *UserRepository) CreateUser(ctx context.Context, exec repositories.Executor, createUser models.CreateUser) (string, error) {
+func (r *UserRepository) CreateUser(ctx context.Context, exec repositories.Transaction, createUser models.CreateUser) (string, error) {
 	args := r.Called(ctx, exec, createUser)
 	return args.Get(0).(string), args.Error(1)
 }
 
-func (r *UserRepository) UpdateUser(ctx context.Context, exec repositories.Executor, updateUser models.UpdateUser) error {
+func (r *UserRepository) UpdateUser(ctx context.Context, exec repositories.Transaction, updateUser models.UpdateUser) error {
 	args := r.Called(ctx, exec, updateUser)
 	return args.Error(0)
 }
@@ -51,4 +51,14 @@ func (r *UserRepository) UserByEmail(ctx context.Context, exec repositories.Exec
 func (r *UserRepository) HasUsers(ctx context.Context, exec repositories.Executor) (bool, error) {
 	args := r.Called(ctx, exec)
 	return args.Bool(0), args.Error(1)
+}
+
+func (r *UserRepository) ReplaceUserRoleBindings(ctx context.Context, exec repositories.Transaction, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error {
+	args := r.Called(ctx, exec, orgId, userId, bindings)
+	return args.Error(0)
+}
+
+func (r *UserRepository) ReplaceUserOrganizationRoleBindings(ctx context.Context, exec repositories.Transaction, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error {
+	args := r.Called(ctx, exec, orgId, userId, bindings)
+	return args.Error(0)
 }

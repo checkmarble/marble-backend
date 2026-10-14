@@ -1,6 +1,10 @@
 package models
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 type IntoCredentials interface {
 	IntoCredentials() Credentials
@@ -18,24 +22,30 @@ type Identity struct {
 type Credentials struct {
 	ActorIdentity  Identity // email or api key, for audit log
 	OrganizationId uuid.UUID
-	Roles          []Role
+	RoleBindings   []RoleBinding
+	// Permissions lists the permissions granted by the role bindings, for
+	// information only (it is returned to the frontend). Authorization always
+	// relies on RoleBindings.
+	Permissions []Permission
 }
 
-func (c Credentials) HasRole(role Role) bool {
-	for _, candidate := range c.Roles {
-		if candidate == role {
+func (c Credentials) HasRole(roles ...Role) bool {
+	for _, binding := range c.RoleBindings {
+		if slices.Contains(roles, binding.RoleName()) {
 			return true
 		}
 	}
+
 	return false
 }
 
-func (c Credentials) HasPermission(permission Permission) bool {
-	for _, role := range c.Roles {
-		if role.HasPermission(permission) {
+func (c Credentials) HasPermission(perm Permission) bool {
+	for _, binding := range c.RoleBindings {
+		if slices.Contains(binding.Permissions, perm) {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -48,7 +58,7 @@ func (u User) IntoCredentials() Credentials {
 			LastName:  u.LastName,
 		},
 		OrganizationId: u.OrganizationId,
-		Roles:          []Role{u.Role},
+		RoleBindings:   u.RoleBindings,
 	}
 }
 
@@ -59,6 +69,22 @@ func (k ApiKey) IntoCredentials() Credentials {
 			ApiKeyName: k.DisplayString,
 		},
 		OrganizationId: k.OrganizationId,
-		Roles:          []Role{k.Role},
+		RoleBindings:   k.RoleBindings,
 	}
+}
+
+// RoleBindingsPermissions returns the deduplicated permissions granted by the
+// bindings.
+func RoleBindingsPermissions(bindings []RoleBinding) []Permission {
+	permissions := make([]Permission, 0)
+
+	for _, binding := range bindings {
+		for _, permission := range binding.Permissions {
+			if !slices.Contains(permissions, permission) {
+				permissions = append(permissions, permission)
+			}
+		}
+	}
+
+	return permissions
 }
