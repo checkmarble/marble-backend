@@ -285,7 +285,7 @@ func (*MarbleDbRepository) InsertScreening(
 			screening.OrgId,
 			screening.ScreeningConfigId,
 			screening.Provider,
-			screening.SearchInput,
+			pure_utils.NormalizeNullJSON(screening.SearchInput),
 			screening.InitialQuery,
 			screening.UniqueCounterpartyIdentifier,
 			screening.EffectiveThreshold,
