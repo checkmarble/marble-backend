@@ -1,9 +1,19 @@
 package pure_utils
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 )
+
+// NormalizeNullJSON treats empty input and JSON null as absent, preserving other JSON verbatim.
+func NormalizeNullJSON(input json.RawMessage) json.RawMessage {
+	trimmed := bytes.TrimSpace(input)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return nil
+	}
+	return input
+}
 
 type Null[T any] struct {
 	value T

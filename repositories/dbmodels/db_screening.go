@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 )
@@ -74,7 +75,7 @@ func adaptScreeningWithoutConfig(dto DBScreening) (models.Screening, error) {
 		ScreeningConfigId:            dto.ScreeningConfigId,
 		Provider:                     dto.Provider,
 		UniqueCounterpartyIdentifier: dto.CounterpartyId,
-		SearchInput:                  dto.SearchInput,
+		SearchInput:                  pure_utils.NormalizeNullJSON(dto.SearchInput),
 		InitialQuery:                 dto.InitialQuery,
 		OrgConfig:                    cfg,
 		Partial:                      dto.IsPartial,
