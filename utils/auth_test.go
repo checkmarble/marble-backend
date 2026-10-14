@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,8 +18,8 @@ type MockValidator struct {
 	mock.Mock
 }
 
-func (m *MockValidator) ValidateTokenOrKey(ctx context.Context, marbleToken, apiKey string) (models.Credentials, error) {
-	args := m.Called(ctx, marbleToken, apiKey)
+func (m *MockValidator) ValidateTokenOrKey(ctx context.Context, marbleToken, apiKey string, clientIp net.IP) (models.Credentials, error) {
+	args := m.Called(ctx, marbleToken, apiKey, clientIp)
 	return args.Get(0).(models.Credentials), args.Error(1)
 }
 
@@ -39,7 +40,7 @@ func TestAuthedBy(t *testing.T) {
 				r.Header.Set("X-API-Key", "test-api-key")
 			},
 			setupValidator: func(v *MockValidator) {
-				v.On("ValidateTokenOrKey", mock.Anything, "", "test-api-key").
+				v.On("ValidateTokenOrKey", mock.Anything, "", "test-api-key", mock.Anything).
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{ApiKeyName: "test"},
 						RoleBindings:  models.NativeRoleBindings([]models.Role{models.ADMIN}),
@@ -54,7 +55,7 @@ func TestAuthedBy(t *testing.T) {
 				r.Header.Set("Authorization", "Bearer test-token")
 			},
 			setupValidator: func(v *MockValidator) {
-				v.On("ValidateTokenOrKey", mock.Anything, "", "test-token").
+				v.On("ValidateTokenOrKey", mock.Anything, "", "test-token", mock.Anything).
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{Email: "test@example.com"},
 						RoleBindings:  models.NativeRoleBindings([]models.Role{models.VIEWER}),
@@ -69,7 +70,7 @@ func TestAuthedBy(t *testing.T) {
 				r.Header.Set("Authorization", "Bearer test-jwt")
 			},
 			setupValidator: func(v *MockValidator) {
-				v.On("ValidateTokenOrKey", mock.Anything, "test-jwt", "").
+				v.On("ValidateTokenOrKey", mock.Anything, "test-jwt", "", mock.Anything).
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{Email: "test@example.com"},
 						RoleBindings:  models.NativeRoleBindings([]models.Role{models.VIEWER}),
@@ -93,7 +94,7 @@ func TestAuthedBy(t *testing.T) {
 				r.Header.Set("X-API-Key", "invalid-key")
 			},
 			setupValidator: func(v *MockValidator) {
-				v.On("ValidateTokenOrKey", mock.Anything, "", "invalid-key").
+				v.On("ValidateTokenOrKey", mock.Anything, "", "invalid-key", mock.Anything).
 					Return(models.Credentials{}, models.NotFoundError)
 			},
 			expectedStatus: http.StatusUnauthorized,
@@ -123,7 +124,7 @@ func TestAuthedBy(t *testing.T) {
 				r.Header.Set("X-API-Key", "test-api-key")
 			},
 			setupValidator: func(v *MockValidator) {
-				v.On("ValidateTokenOrKey", mock.Anything, "", "test-api-key").
+				v.On("ValidateTokenOrKey", mock.Anything, "", "test-api-key", mock.Anything).
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{ApiKeyName: "test"},
 						RoleBindings:  models.NativeRoleBindings([]models.Role{models.ADMIN}),
@@ -165,7 +166,23 @@ func TestAuthedBy(t *testing.T) {
 				r.Header.Set("X-API-Key", "test-api-key")
 			},
 			setupValidator: func(v *MockValidator) {
-				v.On("ValidateTokenOrKey", mock.Anything, "", "test-api-key").
+				v.On("ValidateTokenOrKey", mock.Anything, "", "test-api-key", mock.Anything).
+					Return(models.Credentials{
+						ActorIdentity: models.Identity{ApiKeyName: "test"},
+						RoleBindings:  models.NativeRoleBindings([]models.Role{models.ADMIN}),
+					}, nil)
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:    "forwards the client IP to the validator",
+			methods: []AuthType{PublicApiKey},
+			setupHeaders: func(r *http.Request) {
+				r.Header.Set("X-API-Key", "test-api-key")
+				r.Header.Set("X-Real-Ip", "10.1.2.3")
+			},
+			setupValidator: func(v *MockValidator) {
+				v.On("ValidateTokenOrKey", mock.Anything, "", "test-api-key", net.ParseIP("10.1.2.3")).
 					Return(models.Credentials{
 						ActorIdentity: models.Identity{ApiKeyName: "test"},
 						RoleBindings:  models.NativeRoleBindings([]models.Role{models.ADMIN}),

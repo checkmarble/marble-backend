@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"slices"
 	"strings"
@@ -41,7 +42,7 @@ func identityAttr(identity models.Identity) (attr slog.Attr, ok bool) {
 }
 
 type tokenAndKeyValidator interface {
-	ValidateTokenOrKey(ctx context.Context, marbleToken, apiKey string) (models.Credentials, error)
+	ValidateTokenOrKey(ctx context.Context, marbleToken, apiKey string, clientIp net.IP) (models.Credentials, error)
 }
 
 type Authentication struct {
@@ -106,7 +107,7 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 			return
 		}
 
-		credentials, err := a.validator.ValidateTokenOrKey(ctx, jwtToken, key)
+		credentials, err := a.validator.ValidateTokenOrKey(ctx, jwtToken, key, ClientIpFromRequest(c.Request))
 		if err != nil {
 			if errors.Is(err, models.NotFoundError) ||
 				errors.Is(err, models.UnAuthorizedError) {
@@ -124,8 +125,10 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 
 		activeRoles := set.New[models.Role](len(credentials.RoleBindings))
 		for _, binding := range credentials.RoleBindings {
-			if role := binding.RoleName(); role != "" {
-				activeRoles.Insert(role)
+			if binding.IsActive(credentials.RoleBindingBundle) {
+				if role := binding.RoleName(); role != "" {
+					activeRoles.Insert(role)
+				}
 			}
 		}
 
