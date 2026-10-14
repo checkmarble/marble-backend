@@ -109,6 +109,7 @@ func (repo *MarbleDbRepository) ListOrganizationGrantsByUser(ctx context.Context
 	query := NewQueryBuilder().
 		Select(slices.Concat(dbmodels.SelectRoleBindingColumns, []string{"o.tenant_id as org_tenant_id"})...).
 		From("active_grants g").
+		LeftJoin(dbmodels.TABLE_ROLES+" r on r.id = g.custom_role_id and r.org_id = g.organization_id").
 		Join("organizations o ON o.id = g.organization_id").
 		Where(squirrel.Eq{
 			"g.principal_type":      dbmodels.GrantPrincipalUser,

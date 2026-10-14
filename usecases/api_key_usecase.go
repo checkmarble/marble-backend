@@ -21,11 +21,13 @@ type ApiKeyRepository interface {
 	ListApiKeys(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) ([]models.ApiKey, error)
 	CreateApiKey(ctx context.Context, tx repositories.Transaction, apiKey models.ApiKey) error
 	SoftDeleteApiKey(ctx context.Context, exec repositories.Executor, apiKeyId string) error
+	GetRoleBySlug(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, slug models.Role) (models.RbacRole, error)
 }
 
 type EnforceSecurityApiKey interface {
 	ReadApiKey(apiKey models.ApiKey) error
 	CreateApiKey(organizationId uuid.UUID) error
+	GrantRoleBindings(bindings []models.RoleBinding) error
 	DeleteApiKey(apiKey models.ApiKey) error
 }
 
@@ -68,10 +70,32 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 		if binding.Role == "" {
 			return models.CreatedApiKey{}, errors.Wrap(models.BadParameterError, "role binding must reference a role")
 		}
-		if binding.Role != models.API_CLIENT {
-			return models.CreatedApiKey{}, errors.Wrap(models.BadParameterError, "only API_CLIENT is supported as an API key role")
+		if !binding.Role.IsCustom() && binding.Role != models.API_CLIENT {
+			return models.CreatedApiKey{}, errors.Wrap(models.BadParameterError, "only API_CLIENT is supported as a native API key role")
 		}
-		binding.Permissions = binding.Role.Permissions()
+		if binding.Role.IsCustom() {
+			if !binding.Role.IsValidCustom() {
+				return models.CreatedApiKey{}, errors.Wrap(models.BadParameterError, "invalid custom role slug")
+			}
+			role, err := usecase.apiKeyRepository.GetRoleBySlug(
+				ctx,
+				usecase.executorFactory.NewExecutor(),
+				input.OrganizationId,
+				binding.Role,
+			)
+			if err != nil {
+				return models.CreatedApiKey{}, err
+			}
+			binding.CustomRoleId = &role.Id
+			binding.Permissions = role.Permissions
+		} else {
+			binding.CustomRoleId = nil
+			binding.Permissions = binding.Role.Permissions()
+		}
+	}
+
+	if err := usecase.enforceSecurity.GrantRoleBindings(bindings); err != nil {
+		return models.CreatedApiKey{}, err
 	}
 
 	apiKey := models.ApiKey{

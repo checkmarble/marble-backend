@@ -50,3 +50,22 @@ func TestLegacyRoleValue(t *testing.T) {
 	}
 	assert.Zero(t, LegacyRoleValue(nil))
 }
+
+func TestCustomRoleSlugValidation(t *testing.T) {
+	tests := []struct {
+		slug  Role
+		valid bool
+	}{
+		{slug: "org/custom.name", valid: true},
+		{slug: "custom.name", valid: false},
+		{slug: "org/", valid: false},
+		{slug: "org/custom/name", valid: false},
+		{slug: "org/custom-name", valid: false},
+	}
+
+	for _, test := range tests {
+		t.Run(string(test.slug), func(t *testing.T) {
+			assert.Equal(t, test.valid, test.slug.IsValidCustom())
+		})
+	}
+}
