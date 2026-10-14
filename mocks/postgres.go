@@ -13,8 +13,8 @@ type Database struct {
 	mock.Mock
 }
 
-func (m *Database) UserByEmail(ctx context.Context, email string) (models.User, error) {
-	args := m.Called(ctx, email)
+func (m *Database) ResolveUserIdentity(ctx context.Context, issuer, subject, email string) (models.User, error) {
+	args := m.Called(ctx, issuer, subject, email)
 	return args.Get(0).(models.User), args.Error(1)
 }
 
