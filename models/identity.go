@@ -2,6 +2,7 @@ package models
 
 type IdentityClaims interface {
 	GetIssuer() string
+	GetSubject() string
 	GetEmail() string
 	GetProfile() *IdentityUpdatableClaims
 }
@@ -14,12 +15,17 @@ type IdentityUpdatableClaims struct {
 
 type FirebaseIdentity struct {
 	Issuer  string
+	Subject string
 	Email   string
 	Picture string
 }
 
 func (i FirebaseIdentity) GetIssuer() string {
 	return i.Issuer
+}
+
+func (i FirebaseIdentity) GetSubject() string {
+	return i.Subject
 }
 
 func (i FirebaseIdentity) GetProfile() *IdentityUpdatableClaims {
@@ -34,6 +40,7 @@ func (i FirebaseIdentity) GetEmail() string {
 
 type OidcIdentity struct {
 	Issuer        string `json:"iss"`         //nolint:tagliatelle
+	Subject       string `json:"sub"`         //nolint:tagliatelle
 	Firstname     string `json:"given_name"`  //nolint:tagliatelle
 	Lastname      string `json:"family_name"` //nolint:tagliatelle
 	Email         string `json:"email"`
@@ -45,6 +52,10 @@ type OidcIdentity struct {
 
 func (i OidcIdentity) GetIssuer() string {
 	return i.Issuer
+}
+
+func (i OidcIdentity) GetSubject() string {
+	return i.Subject
 }
 
 func (i OidcIdentity) GetProfile() *IdentityUpdatableClaims {
@@ -68,6 +79,10 @@ type ApiKeyIdentity struct {
 
 func (i ApiKeyIdentity) GetIssuer() string {
 	return "marble"
+}
+
+func (i ApiKeyIdentity) GetSubject() string {
+	return ""
 }
 
 func (i ApiKeyIdentity) GetProfile() *IdentityUpdatableClaims {
