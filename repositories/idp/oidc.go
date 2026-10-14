@@ -11,7 +11,19 @@ import (
 )
 
 type oidcTokenVerifier interface {
-	Verify(ctx context.Context, idToken string) (*oidc.IDToken, error)
+	Verify(ctx context.Context, idToken string) (oidcClaims, error)
+}
+
+type oidcClaims interface {
+	Claims(any) error
+}
+
+type oidcVerifier struct {
+	verifier *oidc.IDTokenVerifier
+}
+
+func (v oidcVerifier) Verify(ctx context.Context, idToken string) (oidcClaims, error) {
+	return v.verifier.Verify(ctx, idToken)
 }
 
 type OidcClient struct {
@@ -25,7 +37,7 @@ func NewOidcClient(cfg infra.OidcConfig, provider *oidc.Provider, issuer string,
 	return &OidcClient{
 		config:   cfg,
 		issuer:   issuer,
-		verifier: verifier,
+		verifier: oidcVerifier{verifier: verifier},
 		provider: provider,
 	}
 }
@@ -40,6 +52,9 @@ func (c *OidcClient) VerifyToken(ctx context.Context, idToken, accessToken strin
 
 	if err := token.Claims(&claims); err != nil {
 		return models.OidcIdentity{}, err
+	}
+	if claims.Subject == "" {
+		return models.OidcIdentity{}, errors.New("oidc token does not contain the principal's subject")
 	}
 
 	// If we were configured to lookup the user's email address from another claim,
@@ -57,8 +72,23 @@ func (c *OidcClient) VerifyToken(ctx context.Context, idToken, accessToken strin
 			return models.OidcIdentity{}, err
 		}
 
-		if err := userinfo.Claims(&claims); err != nil {
+		var userinfoClaims models.OidcIdentity
+		if err := userinfo.Claims(&userinfoClaims); err != nil {
 			return models.OidcIdentity{}, err
+		}
+		if userinfoClaims.Subject != claims.Subject {
+			return models.OidcIdentity{}, errors.New("oidc userinfo subject does not match the ID token")
+		}
+		claims.Email = userinfoClaims.Email
+		claims.EmailVerified = userinfoClaims.EmailVerified
+		if userinfoClaims.Firstname != "" {
+			claims.Firstname = userinfoClaims.Firstname
+		}
+		if userinfoClaims.Lastname != "" {
+			claims.Lastname = userinfoClaims.Lastname
+		}
+		if userinfoClaims.Picture != "" {
+			claims.Picture = userinfoClaims.Picture
 		}
 
 		if c.config.EmailClaim != "" {

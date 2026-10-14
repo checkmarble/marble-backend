@@ -1,8 +1,10 @@
 package auth_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -134,8 +136,9 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 	assert.NoError(t, err)
 	firebaseToken := auth.Credentials{Type: auth.CredentialsBearer, Value: firebaseJWT}
 	firebaseIdentity := models.FirebaseIdentity{
-		Issuer: infra.MockFirebaseIssuer,
-		Email:  "user@email.com",
+		Issuer:  infra.MockFirebaseIssuer,
+		Subject: "firebase_subject",
+		Email:   "user@email.com",
 	}
 	token := "token"
 	now := time.Now()
@@ -156,7 +159,7 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: user.OrganizationId}}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, userOrgIdString).
 			Return(models.Organization{}, nil)
-		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
+		mockRepository.On("ResolveUserIdentity", mock.Anything, firebaseIdentity.Issuer, firebaseIdentity.Subject, firebaseIdentity.Email).
 			Return(user, nil)
 		mockRepository.On("UpdateUserProfileFromClaims", mock.Anything, user, models.IdentityUpdatableClaims{}).
 			Return(user, nil)
@@ -209,9 +212,9 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 		mockVerifier.AssertExpectations(t)
 	})
 
-	t.Run("UserByEmail error", func(t *testing.T) {
+	t.Run("ResolveUserIdentity error", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
-		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
+		mockRepository.On("ResolveUserIdentity", mock.Anything, firebaseIdentity.Issuer, firebaseIdentity.Subject, firebaseIdentity.Email).
 			Return(models.User{}, assert.AnError)
 
 		verifier := auth.NewVerifier(map[string]idp.TokenRepository{infra.MockFirebaseIssuer: idpTokenVerifier}, mockRepository, "", nil)
@@ -228,4 +231,43 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 		assert.Error(t, err)
 		mockRepository.AssertExpectations(t)
 	})
+}
+
+func TestMarbleVerifier_LogsEmailMismatch(t *testing.T) {
+	const (
+		storedEmail = "old@example.test"
+		idpEmail    = "new@example.test"
+	)
+	identity := models.FirebaseIdentity{
+		Issuer:  infra.MockFirebaseIssuer,
+		Subject: "subject",
+		Email:   idpEmail,
+	}
+	user := models.User{UserId: "user-id", Email: storedEmail}
+	mockRepository := new(mocks.Database)
+	mockRepository.On("ResolveUserIdentity", mock.Anything, identity.Issuer, identity.Subject, identity.Email).
+		Return(user, nil)
+	mockRepository.On("UpdateUserProfileFromClaims", mock.Anything, user, models.IdentityUpdatableClaims{}).
+		Return(user, nil)
+
+	var logOutput bytes.Buffer
+	ctx := utils.StoreLoggerInContext(t.Context(), slog.New(slog.NewJSONHandler(&logOutput, nil)))
+	verifier := auth.NewVerifier(
+		map[string]idp.TokenRepository{identity.Issuer: mocks.NewStaticIdpTokenVerifier(identity.Issuer, identity)},
+		mockRepository,
+		"",
+		nil,
+	)
+	credential, err := jwt.NewWithClaims(jwt.SigningMethodNone, auth.BaseClaims{Issuer: identity.Issuer}).
+		SignedString(jwt.UnsafeAllowNoneSignatureType)
+	require.NoError(t, err)
+
+	_, _, err = verifier.Verify(ctx, auth.Credentials{Type: auth.CredentialsBearer, Value: credential})
+	require.NoError(t, err)
+	assert.Contains(t, logOutput.String(), "identity email mismatch")
+	assert.Contains(t, logOutput.String(), identity.Issuer)
+	assert.Contains(t, logOutput.String(), string(user.UserId))
+	assert.NotContains(t, logOutput.String(), storedEmail)
+	assert.NotContains(t, logOutput.String(), idpEmail)
+	mockRepository.AssertExpectations(t)
 }
