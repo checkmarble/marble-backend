@@ -201,7 +201,7 @@ func TestMain(m *testing.M) {
 		AppName:             "marble-backend",
 		MarbleAppUrl:        "http://localhost:3000",
 		RequestLoggingLevel: "all",
-		TokenProvider:       auth.TokenProviderFirebase,
+		TokenProviders:      auth.TokenProviders{auth.TokenProviderFirebase},
 		TokenLifetimeMinute: 60,
 		DisableSegment:      true,
 		SegmentWriteKey:     "",
@@ -220,7 +220,7 @@ func TestMain(m *testing.M) {
 		usecases.WithIngestionBucketUrl("file:///tmp/tempFiles?create_dir=true"),
 		usecases.WithCaseManagerBucketUrl("file:///tmp/tempFiles?create_dir=true"),
 		usecases.WithOffloadingBucketUrl("file:///tmp/tempFiles?create_dir=true"),
-		usecases.WithFirebaseAdmin(auth.TokenProviderFirebase, firebaseAdminClient),
+		usecases.WithFirebaseAdmin(true, firebaseAdminClient),
 	)
 
 	adminUc := jobs.GenerateUsecaseWithCredForSystem(testUsecases)
@@ -256,7 +256,7 @@ func TestMain(m *testing.M) {
 		cleanupAndFatal("Could not initialize API dependencies: %s", err)
 	}
 
-	apiKeyVerifier = auth.NewVerifier(auth.TokenProviderFirebase, firebaseClient, database, nil)
+	apiKeyVerifier = auth.NewVerifier(map[string]idp.TokenRepository{infra.MockFirebaseIssuer: firebaseClient}, database, "", nil)
 	tokenGenerator = auth.NewGenerator(database, jwtRepository, time.Minute, clock.New())
 
 	// we need to create a first marble admin user, otherwise we can't use the API (chicken and egg)

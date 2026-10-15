@@ -46,13 +46,8 @@ func InitDependencies(
 	}
 	segmentClient := analytics.New(conf.SegmentWriteKey)
 
-	var (
-		idpTokenVerifier idp.TokenRepository
-		tokenIssuer      string
-	)
-
-	switch conf.TokenProvider {
-	case auth.TokenProviderFirebase:
+	verifiers := make(map[string]idp.TokenRepository)
+	if conf.TokenProviders.Has(auth.TokenProviderFirebase) {
 		if len(optTokenVerifier) == 0 {
 			firebaseApp := infra.InitializeFirebase(ctx, conf.FirebaseConfig.ProjectId)
 
@@ -60,19 +55,26 @@ func InitDependencies(
 			firebaseAdmin = idp.NewAdminClient(conf.FirebaseConfig.ApiKey, firebaseApp, conf.MarbleAppUrl)
 		}
 
-		idpTokenVerifier = idp.NewFirebaseClient(conf.FirebaseConfig.ProjectId, optTokenVerifier[0])
-		tokenIssuer = idpTokenVerifier.Issuer()
-	case auth.TokenProviderOidc:
-		idpTokenVerifier = idp.NewOidcClient(conf.OidcConfig, conf.OidcConfig.Provider, conf.OidcConfig.Issuer, conf.OidcConfig.Verifier)
-		tokenIssuer = idpTokenVerifier.Issuer()
+		firebaseVerifier := idp.NewFirebaseClient(conf.FirebaseConfig.ProjectId, optTokenVerifier[0])
+		verifiers[firebaseVerifier.Issuer()] = firebaseVerifier
 	}
 
-	jwtRepository := repositories.NewJWTRepository(tokenIssuer, signingKey)
+	if conf.TokenProviders.Has(auth.TokenProviderOidc) {
+		oidcVerifier := idp.NewOidcClient(conf.OidcConfig, conf.OidcConfig.Provider, conf.OidcConfig.Issuer, conf.OidcConfig.Verifier)
+		verifiers[oidcVerifier.Issuer()] = oidcVerifier
+	}
+
+	issuers := make([]string, 0, len(verifiers))
+	for issuer := range verifiers {
+		issuers = append(issuers, issuer)
+	}
+
+	jwtRepository := repositories.NewJWTRepositoryForIssuers(issuers, signingKey)
 	tokenValidator := token.NewValidator(database, jwtRepository)
 
 	tokenHandler := auth.NewTokenHandler(
 		auth.DefaultExtractor(),
-		auth.NewVerifier(conf.TokenProvider, idpTokenVerifier, database, conf.OidcConfig.AllowedDomains),
+		auth.NewVerifier(verifiers, database, conf.OidcConfig.Issuer, conf.OidcConfig.AllowedDomains),
 		auth.NewGenerator(database, jwtRepository, time.Hour, clock.New()),
 	)
 

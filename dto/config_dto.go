@@ -46,9 +46,9 @@ type ConfigUrlsDto struct {
 }
 
 type ConfigAuthDto struct {
-	Provider string                `json:"provider"`
-	Firebase ConfigAuthFirebaseDto `json:"firebase"`
-	Oidc     *ConfigAuthOidcDto    `json:"oidc,omitempty"`
+	Providers []string              `json:"providers"`
+	Firebase  ConfigAuthFirebaseDto `json:"firebase"`
+	Oidc      *ConfigAuthOidcDto    `json:"oidc,omitempty"`
 }
 
 type ConfigAuthFirebaseDto struct {
