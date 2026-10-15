@@ -16,6 +16,8 @@ const (
 	ContinuousScreeningTriggerTypeDatasetUpdated
 )
 
+const CustomCatalogPrefix = "marble_custom_"
+
 func ContinuousScreeningTriggerTypeFrom(s string) ContinuousScreeningTriggerType {
 	switch s {
 	case "object_added":
