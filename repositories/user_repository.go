@@ -167,6 +167,15 @@ func (repo *MarbleDbRepository) DeleteUser(ctx context.Context, exec Executor, u
 		return err
 	}
 
+	// Users are soft-deleted, so their memberships are not cascaded.
+	if err := ExecBuilder(ctx, exec,
+		NewQueryBuilder().
+			Delete(dbmodels.TABLE_GROUP_MEMBERSHIPS).
+			Where(squirrel.Eq{"user_id": userID}),
+	); err != nil {
+		return err
+	}
+
 	return exec.Cache(ctx).Exec(func(c *redis.Client) error {
 		return c.Del(ctx, exec.Cache(ctx).Key("user", string(userID))).Err()
 	})

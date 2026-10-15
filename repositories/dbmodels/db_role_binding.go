@@ -15,6 +15,7 @@ const TABLE_GRANTS = "grants"
 const (
 	GrantPrincipalUser   = "user"
 	GrantPrincipalApiKey = "api_key"
+	GrantPrincipalGroup  = "group"
 	GrantAuthorityMarble = "marble"
 )
 
@@ -75,6 +76,10 @@ func AdaptRoleBinding(db DbRoleBinding) (models.RoleBinding, error) {
 	case GrantPrincipalApiKey:
 		if apiKeyId, err := uuid.Parse(db.PrincipalId); err == nil {
 			binding.ApiKeyId = &apiKeyId
+		}
+	case GrantPrincipalGroup:
+		if groupId, err := uuid.Parse(db.PrincipalId); err == nil {
+			binding.GroupId = &groupId
 		}
 	}
 
