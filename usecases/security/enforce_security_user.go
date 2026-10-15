@@ -96,6 +96,7 @@ func (e *EnforceSecurityUserImpl) UpdateUser(targetUser models.User, updateUser 
 	if updateUser.RoleBindings != nil &&
 		e.Credentials.HasRole(models.ADMIN) &&
 		e.Credentials.ActorIdentity.UserId == targetUser.UserId &&
+		slices.Contains(models.RoleNames(targetUser.RoleBindings), models.ADMIN) &&
 		!slices.Contains(updatedRoles, models.ADMIN) {
 		return errors.Wrap(models.BadParameterError, "Cannot remove yourself as an admin")
 	}

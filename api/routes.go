@@ -117,6 +117,14 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.DELETE("/roles/*slug", tom, handleDeleteRole(uc))
 	router.PUT("/roles/sections", tom, handleUpdateRoleSections(uc))
 
+	router.GET("/groups", tom, handleListGroups(uc))
+	router.POST("/groups", tom, handleCreateGroup(uc))
+	router.GET("/groups/:group_id", tom, handleGetGroup(uc))
+	router.PATCH("/groups/:group_id", tom, handleRenameGroup(uc))
+	router.DELETE("/groups/:group_id", tom, handleDeleteGroup(uc))
+	router.PUT("/groups/:group_id/members", tom, handleReplaceGroupMembers(uc))
+	router.PUT("/groups/:group_id/roles", tom, handleReplaceGroupBindings(uc))
+
 	router.GET("/decisions",
 		timeoutMiddleware(conf.DecisionTimeout),
 		handleListDecisions(uc, parsedAppUrl))
