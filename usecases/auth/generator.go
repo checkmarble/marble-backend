@@ -9,13 +9,14 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/clock"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 )
 
 type marbleRepository interface {
 	GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error)
 	GetOrganizationByID(ctx context.Context, organizationID uuid.UUID) (models.Organization, error)
-	UserByEmail(ctx context.Context, email string) (models.User, error)
+	ResolveUserIdentity(ctx context.Context, issuer, subject, email string) (models.User, error)
 	ActiveGrantsForPrincipal(ctx context.Context, principalType, principalID string) ([]models.Grant, error)
 	UpdateUserProfileFromClaims(
 		ctx context.Context,
@@ -157,6 +158,12 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 	if err != nil {
 		return Token{}, fmt.Errorf("encoder.EncodeMarbleToken error: %w", err)
 	}
+	utils.LoggerFromContext(ctx).InfoContext(ctx, "token created",
+		"issuer", claims.GetIssuer(),
+		"organization_id", selectedOrganizationID,
+		"principal_type", principalType,
+		"user_id", tokenCredentials.ActorIdentity.UserId,
+	)
 
 	return Token{tokenCredentials, token, expirationTime}, nil
 }

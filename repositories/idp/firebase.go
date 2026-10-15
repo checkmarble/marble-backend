@@ -40,6 +40,9 @@ func (c *FirebaseClient) VerifyToken(ctx context.Context, firebaseToken, _access
 	if token.Issuer != c.Issuer() {
 		return models.FirebaseIdentity{}, fmt.Errorf("invalid issuer %s != %s for firebase", token.Issuer, c.Issuer())
 	}
+	if token.Subject == "" {
+		return models.FirebaseIdentity{}, fmt.Errorf("firebase token does not contain a subject")
+	}
 
 	email, ok := pure_utils.AnySliceAtIndex[string](token.Firebase.Identities["email"], 0)
 	if !ok {
@@ -55,6 +58,7 @@ func (c *FirebaseClient) VerifyToken(ctx context.Context, firebaseToken, _access
 
 	return models.FirebaseIdentity{
 		Issuer:  token.Issuer,
+		Subject: token.Subject,
 		Email:   email,
 		Picture: picture,
 	}, nil
