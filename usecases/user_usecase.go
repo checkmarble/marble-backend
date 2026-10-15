@@ -148,40 +148,8 @@ func (usecase *UserUseCase) resolveUserRoleBindings(
 	orgId uuid.UUID,
 	bindings []models.RoleBinding,
 ) ([]models.RoleBinding, error) {
-	exec := usecase.executorFactory.NewExecutor()
-	resolved := append([]models.RoleBinding(nil), bindings...)
-
-	for idx := range resolved {
-		binding := &resolved[idx]
-		if binding.Role == "" {
-			return nil, errors.Wrap(models.BadParameterError, "role binding must reference a role")
-		}
-
-		if err := binding.Conditions.Validate(); err != nil {
-			return nil, err
-		}
-
-		if !binding.Role.IsCustom() {
-			if !slices.Contains(models.GetValidUserRoles(), binding.Role) {
-				return nil, errors.Wrap(models.BadParameterError, "invalid native role")
-			}
-			binding.CustomRoleId = nil
-			binding.Permissions = binding.Role.Permissions()
-			continue
-		}
-		if !binding.Role.IsValidCustom() {
-			return nil, errors.Wrap(models.BadParameterError, "invalid custom role slug")
-		}
-
-		role, err := usecase.userRepository.GetRoleBySlug(ctx, exec, orgId, binding.Role)
-		if err != nil {
-			return nil, err
-		}
-		binding.CustomRoleId = &role.Id
-		binding.Permissions = role.Permissions
-	}
-
-	return resolved, nil
+	return resolveRoleBindings(ctx, usecase.executorFactory.NewExecutor(), usecase.userRepository,
+		orgId, bindings, models.GetValidUserRoles())
 }
 
 func (usecase *UserUseCase) DeleteUser(ctx context.Context, userId, currentUserId string) error {

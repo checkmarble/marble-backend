@@ -11,17 +11,27 @@ import (
 )
 
 // ActiveGrantsForPrincipal returns every currently active grant of a principal,
-// across all scopes, with custom role permissions resolved.
+// across all scopes, with custom role permissions resolved. The grants of a
+// user include the grants of its groups.
 func (db *Database) ActiveGrantsForPrincipal(ctx context.Context, principalType, principalID string) ([]models.RoleBinding, error) {
+	var principalGrants squirrel.Sqlizer = squirrel.Eq{"g.principal_type": principalType, "g.principal_id": principalID}
+
+	if principalType == dbmodels.GrantPrincipalUser {
+		principalGrants = squirrel.Or{
+			principalGrants,
+			squirrel.And{
+				squirrel.Eq{"g.principal_type": dbmodels.GrantPrincipalGroup},
+				squirrel.Expr("g.principal_id IN ("+dbmodels.SelectUserGroupIds+")", principalID),
+			},
+		}
+	}
+
 	query, args, err := NewQueryBuilder().
 		Select(dbmodels.SelectRoleBindingColumns...).
 		From("active_grants g").
 		LeftJoin(dbmodels.TABLE_ROLES+" r on r.id = g.custom_role_id and r.org_id = g.organization_id").
-		Where(squirrel.Eq{
-			"g.principal_type":      principalType,
-			"g.principal_id":        principalID,
-			"g.principal_authority": dbmodels.GrantAuthorityMarble,
-		}).
+		Where(squirrel.Eq{"g.principal_authority": dbmodels.GrantAuthorityMarble}).
+		Where(principalGrants).
 		OrderBy("g.created_at", "g.id").
 		ToSql()
 	if err != nil {

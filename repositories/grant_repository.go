@@ -59,18 +59,30 @@ func (repo *MarbleDbRepository) ListOrganizationsForUser(ctx context.Context, ex
 		return nil, err
 	}
 
+	// The user's grants, and the grants of its groups, which are always bound
+	// to the group's organization.
+	userGrants := squirrel.Or{
+		squirrel.Eq{"g.principal_type": dbmodels.GrantPrincipalUser, "g.principal_id": userID},
+		squirrel.And{
+			squirrel.Eq{"g.principal_type": dbmodels.GrantPrincipalGroup},
+			squirrel.Expr("g.principal_id IN ("+dbmodels.SelectUserGroupIds+")", userID),
+		},
+	}
+
 	query := NewQueryBuilder().
 		Select("o.id", "o.name", "o.tenant_id", "o.environment").
-		Column("array_agg(DISTINCT scope_grants.role)").
-		From("active_grants membership").
-		Join("organizations o ON o.id = membership.organization_id").
-		Join("active_grants scope_grants ON scope_grants.principal_type = membership.principal_type AND scope_grants.principal_id = membership.principal_id AND scope_grants.principal_authority = membership.principal_authority AND (scope_grants.organization_id = o.id OR scope_grants.tenant_id = o.tenant_id)").
+		Column("array_agg(DISTINCT g.role)").
+		From("organizations o").
+		Join("active_grants g ON g.organization_id = o.id OR g.tenant_id = o.tenant_id").
 		Where(squirrel.Eq{
-			"membership.principal_type":      "user",
-			"membership.principal_id":        userID,
-			"membership.principal_authority": "marble",
+			"o.deleted_at":          nil,
+			"g.principal_authority": dbmodels.GrantAuthorityMarble,
 		}).
+		Where(userGrants).
 		GroupBy("o.id", "o.name", "o.tenant_id", "o.environment").
+		// Tenant grants only add roles in the organizations the user is a member
+		// of, through a grant bound to the organization itself.
+		Having("bool_or(g.organization_id = o.id)").
 		OrderBy("o.name")
 
 	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.OrganizationMembership, error) {

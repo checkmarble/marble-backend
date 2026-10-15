@@ -49,6 +49,7 @@ type RoleBinding struct {
 	OrgId        uuid.UUID
 	UserId       *UserId
 	ApiKeyId     *uuid.UUID
+	GroupId      *uuid.UUID
 	Role         Role
 	CustomRoleId *uuid.UUID
 	Conditions   RoleBindingConditions
