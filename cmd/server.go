@@ -95,7 +95,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		MarbleBackofficeUrl:  utils.GetEnv("MARBLE_BACKOFFICE_URL", ""),
 		Port:                 utils.GetRequiredEnv[string]("PORT"),
 		RequestLoggingLevel:  utils.GetEnv("REQUEST_LOGGING_LEVEL", "all"),
-		TokenLifetimeMinute:  utils.GetEnv("TOKEN_LIFETIME_MINUTE", 60*2),
+		TokenLifetimeMinute:  utils.GetEnv("TOKEN_LIFETIME_MINUTE", 60),
 		SegmentWriteKey:      utils.GetEnv("SEGMENT_WRITE_KEY", config.SegmentWriteKey),
 		DisableSegment:       utils.GetEnv("DISABLE_SEGMENT", false),
 		BatchTimeout:         time.Duration(utils.GetEnv("BATCH_TIMEOUT_SECOND", 55)) * time.Second,
