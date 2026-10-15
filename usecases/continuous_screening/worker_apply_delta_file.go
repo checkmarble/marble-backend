@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -712,6 +713,17 @@ func matchesFilters(updateJob models.EnrichedContinuousScreeningUpdateJob, recor
 		return AtLeastOneDatasetsAreMonitored(record.Entity.Datasets, ds)
 
 	case models.ScreeningProviderLexisNexis:
+		// Custom datasets are matched on dataset membership only, before the global filter, mirroring how the
+		// screening query is built: explicitly selected custom datasets, or all of them when no filter is enabled.
+		if AtLeastOneDatasetsAreMonitored(record.Entity.Datasets, filters.Custom.Datasets) {
+			return true
+		}
+		if filters.NoFilters() && slices.ContainsFunc(record.Entity.Datasets, func(ds string) bool {
+			return strings.HasPrefix(ds, models.CustomCatalogPrefix)
+		}) {
+			return true
+		}
+
 		// Loop over each configuration section
 		globalFilter := filters.Global
 		if globalFilter.Enabled {
@@ -723,7 +735,8 @@ func matchesFilters(updateJob models.EnrichedContinuousScreeningUpdateJob, recor
 		recordMatches := false
 		for rootTopic, section := range filters.WithRootTopics() {
 			// Short-circuit if the section is not enabled. Global filters ("is alive"...) are applied before the loop, separately because all records must match them regardless of their root topic.
-			if !section.Enabled || rootTopic == "global" {
+			// Custom datasets are handled before the loop.
+			if !section.Enabled || rootTopic == "global" || rootTopic == "custom" {
 				continue
 			}
 

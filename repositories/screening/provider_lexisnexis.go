@@ -89,7 +89,7 @@ func (p ScreeningLexisNexisProvider) SearchRequest(ctx context.Context,
 				datasets = make([]string, 0)
 
 				for _, ds := range catalog.Datasets {
-					if strings.HasPrefix(ds.Name, "marble_custom_") {
+					if strings.HasPrefix(ds.Name, models.CustomCatalogPrefix) {
 						datasets = append(datasets, ds.Name)
 					}
 				}
@@ -212,7 +212,7 @@ func (p ScreeningLexisNexisProvider) FindAvailableFilters(ctx context.Context, f
 				"minimum_should_match": 1,
 				"should": []any{
 					map[string]any{"term": map[string]any{"datasets": "lexisnexis"}},
-					map[string]any{"prefix": map[string]any{"datasets": "marble_custom_"}},
+					map[string]any{"prefix": map[string]any{"datasets": models.CustomCatalogPrefix}},
 				},
 			},
 		},

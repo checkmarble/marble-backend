@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
@@ -321,10 +322,10 @@ func getLoadedDataset(ctx context.Context, catalog models.OpenSanctionsRawCatalo
 			logger.WarnContext(ctx, "Loaded dataset is not present in catalog dataset, ignore it", "dataset", dataset)
 			continue
 		}
-		if dataset == "lexisnexis" && provider != "lexisnexis" {
+		if dataset == "lexisnexis" && provider != "lexisnexis" && !strings.HasPrefix(dataset, models.CustomCatalogPrefix) {
 			continue
 		}
-		if dataset != "lexisnexis" && provider == "lexisnexis" {
+		if dataset != "lexisnexis" && !strings.HasPrefix(dataset, models.CustomCatalogPrefix) && provider == "lexisnexis" {
 			continue
 		}
 		if slices.Contains(d.Tags, MarbleContinuousScreeningTag) {
