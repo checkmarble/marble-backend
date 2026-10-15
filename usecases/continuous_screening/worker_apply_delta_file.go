@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -700,6 +701,10 @@ func topicsMatchForSection(sectionTopics map[string][]string, record models.Open
 }
 
 func matchesFilters(updateJob models.EnrichedContinuousScreeningUpdateJob, record models.OpenSanctionsDeltaFileRecord) bool {
+	if strings.HasPrefix(updateJob.DatasetUpdate.DatasetName, models.CustomCatalogPrefix) {
+		return true
+	}
+
 	filters := updateJob.Config.Filters.Resolve()
 
 	switch updateJob.Config.Provider {
