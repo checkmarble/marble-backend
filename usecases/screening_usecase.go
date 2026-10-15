@@ -293,7 +293,7 @@ func (uc ScreeningUsecase) GetAvailableFilters(ctx context.Context, feature mode
 				case "adverse-media":
 					mediaDatasets = append(mediaDatasets, dto.ScreeningAvailableFiltersItem{Section: s.Name, Name: d.Name, Title: d.Title})
 				default:
-					switch strings.HasPrefix(d.Name, "marble_custom_") {
+					switch strings.HasPrefix(d.Name, models.CustomCatalogPrefix) {
 					case true:
 						customDatasets = append(customDatasets, dto.ScreeningAvailableFiltersItem{Section: "Custom", Name: d.Name, Title: d.Title})
 					case false:

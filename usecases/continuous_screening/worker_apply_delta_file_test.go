@@ -75,6 +75,101 @@ func TestMatchesFilters_LexisNexis(t *testing.T) {
 	}
 }
 
+// matchesFilters (LexisNexis, custom datasets): custom records match on dataset
+// membership only, the same way the screening query selects custom datasets.
+func TestMatchesFilters_LexisNexisCustomDatasets(t *testing.T) {
+	const monitored = models.CustomCatalogPrefix + "monitored"
+	const unmonitored = models.CustomCatalogPrefix + "unmonitored"
+
+	jobWithFilters := func(filters models.ScreeningConfigFilters) models.EnrichedContinuousScreeningUpdateJob {
+		return models.EnrichedContinuousScreeningUpdateJob{
+			Config: models.ContinuousScreeningConfig{
+				Provider: models.ScreeningProviderLexisNexis,
+				Filters:  filters,
+			},
+		}
+	}
+
+	recordInDatasets := func(datasets ...string) models.OpenSanctionsDeltaFileRecord {
+		return models.OpenSanctionsDeltaFileRecord{
+			Entity: models.OpenSanctionsDeltaFileEntity{
+				Datasets:   datasets,
+				Properties: map[string][]string{},
+			},
+		}
+	}
+
+	tests := []struct {
+		name     string
+		filters  models.ScreeningConfigFilters
+		record   models.OpenSanctionsDeltaFileRecord
+		expected bool
+	}{
+		{
+			name: "matches a selected custom dataset",
+			filters: models.ScreeningConfigFilters{
+				Custom: &models.ScreeningConfigFilter{Enabled: true, Datasets: []string{monitored}},
+			},
+			record:   recordInDatasets(monitored),
+			expected: true,
+		},
+		{
+			name: "does not match an unselected custom dataset",
+			filters: models.ScreeningConfigFilters{
+				Custom: &models.ScreeningConfigFilter{Enabled: true, Datasets: []string{monitored}},
+			},
+			record:   recordInDatasets(unmonitored),
+			expected: false,
+		},
+		{
+			// The screening query includes custom datasets regardless of the section's enabled flag.
+			name: "matches a selected custom dataset in a disabled section",
+			filters: models.ScreeningConfigFilters{
+				Custom: &models.ScreeningConfigFilter{Enabled: false, Datasets: []string{monitored}},
+			},
+			record:   recordInDatasets(monitored),
+			expected: true,
+		},
+		{
+			// Global topics are not applied to custom datasets in the screening query.
+			name: "global topics do not apply to custom datasets",
+			filters: models.ScreeningConfigFilters{
+				Global: &models.ScreeningConfigFilter{Enabled: true, Topics: map[string][]string{"alive": {"alive"}}},
+				Custom: &models.ScreeningConfigFilter{Enabled: true, Datasets: []string{monitored}},
+			},
+			record:   recordInDatasets(monitored),
+			expected: true,
+		},
+		{
+			// When no filter is enabled, the screening query includes all custom datasets.
+			name:     "matches any custom dataset when no filter is enabled",
+			filters:  models.ScreeningConfigFilters{},
+			record:   recordInDatasets(unmonitored),
+			expected: true,
+		},
+		{
+			name:     "does not match a non-custom dataset when no filter is enabled",
+			filters:  models.ScreeningConfigFilters{},
+			record:   recordInDatasets("lexisnexis"),
+			expected: false,
+		},
+		{
+			name: "does not match any custom dataset when other filters are enabled",
+			filters: models.ScreeningConfigFilters{
+				Sanctions: &models.ScreeningConfigFilter{Enabled: true},
+			},
+			record:   recordInDatasets(unmonitored),
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, matchesFilters(jobWithFilters(tt.filters), tt.record))
+		})
+	}
+}
+
 // Test the json decoder offset behavior and resume from offset mechanism
 // Mock the S3/Blob storage with OneByteReader to simulate chunked data (stream)
 func TestWork_JsonDecoderOffsetBehavior(t *testing.T) {
