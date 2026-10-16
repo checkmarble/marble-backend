@@ -505,7 +505,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 		if err != nil {
 			var parseError *csv.ParseError
 			if errors.As(err, &parseError) {
-				return models.UploadLog{}, errors.Errorf("%w (%w)", err, models.BadParameterError)
+				return models.UploadLog{}, errors.Join(err, models.BadParameterError)
 			} else {
 				return models.UploadLog{}, errors.Errorf("error found at line %d in CSV (%w)", lineNumber, models.BadParameterError)
 			}
@@ -513,8 +513,8 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 
 		_, err = parseStringValuesToMap(headers, row, table, usecase.payloadEnricher)
 		if err != nil {
-			return models.UploadLog{}, errors.Errorf("error found at line %d in CSV: %w (%w)",
-				lineNumber, err, models.BadParameterError)
+			return models.UploadLog{}, errors.Wrapf(
+				errors.Join(err, models.BadParameterError), "error found at line %d in CSV", lineNumber)
 		}
 
 		if err := csvWriter.WriteAll([][]string{row}); err != nil {

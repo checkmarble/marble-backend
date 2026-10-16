@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 func (uc *ContinuousScreeningUsecase) CheckFeatureAccess(ctx context.Context, orgId uuid.UUID) error {

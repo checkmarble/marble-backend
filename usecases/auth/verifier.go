@@ -86,7 +86,7 @@ func (v MarbleVerifier) Verify(ctx context.Context, creds Credentials) (models.I
 
 		user, err := v.repository.UserByEmail(ctx, identity.GetEmail())
 		if errors.Is(err, models.NotFoundError) {
-			return nil, nil, errors.Errorf("%w: %w", models.ErrUnknownUser, err)
+			return nil, nil, errors.Join(models.ErrUnknownUser, err)
 		} else if err != nil {
 			return nil, nil, errors.Errorf("repository.UserByEmail error: %w", err)
 		}
