@@ -9,8 +9,8 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 type TestRunUsecaseFeatureAccessReader interface {

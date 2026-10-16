@@ -28,8 +28,8 @@ import (
 	"github.com/checkmarble/llmberjack/llms/aistudio"
 	llmanthropic "github.com/checkmarble/llmberjack/llms/anthropic"
 	"github.com/checkmarble/llmberjack/llms/openai"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 type AiAgentUsecaseRepository interface {

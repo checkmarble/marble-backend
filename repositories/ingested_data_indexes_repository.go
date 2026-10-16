@@ -11,8 +11,8 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/pg_indexes"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgx/v5"
-	"github.com/pkg/errors"
 )
 
 var INDEX_CREATION_TIMEOUT time.Duration = 60 * 4 * time.Minute // 4 hours

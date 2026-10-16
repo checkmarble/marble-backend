@@ -9,8 +9,8 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/riverqueue/river"
 )
 

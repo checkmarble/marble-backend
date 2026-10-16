@@ -109,8 +109,8 @@ func AdaptCreateRuleInput(body CreateRuleInputBody, organizationId uuid.UUID) (m
 	if body.FormulaAstExpression != nil {
 		node, err := AdaptASTNode(*body.FormulaAstExpression)
 		if err != nil {
-			return models.CreateRuleInput{}, errors.Errorf(
-				"could not adapt formula ast expression: %w %w", err, models.BadParameterError)
+			return models.CreateRuleInput{}, errors.Wrap(
+				errors.Join(err, models.BadParameterError), "could not adapt formula ast expression")
 		}
 		createRuleInput.FormulaAstExpression = &node
 	}
@@ -132,8 +132,8 @@ func AdaptUpdateRule(ruleId string, body UpdateRuleBody) (models.UpdateRuleInput
 	if body.FormulaAstExpression != nil {
 		node, err := AdaptASTNode(*body.FormulaAstExpression)
 		if err != nil {
-			return models.UpdateRuleInput{}, errors.Errorf(
-				"could not adapt formula ast expression: %w %w", err, models.BadParameterError)
+			return models.UpdateRuleInput{}, errors.Wrap(
+				errors.Join(err, models.BadParameterError), "could not adapt formula ast expression")
 		}
 		updateRuleInput.FormulaAstExpression = &node
 	}

@@ -7,8 +7,8 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/hashicorp/go-set/v2"
-	"github.com/pkg/errors"
 )
 
 func indexesToCreateFromScenarioIterations(

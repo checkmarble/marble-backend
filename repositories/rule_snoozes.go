@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/pkg/errors"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"

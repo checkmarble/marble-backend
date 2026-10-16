@@ -9,7 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 )
 
 type DecisionWorkflowRule struct {

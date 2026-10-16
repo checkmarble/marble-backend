@@ -7,10 +7,10 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
-	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
 
