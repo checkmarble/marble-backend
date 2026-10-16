@@ -2,13 +2,13 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"slices"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/clock"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -67,7 +67,7 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 	}
 	grants, err := g.repository.ActiveGrantsForPrincipal(ctx, principalType, principalID)
 	if err != nil {
-		return Token{}, fmt.Errorf("ActiveGrantsForPrincipal error: %w", err)
+		return Token{}, errors.Errorf("ActiveGrantsForPrincipal error: %w", err)
 	}
 
 	selectedOrganizationID := requestedOrganizationID
@@ -93,7 +93,7 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 	if selectedOrganizationID != uuid.Nil {
 		selectedOrganization, err = g.repository.GetOrganizationByID(ctx, selectedOrganizationID)
 		if err != nil {
-			return Token{}, fmt.Errorf("GetOrganizationByID error: %w", err)
+			return Token{}, errors.Errorf("GetOrganizationByID error: %w", err)
 		}
 
 		grantOrganizationAccess := false
@@ -104,7 +104,7 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 			}
 		}
 		if !grantOrganizationAccess {
-			return Token{}, fmt.Errorf("%w: no access to organization", models.ForbiddenError)
+			return Token{}, errors.Errorf("%w: no access to organization", models.ForbiddenError)
 		}
 	}
 
@@ -133,7 +133,7 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 	slices.Sort(roles)
 	tokenCredentials.Roles = roles
 	if len(grants) == 0 {
-		return Token{}, fmt.Errorf("%w: principal has no active grant", models.ForbiddenError)
+		return Token{}, errors.Errorf("%w: principal has no active grant", models.ForbiddenError)
 	}
 
 	switch creds.Type {
@@ -155,7 +155,7 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 
 	token, err := g.encoder.EncodeMarbleToken(claims.GetIssuer(), expirationTime, tokenCredentials)
 	if err != nil {
-		return Token{}, fmt.Errorf("encoder.EncodeMarbleToken error: %w", err)
+		return Token{}, errors.Errorf("encoder.EncodeMarbleToken error: %w", err)
 	}
 
 	return Token{tokenCredentials, token, expirationTime}, nil

@@ -798,7 +798,7 @@ func (e ScenarioEvaluator) evalAllScenarioRules(
 	}
 
 	if err := group.Wait(); err != nil {
-		return 0, nil, fmt.Errorf("at least one rule evaluation returned an error: %w", err)
+		return 0, nil, errors.Errorf("at least one rule evaluation returned an error: %w", err)
 	}
 
 	return runningSumOfScores, ruleExecutions, nil

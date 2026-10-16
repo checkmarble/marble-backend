@@ -13,8 +13,8 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 type RuleUsecaseRepository interface {
@@ -234,7 +234,7 @@ func (usecase *RuleUsecase) DeleteRule(ctx context.Context, ruleId string) error
 			return err
 		}
 		if scenarioAndIteration.Iteration.Version != nil {
-			return fmt.Errorf("can't delete rule as iteration %s is not in draft", scenarioAndIteration.Iteration.Id)
+			return errors.Errorf("can't delete rule as iteration %s is not in draft", scenarioAndIteration.Iteration.Id)
 		}
 		if err := usecase.enforceSecurity.CreateRule(scenarioAndIteration.Iteration); err != nil {
 			return err

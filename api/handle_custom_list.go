@@ -15,6 +15,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 )
 
 func handleGetAllCustomLists(uc usecases.Usecases) func(c *gin.Context) {
@@ -256,12 +257,12 @@ func handleDeleteCustomListValue(uc usecases.Usecases) func(c *gin.Context) {
 		valueID := c.Param("value_id")
 
 		if err := utils.ValidateUuid(customListID); err != nil {
-			presentError(ctx, c, fmt.Errorf("param 'customListId' : %w", err))
+			presentError(ctx, c, errors.Errorf("param 'customListId' : %w", err))
 			return
 		}
 
 		if err := utils.ValidateUuid(valueID); err != nil {
-			presentError(ctx, c, fmt.Errorf("param 'customListValueId': %w", err))
+			presentError(ctx, c, errors.Errorf("param 'customListValueId': %w", err))
 			return
 		}
 

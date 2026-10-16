@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/scoring"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 	"github.com/stretchr/testify/mock"
@@ -122,7 +123,7 @@ func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_NoRuleset() {
 func (s *TriggeredScoreComputationWorkerTestSuite) TestWork_RepoError() {
 	s.T().Setenv(fmt.Sprintf("ENABLE_%s", "USER_SCORING"), s.orgId.String())
 
-	repoErr := fmt.Errorf("db connection lost")
+	repoErr := errors.Errorf("db connection lost")
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 	s.repository.On("GetScoringRuleset", s.ctx, s.transaction, s.orgId, s.recordType, models.ScoreRulesetCommitted, 0).
 		Return(models.ScoringRuleset{}, repoErr)

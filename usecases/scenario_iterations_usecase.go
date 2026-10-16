@@ -215,7 +215,7 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(
 		gron := gronx.New()
 		ok := gron.IsValid(b.Schedule)
 		if !ok {
-			return models.ScenarioIteration{}, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
+			return models.ScenarioIteration{}, errors.Errorf("invalid schedule: %w", models.BadParameterError)
 		}
 	}
 
@@ -263,7 +263,7 @@ func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Con
 				gron := gronx.New()
 				ok := gron.IsValid(*body.Schedule)
 				if !ok {
-					return iteration, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
+					return iteration, errors.Errorf("invalid schedule: %w", models.BadParameterError)
 				}
 			}
 			if scenarioAndIteration.Iteration.Version != nil {
@@ -517,7 +517,7 @@ func replaceTriggerOrRule(scenarioAndIteration models.ScenarioAndIteration,
 				}
 			}
 			if !found {
-				return scenarioAndIteration, fmt.Errorf("rule not found: %w", models.NotFoundError)
+				return scenarioAndIteration, errors.Errorf("rule not found: %w", models.NotFoundError)
 			}
 		} else {
 			scenarioAndIteration.Iteration.TriggerConditionAstExpression = triggerOrRuleToReplace

@@ -13,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -134,7 +135,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 		WithText(llmberjack.RoleUser, ruleGenerationPrompt).
 		CreateThread())
 	if err != nil {
-		return dto.GenerateRuleResponse{}, fmt.Errorf(
+		return dto.GenerateRuleResponse{}, errors.Errorf(
 			"failed to generate rule from LLM: %w", err,
 		)
 	}
@@ -151,7 +152,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 
 	ruleAsString, err := resp.Get(0)
 	if err != nil {
-		return dto.GenerateRuleResponse{}, fmt.Errorf("failed to get LLM response: %w", err)
+		return dto.GenerateRuleResponse{}, errors.Errorf("failed to get LLM response: %w", err)
 	}
 
 	logger.DebugContext(ctx, fmt.Sprintf("LLM response as string:\n%s\n", ruleAsString))
@@ -172,7 +173,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 		WithPromptCaching(true).
 		WithText(llmberjack.RoleUser, ruleGenerationPrompt))
 	if err != nil {
-		return dto.GenerateRuleResponse{}, fmt.Errorf(
+		return dto.GenerateRuleResponse{}, errors.Errorf(
 			"failed to generate rule from LLM: %w", err,
 		)
 	}
@@ -189,7 +190,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 
 	ruleAsStringStep2, err := resp.Get(0)
 	if err != nil {
-		return dto.GenerateRuleResponse{}, fmt.Errorf("failed to get LLM response: %w", err)
+		return dto.GenerateRuleResponse{}, errors.Errorf("failed to get LLM response: %w", err)
 	}
 
 	logger.DebugContext(ctx, fmt.Sprintf("LLM response step 2 as json string:\n%s\n", ruleAsStringStep2))
@@ -197,20 +198,20 @@ func (uc *AiAgentUsecase) GenerateRule(
 	var ruleAstDto dto.NodeDto
 	err = json.Unmarshal([]byte(ruleAsStringStep2), &ruleAstDto)
 	if err != nil {
-		return dto.GenerateRuleResponse{}, fmt.Errorf(
+		return dto.GenerateRuleResponse{}, errors.Errorf(
 			"failed to parse LLM response as JSON: %w", err,
 		)
 	}
 
 	ruleAst, err := dto.AdaptASTNode(ruleAstDto)
 	if err != nil {
-		return dto.GenerateRuleResponse{}, fmt.Errorf("failed to adapt AST node: %w", err)
+		return dto.GenerateRuleResponse{}, errors.Errorf("failed to adapt AST node: %w", err)
 	}
 
 	astValidation, err := uc.scenarioUsecase.ValidateScenarioAst(ctx,
 		orgId, scenario.Id, &ruleAst)
 	if err != nil {
-		return dto.GenerateRuleResponse{}, fmt.Errorf(
+		return dto.GenerateRuleResponse{}, errors.Errorf(
 			"failed to validate generated AST: %w", err,
 		)
 	}
@@ -338,7 +339,7 @@ func (uc *AiAgentUsecase) GenerateAndSaveRuleDescription(ctx context.Context, ru
 
 	rule, err := uc.repository.GetRuleById(ctx, exec, ruleId)
 	if err != nil {
-		return fmt.Errorf("error while getting rule %s: %w", ruleId, err)
+		return errors.Errorf("error while getting rule %s: %w", ruleId, err)
 	}
 
 	if rule.FormulaAstExpression == nil {
@@ -347,7 +348,7 @@ func (uc *AiAgentUsecase) GenerateAndSaveRuleDescription(ctx context.Context, ru
 
 	iteration, err := uc.repository.GetScenarioIteration(ctx, exec, rule.ScenarioIterationId, false)
 	if err != nil {
-		return fmt.Errorf("error while getting scenario iteration %s: %w", rule.ScenarioIterationId, err)
+		return errors.Errorf("error while getting scenario iteration %s: %w", rule.ScenarioIterationId, err)
 	}
 
 	description, err := uc.AiASTDescription(ctx, rule.OrganizationId, iteration.ScenarioId, rule.FormulaAstExpression)

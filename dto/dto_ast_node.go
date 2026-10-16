@@ -1,10 +1,9 @@
 package dto
 
 import (
-	"fmt"
-
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/cockroachdb/errors"
 )
 
 type NodeDto struct {
@@ -84,7 +83,7 @@ func adaptFunctionName(f string) (ast.Function, error) {
 		return f, nil
 	}
 
-	return ast.FUNC_UNKNOWN, fmt.Errorf("unknown function: %v", f)
+	return ast.FUNC_UNKNOWN, errors.Errorf("unknown function: %v", f)
 }
 
 // ASTValidationDetail represents validation errors/warnings

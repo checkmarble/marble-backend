@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	crdberrors "github.com/cockroachdb/errors"
 )
 
 func (db *Database) UserByEmail(ctx context.Context, email string) (models.User, error) {
@@ -46,12 +46,12 @@ func (db *Database) UserByEmail(ctx context.Context, email string) (models.User,
 		return models.User{}, models.NotFoundError
 	}
 	if err != nil {
-		return models.User{}, fmt.Errorf("row.Scan error: %w", err)
+		return models.User{}, crdberrors.Errorf("row.Scan error: %w", err)
 	}
 	if organizationID != nil {
 		orgId, err := uuid.Parse(*organizationID)
 		if err != nil {
-			return models.User{}, fmt.Errorf("uuid.Parse error: %w", err)
+			return models.User{}, crdberrors.Errorf("uuid.Parse error: %w", err)
 		}
 		user.OrganizationId = orgId
 	}

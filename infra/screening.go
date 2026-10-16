@@ -138,7 +138,7 @@ func (os Screening) Client() *http.Client {
 
 func (os Screening) IsConfigured(provider models.ScreeningProvider) (bool, error) {
 	if !os.IsSelfHosted(provider) && len(os.credentials) == 0 {
-		return false, fmt.Errorf("missing API key for SaaS Open Sanctions configuration")
+		return false, errors.Errorf("missing API key for SaaS Open Sanctions configuration")
 	}
 	return true, nil
 }

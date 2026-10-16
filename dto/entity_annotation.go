@@ -2,7 +2,6 @@ package dto
 
 import (
 	"encoding/json"
-	"fmt"
 	"mime/multipart"
 	"time"
 
@@ -125,7 +124,7 @@ func AdaptEntityAnnotationPayload(model models.EntityAnnotation) (out any, err e
 		out = o
 
 	default:
-		return nil, fmt.Errorf("could not adapt annotation type")
+		return nil, errors.Errorf("could not adapt annotation type")
 	}
 
 	return

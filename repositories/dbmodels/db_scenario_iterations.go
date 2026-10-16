@@ -2,7 +2,6 @@ package dbmodels
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -10,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 
+	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -82,7 +82,7 @@ func AdaptScenarioIteration(dto DBScenarioIteration) (models.ScenarioIteration, 
 	var err error
 	scenarioIteration.TriggerConditionAstExpression, err = AdaptSerializedAstExpression(dto.TriggerConditionAstExpression)
 	if err != nil {
-		return scenarioIteration, fmt.Errorf("unable to unmarshal trigger codition ast expression: %w", err)
+		return scenarioIteration, errors.Errorf("unable to unmarshal trigger codition ast expression: %w", err)
 	}
 
 	return scenarioIteration, nil
@@ -140,24 +140,24 @@ func AdaptRulesAndScreenings(db DBRulesAndScreenings) (models.RulesAndScreenings
 
 	out.TriggerAst, err = AdaptSerializedAstExpression(db.TriggerAst)
 	if err != nil {
-		return out, fmt.Errorf("unable to unmarshal trigger codition ast expression: %w", err)
+		return out, errors.Errorf("unable to unmarshal trigger codition ast expression: %w", err)
 	}
 	out.RuleAst, err = AdaptSerializedAstExpression(db.RuleAst)
 	if err != nil {
-		return out, fmt.Errorf("unable to unmarshal trigger codition ast expression: %w", err)
+		return out, errors.Errorf("unable to unmarshal trigger codition ast expression: %w", err)
 	}
 	out.ScreeningTriggerAst, err = AdaptSerializedAstExpression(db.ScreeningTriggerAst)
 	if err != nil {
-		return out, fmt.Errorf("unable to unmarshal trigger codition ast expression: %w", err)
+		return out, errors.Errorf("unable to unmarshal trigger codition ast expression: %w", err)
 	}
 	out.ScreeningCounterpartyAst, err = AdaptSerializedAstExpression(db.ScreeningCounterpartyAst)
 	if err != nil {
-		return out, fmt.Errorf("unable to unmarshal trigger codition ast expression: %w", err)
+		return out, errors.Errorf("unable to unmarshal trigger codition ast expression: %w", err)
 	}
 	if db.ScreeningAst != nil {
 		out.ScreeningAst, err = AdaptScreeningConfigQuery(db.ScreeningAst)
 		if err != nil {
-			return out, fmt.Errorf("unable to unmarshal trigger codition ast expression: %w", err)
+			return out, errors.Errorf("unable to unmarshal trigger codition ast expression: %w", err)
 		}
 	}
 

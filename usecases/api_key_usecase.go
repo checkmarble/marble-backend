@@ -12,8 +12,8 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 type ApiKeyRepository interface {
@@ -96,7 +96,7 @@ func generateAPiKey() string {
 	key := make([]byte, 32)
 	_, err := rand.Read(key)
 	if err != nil {
-		panic(fmt.Errorf("generateAPiKey: %w", err))
+		panic(errors.Errorf("generateAPiKey: %w", err))
 	}
 	return hex.EncodeToString(key)
 }

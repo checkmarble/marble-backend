@@ -140,7 +140,7 @@ func (repo OpenSanctionsRepository) IsConfigured(ctx context.Context, provider m
 		return false, models.MissingRequirementError{
 			Requirement: models.REQUIREMENT_OPEN_SANCTIONS,
 			Reason:      models.REQUIREMENT_REASON_HEALTHCHECK_FAILED,
-			Err:         fmt.Errorf("healthcheck returned status code %d", resp.StatusCode),
+			Err:         errors.Errorf("healthcheck returned status code %d", resp.StatusCode),
 		}
 	}
 
@@ -161,7 +161,7 @@ func (repo OpenSanctionsRepository) GetRawCatalog(ctx context.Context, provider 
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return models.OpenSanctionsRawCatalog{},
-			fmt.Errorf("failed to get raw catalog: %d", resp.StatusCode)
+			errors.Errorf("failed to get raw catalog: %d", resp.StatusCode)
 	}
 
 	var httpCatalog httpmodels.HTTPOpenSanctionCatalogResponse
@@ -324,7 +324,7 @@ func (repo OpenSanctionsRepository) GetAlgorithms(ctx context.Context) (models.O
 
 	if resp.StatusCode != http.StatusOK {
 		return models.OpenSanctionAlgorithms{},
-			fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+			errors.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 	var algorithms httpmodels.HTTPOpenSanctionsAlgorithms
 	if err := json.NewDecoder(resp.Body).Decode(&algorithms); err != nil {
@@ -449,7 +449,7 @@ func (repo OpenSanctionsRepository) EnrichMatch(ctx context.Context, providerNam
 			return nil, errors.WithDetail(models.NotFoundError, "an entity with this ID was not found")
 		}
 
-		return nil, fmt.Errorf(
+		return nil, errors.Errorf(
 			"screening API returned status %d on enrichment", resp.StatusCode)
 	}
 

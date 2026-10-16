@@ -265,7 +265,7 @@ func (repo *MarbleDbRepository) DeleteRule(ctx context.Context, exec Executor, r
 
 func (repo *MarbleDbRepository) CreateRules(ctx context.Context, exec Executor, rules []models.CreateRuleInput) ([]models.Rule, error) {
 	if len(rules) == 0 {
-		return []models.Rule{}, fmt.Errorf("no rule found")
+		return []models.Rule{}, errors.Errorf("no rule found")
 	}
 
 	if err := validateMarbleDbExecutor(exec); err != nil {

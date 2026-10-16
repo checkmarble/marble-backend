@@ -3,7 +3,6 @@ package utils
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"slices"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 
+	crdberrors "github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -65,7 +65,7 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 		if slices.Contains(methods, ScreeningIndexerToken) {
 			token, err := ParseAuthorizationTokenHeader(c.Request.Header)
 			if err != nil {
-				_ = c.Error(fmt.Errorf("could not parse authorization header: %w", err))
+				_ = c.Error(crdberrors.Errorf("could not parse authorization header: %w", err))
 				c.AbortWithStatus(http.StatusBadRequest)
 				return
 			}
@@ -82,7 +82,7 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 		if key == "" && slices.Contains(methods, ApiKeyAsBearerToken) {
 			token, err := ParseAuthorizationBearerHeader(c.Request.Header)
 			if err != nil {
-				_ = c.Error(fmt.Errorf("could not parse authorization header: %w", err))
+				_ = c.Error(crdberrors.Errorf("could not parse authorization header: %w", err))
 				c.AbortWithStatus(http.StatusBadRequest)
 				return
 			}
@@ -92,7 +92,7 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 		if slices.Contains(methods, FederatedBearerToken) {
 			token, err := ParseAuthorizationBearerHeader(c.Request.Header)
 			if err != nil {
-				_ = c.Error(fmt.Errorf("could not parse authorization header: %w", err))
+				_ = c.Error(crdberrors.Errorf("could not parse authorization header: %w", err))
 				c.AbortWithStatus(http.StatusBadRequest)
 				return
 			}
@@ -100,7 +100,7 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 		}
 
 		if key == "" && jwtToken == "" {
-			_ = c.Error(fmt.Errorf("missing authentication method"))
+			_ = c.Error(crdberrors.Errorf("missing authentication method"))
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
@@ -109,7 +109,7 @@ func (a *Authentication) AuthedBy(methods ...AuthType) gin.HandlerFunc {
 		if err != nil {
 			if errors.Is(err, models.NotFoundError) ||
 				errors.Is(err, models.UnAuthorizedError) {
-				_ = c.Error(fmt.Errorf("validator.Validate error: %w", err))
+				_ = c.Error(crdberrors.Errorf("validator.Validate error: %w", err))
 				c.AbortWithStatus(http.StatusUnauthorized)
 				return
 			}
@@ -147,7 +147,7 @@ func ParseAuthorizationBearerHeader(header http.Header) (string, error) {
 
 	authHeader := strings.Split(header.Get("Authorization"), "Bearer ")
 	if len(authHeader) != 2 {
-		return "", fmt.Errorf("malformed token: %w", models.UnAuthorizedError)
+		return "", crdberrors.Errorf("malformed token: %w", models.UnAuthorizedError)
 	}
 	return authHeader[1], nil
 }
@@ -160,7 +160,7 @@ func ParseAuthorizationTokenHeader(header http.Header) (string, error) {
 
 	token, found := strings.CutPrefix(authorization, screeningIndexerTokenPrefix)
 	if !found {
-		return "", fmt.Errorf("malformed token: %w", models.UnAuthorizedError)
+		return "", crdberrors.Errorf("malformed token: %w", models.UnAuthorizedError)
 	}
 	return token, nil
 }

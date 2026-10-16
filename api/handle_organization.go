@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 
@@ -161,7 +160,7 @@ func handleGetOrganizationFeatureAccess(uc usecases.Usecases) func(c *gin.Contex
 
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 

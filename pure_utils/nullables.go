@@ -3,7 +3,7 @@ package pure_utils
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"github.com/cockroachdb/errors"
 )
 
 // NormalizeNullJSON treats empty input and JSON null as absent, preserving other JSON verbatim.
@@ -30,7 +30,7 @@ func (u *Null[T]) UnmarshalJSON(data []byte) error {
 	}
 
 	if err := json.Unmarshal(data, &u.value); err != nil {
-		return fmt.Errorf("invalid UUID: %w", err)
+		return errors.Errorf("invalid UUID: %w", err)
 	}
 
 	u.Valid = true

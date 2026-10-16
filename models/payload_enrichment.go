@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/cockroachdb/errors"
 	"github.com/twpayne/go-geom"
 )
 
@@ -35,7 +36,7 @@ func (l *Location) ScanGeom(value geom.T) error {
 
 	point, ok := value.(*geom.Point)
 	if !ok {
-		return fmt.Errorf("pgxgeom: expected *geom.Point, got %T", value)
+		return errors.Errorf("pgxgeom: expected *geom.Point, got %T", value)
 	}
 
 	l.Point = point

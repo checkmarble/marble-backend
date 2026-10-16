@@ -1,13 +1,13 @@
 package repositories
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/infra"
 	lago_repository "github.com/checkmarble/marble-backend/repositories/lago"
 	"github.com/checkmarble/marble-backend/repositories/screening"
+	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
@@ -124,7 +124,7 @@ func NewQueryBuilder() squirrel.StatementBuilderType {
 func WithUnionAll(builder squirrel.SelectBuilder, unionAllQuery squirrel.SelectBuilder) (squirrel.SelectBuilder, error) {
 	query, params, err := unionAllQuery.ToSql()
 	if err != nil {
-		return builder, fmt.Errorf("union all query failed: %w", err)
+		return builder, errors.Errorf("union all query failed: %w", err)
 	}
 	return builder.Suffix("UNION ALL "+query, params...), nil
 }

@@ -381,18 +381,18 @@ func processCSVFile(fileReader *csv.Reader) ([]string, error) {
 			if errors.As(err, &parseError) {
 				return nil, err
 			} else {
-				return nil, fmt.Errorf("error found at line %d in CSV", lineNumber)
+				return nil, errors.Errorf("error found at line %d in CSV", lineNumber)
 			}
 		}
 
 		if len(row) != 1 {
-			return nil, fmt.Errorf("invalid CSV row: expected 1 column, got %v at line %d",
+			return nil, errors.Errorf("invalid CSV row: expected 1 column, got %v at line %d",
 				len(row), lineNumber)
 		}
 		customListValues = append(customListValues, row[0])
 	}
 	if len(customListValues) > maxCustomListValues {
-		return nil, fmt.Errorf("too many values in CSV: expected at most %v, got %v",
+		return nil, errors.Errorf("too many values in CSV: expected at most %v, got %v",
 			maxCustomListValues, len(customListValues))
 	}
 	return customListValues, nil

@@ -3,11 +3,11 @@ package infra
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	"github.com/cockroachdb/errors"
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -37,7 +37,7 @@ func NewPostgresConnectionPool(
 ) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(connectionString)
 	if err != nil {
-		return nil, fmt.Errorf("create connection pool: %w", err)
+		return nil, errors.Errorf("create connection pool: %w", err)
 	}
 	ops := []otelpgx.Option{}
 	if tp != nil {
@@ -71,7 +71,7 @@ func NewPostgresConnectionPool(
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create connection pool: %w", err)
+		return nil, errors.Errorf("unable to create connection pool: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
@@ -80,7 +80,7 @@ func NewPostgresConnectionPool(
 	return pool, retry.Do(
 		func() error {
 			if err := pool.Ping(ctx); err != nil {
-				return fmt.Errorf("NewPostgresConnectionPool.Ping error: %w", err)
+				return errors.Errorf("NewPostgresConnectionPool.Ping error: %w", err)
 			}
 			return err
 		},

@@ -452,7 +452,7 @@ func applyDecisionPaginationFilters(query squirrel.SelectBuilder, p models.Pagin
 		offsetValue = offset.CreatedAt
 	default:
 		// only ordering and pagination by created_at is allowed for now
-		return query, fmt.Errorf("invalid sorting field: %w", models.BadParameterError)
+		return query, errors.Errorf("invalid sorting field: %w", models.BadParameterError)
 	}
 
 	args := []any{offsetValue, p.OffsetId}

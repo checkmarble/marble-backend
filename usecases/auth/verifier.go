@@ -86,9 +86,9 @@ func (v MarbleVerifier) Verify(ctx context.Context, creds Credentials) (models.I
 
 		user, err := v.repository.UserByEmail(ctx, identity.GetEmail())
 		if errors.Is(err, models.NotFoundError) {
-			return nil, nil, fmt.Errorf("%w: %w", models.ErrUnknownUser, err)
+			return nil, nil, errors.Errorf("%w: %w", models.ErrUnknownUser, err)
 		} else if err != nil {
-			return nil, nil, fmt.Errorf("repository.UserByEmail error: %w", err)
+			return nil, nil, errors.Errorf("repository.UserByEmail error: %w", err)
 		}
 
 		if p := identity.GetProfile(); p != nil {
@@ -108,12 +108,12 @@ func (v MarbleVerifier) Verify(ctx context.Context, creds Credentials) (models.I
 
 		apiKey, err := v.repository.GetApiKeyByHash(ctx, hash[:])
 		if err != nil {
-			return nil, nil, fmt.Errorf("getter.GetApiKeyByHash error: %w", err)
+			return nil, nil, errors.Errorf("getter.GetApiKeyByHash error: %w", err)
 		}
 
 		organization, err := v.repository.GetOrganizationByID(ctx, apiKey.OrganizationId)
 		if err != nil {
-			return nil, nil, fmt.Errorf("getter.GetOrganizationByID error: %w", err)
+			return nil, nil, errors.Errorf("getter.GetOrganizationByID error: %w", err)
 		}
 
 		apiKey.DisplayString = fmt.Sprintf("Api key %s*** of %s", apiKey.Prefix, organization.Name)

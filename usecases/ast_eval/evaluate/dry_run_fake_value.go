@@ -25,7 +25,7 @@ func DryRunPayload(table models.Table) map[string]any {
 func DryRunGetDbField(dataModel models.DataModel, triggerTableName string, path []string, fieldName string) (any, error) {
 	table, ok := dataModel.Tables[triggerTableName]
 	if !ok {
-		return nil, fmt.Errorf("table %s not found in data model", triggerTableName)
+		return nil, errors.Errorf("table %s not found in data model", triggerTableName)
 	}
 
 	for _, linkName := range path {
@@ -75,7 +75,7 @@ func DryRunListIngestedObjects(dataModel models.DataModel, nav ast.NavigationOpt
 	// Get the source table (navigation options are stored on the source table)
 	sourceTable, ok := dataModel.Tables[nav.SourceTableName]
 	if !ok {
-		return nil, fmt.Errorf("source table %s not found in data model", nav.SourceTableName)
+		return nil, errors.Errorf("source table %s not found in data model", nav.SourceTableName)
 	}
 
 	// Check if a matching navigation option exists in the source table
@@ -92,14 +92,14 @@ func DryRunListIngestedObjects(dataModel models.DataModel, nav ast.NavigationOpt
 	}
 
 	if !found {
-		return nil, fmt.Errorf("navigation option from %s.%s to %s.%s not found in data model",
+		return nil, errors.Errorf("navigation option from %s.%s to %s.%s not found in data model",
 			nav.SourceTableName, nav.SourceFieldName, nav.TargetTableName, nav.TargetFieldName)
 	}
 
 	// Get the target table to validate fields and generate fake values
 	targetTable, ok := dataModel.Tables[nav.TargetTableName]
 	if !ok {
-		return nil, fmt.Errorf("target table %s not found in data model", nav.TargetTableName)
+		return nil, errors.Errorf("target table %s not found in data model", nav.TargetTableName)
 	}
 
 	// Build fake data for the requested fields
@@ -112,7 +112,7 @@ func DryRunListIngestedObjects(dataModel models.DataModel, nav ast.NavigationOpt
 		}
 		field, ok := targetTable.Fields[fieldName]
 		if !ok {
-			return nil, fmt.Errorf("field %s not found in table %s", fieldName, nav.TargetTableName)
+			return nil, errors.Errorf("field %s not found in table %s", fieldName, nav.TargetTableName)
 		}
 		fullFieldName := fmt.Sprintf("%s.%s", nav.TargetTableName, fieldName)
 		fakeData[fieldName] = DryRunValue("ListIngestedObjects", fullFieldName, field)
@@ -130,12 +130,12 @@ func DryRunListIngestedObjects(dataModel models.DataModel, nav ast.NavigationOpt
 func DryRunQueryAggregatedValue(datamodel models.DataModel, tableName string, fieldName string, aggregator ast.Aggregator) (any, error) {
 	table, ok := datamodel.Tables[tableName]
 	if !ok {
-		return nil, fmt.Errorf("table %s not found in data model", tableName)
+		return nil, errors.Errorf("table %s not found in data model", tableName)
 	}
 
 	field, ok := table.Fields[fieldName]
 	if !ok {
-		return nil, fmt.Errorf("field %s not found in table %s", fieldName, table.Name)
+		return nil, errors.Errorf("field %s not found in table %s", fieldName, table.Name)
 	}
 
 	switch aggregator {

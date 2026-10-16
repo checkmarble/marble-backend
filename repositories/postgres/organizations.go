@@ -3,12 +3,12 @@ package postgres
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
+	crdberrors "github.com/cockroachdb/errors"
 )
 
 func (db *Database) GetOrganizationByID(ctx context.Context, organizationID uuid.UUID) (models.Organization, error) {
@@ -28,7 +28,7 @@ func (db *Database) GetOrganizationByID(ctx context.Context, organizationID uuid
 		return models.Organization{}, models.NotFoundError
 	}
 	if err != nil {
-		return models.Organization{}, fmt.Errorf("pool.QueryRow error: %w", err)
+		return models.Organization{}, crdberrors.Errorf("pool.QueryRow error: %w", err)
 	}
 	return organization, nil
 }

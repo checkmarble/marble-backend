@@ -16,6 +16,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	crdberrors "github.com/cockroachdb/errors"
 )
 
 type fieldParser map[models.DataType]func(fieldName string, result gjson.Result) (any, error)
@@ -30,16 +31,16 @@ type Parser struct {
 }
 
 var (
-	errIsInvalidJSON      = fmt.Errorf("json is invalid")
-	errIsNotNullable      = fmt.Errorf("is not nullable")
-	errIsInvalidTimestamp = fmt.Errorf("is not a valid timestamp")
-	errIsInvalidInteger   = fmt.Errorf("is not a valid integer")
-	errIsInvalidFloat     = fmt.Errorf("is not a valid float")
-	errIsInvalidBoolean   = fmt.Errorf("is not a valid boolean")
-	errIsInvalidString    = fmt.Errorf("is not a valid string")
-	errIsInvalidIpAddress = fmt.Errorf("is not a valid IP address")
-	errIsInvalidCoords    = fmt.Errorf("are not valid coordinates (lat,lng)")
-	errIsInvalidDataType  = fmt.Errorf("invalid type used in parser")
+	errIsInvalidJSON      = errors.New("json is invalid")
+	errIsNotNullable      = errors.New("is not nullable")
+	errIsInvalidTimestamp = errors.New("is not a valid timestamp")
+	errIsInvalidInteger   = errors.New("is not a valid integer")
+	errIsInvalidFloat     = errors.New("is not a valid float")
+	errIsInvalidBoolean   = errors.New("is not a valid boolean")
+	errIsInvalidString    = errors.New("is not a valid string")
+	errIsInvalidIpAddress = errors.New("is not a valid IP address")
+	errIsInvalidCoords    = errors.New("are not valid coordinates (lat,lng)")
+	errIsInvalidDataType  = errors.New("invalid type used in parser")
 	errUnknownField       = errors.New("field does not exist in data model")
 )
 
@@ -96,7 +97,7 @@ func (p *Parser) ParsePayload(ctx context.Context, table models.Table, json []by
 
 		parseField, ok := p.parsers[field.DataType]
 		if !ok {
-			return models.ClientObject{}, fmt.Errorf("%w: %s",
+			return models.ClientObject{}, crdberrors.Errorf("%w: %s",
 				errIsInvalidDataType, field.DataType.String())
 		}
 		if val, err := parseField(name, value); err != nil {
@@ -107,11 +108,11 @@ func (p *Parser) ParsePayload(ctx context.Context, table models.Table, json []by
 			case models.IpAddress:
 				switch ipBytes, ok := val.(net.IP); ok {
 				case false:
-					addError(allErrors, objectId, name, fmt.Errorf("expected IP address"))
+					addError(allErrors, objectId, name, crdberrors.Errorf("expected IP address"))
 				case true:
 					switch ip, ok := netip.AddrFromSlice(ipBytes); ok {
 					case false:
-						addError(allErrors, objectId, name, fmt.Errorf("expected IP address"))
+						addError(allErrors, objectId, name, crdberrors.Errorf("expected IP address"))
 					case true:
 						out[name] = ip.Unmap()
 
@@ -242,26 +243,26 @@ func NewParser(opts ...ParserOpt) *Parser {
 			}
 
 			if fieldName == "updated_at" {
-				return nil, fmt.Errorf("%w: expected format \"YYYY-MM-DD hh:mm:ss[+optional decimals]\" or \"YYYY-MM-DDThh:mm:ss[+optional decimals]Z\", got \"%s\"", errIsInvalidTimestamp, result.String())
+				return nil, crdberrors.Errorf("%w: expected format \"YYYY-MM-DD hh:mm:ss[+optional decimals]\" or \"YYYY-MM-DDThh:mm:ss[+optional decimals]Z\", got \"%s\"", errIsInvalidTimestamp, result.String())
 			}
 
 			if t, err := time.Parse("2006-01-02", result.String()); err == nil {
 				return t, nil
 			}
 
-			return nil, fmt.Errorf("%w: expected format \"YYYY-MM-DD hh:mm:ss[+optional decimals]\", \"YYYY-MM-DDThh:mm:ss[+optional decimals]Z\" or \"YYYY-MM-DD\", got \"%s\"", errIsInvalidTimestamp, result.String())
+			return nil, crdberrors.Errorf("%w: expected format \"YYYY-MM-DD hh:mm:ss[+optional decimals]\", \"YYYY-MM-DDThh:mm:ss[+optional decimals]Z\" or \"YYYY-MM-DD\", got \"%s\"", errIsInvalidTimestamp, result.String())
 		},
 		models.Int: func(fieldName string, result gjson.Result) (any, error) {
 			i, err := strconv.ParseInt(result.Raw, 10, 64)
 			if err != nil {
-				return nil, fmt.Errorf("%w: expected an integer, got %s", errIsInvalidInteger, result.Raw)
+				return nil, crdberrors.Errorf("%w: expected an integer, got %s", errIsInvalidInteger, result.Raw)
 			}
 			return i, nil
 		},
 		models.Float: func(fieldName string, result gjson.Result) (any, error) {
 			f, err := strconv.ParseFloat(result.Raw, 64)
 			if err != nil {
-				return nil, fmt.Errorf("%w: expected a float, got %s", errIsInvalidFloat, result.Raw)
+				return nil, crdberrors.Errorf("%w: expected a float, got %s", errIsInvalidFloat, result.Raw)
 			}
 			return f, nil
 		},
@@ -273,7 +274,7 @@ func NewParser(opts ...ParserOpt) *Parser {
 		},
 		models.Bool: func(fieldName string, result gjson.Result) (any, error) {
 			if !result.IsBool() {
-				return nil, fmt.Errorf("%w: expected a boolean, got %s", errIsInvalidBoolean, result.Raw)
+				return nil, crdberrors.Errorf("%w: expected a boolean, got %s", errIsInvalidBoolean, result.Raw)
 			}
 			return result.Bool(), nil
 		},
@@ -283,7 +284,7 @@ func NewParser(opts ...ParserOpt) *Parser {
 			}
 			ip := net.ParseIP(result.String())
 			if ip == nil {
-				return nil, fmt.Errorf("%w: cannot parse IP address", errIsInvalidIpAddress)
+				return nil, crdberrors.Errorf("%w: cannot parse IP address", errIsInvalidIpAddress)
 			}
 			return ip, nil
 		},

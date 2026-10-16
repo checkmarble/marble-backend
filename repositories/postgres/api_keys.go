@@ -3,12 +3,12 @@ package postgres
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	crdberrors "github.com/cockroachdb/errors"
 )
 
 func (db *Database) GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error) {
@@ -31,7 +31,7 @@ func (db *Database) GetApiKeyByHash(ctx context.Context, hash []byte) (models.Ap
 		return models.ApiKey{}, models.NotFoundError
 	}
 	if err != nil {
-		return models.ApiKey{}, fmt.Errorf("pool.QueryRow error: %w", err)
+		return models.ApiKey{}, crdberrors.Errorf("pool.QueryRow error: %w", err)
 	}
 	return dbmodels.AdaptApikey(apiKey)
 }

@@ -2,7 +2,6 @@ package decision_phantom
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -10,8 +9,8 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -87,7 +86,7 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(
 	triggerPassed, testRunScenarioExecution, err := usecase.scenarioEvaluator.EvalTestRunScenario(ctx, evaluationParameters)
 	if err != nil {
 		return false, models.PhantomDecision{},
-			fmt.Errorf("error evaluating scenario: %w", err)
+			errors.Errorf("error evaluating scenario: %w", err)
 	}
 	if !triggerPassed {
 		return false, models.PhantomDecision{}, nil

@@ -1,11 +1,11 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 )
 
 func ParseAuthorizationBearerHeader(header http.Header) (string, error) {
@@ -16,7 +16,7 @@ func ParseAuthorizationBearerHeader(header http.Header) (string, error) {
 
 	authHeader := strings.Split(header.Get("Authorization"), "Bearer ")
 	if len(authHeader) != 2 {
-		return "", fmt.Errorf("malformed token: %w", models.UnAuthorizedError)
+		return "", errors.Errorf("malformed token: %w", models.UnAuthorizedError)
 	}
 	return authHeader[1], nil
 }
