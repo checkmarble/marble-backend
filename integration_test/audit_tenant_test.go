@@ -16,6 +16,7 @@ func TestGrantAuditIncludesTenant(t *testing.T) {
 	ctx := context.WithValue(context.Background(), utils.ContextKeyCredentials, models.Credentials{
 		ActorIdentity:  models.Identity{UserId: "audit-test-user"},
 		OrganizationId: organizationID,
+		TenantId:       tenantID,
 	})
 	grantID := uuid.New()
 
