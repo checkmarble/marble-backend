@@ -1,9 +1,8 @@
 package metrics_collection
 
 import (
-	"fmt"
-
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 )
 
 const (
@@ -31,7 +30,7 @@ func buildScreeningMetricName(provider models.ScreeningProvider) (string, error)
 	case models.ScreeningProviderLexisNexis:
 		return ScreeningLexisNexisMetricName, nil
 	default:
-		return "", fmt.Errorf("unknown screening provider: %s", provider)
+		return "", errors.Errorf("unknown screening provider: %s", provider)
 	}
 }
 
@@ -42,7 +41,7 @@ func buildCSScreeningMetricName(provider models.ScreeningProvider) (string, erro
 	case models.ScreeningProviderLexisNexis:
 		return CSScreeningLexisNexisMetricName, nil
 	default:
-		return "", fmt.Errorf("unknown screening provider: %s", provider)
+		return "", errors.Errorf("unknown screening provider: %s", provider)
 	}
 }
 
@@ -53,6 +52,6 @@ func buildFreeformSearchMetricName(provider models.ScreeningProvider) (string, e
 	case models.ScreeningProviderLexisNexis:
 		return FreeformSearchLexisNexisMetricName, nil
 	default:
-		return "", fmt.Errorf("unknown screening provider: %s", provider)
+		return "", errors.Errorf("unknown screening provider: %s", provider)
 	}
 }

@@ -2,11 +2,11 @@ package dbmodels
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -29,7 +29,7 @@ func AdaptWebhookEvent(db DBWebhookEvent) (models.WebhookEvent, error) {
 	var eventData models.WebhookEventPayload
 	err := json.Unmarshal(db.EventData, &eventData)
 	if err != nil {
-		return models.WebhookEvent{}, fmt.Errorf("can't decode %s webhook's event data: %w", db.Id, err)
+		return models.WebhookEvent{}, errors.Errorf("can't decode %s webhook's event data: %w", db.Id, err)
 	}
 
 	return models.WebhookEvent{

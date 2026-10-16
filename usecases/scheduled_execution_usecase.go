@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -10,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -129,7 +129,7 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.C
 	}
 
 	if *scenario.LiveVersionID != scenarioIteration.Id {
-		return fmt.Errorf("scenario iteration is not live %w", models.BadParameterError)
+		return errors.Errorf("scenario iteration is not live %w", models.BadParameterError)
 	}
 
 	previousExecutions, err := usecase.repository.ListScheduledExecutions(
@@ -141,7 +141,7 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.C
 	for _, ex := range previousExecutions {
 		if ex.Status == models.ScheduledExecutionPending ||
 			ex.Status == models.ScheduledExecutionProcessing {
-			return fmt.Errorf("a pending execution already exists for this scenario %w", models.BadParameterError)
+			return errors.Errorf("a pending execution already exists for this scenario %w", models.BadParameterError)
 		}
 	}
 

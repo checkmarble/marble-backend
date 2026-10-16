@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 	"slices"
 	"time"
 
@@ -186,18 +185,18 @@ func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(
 
 	sql, args, err := q.ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("error while building SQL query: %w", err)
+		return nil, errors.Errorf("error while building SQL query: %w", err)
 	}
 	rows, err := tx.Query(ctx, sql, args...)
 	if err != nil {
-		return nil, fmt.Errorf("error while querying DB: %w", err)
+		return nil, errors.Errorf("error while querying DB: %w", err)
 	}
 	defer rows.Close()
 	output := make([]ingestedObject, 0, len(objectIds))
 	for rows.Next() {
 		values, err := rows.Values()
 		if err != nil {
-			return nil, fmt.Errorf("error while fetching rows: %w", err)
+			return nil, errors.Errorf("error while fetching rows: %w", err)
 		}
 
 		objectAsMap := make(map[string]any)
@@ -206,7 +205,7 @@ func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(
 		}
 		id, ok := objectAsMap["id"].([16]byte)
 		if !ok {
-			return nil, fmt.Errorf("error while converting ID to UUID")
+			return nil, errors.Errorf("error while converting ID to UUID")
 		}
 		output = append(output, ingestedObject{
 			id:        uuid.UUID(id).String(),
@@ -217,7 +216,7 @@ func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error while iterating over rows: %w", err)
+		return nil, errors.Errorf("error while iterating over rows: %w", err)
 	}
 
 	return output, nil

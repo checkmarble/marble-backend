@@ -1,7 +1,7 @@
 package pure_utils
 
 import (
-	"fmt"
+	"github.com/cockroachdb/errors"
 	"time"
 )
 
@@ -23,7 +23,7 @@ type TimeRange struct {
 func SplitTimeRangeByFrequency(from, to time.Time, frequency Frequency) ([]TimeRange, error) {
 	// If the from time is after the to time, return an error
 	if from.After(to) {
-		return nil, fmt.Errorf("from time is after to time")
+		return nil, errors.Errorf("from time is after to time")
 	}
 
 	// If the from time is equal to the to time, return a single period
@@ -56,7 +56,7 @@ func SplitTimeRangeByFrequency(from, to time.Time, frequency Frequency) ([]TimeR
 		current = periodEnd
 		iteration++
 		if iteration > maxIterations {
-			return nil, fmt.Errorf("max iterations reached")
+			return nil, errors.Errorf("max iterations reached")
 		}
 	}
 
@@ -73,6 +73,6 @@ func getNextPeriodBoundary(current time.Time, frequency Frequency) (time.Time, e
 	case FrequencyMonthly:
 		return time.Date(current.Year(), current.Month()+1, 1, 0, 0, 0, 0, current.Location()), nil
 	default:
-		return time.Time{}, fmt.Errorf("unsupported frequency: %s", frequency)
+		return time.Time{}, errors.Errorf("unsupported frequency: %s", frequency)
 	}
 }

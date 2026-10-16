@@ -90,7 +90,7 @@ func adaptArgumentToIp(argument any) (netip.Addr, error) {
 	case net.IP:
 		ip, ok := netip.AddrFromSlice(in)
 		if !ok {
-			return netip.Addr{}, fmt.Errorf("can't promote argument to IP address")
+			return netip.Addr{}, errors.Errorf("can't promote argument to IP address")
 		}
 
 		return ip.Unmap(), nil
@@ -99,7 +99,7 @@ func adaptArgumentToIp(argument any) (netip.Addr, error) {
 		return in, nil
 	}
 
-	return netip.Addr{}, fmt.Errorf("can't promote argument to IP address")
+	return netip.Addr{}, errors.Errorf("can't promote argument to IP address")
 }
 
 func adaptArgumentToDuration(argument any) (time.Duration, error) {
@@ -242,7 +242,7 @@ func adaptArgumentToListOfRanges(argument any) ([][2]int, error) {
 	if !ok {
 		rows, ok := argument.([]any)
 		if !ok {
-			return nil, fmt.Errorf("expected outer slice, got %T", argument)
+			return nil, errors.Errorf("expected outer slice, got %T", argument)
 		}
 
 		result = make([][2]int, len(rows))
@@ -251,7 +251,7 @@ func adaptArgumentToListOfRanges(argument any) ([][2]int, error) {
 			switch r := row.(type) {
 			case []any:
 				if len(r) != 2 {
-					return nil, fmt.Errorf("invalid range size at [%d]: %v", i, row)
+					return nil, errors.Errorf("invalid range size at [%d]: %v", i, row)
 				}
 
 				for j, elem := range r {
@@ -261,18 +261,18 @@ func adaptArgumentToListOfRanges(argument any) ([][2]int, error) {
 					case float64:
 						result[i][j] = int(v)
 					default:
-						return nil, fmt.Errorf("unexpected element type at [%d][%d]: %T", i, j, elem)
+						return nil, errors.Errorf("unexpected element type at [%d][%d]: %T", i, j, elem)
 					}
 				}
 			default:
-				return nil, fmt.Errorf("unexpected row type at [%d]: %T", i, row)
+				return nil, errors.Errorf("unexpected row type at [%d]: %T", i, row)
 			}
 		}
 	}
 
 	for i, r := range result {
 		if r[0] > r[1] {
-			return nil, fmt.Errorf("invalid reverse range at [%d]: %v", i, r)
+			return nil, errors.Errorf("invalid reverse range at [%d]: %v", i, r)
 		}
 	}
 

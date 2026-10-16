@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"embed"
-	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
@@ -121,13 +120,13 @@ func (m *Migrater) openDb(ctx context.Context, connectionDsn string) error {
 func (m *Migrater) openDbPgx(ctx context.Context, cfg *pgxpool.Config) (*pgxpool.Pool, error) {
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create connection pool: %w", err)
+		return nil, errors.Errorf("unable to create connection pool: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if err = pool.Ping(ctx); err != nil {
-		return nil, fmt.Errorf("unable to ping database: %w", err)
+		return nil, errors.Errorf("unable to ping database: %w", err)
 	}
 
 	return pool, nil

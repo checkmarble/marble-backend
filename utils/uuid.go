@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"math/rand"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -12,7 +11,7 @@ import (
 func ValidateUuid(uuidParam string) error {
 	_, err := uuid.Parse(uuidParam)
 	if err != nil {
-		err = fmt.Errorf("'%s' is not a valid UUID: %w", uuidParam, models.BadParameterError)
+		err = errors.Errorf("'%s' is not a valid UUID: %w", uuidParam, models.BadParameterError)
 	}
 	return err
 }

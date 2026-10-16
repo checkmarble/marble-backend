@@ -2,7 +2,6 @@ package scoring
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -112,7 +112,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_BackgroundRefresh_Enqueue
 		CreatedAt: time.Now().Add(2 * -time.Hour),
 	}
 	opts := models.RefreshScoreOptions{RefreshInBackground: true, RefreshOlderThan: time.Hour}
-	enqueueErr := fmt.Errorf("queue full")
+	enqueueErr := errors.Errorf("queue full")
 
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 	s.taskQueue.On("EnqueueTriggerScoreComputation", s.ctx, s.transaction, s.record).Return(enqueueErr)
@@ -125,7 +125,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_BackgroundRefresh_Enqueue
 
 func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_NoScore_BackgroundFallsThrough() {
 	opts := models.RefreshScoreOptions{RefreshInBackground: true, RefreshOlderThan: time.Hour}
-	computeErr := fmt.Errorf("no ruleset")
+	computeErr := errors.Errorf("no ruleset")
 
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
@@ -166,7 +166,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeError_HasCur
 		CreatedAt: time.Now().Add(-2 * time.Hour),
 	}
 	opts := models.RefreshScoreOptions{RefreshOlderThan: time.Hour}
-	computeErr := fmt.Errorf("compute failed")
+	computeErr := errors.Errorf("compute failed")
 
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
@@ -183,7 +183,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeError_HasCur
 
 func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_ComputeError_NoCurrentScore() {
 	opts := models.RefreshScoreOptions{RefreshOlderThan: time.Hour}
-	computeErr := fmt.Errorf("compute failed")
+	computeErr := errors.Errorf("compute failed")
 
 	s.transactionFactory.On("Transaction", s.ctx, mock.Anything).Return(nil)
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
@@ -260,7 +260,7 @@ func (s *TryRefreshScoreTestSuite) TestTryRefreshScore_Stale_InsertError_HasCurr
 		CreatedAt: time.Now().Add(-2 * time.Hour),
 	}
 	opts := models.RefreshScoreOptions{RefreshOlderThan: time.Hour}
-	insertErr := fmt.Errorf("insert failed")
+	insertErr := errors.Errorf("insert failed")
 
 	ruleset := models.ScoringRuleset{
 		Id:         pure_utils.NewId(),

@@ -1,19 +1,18 @@
 package httpmodels
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 )
 
 type OpenSanctionTime time.Time
 
 func (dt *OpenSanctionTime) UnmarshalJSON(b []byte) error {
 	if b[0] != '"' || b[len(b)-1] != '"' {
-		return fmt.Errorf("could not parse date as string")
+		return errors.Errorf("could not parse date as string")
 	}
 
 	s := string(b[1 : len(b)-1])

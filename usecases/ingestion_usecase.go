@@ -441,7 +441,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 
 	table, ok := dataModel.Tables[objectType]
 	if !ok {
-		return models.UploadLog{}, fmt.Errorf("table %s not found on data model", objectType)
+		return models.UploadLog{}, errors.Errorf("table %s not found on data model", objectType)
 	}
 
 	headers, err := fileReader.Read()
@@ -459,7 +459,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 					lastColumn, csvErr.Column, csvErr.Err.Error()))
 		}
 
-		return models.UploadLog{}, fmt.Errorf("error reading first row of CSV (%w)",
+		return models.UploadLog{}, errors.Errorf("error reading first row of CSV (%w)",
 			errors.Wrap(models.BadParameterError, err.Error()))
 	}
 
@@ -476,16 +476,16 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 		if !field.Nullable {
 			if !slices.Contains(headers, name) {
 				if len(headers) == 1 && strings.Contains(headers[0], ";") {
-					return models.UploadLog{}, fmt.Errorf("missing required field %s in CSV (%w), you might be using semicolons (;) instead of commas (,)", name, models.BadParameterError)
+					return models.UploadLog{}, errors.Errorf("missing required field %s in CSV (%w), you might be using semicolons (;) instead of commas (,)", name, models.BadParameterError)
 				}
 
 				if slices.ContainsFunc(headers, func(header string) bool {
 					return header != strings.TrimSpace(header)
 				}) {
-					return models.UploadLog{}, fmt.Errorf("missing required field %s in CSV (%w), there seems to be whitespace around its header name", name, models.BadParameterError)
+					return models.UploadLog{}, errors.Errorf("missing required field %s in CSV (%w), there seems to be whitespace around its header name", name, models.BadParameterError)
 				}
 
-				return models.UploadLog{}, fmt.Errorf("missing required field %s in CSV (%w)", name, models.BadParameterError)
+				return models.UploadLog{}, errors.Errorf("missing required field %s in CSV (%w)", name, models.BadParameterError)
 			}
 		}
 	}
@@ -505,15 +505,15 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 		if err != nil {
 			var parseError *csv.ParseError
 			if errors.As(err, &parseError) {
-				return models.UploadLog{}, fmt.Errorf("%w (%w)", err, models.BadParameterError)
+				return models.UploadLog{}, errors.Errorf("%w (%w)", err, models.BadParameterError)
 			} else {
-				return models.UploadLog{}, fmt.Errorf("error found at line %d in CSV (%w)", lineNumber, models.BadParameterError)
+				return models.UploadLog{}, errors.Errorf("error found at line %d in CSV (%w)", lineNumber, models.BadParameterError)
 			}
 		}
 
 		_, err = parseStringValuesToMap(headers, row, table, usecase.payloadEnricher)
 		if err != nil {
-			return models.UploadLog{}, fmt.Errorf("error found at line %d in CSV: %w (%w)",
+			return models.UploadLog{}, errors.Errorf("error found at line %d in CSV: %w (%w)",
 				lineNumber, err, models.BadParameterError)
 		}
 
@@ -666,7 +666,7 @@ func (usecase *IngestionUseCase) IngestDataFromCsvByUploadLogId(
 			return models.CsvIngestionCompleted, err
 		case !done:
 			logger.InfoContext(ctx, fmt.Sprintf("UploadLog %s is no longer in pending status", uploadLog.Id))
-			return models.CsvIngestionCompleted, fmt.Errorf("UploadLog %s is no longer in pending status", uploadLog.Id)
+			return models.CsvIngestionCompleted, errors.Errorf("UploadLog %s is no longer in pending status", uploadLog.Id)
 		}
 	case models.UploadProcessing:
 		// Resuming: either a previous attempt snoozed itself on approaching its timeout, or it was
@@ -877,7 +877,7 @@ func (usecase *IngestionUseCase) readCsvHeader(ctx context.Context, fileName str
 		return nil, 0, errors.Wrap(models.BadParameterError, "error reading first row of CSV: missing header")
 	}
 	if err != nil {
-		return nil, 0, fmt.Errorf("error reading first row of CSV: %w", err)
+		return nil, 0, errors.Errorf("error reading first row of CSV: %w", err)
 	}
 
 	return header, bomLen + csvReader.InputOffset(), nil
@@ -933,7 +933,7 @@ func (usecase *IngestionUseCase) readFileIngestObjects(
 	logger.InfoContext(ctx, fmt.Sprintf("Ingesting data from CSV %s", fileName))
 
 	// return ingestionResult{
-	// 	err: fmt.Errorf("unexpected state in readFileIngestObjects"),
+	// 	err: errors.Errorf("unexpected state in readFileIngestObjects"),
 	// }
 
 	var (
@@ -945,7 +945,7 @@ func (usecase *IngestionUseCase) readFileIngestObjects(
 		fileNameElements := strings.Split(fileName, "/")
 		if len(fileNameElements) != 4 {
 			return ingestionResult{
-				err: fmt.Errorf("invalid filename %s: expecting format organizationId/tableName/uuid", fileName),
+				err: errors.Errorf("invalid filename %s: expecting format organizationId/tableName/uuid", fileName),
 			}
 		}
 		organizationIdStr = fileNameElements[1]
@@ -954,7 +954,7 @@ func (usecase *IngestionUseCase) readFileIngestObjects(
 		fileNameElements := strings.Split(fileName, "/")
 		if len(fileNameElements) != 3 {
 			return ingestionResult{
-				inputErr: fmt.Errorf("invalid filename %s: expecting format organizationId/tableName/timestamp.csv", fileName),
+				inputErr: errors.Errorf("invalid filename %s: expecting format organizationId/tableName/timestamp.csv", fileName),
 			}
 		}
 		organizationIdStr = fileNameElements[0]
@@ -984,7 +984,7 @@ func (usecase *IngestionUseCase) readFileIngestObjects(
 	table, ok := dataModel.Tables[tableName]
 	if !ok {
 		return ingestionResult{
-			err: fmt.Errorf("table %s not found in data model for organization %s", tableName, organizationId),
+			err: errors.Errorf("table %s not found in data model for organization %s", tableName, organizationId),
 		}
 	}
 
@@ -1097,7 +1097,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(
 				iterationCancel()
 				return ingestionResult{
 					numRowsIngested: previouslyIngested + total,
-					err: fmt.Errorf("error reading %s of CSV: %w",
+					err: errors.Errorf("error reading %s of CSV: %w",
 						describeRow(objectIdx, startOffset+r.InputOffset()), err),
 				}
 			}
@@ -1295,7 +1295,7 @@ func parseStringValuesToMap(
 		fieldName := headers[i]
 		field, ok := table.Fields[fieldName]
 		if !ok {
-			return nil, fmt.Errorf("field %s not found in table %s", fieldName, table.Name)
+			return nil, errors.Errorf("field %s not found in table %s", fieldName, table.Name)
 		}
 
 		// Handle the case of null values (except for strings, which can be empty strings)
@@ -1304,7 +1304,7 @@ func parseStringValuesToMap(
 			if field.DataType == models.String && fieldName != "object_id" {
 				result[fieldName] = ""
 			} else if !field.Nullable {
-				return nil, fmt.Errorf("field %s is required but is empty", fieldName)
+				return nil, errors.Errorf("field %s is required but is empty", fieldName)
 			} else {
 				result[fieldName] = nil
 			}
@@ -1325,30 +1325,30 @@ func parseStringValuesToMap(
 			} else if val, err = time.Parse("2006-01-02", value); fieldName != "updated_at" && err == nil {
 				result[fieldName] = val.UTC()
 			} else {
-				return nil, fmt.Errorf("error parsing timestamp %s for field %s: %w", value, fieldName, err)
+				return nil, errors.Errorf("error parsing timestamp %s for field %s: %w", value, fieldName, err)
 			}
 		case models.Bool:
 			val, err := strconv.ParseBool(value)
 			if err != nil {
-				return nil, fmt.Errorf("error parsing bool %s for field %s: %w", value, fieldName, err)
+				return nil, errors.Errorf("error parsing bool %s for field %s: %w", value, fieldName, err)
 			}
 			result[fieldName] = val
 		case models.Int:
 			val, err := strconv.Atoi(value)
 			if err != nil {
-				return nil, fmt.Errorf("error parsing int %s for field %s: %w", value, fieldName, err)
+				return nil, errors.Errorf("error parsing int %s for field %s: %w", value, fieldName, err)
 			}
 			result[fieldName] = val
 		case models.Float:
 			val, err := strconv.ParseFloat(value, 64)
 			if err != nil {
-				return nil, fmt.Errorf("error parsing float %s for field %s: %w", value, fieldName, err)
+				return nil, errors.Errorf("error parsing float %s for field %s: %w", value, fieldName, err)
 			}
 			result[fieldName] = val
 		case models.IpAddress:
 			val, err := netip.ParseAddr(value)
 			if err != nil {
-				return nil, fmt.Errorf("invalid IP address %s", value)
+				return nil, errors.Errorf("invalid IP address %s", value)
 			}
 			result[fieldName] = val.Unmap()
 
@@ -1360,12 +1360,12 @@ func parseStringValuesToMap(
 		case models.Coords:
 			latS, lngS, ok := strings.Cut(value, ",")
 			if !ok {
-				return nil, fmt.Errorf("invalid coordinates (lat, lng)")
+				return nil, errors.Errorf("invalid coordinates (lat, lng)")
 			}
 			lat, errLat := strconv.ParseFloat(latS, 64)
 			lng, errLng := strconv.ParseFloat(lngS, 64)
 			if errLat != nil || errLng != nil {
-				return nil, fmt.Errorf("invalid coordinates (lat, lng)")
+				return nil, errors.Errorf("invalid coordinates (lat, lng)")
 			}
 
 			loc := models.Location{Point: geom.NewPointFlat(geom.XY, []float64{lng, lat}).SetSRID(4326)}
@@ -1380,7 +1380,7 @@ func parseStringValuesToMap(
 				}
 			}
 		default:
-			return nil, fmt.Errorf("invalid data type %s for field %s", field.DataType, fieldName)
+			return nil, errors.Errorf("invalid data type %s for field %s", field.DataType, fieldName)
 		}
 
 	}

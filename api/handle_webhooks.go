@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -11,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,7 +19,7 @@ func handleListWebhooks(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 
@@ -41,7 +41,7 @@ func handleRegisterWebhook(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 
@@ -77,7 +77,7 @@ func handleGetWebhook(uc usecases.Usecases) func(c *gin.Context) {
 
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 
@@ -101,7 +101,7 @@ func handleDeleteWebhook(uc usecases.Usecases) func(c *gin.Context) {
 
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 
@@ -123,7 +123,7 @@ func handleUpdateWebhook(uc usecases.Usecases) func(c *gin.Context) {
 
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 

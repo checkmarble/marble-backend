@@ -1,11 +1,11 @@
 package dbmodels
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -43,7 +43,7 @@ func AdaptAiSetting(settings []DBAiSetting) (models.AiSetting, error) {
 		case AI_SETTING_TYPE_KYC_ENRICHMENT:
 			kycSetting, err := adaptKYCEnrichmentFromJSONB(setting.Value)
 			if err != nil {
-				return models.DefaultAiSetting(), fmt.Errorf(
+				return models.DefaultAiSetting(), errors.Errorf(
 					"failed to adapt KYC enrichment setting: %w", err)
 			}
 			aiSetting.KYCEnrichmentSetting = kycSetting
@@ -51,7 +51,7 @@ func AdaptAiSetting(settings []DBAiSetting) (models.AiSetting, error) {
 		case AI_SETTING_TYPE_CASE_REVIEW:
 			caseReviewSetting, err := adaptCaseReviewFromJSONB(setting.Value)
 			if err != nil {
-				return models.DefaultAiSetting(), fmt.Errorf(
+				return models.DefaultAiSetting(), errors.Errorf(
 					"failed to adapt case review setting: %w", err)
 			}
 			aiSetting.CaseReviewSetting = caseReviewSetting
@@ -74,7 +74,7 @@ func adaptKYCEnrichmentFromJSONB(value map[string]any) (models.KYCEnrichmentSett
 			if str, ok := v.(string); ok {
 				setting.DomainFilter[i] = str
 			} else {
-				return models.KYCEnrichmentSetting{}, fmt.Errorf(
+				return models.KYCEnrichmentSetting{}, errors.Errorf(
 					"domain filter contains non-string value",
 				)
 			}

@@ -8,6 +8,7 @@ linters:
     - tagliatelle
     - unconvert
     - staticcheck
+    - forbidigo
   settings:
     tagliatelle:
       case:
@@ -35,6 +36,10 @@ linters:
         - -QF1003
         - -QF1008
         - -QF1012
+    forbidigo:
+      forbid:
+        - pattern: '^fmt\.Errorf$'
+          msg: "Use cockroachdb/errors.Errorf (or errors.Wrap/Wrapf) instead."
   exclusions:
     presets:
       - comments

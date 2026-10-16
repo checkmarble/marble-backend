@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/cockroachdb/errors"
 )
 
 func (repo *MarbleDbRepository) DeleteScenarioIteration(ctx context.Context, exec Executor, scenarioIterationId string) error {
@@ -39,7 +40,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(
 		triggerCondition, err = dbmodels.SerializeFormulaAstExpression(
 			scenarioIteration.Body.TriggerConditionAstExpression)
 		if err != nil {
-			return models.ScenarioIteration{}, fmt.Errorf(
+			return models.ScenarioIteration{}, errors.Errorf(
 				"unable to marshal trigger condition ast expression: %w", err)
 		}
 	}
@@ -85,7 +86,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(
 		}
 		createdRules, err := repo.CreateRules(ctx, exec, scenarioIteration.Body.Rules)
 		if err != nil {
-			return models.ScenarioIteration{}, fmt.Errorf(
+			return models.ScenarioIteration{}, errors.Errorf(
 				"unable to create scenario iteration rules: %w", err)
 		}
 		createdIteration.Rules = createdRules
@@ -130,7 +131,7 @@ func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, exe
 			triggerCondition, err := dbmodels.SerializeFormulaAstExpression(
 				scenarioIteration.Body.TriggerConditionAstExpression)
 			if err != nil {
-				return models.ScenarioIteration{}, fmt.Errorf(
+				return models.ScenarioIteration{}, errors.Errorf(
 					"unable to marshal trigger condition ast expression: %w", err)
 			}
 			sql = sql.Set("trigger_condition_ast_expression", triggerCondition)

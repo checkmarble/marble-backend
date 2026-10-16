@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -11,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -94,7 +94,7 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 		}
 		previousRole = models.Role(role)
 		if previousOrganizationID == nil && *updateUser.Role != models.MARBLE_ADMIN {
-			return fmt.Errorf("cannot assign an organization role to a platform user without an organization")
+			return errors.Errorf("cannot assign an organization role to a platform user without an organization")
 		}
 	}
 

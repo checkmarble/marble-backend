@@ -2,13 +2,12 @@ package dbmodels
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 )
 
 const TABLE_SCREENING_CONFIGS = "screening_configs"
@@ -59,7 +58,7 @@ func AdaptScreeningConfig(db DBScreeningConfigs) (models.ScreeningConfig, error)
 	if db.TriggerRule != nil {
 		triggerRuleAst, err := AdaptSerializedAstExpression(db.TriggerRule)
 		if err != nil {
-			return models.ScreeningConfig{}, fmt.Errorf(
+			return models.ScreeningConfig{}, errors.Errorf(
 				"unable to unmarshal formula ast expression: %w", err)
 		}
 

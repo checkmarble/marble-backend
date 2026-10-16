@@ -8,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/sosodev/duration"
 )
@@ -678,7 +679,7 @@ func GetLinkedDatabaseIdentifiers(scenario Scenario, dataModel DataModel) ([]ast
 
 	triggerObjectTable, found := dataModel.Tables[scenario.TriggerObjectType]
 	if !found {
-		return nil, fmt.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)
+		return nil, errors.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)
 	}
 
 	recursiveDatabaseAccessor = func(
@@ -691,7 +692,7 @@ func GetLinkedDatabaseIdentifiers(scenario Scenario, dataModel DataModel) ([]ast
 		for linkName, link := range links {
 			table, found := dataModel.Tables[link.ParentTableName]
 			if !found {
-				return fmt.Errorf("table %s not found in data model", scenario.TriggerObjectType)
+				return errors.Errorf("table %s not found in data model", scenario.TriggerObjectType)
 			}
 			if slices.Contains(visited, table.Name) {
 				continue
@@ -741,7 +742,7 @@ func GetPayloadIdentifiers(scenario Scenario, dataModel DataModel) ([]ast.Node, 
 	triggerObjectTable, found := dataModel.Tables[scenario.TriggerObjectType]
 	if !found {
 		// unexpected error: must be a valid table
-		return nil, fmt.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)
+		return nil, errors.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)
 	}
 	for fieldName := range triggerObjectTable.Fields {
 		dataAccessors = append(

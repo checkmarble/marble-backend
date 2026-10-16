@@ -182,7 +182,7 @@ func (usecase *CaseUseCase) ListCases(
 ) (models.CaseListPage, error) {
 	if !filters.StartDate.IsZero() && !filters.EndDate.IsZero() &&
 		filters.StartDate.After(filters.EndDate) {
-		return models.CaseListPage{}, fmt.Errorf("start date must be before end date: %w", models.BadParameterError)
+		return models.CaseListPage{}, errors.Errorf("start date must be before end date: %w", models.BadParameterError)
 	}
 
 	if err := models.ValidatePagination(pagination); err != nil {
@@ -1607,7 +1607,7 @@ func (usecase *CaseUseCase) validateContinuousScreenings(
 				"some of the provided continuous screenings do not exist")
 		}
 		if continuousScreening.CaseId != nil {
-			return fmt.Errorf("continuous screening %s already belongs to a case %s %w",
+			return errors.Errorf("continuous screening %s already belongs to a case %s %w",
 				continuousScreening.Id.String(), continuousScreening.CaseId.String(), models.BadParameterError)
 		}
 	}
@@ -2080,7 +2080,7 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 	input models.ReviewCaseDecisionsBody,
 ) (models.Case, error) {
 	if !slices.Contains(models.ValidReviewStatuses, input.ReviewStatus) {
-		return models.Case{}, fmt.Errorf("invalid review status %w", models.BadParameterError)
+		return models.Case{}, errors.Errorf("invalid review status %w", models.BadParameterError)
 	}
 
 	exec := usecase.executorFactory.NewExecutor()

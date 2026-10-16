@@ -30,19 +30,19 @@ func (v *Validator) fromAPIKey(ctx context.Context, key string) (models.Credenti
 	hash := sha256.Sum256([]byte(key))
 	apiKey, err := v.getter.GetApiKeyByHash(ctx, hash[:])
 	if err != nil {
-		return models.Credentials{}, fmt.Errorf("getter.GetApiKeyByHash error: %w", err)
+		return models.Credentials{}, errors.Errorf("getter.GetApiKeyByHash error: %w", err)
 	}
 
 	organization, err := v.getter.GetOrganizationByID(ctx, apiKey.OrganizationId)
 	if err != nil {
-		return models.Credentials{}, fmt.Errorf("getter.GetOrganizationByID error: %w", err)
+		return models.Credentials{}, errors.Errorf("getter.GetOrganizationByID error: %w", err)
 	}
 
 	apiKey.DisplayString = fmt.Sprintf("Api key %s*** of %s", apiKey.Prefix, organization.Name)
 	credentials := apiKey.IntoCredentials()
 	grants, err := v.getter.ActiveGrantsForPrincipal(ctx, "api_key", apiKey.Id)
 	if err != nil {
-		return models.Credentials{}, fmt.Errorf("ActiveGrantsForPrincipal error: %w", err)
+		return models.Credentials{}, errors.Errorf("ActiveGrantsForPrincipal error: %w", err)
 	}
 	credentials.Roles = []models.Role{}
 	for _, grant := range grants {
@@ -53,7 +53,7 @@ func (v *Validator) fromAPIKey(ctx context.Context, key string) (models.Credenti
 	}
 	slices.Sort(credentials.Roles)
 	if len(credentials.Roles) == 0 {
-		return models.Credentials{}, fmt.Errorf("%w: API key has no active grant", models.UnAuthorizedError)
+		return models.Credentials{}, errors.Errorf("%w: API key has no active grant", models.UnAuthorizedError)
 	}
 	credentials.TenantId = organization.TenantId
 	return credentials, nil

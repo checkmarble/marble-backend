@@ -16,8 +16,8 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 type dataModelUsecaseIndexEditor interface {
@@ -1378,11 +1378,11 @@ func validateFTMProperty(table models.TableMetadata, property pure_utils.Null[mo
 	if property.Set {
 		if property.Valid {
 			if table.FTMEntity == nil {
-				return fmt.Errorf("FTM entity not defined for table %s", table.Name)
+				return errors.Errorf("FTM entity not defined for table %s", table.Name)
 			}
 			ok := slices.Contains(models.FollowTheMoneyEntityProperties[*table.FTMEntity], property.Value())
 			if !ok {
-				return fmt.Errorf(
+				return errors.Errorf(
 					"invalid FTM property for entity %s: %s",
 					*table.FTMEntity,
 					property.Value(),

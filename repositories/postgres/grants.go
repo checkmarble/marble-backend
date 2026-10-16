@@ -2,9 +2,9 @@ package postgres
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -15,7 +15,7 @@ func (db *Database) ActiveGrantsForPrincipal(ctx context.Context, principalType,
 		WHERE g.principal_type = $1 AND g.principal_id = $2 AND g.principal_authority = 'marble'
 	`, principalType, principalID)
 	if err != nil {
-		return nil, fmt.Errorf("querying active grants: %w", err)
+		return nil, errors.Errorf("querying active grants: %w", err)
 	}
 	defer rows.Close()
 
@@ -25,7 +25,7 @@ func (db *Database) ActiveGrantsForPrincipal(ctx context.Context, principalType,
 		var role string
 		var tenantID, organizationID *uuid.UUID
 		if err := rows.Scan(&role, &tenantID, &organizationID); err != nil {
-			return nil, fmt.Errorf("scanning active grant: %w", err)
+			return nil, errors.Errorf("scanning active grant: %w", err)
 		}
 		grant.Role = models.RoleFromString(role)
 		if tenantID != nil {
@@ -37,7 +37,7 @@ func (db *Database) ActiveGrantsForPrincipal(ctx context.Context, principalType,
 		grants = append(grants, grant)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterating active grants: %w", err)
+		return nil, errors.Errorf("iterating active grants: %w", err)
 	}
 	return grants, nil
 }

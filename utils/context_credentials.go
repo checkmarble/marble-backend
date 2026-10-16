@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -17,12 +16,12 @@ func CredentialsFromCtx(ctx context.Context) (models.Credentials, bool) {
 
 func OrganizationIdFromRequest(request *http.Request) (organizationId uuid.UUID, err error) {
 	if request == nil {
-		return uuid.Nil, fmt.Errorf("no request passed to OrganizationIdFromRequest: %w", models.ForbiddenError)
+		return uuid.Nil, errors.Errorf("no request passed to OrganizationIdFromRequest: %w", models.ForbiddenError)
 	}
 
 	creds, found := CredentialsFromCtx(request.Context())
 	if !found {
-		return uuid.Nil, fmt.Errorf("no credentials in context: %w", models.ForbiddenError)
+		return uuid.Nil, errors.Errorf("no credentials in context: %w", models.ForbiddenError)
 	}
 
 	// allow organizationId to be passed in query param

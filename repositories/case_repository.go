@@ -151,7 +151,7 @@ func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSo
 		offsetFieldVal = offsetCase.CreatedAt
 	default:
 		// only pagination by created_at is allowed for now
-		return query, fmt.Errorf("invalid sorting field: %w", models.BadParameterError)
+		return query, errors.Errorf("invalid sorting field: %w", models.BadParameterError)
 	}
 
 	queryConditionBefore := fmt.Sprintf("(c.boost IS NULL, c.%s, c.id) < (?, ?, ?)", p.Sorting)

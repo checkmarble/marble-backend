@@ -2,11 +2,11 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -49,7 +49,7 @@ func (repo *MarbleDbRepository) LockAndValidateMerge(ctx context.Context, exec E
 		var id uuid.UUID
 		var isDeleted bool
 		if err := row.Scan(&id, &isDeleted); err != nil {
-			return fmt.Errorf("scanning tenant: %w", err)
+			return errors.Errorf("scanning tenant: %w", err)
 		}
 		found[id] = true
 		deleted[id] = isDeleted

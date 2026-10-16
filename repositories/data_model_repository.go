@@ -697,7 +697,7 @@ func (repo MarbleDbRepository) GetDataModelField(ctx context.Context, exec Execu
 		&field.Metadata,
 		&field.Archived,
 	); errors.Is(err, pgx.ErrNoRows) {
-		return models.FieldMetadata{}, fmt.Errorf("error in GetDataModelField: %w", models.NotFoundError)
+		return models.FieldMetadata{}, errors.Errorf("error in GetDataModelField: %w", models.NotFoundError)
 	} else if err != nil {
 		return models.FieldMetadata{}, err
 	}

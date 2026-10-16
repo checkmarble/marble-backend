@@ -2,12 +2,12 @@ package idp
 
 import (
 	"context"
-	"fmt"
 
 	"firebase.google.com/go/v4/auth"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/cockroachdb/errors"
 )
 
 type firebaseTokenVerifier interface {
@@ -25,7 +25,7 @@ func (c *FirebaseClient) verifyTokenOrCookie(ctx context.Context, firebaseToken 
 		return nil, err
 	}
 	if token.Firebase.SignInProvider == "password" && token.Claims["email_verified"] == false {
-		return nil, fmt.Errorf("email not verified")
+		return nil, errors.Errorf("email not verified")
 	}
 
 	return token, nil
@@ -34,16 +34,16 @@ func (c *FirebaseClient) verifyTokenOrCookie(ctx context.Context, firebaseToken 
 func (c *FirebaseClient) VerifyToken(ctx context.Context, firebaseToken, _accessToken string) (models.IdentityClaims, error) {
 	token, err := c.verifyTokenOrCookie(ctx, firebaseToken)
 	if err != nil {
-		return models.FirebaseIdentity{}, fmt.Errorf("firebaseVerifyToken error: %w", err)
+		return models.FirebaseIdentity{}, errors.Errorf("firebaseVerifyToken error: %w", err)
 	}
 
 	if token.Issuer != c.Issuer() {
-		return models.FirebaseIdentity{}, fmt.Errorf("invalid issuer %s != %s for firebase", token.Issuer, c.Issuer())
+		return models.FirebaseIdentity{}, errors.Errorf("invalid issuer %s != %s for firebase", token.Issuer, c.Issuer())
 	}
 
 	email, ok := pure_utils.AnySliceAtIndex[string](token.Firebase.Identities["email"], 0)
 	if !ok {
-		return models.FirebaseIdentity{}, fmt.Errorf(
+		return models.FirebaseIdentity{}, errors.Errorf(
 			"unexpected firebase token content: Field email is missing")
 	}
 

@@ -2,7 +2,6 @@ package scoring
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -271,7 +270,7 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCreateRulesetVersion_InsertsRulese
 }
 
 func (s *ScoringRulesetsUsecaseTestSuite) TestCommitRuleset_SecurityDenied() {
-	secErr := fmt.Errorf("forbidden")
+	secErr := errors.Errorf("forbidden")
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
 	s.enforceSecurity.On("UpdateRuleset", s.orgId).Return(secErr)
@@ -355,7 +354,7 @@ func (s *ScoringRulesetsUsecaseTestSuite) TestCommitRuleset_HappyPath() {
 }
 
 func (s *ScoringRulesetsUsecaseTestSuite) TestPrepareRuleset_SecurityDenied() {
-	secErr := fmt.Errorf("forbidden")
+	secErr := errors.Errorf("forbidden")
 	s.enforceSecurity.On("OrgId").Return(s.orgId)
 	s.executorFactory.On("NewExecutor").Return(s.transaction)
 	s.enforceSecurity.On("UpdateRuleset", s.orgId).Return(secErr)

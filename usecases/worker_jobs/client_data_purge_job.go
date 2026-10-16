@@ -2,7 +2,6 @@ package worker_jobs
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -162,7 +161,7 @@ func (w *ClientDataPurgeWorker) getTableRetentionSettings(ctx context.Context, e
 
 	table, ok := dataModel.Tables[tableName]
 	if !ok {
-		return models.TableLifecycle{}, fmt.Errorf("unknown table %s", tableName)
+		return models.TableLifecycle{}, errors.Errorf("unknown table %s", tableName)
 	}
 
 	return table.Lifecycle, nil

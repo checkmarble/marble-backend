@@ -2,10 +2,10 @@ package dbmodels
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/cockroachdb/errors"
 )
 
 func SerializeFormulaAstExpression(formulaAstExpression *ast.Node) (*[]byte, error) {
@@ -15,7 +15,7 @@ func SerializeFormulaAstExpression(formulaAstExpression *ast.Node) (*[]byte, err
 
 	nodeDto, err := dto.AdaptNodeDto(*formulaAstExpression)
 	if err != nil {
-		return nil, fmt.Errorf("unable to marshal rule formula ast expression: %w", err)
+		return nil, errors.Errorf("unable to marshal rule formula ast expression: %w", err)
 	}
 
 	serialized, err := json.Marshal(nodeDto)

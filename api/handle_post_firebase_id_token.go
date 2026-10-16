@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -31,7 +30,7 @@ func (t *TokenHandler) GenerateToken(c *gin.Context) {
 	if err != nil {
 		utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not verify token", "error", err.Error())
 
-		_ = c.Error(fmt.Errorf("generator.GenerateToken error: %w", err))
+		_ = c.Error(errors.Errorf("generator.GenerateToken error: %w", err))
 
 		if errors.Is(err, models.ErrUnknownUser) {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, dto.APIErrorResponse{
