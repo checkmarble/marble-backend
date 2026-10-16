@@ -953,10 +953,17 @@ func (r riverRepository) EnqueueManyTriggerScoreComputation(
 	tx Transaction,
 	records []models.ScoringRecordRef,
 ) error {
-	params := make([]river.InsertManyParams, len(records))
+	seen := make(map[models.ScoringRecordRef]struct{}, len(records))
+	params := make([]river.InsertManyParams, 0, len(records))
 
-	for idx, record := range records {
-		params[idx] = river.InsertManyParams{
+	for _, record := range records {
+		if _, ok := seen[record]; ok {
+			continue
+		}
+
+		seen[record] = struct{}{}
+
+		params = append(params, river.InsertManyParams{
 			Args: models.TriggeredScoreComputationArgs(record),
 			InsertOpts: &river.InsertOpts{
 				Queue:    record.OrgId.String(),
@@ -966,16 +973,20 @@ func (r riverRepository) EnqueueManyTriggerScoreComputation(
 					ByPeriod: time.Hour,
 				},
 			},
-		}
+		})
 	}
 
-	count, err := r.client.InsertManyFastTx(ctx, tx.RawTx(), params)
+	if len(params) == 0 {
+		return nil
+	}
+
+	results, err := r.client.InsertManyTx(ctx, tx.RawTx(), params)
 	if err != nil {
 		return err
 	}
 
 	logger := utils.LoggerFromContext(ctx)
-	logger.DebugContext(ctx, "Enqueued many triggered score computation", "count", count)
+	logger.DebugContext(ctx, "Enqueued many triggered score computation", "count", len(results))
 
 	return nil
 }

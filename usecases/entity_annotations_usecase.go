@@ -171,6 +171,8 @@ func (uc EntityAnnotationUsecase) AttachByBatch(ctx context.Context,
 	return executor_factory.TransactionReturnValue(ctx, uc.transactionFactory, func(
 		tx repositories.Transaction,
 	) ([]models.EntityAnnotation, error) {
+		scoringRefs := make([]models.ScoringRecordRef, 0, len(reqs))
+
 		annotations := make([]models.EntityAnnotation, len(reqs))
 		for i, req := range reqs {
 			if err := uc.enforceSecurityAnnotation.WriteAnnotation(orgId, req.AnnotationType); err != nil {
@@ -202,6 +204,20 @@ func (uc EntityAnnotationUsecase) AttachByBatch(ctx context.Context,
 				}
 			}
 			annotations[i] = annotation
+
+			if annotation.AnnotationType == models.EntityAnnotationRiskTag {
+				scoringRefs = append(scoringRefs, models.ScoringRecordRef{
+					OrgId:      annotation.OrgId,
+					RecordType: annotation.ObjectType,
+					RecordId:   annotation.ObjectId,
+				})
+			}
+		}
+
+		if len(scoringRefs) > 0 {
+			if err := uc.taskQueueRepository.EnqueueManyTriggerScoreComputation(ctx, tx, scoringRefs); err != nil {
+				return nil, err
+			}
 		}
 
 		return annotations, nil
@@ -316,11 +332,33 @@ func (uc EntityAnnotationUsecase) DeleteAnnotationByBatch(ctx context.Context, r
 	}
 
 	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		scoringRefs := make([]models.ScoringRecordRef, 0, len(reqs))
+
 		for _, r := range reqs {
+			existing, err := uc.repository.GetEntityAnnotationById(ctx, tx, r)
+			if err != nil {
+				return errors.Wrap(err, "could not find annotation to be deleted")
+			}
+
 			if err := uc.repository.DeleteEntityAnnotation(ctx, tx, r); err != nil {
 				return err
 			}
+
+			if len(existing) > 0 && existing[0].AnnotationType == models.EntityAnnotationRiskTag {
+				scoringRefs = append(scoringRefs, models.ScoringRecordRef{
+					OrgId:      r.OrgId,
+					RecordType: existing[0].ObjectType,
+					RecordId:   existing[0].ObjectId,
+				})
+			}
 		}
+
+		if len(scoringRefs) > 0 {
+			if err := uc.taskQueueRepository.EnqueueManyTriggerScoreComputation(ctx, tx, scoringRefs); err != nil {
+				return err
+			}
+		}
+
 		return nil
 	})
 }
@@ -467,6 +505,8 @@ func (uc EntityAnnotationUsecase) AttachObjectRiskTags(
 		AnnotatedBy:    input.AnnotatedBy,
 	}
 
+	tagsChanged := false
+
 	for _, tag := range input.Tags {
 		existing, err := uc.repository.FindExistingObjectRiskTagAnnotation(ctx, tx, req, string(tag))
 		if err != nil && !errors.Is(err, models.NotFoundError) {
@@ -486,6 +526,20 @@ func (uc EntityAnnotationUsecase) AttachObjectRiskTags(
 
 		if _, err := uc.repository.CreateEntityAnnotation(ctx, tx, req); err != nil {
 			return err
+		}
+
+		tagsChanged = true
+	}
+
+	if tagsChanged {
+		scoringRef := models.ScoringRecordRef{
+			OrgId:      input.OrgId,
+			RecordType: input.ObjectType,
+			RecordId:   input.ObjectId,
+		}
+
+		if err := uc.taskQueueRepository.EnqueueTriggerScoreComputation(ctx, tx, scoringRef); err != nil {
+			return errors.Wrap(err, "could not enqueue score recomputation after risk tag change")
 		}
 	}
 
