@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 
+	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -206,6 +207,6 @@ func toPgType(dataType models.DataType) string {
 	case models.Coords:
 		return "GEOMETRY"
 	default:
-		panic(fmt.Errorf("unknown data type: %v", dataType))
+		panic(errors.Errorf("unknown data type: %v", dataType))
 	}
 }

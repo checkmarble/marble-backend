@@ -2,10 +2,10 @@ package dto
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pubapi/types"
+	"github.com/cockroachdb/errors"
 )
 
 type RecordAnnotationDto struct {
@@ -90,6 +90,6 @@ func adaptRecordAnnotationPayload(m models.EntityAnnotation) (any, error) {
 
 	default:
 		// Should never happen
-		return nil, fmt.Errorf("invalid annotation type: %s", m.AnnotationType)
+		return nil, errors.Errorf("invalid annotation type: %s", m.AnnotationType)
 	}
 }

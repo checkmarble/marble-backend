@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/cockroachdb/errors"
 	"github.com/duckdb/duckdb-go/v2"
-	"github.com/pkg/errors"
 )
 
 type AnalyticsExecutor interface {

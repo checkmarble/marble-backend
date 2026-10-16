@@ -6,7 +6,7 @@ import (
 	"io/fs"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 )
 
 type RuleCatalogUsecase struct {

@@ -2,13 +2,13 @@ package worker_jobs
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 )
@@ -72,14 +72,14 @@ func NewTestRunSummaryPeriodicJob(orgId uuid.UUID) *river.PeriodicJob {
 		river.PeriodicInterval(TEST_RUN_SUMMARY_WORKER_INTERVAL),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.TestRunSummaryArgs{
-					OrgId: orgId,
-				}, &river.InsertOpts{
-					Queue: orgId.String(),
-					UniqueOpts: river.UniqueOpts{
-						ByQueue:  true,
-						ByPeriod: TEST_RUN_SUMMARY_WORKER_INTERVAL,
-					},
-				}
+				OrgId: orgId,
+			}, &river.InsertOpts{
+				Queue: orgId.String(),
+				UniqueOpts: river.UniqueOpts{
+					ByQueue:  true,
+					ByPeriod: TEST_RUN_SUMMARY_WORKER_INTERVAL,
+				},
+			}
 		},
 	)
 }
@@ -211,7 +211,7 @@ func (w *TestRunSummaryWorker) Work(ctx context.Context, job *river.Job[models.T
 			if !newUpdatedAt.Equal(testRun.UpdatedAt) {
 				utils.LoggerFromContext(ctx).WarnContext(ctx,
 					"test run summary job rolled back because of detected concurrent access, rolling back")
-				return fmt.Errorf("outdated concurrency key in test run summary job, rolling back")
+				return errors.Errorf("outdated concurrency key in test run summary job, rolling back")
 			}
 
 			if savedNewData {

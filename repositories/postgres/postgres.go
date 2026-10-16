@@ -2,9 +2,9 @@ package postgres
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -24,7 +24,7 @@ func (tx *Transaction) Rollback(ctx context.Context) {
 func (db *Database) Begin(ctx context.Context) (*Transaction, error) {
 	tx, err := db.pool.Begin(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("db.pool.Begin error: %w", err)
+		return nil, errors.Errorf("db.pool.Begin error: %w", err)
 	}
 	return &Transaction{
 		Tx: tx,

@@ -546,7 +546,7 @@ func unsafeBuildSqlQuery(sql string, args []any) (string, error) {
 		case uuid.UUID:
 			val = "'" + v.String() + "'"
 		default:
-			return "", fmt.Errorf("unsupported argument type: %T", v)
+			return "", errors.Errorf("unsupported argument type: %T", v)
 		}
 
 		sql = strings.Replace(sql, "?", val, 1)

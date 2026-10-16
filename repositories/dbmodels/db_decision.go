@@ -2,11 +2,11 @@ package dbmodels
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -58,7 +58,7 @@ func adaptCoreDecision(db DbCoreDecision, decisionCase *models.Case) models.Deci
 	triggerObject := make(map[string]any)
 	err := json.Unmarshal(db.TriggerObjectRaw, &triggerObject)
 	if err != nil {
-		panic(fmt.Errorf("can't decode %w decision's trigger object", err))
+		panic(errors.Errorf("can't decode %w decision's trigger object", err))
 	}
 
 	return models.Decision{

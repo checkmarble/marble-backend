@@ -2,12 +2,12 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -85,7 +85,7 @@ func (repo *MarbleDbRepository) ListOrganizationsForUser(ctx context.Context, ex
 			&environment,
 			&roles,
 		); err != nil {
-			return models.OrganizationMembership{}, fmt.Errorf("scanning user organization: %w", err)
+			return models.OrganizationMembership{}, errors.Errorf("scanning user organization: %w", err)
 		}
 		membership.Organization.Environment = models.ParseOrganizationEnvironment(environment)
 		for _, role := range roles {
@@ -127,7 +127,7 @@ func (repo *MarbleDbRepository) ListOrganizationGrantsByUser(ctx context.Context
 		var result userGrant
 		var role string
 		if err := row.Scan(&result.userID, &role, &result.grant.TenantId, &result.grant.OrganizationId); err != nil {
-			return userGrant{}, fmt.Errorf("scanning user organization grant: %w", err)
+			return userGrant{}, errors.Errorf("scanning user organization grant: %w", err)
 		}
 		result.grant.Role = models.RoleFromString(role)
 		return result, nil
@@ -256,7 +256,7 @@ func (repo *MarbleDbRepository) ReassignTenantGrants(ctx context.Context, tx Tra
 			&grant.TenantId,
 			&grant.Role,
 		); err != nil {
-			return fmt.Errorf("scanning tenant grant: %w", err)
+			return errors.Errorf("scanning tenant grant: %w", err)
 		}
 
 		principal := principalKey{

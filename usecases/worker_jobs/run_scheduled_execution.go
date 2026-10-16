@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 )
@@ -127,7 +128,7 @@ func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(
 	logger.InfoContext(ctx, fmt.Sprintf("Start execution %s", scheduledExecutionId))
 	scheduledExecution, err := usecase.repository.GetScheduledExecution(ctx, exec, scheduledExecutionId)
 	if err != nil {
-		return fmt.Errorf("error getting scheduled execution %s: %w", scheduledExecutionId, err)
+		return errors.Errorf("error getting scheduled execution %s: %w", scheduledExecutionId, err)
 	}
 
 	if time.Now().After(scheduledExecution.StartedAt.Add(scheduledExecMaxInitiationTime)) &&
@@ -269,7 +270,7 @@ func (usecase *RunScheduledExecution) executeViaManifest(
 	manifestKey := batchExecutionManifestFileKey(scheduledExecution.Id)
 	writer, err := usecase.blobRepository.OpenStream(ctx, usecase.manifestBucketUrl, manifestKey, "manifest.txt")
 	if err != nil {
-		return fmt.Errorf("error opening manifest writer: %w", err)
+		return errors.Errorf("error opening manifest writer: %w", err)
 	}
 	defer writer.Close()
 
@@ -278,10 +279,10 @@ func (usecase *RunScheduledExecution) executeViaManifest(
 	// Always close to flush/commit the blob, even on error.
 	closeErr := writer.Close()
 	if streamErr != nil {
-		return fmt.Errorf("error streaming object ids to manifest: %w", streamErr)
+		return errors.Errorf("error streaming object ids to manifest: %w", streamErr)
 	}
 	if closeErr != nil {
-		return fmt.Errorf("error finalizing manifest blob: %w", closeErr)
+		return errors.Errorf("error finalizing manifest blob: %w", closeErr)
 	}
 
 	nbPlanned := int(count)
@@ -327,7 +328,7 @@ func (usecase *RunScheduledExecution) ScheduleDueScenariosForOrg(ctx context.Con
 	scenarios, err := usecase.repository.ListAllScenarios(ctx, exec,
 		models.ListAllScenariosFilters{Live: true, OrganizationId: &orgId})
 	if err != nil {
-		return fmt.Errorf("error listing live scenarios for org %s: %w", orgId, err)
+		return errors.Errorf("error listing live scenarios for org %s: %w", orgId, err)
 	}
 
 	count := 0

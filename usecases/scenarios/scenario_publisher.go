@@ -48,7 +48,7 @@ func (publisher ScenarioPublisher) PublishOrUnpublishIteration(
 	case models.Unpublish:
 		{
 			if liveVersionId == nil || *liveVersionId != iterationId {
-				return nil, fmt.Errorf("unable to unpublish: scenario iteration %s is not currently live %w", iterationId, models.BadParameterError)
+				return nil, errors.Errorf("unable to unpublish: scenario iteration %s is not currently live %w", iterationId, models.BadParameterError)
 			}
 
 			if sps, err := publisher.unpublishOldIteration(ctx, tx, organizationId,

@@ -3,7 +3,6 @@ package infra
 import (
 	"context"
 	"encoding/binary"
-	"fmt"
 	"math"
 	"strings"
 
@@ -63,7 +62,7 @@ func InitTelemetry(ctx context.Context, configuration TelemetryConfiguration, ap
 			otlptracegrpc.WithDialOption(grpc.WithPerRPCCredentials(creds)),
 		)
 		if err != nil {
-			return TelemetryRessources{}, fmt.Errorf("otlptracegrpc.New error: %w", err)
+			return TelemetryRessources{}, errors.Errorf("otlptracegrpc.New error: %w", err)
 		}
 
 		if configuration.ProjectID != "" {
@@ -75,7 +74,7 @@ func InitTelemetry(ctx context.Context, configuration TelemetryConfiguration, ap
 	default: // "otlp"
 		otlpExporter, err := otlptracegrpc.New(context.Background())
 		if err != nil {
-			return TelemetryRessources{}, fmt.Errorf("otlptracegrpc.New error: %w", err)
+			return TelemetryRessources{}, errors.Errorf("otlptracegrpc.New error: %w", err)
 		}
 
 		exporter = otlpExporter
@@ -87,7 +86,7 @@ func InitTelemetry(ctx context.Context, configuration TelemetryConfiguration, ap
 		resource.WithAttributes(attrs...),
 	)
 	if err != nil {
-		return TelemetryRessources{}, fmt.Errorf("resource.New error: %w", err)
+		return TelemetryRessources{}, errors.Errorf("resource.New error: %w", err)
 	}
 
 	tp := sdktrace.NewTracerProvider(

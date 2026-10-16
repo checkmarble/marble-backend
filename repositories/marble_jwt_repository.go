@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"crypto/rsa"
-	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -76,7 +75,7 @@ func (repo *MarbleJwtRepository) ValidateMarbleToken(marbleToken string) (models
 	if ok && token.Valid {
 		return dto.AdaptCredential(claims.Credentials), nil
 	}
-	return models.Credentials{}, fmt.Errorf("invalid Marble Jwt Token")
+	return models.Credentials{}, errors.Errorf("invalid Marble Jwt Token")
 }
 
 func NewJWTRepository(issuer string, key *rsa.PrivateKey) *MarbleJwtRepository {

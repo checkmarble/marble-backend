@@ -243,7 +243,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	tables := dataModel.Tables
 	table, ok := tables[scenario.TriggerObjectType]
 	if !ok {
-		return false, nil, fmt.Errorf(
+		return false, nil, errors.Errorf(
 			"trigger object type %s not found in data model: %w",
 			scenario.TriggerObjectType, models.NotFoundError)
 	}

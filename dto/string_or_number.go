@@ -2,9 +2,9 @@ package dto
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 )
 
 type StringOrNumber struct {
@@ -27,7 +27,7 @@ func (c *StringOrNumber) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	return fmt.Errorf("c must be either a string or a number")
+	return errors.Errorf("c must be either a string or a number")
 }
 
 func (c StringOrNumber) MarshalJSON() ([]byte, error) {

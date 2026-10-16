@@ -2,13 +2,13 @@ package worker_jobs
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/riverqueue/river"
 )
 
@@ -43,7 +43,7 @@ func (w *IndexDeletionByNameWorker) Work(ctx context.Context, job *river.Job[mod
 
 	for _, indexName := range job.Args.IndexNames {
 		if err := w.indexEditor.DeleteIndex(ctx, exec, indexName); err != nil {
-			return fmt.Errorf("failed to delete index %s: %w", indexName, err)
+			return errors.Errorf("failed to delete index %s: %w", indexName, err)
 		}
 		logger.InfoContext(ctx, "deleted index", "index_name", indexName, "org_id", job.Args.OrgId)
 	}

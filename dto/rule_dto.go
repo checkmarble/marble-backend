@@ -1,10 +1,10 @@
 package dto
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -109,7 +109,7 @@ func AdaptCreateRuleInput(body CreateRuleInputBody, organizationId uuid.UUID) (m
 	if body.FormulaAstExpression != nil {
 		node, err := AdaptASTNode(*body.FormulaAstExpression)
 		if err != nil {
-			return models.CreateRuleInput{}, fmt.Errorf(
+			return models.CreateRuleInput{}, errors.Errorf(
 				"could not adapt formula ast expression: %w %w", err, models.BadParameterError)
 		}
 		createRuleInput.FormulaAstExpression = &node
@@ -132,7 +132,7 @@ func AdaptUpdateRule(ruleId string, body UpdateRuleBody) (models.UpdateRuleInput
 	if body.FormulaAstExpression != nil {
 		node, err := AdaptASTNode(*body.FormulaAstExpression)
 		if err != nil {
-			return models.UpdateRuleInput{}, fmt.Errorf(
+			return models.UpdateRuleInput{}, errors.Errorf(
 				"could not adapt formula ast expression: %w %w", err, models.BadParameterError)
 		}
 		updateRuleInput.FormulaAstExpression = &node

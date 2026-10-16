@@ -1,14 +1,14 @@
 package ast
 
 import (
-	"fmt"
 	"testing"
 
+	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAdaptEvaluationErrorDto_an_error(t *testing.T) {
-	err := fmt.Errorf("test error %w", ErrWrongNumberOfArgument)
+	err := errors.Errorf("test error %w", ErrWrongNumberOfArgument)
 
 	evaluationError := AdaptEvaluationErrorDto(err)
 
@@ -19,7 +19,7 @@ func TestAdaptEvaluationErrorDto_an_error(t *testing.T) {
 }
 
 func TestAdaptEvaluationErrorDto_with_argument_error(t *testing.T) {
-	err := fmt.Errorf("test error %w", NewArgumentError(666))
+	err := errors.Errorf("test error %w", NewArgumentError(666))
 
 	evaluationError := AdaptEvaluationErrorDto(err)
 
@@ -30,7 +30,7 @@ func TestAdaptEvaluationErrorDto_with_argument_error(t *testing.T) {
 }
 
 func TestAdaptEvaluationErrorDto_with_named_argument_error(t *testing.T) {
-	err := fmt.Errorf("test error %w", NewNamedArgumentError("diabolo"))
+	err := errors.Errorf("test error %w", NewNamedArgumentError("diabolo"))
 
 	evaluationError := AdaptEvaluationErrorDto(err)
 

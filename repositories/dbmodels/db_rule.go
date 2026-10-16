@@ -1,13 +1,13 @@
 package dbmodels
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 
+	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -38,7 +38,7 @@ type DBRule struct {
 func AdaptRule(db DBRule) (models.Rule, error) {
 	formulaAstExpression, err := AdaptSerializedAstExpression(db.FormulaAstExpression)
 	if err != nil {
-		return models.Rule{}, fmt.Errorf("unable to unmarshal formula ast expression: %w", err)
+		return models.Rule{}, errors.Errorf("unable to unmarshal formula ast expression: %w", err)
 	}
 
 	return models.Rule{
@@ -124,7 +124,7 @@ type DBCreateRuleInput struct {
 func AdaptDBCreateRuleInput(rule models.CreateRuleInput) (DBCreateRuleInput, error) {
 	formulaAstExpression, err := SerializeFormulaAstExpression(rule.FormulaAstExpression)
 	if err != nil {
-		return DBCreateRuleInput{}, fmt.Errorf("unable to marshal expression formula: %w", err)
+		return DBCreateRuleInput{}, errors.Errorf("unable to marshal expression formula: %w", err)
 	}
 
 	return DBCreateRuleInput{
@@ -159,7 +159,7 @@ type DBUpdateRuleInput struct {
 func AdaptDBUpdateRuleInput(rule models.UpdateRuleInput) (DBUpdateRuleInput, error) {
 	formulaAstExpression, err := SerializeFormulaAstExpression(rule.FormulaAstExpression)
 	if err != nil {
-		return DBUpdateRuleInput{}, fmt.Errorf("unable to marshal expression formula: %w", err)
+		return DBUpdateRuleInput{}, errors.Errorf("unable to marshal expression formula: %w", err)
 	}
 
 	return DBUpdateRuleInput{

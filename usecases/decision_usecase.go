@@ -212,7 +212,7 @@ func (usecase *DecisionUsecase) ListDecisions(
 
 	if !filters.StartDate.IsZero() && !filters.EndDate.IsZero() &&
 		filters.StartDate.After(filters.EndDate) {
-		return models.DecisionListPage{}, fmt.Errorf(
+		return models.DecisionListPage{}, errors.Errorf(
 			"start date must be before end date: %w", models.BadParameterError)
 	}
 
@@ -284,7 +284,7 @@ func (usecase *DecisionUsecase) validateScenarioIds(ctx context.Context, scenari
 
 	for _, scenarioId := range scenarioIds {
 		if !slices.Contains(organizationScenarioIds, scenarioId) {
-			return fmt.Errorf("scenario id %s not found in organization %s: %w",
+			return errors.Errorf("scenario id %s not found in organization %s: %w",
 				scenarioId, org.Id, models.BadParameterError)
 		}
 	}
@@ -296,7 +296,7 @@ func (usecase *DecisionUsecase) validateOutcomes(filtersOutcomes []string) ([]mo
 	for i, outcome := range filtersOutcomes {
 		outcomes[i] = models.OutcomeFrom(outcome)
 		if outcomes[i] == models.UnknownOutcome {
-			return []models.Outcome{}, fmt.Errorf("invalid outcome: %s, %w", outcome, models.BadParameterError)
+			return []models.Outcome{}, errors.Errorf("invalid outcome: %s, %w", outcome, models.BadParameterError)
 		}
 	}
 	return outcomes, nil
@@ -314,7 +314,7 @@ func (usecase *DecisionUsecase) validateTriggerObjects(ctx context.Context,
 	for i, triggerObject := range filtersTriggerObjects {
 		triggerObjectTypes[i] = triggerObject
 		if _, ok := dataModel.Tables[triggerObjectTypes[i]]; !ok {
-			return nil, fmt.Errorf(
+			return nil, errors.Errorf(
 				"table %s not found on data model: %w", triggerObject, models.BadParameterError)
 		}
 	}
@@ -341,7 +341,7 @@ func (usecase DecisionUsecase) StoreDecision(
 
 	if err != nil {
 		return models.DecisionWithRuleExecutions{},
-			fmt.Errorf("error storing decision: %w", err)
+			errors.Errorf("error storing decision: %w", err)
 	}
 
 	for _, sce := range item.Decision.ScreeningExecutions {
@@ -479,7 +479,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 	triggerPassed, scenarioExecution, err := usecase.scenarioEvaluator.EvalScenario(ctx, evaluationParameters)
 	if err != nil {
 		return false, models.DecisionWithRuleExecutions{},
-			fmt.Errorf("error evaluating scenario: %w", err)
+			errors.Errorf("error evaluating scenario: %w", err)
 	}
 	if !triggerPassed {
 		usecase.executeTestRun(ctx, input.OrganizationId, input.TriggerObjectTable, evaluationParameters, scenario, nil)

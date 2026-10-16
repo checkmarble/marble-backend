@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -175,7 +176,7 @@ func (suite *ContinuousScreeningManifestTestSuite) TestGetContinuousScreeningDel
 
 	suite.repository.On("ListContinuousScreeningLatestDeltaFiles", suite.ctx,
 		suite.executorFactory.NewExecutor(), orgId, uint64(LatestDeltaFilesLimit)).
-		Return([]models.ContinuousScreeningDatasetFile{}, fmt.Errorf("db error"))
+		Return([]models.ContinuousScreeningDatasetFile{}, errors.Errorf("db error"))
 
 	// Execute
 	uc := suite.makeUsecase()

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/coreos/go-oidc/v3/oidc"
 )
 
@@ -29,7 +30,7 @@ func InitializeOidc(ctx context.Context, marbleAppUrl string) (OidcConfig, error
 	issuer := utils.GetEnv("AUTH_OIDC_ISSUER", "")
 	clientId := utils.GetEnv("AUTH_OIDC_CLIENT_ID", "")
 	if issuer == "" || clientId == "" {
-		return OidcConfig{}, fmt.Errorf("AUTH_OIDC_ISSUER and AUTH_OIDC_CLIENT_ID are required")
+		return OidcConfig{}, errors.Errorf("AUTH_OIDC_ISSUER and AUTH_OIDC_CLIENT_ID are required")
 	}
 	extraParams := map[string]string{}
 

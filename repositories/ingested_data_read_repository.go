@@ -176,11 +176,11 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(ctx context.Context, exec
 	}
 
 	if len(readParams.Path) == 0 {
-		return nil, fmt.Errorf("path is empty: %w", models.BadParameterError)
+		return nil, errors.Errorf("path is empty: %w", models.BadParameterError)
 	}
 	nullFilter, query, err := createQueryDbForField(exec, readParams)
 	if err != nil {
-		return nil, fmt.Errorf("error while building SQL query: %w", err)
+		return nil, errors.Errorf("error while building SQL query: %w", err)
 	}
 	if nullFilter {
 		return nil, nil
@@ -188,7 +188,7 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(ctx context.Context, exec
 
 	sql, args, err := query.ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("error while building SQL query: %w", err)
+		return nil, errors.Errorf("error while building SQL query: %w", err)
 	}
 	row := exec.QueryRow(ctx, sql, args...)
 
@@ -205,11 +205,11 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(ctx context.Context, exec
 func createQueryDbForField(exec Executor, readParams models.DbFieldReadParams) (nullFilter bool, b squirrel.SelectBuilder, err error) {
 	triggerTable, ok := readParams.DataModel.Tables[readParams.TriggerTableName]
 	if !ok {
-		return false, b, fmt.Errorf("table %s not found in data model", readParams.TriggerTableName)
+		return false, b, errors.Errorf("table %s not found in data model", readParams.TriggerTableName)
 	}
 	link, ok := triggerTable.LinksToSingle[readParams.Path[0]]
 	if !ok {
-		return false, b, fmt.Errorf("no link with name %s: %w",
+		return false, b, errors.Errorf("no link with name %s: %w",
 			readParams.Path[0], models.NotFoundError)
 	}
 
@@ -220,13 +220,13 @@ func createQueryDbForField(exec Executor, readParams models.DbFieldReadParams) (
 	}
 	firstTableLinkValue, ok := parentFieldItf.(string)
 	if !ok {
-		return false, b, fmt.Errorf("%s in payload is not a string", link.ChildFieldName)
+		return false, b, errors.Errorf("%s in payload is not a string", link.ChildFieldName)
 	}
 
 	// "first table" is the first table reached starting from the trigger table and following the path
 	firstTable, ok := readParams.DataModel.Tables[link.ParentTableName]
 	if !ok {
-		return false, b, fmt.Errorf("no table with name %s: %w",
+		return false, b, errors.Errorf("no table with name %s: %w",
 			link.ParentTableName, models.NotFoundError)
 	}
 
@@ -263,13 +263,13 @@ func addJoinsOnIntermediateTables(
 		linkName := readParams.Path[i]
 		link, ok := currentTable.LinksToSingle[linkName]
 		if !ok {
-			return squirrel.SelectBuilder{}, fmt.Errorf(
+			return squirrel.SelectBuilder{}, errors.Errorf(
 				"no link with name %s on table %s: %w", linkName, currentTable.Name, models.NotFoundError,
 			)
 		}
 		nextTable, ok := readParams.DataModel.Tables[link.ParentTableName]
 		if !ok {
-			return squirrel.SelectBuilder{}, fmt.Errorf("no table with name %s: %w",
+			return squirrel.SelectBuilder{}, errors.Errorf("no table with name %s: %w",
 				link.ParentTableName, models.NotFoundError)
 		}
 
@@ -321,11 +321,11 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectIdsFromTable(
 
 	sql, args, err := q.ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("error while building SQL query: %w", err)
+		return nil, errors.Errorf("error while building SQL query: %w", err)
 	}
 	rows, err := exec.Query(ctx, sql, args...)
 	if err != nil {
-		return nil, fmt.Errorf("error while querying DB: %w", err)
+		return nil, errors.Errorf("error while querying DB: %w", err)
 	}
 	defer rows.Close()
 
@@ -334,14 +334,14 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectIdsFromTable(
 	for rows.Next() {
 		err = rows.Scan(&objectId)
 		if err != nil {
-			return nil, fmt.Errorf("error while scanning row: %w", err)
+			return nil, errors.Errorf("error while scanning row: %w", err)
 		}
 
 		output = append(output, objectId)
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error while iterating over rows: %w", err)
+		return nil, errors.Errorf("error while iterating over rows: %w", err)
 	}
 
 	return output, nil
@@ -376,11 +376,11 @@ func (repo *IngestedDataReadRepositoryImpl) StreamAllObjectIdsFromTable(
 
 	sql, args, err := q.ToSql()
 	if err != nil {
-		return 0, fmt.Errorf("error while building SQL query: %w", err)
+		return 0, errors.Errorf("error while building SQL query: %w", err)
 	}
 	rows, err := exec.Query(ctx, sql, args...)
 	if err != nil {
-		return 0, fmt.Errorf("error while querying DB: %w", err)
+		return 0, errors.Errorf("error while querying DB: %w", err)
 	}
 	defer rows.Close()
 
@@ -389,23 +389,23 @@ func (repo *IngestedDataReadRepositoryImpl) StreamAllObjectIdsFromTable(
 	var objectId string
 	for rows.Next() {
 		if err = rows.Scan(&objectId); err != nil {
-			return 0, fmt.Errorf("error while scanning row: %w", err)
+			return 0, errors.Errorf("error while scanning row: %w", err)
 		}
 		if _, err = buf.WriteString(strconv.Quote(objectId)); err != nil {
-			return 0, fmt.Errorf("error while writing object id to manifest: %w", err)
+			return 0, errors.Errorf("error while writing object id to manifest: %w", err)
 		}
 		if err = buf.WriteByte('\n'); err != nil {
-			return 0, fmt.Errorf("error while writing object id to manifest: %w", err)
+			return 0, errors.Errorf("error while writing object id to manifest: %w", err)
 		}
 		count++
 	}
 
 	if err = rows.Err(); err != nil {
-		return 0, fmt.Errorf("error while iterating over rows: %w", err)
+		return 0, errors.Errorf("error while iterating over rows: %w", err)
 	}
 
 	if err = buf.Flush(); err != nil {
-		return 0, fmt.Errorf("error while flushing manifest writer: %w", err)
+		return 0, errors.Errorf("error while flushing manifest writer: %w", err)
 	}
 
 	return count, nil
@@ -603,18 +603,18 @@ func queryWithDynamicColumnList(
 
 	sql, args, err := q.ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("error while building SQL query: %w", err)
+		return nil, errors.Errorf("error while building SQL query: %w", err)
 	}
 	rows, err := exec.Query(ctx, sql, args...)
 	if err != nil {
-		return nil, fmt.Errorf("error while querying DB: %w", err)
+		return nil, errors.Errorf("error while querying DB: %w", err)
 	}
 	defer rows.Close()
 	output := make([]map[string]any, 0)
 	for rows.Next() {
 		values, err := rows.Values()
 		if err != nil {
-			return nil, fmt.Errorf("error while fetching rows: %w", err)
+			return nil, errors.Errorf("error while fetching rows: %w", err)
 		}
 
 		objectAsMap := make(map[string]any)
@@ -625,7 +625,7 @@ func queryWithDynamicColumnList(
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error while iterating over rows: %w", err)
+		return nil, errors.Errorf("error while iterating over rows: %w", err)
 	}
 
 	return output, nil
@@ -707,16 +707,16 @@ func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(
 
 	query, err := createQueryAggregated(exec, tableName, fieldName, fieldType, aggregator, filters, options)
 	if err != nil {
-		return nil, fmt.Errorf("error while building SQL query: %w", err)
+		return nil, errors.Errorf("error while building SQL query: %w", err)
 	}
 	sql, args, err := query.ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("error while building SQL query: %w", err)
+		return nil, errors.Errorf("error while building SQL query: %w", err)
 	}
 	var result any
 	err = exec.QueryRow(ctx, sql, args...).Scan(&result)
 	if err != nil {
-		return nil, fmt.Errorf("error while querying DB: %w", err)
+		return nil, errors.Errorf("error while querying DB: %w", err)
 	}
 
 	return result, nil
@@ -766,7 +766,7 @@ func addConditionForOperator(query squirrel.SelectBuilder, fieldName string, fie
 	case ast.FILTER_FUZZY_MATCH:
 		fuzzyFilterOptions, ok := value.(ast.FuzzyMatchOptions)
 		if !ok {
-			return query, fmt.Errorf("invalid value type for FuzzyMatchFilter")
+			return query, errors.Errorf("invalid value type for FuzzyMatchFilter")
 		}
 		value, threshold := fuzzyFilterOptions.Value, fuzzyFilterOptions.Threshold
 		switch fuzzyFilterOptions.Algorithm {
@@ -801,7 +801,7 @@ func addConditionForOperator(query squirrel.SelectBuilder, fieldName string, fie
 			query = query.Where(condition, value, value, value, value, value, value, value, threshold)
 			return query, nil
 		default:
-			return query, fmt.Errorf("unknown algorithm %s: %w",
+			return query, errors.Errorf("unknown algorithm %s: %w",
 				fuzzyFilterOptions.Algorithm, models.BadParameterError)
 		}
 
@@ -817,7 +817,7 @@ func addConditionForOperator(query squirrel.SelectBuilder, fieldName string, fie
 	case ast.FILTER_TIMESTAMP_EXTRACT:
 		opts, ok := value.(ast.TimestampExtractOptions)
 		if !ok {
-			return query, fmt.Errorf("invalid value type for FuzzyMatchFilter")
+			return query, errors.Errorf("invalid value type for FuzzyMatchFilter")
 		}
 
 		dbPart := opts.Part
@@ -836,7 +836,7 @@ func addConditionForOperator(query squirrel.SelectBuilder, fieldName string, fie
 		return query.Where(squirrel.Or(condition), value), nil
 
 	default:
-		return query, fmt.Errorf("unknown operator %s: %w", operator, models.BadParameterError)
+		return query, errors.Errorf("unknown operator %s: %w", operator, models.BadParameterError)
 	}
 }
 
@@ -1102,7 +1102,7 @@ func (repo *IngestedDataReadRepositoryImpl) SearchObjects(
 	for rows.Next() {
 		values, err := rows.Values()
 		if err != nil {
-			return nil, fmt.Errorf("error while fetching rows: %w", err)
+			return nil, errors.Errorf("error while fetching rows: %w", err)
 		}
 
 		object := make(map[string]any)
@@ -1115,7 +1115,7 @@ func (repo *IngestedDataReadRepositoryImpl) SearchObjects(
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error while iterating over rows: %w", err)
+		return nil, errors.Errorf("error while iterating over rows: %w", err)
 	}
 
 	return ingestedObjects, nil
@@ -1164,7 +1164,7 @@ func (repo *IngestedDataReadRepositoryImpl) SampleObjectIds(
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error while iterating over rows: %w", err)
+		return nil, errors.Errorf("error while iterating over rows: %w", err)
 	}
 
 	return recordIds, nil
@@ -1220,7 +1220,7 @@ func (repo *IngestedDataReadRepositoryImpl) GetObjectsFromInternalId(
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, nil, fmt.Errorf("error while iterating over rows: %w", err)
+		return nil, nil, errors.Errorf("error while iterating over rows: %w", err)
 	}
 
 	return ids, recordIds, nil

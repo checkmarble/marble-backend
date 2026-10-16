@@ -1,10 +1,10 @@
 package models
 
 import (
-	"fmt"
 	"slices"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -204,7 +204,7 @@ func ValidateCaseStatuses(statuses []string) ([]CaseStatus, error) {
 	for i, status := range statuses {
 		sanitizedStatuses[i] = CaseStatus(status)
 		if sanitizedStatuses[i] == CaseUnknownStatus {
-			return []CaseStatus{}, fmt.Errorf("invalid status: %s %w", status, BadParameterError)
+			return []CaseStatus{}, errors.Errorf("invalid status: %s %w", status, BadParameterError)
 		}
 	}
 	return sanitizedStatuses, nil
@@ -215,7 +215,7 @@ var ValidCaseReviewLevels = []string{"probable_false_positive", "investigate", "
 func ValidateCaseReviewLevels(reviewLevels []string) error {
 	for _, level := range reviewLevels {
 		if !slices.Contains(ValidCaseReviewLevels, level) {
-			return fmt.Errorf("invalid review level: %s %w", level, BadParameterError)
+			return errors.Errorf("invalid review level: %s %w", level, BadParameterError)
 		}
 	}
 	return nil
@@ -236,7 +236,7 @@ func ValidateCaseQualifications(qualifications []string) ([]CaseQualification, e
 	for i, q := range qualifications {
 		result[i] = CaseQualification(q)
 		if !slices.Contains(ValidCaseQualifications, result[i]) {
-			return nil, fmt.Errorf("invalid qualification: %s %w", q, BadParameterError)
+			return nil, errors.Errorf("invalid qualification: %s %w", q, BadParameterError)
 		}
 	}
 	return result, nil

@@ -2,7 +2,6 @@ package api
 
 import (
 	"cmp"
-	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -95,7 +94,7 @@ func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 		userId := string(creds.ActorIdentity.UserId)
@@ -140,7 +139,7 @@ func handlePatchCase(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 		userId := string(creds.ActorIdentity.UserId)
@@ -299,7 +298,7 @@ func handlePostCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 		userId := string(creds.ActorIdentity.UserId)
@@ -331,7 +330,7 @@ func handlePostCaseComment(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 		userId := string(creds.ActorIdentity.UserId)
@@ -368,7 +367,7 @@ func handlePostCaseTags(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 		userId := string(creds.ActorIdentity.UserId)
@@ -516,7 +515,7 @@ func handleReviewCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 		userId := string(creds.ActorIdentity.UserId)
@@ -548,7 +547,7 @@ func handleGetRelatedCasesByPivotValue(uc usecases.Usecases) func(c *gin.Context
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 
@@ -569,7 +568,7 @@ func handleGetRelatedContinuousScreeningCasesByObjectAttr(uc usecases.Usecases) 
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 
@@ -844,7 +843,7 @@ func handleUpdateCaseEntities(uc usecases.Usecases, add bool) func(c *gin.Contex
 		}
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()

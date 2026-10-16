@@ -8,7 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 )
 
 type ScreeningConfigRepository interface {
@@ -52,7 +52,7 @@ func (uc ScreeningUsecase) CreateScreeningConfig(ctx context.Context, iterationI
 	if scCfg.Query != nil {
 		for field, v := range scCfg.Query {
 			if v.Function != ast.FUNC_STRING_CONCAT && v.Function != ast.FUNC_LIST {
-				return models.ScreeningConfig{}, fmt.Errorf(
+				return models.ScreeningConfig{}, errors.Errorf(
 					"query field '%s' is not a StringConcat", field,
 				)
 			}
@@ -118,7 +118,7 @@ func (uc ScreeningUsecase) UpdateScreeningConfig(ctx context.Context,
 	if scCfg.Query != nil {
 		for field, v := range scCfg.Query {
 			if v.Function != ast.FUNC_STRING_CONCAT && v.Function != ast.FUNC_LIST {
-				return models.ScreeningConfig{}, fmt.Errorf(
+				return models.ScreeningConfig{}, errors.Errorf(
 					"query filter '%s' must be a StringConcat or a List of string-like objects", field,
 				)
 			}

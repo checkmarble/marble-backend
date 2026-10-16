@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 )
 
 // WebhookSignatureService generates HMAC-SHA256 signatures for webhook payloads.
@@ -51,7 +52,7 @@ func (s *WebhookSignatureService) computeHMAC(payload []byte, secret string) str
 func GenerateWebhookSecret() (string, error) {
 	bytes := make([]byte, 32)
 	if _, err := rand.Read(bytes); err != nil {
-		return "", fmt.Errorf("failed to generate random secret: %w", err)
+		return "", errors.Errorf("failed to generate random secret: %w", err)
 	}
 	return hex.EncodeToString(bytes), nil
 }

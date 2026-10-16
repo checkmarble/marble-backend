@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 )
 
 func handleListUsers(uc usecases.Usecases) func(c *gin.Context) {
@@ -225,7 +225,7 @@ func handleDeleteUser(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 		currentUserId := string(creds.ActorIdentity.UserId)
@@ -246,7 +246,7 @@ func handleGetCredentials() func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context %w", models.NotFoundError))
+			presentError(ctx, c, errors.Errorf("no credentials in context %w", models.NotFoundError))
 			return
 		}
 		credDto, err := dto.AdaptCredentialDto(creds)

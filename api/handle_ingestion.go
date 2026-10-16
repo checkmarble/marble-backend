@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/csv"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 )
 
 func handlePostCsvIngestion(uc usecases.Usecases) func(c *gin.Context) {
@@ -25,7 +25,7 @@ func handlePostCsvIngestion(uc usecases.Usecases) func(c *gin.Context) {
 		}
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 		userId := string(creds.ActorIdentity.UserId)
@@ -76,7 +76,7 @@ func handleListUploadLogs(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(ctx, c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, errors.Errorf("no credentials in context"))
 			return
 		}
 

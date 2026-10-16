@@ -3,7 +3,6 @@ package usecases
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/mocks"
@@ -13,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/scoring"
+	crdberrors "github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -288,7 +288,7 @@ func (s *CaseEntityMutationSuite) TestScoresRefreshWhenOutcomeProvided() {
 			s.security.On("ReadInbox", models.Inbox{Id: s.inboxId}).Return(nil).Once()
 			s.security.On("ReadOrUpdateCase", c.GetMetadata(), []uuid.UUID{s.inboxId}).Return(nil).Once()
 			s.feature.On("GetOrganizationFeatureAccess", s.ctx, s.orgId, (*models.UserId)(nil)).Return(models.OrganizationFeatureAccess{UserScoring: models.Allowed}, nil).Once()
-			expectedErr := fmt.Errorf("stop before case side effects")
+			expectedErr := crdberrors.Errorf("stop before case side effects")
 			s.repo.On("UpdateCase", s.ctx, s.tx, mock.Anything).Return(expectedErr).Once()
 			s.decisions.On("DecisionsByCaseId", s.ctx, s.tx, s.orgId, c.Id).Return([]models.Decision{}, nil).Once()
 			s.dataModel.On("GetDataModel", s.ctx, s.tx, s.orgId, false, false).Return(models.DataModel{}, nil).Once()
@@ -299,7 +299,7 @@ func (s *CaseEntityMutationSuite) TestScoresRefreshWhenOutcomeProvided() {
 			// An enqueue failure is logged and does not prevent the outcome update.
 			s.queue.On("EnqueueTriggerScoreComputation", s.ctx, s.tx, models.ScoringRecordRef{
 				OrgId: s.orgId, RecordType: ref.TableName, RecordId: ref.ObjectId,
-			}).Return(fmt.Errorf("queue unavailable")).Once()
+			}).Return(crdberrors.Errorf("queue unavailable")).Once()
 			uc := s.makeUsecase()
 			_, err := uc.UpdateCase(s.ctx, "", models.UpdateCaseAttributes{Id: c.Id, Name: "Updated name", Outcome: tt.outcome})
 			s.ErrorIs(err, expectedErr)
