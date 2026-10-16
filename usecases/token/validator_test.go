@@ -34,6 +34,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 
 	creds := models.Credentials{
 		OrganizationId: utils.TextToUUID("organization_id"),
+		TenantId:       organization.TenantId,
 		Roles:          []models.Role{models.ADMIN, models.TENANT_ADMIN},
 		ActorIdentity: models.Identity{
 			ApiKeyId:   "api_key_id",
@@ -112,6 +113,10 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 
 func TestValidator_Validate_Token(t *testing.T) {
 	token := "token"
+	organization := models.Organization{
+		Id:       utils.TextToUUID("organization_id"),
+		TenantId: utils.TextToUUID("tenant_id"),
+	}
 
 	t.Run("nominal", func(t *testing.T) {
 		creds := models.Credentials{
@@ -126,12 +131,30 @@ func TestValidator_Validate_Token(t *testing.T) {
 		mockValidator := new(mocks.JWTEncoderValidator)
 		mockValidator.On("ValidateMarbleToken", token).
 			Return(creds, nil)
+		mockGetter := new(mocks.Database)
+		mockGetter.On("GetOrganizationByID", mock.Anything, creds.OrganizationId).
+			Return(organization, nil)
 
 		v := Validator{
 			validator: mockValidator,
+			getter:    mockGetter,
 		}
 
 		credentials, err := v.ValidateTokenOrKey(context.Background(), token, "")
+		assert.NoError(t, err)
+		assert.Equal(t, organization.TenantId, credentials.TenantId)
+		mockValidator.AssertExpectations(t)
+		mockGetter.AssertExpectations(t)
+	})
+
+	t.Run("platform token does not resolve a tenant", func(t *testing.T) {
+		creds := models.Credentials{Roles: []models.Role{models.MARBLE_ADMIN}}
+		mockValidator := new(mocks.JWTEncoderValidator)
+		mockValidator.On("ValidateMarbleToken", token).Return(creds, nil)
+
+		v := Validator{validator: mockValidator}
+		credentials, err := v.ValidateTokenOrKey(context.Background(), token, "")
+
 		assert.NoError(t, err)
 		assert.Equal(t, creds, credentials)
 		mockValidator.AssertExpectations(t)

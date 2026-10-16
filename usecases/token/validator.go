@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -54,6 +55,7 @@ func (v *Validator) fromAPIKey(ctx context.Context, key string) (models.Credenti
 	if len(credentials.Roles) == 0 {
 		return models.Credentials{}, fmt.Errorf("%w: API key has no active grant", models.UnAuthorizedError)
 	}
+	credentials.TenantId = organization.TenantId
 	return credentials, nil
 }
 
@@ -61,7 +63,22 @@ func (v *Validator) ValidateTokenOrKey(ctx context.Context, marbleToken, apiKey 
 	if apiKey != "" {
 		return v.fromAPIKey(ctx, apiKey)
 	}
-	return v.validator.ValidateMarbleToken(marbleToken)
+
+	credentials, err := v.validator.ValidateMarbleToken(marbleToken)
+	if err != nil {
+		return models.Credentials{}, err
+	}
+	if credentials.OrganizationId == uuid.Nil {
+		return credentials, nil
+	}
+
+	organization, err := v.getter.GetOrganizationByID(ctx, credentials.OrganizationId)
+	if err != nil {
+		return models.Credentials{}, errors.Wrap(err, "getter.GetOrganizationByID error")
+	}
+	credentials.TenantId = organization.TenantId
+
+	return credentials, nil
 }
 
 func NewValidator(getter keyAndOrganizationGetter, validator marbleTokenValidator) *Validator {

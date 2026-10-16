@@ -18,6 +18,7 @@ type Identity struct {
 type Credentials struct {
 	ActorIdentity  Identity // email or api key, for audit log
 	OrganizationId uuid.UUID
+	TenantId       uuid.UUID
 	Roles          []Role
 }
 
