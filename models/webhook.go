@@ -5,8 +5,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 type WebhookEventDeliveryStatus string

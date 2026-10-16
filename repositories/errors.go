@@ -1,9 +1,9 @@
 package repositories
 
 import (
+	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/pkg/errors"
 )
 
 func IsUniqueViolationError(err error) bool {

@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/infra"
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 	"golang.org/x/oauth2"
 )
 
