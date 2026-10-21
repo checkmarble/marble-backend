@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
@@ -131,9 +133,15 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 			redisExec := usecase.redisClient.NewExecutor(orgId)
 			key := redisExec.Key("decision", decisionId)
 
-			if d, err := repositories.RedisLoadModel[models.DecisionWithRuleExecutions](ctx, redisExec, key); err == nil {
-				redisTransientUsed = true
-				decision = d
+			payload, err := repositories.RedisQuery(redisExec, func(c *redis.Client) ([]byte, error) {
+				return c.Get(ctx, key).Bytes()
+			})
+
+			if err == nil {
+				if td, err := models.DecodeTransientDecision(payload); err == nil {
+					redisTransientUsed = true
+					decision = td.Decision
+				}
 			}
 		}
 
@@ -495,46 +503,32 @@ func (usecase *DecisionUsecase) CreateDecision(
 		trace.WithAttributes(attribute.Int("nb_rule_executions", len(decision.RuleExecutions))))
 	defer span.End()
 
-	storageStart := time.Now()
-	stored := false
-
-	newDecision, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Transaction,
-	) (models.DecisionWithRuleExecutions, error) {
-		item := models.DecisionBundle{
-			Decision:  decision,
-			Scenario:  scenario,
-			Execution: scenarioExecution,
-			AnalyticsFields: usecase.scenarioEvaluator.GetDataAccessor(evaluationParameters).GetAnalyticsFields(
-				ctx, exec, usecase.repository, evaluationParameters),
-			ObjectId: evaluationParameters.ClientObject.Data["object_id"].(string),
-		}
-
-		if infra.HasFeatureFlag(infra.ASYNC_DECISION_STORAGE_FEATURE_FLAG, org.Id) && params.AsyncStorage && usecase.redisClient != nil {
-			if err := usecase.taskQueueRepository.EnqueueAsyncDecisionStorage(ctx, tx, item); err != nil {
-				return decision, err
-			}
-
-			return decision, nil
-		}
-
-		stored = true
-
-		return usecase.StoreDecision(ctx, logger, tx, item)
-	})
-
-	if err != nil {
-		return false, models.DecisionWithRuleExecutions{}, err
+	item := models.DecisionBundle{
+		Decision:  decision,
+		Scenario:  scenario,
+		Execution: scenarioExecution,
+		AnalyticsFields: usecase.scenarioEvaluator.GetDataAccessor(evaluationParameters).GetAnalyticsFields(
+			ctx, exec, usecase.repository, evaluationParameters),
+		ObjectId: evaluationParameters.ClientObject.Data["object_id"].(string),
 	}
 
-	if infra.HasFeatureFlag(infra.ASYNC_DECISION_STORAGE_FEATURE_FLAG, org.Id) && params.AsyncStorage && usecase.redisClient != nil {
-		redisExec := usecase.redisClient.NewExecutor(decision.OrganizationId)
-		key := redisExec.Key("decision", decision.DecisionId.String())
+	storageStart := time.Now()
+	stored := false
+	newDecision := decision
 
-		if err := redisExec.SaveModel(ctx, nil, key, newDecision, time.Hour); err != nil {
-			logger.Warn("could not save asynchronous decision to redis, decision will be missing until persistance",
-				"decision", decision.DecisionId,
-				"err", err.Error())
+	if infra.HasFeatureFlag(infra.ASYNC_DECISION_STORAGE_FEATURE_FLAG, org.Id) && params.AsyncStorage {
+		if err := usecase.storeDecisionsAsync(ctx, logger, org.Id, []models.DecisionBundle{item}); err != nil {
+			return false, models.DecisionWithRuleExecutions{}, err
+		}
+	} else {
+		stored = true
+
+		newDecision, err = executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Transaction) (models.DecisionWithRuleExecutions, error) {
+			return usecase.StoreDecision(ctx, logger, tx, item)
+		})
+
+		if err != nil {
+			return false, models.DecisionWithRuleExecutions{}, err
 		}
 	}
 
@@ -744,89 +738,75 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		params.AsyncStorage = false
 	}
 
+	logStoredDecision := func(item models.DecisionBundle, storageDuration time.Duration, stored bool) {
+		if item.Execution.ExecutionMetrics == nil {
+			return
+		}
+
+		sinceStart := time.Since(decisionStart)
+		item.Execution.ExecutionMetrics.Steps[evaluate_scenario.LogStorageDurationKey] = storageDuration.Milliseconds()
+
+		utils.MetricDecisionCount.
+			With(prometheus.Labels{"org_id": item.Decision.OrganizationId.String()}).
+			Inc()
+
+		utils.MetricDecisionLatency.
+			With(prometheus.Labels{"org_id": item.Decision.OrganizationId.String()}).
+			Observe(sinceStart.Seconds())
+
+		logger.InfoContext(ctx,
+			fmt.Sprintf(`In CreateAllDecisions, created decision for scenario "%s" after %dms`,
+				item.Scenario.Name, sinceStart.Milliseconds()),
+			"decision_id", item.Decision.DecisionId,
+			"scenario_id", item.Scenario.Id,
+			"score", item.Execution.Score,
+			"outcome", item.Execution.Outcome,
+			"since_start", sinceStart.Milliseconds(),
+			"rules", item.Execution.ExecutionMetrics.Rules,
+			"steps", item.Execution.ExecutionMetrics.Steps,
+			"stored", stored,
+		)
+	}
+
 	storeDecisions := func(tx repositories.Transaction) error {
 		for i, item := range items {
 			thisStorageStart := time.Now()
-			stored := false
 			decisions[i] = item.Decision
 
-			shouldStoreAsync := infra.HasFeatureFlag(infra.ASYNC_DECISION_STORAGE_FEATURE_FLAG, org.Id) && params.AsyncStorage && usecase.redisClient != nil
-
-			switch shouldStoreAsync {
-			case true:
-				if err := usecase.taskQueueRepository.EnqueueAsyncDecisionStorage(ctx, tx, item); err != nil {
-					return err
-				}
-
-			case false:
-				stored = true
-
-				_, err := usecase.StoreDecision(
-					ctx,
-					logger,
-					tx,
-					item,
-				)
-
-				if err != nil {
-					return err
-				}
+			if _, err := usecase.StoreDecision(ctx, logger, tx, item); err != nil {
+				return err
 			}
 
-			if item.Execution.ExecutionMetrics != nil {
-				storageDuration := time.Since(thisStorageStart)
-				sinceStart := time.Since(decisionStart)
-				item.Execution.ExecutionMetrics.Steps[evaluate_scenario.LogStorageDurationKey] = storageDuration.Milliseconds()
-
-				utils.MetricDecisionCount.
-					With(prometheus.Labels{"org_id": item.Decision.OrganizationId.String()}).
-					Inc()
-
-				utils.MetricDecisionLatency.
-					With(prometheus.Labels{"org_id": item.Decision.OrganizationId.String()}).
-					Observe(sinceStart.Seconds())
-
-				logger.InfoContext(ctx,
-					fmt.Sprintf(`In CreateAllDecisions, created decision for scenario "%s" after %dms`,
-						item.Scenario.Name, sinceStart.Milliseconds()),
-					"decision_id", item.Decision.DecisionId,
-					"scenario_id", item.Scenario.Id,
-					"score", item.Execution.Score,
-					"outcome", item.Execution.Outcome,
-					"since_start", sinceStart.Milliseconds(),
-					"rules", item.Execution.ExecutionMetrics.Rules,
-					"steps", item.Execution.ExecutionMetrics.Steps,
-					"stored", stored,
-				)
-			}
+			logStoredDecision(item, time.Since(thisStorageStart), true)
 		}
 
 		lastWriteTime = time.Now()
 		return nil
 	}
 
-	if externalTx != nil {
+	switch {
+	case infra.HasFeatureFlag(infra.ASYNC_DECISION_STORAGE_FEATURE_FLAG, org.Id) && params.AsyncStorage:
+		storageStart := time.Now()
+
+		if err = usecase.storeDecisionsAsync(ctx, logger, org.Id, items); err != nil {
+			return nil, 0, err
+		}
+
+		lastWriteTime = time.Now()
+
+		for i, item := range items {
+			decisions[i] = item.Decision
+			logStoredDecision(item, lastWriteTime.Sub(storageStart), false)
+		}
+
+	case externalTx != nil:
 		if err = storeDecisions(externalTx); err != nil {
 			return nil, 0, err
 		}
-	} else {
-		err = usecase.transactionFactory.Transaction(ctx, storeDecisions)
-		if err != nil {
+
+	default:
+		if err = usecase.transactionFactory.Transaction(ctx, storeDecisions); err != nil {
 			return nil, 0, err
-		}
-	}
-
-	if infra.HasFeatureFlag(infra.ASYNC_DECISION_STORAGE_FEATURE_FLAG, org.Id) && params.AsyncStorage && usecase.redisClient != nil {
-		redisExec := usecase.redisClient.NewExecutor(org.Id)
-
-		for _, item := range items {
-			key := redisExec.Key("decision", item.Decision.DecisionId.String())
-
-			if err := redisExec.SaveModel(ctx, nil, key, item.Decision, time.Hour); err != nil {
-				logger.Warn("could not save asynchronous decision to redis, decision will be missing until persistance",
-					"decision", item.Decision.DecisionId,
-					"err", err.Error())
-			}
 		}
 	}
 
@@ -839,6 +819,70 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	)
 
 	return decisions, nbSkipped, nil
+}
+
+// storeDecisionsAsync enqueues the asynchronous storage of decisions, which will eventually be
+// persisted by a worker. The payload is compact and compressed, and carried by the job itself.
+// If configured, the decisions are also cached in Redis while they are not persisted, which is
+// best-effort only: they might not be retrievable until they are stored.
+func (usecase *DecisionUsecase) storeDecisionsAsync(ctx context.Context, logger *slog.Logger, orgId uuid.UUID, items []models.DecisionBundle) error {
+	jobs := make([]models.AsyncDecisionStorageArgs, len(items))
+
+	for i, item := range items {
+		payload, err := models.NewTransientDecision(item).Encode()
+		if err != nil {
+			return err
+		}
+
+		jobs[i] = models.AsyncDecisionStorageArgs{
+			OrgId:      orgId,
+			DecisionId: item.Decision.DecisionId,
+			Payload:    payload,
+		}
+	}
+
+	redisExec := usecase.redisClient.NewExecutor(orgId)
+
+	keys := pure_utils.Map(jobs, func(job models.AsyncDecisionStorageArgs) string {
+		return redisExec.Key("decision", job.DecisionId.String())
+	})
+
+	var cache sync.WaitGroup
+
+	cache.Go(func() {
+		err := redisExec.Exec(func(c *redis.Client) error {
+			_, err := c.Pipelined(ctx, func(p redis.Pipeliner) error {
+				for i, job := range jobs {
+					p.Set(ctx, keys[i], job.Payload, time.Hour)
+				}
+
+				return nil
+			})
+
+			return err
+		})
+
+		if err != nil {
+			logger.WarnContext(ctx, "could not cache asynchronous decisions, they will be missing until persisted",
+				"err", err.Error())
+		}
+	})
+
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		return usecase.taskQueueRepository.EnqueueAsyncDecisionStorage(ctx, tx, jobs)
+	})
+
+	cache.Wait()
+
+	if err != nil {
+		_ = redisExec.Exec(func(c *redis.Client) error {
+			return c.Del(context.WithoutCancel(ctx), keys...).Err()
+		})
+
+		return errors.Wrap(err, "could not enqueue asynchronous decision storage")
+	}
+
+	return nil
 }
 
 func (usecase *DecisionUsecase) executeTestRun(

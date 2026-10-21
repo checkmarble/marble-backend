@@ -41,15 +41,23 @@ func (w AsyncDecisionStorageWorker) Work(ctx context.Context, job *river.Job[mod
 	storageStart := time.Now()
 
 	logger := utils.LoggerFromContext(ctx).With(
-		"org_id", job.Args.Bundle.Decision.OrganizationId,
-		"decision", job.Args.Bundle.Decision.DecisionId)
+		"org_id", job.Args.OrgId,
+		"decision", job.Args.DecisionId)
 
-	err := w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+	transientDecision, err := models.DecodeTransientDecision(job.Args.Payload)
+	if err != nil {
+		logger.ErrorContext(ctx, "could not decode asynchronous decision payload, discarding it",
+			"err", err.Error())
+
+		return river.JobCancel(err)
+	}
+
+	err = w.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		_, err := w.decisionUsecase.StoreDecision(
 			ctx,
 			logger,
 			tx,
-			job.Args.Bundle,
+			transientDecision.ToBundle(),
 		)
 
 		return err
@@ -81,8 +89,8 @@ func (w AsyncDecisionStorageWorker) Work(ctx context.Context, job *river.Job[mod
 
 func (w AsyncDecisionStorageWorker) deleteTransientDecision(ctx context.Context, job *river.Job[models.AsyncDecisionStorageArgs], logger *slog.Logger) {
 	if w.redisClient != nil {
-		redisExec := w.redisClient.NewExecutor(job.Args.Bundle.Decision.OrganizationId)
-		key := redisExec.Key("decision", job.Args.Bundle.Decision.DecisionId.String())
+		redisExec := w.redisClient.NewExecutor(job.Args.OrgId)
+		key := redisExec.Key("decision", job.Args.DecisionId.String())
 
 		err := redisExec.Exec(func(c *redis.Client) error {
 			return c.Del(ctx, key).Err()
