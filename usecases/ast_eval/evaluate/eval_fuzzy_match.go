@@ -93,6 +93,9 @@ func getSimilarityAlgo(s string) (func(s1 string, s2 string) int, error) {
 		return pure_utils.BagOfWordsSimilarity, nil
 	case "bag_of_words_similarity":
 		return pure_utils.BagOfWordsSimilarity, nil
+	case "phrase_match":
+		// Asymmetric: s1 is the text in which s2, the phrase, is looked for.
+		return pure_utils.PhraseSimilarity, nil
 	}
 
 	return f, errors.New("Unknown algorithm: " + s)

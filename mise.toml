@@ -18,3 +18,4 @@ run = "goose postgres up"
 dir = "repositories/migrations"
 env.GOOSE_DBSTRING = "$PG_CONNECTION_STRING"
 run = "goose postgres down"
+

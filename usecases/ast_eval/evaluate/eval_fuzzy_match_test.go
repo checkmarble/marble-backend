@@ -36,6 +36,12 @@ func TestFuzzyMatch(t *testing.T) {
 			want: 65,
 		},
 		{
+			name: "phrase_match",
+			args: []any{"Un appel urgent et humanitaire a été lancé", "appel humanitaire"},
+			algo: "phrase_match",
+			want: 83,
+		},
+		{
 			name:   "with nulls left",
 			args:   []any{nil, "any string"},
 			algo:   "bag_of_words_similarity",
@@ -88,6 +94,12 @@ func TestFuzzyMatchAnyOf(t *testing.T) {
 			}},
 			algo: "ratio",
 			want: 31,
+		},
+		{
+			name: "phrase_match",
+			args: []any{"Un apel humanitère urgent", []string{"crise économique", "appel humanitaire"}},
+			algo: "phrase_match",
+			want: 81,
 		},
 		{
 			name:   "error algo",
