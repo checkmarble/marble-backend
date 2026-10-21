@@ -205,7 +205,7 @@ type TaskQueueRepository interface {
 	EnqueueAsyncDecisionStorage(
 		ctx context.Context,
 		tx Transaction,
-		bundle models.DecisionBundle,
+		items []models.AsyncDecisionStorageArgs,
 	) error
 }
 
@@ -1049,24 +1049,31 @@ func (r riverRepository) EnqueueScreeningHitSuggestionTask(
 func (r riverRepository) EnqueueAsyncDecisionStorage(
 	ctx context.Context,
 	tx Transaction,
-	bundle models.DecisionBundle,
+	items []models.AsyncDecisionStorageArgs,
 ) error {
-	res, err := r.client.InsertTx(
-		ctx,
-		tx.RawTx(),
-		models.AsyncDecisionStorageArgs{Bundle: bundle},
-		&river.InsertOpts{
-			Queue: bundle.Decision.OrganizationId.String(),
-		},
-	)
+	if len(items) == 0 {
+		return nil
+	}
 
+	params := make([]river.InsertManyParams, len(items))
+
+	for i, item := range items {
+		params[i] = river.InsertManyParams{
+			Args:       item,
+			InsertOpts: &river.InsertOpts{Queue: item.OrgId.String()},
+		}
+	}
+
+	res, err := r.client.InsertManyTx(ctx, tx.RawTx(), params)
 	if err != nil {
 		return err
 	}
 
 	logger := utils.LoggerFromContext(ctx)
-	logger.DebugContext(ctx, "Enqueued async decision storage task",
-		"decision_id", bundle.Decision.DecisionId, "job_id", res.Job.ID)
+	for i, job := range res {
+		logger.DebugContext(ctx, "Enqueued async decision storage task",
+			"decision_id", items[i].DecisionId, "job_id", job.Job.ID)
+	}
 
 	return nil
 }

@@ -344,7 +344,10 @@ func (ClientDataPurgeArgs) Kind() string {
 }
 
 type AsyncDecisionStorageArgs struct {
-	Bundle DecisionBundle `json:"bundle"`
+	OrgId      uuid.UUID `json:"org_id"`
+	DecisionId uuid.UUID `json:"decision_id"`
+	// Compressed TransientDecision, see models.TransientDecision.Encode()
+	Payload []byte `json:"payload"`
 }
 
 func (AsyncDecisionStorageArgs) Kind() string {
