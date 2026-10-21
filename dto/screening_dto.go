@@ -3,6 +3,7 @@ package dto
 import (
 	"encoding/json"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -171,7 +172,7 @@ func AdaptScreeningMatchUpdateInputDto(matchId string, reviewerId models.UserId,
 		Whitelist:  dto.Whitelist,
 	}
 
-	if dto.Comment != nil {
+	if dto.Comment != nil && strings.TrimSpace(*dto.Comment) != "" {
 		update.Comment = &models.ScreeningMatchComment{
 			MatchId:     matchId,
 			CommenterId: reviewerId,
