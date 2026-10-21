@@ -280,7 +280,8 @@ func (n *countingNode) Evaluate(ctx context.Context, arguments ast.Arguments) (a
 
 func TestCachedEvaluation(t *testing.T) {
 	ast.FuncAttributesMap[TEST_FUNC_COSTLY] = ast.FuncAttributes{
-		Cost: 1000,
+		Cost:      1000,
+		Cacheable: true,
 	}
 
 	defer delete(ast.FuncAttributesMap, TEST_FUNC_COSTLY)
@@ -327,7 +328,8 @@ func TestCachedEvaluation(t *testing.T) {
 
 func TestCachedEvaluationWithDifferentParams(t *testing.T) {
 	ast.FuncAttributesMap[TEST_FUNC_COSTLY] = ast.FuncAttributes{
-		Cost: 1000,
+		Cost:      1000,
+		Cacheable: true,
 	}
 
 	defer delete(ast.FuncAttributesMap, TEST_FUNC_COSTLY)
@@ -371,4 +373,31 @@ func TestCachedEvaluationWithDifferentParams(t *testing.T) {
 	wg.Wait()
 
 	assert.Equal(t, int64(2), node.hits.Load())
+}
+
+func TestNonCacheableEvaluationIsNotShared(t *testing.T) {
+	ast.FuncAttributesMap[TEST_FUNC_COSTLY] = ast.FuncAttributes{
+		Cost: 1000,
+	}
+
+	defer delete(ast.FuncAttributesMap, TEST_FUNC_COSTLY)
+
+	node := &countingNode{}
+
+	environment := NewAstEvaluationEnvironment()
+	environment.AddEvaluator(TEST_FUNC_COSTLY, node)
+
+	root := ast.Node{Function: ast.FUNC_AND}.
+		AddChild(ast.Node{Function: TEST_FUNC_COSTLY}).
+		AddChild(ast.Node{Function: TEST_FUNC_COSTLY})
+
+	result, ok := EvaluateAst(context.TODO(), NewEvaluationCache(), environment, root)
+
+	assert.True(t, ok)
+	assert.Equal(t, true, result.ReturnValue)
+	assert.Equal(t, int64(2), node.hits.Load())
+
+	for _, child := range result.Children {
+		assert.False(t, child.EvaluationPlan.Cached)
+	}
 }
