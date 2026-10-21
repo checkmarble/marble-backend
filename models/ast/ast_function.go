@@ -82,6 +82,10 @@ type FuncAttributes struct {
 	Commutative bool `json:"-"`
 	// Cost modelizes the computation cost of a given node, the default being zero.
 	Cost int `json:"-"`
+	// Cacheable indicates the evaluation of this function is expensive (I/O, heavy computation) or must be
+	// consistent across a scenario evaluation, so identical nodes should share a single evaluation. Other
+	// nodes are cheap enough that hashing and copying them costs more than evaluating them again.
+	Cacheable bool `json:"-"`
 }
 
 type ScoreComputationResult struct {
@@ -175,6 +179,7 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_TIME_NOW: {
 		DebugName: "FUNC_TIME_NOW",
 		AstName:   "TimeNow",
+		Cacheable: true,
 	},
 	FUNC_PARSE_TIME: {
 		DebugName: "FUNC_PARSE_TIME",
@@ -190,7 +195,8 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		NamedArguments: []string{
 			"tableName", "fieldName", "path",
 		},
-		Cost: 30,
+		Cost:      30,
+		Cacheable: true,
 	},
 	FUNC_CUSTOM_LIST_ACCESS: {
 		DebugName: "FUNC_CUSTOM_LIST_ACCESS",
@@ -198,7 +204,8 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		NamedArguments: []string{
 			"customListId",
 		},
-		Cost: 30,
+		Cost:      30,
+		Cacheable: true,
 	},
 	FUNC_IS_IN_LIST: {
 		DebugName: "FUNC_IS_IN_LIST",
@@ -237,6 +244,7 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		AstName:        "Aggregator",
 		NamedArguments: []string{"tableName", "fieldName", "aggregator", "filters", "label"},
 		Cost:           50,
+		Cacheable:      true,
 	},
 	FUNC_LIST: {
 		DebugName: "FUNC_LIST",
@@ -246,11 +254,13 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		DebugName:      "FUNC_FUZZY_MATCH",
 		AstName:        "FuzzyMatch",
 		NamedArguments: []string{"algorithm"},
+		Cacheable:      true,
 	},
 	FUNC_FUZZY_MATCH_ANY_OF: {
 		DebugName:      "FUNC_FUZZY_MATCH_ANY_OF",
 		AstName:        "FuzzyMatchAnyOf",
 		NamedArguments: []string{"algorithm"},
+		Cacheable:      true,
 	},
 	FUNC_FUZZY_MATCH_FILTER_OPTIONS: {
 		DebugName:      "FUNC_FUZZY_MATCH_FILTER_OPTIONS",
@@ -274,11 +284,13 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		DebugName:      "FUNC_TIMESTAMP_EXTRACT",
 		AstName:        "TimestampExtract",
 		NamedArguments: []string{"timestamp", "part"},
+		Cacheable:      true,
 	},
 	FUNC_HAS_IP_FLAG: {
 		DebugName:      "FUNC_HAS_IP_FLAG",
 		AstName:        "HasIpFlag",
 		NamedArguments: []string{"ip", "flag"},
+		Cacheable:      true,
 	},
 	FUNC_IS_MULTIPLE_OF: {
 		DebugName:      "FUNC_IS_MULTIPLE_OF",
@@ -309,6 +321,7 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		NamedArguments: []string{
 			"config",
 		},
+		Cacheable: true,
 	},
 	FUNC_RECORD_HAS_TAGS: {
 		DebugName: "FUNC_RECORD_HAS_TAGS",
@@ -316,14 +329,17 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		NamedArguments: []string{
 			"config",
 		},
+		Cacheable: true,
 	},
 	FUNC_RECORD_RISK_LEVEL: {
 		DebugName: "FUNC_RECORD_RISK_LEVEL",
 		AstName:   "RecordRiskLevel",
+		Cacheable: true,
 	},
 	FUNC_RECORD_HAS_PAST_ALERTS: {
 		DebugName: "FUNC_RECORD_HAS_PAST_ALERTS",
 		AstName:   "RecordHasPastAlerts",
+		Cacheable: true,
 	},
 	FUNC_SCORE_COMPUTATION: {
 		DebugName:      "FUNC_SCORE_COMPUTATION",

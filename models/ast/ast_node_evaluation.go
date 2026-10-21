@@ -1,7 +1,11 @@
 package ast
 
 import (
+	"reflect"
+	"slices"
 	"time"
+
+	"github.com/mitchellh/copystructure"
 )
 
 type NodeEvaluation struct {
@@ -43,6 +47,46 @@ func (root NodeEvaluation) FlattenErrors() []error {
 	}
 
 	return errs
+}
+
+// Clone returns a deep copy of the evaluation tree, so it can be mutated without affecting the original.
+// Only return values that are not scalars (lists, maps, pointers) need a reflection-based copy.
+func (root NodeEvaluation) Clone() (NodeEvaluation, error) {
+	out := root
+	out.Errors = slices.Clone(root.Errors)
+
+	switch reflect.ValueOf(root.ReturnValue).Kind() {
+	case reflect.Slice, reflect.Map, reflect.Pointer, reflect.Array, reflect.Interface:
+		value, err := copystructure.Copy(root.ReturnValue)
+		if err != nil {
+			return NodeEvaluation{}, err
+		}
+		out.ReturnValue = value
+	}
+
+	if root.Children != nil {
+		out.Children = make([]NodeEvaluation, len(root.Children))
+		for idx, child := range root.Children {
+			clone, err := child.Clone()
+			if err != nil {
+				return NodeEvaluation{}, err
+			}
+			out.Children[idx] = clone
+		}
+	}
+
+	if root.NamedChildren != nil {
+		out.NamedChildren = make(map[string]NodeEvaluation, len(root.NamedChildren))
+		for key, child := range root.NamedChildren {
+			clone, err := child.Clone()
+			if err != nil {
+				return NodeEvaluation{}, err
+			}
+			out.NamedChildren[key] = clone
+		}
+	}
+
+	return out, nil
 }
 
 func (root *NodeEvaluation) SetCached() {

@@ -8,7 +8,6 @@ import (
 
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
-	"github.com/mitchellh/copystructure"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -44,28 +43,33 @@ func EvaluateAst(ctx context.Context, cache *EvaluationCache,
 		Ok   bool
 	}
 
-	hash := node.Hash()
+	// Most nodes are cheaper to evaluate again than to hash and copy, so only cacheable nodes are
+	// deduplicated across the evaluation.
+	attrs, _ := node.Function.Attributes()
+	cacheable := cache != nil && attrs.Cacheable
 
-	if cache != nil {
+	var hash uint64
+
+	if cacheable {
+		hash = node.Hash()
+
 		if cached, ok := cache.Cache.Load(hash); ok {
-			if response, err := copystructure.Copy(cached); err == nil {
-				response := response.(nodeEvaluationResponse)
-				response.Eval.Index = node.Index
+			response := cached.(nodeEvaluationResponse)
 
-				response.Eval.EvaluationPlan = ast.NodeEvaluationPlan{
+			if eval, err := response.Eval.Clone(); err == nil {
+				eval.Index = node.Index
+
+				eval.EvaluationPlan = ast.NodeEvaluationPlan{
 					Took:   0,
 					Cached: true,
 				}
 
-				return response.Eval, response.Ok
+				return eval, response.Ok
 			}
 		}
 	}
 
 	childEvaluationFail := false
-
-	// Only interested in lazy callback which will have default value if an error is returned
-	attrs, _ := node.Function.Attributes()
 
 	evalChild := func(child ast.Node) (childEval ast.NodeEvaluation, evalNext bool) {
 		childEval, ok := EvaluateAst(ctx, cache, environment, child)
@@ -82,14 +86,9 @@ func EvaluateAst(ctx context.Context, cache *EvaluationCache,
 		return
 	}
 
-	cachedExecutor := new(singleflight.Group)
 	evaluated := false
 
-	if cache != nil {
-		cachedExecutor = cache.Executor
-	}
-
-	eval, _, _ := cachedExecutor.Do(fmt.Sprintf("%d", hash), func() (any, error) {
+	evaluate := func() (any, error) {
 		evaluated = true
 		weightedNodes := NewWeightedNodes(environment, node, node.Children)
 
@@ -147,12 +146,20 @@ func EvaluateAst(ctx context.Context, cache *EvaluationCache,
 
 		evaluationResponse := nodeEvaluationResponse{evaluation, ok}
 
-		if cache != nil {
+		if cacheable {
 			cache.Cache.Store(hash, evaluationResponse)
 		}
 
 		return evaluationResponse, nil
-	})
+	}
+
+	var eval any
+
+	if cacheable {
+		eval, _, _ = cache.Executor.Do(fmt.Sprintf("%d", hash), evaluate)
+	} else {
+		eval, _ = evaluate()
+	}
 
 	evaluation := eval.(nodeEvaluationResponse)
 	evaluation.Eval.Index = node.Index
@@ -162,14 +169,14 @@ func EvaluateAst(ctx context.Context, cache *EvaluationCache,
 	}
 
 	if !evaluated {
-		result, err := copystructure.Copy(evaluation.Eval)
+		result, err := evaluation.Eval.Clone()
 		if err != nil {
 			evaluation.Eval.Errors = append(evaluation.Eval.Errors, err)
 
 			return evaluation.Eval, false
 		}
 
-		evaluation.Eval = result.(ast.NodeEvaluation)
+		evaluation.Eval = result
 		evaluation.Eval.SetCached()
 	}
 
