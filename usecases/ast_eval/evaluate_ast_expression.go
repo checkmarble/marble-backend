@@ -22,12 +22,22 @@ func (evaluator EvaluateAstExpression) EvaluateAstExpression(
 	payload models.ClientObject,
 	dataModel models.DataModel,
 ) (ast.NodeEvaluation, error) {
-	environment := evaluator.AstEvaluationEnvironmentFactory(EvaluationEnvironmentFactoryParams{
-		OrganizationId:                organizationId,
-		ClientObject:                  payload,
-		DataModel:                     dataModel,
-		DatabaseAccessReturnFakeValue: false,
-	})
+	buildEnvironment := func() AstEvaluationEnvironment {
+		return evaluator.AstEvaluationEnvironmentFactory(EvaluationEnvironmentFactoryParams{
+			OrganizationId:                organizationId,
+			ClientObject:                  payload,
+			DataModel:                     dataModel,
+			DatabaseAccessReturnFakeValue: false,
+		})
+	}
+
+	var environment AstEvaluationEnvironment
+
+	if cache != nil {
+		environment = cache.Environment(buildEnvironment)
+	} else {
+		environment = buildEnvironment()
+	}
 
 	evaluation, ok := EvaluateAst(ctx, cache, environment, ruleAstExpression)
 	if !ok {

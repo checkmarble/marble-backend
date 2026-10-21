@@ -11,9 +11,22 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
+// EvaluationCache is scoped to a single evaluation context (organization, payload and data model), it
+// must not be shared across evaluations of different payloads.
 type EvaluationCache struct {
 	Cache    sync.Map
 	Executor *singleflight.Group
+
+	environmentOnce sync.Once
+	environment     AstEvaluationEnvironment
+}
+
+func (cache *EvaluationCache) Environment(build func() AstEvaluationEnvironment) AstEvaluationEnvironment {
+	cache.environmentOnce.Do(func() {
+		cache.environment = build()
+	})
+
+	return cache.environment
 }
 
 func NewEvaluationCache() *EvaluationCache {
