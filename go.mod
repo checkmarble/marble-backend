@@ -10,7 +10,6 @@ require (
 	dario.cat/mergo v1.0.2
 	firebase.google.com/go/v4 v4.21.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.0
-	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.62.0
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/TwiN/deepmerge v0.2.2
