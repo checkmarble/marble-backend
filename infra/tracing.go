@@ -6,7 +6,6 @@ import (
 	"math"
 	"strings"
 
-	gcppropagator "github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator"
 	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/oauth"
@@ -98,7 +97,6 @@ func InitTelemetry(ctx context.Context, configuration TelemetryConfiguration, ap
 	tracer := tp.Tracer(configuration.ApplicationName)
 
 	propagators := propagation.NewCompositeTextMapPropagator(
-		gcppropagator.CloudTraceFormatPropagator{},
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	)
