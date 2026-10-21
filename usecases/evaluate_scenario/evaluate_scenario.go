@@ -761,7 +761,6 @@ func (e ScenarioEvaluator) evalAllScenarioRules(
 	concurrency int,
 ) (int, []models.RuleExecution, error) {
 	// Results
-	runningSumOfScores := 0
 	ruleExecutions := make([]models.RuleExecution, len(rules))
 
 	limit := MAX_CONCURRENT_RULE_EXECUTIONS
@@ -785,12 +784,11 @@ func (e ScenarioEvaluator) evalAllScenarioRules(
 			}
 
 			// Eval each rule
-			scoreModifier, ruleExecution, err := e.evalScenarioRule(ctx, cache, rule, dataAccessor, dataModel, snoozes)
+			_, ruleExecution, err := e.evalScenarioRule(ctx, cache, rule, dataAccessor, dataModel, snoozes)
 			if err != nil {
 				return err // First err will cancel the ctx
 			}
 
-			runningSumOfScores += scoreModifier
 			ruleExecutions[i] = ruleExecution
 
 			return nil
@@ -801,7 +799,13 @@ func (e ScenarioEvaluator) evalAllScenarioRules(
 		return 0, nil, errors.Errorf("at least one rule evaluation returned an error: %w", err)
 	}
 
-	return runningSumOfScores, ruleExecutions, nil
+	// Rules run concurrently, so the score is summed once they are all done instead of in each goroutine.
+	score := 0
+	for _, ruleExecution := range ruleExecutions {
+		score += ruleExecution.ResultScoreModifier
+	}
+
+	return score, ruleExecutions, nil
 }
 
 func getPivotValue(ctx context.Context, pivot models.Pivot, dataAccessor DataAccessor) (*string, error) {
