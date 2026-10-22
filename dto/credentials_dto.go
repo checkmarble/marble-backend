@@ -1,48 +1,41 @@
 package dto
 
 import (
-	"slices"
-
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/google/uuid"
 )
 
 type Identity struct {
-	UserId     string `json:"user_id,omitempty"`
-	Email      string `json:"email,omitempty"`
-	FirstName  string `json:"first_name,omitempty"`
-	LastName   string `json:"last_name,omitempty"`
+	UserId    string `json:"user_id,omitempty"`
+	Email     string `json:"email,omitempty"`
+	FirstName string `json:"first_name,omitempty"`
+	LastName  string `json:"last_name,omitempty"`
+
+	ApiKeyId   string `json:"api_key_id,omitempty"`
 	ApiKeyName string `json:"api_key_name,omitempty"`
 }
 
 type Credentials struct {
-	ActorIdentity  Identity  `json:"actor_identity"`
-	OrganizationId uuid.UUID `json:"organization_id"`
-	Permissions    []string  `json:"permissions"`
-	Roles          []string  `json:"roles,omitempty"`
+	ActorIdentity  Identity            `json:"actor_identity"`
+	OrganizationId uuid.UUID           `json:"organization_id"`
+	Permissions    []models.Permission `json:"permissions"`
+	// Roles is informative: authorization is resolved from grants on every request.
+	Roles []models.Role `json:"roles,omitempty"`
 }
 
 func AdaptCredentialDto(creds models.Credentials) (Credentials, error) {
-	permissions, err := pure_utils.MapErr(
-		permissionsForCredentials(creds),
-		func(p models.Permission) (string, error) { return p.String() },
-	)
-	if err != nil {
-		return Credentials{}, err
-	}
-
 	return Credentials{
 		ActorIdentity: Identity{
 			UserId:     string(creds.ActorIdentity.UserId),
 			Email:      creds.ActorIdentity.Email,
 			FirstName:  creds.ActorIdentity.FirstName,
 			LastName:   creds.ActorIdentity.LastName,
+			ApiKeyId:   creds.ActorIdentity.ApiKeyId,
 			ApiKeyName: creds.ActorIdentity.ApiKeyName,
 		},
 		OrganizationId: creds.OrganizationId,
-		Permissions:    permissions,
-		Roles:          pure_utils.Map(creds.Roles, func(role models.Role) string { return role.String() }),
+		Permissions:    creds.Permissions,
+		Roles:          models.RoleNames(creds.RoleBindings),
 	}, nil
 }
 
@@ -53,21 +46,10 @@ func AdaptCredential(dto Credentials) models.Credentials {
 			Email:      dto.ActorIdentity.Email,
 			FirstName:  dto.ActorIdentity.FirstName,
 			LastName:   dto.ActorIdentity.LastName,
+			ApiKeyId:   dto.ActorIdentity.ApiKeyId,
 			ApiKeyName: dto.ActorIdentity.ApiKeyName,
 		},
 		OrganizationId: dto.OrganizationId,
-		Roles:          pure_utils.Map(dto.Roles, models.RoleFromString),
+		Permissions:    dto.Permissions,
 	}
-}
-
-func permissionsForCredentials(creds models.Credentials) []models.Permission {
-	permissions := []models.Permission{}
-	for _, role := range creds.Roles {
-		for _, permission := range role.Permissions() {
-			if !slices.Contains(permissions, permission) {
-				permissions = append(permissions, permission)
-			}
-		}
-	}
-	return permissions
 }
