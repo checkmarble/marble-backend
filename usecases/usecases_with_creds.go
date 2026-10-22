@@ -490,6 +490,20 @@ func (usecases *UsecasesWithCreds) NewUserUseCase() UserUseCase {
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewGroupUsecase() GroupUseCase {
+	return GroupUseCase{
+		enforceSecurity: &security.EnforceSecurityGroupImpl{
+			EnforceSecurity: usecases.NewEnforceSecurity(),
+			Credentials:     usecases.Credentials,
+		},
+		credentials:        usecases.Credentials,
+		executorFactory:    usecases.NewExecutorFactory(),
+		transactionFactory: usecases.NewTransactionFactory(),
+		groupRepository:    usecases.Repositories.MarbleDbRepository,
+		roleRepository:     usecases.Repositories.MarbleDbRepository,
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewInboxReader() inboxes.InboxReader {
 	sec := security.EnforceSecurityInboxes{
 		EnforceSecurity: usecases.NewEnforceSecurity(),

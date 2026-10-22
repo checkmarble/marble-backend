@@ -112,9 +112,18 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.PATCH("/config/usage-tracking", tom, handleUpdateUsageTracking(uc))
 	router.GET("/me/organizations", tom, handleMyOrganizations(uc))
 
-	router.GET("/roles", tom, handleGetRoles(uc))
-	router.POST("/roles", tom, handleCreateRole(uc))
-	router.PUT("/roles/permissions", tom, handleUpdateRolePermissions(uc))
+	iam := router.Group("/iam")
+	iam.GET("/roles", tom, handleGetRoles(uc))
+	iam.POST("/roles", tom, handleCreateRole(uc))
+	iam.PUT("/roles/permissions", tom, handleUpdateRolePermissions(uc))
+
+	iam.GET("/groups", tom, handleListGroups(uc))
+	iam.POST("/groups", tom, handleCreateGroup(uc))
+	iam.GET("/groups/:group_id", tom, handleGetGroup(uc))
+	iam.PATCH("/groups/:group_id", tom, handleRenameGroup(uc))
+	iam.DELETE("/groups/:group_id", tom, handleDeleteGroup(uc))
+	iam.PUT("/groups/:group_id/members", tom, handleReplaceGroupMembers(uc))
+	iam.PUT("/groups/:group_id/roles", tom, handleReplaceGroupBindings(uc))
 
 	router.GET("/decisions",
 		timeoutMiddleware(conf.DecisionTimeout),
