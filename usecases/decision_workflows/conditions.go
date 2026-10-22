@@ -97,6 +97,9 @@ func payloadEvaluates(astNode ast.Node) DecisionWorkflowsCondition {
 		if len(eval.Errors) > 0 {
 			return false, nil
 		}
+		if eval.ReturnValue == nil {
+			return false, nil
+		}
 		ret, ok := eval.ReturnValue.(bool)
 		if !ok {
 			return false, ast.ErrArgumentMustBeBool
