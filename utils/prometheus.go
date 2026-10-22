@@ -16,7 +16,7 @@ var (
 	MetricRequestLatency = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "marble_http_requests_latency",
 		Help:    "Latency of HTTP requests",
-		Buckets: []float64{0.2, 0.3, 0.6, 1.0, 2.0},
+		Buckets: []float64{0.2, 0.3, 0.6, 1.0, 2.0, 5.0, 10.0},
 	}, []string{"org_id", "method", "url", "status"})
 
 	MetricDecisionCount = promauto.NewCounterVec(prometheus.CounterOpts{
@@ -27,13 +27,13 @@ var (
 	MetricDecisionLatency = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "marble_decision_latency",
 		Help:    "Latency of decisions",
-		Buckets: []float64{0.1, 0.2, 0.3, 0.6, 1.0},
+		Buckets: []float64{0.1, 0.2, 0.3, 0.6, 1.0, 2.0, 5.0, 10.0},
 	}, []string{"org_id"})
 
 	MetricScreeningLatency = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "marble_screening_latency",
 		Help:    "Latency of screenings",
-		Buckets: []float64{0.1, 0.2, 0.3, 0.6, 1.0},
+		Buckets: []float64{0.1, 0.2, 0.3, 0.6, 1.0, 2.0, 5.0, 10.0},
 	}, []string{"org_id"})
 
 	MetricIngestionCount = promauto.NewCounterVec(prometheus.CounterOpts{
