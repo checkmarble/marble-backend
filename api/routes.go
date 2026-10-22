@@ -112,6 +112,10 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.PATCH("/config/usage-tracking", tom, handleUpdateUsageTracking(uc))
 	router.GET("/me/organizations", tom, handleMyOrganizations(uc))
 
+	router.GET("/roles", tom, handleGetRoles(uc))
+	router.POST("/roles", tom, handleCreateRole(uc))
+	router.PUT("/roles/permissions", tom, handleUpdateRolePermissions(uc))
+
 	router.GET("/decisions",
 		timeoutMiddleware(conf.DecisionTimeout),
 		handleListDecisions(uc, parsedAppUrl))
