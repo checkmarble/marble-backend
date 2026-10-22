@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,7 +19,7 @@ func handleCreateInitialOrganization(uc usecases.Usecases, cfg Configuration) gi
 			return
 		}
 
-		onboardingUsecase := uc.NewOnboardingUsecase(cfg.TokenProvider)
+		onboardingUsecase := uc.NewOnboardingUsecase(cfg.TokenProviders.Has(auth.TokenProviderFirebase))
 
 		if err := onboardingUsecase.CreateInitialOrganization(ctx, payload); presentError(ctx, c, err) {
 			return
