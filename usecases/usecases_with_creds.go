@@ -1361,10 +1361,12 @@ func (usecases UsecasesWithCreds) NewScreeningSavedSearchesUsecase() ScreeningSe
 }
 
 func (usecases UsecasesWithCreds) NewAsyncDecisionStorageWorker() worker_jobs.AsyncDecisionStorageWorker {
+	decisionUsecase := usecases.NewDecisionUsecase()
+
 	return worker_jobs.NewAsyncDecisionStorageWorker(
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.RedisClient,
-		usecases.NewDecisionUsecase(),
+		&decisionUsecase,
 	)
 }
 

@@ -36,7 +36,14 @@ import (
 const (
 	CONCURRENT_DECISIONS     = 5
 	PHANTOM_DECISION_TIMEOUT = 5 * time.Second
+
+	// Maximum number of test runs executed in the background at any given time. When reached, new
+	// test runs wait for a slot, off the decision's critical path, and are dropped after a timeout.
+	MAX_BACKGROUND_TEST_RUNS    = 256
+	BACKGROUND_TEST_RUN_TIMEOUT = 10 * time.Second
 )
+
+var backgroundTestRunSlots = make(chan struct{}, MAX_BACKGROUND_TEST_RUNS)
 
 type DecisionUsecaseRepository interface {
 	DecisionWithRuleExecutionsById(
@@ -441,18 +448,13 @@ func (usecase *DecisionUsecase) CreateDecision(
 		return false, models.DecisionWithRuleExecutions{}, err
 	}
 
-	scenario, ok := singleScenarioCache.Get(input.ScenarioId)
-	if !ok {
-		s, err := usecase.repository.GetScenarioById(ctx, exec, input.ScenarioId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
-		if errors.Is(err, models.NotFoundError) {
-			return false, models.DecisionWithRuleExecutions{},
-				errors.WithDetail(err, "scenario not found")
-		} else if err != nil {
-			return false, models.DecisionWithRuleExecutions{},
-				errors.Wrap(err, "error getting scenario")
-		}
-		singleScenarioCache.Add(input.ScenarioId, s)
-		scenario = s
+	scenario, err := usecase.getScenario(ctx, exec, org, input.ScenarioId)
+	if errors.Is(err, models.NotFoundError) {
+		return false, models.DecisionWithRuleExecutions{},
+			errors.WithDetail(err, "scenario not found")
+	} else if err != nil {
+		return false, models.DecisionWithRuleExecutions{},
+			errors.Wrap(err, "error getting scenario")
 	}
 
 	if err := usecase.enforceSecurityScenario.ReadScenario(scenario); err != nil {
@@ -492,7 +494,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 			errors.Errorf("error evaluating scenario: %w", err)
 	}
 	if !triggerPassed {
-		usecase.executeTestRun(ctx, input.OrganizationId, input.TriggerObjectTable, evaluationParameters, scenario, nil)
+		usecase.executeTestRunInBackground(ctx, input.OrganizationId, input.TriggerObjectTable, evaluationParameters, scenario, nil)
 		return false, models.DecisionWithRuleExecutions{}, nil
 	}
 
@@ -560,8 +562,12 @@ func (usecase *DecisionUsecase) CreateDecision(
 
 	}
 
-	usecase.executeTestRun(ctx, input.OrganizationId, input.TriggerObjectTable,
-		evaluationParameters, scenario, &scenarioExecution)
+	// Asynchronously stored decisions execute their test run in the storage job, once persisted.
+	if stored {
+		usecase.executeTestRunInBackground(ctx, input.OrganizationId, input.TriggerObjectTable,
+			evaluationParameters, scenario, &scenarioExecution)
+	}
+
 	return true, newDecision, nil
 }
 
@@ -644,6 +650,8 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	// We don't need a mutex here, each concurrent iteration will access a discrete
 	// index of this slice.
 	allItems := make([]models.DecisionBundle, len(filteredScenarios))
+	// Test runs are only launched once the decisions were successfully stored.
+	testRuns := make([]*pendingTestRun, len(filteredScenarios))
 
 	syncer, syncerCtx := errgroup.WithContext(ctx)
 	syncer.SetLimit(CONCURRENT_DECISIONS)
@@ -687,8 +695,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 					"scenario_id", scenario.Id,
 					"since_start", sinceStart.Milliseconds(),
 				)
-				usecase.executeTestRun(ctx, input.OrganizationId,
-					input.TriggerObjectTable, evaluationParameters, scenario, nil)
+				testRuns[scenarioIdx] = &pendingTestRun{evaluationParameters, scenario, nil}
 
 			default:
 				decision := models.AdaptScenarExecToDecision(scenarioExecution, payload, nil)
@@ -701,8 +708,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 					ObjectId: evaluationParameters.ClientObject.Data["object_id"].(string),
 				}
 
-				usecase.executeTestRun(ctx, input.OrganizationId, input.TriggerObjectTable,
-					evaluationParameters, scenario, &scenarioExecution)
+				testRuns[scenarioIdx] = &pendingTestRun{evaluationParameters, scenario, &scenarioExecution}
 			}
 
 			return nil
@@ -788,8 +794,10 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		return nil
 	}
 
+	asyncStorage := infra.HasFeatureFlag(infra.ASYNC_DECISION_STORAGE_FEATURE_FLAG, org.Id) && params.AsyncStorage
+
 	switch {
-	case infra.HasFeatureFlag(infra.ASYNC_DECISION_STORAGE_FEATURE_FLAG, org.Id) && params.AsyncStorage:
+	case asyncStorage:
 		storageStart := time.Now()
 
 		if err = usecase.storeDecisionsAsync(ctx, logger, org.Id, items); err != nil {
@@ -822,6 +830,16 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		"nb_decisions", len(decisions),
 	)
 
+	for _, testRun := range testRuns {
+		// Asynchronously stored decisions execute their test run in the storage job, once persisted.
+		if testRun == nil || (asyncStorage && testRun.scenarioExecution != nil) {
+			continue
+		}
+
+		usecase.executeTestRunInBackground(ctx, input.OrganizationId, input.TriggerObjectTable,
+			testRun.evaluationParameters, testRun.scenario, testRun.scenarioExecution)
+	}
+
 	return decisions, nbSkipped, nil
 }
 
@@ -833,7 +851,9 @@ func (usecase *DecisionUsecase) storeDecisionsAsync(ctx context.Context, logger 
 	jobs := make([]models.AsyncDecisionStorageArgs, len(items))
 
 	for i, item := range items {
-		payload, err := models.NewTransientDecision(item).Encode()
+		transientDecision := models.NewTransientDecision(item)
+
+		payload, err := transientDecision.Encode()
 		if err != nil {
 			return err
 		}
@@ -921,6 +941,117 @@ func (usecase *DecisionUsecase) executeTestRun(
 		logger.ErrorContext(ctx, fmt.Sprintf("Error when creating phantom decisions with scenario id %s: %s",
 			phantomInput.Scenario.Id, errPhantom.Error()))
 	}
+}
+
+type pendingTestRun struct {
+	evaluationParameters evaluate_scenario.ScenarioEvaluationParameters
+	scenario             models.Scenario
+	scenarioExecution    *models.ScenarioExecution
+}
+
+// executeTestRunInBackground executes the test run outside of the decision's critical path. Test
+// runs are best-effort and never fail a decision. The number of background test runs is bounded so
+// as to keep memory footprint low. When the limit is reached, the test run waits for a slot in its
+// goroutine and is dropped if none frees up in time.
+func (usecase *DecisionUsecase) executeTestRunInBackground(
+	ctx context.Context,
+	organizationId uuid.UUID,
+	triggerObjectTable string,
+	evaluationParameters evaluate_scenario.ScenarioEvaluationParameters,
+	scenario models.Scenario,
+	scenarioExecution *models.ScenarioExecution,
+) {
+	go func() {
+		slotCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), BACKGROUND_TEST_RUN_TIMEOUT)
+		defer cancel()
+
+		select {
+		case backgroundTestRunSlots <- struct{}{}:
+		case <-slotCtx.Done():
+			utils.LoggerFromContext(ctx).WarnContext(ctx, "dropping test run, no background slot available",
+				"scenario_id", scenario.Id)
+			return
+		}
+
+		defer func() { <-backgroundTestRunSlots }()
+
+		usecase.executeTestRun(ctx, organizationId, triggerObjectTable,
+			evaluationParameters, scenario, scenarioExecution)
+	}()
+}
+
+// ExecuteTestRunForTransientDecision executes the test run for an asynchronously stored decision,
+// rebuilding the evaluation parameters from the decision's trigger object. Like all test runs, it is
+// best-effort: errors are logged and never returned.
+func (usecase *DecisionUsecase) ExecuteTestRunForTransientDecision(ctx context.Context, transientDecision models.TransientDecision) {
+	defer utils.RecoverAndReportSentryError(ctx, "ExecuteTestRunForTransientDecision")
+
+	decision := transientDecision.Decision
+	logger := utils.LoggerFromContext(ctx).With("decision_id", decision.DecisionId)
+	exec := usecase.executorFactory.NewExecutor()
+
+	org, err := usecase.orgRepository.GetOrganizationById(ctx, exec, decision.OrganizationId)
+	if err != nil {
+		logger.ErrorContext(ctx, "could not get organization for test run", "error", err.Error())
+		return
+	}
+
+	scenario, err := usecase.getScenario(ctx, exec, org, decision.ScenarioId.String())
+	if err != nil {
+		logger.ErrorContext(ctx, "could not get scenario for test run", "error", err.Error())
+		return
+	}
+
+	// The trigger object went through a JSON round-trip, parse it again to restore its typed values.
+	rawPayload, err := json.Marshal(decision.ClientObject.Data)
+	if err != nil {
+		logger.ErrorContext(ctx, "could not serialize trigger object for test run", "error", err.Error())
+		return
+	}
+
+	payload, dataModel, err := usecase.validatePayload(ctx, org.Id,
+		transientDecision.TriggerObjectType, nil, rawPayload, false)
+	if err != nil {
+		logger.ErrorContext(ctx, "could not parse trigger object for test run", "error", err.Error())
+		return
+	}
+
+	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, org.Id, nil, true, false)
+	if err != nil {
+		logger.ErrorContext(ctx, "could not list pivots for test run", "error", err.Error())
+		return
+	}
+
+	evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
+		Scenario:     scenario,
+		ClientObject: payload,
+		DataModel:    dataModel,
+		Pivots:       models.FindPivotsForTable(pivotsMeta, transientDecision.TriggerObjectType, dataModel),
+	}
+
+	usecase.executeTestRun(ctx, org.Id, transientDecision.TriggerObjectType, evaluationParameters, scenario,
+		&models.ScenarioExecution{
+			ScenarioIterationId: decision.ScenarioIterationId,
+			ScreeningExecutions: decision.ScreeningExecutions,
+		})
+}
+
+func (usecase *DecisionUsecase) getScenario(ctx context.Context, exec repositories.Executor,
+	org models.Organization, scenarioId string,
+) (models.Scenario, error) {
+	if scenario, ok := singleScenarioCache.Get(scenarioId); ok {
+		return scenario, nil
+	}
+
+	scenario, err := usecase.repository.GetScenarioById(ctx, exec, scenarioId,
+		org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
+	if err != nil {
+		return models.Scenario{}, err
+	}
+
+	singleScenarioCache.Add(scenarioId, scenario)
+
+	return scenario, nil
 }
 
 // used in different contexts, so allow different cases of input: pass client object or raw payload
