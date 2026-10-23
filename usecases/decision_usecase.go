@@ -420,6 +420,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 		"scenario_id", input.ScenarioId,
 	)
 	ctx = utils.StoreLoggerInContext(ctx, logger)
+	// Creating a decision never touches audited data, skip the audit session setup round trips.
+	ctx = repositories.WithoutAudit(ctx)
 	decisionStart := time.Now()
 
 	exec := usecase.executorFactory.NewExecutor()
@@ -577,6 +579,8 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			"trigger_object_table", input.TriggerObjectTable,
 		)
 	ctx = utils.StoreLoggerInContext(ctx, logger)
+	// Creating a decision never touches audited data, skip the audit session setup round trips.
+	ctx = repositories.WithoutAudit(ctx)
 	decisionStart := time.Now()
 	exec := usecase.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
