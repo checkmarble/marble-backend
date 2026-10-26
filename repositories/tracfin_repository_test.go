@@ -223,3 +223,15 @@ func TestTracfinStorageAndJSONErrors(t *testing.T) {
 	_, err := r.GetTracfinDraft(context.Background(), e, "org", "case")
 	require.Error(t, err)
 }
+
+func TestTracfinDecisionSourcesScopedRaw(t *testing.T) {
+	e := newTracfinExecutor(t)
+	e.ExpectQuery(`SELECT d.id, d.trigger_object_type, d.trigger_object FROM decisions AS d JOIN cases AS c ON c.id = d.case_id AND c.org_id = d.org_id WHERE d.org_id = .* AND d.case_id = .* AND d.id IN`).WithArgs("org", "case", "D1").WillReturnRows(pgxmock.NewRows([]string{"id", "trigger_object_type", "trigger_object"}).AddRow("D1", "DeletedType", []byte(`{"id":9007199254740993}`)))
+	got, err := (&MarbleDbRepository{}).GetTracfinDecisionSources(context.Background(), e, "org", "case", []string{"D1"})
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, `{"id":9007199254740993}`, string(got[0].Snapshot))
+	require.Equal(t, "DeletedType", got[0].HistoricalType)
+	_, err = (&MarbleDbRepository{}).GetTracfinDecisionSources(context.Background(), e, "org", "", []string{"D1"})
+	require.ErrorIs(t, err, models.BadParameterError)
+}

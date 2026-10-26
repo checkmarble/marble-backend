@@ -263,6 +263,34 @@ func ValidateConfiguration(config models.TracfinConfiguration, catalog Catalog) 
 		default:
 			add("INVALID_MAPPING_SOURCE", "Unknown mapping source kind", field.ID)
 		}
+
+		if mapping.Source.UnitOperation && (mapping.Source.Kind != "decision_snapshot" || !strings.HasSuffix(field.ID, "/operation/nombreOperations")) {
+			add("INVALID_UNIT_OPERATION", "Unit operation requires an explicit decision snapshot mapped to principal operation count", field.ID)
+		}
+		if mapping.Discriminator != nil {
+			if mapping.Discriminator.Field == "" || len(mapping.Discriminator.Values) == 0 {
+				add("INVALID_DISCRIMINATOR", "Discriminator requires a field and explicit accepted source values", field.ID)
+			}
+			seen := map[string]bool{}
+			for _, value := range mapping.Discriminator.Values {
+				if value == "" || seen[value] {
+					add("INVALID_DISCRIMINATOR", "Discriminator source values must be nonempty and unique", field.ID)
+				}
+				seen[value] = true
+			}
+		}
+		if len(mapping.Source.Path) > 20 || (mapping.Source.Kind != "ingested" && len(mapping.Source.Path) > 0) {
+			add("INVALID_MAPPING_PATH", "Only ingested paths up to 20 jumps are supported", field.ID)
+		}
+		parent := "root"
+		steps := map[string]bool{"root": true}
+		for _, step := range mapping.Source.Path {
+			if step.ID == "" || steps[step.ID] || step.ParentID != parent || step.Table == "" || step.Link == "" || step.RecordID != "" || (step.Direction != "forward" && step.Direction != "inverse") {
+				add("INVALID_MAPPING_PATH", "Path must use stable unique step IDs, configured named edges and no selected record IDs", field.ID)
+			}
+			steps[step.ID] = true
+			parent = step.ID
+		}
 		values := map[string]string{}
 		for _, pair := range mapping.Codes {
 			if strings.TrimSpace(pair.Source) == "" {

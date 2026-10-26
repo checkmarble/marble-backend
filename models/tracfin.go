@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // TracfinDecimal is an exact decimal lexeme, never a binary floating point value.
 type TracfinDecimal string
@@ -53,7 +56,19 @@ type TracfinDocument struct {
 	Root TracfinBlock `json:"root"` // fixed catalog ID /ds
 }
 
+type TracfinDecisionSource struct {
+	DecisionID     string          `json:"decision_id" db:"id"`
+	HistoricalType string          `json:"historical_type" db:"trigger_object_type"`
+	Snapshot       json.RawMessage `json:"snapshot" db:"trigger_object"`
+}
+
+type TracfinDiscriminator struct {
+	Field  string   `json:"field"`
+	Values []string `json:"values"`
+}
+
 type TracfinMappingSource struct {
+	UnitOperation  bool              `json:"unit_operation,omitempty"`
 	Kind           string            `json:"kind"`                  // ingested, decision_snapshot, settings
 	EntityType     string            `json:"entity_type,omitempty"` // ingested roots: Person or Company
 	Table          string            `json:"table,omitempty"`
@@ -93,6 +108,7 @@ type TracfinCurrencyEvidence struct {
 }
 
 type TracfinMapping struct {
+	Discriminator  *TracfinDiscriminator   `json:"discriminator,omitempty"`
 	ID             string                  `json:"id"`
 	TargetField    string                  `json:"target_field"`
 	Source         TracfinMappingSource    `json:"source"`
@@ -132,12 +148,13 @@ type TracfinOrigin struct {
 }
 
 type TracfinDiagnostic struct {
-	Code     string           `json:"code"`
-	Layer    string           `json:"layer"`
-	Severity string           `json:"severity"`
-	Message  string           `json:"message"`
-	Field    *TracfinFieldRef `json:"field,omitempty"`
-	RuleID   string           `json:"rule_id,omitempty"`
+	Sources  []TracfinSourceRef `json:"sources,omitempty"`
+	Code     string             `json:"code"`
+	Layer    string             `json:"layer"`
+	Severity string             `json:"severity"`
+	Message  string             `json:"message"`
+	Field    *TracfinFieldRef   `json:"field,omitempty"`
+	RuleID   string             `json:"rule_id,omitempty"`
 }
 
 type TracfinValidationLayer struct {

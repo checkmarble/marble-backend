@@ -18,6 +18,7 @@ import (
 // UpdatedBy must come from the authenticated server-side actor. CreatedAt and
 // UpdatedAt come from PostgreSQL, never from the supplied model's dates.
 type TracfinRepository interface {
+	GetTracfinDecisionSources(context.Context, Executor, string, string, []string) ([]models.TracfinDecisionSource, error)
 	GetTracfinConfiguration(context.Context, Executor, string) (models.TracfinConfiguration, error)
 	SaveTracfinConfiguration(context.Context, Executor, string, models.TracfinConfiguration, int64) error
 	GetTracfinDraft(context.Context, Executor, string, string) (models.TracfinDraft, error)
@@ -159,4 +160,20 @@ func execTracfinWrite(ctx context.Context, exec Executor, query squirrel.Sqlizer
 		return errors.Wrap(models.ConflictError, "TRACFIN record changed, exists already, or is outside the case scope")
 	}
 	return nil
+}
+
+// GetTracfinDecisionSources deliberately bypasses adaptCoreDecision: that adapter
+// decodes numbers through float64. Historical snapshots need no current table.
+func (repo *MarbleDbRepository) GetTracfinDecisionSources(ctx context.Context, exec Executor, orgID, caseID string, ids []string) ([]models.TracfinDecisionSource, error) {
+	if err := validateTracfinDraftScope(exec, orgID, caseID); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return []models.TracfinDecisionSource{}, nil
+	}
+	if len(ids) > 100 {
+		return nil, errors.Wrap(models.BadParameterError, "too many TRACFIN source decisions")
+	}
+	return SqlToListOfModels(ctx, exec, NewQueryBuilder().Select("d.id", "d.trigger_object_type", "d.trigger_object").From("decisions AS d").
+		Join("cases AS c ON c.id = d.case_id AND c.org_id = d.org_id").Where("d.org_id = ?", orgID).Where("d.case_id = ?", caseID).Where(squirrel.Eq{"d.id": ids}), func(row models.TracfinDecisionSource) (models.TracfinDecisionSource, error) { return row, nil })
 }

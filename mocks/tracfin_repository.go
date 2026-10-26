@@ -31,3 +31,8 @@ func (r *TracfinRepository) SaveTracfinDraft(ctx context.Context, exec repositor
 func (r *TracfinRepository) SaveTracfinExport(ctx context.Context, exec repositories.Executor, orgID, caseID string, export models.TracfinExport, expectedRevision int64, expectedPreviousExportID *string) error {
 	return r.Called(ctx, exec, orgID, caseID, export, expectedRevision, expectedPreviousExportID).Error(0)
 }
+
+func (r *TracfinRepository) GetTracfinDecisionSources(ctx context.Context, exec repositories.Executor, orgID, caseID string, ids []string) ([]models.TracfinDecisionSource, error) {
+	args := r.Called(ctx, exec, orgID, caseID, ids)
+	return args.Get(0).([]models.TracfinDecisionSource), args.Error(1)
+}
