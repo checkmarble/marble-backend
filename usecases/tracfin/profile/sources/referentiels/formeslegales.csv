@@ -1,0 +1,25 @@
+code;label
+FJ1;Entreprise libérale ou individuelle
+FJ2;SA (Sté anonyme)
+FJ3;SAS (Sté par actions simplifiée)
+FJ4;SASU (Sté par actions simplifiée unipersonnelle)
+FJ5;SARL (Sté à responsabilité limitée)
+FJ6;SNC (Sté en nom collectif)
+FJ7;SCS (sté en commandite simple)
+FJ8;SCA (Sté en commandite par actions)
+FJ9;SEM (Sté d'économie mixte)
+FJ10;SPL (Sté publique locale)
+FJ11;SCI (Sté civile patrimoniale)
+FJ12;SCP (Sté civile professionnelle)
+FJ13;SCI (Sté civile immobilière)
+FJ14;SCCV (Sté civile de construction vente)
+FJ15;SELARL (Sté d'exercice libéral)
+FJ16;SCA (Sté civile d'attribution)
+FJ17;Autre société de droit français
+FJ18;Société de droit étranger
+FJ19;Association loi 1901
+FJ20;Association loi 1905 (ou cultuelle)
+FJ21;Fondation
+FJ22;Fonds de dotation
+FJ23;Autre structure secteur non marchand
+FJ24;Inconnu
