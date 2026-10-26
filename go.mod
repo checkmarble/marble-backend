@@ -30,8 +30,8 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.15
 	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/getkin/kin-openapi v0.149.0
-	github.com/getsentry/sentry-go v0.49.0
-	github.com/getsentry/sentry-go/gin v0.49.0
+	github.com/getsentry/sentry-go v0.50.0
+	github.com/getsentry/sentry-go/gin v0.50.0
 	github.com/gin-contrib/cors v1.7.9
 	github.com/gin-contrib/size v1.0.2
 	github.com/gin-gonic/gin v1.12.0
