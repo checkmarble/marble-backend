@@ -5,7 +5,7 @@ go 1.27.1
 require (
 	cloud.google.com/go/bigquery v1.83.0
 	cloud.google.com/go/iam v1.13.0
-	cloud.google.com/go/profiler v0.6.0
+	cloud.google.com/go/profiler v0.7.0
 	cloud.google.com/go/storage v1.68.0
 	dario.cat/mergo v1.0.2
 	firebase.google.com/go/v4 v4.21.0
@@ -191,7 +191,7 @@ require (
 	github.com/google/flatbuffers v25.12.19+incompatible // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/google/pprof v0.0.0-20260402051712-545e8a4df936 // indirect
+	github.com/google/pprof v0.0.0-20260604005048-7023385849c0 // indirect
 	github.com/google/s2a-go v0.1.10 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/wire v0.6.0 // indirect
