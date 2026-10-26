@@ -269,3 +269,28 @@ func TestTracfinCatalogScalarAttributeOwner(t *testing.T) {
 		t.Fatal("scalar attribute crossed block boundary")
 	}
 }
+
+func TestTracfinCatalogRepeatedNationalityAttributeParents(t *testing.T) {
+	c, err := LoadCatalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, owner := range []string{
+		"/ds/personnes/pp/etatCivil",
+		"/ds/personnes/pp/etatCivil/autreIdentite",
+		"/ds/personnes/pm/dirigeant/autreBeneficiaireEffectif",
+	} {
+		scalar := owner + "/nationalite"
+		attribute := scalar + "/@type"
+		if c.Fields[scalar].Max != "5" {
+			t.Fatalf("repeated nationality cardinality lost: %s", scalar)
+		}
+		f, ok := c.Fields[attribute]
+		if !ok || !f.Attribute || f.Parent != scalar || f.Min != "0" || f.Max != "1" {
+			t.Fatalf("attribute must retain exact optional scalar parent: %+v", f)
+		}
+		if !c.CompatibleParent(owner, attribute) {
+			t.Fatalf("attribute must be stored in scalar's enclosing block: %s", attribute)
+		}
+	}
+}

@@ -14,15 +14,21 @@ type TracfinFieldRef struct {
 // Text and Reference are distinct even when free text consists only of digits.
 // A missing map entry is absent. An explicit empty string, false or zero remains present.
 // Cleared records an explicit user decision and prevents automatic refill.
+// ParentValueID identifies the owning scalar occurrence for attributes of
+// simple content, e.g. nationalite/@type. It must name a value of the catalog
+// field's immediate scalar parent in the same block. It is empty for elements
+// and attributes directly on a block. Ownership never depends on array position;
+// deleting a scalar must also remove its owned attributes (editing validates it).
 type TracfinValue struct {
-	ID          string            `json:"id"`
-	Kind        string            `json:"kind"` // text, boolean, decimal, reference, cleared
-	Text        *string           `json:"text,omitempty"`
-	Boolean     *bool             `json:"boolean,omitempty"`
-	Decimal     *TracfinDecimal   `json:"decimal,omitempty"`
-	Reference   *TracfinReference `json:"reference,omitempty"`
-	Origin      *TracfinOrigin    `json:"origin,omitempty"`
-	NeedsReview bool              `json:"needs_review,omitempty"`
+	ParentValueID string            `json:"parent_value_id,omitempty"`
+	ID            string            `json:"id"`
+	Kind          string            `json:"kind"` // text, boolean, decimal, reference, cleared
+	Text          *string           `json:"text,omitempty"`
+	Boolean       *bool             `json:"boolean,omitempty"`
+	Decimal       *TracfinDecimal   `json:"decimal,omitempty"`
+	Reference     *TracfinReference `json:"reference,omitempty"`
+	Origin        *TracfinOrigin    `json:"origin,omitempty"`
+	NeedsReview   bool              `json:"needs_review,omitempty"`
 }
 
 type TracfinReference struct {
@@ -190,11 +196,13 @@ type TracfinConfigurationInput struct {
 }
 
 type TracfinFieldInput struct {
-	Kind      string            `json:"kind"`
-	Text      *string           `json:"text,omitempty"`
-	Boolean   *bool             `json:"boolean,omitempty"`
-	Decimal   *TracfinDecimal   `json:"decimal,omitempty"`
-	Reference *TracfinReference `json:"reference,omitempty"`
+	// Same ownership contract as TracfinValue; checked when applying changes.
+	ParentValueID string            `json:"parent_value_id,omitempty"`
+	Kind          string            `json:"kind"`
+	Text          *string           `json:"text,omitempty"`
+	Boolean       *bool             `json:"boolean,omitempty"`
+	Decimal       *TracfinDecimal   `json:"decimal,omitempty"`
+	Reference     *TracfinReference `json:"reference,omitempty"`
 }
 
 type TracfinChangeInput struct {

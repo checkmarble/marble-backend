@@ -33,3 +33,68 @@ func TestTracfinCatalogValueRoundTrip(t *testing.T) {
 		t.Fatal("numeric text and reference conflated")
 	}
 }
+
+func TestTracfinCatalogRepeatedScalarAttributeOwnership(t *testing.T) {
+	// Deliberately reverse attribute order and omit the third optional attribute:
+	// array positions and matching attribute/value IDs cannot express ownership.
+	const source = `{"id":"civil","catalog_id":"/ds/personnes/pp/etatCivil","fields":{
+ "/ds/personnes/pp/etatCivil/nationalite":[
+  {"id":"nationality-fr","kind":"text","text":"FR"},
+  {"id":"nationality-other","kind":"text","text":"An unlisted country"},
+  {"id":"nationality-de","kind":"text","text":"DE"}],
+ "/ds/personnes/pp/etatCivil/nationalite/@type":[
+  {"id":"attribute-other","parent_value_id":"nationality-other","kind":"text","text":"other"},
+  {"id":"attribute-fr","parent_value_id":"nationality-fr","kind":"text","text":"code"}]}}`
+	var block TracfinBlock
+	if err := json.Unmarshal([]byte(source), &block); err != nil {
+		t.Fatal(err)
+	}
+	const field = "/ds/personnes/pp/etatCivil/nationalite"
+	check := func(want map[string]string) {
+		t.Helper()
+		data, err := json.Marshal(block)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Check the persisted wire contract independently of the model declaration.
+		var wire struct {
+			Fields map[string][]struct {
+				ID            string  `json:"id"`
+				ParentValueID string  `json:"parent_value_id"`
+				Text          *string `json:"text"`
+			} `json:"fields"`
+		}
+		if err = json.Unmarshal(data, &wire); err != nil {
+			t.Fatal(err)
+		}
+		values := map[string]bool{}
+		for _, v := range wire.Fields[field] {
+			values[v.ID] = true
+		}
+		got := map[string]string{}
+		for _, a := range wire.Fields[field+"/@type"] {
+			if !values[a.ParentValueID] {
+				t.Fatalf("attribute %s has no stable scalar owner: %q", a.ID, a.ParentValueID)
+			}
+			got[a.ParentValueID] = *a.Text
+		}
+		if len(got) != len(want) {
+			t.Fatalf("attribute owners: got %v, want %v", got, want)
+		}
+		for id, value := range want {
+			if got[id] != value {
+				t.Fatalf("owner %s: got %q, want %q", id, got[id], value)
+			}
+		}
+	}
+	check(map[string]string{"nationality-fr": "code", "nationality-other": "other"})
+	// Reordering values cannot move their attributes to another occurrence.
+	values := block.Fields[field]
+	block.Fields[field] = []TracfinValue{values[2], values[0], values[1]}
+	check(map[string]string{"nationality-fr": "code", "nationality-other": "other"})
+	// Represent deletion of FR and its explicitly owned attribute. The remaining
+	// other attribute retains its owner even though both array positions change.
+	block.Fields[field] = []TracfinValue{values[2], values[1]}
+	block.Fields[field+"/@type"] = block.Fields[field+"/@type"][:1]
+	check(map[string]string{"nationality-other": "other"})
+}
