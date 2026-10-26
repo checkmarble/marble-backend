@@ -55,7 +55,7 @@ require (
 	github.com/moby/moby/client v0.6.0
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/ory/dockertest/v3 v3.12.0
-	github.com/oschwald/maxminddb-golang/v2 v2.4.1
+	github.com/oschwald/maxminddb-golang/v2 v2.8.0
 	github.com/pashagolub/pgxmock/v4 v4.9.0
 	github.com/pressly/goose/v3 v3.27.0
 	github.com/prometheus/client_golang v1.24.1
@@ -301,8 +301,8 @@ require (
 	golang.org/x/image v0.41.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260811182544-a038080d80e5 // indirect
-	golang.org/x/tools v0.49.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260924152758-ed294f943157 // indirect
+	golang.org/x/tools v0.51.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/appengine/v2 v2.0.6 // indirect
 	google.golang.org/genproto v0.0.0-20260715232425-e75dac1f907d // indirect
