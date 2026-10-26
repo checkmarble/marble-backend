@@ -2039,10 +2039,20 @@ components:
             - type: string
             - type: "null"
         object_type:
+          description: |
+            The monitored object's type. Set when the screening was triggered by
+            an object creation or update (`object_added`, `object_updated`). Null
+            for `dataset_updated` (in that case, monitored objects are listed on
+            each match).
           anyOf:
             - type: string
             - type: "null"
         object_id:
+          description: |
+            The monitored object's ID. Set when the screening was triggered by
+            an object creation or update (`object_added`, `object_updated`). Null
+            for `dataset_updated` (in that case, monitored objects are listed on
+            each match).
           anyOf:
             - type: string
             - type: "null"
