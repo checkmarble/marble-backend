@@ -330,6 +330,56 @@ func ResolvePrefill(config models.TracfinConfiguration, draft models.TracfinDraf
 		}
 	}
 	out.Proposals = retained
+	out.Diagnostics = append(out.Diagnostics, duplicateSnapshotDiagnostics(draft, sources)...)
+	return out
+}
+
+// Distinct decisions may record the same historical object. They stay separate
+// lines: no merge and no sum. Identity is only the snapshot's exact object_id
+// lexeme within one historical type, never an arbitrary id or name field.
+func duplicateSnapshotDiagnostics(draft models.TracfinDraft, sources SourceSet) []models.TracfinDiagnostic {
+	type selected struct {
+		block  string
+		source models.TracfinSourceRef
+	}
+	groups := map[[2]string][]selected{}
+	var keys [][2]string
+	WalkBlocks(draft.Document.Root, func(b models.TracfinBlock) {
+		if b.Selection == nil || b.Selection.DecisionID == "" {
+			return
+		}
+		decision, ok := sources.Decisions[b.Selection.DecisionID]
+		if !ok || decision.HistoricalType != b.Selection.HistoricalType {
+			return
+		}
+		data, err := DecodeSnapshot(decision.Snapshot)
+		if err != nil {
+			return
+		}
+		objectID, ok := scalar(data["object_id"])
+		if !ok || objectID == "" {
+			return
+		}
+		key := [2]string{decision.HistoricalType, objectID}
+		if _, seen := groups[key]; !seen {
+			keys = append(keys, key)
+		}
+		groups[key] = append(groups[key], selected{block: b.ID, source: models.TracfinSourceRef{Kind: "decision_snapshot", DecisionID: decision.DecisionID, HistoricalType: decision.HistoricalType, Field: "object_id"}})
+	})
+	var out []models.TracfinDiagnostic
+	for _, key := range keys {
+		group := groups[key]
+		if len(group) < 2 {
+			continue
+		}
+		sources := make([]models.TracfinSourceRef, 0, len(group))
+		for _, s := range group {
+			sources = append(sources, s.source)
+		}
+		for _, s := range group {
+			out = append(out, models.TracfinDiagnostic{Code: "POTENTIAL_DUPLICATE_OPERATION", Layer: "sources", Severity: "warning", Message: "Several selected decisions record the same historical object; they are not merged or summed", Field: &models.TracfinFieldRef{BlockID: s.block}, Sources: append([]models.TracfinSourceRef(nil), sources...)})
+		}
+	}
 	return out
 }
 func appendSource(sources []models.TracfinSourceRef, source models.TracfinSourceRef) []models.TracfinSourceRef {
