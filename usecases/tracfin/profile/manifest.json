@@ -1,5 +1,5 @@
 {
-  "version": "tracfin-financier-1.4.0-poc-2",
+  "version": "tracfin-financier-1.4.0-poc-3",
   "source_version": "1.4.0 (2026/01/21)",
   "sources": [
     {
@@ -2594,7 +2594,7 @@
       "attribute": false,
       "coverage": "editable",
       "model": "TracfinValue",
-      "value_kind": "text",
+      "value_kind": "reference",
       "base": "xs:positiveInteger",
       "documentation": "",
       "type_documentation": "Nombre sur digits 6.",
@@ -2606,7 +2606,8 @@
           "source_line": 262
         }
       ],
-      "catalogs": []
+      "catalogs": [],
+      "reason": "Derived POC local-piece linkage from testdata/modele-viewer.json explicit document-selection recipe and numeric XSD piece @id; not an official XSD keyref assertion."
     },
     {
       "id": "/ds/personnes/pp/etatCivil/autreIdentite",
@@ -6734,7 +6735,7 @@
       "attribute": false,
       "coverage": "editable",
       "model": "TracfinValue",
-      "value_kind": "text",
+      "value_kind": "reference",
       "base": "xs:positiveInteger",
       "documentation": "",
       "type_documentation": "Nombre sur digits 6.",
@@ -6746,7 +6747,8 @@
           "source_line": 262
         }
       ],
-      "catalogs": []
+      "catalogs": [],
+      "reason": "Derived POC local-piece linkage from testdata/modele-viewer.json explicit document-selection recipe and numeric XSD piece @id; not an official XSD keyref assertion."
     },
     {
       "id": "/ds/personnes/pp/description",
@@ -6814,7 +6816,7 @@
       "attribute": false,
       "coverage": "editable",
       "model": "TracfinValue",
-      "value_kind": "text",
+      "value_kind": "reference",
       "base": "xs:positiveInteger",
       "documentation": "",
       "type_documentation": "Nombre sur digits 6.",
@@ -6826,7 +6828,8 @@
           "source_line": 262
         }
       ],
-      "catalogs": []
+      "catalogs": [],
+      "reason": "Derived POC local-piece linkage from testdata/modele-viewer.json explicit document-selection recipe and numeric XSD piece @id; not an official XSD keyref assertion."
     },
     {
       "id": "/ds/personnes/pp/lienAutrePersonneDejaDeclaree",
@@ -8963,7 +8966,7 @@
       "attribute": false,
       "coverage": "editable",
       "model": "TracfinValue",
-      "value_kind": "text",
+      "value_kind": "reference",
       "base": "xs:positiveInteger",
       "documentation": "",
       "type_documentation": "Nombre sur digits 6.",
@@ -8975,7 +8978,8 @@
           "source_line": 262
         }
       ],
-      "catalogs": []
+      "catalogs": [],
+      "reason": "Derived POC local-piece linkage from testdata/modele-viewer.json explicit document-selection recipe and numeric XSD piece @id; not an official XSD keyref assertion."
     },
     {
       "id": "/ds/personnes/pm/dirigeant",
@@ -9309,7 +9313,7 @@
       "attribute": false,
       "coverage": "editable",
       "model": "TracfinValue",
-      "value_kind": "text",
+      "value_kind": "reference",
       "base": "xs:positiveInteger",
       "documentation": "",
       "type_documentation": "Nombre sur digits 6.",
@@ -9321,7 +9325,8 @@
           "source_line": 262
         }
       ],
-      "catalogs": []
+      "catalogs": [],
+      "reason": "Derived POC local-piece linkage from testdata/modele-viewer.json explicit document-selection recipe and numeric XSD piece @id; not an official XSD keyref assertion."
     },
     {
       "id": "/ds/personnes/pm/dirigeant/autreDirigeantP/telephoneAvecIndicatif",
@@ -10505,7 +10510,7 @@
       "attribute": false,
       "coverage": "editable",
       "model": "TracfinValue",
-      "value_kind": "text",
+      "value_kind": "reference",
       "base": "xs:positiveInteger",
       "documentation": "",
       "type_documentation": "Nombre sur digits 6.",
@@ -10517,7 +10522,8 @@
           "source_line": 262
         }
       ],
-      "catalogs": []
+      "catalogs": [],
+      "reason": "Derived POC local-piece linkage from testdata/modele-viewer.json explicit document-selection recipe and numeric XSD piece @id; not an official XSD keyref assertion."
     },
     {
       "id": "/ds/personnes/pm/dirigeant/beneficiaireEffectif",
@@ -13003,7 +13009,7 @@
       "attribute": false,
       "coverage": "editable",
       "model": "TracfinValue",
-      "value_kind": "text",
+      "value_kind": "reference",
       "base": "xs:positiveInteger",
       "documentation": "",
       "type_documentation": "Nombre sur digits 6.",
@@ -13015,7 +13021,8 @@
           "source_line": 262
         }
       ],
-      "catalogs": []
+      "catalogs": [],
+      "reason": "Derived POC local-piece linkage from testdata/modele-viewer.json explicit document-selection recipe and numeric XSD piece @id; not an official XSD keyref assertion."
     },
     {
       "id": "/ds/personnes/pm/notorieteDefavorable",
@@ -13204,7 +13211,7 @@
       "attribute": false,
       "coverage": "editable",
       "model": "TracfinValue",
-      "value_kind": "text",
+      "value_kind": "reference",
       "base": "xs:positiveInteger",
       "documentation": "",
       "type_documentation": "Nombre sur digits 6.",
@@ -13216,7 +13223,8 @@
           "source_line": 262
         }
       ],
-      "catalogs": []
+      "catalogs": [],
+      "reason": "Derived POC local-piece linkage from testdata/modele-viewer.json explicit document-selection recipe and numeric XSD piece @id; not an official XSD keyref assertion."
     },
     {
       "id": "/ds/personnes/pm/lienAutrePersonneDejaDeclaree",

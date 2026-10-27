@@ -4659,7 +4659,7 @@
         "/ds/personnes/pp/etatCivil/idPieceJointe"
       ],
       "status": "unavailable",
-      "reason": "Declared-piece linkage semantics need targeted source/example review and typed integration in Task 6; numeric text is retained and is not guessed to be a draft block ID"
+      "reason": "Numeric source type/cardinality registered; POC typed local-piece linkage is a separately labelled derivation from the existing viewer explicit-selection recipe, not proof of official XSD keyref semantics."
     },
     {
       "id": "xsd-L916-element",
@@ -6255,7 +6255,7 @@
         "/ds/personnes/pp/notorieteDefavorable/idPieceJointe"
       ],
       "status": "unavailable",
-      "reason": "Declared-piece linkage semantics need targeted source/example review and typed integration in Task 6; numeric text is retained and is not guessed to be a draft block ID"
+      "reason": "Numeric source type/cardinality registered; POC typed local-piece linkage is a separately labelled derivation from the existing viewer explicit-selection recipe, not proof of official XSD keyref semantics."
     },
     {
       "id": "xsd-L1245-documentation",
@@ -6619,7 +6619,7 @@
         "/ds/personnes/pm/dirigeant/autreDirigeantM/idPieceJointe"
       ],
       "status": "unavailable",
-      "reason": "Declared-piece linkage semantics need targeted source/example review and typed integration in Task 6; numeric text is retained and is not guessed to be a draft block ID"
+      "reason": "Numeric source type/cardinality registered; POC typed local-piece linkage is a separately labelled derivation from the existing viewer explicit-selection recipe, not proof of official XSD keyref semantics."
     },
     {
       "id": "xsd-L1342-documentation",
@@ -6871,7 +6871,7 @@
         "/ds/personnes/pm/dirigeant/autreDirigeantP/idPieceJointe"
       ],
       "status": "unavailable",
-      "reason": "Declared-piece linkage semantics need targeted source/example review and typed integration in Task 6; numeric text is retained and is not guessed to be a draft block ID"
+      "reason": "Numeric source type/cardinality registered; POC typed local-piece linkage is a separately labelled derivation from the existing viewer explicit-selection recipe, not proof of official XSD keyref semantics."
     },
     {
       "id": "xsd-L1380-element",
@@ -7099,7 +7099,7 @@
         "/ds/personnes/pm/infosFinancieresFiscales/idPieceJointe"
       ],
       "status": "unavailable",
-      "reason": "Declared-piece linkage semantics need targeted source/example review and typed integration in Task 6; numeric text is retained and is not guessed to be a draft block ID"
+      "reason": "Numeric source type/cardinality registered; POC typed local-piece linkage is a separately labelled derivation from the existing viewer explicit-selection recipe, not proof of official XSD keyref semantics."
     },
     {
       "id": "xsd-L1455-documentation",
@@ -7291,7 +7291,7 @@
         "/ds/personnes/pp/idPieceJointeDonneesConnexion"
       ],
       "status": "unavailable",
-      "reason": "Declared-piece linkage semantics need targeted source/example review and typed integration in Task 6; numeric text is retained and is not guessed to be a draft block ID"
+      "reason": "Numeric source type/cardinality registered; POC typed local-piece linkage is a separately labelled derivation from the existing viewer explicit-selection recipe, not proof of official XSD keyref semantics."
     },
     {
       "id": "xsd-L1480-element",
@@ -9155,6 +9155,25 @@
       ],
       "status": "implemented_tested",
       "reason": "Fixed profile branch metadata, ValidateDraft and WriteXML; TestTracfinInactiveBranchExport"
+    },
+    {
+      "id": "poc-piece-local-reference",
+      "source": "testdata/modele-viewer.json",
+      "line": 3430,
+      "kind": "poc_reference_inference",
+      "text": "Existing viewer instructs explicit document selection and generated XML piece linkage. POC interprets idPieceJointe and idPieceJointeDonneesConnexion as typed local piece references; numeric source type and piece @id are verified in the original XSD, but no official keyref linkage is asserted.",
+      "fields": [
+        "/ds/personnes/pp/etatCivil/idPieceJointe",
+        "/ds/personnes/pp/notorieteDefavorable/idPieceJointe",
+        "/ds/personnes/pp/idPieceJointeDonneesConnexion",
+        "/ds/personnes/pm/activiteCoordonnee/idPieceJointe",
+        "/ds/personnes/pm/dirigeant/autreDirigeantP/idPieceJointe",
+        "/ds/personnes/pm/dirigeant/autreDirigeantM/idPieceJointe",
+        "/ds/personnes/pm/infosFinancieresFiscales/idPieceJointe",
+        "/ds/personnes/pm/notorieteDefavorable/idPieceJointe"
+      ],
+      "status": "implemented_tested",
+      "reason": "TestTracfinAttachmentLocalReference verifies generated numeric local piece IDs and typed reference serialization; independent XML reference checks remain internal POC checks."
     }
   ]
 }

@@ -123,7 +123,11 @@ func referenceTarget(root models.TracfinBlock, owner models.TracfinBlock, f Fiel
 	if target == nil {
 		return nil, "Referenced block is absent"
 	}
-	if f.Name == "refFinanciereEmission" || f.Name == "refFinanciereReception" || f.Name == "refFinanciere" {
+	if f.Name == "idPieceJointe" || f.Name == "idPieceJointeDonneesConnexion" {
+		if target.CatalogID != "/ds/pieceJointe/piece" {
+			return nil, "Piece reference must identify an explicitly selected document piece"
+		}
+	} else if f.Name == "refFinanciereEmission" || f.Name == "refFinanciereReception" || f.Name == "refFinanciere" {
 		personField := "emetteurTypeEmetteur"
 		if f.Name == "refFinanciereReception" {
 			personField = "beneficiaireTypeBeneficiaire"

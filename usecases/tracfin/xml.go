@@ -1,6 +1,10 @@
 package tracfin
 
 import (
+	"bufio"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -10,7 +14,80 @@ import (
 	"unicode/utf8"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 )
+
+// Technical POC limits; these are not regulatory limits or upload limits.
+const MaxAttachmentBytes int64 = 64 << 20
+const MaxXMLBytes int64 = 96 << 20
+
+var errAttachmentLexicalFormUnsupported = errors.New("Canonical attachment reader does not support embedded markup; exported content uses raw base64 text")
+
+type xmlLimitWriter struct {
+	w io.Writer
+	n int64
+}
+
+// Stops before XML markup without consuming '<'. encoding/xml resumes at the
+// same byte, and remains responsible for checking the actual closing element.
+type attachmentTextReader struct {
+	r    *bufio.Reader
+	n    int64
+	done bool
+}
+
+func (r *attachmentTextReader) Read(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	if r.done {
+		return 0, io.EOF
+	}
+	n := 0
+	for n < len(p) {
+		b, err := r.r.ReadByte()
+		if err != nil {
+			return n, err
+		}
+		if b == '<' {
+			if err := r.r.UnreadByte(); err != nil {
+				return n, err
+			}
+			r.done = true
+			if n == 0 {
+				return 0, io.EOF
+			}
+			return n, nil
+		}
+		p[n] = b
+		n++
+		r.n++
+	}
+	return n, nil
+}
+func readAttachmentBase64(r *bufio.Reader) (int64, error) {
+	text := &attachmentTextReader{r: r}
+	_, err := io.Copy(io.Discard, base64.NewDecoder(base64.StdEncoding.Strict(), text))
+	if err == nil {
+		// Exported content is canonical base64 text. Reject embedded markup
+		// before Token can buffer a potentially enormous CDATA/comment node.
+		// The XML decoder still checks the actual closing name and syntax.
+		var next []byte
+		next, err = r.Peek(2)
+		if err == nil && string(next) != "</" {
+			err = errAttachmentLexicalFormUnsupported
+		}
+	}
+	return text.n, err
+}
+func (w *xmlLimitWriter) Write(p []byte) (int, error) {
+	if int64(len(p)) > MaxXMLBytes-w.n {
+		return 0, errors.Wrap(models.BadParameterError, "TRACFIN_XML_SIZE_LIMIT: technical XML limit is 96 MiB")
+	}
+	n, err := w.w.Write(p)
+	w.n += int64(n)
+	return n, err
+}
 
 // AttachmentContent contains server-verified metadata and content. The caller
 // owns Reader and must close it when appropriate; the serializer never closes it.
@@ -49,11 +126,24 @@ func checkXMLText(text string, ref models.TracfinFieldRef) error {
 }
 
 func WriteXML(w io.Writer, draft models.TracfinDraft, attachments []AttachmentContent, c Catalog) (XMLIndex, error) {
+	w = &xmlLimitWriter{w: w}
 	index := XMLIndex{Fields: map[string]models.TracfinFieldRef{}, Diagnostics: ValidateDraft(draft, c).Diagnostics}
+	content := map[string]AttachmentContent{}
+	for _, a := range attachments {
+		if _, duplicate := content[a.BlockID]; duplicate || a.Reader == nil {
+			return index, errors.New("Invalid or duplicate attachment content")
+		}
+		content[a.BlockID] = a
+	}
+	var rawSize int64
 	ids := localXMLIDs(draft.Document.Root)
 	lexeme := func(b models.TracfinBlock, f Field, val models.TracfinValue) (string, bool) {
 		if val.Origin != nil && val.Origin.Resolution == "conflict" {
 			return "", false
+		}
+		if f.ID == "/ds/pieceJointe/piece/contenu" {
+			_, ok := content[b.ID]
+			return "", ok
 		}
 		if f.Coverage == "calculated" {
 			text, ok := ids[b.ID]
@@ -121,8 +211,32 @@ func WriteXML(w io.Writer, draft models.TracfinDraft, attachments []AttachmentCo
 		if err = enc.EncodeToken(start); err != nil {
 			return err
 		}
-		if err = enc.EncodeToken(xml.CharData(text)); err != nil {
-			return err
+		if f.ID == "/ds/pieceJointe/piece/contenu" {
+			a := content[b.ID]
+			if b.Attachment == nil || a.Metadata != *b.Attachment {
+				return errors.New("Attachment content does not match verified draft metadata")
+			}
+			if err = enc.Flush(); err != nil {
+				return err
+			}
+			encoder := base64.NewEncoder(base64.StdEncoding, w)
+			h := sha256.New()
+			n, copyErr := io.Copy(io.MultiWriter(encoder, h), io.LimitReader(a.Reader, MaxAttachmentBytes-rawSize+1))
+			closeErr := encoder.Close()
+			if copyErr != nil || closeErr != nil {
+				return errors.Join(copyErr, closeErr)
+			}
+			if n > MaxAttachmentBytes-rawSize {
+				return errors.Wrap(models.BadParameterError, "TRACFIN_ATTACHMENT_SIZE_LIMIT: technical cumulative raw limit is 64 MiB")
+			}
+			rawSize += n
+			if n != a.Metadata.Size || a.Metadata.SHA256 != "" && hex.EncodeToString(h.Sum(nil)) != a.Metadata.SHA256 {
+				return errors.New("Attachment bytes do not match verified size or hash")
+			}
+		} else {
+			if err = enc.EncodeToken(xml.CharData(text)); err != nil {
+				return err
+			}
 		}
 		index.Fields[path] = ref
 		return enc.EncodeToken(start.End())
@@ -186,11 +300,19 @@ func WriteXML(w io.Writer, draft models.TracfinDraft, attachments []AttachmentCo
 func localXMLIDs(root models.TracfinBlock) map[string]string {
 	ids := map[string]string{}
 	var people []models.TracfinBlock
+	var pieces []models.TracfinBlock
 	WalkBlocks(root, func(b models.TracfinBlock) {
+		if b.CatalogID == "/ds/pieceJointe/piece" {
+			pieces = append(pieces, b)
+		}
 		if b.CatalogID == "/ds/personnes/pp" || b.CatalogID == "/ds/personnes/pm" || b.CatalogID == "/ds/personnes/pnc" {
 			people = append(people, b)
 		}
 	})
+	sort.Slice(pieces, func(i, j int) bool { return pieces[i].ID < pieces[j].ID })
+	for n, piece := range pieces {
+		ids[piece.ID] = strconv.Itoa(n + 1)
+	}
 	sort.Slice(people, func(i, j int) bool { return people[i].ID < people[j].ID })
 	for n, person := range people {
 		ids[person.ID] = strconv.Itoa(n + 1)
@@ -212,7 +334,10 @@ func localXMLIDs(root models.TracfinBlock) map[string]string {
 // not fabricate draft IDs: diagnostics identify the fixed profile field only.
 func ValidateXML(r io.Reader, c Catalog) models.TracfinValidation {
 	report := newValidation(c)
-	dec := xml.NewDecoder(r)
+	// A shared ByteReader prevents encoding/xml from reading ahead into an
+	// attachment and retaining its entire base64 scalar in its token buffer.
+	input := bufio.NewReader(r)
+	dec := xml.NewDecoder(input)
 	type frame struct {
 		path      string
 		text      strings.Builder
@@ -273,6 +398,21 @@ func ValidateXML(r io.Reader, c Catalog) models.TracfinValidation {
 				validateScalar(&report, af, text, models.TracfinFieldRef{FieldID: id})
 			}
 			stack = append(stack, fr)
+			if path == "/ds/pieceJointe/piece/contenu" {
+				count, err := readAttachmentBase64(input)
+				if err != nil {
+					if errors.Is(err, errAttachmentLexicalFormUnsupported) {
+						report.Diagnostics = append(report.Diagnostics, models.TracfinDiagnostic{Code: "XML_ATTACHMENT_LEXICAL_FORM_UNSUPPORTED", Layer: "xml_syntax", Severity: "warning", Message: err.Error(), Field: &models.TracfinFieldRef{FieldID: path}})
+						report.Layers["xml_syntax"] = models.TracfinValidationLayer{Status: "unavailable", Reason: err.Error()}
+						return report
+					}
+					addValidation(&report, validationDiagnostic("XML_ATTACHMENT_CONTENT_ERROR", "xml_syntax", err.Error(), models.TracfinFieldRef{FieldID: path}))
+					return report
+				}
+				if count > 130000000 {
+					addValidation(&report, validationDiagnostic("MAX_LENGTH_EXCEEDED", "internal_structure", "Base64 content exceeds 130000000 characters", models.TracfinFieldRef{FieldID: path}))
+				}
+			}
 		case xml.CharData:
 			if len(stack) > 0 {
 				stack[len(stack)-1].text.Write(t)
@@ -359,8 +499,18 @@ func ValidateXML(r io.Reader, c Catalog) models.TracfinValidation {
 		return ""
 	}
 	people := map[string]bool{}
+	pieces := map[string]bool{}
 	supports := map[string]map[string]bool{}
 	for _, node := range nodes {
+		if node.path == "/ds/pieceJointe/piece" {
+			id := textField(node, node.path+"/@id")
+			if id != "" {
+				if pieces[id] {
+					addValidation(&report, validationDiagnostic("DUPLICATE_PIECE_ID", "references", "Piece ID occurs more than once", models.TracfinFieldRef{FieldID: node.path + "/@id"}))
+				}
+				pieces[id] = true
+			}
+		}
 		if node.path == "/ds/personnes/pp" || node.path == "/ds/personnes/pm" || node.path == "/ds/personnes/pnc" {
 			id := textField(node, node.path+"/id")
 			if id != "" {
@@ -401,6 +551,9 @@ func ValidateXML(r io.Reader, c Catalog) models.TracfinValidation {
 		}
 		text := node.text.String()
 		valid := people[text]
+		if f.Name == "idPieceJointe" || f.Name == "idPieceJointeDonneesConnexion" {
+			valid = pieces[text]
+		}
 		if f.Name == "refFinanciere" {
 			person := textField(node.parent, node.parent.path+"/identEmetteur")
 			valid = people[person] && supports[person][text]

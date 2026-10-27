@@ -24,6 +24,10 @@ type tracfinDraftTransactions interface {
 type TracfinDraftDependencies struct {
 	Repository   tracfinDraftRepository
 	Transactions tracfinDraftTransactions
+	Files        tracfinCaseFileRepository
+	Blobs        tracfinBlobRepository
+	Exports      tracfinExportRepository
+	BucketURL    string
 }
 
 func (uc TracfinUsecase) draftActor(ctx context.Context) (models.Identity, error) {
@@ -286,9 +290,23 @@ func (uc TracfinUsecase) UpdateDraft(ctx context.Context, caseID string, input m
 				d = next
 				continue
 			}
+			var attachment *models.TracfinAttachment
+			if c.SourceFileID != "" {
+				if c.Action != "add_block" || c.CatalogID != "/ds/pieceJointe/piece" {
+					return models.BadParameterError
+				}
+				attachment, err = uc.selectTracfinAttachment(ctx, tx, caseID, c.SourceFileID)
+				if err != nil {
+					return err
+				}
+				c.SourceFileID = ""
+			}
 			next, err := tracfin.ApplyChanges(d, []tracfin.Change{c}, catalog)
 			if err != nil {
 				return err
+			}
+			if attachment != nil {
+				setTracfinAttachment(&next.Document.Root, c.BlockID, attachment)
 			}
 			if c.Action == "set_selection" {
 				var selected *models.TracfinSelection

@@ -174,6 +174,7 @@ type TracfinValidation struct {
 
 // Populated by the server from a verified case file, never from client metadata.
 type TracfinAttachment struct {
+	BucketName   string `json:"bucket_name"`
 	SourceFileID string `json:"source_file_id"`
 	CaseID       string `json:"case_id"`
 	BlobKey      string `json:"blob_key"`
