@@ -89,7 +89,7 @@ func TestTracfinReviewRequiredScalarAttributes(t *testing.T) {
 			d := wrap(b)
 			hasMissing := func(ds []models.TracfinDiagnostic, owner string) bool {
 				for _, x := range ds {
-					if x.Field != nil && x.Field.BlockID == "block" && x.Field.FieldID == attr && x.Field.ValueID == owner {
+					if x.Field != nil && x.Field.BlockID == "block" && x.Field.FieldID == attr && x.Field.ParentValueID == owner && x.Field.ValueID == "" {
 						return true
 					}
 				}
