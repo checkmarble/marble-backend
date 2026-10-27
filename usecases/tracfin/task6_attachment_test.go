@@ -1,0 +1,59 @@
+package tracfin
+
+import (
+	"bytes"
+	"encoding/base64"
+	"encoding/xml"
+	"errors"
+	"io"
+	"testing"
+
+	"github.com/checkmarble/marble-backend/models"
+)
+
+func TestTracfinAttachmentContentRoundTrip(t *testing.T) {
+	c := task5Catalog(t)
+	original := []byte{0, 1, 2, 0xff, '<', '&', '\n', 0x80, 42}
+	meta := models.TracfinAttachment{SourceFileID: "file", CaseID: "case", BlobKey: "key", Size: int64(len(original))}
+	piece := task5Block("piece", "/ds/pieceJointe/piece")
+	piece.Attachment = &meta
+	d := task5Draft(c, task5Block("attachments", "/ds/pieceJointe", piece))
+	var out bytes.Buffer
+	_, err := WriteXML(&out, d, []AttachmentContent{{BlockID: "piece", Reader: bytes.NewReader(original), Metadata: meta}}, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Pieces []struct {
+			Content string `xml:"contenu"`
+		} `xml:"pieceJointe>piece"`
+	}
+	if err := xml.Unmarshal(out.Bytes(), &doc); err != nil {
+		t.Fatalf("XML: %v", err)
+	}
+	if len(doc.Pieces) != 1 {
+		t.Fatalf("pieces: %d; XML: %s", len(doc.Pieces), out.String())
+	}
+	decoded, err := base64.StdEncoding.DecodeString(doc.Pieces[0].Content)
+	if err != nil {
+		t.Fatalf("base64: %v", err)
+	}
+	if !bytes.Equal(decoded, original) {
+		t.Fatalf("decoded content %x != %x; XML: %s", decoded, original, out.String())
+	}
+}
+
+type task6FailReader struct{}
+
+func (task6FailReader) Read([]byte) (int, error) { return 0, errors.New("attachment read failed") }
+func TestTracfinAttachmentReadError(t *testing.T) {
+	c := task5Catalog(t)
+	meta := models.TracfinAttachment{SourceFileID: "file", CaseID: "case", BlobKey: "key", Size: 1}
+	piece := task5Block("piece", "/ds/pieceJointe/piece")
+	piece.Attachment = &meta
+	d := task5Draft(c, task5Block("attachments", "/ds/pieceJointe", piece))
+	_, err := WriteXML(io.Discard, d, []AttachmentContent{{BlockID: "piece", Reader: task6FailReader{}, Metadata: meta}}, c)
+	if err == nil {
+		t.Fatal("attachment read error was ignored")
+	}
+}
