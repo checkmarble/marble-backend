@@ -25,6 +25,7 @@ type tracfinHTTPFake struct {
 	limit    int
 	revision int64
 	reader   io.ReadSeekCloser
+	size     int64
 	input    models.TracfinDraftInput
 	draft    models.TracfinDraft
 }
@@ -78,7 +79,7 @@ func (f *tracfinHTTPFake) Export(_ context.Context, _ string, r int64) (models.T
 }
 func (f *tracfinHTTPFake) DownloadExport(context.Context, string, string) (models.Blob, models.TracfinExport, error) {
 	f.calls++
-	return models.Blob{ReadCloser: f.reader, FileName: "../../unsafe.xml"}, models.TracfinExport{DraftRevision: 3}, f.err
+	return models.Blob{ReadCloser: f.reader, FileName: "../../unsafe.xml"}, models.TracfinExport{DraftRevision: 3, Size: f.size}, f.err
 }
 func tracfinRequest(f *tracfinHTTPFake, method, path, body string) *httptest.ResponseRecorder {
 	gin.SetMode(gin.TestMode)
@@ -174,7 +175,7 @@ type tracfinReadCloser struct {
 func (r *tracfinReadCloser) Close() error { r.closed = true; return nil }
 func TestTracfinHTTPDownload(t *testing.T) {
 	reader := &tracfinReadCloser{Reader: strings.NewReader("<ds>exact</ds>")}
-	f := &tracfinHTTPFake{reader: reader}
+	f := &tracfinHTTPFake{reader: reader, size: int64(len("<ds>exact</ds>"))}
 	w := tracfinRequest(f, http.MethodGet, "/cases/"+testCaseID+"/tracfin/exports/"+testExportID, "")
 	require.Equal(t, 200, w.Code, w.Body.String())
 	require.Equal(t, "<ds>exact</ds>", w.Body.String())

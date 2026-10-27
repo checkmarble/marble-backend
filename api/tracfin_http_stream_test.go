@@ -39,7 +39,7 @@ func TestTracfinHTTPDownloadStreamingReadFailure(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	recorder := httptest.NewRecorder()
 	stream := &tracfinFailingStream{recorder: recorder}
-	fake := &tracfinHTTPFake{reader: stream}
+	fake := &tracfinHTTPFake{reader: stream, size: int64(len("<ds>partial</ds>"))}
 	router := gin.New()
 	addTracfinRoutes(router, func(context.Context) tracfinHTTPUsecase { return fake })
 	request := httptest.NewRequest(http.MethodGet, "/cases/"+testCaseID+"/tracfin/exports/"+testExportID, strings.NewReader(""))
