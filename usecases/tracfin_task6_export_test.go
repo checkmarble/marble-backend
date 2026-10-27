@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -45,18 +47,20 @@ type task6Writer struct {
 func (w *task6Writer) Close() error { w.closeFn(bytes.Clone(w.Bytes())); return nil }
 
 type task6Blobs struct {
-	data      map[string][]byte
-	reads     int
-	readers   []*task6ReadCloser
-	deleted   []string
-	writeErr  error
-	onWrite   func()
-	large     io.ReadSeekCloser
-	largeKeys map[string]io.ReadSeekCloser
+	data        map[string][]byte
+	reads       int
+	readers     []*task6ReadCloser
+	deleted     []string
+	writeErr    error
+	onWrite     func()
+	large       io.ReadSeekCloser
+	largeKeys   map[string]io.ReadSeekCloser
+	readBuckets []string
 }
 
-func (b *task6Blobs) GetBlob(_ context.Context, _, key string, _ ...repositories.GetBlobOption) (models.Blob, error) {
+func (b *task6Blobs) GetBlob(_ context.Context, bucket, key string, _ ...repositories.GetBlobOption) (models.Blob, error) {
 	b.reads++
+	b.readBuckets = append(b.readBuckets, bucket)
 	if r := b.largeKeys[key]; r != nil {
 		return models.Blob{ReadCloser: r}, nil
 	}
@@ -438,4 +442,52 @@ func TestTracfinExportXMLSizeLimit(t *testing.T) {
 	require.Contains(t, err.Error(), "TRACFIN_XML_SIZE_LIMIT")
 	require.Nil(t, repo.draft.LastExport)
 	require.True(t, content.closed)
+}
+
+func TestTracfinAttachmentUsesServerFileBucket(t *testing.T) {
+	ctx, uc, repo, files, blobs := task6Setup(t)
+	files.file.BucketName = "source-bucket"
+	_, err := task6Select(t, ctx, uc, repo)
+	require.NoError(t, err)
+	require.Equal(t, "source-bucket", blobs.readBuckets[0])
+	_, err = uc.Export(ctx, "case", repo.draft.Revision)
+	require.NoError(t, err)
+	require.Contains(t, blobs.readBuckets, "source-bucket")
+}
+func TestTracfinExportTemporaryFilesArePrivateAndRemoved(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		t.Run(fmt.Sprint("database failure ", fail), func(t *testing.T) {
+			tmp := t.TempDir()
+			t.Setenv("TMPDIR", tmp)
+			ctx, uc, repo, _, blobs := task6Setup(t)
+			_, err := task6Select(t, ctx, uc, repo)
+			require.NoError(t, err)
+			if fail {
+				repo.saveErr = errors.New("database failure")
+			}
+			checked := false
+			blobs.onWrite = func() {
+				entries, e := os.ReadDir(tmp)
+				require.NoError(t, e)
+				for _, entry := range entries {
+					if strings.HasPrefix(entry.Name(), "tracfin-") {
+						info, e := os.Stat(filepath.Join(tmp, entry.Name()))
+						require.NoError(t, e)
+						require.Equal(t, os.FileMode(0600), info.Mode().Perm())
+						checked = true
+					}
+				}
+			}
+			_, err = uc.Export(ctx, "case", repo.draft.Revision)
+			if fail {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			require.True(t, checked)
+			entries, err := os.ReadDir(tmp)
+			require.NoError(t, err)
+			require.Empty(t, entries)
+		})
+	}
 }
