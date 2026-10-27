@@ -168,3 +168,36 @@ func TestTracfinValidationPieceLimit(t *testing.T) {
 		})
 	}
 }
+
+func TestTracfinValidationIdentityPieceCondition(t *testing.T) {
+	c := task5Catalog(t)
+	for _, code := range []string{"TA2", "TA3", "TA5"} {
+		t.Run(code, func(t *testing.T) {
+			p := task5Block("piece", "/ds/pieceJointe/piece")
+			p.Fields["/ds/pieceJointe/piece/type"] = []models.TracfinValue{task5Text("type", code)}
+			d := task5Draft(c, task5Block("attachments", "/ds/pieceJointe", p))
+			v := ValidateDraft(d, c)
+			if !task5HasField(v.Diagnostics, "/ds/pieceJointe/piece/infoPieceIdentite") {
+				t.Fatalf("%s requires identity details: %+v", code, v.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestTracfinXMLRepeatedNationalityAttributes(t *testing.T) {
+	c := task5Catalog(t)
+	field := "/ds/personnes/pp/etatCivil/nationalite"
+	attr := field + "/@type"
+	a, b := task5Text("attr-a", "code"), task5Text("attr-b", "other")
+	a.ParentValueID = "n1"
+	b.ParentValueID = "n2"
+	d := task5Draft(c, task5Civil(map[string][]models.TracfinValue{field: {task5Text("n1", "FR"), task5Text("n2", "Somewhere")}, attr: {b, a}}))
+	var out bytes.Buffer
+	_, err := WriteXML(&out, d, nil, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), `<nationalite type="code">FR</nationalite>`) || !strings.Contains(out.String(), `<nationalite type="other">Somewhere</nationalite>`) {
+		t.Fatalf("attributes attached to wrong values: %s", out.String())
+	}
+}
