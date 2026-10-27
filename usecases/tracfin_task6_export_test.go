@@ -45,7 +45,7 @@ type task6Blobs struct {
 	deleted  []string
 	writeErr error
 	onWrite  func()
-	large    *task6SyntheticReader
+	large    io.ReadSeekCloser
 }
 
 func (b *task6Blobs) GetBlob(_ context.Context, _, key string, _ ...repositories.GetBlobOption) (models.Blob, error) {
@@ -349,4 +349,36 @@ func TestTracfinExportBlobFailureKeepsLastArtifact(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, old, *repo.draft.LastExport)
 	require.Equal(t, []byte("old"), blobs.data["old-key"])
+}
+
+type task6BrokenReader struct {
+	called bool
+	closed bool
+	err    error
+}
+
+func (r *task6BrokenReader) Read(p []byte) (int, error) {
+	if !r.called {
+		r.called = true
+		copy(p, "partial")
+		return len("partial"), nil
+	}
+	return 0, r.err
+}
+func (r *task6BrokenReader) Seek(int64, int) (int64, error) { return 0, nil }
+func (r *task6BrokenReader) Close() error                   { r.closed = true; return nil }
+func TestTracfinExportAttachmentReadFailureClosesStream(t *testing.T) {
+	for _, e := range []error{context.Canceled, errors.New("partial storage read")} {
+		t.Run(e.Error(), func(t *testing.T) {
+			ctx, uc, repo, _, blobs := task6Setup(t)
+			_, err := task6Select(t, ctx, uc, repo)
+			require.NoError(t, err)
+			broken := &task6BrokenReader{err: e}
+			blobs.large = broken
+			_, err = uc.Export(ctx, "case", repo.draft.Revision)
+			require.Error(t, err)
+			require.True(t, broken.closed)
+			require.Nil(t, repo.draft.LastExport)
+		})
+	}
 }
