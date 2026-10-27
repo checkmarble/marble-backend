@@ -132,3 +132,46 @@ func TestTracfinXMLIndependentStructure(t *testing.T) {
 		})
 	}
 }
+
+func TestTracfinReferenceFinancialWrongPerson(t *testing.T) {
+	c := task5Catalog(t)
+	const person = "/ds/personnes/pp"
+	const ref = person + "/referencesFinancieres"
+	const op = "/ds/operations/operation"
+	support := task5Block("support", ref+"/referenceFinanciereIban")
+	first := task5Block("first", person, task5Block("refs", ref, support))
+	second := task5Block("second", person)
+	line := task5Block("line", op)
+	line.Fields[op+"/emetteurTypeEmetteur"] = []models.TracfinValue{{ID: "emitter", Kind: "reference", Reference: &models.TracfinReference{BlockID: "second"}}}
+	line.Fields[op+"/refFinanciereEmission"] = []models.TracfinValue{{ID: "financial", Kind: "reference", Reference: &models.TracfinReference{BlockID: "support", PersonBlockID: "first"}}}
+	d := task5Draft(c, task5Block("people", "/ds/personnes", first, second), task5Block("operations", "/ds/operations", line))
+	v := ValidateDraft(d, c)
+	if !task5HasField(v.Diagnostics, op+"/refFinanciereEmission") {
+		t.Fatalf("support owned by another person accepted: %+v", v.Diagnostics)
+	}
+	d.Document.Root.Children[1].Children[0].Fields[op+"/emetteurTypeEmetteur"][0].Reference.BlockID = "first"
+	v = ValidateDraft(d, c)
+	if task5HasField(v.Diagnostics, op+"/refFinanciereEmission") {
+		t.Fatalf("support owned by selected person rejected: %+v", v.Diagnostics)
+	}
+}
+
+func TestTracfinXMLNumericFreeText(t *testing.T) {
+	c := task5Catalog(t)
+	const base = "/ds/operations/operation"
+	line := task5Block("line", base)
+	for _, name := range []string{"emetteurTypeEmetteur", "beneficiaireTypeBeneficiaire", "refFinanciereEmission", "refFinanciereReception"} {
+		line.Fields[base+"/"+name] = []models.TracfinValue{task5Text(name, "12345")}
+	}
+	d := task5Draft(c, task5Block("operations", "/ds/operations", line))
+	var out bytes.Buffer
+	index, err := WriteXML(&out, d, nil, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"emetteurTypeEmetteur", "beneficiaireTypeBeneficiaire", "refFinanciereEmission", "refFinanciereReception"} {
+		if !strings.Contains(out.String(), "<"+name+">12345</"+name+">") || task5HasField(index.Diagnostics, base+"/"+name) {
+			t.Fatalf("numeric free text treated as reference: %s %+v", out.String(), index.Diagnostics)
+		}
+	}
+}
