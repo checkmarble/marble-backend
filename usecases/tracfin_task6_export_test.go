@@ -312,3 +312,41 @@ func TestTracfinAttachmentRawSizeLimit(t *testing.T) {
 	require.True(t, large.closed)
 	require.LessOrEqual(t, large.read, int64(64*1024*1024+1))
 }
+
+func TestTracfinCaseFileIdentityAndScope(t *testing.T) {
+	t.Run("repository returns another file", func(t *testing.T) {
+		ctx, uc, repo, files, blobs := task6Setup(t)
+		files.file.Id = "different"
+		_, err := task6Select(t, ctx, uc, repo)
+		require.Error(t, err)
+		require.Zero(t, blobs.reads)
+	})
+	t.Run("previous file now belongs to another case", func(t *testing.T) {
+		ctx, uc, repo, files, blobs := task6Setup(t)
+		_, err := task6Select(t, ctx, uc, repo)
+		require.NoError(t, err)
+		files.file.CaseId = "other-case"
+		before := blobs.reads
+		_, err = uc.Export(ctx, "case", repo.draft.Revision)
+		require.Error(t, err)
+		require.Equal(t, before, blobs.reads)
+		require.Nil(t, repo.draft.LastExport)
+	})
+}
+func TestTracfinAttachmentSelectionDoesNotInferMIME(t *testing.T) {
+	ctx, uc, repo, _, _ := task6Setup(t)
+	d, err := task6Select(t, ctx, uc, repo)
+	require.NoError(t, err)
+	require.Empty(t, findDraftField(d.Document.Root, "/ds/pieceJointe/piece/type_mime"))
+}
+func TestTracfinExportBlobFailureKeepsLastArtifact(t *testing.T) {
+	ctx, uc, repo, _, blobs := task6Setup(t)
+	old := models.TracfinExport{ID: "old", BlobKey: "old-key"}
+	repo.draft.LastExport = &old
+	blobs.data["old-key"] = []byte("old")
+	blobs.writeErr = errors.New("storage unavailable")
+	_, err := uc.Export(ctx, "case", repo.draft.Revision)
+	require.Error(t, err)
+	require.Equal(t, old, *repo.draft.LastExport)
+	require.Equal(t, []byte("old"), blobs.data["old-key"])
+}
