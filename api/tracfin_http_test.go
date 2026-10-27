@@ -68,7 +68,7 @@ func (f *tracfinHTTPFake) PrefillAtRevision(_ context.Context, _ string, r int64
 func (f *tracfinHTTPFake) ValidateDraft(_ context.Context, _ string, r int64) (models.TracfinValidation, error) {
 	f.calls++
 	f.revision = r
-	return models.TracfinValidation{Diagnostics: []models.TracfinDiagnostic{{Code: "MISSING", Layer: "business"}}}, f.err
+	return models.TracfinValidation{Diagnostics: []models.TracfinDiagnostic{{Code: "MISSING", Layer: "business", Field: &models.TracfinFieldRef{BlockID: "block", FieldID: "field", ParentValueID: "owner"}}}}, f.err
 }
 func (f *tracfinHTTPFake) Export(_ context.Context, _ string, r int64) (models.TracfinExport, error) {
 	f.calls++
@@ -103,6 +103,8 @@ func TestTracfinHTTPErrorsAndDiagnostics(t *testing.T) {
 			require.Equal(t, int64(2), f.revision)
 			if tc.err == nil {
 				require.Contains(t, w.Body.String(), "MISSING")
+				require.Contains(t, w.Body.String(), `"parent_value_id":"owner"`)
+				require.NotContains(t, w.Body.String(), `"value_id"`)
 			}
 		})
 	}
