@@ -93,3 +93,42 @@ func TestTracfinValidationCombinedFinancialSupportLimit(t *testing.T) {
 		})
 	}
 }
+
+func TestTracfinValidationScalarConstraints(t *testing.T) {
+	c := task5Catalog(t)
+	t.Run("maximum length", func(t *testing.T) {
+		field := "/ds/personnes/pp/etatCivil/nomNaissance"
+		d := task5Draft(c, task5Civil(map[string][]models.TracfinValue{field: {task5Text("v", strings.Repeat("a", 201))}}))
+		if !task5HasField(ValidateDraft(d, c).Diagnostics, field) {
+			t.Fatal("201-character name accepted")
+		}
+	})
+	for _, tc := range []struct{ field, value, kind string }{{"nombreOperations", "0", "text"}, {"nombreOperations", "1000000", "text"}, {"montantTotal", "1234567890123", "decimal"}} {
+		t.Run(tc.field+tc.value, func(t *testing.T) {
+			field := "/ds/operations/operation/" + tc.field
+			op := task5Block("op", "/ds/operations/operation")
+			if tc.kind == "decimal" {
+				n := models.TracfinDecimal(tc.value)
+				op.Fields[field] = []models.TracfinValue{{ID: "v", Kind: "decimal", Decimal: &n}}
+			} else {
+				op.Fields[field] = []models.TracfinValue{task5Text("v", tc.value)}
+			}
+			d := task5Draft(c, task5Block("ops", "/ds/operations", op))
+			if !task5HasField(ValidateDraft(d, c).Diagnostics, field) {
+				t.Fatalf("invalid %s accepted", tc.value)
+			}
+		})
+	}
+}
+
+func TestTracfinXMLIndependentStructure(t *testing.T) {
+	c := task5Catalog(t)
+	for _, tc := range []struct{ name, doc string }{{"unknown attribute", `<ds unexpected="x"></ds>`}, {"wrong order", `<ds><operations></operations><personnes></personnes></ds>`}, {"too many elements", `<ds><personnes><pp><etatCivil><nomNaissance>A</nomNaissance><nomNaissance>B</nomNaissance></etatCivil></pp></personnes></ds>`}} {
+		t.Run(tc.name, func(t *testing.T) {
+			v := ValidateXML(strings.NewReader(tc.doc), c)
+			if v.Layers["internal_structure"].Status != "failed" {
+				t.Fatalf("invalid structure accepted: %+v", v)
+			}
+		})
+	}
+}

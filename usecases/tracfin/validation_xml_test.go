@@ -51,7 +51,7 @@ func task5Civil(fields map[string][]models.TracfinValue) models.TracfinBlock {
 
 func TestTracfinValidationCivilDateAndUnknownCode(t *testing.T) {
 	c := task5Catalog(t)
-	for _, tc := range []struct{ field, value string }{{"/ds/personnes/pp/etatCivil/dateNaissance", "2023-02-29"}, {"/ds/personnes/pp/etatCivil/nationalite", "NOT-A-COUNTRY"}} {
+	for _, tc := range []struct{ field, value string }{{"/ds/personnes/pp/etatCivil/dateNaissance", "29/02/2023"}, {"/ds/personnes/pp/etatCivil/nationalite", "NOT-A-COUNTRY"}} {
 		t.Run(tc.field, func(t *testing.T) {
 			d := task5Draft(c, task5Civil(map[string][]models.TracfinValue{tc.field: {task5Text("v", tc.value)}}))
 			v := ValidateDraft(d, c)
@@ -87,13 +87,13 @@ func TestTracfinPartialExport(t *testing.T) {
 	t.Run("invalid and escaping", func(t *testing.T) {
 		field := "/ds/personnes/pp/etatCivil/nomNaissance"
 		date := "/ds/personnes/pp/etatCivil/dateNaissance"
-		d := task5Draft(c, task5Civil(map[string][]models.TracfinValue{field: {task5Text("name", "A & B < C > D")}, date: {task5Text("date", "2023-02-29")}}))
+		d := task5Draft(c, task5Civil(map[string][]models.TracfinValue{field: {task5Text("name", "A & B < C > D")}, date: {task5Text("date", "29/02/2023")}}))
 		var b bytes.Buffer
 		_, err := WriteXML(&b, d, nil, c)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(b.String(), "A &amp; B &lt; C &gt; D") || !strings.Contains(b.String(), "2023-02-29") {
+		if !strings.Contains(b.String(), "A &amp; B &lt; C &gt; D") || !strings.Contains(b.String(), "29/02/2023") {
 			t.Fatalf("values lost or unescaped: %s", b.String())
 		}
 		if !task5HasField(ValidateDraft(d, c).Diagnostics, date) {
@@ -129,7 +129,7 @@ func TestTracfinXMLIndependentReader(t *testing.T) {
 	for _, tc := range []struct {
 		name, data string
 		syntax     bool
-	}{{"malformed", "<ds><personnes></ds>", true}, {"invalid date", "<ds><personnes><pp><etatCivil><dateNaissance>2023-02-29</dateNaissance></etatCivil></pp></personnes></ds>", false}} {
+	}{{"malformed", "<ds><personnes></ds>", true}, {"invalid date", "<ds><personnes><pp><etatCivil><dateNaissance>29/02/2023</dateNaissance></etatCivil></pp></personnes></ds>", false}} {
 		t.Run(tc.name, func(t *testing.T) {
 			v := ValidateXML(strings.NewReader(tc.data), c)
 			if tc.syntax {
