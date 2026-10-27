@@ -25,6 +25,7 @@ type options struct {
 	withCache           bool
 	similarityThreshold float64
 	lagoConfig          infra.LagoConfig
+	oidcSecretsKeeper   SecretKeeper
 }
 
 type Option func(*options)
@@ -97,6 +98,12 @@ func WithLagoConfig(lagoConfig infra.LagoConfig) Option {
 	}
 }
 
+func WithOIDCSecretsKeeper(keeper SecretKeeper) Option {
+	return func(o *options) {
+		o.oidcSecretsKeeper = keeper
+	}
+}
+
 type Repositories struct {
 	ExecutorGetter                ExecutorGetter
 	RedisClient                   *RedisClient
@@ -145,7 +152,7 @@ func NewRepositories(
 		RedisClient:                   options.redisClient,
 		IngestionRepository:           &IngestionRepositoryImpl{},
 		IngestedDataReadRepository:    &IngestedDataReadRepositoryImpl{},
-		MarbleDbRepository:            NewMarbleDbRepository(options.withCache, options.similarityThreshold),
+		MarbleDbRepository:            NewMarbleDbRepository(options.withCache, options.similarityThreshold, options.oidcSecretsKeeper),
 		ClientDbRepository:            ClientDbRepository{},
 		ScenarioPublicationRepository: &ScenarioPublicationRepositoryPostgresql{},
 		OrganizationSchemaRepository:  &OrganizationSchemaRepositoryPostgresql{},

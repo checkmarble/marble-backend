@@ -17,6 +17,15 @@ import (
 // ResolveUserIdentity returns the user bound to an identity. On its first login,
 // an accepted email links that identity to the existing user.
 func (db *Database) ResolveUserIdentity(ctx context.Context, issuer, subject, email string) (models.User, error) {
+	return db.resolveUserIdentity(ctx, issuer, subject, email, uuid.Nil)
+}
+
+// ResolveUserIdentityForTenant resolves an identity only for a user with an active grant in tenantID.
+func (db *Database) ResolveUserIdentityForTenant(ctx context.Context, issuer, subject, email string, tenantID uuid.UUID) (models.User, error) {
+	return db.resolveUserIdentity(ctx, issuer, subject, email, tenantID)
+}
+
+func (db *Database) resolveUserIdentity(ctx context.Context, issuer, subject, email string, tenantID uuid.UUID) (models.User, error) {
 	tx, err := db.Begin(ctx)
 	if err != nil {
 		return models.User{}, errors.Wrap(err, "beginning user identity resolution")
@@ -25,32 +34,38 @@ func (db *Database) ResolveUserIdentity(ctx context.Context, issuer, subject, em
 
 	var userID string
 	resolution := "identity"
-	query, args, err := NewQueryBuilder().Select("u.id").
+	query := NewQueryBuilder().Select("u.id").
 		From("user_identities i").
 		Join("users u ON u.id = i.user_id").
-		Where(squirrel.Eq{"i.issuer": issuer, "i.subject": subject, "u.deleted_at": nil}).
-		ToSql()
+		Where(squirrel.Eq{"i.issuer": issuer, "i.subject": subject, "u.deleted_at": nil})
+	if tenantID != uuid.Nil {
+		query = query.Where(userHasActiveTenantGrant(tenantID))
+	}
+	querySQL, args, err := query.ToSql()
 	if err != nil {
 		return models.User{}, errors.Wrap(err, "building user identity query")
 	}
-	err = tx.QueryRow(ctx, query, args...).Scan(&userID)
+	err = tx.QueryRow(ctx, querySQL, args...).Scan(&userID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		resolution = "email_link"
-		query, args, err = NewQueryBuilder().Select("id").
-			From(dbmodels.TABLE_USERS).
-			Where(squirrel.Eq{"email": email, "deleted_at": nil}).
-			ToSql()
+		query = NewQueryBuilder().Select("u.id").
+			From(dbmodels.TABLE_USERS + " u").
+			Where(squirrel.Eq{"u.email": email, "u.deleted_at": nil})
+		if tenantID != uuid.Nil {
+			query = query.Where(userHasActiveTenantGrant(tenantID))
+		}
+		querySQL, args, err = query.ToSql()
 		if err != nil {
 			return models.User{}, errors.Wrap(err, "building user email query")
 		}
-		err = tx.QueryRow(ctx, query, args...).Scan(&userID)
+		err = tx.QueryRow(ctx, querySQL, args...).Scan(&userID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return models.User{}, models.NotFoundError
 			}
 			return models.User{}, errors.Wrap(err, "finding user by email")
 		}
-		query, args, err = NewQueryBuilder().Insert("user_identities").
+		identityQuery, args, err := NewQueryBuilder().Insert("user_identities").
 			Columns("user_id", "issuer", "subject").
 			Values(userID, issuer, subject).
 			Suffix("ON CONFLICT DO NOTHING").
@@ -58,21 +73,28 @@ func (db *Database) ResolveUserIdentity(ctx context.Context, issuer, subject, em
 		if err != nil {
 			return models.User{}, errors.Wrap(err, "building user identity insert")
 		}
-		tag, err := tx.Exec(ctx, query, args...)
+		tag, err := tx.Exec(ctx, identityQuery, args...)
 		if err != nil {
 			return models.User{}, errors.Wrap(err, "linking user identity")
 		}
 		if tag.RowsAffected() == 0 {
 			resolution = "identity"
 		}
-		query, args, err = NewQueryBuilder().Select("user_id").
+		query = NewQueryBuilder().Select("u.id").
 			From("user_identities").
-			Where(squirrel.Eq{"issuer": issuer, "subject": subject}).
-			ToSql()
+			Join("users u ON u.id = user_identities.user_id").
+			Where(squirrel.Eq{"user_identities.issuer": issuer, "user_identities.subject": subject, "u.deleted_at": nil})
+		if tenantID != uuid.Nil {
+			query = query.Where(userHasActiveTenantGrant(tenantID))
+		}
+		querySQL, args, err = query.ToSql()
 		if err != nil {
 			return models.User{}, errors.Wrap(err, "building linked user identity query")
 		}
-		if err := tx.QueryRow(ctx, query, args...).Scan(&userID); err != nil {
+		if err := tx.QueryRow(ctx, querySQL, args...).Scan(&userID); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return models.User{}, models.NotFoundError
+			}
 			return models.User{}, errors.Wrap(err, "reading linked user identity")
 		}
 	} else if err != nil {
@@ -92,6 +114,29 @@ func (db *Database) ResolveUserIdentity(ctx context.Context, issuer, subject, em
 		"user_id", user.UserId,
 	)
 	return user, nil
+}
+
+func userHasActiveTenantGrant(tenantID uuid.UUID) squirrel.Sqlizer {
+	query := NewQueryBuilder().
+		Select("1").
+		From("active_grants g").
+		LeftJoin("organizations grant_organization ON grant_organization.id = g.organization_id").
+		Where(squirrel.Eq{
+			"g.principal_type":      "user",
+			"g.principal_authority": "marble",
+		}).
+		Where("g.principal_id = u.id::text").
+		Where(squirrel.Or{
+			squirrel.Eq{"g.tenant_id": tenantID},
+			squirrel.Eq{"grant_organization.tenant_id": tenantID},
+		}).
+		Where(squirrel.Or{
+			squirrel.Eq{"grant_organization.id": nil},
+			squirrel.Eq{"grant_organization.deleted_at": nil},
+		}).
+		PlaceholderFormat(squirrel.Question)
+
+	return squirrel.Expr("EXISTS (?)", query)
 }
 
 func (db *Database) UpdateUserProfileFromClaims(

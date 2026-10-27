@@ -47,6 +47,15 @@ func handleMyOrganizations(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
+		if creds.AuthTenantId != uuid.Nil {
+			tenantOrganizations := make([]models.OrganizationMembership, 0, len(organizations))
+			for _, membership := range organizations {
+				if membership.Organization.TenantId == creds.AuthTenantId {
+					tenantOrganizations = append(tenantOrganizations, membership)
+				}
+			}
+			organizations = tenantOrganizations
+		}
 		c.JSON(http.StatusOK, gin.H{"organizations": pure_utils.Map(organizations, func(membership models.OrganizationMembership) gin.H {
 			return gin.H{
 				"id":          membership.Organization.Id,

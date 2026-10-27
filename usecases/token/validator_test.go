@@ -160,6 +160,24 @@ func TestValidator_Validate_Token(t *testing.T) {
 		mockValidator.AssertExpectations(t)
 	})
 
+	t.Run("tenant-bound token rejects an organization from another tenant", func(t *testing.T) {
+		creds := models.Credentials{
+			OrganizationId: organization.Id,
+			AuthTenantId:   utils.TextToUUID("another_tenant"),
+		}
+		mockValidator := new(mocks.JWTEncoderValidator)
+		mockValidator.On("ValidateMarbleToken", token).Return(creds, nil)
+		mockGetter := new(mocks.Database)
+		mockGetter.On("GetOrganizationByID", mock.Anything, creds.OrganizationId).Return(organization, nil)
+
+		v := Validator{validator: mockValidator, getter: mockGetter}
+		_, err := v.ValidateTokenOrKey(context.Background(), token, "")
+
+		assert.ErrorIs(t, err, models.UnAuthorizedError)
+		mockValidator.AssertExpectations(t)
+		mockGetter.AssertExpectations(t)
+	})
+
 	t.Run("ValidateMarbleToken error", func(t *testing.T) {
 		mockValidator := new(mocks.JWTEncoderValidator)
 		mockValidator.On("ValidateMarbleToken", token).

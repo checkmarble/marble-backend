@@ -20,8 +20,8 @@ type MarbleJwtRepository struct {
 type Claims struct {
 	jwt.RegisteredClaims
 
-	Issuer      string          `json:"issuer"`
-	Credentials dto.Credentials `json:"credentials"`
+	IdentityIssuer string          `json:"identity_issuer"`
+	Credentials    dto.Credentials `json:"credentials"`
 }
 
 var ValidationAlgo = jwt.SigningMethodRS256
@@ -32,8 +32,8 @@ func (repo *MarbleJwtRepository) EncodeMarbleToken(issuer string, expirationTime
 		return "", err
 	}
 	claims := &Claims{
-		Issuer:      issuer,
-		Credentials: credDto,
+		IdentityIssuer: issuer,
+		Credentials:    credDto,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			Issuer:    "marble",
@@ -68,10 +68,10 @@ func (repo *MarbleJwtRepository) ValidateMarbleToken(marbleToken string) (models
 	}
 
 	claims, ok := token.Claims.(*Claims)
-	if _, ok := repo.issuers[claims.Issuer]; !ok {
-		return models.Credentials{}, errors.Newf("invalid token issuer '%s'", claims.Issuer)
+	if _, ok := repo.issuers[claims.RegisteredClaims.Issuer]; !ok {
+		return models.Credentials{}, errors.Wrapf(models.UnAuthorizedError,
+			"invalid Marble token issuer %q", claims.RegisteredClaims.Issuer)
 	}
-
 	if ok && token.Valid {
 		return dto.AdaptCredential(claims.Credentials), nil
 	}

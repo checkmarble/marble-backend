@@ -250,7 +250,7 @@ func TestMain(m *testing.M) {
 	server := api.NewServer(router, apiConfig, testUsecases,
 		deps.Authentication, deps.TokenHandler, logger, api.WithLocalTest(true))
 
-	jwtRepository := repositories.NewJWTRepository(infra.MockFirebaseIssuer, privateKey)
+	jwtRepository := repositories.NewJWTRepository("marble", privateKey)
 	database := postgres.New(dbPool)
 	if err != nil {
 		cleanupAndFatal("Could not initialize API dependencies: %s", err)

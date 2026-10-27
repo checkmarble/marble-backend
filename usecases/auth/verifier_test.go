@@ -16,6 +16,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -129,6 +130,17 @@ func TestMarbleVerifier_Verify_RejectsUnconfiguredIssuer(t *testing.T) {
 	_, _, err = verifier.Verify(t.Context(), auth.Credentials{Type: auth.CredentialsBearer, Value: token})
 
 	assert.ErrorContains(t, err, "no identity provider is configured")
+}
+
+func TestMarbleVerifier_Verify_RejectsTenantAuthenticationWithoutRegistry(t *testing.T) {
+	issuer := "https://id.example.test"
+	token, err := jwt.NewWithClaims(jwt.SigningMethodNone, auth.BaseClaims{Issuer: issuer}).SignedString(jwt.UnsafeAllowNoneSignatureType)
+	require.NoError(t, err)
+
+	verifier := auth.NewVerifier(map[string]idp.TokenRepository{issuer: mocks.NewStaticIdpTokenVerifier(issuer, models.OidcIdentity{})}, new(mocks.Database), issuer, nil)
+	_, _, err = verifier.Verify(t.Context(), auth.Credentials{Type: auth.CredentialsBearer, Value: token, TenantId: uuid.New()})
+
+	require.ErrorContains(t, err, "tenant OIDC registry is not configured")
 }
 
 func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {

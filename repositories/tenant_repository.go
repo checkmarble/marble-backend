@@ -17,6 +17,7 @@ type TenantRepository interface {
 	LockAndValidateUpdate(ctx context.Context, exec Executor, tenantId uuid.UUID) error
 	SoftDelete(ctx context.Context, exec Executor, tenantIds []uuid.UUID) error
 	Rename(ctx context.Context, exec Executor, tenantId uuid.UUID, name string) error
+	HasOIDCConfigurationOrDomains(ctx context.Context, exec Executor, tenantIds []uuid.UUID) (bool, error)
 }
 
 func (repo *MarbleDbRepository) ListActive(ctx context.Context, exec Executor) ([]models.Tenant, error) {
