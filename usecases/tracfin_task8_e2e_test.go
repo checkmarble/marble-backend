@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -416,7 +417,7 @@ func task8PersonCardModel() (models.DataModel, map[string]map[string]map[string]
 		"Card":    {Name: "Card", LinksToSingle: map[string]models.LinkToSingle{"account": {Name: "account", ParentTableName: "Account", ParentFieldName: "object_id", ChildTableName: "Card", ChildFieldName: "account_id"}}},
 	}}
 	tables := map[string]map[string]map[string]any{
-		"User": {"U1": {"object_id": "U1", "last_name": "Martin", "birth_last_name": "Martin-Dupont", "first_name": "Claire", "birth_date": "14/07/1985", "gender": "F"}},
+		"User": {"U1": {"object_id": "U1", "last_name": "Martin", "birth_last_name": "Martin-Dupont", "first_name": "Claire", "birth_date": time.Date(1985, 7, 14, 0, 0, 0, 0, time.UTC), "gender": "F"}},
 		"Account": {
 			"A1": {"object_id": "A1", "owner_id": "U1"},
 			"A2": {"object_id": "A2", "owner_id": "U1"},

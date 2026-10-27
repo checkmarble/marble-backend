@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
@@ -263,7 +265,7 @@ func ResolvePrefill(config models.TracfinConfiguration, draft models.TracfinDraf
 				out.Diagnostics = append(out.Diagnostics, sourceDiagnostic("CURRENCY_OR_UNIT_UNKNOWN", ref, origin))
 				continue
 			}
-			value, code := convertMapping(m, raw, data)
+			value, code := convertMapping(m, field, raw, data)
 			if code != "" {
 				out.Diagnostics = append(out.Diagnostics, sourceDiagnostic(code, ref, origin))
 				continue
@@ -405,6 +407,46 @@ func scalar(v any) (string, bool) {
 		return strconv.Itoa(x), true
 	case int64:
 		return strconv.FormatInt(x, 10), true
+	case int32:
+		return strconv.FormatInt(int64(x), 10), true
+	case int16:
+		return strconv.FormatInt(int64(x), 10), true
+	case float64:
+		// FLOAT columns hold binary values; the shortest exact round-trip lexeme
+		// keeps the stored precision without adding digits or rounding.
+		if math.IsNaN(x) || math.IsInf(x, 0) {
+			return "", false
+		}
+		return strconv.FormatFloat(x, 'f', -1, 64), true
+	case float32:
+		if math.IsNaN(float64(x)) || math.IsInf(float64(x), 0) {
+			return "", false
+		}
+		return strconv.FormatFloat(float64(x), 'f', -1, 32), true
+	case time.Time:
+		return x.UTC().Format(time.RFC3339Nano), true
+	}
+	return "", false
+}
+
+const profileDateLayout = "02/01/2006"
+
+// profileDate converts a source date to the profile's DD/MM/YYYY lexeme.
+// Timestamps use their UTC calendar date, as Marble stores them in UTC.
+// Other text is refused rather than proposed as an invalid date.
+func profileDate(raw any) (string, bool) {
+	switch v := raw.(type) {
+	case time.Time:
+		return v.UTC().Format(profileDateLayout), true
+	case string:
+		for _, layout := range []string{profileDateLayout, time.DateOnly} {
+			if d, err := time.Parse(layout, v); err == nil {
+				return d.Format(profileDateLayout), true
+			}
+		}
+		if d, err := time.Parse(time.RFC3339Nano, v); err == nil {
+			return d.UTC().Format(profileDateLayout), true
+		}
 	}
 	return "", false
 }
@@ -459,7 +501,14 @@ func exactDecimal(s string, minor bool) (models.TracfinDecimal, bool) {
 	}
 	return models.TracfinDecimal(parts[1] + digits), true
 }
-func convertMapping(m models.TracfinMapping, raw any, data map[string]any) (models.TracfinValue, string) {
+func convertMapping(m models.TracfinMapping, field Field, raw any, data map[string]any) (models.TracfinValue, string) {
+	if field.XSDType == "t_date" {
+		date, ok := profileDate(raw)
+		if !ok {
+			return models.TracfinValue{}, "INVALID_SOURCE_DATE"
+		}
+		return models.TracfinValue{Kind: "text", Text: &date}, ""
+	}
 	text, ok := scalar(raw)
 	if !ok {
 		return models.TracfinValue{}, "SOURCE_TYPE_UNSUPPORTED"
