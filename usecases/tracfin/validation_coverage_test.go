@@ -1,6 +1,7 @@
 package tracfin
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -86,5 +87,26 @@ func TestTracfinXMLNamespacesRejected(t *testing.T) {
 				t.Fatalf("namespace not diagnosed: %+v", v.Diagnostics)
 			}
 		})
+	}
+}
+
+func TestTracfinExportUnresolvedDirectorAlternative(t *testing.T) {
+	c := task5Catalog(t)
+	const base = "/ds/personnes/pm/dirigeant"
+	p := task5Block("p", base+"/autreDirigeantP")
+	p.Fields[base+"/autreDirigeantP/nom"] = []models.TracfinValue{task5Text("pv", "P value")}
+	m := task5Block("m", base+"/autreDirigeantM")
+	m.Fields[base+"/autreDirigeantM/denominationSociale"] = []models.TracfinValue{task5Text("mv", "M value")}
+	d := task5Draft(c, task5Block("people", "/ds/personnes", task5Block("company", "/ds/personnes/pm", task5Block("director", base, p, m))))
+	var out bytes.Buffer
+	index, err := WriteXML(&out, d, nil, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out.String(), "P value") || strings.Contains(out.String(), "M value") {
+		t.Fatalf("unresolved competing alternatives were exported: %s", out.String())
+	}
+	if !task5HasField(index.Diagnostics, base+"/autreDirigeantP") || !task5HasField(index.Diagnostics, base+"/autreDirigeantM") {
+		t.Fatalf("missing diagnostics for unresolved alternatives: %+v", index.Diagnostics)
 	}
 }
