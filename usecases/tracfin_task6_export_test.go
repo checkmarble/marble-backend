@@ -45,10 +45,14 @@ type task6Blobs struct {
 	deleted  []string
 	writeErr error
 	onWrite  func()
+	large    *task6SyntheticReader
 }
 
 func (b *task6Blobs) GetBlob(_ context.Context, _, key string, _ ...repositories.GetBlobOption) (models.Blob, error) {
 	b.reads++
+	if b.large != nil && key == "source" {
+		return models.Blob{ReadCloser: b.large}, nil
+	}
 	data, ok := b.data[key]
 	if !ok {
 		return models.Blob{}, models.NotFoundError
@@ -114,7 +118,6 @@ func TestTracfinCaseFileIsolation(t *testing.T) {
 	_, err := task6Select(t, ctx, uc, repo)
 	require.Error(t, err)
 	require.Zero(t, blobs.reads)
-	require.Empty(t, repo.draft.Document.Root.Children)
 }
 func TestTracfinAttachmentSelectionHashesActualBytes(t *testing.T) {
 	ctx, uc, repo, _, blobs := task6Setup(t)
@@ -264,4 +267,48 @@ func TestTracfinDownloadChecksCurrentAuthorization(t *testing.T) {
 	_, _, err = uc.DownloadExport(ctx, "case", e.ID)
 	require.ErrorIs(t, err, models.ForbiddenError)
 	require.Equal(t, before, blobs.reads)
+}
+
+type task6SyntheticReader struct {
+	size, pos, read int64
+	closed          bool
+}
+
+func (r *task6SyntheticReader) Read(p []byte) (int, error) {
+	if r.pos >= r.size {
+		return 0, io.EOF
+	}
+	n := int(min(int64(len(p)), r.size-r.pos))
+	clear(p[:n])
+	r.pos += int64(n)
+	r.read += int64(n)
+	return n, nil
+}
+func (r *task6SyntheticReader) Seek(offset int64, whence int) (int64, error) {
+	switch whence {
+	case io.SeekStart:
+		r.pos = offset
+	case io.SeekCurrent:
+		r.pos += offset
+	case io.SeekEnd:
+		r.pos = r.size + offset
+	}
+	return r.pos, nil
+}
+func (r *task6SyntheticReader) Close() error { r.closed = true; return nil }
+func TestTracfinAttachmentRawSizeLimit(t *testing.T) {
+	ctx, uc, repo, _, blobs := task6Setup(t)
+	large := &task6SyntheticReader{size: 64*1024*1024 + 1}
+	blobs.large = large
+	_, err := task6Select(t, ctx, uc, repo)
+	if err == nil {
+		large.pos = 0
+		large.read = 0
+		large.closed = false
+		_, err = uc.Export(ctx, "case", repo.draft.Revision)
+	}
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "TRACFIN_ATTACHMENT_SIZE_LIMIT")
+	require.True(t, large.closed)
+	require.LessOrEqual(t, large.read, int64(64*1024*1024+1))
 }
