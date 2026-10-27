@@ -71,3 +71,9 @@ func TestTracfinHTTPPieceSourceFileCommand(t *testing.T) {
 	require.Len(t, f.input.Changes, 1)
 	require.Equal(t, "file-id", f.input.Changes[0].SourceFileID)
 }
+
+func TestTracfinHTTPExportSizeLimit(t *testing.T) {
+	f := &tracfinHTTPFake{err: models.TracfinSizeLimitError}
+	w := tracfinRequest(f, http.MethodPost, "/cases/"+testCaseID+"/tracfin/export", `{"expected_revision":1}`)
+	require.Equal(t, 413, w.Code, w.Body.String())
+}
