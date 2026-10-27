@@ -18,9 +18,13 @@ import (
 type task6Files struct {
 	file models.CaseFile
 	err  error
+	byID map[string]models.CaseFile
 }
 
-func (f *task6Files) GetCaseFileById(context.Context, repositories.Executor, string) (models.CaseFile, error) {
+func (f *task6Files) GetCaseFileById(_ context.Context, _ repositories.Executor, id string) (models.CaseFile, error) {
+	if f.byID != nil {
+		return f.byID[id], f.err
+	}
 	return f.file, f.err
 }
 
@@ -39,17 +43,21 @@ type task6Writer struct {
 func (w *task6Writer) Close() error { w.closeFn(bytes.Clone(w.Bytes())); return nil }
 
 type task6Blobs struct {
-	data     map[string][]byte
-	reads    int
-	readers  []*task6ReadCloser
-	deleted  []string
-	writeErr error
-	onWrite  func()
-	large    io.ReadSeekCloser
+	data      map[string][]byte
+	reads     int
+	readers   []*task6ReadCloser
+	deleted   []string
+	writeErr  error
+	onWrite   func()
+	large     io.ReadSeekCloser
+	largeKeys map[string]io.ReadSeekCloser
 }
 
 func (b *task6Blobs) GetBlob(_ context.Context, _, key string, _ ...repositories.GetBlobOption) (models.Blob, error) {
 	b.reads++
+	if r := b.largeKeys[key]; r != nil {
+		return models.Blob{ReadCloser: r}, nil
+	}
 	if b.large != nil && key == "source" {
 		return models.Blob{ReadCloser: b.large}, nil
 	}
@@ -381,4 +389,29 @@ func TestTracfinExportAttachmentReadFailureClosesStream(t *testing.T) {
 			require.Nil(t, repo.draft.LastExport)
 		})
 	}
+}
+
+func TestTracfinAttachmentCumulativeSizeLimit(t *testing.T) {
+	ctx, uc, repo, files, blobs := task6Setup(t)
+	first := &task6SyntheticReader{size: 33 * 1024 * 1024}
+	second := &task6SyntheticReader{size: 33 * 1024 * 1024}
+	blobs.largeKeys = map[string]io.ReadSeekCloser{"source": first, "source2": second}
+	_, err := task6Select(t, ctx, uc, repo)
+	require.NoError(t, err)
+	files.file.Id = "file2"
+	files.file.FileReference = "source2"
+	_, err = uc.UpdateDraft(ctx, "case", models.TracfinDraftInput{ExpectedRevision: repo.draft.Revision, Changes: []models.TracfinChangeInput{{Action: "add_block", ParentBlockID: repo.draft.Document.Root.Children[0].ID, BlockID: "piece2", CatalogID: "/ds/pieceJointe/piece", SourceFileID: "file2"}}})
+	require.NoError(t, err)
+	// Resolve each previously selected server ID to its own stored file.
+	files.byID = map[string]models.CaseFile{"file": {Id: "file", CaseId: "case", BucketName: "bucket", FileReference: "source"}, "file2": files.file}
+	first.pos = 0
+	second.pos = 0
+	first.closed = false
+	second.closed = false
+	_, err = uc.Export(ctx, "case", repo.draft.Revision)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "TRACFIN_ATTACHMENT_SIZE_LIMIT")
+	require.Nil(t, repo.draft.LastExport)
+	require.True(t, first.closed)
+	require.True(t, second.closed)
 }
