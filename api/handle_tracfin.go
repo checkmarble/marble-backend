@@ -233,13 +233,28 @@ func addTracfinRoutes(router gin.IRoutes, factory func(context.Context) tracfinH
 			tracfinError(c, fmt.Errorf("TRACFIN artifact reader unavailable"))
 			return
 		}
+		if export.Size < 0 {
+			tracfinError(c, fmt.Errorf("TRACFIN artifact size unavailable"))
+			return
+		}
+		// The published size lets an HTTP client detect a truncated streamed body.
+		c.Header("Content-Length", strconv.FormatInt(export.Size, 10))
 		c.Header("Content-Type", "application/xml; charset=utf-8")
 		c.Header("Content-Disposition", `attachment; filename="tracfin-`+c.Param("export_id")+`.xml"`)
 		c.Header("Cache-Control", "no-store")
 		c.Header("X-Tracfin-Draft-Revision", strconv.FormatInt(export.DraftRevision, 10))
 		c.Status(200)
-		if _, err = io.Copy(c.Writer, blob.ReadCloser); err != nil {
-			_ = c.Error(err)
+		written, copyErr := io.Copy(c.Writer, blob.ReadCloser)
+		if written < export.Size {
+			copyErr = errors.Join(copyErr, io.ErrUnexpectedEOF)
+		}
+		if written > export.Size {
+			copyErr = errors.Join(copyErr, fmt.Errorf("TRACFIN artifact exceeds published size"))
+		}
+		if copyErr != nil {
+			// Headers may already be committed. Preserve the incomplete framing,
+			// record the failure, and never append an error document to the XML.
+			_ = c.Error(copyErr)
 		}
 	})
 }
