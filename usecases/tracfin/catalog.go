@@ -9,11 +9,11 @@ import (
 	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 	"golang.org/x/text/encoding/charmap"
 )
 
@@ -138,7 +138,7 @@ func LoadCatalog() (Catalog, error) {
 	c := Catalog{Version: m.Version, SourceVersion: m.SourceVersion, Hash: hex.EncodeToString(h.Sum(nil)), Sources: m.Sources, Fields: make(map[string]Field), Choices: m.Choices, Rules: rules.Rules, Codes: make(map[string][]Code), CatalogBindings: m.CatalogBindings, IngestedEntityTypes: m.IngestedEntityTypes, ExcludedCodes: m.ExcludedCodes}
 	for _, f := range m.Fields {
 		if _, exists := c.Fields[f.ID]; exists {
-			return Catalog{}, fmt.Errorf("duplicate profile path %s", f.ID)
+			return Catalog{}, errors.Errorf("duplicate profile path %s", f.ID)
 		}
 		c.Fields[f.ID] = f
 		c.OrderedFields = append(c.OrderedFields, f.ID)
@@ -150,7 +150,7 @@ func LoadCatalog() (Catalog, error) {
 		}
 		sum := sha256.Sum256(data)
 		if hex.EncodeToString(sum[:]) != src.SHA256 {
-			return Catalog{}, fmt.Errorf("profile source hash mismatch: %s", src.Path)
+			return Catalog{}, errors.Errorf("profile source hash mismatch: %s", src.Path)
 		}
 		if !strings.HasSuffix(src.Path, ".csv") {
 			continue
@@ -163,7 +163,7 @@ func LoadCatalog() (Catalog, error) {
 		rows.Comma = ';'
 		header, err := rows.Read()
 		if err != nil || len(header) != 2 || header[0] != "code" || header[1] != "label" {
-			return Catalog{}, fmt.Errorf("invalid catalog header: %s", src.Path)
+			return Catalog{}, errors.Errorf("invalid catalog header: %s", src.Path)
 		}
 		name := strings.TrimPrefix(src.Path, "sources/referentiels/")
 		c.Codes[name] = []Code{}
@@ -174,10 +174,10 @@ func LoadCatalog() (Catalog, error) {
 				break
 			}
 			if err != nil {
-				return Catalog{}, fmt.Errorf("read catalog %s: %w", name, err)
+				return Catalog{}, errors.Wrapf(err, "read catalog %s", name)
 			}
 			if len(row) != 2 || row[0] == "" || seen[row[0]] {
-				return Catalog{}, fmt.Errorf("invalid or duplicate code in %s", name)
+				return Catalog{}, errors.Errorf("invalid or duplicate code in %s", name)
 			}
 			seen[row[0]] = true
 			c.Codes[name] = append(c.Codes[name], Code{Value: row[0], Label: row[1]})

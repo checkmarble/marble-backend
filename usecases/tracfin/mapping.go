@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 )
 
 // SourceSet is server-built and request-local. Binding identity, not table name,
@@ -51,11 +52,11 @@ func DecodeSnapshot(raw json.RawMessage) (map[string]any, error) {
 		return nil, err
 	}
 	if data == nil {
-		return nil, fmt.Errorf("snapshot must be an object")
+		return nil, errors.New("snapshot must be an object")
 	}
 	var trailing any
 	if err := d.Decode(&trailing); err != io.EOF {
-		return nil, fmt.Errorf("snapshot contains trailing JSON")
+		return nil, errors.New("snapshot contains trailing JSON")
 	}
 	return data, nil
 }

@@ -244,7 +244,7 @@ func WriteXML(w io.Writer, draft models.TracfinDraft, attachments []AttachmentCo
 	block = func(b models.TracfinBlock, path string) error {
 		f, ok := c.Fields[b.CatalogID]
 		if !ok || f.Kind != "block" || f.Coverage == "excluded" {
-			return fmt.Errorf("unknown or excluded document block %s", b.CatalogID)
+			return errors.Errorf("unknown or excluded document block %s", b.CatalogID)
 		}
 		attrs, err := attributes(b, f.ID, "", path)
 		if err != nil {
@@ -352,7 +352,7 @@ func ValidateXML(r io.Reader, c Catalog) models.TracfinValidation {
 	roots := 0
 	for {
 		token, err := dec.Token()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

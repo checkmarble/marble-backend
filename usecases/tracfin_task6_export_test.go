@@ -510,7 +510,7 @@ func TestTracfinExportAttachmentBlobErrors(t *testing.T) {
 		name    string
 		err     error
 		omitted bool
-	}{{"confirmed missing", models.NotFoundError, true}, {"wrapped missing", fmt.Errorf("wrapped: %w", models.NotFoundError), true}, {"denied", models.ForbiddenError, false}, {"timeout", context.DeadlineExceeded, false}, {"unclassified", errors.New("storage failure"), false}} {
+	}{{"confirmed missing", models.NotFoundError, true}, {"wrapped missing", errors.Join(errors.New("wrapped"), models.NotFoundError), true}, {"denied", models.ForbiddenError, false}, {"timeout", context.DeadlineExceeded, false}, {"unclassified", errors.New("storage failure"), false}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, uc, repo, _, blobs := task6Setup(t)
 			_, err := task6Select(t, ctx, uc, repo)

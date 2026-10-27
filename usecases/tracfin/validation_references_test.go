@@ -13,6 +13,9 @@ func task5Reference(id, target, person string) models.TracfinValue {
 	return models.TracfinValue{ID: id, Kind: "reference", Reference: &models.TracfinReference{BlockID: target, PersonBlockID: person}}
 }
 
+// Element names are fixed by the official TRACFIN schema.
+//
+//nolint:tagliatelle
 type task5ReferenceXML struct {
 	People struct {
 		PP []struct {

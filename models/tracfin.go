@@ -2,8 +2,9 @@ package models
 
 import (
 	"encoding/json"
-	"errors"
 	"time"
+
+	"github.com/cockroachdb/errors"
 )
 
 // TracfinDecimal is an exact decimal lexeme, never a binary floating point value.

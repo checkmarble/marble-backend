@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"github.com/checkmarble/marble-backend/models"
 	"io"
 	"os"
@@ -151,7 +152,7 @@ func TestTracfinCatalogSourceRules(t *testing.T) {
 	docs, facets := 0, 0
 	for {
 		token, err := decoder.Token()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

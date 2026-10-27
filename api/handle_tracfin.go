@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -14,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/tracfin"
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -230,11 +229,11 @@ func addTracfinRoutes(router gin.IRoutes, factory func(context.Context) tracfinH
 			return
 		}
 		if blob.ReadCloser == nil {
-			tracfinError(c, fmt.Errorf("TRACFIN artifact reader unavailable"))
+			tracfinError(c, errors.New("TRACFIN artifact reader unavailable"))
 			return
 		}
 		if export.Size < 0 {
-			tracfinError(c, fmt.Errorf("TRACFIN artifact size unavailable"))
+			tracfinError(c, errors.New("TRACFIN artifact size unavailable"))
 			return
 		}
 		// The published size lets an HTTP client detect a truncated streamed body.
@@ -249,7 +248,7 @@ func addTracfinRoutes(router gin.IRoutes, factory func(context.Context) tracfinH
 			copyErr = errors.Join(copyErr, io.ErrUnexpectedEOF)
 		}
 		if written > export.Size {
-			copyErr = errors.Join(copyErr, fmt.Errorf("TRACFIN artifact exceeds published size"))
+			copyErr = errors.Join(copyErr, errors.New("TRACFIN artifact exceeds published size"))
 		}
 		if copyErr != nil {
 			// Headers may already be committed. Preserve the incomplete framing,

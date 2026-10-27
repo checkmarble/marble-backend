@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"context"
-	"fmt"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/tracfin"
@@ -267,7 +266,7 @@ func (uc TracfinUsecase) loadSelection(ctx context.Context, caseID string, confi
 	if err != nil {
 		return out, err
 	}
-	out.Records[tracfin.SourceKey{blockID, "root"}] = root
+	out.Records[tracfin.SourceKey{BlockID: blockID, BindingID: "root"}] = root
 	seen := map[string]bool{"root": true}
 	unavailable := map[string]bool{}
 	skipUnavailable := func(bindingID string, err error) bool {
@@ -285,7 +284,7 @@ func (uc TracfinUsecase) loadSelection(ctx context.Context, caseID string, confi
 			return out, models.BadParameterError
 		}
 		seen[binding.ID] = true
-		parent, ok := out.Records[tracfin.SourceKey{blockID, binding.ParentID}]
+		parent, ok := out.Records[tracfin.SourceKey{BlockID: blockID, BindingID: binding.ParentID}]
 		if !ok {
 			if allowUnavailable && unavailable[binding.ParentID] {
 				unavailable[binding.ID] = true
@@ -313,7 +312,7 @@ func (uc TracfinUsecase) loadSelection(ctx context.Context, caseID string, confi
 		if !pok || !cok || p == "" || p != c {
 			return out, errors.Wrap(models.BadParameterError, "selected object does not belong to selected parent")
 		}
-		out.Records[tracfin.SourceKey{blockID, binding.ID}] = child
+		out.Records[tracfin.SourceKey{BlockID: blockID, BindingID: binding.ID}] = child
 	}
 	return out, nil
 }
@@ -341,7 +340,7 @@ func (uc TracfinUsecase) navigate(ctx context.Context, caseID string, config mod
 	if !ok {
 		return page, models.BadParameterError
 	}
-	parent, ok := sources.Records[tracfin.SourceKey{"navigation", step.ParentID}]
+	parent, ok := sources.Records[tracfin.SourceKey{BlockID: "navigation", BindingID: step.ParentID}]
 	if !ok {
 		return page, models.BadParameterError
 	}
@@ -384,7 +383,7 @@ func (uc TracfinUsecase) navigate(ctx context.Context, caseID string, config mod
 	if page.HasNextPage {
 		id, ok := page.Objects[len(page.Objects)-1].Data["object_id"].(string)
 		if !ok || id == "" {
-			return page, fmt.Errorf("navigation result has no object ID")
+			return page, errors.New("navigation result has no object ID")
 		}
 		page.NextCursor = &id
 	}

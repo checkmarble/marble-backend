@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"io"
 	"sort"
 	"strings"
@@ -337,7 +338,7 @@ func task8ParseXML(t *testing.T, data []byte) *task8Node {
 	var root *task8Node
 	for {
 		token, err := dec.Token()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		require.NoError(t, err)

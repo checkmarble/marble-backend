@@ -25,7 +25,7 @@ func TestTracfinAttachmentContentRoundTrip(t *testing.T) {
 	}
 	var doc struct {
 		Pieces []struct {
-			Content string `xml:"contenu"`
+			Content string `xml:"contenu"` //nolint:tagliatelle // official TRACFIN element name
 		} `xml:"pieceJointe>piece"`
 	}
 	if err := xml.Unmarshal(out.Bytes(), &doc); err != nil {

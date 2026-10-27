@@ -147,8 +147,8 @@ func TestTracfinNavigateTwoCompanyPaths(t *testing.T) {
 	s := models.TracfinSelection{MappingID: "employer", Root: models.TracfinPathStep{ID: "root", Table: "User", RecordID: "U"}, Bindings: []models.TracfinPathStep{{ID: "employer", ParentID: "root", Table: "Company", Link: "employer", Direction: "forward", RecordID: "CO1"}, {ID: "owner", ParentID: "root", Table: "Company", Link: "owner", Direction: "forward", RecordID: "CO2"}}}
 	source, err := uc.verifySelection(context.Background(), "case", config, "b", s)
 	require.NoError(t, err)
-	require.Equal(t, "CO1", source.Records[tracfin.SourceKey{"b", "employer"}].RecordID)
-	require.Equal(t, "CO2", source.Records[tracfin.SourceKey{"b", "owner"}].RecordID)
+	require.Equal(t, "CO1", source.Records[tracfin.SourceKey{BlockID: "b", BindingID: "employer"}].RecordID)
+	require.Equal(t, "CO2", source.Records[tracfin.SourceKey{BlockID: "b", BindingID: "owner"}].RecordID)
 	page, err := uc.navigate(context.Background(), "case", config, s, "card", nil, 10)
 	require.NoError(t, err)
 	require.Len(t, page.Objects, 1)
