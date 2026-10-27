@@ -89,3 +89,45 @@ func TestTracfinAttachmentLocalReference(t *testing.T) {
 		}
 	}
 }
+
+type task6ChunkReader struct {
+	r   io.Reader
+	max int
+}
+
+func (r task6ChunkReader) Read(p []byte) (int, error) {
+	if len(p) > r.max {
+		p = p[:r.max]
+	}
+	return r.r.Read(p)
+}
+func TestTracfinAttachmentXMLReaderChunkBoundaries(t *testing.T) {
+	c := task5Catalog(t)
+	original := bytes.Repeat([]byte{0, 255, 1, 2, 3}, 997)
+	meta := models.TracfinAttachment{SourceFileID: "file", CaseID: "case", BlobKey: "key", Size: int64(len(original))}
+	piece := task5Block("piece", "/ds/pieceJointe/piece")
+	piece.Attachment = &meta
+	d := task5Draft(c, task5Block("attachments", "/ds/pieceJointe", piece))
+	var out bytes.Buffer
+	_, err := WriteXML(&out, d, []AttachmentContent{{BlockID: "piece", Reader: task6ChunkReader{bytes.NewReader(original), 7}, Metadata: meta}}, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := ValidateXML(task6ChunkReader{bytes.NewReader(out.Bytes()), 11}, c)
+	if v.Layers["xml_syntax"].Status == "failed" {
+		t.Fatalf("chunked XML rejected: %+v", v.Diagnostics)
+	}
+	var doc struct {
+		Content string `xml:"pieceJointe>piece>contenu"`
+	}
+	if err := xml.Unmarshal(out.Bytes(), &doc); err != nil {
+		t.Fatal(err)
+	}
+	got, err := base64.StdEncoding.DecodeString(doc.Content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, original) {
+		t.Fatal("content changed across chunk boundaries")
+	}
+}
