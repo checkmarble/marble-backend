@@ -6,7 +6,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -414,4 +416,26 @@ func TestTracfinAttachmentCumulativeSizeLimit(t *testing.T) {
 	require.Nil(t, repo.draft.LastExport)
 	require.True(t, first.closed)
 	require.True(t, second.closed)
+}
+
+func TestTracfinExportXMLSizeLimit(t *testing.T) {
+	ctx, uc, repo, _, blobs := task6Setup(t)
+	content := &task6SyntheticReader{size: 64 * 1024 * 1024}
+	blobs.large = content
+	_, err := task6Select(t, ctx, uc, repo)
+	require.NoError(t, err)
+	content.pos = 0
+	content.closed = false
+	text := strings.Repeat("x", 1024*1024)
+	people := models.TracfinBlock{ID: "people", CatalogID: "/ds/personnes"}
+	for i := 0; i < 16; i++ {
+		civil := models.TracfinBlock{ID: fmt.Sprintf("civil%d", i), CatalogID: "/ds/personnes/pp/etatCivil", Fields: map[string][]models.TracfinValue{"/ds/personnes/pp/etatCivil/nomNaissance": {{ID: fmt.Sprintf("v%d", i), Kind: "text", Text: &text}}}}
+		people.Children = append(people.Children, models.TracfinBlock{ID: fmt.Sprintf("person%d", i), CatalogID: "/ds/personnes/pp", Children: []models.TracfinBlock{civil}})
+	}
+	repo.draft.Document.Root.Children = append(repo.draft.Document.Root.Children, people)
+	_, err = uc.Export(ctx, "case", repo.draft.Revision)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "TRACFIN_XML_SIZE_LIMIT")
+	require.Nil(t, repo.draft.LastExport)
+	require.True(t, content.closed)
 }
