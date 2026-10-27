@@ -26,6 +26,7 @@ type tracfinHTTPFake struct {
 	revision int64
 	reader   io.ReadSeekCloser
 	input    models.TracfinDraftInput
+	draft    models.TracfinDraft
 }
 
 func (f *tracfinHTTPFake) GetConfiguration(context.Context, uuid.UUID) (models.TracfinConfiguration, error) {
@@ -48,7 +49,7 @@ func (f *tracfinHTTPFake) Navigate(_ context.Context, _ string, _ models.Tracfin
 }
 func (f *tracfinHTTPFake) GetDraft(context.Context, string) (models.TracfinDraft, error) {
 	f.calls++
-	return models.TracfinDraft{}, f.err
+	return f.draft, f.err
 }
 func (f *tracfinHTTPFake) CreateDraft(context.Context, string, bool) (models.TracfinDraft, error) {
 	f.calls++

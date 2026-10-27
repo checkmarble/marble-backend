@@ -77,3 +77,12 @@ func TestTracfinHTTPExportSizeLimit(t *testing.T) {
 	w := tracfinRequest(f, http.MethodPost, "/cases/"+testCaseID+"/tracfin/export", `{"expected_revision":1}`)
 	require.Equal(t, 413, w.Code, w.Body.String())
 }
+
+func TestTracfinHTTPDraftRedactsStorageSecrets(t *testing.T) {
+	f := &tracfinHTTPFake{draft: models.TracfinDraft{Document: models.TracfinDocument{Root: models.TracfinBlock{Children: []models.TracfinBlock{{Attachment: &models.TracfinAttachment{SourceFileID: "file", BucketName: "private-bucket", BlobKey: "private-source-key"}}}}}, LastExport: &models.TracfinExport{BlobKey: "private-export-key"}}}
+	w := tracfinRequest(f, http.MethodGet, "/cases/"+testCaseID+"/tracfin/draft", "")
+	require.Equal(t, 200, w.Code, w.Body.String())
+	require.NotContains(t, w.Body.String(), "private-bucket")
+	require.NotContains(t, w.Body.String(), "private-source-key")
+	require.NotContains(t, w.Body.String(), "private-export-key")
+}
