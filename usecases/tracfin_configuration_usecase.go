@@ -78,6 +78,9 @@ func (uc TracfinUsecase) SaveConfiguration(ctx context.Context, orgID uuid.UUID,
 		return models.TracfinConfiguration{}, err
 	}
 	config := models.TracfinConfiguration{OrgID: orgID.String(), Settings: settings, Mappings: input.Mappings, ProfileVersion: catalog.Version, ProfileHash: catalog.Hash, UpdatedBy: string(actor.UserId)}
+	if err = tracfinConfigurationError(tracfin.ValidateConfiguration(config, catalog)); err != nil {
+		return models.TracfinConfiguration{}, err
+	}
 	var result models.TracfinConfiguration
 	err = uc.draftDependencies.Transactions.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := uc.configurationDependencies.Repository.SaveTracfinConfiguration(ctx, tx, orgID.String(), config, input.ExpectedRevision); err != nil {
@@ -91,6 +94,26 @@ func (uc TracfinUsecase) SaveConfiguration(ctx context.Context, orgID uuid.UUID,
 		return err
 	})
 	return result, err
+}
+
+// Invalid mappings are refused, naming each diagnostic code and target field,
+// rather than stored and discovered later while preparing a declaration.
+func tracfinConfigurationError(diagnostics []models.TracfinDiagnostic) error {
+	var problems []string
+	for _, d := range diagnostics {
+		if d.Severity != "error" {
+			continue
+		}
+		problem := d.Code
+		if d.Field != nil && d.Field.FieldID != "" {
+			problem += " " + d.Field.FieldID
+		}
+		problems = append(problems, problem)
+	}
+	if len(problems) == 0 {
+		return nil
+	}
+	return errors.Wrap(models.BadParameterError, "invalid TRACFIN configuration: "+strings.Join(problems, "; "))
 }
 
 // Settings are singleton organization/contact fields. Field IDs address their
