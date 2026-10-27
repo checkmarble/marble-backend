@@ -152,3 +152,19 @@ func TestTracfinAttachmentXMLReaderRejectsEmbeddedMarkup(t *testing.T) {
 		}
 	}
 }
+
+func TestTracfinAttachmentReferenceCatalogTypes(t *testing.T) {
+	c := task5Catalog(t)
+	for _, id := range []string{"/ds/personnes/pp/etatCivil/idPieceJointe", "/ds/personnes/pp/notorieteDefavorable/idPieceJointe", "/ds/personnes/pp/idPieceJointeDonneesConnexion", "/ds/personnes/pm/activiteCoordonnee/idPieceJointe", "/ds/personnes/pm/dirigeant/autreDirigeantP/idPieceJointe", "/ds/personnes/pm/dirigeant/autreDirigeantM/idPieceJointe", "/ds/personnes/pm/infosFinancieresFiscales/idPieceJointe", "/ds/personnes/pm/notorieteDefavorable/idPieceJointe"} {
+		field, ok := c.Fields[id]
+		if !ok || field.ValueKind != "reference" {
+			t.Errorf("%s: %+v", id, field)
+		}
+	}
+	for _, id := range []string{"/ds/organisme/adresse/numero", "/ds/personnes/pp/coordonnees/adresse/numero", "/ds/personnes/pm/activiteCoordonnee/adresse/numero"} {
+		field, ok := c.Fields[id]
+		if !ok || field.ValueKind != "text" {
+			t.Errorf("%s: %+v", id, field)
+		}
+	}
+}
