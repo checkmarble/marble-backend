@@ -138,3 +138,83 @@ func TestTracfinExportFailureKeepsLastArtifact(t *testing.T) {
 	require.Len(t, blobs.data, 2)
 	require.NotEmpty(t, blobs.deleted)
 }
+
+func TestTracfinExportChangedAttachmentOmitted(t *testing.T) {
+	ctx, uc, repo, _, blobs := task6Setup(t)
+	_, err := task6Select(t, ctx, uc, repo)
+	require.NoError(t, err)
+	blobs.data["source"] = []byte("different contents")
+	e, err := uc.Export(ctx, "case", repo.draft.Revision)
+	require.NoError(t, err)
+	require.NotContains(t, string(blobs.data[e.BlobKey]), "ZGlmZmVyZW50IGNvbnRlbnRz")
+	found := false
+	for _, d := range e.Validation.Diagnostics {
+		if d.Code == "ATTACHMENT_CHANGED" {
+			found = true
+		}
+	}
+	require.True(t, found, "changed attachment must be diagnosed")
+}
+
+func TestTracfinExportDownloadImmutableAndReplacement(t *testing.T) {
+	ctx, uc, repo, _, blobs := task6Setup(t)
+	e, err := uc.Export(ctx, "case", repo.draft.Revision)
+	require.NoError(t, err)
+	original := bytes.Clone(blobs.data[e.BlobKey])
+	sum := sha256.Sum256(original)
+	require.Equal(t, hex.EncodeToString(sum[:]), e.SHA256)
+	require.Equal(t, int64(len(original)), e.Size)
+	repo.draft.Revision++
+	downloaded, info, err := uc.DownloadExport(ctx, "case", e.ID)
+	require.NoError(t, err)
+	data, err := io.ReadAll(downloaded.ReadCloser)
+	require.NoError(t, err)
+	require.NoError(t, downloaded.ReadCloser.Close())
+	require.Equal(t, original, data)
+	require.Equal(t, e.DraftRevision, info.DraftRevision)
+	require.Equal(t, e.SHA256, info.SHA256)
+	next, err := uc.Export(ctx, "case", repo.draft.Revision)
+	require.NoError(t, err)
+	require.NotEqual(t, e.ID, next.ID)
+	_, _, err = uc.DownloadExport(ctx, "case", e.ID)
+	require.ErrorIs(t, err, models.NotFoundError)
+}
+
+func TestTracfinExportUnknownAndUnavailableFile(t *testing.T) {
+	t.Run("new unknown is rejected", func(t *testing.T) {
+		ctx, uc, repo, files, blobs := task6Setup(t)
+		files.err = models.NotFoundError
+		_, err := task6Select(t, ctx, uc, repo)
+		require.ErrorIs(t, err, models.NotFoundError)
+		require.Zero(t, blobs.reads)
+	})
+	t.Run("verified old absence is diagnosed", func(t *testing.T) {
+		ctx, uc, repo, files, _ := task6Setup(t)
+		_, err := task6Select(t, ctx, uc, repo)
+		require.NoError(t, err)
+		files.err = models.NotFoundError
+		e, err := uc.Export(ctx, "case", repo.draft.Revision)
+		require.NoError(t, err)
+		found := false
+		for _, d := range e.Validation.Diagnostics {
+			if d.Code == "ATTACHMENT_MISSING" {
+				found = true
+			}
+		}
+		require.True(t, found)
+	})
+	for _, failure := range []struct {
+		name string
+		err  error
+	}{{"permission", models.ForbiddenError}, {"timeout", context.DeadlineExceeded}, {"unknown", errors.New("repository unavailable")}} {
+		t.Run(failure.name, func(t *testing.T) {
+			ctx, uc, repo, files, _ := task6Setup(t)
+			_, err := task6Select(t, ctx, uc, repo)
+			require.NoError(t, err)
+			files.err = failure.err
+			_, err = uc.Export(ctx, "case", repo.draft.Revision)
+			require.Error(t, err)
+			require.Nil(t, repo.draft.LastExport)
+		})
+	}
+}

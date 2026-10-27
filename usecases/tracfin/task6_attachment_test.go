@@ -57,3 +57,35 @@ func TestTracfinAttachmentReadError(t *testing.T) {
 		t.Fatal("attachment read error was ignored")
 	}
 }
+
+func TestTracfinAttachmentLocalReference(t *testing.T) {
+	c := task5Catalog(t)
+	meta := models.TracfinAttachment{SourceFileID: "file", CaseID: "case", BlobKey: "key", Size: 1}
+	piece := task5Block("piece", "/ds/pieceJointe/piece")
+	piece.Attachment = &meta
+	civil := task5Block("civil", "/ds/personnes/pp/etatCivil")
+	civil.Fields["/ds/personnes/pp/etatCivil/idPieceJointe"] = []models.TracfinValue{task5Reference("link", "piece", "")}
+	d := task5Draft(c, task5Block("people", "/ds/personnes", task5Block("person", "/ds/personnes/pp", civil)), task5Block("attachments", "/ds/pieceJointe", piece))
+	var out bytes.Buffer
+	_, err := WriteXML(&out, d, []AttachmentContent{{BlockID: "piece", Reader: bytes.NewReader([]byte("x")), Metadata: meta}}, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var x struct {
+		Piece struct {
+			ID string `xml:"id,attr"`
+		} `xml:"pieceJointe>piece"`
+		Reference string `xml:"personnes>pp>etatCivil>idPieceJointe"`
+	}
+	if err := xml.Unmarshal(out.Bytes(), &x); err != nil {
+		t.Fatal(err)
+	}
+	if x.Piece.ID == "" || x.Piece.ID != x.Reference {
+		t.Fatalf("piece id and reference differ: %q, %q; %s", x.Piece.ID, x.Reference, out.String())
+	}
+	for _, ch := range x.Piece.ID {
+		if ch < '0' || ch > '9' {
+			t.Fatalf("piece ID is not numeric: %q", x.Piece.ID)
+		}
+	}
+}
