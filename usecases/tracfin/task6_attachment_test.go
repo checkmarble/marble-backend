@@ -141,3 +141,14 @@ func TestTracfinAttachmentXMLReaderRejectsMalformedContent(t *testing.T) {
 		}
 	}
 }
+
+func TestTracfinAttachmentXMLReaderRejectsEmbeddedMarkup(t *testing.T) {
+	c := task5Catalog(t)
+	for _, body := range []string{`<![CDATA[eA==]]>`, `eA==<!--comment-->`, `eA==<extra/>`} {
+		input := `<ds><pieceJointe><piece id="1"><contenu>` + body + `</contenu></piece></pieceJointe></ds>`
+		v := ValidateXML(task6ChunkReader{bytes.NewBufferString(input), 1}, c)
+		if v.Layers["xml_syntax"].Status != "failed" {
+			t.Fatalf("unsupported embedded markup accepted: %s", body)
+		}
+	}
+}

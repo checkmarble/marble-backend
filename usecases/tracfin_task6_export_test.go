@@ -57,6 +57,7 @@ type task6Blobs struct {
 	largeKeys   map[string]io.ReadSeekCloser
 	readBuckets []string
 	readErr     error
+	deleteErr   error
 }
 
 func (b *task6Blobs) GetBlob(_ context.Context, bucket, key string, _ ...repositories.GetBlobOption) (models.Blob, error) {
@@ -92,6 +93,9 @@ func (b *task6Blobs) OpenStream(_ context.Context, _, key, _ string) (io.WriteCl
 }
 func (b *task6Blobs) DeleteFile(_ context.Context, _, key string) error {
 	b.deleted = append(b.deleted, key)
+	if b.deleteErr != nil {
+		return b.deleteErr
+	}
 	delete(b.data, key)
 	return nil
 }
@@ -528,4 +532,33 @@ func TestTracfinExportAttachmentBlobErrors(t *testing.T) {
 			require.True(t, found)
 		})
 	}
+}
+
+type task6UncertainCommit struct{}
+
+func (task6UncertainCommit) Transaction(ctx context.Context, fn func(repositories.Transaction) error) error {
+	if err := fn(nil); err != nil {
+		return err
+	}
+	return errors.New("commit outcome unknown")
+}
+func TestTracfinExportUncertainCommitKeepsNewBlob(t *testing.T) {
+	ctx, uc, repo, _, blobs := task6Setup(t)
+	uc.draftDependencies.Transactions = task6UncertainCommit{}
+	_, err := uc.Export(ctx, "case", repo.draft.Revision)
+	require.Error(t, err)
+	require.NotNil(t, repo.draft.LastExport)
+	require.Contains(t, blobs.data, repo.draft.LastExport.BlobKey)
+	require.NotContains(t, blobs.deleted, repo.draft.LastExport.BlobKey)
+}
+func TestTracfinExportOldBlobCleanupFailureDoesNotFailPublication(t *testing.T) {
+	ctx, uc, repo, _, blobs := task6Setup(t)
+	repo.draft.LastExport = &models.TracfinExport{ID: "old", BlobKey: "old-key"}
+	blobs.data["old-key"] = []byte("old")
+	blobs.deleteErr = errors.New("delete failed")
+	e, err := uc.Export(ctx, "case", repo.draft.Revision)
+	require.NoError(t, err)
+	require.Equal(t, e.ID, repo.draft.LastExport.ID)
+	require.Contains(t, blobs.data, e.BlobKey)
+	require.Contains(t, blobs.deleted, "old-key")
 }
