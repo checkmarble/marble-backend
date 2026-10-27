@@ -56,11 +56,15 @@ type task6Blobs struct {
 	large       io.ReadSeekCloser
 	largeKeys   map[string]io.ReadSeekCloser
 	readBuckets []string
+	readErr     error
 }
 
 func (b *task6Blobs) GetBlob(_ context.Context, bucket, key string, _ ...repositories.GetBlobOption) (models.Blob, error) {
 	b.reads++
 	b.readBuckets = append(b.readBuckets, bucket)
+	if b.readErr != nil && key == "source" {
+		return models.Blob{}, b.readErr
+	}
 	if r := b.largeKeys[key]; r != nil {
 		return models.Blob{ReadCloser: r}, nil
 	}
@@ -384,6 +388,8 @@ func (r *task6BrokenReader) Close() error                   { r.closed = true; r
 func TestTracfinExportAttachmentReadFailureClosesStream(t *testing.T) {
 	for _, e := range []error{context.Canceled, errors.New("partial storage read")} {
 		t.Run(e.Error(), func(t *testing.T) {
+			tmp := t.TempDir()
+			t.Setenv("TMPDIR", tmp)
 			ctx, uc, repo, _, blobs := task6Setup(t)
 			_, err := task6Select(t, ctx, uc, repo)
 			require.NoError(t, err)
@@ -393,6 +399,9 @@ func TestTracfinExportAttachmentReadFailureClosesStream(t *testing.T) {
 			require.Error(t, err)
 			require.True(t, broken.closed)
 			require.Nil(t, repo.draft.LastExport)
+			entries, err := os.ReadDir(tmp)
+			require.NoError(t, err)
+			require.Empty(t, entries)
 		})
 	}
 }
@@ -488,6 +497,35 @@ func TestTracfinExportTemporaryFilesArePrivateAndRemoved(t *testing.T) {
 			entries, err := os.ReadDir(tmp)
 			require.NoError(t, err)
 			require.Empty(t, entries)
+		})
+	}
+}
+
+func TestTracfinExportAttachmentBlobErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		err     error
+		omitted bool
+	}{{"confirmed missing", models.NotFoundError, true}, {"denied", models.ForbiddenError, false}, {"timeout", context.DeadlineExceeded, false}, {"unclassified", errors.New("storage failure"), false}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, uc, repo, _, blobs := task6Setup(t)
+			_, err := task6Select(t, ctx, uc, repo)
+			require.NoError(t, err)
+			blobs.readErr = tc.err
+			e, err := uc.Export(ctx, "case", repo.draft.Revision)
+			if !tc.omitted {
+				require.Error(t, err)
+				require.Nil(t, repo.draft.LastExport)
+				return
+			}
+			require.NoError(t, err)
+			found := false
+			for _, d := range e.Validation.Diagnostics {
+				if d.Code == "ATTACHMENT_MISSING" {
+					found = true
+				}
+			}
+			require.True(t, found)
 		})
 	}
 }
