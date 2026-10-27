@@ -234,6 +234,8 @@ func ValidateConfiguration(config models.TracfinConfiguration, catalog Catalog) 
 		add("INCOMPATIBLE_PROFILE", "Configuration profile version/hash does not match embedded profile", "")
 	}
 	ids := map[string]bool{}
+	// Mappings with the same ingested root share one selection per block.
+	rootSteps := map[string]map[string]models.TracfinPathStep{}
 	for _, mapping := range config.Mappings {
 		if mapping.ID == "" || ids[mapping.ID] {
 			add("INVALID_MAPPING_ID", "Mapping ID must be nonempty and unique", mapping.TargetField)
@@ -290,6 +292,15 @@ func ValidateConfiguration(config models.TracfinConfiguration, catalog Catalog) 
 			}
 			steps[step.ID] = true
 			parent = step.ID
+			if mapping.Source.Kind == "ingested" {
+				if rootSteps[mapping.Source.Table] == nil {
+					rootSteps[mapping.Source.Table] = map[string]models.TracfinPathStep{}
+				}
+				if prev, ok := rootSteps[mapping.Source.Table][step.ID]; ok && prev != step {
+					add("INCONSISTENT_MAPPING_PATH", "A step ID must denote the same hop in every mapping of this root table", field.ID)
+				}
+				rootSteps[mapping.Source.Table][step.ID] = step
+			}
 		}
 		values := map[string]string{}
 		for _, pair := range mapping.Codes {
