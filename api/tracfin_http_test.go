@@ -25,6 +25,7 @@ type tracfinHTTPFake struct {
 	limit    int
 	revision int64
 	reader   io.ReadSeekCloser
+	input    models.TracfinDraftInput
 }
 
 func (f *tracfinHTTPFake) GetConfiguration(context.Context, uuid.UUID) (models.TracfinConfiguration, error) {
@@ -56,6 +57,7 @@ func (f *tracfinHTTPFake) CreateDraft(context.Context, string, bool) (models.Tra
 func (f *tracfinHTTPFake) UpdateDraft(_ context.Context, _ string, i models.TracfinDraftInput) (models.TracfinDraft, error) {
 	f.calls++
 	f.revision = i.ExpectedRevision
+	f.input = i
 	return models.TracfinDraft{}, f.err
 }
 func (f *tracfinHTTPFake) PrefillAtRevision(_ context.Context, _ string, r int64) (tracfin.PrefillResult, error) {

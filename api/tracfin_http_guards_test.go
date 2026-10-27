@@ -63,3 +63,11 @@ func TestTracfinHTTPDownloadClosesReaderOnUsecaseError(t *testing.T) {
 	require.Equal(t, 403, w.Code, w.Body.String())
 	require.True(t, reader.closed)
 }
+
+func TestTracfinHTTPPieceSourceFileCommand(t *testing.T) {
+	f := &tracfinHTTPFake{}
+	w := tracfinRequest(f, http.MethodPatch, "/cases/"+testCaseID+"/tracfin/draft", `{"expected_revision":1,"changes":[{"action":"add_block","parent_block_id":"p","catalog_id":"/ds/pieceJointe/piece","source_file_id":"file-id"}]}`)
+	require.Equal(t, 200, w.Code, w.Body.String())
+	require.Len(t, f.input.Changes, 1)
+	require.Equal(t, "file-id", f.input.Changes[0].SourceFileID)
+}
