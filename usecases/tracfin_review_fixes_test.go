@@ -238,3 +238,42 @@ func TestTracfinPeriodProposalAppliedAndExported(t *testing.T) {
 	require.Equal(t, []string{"01/08/2026"}, x.texts("operations/dateDebut"))
 	require.Equal(t, []string{"30/09/2026"}, x.texts("operations/dateFin"))
 }
+
+type task8DeniedCases struct{ task8Cases }
+
+func (task8DeniedCases) GetCase(context.Context, string) (models.Case, error) {
+	return models.Case{}, models.ForbiddenError
+}
+
+// Losing case access refuses every TRACFIN capability without side effects.
+func TestTracfinCaseAccessDeniedEverywhere(t *testing.T) {
+	dm, tables := task8PersonCardModel()
+	w := task8NewWorld(dm, tables, []models.CaseEntityRef{{TableName: "User", ObjectId: "U1"}}, nil)
+	d, err := w.uc.CreateDraft(w.ctx, "case", false)
+	require.NoError(t, err)
+	d = w.update(t, task8Set(d.Document.Root.ID, "/ds/analyse", task8Text("Analyse")))
+	e, err := w.uc.Export(w.ctx, "case", d.Revision)
+	require.NoError(t, err)
+	before := w.repo.draft
+	artifacts := len(w.blobs.data)
+
+	w.uc.cases = task8DeniedCases{w.uc.cases.(task8Cases)}
+	w.repo.exists = false
+	_, err = w.uc.CreateDraft(w.ctx, "case", false)
+	require.ErrorIs(t, err, models.ForbiddenError)
+	w.repo.exists = true
+	for name, call := range map[string]func() error{
+		"context":  func() error { _, err := w.uc.GetContext(w.ctx, "case"); return err },
+		"draft":    func() error { _, err := w.uc.GetDraft(w.ctx, "case"); return err },
+		"update":   func() error { _, err := w.uc.UpdateDraft(w.ctx, "case", models.TracfinDraftInput{ExpectedRevision: d.Revision, Changes: []models.TracfinChangeInput{task8Set(d.Document.Root.ID, "/ds/analyse", task8Text("x"))}}); return err },
+		"navigate": func() error { _, err := w.uc.Navigate(w.ctx, "case", models.TracfinSelection{}, "account", nil, 10); return err },
+		"prefill":  func() error { _, err := w.uc.PrefillAtRevision(w.ctx, "case", d.Revision); return err },
+		"validate": func() error { _, err := w.uc.ValidateDraft(w.ctx, "case", d.Revision); return err },
+		"export":   func() error { _, err := w.uc.Export(w.ctx, "case", d.Revision); return err },
+		"download": func() error { _, _, err := w.uc.DownloadExport(w.ctx, "case", e.ID); return err },
+	} {
+		require.ErrorIs(t, call(), models.ForbiddenError, name)
+	}
+	require.Equal(t, before, w.repo.draft)
+	require.Len(t, w.blobs.data, artifacts)
+}
