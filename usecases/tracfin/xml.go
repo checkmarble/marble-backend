@@ -315,6 +315,36 @@ func ValidateXML(r io.Reader, c Catalog) models.TracfinValidation {
 					addValidation(&report, validationDiagnostic("CARDINALITY_EXCEEDED", "internal_structure", "Too many XML occurrences", models.TracfinFieldRef{FieldID: id}))
 				}
 			}
+			// These values and counts came from actual tokens, independently of
+			// WriteXML and its index. No draft instance IDs are manufactured.
+			businessBlock := models.TracfinBlock{CatalogID: fr.path, Fields: fr.fields}
+			for id, count := range fr.counts {
+				if c.Fields[id].Kind == "block" {
+					for n := 0; n < count; n++ {
+						businessBlock.Children = append(businessBlock.Children, models.TracfinBlock{CatalogID: id})
+					}
+				}
+			}
+			validateBusinessRules(&report, businessBlock)
+			for _, choice := range c.Choices {
+				if choice.Parent != fr.path {
+					continue
+				}
+				count := 0
+				for id, n := range fr.counts {
+					if c.Fields[id].Choice == choice.ID {
+						count += n
+					}
+				}
+				max, err := strconv.Atoi(choice.Max)
+				if err == nil && count > max {
+					for id, n := range fr.counts {
+						if n > 0 && c.Fields[id].Choice == choice.ID {
+							addValidation(&report, validationDiagnostic("UNRESOLVED_ALTERNATIVE_NOT_EXPORTED", "business", "Competing alternatives require an explicit selected branch", models.TracfinFieldRef{FieldID: id}))
+						}
+					}
+				}
+			}
 		}
 	}
 	if roots != 1 {

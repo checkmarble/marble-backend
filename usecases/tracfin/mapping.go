@@ -248,6 +248,12 @@ func ResolvePrefill(config models.TracfinConfiguration, draft models.TracfinDraf
 			if !exists || raw == nil || raw == "" {
 				continue
 			}
+			// Source identifiers are not stable IDs of document blocks. A genuine
+			// internal reference needs an explicit declared-object selection.
+			if field.ValueKind == "reference" {
+				out.Diagnostics = append(out.Diagnostics, sourceDiagnostic("REFERENCE_SELECTION_REQUIRED", ref, origin))
+				continue
+			}
 			if (len(field.Catalogs) > 0 || hasEnumeration(field)) && len(m.Codes) == 0 {
 				out.Diagnostics = append(out.Diagnostics, sourceDiagnostic("UNKNOWN_CODE", ref, origin))
 				continue

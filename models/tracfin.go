@@ -9,9 +9,12 @@ import (
 type TracfinDecimal string
 
 type TracfinFieldRef struct {
-	ValueID string `json:"value_id,omitempty"`
-	BlockID string `json:"block_id"`
-	FieldID string `json:"field_id"`
+	// ParentValueID identifies the scalar owner of an attribute. It also
+	// localizes a missing attribute, for which no attribute ValueID exists.
+	ParentValueID string `json:"parent_value_id,omitempty"`
+	ValueID       string `json:"value_id,omitempty"`
+	BlockID       string `json:"block_id"`
+	FieldID       string `json:"field_id"`
 }
 
 // Text and Reference are distinct even when free text consists only of digits.

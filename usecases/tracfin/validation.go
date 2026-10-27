@@ -65,7 +65,7 @@ func valueText(v models.TracfinValue) (string, bool) {
 }
 
 func fieldRef(b models.TracfinBlock, f Field, val models.TracfinValue) models.TracfinFieldRef {
-	return models.TracfinFieldRef{BlockID: b.ID, FieldID: f.ID, ValueID: val.ID}
+	return models.TracfinFieldRef{BlockID: b.ID, FieldID: f.ID, ValueID: val.ID, ParentValueID: val.ParentValueID}
 }
 
 func activeField(b models.TracfinBlock, f Field, c Catalog) bool {
@@ -184,6 +184,36 @@ func ValidateDraft(draft models.TracfinDraft, c Catalog) models.TracfinValidatio
 				}
 				continue
 			}
+			if f.Attribute && c.Fields[f.Parent].Kind == "field" {
+				if !activeField(b, c.Fields[f.Parent], c) {
+					continue
+				}
+				for _, parent := range b.Fields[f.Parent] {
+					if _, present := valueText(parent); !present {
+						continue
+					}
+					count := 0
+					for _, attr := range b.Fields[id] {
+						if attr.ParentValueID != parent.ID {
+							continue
+						}
+						if _, present := valueText(attr); present {
+							count++
+						}
+						validateValue(&v, b, f, attr, c)
+					}
+					ref := models.TracfinFieldRef{BlockID: b.ID, FieldID: f.ID, ParentValueID: parent.ID}
+					min, _ := strconv.Atoi(f.Min)
+					max, err := strconv.Atoi(f.Max)
+					if count < min && f.Coverage != "calculated" {
+						addValidation(&v, validationDiagnostic("MISSING_REQUIRED_VALUE", "internal_structure", "Required scalar attribute is absent", ref))
+					}
+					if err == nil && count > max {
+						addValidation(&v, validationDiagnostic("CARDINALITY_EXCEEDED", "internal_structure", fmt.Sprintf("Maximum %d attributes per scalar occurrence", max), ref))
+					}
+				}
+				continue
+			}
 			count := 0
 			if f.Kind == "block" {
 				for _, child := range b.Children {
@@ -204,10 +234,6 @@ func ValidateDraft(draft models.TracfinDraft, c Catalog) models.TracfinValidatio
 					validateValue(&v, b, f, val, c)
 				}
 			}
-			// Scalar attributes are counted for each owning occurrence, not per block.
-			if f.Attribute && c.Fields[f.Parent].Kind == "field" {
-				continue
-			}
 			min, _ := strconv.Atoi(f.Min)
 			max, err := strconv.Atoi(f.Max)
 			if count < min && f.Coverage != "calculated" {
@@ -217,43 +243,7 @@ func ValidateDraft(draft models.TracfinDraft, c Catalog) models.TracfinValidatio
 				addValidation(&v, validationDiagnostic("CARDINALITY_EXCEEDED", "internal_structure", fmt.Sprintf("Maximum %d occurrences", max), fieldRef(b, f, models.TracfinValue{})))
 			}
 		}
-		if b.CatalogID == "/ds/pieceJointe/piece" {
-			for _, val := range b.Fields[b.CatalogID+"/type"] {
-				text, _ := valueText(val)
-				if text != "TA2" && text != "TA3" && text != "TA5" {
-					continue
-				}
-				found := false
-				for _, child := range b.Children {
-					if child.CatalogID == b.CatalogID+"/infoPieceIdentite" {
-						found = true
-					}
-				}
-				if !found {
-					addValidation(&v, validationDiagnostic("IDENTITY_PIECE_DETAILS_REQUIRED", "business", "Identity document requires identity details", models.TracfinFieldRef{BlockID: b.ID, FieldID: b.CatalogID + "/infoPieceIdentite"}))
-				}
-			}
-		}
-		if strings.HasSuffix(b.CatalogID, "/referencesFinancieres") && len(b.Children) > 20 {
-			addValidation(&v, validationDiagnostic("FINANCIAL_REFERENCE_LIMIT", "business", "A person may have at most 20 financial references combined", models.TracfinFieldRef{BlockID: b.ID, FieldID: b.CatalogID}))
-		}
-		if b.CatalogID == "/ds/operations/operation" || b.CatalogID == "/ds/operations/operationEnCours" {
-			for _, value := range b.Fields[b.CatalogID+"/typeOperation"] {
-				code, _ := valueText(value)
-				if code == "OT11" {
-					found := false
-					for _, other := range b.Fields[b.CatalogID+"/autretypeOperation"] {
-						text, present := valueText(other)
-						if present && text != "" {
-							found = true
-						}
-					}
-					if !found {
-						addValidation(&v, validationDiagnostic("OTHER_OPERATION_DESCRIPTION_REQUIRED", "business", "Other operation requires its description", models.TracfinFieldRef{BlockID: b.ID, FieldID: b.CatalogID + "/autretypeOperation"}))
-					}
-				}
-			}
-		}
+		validateBusinessRules(&v, b)
 		for _, child := range b.Children {
 			if activeField(b, c.Fields[child.CatalogID], c) {
 				visit(child)
@@ -262,6 +252,48 @@ func ValidateDraft(draft models.TracfinDraft, c Catalog) models.TracfinValidatio
 	}
 	visit(draft.Document.Root)
 	return v
+}
+
+// validateBusinessRules contains only the explicitly implemented source rules.
+// Both the draft and independent XML reader supply their own represented values.
+func validateBusinessRules(report *models.TracfinValidation, b models.TracfinBlock) {
+	if b.CatalogID == "/ds/pieceJointe/piece" {
+		for _, val := range b.Fields[b.CatalogID+"/type"] {
+			text, _ := valueText(val)
+			if text != "TA2" && text != "TA3" && text != "TA5" {
+				continue
+			}
+			found := false
+			for _, child := range b.Children {
+				if child.CatalogID == b.CatalogID+"/infoPieceIdentite" {
+					found = true
+				}
+			}
+			if !found {
+				addValidation(report, validationDiagnostic("IDENTITY_PIECE_DETAILS_REQUIRED", "business", "Identity document requires identity details", models.TracfinFieldRef{BlockID: b.ID, FieldID: b.CatalogID + "/infoPieceIdentite"}))
+			}
+		}
+	}
+	if strings.HasSuffix(b.CatalogID, "/referencesFinancieres") && len(b.Children) > 20 {
+		addValidation(report, validationDiagnostic("FINANCIAL_REFERENCE_LIMIT", "business", "A person may have at most 20 financial references combined", models.TracfinFieldRef{BlockID: b.ID, FieldID: b.CatalogID}))
+	}
+	if b.CatalogID == "/ds/operations/operation" || b.CatalogID == "/ds/operations/operationEnCours" {
+		for _, value := range b.Fields[b.CatalogID+"/typeOperation"] {
+			code, _ := valueText(value)
+			if code == "OT11" {
+				found := false
+				for _, other := range b.Fields[b.CatalogID+"/autretypeOperation"] {
+					text, present := valueText(other)
+					if present && text != "" {
+						found = true
+					}
+				}
+				if !found {
+					addValidation(report, validationDiagnostic("OTHER_OPERATION_DESCRIPTION_REQUIRED", "business", "Other operation requires its description", models.TracfinFieldRef{BlockID: b.ID, FieldID: b.CatalogID + "/autretypeOperation"}))
+				}
+			}
+		}
+	}
 }
 
 func validateValue(report *models.TracfinValidation, b models.TracfinBlock, f Field, val models.TracfinValue, c Catalog) {
