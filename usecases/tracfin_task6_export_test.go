@@ -562,3 +562,14 @@ func TestTracfinExportOldBlobCleanupFailureDoesNotFailPublication(t *testing.T) 
 	require.Contains(t, blobs.data, e.BlobKey)
 	require.Contains(t, blobs.deleted, "old-key")
 }
+
+func TestTracfinExportFailedCleanupReportsBothErrors(t *testing.T) {
+	ctx, uc, repo, _, blobs := task6Setup(t)
+	repo.saveErr = errors.New("database failed")
+	blobs.deleteErr = errors.New("cleanup failed")
+	_, err := uc.Export(ctx, "case", repo.draft.Revision)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "database failed")
+	require.Contains(t, err.Error(), "cleanup failed")
+	require.Nil(t, repo.draft.LastExport)
+}
