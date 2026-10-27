@@ -236,7 +236,7 @@ func TestTracfinPeriodProposalAppliedAndExported(t *testing.T) {
 	require.Equal(t, "calculated", task8Value(t, d, ops, "/ds/operations/dateDebut").Origin.Source)
 	_, _, x := w.export(t)
 	require.Equal(t, []string{"01/08/2026"}, x.texts("operations/dateDebut"))
-	require.Equal(t, []string{"30/09/2026"}, x.texts("operations/dateFin"))
+	require.Equal(t, []string{"01/10/2026"}, x.texts("operations/dateFin"), "23:30 UTC is already the next day in Paris")
 }
 
 type task8DeniedCases struct{ task8Cases }
@@ -263,10 +263,16 @@ func TestTracfinCaseAccessDeniedEverywhere(t *testing.T) {
 	require.ErrorIs(t, err, models.ForbiddenError)
 	w.repo.exists = true
 	for name, call := range map[string]func() error{
-		"context":  func() error { _, err := w.uc.GetContext(w.ctx, "case"); return err },
-		"draft":    func() error { _, err := w.uc.GetDraft(w.ctx, "case"); return err },
-		"update":   func() error { _, err := w.uc.UpdateDraft(w.ctx, "case", models.TracfinDraftInput{ExpectedRevision: d.Revision, Changes: []models.TracfinChangeInput{task8Set(d.Document.Root.ID, "/ds/analyse", task8Text("x"))}}); return err },
-		"navigate": func() error { _, err := w.uc.Navigate(w.ctx, "case", models.TracfinSelection{}, "account", nil, 10); return err },
+		"context": func() error { _, err := w.uc.GetContext(w.ctx, "case"); return err },
+		"draft":   func() error { _, err := w.uc.GetDraft(w.ctx, "case"); return err },
+		"update": func() error {
+			_, err := w.uc.UpdateDraft(w.ctx, "case", models.TracfinDraftInput{ExpectedRevision: d.Revision, Changes: []models.TracfinChangeInput{task8Set(d.Document.Root.ID, "/ds/analyse", task8Text("x"))}})
+			return err
+		},
+		"navigate": func() error {
+			_, err := w.uc.Navigate(w.ctx, "case", models.TracfinSelection{}, "account", nil, 10)
+			return err
+		},
 		"prefill":  func() error { _, err := w.uc.PrefillAtRevision(w.ctx, "case", d.Revision); return err },
 		"validate": func() error { _, err := w.uc.ValidateDraft(w.ctx, "case", d.Revision); return err },
 		"export":   func() error { _, err := w.uc.Export(w.ctx, "case", d.Revision); return err },
@@ -276,4 +282,28 @@ func TestTracfinCaseAccessDeniedEverywhere(t *testing.T) {
 	}
 	require.Equal(t, before, w.repo.draft)
 	require.Len(t, w.blobs.data, artifacts)
+}
+
+// An applied partial period stays flagged for review and is proposed again.
+func TestTracfinPartialPeriodStaysToReview(t *testing.T) {
+	dm, tables := task8PersonCardModel()
+	w := task8NewWorld(dm, tables, nil, nil)
+	w.configure(t, nil, []models.TracfinMapping{task8Snapshot("start", "/ds/operations/dateDebut", "executed_at")})
+	w.repo.decisions["D1"] = models.TracfinDecisionSource{DecisionID: "D1", HistoricalType: "Transfer", Snapshot: json.RawMessage(`{"executed_at":"2026-08-01"}`)}
+	d, err := w.uc.CreateDraft(w.ctx, "case", false)
+	require.NoError(t, err)
+	d = w.update(t,
+		task8Add(d.Document.Root.ID, "ops", "/ds/operations"),
+		task8Add("ops", "op1", t8Op), task8Select("op1", models.TracfinSelection{MappingID: "start", DecisionID: "D1", HistoricalType: "Transfer"}),
+		task8Add("ops", "manual", t8Op),
+	)
+	ops := task8Block(t, d, "/ds/operations").ID
+	result, proposals := w.prefill(t)
+	require.True(t, task8Diag(result.Diagnostics, "PARTIAL_PERIOD", ops, "/ds/operations/dateDebut"))
+	d = w.update(t, task8Apply(proposals[ops+" /ds/operations/dateDebut"], 0, result.MappingVersion))
+	applied := task8Value(t, d, ops, "/ds/operations/dateDebut")
+	require.Equal(t, "01/08/2026", *applied.Text)
+	require.True(t, applied.NeedsReview)
+	_, proposals = w.prefill(t)
+	require.Contains(t, proposals, ops+" /ds/operations/dateDebut", "still proposed until confirmed")
 }

@@ -30,17 +30,22 @@ func TestTracfinPrefillNativeIngestedTypes(t *testing.T) {
 		want    string
 		code    string
 	}{
-		"timestamp date":            {mapping("birth", civil+"/dateNaissance", "v"), civil, time.Date(1985, 7, 14, 0, 0, 0, 0, time.UTC), "14/07/1985", ""},
-		"timestamp in another zone": {mapping("birth", civil+"/dateNaissance", "v"), civil, time.Date(1985, 7, 14, 23, 30, 0, 0, time.FixedZone("UTC-2", -2*3600)), "15/07/1985", ""},
-		"ISO date text":             {mapping("birth", civil+"/dateNaissance", "v"), civil, "1985-07-14", "14/07/1985", ""},
-		"RFC 3339 text":             {mapping("birth", civil+"/dateNaissance", "v"), civil, "1985-07-14T00:00:00Z", "14/07/1985", ""},
-		"profile date text":         {mapping("birth", civil+"/dateNaissance", "v"), civil, "14/07/1985", "14/07/1985", ""},
-		"unreadable date":           {mapping("birth", civil+"/dateNaissance", "v"), civil, "14 juillet 1985", "", "INVALID_SOURCE_DATE"},
-		"impossible date":           {mapping("birth", civil+"/dateNaissance", "v"), civil, "31/02/1985", "", "INVALID_SOURCE_DATE"},
-		"integer text":              {mapping("birth", civil+"/lieuNaissance", "v"), civil, int32(75056), "75056", ""},
-		"float amount":              {balance, account, 100.01, "100.01", ""},
-		"integer minor amount":      {cents, account, int32(10001), "100.01", ""},
-		"not a number":              {balance, account, math.NaN(), "", "SOURCE_TYPE_UNSUPPORTED"},
+		// Instants take their Paris civil date, the reference of a French declaration.
+		"UTC midnight timestamp":        {mapping("birth", civil+"/dateNaissance", "v"), civil, time.Date(1985, 7, 14, 0, 0, 0, 0, time.UTC), "14/07/1985", ""},
+		"Paris midnight timestamp":      {mapping("birth", civil+"/dateNaissance", "v"), civil, time.Date(1985, 7, 13, 22, 0, 0, 0, time.UTC), "14/07/1985", ""},
+		"early morning in Paris":        {mapping("birth", civil+"/dateNaissance", "v"), civil, time.Date(2026, 7, 31, 22, 30, 0, 0, time.UTC), "01/08/2026", ""},
+		"late evening in Paris":         {mapping("birth", civil+"/dateNaissance", "v"), civil, time.Date(2026, 1, 31, 22, 30, 0, 0, time.UTC), "31/01/2026", ""},
+		"ISO date text":                 {mapping("birth", civil+"/dateNaissance", "v"), civil, "1985-07-14", "14/07/1985", ""},
+		"RFC 3339 text":                 {mapping("birth", civil+"/dateNaissance", "v"), civil, "1985-07-14T00:00:00Z", "14/07/1985", ""},
+		"RFC 3339 with Paris offset":    {mapping("birth", civil+"/dateNaissance", "v"), civil, "2026-08-01T00:30:00+02:00", "01/08/2026", ""},
+		"RFC 3339 early morning in UTC": {mapping("birth", civil+"/dateNaissance", "v"), civil, "2026-07-31T23:30:00Z", "01/08/2026", ""},
+		"profile date text":             {mapping("birth", civil+"/dateNaissance", "v"), civil, "14/07/1985", "14/07/1985", ""},
+		"unreadable date":               {mapping("birth", civil+"/dateNaissance", "v"), civil, "14 juillet 1985", "", "INVALID_SOURCE_DATE"},
+		"impossible date":               {mapping("birth", civil+"/dateNaissance", "v"), civil, "31/02/1985", "", "INVALID_SOURCE_DATE"},
+		"integer text":                  {mapping("birth", civil+"/lieuNaissance", "v"), civil, int32(75056), "75056", ""},
+		"float amount":                  {balance, account, 100.01, "100.01", ""},
+		"integer minor amount":          {cents, account, int32(10001), "100.01", ""},
+		"not a number":                  {balance, account, math.NaN(), "", "SOURCE_TYPE_UNSUPPORTED"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			m := tc.mapping

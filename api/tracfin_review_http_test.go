@@ -29,6 +29,10 @@ func TestTracfinHTTPDraftChangesIdentifiers(t *testing.T) {
 		"empty change list":     `{"expected_revision":1,"changes":[]}`,
 		"malformed file ID":     `{"expected_revision":1,"changes":[{"action":"add_block","block_id":"p","parent_block_id":"x","catalog_id":"/ds/pieceJointe/piece","source_file_id":"not-a-uuid"}]}`,
 		"malformed decision ID": `{"expected_revision":1,"changes":[{"action":"set_selection","block_id":"op","selection":{"mapping_id":"m","root":{"id":"","table":""},"decision_id":"D1","historical_type":"Transfer"}}]}`,
+		"URN decision ID":       `{"expected_revision":1,"changes":[{"action":"set_selection","block_id":"op","selection":{"mapping_id":"m","root":{"id":"","table":""},"decision_id":"urn:uuid:33333333-3333-4333-8333-333333333333","historical_type":"Transfer"}}]}`,
+		"braced file ID":        `{"expected_revision":1,"changes":[{"action":"add_block","block_id":"p","parent_block_id":"x","catalog_id":"/ds/pieceJointe/piece","source_file_id":"{44444444-4444-4444-8444-444444444444}"}]}`,
+		"uppercase file ID":     `{"expected_revision":1,"changes":[{"action":"add_block","block_id":"p","parent_block_id":"x","catalog_id":"/ds/pieceJointe/piece","source_file_id":"4444444A-4444-4444-8444-444444444444"}]}`,
+		"unhyphenated file ID":  `{"expected_revision":1,"changes":[{"action":"add_block","block_id":"p","parent_block_id":"x","catalog_id":"/ds/pieceJointe/piece","source_file_id":"44444444444444448444444444444444"}]}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			f := &tracfinHTTPFake{}

@@ -50,6 +50,10 @@ func TestTracfinPrefillOperationPeriod(t *testing.T) {
 		}
 	}
 	require.Equal(t, 2, partial, "the missing date of D3 is reported for both bounds")
+	for _, p := range byField {
+		require.Equal(t, "partial", p.Resolution, "a partial period is not presented as resolved")
+		require.True(t, p.Candidates[0].NeedsReview)
+	}
 
 	// A manual period is never replaced by the calculated one.
 	manual, err := ApplyChanges(draft, []Change{draftChange("set_field", "ops", "/ds/operations/dateDebut", "", textInput("01/01/2026"))}, draftCatalog(t))

@@ -42,19 +42,20 @@ func tracfinError(c *gin.Context, err error) bool {
 }
 func tracfinBad(c *gin.Context) bool { return tracfinError(c, models.BadParameterError) }
 
-// Case file and decision IDs reach UUID columns; malformed ones are a 400,
-// not a database error.
+// Case file and decision IDs reach UUID columns and are compared as strings,
+// so only the canonical lowercase form is accepted: anything else is a 400,
+// not a database error or a misleading absence.
 func tracfinChangeIDs(changes []models.TracfinChangeInput) bool {
+	canonical := func(id string) bool {
+		parsed, err := uuid.Parse(id)
+		return err == nil && parsed.String() == id
+	}
 	for _, change := range changes {
-		if change.SourceFileID != "" {
-			if _, err := uuid.Parse(change.SourceFileID); err != nil {
-				return false
-			}
+		if change.SourceFileID != "" && !canonical(change.SourceFileID) {
+			return false
 		}
-		if change.Selection != nil && change.Selection.DecisionID != "" {
-			if _, err := uuid.Parse(change.Selection.DecisionID); err != nil {
-				return false
-			}
+		if change.Selection != nil && change.Selection.DecisionID != "" && !canonical(change.Selection.DecisionID) {
+			return false
 		}
 	}
 	return true

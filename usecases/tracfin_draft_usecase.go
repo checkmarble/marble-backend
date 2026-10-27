@@ -288,7 +288,7 @@ func (uc TracfinUsecase) UpdateDraft(ctx context.Context, caseID string, input m
 				if err != nil {
 					return err
 				}
-				attachTracfinOrigin(&next.Document.Root, field, selected.Origin)
+				attachTracfinOrigin(&next.Document.Root, field, selected.Origin, selected.NeedsReview)
 				d = next
 				continue
 			}
@@ -351,7 +351,7 @@ func reviewTracfinDraft(b *models.TracfinBlock) {
 		reviewTracfinDraft(&b.Children[i])
 	}
 }
-func attachTracfinOrigin(b *models.TracfinBlock, field models.TracfinFieldRef, origin *models.TracfinOrigin) {
+func attachTracfinOrigin(b *models.TracfinBlock, field models.TracfinFieldRef, origin *models.TracfinOrigin, needsReview bool) {
 	if b.ID == field.BlockID {
 		values := b.Fields[field.FieldID]
 		for i := range values {
@@ -359,12 +359,12 @@ func attachTracfinOrigin(b *models.TracfinBlock, field models.TracfinFieldRef, o
 				copy := *origin
 				copy.Resolution = "resolved"
 				values[i].Origin = &copy
-				values[i].NeedsReview = false
+				values[i].NeedsReview = needsReview
 			}
 		}
 		b.Fields[field.FieldID] = values
 	}
 	for i := range b.Children {
-		attachTracfinOrigin(&b.Children[i], field, origin)
+		attachTracfinOrigin(&b.Children[i], field, origin, needsReview)
 	}
 }

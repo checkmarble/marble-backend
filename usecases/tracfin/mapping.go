@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	_ "time/tzdata"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
@@ -403,12 +404,18 @@ func periodProposals(config models.TracfinConfiguration, draft models.TracfinDra
 			continue
 		}
 		text := bound.Format(profileDateLayout)
-		proposals = append(proposals, PrefillProposal{
+		proposal := PrefillProposal{
 			ID:         fmt.Sprintf("%x", sha256.Sum256(fmt.Appendf(nil, "%s:%d:%s:%s", version, draft.Revision, operations.ID, target))),
 			Field:      ref,
 			Resolution: "resolved",
 			Candidates: []models.TracfinValue{{Kind: "text", Text: &text, Origin: &models.TracfinOrigin{Source: "calculated", MappingVersion: version, Sources: used, Resolution: "resolved"}}},
-		})
+		}
+		if missing > 0 {
+			// The bound may not cover every declared operation: keep it to review.
+			proposal.Resolution = "partial"
+			proposal.Candidates[0].NeedsReview = true
+		}
+		proposals = append(proposals, proposal)
 	}
 	return proposals, diagnostics
 }
@@ -538,13 +545,24 @@ func scalar(v any) (string, bool) {
 
 const profileDateLayout = "02/01/2006"
 
+// declarationZone gives the civil date of an instant in a French declaration.
+// The zone database is embedded, so loading it cannot fail at runtime.
+var declarationZone = func() *time.Location {
+	zone, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		panic(err)
+	}
+	return zone
+}()
+
 // profileDate converts a source date to the profile's DD/MM/YYYY lexeme.
-// Timestamps use their UTC calendar date, as Marble stores them in UTC.
-// Other text is refused rather than proposed as an invalid date.
+// Instants (timestamps, RFC 3339 text) take their Paris civil date; calendar
+// dates are kept as they are. Other text is refused rather than proposed as
+// an invalid date.
 func profileDate(raw any) (string, bool) {
 	switch v := raw.(type) {
 	case time.Time:
-		return v.UTC().Format(profileDateLayout), true
+		return v.In(declarationZone).Format(profileDateLayout), true
 	case string:
 		for _, layout := range []string{profileDateLayout, time.DateOnly} {
 			if d, err := time.Parse(layout, v); err == nil {
@@ -552,7 +570,7 @@ func profileDate(raw any) (string, bool) {
 			}
 		}
 		if d, err := time.Parse(time.RFC3339Nano, v); err == nil {
-			return d.UTC().Format(profileDateLayout), true
+			return d.In(declarationZone).Format(profileDateLayout), true
 		}
 	}
 	return "", false
