@@ -75,3 +75,16 @@ func TestTracfinDirectorAlternativeCatalogAndEdit(t *testing.T) {
 		t.Fatalf("editing P did not reactivate it: %+v", director.ActiveBranches)
 	}
 }
+
+func TestTracfinXMLNamespacesRejected(t *testing.T) {
+	c := task5Catalog(t)
+	// The source schema has no targetNamespace and its attributes are unqualified.
+	for _, tc := range []struct{ name, doc, code string }{{"root", `<ds xmlns="urn:wrong"/>`, "UNKNOWN_XML_ELEMENT"}, {"field", `<ds><personnes><pp><etatCivil><x:nomNaissance xmlns:x="urn:wrong">A</x:nomNaissance></etatCivil></pp></personnes></ds>`, "UNKNOWN_XML_ELEMENT"}, {"attribute", `<ds><personnes><pp><etatCivil><nationalite xmlns:x="urn:wrong" x:type="code">FR</nationalite></etatCivil></pp></personnes></ds>`, "UNKNOWN_XML_ATTRIBUTE"}} {
+		t.Run(tc.name, func(t *testing.T) {
+			v := ValidateXML(strings.NewReader(tc.doc), c)
+			if !task5HasCode(v.Diagnostics, tc.code) {
+				t.Fatalf("namespace not diagnosed: %+v", v.Diagnostics)
+			}
+		})
+	}
+}
