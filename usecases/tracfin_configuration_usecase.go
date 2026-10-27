@@ -194,7 +194,7 @@ func (uc TracfinUsecase) GetDraft(ctx context.Context, caseID string) (models.Tr
 	return tracfinDraftDiagnostics(d), err
 }
 func (uc TracfinUsecase) PrefillAtRevision(ctx context.Context, caseID string, revision int64) (tracfin.PrefillResult, error) {
-	d, err := uc.draft(ctx, caseID)
+	d, sources, err := uc.draftSources(ctx, caseID)
 	if err != nil {
 		return tracfin.PrefillResult{}, err
 	}
@@ -204,7 +204,7 @@ func (uc TracfinUsecase) PrefillAtRevision(ctx context.Context, caseID string, r
 	if d.Revision != revision {
 		return tracfin.PrefillResult{}, models.ConflictError
 	}
-	return uc.prefillDraft(ctx, caseID, d)
+	return sources.prefillDraft(ctx, d)
 }
 func (uc TracfinUsecase) ValidateDraft(ctx context.Context, caseID string, revision int64) (models.TracfinValidation, error) {
 	d, err := uc.draft(ctx, caseID)

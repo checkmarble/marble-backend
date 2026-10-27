@@ -1,9 +1,13 @@
 package usecases
 
 import (
+	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,4 +42,140 @@ func TestTracfinConfigurationRejectsInvalidMappings(t *testing.T) {
 	saved, err := w.uc.SaveConfiguration(w.ctx, w.org, models.TracfinConfigurationInput{Mappings: []models.TracfinMapping{sex(models.TracfinCodeMapping{Source: "F", Target: "SEX2"})}})
 	require.NoError(t, err)
 	require.Equal(t, int64(1), saved.Revision)
+}
+
+// A saved selection made obsolete by a configuration or client data change is
+// reported on its block; other blocks keep their proposals.
+func TestTracfinPrefillStaleSelectionIsLocal(t *testing.T) {
+	setup := func(t *testing.T, mappings []models.TracfinMapping) (*task8World, string, string) {
+		dm, tables := task8PersonCardModel()
+		w := task8NewWorld(dm, tables, []models.CaseEntityRef{{TableName: "User", ObjectId: "U1"}}, nil)
+		w.configure(t, nil, mappings)
+		d, err := w.uc.CreateDraft(w.ctx, "case", false)
+		require.NoError(t, err)
+		userRoot := models.TracfinPathStep{ID: "root", Table: "User", RecordID: "U1"}
+		d = w.update(t,
+			task8Add(d.Document.Root.ID, "people", "/ds/personnes"),
+			task8Add("people", "pp", t8PP),
+			task8Add("pp", "civil", t8Civil),
+			task8Select("civil", models.TracfinSelection{MappingID: "pp-name", Root: userRoot}),
+			task8Add("pp", "refs", t8PP+"/referencesFinancieres"),
+			task8Add("refs", "card", t8Card),
+			task8Select("card", models.TracfinSelection{MappingID: "card-pan", Root: userRoot, Bindings: []models.TracfinPathStep{task8Bound(t8Account, "A2"), task8Bound(t8CardHop, "C3")}}),
+		)
+		return w, task8Block(t, d, t8Civil).ID, task8Block(t, d, t8Card).ID
+	}
+	name := task8Mapping("pp-name", t8Civil+"/nomNaissance", "Person", "User", "last_name")
+	pan := task8Mapping("card-pan", t8Card+"/@numeroCarteBancaire", "Person", "User", "pan", t8Account, t8CardHop)
+	expectLocal := func(t *testing.T, w *task8World, civil, card, code string) {
+		t.Helper()
+		result, proposals := w.prefill(t)
+		require.True(t, task8Diag(result.Diagnostics, code, card, ""), "%+v", result.Diagnostics)
+		require.NotContains(t, proposals, card+" "+t8Card+"/@numeroCarteBancaire")
+		p, ok := proposals[civil+" "+t8Civil+"/nomNaissance"]
+		require.True(t, ok, "other blocks keep their proposals")
+		d := w.update(t, task8Apply(p, 0, result.MappingVersion))
+		require.Equal(t, "Martin", *task8Value(t, d, civil, t8Civil+"/nomNaissance").Text)
+	}
+
+	t.Run("source moved to another parent", func(t *testing.T) {
+		w, civil, card := setup(t, []models.TracfinMapping{name, pan})
+		w.objects.tables["Card"]["C3"]["account_id"] = "A1"
+		expectLocal(t, w, civil, card, "SELECTION_PARENT_CHANGED")
+	})
+	t.Run("anchor mapping removed", func(t *testing.T) {
+		w, civil, card := setup(t, []models.TracfinMapping{name, pan})
+		w.configure(t, nil, []models.TracfinMapping{name})
+		w.update(t, models.TracfinChangeInput{Action: "refresh_configuration"})
+		expectLocal(t, w, civil, card, "MAPPING_UNAVAILABLE")
+	})
+	t.Run("configured path changed", func(t *testing.T) {
+		w, civil, card := setup(t, []models.TracfinMapping{name, pan})
+		renamed := t8CardHop
+		renamed.ID = "card-v2"
+		w.configure(t, nil, []models.TracfinMapping{name, task8Mapping("card-pan", t8Card+"/@numeroCarteBancaire", "Person", "User", "pan", t8Account, renamed)})
+		w.update(t, models.TracfinChangeInput{Action: "refresh_configuration"})
+		expectLocal(t, w, civil, card, "SELECTION_STALE")
+	})
+}
+
+type task8CountingCases struct {
+	task8Cases
+	calls *int
+}
+
+func (f task8CountingCases) GetCase(ctx context.Context, id string) (models.Case, error) {
+	*f.calls++
+	return f.task8Cases.GetCase(ctx, id)
+}
+
+type task8CountingDM struct {
+	tracfinDM
+	calls *int
+}
+
+func (f task8CountingDM) GetDataModel(ctx context.Context, org uuid.UUID, o models.DataModelReadOptions, b bool) (models.DataModel, error) {
+	*f.calls++
+	return f.tracfinDM.GetDataModel(ctx, org, o, b)
+}
+
+type task8CountingRepo struct {
+	*task8Repo
+	decisionReads *int
+}
+
+func (r task8CountingRepo) GetTracfinDecisionSources(ctx context.Context, exec repositories.Executor, org, caseID string, ids []string) ([]models.TracfinDecisionSource, error) {
+	*r.decisionReads++
+	return r.task8Repo.GetTracfinDecisionSources(ctx, exec, org, caseID, ids)
+}
+
+// Prefill and a batch of apply_prefill authorize the case and read each
+// source once per request, independently of the number of blocks and changes.
+func TestTracfinPrefillReadsSourcesOncePerRequest(t *testing.T) {
+	dm, tables := task8PersonCardModel()
+	w := task8NewWorld(dm, tables, []models.CaseEntityRef{{TableName: "User", ObjectId: "U1"}}, nil)
+	amount := task8Snapshot("op-amount", t8Op+"/montantTotal", "amount")
+	amount.Unit, amount.TargetCurrency, amount.Currency = "minor", "EUR", models.TracfinCurrencyEvidence{Constant: "EUR"}
+	w.configure(t, nil, []models.TracfinMapping{
+		task8Mapping("pp-name", t8Civil+"/nomNaissance", "Person", "User", "last_name"),
+		task8Mapping("pp-first", t8Civil+"/prenom", "Person", "User", "first_name"),
+		amount,
+	})
+	d, err := w.uc.CreateDraft(w.ctx, "case", false)
+	require.NoError(t, err)
+	changes := []models.TracfinChangeInput{
+		task8Add(d.Document.Root.ID, "people", "/ds/personnes"),
+		task8Add("people", "pp", t8PP),
+		task8Add("pp", "civil", t8Civil),
+		task8Select("civil", models.TracfinSelection{MappingID: "pp-name", Root: models.TracfinPathStep{ID: "root", Table: "User", RecordID: "U1"}}),
+		task8Add(d.Document.Root.ID, "ops", "/ds/operations"),
+	}
+	for _, id := range []string{"D1", "D2", "D3", "D4"} {
+		w.repo.decisions[id] = models.TracfinDecisionSource{DecisionID: id, HistoricalType: "Transfer", Snapshot: json.RawMessage(`{"object_id":"` + id + `","amount":100}`)}
+		changes = append(changes, task8Add("ops", id, t8Op), task8Select(id, models.TracfinSelection{MappingID: "op-amount", DecisionID: id, HistoricalType: "Transfer"}))
+	}
+	w.update(t, changes...)
+
+	cases, dataModels, decisions := 0, 0, 0
+	w.uc.cases = task8CountingCases{task8Cases: w.uc.cases.(task8Cases), calls: &cases}
+	w.uc.dataModelUsecase = task8CountingDM{tracfinDM: w.uc.dataModelUsecase.(tracfinDM), calls: &dataModels}
+	w.uc.repository = task8CountingRepo{task8Repo: w.repo, decisionReads: &decisions}
+	reads := len(w.objects.queried)
+	result, _ := w.prefill(t)
+	require.Len(t, result.Proposals, 6)
+	require.Equal(t, 1, cases, "case authorized once")
+	require.Equal(t, 1, dataModels, "data model read once")
+	require.Equal(t, 4, decisions, "one read per selected decision")
+	require.Equal(t, 1, len(w.objects.queried)-reads, "one read of the selected person")
+
+	cases, dataModels, decisions, reads = 0, 0, 0, len(w.objects.queried)
+	var apply []models.TracfinChangeInput
+	for _, p := range result.Proposals {
+		apply = append(apply, task8Apply(p, 0, result.MappingVersion))
+	}
+	w.update(t, apply...)
+	require.Equal(t, 1, cases, "a batch authorizes the case once")
+	require.LessOrEqual(t, dataModels, 1)
+	require.Equal(t, 4, decisions, "a batch reuses the sources it already read")
+	require.Equal(t, 1, len(w.objects.queried)-reads)
 }

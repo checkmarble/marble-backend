@@ -162,7 +162,9 @@ func (uc TracfinUsecase) UpdateDraft(ctx context.Context, caseID string, input m
 	if err != nil {
 		return models.TracfinDraft{}, err
 	}
-	if _, err = uc.authorize(ctx, caseID); err != nil {
+	// One authorization and source loader serve every change of the batch.
+	sources, err := uc.sourceLoader(ctx, caseID)
+	if err != nil {
 		return models.TracfinDraft{}, err
 	}
 	if input.ExpectedRevision < 1 {
@@ -258,7 +260,7 @@ func (uc TracfinUsecase) UpdateDraft(ctx context.Context, caseID string, input m
 				continue
 			}
 			if c.Action == "apply_prefill" {
-				proposal, err := uc.prefillDraft(ctx, caseID, d)
+				proposal, err := sources.prefillDraft(ctx, d)
 				if err != nil {
 					return err
 				}
@@ -318,7 +320,7 @@ func (uc TracfinUsecase) UpdateDraft(ctx context.Context, caseID string, input m
 				if selected == nil {
 					return models.BadParameterError
 				}
-				if _, err = uc.verifySelection(ctx, caseID, next.Configuration, c.BlockID, *selected); err != nil {
+				if _, err = sources.load(ctx, next.Configuration, c.BlockID, *selected, false); err != nil {
 					return err
 				}
 			}

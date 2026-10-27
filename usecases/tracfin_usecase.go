@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/tracfin"
@@ -86,7 +87,12 @@ func (uc TracfinUsecase) GetContext(ctx context.Context, caseID string) (Tracfin
 	if err != nil {
 		return TracfinContext{}, err
 	}
-	pivots, err := uc.cases.ReadCasePivotObjects(ctx, caseID)
+	return uc.caseContext(ctx, c, dm)
+}
+
+// caseContext lists the Person/Company roots of an already authorized case.
+func (uc TracfinUsecase) caseContext(ctx context.Context, c models.Case, dm models.DataModel) (TracfinContext, error) {
+	pivots, err := uc.cases.ReadCasePivotObjects(ctx, c.Id)
 	if err != nil {
 		return TracfinContext{}, err
 	}
@@ -118,14 +124,21 @@ func (uc TracfinUsecase) GetContext(ctx context.Context, caseID string) (Tracfin
 	return out, nil
 }
 func (uc TracfinUsecase) draft(ctx context.Context, caseID string) (models.TracfinDraft, error) {
-	if _, err := uc.authorize(ctx, caseID); err != nil {
-		return models.TracfinDraft{}, err
+	d, _, err := uc.draftSources(ctx, caseID)
+	return d, err
+}
+
+// draftSources reads the draft and a source loader under one case authorization.
+func (uc TracfinUsecase) draftSources(ctx context.Context, caseID string) (models.TracfinDraft, *tracfinSourceLoader, error) {
+	l, err := uc.sourceLoader(ctx, caseID)
+	if err != nil {
+		return models.TracfinDraft{}, nil, err
 	}
 	d, err := uc.repository.GetTracfinDraft(ctx, uc.executorFactory.NewExecutor(), uc.orgID.String(), caseID)
 	if err == nil && (d.OrgID != uc.orgID.String() || d.CaseID != caseID) {
-		return models.TracfinDraft{}, models.NotFoundError
+		return models.TracfinDraft{}, nil, models.NotFoundError
 	}
-	return d, err
+	return d, l, err
 }
 
 // VerifySelection also serves editing: it is independent from applying proposals.
@@ -212,23 +225,91 @@ func linkFields(dm models.DataModel, parentTable string, step models.TracfinPath
 	}
 	return "", "", nil, models.BadParameterError
 }
-func (uc TracfinUsecase) verifySelection(ctx context.Context, caseID string, config models.TracfinConfiguration, blockID string, s models.TracfinSelection) (tracfin.SourceSet, error) {
-	return uc.loadSelection(ctx, caseID, config, blockID, s, false)
+
+// tracfinSourceLoader reads selected sources for one request. The case is
+// authorized once, its roots and data model are read at most once, and a
+// prefill over unchanged selections reuses the sources it already read.
+type tracfinSourceLoader struct {
+	uc      TracfinUsecase
+	c       models.Case
+	dm      *models.DataModel
+	roots   map[models.CaseEntityRef]bool
+	prefill map[string]tracfin.SourceSet
 }
 
-// Prefill reads persisted selections that may have lost individual sources.
-// Selection edits and navigation retain strict verification of every binding.
-func (uc TracfinUsecase) loadSelection(ctx context.Context, caseID string, config models.TracfinConfiguration, blockID string, s models.TracfinSelection, allowUnavailable bool) (tracfin.SourceSet, error) {
-	if _, err := uc.authorize(ctx, caseID); err != nil {
+func (uc TracfinUsecase) sourceLoader(ctx context.Context, caseID string) (*tracfinSourceLoader, error) {
+	c, err := uc.authorize(ctx, caseID)
+	if err != nil {
+		return nil, err
+	}
+	return &tracfinSourceLoader{uc: uc, c: c, prefill: map[string]tracfin.SourceSet{}}, nil
+}
+
+func (l *tracfinSourceLoader) dataModel(ctx context.Context) (models.DataModel, error) {
+	if l.dm == nil {
+		dm, err := l.uc.dataModelUsecase.GetDataModel(ctx, l.uc.orgID, models.DataModelReadOptions{IncludeNavigationOptions: true}, false)
+		if err != nil {
+			return models.DataModel{}, err
+		}
+		l.dm = &dm
+	}
+	return *l.dm, nil
+}
+
+func (l *tracfinSourceLoader) caseRoot(ctx context.Context, root models.TracfinPathStep) (bool, error) {
+	if l.roots == nil {
+		dm, err := l.dataModel(ctx)
+		if err != nil {
+			return false, err
+		}
+		cc, err := l.uc.caseContext(ctx, l.c, dm)
+		if err != nil {
+			return false, err
+		}
+		l.roots = map[models.CaseEntityRef]bool{}
+		for _, r := range cc.Roots {
+			l.roots[models.CaseEntityRef{TableName: r.Table, ObjectId: r.RecordID}] = true
+		}
+	}
+	return l.roots[models.CaseEntityRef{TableName: root.Table, ObjectId: root.RecordID}], nil
+}
+
+func (uc TracfinUsecase) verifySelection(ctx context.Context, caseID string, config models.TracfinConfiguration, blockID string, s models.TracfinSelection) (tracfin.SourceSet, error) {
+	l, err := uc.sourceLoader(ctx, caseID)
+	if err != nil {
 		return tracfin.SourceSet{}, err
 	}
+	return l.load(ctx, config, blockID, s, false)
+}
+
+// load verifies a selection against the configuration and current sources.
+// Selection edits and navigation are strict. Prefill (stale) reads persisted
+// selections that a configuration or source change may have made obsolete: it
+// reports them on their block instead of failing the whole draft. Technical
+// errors still fail.
+func (l *tracfinSourceLoader) load(ctx context.Context, config models.TracfinConfiguration, blockID string, s models.TracfinSelection, stale bool) (tracfin.SourceSet, error) {
+	uc := l.uc
 	out := tracfin.SourceSet{Records: map[tracfin.SourceKey]tracfin.SourceRecord{}, Decisions: map[string]models.TracfinDecisionSource{}}
+	report := func(code string) {
+		out.Diagnostics = append(out.Diagnostics, models.TracfinDiagnostic{Code: code, Layer: "sources", Severity: "warning", Message: code, Field: &models.TracfinFieldRef{BlockID: blockID}})
+	}
+	anchor, ok := tracfin.MappingForSelection(config, s)
+	if !ok && stale {
+		// ResolvePrefill reports MAPPING_UNAVAILABLE for this block.
+		return out, nil
+	}
+	if !ok || !tracfin.CompatibleMapping(anchor, s) {
+		if stale {
+			report("MAPPING_UNAVAILABLE")
+			return out, nil
+		}
+		return out, models.BadParameterError
+	}
 	if s.DecisionID != "" {
-		anchor, ok := tracfin.MappingForSelection(config, s)
-		if !ok || !tracfin.CompatibleMapping(anchor, s) || len(s.Bindings) > 0 || s.Root.RecordID != "" {
+		if len(s.Bindings) > 0 || s.Root.RecordID != "" {
 			return out, models.BadParameterError
 		}
-		rows, err := uc.repository.GetTracfinDecisionSources(ctx, uc.executorFactory.NewExecutor(), uc.orgID.String(), caseID, []string{s.DecisionID})
+		rows, err := uc.repository.GetTracfinDecisionSources(ctx, uc.executorFactory.NewExecutor(), uc.orgID.String(), l.c.Id, []string{s.DecisionID})
 		if err != nil {
 			return out, err
 		}
@@ -240,25 +321,23 @@ func (uc TracfinUsecase) loadSelection(ctx context.Context, caseID string, confi
 	}
 	allowed, err := selectionSteps(config, s)
 	if err != nil {
+		if stale {
+			report("MAPPING_UNAVAILABLE")
+			return out, nil
+		}
 		return out, err
 	}
 	if s.Root.ID != "root" || s.Root.ParentID != "" || s.Root.Link != "" || s.Root.Direction != "" || len(s.Bindings) > 20 {
 		return out, models.BadParameterError
 	}
-	roots, err := uc.GetContext(ctx, caseID)
+	found, err := l.caseRoot(ctx, s.Root)
 	if err != nil {
 		return out, err
-	}
-	found := false
-	for _, r := range roots.Roots {
-		if r.Table == s.Root.Table && r.RecordID == s.Root.RecordID {
-			found = true
-		}
 	}
 	if !found {
 		return out, errTracfinSourceUnavailable
 	}
-	dm, err := uc.dataModelUsecase.GetDataModel(ctx, uc.orgID, models.DataModelReadOptions{IncludeNavigationOptions: true}, false)
+	dm, err := l.dataModel(ctx)
 	if err != nil {
 		return out, err
 	}
@@ -269,24 +348,34 @@ func (uc TracfinUsecase) loadSelection(ctx context.Context, caseID string, confi
 	out.Records[tracfin.SourceKey{BlockID: blockID, BindingID: "root"}] = root
 	seen := map[string]bool{"root": true}
 	unavailable := map[string]bool{}
+	skip := func(bindingID, code string) {
+		unavailable[bindingID] = true
+		report(code)
+	}
 	skipUnavailable := func(bindingID string, err error) bool {
 		code := tracfinAvailabilityCode(err)
-		if !allowUnavailable || code == "" {
+		if !stale || code == "" {
 			return false
 		}
-		unavailable[bindingID] = true
-		out.Diagnostics = append(out.Diagnostics, models.TracfinDiagnostic{Code: code, Layer: "sources", Severity: "warning", Message: code, Field: &models.TracfinFieldRef{BlockID: blockID}})
+		skip(bindingID, code)
 		return true
 	}
 	for _, binding := range s.Bindings {
-		step, ok := allowed[binding.ID]
-		if !ok || seen[binding.ID] || binding.RecordID == "" || binding.ParentID != step.ParentID || binding.Table != step.Table || binding.Link != step.Link || binding.Direction != step.Direction {
+		if seen[binding.ID] || binding.RecordID == "" {
 			return out, models.BadParameterError
 		}
 		seen[binding.ID] = true
+		step, ok := allowed[binding.ID]
+		if !ok || binding.ParentID != step.ParentID || binding.Table != step.Table || binding.Link != step.Link || binding.Direction != step.Direction {
+			if stale {
+				skip(binding.ID, "SELECTION_STALE")
+				continue
+			}
+			return out, models.BadParameterError
+		}
 		parent, ok := out.Records[tracfin.SourceKey{BlockID: blockID, BindingID: binding.ParentID}]
 		if !ok {
-			if allowUnavailable && unavailable[binding.ParentID] {
+			if stale && unavailable[binding.ParentID] {
 				unavailable[binding.ID] = true
 				continue
 			}
@@ -310,6 +399,10 @@ func (uc TracfinUsecase) loadSelection(ctx context.Context, caseID string, confi
 		p, pok := parent.Data[parentField].(string)
 		c, cok := child.Data[childField].(string)
 		if !pok || !cok || p == "" || p != c {
+			if stale {
+				skip(binding.ID, "SELECTION_PARENT_CHANGED")
+				continue
+			}
 			return out, errors.Wrap(models.BadParameterError, "selected object does not belong to selected parent")
 		}
 		out.Records[tracfin.SourceKey{BlockID: blockID, BindingID: binding.ID}] = child
@@ -317,18 +410,26 @@ func (uc TracfinUsecase) loadSelection(ctx context.Context, caseID string, confi
 	return out, nil
 }
 func (uc TracfinUsecase) Navigate(ctx context.Context, caseID string, s models.TracfinSelection, stepID string, cursor *string, limit int) (TracfinNavigationPage, error) {
-	d, err := uc.draft(ctx, caseID)
+	d, l, err := uc.draftSources(ctx, caseID)
 	if err != nil {
 		return TracfinNavigationPage{}, err
 	}
-	return uc.navigate(ctx, caseID, d.Configuration, s, stepID, cursor, limit)
+	return l.navigate(ctx, d.Configuration, s, stepID, cursor, limit)
 }
 func (uc TracfinUsecase) navigate(ctx context.Context, caseID string, config models.TracfinConfiguration, s models.TracfinSelection, stepID string, cursor *string, limit int) (TracfinNavigationPage, error) {
+	l, err := uc.sourceLoader(ctx, caseID)
+	if err != nil {
+		return TracfinNavigationPage{}, err
+	}
+	return l.navigate(ctx, config, s, stepID, cursor, limit)
+}
+func (l *tracfinSourceLoader) navigate(ctx context.Context, config models.TracfinConfiguration, s models.TracfinSelection, stepID string, cursor *string, limit int) (TracfinNavigationPage, error) {
+	uc := l.uc
 	page := TracfinNavigationPage{}
 	if limit < 1 || limit > 100 || s.DecisionID != "" {
 		return page, models.BadParameterError
 	}
-	sources, err := uc.verifySelection(ctx, caseID, config, "navigation", s)
+	sources, err := l.load(ctx, config, "navigation", s, false)
 	if err != nil {
 		return page, err
 	}
@@ -344,7 +445,7 @@ func (uc TracfinUsecase) navigate(ctx context.Context, caseID string, config mod
 	if !ok {
 		return page, models.BadParameterError
 	}
-	dm, err := uc.dataModelUsecase.GetDataModel(ctx, uc.orgID, models.DataModelReadOptions{IncludeNavigationOptions: true}, false)
+	dm, err := l.dataModel(ctx)
 	if err != nil {
 		return page, err
 	}
@@ -390,39 +491,52 @@ func (uc TracfinUsecase) navigate(ctx context.Context, caseID string, config mod
 	return page, nil
 }
 func (uc TracfinUsecase) Prefill(ctx context.Context, caseID string) (tracfin.PrefillResult, error) {
-	d, err := uc.draft(ctx, caseID)
+	d, l, err := uc.draftSources(ctx, caseID)
 	if err != nil {
 		return tracfin.PrefillResult{}, err
 	}
-	return uc.prefillDraft(ctx, caseID, d)
+	return l.prefillDraft(ctx, d)
 }
 
-func (uc TracfinUsecase) prefillDraft(ctx context.Context, caseID string, d models.TracfinDraft) (tracfin.PrefillResult, error) {
-	sources := tracfin.SourceSet{Records: map[tracfin.SourceKey]tracfin.SourceRecord{}, Decisions: map[string]models.TracfinDecisionSource{}}
-	var loadErr error
+// prefillDraft reads the sources of every saved selection once per selection
+// set, then resolves proposals for the current draft content.
+func (l *tracfinSourceLoader) prefillDraft(ctx context.Context, d models.TracfinDraft) (tracfin.PrefillResult, error) {
+	type selected struct {
+		Block     string                  `json:"block"`
+		Selection models.TracfinSelection `json:"selection"`
+	}
+	var selections []selected
 	tracfin.WalkBlocks(d.Document.Root, func(b models.TracfinBlock) {
-		if loadErr != nil || b.Selection == nil {
-			return
-		}
-		loaded, err := uc.loadSelection(ctx, caseID, d.Configuration, b.ID, *b.Selection, true)
-		if err != nil {
-			code := tracfinAvailabilityCode(err)
-			if code == "" {
-				loadErr = err
-				return
-			}
-			sources.Diagnostics = append(sources.Diagnostics, models.TracfinDiagnostic{Code: code, Layer: "sources", Severity: "warning", Message: code, Field: &models.TracfinFieldRef{BlockID: b.ID}})
-		}
-		sources.Diagnostics = append(sources.Diagnostics, loaded.Diagnostics...)
-		for k, v := range loaded.Records {
-			sources.Records[k] = v
-		}
-		for k, v := range loaded.Decisions {
-			sources.Decisions[k] = v
+		if b.Selection != nil {
+			selections = append(selections, selected{b.ID, *b.Selection})
 		}
 	})
-	if loadErr != nil {
-		return tracfin.PrefillResult{}, loadErr
+	encoded, err := json.Marshal(selections)
+	if err != nil {
+		return tracfin.PrefillResult{}, err
+	}
+	key := tracfin.MappingVersion(d.Configuration) + ":" + string(encoded)
+	sources, cached := l.prefill[key]
+	if !cached {
+		sources = tracfin.SourceSet{Records: map[tracfin.SourceKey]tracfin.SourceRecord{}, Decisions: map[string]models.TracfinDecisionSource{}}
+		for _, s := range selections {
+			loaded, err := l.load(ctx, d.Configuration, s.Block, s.Selection, true)
+			if err != nil {
+				code := tracfinAvailabilityCode(err)
+				if code == "" {
+					return tracfin.PrefillResult{}, err
+				}
+				sources.Diagnostics = append(sources.Diagnostics, models.TracfinDiagnostic{Code: code, Layer: "sources", Severity: "warning", Message: code, Field: &models.TracfinFieldRef{BlockID: s.Block}})
+			}
+			sources.Diagnostics = append(sources.Diagnostics, loaded.Diagnostics...)
+			for k, v := range loaded.Records {
+				sources.Records[k] = v
+			}
+			for k, v := range loaded.Decisions {
+				sources.Decisions[k] = v
+			}
+		}
+		l.prefill[key] = sources
 	}
 	return tracfin.ResolvePrefill(d.Configuration, d, sources), nil
 }
