@@ -441,7 +441,7 @@ paths:
             schema:
               type: object
               properties:
-                inbox:
+                inbox_id:
                   description: ID of the inbox to move the case in
                   type: string
                   format: uuid
@@ -1610,7 +1610,14 @@ components:
         error_code:
           description: Stable machine-readable failure reason.
           type: string
-          enum: [invalid_input, global_timeout, upload_not_received, file_too_large, internal_error]
+          enum:
+            [
+              invalid_input,
+              global_timeout,
+              upload_not_received,
+              file_too_large,
+              internal_error,
+            ]
 
     AsyncUploadCreated:
       title: Upload URL signed and generated
