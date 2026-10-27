@@ -81,7 +81,7 @@ func (uc TracfinUsecase) selectTracfinAttachment(ctx context.Context, exec repos
 		return nil, errors.Join(readErr, closeErr)
 	}
 	if n > tracfin.MaxAttachmentBytes {
-		return nil, errors.Wrap(models.BadParameterError, "TRACFIN_ATTACHMENT_SIZE_LIMIT: technical cumulative raw limit is 64 MiB")
+		return nil, errors.Wrap(errors.Join(models.BadParameterError, models.TracfinSizeLimitError), "TRACFIN_ATTACHMENT_SIZE_LIMIT: technical cumulative raw limit is 64 MiB")
 	}
 	return &models.TracfinAttachment{SourceFileID: f.Id, CaseID: caseID, BlobKey: f.FileReference, BucketName: f.BucketName, SHA256: hex.EncodeToString(h.Sum(nil)), Size: n}, nil
 }
@@ -204,7 +204,7 @@ func (uc TracfinUsecase) Export(ctx context.Context, caseID string, expectedRevi
 				return errors.Join(readErr, closeErr)
 			}
 			if n > tracfin.MaxAttachmentBytes-rawSize {
-				return errors.Wrap(models.BadParameterError, "TRACFIN_ATTACHMENT_SIZE_LIMIT: technical cumulative raw limit is 64 MiB")
+				return errors.Wrap(errors.Join(models.BadParameterError, models.TracfinSizeLimitError), "TRACFIN_ATTACHMENT_SIZE_LIMIT: technical cumulative raw limit is 64 MiB")
 			}
 			rawSize += n
 			if n != a.Size || hex.EncodeToString(h.Sum(nil)) != a.SHA256 {

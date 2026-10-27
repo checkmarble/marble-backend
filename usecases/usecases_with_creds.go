@@ -1387,3 +1387,17 @@ func (usecases UsecasesWithCreds) NewCustomerAggregateUsecase() CustomerAggregat
 		usecases.Repositories.MarbleDbRepository,
 	)
 }
+
+func (usecases *UsecasesWithCreds) NewTracfinUsecase() TracfinUsecase {
+	repo := usecases.Repositories.MarbleDbRepository
+	uc := NewTracfinUsecase(usecases.Credentials.OrganizationId, repo,
+		usecases.NewCaseUseCase(), usecases.NewDataModelUseCase(),
+		usecases.Repositories.IngestedDataReadRepository, usecases.NewExecutorFactory(),
+		TracfinDraftDependencies{
+			Repository: repo, Transactions: usecases.NewTransactionFactory(),
+			Files: repo, Blobs: usecases.Repositories.BlobRepository,
+			Exports: repo, BucketURL: usecases.caseManagerBucketUrl,
+		})
+	uc.configurationDependencies = &TracfinConfigurationDependencies{Repository: repo, Organizations: repo, Security: usecases.NewEnforceOrganizationSecurity()}
+	return uc
+}

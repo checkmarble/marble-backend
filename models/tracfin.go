@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 )
 
@@ -247,3 +248,6 @@ type TracfinDraftInput struct {
 	ExpectedRevision int64                `json:"expected_revision"`
 	Changes          []TracfinChangeInput `json:"changes"`
 }
+
+// TracfinSizeLimitError distinguishes technical export limits from business diagnostics.
+var TracfinSizeLimitError = errors.New("TRACFIN technical size limit exceeded")

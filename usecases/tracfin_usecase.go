@@ -34,13 +34,14 @@ type tracfinObjectReader interface {
 	ListIngestedObjects(context.Context, repositories.Executor, models.Table, models.ExplorationOptions, *string, int, ...string) ([]models.DataModelObject, error)
 }
 type TracfinUsecase struct {
-	orgID             uuid.UUID
-	repository        tracfinSourceRepository
-	cases             tracfinCaseReader
-	dataModelUsecase  ingestedDataReaderDataModelUsecase
-	objects           tracfinObjectReader
-	executorFactory   tracfinExecutorFactory
-	draftDependencies *TracfinDraftDependencies
+	orgID                     uuid.UUID
+	repository                tracfinSourceRepository
+	cases                     tracfinCaseReader
+	dataModelUsecase          ingestedDataReaderDataModelUsecase
+	objects                   tracfinObjectReader
+	executorFactory           tracfinExecutorFactory
+	draftDependencies         *TracfinDraftDependencies
+	configurationDependencies *TracfinConfigurationDependencies
 }
 
 func NewTracfinUsecase(orgID uuid.UUID, repository tracfinSourceRepository, cases tracfinCaseReader, dataModel ingestedDataReaderDataModelUsecase, objects tracfinObjectReader, executors tracfinExecutorFactory, drafts ...TracfinDraftDependencies) TracfinUsecase {
