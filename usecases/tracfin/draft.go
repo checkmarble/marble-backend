@@ -168,6 +168,8 @@ func applyChange(root *models.TracfinBlock, c Change, catalog Catalog) error {
 			value.Origin.Resolution = "cleared"
 			if index >= 0 {
 				value.ParentValueID = values[index].ParentValueID
+			} else if input != nil {
+				value.ParentValueID = input.ParentValueID
 			}
 		} else {
 			if input == nil {
