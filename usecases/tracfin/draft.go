@@ -29,8 +29,26 @@ func ApplyChanges(draft models.TracfinDraft, changes []Change, catalog Catalog) 
 		if err = applyChange(&out.Document.Root, change, catalog); err != nil {
 			return draft, err
 		}
+		if change.Action == "set_field" || change.Action == "clear_field" || change.Action == "set_relation" {
+			activateAncestors(&out.Document.Root, change.Field.BlockID, catalog)
+		}
 	}
 	return out, nil
+}
+
+// Editing an existing retained branch is also an explicit selection of that
+// branch. Siblings remain stored so switching back restores their values.
+func activateAncestors(b *models.TracfinBlock, id string, catalog Catalog) bool {
+	if b.ID == id {
+		return true
+	}
+	for i := range b.Children {
+		if activateAncestors(&b.Children[i], id, catalog) {
+			activateBranch(b, catalog.Fields[b.Children[i].CatalogID])
+			return true
+		}
+	}
+	return false
 }
 
 func findBlock(root *models.TracfinBlock, id string) *models.TracfinBlock {

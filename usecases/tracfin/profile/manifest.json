@@ -1,5 +1,5 @@
 {
-  "version": "tracfin-financier-1.4.0-poc-1",
+  "version": "tracfin-financier-1.4.0-poc-2",
   "source_version": "1.4.0 (2026/01/21)",
   "sources": [
     {
@@ -7038,7 +7038,7 @@
       "attribute": false,
       "coverage": "editable",
       "model": "TracfinValue",
-      "value_kind": "text",
+      "value_kind": "reference",
       "base": "xs:positiveInteger",
       "documentation": "",
       "type_documentation": "Nombre sur digits 6.",
@@ -9072,11 +9072,11 @@
       "attribute": false,
       "coverage": "editable",
       "model": "TracfinValue",
-      "value_kind": "text",
+      "value_kind": "reference",
       "base": "xs:positiveInteger",
       "documentation": "Ce champ ne peut être présent qu'en l'absence des champs [autreDirigeantP] et [autreDirigeantM].\n\t\t\t\t\t\tCe champ permet de référencer une personne déjà présente dans la déclaration.",
       "type_documentation": "Nombre sur digits 6.",
-      "choice": "",
+      "choice": "/ds/personnes/pm/dirigeant#identity",
       "constraints": [
         {
           "kind": "totalDigits",
@@ -9103,7 +9103,7 @@
       "base": "t_autreDirigeantP",
       "documentation": "Ce champ ne peut être présent qu'en l'absence des champs [idPersonne] et [autreDirigeantM].\n\t\t\t\t\t\tCe champ permet de déclarer une personne non présente dans la déclaration.",
       "type_documentation": "Autre Dirigeant Physique",
-      "choice": "",
+      "choice": "/ds/personnes/pm/dirigeant#identity",
       "constraints": [],
       "catalogs": []
     },
@@ -9404,7 +9404,7 @@
       "base": "xs:string",
       "documentation": "Ce champ ne peut être présent qu'en l'absence des champs [autreDirigeantP] et [idPersonne].\n\t\t\t\t\t\tCe champ permet de déclarer une personne non présente dans la déclaration.\n\t\t\t\t\t\tIl est de même type que pour t_pm_fiche",
       "type_documentation": "Personne morale - Activité coordonnées Code du type de registre / Code de type RNx sauf pour le SIREN et les choix \"Je ne sais pas\" et \"non\"\n\t\t\t\tRIDET (Registre INSEE Nouvelle Calédonie) -> [RN1]\n\t\t\t\tCOM -> [RN2]\n\t\t\t\tRNA (Registre National des Associations)-> [RN3]\n\t\t\t\tRNM (Répertoire National des métiers)-> [RN4]\n\t\t\t\tLEI (Legal Entity Identifier)-> [RN5]\n\t\t\t\tétranger-> [RN6]\n\t\t\t\tautre-> [RN7]",
-      "choice": "",
+      "choice": "/ds/personnes/pm/dirigeant#identity",
       "constraints": [
         {
           "kind": "enumeration",
@@ -10579,7 +10579,7 @@
       "attribute": false,
       "coverage": "editable",
       "model": "TracfinValue",
-      "value_kind": "text",
+      "value_kind": "reference",
       "base": "xs:integer",
       "documentation": "Ce champ est à remplir obligatoirement si le dirigeant n'est pas le bénéficiaire.\n\t\t\t\t\t\tCe champ permet de référencer une personne déjà présente dans la déclaration.",
       "type_documentation": "",
@@ -13428,7 +13428,7 @@
       "attribute": false,
       "coverage": "editable",
       "model": "TracfinValue",
-      "value_kind": "text",
+      "value_kind": "reference",
       "base": "xs:positiveInteger",
       "documentation": "",
       "type_documentation": "Nombre sur digits 6.",
@@ -15992,7 +15992,7 @@
       "attribute": false,
       "coverage": "editable",
       "model": "TracfinValue",
-      "value_kind": "text",
+      "value_kind": "reference",
       "base": "xs:positiveInteger",
       "documentation": "",
       "type_documentation": "Nombre sur digits 6.",
@@ -17215,7 +17215,7 @@
       "attribute": false,
       "coverage": "editable",
       "model": "TracfinValue",
-      "value_kind": "text",
+      "value_kind": "reference",
       "base": "xs:string",
       "documentation": "Emmetteur: Id de la personne déjà déclarée",
       "type_documentation": "Chaines de caractere de taille 200",
@@ -17247,7 +17247,7 @@
       "attribute": false,
       "coverage": "editable",
       "model": "TracfinValue",
-      "value_kind": "text",
+      "value_kind": "reference",
       "base": "xs:string",
       "documentation": "Référence financière: Id de de l'équipement financier de l'émetteur déjà déclaré",
       "type_documentation": "Chaines de caractere de taille 200",
@@ -18303,7 +18303,15 @@
       "catalogs": []
     }
   ],
-  "choices": [],
+  "choices": [
+    {
+      "id": "/ds/personnes/pm/dirigeant#identity",
+      "parent": "/ds/personnes/pm/dirigeant",
+      "min": "0",
+      "max": "1",
+      "source_line": 1401
+    }
+  ],
   "ingested_entity_types": [
     "Person",
     "Company"
