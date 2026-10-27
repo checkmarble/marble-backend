@@ -2,6 +2,7 @@ package tracfin
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -50,5 +51,45 @@ func TestTracfinExportDanglingReference(t *testing.T) {
 	}
 	if strings.Contains(out.String(), "<idPersonne>") || !task5HasField(index.Diagnostics, field) {
 		t.Fatalf("dangling reference not omitted and diagnosed: %s %+v", out.String(), index.Diagnostics)
+	}
+}
+
+func TestTracfinValidationOtherOperation(t *testing.T) {
+	c := task5Catalog(t)
+	const base = "/ds/operations/operation"
+	op := task5Block("op", base)
+	op.Fields[base+"/typeOperation"] = []models.TracfinValue{task5Text("type", "OT11")}
+	d := task5Draft(c, task5Block("operations", "/ds/operations", op))
+	v := ValidateDraft(d, c)
+	if !task5HasField(v.Diagnostics, base+"/autretypeOperation") {
+		t.Fatalf("OT11 requires description: %+v", v.Diagnostics)
+	}
+}
+
+func TestTracfinValidationCombinedFinancialSupportLimit(t *testing.T) {
+	c := task5Catalog(t)
+	const base = "/ds/personnes/pp/referencesFinancieres"
+	for _, n := range []int{20, 21} {
+		t.Run(fmt.Sprint(n), func(t *testing.T) {
+			refs := task5Block("refs", base)
+			for i := 0; i < n; i++ {
+				kind := "referenceFinanciereIban"
+				if i%2 == 1 {
+					kind = "referenceFinanciereNumeroCarteBancaire"
+				}
+				refs.Children = append(refs.Children, task5Block(fmt.Sprintf("support-%d", i), base+"/"+kind))
+			}
+			d := task5Draft(c, task5Block("people", "/ds/personnes", task5Block("person", "/ds/personnes/pp", refs)))
+			v := ValidateDraft(d, c)
+			found := false
+			for _, diag := range v.Diagnostics {
+				if diag.Field != nil && diag.Field.FieldID == base {
+					found = true
+				}
+			}
+			if found != (n == 21) {
+				t.Fatalf("combined support limit %d: %+v", n, v.Diagnostics)
+			}
+		})
 	}
 }
