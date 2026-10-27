@@ -44,6 +44,7 @@ type task6Blobs struct {
 	readers  []*task6ReadCloser
 	deleted  []string
 	writeErr error
+	onWrite  func()
 }
 
 func (b *task6Blobs) GetBlob(_ context.Context, _, key string, _ ...repositories.GetBlobOption) (models.Blob, error) {
@@ -60,7 +61,12 @@ func (b *task6Blobs) OpenStream(_ context.Context, _, key, _ string) (io.WriteCl
 	if b.writeErr != nil {
 		return nil, b.writeErr
 	}
-	return &task6Writer{closeFn: func(v []byte) { b.data[key] = v }}, nil
+	return &task6Writer{closeFn: func(v []byte) {
+		b.data[key] = v
+		if b.onWrite != nil {
+			b.onWrite()
+		}
+	}}, nil
 }
 func (b *task6Blobs) DeleteFile(_ context.Context, _, key string) error {
 	b.deleted = append(b.deleted, key)
@@ -217,4 +223,45 @@ func TestTracfinExportUnknownAndUnavailableFile(t *testing.T) {
 			require.Nil(t, repo.draft.LastExport)
 		})
 	}
+}
+
+func TestTracfinExportConcurrentPublication(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		race func(*task6Repo)
+	}{
+		{"draft edited", func(r *task6Repo) { r.draft.Revision++ }},
+		{"another export published", func(r *task6Repo) { r.draft.LastExport = &models.TracfinExport{ID: "winner", BlobKey: "winner-key"} }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, uc, repo, _, blobs := task6Setup(t)
+			previous := models.TracfinExport{ID: "old", BlobKey: "old-key"}
+			repo.draft.LastExport = &previous
+			blobs.data["old-key"] = []byte("old")
+			blobs.onWrite = func() { tc.race(repo) }
+			_, err := uc.Export(ctx, "case", repo.draft.Revision)
+			require.ErrorIs(t, err, models.ConflictError)
+			require.Equal(t, []byte("old"), blobs.data["old-key"])
+			require.NotEmpty(t, blobs.deleted)
+		})
+	}
+}
+
+type task6DeniedCases struct{}
+
+func (task6DeniedCases) GetCase(context.Context, string) (models.Case, error) {
+	return models.Case{}, models.ForbiddenError
+}
+func (task6DeniedCases) ReadCasePivotObjects(context.Context, string) ([]models.PivotObject, error) {
+	return nil, nil
+}
+func TestTracfinDownloadChecksCurrentAuthorization(t *testing.T) {
+	ctx, uc, repo, _, blobs := task6Setup(t)
+	e, err := uc.Export(ctx, "case", repo.draft.Revision)
+	require.NoError(t, err)
+	uc.cases = task6DeniedCases{}
+	before := blobs.reads
+	_, _, err = uc.DownloadExport(ctx, "case", e.ID)
+	require.ErrorIs(t, err, models.ForbiddenError)
+	require.Equal(t, before, blobs.reads)
 }
