@@ -293,15 +293,37 @@ func ResolvePrefill(config models.TracfinConfiguration, draft models.TracfinDraf
 			}
 		}
 	})
+	retained := out.Proposals[:0]
 	for pi := range out.Proposals {
-		for ci := range out.Proposals[pi].Candidates {
-			candidate := &out.Proposals[pi].Candidates[ci]
+		proposal := &out.Proposals[pi]
+		// Bind an explicit resolution to the entire source candidate set, including
+		// provenance, so changing any competing source requires another decision.
+		encoded, _ := json.Marshal(proposal.Candidates)
+		fingerprint := fmt.Sprintf("%x", sha256.Sum256(encoded))
+		for ci := range proposal.Candidates {
+			candidate := &proposal.Candidates[ci]
+			candidate.Origin.SourceFingerprint = fingerprint
 			value := *candidate
 			value.Origin = nil
 			encoded, _ := json.Marshal(value)
-			candidate.ID = fmt.Sprintf("%x", sha256.Sum256(append([]byte(out.Proposals[pi].ID+":"), encoded...)))
+			candidate.ID = fmt.Sprintf("%x", sha256.Sum256(append([]byte(proposal.ID+":"+fingerprint+":"), encoded...)))
+		}
+		resolved := false
+		WalkBlocks(draft.Document.Root, func(b models.TracfinBlock) {
+			if b.ID != proposal.Field.BlockID {
+				return
+			}
+			for _, v := range b.Fields[proposal.Field.FieldID] {
+				if v.Origin != nil && v.Origin.Resolution == "resolved" && !v.NeedsReview && v.Origin.SourceFingerprint == fingerprint {
+					resolved = true
+				}
+			}
+		})
+		if !resolved {
+			retained = append(retained, *proposal)
 		}
 	}
+	out.Proposals = retained
 	return out
 }
 func appendSource(sources []models.TracfinSourceRef, source models.TracfinSourceRef) []models.TracfinSourceRef {

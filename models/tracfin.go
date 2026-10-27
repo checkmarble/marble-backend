@@ -141,10 +141,11 @@ type TracfinSourceRef struct {
 }
 
 type TracfinOrigin struct {
-	Source         string             `json:"source"` // ingested, decision_snapshot, settings, manual, calculated
-	MappingVersion string             `json:"mapping_version,omitempty"`
-	Sources        []TracfinSourceRef `json:"sources,omitempty"`
-	Resolution     string             `json:"resolution"` // resolved, conflict, unavailable, cleared
+	SourceFingerprint string             `json:"source_fingerprint,omitempty"`
+	Source            string             `json:"source"` // ingested, decision_snapshot, settings, manual, calculated
+	MappingVersion    string             `json:"mapping_version,omitempty"`
+	Sources           []TracfinSourceRef `json:"sources,omitempty"`
+	Resolution        string             `json:"resolution"` // resolved, conflict, unavailable, cleared
 }
 
 type TracfinDiagnostic struct {
@@ -189,6 +190,7 @@ type TracfinExport struct {
 }
 
 type TracfinDraft struct {
+	Diagnostics   []TracfinDiagnostic  `json:"diagnostics,omitempty"`
 	CaseID        string               `json:"case_id"`
 	OrgID         string               `json:"org_id"`
 	Document      TracfinDocument      `json:"document"`
@@ -223,16 +225,18 @@ type TracfinFieldInput struct {
 }
 
 type TracfinChangeInput struct {
-	Action        string             `json:"action"`
-	Field         TracfinFieldRef    `json:"field"`
-	Value         *TracfinFieldInput `json:"value,omitempty"`
-	BlockID       string             `json:"block_id,omitempty"`
-	ParentBlockID string             `json:"parent_block_id,omitempty"`
-	CatalogID     string             `json:"catalog_id,omitempty"`
-	Selection     *TracfinSelection  `json:"selection,omitempty"`
-	Relation      *TracfinReference  `json:"relation,omitempty"`
-	SourceFileID  string             `json:"source_file_id,omitempty"`
-	ProposalID    string             `json:"proposal_id,omitempty"`
+	CandidateID    string             `json:"candidate_id,omitempty"`
+	MappingVersion string             `json:"mapping_version,omitempty"`
+	Action         string             `json:"action"`
+	Field          TracfinFieldRef    `json:"field"`
+	Value          *TracfinFieldInput `json:"value,omitempty"`
+	BlockID        string             `json:"block_id,omitempty"`
+	ParentBlockID  string             `json:"parent_block_id,omitempty"`
+	CatalogID      string             `json:"catalog_id,omitempty"`
+	Selection      *TracfinSelection  `json:"selection,omitempty"`
+	Relation       *TracfinReference  `json:"relation,omitempty"`
+	SourceFileID   string             `json:"source_file_id,omitempty"`
+	ProposalID     string             `json:"proposal_id,omitempty"`
 }
 
 type TracfinDraftInput struct {

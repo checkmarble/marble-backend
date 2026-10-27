@@ -34,16 +34,21 @@ type tracfinObjectReader interface {
 	ListIngestedObjects(context.Context, repositories.Executor, models.Table, models.ExplorationOptions, *string, int, ...string) ([]models.DataModelObject, error)
 }
 type TracfinUsecase struct {
-	orgID            uuid.UUID
-	repository       tracfinSourceRepository
-	cases            tracfinCaseReader
-	dataModelUsecase ingestedDataReaderDataModelUsecase
-	objects          tracfinObjectReader
-	executorFactory  tracfinExecutorFactory
+	orgID             uuid.UUID
+	repository        tracfinSourceRepository
+	cases             tracfinCaseReader
+	dataModelUsecase  ingestedDataReaderDataModelUsecase
+	objects           tracfinObjectReader
+	executorFactory   tracfinExecutorFactory
+	draftDependencies *TracfinDraftDependencies
 }
 
-func NewTracfinUsecase(orgID uuid.UUID, repository tracfinSourceRepository, cases tracfinCaseReader, dataModel ingestedDataReaderDataModelUsecase, objects tracfinObjectReader, executors tracfinExecutorFactory) TracfinUsecase {
-	return TracfinUsecase{orgID, repository, cases, dataModel, objects, executors}
+func NewTracfinUsecase(orgID uuid.UUID, repository tracfinSourceRepository, cases tracfinCaseReader, dataModel ingestedDataReaderDataModelUsecase, objects tracfinObjectReader, executors tracfinExecutorFactory, drafts ...TracfinDraftDependencies) TracfinUsecase {
+	uc := TracfinUsecase{orgID: orgID, repository: repository, cases: cases, dataModelUsecase: dataModel, objects: objects, executorFactory: executors}
+	if len(drafts) > 0 {
+		uc.draftDependencies = &drafts[0]
+	}
+	return uc
 }
 
 type TracfinRoot struct {
@@ -389,6 +394,10 @@ func (uc TracfinUsecase) Prefill(ctx context.Context, caseID string) (tracfin.Pr
 	if err != nil {
 		return tracfin.PrefillResult{}, err
 	}
+	return uc.prefillDraft(ctx, caseID, d)
+}
+
+func (uc TracfinUsecase) prefillDraft(ctx context.Context, caseID string, d models.TracfinDraft) (tracfin.PrefillResult, error) {
 	sources := tracfin.SourceSet{Records: map[tracfin.SourceKey]tracfin.SourceRecord{}, Decisions: map[string]models.TracfinDecisionSource{}}
 	var loadErr error
 	tracfin.WalkBlocks(d.Document.Root, func(b models.TracfinBlock) {
