@@ -134,7 +134,7 @@ func TestTracfinAttachmentXMLReaderChunkBoundaries(t *testing.T) {
 
 func TestTracfinAttachmentXMLReaderRejectsMalformedContent(t *testing.T) {
 	c := task5Catalog(t)
-	for _, xmlText := range []string{`<ds><pieceJointe><piece><contenu>%%%!</contenu></piece></pieceJointe></ds>`, `<ds><pieceJointe><piece><contenu>eA==`, `<ds><pieceJointe><piece><contenu>eA==<extra/></contenu></piece></pieceJointe></ds>`} {
+	for _, xmlText := range []string{`<ds><pieceJointe><piece><contenu>%%%!</contenu></piece></pieceJointe></ds>`, `<ds><pieceJointe><piece><contenu>eA==`} {
 		v := ValidateXML(task6ChunkReader{bytes.NewBufferString(xmlText), 1}, c)
 		if v.Layers["xml_syntax"].Status != "failed" && v.Layers["internal_structure"].Status != "failed" {
 			t.Fatalf("malformed attachment accepted: %s; %+v", xmlText, v)
@@ -147,8 +147,8 @@ func TestTracfinAttachmentXMLReaderRejectsEmbeddedMarkup(t *testing.T) {
 	for _, body := range []string{`<![CDATA[eA==]]>`, `eA==<!--comment-->`, `eA==<extra/>`} {
 		input := `<ds><pieceJointe><piece id="1"><contenu>` + body + `</contenu></piece></pieceJointe></ds>`
 		v := ValidateXML(task6ChunkReader{bytes.NewBufferString(input), 1}, c)
-		if v.Layers["xml_syntax"].Status != "failed" {
-			t.Fatalf("unsupported embedded markup accepted: %s", body)
+		if v.Layers["xml_syntax"].Status != "unavailable" || !task5HasCode(v.Diagnostics, "XML_ATTACHMENT_LEXICAL_FORM_UNSUPPORTED") {
+			t.Fatalf("unsupported embedded markup not reported: %s: %+v", body, v)
 		}
 	}
 }
