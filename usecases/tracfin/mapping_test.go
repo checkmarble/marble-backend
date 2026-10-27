@@ -145,3 +145,35 @@ func TestTracfinPrefillDeduplicatesProvenance(t *testing.T) {
 	require.Len(t, got.Proposals[0].Candidates[0].Origin.Sources, 1)
 	require.NotEmpty(t, got.Proposals[0].Candidates[0].ID)
 }
+
+func TestTracfinPrefillEquivalentMonetaryAmounts(t *testing.T) {
+	for _, tc := range []struct {
+		name, minor, major string
+		conflict           bool
+	}{
+		{"scale", "10001", "100.010", false},
+		{"exponent", "10001", "1.00010e2", false},
+		{"signed zero", "0", "-0.000e3", false},
+		{"different", "10001", "100.02", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			field := "/ds/operations/operation/montantTotal"
+			config := models.TracfinConfiguration{Mappings: []models.TracfinMapping{
+				{ID: "minor", TargetField: field, Unit: "minor", TargetCurrency: "EUR", Currency: models.TracfinCurrencyEvidence{Constant: "EUR"}, Source: models.TracfinMappingSource{Kind: "decision_snapshot", HistoricalType: "Historic", Field: "minor"}},
+				{ID: "major", TargetField: field, Unit: "major", TargetCurrency: "EUR", Currency: models.TracfinCurrencyEvidence{Constant: "EUR"}, Source: models.TracfinMappingSource{Kind: "decision_snapshot", HistoricalType: "Historic", Field: "major"}},
+			}}
+			draft := models.TracfinDraft{Document: models.TracfinDocument{Root: models.TracfinBlock{ID: "op", CatalogID: "/ds/operations/operation", Selection: &models.TracfinSelection{MappingID: "minor", DecisionID: "D", HistoricalType: "Historic"}}}}
+			sources := SourceSet{Decisions: map[string]models.TracfinDecisionSource{"D": {DecisionID: "D", HistoricalType: "Historic", Snapshot: json.RawMessage(`{"minor":` + tc.minor + `,"major":` + tc.major + `}`)}}}
+			got := ResolvePrefill(config, draft, sources)
+			require.Len(t, got.Proposals, 1)
+			if tc.conflict {
+				require.Len(t, got.Proposals[0].Candidates, 2)
+				require.Equal(t, "conflict", got.Proposals[0].Resolution)
+			} else {
+				require.Len(t, got.Proposals[0].Candidates, 1)
+				require.NotEqual(t, "conflict", got.Proposals[0].Resolution)
+				require.Len(t, got.Proposals[0].Candidates[0].Origin.Sources, 2)
+			}
+		})
+	}
+}

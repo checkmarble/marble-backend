@@ -196,3 +196,65 @@ func TestTracfinSelectionRootOrigins(t *testing.T) {
 	require.Len(t, got.Roots, 1)
 	require.Equal(t, []string{"case_manual_entity", "decision_pivot"}, got.Roots[0].Origins)
 }
+
+type tracfinFailingObjects struct {
+	*tracfinObjects
+	failure error
+	queried []string
+}
+
+func (f *tracfinFailingObjects) QueryIngestedObjectByUniqueField(ctx context.Context, exec repositories.Executor, table models.Table, id, field string, extra ...string) ([]models.DataModelObject, error) {
+	f.queried = append(f.queried, id)
+	if id == "CO2" && f.failure != nil {
+		return nil, f.failure
+	}
+	return f.tracfinObjects.QueryIngestedObjectByUniqueField(ctx, exec, table, id, field, extra...)
+}
+
+func TestTracfinPrefillMissingSiblingPreservesIndependentBranch(t *testing.T) {
+	for _, ownerFirst := range []bool{false, true} {
+		t.Run(map[bool]string{false: "missing first", true: "owner first"}[ownerFirst], func(t *testing.T) {
+			org := uuid.New()
+			employer := models.TracfinPathStep{ID: "employer", ParentID: "root", Table: "Company", Link: "employer", Direction: "forward"}
+			owner := models.TracfinPathStep{ID: "owner", ParentID: "root", Table: "Company", Link: "owner", Direction: "forward"}
+			child := models.TracfinPathStep{ID: "child", ParentID: "employer", Table: "Company", Link: "parent", Direction: "forward"}
+			selectedEmployer, selectedOwner, selectedChild := employer, owner, child
+			selectedEmployer.RecordID, selectedOwner.RecordID, selectedChild.RecordID = "CO1", "CO2", "CO3"
+			bindings := []models.TracfinPathStep{selectedEmployer, selectedChild, selectedOwner}
+			if ownerFirst {
+				bindings = []models.TracfinPathStep{selectedOwner, selectedEmployer, selectedChild}
+			}
+			s := models.TracfinSelection{MappingID: "employer", Root: models.TracfinPathStep{ID: "root", Table: "User", RecordID: "U"}, Bindings: bindings}
+			config := models.TracfinConfiguration{Mappings: []models.TracfinMapping{
+				{ID: "employer", TargetField: "/ds/declarant/coordonnees/nom", Source: models.TracfinMappingSource{Kind: "ingested", Table: "User", Field: "name", Path: []models.TracfinPathStep{employer, child}}},
+				{ID: "owner", TargetField: "/ds/declarant/coordonnees/prenom", Source: models.TracfinMappingSource{Kind: "ingested", Table: "User", Field: "name", Path: []models.TracfinPathStep{owner}}},
+			}}
+			repo := &tracfinSnapshots{draft: models.TracfinDraft{OrgID: org.String(), CaseID: "case", Configuration: config, Document: models.TracfinDocument{Root: models.TracfinBlock{ID: "b", CatalogID: "/ds/declarant/coordonnees", Selection: &s}}}}
+			dm := models.DataModel{Tables: map[string]models.Table{
+				"User": {Name: "User", SemanticType: models.SemanticTypePerson, LinksToSingle: map[string]models.LinkToSingle{
+					"employer": {Name: "employer", ChildTableName: "User", ChildFieldName: "employer_id", ParentTableName: "Company", ParentFieldName: "object_id"},
+					"owner":    {Name: "owner", ChildTableName: "User", ChildFieldName: "owner_id", ParentTableName: "Company", ParentFieldName: "object_id"},
+				}},
+				"Company": {Name: "Company", SemanticType: models.SemanticTypeCompany, LinksToSingle: map[string]models.LinkToSingle{"parent": {Name: "parent", ChildTableName: "Company", ChildFieldName: "parent_id", ParentTableName: "Company", ParentFieldName: "object_id"}}},
+			}}
+			objects := &tracfinFailingObjects{tracfinObjects: &tracfinObjects{objects: map[string]map[string]any{"U": {"table": "User", "object_id": "U", "employer_id": "CO1", "owner_id": "CO2"}, "CO2": {"table": "Company", "object_id": "CO2", "name": "Owner"}, "CO3": {"table": "Company", "object_id": "CO3", "name": "Wrong"}}}}
+			cases := tracfinCases{models.Case{Id: "case", OrganizationId: org, Entities: []models.CaseEntity{{CaseEntityRef: models.CaseEntityRef{TableName: "User", ObjectId: "U"}}}}}
+			uc := NewTracfinUsecase(org, repo, cases, tracfinDM{dm}, objects, tracfinExec{})
+			_, err := uc.VerifySelection(context.Background(), "case", s)
+			require.Error(t, err)
+			objects.queried = nil
+			got, err := uc.Prefill(context.Background(), "case")
+			require.NoError(t, err)
+			require.NotEmpty(t, got.Diagnostics)
+			require.NotContains(t, objects.queried, "CO3")
+			require.Len(t, got.Proposals, 1)
+			require.Equal(t, "Owner", *got.Proposals[0].Candidates[0].Text)
+			objects.failure = context.DeadlineExceeded
+			_, err = uc.Prefill(context.Background(), "case")
+			require.ErrorIs(t, err, context.DeadlineExceeded)
+			uc.orgID = uuid.New()
+			_, err = uc.Prefill(context.Background(), "case")
+			require.ErrorIs(t, err, models.NotFoundError)
+		})
+	}
+}
