@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"regexp"
 	"strconv"
 	"strings"
@@ -329,6 +330,16 @@ func scalar(v any) (string, bool) {
 	return "", false
 }
 func equalValue(a, b models.TracfinValue) bool {
+	if a.Kind == "decimal" && b.Kind == "decimal" && a.Decimal != nil && b.Decimal != nil {
+		left, leftOK := new(big.Rat).SetString(string(*a.Decimal))
+		right, rightOK := new(big.Rat).SetString(string(*b.Decimal))
+		if !leftOK || !rightOK || left.Cmp(right) != 0 {
+			return false
+		}
+		// Compare the remaining value metadata while preserving both original
+		// decimal lexemes for display and provenance. No rounding is involved.
+		a.Decimal, b.Decimal = nil, nil
+	}
 	a.Origin = nil
 	b.Origin = nil
 	x, _ := json.Marshal(a)

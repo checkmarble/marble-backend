@@ -208,6 +208,12 @@ func linkFields(dm models.DataModel, parentTable string, step models.TracfinPath
 	return "", "", nil, models.BadParameterError
 }
 func (uc TracfinUsecase) verifySelection(ctx context.Context, caseID string, config models.TracfinConfiguration, blockID string, s models.TracfinSelection) (tracfin.SourceSet, error) {
+	return uc.loadSelection(ctx, caseID, config, blockID, s, false)
+}
+
+// Prefill reads persisted selections that may have lost individual sources.
+// Selection edits and navigation retain strict verification of every binding.
+func (uc TracfinUsecase) loadSelection(ctx context.Context, caseID string, config models.TracfinConfiguration, blockID string, s models.TracfinSelection, allowUnavailable bool) (tracfin.SourceSet, error) {
 	if _, err := uc.authorize(ctx, caseID); err != nil {
 		return tracfin.SourceSet{}, err
 	}
@@ -257,21 +263,42 @@ func (uc TracfinUsecase) verifySelection(ctx context.Context, caseID string, con
 	}
 	out.Records[tracfin.SourceKey{blockID, "root"}] = root
 	seen := map[string]bool{"root": true}
+	unavailable := map[string]bool{}
+	skipUnavailable := func(bindingID string, err error) bool {
+		code := tracfinAvailabilityCode(err)
+		if !allowUnavailable || code == "" {
+			return false
+		}
+		unavailable[bindingID] = true
+		out.Diagnostics = append(out.Diagnostics, models.TracfinDiagnostic{Code: code, Layer: "sources", Severity: "warning", Message: code, Field: &models.TracfinFieldRef{BlockID: blockID}})
+		return true
+	}
 	for _, binding := range s.Bindings {
 		step, ok := allowed[binding.ID]
 		if !ok || seen[binding.ID] || binding.RecordID == "" || binding.ParentID != step.ParentID || binding.Table != step.Table || binding.Link != step.Link || binding.Direction != step.Direction {
 			return out, models.BadParameterError
 		}
+		seen[binding.ID] = true
 		parent, ok := out.Records[tracfin.SourceKey{blockID, binding.ParentID}]
 		if !ok {
+			if allowUnavailable && unavailable[binding.ParentID] {
+				unavailable[binding.ID] = true
+				continue
+			}
 			return out, models.BadParameterError
 		}
 		parentField, childField, _, err := linkFields(dm, parent.Table, step)
 		if err != nil {
+			if skipUnavailable(binding.ID, err) {
+				continue
+			}
 			return out, err
 		}
 		child, err := uc.readObject(ctx, dm, binding.Table, binding.RecordID)
 		if err != nil {
+			if skipUnavailable(binding.ID, err) {
+				continue
+			}
 			return out, err
 		}
 		// Exact strings are the supported relation keys. No float conversion or null equality.
@@ -281,7 +308,6 @@ func (uc TracfinUsecase) verifySelection(ctx context.Context, caseID string, con
 			return out, errors.Wrap(models.BadParameterError, "selected object does not belong to selected parent")
 		}
 		out.Records[tracfin.SourceKey{blockID, binding.ID}] = child
-		seen[binding.ID] = true
 	}
 	return out, nil
 }
@@ -369,23 +395,16 @@ func (uc TracfinUsecase) Prefill(ctx context.Context, caseID string) (tracfin.Pr
 		if loadErr != nil || b.Selection == nil {
 			return
 		}
-		loaded, err := uc.verifySelection(ctx, caseID, d.Configuration, b.ID, *b.Selection)
+		loaded, err := uc.loadSelection(ctx, caseID, d.Configuration, b.ID, *b.Selection, true)
 		if err != nil {
-			code := ""
-			switch {
-			case errors.Is(err, errTracfinSourceUnavailable):
-				code = "SOURCE_UNAVAILABLE"
-			case errors.Is(err, errTracfinIndexUnavailable):
-				code = "NAVIGATION_INDEX_UNAVAILABLE"
-			case errors.Is(err, errTracfinLinkUnavailable):
-				code = "LINK_UNAVAILABLE"
-			}
+			code := tracfinAvailabilityCode(err)
 			if code == "" {
 				loadErr = err
 				return
 			}
 			sources.Diagnostics = append(sources.Diagnostics, models.TracfinDiagnostic{Code: code, Layer: "sources", Severity: "warning", Message: code, Field: &models.TracfinFieldRef{BlockID: b.ID}})
 		}
+		sources.Diagnostics = append(sources.Diagnostics, loaded.Diagnostics...)
 		for k, v := range loaded.Records {
 			sources.Records[k] = v
 		}
@@ -397,4 +416,16 @@ func (uc TracfinUsecase) Prefill(ctx context.Context, caseID string) (tracfin.Pr
 		return tracfin.PrefillResult{}, loadErr
 	}
 	return tracfin.ResolvePrefill(d.Configuration, d, sources), nil
+}
+
+func tracfinAvailabilityCode(err error) string {
+	switch {
+	case errors.Is(err, errTracfinSourceUnavailable):
+		return "SOURCE_UNAVAILABLE"
+	case errors.Is(err, errTracfinIndexUnavailable):
+		return "NAVIGATION_INDEX_UNAVAILABLE"
+	case errors.Is(err, errTracfinLinkUnavailable):
+		return "LINK_UNAVAILABLE"
+	}
+	return ""
 }
