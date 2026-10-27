@@ -179,3 +179,33 @@ func TestTracfinPrefillReadsSourcesOncePerRequest(t *testing.T) {
 	require.Equal(t, 4, decisions, "a batch reuses the sources it already read")
 	require.Equal(t, 1, len(w.objects.queried)-reads)
 }
+
+// A character XML cannot represent is saved, diagnosed on its field by
+// validation and refused at export with the field named, never a bare 500.
+func TestTracfinForbiddenXMLCharacterIsLocated(t *testing.T) {
+	dm, tables := task8PersonCardModel()
+	w := task8NewWorld(dm, tables, nil, nil)
+	_, err := w.uc.SaveConfiguration(w.ctx, w.org, models.TracfinConfigurationInput{Settings: []models.TracfinSettingInput{task8Setting("/ds/organisme/libelle", "Banque\vExemple")}})
+	require.ErrorIs(t, err, models.BadParameterError, "settings are copied into every draft")
+	require.ErrorContains(t, err, "/ds/organisme/libelle")
+
+	d, err := w.uc.CreateDraft(w.ctx, "case", false)
+	require.NoError(t, err)
+	root := d.Document.Root.ID
+	d = w.update(t, task8Set(root, "/ds/analyse", task8Text("Copié\vdepuis un traitement de texte")))
+	value := task8Value(t, d, root, "/ds/analyse")
+	report, err := w.uc.ValidateDraft(w.ctx, "case", d.Revision)
+	require.NoError(t, err)
+	require.True(t, task8Diag(report.Diagnostics, "XML_FORBIDDEN_CHARACTER", root, "/ds/analyse"))
+	for _, diag := range report.Diagnostics {
+		if diag.Code == "XML_FORBIDDEN_CHARACTER" {
+			require.Equal(t, value.ID, diag.Field.ValueID)
+		}
+	}
+	_, err = w.uc.Export(w.ctx, "case", d.Revision)
+	require.ErrorIs(t, err, models.UnprocessableEntityError)
+	require.ErrorContains(t, err, "/ds/analyse")
+	require.ErrorContains(t, err, "U+000B")
+	require.Nil(t, w.repo.draft.LastExport)
+	require.Empty(t, w.blobs.data, "no artifact is published")
+}

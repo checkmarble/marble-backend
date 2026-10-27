@@ -167,6 +167,11 @@ func tracfinSettings(settings []models.TracfinSettingInput, catalog tracfin.Cata
 			if err := ensureBlock(parent); err != nil {
 				return models.TracfinDocument{}, err
 			}
+			if s.Value.Text != nil {
+				if err := tracfin.CheckXMLText(*s.Value.Text, models.TracfinFieldRef{FieldID: f.ID}); err != nil {
+					return models.TracfinDocument{}, errors.Wrap(models.BadParameterError, err.Error())
+				}
+			}
 			value := s.Value
 			value.ParentValueID = ""
 			if catalog.Fields[f.Parent].Kind == "field" {

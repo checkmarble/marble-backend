@@ -229,6 +229,11 @@ func (uc TracfinUsecase) Export(ctx context.Context, caseID string, expectedRevi
 	}
 	temps = append(temps, xmlFile)
 	index, err := tracfin.WriteXML(xmlFile, d, contents, c)
+	var unrepresentable *tracfin.XMLFieldError
+	if errors.As(err, &unrepresentable) {
+		// The draft content, not the server, prevents writing well-formed XML.
+		return models.TracfinExport{}, errors.Wrap(models.UnprocessableEntityError, unrepresentable.Error())
+	}
 	if err != nil {
 		return models.TracfinExport{}, err
 	}

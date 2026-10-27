@@ -113,6 +113,11 @@ func (e *XMLFieldError) Error() string {
 	return fmt.Sprintf("XML export %s block %s value %s: %s", e.Field.FieldID, e.Field.BlockID, e.Field.ValueID, e.Message)
 }
 
+// CheckXMLText reports text that XML 1.0 cannot represent, located on ref.
+func CheckXMLText(text string, ref models.TracfinFieldRef) error {
+	return checkXMLText(text, ref)
+}
+
 func checkXMLText(text string, ref models.TracfinFieldRef) error {
 	if !utf8.ValidString(text) {
 		return &XMLFieldError{Field: ref, Message: "Invalid UTF-8"}

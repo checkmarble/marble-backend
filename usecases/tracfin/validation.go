@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 )
 
 // Validation is for the fixed embedded profile; it is not XSD certification.
@@ -312,6 +313,10 @@ func validateValue(report *models.TracfinValidation, b models.TracfinBlock, f Fi
 	}
 	if !present {
 		return
+	}
+	var forbidden *XMLFieldError
+	if errors.As(checkXMLText(text, ref), &forbidden) {
+		addValidation(report, validationDiagnostic("XML_FORBIDDEN_CHARACTER", "internal_structure", forbidden.Message+"; export is refused until the value is corrected", ref))
 	}
 	validateScalar(report, f, text, ref)
 	if f.XSDType == "t_date" {
