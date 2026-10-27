@@ -236,6 +236,9 @@ func applyChange(root *models.TracfinBlock, c Change, catalog Catalog) error {
 		} else if value.ParentValueID != "" {
 			return bad("unexpected scalar owner")
 		}
+		if index >= 0 && value.ParentValueID != values[index].ParentValueID {
+			return bad("attribute owner cannot change; clear it and add it to the other occurrence")
+		}
 		if b.Fields == nil {
 			b.Fields = map[string][]models.TracfinValue{}
 		}

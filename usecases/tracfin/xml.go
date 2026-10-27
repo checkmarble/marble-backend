@@ -172,6 +172,7 @@ func WriteXML(w io.Writer, draft models.TracfinDraft, attachments []AttachmentCo
 	var scalar func(models.TracfinBlock, Field, models.TracfinValue, string) error
 	attributes := func(b models.TracfinBlock, parent, owner, path string) ([]xml.Attr, error) {
 		var attrs []xml.Attr
+		names := map[string]bool{}
 		for _, id := range c.OrderedFields {
 			f := c.Fields[id]
 			if !f.Attribute || f.Parent != parent || f.Coverage == "excluded" {
@@ -193,6 +194,10 @@ func WriteXML(w io.Writer, draft models.TracfinDraft, attachments []AttachmentCo
 				if err := checkXMLText(text, ref); err != nil {
 					return nil, err
 				}
+				if names[f.Name] {
+					return nil, &XMLFieldError{Field: ref, Message: "Duplicate XML attribute on one occurrence"}
+				}
+				names[f.Name] = true
 				attrs = append(attrs, xml.Attr{Name: xml.Name{Local: f.Name}, Value: text})
 				index.Fields[path+"/@"+f.Name] = ref
 			}
@@ -390,6 +395,14 @@ func ValidateXML(r io.Reader, c Catalog) models.TracfinValidation {
 				fr.parent = stack[len(stack)-1]
 			}
 			nodes = append(nodes, fr)
+			// encoding/xml accepts repeated attributes; XML 1.0 forbids them.
+			attributeNames := map[xml.Name]bool{}
+			for _, attr := range t.Attr {
+				if attributeNames[attr.Name] {
+					addValidation(&report, validationDiagnostic("XML_SYNTAX_ERROR", "xml_syntax", "Duplicate attribute "+attr.Name.Local, models.TracfinFieldRef{FieldID: path + "/@" + attr.Name.Local}))
+				}
+				attributeNames[attr.Name] = true
+			}
 			for _, attr := range t.Attr {
 				id := path + "/@" + attr.Name.Local
 				af, ok := c.Fields[id]
