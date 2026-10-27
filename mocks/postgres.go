@@ -18,6 +18,11 @@ func (m *Database) ResolveUserIdentity(ctx context.Context, issuer, subject, ema
 	return args.Get(0).(models.User), args.Error(1)
 }
 
+func (m *Database) ResolveUserIdentityForTenant(ctx context.Context, issuer, subject, email string, tenantID uuid.UUID) (models.User, error) {
+	args := m.Called(ctx, issuer, subject, email, tenantID)
+	return args.Get(0).(models.User), args.Error(1)
+}
+
 func (m *Database) GetOrganizationByID(ctx context.Context, organizationID uuid.UUID) (models.Organization, error) {
 	args := m.Called(ctx, organizationID)
 	return args.Get(0).(models.Organization), args.Error(1)

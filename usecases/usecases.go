@@ -52,7 +52,8 @@ type Usecases struct {
 	csServeFilesDirectly         bool
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
-	allowInsecureWebhookURLs     bool   // Allow HTTP webhook URLs (dev only)
+	allowInsecureWebhookURLs     bool // Allow HTTP webhook URLs (dev only)
+	allowInsecureTenantOIDC      bool
 	webhookIPWhitelist           string // Comma-separated CIDR ranges to whitelist for webhooks
 	screeningOffloadingEnabled   bool
 	aiPromptsServingDir          string
@@ -213,6 +214,10 @@ func WithAllowInsecureWebhookURLs(allow bool) Option {
 	}
 }
 
+func WithAllowInsecureTenantOIDC(allow bool) Option {
+	return func(o *options) { o.allowInsecureTenantOIDC = allow }
+}
+
 // WithWebhookIPWhitelist sets a comma-separated list of CIDR ranges that are
 // allowed as webhook targets even if they would normally be blocked (e.g., private IPs).
 // This is useful for self-hosted deployments where webhooks need to reach internal services.
@@ -274,6 +279,7 @@ type options struct {
 	marbleApiInternalUrl         string
 	csCreateFullDatasetInterval  time.Duration
 	allowInsecureWebhookURLs     bool
+	allowInsecureTenantOIDC      bool
 	screeningOffloadingEnabled   bool
 	webhookIPWhitelist           string
 	ipEnricher                   *maxminddb.Reader
@@ -319,6 +325,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		marbleApiInternalUrl:         o.marbleApiInternalUrl,
 		csCreateFullDatasetInterval:  o.csCreateFullDatasetInterval,
 		allowInsecureWebhookURLs:     o.allowInsecureWebhookURLs,
+		allowInsecureTenantOIDC:      o.allowInsecureTenantOIDC,
 		webhookIPWhitelist:           o.webhookIPWhitelist,
 		screeningOffloadingEnabled:   o.screeningOffloadingEnabled,
 		aiPromptsServingDir:          o.aiPromptsServingDir,
@@ -666,6 +673,10 @@ func (usecases *Usecases) NewAutoAssignmentUsecase() AutoAssignmentUsecase {
 
 func (usecases *Usecases) NewOidcUsecase() OidcUsecase {
 	return OidcUsecase{}
+}
+
+func (usecases *Usecases) NewTenantOIDCDiscoveryUsecase() TenantOIDCDiscoveryUsecase {
+	return NewTenantOIDCDiscoveryUsecase(usecases.NewExecutorFactory(), usecases.Repositories.MarbleDbRepository, usecases.license.Sso)
 }
 
 func (usecases *Usecases) NewBillingUsecase() billing.BillingUsecase {

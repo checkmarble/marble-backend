@@ -19,7 +19,7 @@ type TenantMergeInput struct {
 }
 
 type TenantUsecase struct {
-	enforceSecurity        security.EnforceSecurity
+	enforceSecurity        security.EnforceSecurityTenant
 	transactionFactory     executor_factory.TransactionFactory
 	executorFactory        executor_factory.ExecutorFactory
 	tenantRepository       repositories.TenantRepository
@@ -28,7 +28,7 @@ type TenantUsecase struct {
 }
 
 func NewTenantUsecase(
-	enforceSecurity security.EnforceSecurity,
+	enforceSecurity security.EnforceSecurityTenant,
 	transactionFactory executor_factory.TransactionFactory,
 	executorFactory executor_factory.ExecutorFactory,
 	tenantRepository repositories.TenantRepository,
@@ -53,7 +53,7 @@ func (usecase TenantUsecase) List(ctx context.Context) ([]models.Tenant, error) 
 }
 
 func (usecase TenantUsecase) UpdateName(ctx context.Context, tenantId uuid.UUID, name string) error {
-	if err := usecase.enforceSecurity.Permission(models.TENANTS_UPDATE); err != nil {
+	if err := usecase.enforceSecurity.UpdateTenant(tenantId); err != nil {
 		return err
 	}
 	if strings.TrimSpace(name) == "" {
@@ -88,6 +88,13 @@ func (usecase TenantUsecase) Merge(ctx context.Context, input TenantMergeInput) 
 	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := usecase.tenantRepository.LockAndValidateMerge(ctx, tx, input.TargetTenantId, input.SourceTenantIds); err != nil {
 			return err
+		}
+		hasOIDCConfigurationOrDomains, err := usecase.tenantRepository.HasOIDCConfigurationOrDomains(ctx, tx, input.SourceTenantIds)
+		if err != nil {
+			return err
+		}
+		if hasOIDCConfigurationOrDomains {
+			return errors.Wrap(models.ConflictError, "cannot merge a tenant with OIDC configuration or domains")
 		}
 		if err := usecase.grantRepository.ReassignTenantGrants(ctx, tx, input.TargetTenantId, input.SourceTenantIds); err != nil {
 			return err

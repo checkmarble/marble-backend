@@ -16,6 +16,7 @@ type tenantMergeSecurityMock struct {
 }
 
 func (s tenantMergeSecurityMock) Permission(models.Permission) error { return s.err }
+func (s tenantMergeSecurityMock) UpdateTenant(uuid.UUID) error       { return s.err }
 func (tenantMergeSecurityMock) ReadOrganization(uuid.UUID) error     { return nil }
 func (tenantMergeSecurityMock) Permissions([]models.Permission) error {
 	return nil
@@ -23,6 +24,19 @@ func (tenantMergeSecurityMock) Permissions([]models.Permission) error {
 func (tenantMergeSecurityMock) OrgId() uuid.UUID  { return uuid.Nil }
 func (tenantMergeSecurityMock) UserId() *string   { return nil }
 func (tenantMergeSecurityMock) ApiKeyId() *string { return nil }
+
+type tenantScopeSecurityMock struct {
+	tenantMergeSecurityMock
+	t      *testing.T
+	tenant uuid.UUID
+	calls  int
+}
+
+func (s *tenantScopeSecurityMock) UpdateTenant(tenant uuid.UUID) error {
+	s.calls++
+	require.Equal(s.t, s.tenant, tenant)
+	return models.ForbiddenError
+}
 
 func TestTenantUsecaseMerge(t *testing.T) {
 	target := uuid.New()
@@ -73,6 +87,7 @@ func TestTenantUsecaseMerge(t *testing.T) {
 			setup: func(transactionFactory *mocks.TransactionFactory, tenantRepository *mocks.TenantRepository, grantRepository *mocks.GrantRepository, organizationRepository *mocks.OrganizationRepository) {
 				transactionFactory.On("Transaction", mock.Anything, mock.Anything).Return(nil)
 				tenantRepository.On("LockAndValidateMerge", mock.Anything, mock.Anything, target, []uuid.UUID{source}).Return(nil)
+				tenantRepository.On("HasOIDCConfigurationOrDomains", mock.Anything, mock.Anything, []uuid.UUID{source}).Return(false, nil)
 				grantRepository.On("ReassignTenantGrants", mock.Anything, mock.Anything, target, []uuid.UUID{source}).Return(nil)
 				organizationRepository.On("ReassignOrganizationsToTenant", mock.Anything, mock.Anything, target, []uuid.UUID{source}).Return(nil)
 				tenantRepository.On("SoftDelete", mock.Anything, mock.Anything, []uuid.UUID{source}).Return(nil)
@@ -88,6 +103,7 @@ func TestTenantUsecaseMerge(t *testing.T) {
 			setup: func(transactionFactory *mocks.TransactionFactory, tenantRepository *mocks.TenantRepository, grantRepository *mocks.GrantRepository, organizationRepository *mocks.OrganizationRepository) {
 				transactionFactory.On("Transaction", mock.Anything, mock.Anything).Return(nil)
 				tenantRepository.On("LockAndValidateMerge", mock.Anything, mock.Anything, target, []uuid.UUID{source}).Return(nil)
+				tenantRepository.On("HasOIDCConfigurationOrDomains", mock.Anything, mock.Anything, []uuid.UUID{source}).Return(false, nil)
 				grantRepository.On("ReassignTenantGrants", mock.Anything, mock.Anything, target, []uuid.UUID{source}).Return(nil)
 				organizationRepository.On("ReassignOrganizationsToTenant", mock.Anything, mock.Anything, target, []uuid.UUID{source}).Return(nil)
 				tenantRepository.On("SoftDelete", mock.Anything, mock.Anything, []uuid.UUID{source}).Return(nil)
@@ -127,6 +143,21 @@ func TestTenantUsecaseMerge(t *testing.T) {
 			transactionFactory.AssertExpectations(t)
 		})
 	}
+
+	t.Run("rejects source with OIDC configuration", func(t *testing.T) {
+		transactionFactory := &mocks.TransactionFactory{TxMock: &mocks.Transaction{}}
+		tenantRepository := &mocks.TenantRepository{}
+		transactionFactory.On("Transaction", mock.Anything, mock.Anything).Return(nil)
+		tenantRepository.On("LockAndValidateMerge", mock.Anything, mock.Anything, target, []uuid.UUID{source}).Return(nil)
+		tenantRepository.On("HasOIDCConfigurationOrDomains", mock.Anything, mock.Anything, []uuid.UUID{source}).Return(true, nil)
+
+		usecase := NewTenantUsecase(tenantMergeSecurityMock{}, transactionFactory, &mocks.ExecutorFactory{}, tenantRepository, &mocks.GrantRepository{}, &mocks.OrganizationRepository{})
+		err := usecase.Merge(context.Background(), input)
+
+		require.ErrorIs(t, err, models.ConflictError)
+		tenantRepository.AssertExpectations(t)
+		transactionFactory.AssertExpectations(t)
+	})
 }
 
 func TestTenantUsecaseList(t *testing.T) {
@@ -187,4 +218,16 @@ func TestTenantUsecaseUpdateNameRejectsBlankName(t *testing.T) {
 
 	err := usecase.UpdateName(context.Background(), uuid.New(), "   ")
 	require.ErrorIs(t, err, models.BadParameterError)
+}
+
+func TestTenantUsecaseUpdateNameRejectsUnauthorizedTenant(t *testing.T) {
+	tenant := uuid.New()
+	security := &tenantScopeSecurityMock{t: t, tenant: tenant}
+	usecase := NewTenantUsecase(
+		security,
+		&mocks.TransactionFactory{}, &mocks.ExecutorFactory{}, &mocks.TenantRepository{},
+		&mocks.GrantRepository{}, &mocks.OrganizationRepository{},
+	)
+	require.ErrorIs(t, usecase.UpdateName(t.Context(), tenant, "Renamed"), models.ForbiddenError)
+	require.Equal(t, 1, security.calls)
 }

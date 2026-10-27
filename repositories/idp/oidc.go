@@ -67,6 +67,9 @@ func (c *OidcClient) VerifyToken(ctx context.Context, idToken, accessToken strin
 	}
 
 	if claims.GetEmail() == "" {
+		if c.config.HTTPClient != nil {
+			ctx = oidc.ClientContext(ctx, c.config.HTTPClient)
+		}
 		userinfo, err := c.provider.UserInfo(ctx, oauth2.StaticTokenSource(&oauth2.Token{AccessToken: accessToken}))
 		if err != nil {
 			return models.OidcIdentity{}, err

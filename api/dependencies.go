@@ -64,12 +64,7 @@ func InitDependencies(
 		verifiers[oidcVerifier.Issuer()] = oidcVerifier
 	}
 
-	issuers := make([]string, 0, len(verifiers))
-	for issuer := range verifiers {
-		issuers = append(issuers, issuer)
-	}
-
-	jwtRepository := repositories.NewJWTRepositoryForIssuers(issuers, signingKey)
+	jwtRepository := repositories.NewJWTRepository("marble", signingKey)
 	tokenValidator := token.NewValidator(database, jwtRepository)
 
 	tokenLifetime := time.Duration(conf.TokenLifetimeMinute) * time.Minute
@@ -79,7 +74,7 @@ func InitDependencies(
 
 	tokenHandler := auth.NewTokenHandler(
 		auth.DefaultExtractor(),
-		auth.NewVerifier(verifiers, database, conf.OidcConfig.Issuer, conf.OidcConfig.AllowedDomains),
+		auth.NewVerifier(verifiers, database, conf.OidcConfig.Issuer, conf.OidcConfig.AllowedDomains, conf.TenantOIDCRegistry),
 		auth.NewGenerator(database, jwtRepository, tokenLifetime, clock.New()),
 	)
 

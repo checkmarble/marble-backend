@@ -40,6 +40,22 @@ func (f fakeOIDCTokenVerifier) Verify(context.Context, string) (oidcClaims, erro
 }
 
 func TestOidcClient_VerifyToken(t *testing.T) {
+	t.Run("userinfo uses configured HTTP client", func(t *testing.T) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "Bearer access-token", r.Header.Get("Authorization"))
+			_, _ = w.Write([]byte(`{"sub":"subject-1","email":"user@example.test","email_verified":true}`))
+		}))
+		defer server.Close()
+		provider := (&oidc.ProviderConfig{IssuerURL: "https://issuer.example.test", UserInfoURL: server.URL}).NewProvider(t.Context())
+		client := &OidcClient{
+			config:   infra.OidcConfig{HTTPClient: server.Client()},
+			provider: provider,
+			verifier: fakeOIDCTokenVerifier{claims: fakeOIDCClaims{claims: map[string]any{"sub": "subject-1"}}},
+		}
+		identity, err := client.VerifyToken(t.Context(), "id-token", "access-token")
+		require.NoError(t, err)
+		assert.Equal(t, "user@example.test", identity.GetEmail())
+	})
 	t.Run("uses verified ID token claims", func(t *testing.T) {
 		client := &OidcClient{
 			issuer: "https://issuer.example.test",

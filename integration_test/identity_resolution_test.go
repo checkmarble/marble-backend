@@ -80,6 +80,22 @@ func TestResolveUserIdentity(t *testing.T) {
 		assert.Zero(t, count)
 	})
 
+	t.Run("tenant resolution cannot link an identity outside its tenant", func(t *testing.T) {
+		tenantID := uuid.New()
+		allowedUserID := createIdentityTestUser(t)
+		outsideUserID := createIdentityTestUser(t)
+		grantIdentityTestTenantAccess(t, tenantID, allowedUserID)
+
+		_, err := database.ResolveUserIdentityForTenant(ctx, "tenant-dex", "outside-subject", identityTestEmail(outsideUserID), tenantID)
+		assert.ErrorIs(t, err, models.NotFoundError)
+		assert.Zero(t, identityCount(t, outsideUserID))
+
+		user, err := database.ResolveUserIdentityForTenant(ctx, "tenant-dex", "allowed-subject", identityTestEmail(allowedUserID), tenantID)
+		require.NoError(t, err)
+		assert.Equal(t, allowedUserID, string(user.UserId))
+		assert.Equal(t, 1, identityCount(t, allowedUserID))
+	})
+
 	t.Run("concurrent first logins create one identity", func(t *testing.T) {
 		userID := createIdentityTestUser(t)
 		const attempts = 8
@@ -142,4 +158,19 @@ func identityCount(t *testing.T, userID string) int {
 	err = pgPool.QueryRow(t.Context(), query, args...).Scan(&count)
 	require.NoError(t, err)
 	return count
+}
+
+func grantIdentityTestTenantAccess(t *testing.T, tenantID uuid.UUID, userID string) {
+	t.Helper()
+	_, err := pgPool.Exec(t.Context(), "INSERT INTO tenants (id, name) VALUES ($1, $2)", tenantID, "identity-"+tenantID.String())
+	require.NoError(t, err)
+	_, err = pgPool.Exec(t.Context(), `INSERT INTO grants (id, principal_type, principal_id, principal_authority, tenant_id, role)
+		VALUES ($1, 'user', $2, 'marble', $3, 'TENANT_ADMIN')`, uuid.New(), userID, tenantID)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, err := pgPool.Exec(context.Background(), "DELETE FROM grants WHERE tenant_id = $1", tenantID)
+		require.NoError(t, err)
+		_, err = pgPool.Exec(context.Background(), "DELETE FROM tenants WHERE id = $1", tenantID)
+		require.NoError(t, err)
+	})
 }

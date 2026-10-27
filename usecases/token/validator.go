@@ -76,6 +76,9 @@ func (v *Validator) ValidateTokenOrKey(ctx context.Context, marbleToken, apiKey 
 	if err != nil {
 		return models.Credentials{}, errors.Wrap(err, "getter.GetOrganizationByID error")
 	}
+	if credentials.AuthTenantId != uuid.Nil && organization.TenantId != credentials.AuthTenantId {
+		return models.Credentials{}, errors.Errorf("%w: organization is outside the authentication tenant", models.UnAuthorizedError)
+	}
 	credentials.TenantId = organization.TenantId
 
 	return credentials, nil
