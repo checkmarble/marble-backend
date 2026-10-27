@@ -41,6 +41,36 @@ func tracfinError(c *gin.Context, err error) bool {
 	return presentError(c.Request.Context(), c, err)
 }
 func tracfinBad(c *gin.Context) bool { return tracfinError(c, models.BadParameterError) }
+
+// Case file and decision IDs reach UUID columns; malformed ones are a 400,
+// not a database error.
+func tracfinChangeIDs(changes []models.TracfinChangeInput) bool {
+	for _, change := range changes {
+		if change.SourceFileID != "" {
+			if _, err := uuid.Parse(change.SourceFileID); err != nil {
+				return false
+			}
+		}
+		if change.Selection != nil && change.Selection.DecisionID != "" {
+			if _, err := uuid.Parse(change.Selection.DecisionID); err != nil {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// Attachment hashing, export and artifact streaming may move up to the
+// technical size limits, so they run under the batch deadline.
+func tracfinLongRequest(method, route string) bool {
+	switch method + " " + route {
+	case http.MethodPatch + " /cases/:case_id/tracfin/draft",
+		http.MethodPost + " /cases/:case_id/tracfin/export",
+		http.MethodGet + " /cases/:case_id/tracfin/exports/:export_id":
+		return true
+	}
+	return false
+}
 func tracfinID(c *gin.Context, name string) bool {
 	_, err := uuid.Parse(c.Param(name))
 	if err != nil {
@@ -154,7 +184,7 @@ func addTracfinRoutes(router gin.IRoutes, factory func(context.Context) tracfinH
 		if !tracfinJSON(c, &r) {
 			return
 		}
-		if r.ExpectedRevision == nil || *r.ExpectedRevision < 1 || r.Changes == nil {
+		if r.ExpectedRevision == nil || *r.ExpectedRevision < 1 || len(r.Changes) == 0 || !tracfinChangeIDs(r.Changes) {
 			tracfinBad(c)
 			return
 		}
@@ -181,7 +211,7 @@ func addTracfinRoutes(router gin.IRoutes, factory func(context.Context) tracfinH
 		}
 		result, err := factory(c.Request.Context()).Navigate(c.Request.Context(), c.Param("case_id"), r.Selection, r.StepID, r.Cursor, limit)
 		if !tracfinError(c, err) {
-			c.JSON(200, result)
+			c.JSON(200, dto.AdaptTracfinNavigationPage(result.Objects, result.HasNextPage, result.NextCursor, result.Diagnostics))
 		}
 	})
 	for _, action := range []string{"prefill", "validate", "export"} {

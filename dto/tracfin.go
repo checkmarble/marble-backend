@@ -28,6 +28,22 @@ type TracfinNavigateRequest struct {
 	Limit     *int                    `json:"limit,omitempty"`
 }
 
+// Navigation candidates use the snake_case shape of DataModelObject.
+type TracfinNavigationPage struct {
+	Objects     []DataModelObject          `json:"objects"`
+	HasNextPage bool                       `json:"has_next_page"`
+	NextCursor  *string                    `json:"next_cursor,omitempty"`
+	Diagnostics []models.TracfinDiagnostic `json:"diagnostics"`
+}
+
+func AdaptTracfinNavigationPage(objects []models.DataModelObject, hasNextPage bool, nextCursor *string, diagnostics []models.TracfinDiagnostic) TracfinNavigationPage {
+	out := TracfinNavigationPage{Objects: make([]DataModelObject, 0, len(objects)), HasNextPage: hasNextPage, NextCursor: nextCursor, Diagnostics: diagnostics}
+	for _, o := range objects {
+		out.Objects = append(out.Objects, DataModelObject{Data: o.Data, Metadata: o.Metadata})
+	}
+	return out
+}
+
 // Export storage locations are internal; downloads always pass through case authorization.
 type TracfinExport struct {
 	ID             string                   `json:"id"`

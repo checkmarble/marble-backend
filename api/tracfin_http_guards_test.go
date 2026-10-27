@@ -66,10 +66,10 @@ func TestTracfinHTTPDownloadClosesReaderOnUsecaseError(t *testing.T) {
 
 func TestTracfinHTTPPieceSourceFileCommand(t *testing.T) {
 	f := &tracfinHTTPFake{}
-	w := tracfinRequest(f, http.MethodPatch, "/cases/"+testCaseID+"/tracfin/draft", `{"expected_revision":1,"changes":[{"action":"add_block","parent_block_id":"p","catalog_id":"/ds/pieceJointe/piece","source_file_id":"file-id"}]}`)
+	w := tracfinRequest(f, http.MethodPatch, "/cases/"+testCaseID+"/tracfin/draft", `{"expected_revision":1,"changes":[{"action":"add_block","parent_block_id":"p","catalog_id":"/ds/pieceJointe/piece","source_file_id":"44444444-4444-4444-8444-444444444444"}]}`)
 	require.Equal(t, 200, w.Code, w.Body.String())
 	require.Len(t, f.input.Changes, 1)
-	require.Equal(t, "file-id", f.input.Changes[0].SourceFileID)
+	require.Equal(t, "44444444-4444-4444-8444-444444444444", f.input.Changes[0].SourceFileID)
 }
 
 func TestTracfinHTTPExportSizeLimit(t *testing.T) {

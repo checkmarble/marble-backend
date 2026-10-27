@@ -110,7 +110,11 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 
 	// A context deadline preserves artifact streaming; the generic timeout wrapper buffers responses.
 	tracfinRouter := router.Group("", func(c *gin.Context) {
-		ctx, cancel := context.WithTimeout(c.Request.Context(), conf.DefaultTimeout)
+		deadline := conf.DefaultTimeout
+		if tracfinLongRequest(c.Request.Method, c.FullPath()) {
+			deadline = conf.BatchTimeout
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), deadline)
 		defer cancel()
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()

@@ -28,6 +28,7 @@ type tracfinHTTPFake struct {
 	size     int64
 	input    models.TracfinDraftInput
 	draft    models.TracfinDraft
+	page     usecases.TracfinNavigationPage
 }
 
 func (f *tracfinHTTPFake) GetConfiguration(context.Context, uuid.UUID) (models.TracfinConfiguration, error) {
@@ -46,7 +47,7 @@ func (f *tracfinHTTPFake) GetContext(context.Context, string) (usecases.TracfinC
 func (f *tracfinHTTPFake) Navigate(_ context.Context, _ string, _ models.TracfinSelection, _ string, _ *string, limit int) (usecases.TracfinNavigationPage, error) {
 	f.calls++
 	f.limit = limit
-	return usecases.TracfinNavigationPage{}, f.err
+	return f.page, f.err
 }
 func (f *tracfinHTTPFake) GetDraft(context.Context, string) (models.TracfinDraft, error) {
 	f.calls++
