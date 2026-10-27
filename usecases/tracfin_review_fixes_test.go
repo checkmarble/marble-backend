@@ -209,3 +209,32 @@ func TestTracfinForbiddenXMLCharacterIsLocated(t *testing.T) {
 	require.Nil(t, w.repo.draft.LastExport)
 	require.Empty(t, w.blobs.data, "no artifact is published")
 }
+
+func TestTracfinPeriodProposalAppliedAndExported(t *testing.T) {
+	dm, tables := task8PersonCardModel()
+	w := task8NewWorld(dm, tables, nil, nil)
+	start := task8Snapshot("start", "/ds/operations/dateDebut", "executed_at")
+	end := task8Snapshot("end", "/ds/operations/dateFin", "executed_at")
+	w.configure(t, nil, []models.TracfinMapping{start, end})
+	w.repo.decisions["D1"] = models.TracfinDecisionSource{DecisionID: "D1", HistoricalType: "Transfer", Snapshot: json.RawMessage(`{"executed_at":"2026-09-30T23:30:00Z"}`)}
+	w.repo.decisions["D2"] = models.TracfinDecisionSource{DecisionID: "D2", HistoricalType: "Transfer", Snapshot: json.RawMessage(`{"executed_at":"2026-08-01T08:00:00Z"}`)}
+	d, err := w.uc.CreateDraft(w.ctx, "case", false)
+	require.NoError(t, err)
+	d = w.update(t,
+		task8Add(d.Document.Root.ID, "ops", "/ds/operations"),
+		task8Add("ops", "op1", t8Op), task8Select("op1", models.TracfinSelection{MappingID: "start", DecisionID: "D1", HistoricalType: "Transfer"}),
+		task8Add("ops", "op2", t8Op), task8Select("op2", models.TracfinSelection{MappingID: "start", DecisionID: "D2", HistoricalType: "Transfer"}),
+	)
+	ops := task8Block(t, d, "/ds/operations").ID
+	result, proposals := w.prefill(t)
+	require.False(t, task8Diag(result.Diagnostics, "PARTIAL_PERIOD", "", ""), "every selected line has a date")
+	var apply []models.TracfinChangeInput
+	for _, field := range []string{"/ds/operations/dateDebut", "/ds/operations/dateFin"} {
+		apply = append(apply, task8Apply(proposals[ops+" "+field], 0, result.MappingVersion))
+	}
+	d = w.update(t, apply...)
+	require.Equal(t, "calculated", task8Value(t, d, ops, "/ds/operations/dateDebut").Origin.Source)
+	_, _, x := w.export(t)
+	require.Equal(t, []string{"01/08/2026"}, x.texts("operations/dateDebut"))
+	require.Equal(t, []string{"30/09/2026"}, x.texts("operations/dateFin"))
+}

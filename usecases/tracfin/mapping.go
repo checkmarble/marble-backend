@@ -302,6 +302,9 @@ func ResolvePrefill(config models.TracfinConfiguration, draft models.TracfinDraf
 			}
 		}
 	})
+	periods, diagnostics := periodProposals(config, draft, sources, version)
+	out.Proposals = append(out.Proposals, periods...)
+	out.Diagnostics = append(out.Diagnostics, diagnostics...)
 	retained := out.Proposals[:0]
 	for pi := range out.Proposals {
 		proposal := &out.Proposals[pi]
@@ -335,6 +338,110 @@ func ResolvePrefill(config models.TracfinConfiguration, draft models.TracfinDraf
 	out.Proposals = retained
 	out.Diagnostics = append(out.Diagnostics, duplicateSnapshotDiagnostics(draft, sources)...)
 	return out
+}
+
+// periodProposals proposes the declaration period from the dates of the
+// selected principal operations: the earliest for dateDebut, the latest for
+// dateFin. Lines without a usable date make the period partial; this is
+// reported and never filled with an invented bound.
+func periodProposals(config models.TracfinConfiguration, draft models.TracfinDraft, sources SourceSet, version string) ([]PrefillProposal, []models.TracfinDiagnostic) {
+	var operations *models.TracfinBlock
+	var lines []models.TracfinBlock
+	WalkBlocks(draft.Document.Root, func(b models.TracfinBlock) {
+		if b.CatalogID == "/ds/operations" && operations == nil {
+			operations = &b
+		}
+		if b.CatalogID == "/ds/operations/operation" {
+			lines = append(lines, b)
+		}
+	})
+	if operations == nil {
+		return nil, nil
+	}
+	var proposals []PrefillProposal
+	var diagnostics []models.TracfinDiagnostic
+	for _, target := range []string{"/ds/operations/dateDebut", "/ds/operations/dateFin"} {
+		var mappings []models.TracfinMapping
+		for _, m := range config.Mappings {
+			if m.TargetField == target && m.Source.Kind == "decision_snapshot" {
+				mappings = append(mappings, m)
+			}
+		}
+		if len(mappings) == 0 {
+			continue
+		}
+		ref := models.TracfinFieldRef{BlockID: operations.ID, FieldID: target}
+		if existing := operations.Fields[target]; len(existing) == 1 {
+			if existing[0].Kind == "cleared" || existing[0].Origin == nil || existing[0].Origin.Source == "manual" {
+				continue
+			}
+			ref.ValueID = existing[0].ID
+		} else if len(existing) > 1 {
+			diagnostics = append(diagnostics, diagnostic("TARGET_OCCURRENCE_REQUIRED", ref))
+			continue
+		}
+		var bound time.Time
+		var used []models.TracfinSourceRef
+		missing := 0
+		for _, line := range lines {
+			date, source, ok := operationDate(line, mappings, sources)
+			if !ok {
+				missing++
+				continue
+			}
+			if len(used) == 0 || target == "/ds/operations/dateDebut" && date.Before(bound) || target == "/ds/operations/dateFin" && date.After(bound) {
+				bound = date
+			}
+			used = append(used, source)
+		}
+		if missing > 0 {
+			d := diagnostic("PARTIAL_PERIOD", ref)
+			d.Message = fmt.Sprintf("%d of %d selected principal operations have no usable date", missing, len(lines))
+			diagnostics = append(diagnostics, d)
+		}
+		if len(used) == 0 {
+			continue
+		}
+		text := bound.Format(profileDateLayout)
+		proposals = append(proposals, PrefillProposal{
+			ID:         fmt.Sprintf("%x", sha256.Sum256(fmt.Appendf(nil, "%s:%d:%s:%s", version, draft.Revision, operations.ID, target))),
+			Field:      ref,
+			Resolution: "resolved",
+			Candidates: []models.TracfinValue{{Kind: "text", Text: &text, Origin: &models.TracfinOrigin{Source: "calculated", MappingVersion: version, Sources: used, Resolution: "resolved"}}},
+		})
+	}
+	return proposals, diagnostics
+}
+
+// operationDate reads a principal operation date from its decision snapshot.
+func operationDate(line models.TracfinBlock, mappings []models.TracfinMapping, sources SourceSet) (time.Time, models.TracfinSourceRef, bool) {
+	s := line.Selection
+	if s == nil || s.DecisionID == "" {
+		return time.Time{}, models.TracfinSourceRef{}, false
+	}
+	decision, ok := sources.Decisions[s.DecisionID]
+	if !ok || decision.HistoricalType != s.HistoricalType {
+		return time.Time{}, models.TracfinSourceRef{}, false
+	}
+	data, err := DecodeSnapshot(decision.Snapshot)
+	if err != nil {
+		return time.Time{}, models.TracfinSourceRef{}, false
+	}
+	for _, m := range mappings {
+		if m.Source.HistoricalType != decision.HistoricalType {
+			continue
+		}
+		text, ok := profileDate(data[m.Source.Field])
+		if !ok {
+			continue
+		}
+		date, err := time.Parse(profileDateLayout, text)
+		if err != nil {
+			continue
+		}
+		return date, models.TracfinSourceRef{Kind: "decision_snapshot", DecisionID: decision.DecisionID, HistoricalType: decision.HistoricalType, Field: m.Source.Field}, true
+	}
+	return time.Time{}, models.TracfinSourceRef{}, false
 }
 
 // Distinct decisions may record the same historical object. They stay separate
