@@ -510,7 +510,7 @@ func TestTracfinExportAttachmentBlobErrors(t *testing.T) {
 		name    string
 		err     error
 		omitted bool
-	}{{"confirmed missing", models.NotFoundError, true}, {"denied", models.ForbiddenError, false}, {"timeout", context.DeadlineExceeded, false}, {"unclassified", errors.New("storage failure"), false}} {
+	}{{"confirmed missing", models.NotFoundError, true}, {"wrapped missing", fmt.Errorf("wrapped: %w", models.NotFoundError), true}, {"denied", models.ForbiddenError, false}, {"timeout", context.DeadlineExceeded, false}, {"unclassified", errors.New("storage failure"), false}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, uc, repo, _, blobs := task6Setup(t)
 			_, err := task6Select(t, ctx, uc, repo)
@@ -572,4 +572,15 @@ func TestTracfinExportFailedCleanupReportsBothErrors(t *testing.T) {
 	require.Contains(t, err.Error(), "database failed")
 	require.Contains(t, err.Error(), "cleanup failed")
 	require.Nil(t, repo.draft.LastExport)
+}
+
+func TestTracfinExportDoesNotChangeCaseOutcome(t *testing.T) {
+	ctx, uc, repo, _, _ := task6Setup(t)
+	before, err := uc.cases.GetCase(ctx, "case")
+	require.NoError(t, err)
+	_, err = uc.Export(ctx, "case", repo.draft.Revision)
+	require.NoError(t, err)
+	after, err := uc.cases.GetCase(ctx, "case")
+	require.NoError(t, err)
+	require.Equal(t, before, after)
 }
