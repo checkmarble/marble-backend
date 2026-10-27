@@ -131,3 +131,13 @@ func TestTracfinAttachmentXMLReaderChunkBoundaries(t *testing.T) {
 		t.Fatal("content changed across chunk boundaries")
 	}
 }
+
+func TestTracfinAttachmentXMLReaderRejectsMalformedContent(t *testing.T) {
+	c := task5Catalog(t)
+	for _, xmlText := range []string{`<ds><pieceJointe><piece><contenu>%%%!</contenu></piece></pieceJointe></ds>`, `<ds><pieceJointe><piece><contenu>eA==`, `<ds><pieceJointe><piece><contenu>eA==<extra/></contenu></piece></pieceJointe></ds>`} {
+		v := ValidateXML(task6ChunkReader{bytes.NewBufferString(xmlText), 1}, c)
+		if v.Layers["xml_syntax"].Status != "failed" && v.Layers["internal_structure"].Status != "failed" {
+			t.Fatalf("malformed attachment accepted: %s; %+v", xmlText, v)
+		}
+	}
+}
