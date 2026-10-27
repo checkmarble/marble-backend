@@ -170,3 +170,12 @@ func TestTracfinXMLIndependentReferences(t *testing.T) {
 		})
 	}
 }
+
+func TestTracfinXMLNumericPrincipalValuesRemainAmbiguous(t *testing.T) {
+	c := task5Catalog(t)
+	const doc = `<ds><operations><operation><emetteurTypeEmetteur>99</emetteurTypeEmetteur><refFinanciereEmission>88</refFinanciereEmission><beneficiaireTypeBeneficiaire>77</beneficiaireTypeBeneficiaire><refFinanciereReception>66</refFinanciereReception></operation></operations></ds>`
+	v := ValidateXML(strings.NewReader(doc), c)
+	if v.Layers["references"].Status == "failed" {
+		t.Fatalf("numeric principal XML may be free text, cannot infer dangling reference: %+v", v.Diagnostics)
+	}
+}
