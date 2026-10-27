@@ -54,8 +54,12 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	r.GET("/signup-status", tom, handleSignupStatus(uc))
 	r.GET("/validate-license/*license_key", tom, handleValidateLicense(uc))
 
-	if conf.OidcConfig.Provider != nil {
-		r.POST("/oidc/token", tom, handleOidcTokenExchange(uc, conf.OidcConfig))
+	if conf.TenantOIDCRegistry != nil {
+		r.POST("/auth/discovery", tom, handlePostTenantOIDCDiscovery(uc, conf.MarbleAppUrl))
+	}
+
+	if conf.OidcConfig.Provider != nil || conf.TenantOIDCRegistry != nil {
+		r.POST("/oidc/token", tom, handleOidcTokenExchange(uc, conf))
 	}
 
 	if conf.EnablePrometheus {
@@ -296,6 +300,14 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.GET("/tenants", tom, handleListTenants(uc))
 	router.PATCH("/tenants/:tenant_id", tom, handlePatchTenant(uc))
 	router.POST("/tenants/:tenant_id/merge", tom, handlePostTenantMerge(uc))
+	if conf.TenantOIDCRegistry != nil {
+		router.GET("/tenants/:tenant_id/oidc-configuration", tom, handleGetTenantOIDCConfiguration(uc))
+		router.PUT("/tenants/:tenant_id/oidc-configuration", tom, handlePutTenantOIDCConfiguration(uc))
+		router.DELETE("/tenants/:tenant_id/oidc-configuration", tom, handleDeleteTenantOIDCConfiguration(uc))
+		router.GET("/tenants/:tenant_id/domains", tom, handleListTenantDomains(uc))
+		router.POST("/tenants/:tenant_id/domains", tom, handlePostTenantDomain(uc))
+		router.DELETE("/tenants/:tenant_id/domains/:domain_id", tom, handleDeleteTenantDomain(uc))
+	}
 	router.PUT("/tenants/:tenant_id/users/:user_id/grants", tom, handlePutOrganizationGrant(uc))
 	router.DELETE("/tenants/:tenant_id/users/:user_id/grants", tom, handleDeleteOrganizationGrant(uc))
 

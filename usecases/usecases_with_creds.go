@@ -373,13 +373,32 @@ func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase 
 
 func (usecases *UsecasesWithCreds) NewTenantUsecase() TenantUsecase {
 	return NewTenantUsecase(
-		usecases.NewEnforceSecurity(),
+		usecases.NewEnforceTenantSecurity(),
 		usecases.NewTransactionFactory(),
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 	)
+}
+
+func (usecases *UsecasesWithCreds) NewTenantOIDCUsecase() TenantOIDCUsecase {
+	return NewTenantOIDCUsecase(
+		usecases.NewEnforceTenantSecurity(),
+		usecases.NewTransactionFactory(),
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.license.Sso,
+		usecases.allowInsecureTenantOIDC,
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewEnforceTenantSecurity() security.EnforceSecurityTenant {
+	return &security.EnforceSecurityTenantImpl{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
 }
 
 func (usecases *UsecasesWithCreds) NewDataModelUseCase() usecase {

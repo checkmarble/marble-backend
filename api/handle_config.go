@@ -84,7 +84,7 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 				Blobs:     uc.GetBlobHosts(),
 			},
 			Auth: dto.ConfigAuthDto{
-				Providers: cfg.TokenProviders.Strings(),
+				Providers: configAuthProviders(cfg),
 				Firebase: dto.ConfigAuthFirebaseDto{
 					IsEmulator:   cfg.FirebaseConfig.EmulatorHost != "",
 					EmulatorHost: cfg.FirebaseConfig.EmulatorHost,
@@ -103,4 +103,17 @@ func handleGetConfig(uc usecases.Usecases, cfg Configuration) func(c *gin.Contex
 
 		c.JSON(http.StatusOK, out)
 	}
+}
+
+func configAuthProviders(cfg Configuration) []string {
+	providers := cfg.TokenProviders.Strings()
+	for i, provider := range providers {
+		if provider == "oidc" {
+			providers[i] = "oidc-legacy"
+		}
+	}
+	if cfg.TenantOIDCRegistry != nil {
+		providers = append(providers, "oidc")
+	}
+	return providers
 }

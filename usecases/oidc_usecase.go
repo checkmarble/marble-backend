@@ -13,6 +13,9 @@ import (
 type OidcUsecase struct{}
 
 func (uc OidcUsecase) ExchangeToken(ctx context.Context, cfg infra.OidcConfig, r *http.Request) (*oauth2.Token, error) {
+	if cfg.HTTPClient != nil {
+		ctx = context.WithValue(ctx, oauth2.HTTPClient, cfg.HTTPClient)
+	}
 	if err := r.ParseForm(); err != nil {
 		return nil, errors.Wrap(err, "could not read form data")
 	}
