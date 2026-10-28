@@ -26,11 +26,15 @@ type DecisionCollector struct {
 
 func NewDecisionCollector(decisionRepository DecisionCollectorRepository,
 	executorFactory executor_factory.ExecutorFactory,
-) Collector {
+) CounterCollector {
 	return DecisionCollector{
 		decisionRepository: decisionRepository,
 		executorFactory:    executorFactory,
 	}
+}
+
+func (c DecisionCollector) Name() string {
+	return CollectorNameDecisions
 }
 
 func (c DecisionCollector) Collect(ctx context.Context, orgs []models.Organization, from, to time.Time) ([]models.MetricData, error) {

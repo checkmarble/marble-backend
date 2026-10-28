@@ -38,11 +38,15 @@ type ScreeningCollector struct {
 
 func NewScreeningCollector(screeningRepository ScreeningCollectorRepository,
 	executorFactory executor_factory.ExecutorFactory,
-) Collector {
+) CounterCollector {
 	return ScreeningCollector{
 		screeningRepository: screeningRepository,
 		executorFactory:     executorFactory,
 	}
+}
+
+func (c ScreeningCollector) Name() string {
+	return CollectorNameScreenings
 }
 
 // Collect screenings count by organization by daily frequency period
@@ -86,12 +90,16 @@ type ScreeningByProviderCollector struct {
 func NewScreeningByProviderCollector(screeningRepository ScreeningCollectorRepository,
 	executorFactory executor_factory.ExecutorFactory,
 	providers []models.ScreeningProvider,
-) Collector {
+) CounterCollector {
 	return ScreeningByProviderCollector{
 		screeningRepository: screeningRepository,
 		executorFactory:     executorFactory,
 		providers:           providers,
 	}
+}
+
+func (c ScreeningByProviderCollector) Name() string {
+	return CollectorNameScreeningsByProvider
 }
 
 // Collect screenings count by organization by daily frequency period

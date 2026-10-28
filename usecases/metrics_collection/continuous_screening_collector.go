@@ -27,12 +27,16 @@ func NewContinuousScreeningByProviderCollector(
 	repository ContinuousScreeningCollectorRepository,
 	executorFactory executor_factory.ExecutorFactory,
 	providers []models.ScreeningProvider,
-) Collector {
+) CounterCollector {
 	return ContinuousScreeningByProviderCollector{
 		repository:      repository,
 		executorFactory: executorFactory,
 		providers:       providers,
 	}
+}
+
+func (c ContinuousScreeningByProviderCollector) Name() string {
+	return CollectorNameContinuousScreeningsByProvider
 }
 
 func (c ContinuousScreeningByProviderCollector) Collect(ctx context.Context, orgs []models.Organization, from, to time.Time) ([]models.MetricData, error) {

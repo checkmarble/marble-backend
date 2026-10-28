@@ -22,6 +22,18 @@ const (
 	FreeformSearchLexisNexisMetricName    = "freeform_searches.lexisnexis.count"
 )
 
+// Counter collector names, used as watermark specs (stored as "metrics:<name>").
+// They are permanent: never rename them, or the existing watermarks are lost.
+const (
+	CollectorNameDecisions                      = "decisions"
+	CollectorNameCases                          = "cases"
+	CollectorNameScreenings                     = "screenings"
+	CollectorNameAiCaseReviews                  = "ai_case_reviews"
+	CollectorNameScreeningsByProvider           = "screenings_by_provider"
+	CollectorNameContinuousScreeningsByProvider = "continuous_screenings_by_provider"
+	CollectorNameFreeformSearchesByProvider     = "freeform_searches_by_provider"
+)
+
 // Helper for building metric name
 func buildScreeningMetricName(provider models.ScreeningProvider) (string, error) {
 	switch provider {

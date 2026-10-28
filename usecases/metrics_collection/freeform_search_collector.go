@@ -29,12 +29,16 @@ func NewFreeformSearchByProviderCollector(
 	repository FreeformSearchCollectorRepository,
 	executorFactory executor_factory.ExecutorFactory,
 	providers []models.ScreeningProvider,
-) Collector {
+) CounterCollector {
 	return FreeformSearchByProviderCollector{
 		repository:      repository,
 		executorFactory: executorFactory,
 		providers:       providers,
 	}
+}
+
+func (c FreeformSearchByProviderCollector) Name() string {
+	return CollectorNameFreeformSearchesByProvider
 }
 
 // Collect freeform searches count by organization and provider by daily frequency period
