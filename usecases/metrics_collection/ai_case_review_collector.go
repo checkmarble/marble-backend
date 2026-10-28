@@ -26,11 +26,15 @@ type AiCaseReviewCollector struct {
 
 func NewAiCaseReviewCollector(aiCaseReviewRepository AiCaseReviewCollectorRepository,
 	executorFactory executor_factory.ExecutorFactory,
-) Collector {
+) CounterCollector {
 	return AiCaseReviewCollector{
 		aiCaseReviewRepository: aiCaseReviewRepository,
 		executorFactory:        executorFactory,
 	}
+}
+
+func (c AiCaseReviewCollector) Name() string {
+	return CollectorNameAiCaseReviews
 }
 
 // Collect AI case reviews count by organization by daily frequency period

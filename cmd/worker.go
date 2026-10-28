@@ -140,8 +140,11 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		Disabled:         utils.GetEnv("DISABLE_TELEMETRY", false),
 		JobInterval:      utils.GetEnvDuration("METRICS_COLLECTION_JOB_INTERVAL", 1*time.Hour),
 		FallbackDuration: utils.GetEnvDuration("METRICS_FALLBACK_DURATION", 30*24*time.Hour),
+		JobTimeout:       utils.GetEnvDuration("METRICS_COLLECTION_JOB_TIMEOUT", 10*time.Minute),
+		CollectorTimeout: utils.GetEnvDuration("METRICS_COLLECTOR_TIMEOUT", 2*time.Minute),
 	}
 	metricCollectionConfig.Configure(licenseConfig)
+	metricCollectionConfig.ValidateAndFix(ctx)
 
 	aiAgentConfig := infra.AIAgentConfiguration{
 		MainAgentProviderType: infra.AIAgentProviderTypeFromString(

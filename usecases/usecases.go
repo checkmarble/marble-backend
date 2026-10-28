@@ -641,6 +641,7 @@ func (usecases *Usecases) NewMetricsCollectionWorker(licenseConfiguration models
 		),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
 		usecases.metricsCollectionConfig,
 	)
 }

@@ -2,7 +2,9 @@ package metrics_collection
 
 import (
 	"context"
+	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -52,90 +54,210 @@ type Collector interface {
 	Collect(ctx context.Context, orgs []models.Organization, from time.Time, to time.Time) ([]models.MetricData, error)
 }
 
+// CounterCollector is a collector of counters over a time range. Its name identifies
+// the watermark used to collect it incrementally.
+type CounterCollector interface {
+	Collector
+	// Name is stable and used as watermark spec: never rename it.
+	Name() string
+}
+
 var DeploymentIDCache = expirable.NewLRU[string, uuid.UUID](1, nil, 0)
 
 type Collectors struct {
-	version          string
-	globalCollectors []GlobalCollector
-	collectors       []Collector
+	version            string
+	globalCollectors   []GlobalCollector
+	snapshotCollectors []Collector
+	counterCollectors  []CounterCollector
 
 	licenseConfig   models.LicenseConfiguration
 	repository      CollectorRepository
 	executorFactory executor_factory.ExecutorFactory
 }
 
-func (c Collectors) CollectMetrics(ctx context.Context, from time.Time, to time.Time) (models.MetricsCollection, error) {
-	metrics := []models.MetricData{}
-
-	// Collect global metrics
-	globalMetrics, err := c.collectGlobalMetrics(ctx, from, to)
-	if err != nil {
-		return models.MetricsCollection{}, err
-	}
-	metrics = slices.Concat(metrics, globalMetrics)
-
-	// Collect organization-specific metrics
-	orgMetrics, err := c.collectOrganizationMetrics(ctx, from, to)
-	if err != nil {
-		return models.MetricsCollection{}, err
-	}
-	metrics = slices.Concat(metrics, orgMetrics)
-
+// CollectMetrics runs all collectors for the given request.
+//
+// Two distinct timeouts are at play:
+//   - the parent ctx carries the global budget of the run: once ctx.Err() != nil, nothing else is started and the
+//     remaining counters are reported as skipped (CompletedUntil == From);
+//   - req.CollectorTimeout bounds each collector on its own: when it expires, only that collector stops.
+//
+// Counters are run sequentially, oldest watermark first, so a collector starved by the budget goes first next run.
+func (c Collectors) CollectMetrics(ctx context.Context, req models.MetricsCollectionRequest) (models.MetricsCollectionResult, error) {
 	deploymentID, err := c.GetDeploymentID(ctx)
 	if err != nil {
-		return models.MetricsCollection{}, err
+		return models.MetricsCollectionResult{}, errors.Wrap(err, "failed to get deployment ID")
 	}
-
-	payload := models.MetricsCollection{
-		CollectionID: pure_utils.NewId(),
-		Timestamp:    time.Now(),
-		Metrics:      metrics,
-		Version:      c.version,
-		LicenseKey:   c.GetLicenseKey(),
-		DeploymentID: deploymentID,
-	}
-
-	return payload, nil
-}
-
-// Collects global metrics from all collectors
-// If a collector fails, it will log a warning and continue to the next collector (don't fail the whole function)
-func (c Collectors) collectGlobalMetrics(ctx context.Context, from time.Time, to time.Time) ([]models.MetricData, error) {
-	metrics := []models.MetricData{}
-
-	for _, collector := range c.globalCollectors {
-		value, err := collector.Collect(ctx, from, to)
-		if err != nil {
-			utils.LogAndReportSentryError(ctx, err)
-			continue
-		}
-		metrics = slices.Concat(metrics, value)
-	}
-
-	return metrics, nil
-}
-
-// Collects organization metrics from all collectors, fetching all organizations from the database first
-// If a collector fails, it will log a warning and continue to the next collector (don't fail the whole function)
-func (c Collectors) collectOrganizationMetrics(ctx context.Context, from time.Time, to time.Time) ([]models.MetricData, error) {
-	metrics := []models.MetricData{}
-	logger := utils.LoggerFromContext(ctx)
 
 	orgs, err := c.getListOfOrganizations(ctx)
 	if err != nil {
-		return []models.MetricData{}, err
+		return models.MetricsCollectionResult{}, errors.Wrap(err, "failed to list organizations")
 	}
 
-	for _, collector := range c.collectors {
-		value, err := collector.Collect(ctx, orgs, from, to)
-		if err != nil {
-			logger.WarnContext(ctx, "Failed to collect organization metrics", "error", err)
+	metrics := []models.MetricData{}
+
+	// Global and snapshot collectors run once over [SnapshotFrom, Now], they are never split.
+	metrics = append(metrics, c.collectGlobalMetrics(ctx, req.SnapshotFrom, req.Now, req.CollectorTimeout)...)
+	metrics = append(metrics, c.collectSnapshotMetrics(ctx, orgs, req.SnapshotFrom, req.Now, req.CollectorTimeout)...)
+
+	// Counter collectors: only those with a watermark in the request, oldest first (tie-break on name).
+	counters := make([]CounterCollector, 0, len(c.counterCollectors))
+	for _, cc := range c.counterCollectors {
+		if _, ok := req.CounterFrom[cc.Name()]; ok {
+			counters = append(counters, cc)
+		}
+	}
+	slices.SortStableFunc(counters, func(a, b CounterCollector) int {
+		if cmp := req.CounterFrom[a.Name()].Compare(req.CounterFrom[b.Name()]); cmp != 0 {
+			return cmp
+		}
+		return strings.Compare(a.Name(), b.Name())
+	})
+
+	progress := make([]models.MetricsCounterProgress, 0, len(counters))
+	for _, cc := range counters {
+		from := req.CounterFrom[cc.Name()]
+
+		// The parent (budget) context is exhausted: do not start this collector.
+		if err := ctx.Err(); err != nil {
+			progress = append(progress, models.MetricsCounterProgress{
+				CollectorName:  cc.Name(),
+				From:           from,
+				CompletedUntil: from,
+				Err:            errors.Wrap(err, "metrics collection budget exhausted"),
+			})
 			continue
 		}
-		metrics = slices.Concat(metrics, value)
+
+		counterMetrics, p := c.collectCounter(ctx, cc, orgs, from, req.Now, req.CollectorTimeout)
+		metrics = append(metrics, counterMetrics...)
+		progress = append(progress, p)
 	}
 
-	return metrics, nil
+	return models.MetricsCollectionResult{
+		Collection: models.MetricsCollection{
+			CollectionID: pure_utils.NewId(),
+			Timestamp:    time.Now(),
+			Metrics:      metrics,
+			Version:      c.version,
+			LicenseKey:   c.GetLicenseKey(),
+			DeploymentID: deploymentID,
+		},
+		Progress: progress,
+	}, nil
+}
+
+// Collects global metrics from all collectors, each under its own timeout.
+// If a collector fails, it is reported and the next one runs (don't fail the whole function).
+func (c Collectors) collectGlobalMetrics(ctx context.Context, from, to time.Time, timeout time.Duration) []models.MetricData {
+	metrics := []models.MetricData{}
+
+	for _, collector := range c.globalCollectors {
+		if ctx.Err() != nil {
+			break
+		}
+		cctx, cancel := context.WithTimeout(ctx, timeout)
+		value, err := collector.Collect(cctx, from, to)
+		cancel()
+		if err != nil {
+			utils.LoggerFromContext(ctx).WarnContext(ctx, "metrics gauge collector failed",
+				"collector", fmt.Sprintf("%T", collector), "error", err.Error())
+			utils.LogAndReportSentryError(ctx, err)
+			continue
+		}
+		metrics = append(metrics, value...)
+	}
+
+	return metrics
+}
+
+// Collects snapshot (gauge) metrics once over [from, to], each collector under its own timeout.
+// If a collector fails, it is reported and the next one runs (don't fail the whole function).
+func (c Collectors) collectSnapshotMetrics(ctx context.Context, orgs []models.Organization,
+	from, to time.Time, timeout time.Duration,
+) []models.MetricData {
+	metrics := []models.MetricData{}
+
+	for _, collector := range c.snapshotCollectors {
+		if ctx.Err() != nil {
+			break
+		}
+		cctx, cancel := context.WithTimeout(ctx, timeout)
+		value, err := collector.Collect(cctx, orgs, from, to)
+		cancel()
+		if err != nil {
+			utils.LoggerFromContext(ctx).WarnContext(ctx, "metrics gauge collector failed",
+				"collector", fmt.Sprintf("%T", collector), "error", err.Error())
+			utils.LogAndReportSentryError(ctx, err)
+			continue
+		}
+		metrics = append(metrics, value...)
+	}
+
+	return metrics
+}
+
+// collectCounter walks one counter collector through its backlog, one day at a time, under a single
+// per-collector timeout (which is also capped by the parent budget since cctx derives from ctx).
+// It stops at the first failing period and discards that period: CompletedUntil is the end of the last
+// fully collected period, so the watermark can safely advance to it.
+func (c Collectors) collectCounter(ctx context.Context, collector CounterCollector, orgs []models.Organization,
+	from, now time.Time, timeout time.Duration,
+) ([]models.MetricData, models.MetricsCounterProgress) {
+	progress := models.MetricsCounterProgress{
+		CollectorName:  collector.Name(),
+		From:           from,
+		CompletedUntil: from,
+	}
+	if !from.Before(now) {
+		return nil, progress
+	}
+
+	periods, err := pure_utils.SplitTimeRangeByFrequency(from, now, pure_utils.FrequencyDaily)
+	if err != nil {
+		progress.Err = errors.Wrap(err, "failed to split time range for "+collector.Name())
+		return nil, progress
+	}
+
+	cctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	metrics := []models.MetricData{}
+	for _, period := range periods {
+		if err := cctx.Err(); err != nil {
+			progress.Err = errors.Wrapf(err, "collector %s stopped before period %s - %s",
+				collector.Name(), period.From.Format(time.RFC3339), period.To.Format(time.RFC3339))
+			break
+		}
+
+		value, err := collector.Collect(cctx, orgs, period.From, period.To)
+		if err != nil {
+			progress.Err = errors.Wrapf(err, "collector %s failed on period %s - %s",
+				collector.Name(), period.From.Format(time.RFC3339), period.To.Format(time.RFC3339))
+			break
+		}
+
+		metrics = append(metrics, value...)
+		progress.CompletedUntil = period.To
+	}
+
+	utils.LoggerFromContext(ctx).DebugContext(ctx, "counter collector finished",
+		"collector", collector.Name(),
+		"from", from,
+		"completed_until", progress.CompletedUntil,
+		"error", progress.Err,
+	)
+
+	return metrics, progress
+}
+
+// CounterCollectorNames returns the names of the counter collectors, in list order.
+func (c Collectors) CounterCollectorNames() []string {
+	names := make([]string, 0, len(c.counterCollectors))
+	for _, cc := range c.counterCollectors {
+		names = append(names, cc.Name())
+	}
+	return names
 }
 
 // Fetches all organizations from the database
@@ -185,15 +307,17 @@ func NewCollectorsV1(
 ) Collectors {
 	return Collectors{
 		version: "v1",
-		collectors: []Collector{
+		counterCollectors: []CounterCollector{
 			NewDecisionCollector(repository, executorFactory),
 			NewCaseCollector(repository, executorFactory),
 			NewScreeningCollector(repository, executorFactory),
 			NewAiCaseReviewCollector(repository, executorFactory),
-			NewMonitoredObjectCollector(repository, clientDbRepo, executorFactory),
 			NewScreeningByProviderCollector(repository, executorFactory, screeningProviderList),
 			NewContinuousScreeningByProviderCollector(repository, executorFactory, screeningProviderList),
 			NewFreeformSearchByProviderCollector(repository, executorFactory, screeningProviderList),
+		},
+		snapshotCollectors: []Collector{
+			NewMonitoredObjectCollector(repository, clientDbRepo, executorFactory),
 		},
 		globalCollectors: []GlobalCollector{
 			NewAppVersionCollector(apiVersion),

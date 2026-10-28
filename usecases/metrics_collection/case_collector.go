@@ -26,11 +26,15 @@ type CaseCollector struct {
 
 func NewCaseCollector(caseRepository CaseCollectorRepository,
 	executorFactory executor_factory.ExecutorFactory,
-) Collector {
+) CounterCollector {
 	return CaseCollector{
 		caseRepository:  caseRepository,
 		executorFactory: executorFactory,
 	}
+}
+
+func (c CaseCollector) Name() string {
+	return CollectorNameCases
 }
 
 func (c CaseCollector) Collect(ctx context.Context, orgs []models.Organization, from, to time.Time) ([]models.MetricData, error) {
