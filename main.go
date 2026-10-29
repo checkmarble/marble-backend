@@ -39,7 +39,7 @@ func main() {
 
 	if apiVersion == "dev" || os.Getenv("ENABLE_WORKER_ONESHOT") == "1" {
 		workerOnly = flag.String("worker-only", "", "only run a specific job to completion")
-		workerOnlyArgs = flag.String("worker-args", "", "JSON-encoded arguments to the worker")
+		workerOnlyArgs = flag.String("worker-args", "", "JSON-encoded arguments to the worker (org_id is required for organization jobs)")
 	}
 
 	flag.Parse()

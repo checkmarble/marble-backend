@@ -65,6 +65,7 @@ func (c MonitoredObjectCollector) Collect(
 
 	// For each organization, count monitored objects in their client database
 	for _, org := range orgs {
+		ctx := utils.WithSystemCredentials(ctx, org.Id)
 		configStableIds := configStableIdsByOrg[org.Id.String()]
 
 		// Get the client database executor for this organization

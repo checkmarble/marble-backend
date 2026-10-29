@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/h2non/gock"
 	"github.com/riverqueue/river"
 	"github.com/stretchr/testify/mock"
@@ -522,7 +523,11 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) runHappyPathProcessDatasetUpdate
 	job := &river.Job[models.ContinuousScreeningScanDatasetUpdatesArgs]{}
 
 	// Setup mocks
-	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, matchingOrgId, mock.Anything).Return(
+	scopedToOrg := mock.MatchedBy(func(ctx context.Context) bool {
+		creds, ok := utils.CredentialsFromCtx(ctx)
+		return ok && creds.OrganizationId == matchingOrgId && creds.HasRole(models.SYSTEM)
+	})
+	suite.featureAccessReader.On("GetOrganizationFeatureAccess", scopedToOrg, matchingOrgId, mock.Anything).Return(
 		models.OrganizationFeatureAccess{
 			ContinuousScreening: models.Allowed,
 		}, nil,
@@ -574,7 +579,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) runHappyPathProcessDatasetUpdate
 
 	// Mock update job creation and task enqueuing, only for the matching config
 	for _, updateJob := range expectedUpdateJobs {
-		suite.repository.On("CreateContinuousScreeningUpdateJob", mock.Anything, mock.Anything,
+		suite.repository.On("CreateContinuousScreeningUpdateJob", scopedToOrg, mock.Anything,
 			models.CreateContinuousScreeningUpdateJob{
 				Provider:        tc.provider,
 				DatasetUpdateId: updateJob.DatasetUpdateId,
@@ -583,7 +588,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) runHappyPathProcessDatasetUpdate
 			}).Return(updateJob, nil)
 
 		suite.taskEnqueuer.On("EnqueueContinuousScreeningApplyDeltaFileTask",
-			mock.Anything, mock.Anything, updateJob.OrgId, updateJob.Id).Return(nil)
+			scopedToOrg, mock.Anything, updateJob.OrgId, updateJob.Id).Return(nil)
 	}
 
 	// Execute

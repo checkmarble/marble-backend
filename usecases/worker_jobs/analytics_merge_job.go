@@ -120,6 +120,7 @@ func (w AnalyticsMergeWorker) Work(ctx context.Context, job *river.Job[models.An
 	}
 
 	for _, org := range orgs {
+		ctx := utils.WithSystemCredentials(ctx, org.Id)
 		dataModel, err := w.repository.GetDataModel(ctx, dbExec, org.Id, false, false)
 		if err != nil {
 			return errors.Wrap(err, "could not retrieve data model")

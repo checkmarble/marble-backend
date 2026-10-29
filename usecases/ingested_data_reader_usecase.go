@@ -173,7 +173,7 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 		switch {
 		case pivot.Field != "":
 			fieldName = pivot.Field
-		default:
+		case len(pivot.PathLinkIds) > 0:
 			lastLink := dataModel.AllLinksAsMap()[pivot.PathLinkIds[len(pivot.PathLinkIds)-1]]
 			lastField := dataModel.AllFieldsAsMap()[lastLink.ParentFieldId]
 			fieldName = lastField.Name
