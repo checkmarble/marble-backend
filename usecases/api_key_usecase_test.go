@@ -16,12 +16,13 @@ import (
 
 type ApiKeyUsecaseTestSuite struct {
 	suite.Suite
-	enforceSecurity    *mocks.EnforceSecurity
-	transaction        *mocks.Executor
-	executorFactory    *mocks.ExecutorFactory
-	tx                 *mocks.Transaction
-	transactionFactory *mocks.TransactionFactory
-	apiKeyRepository   *mocks.ApiKeyRepository
+	enforceSecurity     *mocks.EnforceSecurity
+	transaction         *mocks.Executor
+	executorFactory     *mocks.ExecutorFactory
+	tx                  *mocks.Transaction
+	transactionFactory  *mocks.TransactionFactory
+	apiKeyRepository    *mocks.ApiKeyRepository
+	featureAccessReader *mocks.FeatureAccessReader
 
 	organizationId  uuid.UUID
 	repositoryError error
@@ -31,6 +32,7 @@ type ApiKeyUsecaseTestSuite struct {
 func (suite *ApiKeyUsecaseTestSuite) SetupTest() {
 	suite.enforceSecurity = new(mocks.EnforceSecurity)
 	suite.apiKeyRepository = new(mocks.ApiKeyRepository)
+	suite.featureAccessReader = newRolesFeatureAccessReader(models.Allowed)
 	suite.transaction = new(mocks.Executor)
 	suite.executorFactory = new(mocks.ExecutorFactory)
 	suite.tx = new(mocks.Transaction)
@@ -44,10 +46,11 @@ func (suite *ApiKeyUsecaseTestSuite) SetupTest() {
 
 func (suite *ApiKeyUsecaseTestSuite) makeUsecase() *ApiKeyUseCase {
 	return &ApiKeyUseCase{
-		apiKeyRepository:   suite.apiKeyRepository,
-		enforceSecurity:    suite.enforceSecurity,
-		executorFactory:    suite.executorFactory,
-		transactionFactory: suite.transactionFactory,
+		apiKeyRepository:    suite.apiKeyRepository,
+		enforceSecurity:     suite.enforceSecurity,
+		executorFactory:     suite.executorFactory,
+		transactionFactory:  suite.transactionFactory,
+		featureAccessReader: suite.featureAccessReader,
 	}
 }
 
@@ -201,6 +204,25 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_cannot_grant_custom_role(
 	_, err := suite.makeUsecase().CreateApiKey(ctx, input)
 
 	suite.ErrorIs(err, suite.securityError)
+	suite.apiKeyRepository.AssertNotCalled(suite.T(), "CreateApiKey", mock.Anything, mock.Anything)
+	suite.AssertExpectations()
+}
+
+func (suite *ApiKeyUsecaseTestSuite) TestCreateApiKey_custom_role_requires_roles_license() {
+	ctx := context.Background()
+	input := models.CreateApiKeyInput{
+		OrganizationId: suite.organizationId,
+		Description:    "test key",
+		RoleBindings:   []models.RoleBinding{{Role: "org/custom.name"}},
+	}
+	suite.featureAccessReader = newRolesFeatureAccessReader(models.Restricted)
+
+	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
+
+	_, err := suite.makeUsecase().CreateApiKey(ctx, input)
+
+	suite.ErrorIs(err, models.ForbiddenError)
+	suite.apiKeyRepository.AssertNotCalled(suite.T(), "GetRoleBySlug", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	suite.apiKeyRepository.AssertNotCalled(suite.T(), "CreateApiKey", mock.Anything, mock.Anything)
 	suite.AssertExpectations()
 }
