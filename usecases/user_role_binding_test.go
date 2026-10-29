@@ -91,10 +91,15 @@ func TestUpdateRoleSections(t *testing.T) {
 			role := models.RbacRole{OrgId: orgId, Slug: string(slug), HiddenSections: tt.hidden}
 			factory.On("NewExecutor").Return(executor).Once()
 			security.On("ManageRoles").Return(nil).Once()
-			security.On("OrgId").Return(orgId).Once()
+			security.On("OrgId").Return(orgId)
 			repo.On("UpdateRoleHiddenSections", ctx, executor, orgId, slug, tt.hidden).Return(nil).Once()
 			repo.On("GetRoleBySlug", ctx, executor, orgId, slug).Return(role, nil).Once()
-			usecase := UserUseCase{executorFactory: factory, userRepository: repo, enforceUserSecurity: roleEnforceSecurity{security}}
+			usecase := UserUseCase{
+				executorFactory:     factory,
+				userRepository:      repo,
+				enforceUserSecurity: roleEnforceSecurity{security},
+				featureAccessReader: newRolesFeatureAccessReader(models.Allowed),
+			}
 
 			updated, err := usecase.UpdateRoleSections(ctx, slug, tt.sections)
 
@@ -123,7 +128,11 @@ func TestUpdateRoleSectionsRejectsInvalidInputs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			security := new(mocks.EnforceSecurity)
 			security.On("ManageRoles").Return(tt.securityError).Once()
-			usecase := UserUseCase{enforceUserSecurity: roleEnforceSecurity{security}}
+			security.On("OrgId").Return(uuid.New()).Maybe()
+			usecase := UserUseCase{
+				enforceUserSecurity: roleEnforceSecurity{security},
+				featureAccessReader: newRolesFeatureAccessReader(models.Allowed),
+			}
 
 			_, err := usecase.UpdateRoleSections(context.Background(), tt.slug, tt.sections)
 
@@ -164,6 +173,7 @@ func TestUpdateRolePermissionsOnlyChecksAddedPermissions(t *testing.T) {
 		executorFactory:     executorFactory,
 		userRepository:      userRepository,
 		enforceUserSecurity: roleEnforceSecurity{enforceSecurity},
+		featureAccessReader: newRolesFeatureAccessReader(models.Allowed),
 	}
 
 	_, err := usecase.UpdateRolePermissions(ctx, slug, permissions)
@@ -189,6 +199,7 @@ func TestUpdateRolePermissionsRejectsUnheldAndPlatformPermissions(t *testing.T) 
 			executorFactory:     executorFactory,
 			userRepository:      userRepository,
 			enforceUserSecurity: roleEnforceSecurity{enforceSecurity},
+			featureAccessReader: newRolesFeatureAccessReader(models.Allowed),
 		}
 	}
 
@@ -264,6 +275,7 @@ func TestDeleteRole(t *testing.T) {
 			transactionFactory:  transactionFactory,
 			userRepository:      userRepository,
 			enforceUserSecurity: roleEnforceSecurity{enforceSecurity},
+			featureAccessReader: newRolesFeatureAccessReader(models.Allowed),
 		}, tx
 	}
 
@@ -315,4 +327,35 @@ func TestDeleteRole(t *testing.T) {
 		assert.ErrorIs(t, err, models.ForbiddenError)
 		userRepository.AssertNotCalled(t, "DeleteRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
+}
+
+func TestManagingRolesRequiresRolesFeature(t *testing.T) {
+	ctx := context.Background()
+	enforceSecurity := new(mocks.EnforceSecurity)
+	userRepository := new(mocks.UserRepository)
+	enforceSecurity.On("ManageRoles").Return(nil)
+	enforceSecurity.On("OrgId").Return(uuid.New())
+
+	usecase := UserUseCase{
+		userRepository:      userRepository,
+		enforceUserSecurity: roleEnforceSecurity{enforceSecurity},
+		featureAccessReader: newRolesFeatureAccessReader(models.Restricted),
+	}
+
+	_, err := usecase.CreateRole(ctx, "org/reviewer", "Reviewer")
+	assert.ErrorIs(t, err, models.ForbiddenError)
+
+	_, err = usecase.UpdateRolePermissions(ctx, "org/reviewer", []models.Permission{models.CASE_READ_WRITE})
+	assert.ErrorIs(t, err, models.ForbiddenError)
+
+	err = usecase.DeleteRole(ctx, "org/reviewer")
+	assert.ErrorIs(t, err, models.ForbiddenError)
+
+	_, err = usecase.UpdateRoleSections(ctx, "org/reviewer", map[models.AppSection]bool{models.SETTINGS: false})
+	assert.ErrorIs(t, err, models.ForbiddenError)
+
+	userRepository.AssertNotCalled(t, "CreateRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	userRepository.AssertNotCalled(t, "UpdateRolePermissions", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	userRepository.AssertNotCalled(t, "DeleteRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	userRepository.AssertNotCalled(t, "UpdateRoleHiddenSections", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }

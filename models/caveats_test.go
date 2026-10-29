@@ -430,3 +430,14 @@ func TestRoleBindingPotentialCaveats(t *testing.T) {
 		})
 	}
 }
+
+func TestRequireRolesFeature(t *testing.T) {
+	now := time.Now()
+
+	assert.False(t, RequireRolesFeature(nil))
+	assert.False(t, RequireRolesFeature([]RoleBinding{{Role: VIEWER}}))
+	assert.True(t, RequireRolesFeature([]RoleBinding{{Role: VIEWER}, {Role: ANALYST}}))
+	assert.True(t, RequireRolesFeature([]RoleBinding{{Role: "org/reviewer"}}))
+	assert.True(t, RequireRolesFeature([]RoleBinding{{Role: VIEWER, Conditions: RoleBindingConditions{NotBefore: &now}}}))
+	assert.True(t, RequireRolesFeature([]RoleBinding{{Role: VIEWER, Conditions: RoleBindingConditions{Networks: []Subnet{{}}}}}))
+}
