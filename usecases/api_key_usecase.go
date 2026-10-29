@@ -31,10 +31,11 @@ type EnforceSecurityApiKey interface {
 }
 
 type ApiKeyUseCase struct {
-	executorFactory    executor_factory.ExecutorFactory
-	transactionFactory executor_factory.TransactionFactory
-	enforceSecurity    EnforceSecurityApiKey
-	apiKeyRepository   ApiKeyRepository
+	executorFactory     executor_factory.ExecutorFactory
+	transactionFactory  executor_factory.TransactionFactory
+	enforceSecurity     EnforceSecurityApiKey
+	apiKeyRepository    ApiKeyRepository
+	featureAccessReader OrganizationUsecaseFeatureAccessReader
 }
 
 func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context, organizationId uuid.UUID) ([]models.ApiKey, error) {
@@ -61,6 +62,15 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 
 	if len(input.RoleBindings) == 0 {
 		return models.CreatedApiKey{}, errors.Wrap(models.BadParameterError, "at least one role binding is required")
+	}
+	if models.RequireRolesFeature(input.RoleBindings) {
+		features, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, input.OrganizationId, nil)
+		if err != nil {
+			return models.CreatedApiKey{}, errors.Wrap(err, "could not check feature access")
+		}
+		if !features.Roles.IsAllowed() {
+			return models.CreatedApiKey{}, errors.Wrap(models.ForbiddenError, "user roles feature is not allowed")
+		}
 	}
 
 	bindings := append([]models.RoleBinding(nil), input.RoleBindings...)

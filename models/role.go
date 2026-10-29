@@ -63,6 +63,29 @@ type RoleBinding struct {
 	Permissions  []Permission
 }
 
+// RequireRolesFeature reports whether binding these roles needs the user
+// roles license: anything beyond a single native role without conditions.
+func RequireRolesFeature(bindings []RoleBinding) bool {
+	if len(bindings) > 1 {
+		return true
+	}
+
+	for _, binding := range bindings {
+		conditions := binding.Conditions
+		if binding.Role.IsCustom() ||
+			conditions.NotBefore != nil ||
+			conditions.NotAfter != nil ||
+			conditions.DayOfWeek != nil ||
+			conditions.TimeOfDay != nil ||
+			conditions.UsedSecondFactor != nil ||
+			len(conditions.Networks) > 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
 // Clock is the time source caveats are evaluated against, satisfied by
 // repositories/clock.Clock.
 type Clock interface {
