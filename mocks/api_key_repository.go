@@ -33,3 +33,8 @@ func (r *ApiKeyRepository) SoftDeleteApiKey(ctx context.Context, exec repositori
 	args := r.Called(exec, apiKeyId)
 	return args.Error(0)
 }
+
+func (r *ApiKeyRepository) GetRoleBySlug(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, slug models.Role) (models.RbacRole, error) {
+	args := r.Called(ctx, exec, orgId, slug)
+	return args.Get(0).(models.RbacRole), args.Error(1)
+}
