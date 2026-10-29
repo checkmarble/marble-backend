@@ -1,0 +1,63 @@
+package repositories
+
+import (
+	"net"
+	"testing"
+	"time"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestSameRoleBinding(t *testing.T) {
+	notBefore := time.Date(2026, 9, 28, 9, 0, 0, 0, time.UTC)
+	sameInstantInParis := notBefore.In(time.FixedZone("Europe/Paris", 2*60*60))
+	later := notBefore.Add(time.Hour)
+	required := true
+	notRequired := false
+
+	office := models.Subnet{IPNet: net.IPNet{IP: net.IPv4(10, 0, 0, 0).To4(), Mask: net.CIDRMask(8, 32)}}
+	home := models.Subnet{IPNet: net.IPNet{IP: net.IPv4(192, 168, 0, 0).To4(), Mask: net.CIDRMask(16, 32)}}
+
+	binding := func(conditions models.RoleBindingConditions) models.RoleBinding {
+		return models.RoleBinding{Role: models.VIEWER, Conditions: conditions}
+	}
+
+	current := binding(models.RoleBindingConditions{
+		NotBefore:        &notBefore,
+		DayOfWeek:        &[]time.Weekday{time.Monday},
+		TimeOfDay:        &models.TimeOfDayRange{900, 1800},
+		UsedSecondFactor: &required,
+		Networks:         []models.Subnet{office},
+	})
+
+	with := func(change func(c *models.RoleBindingConditions)) models.RoleBinding {
+		next := current
+		change(&next.Conditions)
+		return next
+	}
+
+	tests := []struct {
+		name string
+		next models.RoleBinding
+		same bool
+	}{
+		{"identical", current, true},
+		{"same instant in another time zone", with(func(c *models.RoleBindingConditions) { c.NotBefore = &sameInstantInParis }), true},
+		{"other role", models.RoleBinding{Role: models.ADMIN, Conditions: current.Conditions}, false},
+		{"not before changed", with(func(c *models.RoleBindingConditions) { c.NotBefore = &later }), false},
+		{"not after added", with(func(c *models.RoleBindingConditions) { c.NotAfter = &later }), false},
+		{"day of week changed", with(func(c *models.RoleBindingConditions) { c.DayOfWeek = &[]time.Weekday{time.Friday} }), false},
+		{"time of day changed", with(func(c *models.RoleBindingConditions) { c.TimeOfDay = &models.TimeOfDayRange{900, 2000} }), false},
+		{"time of day removed", with(func(c *models.RoleBindingConditions) { c.TimeOfDay = nil }), false},
+		{"second factor changed", with(func(c *models.RoleBindingConditions) { c.UsedSecondFactor = &notRequired }), false},
+		{"networks changed", with(func(c *models.RoleBindingConditions) { c.Networks = []models.Subnet{home} }), false},
+		{"all conditions removed", binding(models.RoleBindingConditions{}), false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.same, sameRoleBinding(current, test.next))
+		})
+	}
+}

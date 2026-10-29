@@ -87,6 +87,7 @@ func TestUserUseCaseReplaceOrganizationGrant(t *testing.T) {
 
 			usecase := UserUseCase{
 				enforceUserSecurity:    allowOrganizationGrantSecurity{},
+				featureAccessReader:    newRolesFeatureAccessReader(models.Allowed),
 				executorFactory:        newExecutorFactory(),
 				transactionFactory:     transactionFactory,
 				userRepository:         userRepository,
@@ -362,6 +363,7 @@ func TestUserUseCaseReplaceOrganizationGrantResolvesCustomRolesInTargetOrganizat
 
 	usecase := UserUseCase{
 		enforceUserSecurity:    allowOrganizationGrantSecurity{},
+		featureAccessReader:    newRolesFeatureAccessReader(models.Allowed),
 		executorFactory:        newExecutorFactory(),
 		transactionFactory:     transactionFactory,
 		userRepository:         userRepository,
@@ -371,6 +373,46 @@ func TestUserUseCaseReplaceOrganizationGrantResolvesCustomRolesInTargetOrganizat
 	require.NoError(t, usecase.ReplaceOrganizationGrant(context.Background(), userID, tenantID, targetOrganizationID,
 		[]models.RoleBinding{{Role: "org/reviewer"}}))
 	userRepository.AssertExpectations(t)
+}
+
+func TestUserUseCaseReplaceOrganizationGrantRequiresRolesFeatureForCustomRoles(t *testing.T) {
+	userID := uuid.NewString()
+	organizationID := uuid.New()
+	tenantID := uuid.New()
+
+	transactionFactory := &mocks.TransactionFactory{TxMock: &mocks.Transaction{}}
+	userRepository := &mocks.UserRepository{}
+	organizationRepository := &mocks.OrganizationRepository{}
+
+	userRepository.On("GetRoleBySlug", mock.Anything, mock.Anything, organizationID, models.Role("org/reviewer")).
+		Return(models.RbacRole{Id: uuid.New()}, nil)
+	userRepository.On("UserById", mock.Anything, mock.Anything, userID).
+		Return(models.User{OrganizationId: organizationID}, nil)
+	organizationRepository.On("GetOrganizationById", mock.Anything, mock.Anything, organizationID).
+		Return(models.Organization{Id: organizationID, TenantId: tenantID}, nil)
+	transactionFactory.On("Transaction", mock.Anything, mock.Anything).Return(nil)
+
+	usecase := UserUseCase{
+		enforceUserSecurity:    allowOrganizationGrantSecurity{},
+		featureAccessReader:    newRolesFeatureAccessReader(models.Restricted),
+		executorFactory:        newExecutorFactory(),
+		transactionFactory:     transactionFactory,
+		userRepository:         userRepository,
+		organizationRepository: organizationRepository,
+	}
+
+	err := usecase.ReplaceOrganizationGrant(context.Background(), userID, tenantID, organizationID,
+		[]models.RoleBinding{{Role: "org/reviewer"}})
+	require.ErrorIs(t, err, models.ForbiddenError)
+	userRepository.AssertNotCalled(t, "ReplaceUserOrganizationRoleBindings", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}
+
+func newRolesFeatureAccessReader(access models.FeatureAccess) *mocks.FeatureAccessReader {
+	featureAccessReader := new(mocks.FeatureAccessReader)
+	featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, mock.Anything, (*models.UserId)(nil)).
+		Return(models.OrganizationFeatureAccess{Roles: access}, nil)
+
+	return featureAccessReader
 }
 
 func newExecutorFactory() *mocks.ExecutorFactory {

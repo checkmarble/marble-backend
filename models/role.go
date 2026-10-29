@@ -1,10 +1,15 @@
 package models
 
 import (
+	"bytes"
+	"encoding/json"
+	"net"
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -16,6 +21,36 @@ type RbacRole struct {
 	Permissions []Permission
 }
 
+type RoleBindingConditions struct {
+	NotBefore        *time.Time      `json:"notBefore,omitempty"`        //nolint:tagliatelle
+	NotAfter         *time.Time      `json:"notAfter,omitempty"`         //nolint:tagliatelle
+	DayOfWeek        *[]time.Weekday `json:"dayOfWeek,omitempty"`        //nolint:tagliatelle
+	TimeOfDay        *TimeOfDayRange `json:"timeOfDay,omitempty"`        //nolint:tagliatelle
+	UsedSecondFactor *bool           `json:"usedSecondFactor,omitempty"` //nolint:tagliatelle
+	Networks         []Subnet        `json:"networks,omitempty"`
+}
+
+func (conditions RoleBindingConditions) Validate() error {
+	if conditions.NotBefore != nil && conditions.NotAfter != nil && !conditions.NotBefore.Before(*conditions.NotAfter) {
+		return errors.Errorf("notBefore must be before notAfter: %w", BadParameterError)
+	}
+	if conditions.TimeOfDay != nil {
+		if err := conditions.TimeOfDay.Validate(); err != nil {
+			return err
+		}
+	}
+	if conditions.DayOfWeek != nil {
+		for _, day := range *conditions.DayOfWeek {
+			if day < time.Sunday || day > time.Saturday {
+				return errors.Errorf("invalid day of week %d, expected 0 (Sunday) to 6 (Saturday): %w",
+					int(day), BadParameterError)
+			}
+		}
+	}
+
+	return nil
+}
+
 type RoleBinding struct {
 	Id           uuid.UUID
 	TenantId     uuid.UUID
@@ -24,12 +59,148 @@ type RoleBinding struct {
 	ApiKeyId     *uuid.UUID
 	Role         Role
 	CustomRoleId *uuid.UUID
+	Conditions   RoleBindingConditions
 	Permissions  []Permission
 }
 
-// Equivalent reports whether two bindings grant the same role.
+// RequireRolesFeature reports whether binding these roles needs the user
+// roles license: anything beyond a single native role without conditions.
+func RequireRolesFeature(bindings []RoleBinding) bool {
+	if len(bindings) > 1 {
+		return true
+	}
+
+	for _, binding := range bindings {
+		conditions := binding.Conditions
+		if binding.Role.IsCustom() ||
+			conditions.NotBefore != nil ||
+			conditions.NotAfter != nil ||
+			conditions.DayOfWeek != nil ||
+			conditions.TimeOfDay != nil ||
+			conditions.UsedSecondFactor != nil ||
+			len(conditions.Networks) > 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Clock is the time source caveats are evaluated against, satisfied by
+// repositories/clock.Clock.
+type Clock interface {
+	Now() time.Time
+}
+
+// RoleBindingBundle holds what the caveats of role bindings are evaluated
+// against.
+type RoleBindingBundle struct {
+	// Clock is the time source caveats are evaluated against. A nil clock
+	// means the current time.
+	Clock            Clock
+	UsedSecondFactor bool
+	// ClientIp is resolved on every request and is never part of the token.
+	ClientIp net.IP
+	// Location is the time zone of the organization the caveats are evaluated
+	// for, used for calendar-based caveats. A nil location means UTC.
+	Location *time.Location
+	// Potential evaluates the caveats of a principal outside of its own
+	// requests, for instance to check whether a user can be assigned a case.
+	// Caveats depending on the request (second factor, network) or on when it
+	// is made (day of week, time of day) are then considered satisfied, while
+	// the validity period of the binding is still enforced.
+	Potential bool
+}
+
+// Now returns the time caveats are evaluated at.
+func (bundle RoleBindingBundle) Now() time.Time {
+	if bundle.Clock == nil {
+		return time.Now()
+	}
+
+	return bundle.Clock.Now()
+}
+
+// LocalNow returns the evaluation time in the bundle's time zone, or in UTC
+// when no time zone is known.
+func (bundle RoleBindingBundle) LocalNow() time.Time {
+	if bundle.Location == nil {
+		return bundle.Now().In(time.UTC)
+	}
+
+	return bundle.Now().In(bundle.Location)
+}
+
+func (b RoleBinding) IsActive(bundle RoleBindingBundle) bool {
+	now := bundle.Now()
+
+	if b.Conditions.NotBefore != nil && now.Before(*b.Conditions.NotBefore) {
+		return false
+	}
+	if b.Conditions.NotAfter != nil && now.After(*b.Conditions.NotAfter) {
+		return false
+	}
+
+	if bundle.Potential {
+		return true
+	}
+
+	// An empty list of week days is unrestricted, like an empty list of
+	// networks. Days are evaluated in the organization's time zone if
+	// available.
+	if b.Conditions.DayOfWeek != nil && len(*b.Conditions.DayOfWeek) > 0 &&
+		!slices.Contains(*b.Conditions.DayOfWeek, bundle.LocalNow().Weekday()) {
+		return false
+	}
+	// The time of day is also evaluated in the organization's time zone.
+	if b.Conditions.TimeOfDay != nil && !b.Conditions.TimeOfDay.Contains(bundle.LocalNow()) {
+		return false
+	}
+	if b.Conditions.UsedSecondFactor != nil && *b.Conditions.UsedSecondFactor && !bundle.UsedSecondFactor {
+		return false
+	}
+
+	// Like the organization allowed networks guard, an empty list is
+	// unrestricted, and an unknown client IP fails open.
+	if len(b.Conditions.Networks) > 0 && bundle.ClientIp != nil {
+		inNetworks := slices.ContainsFunc(b.Conditions.Networks, func(subnet Subnet) bool {
+			return subnet.Contains(bundle.ClientIp)
+		})
+
+		if !inNetworks {
+			return false
+		}
+	}
+
+	return true
+}
+
+// Equivalent reports whether two bindings grant the same role under the same
+// conditions. Conditions are compared through their stored JSON form, which
+// covers every caveat, after normalizing timestamps: the same instant may be
+// read back from the database with a different offset than it was given.
 func (b RoleBinding) Equivalent(other RoleBinding) bool {
-	return b.Role == other.Role
+	if b.Role != other.Role {
+		return false
+	}
+
+	left, errLeft := json.Marshal(b.Conditions.normalized())
+	right, errRight := json.Marshal(other.Conditions.normalized())
+
+	return errLeft == nil && errRight == nil && bytes.Equal(left, right)
+}
+
+func (conditions RoleBindingConditions) normalized() RoleBindingConditions {
+	if conditions.NotBefore != nil {
+		notBefore := conditions.NotBefore.UTC()
+		conditions.NotBefore = &notBefore
+	}
+	if conditions.NotAfter != nil {
+		notAfter := conditions.NotAfter.UTC()
+		conditions.NotAfter = &notAfter
+	}
+
+	return conditions
 }
 
 // AppliesTo reports whether the binding grants its role when acting within
