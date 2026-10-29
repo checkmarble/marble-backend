@@ -44,3 +44,26 @@ func TestEvalAllScenarioRulesSumsEveryScore(t *testing.T) {
 		assert.Equal(t, len(rules), score)
 	}
 }
+
+type panickingAstEvaluator struct{}
+
+func (panickingAstEvaluator) EvaluateAstExpression(ctx context.Context, cache *ast_eval.EvaluationCache, ruleAstExpression ast.Node, organizationId uuid.UUID, payload models.ClientObject, dataModel models.DataModel) (ast.NodeEvaluation, error) {
+	panic("boom")
+}
+
+// Regression test: a panic in a rule goroutine used to be unrecoverable by EvalScenario and
+// crashed the whole worker process.
+func TestEvalAllScenarioRulesRecoversFromPanic(t *testing.T) {
+	ctx := utils.StoreLoggerInContext(context.Background(), slog.New(slog.DiscardHandler))
+	evaluator := ScenarioEvaluator{evaluateAstExpression: panickingAstEvaluator{}}
+
+	rules := []models.Rule{
+		{Id: "rule_1", FormulaAstExpression: &ast.Node{Constant: true}},
+		{Id: "rule_2", FormulaAstExpression: &ast.Node{Constant: true}},
+	}
+
+	_, _, err := evaluator.evalAllScenarioRules(ctx, ast_eval.NewEvaluationCache(), rules,
+		DataAccessor{}, models.DataModel{}, nil, 0)
+
+	require.ErrorIs(t, err, models.ErrPanicInScenarioEvalution)
+}
