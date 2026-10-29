@@ -201,10 +201,18 @@ func (repo *MarbleDbRepository) ReplaceGroupMembers(
 		return err
 	}
 
+	// Only actual changes are written, so that the audit trail does not record
+	// unchanged members as removed and added again.
+	userIds := make([]string, len(memberIds))
+	for idx, userId := range memberIds {
+		userIds[idx] = string(userId)
+	}
+
 	if err := ExecBuilder(ctx, tx,
 		NewQueryBuilder().
 			Delete(dbmodels.TABLE_GROUP_MEMBERSHIPS).
-			Where(squirrel.Eq{"group_id": groupId})); err != nil {
+			Where(squirrel.Eq{"group_id": groupId}).
+			Where(squirrel.NotEq{"user_id": userIds})); err != nil {
 		return err
 	}
 
@@ -214,9 +222,10 @@ func (repo *MarbleDbRepository) ReplaceGroupMembers(
 
 	insert := NewQueryBuilder().
 		Insert(dbmodels.TABLE_GROUP_MEMBERSHIPS).
-		Columns("group_id", "user_id")
-	for _, userId := range memberIds {
-		insert = insert.Values(groupId, string(userId))
+		Columns("group_id", "user_id").
+		Suffix("on conflict (group_id, user_id) do nothing")
+	for _, userId := range userIds {
+		insert = insert.Values(groupId, userId)
 	}
 
 	return ExecBuilder(ctx, tx, insert)
