@@ -507,6 +507,7 @@ func (usecases *UsecasesWithCreds) NewUserUseCase() UserUseCase {
 		grantRepository:        usecases.Repositories.MarbleDbRepository,
 		organizationRepository: usecases.Repositories.MarbleDbRepository,
 		firebaseAdmin:          usecases.firebaseAdmin,
+		featureAccessReader:    usecases.NewFeatureAccessReader(),
 	}
 }
 
@@ -604,7 +605,8 @@ func (usecases *UsecasesWithCreds) NewApiKeyUseCase() ApiKeyUseCase {
 			EnforceSecurity: usecases.NewEnforceSecurity(),
 			Credentials:     usecases.Credentials,
 		},
-		apiKeyRepository: usecases.Repositories.MarbleDbRepository,
+		apiKeyRepository:    usecases.Repositories.MarbleDbRepository,
+		featureAccessReader: usecases.NewFeatureAccessReader(),
 	}
 }
 
