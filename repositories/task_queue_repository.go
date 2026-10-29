@@ -730,10 +730,12 @@ func (r riverRepository) EnqueueBatchExecutionCoordinator(
 	res, err := r.client.InsertTx(ctx, tx.RawTx(), models.BatchExecutionCoordinatorArgs{
 		ScheduledExecutionId: scheduledExecutionId,
 	}, &river.InsertOpts{
-		// The coordinator loops to completion in a single run; errors are handled in-loop and
-		// it only returns an error on process shutdown, so a generous attempt count lets it
-		// resume from its committed offset across several deploys.
-		MaxAttempts: 30,
+		// The coordinator handles errors in-loop, but a slice can still fail or die with its
+		// process (crash, deploy), and is then retried with a capped backoff (see
+		// BatchExecutionCoordinatorWorker.NextRetry) from its committed offset. The execution
+		// deadline is what terminates a run that never recovers, so the attempt count must be
+		// high enough never to be exhausted before it: at the 30m retry cap, 24h is ~50 attempts.
+		MaxAttempts: 200,
 		Queue:       organizationId.String(),
 		UniqueOpts: river.UniqueOpts{
 			ByArgs: true,
