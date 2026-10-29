@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/cockroachdb/errors"
@@ -19,17 +20,6 @@ type tenantOIDCConfigurationBody struct {
 	ExtraParams  map[string]string `json:"extra_params"`
 	EmailClaim   string            `json:"email_claim"`
 	SsoEnabled   *bool             `json:"sso_enabled"`
-}
-
-type tenantOIDCConfigurationResponse struct {
-	TenantId        uuid.UUID         `json:"tenant_id"`
-	Issuer          string            `json:"issuer"`
-	ClientId        string            `json:"client_id"`
-	ClientSecretSet bool              `json:"client_secret_set"`
-	Scopes          []string          `json:"scopes"`
-	ExtraParams     map[string]string `json:"extra_params"`
-	EmailClaim      string            `json:"email_claim"`
-	SsoEnabled      bool              `json:"sso_enabled"`
 }
 
 type tenantDomainBody struct {
@@ -52,13 +42,6 @@ func tenantIDFromParam(c *gin.Context) (uuid.UUID, error) {
 	return tenantId, nil
 }
 
-func adaptTenantOIDCConfiguration(config models.TenantOIDCConfiguration) tenantOIDCConfigurationResponse {
-	return tenantOIDCConfigurationResponse{
-		TenantId: config.TenantId, Issuer: config.Issuer, ClientId: config.ClientId, ClientSecretSet: true,
-		Scopes: config.Scopes, ExtraParams: config.ExtraParams, EmailClaim: config.EmailClaim, SsoEnabled: config.SsoEnabled,
-	}
-}
-
 func adaptTenantDomain(domain models.TenantDomain) tenantDomainResponse {
 	return tenantDomainResponse{
 		Id: domain.Id, TenantId: domain.TenantId, Domain: domain.Domain, VerifiedAt: domain.VerifiedAt, CreatedAt: domain.CreatedAt,
@@ -76,7 +59,7 @@ func handleGetTenantOIDCConfiguration(uc usecases.Usecases) gin.HandlerFunc {
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, adaptTenantOIDCConfiguration(configuration))
+		c.JSON(http.StatusOK, dto.AdaptTenantOIDCConfiguration(configuration))
 	}
 }
 
