@@ -19,9 +19,11 @@ func (m mockedTokenVerifier) VerifyIDToken(_ context.Context, idToken string) (*
 	if _, _, err := new(jwt.Parser).ParseUnverified(idToken, &claims); err != nil {
 		return nil, err
 	}
+	subject, _ := claims["sub"].(string)
 
 	return &auth.Token{
-		Issuer: MockFirebaseIssuer,
+		Issuer:  MockFirebaseIssuer,
+		Subject: subject,
 		Firebase: auth.FirebaseInfo{
 			Identities:     map[string]any{"email": []any{claims["email"]}},
 			SignInProvider: "password",

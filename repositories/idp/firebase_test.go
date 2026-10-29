@@ -42,8 +42,9 @@ func TestClient_VerifyFirebaseToken(t *testing.T) {
 		identity, err := c.VerifyToken(context.Background(), "token", "")
 		assert.NoError(t, err)
 		assert.Equal(t, models.FirebaseIdentity{
-			Issuer: infra.MockFirebaseIssuer,
-			Email:  "user@email.com",
+			Issuer:  infra.MockFirebaseIssuer,
+			Subject: "token_subject",
+			Email:   "user@email.com",
 		}, identity)
 		mockVerifier.AssertExpectations(t)
 	})
@@ -69,6 +70,18 @@ func TestClient_VerifyFirebaseToken(t *testing.T) {
 
 		_, err := c.VerifyToken(context.Background(), "token", "")
 		assert.Error(t, err)
+		mockVerifier.AssertExpectations(t)
+	})
+
+	t.Run("missing subject", func(t *testing.T) {
+		mockVerifier := new(mockTokenCookieVerifier)
+		mockVerifier.On("VerifyIDToken", mock.Anything, "token").
+			Return(&auth.Token{Issuer: infra.MockFirebaseIssuer}, nil)
+
+		c := NewFirebaseClient("project", mockVerifier)
+
+		_, err := c.VerifyToken(context.Background(), "token", "")
+		assert.ErrorContains(t, err, "subject")
 		mockVerifier.AssertExpectations(t)
 	})
 
