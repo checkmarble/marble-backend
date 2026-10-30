@@ -300,6 +300,7 @@ func (e ScenarioEvaluator) processScenarioIteration(
 
 	go func() {
 		defer wg.Done()
+		defer recoverEvaluationPanic(ctx, &ruleErr, "rule evaluation")
 
 		ctx, span := utils.OpenTelemetryTracerFromContext(ctx).Start(ctx, "rule_evaluation")
 		defer span.End()
@@ -324,6 +325,7 @@ func (e ScenarioEvaluator) processScenarioIteration(
 
 	go func() {
 		defer wg.Done()
+		defer recoverEvaluationPanic(ctx, &screeningErr, "screening evaluation")
 
 		start := time.Now()
 
@@ -774,7 +776,9 @@ func (e ScenarioEvaluator) evalAllScenarioRules(
 
 	// Launch rules concurrently
 	for i, rule := range rules {
-		group.Go(func() error {
+		group.Go(func() (err error) {
+			defer recoverEvaluationPanic(ctx, &err, fmt.Sprintf("evaluation of rule %s (%s)", rule.Name, rule.Id))
+
 			// return early if ctx is done
 			select {
 			case <-ctx.Done():
@@ -806,6 +810,19 @@ func (e ScenarioEvaluator) evalAllScenarioRules(
 	}
 
 	return score, ruleExecutions, nil
+}
+
+// recoverEvaluationPanic must be deferred directly at the top of every goroutine spawned during
+// an evaluation. A panic cannot be recovered from outside the goroutine it happens in, so without
+// it, the recover in EvalScenario does not apply and the panic crashes the whole process.
+func recoverEvaluationPanic(ctx context.Context, err *error, where string) {
+	if r := recover(); r != nil {
+		utils.LoggerFromContext(ctx).ErrorContext(ctx,
+			fmt.Sprintf("recovered from panic during %s: '%v'. stacktrace from panic:", where, r))
+		utils.LogAndReportSentryError(ctx, errors.New(string(debug.Stack())))
+
+		*err = models.ErrPanicInScenarioEvalution
+	}
 }
 
 func getPivotValue(ctx context.Context, pivot models.Pivot, dataAccessor DataAccessor) (*string, error) {

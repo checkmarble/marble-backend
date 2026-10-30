@@ -3,11 +3,13 @@ package evaluate
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
@@ -136,6 +138,20 @@ func (mlc EntityAnnotationCheck) Evaluate(ctx context.Context, arguments ast.Arg
 	// Launch goroutines
 	for _, linkedCheck := range config.LinkedTableChecks {
 		go func(linkedCheck ast.LinkedTableCheck) {
+			// A panic cannot be recovered outside of this goroutine and would crash the process.
+			// Report it as this check's result, so that the collector below still gets exactly
+			// one result per check.
+			defer func() {
+				if r := recover(); r != nil {
+					utils.LoggerFromContext(ctx).ErrorContext(ctx,
+						fmt.Sprintf("recovered from panic during linked table check on %s: '%v'. stacktrace from panic:",
+							linkedCheck.TableName, r))
+					utils.LogAndReportSentryError(ctx, errors.New(string(debug.Stack())))
+
+					results <- checkResult{err: models.ErrPanicInScenarioEvalution}
+				}
+			}()
+
 			// Acquire semaphore
 			select {
 			case sem <- struct{}{}:

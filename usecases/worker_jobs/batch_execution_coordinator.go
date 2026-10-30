@@ -55,6 +55,11 @@ const (
 	batchExecBackoffBase  = 5 * time.Second
 	batchExecBackoffCap   = 2 * time.Minute
 	batchExecSentryEveryN = 20
+
+	// batchExecRetryBackoffCap caps the delay River waits before retrying a coordinator job that
+	// failed or was rescued after a crash. It is separate from batchExecBackoffCap, which caps
+	// the in-loop sleep and must stay well below the run duration.
+	batchExecRetryBackoffCap = 30 * time.Minute
 )
 
 type batchCoordinatorRepository interface {
@@ -186,6 +191,14 @@ func NewBatchExecutionCoordinatorWorker(coordinator *BatchExecutionCoordinator) 
 
 func (w *BatchExecutionCoordinatorWorker) Timeout(job *river.Job[models.BatchExecutionCoordinatorArgs]) time.Duration {
 	return batchExecJobTimeout
+}
+
+// NextRetry overrides River's default n⁴ backoff, which delays a crashed or failed coordinator
+// by hours. The coordinator resumes from its committed manifest offset, so retrying soon is
+// safe; the execution deadline bounds a run that never recovers. Called both when Work returns
+// an error and when the rescuer reclaims a job whose process died.
+func (w *BatchExecutionCoordinatorWorker) NextRetry(job *river.Job[models.BatchExecutionCoordinatorArgs]) time.Time {
+	return time.Now().Add(batchExecBackoffDelay(len(job.Errors)+1, batchExecRetryBackoffCap))
 }
 
 func (w *BatchExecutionCoordinatorWorker) Work(ctx context.Context, job *river.Job[models.BatchExecutionCoordinatorArgs]) error {
@@ -766,7 +779,7 @@ func (c *BatchExecutionCoordinator) logAndSleepWithBackoff(ctx context.Context, 
 		utils.LogAndReportSentryError(ctx, err)
 	}
 
-	delay := batchExecBackoffDelay(*consecutiveFailures)
+	delay := batchExecBackoffDelay(*consecutiveFailures, batchExecBackoffCap)
 	timer := time.NewTimer(delay)
 	defer timer.Stop()
 	select {
@@ -775,16 +788,16 @@ func (c *BatchExecutionCoordinator) logAndSleepWithBackoff(ctx context.Context, 
 	}
 }
 
-func batchExecBackoffDelay(consecutiveFailures int) time.Duration {
+func batchExecBackoffDelay(consecutiveFailures int, maxDelay time.Duration) time.Duration {
 	if consecutiveFailures < 1 {
 		consecutiveFailures = 1
 	}
 	delay := batchExecBackoffBase
-	for i := 1; i < consecutiveFailures && delay < batchExecBackoffCap; i++ {
+	for i := 1; i < consecutiveFailures && delay < maxDelay; i++ {
 		delay *= 2
 	}
-	if delay > batchExecBackoffCap {
-		delay = batchExecBackoffCap
+	if delay > maxDelay {
+		delay = maxDelay
 	}
 	return delay
 }
