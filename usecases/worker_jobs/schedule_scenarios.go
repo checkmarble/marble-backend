@@ -27,6 +27,12 @@ func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context,
 		return false, nil
 	}
 
+	// Release executions whose cancellation was never acknowledged by their worker, but that
+	// cannot be running anymore.
+	if err := usecase.repository.FinalizeExpiredCancellations(ctx, exec, models.FinalizeExpiredCancellationsFilters{ScenarioId: scenario.Id}); err != nil {
+		return false, err
+	}
+
 	previousExecutions, err := usecase.repository.ListScheduledExecutions(
 		ctx,
 		exec,
@@ -40,9 +46,8 @@ func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context,
 		return false, err
 	}
 	for _, ex := range previousExecutions {
-		if ex.Status == models.ScheduledExecutionPending ||
-			ex.Status == models.ScheduledExecutionProcessing {
-			logger.DebugContext(ctx, fmt.Sprintf(`scenario "%s" already has a pending or processing scheduled execution`, scenario.Name))
+		if ex.Status.IsActive() {
+			logger.DebugContext(ctx, fmt.Sprintf(`scenario "%s" already has a pending, processing or cancelling scheduled execution`, scenario.Name))
 			return false, nil
 		}
 	}

@@ -63,6 +63,11 @@ func (e *EnforceSecurity) CreateScheduledExecution(scenario models.Scenario) err
 	return args.Error(0)
 }
 
+func (e *EnforceSecurity) CancelScheduledExecution(scheduledExecution models.ScheduledExecution) error {
+	args := e.Called(scheduledExecution)
+	return args.Error(0)
+}
+
 func (e *EnforceSecurity) ReadScenario(scenario models.Scenario) error {
 	args := e.Called(scenario)
 	return args.Error(0)
