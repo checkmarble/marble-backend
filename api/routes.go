@@ -268,6 +268,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 
 	router.GET("/scheduled-executions", tom, handleListScheduledExecution(uc))
 	router.GET("/scheduled-executions/:execution_id", tom, handleGetScheduledExecution(uc))
+	router.POST("/scheduled-executions/:execution_id/cancel", tom, handleCancelScheduledExecution(uc))
 
 	router.GET("/analytics", tom, handleListAnalytics(uc))
 

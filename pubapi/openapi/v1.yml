@@ -1260,7 +1260,15 @@ components:
           description: Status of the batch execution
           type: string
           enum:
-            ["pending", "processing", "success", "partial_failure", "failure"]
+            [
+              "pending",
+              "processing",
+              "success",
+              "partial_failure",
+              "failure",
+              "cancelling",
+              "cancelled",
+            ]
         decisions_created:
           description: Number of decisions that were created by this batch execution
           type: integer
