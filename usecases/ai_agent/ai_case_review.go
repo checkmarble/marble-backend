@@ -562,8 +562,10 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 					}
 
 					schema := jsonschema.Schema{
-						Type:       "object",
-						Properties: props,
+						Type:                 "object",
+						Properties:           props,
+						Required:             tableNamesWithLargRowNbs,
+						AdditionalProperties: jsonschema.FalseSchema,
 					}
 
 					providerFieldReadOptions, modelDataModelObjectFieldReadOptions, promptDataModelObjectFieldReadOptions, err := uc.preparePromptWithModel(
@@ -577,6 +579,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 					}
 
 					requestDataModelObjectFieldReadOptions, err := DoLLMRequest(ctx, client, llmberjack.NewRequest[map[string][]string]().
+						WithSchemaDescription("case_review_field_read_options", "").
 						OverrideResponseSchema(schema).
 						WithProvider(providerFieldReadOptions).
 						WithModel(modelDataModelObjectFieldReadOptions).
@@ -787,6 +790,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 
 		schema := getProofSchema(caseData.dataModel)
 		requestCaseReview, err := DoLLMRequest(ctx, client, llmberjack.NewRequest[caseReviewOutput]().
+			WithSchemaDescription("case_review_response", "").
 			OverrideResponseSchema(schema).
 			WithProvider(providerCaseReview).
 			WithModel(modelCaseReview).
@@ -855,6 +859,7 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 			return nil, errors.Wrap(err, "could not prepare sanity check request")
 		}
 		requestSanityCheck, err := DoLLMRequest(ctx, client, llmberjack.NewRequest[sanityCheckOutput]().
+			WithSchemaDescription("sanity_check_response", "").
 			WithProvider(providerSanityCheck).
 			WithModel(modelSanityCheck).
 			WithThinkingLevel(llmberjack.ThinkingLevelHigh).
@@ -1409,18 +1414,21 @@ func getProofSchema(dataModel models.DataModel) jsonschema.Schema {
 	// TODO: later, perhaps add the possibility for "internal" objects, meaning screenings or screening matches, or for external links.
 	// For now, the frontend will only handle "data_model" objects.
 	properties.Set("proofs", &jsonschema.Schema{
-		Type: "array",
+		Type:        "array",
+		Description: "Objects relevant to the review. Return an empty array if no relevant proof is available; do not invent references.",
 		Items: &jsonschema.Schema{
-			Type:       "object",
-			Properties: proofsSchemaDataModel,
-			Required:   []string{"id", "type", "origin", "reason"},
+			Type:                 "object",
+			Properties:           proofsSchemaDataModel,
+			Required:             []string{"id", "type", "origin", "reason"},
+			AdditionalProperties: jsonschema.FalseSchema,
 		},
 	})
 	return jsonschema.Schema{
-		Title:       "Case Review",
-		Description: "A review of a case",
-		Type:        "object",
-		Properties:  properties,
-		Required:    []string{"case_review", "summary"},
+		Title:                "Case Review",
+		Description:          "A review of a case",
+		Type:                 "object",
+		Properties:           properties,
+		Required:             []string{"case_review", "summary", "proofs"},
+		AdditionalProperties: jsonschema.FalseSchema,
 	}
 }
