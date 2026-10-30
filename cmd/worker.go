@@ -324,7 +324,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 			RescueStuckJobsAfter: 2 * time.Minute,
 			Middleware: []rivertype.Middleware{
 				jobs.NewRecoveredMiddleware(),
-				jobs.CredentialsMiddleware{},
 				jobs.NewSentryMiddleware(),
 				cronMonitorMiddleware,
 				jobs.NewTracingMiddleware(telemetryRessources.Tracer),
@@ -381,7 +380,6 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	if only != "" {
 		if err := singleJobRun(ctx, adminUc, apiVersion, workerConfig, gcpConfig, only, onlyArgs); err != nil {
 			logger.Error(err.Error())
-			return err
 		}
 
 		return nil
@@ -585,12 +583,6 @@ func ensureGlobalQueuesAreActive(ctx context.Context, riverClient *river.Client[
 }
 
 func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion string, workerConfig WorkerConfig, gcpConfig infra.GcpConfig, jobName, jobArgs string) error {
-	// Direct Work calls bypass River middleware, so scope them before any worker runs.
-	var err error
-	ctx, err = singleJobContext(ctx, jobName, jobArgs)
-	if err != nil {
-		return err
-	}
 	ctx = utils.StoreExecutionSourceInContext(ctx, utils.ExecutionSource{
 		Type:    utils.ExecutionSourceManualJob,
 		JobKind: jobName,
@@ -723,28 +715,6 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion
 	}
 }
 
-// Manual organization jobs require org_id in --worker-args, including jobs whose
-// serialized River arguments only contain an entity ID (e.g. case_review).
-func singleJobContext(ctx context.Context, jobName, argsJSON string) (context.Context, error) {
-	var scope struct {
-		OrgId uuid.UUID `json:"org_id"`
-	}
-	if argsJSON != "" {
-		if err := json.Unmarshal([]byte(argsJSON), &scope); err != nil {
-			return nil, errors.Wrap(err, "invalid manual job arguments")
-		}
-	}
-	switch jobName {
-	case "analytics_merge", "send_billing_event", "continuous_screening_scan_dataset_updates", "webhook_cleanup", "async_decision_execution_cleanup":
-		scope.OrgId = uuid.Nil
-	default:
-		if scope.OrgId == uuid.Nil {
-			return nil, errors.New("manual organization jobs require a non-zero org_id in --worker-args")
-		}
-	}
-	return utils.WithSystemCredentials(ctx, scope.OrgId), nil
-}
-
 func singleJobCreate[A river.JobArgs](ctx context.Context, argsJson string) *river.Job[A] {
 	var args A
 
@@ -762,25 +732,8 @@ func singleJobCreate[A river.JobArgs](ctx context.Context, argsJson string) *riv
 	return &river.Job[A]{
 		JobRow: &rivertype.JobRow{
 			CreatedAt: time.Now(),
-			Queue:     singleJobQueue(ctx, args.Kind()),
 			Metadata:  []byte(`{"manual": true}`),
 		},
 		Args: args,
-	}
-}
-
-func singleJobQueue(ctx context.Context, kind string) string {
-	if creds, ok := utils.CredentialsFromCtx(ctx); ok && creds.OrganizationId != uuid.Nil {
-		return creds.OrganizationId.String()
-	}
-	switch kind {
-	case "async_decision_execution_cleanup":
-		return worker_jobs.ASYNC_DECISION_CLEANUP_QUEUE
-	case "send_billing_event":
-		return models.BILLING_QUEUE_NAME
-	case "continuous_screening_scan_dataset_updates":
-		return models.CONTINUOUS_SCREENING_DATASET_UPDATE_QUEUE_NAME
-	default:
-		return kind
 	}
 }

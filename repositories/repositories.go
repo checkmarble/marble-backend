@@ -145,7 +145,7 @@ func NewRepositories(
 		RedisClient:                   options.redisClient,
 		IngestionRepository:           &IngestionRepositoryImpl{},
 		IngestedDataReadRepository:    &IngestedDataReadRepositoryImpl{},
-		MarbleDbRepository:            NewMarbleDbRepository(options.withCache, options.similarityThreshold),
+		MarbleDbRepository:            NewMarbleDbRepository(options.withCache, options.similarityThreshold, options.redisClient),
 		ClientDbRepository:            ClientDbRepository{},
 		ScenarioPublicationRepository: &ScenarioPublicationRepositoryPostgresql{},
 		OrganizationSchemaRepository:  &OrganizationSchemaRepositoryPostgresql{},

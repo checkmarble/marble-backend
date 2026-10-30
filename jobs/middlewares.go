@@ -25,21 +25,6 @@ const (
 	sdkIdentifier           = "sentry.go.river.marble"
 )
 
-// CredentialsMiddleware scopes each execution to its organization queue. Named
-// global queues run as SYSTEM without an organization; their per-org work must
-// derive its own context with utils.WithSystemCredentials.
-type CredentialsMiddleware struct{}
-
-func (CredentialsMiddleware) IsMiddleware() bool { return true }
-
-func (CredentialsMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInner func(context.Context) error) error {
-	orgId, err := uuid.Parse(job.Queue)
-	if err != nil {
-		orgId = uuid.Nil
-	}
-	return doInner(utils.WithSystemCredentials(ctx, orgId))
-}
-
 // Logger middleware
 
 type LoggerMiddleware struct {

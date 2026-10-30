@@ -126,8 +126,8 @@ func (d *DataModelRepository) GetPivot(ctx context.Context, exec repositories.Ex
 	return args.Get(0).(models.PivotMetadata), args.Error(1)
 }
 
-func (d *DataModelRepository) BatchInsertEnumValues(ctx context.Context, exec repositories.Executor, enumValues models.EnumValues, table models.Table) error {
-	args := d.Called(ctx, exec, enumValues, table)
+func (d *DataModelRepository) BatchInsertEnumValues(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID, enumValues models.EnumValues, table models.Table) error {
+	args := d.Called(ctx, exec, organizationId, enumValues, table)
 	return args.Error(0)
 }
 

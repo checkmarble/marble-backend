@@ -1473,7 +1473,7 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 			enumValues.CollectEnumValues(payload)
 		}
 		exec := usecase.executorFactory.NewExecutor()
-		err := usecase.dataModelRepository.BatchInsertEnumValues(ctx, exec, enumValues, table)
+		err := usecase.dataModelRepository.BatchInsertEnumValues(ctx, exec, organizationId, enumValues, table)
 		if errors.Is(err, context.DeadlineExceeded) {
 			logger := utils.LoggerFromContext(ctx)
 			logger.WarnContext(ctx, "Deadline exceeded while inserting enum values")

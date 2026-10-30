@@ -258,7 +258,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
 	suite.dataModelRepository.On("BatchInsertEnumValues", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
+		mock.MatchedBy(matchExec), suite.organizationId, models.EnumValues{}, suite.dataModel.Tables["transactions"]).
 		Return(nil)
 
 	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
@@ -323,7 +323,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		Return(nil)
 
 	suite.dataModelRepository.On("BatchInsertEnumValues", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
+		mock.MatchedBy(matchExec), suite.organizationId, models.EnumValues{}, suite.dataModel.Tables["transactions"]).
 		Return(nil)
 
 	nb, err := uc.IngestObject(suite.ctx, suite.organizationId, "transactions",
@@ -373,7 +373,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 	values := make(models.EnumValues)
 	values["status"] = map[any]struct{}{"OK": {}}
 	suite.dataModelRepository.On("BatchInsertEnumValues", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), values, dataModel.Tables["transactions"]).
+		mock.MatchedBy(matchExec), suite.organizationId, values, dataModel.Tables["transactions"]).
 		Return(nil)
 
 	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
@@ -426,7 +426,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 			AddRow("1", updAt.Add(time.Hour), rowId))
 
 	suite.dataModelRepository.On("BatchInsertEnumValues", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
+		mock.MatchedBy(matchExec), suite.organizationId, models.EnumValues{}, suite.dataModel.Tables["transactions"]).
 		Return(nil)
 
 	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
@@ -487,7 +487,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObject_nomina
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
 	suite.dataModelRepository.On("BatchInsertEnumValues", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
+		mock.MatchedBy(matchExec), suite.organizationId, models.EnumValues{}, suite.dataModel.Tables["transactions"]).
 		Return(nil)
 
 	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
@@ -577,7 +577,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_nomin
 		WillReturnResult(pgxmock.NewResult("INSERT", 2))
 
 	suite.dataModelRepository.On("BatchInsertEnumValues", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
+		mock.MatchedBy(matchExec), suite.organizationId, models.EnumValues{}, suite.dataModel.Tables["transactions"]).
 		Return(nil)
 
 	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
@@ -643,7 +643,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		WillReturnResult(pgxmock.NewResult("INSERT", 2))
 
 	suite.dataModelRepository.On("BatchInsertEnumValues", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
+		mock.MatchedBy(matchExec), suite.organizationId, models.EnumValues{}, suite.dataModel.Tables["transactions"]).
 		Return(nil)
 
 	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
@@ -700,7 +700,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		WillReturnResult(pgxmock.NewResult("INSERT", 2))
 
 	suite.dataModelRepository.On("BatchInsertEnumValues", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), models.EnumValues{}, suite.dataModel.Tables["transactions"]).
+		mock.MatchedBy(matchExec), suite.organizationId, models.EnumValues{}, suite.dataModel.Tables["transactions"]).
 		Return(nil)
 
 	suite.continuousScreeningClientRepository.On("ListMonitoredObjectsByObjectIds",
@@ -863,7 +863,7 @@ func (suite *IngestionUsecaseTestSuite) TestIngestionUsecase_IngestObjects_with_
 		WillReturnResult(pgxmock.NewResult("INSERT", 5))
 
 	suite.dataModelRepository.On("BatchInsertEnumValues", mock.MatchedBy(matchContext),
-		mock.MatchedBy(matchExec), models.EnumValues{}, dataModel.Tables["transactions"]).
+		mock.MatchedBy(matchExec), suite.organizationId, models.EnumValues{}, dataModel.Tables["transactions"]).
 		Return(nil)
 
 	suite.scoringScoreUsecase.On("EnqueueComputationForIngestion", mock.Anything, suite.organizationId, "transactions", mock.Anything).

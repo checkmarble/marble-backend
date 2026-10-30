@@ -61,7 +61,7 @@ type DataModelRepository interface {
 	GetLinks(ctx context.Context, exec Executor, organizationId uuid.UUID) ([]models.LinkToSingle, error)
 	DeleteDataModel(ctx context.Context, exec Executor, organizationID uuid.UUID) error
 	GetDataModelField(ctx context.Context, exec Executor, fieldId string) (models.FieldMetadata, error)
-	BatchInsertEnumValues(ctx context.Context, exec Executor, enumValues models.EnumValues, table models.Table) error
+	BatchInsertEnumValues(ctx context.Context, exec Executor, organizationId uuid.UUID, enumValues models.EnumValues, table models.Table) error
 
 	CreatePivot(ctx context.Context, exec Executor, id string, pivot models.CreatePivotInput) error
 	ListPivots(ctx context.Context, exec Executor, organizationId uuid.UUID, tableId *string,
@@ -95,9 +95,10 @@ func (repo MarbleDbRepository) GetDataModel(
 	fetchEnumValues bool,
 	useCache bool,
 ) (models.DataModel, error) {
-	cacheKey := exec.Cache(ctx).Key("data-model", strconv.FormatBool(fetchEnumValues))
+	redisCache := repo.redisClient.NewExecutor(organizationID)
+	cacheKey := redisCache.Key("data-model", strconv.FormatBool(fetchEnumValues))
 
-	if dataModel, err := RedisLoadModel[models.DataModel](ctx, exec.Cache(ctx), cacheKey); err == nil {
+	if dataModel, err := RedisLoadModel[models.DataModel](ctx, redisCache, cacheKey); err == nil {
 		return dataModel, nil
 	}
 
@@ -212,7 +213,7 @@ func (repo MarbleDbRepository) GetDataModel(
 		cache.Add(organizationID.String(), dataModel)
 	}
 
-	if err := exec.Cache(ctx).SaveModel(ctx, exec, cacheKey, dataModel, time.Minute); err != nil {
+	if err := redisCache.SaveModel(ctx, exec, cacheKey, dataModel, time.Minute); err != nil {
 		return dataModel, err
 	}
 
@@ -243,7 +244,7 @@ func (repo MarbleDbRepository) CreateDataModelTable(
 		return err
 	}
 
-	return repo.DeleteDataModelCache(ctx, exec)
+	return repo.DeleteDataModelCache(ctx, organizationId)
 }
 
 func (repo MarbleDbRepository) GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error) {
@@ -323,16 +324,7 @@ func (repo MarbleDbRepository) UpdateDataModelTable(
 	}
 
 	query = query.Where(squirrel.Eq{"id": tableID})
-	err := ExecBuilder(
-		ctx,
-		exec,
-		query,
-	)
-	if err != nil {
-		return err
-	}
-
-	return repo.DeleteDataModelCache(ctx, exec)
+	return repo.execDataModelMutation(ctx, exec, query.Suffix("RETURNING organization_id"))
 }
 
 func (repo MarbleDbRepository) CreateDataModelField(
@@ -373,12 +365,7 @@ func (repo MarbleDbRepository) CreateDataModelField(
 		return err
 	}
 
-	// Minimalist attempt at cache invalidation. Because there may be several instances of Marble running at the same time, requests
-	// may still get a stale cached response.
-	dataModelCacheEnum.Remove(organizationId.String())
-	dataModelCacheNoEnum.Remove(organizationId.String())
-
-	return repo.DeleteDataModelCache(ctx, exec)
+	return repo.DeleteDataModelCache(ctx, organizationId)
 }
 
 func (repo MarbleDbRepository) UpdateDataModelField(
@@ -427,16 +414,8 @@ func (repo MarbleDbRepository) UpdateDataModelField(
 	if nbUpdates == 0 {
 		return nil
 	}
-	err := ExecBuilder(
-		ctx,
-		exec,
-		query,
-	)
-	if err != nil {
-		return err
-	}
-
-	return repo.DeleteDataModelCache(ctx, exec)
+	return repo.execDataModelMutation(ctx, exec, query.Suffix(
+		"RETURNING (SELECT organization_id FROM data_model_tables WHERE id = data_model_fields.table_id)"))
 }
 
 func (repo MarbleDbRepository) CreateDataModelLink(ctx context.Context, exec Executor, id string, link models.DataModelLinkCreateInput) error {
@@ -475,7 +454,7 @@ func (repo MarbleDbRepository) CreateDataModelLink(ctx context.Context, exec Exe
 		return err
 	}
 
-	return repo.DeleteDataModelCache(ctx, exec)
+	return repo.DeleteDataModelCache(ctx, link.OrganizationID)
 }
 
 func (repo MarbleDbRepository) getTablesAndFields(ctx context.Context, exec Executor,
@@ -598,13 +577,16 @@ func (repo MarbleDbRepository) DeleteDataModel(ctx context.Context, exec Executo
 		return err
 	}
 
-	return ExecBuilder(
+	if err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().
 			Delete(dbmodels.TableDataModelTables).
 			Where(squirrel.Eq{"organization_id": organizationID}),
-	)
+	); err != nil {
+		return err
+	}
+	return repo.DeleteDataModelCache(ctx, organizationID)
 }
 
 func (repo MarbleDbRepository) GetEnumValues(ctx context.Context, exec Executor, fieldIDs []string) (map[string][]any, error) {
@@ -744,7 +726,7 @@ func (repo MarbleDbRepository) CreatePivot(
 		return err
 	}
 
-	return repo.DeleteDataModelCache(ctx, exec)
+	return repo.DeleteDataModelCache(ctx, pivot.OrganizationId)
 }
 
 // ListPivots returns pivots that have not been soft-deleted, unless includeDeleted is
@@ -815,7 +797,7 @@ func (repo MarbleDbRepository) GetPivot(ctx context.Context, exec Executor, pivo
 	)
 }
 
-func (repo MarbleDbRepository) BatchInsertEnumValues(ctx context.Context, exec Executor, enumValues models.EnumValues, table models.Table) error {
+func (repo MarbleDbRepository) BatchInsertEnumValues(ctx context.Context, exec Executor, organizationId uuid.UUID, enumValues models.EnumValues, table models.Table) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -864,7 +846,7 @@ func (repo MarbleDbRepository) BatchInsertEnumValues(ctx context.Context, exec E
 		}
 	}
 
-	return repo.DeleteDataModelCache(ctx, exec)
+	return repo.DeleteDataModelCache(ctx, organizationId)
 }
 
 func (repo MarbleDbRepository) ArchiveDataModelTable(ctx context.Context, exec Executor, table models.TableMetadata) error {
@@ -881,7 +863,7 @@ func (repo MarbleDbRepository) ArchiveDataModelTable(ctx context.Context, exec E
 		return err
 	}
 
-	return repo.DeleteDataModelCache(ctx, exec)
+	return repo.DeleteDataModelCache(ctx, table.OrganizationID)
 }
 
 func (repo MarbleDbRepository) DeleteDataModelTable(ctx context.Context, exec Executor, table models.TableMetadata) error {
@@ -897,7 +879,7 @@ func (repo MarbleDbRepository) DeleteDataModelTable(ctx context.Context, exec Ex
 		return err
 	}
 
-	return repo.DeleteDataModelCache(ctx, exec)
+	return repo.DeleteDataModelCache(ctx, table.OrganizationID)
 }
 
 func (repo MarbleDbRepository) ArchiveDataModelField(ctx context.Context, exec Executor,
@@ -916,7 +898,7 @@ func (repo MarbleDbRepository) ArchiveDataModelField(ctx context.Context, exec E
 		return err
 	}
 
-	return repo.DeleteDataModelCache(ctx, exec)
+	return repo.DeleteDataModelCache(ctx, table.OrganizationID)
 }
 
 func (repo MarbleDbRepository) DeleteDataModelField(ctx context.Context, exec Executor,
@@ -934,7 +916,7 @@ func (repo MarbleDbRepository) DeleteDataModelField(ctx context.Context, exec Ex
 		return err
 	}
 
-	return repo.DeleteDataModelCache(ctx, exec)
+	return repo.DeleteDataModelCache(ctx, table.OrganizationID)
 }
 
 func (repo MarbleDbRepository) DeleteDataModelLink(ctx context.Context, exec Executor, id string) error {
@@ -946,11 +928,7 @@ func (repo MarbleDbRepository) DeleteDataModelLink(ctx context.Context, exec Exe
 		Delete("data_model_links").
 		Where("id = ?", id)
 
-	if err := ExecBuilder(ctx, exec, query); err != nil {
-		return err
-	}
-
-	return repo.DeleteDataModelCache(ctx, exec)
+	return repo.execDataModelMutation(ctx, exec, query.Suffix("RETURNING organization_id"))
 }
 
 // DeleteDataModelPivot hard-deletes a pivot row. It must only be used when nothing can
@@ -966,11 +944,7 @@ func (repo MarbleDbRepository) DeleteDataModelPivot(ctx context.Context, exec Ex
 		Delete("data_model_pivots").
 		Where("id = ?", id)
 
-	if err := ExecBuilder(ctx, exec, query); err != nil {
-		return err
-	}
-
-	return repo.DeleteDataModelCache(ctx, exec)
+	return repo.execDataModelMutation(ctx, exec, query.Suffix("RETURNING organization_id"))
 }
 
 func (repo MarbleDbRepository) SoftDeletePivot(ctx context.Context, exec Executor, id string) error {
@@ -983,11 +957,7 @@ func (repo MarbleDbRepository) SoftDeletePivot(ctx context.Context, exec Executo
 		Set("deleted_at", squirrel.Expr("now()")).
 		Where(squirrel.Eq{"id": id})
 
-	if err := ExecBuilder(ctx, exec, query); err != nil {
-		return err
-	}
-
-	return repo.DeleteDataModelCache(ctx, exec)
+	return repo.execDataModelMutation(ctx, exec, query.Suffix("RETURNING organization_id"))
 }
 
 func (repo MarbleDbRepository) RestorePivot(ctx context.Context, exec Executor, id string) error {
@@ -1000,21 +970,29 @@ func (repo MarbleDbRepository) RestorePivot(ctx context.Context, exec Executor, 
 		Set("deleted_at", nil).
 		Where(squirrel.Eq{"id": id})
 
-	if err := ExecBuilder(ctx, exec, query); err != nil {
-		return err
-	}
-
-	return repo.DeleteDataModelCache(ctx, exec)
+	return repo.execDataModelMutation(ctx, exec, query.Suffix("RETURNING organization_id"))
 }
 
-func (repo MarbleDbRepository) DeleteDataModelCache(ctx context.Context, exec Executor) error {
-	return exec.Cache(ctx).Exec(func(c *redis.Client) error {
-		if err := c.Del(ctx, exec.Cache(ctx).Key("data-model", "true")).Err(); err != nil {
-			return err
+// execDataModelMutation runs a mutation returning the organization owning its row.
+// A missing row stays a no-op, as with ExecBuilder.
+func (repo MarbleDbRepository) execDataModelMutation(ctx context.Context, exec Executor, query SqlBuilder) error {
+	organizationId, err := SqlToOptionalRow(ctx, exec, query, pgx.RowTo[uuid.UUID])
+	if err != nil || organizationId == nil {
+		return err
+	}
+	return repo.DeleteDataModelCache(ctx, *organizationId)
+}
+
+func (repo MarbleDbRepository) DeleteDataModelCache(ctx context.Context, organizationId uuid.UUID) error {
+	dataModelCacheEnum.Remove(organizationId.String())
+	dataModelCacheNoEnum.Remove(organizationId.String())
+	for _, key := range dataModelPivotsCache.Keys() {
+		if strings.HasPrefix(key, organizationId.String()) {
+			dataModelPivotsCache.Remove(key)
 		}
-		if err := c.Del(ctx, exec.Cache(ctx).Key("data-model", "false")).Err(); err != nil {
-			return err
-		}
-		return nil
+	}
+	cache := repo.redisClient.NewExecutor(organizationId)
+	return cache.Exec(func(c *redis.Client) error {
+		return c.Del(ctx, cache.Key("data-model", "true"), cache.Key("data-model", "false")).Err()
 	})
 }

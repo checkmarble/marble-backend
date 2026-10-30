@@ -9,14 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// WithSystemCredentials scopes background work without modifying its parent context.
-func WithSystemCredentials(ctx context.Context, organizationId uuid.UUID) context.Context {
-	return context.WithValue(ctx, ContextKeyCredentials, models.Credentials{
-		Roles:          []models.Role{models.SYSTEM},
-		OrganizationId: organizationId,
-	})
-}
-
 func CredentialsFromCtx(ctx context.Context) (models.Credentials, bool) {
 	creds, ok := ctx.Value(ContextKeyCredentials).(models.Credentials)
 	return creds, ok

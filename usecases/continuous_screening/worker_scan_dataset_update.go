@@ -196,7 +196,6 @@ func (w *ScanDatasetUpdatesWorker) Work(
 					return err
 				}
 				for _, config := range activeConfigs {
-					ctx := utils.WithSystemCredentials(ctx, config.OrgId)
 					if config.Provider != provider {
 						continue
 					}
