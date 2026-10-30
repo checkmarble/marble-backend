@@ -111,7 +111,7 @@ func (w *AsyncScheduledExecWorker) handleScheduledExecStatusRefres(
 		finalStatus = models.ScheduledExecutionFailure
 	}
 
-	err = w.repository.UpdateScheduledExecutionStatus(
+	_, err = w.repository.UpdateScheduledExecutionStatus(
 		ctx,
 		tx,
 		models.UpdateScheduledExecutionStatusInput{

@@ -228,6 +228,16 @@ type BatchExecutionCoordinatorArgs struct {
 
 func (BatchExecutionCoordinatorArgs) Kind() string { return "batch_execution_coordinator" }
 
+// Marks a cancelling scheduled execution as cancelled once its cancel deadline has passed, in case
+// the worker owning it never acknowledged the cancellation.
+type ScheduledExecutionCancelFinalizerArgs struct {
+	ScheduledExecutionId string `json:"scheduled_execution_id"`
+}
+
+func (ScheduledExecutionCancelFinalizerArgs) Kind() string {
+	return "scheduled_execution_cancel_finalizer"
+}
+
 // CSV ingestion job - processes a single upload log
 type CsvIngestionArgs struct {
 	UploadLogId      uuid.UUID        `json:"upload_log_id"`

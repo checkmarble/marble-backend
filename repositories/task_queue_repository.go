@@ -137,6 +137,13 @@ type TaskQueueRepository interface {
 		organizationId uuid.UUID,
 		scheduledExecutionId string,
 	) error
+	EnqueueScheduledExecutionCancelFinalizer(
+		ctx context.Context,
+		tx Transaction,
+		organizationId uuid.UUID,
+		scheduledExecutionId string,
+		at time.Time,
+	) error
 	EnqueueContinuousScreeningMatchEnrichmentTask(
 		ctx context.Context,
 		tx Transaction,
@@ -746,6 +753,32 @@ func (r riverRepository) EnqueueBatchExecutionCoordinator(
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued batch execution coordinator",
 		"scheduled_execution_id", scheduledExecutionId, "job_id", res.Job.ID)
+	return nil
+}
+
+func (r riverRepository) EnqueueScheduledExecutionCancelFinalizer(
+	ctx context.Context,
+	tx Transaction,
+	organizationId uuid.UUID,
+	scheduledExecutionId string,
+	at time.Time,
+) error {
+	res, err := r.client.InsertTx(ctx, tx.RawTx(), models.ScheduledExecutionCancelFinalizerArgs{
+		ScheduledExecutionId: scheduledExecutionId,
+	}, &river.InsertOpts{
+		Queue:       organizationId.String(),
+		ScheduledAt: at,
+		UniqueOpts: river.UniqueOpts{
+			ByArgs: true,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued scheduled execution cancel finalizer",
+		"scheduled_execution_id", scheduledExecutionId, "job_id", res.Job.ID, "scheduled_at", at)
 	return nil
 }
 
