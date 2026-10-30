@@ -34,8 +34,8 @@ func buildScreeningUsecaseMock() (ScreeningUsecase, executor_factory.ExecutorFac
 		organizationRepository:    repoMock,
 		externalRepository:        repoMock,
 		inboxReader:               repoMock,
-		repository:                repositories.NewMarbleDbRepository(false, 0.3),
-		screeningConfigRepository: repositories.NewMarbleDbRepository(false, 0.3),
+		repository:                repositories.NewMarbleDbRepository(false, 0.3, nil),
+		screeningConfigRepository: repositories.NewMarbleDbRepository(false, 0.3, nil),
 		executorFactory:           exec,
 		transactionFactory:        txFac,
 	}

@@ -16,7 +16,7 @@ func newFileOffloadedReadWriter(t *testing.T) OffloadedReadWriter {
 	t.Helper()
 
 	return OffloadedReadWriter{
-		Repository:                 NewMarbleDbRepository(false, 0.3),
+		Repository:                 NewMarbleDbRepository(false, 0.3, nil),
 		BlobRepository:             NewBlobRepository(infra.GcpConfig{}),
 		OffloadingBucketUrl:        "file://" + t.TempDir(),
 		ScreeningOffloadingEnabled: true,

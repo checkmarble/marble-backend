@@ -151,8 +151,9 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 		}
 	}
 
-	return exec.Cache(ctx).Exec(func(c *redis.Client) error {
-		return c.Del(ctx, exec.Cache(ctx).Key("user", updateUser.UserId)).Err()
+	cache := repo.redisClient.NewExecutor(uuid.Nil)
+	return cache.Exec(func(c *redis.Client) error {
+		return c.Del(ctx, cache.Key("user", updateUser.UserId)).Err()
 	})
 }
 
@@ -185,8 +186,9 @@ func (repo *MarbleDbRepository) DeleteUser(ctx context.Context, exec Executor, u
 		return err
 	}
 
-	return exec.Cache(ctx).Exec(func(c *redis.Client) error {
-		return c.Del(ctx, exec.Cache(ctx).Key("user", string(userID))).Err()
+	cache := repo.redisClient.NewExecutor(uuid.Nil)
+	return cache.Exec(func(c *redis.Client) error {
+		return c.Del(ctx, cache.Key("user", string(userID))).Err()
 	})
 }
 
@@ -200,8 +202,9 @@ func (repo *MarbleDbRepository) DeleteUsersOfOrganization(ctx context.Context, e
 }
 
 func (repo *MarbleDbRepository) UserById(ctx context.Context, exec Executor, userId string) (models.User, error) {
-	if user, err := RedisLoadModel[models.User](ctx, exec.Cache(ctx),
-		exec.Cache(ctx).Key("user", userId)); err == nil {
+	cache := repo.redisClient.NewExecutor(uuid.Nil)
+	cacheKey := cache.Key("user", userId)
+	if user, err := RedisLoadModel[models.User](ctx, cache, cacheKey); err == nil {
 		return user, nil
 	}
 
@@ -224,7 +227,7 @@ func (repo *MarbleDbRepository) UserById(ctx context.Context, exec Executor, use
 		return user, err
 	}
 
-	_ = exec.Cache(ctx).SaveModel(ctx, exec, exec.Cache(ctx).Key("user", userId), user, time.Hour)
+	_ = cache.SaveModel(ctx, exec, cacheKey, user, time.Hour)
 
 	return user, nil
 }
