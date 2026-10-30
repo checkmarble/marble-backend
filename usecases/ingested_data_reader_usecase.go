@@ -148,8 +148,15 @@ func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
 	if err != nil {
 		return nil, err
 	}
+	pivotIds := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		pivotIds[value.PivotId] = struct{}{}
+	}
 	pivots := make([]models.Pivot, 0, len(pivotsMeta))
 	for _, pivot := range pivotsMeta {
+		if _, ok := pivotIds[pivot.Id.String()]; !ok {
+			continue
+		}
 		pivots = append(pivots, pivot.Enrich(dataModel))
 	}
 
