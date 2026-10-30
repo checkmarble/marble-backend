@@ -35,3 +35,8 @@ func (r *TenantRepository) Rename(ctx context.Context, exec repositories.Executo
 	args := r.Called(ctx, exec, tenantId, name)
 	return args.Error(0)
 }
+
+func (r *TenantRepository) HasOIDCConfigurationOrDomains(ctx context.Context, exec repositories.Executor, tenantIds []uuid.UUID) (bool, error) {
+	args := r.Called(ctx, exec, tenantIds)
+	return args.Bool(0), args.Error(1)
+}

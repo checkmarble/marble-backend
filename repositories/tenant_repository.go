@@ -6,6 +6,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -17,6 +18,7 @@ type TenantRepository interface {
 	LockAndValidateUpdate(ctx context.Context, exec Executor, tenantId uuid.UUID) error
 	SoftDelete(ctx context.Context, exec Executor, tenantIds []uuid.UUID) error
 	Rename(ctx context.Context, exec Executor, tenantId uuid.UUID, name string) error
+	HasOIDCConfigurationOrDomains(ctx context.Context, exec Executor, tenantIds []uuid.UUID) (bool, error)
 }
 
 func (repo *MarbleDbRepository) ListActive(ctx context.Context, exec Executor) ([]models.Tenant, error) {
@@ -24,10 +26,19 @@ func (repo *MarbleDbRepository) ListActive(ctx context.Context, exec Executor) (
 		return nil, err
 	}
 	return SqlToListOfModels(ctx, exec, NewQueryBuilder().
-		Select(dbmodels.TenantColumns...).
-		From(dbmodels.TABLE_TENANTS).
-		Where(squirrel.Eq{"deleted_at": nil}).
-		OrderBy("name", "id"), dbmodels.AdaptTenant)
+		Select(utils.ColumnList[dbmodels.DBTenant]("t")...).
+		Columns(
+			"c.issuer AS oidc_issuer",
+			"c.client_id AS oidc_client_id",
+			"c.scopes AS oidc_scopes",
+			"c.extra_params AS oidc_extra_params",
+			"c.email_claim AS oidc_email_claim",
+			"c.sso_enabled AS oidc_sso_enabled",
+		).
+		From(dbmodels.TABLE_TENANTS+" t").
+		LeftJoin("tenant_oidc_configurations c ON c.tenant_id = t.id").
+		Where(squirrel.Eq{"t.deleted_at": nil}).
+		OrderBy("t.name", "t.id"), dbmodels.AdaptTenantWithOIDCConfiguration)
 }
 
 func (repo *MarbleDbRepository) LockAndValidateMerge(ctx context.Context, exec Executor, targetId uuid.UUID, sourceIds []uuid.UUID) error {

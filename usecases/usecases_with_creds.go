@@ -382,6 +382,18 @@ func (usecases *UsecasesWithCreds) NewTenantUsecase() TenantUsecase {
 	)
 }
 
+func (usecases *UsecasesWithCreds) NewTenantOIDCUsecase() TenantOIDCUsecase {
+	return NewTenantOIDCUsecase(
+		usecases.NewEnforceSecurity(),
+		usecases.NewTransactionFactory(),
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.license.Sso,
+		usecases.allowInsecureTenantOIDC,
+	)
+}
+
 func (usecases *UsecasesWithCreds) NewDataModelUseCase() usecase {
 	return usecase{
 		clientDbIndexEditor:           usecases.NewClientDbIndexEditor(),

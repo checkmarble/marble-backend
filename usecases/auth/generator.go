@@ -17,6 +17,7 @@ type marbleRepository interface {
 	GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error)
 	GetOrganizationByID(ctx context.Context, organizationID uuid.UUID) (models.Organization, error)
 	ResolveUserIdentity(ctx context.Context, issuer, subject, email string) (models.User, error)
+	ResolveUserIdentityForTenant(ctx context.Context, issuer, subject, email string, tenantID uuid.UUID) (models.User, error)
 	ActiveGrantsForPrincipal(ctx context.Context, principalType, principalID string) ([]models.Grant, error)
 	UpdateUserProfileFromClaims(
 		ctx context.Context,
@@ -72,9 +73,13 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 	}
 
 	selectedOrganizationID := requestedOrganizationID
+	authTenantID := uuid.Nil
+	if creds.Type == CredentialsBearer {
+		authTenantID = creds.TenantId
+	}
 	if creds.Type == CredentialsApiKey {
 		selectedOrganizationID = baseCredentials.OrganizationId
-	} else if selectedOrganizationID == uuid.Nil {
+	} else if selectedOrganizationID == uuid.Nil && authTenantID == uuid.Nil {
 		organizationIDs := []uuid.UUID{}
 		hasPlatformGrant := false
 		for _, grant := range grants {
@@ -96,6 +101,9 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 		if err != nil {
 			return Token{}, errors.Errorf("GetOrganizationByID error: %w", err)
 		}
+		if authTenantID != uuid.Nil && selectedOrganization.TenantId != authTenantID {
+			return Token{}, errors.Errorf("%w: organization is outside the authentication tenant", models.ForbiddenError)
+		}
 
 		grantOrganizationAccess := false
 		for _, grant := range grants {
@@ -111,6 +119,7 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 
 	tokenCredentials := baseCredentials
 	tokenCredentials.OrganizationId = selectedOrganizationID
+	tokenCredentials.AuthTenantId = authTenantID
 
 	roles := []models.Role{}
 	addRole := func(role models.Role) {
@@ -120,6 +129,9 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 	}
 	if selectedOrganizationID == uuid.Nil {
 		for _, grant := range grants {
+			if authTenantID != uuid.Nil && grant.TenantId != authTenantID {
+				continue
+			}
 			if grant.TenantId == uuid.Nil && grant.OrganizationId == uuid.Nil {
 				addRole(grant.Role)
 			}

@@ -27,6 +27,10 @@ import (
 	"github.com/getsentry/sentry-go"
 )
 
+func hasGlobalOIDCConfiguration() bool {
+	return utils.GetEnv("AUTH_OIDC_ISSUER", "") != "" || utils.GetEnv("AUTH_OIDC_CLIENT_ID", "") != ""
+}
+
 func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	appName := fmt.Sprintf("marble-backend %s", config.Version)
 	logger := utils.NewLogger(utils.GetEnv("LOGGING_FORMAT", "text"))
@@ -39,8 +43,12 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	if err != nil {
 		return err
 	}
+	if hasGlobalOIDCConfiguration() && !authProviders.Has(auth.TokenProviderOidc) {
+		authProviders = append(authProviders, auth.TokenProviderOidc)
+	}
 
 	oidcProvider := infra.OidcConfig{}
+	var oidcSecretsKeeper repositories.SecretKeeper
 	firebaseConfig := api.FirebaseConfig{}
 
 	_, firebaseConfigured := os.LookupEnv("FIREBASE_API_KEY")
@@ -124,6 +132,15 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		// Fallback on the regular API URL if the internal one is not set
 		// Don't fail if the config is missing as some environment use the same URL
 		apiConfig.MarbleApiInternalUrl = apiConfig.MarbleApiUrl
+	}
+	tenantOIDCEnabled := utils.GetEnv(infra.OidcSecretsKeyEnv, "") != ""
+	if tenantOIDCEnabled {
+		keeper, err := infra.InitializeOidcSecretsKeeper(ctx)
+		if err != nil {
+			return err
+		}
+		defer keeper.Close()
+		oidcSecretsKeeper = keeper
 	}
 
 	pgConfig := infra.PgConfig{
@@ -342,6 +359,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		repositories.WithCache(utils.GetEnv("CACHE_ENABLED", false)),
 		repositories.WithSimilarityThreshold(serverConfig.similarityThreshold),
 		repositories.WithLagoConfig(lagoConfig),
+		repositories.WithOIDCSecretsKeeper(oidcSecretsKeeper),
 	)
 
 	deploymentMetadata, err := GetDeploymentMetadata(ctx, repositories)
@@ -351,13 +369,14 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	}
 	license := infra.VerifyLicense(licenseConfig, deploymentMetadata.Value)
 
-	if apiConfig.TokenProviders.Has(auth.TokenProviderOidc) && !license.Sso {
+	if (apiConfig.TokenProviders.Has(auth.TokenProviderOidc) || tenantOIDCEnabled) && !license.Sso {
 		if !apiConfig.TokenProviders.Has(auth.TokenProviderFirebase) {
 			logger.Error("OpenID Connect provider cannot be started because the SSO license entitlement is missing")
 			return errors.New("cannot use OpenID Connect configuration without the appropriate license entitlement")
 		}
 
 		apiConfig.TokenProviders = apiConfig.TokenProviders.Without(auth.TokenProviderOidc)
+		tenantOIDCEnabled = false
 		logger.Warn("OpenID Connect provider disabled because the SSO license entitlement is missing")
 	}
 
@@ -367,6 +386,16 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 			return err
 		}
 		apiConfig.OidcConfig = oidcProvider
+	}
+
+	if tenantOIDCEnabled {
+		apiConfig.TenantOIDCRegistry = infra.NewTenantOIDCRegistry(func(ctx context.Context, tenantId uuid.UUID) (models.TenantOIDCConfiguration, error) {
+			exec, err := repositories.ExecutorGetter.GetExecutor(ctx, models.DATABASE_SCHEMA_TYPE_MARBLE, nil)
+			if err != nil {
+				return models.TenantOIDCConfiguration{}, err
+			}
+			return repositories.MarbleDbRepository.GetTenantOIDCConfigurationForAuthentication(ctx, exec, tenantId)
+		}, fmt.Sprintf("%s/oidc/callback", marbleAppUrl), apiConfig.Env == "development")
 	}
 
 	deps, err := api.InitDependencies(ctx, apiConfig, authPool, marbleJwtSigningKey)
@@ -394,6 +423,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithLicense(license),
 		usecases.WithAnalyticsEnabled(analyticsConfig.Enabled),
 		usecases.WithAllowInsecureWebhookURLs(utils.GetEnv("ENV", "production") == "development"),
+		usecases.WithAllowInsecureTenantOIDC(apiConfig.Env == "development"),
 		usecases.WithWebhookIPWhitelist(os.Getenv("WEBHOOK_IP_WHITELIST")),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithNameRecognition(openSanctionsConfig.IsNameRecognitionSet()),

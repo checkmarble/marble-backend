@@ -541,4 +541,53 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 		mockRepository.AssertExpectations(t)
 		mockEncoder.AssertNotCalled(t, "EncodeMarbleToken", mock.Anything, mock.Anything, mock.Anything)
 	})
+
+	t.Run("tenant authentication never receives platform roles", func(t *testing.T) {
+		mockRepository := new(mocks.Database)
+		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
+			Return([]models.Grant{
+				{Role: models.MARBLE_ADMIN},
+				{Role: models.TENANT_ADMIN, TenantId: tenantID},
+			}, nil)
+		mockEncoder := new(mocks.JWTEncoderValidator)
+		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, mock.MatchedBy(func(creds models.Credentials) bool {
+			return creds.AuthTenantId == tenantID && creds.OrganizationId == uuid.Nil && slices.Equal(creds.Roles, []models.Role{})
+		})).Return("token", nil)
+
+		generator := auth.NewGenerator(mockRepository, mockEncoder, time.Minute, clock.NewMock(now))
+		token, err := generator.GenerateToken(
+			context.Background(),
+			auth.Credentials{Type: auth.CredentialsBearer, TenantId: tenantID},
+			user,
+			claims,
+			uuid.Nil,
+		)
+
+		assert.NoError(t, err)
+		assert.Equal(t, tenantID, token.Credentials.AuthTenantId)
+		assert.Empty(t, token.Credentials.Roles)
+		mockRepository.AssertExpectations(t)
+		mockEncoder.AssertExpectations(t)
+	})
+
+	t.Run("tenant authentication rejects another tenant organization", func(t *testing.T) {
+		otherTenantID := uuid.New()
+		mockRepository := new(mocks.Database)
+		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
+			Return([]models.Grant{{Role: models.TENANT_ADMIN, TenantId: tenantID}}, nil)
+		mockRepository.On("GetOrganizationByID", mock.Anything, organizationID).
+			Return(models.Organization{Id: organizationID, TenantId: otherTenantID}, nil)
+
+		generator := auth.NewGenerator(mockRepository, new(mocks.JWTEncoderValidator), time.Minute, clock.NewMock(now))
+		_, err := generator.GenerateToken(
+			context.Background(),
+			auth.Credentials{Type: auth.CredentialsBearer, TenantId: tenantID},
+			user,
+			claims,
+			organizationID,
+		)
+
+		assert.ErrorIs(t, err, models.ForbiddenError)
+		mockRepository.AssertExpectations(t)
+	})
 }
