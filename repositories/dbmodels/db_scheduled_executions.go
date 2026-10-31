@@ -26,6 +26,8 @@ type DBScheduledExecution struct {
 	ManifestRowsProcessed      int64      `db:"manifest_rows_processed"`
 	Deadline                   *time.Time `db:"deadline"`
 	DeduplicateObjects         bool       `db:"deduplicate_objects"`
+	CancelRequestedAt          *time.Time `db:"cancel_requested_at"`
+	CancelDeadline             *time.Time `db:"cancel_deadline"`
 }
 
 const TABLE_SCHEDULED_EXECUTIONS = "scheduled_executions"
@@ -35,13 +37,16 @@ var ScheduledExecutionFields = utils.ColumnList[DBScheduledExecution]()
 func AdaptScheduledExecution(db DBScheduledExecution, scenario models.Scenario,
 	iteration models.ScenarioIteration,
 ) models.ScheduledExecution {
+	status := models.EffectiveScheduledExecutionStatus(
+		models.ScheduledExecutionStatusFrom(db.Status), db.CancelDeadline, time.Now())
+
 	return models.ScheduledExecution{
 		Id:                         db.Id,
 		OrganizationId:             db.OrganizationId,
 		ScenarioId:                 db.ScenarioId,
 		ScenarioIterationId:        db.ScenarioIterationId,
 		ScenarioVersion:            strconv.Itoa(utils.Or(iteration.Version, 0)),
-		Status:                     models.ScheduledExecutionStatusFrom(db.Status),
+		Status:                     status,
 		StartedAt:                  db.StartedAt,
 		FinishedAt:                 db.FinishedAt,
 		NumberOfCreatedDecisions:   db.NumberOfCreatedDecisions,
@@ -54,5 +59,7 @@ func AdaptScheduledExecution(db DBScheduledExecution, scenario models.Scenario,
 		ManifestRowsProcessed:      db.ManifestRowsProcessed,
 		Deadline:                   db.Deadline,
 		DeduplicateObjects:         db.DeduplicateObjects,
+		CancelRequestedAt:          db.CancelRequestedAt,
+		CancelDeadline:             db.CancelDeadline,
 	}
 }

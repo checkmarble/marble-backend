@@ -175,6 +175,17 @@ func (m *TaskQueueRepository) EnqueueScheduledExecutionTask(
 	return args.Error(0)
 }
 
+func (m *TaskQueueRepository) EnqueueScheduledExecutionCancelFinalizer(
+	ctx context.Context,
+	tx repositories.Transaction,
+	organizationId uuid.UUID,
+	scheduledExecutionId string,
+	at time.Time,
+) error {
+	args := m.Called(ctx, tx, organizationId, scheduledExecutionId, at)
+	return args.Error(0)
+}
+
 func (m *TaskQueueRepository) EnqueueBatchExecutionCoordinator(
 	ctx context.Context,
 	tx repositories.Transaction,

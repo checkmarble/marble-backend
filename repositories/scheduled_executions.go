@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
@@ -138,22 +140,34 @@ func (repo *MarbleDbRepository) CreateScheduledExecution(ctx context.Context, ex
 	return err
 }
 
+// UpdateScheduledExecutionStatus transitions the execution to a new status, using the current
+// status as an optimistic lock: by default, only pending or processing executions can be updated,
+// so that a worker can never overwrite a final status or a requested cancellation. A stricter
+// expected status can be given with FromStatus. Returns whether the row was updated.
 func (repo *MarbleDbRepository) UpdateScheduledExecutionStatus(
 	ctx context.Context,
 	exec Executor,
 	updateScheduledEx models.UpdateScheduledExecutionStatusInput,
-) error {
-	// uses optimistic locking based on the current status to avoid overwriting the status incorrectly
+) (bool, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return err
+		return false, err
 	}
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
 		Where("id = ?", updateScheduledEx.Id)
 
+	if updateScheduledEx.FromStatus != nil {
+		query = query.Where("status = ?", updateScheduledEx.FromStatus.String())
+	} else {
+		query = query.Where(squirrel.Eq{"status": []string{
+			models.ScheduledExecutionPending.String(),
+			models.ScheduledExecutionProcessing.String(),
+		}})
+	}
+
 	query = query.Set("status", updateScheduledEx.Status.String())
 	if updateScheduledEx.Status == models.ScheduledExecutionSuccess {
-		query = query.Set("finished_at", "NOW()")
+		query = query.Set("finished_at", squirrel.Expr("NOW()"))
 	}
 
 	if updateScheduledEx.NumberOfCreatedDecisions != nil {
@@ -168,24 +182,97 @@ func (repo *MarbleDbRepository) UpdateScheduledExecutionStatus(
 
 	sql, args, err := query.ToSql()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	tag, err := exec.Exec(ctx, sql, args...)
 	if err != nil {
-		return err
+		return false, err
 	}
-	if tag.RowsAffected() == 0 {
-		return nil
-	}
-	return nil
+	return tag.RowsAffected() > 0, nil
 }
 
-func (repo *MarbleDbRepository) UpdateScheduledExecution(
+// RequestScheduledExecutionCancel moves an execution that is currently in fromStatus to the
+// cancelling state. Returns false if the execution was not in fromStatus anymore.
+func (repo *MarbleDbRepository) RequestScheduledExecutionCancel(
 	ctx context.Context,
 	exec Executor,
-	input models.UpdateScheduledExecutionInput,
-) error {
+	id string,
+	fromStatus models.ScheduledExecutionStatus,
+	cancelDeadline time.Time,
+) (bool, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return false, err
+	}
+
+	sql, args, err := NewQueryBuilder().
+		Update(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
+		Set("status", models.ScheduledExecutionCancelling.String()).
+		Set("cancel_requested_at", squirrel.Expr("NOW()")).
+		Set("cancel_deadline", cancelDeadline).
+		Where("id = ?", id).
+		Where("status = ?", fromStatus.String()).
+		ToSql()
+
+	if err != nil {
+		return false, err
+	}
+
+	tag, err := exec.Exec(ctx, sql, args...)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
+// AckScheduledExecutionCancel is called by the worker owning a cancelling execution once it has
+// stopped working on it, to mark it as cancelled.
+func (repo *MarbleDbRepository) AckScheduledExecutionCancel(ctx context.Context, exec Executor, id string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	return ExecBuilder(ctx, exec, NewQueryBuilder().
+		Update(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
+		Set("status", models.ScheduledExecutionCancelled.String()).
+		Set("finished_at", squirrel.Expr("NOW()")).
+		Where("id = ?", id).
+		Where("status = ?", models.ScheduledExecutionCancelling.String()))
+}
+
+// FinalizeExpiredCancellations marks as cancelled the cancelling executions whose cancel deadline
+// has passed, meaning the worker that owned them cannot be running anymore. At least one of the
+// filters must be provided.
+//
+// The deadline is compared with the application clock, not the database's: it is computed with
+// it, and reads already report expired cancellations as cancelled using it (see
+// models.EffectiveScheduledExecutionStatus), so both must agree on whether it has passed.
+func (repo *MarbleDbRepository) FinalizeExpiredCancellations(ctx context.Context, exec Executor, filters models.FinalizeExpiredCancellationsFilters) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+	if filters.ScheduledExecutionId == "" && filters.ScenarioId == "" {
+		return errors.New("FinalizeExpiredCancellations requires a scheduled execution or scenario id")
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
+		Set("status", models.ScheduledExecutionCancelled.String()).
+		Set("finished_at", squirrel.Expr("NOW()")).
+		Where("status = ?", models.ScheduledExecutionCancelling.String()).
+		Where("cancel_deadline < ?", time.Now())
+
+	if filters.ScheduledExecutionId != "" {
+		query = query.Where("id = ?", filters.ScheduledExecutionId)
+	}
+	if filters.ScenarioId != "" {
+		query = query.Where("scenario_id = ?", filters.ScenarioId)
+	}
+
+	return ExecBuilder(ctx, exec, query)
+}
+
+func (repo *MarbleDbRepository) UpdateScheduledExecution(ctx context.Context, exec Executor, input models.UpdateScheduledExecutionInput) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -209,7 +296,8 @@ func (repo *MarbleDbRepository) UpdateScheduledExecution(
 
 // AdvanceScheduledExecutionManifest moves the v2 coordinator's manifest cursor and
 // progress counters forward. It is meant to run in the same transaction as the batch's
-// decision inserts so the offset and the persisted decisions commit together.
+// decision inserts so the offset and the persisted decisions commit together. It returns
+// models.ErrScheduledExecutionNotProcessing if the execution is not processing anymore.
 func (repo *MarbleDbRepository) AdvanceScheduledExecutionManifest(
 	ctx context.Context,
 	exec Executor,
@@ -225,9 +313,24 @@ func (repo *MarbleDbRepository) AdvanceScheduledExecutionManifest(
 		Set("manifest_rows_processed", input.ManifestRowsProcessed).
 		Set("number_of_created_decisions", input.NumberOfCreatedDecisions).
 		Set("number_of_evaluated_decisions", input.NumberOfEvaluatedDecisions).
-		Where("id = ?", input.Id)
+		Where("id = ?", input.Id).
+		Where("status = ?", models.ScheduledExecutionProcessing.String())
 
-	return ExecBuilder(ctx, exec, query)
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return err
+	}
+
+	tag, err := exec.Exec(ctx, sql, args...)
+	if err != nil {
+		return err
+	}
+	// The status check makes a batch and a concurrent cancellation mutually exclusive: either the
+	// batch commits before the cancellation, or its transaction is rolled back.
+	if tag.RowsAffected() == 0 {
+		return models.ErrScheduledExecutionNotProcessing
+	}
+	return nil
 }
 
 func (repo *MarbleDbRepository) StoreDecisionsToCreate(

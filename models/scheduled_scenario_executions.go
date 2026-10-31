@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -36,6 +37,12 @@ type ScheduledExecution struct {
 	// the scenario, since a run can span several River slices and the setting must not
 	// change mid-run (see the scheduled_execution_deduplicate migration).
 	DeduplicateObjects bool
+
+	// Set when a cancellation is requested. CancelDeadline is the latest time at which the job
+	// owning the execution may still be running: past it, a `cancelling` execution is considered
+	// stopped and is finalized as `cancelled` without the worker's acknowledgement.
+	CancelRequestedAt *time.Time
+	CancelDeadline    *time.Time
 }
 
 type PaginatedScheduledExecutions struct {
@@ -51,7 +58,35 @@ const (
 	ScheduledExecutionSuccess
 	ScheduledExecutionPartialFailure
 	ScheduledExecutionFailure
+	// A cancellation was requested but the worker may still be running. Still counts as active,
+	// so that no other execution of the scenario can start until it is actually stopped.
+	ScheduledExecutionCancelling
+	ScheduledExecutionCancelled
 )
+
+// EffectiveScheduledExecutionStatus returns the status an execution should be considered in. A
+// cancelling execution whose cancel deadline has passed is reported as cancelled: the worker that
+// owned it cannot be running anymore, so it must not keep blocking the scenario, even if no job
+// has finalized it in the database yet.
+func EffectiveScheduledExecutionStatus(status ScheduledExecutionStatus, cancelDeadline *time.Time, now time.Time) ScheduledExecutionStatus {
+	if status == ScheduledExecutionCancelling && cancelDeadline != nil && now.After(*cancelDeadline) {
+		return ScheduledExecutionCancelled
+	}
+
+	return status
+}
+
+// ErrScheduledExecutionNotProcessing is returned when a write expected the execution to be in
+// the processing state but it was not (typically because a cancellation was requested).
+var ErrScheduledExecutionNotProcessing = errors.New("scheduled execution is not processing")
+
+func (s ScheduledExecutionStatus) IsActive() bool {
+	switch s {
+	case ScheduledExecutionPending, ScheduledExecutionProcessing, ScheduledExecutionCancelling:
+		return true
+	}
+	return false
+}
 
 func (s ScheduledExecutionStatus) String() string {
 	switch s {
@@ -65,6 +100,10 @@ func (s ScheduledExecutionStatus) String() string {
 		return "partial_failure"
 	case ScheduledExecutionFailure:
 		return "failure"
+	case ScheduledExecutionCancelling:
+		return "cancelling"
+	case ScheduledExecutionCancelled:
+		return "cancelled"
 	}
 	return "pending"
 }
@@ -81,13 +120,21 @@ func ScheduledExecutionStatusFrom(s string) ScheduledExecutionStatus {
 		return ScheduledExecutionPartialFailure
 	case "processing":
 		return ScheduledExecutionProcessing
+	case "cancelling":
+		return ScheduledExecutionCancelling
+	case "cancelled":
+		return ScheduledExecutionCancelled
 	}
 	return ScheduledExecutionPending
 }
 
 type UpdateScheduledExecutionStatusInput struct {
-	Id                         string
-	Status                     ScheduledExecutionStatus
+	Id     string
+	Status ScheduledExecutionStatus
+	// When set, the update only applies if the execution currently has this status. Otherwise it
+	// applies from any status that is not final and not being cancelled (pending or processing).
+	// This simulates a compare-and-swap operation.
+	FromStatus                 *ScheduledExecutionStatus
 	NumberOfCreatedDecisions   *int
 	NumberOfEvaluatedDecisions *int
 }
@@ -126,6 +173,11 @@ type CreateScheduledExecutionInput struct {
 	// The repository still defaults a stray nil to false (see CreateScheduledExecution) as a
 	// defensive fallback, not as part of the intended resolution path.
 	DeduplicateObjects *bool
+}
+
+type FinalizeExpiredCancellationsFilters struct {
+	ScheduledExecutionId string
+	ScenarioId           string
 }
 
 type ListScheduledExecutionsFilters struct {

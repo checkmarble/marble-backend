@@ -66,7 +66,7 @@ type asyncDecisionWorkerRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		updateScheduledEx models.UpdateScheduledExecutionStatusInput,
-	) (err error)
+	) (bool, error)
 	ListWorkflowsForScenario(ctx context.Context, exec repositories.Executor, scenarioId uuid.UUID) ([]models.Workflow, error)
 	GetAnalyticsSettings(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (map[string]analytics.Settings, error)
 }
@@ -430,7 +430,7 @@ func (w *AsyncDecisionWorker) possiblyUpdateScheduledExecNumbers(
 		return err
 	}
 
-	err = w.repository.UpdateScheduledExecutionStatus(
+	_, err = w.repository.UpdateScheduledExecutionStatus(
 		ctx,
 		tx,
 		models.UpdateScheduledExecutionStatusInput{

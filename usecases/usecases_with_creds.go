@@ -475,6 +475,7 @@ func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecu
 		executorFactory:     usecases.NewExecutorFactory(),
 		repository:          usecases.Repositories.MarbleDbRepository,
 		taskQueueRepository: usecases.Repositories.TaskQueueRepository,
+		manifestBucketUrl:   usecases.offloadingBucketUrl,
 	}
 }
 
@@ -1093,6 +1094,11 @@ func (usecases UsecasesWithCreds) NewScheduledScenarioWorker() *worker_jobs.Sche
 func (usecases UsecasesWithCreds) NewScheduledExecutionWorker() *worker_jobs.ScheduledExecutionWorker {
 	runScheduledExecution := usecases.NewRunScheduledExecution()
 	return worker_jobs.NewScheduledExecutionWorker(&runScheduledExecution)
+}
+
+func (usecases UsecasesWithCreds) NewScheduledExecutionCancelFinalizerWorker() *worker_jobs.ScheduledExecutionCancelFinalizerWorker {
+	runScheduledExecution := usecases.NewRunScheduledExecution()
+	return worker_jobs.NewScheduledExecutionCancelFinalizerWorker(&runScheduledExecution)
 }
 
 func (usecases UsecasesWithCreds) NewCsvIngestionWorker() *CsvIngestionWorker {

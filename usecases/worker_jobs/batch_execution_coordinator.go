@@ -63,7 +63,8 @@ type batchCoordinatorRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		input models.UpdateScheduledExecutionStatusInput,
-	) error
+	) (bool, error)
+	AckScheduledExecutionCancel(ctx context.Context, exec repositories.Executor, id string) error
 	AdvanceScheduledExecutionManifest(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -208,6 +209,9 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 	if err != nil {
 		return errors.Wrap(err, "could not load scheduled execution in batch coordinator")
 	}
+	if se.Status != models.ScheduledExecutionProcessing {
+		return c.stopNotProcessing(ctx, se.Id, se.Status)
+	}
 	if se.ManifestBlobKey == nil {
 		// Invariant: the coordinator only ever runs for v2 executions, which always have a
 		// manifest. Mark failed rather than spin.
@@ -221,7 +225,7 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 	// A context timeout during the job execution leads to a snooze and retry, the next execution can mark it as failed if the deadline is passed
 	if time.Now().After(*se.Deadline) {
 		if se.ManifestRowsProcessed >= int64(*se.NumberOfPlannedDecisions) {
-			return c.repository.UpdateScheduledExecutionStatus(ctx, exec, models.UpdateScheduledExecutionStatusInput{Id: se.Id, Status: models.ScheduledExecutionSuccess})
+			return c.markSucceeded(ctx, se.Id)
 		} else {
 			logger.InfoContext(ctx, "Scheduled execution not completed after the deadline, marking as failed")
 			return c.markFailed(ctx, se.Id, errors.New("Scheduled execution not completed after the deadline"))
@@ -289,15 +293,12 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 			continue
 		}
 		if current.Status != models.ScheduledExecutionProcessing {
-			logger.InfoContext(ctx, fmt.Sprintf(
-				"batch execution no longer processing (status %s), coordinator exiting", current.Status,
-			))
-			return nil
+			return c.stopNotProcessing(ctx, se.Id, current.Status)
 		}
 
 		if rows >= planned {
 			logger.InfoContext(ctx, fmt.Sprintf("batch execution complete: %d decisions created, %d evaluated", created, evaluated))
-			return c.repository.UpdateScheduledExecutionStatus(ctx, exec, models.UpdateScheduledExecutionStatusInput{Id: se.Id, Status: models.ScheduledExecutionSuccess})
+			return c.markSucceeded(ctx, se.Id)
 		}
 
 		if manifestReader == nil {
@@ -319,7 +320,7 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 			logger.WarnContext(ctx, fmt.Sprintf(
 				"manifest exhausted at %d rows but %d were planned; finalizing", rows, planned,
 			))
-			return c.repository.UpdateScheduledExecutionStatus(ctx, exec, models.UpdateScheduledExecutionStatusInput{Id: se.Id, Status: models.ScheduledExecutionSuccess})
+			return c.markSucceeded(ctx, se.Id)
 		}
 		newOffset := offset + consumed
 
@@ -445,7 +446,19 @@ func (c *BatchExecutionCoordinator) Run(ctx context.Context, scheduledExecutionI
 				NumberOfEvaluatedDecisions: evaluated + batchEvaluated,
 			})
 		})
+
 		cancel()
+
+		if errors.Is(err, models.ErrScheduledExecutionNotProcessing) {
+			// The status changed (e.g. cancellation requested) while the batch was being
+			// processed: the transaction was rolled back and nothing from this batch committed.
+			current, err := c.repository.GetScheduledExecution(ctx, exec, scheduledExecutionId)
+			if err != nil {
+				return errors.Wrap(err, "could not reload scheduled execution after it stopped processing")
+			}
+
+			return c.stopNotProcessing(ctx, se.Id, current.Status)
+		}
 		if err != nil {
 			// Store or advance failed: nothing committed, do not advance our cursors. The reader
 			// has consumed this batch, so re-seek it to the committed offset and retry.
@@ -484,14 +497,12 @@ func (c *BatchExecutionCoordinator) loadInvariants(
 	}
 	table, ok := dataModel.Tables[scenario.TriggerObjectType]
 	if !ok {
-		err = c.repository.UpdateScheduledExecutionStatus(ctx, exec, models.UpdateScheduledExecutionStatusInput{
-			Id:     se.Id,
-			Status: models.ScheduledExecutionFailure,
-		})
-		if err != nil {
-			utils.LogAndReportSentryError(ctx, err)
+		if finishErr := finishScheduledExecution(ctx, c.repository, exec, se.Id,
+			models.ScheduledExecutionFailure); finishErr != nil {
+			utils.LogAndReportSentryError(ctx, finishErr)
 		}
-		return batchInvariants{}, river.JobCancel(err)
+		return batchInvariants{}, river.JobCancel(errors.Newf(
+			"trigger object type %s not found in data model", scenario.TriggerObjectType))
 	}
 
 	pivotsMeta, err := c.dataModelRepository.ListPivots(ctx, exec, scenario.OrganizationId, nil, true, false)
@@ -734,15 +745,40 @@ func (c *BatchExecutionCoordinator) testRunCallback(
 	}
 }
 
+// markSucceeded marks the execution as successful, or acknowledges the cancellation if one was
+// requested in the meantime (see finishScheduledExecution).
+func (c *BatchExecutionCoordinator) markSucceeded(ctx context.Context, id string) error {
+	return finishScheduledExecution(ctx, c.repository, c.executorFactory.NewExecutor(), id,
+		models.ScheduledExecutionSuccess)
+}
+
+// stopNotProcessing exits the coordinator for an execution that is not processing anymore,
+// acknowledging the cancellation if one was requested so that the scenario can be executed again.
+func (c *BatchExecutionCoordinator) stopNotProcessing(ctx context.Context, id string, status models.ScheduledExecutionStatus) error {
+	logger := utils.LoggerFromContext(ctx)
+
+	logger.InfoContext(ctx, fmt.Sprintf(
+		"batch execution no longer processing (status %s), coordinator exiting", status,
+	))
+
+	if status != models.ScheduledExecutionCancelling {
+		return nil
+	}
+
+	// Use a fresh context: the job context may be the one that just expired.
+	ackCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+
+	return c.repository.AckScheduledExecutionCancel(ackCtx, c.executorFactory.NewExecutor(), id)
+}
+
 func (c *BatchExecutionCoordinator) markFailed(
 	ctx context.Context,
 	id string,
 	err error,
 ) error {
-	repoErr := c.repository.UpdateScheduledExecutionStatus(ctx, c.executorFactory.NewExecutor(), models.UpdateScheduledExecutionStatusInput{
-		Id:     id,
-		Status: models.ScheduledExecutionFailure,
-	})
+	repoErr := finishScheduledExecution(ctx, c.repository, c.executorFactory.NewExecutor(), id,
+		models.ScheduledExecutionFailure)
 	if repoErr != nil {
 		utils.LogAndReportSentryError(ctx, repoErr)
 	}

@@ -93,3 +93,18 @@ func handleCreateScheduledExecution(uc usecases.Usecases) func(c *gin.Context) {
 		c.Status(http.StatusCreated)
 	}
 }
+
+func handleCancelScheduledExecution(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		scheduledExecutionID := c.Param("execution_id")
+
+		usecase := usecasesWithCreds(ctx, uc).NewScheduledExecutionUsecase()
+		err := usecase.CancelScheduledExecution(ctx, scheduledExecutionID)
+
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
