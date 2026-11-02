@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -46,6 +47,63 @@ var AllowedSchemaTypes = []string{
 	"Vessel",
 	"Airplane",
 	"LegalEntity",
+}
+
+// datasetUpdatePropertyBlacklist excludes informational properties from dataset_updated queries only.
+// Keep this list in sync with docs/screening/matching-properties.md when changing matching engines or algorithms.
+var datasetUpdatePropertyBlacklist = []string{
+	"alephUrl",
+	"amount",
+	"amountEur",
+	"amountUsd",
+	"appearance",
+	"biography",
+	"caemCode",
+	"capital",
+	"classification",
+	"createdAt",
+	"currency",
+	"deadweightTonnage",
+	"description",
+	"education",
+	"ethnicity",
+	"eyeColor",
+	"fssCode",
+	"grossRegisteredTonnage",
+	"hairColor",
+	"height",
+	"icijId",
+	"indexText",
+	"keywords",
+	"legalForm",
+	"manufacturer",
+	"model",
+	"modifiedAt",
+	"navigationArea",
+	"notes",
+	"okopfCode",
+	"oksmCode",
+	"pastTypes",
+	"political",
+	"position",
+	"profession",
+	"program",
+	"publisher",
+	"publisherUrl",
+	"registrationPort",
+	"religion",
+	"retrievedAt",
+	"riskSource",
+	"sector",
+	"sourceUrl",
+	"spokenLanguage",
+	"status",
+	"summary",
+	"taxStatus",
+	"tonnage",
+	"type",
+	"weight",
+	"wikipediaUrl",
 }
 
 type applyDeltaFileWorkerRepository interface {
@@ -586,8 +644,11 @@ func (w *ApplyDeltaFileWorker) buildOpenSanctionQuery(
 		whitelistedEntityIds[i] = whitelist.CounterpartyId
 	}
 
-	// Create the openSanction query
-	filters := record.Entity.Properties
+	// Filter only the query; preserve the complete source entity for its stored payload.
+	filters := maps.Clone(record.Entity.Properties)
+	for _, property := range datasetUpdatePropertyBlacklist {
+		delete(filters, property)
+	}
 
 	// Upstream -> Organization record searches should not contain topics filters
 	delete(filters, "topics")
