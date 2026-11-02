@@ -324,6 +324,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 			RescueStuckJobsAfter: 2 * time.Minute,
 			Middleware: []rivertype.Middleware{
 				jobs.NewRecoveredMiddleware(),
+				jobs.NewOrganizationCredentialsMiddleware(),
 				jobs.NewSentryMiddleware(),
 				cronMonitorMiddleware,
 				jobs.NewTracingMiddleware(telemetryRessources.Tracer),
