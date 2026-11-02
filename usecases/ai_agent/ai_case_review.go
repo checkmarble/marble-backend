@@ -604,6 +604,9 @@ func (uc *AiAgentUsecase) CreateCaseReviewSync(
 				}
 
 				for tableName, fieldsToRead := range caseReviewContext.FieldsToReadPerTable {
+					if _, found := objectTables[tableName]; !found {
+						continue
+					}
 					// Reuse original read options, just adapt the number of rows to read and the fields to consider
 					fieldFilteredObjects, _, _, err := uc.ingestedDataReader.ReadIngestedClientObjects(
 						ctx,
