@@ -14,6 +14,12 @@ func CredentialsFromCtx(ctx context.Context) (models.Credentials, bool) {
 	return creds, ok
 }
 
+func WithOrganizationInContext(ctx context.Context, organizationID uuid.UUID) context.Context {
+	creds, _ := CredentialsFromCtx(ctx)
+	creds.OrganizationId = organizationID
+	return context.WithValue(ctx, ContextKeyCredentials, creds)
+}
+
 func OrganizationIdFromRequest(request *http.Request) (organizationId uuid.UUID, err error) {
 	if request == nil {
 		return uuid.Nil, errors.Errorf("no request passed to OrganizationIdFromRequest: %w", models.ForbiddenError)
