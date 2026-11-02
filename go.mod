@@ -4,7 +4,7 @@ go 1.27.1
 
 require (
 	cloud.google.com/go/bigquery v1.83.0
-	cloud.google.com/go/iam v1.13.0
+	cloud.google.com/go/iam v1.14.0
 	cloud.google.com/go/profiler v0.7.0
 	cloud.google.com/go/storage v1.68.0
 	dario.cat/mergo v1.0.2
