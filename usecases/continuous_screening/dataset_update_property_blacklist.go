@@ -1,7 +1,7 @@
 package continuous_screening
 
 // datasetUpdatePropertyBlacklist excludes informational properties from dataset_updated queries only.
-// Keep this list in sync with docs/screening/matching-properties.md when changing matching engines or algorithms.
+// Keep this list in sync with contrib/docs/screening/matching-properties.md when changing matching engines or algorithms.
 var datasetUpdatePropertyBlacklist = []string{
 	"alephUrl",
 	"amount",

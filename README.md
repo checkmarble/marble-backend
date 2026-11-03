@@ -130,7 +130,7 @@ For further information on the API, you can also refer to the following resource
 
 ## Screening
 
-A property blacklist is applied to continuous screening `dataset_updated` queries to reduce request size and stored `search_input`. The [matching properties report](docs/screening/matching-properties.md) records the fields to preserve, the blacklist, its scope and the audit date.
+A property blacklist is applied to continuous screening `dataset_updated` queries to reduce request size and stored `search_input`. The [matching properties report](contrib/docs/screening/matching-properties.md) records the fields to preserve, the blacklist, its scope and the audit date.
 
 When changing the matching algorithm, engine/FtM version or supported schemas, review and update this document and the blacklist together.
 
