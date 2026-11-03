@@ -379,11 +379,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	adminUc := jobs.GenerateUsecaseWithCredForSystem(uc)
 
 	if only != "" {
-		if err := singleJobRun(ctx, adminUc, apiVersion, workerConfig, gcpConfig, only, onlyArgs); err != nil {
-			logger.Error(err.Error())
-		}
-
-		return nil
+		return singleJobRun(ctx, adminUc, apiVersion, workerConfig, gcpConfig, only, onlyArgs)
 	}
 
 	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())
@@ -586,6 +582,10 @@ func ensureGlobalQueuesAreActive(ctx context.Context, riverClient *river.Client[
 }
 
 func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion string, workerConfig WorkerConfig, gcpConfig infra.GcpConfig, jobName, jobArgs string) error {
+	ctx, err := singleJobContext(ctx, uc.Credentials, jobArgs)
+	if err != nil {
+		return err
+	}
 	ctx = utils.StoreExecutionSourceInContext(ctx, utils.ExecutionSource{
 		Type:    utils.ExecutionSourceManualJob,
 		JobKind: jobName,
@@ -719,6 +719,21 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}
+}
+
+func singleJobContext(ctx context.Context, creds models.Credentials, argsJSON string) (context.Context, error) {
+	var args struct {
+		OrgID *uuid.UUID `json:"org_id"`
+	}
+	if argsJSON != "" {
+		if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
+			return nil, errors.Wrap(err, "could not parse worker arguments")
+		}
+	}
+	if args.OrgID != nil {
+		creds.OrganizationId = *args.OrgID
+	}
+	return context.WithValue(ctx, utils.ContextKeyCredentials, creds), nil
 }
 
 func singleJobCreate[A river.JobArgs](ctx context.Context, argsJson string) *river.Job[A] {
