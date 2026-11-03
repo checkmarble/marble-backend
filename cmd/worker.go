@@ -379,7 +379,11 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	adminUc := jobs.GenerateUsecaseWithCredForSystem(uc)
 
 	if only != "" {
-		return singleJobRun(ctx, adminUc, apiVersion, workerConfig, gcpConfig, only, onlyArgs)
+		if err := singleJobRun(ctx, adminUc, apiVersion, workerConfig, gcpConfig, only, onlyArgs); err != nil {
+			logger.Error(err.Error())
+		}
+
+		return nil
 	}
 
 	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())
@@ -722,6 +726,8 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion
 }
 
 func singleJobContext(ctx context.Context, creds models.Credentials, argsJSON string) (context.Context, error) {
+	// Every worker job which is associated with an organization have the org_id in the job arguments.
+	// Use the arg to scope the credentials to the organization. Could be needed when fetching from Redis cache
 	var args struct {
 		OrgID *uuid.UUID `json:"org_id"`
 	}
