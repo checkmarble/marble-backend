@@ -85,12 +85,24 @@ func TestMonitoredObjectCollector_Collect_Success(t *testing.T) {
 		org1Id.String(), org2Id.String(), org3Id.String(),
 	}).Return(configStableIdsByOrg, nil)
 
-	mockClientDbRepo.On("CountMonitoredObjectsByConfigStableIds", ctx, mock.Anything,
-		[]uuid.UUID{config1}).Return(100, nil)
-	mockClientDbRepo.On("CountMonitoredObjectsByConfigStableIds", ctx, mock.Anything,
-		[]uuid.UUID{config2}).Return(0, nil)
-	mockClientDbRepo.On("CountMonitoredObjectsByConfigStableIds", ctx, mock.Anything,
-		[]uuid.UUID{}).Return(0, nil)
+	mockClientDbRepo.On("CountMonitoredObjectsByConfigStableIds", mock.Anything, mock.Anything,
+		[]uuid.UUID{config1}).Return(100, nil).Run(func(args mock.Arguments) {
+		creds, found := utils.CredentialsFromCtx(args.Get(0).(context.Context))
+		require.True(t, found)
+		require.Equal(t, org1Id, creds.OrganizationId)
+	})
+	mockClientDbRepo.On("CountMonitoredObjectsByConfigStableIds", mock.Anything, mock.Anything,
+		[]uuid.UUID{config2}).Return(0, nil).Run(func(args mock.Arguments) {
+		creds, found := utils.CredentialsFromCtx(args.Get(0).(context.Context))
+		require.True(t, found)
+		require.Equal(t, org2Id, creds.OrganizationId)
+	})
+	mockClientDbRepo.On("CountMonitoredObjectsByConfigStableIds", mock.Anything, mock.Anything,
+		[]uuid.UUID{}).Return(0, nil).Run(func(args mock.Arguments) {
+		creds, found := utils.CredentialsFromCtx(args.Get(0).(context.Context))
+		require.True(t, found)
+		require.Equal(t, org3Id, creds.OrganizationId)
+	})
 
 	// Create collector
 	collector := NewMonitoredObjectCollector(
@@ -104,6 +116,8 @@ func TestMonitoredObjectCollector_Collect_Success(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
+	_, hasCredentials := utils.CredentialsFromCtx(ctx)
+	require.False(t, hasCredentials)
 	assert.Len(t, metrics, 3)
 
 	// Verify metrics by organization

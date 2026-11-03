@@ -11,6 +11,8 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 	"github.com/h2non/gock"
 	"github.com/riverqueue/river"
 	"github.com/stretchr/testify/mock"
@@ -624,6 +626,7 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_NoActiveConfigs_Returns
 }
 
 func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_OrgMissingFeature_SkipsEnqueueing() {
+	suite.ctx = context.WithValue(suite.ctx, utils.ContextKeyCredentials, models.Credentials{Roles: []models.Role{models.SYSTEM}})
 	datasetName := "test-dataset"
 	oldVersion := "2024-01-01"
 	newVersion := "2024-01-02"
@@ -720,13 +723,23 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_OrgMissingFeature_Skips
 		models.OrganizationFeatureAccess{
 			ContinuousScreening: models.Allowed,
 		}, nil,
-	)
+	).Run(func(args mock.Arguments) {
+		creds, found := utils.CredentialsFromCtx(args.Get(0).(context.Context))
+		suite.True(found)
+		suite.Equal(org1Id, creds.OrganizationId)
+		suite.True(creds.HasRole(models.SYSTEM))
+	})
 	// org2 - feature not allowed (restricted)
 	suite.featureAccessReader.On("GetOrganizationFeatureAccess", mock.Anything, org2Id, mock.Anything).Return(
 		models.OrganizationFeatureAccess{
 			ContinuousScreening: models.Restricted,
 		}, nil,
-	)
+	).Run(func(args mock.Arguments) {
+		creds, found := utils.CredentialsFromCtx(args.Get(0).(context.Context))
+		suite.True(found)
+		suite.Equal(org2Id, creds.OrganizationId)
+		suite.True(creds.HasRole(models.SYSTEM))
+	})
 
 	// Mock update job creation - only for org1 (org2 is skipped)
 	suite.repository.On("CreateContinuousScreeningUpdateJob", mock.Anything, mock.Anything,
@@ -748,6 +761,8 @@ func (suite *ScanDatasetUpdatesWorkerTestSuite) TestWork_OrgMissingFeature_Skips
 	// Assert
 	suite.NoError(err)
 	suite.AssertExpectations()
+	creds, _ := utils.CredentialsFromCtx(suite.ctx)
+	suite.Equal(uuid.Nil, creds.OrganizationId)
 }
 
 // mockBlobWriter implements io.WriteCloser for testing
