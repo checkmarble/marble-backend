@@ -70,8 +70,9 @@ func injectDbSessionConfig(ctx context.Context, exec executor, query string) (pg
 				postgres_audit_api_key_id_parameter, creds.ActorIdentity.ApiKeyId,
 			}})
 		default:
-			// We need to select dummy values so we simplify the arguments logic
-			cmds = append(cmds, auditCommands{"$5, $6", []any{0, 0}})
+			// Keep placeholder numbering consistent. PostgreSQL infers text for
+			// these standalone parameters, so the dummy values must be strings.
+			cmds = append(cmds, auditCommands{"$5, $6", []any{"", ""}})
 		}
 
 		cmds = append(cmds, auditCommands{"SET_CONFIG($7, $8, false)", []any{
