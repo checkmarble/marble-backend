@@ -199,6 +199,7 @@ func (w *ScanDatasetUpdatesWorker) Work(
 					if config.Provider != provider {
 						continue
 					}
+					ctx := utils.WithOrganizationInContext(ctx, config.OrgId)
 					if err := w.checkFeatureAccess(ctx, config.OrgId); err != nil {
 						logger.DebugContext(ctx, "Could not process delta files due to feature access check", "org_id", config.OrgId, "error", err)
 						continue
