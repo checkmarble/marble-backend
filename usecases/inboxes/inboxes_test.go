@@ -228,6 +228,49 @@ func (suite *InboxReaderTestSuite) Test_ListInboxes_security_error() {
 	suite.AssertExpectations()
 }
 
+func (suite *InboxReaderTestSuite) makeUsecaseApiKey(permissions ...models.Permission) *InboxReader {
+	return &InboxReader{
+		EnforceSecurity: suite.enforceSecurity,
+		InboxRepository: suite.inboxRepository,
+		Credentials: models.Credentials{
+			ActorIdentity:  models.Identity{ApiKeyId: "some api key id"},
+			OrganizationId: suite.organizationId,
+			RoleBindings:   []models.RoleBinding{{Role: "org/custom", Permissions: permissions}},
+		},
+		ExecutorFactory: suite.executorFactory,
+	}
+}
+
+func (suite *InboxReaderTestSuite) Test_ListInboxes_custom_role_with_inbox_editor() {
+	suite.inboxRepository.On("ListInboxes", suite.ctx, suite.transaction, suite.organizationId,
+		mock.MatchedBy(func(s []uuid.UUID) bool { return s == nil }), false).Return([]models.Inbox{
+		suite.inbox,
+	}, nil)
+	suite.enforceSecurity.On("ReadInbox", suite.inbox).Return(nil)
+
+	result, err := suite.makeUsecaseApiKey(models.INBOX_EDITOR, models.CASE_READ_WRITE).
+		ListInboxes(suite.ctx, suite.transaction, suite.organizationId, false)
+
+	t := suite.T()
+	assert.NoError(t, err)
+	assert.Equal(t, []models.Inbox{suite.inbox}, result)
+
+	suite.AssertExpectations()
+}
+
+func (suite *InboxReaderTestSuite) Test_ListInboxes_api_key_without_inbox_editor() {
+	// API keys are not members of any inbox, inbox users must not be listed
+	// without a user filter.
+	result, err := suite.makeUsecaseApiKey(models.CASE_READ_WRITE).
+		ListInboxes(suite.ctx, suite.transaction, suite.organizationId, false)
+
+	t := suite.T()
+	assert.NoError(t, err)
+	assert.Equal(t, []models.Inbox{}, result)
+
+	suite.AssertExpectations()
+}
+
 func TestInboxReader(t *testing.T) {
 	suite.Run(t, new(InboxReaderTestSuite))
 }

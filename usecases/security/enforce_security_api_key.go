@@ -24,6 +24,12 @@ func (e *EnforceSecurityApiKeyImpl) CreateApiKey(organizationId uuid.UUID) error
 	)
 }
 
+// GrantRoleBindings only lets principals give an API key custom roles whose
+// permissions they hold themselves.
+func (e *EnforceSecurityApiKeyImpl) GrantRoleBindings(bindings []models.RoleBinding) error {
+	return enforceCanGrant(e, grantedCustomRolePermissions(nil, bindings))
+}
+
 func (e *EnforceSecurityApiKeyImpl) DeleteApiKey(apiKey models.ApiKey) error {
 	// For now, we don't have any specific permission for deleting an API key
 	return e.CreateApiKey(apiKey.OrganizationId)

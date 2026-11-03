@@ -1219,7 +1219,10 @@ func (uc ScreeningUsecase) enforceCanReadOrUpdateCase(ctx context.Context, decis
 			"could not find the decision linked to the screening")
 	}
 
-	if !creds.HasRole(models.API_CLIENT) {
+	// API keys with access to all inboxes may act on screenings that are not
+	// linked to a case. This is checked through the permission, since API
+	// keys can hold custom roles.
+	if creds.ActorIdentity.ApiKeyId == "" || !creds.HasPermission(models.INBOX_EDITOR) {
 		if decision[0].Case == nil {
 			return decision[0], errors.Wrap(models.UnprocessableEntityError,
 				"this screening is not linked to a case")

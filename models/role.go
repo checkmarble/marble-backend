@@ -1,19 +1,30 @@
 package models
 
 import (
+	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/google/uuid"
 )
 
-type RoleBinding struct {
+type RbacRole struct {
 	Id          uuid.UUID
-	TenantId    uuid.UUID
 	OrgId       uuid.UUID
-	UserId      *UserId
-	ApiKeyId    *uuid.UUID
-	Role        Role
+	Slug        string
+	Name        string
 	Permissions []Permission
+}
+
+type RoleBinding struct {
+	Id           uuid.UUID
+	TenantId     uuid.UUID
+	OrgId        uuid.UUID
+	UserId       *UserId
+	ApiKeyId     *uuid.UUID
+	Role         Role
+	CustomRoleId *uuid.UUID
+	Permissions  []Permission
 }
 
 // Equivalent reports whether two bindings grant the same role.
@@ -99,6 +110,16 @@ func LegacyRoleValue(bindings []RoleBinding) int {
 }
 
 type Role string
+
+var CUSTOM_ROLE_PATTERN = regexp.MustCompile(`^org/[a-zA-Z\.]+$`)
+
+func (r Role) IsCustom() bool {
+	return strings.HasPrefix(string(r), "org/")
+}
+
+func (r Role) IsValidCustom() bool {
+	return CUSTOM_ROLE_PATTERN.MatchString(string(r))
+}
 
 // Do not remove or reorder entries here, even if a role if deleted, since the
 // value is used for identity.
