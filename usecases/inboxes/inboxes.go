@@ -106,10 +106,7 @@ func (i *InboxReader) ListInboxes(
 }
 
 func (i *InboxReader) isAdminHasAccessToAllInboxes() bool {
-	return i.Credentials.HasRole(models.ADMIN) ||
-		i.Credentials.HasRole(models.MARBLE_ADMIN) ||
-		i.Credentials.HasRole(models.API_CLIENT) ||
-		i.Credentials.HasRole(models.SYSTEM)
+	return i.Credentials.HasRole(models.ADMIN, models.MARBLE_ADMIN, models.API_CLIENT, models.SYSTEM)
 }
 
 func (i *InboxReader) getAvailableInboxes(ctx context.Context, exec repositories.Executor) ([]uuid.UUID, error) {

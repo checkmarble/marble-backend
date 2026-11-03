@@ -16,10 +16,12 @@ import (
 
 type ApiKeyUsecaseTestSuite struct {
 	suite.Suite
-	enforceSecurity  *mocks.EnforceSecurity
-	transaction      *mocks.Executor
-	executorFactory  *mocks.ExecutorFactory
-	apiKeyRepository *mocks.ApiKeyRepository
+	enforceSecurity    *mocks.EnforceSecurity
+	transaction        *mocks.Executor
+	executorFactory    *mocks.ExecutorFactory
+	tx                 *mocks.Transaction
+	transactionFactory *mocks.TransactionFactory
+	apiKeyRepository   *mocks.ApiKeyRepository
 
 	organizationId  uuid.UUID
 	repositoryError error
@@ -31,6 +33,8 @@ func (suite *ApiKeyUsecaseTestSuite) SetupTest() {
 	suite.apiKeyRepository = new(mocks.ApiKeyRepository)
 	suite.transaction = new(mocks.Executor)
 	suite.executorFactory = new(mocks.ExecutorFactory)
+	suite.tx = new(mocks.Transaction)
+	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.tx}
 
 	suite.organizationId = uuid.MustParse("25ab6323-1657-4a52-923a-ef6983fe4532")
 
@@ -40,9 +44,10 @@ func (suite *ApiKeyUsecaseTestSuite) SetupTest() {
 
 func (suite *ApiKeyUsecaseTestSuite) makeUsecase() *ApiKeyUseCase {
 	return &ApiKeyUseCase{
-		apiKeyRepository: suite.apiKeyRepository,
-		enforceSecurity:  suite.enforceSecurity,
-		executorFactory:  suite.executorFactory,
+		apiKeyRepository:   suite.apiKeyRepository,
+		enforceSecurity:    suite.enforceSecurity,
+		executorFactory:    suite.executorFactory,
+		transactionFactory: suite.transactionFactory,
 	}
 }
 
@@ -51,19 +56,20 @@ func (suite *ApiKeyUsecaseTestSuite) AssertExpectations() {
 	suite.apiKeyRepository.AssertExpectations(t)
 	suite.enforceSecurity.AssertExpectations(t)
 	suite.executorFactory.AssertExpectations(t)
+	suite.transactionFactory.AssertExpectations(t)
 }
 
 func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_nominal() {
 	ctx := context.Background()
 	input := models.CreateApiKeyInput{
 		OrganizationId: suite.organizationId,
-		Description:    "test key", Role: models.API_CLIENT,
+		Description:    "test key", RoleBindings: models.NativeRoleBindings([]models.Role{models.API_CLIENT}),
 	}
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
 	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
 	suite.apiKeyRepository.On(
 		"CreateApiKey",
-		suite.transaction,
+		suite.tx,
 		mock.AnythingOfType("models.ApiKey"),
 	).
 		Return(nil)
@@ -81,7 +87,7 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_bad_parameter() {
 	ctx := context.Background()
 	input := models.CreateApiKeyInput{
 		OrganizationId: suite.organizationId,
-		Description:    "test key", Role: models.ADMIN,
+		Description:    "test key", RoleBindings: models.NativeRoleBindings([]models.Role{models.ADMIN}),
 	}
 	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
 
@@ -96,7 +102,7 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_security_error() {
 	ctx := context.Background()
 	input := models.CreateApiKeyInput{
 		OrganizationId: suite.organizationId,
-		Description:    "test key", Role: models.API_CLIENT,
+		Description:    "test key", RoleBindings: models.NativeRoleBindings([]models.Role{models.API_CLIENT}),
 	}
 	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(suite.securityError)
 
@@ -111,11 +117,11 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_repository_error() {
 	ctx := context.Background()
 	input := models.CreateApiKeyInput{
 		OrganizationId: suite.organizationId,
-		Description:    "test key", Role: models.API_CLIENT,
+		Description:    "test key", RoleBindings: models.NativeRoleBindings([]models.Role{models.API_CLIENT}),
 	}
-	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
+	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
 	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
-	suite.apiKeyRepository.On("CreateApiKey", suite.transaction,
+	suite.apiKeyRepository.On("CreateApiKey", suite.tx,
 		mock.AnythingOfType("models.ApiKey")).Return(suite.repositoryError)
 
 	_, err := suite.makeUsecase().CreateApiKey(ctx, input)

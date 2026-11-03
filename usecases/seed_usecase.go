@@ -33,9 +33,14 @@ func (usecase *SeedUseCase) SeedMarbleAdmins(ctx context.Context, firstMarbleAdm
 	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 
-	userID, err := usecase.userRepository.CreateUser(ctx, exec, models.CreateUser{
-		Email: firstMarbleAdminEmail,
-		Role:  models.MARBLE_ADMIN,
+	var userID string
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		var err error
+		userID, err = usecase.userRepository.CreateUser(ctx, tx, models.CreateUser{
+			Email:        firstMarbleAdminEmail,
+			RoleBindings: models.NativeRoleBindings([]models.Role{models.MARBLE_ADMIN}),
+		})
+		return err
 	})
 
 	// ignore user already added
@@ -126,10 +131,16 @@ func (usecase *SeedUseCase) CreateOrgAndUser(ctx context.Context, input models.I
 	}
 
 	if input.AdminEmail != "" {
-		userID, err := usecase.userRepository.CreateUser(ctx, exec, models.CreateUser{
-			Email:          input.AdminEmail,
-			OrganizationId: targetOrg.Id,
-			Role:           models.ADMIN,
+		var userID string
+		err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+			var err error
+			userID, err = usecase.userRepository.CreateUser(ctx, tx, models.CreateUser{
+				Email:          input.AdminEmail,
+				OrganizationId: targetOrg.Id,
+				RoleBindings:   models.NativeRoleBindings([]models.Role{models.ADMIN}),
+			})
+
+			return err
 		})
 		userAlreadyExists := repositories.IsUniqueViolationError(err)
 		if err != nil && !userAlreadyExists {

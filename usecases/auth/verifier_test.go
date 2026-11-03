@@ -14,6 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/auth"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -29,7 +30,7 @@ func TestGenerator_VerifyToken_APIKey(t *testing.T) {
 		Id:             "api_key_id",
 		OrganizationId: utils.TextToUUID("organization_id"),
 		Prefix:         "abc",
-		Role:           models.ADMIN,
+		RoleBindings:   models.NativeRoleBindings([]models.Role{models.ADMIN}),
 		DisplayString:  "Api key abc*** of organization",
 	}
 	orgIdString := apiKey.OrganizationId
@@ -141,9 +142,10 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 	now := time.Now()
 
 	user := models.User{
-		UserId:         "user_id",
-		Email:          "user@email.com",
-		Role:           models.ADMIN,
+		UserId: "user_id",
+		Email:  "user@email.com",
+
+		RoleBindings:   models.NativeRoleBindings([]models.Role{models.ADMIN}),
 		OrganizationId: utils.TextToUUID("organization_id"),
 	}
 	userOrgIdString := user.OrganizationId
@@ -153,7 +155,7 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 	t.Run("nominal", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
-			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: user.OrganizationId}}, nil)
+			Return([]models.RoleBinding{grant(models.ADMIN, user.OrganizationId, uuid.Nil)}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, userOrgIdString).
 			Return(models.Organization{}, nil)
 		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
@@ -164,7 +166,8 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
 			OrganizationId: utils.TextToUUID("organization_id"),
-			Roles:          []models.Role{models.ADMIN},
+			RoleBindings:   []models.RoleBinding{grant(models.ADMIN, user.OrganizationId, uuid.Nil)},
+			Permissions:    models.ADMIN.Permissions(),
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
 				Email:  user.Email,
