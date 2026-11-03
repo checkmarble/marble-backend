@@ -41,9 +41,10 @@ func (usecases *UsecasesWithCreds) NewWithRootImpersonatedExecutor(tx repositori
 	return &UsecasesWithCreds{
 		Usecases: usecases.Usecases.WithRootExecutor(executorFactory),
 		Credentials: models.Credentials{
-			OrganizationId: org.Id,
-			RoleBindings:   usecases.Credentials.RoleBindings,
-			Permissions:    usecases.Credentials.Permissions,
+			OrganizationId:    org.Id,
+			RoleBindings:      usecases.Credentials.RoleBindings,
+			Permissions:       usecases.Credentials.Permissions,
+			RoleBindingBundle: usecases.Credentials.RoleBindingBundle,
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
 			},
@@ -486,6 +487,7 @@ func (usecases *UsecasesWithCreds) NewUserUseCase() UserUseCase {
 		grantRepository:        usecases.Repositories.MarbleDbRepository,
 		organizationRepository: usecases.Repositories.MarbleDbRepository,
 		firebaseAdmin:          usecases.firebaseAdmin,
+		featureAccessReader:    usecases.NewFeatureAccessReader(),
 	}
 }
 
@@ -582,7 +584,8 @@ func (usecases *UsecasesWithCreds) NewApiKeyUseCase() ApiKeyUseCase {
 			EnforceSecurity: usecases.NewEnforceSecurity(),
 			Credentials:     usecases.Credentials,
 		},
-		apiKeyRepository: usecases.Repositories.MarbleDbRepository,
+		apiKeyRepository:    usecases.Repositories.MarbleDbRepository,
+		featureAccessReader: usecases.NewFeatureAccessReader(),
 	}
 }
 

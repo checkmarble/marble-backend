@@ -1,10 +1,8 @@
 package dto
 
 import (
-	"encoding/json"
 	"net"
 	"slices"
-	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -36,7 +34,7 @@ func AdaptOrganizationDto(org models.Organization) APIOrganization {
 		SanctionsLimit:          org.OpenSanctionsConfig.MatchLimit,
 		AutoAssignQueueLimit:    org.AutoAssignQueueLimit,
 		AllowedNetworks: pure_utils.Map(org.WhitelistedSubnets, func(subnet net.IPNet) SubnetDto {
-			return SubnetDto{subnet}
+			return SubnetDto{IPNet: subnet}
 		}),
 		SentryReplayEnabled: org.SentryReplayEnabled,
 		Environment:         org.Environment.String(),
@@ -116,48 +114,7 @@ type OrganizationSubnetsDto struct {
 }
 
 func AdaptOrganizationSubnet(dto net.IPNet) SubnetDto {
-	return SubnetDto{dto}
+	return SubnetDto{IPNet: dto}
 }
 
-type SubnetDto struct {
-	net.IPNet
-}
-
-func (s *SubnetDto) UnmarshalJSON(b []byte) error {
-	var cidr string
-
-	if err := json.Unmarshal(b, &cidr); err != nil {
-		return err
-	}
-
-	// If a bare IP address was given
-	if !strings.Contains(cidr, "/") {
-		ip := net.ParseIP(cidr)
-
-		if ip == nil {
-			return errors.Newf("invalid CIDR-less IP address: %s", cidr)
-		}
-
-		switch {
-		case ip.To4() != nil:
-			cidr = ip.String() + "/32"
-		case ip.To16() != nil:
-			cidr = ip.String() + "/128"
-		default:
-			return errors.Newf("invalid CIDR-less IP address %s", cidr)
-		}
-	}
-
-	_, subnet, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return err
-	}
-
-	*s = SubnetDto{*subnet}
-
-	return nil
-}
-
-func (s *SubnetDto) MarshalJSON() ([]byte, error) {
-	return json.Marshal(s.String())
-}
+type SubnetDto = models.Subnet

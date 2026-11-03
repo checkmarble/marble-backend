@@ -95,6 +95,7 @@ func TestUpdateRolePermissionsOnlyChecksAddedPermissions(t *testing.T) {
 		executorFactory:     executorFactory,
 		userRepository:      userRepository,
 		enforceUserSecurity: roleEnforceSecurity{enforceSecurity},
+		featureAccessReader: newRolesFeatureAccessReader(models.Allowed),
 	}
 
 	_, err := usecase.UpdateRolePermissions(ctx, slug, permissions)
@@ -120,6 +121,7 @@ func TestUpdateRolePermissionsRejectsUnheldAndPlatformPermissions(t *testing.T) 
 			executorFactory:     executorFactory,
 			userRepository:      userRepository,
 			enforceUserSecurity: roleEnforceSecurity{enforceSecurity},
+			featureAccessReader: newRolesFeatureAccessReader(models.Allowed),
 		}
 	}
 
@@ -144,4 +146,27 @@ func TestUpdateRolePermissionsRejectsUnheldAndPlatformPermissions(t *testing.T) 
 		enforceSecurity.AssertNotCalled(t, "Permissions", mock.Anything)
 		userRepository.AssertNotCalled(t, "UpdateRolePermissions", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
+}
+
+func TestManagingRolesRequiresRolesFeature(t *testing.T) {
+	ctx := context.Background()
+	enforceSecurity := new(mocks.EnforceSecurity)
+	userRepository := new(mocks.UserRepository)
+	enforceSecurity.On("ManageRoles").Return(nil)
+	enforceSecurity.On("OrgId").Return(uuid.New())
+
+	usecase := UserUseCase{
+		userRepository:      userRepository,
+		enforceUserSecurity: roleEnforceSecurity{enforceSecurity},
+		featureAccessReader: newRolesFeatureAccessReader(models.Restricted),
+	}
+
+	_, err := usecase.CreateRole(ctx, "org/reviewer", "Reviewer")
+	assert.ErrorIs(t, err, models.ForbiddenError)
+
+	_, err = usecase.UpdateRolePermissions(ctx, "org/reviewer", []models.Permission{models.CASE_READ_WRITE})
+	assert.ErrorIs(t, err, models.ForbiddenError)
+
+	userRepository.AssertNotCalled(t, "CreateRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	userRepository.AssertNotCalled(t, "UpdateRolePermissions", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }

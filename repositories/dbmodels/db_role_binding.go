@@ -1,6 +1,9 @@
 package dbmodels
 
 import (
+	"bytes"
+	"encoding/json"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
@@ -16,13 +19,14 @@ const (
 )
 
 type DbGrant struct {
-	Id             uuid.UUID  `db:"id"`
-	PrincipalType  string     `db:"principal_type"`
-	PrincipalId    string     `db:"principal_id"`
-	TenantId       *uuid.UUID `db:"tenant_id"`
-	OrganizationId *uuid.UUID `db:"organization_id"`
-	Role           string     `db:"role"`
-	CustomRoleId   *uuid.UUID `db:"custom_role_id"`
+	Id             uuid.UUID       `db:"id"`
+	PrincipalType  string          `db:"principal_type"`
+	PrincipalId    string          `db:"principal_id"`
+	TenantId       *uuid.UUID      `db:"tenant_id"`
+	OrganizationId *uuid.UUID      `db:"organization_id"`
+	Role           string          `db:"role"`
+	CustomRoleId   *uuid.UUID      `db:"custom_role_id"`
+	Conditions     json.RawMessage `db:"conditions"`
 }
 
 type DbRoleBinding struct {
@@ -38,10 +42,23 @@ var SelectRoleBindingColumns = append(
 )
 
 func AdaptRoleBinding(db DbRoleBinding) (models.RoleBinding, error) {
+	conditions := models.RoleBindingConditions{}
+
+	decoder := json.NewDecoder(bytes.NewReader(db.Conditions))
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(&conditions); err != nil {
+		return models.RoleBinding{}, err
+	}
+	if err := conditions.Validate(); err != nil {
+		return models.RoleBinding{}, err
+	}
+
 	binding := models.RoleBinding{
 		Id:           db.Id,
 		Role:         models.Role(db.Role),
 		CustomRoleId: db.CustomRoleId,
+		Conditions:   conditions,
 	}
 
 	if db.TenantId != nil {

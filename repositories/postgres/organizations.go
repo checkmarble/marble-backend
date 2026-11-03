@@ -13,7 +13,7 @@ import (
 
 func (db *Database) GetOrganizationByID(ctx context.Context, organizationID uuid.UUID) (models.Organization, error) {
 	query := `
-		SELECT id, name, tenant_id
+		SELECT id, name, tenant_id, default_scenario_timezone
 		FROM organizations
 		WHERE id = $1
 	`
@@ -23,6 +23,7 @@ func (db *Database) GetOrganizationByID(ctx context.Context, organizationID uuid
 		&organization.Id,
 		&organization.Name,
 		&organization.TenantId,
+		&organization.DefaultScenarioTimezone,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return models.Organization{}, models.NotFoundError
