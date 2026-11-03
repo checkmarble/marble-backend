@@ -13,6 +13,11 @@ type UserRepository struct {
 	mock.Mock
 }
 
+func (r *UserRepository) ListUsersByTenant(ctx context.Context, exec repositories.Executor, tenantID uuid.UUID) ([]models.User, error) {
+	args := r.Called(ctx, exec, tenantID)
+	return args.Get(0).([]models.User), args.Error(1)
+}
+
 func (r *UserRepository) CreateUser(ctx context.Context, exec repositories.Executor, createUser models.CreateUser) (string, error) {
 	args := r.Called(ctx, exec, createUser)
 	return args.Get(0).(string), args.Error(1)

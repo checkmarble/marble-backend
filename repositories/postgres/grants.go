@@ -13,6 +13,14 @@ func (db *Database) ActiveGrantsForPrincipal(ctx context.Context, principalType,
 		SELECT g.role, g.tenant_id, g.organization_id
 		FROM active_grants g
 		WHERE g.principal_type = $1 AND g.principal_id = $2 AND g.principal_authority = 'marble'
+		AND (g.tenant_id IS NULL OR EXISTS (SELECT 1 FROM tenants t WHERE t.id = g.tenant_id AND t.deleted_at IS NULL))
+		AND ($1 <> 'user' OR EXISTS (
+			SELECT 1 FROM users u WHERE u.id::text = $2 AND u.deleted_at IS NULL
+			AND (u.role = 6 OR (g.tenant_id IS NULL AND g.organization_id IS NULL)
+				OR g.tenant_id = u.tenant_id OR EXISTS (
+					SELECT 1 FROM organizations o WHERE o.id = g.organization_id AND o.tenant_id = u.tenant_id AND o.deleted_at IS NULL
+				))
+		))
 	`, principalType, principalID)
 	if err != nil {
 		return nil, errors.Errorf("querying active grants: %w", err)

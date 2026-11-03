@@ -499,6 +499,7 @@ func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecu
 
 func (usecases *UsecasesWithCreds) NewUserUseCase() UserUseCase {
 	return UserUseCase{
+		credentials:            usecases.Credentials,
 		enforceUserSecurity:    usecases.NewEnforceUserSecurity(),
 		executorFactory:        usecases.NewExecutorFactory(),
 		transactionFactory:     usecases.NewTransactionFactory(),

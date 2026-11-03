@@ -36,13 +36,19 @@ inboxes:
 
 users:
   - id: 11111111-1111-1111-1111-111111111111
-    organization_id: 10000000-0000-0000-0000-000000000000
+    tenant_id: 20000000-0000-0000-0000-000000000000
     email: bob@example.com
     first_name: Bob
     last_name: Example
     role: 4
 
 grants:
+  - id: 40000000-0000-0000-0000-000000000001
+    principal_type: user
+    principal_id: 11111111-1111-1111-1111-111111111111
+    principal_authority: marble
+    organization_id: 10000000-0000-0000-0000-000000000000
+    role: ADMIN
   - id: 40000000-0000-0000-0000-000000000000
     principal_type: api_key
     principal_id: 30000000-0000-0000-0000-000000000000

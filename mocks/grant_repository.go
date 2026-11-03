@@ -11,6 +11,11 @@ import (
 
 type GrantRepository struct{ mock.Mock }
 
+func (r *GrantRepository) SetTenantAdministrator(ctx context.Context, tx repositories.Transaction, tenantID uuid.UUID, userID string, enabled bool) error {
+	args := r.Called(ctx, tx, tenantID, userID, enabled)
+	return args.Error(0)
+}
+
 func (r *GrantRepository) EnsureTenantAdminForOrganization(ctx context.Context, exec repositories.Executor, userID string, organizationID uuid.UUID) error {
 	args := r.Called(ctx, exec, userID, organizationID)
 	return args.Error(0)

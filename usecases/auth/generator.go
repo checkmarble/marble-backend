@@ -77,6 +77,12 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 	if creds.Type == CredentialsBearer {
 		authTenantID = creds.TenantId
 	}
+	if authTenantID != uuid.Nil && baseCredentials.TenantId != authTenantID {
+		return Token{}, errors.Wrap(models.ForbiddenError, "identity is outside the authentication tenant")
+	}
+	if authTenantID != uuid.Nil && len(grants) == 0 {
+		return Token{}, models.ErrAccessPending
+	}
 	if creds.Type == CredentialsApiKey {
 		selectedOrganizationID = baseCredentials.OrganizationId
 	} else if selectedOrganizationID == uuid.Nil && authTenantID == uuid.Nil {
@@ -107,7 +113,7 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 
 		grantOrganizationAccess := false
 		for _, grant := range grants {
-			if grant.OrganizationId == selectedOrganizationID || grant.TenantId == selectedOrganization.TenantId {
+			if grant.OrganizationId == selectedOrganizationID {
 				grantOrganizationAccess = true
 				break
 			}
@@ -120,6 +126,13 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 	tokenCredentials := baseCredentials
 	tokenCredentials.OrganizationId = selectedOrganizationID
 	tokenCredentials.AuthTenantId = authTenantID
+	tokenCredentials.TenantId = uuid.Nil
+	if authTenantID != uuid.Nil {
+		tokenCredentials.TenantId = authTenantID
+	}
+	if selectedOrganizationID != uuid.Nil {
+		tokenCredentials.TenantId = selectedOrganization.TenantId
+	}
 
 	roles := []models.Role{}
 	addRole := func(role models.Role) {
@@ -135,6 +148,10 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 			if grant.TenantId == uuid.Nil && grant.OrganizationId == uuid.Nil {
 				addRole(grant.Role)
 			}
+			if grant.Role == models.TENANT_ADMIN && grant.TenantId != uuid.Nil && grant.TenantId == baseCredentials.TenantId {
+				tokenCredentials.TenantId = grant.TenantId
+				addRole(grant.Role)
+			}
 		}
 	} else {
 		for _, grant := range grants {
@@ -146,6 +163,9 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 	slices.Sort(roles)
 	tokenCredentials.Roles = roles
 	if len(grants) == 0 {
+		if authTenantID != uuid.Nil {
+			return Token{}, models.ErrAccessPending
+		}
 		return Token{}, errors.Errorf("%w: principal has no active grant", models.ForbiddenError)
 	}
 

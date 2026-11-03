@@ -896,7 +896,7 @@ func (usecase *CaseUseCase) AssignCase(ctx context.Context, req models.CaseAssig
 		return errors.Wrap(err, "target user for assignment not found")
 	}
 
-	if err := security.EnforceSecurityCaseForUser(assignee).ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
+	if err := security.EnforceSecurityCaseForUser(assignee, c.OrganizationId).ReadOrUpdateCase(c.GetMetadata(), availableInboxIds); err != nil {
 		return errors.Wrap(err, "target user lacks case permissions for assignment")
 	}
 
@@ -2544,7 +2544,7 @@ func (usecase *CaseUseCase) MassUpdate(ctx context.Context, req dto.CaseMassUpda
 
 		// If we are trying to mass-assign, we need to check, for each case, that the target user can manage the case.
 		if req.Action == models.CaseMassUpdateAssign.String() {
-			if err := security.EnforceSecurityCaseForUser(newAssignee).ReadOrUpdateCase(
+			if err := security.EnforceSecurityCaseForUser(newAssignee, c.OrganizationId).ReadOrUpdateCase(
 				c.GetMetadata(), availableInboxIds,
 			); err != nil {
 				return errors.Wrap(err, "target user lacks case permissions for assignment")

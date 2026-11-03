@@ -214,8 +214,8 @@ func Test_CreateInboxUser(t *testing.T) {
 				}, nil, models.Inbox{
 					Id: adminTestInboxId, OrganizationId: orgId,
 				}, models.User{
-					UserId:         models.UserId(userIdString),
-					OrganizationId: orgId,
+					UserId:          models.UserId(userIdString),
+					OrganizationIds: []uuid.UUID{orgId},
 				},
 			)
 			if err != nil {
@@ -233,8 +233,8 @@ func Test_CreateInboxUser(t *testing.T) {
 				}, nil, models.Inbox{
 					Id: adminTestInboxId, OrganizationId: anotherOrgId,
 				}, models.User{
-					UserId:         models.UserId(userIdString),
-					OrganizationId: orgId,
+					UserId:          models.UserId(userIdString),
+					OrganizationIds: []uuid.UUID{orgId},
 				},
 			)
 			if err == nil {
@@ -279,8 +279,8 @@ func Test_CreateInboxUser(t *testing.T) {
 				}}, // Actor is admin of targetInboxId
 				models.Inbox{Id: targetInboxId, OrganizationId: orgIdNonAdmin},
 				models.User{
-					UserId:         models.UserId(createInputTargetUserId.String()),
-					OrganizationId: utils.TextToUUID(organizationId_nonadmin),
+					UserId:          models.UserId(createInputTargetUserId.String()),
+					OrganizationIds: []uuid.UUID{utils.TextToUUID(organizationId_nonadmin)},
 				},
 			)
 			if err != nil {
@@ -302,8 +302,8 @@ func Test_CreateInboxUser(t *testing.T) {
 				}}, // Actor is admin of a *different* inbox
 				models.Inbox{Id: targetInboxId, OrganizationId: orgIdNonAdmin},
 				models.User{
-					UserId:         models.UserId(createInputTargetUserId.String()),
-					OrganizationId: utils.TextToUUID(organizationId_nonadmin),
+					UserId:          models.UserId(createInputTargetUserId.String()),
+					OrganizationIds: []uuid.UUID{utils.TextToUUID(organizationId_nonadmin)},
 				},
 			)
 			if err == nil {
@@ -325,8 +325,8 @@ func Test_CreateInboxUser(t *testing.T) {
 				}}, // Actor is only a member, not admin
 				models.Inbox{Id: targetInboxId, OrganizationId: orgIdNonAdmin},
 				models.User{
-					UserId:         models.UserId(createInputTargetUserId.String()),
-					OrganizationId: utils.TextToUUID(organizationId_nonadmin),
+					UserId:          models.UserId(createInputTargetUserId.String()),
+					OrganizationIds: []uuid.UUID{utils.TextToUUID(organizationId_nonadmin)},
 				},
 			)
 			if err == nil {
@@ -345,8 +345,8 @@ func Test_CreateInboxUser(t *testing.T) {
 				}}, // Actor is admin of the target inbox
 				models.Inbox{Id: targetInboxId, OrganizationId: orgIdNonAdmin},
 				models.User{
-					UserId:         models.UserId(createInputTargetUserId.String()),
-					OrganizationId: utils.TextToUUID(anotherOrganizationId_nonadmin),
+					UserId:          models.UserId(createInputTargetUserId.String()),
+					OrganizationIds: []uuid.UUID{utils.TextToUUID(anotherOrganizationId_nonadmin)},
 				}, // Target user in different org
 			)
 			if err == nil {

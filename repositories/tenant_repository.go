@@ -13,12 +13,21 @@ import (
 )
 
 type TenantRepository interface {
+	ReassignTenantUsers(ctx context.Context, exec Executor, targetId uuid.UUID, sourceIds []uuid.UUID) error
 	ListActive(ctx context.Context, exec Executor) ([]models.Tenant, error)
 	LockAndValidateMerge(ctx context.Context, exec Executor, targetId uuid.UUID, sourceIds []uuid.UUID) error
 	LockAndValidateUpdate(ctx context.Context, exec Executor, tenantId uuid.UUID) error
 	SoftDelete(ctx context.Context, exec Executor, tenantIds []uuid.UUID) error
 	Rename(ctx context.Context, exec Executor, tenantId uuid.UUID, name string) error
 	HasOIDCConfigurationOrDomains(ctx context.Context, exec Executor, tenantIds []uuid.UUID) (bool, error)
+}
+
+func (repo *MarbleDbRepository) ReassignTenantUsers(ctx context.Context, exec Executor, targetId uuid.UUID, sourceIds []uuid.UUID) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+	return ExecBuilder(ctx, exec, NewQueryBuilder().Update(dbmodels.TABLE_USERS).
+		Set("tenant_id", targetId).Where(squirrel.Eq{"tenant_id": sourceIds}))
 }
 
 func (repo *MarbleDbRepository) ListActive(ctx context.Context, exec Executor) ([]models.Tenant, error) {

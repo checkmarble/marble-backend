@@ -120,6 +120,85 @@ func TestResolveUserIdentity(t *testing.T) {
 		}
 		assert.Equal(t, 1, identityCount(t, userID))
 	})
+
+	t.Run("concurrent tenant provisioning creates one identity without grants", func(t *testing.T) {
+		tenantID := uuid.New()
+		_, err := pgPool.Exec(ctx, "INSERT INTO tenants (id, name) VALUES ($1, $2)", tenantID, "provisioning")
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, err := pgPool.Exec(context.Background(), "DELETE FROM users WHERE tenant_id = $1", tenantID)
+			require.NoError(t, err)
+			_, err = pgPool.Exec(context.Background(), "DELETE FROM tenants WHERE id = $1", tenantID)
+			require.NoError(t, err)
+		})
+		email := identityTestEmail(uuid.NewString())
+		subject := uuid.NewString()
+		const attempts = 8
+		users := make(chan models.User, attempts)
+		errs := make(chan error, attempts)
+		var wg sync.WaitGroup
+		for range attempts {
+			wg.Go(func() {
+				user, err := database.ResolveUserIdentityForTenant(ctx, "tenant-provisioning", subject, email, tenantID)
+				users <- user
+				errs <- err
+			})
+		}
+		wg.Wait()
+		close(users)
+		close(errs)
+		for err := range errs {
+			require.NoError(t, err)
+		}
+		var userID models.UserId
+		for user := range users {
+			if userID == "" {
+				userID = user.UserId
+			}
+			require.Equal(t, userID, user.UserId)
+			require.Equal(t, tenantID, user.TenantId)
+			require.Equal(t, models.NO_ROLE, user.Role)
+		}
+		require.Equal(t, 1, identityCount(t, string(userID)))
+		grants, err := database.ActiveGrantsForPrincipal(ctx, "user", string(userID))
+		require.NoError(t, err)
+		require.Empty(t, grants)
+		t.Run("same subject with concurrent different emails leaves no orphan users", func(t *testing.T) {
+			otherSubject := uuid.NewString()
+			resolved := make(chan models.User, attempts)
+			raceErrors := make(chan error, attempts)
+			for range attempts {
+				wg.Go(func() {
+					u, err := database.ResolveUserIdentityForTenant(ctx, "tenant-provisioning", otherSubject, identityTestEmail(uuid.NewString()), tenantID)
+					resolved <- u
+					raceErrors <- err
+				})
+			}
+			wg.Wait()
+			close(resolved)
+			close(raceErrors)
+			for err := range raceErrors {
+				require.NoError(t, err)
+			}
+			var first models.UserId
+			for u := range resolved {
+				if first == "" {
+					first = u.UserId
+				}
+				require.Equal(t, first, u.UserId)
+			}
+			require.Equal(t, 1, identityCount(t, string(first)))
+			var count int
+			require.NoError(t, pgPool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE tenant_id = $1", tenantID).Scan(&count))
+			require.Equal(t, 2, count)
+		})
+		_, err = database.ResolveUserIdentityForTenant(ctx, "tenant-provisioning", subject, email, uuid.New())
+		require.Error(t, err)
+		_, err = pgPool.Exec(ctx, "UPDATE users SET deleted_at = NOW() WHERE id = $1", userID)
+		require.NoError(t, err)
+		_, err = database.ResolveUserIdentityForTenant(ctx, "tenant-provisioning", subject, email, tenantID)
+		require.ErrorIs(t, err, models.NotFoundError)
+	})
 }
 
 func createIdentityTestUser(t *testing.T) string {
@@ -167,8 +246,12 @@ func grantIdentityTestTenantAccess(t *testing.T, tenantID uuid.UUID, userID stri
 	_, err = pgPool.Exec(t.Context(), `INSERT INTO grants (id, principal_type, principal_id, principal_authority, tenant_id, role)
 		VALUES ($1, 'user', $2, 'marble', $3, 'TENANT_ADMIN')`, uuid.New(), userID, tenantID)
 	require.NoError(t, err)
+	_, err = pgPool.Exec(t.Context(), "UPDATE users SET tenant_id = $1 WHERE id = $2", tenantID, userID)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		_, err := pgPool.Exec(context.Background(), "DELETE FROM grants WHERE tenant_id = $1", tenantID)
+		require.NoError(t, err)
+		_, err = pgPool.Exec(context.Background(), "UPDATE users SET tenant_id = NULL WHERE tenant_id = $1", tenantID)
 		require.NoError(t, err)
 		_, err = pgPool.Exec(context.Background(), "DELETE FROM tenants WHERE id = $1", tenantID)
 		require.NoError(t, err)

@@ -28,6 +28,10 @@ func (t *TokenHandler) GenerateToken(c *gin.Context) {
 	token, err := t.handler.GetToken(ctx, c.Request)
 
 	if err != nil {
+		if errors.Is(err, models.ErrAccessPending) {
+			c.AbortWithStatusJSON(http.StatusForbidden, dto.APIErrorResponse{Message: "Access pending administrator approval", ErrorCode: dto.AccessPending})
+			return
+		}
 		utils.LoggerFromContext(ctx).ErrorContext(ctx, "could not verify token", "error", err.Error())
 
 		_ = c.Error(errors.Errorf("generator.GenerateToken error: %w", err))

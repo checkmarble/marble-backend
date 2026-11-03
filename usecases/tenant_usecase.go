@@ -96,6 +96,10 @@ func (usecase TenantUsecase) Merge(ctx context.Context, input TenantMergeInput) 
 		if hasOIDCConfigurationOrDomains {
 			return errors.Wrap(models.ConflictError, "cannot merge a tenant with OIDC configuration or domains")
 		}
+		// Identity mutations lock users before grants; keep the same order during merge.
+		if err := usecase.tenantRepository.ReassignTenantUsers(ctx, tx, input.TargetTenantId, input.SourceTenantIds); err != nil {
+			return err
+		}
 		if err := usecase.grantRepository.ReassignTenantGrants(ctx, tx, input.TargetTenantId, input.SourceTenantIds); err != nil {
 			return err
 		}

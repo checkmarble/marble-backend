@@ -88,7 +88,9 @@ func TestTenantUsecaseMerge(t *testing.T) {
 				transactionFactory.On("Transaction", mock.Anything, mock.Anything).Return(nil)
 				tenantRepository.On("LockAndValidateMerge", mock.Anything, mock.Anything, target, []uuid.UUID{source}).Return(nil)
 				tenantRepository.On("HasOIDCConfigurationOrDomains", mock.Anything, mock.Anything, []uuid.UUID{source}).Return(false, nil)
-				grantRepository.On("ReassignTenantGrants", mock.Anything, mock.Anything, target, []uuid.UUID{source}).Return(nil)
+				usersMoved := tenantRepository.On("ReassignTenantUsers", mock.Anything, mock.Anything, target, []uuid.UUID{source}).Return(nil)
+				grantsMoved := grantRepository.On("ReassignTenantGrants", mock.Anything, mock.Anything, target, []uuid.UUID{source}).Return(nil)
+				mock.InOrder(usersMoved, grantsMoved)
 				organizationRepository.On("ReassignOrganizationsToTenant", mock.Anything, mock.Anything, target, []uuid.UUID{source}).Return(nil)
 				tenantRepository.On("SoftDelete", mock.Anything, mock.Anything, []uuid.UUID{source}).Return(nil)
 			},
@@ -105,6 +107,7 @@ func TestTenantUsecaseMerge(t *testing.T) {
 				tenantRepository.On("LockAndValidateMerge", mock.Anything, mock.Anything, target, []uuid.UUID{source}).Return(nil)
 				tenantRepository.On("HasOIDCConfigurationOrDomains", mock.Anything, mock.Anything, []uuid.UUID{source}).Return(false, nil)
 				grantRepository.On("ReassignTenantGrants", mock.Anything, mock.Anything, target, []uuid.UUID{source}).Return(nil)
+				tenantRepository.On("ReassignTenantUsers", mock.Anything, mock.Anything, target, []uuid.UUID{source}).Return(nil)
 				organizationRepository.On("ReassignOrganizationsToTenant", mock.Anything, mock.Anything, target, []uuid.UUID{source}).Return(nil)
 				tenantRepository.On("SoftDelete", mock.Anything, mock.Anything, []uuid.UUID{source}).Return(nil)
 				tenantRepository.On("Rename", mock.Anything, mock.Anything, target, newName).Return(nil)

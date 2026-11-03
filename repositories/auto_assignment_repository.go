@@ -26,8 +26,8 @@ func (repo *MarbleDbRepository) FindAutoAssignableUsers(ctx context.Context, exe
 	sql := fmt.Sprintf(`
 		select %s, count(distinct c.id) as case_count
 		from inbox_users iu
+		inner join inboxes i on i.id = iu.inbox_id and i.organization_id = $1
 		inner join users u on
-		  u.organization_id = $1 and
 		  u.id = iu.user_id and
 		  u.deleted_at is null and
 		  iu.auto_assignable
@@ -35,13 +35,19 @@ func (repo *MarbleDbRepository) FindAutoAssignableUsers(ctx context.Context, exe
 		    select c.id
 		    from cases c
 		    where
-		  	  c.org_id = u.organization_id and
+			  c.org_id = $1 and
 		  	  c.assigned_to = u.id and
 		  	  c.status != 'closed' and
 		  	  coalesce(c.snoozed_until, to_timestamp(0)) < now()
 			  limit $2
 		  ) c on true
 		where
+		  exists (
+		    select 1 from active_grants g
+		    where g.principal_type = 'user' and g.principal_authority = 'marble'
+		      and g.principal_id = u.id::text and g.organization_id = $1
+		      and g.role in ('VIEWER', 'ANALYST', 'BUILDER', 'PUBLISHER', 'ADMIN')
+		  ) and
 		  not exists (
 		    select 1
 		    from user_unavailabilities uu
@@ -82,8 +88,8 @@ func (repo *MarbleDbRepository) FindNextAutoAssignableUserForInbox(ctx context.C
 	sql := fmt.Sprintf(`
 		select %s, count(distinct c.id) as case_count
 		from inbox_users iu
+		inner join inboxes i on i.id = iu.inbox_id and i.organization_id = $1
 		inner join users u on
-		  u.organization_id = $1 and
 		  u.id = iu.user_id and
 		  u.deleted_at is null and
 		  iu.inbox_id = $2 and
@@ -92,13 +98,19 @@ func (repo *MarbleDbRepository) FindNextAutoAssignableUserForInbox(ctx context.C
 		  select c.id
 		  from cases c
 		  where
-			c.org_id = u.organization_id and
+			c.org_id = $1 and
 			c.assigned_to = u.id and
 			c.status != 'closed' and
 		    coalesce(c.snoozed_until, to_timestamp(0)) < now()
 		  limit $3
 		) c on true
 		where
+		  exists (
+		    select 1 from active_grants g
+		    where g.principal_type = 'user' and g.principal_authority = 'marble'
+		      and g.principal_id = u.id::text and g.organization_id = $1
+		      and g.role in ('VIEWER', 'ANALYST', 'BUILDER', 'PUBLISHER', 'ADMIN')
+		  ) and
 		  not exists (
 		    select 1
 		    from user_unavailabilities uu
@@ -141,8 +153,8 @@ func (repo *MarbleDbRepository) FindAutoAssignableCases(ctx context.Context, exe
 		with assignable_inboxes as (
 		  select distinct iu.inbox_id
 		  from inbox_users iu
+		  inner join inboxes i on i.id = iu.inbox_id and i.organization_id = $1
 		  inner join users u on
-		    u.organization_id = $1 and
 		    u.id = iu.user_id and
 		    u.deleted_at is null and
 		    iu.auto_assignable
@@ -150,13 +162,19 @@ func (repo *MarbleDbRepository) FindAutoAssignableCases(ctx context.Context, exe
 		      select c.id
 		      from cases c
 		      where
-		        c.org_id = u.organization_id and
+		        c.org_id = $1 and
 		        c.assigned_to = u.id and
 		        c.status != 'closed' and
 		        coalesce(c.snoozed_until, to_timestamp(0)) < now()
 		      limit $2
 		    ) c on true
 		  where
+		    exists (
+		      select 1 from active_grants g
+		      where g.principal_type = 'user' and g.principal_authority = 'marble'
+		        and g.principal_id = u.id::text and g.organization_id = $1
+		        and g.role in ('VIEWER', 'ANALYST', 'BUILDER', 'PUBLISHER', 'ADMIN')
+		    ) and
 		    not exists (
 		      select 1
 		      from user_unavailabilities uu

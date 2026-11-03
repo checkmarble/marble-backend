@@ -2,19 +2,19 @@ package repositories
 
 import (
 	"context"
-	"time"
+	"slices"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
-	"github.com/redis/go-redis/v9"
 
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
 type UserRepository interface {
+	ListUsersByTenant(context.Context, Executor, uuid.UUID) ([]models.User, error)
 	CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (string, error)
 	UpdateUser(ctx context.Context, exec Executor, updateUser models.UpdateUser) error
 	DeleteUser(ctx context.Context, exec Executor, userID models.UserId) error
@@ -25,10 +25,46 @@ type UserRepository interface {
 	HasUsers(ctx context.Context, exec Executor) (bool, error)
 }
 
+func (repo *MarbleDbRepository) ListUsersByTenant(ctx context.Context, exec Executor, tenantID uuid.UUID) ([]models.User, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+	return SqlToListOfModels(ctx, exec, NewQueryBuilder().Select(dbmodels.UserFields...).From(dbmodels.TABLE_USERS).
+		Where(squirrel.Eq{"tenant_id": tenantID, "deleted_at": nil}).OrderBy("email", "id"), dbmodels.AdaptUser)
+}
+
 func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (string, error) {
 	userId := pure_utils.NewId().String()
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return "", err
+	}
+	if createUser.OrganizationId != uuid.Nil {
+		var tenantID uuid.UUID
+		query, args, err := NewQueryBuilder().Select("tenant_id").From("organizations").
+			Where(squirrel.Eq{"id": createUser.OrganizationId, "deleted_at": nil}).ToSql()
+		if err != nil {
+			return "", err
+		}
+		if err := exec.QueryRow(ctx, query, args...).Scan(&tenantID); err != nil {
+			return "", err
+		}
+		if createUser.TenantId != uuid.Nil && createUser.TenantId != tenantID {
+			return "", models.ForbiddenError
+		}
+		createUser.TenantId = tenantID
+	}
+	var tenantID *uuid.UUID
+	if createUser.Role != models.MARBLE_ADMIN && createUser.TenantId != uuid.Nil {
+		tenantID = &createUser.TenantId
+		query, args, err := NewQueryBuilder().Select("id").From("tenants").
+			Where(squirrel.Eq{"id": tenantID, "deleted_at": nil}).Suffix("FOR SHARE").ToSql()
+		if err != nil {
+			return "", err
+		}
+		var lockedID uuid.UUID
+		if err := exec.QueryRow(ctx, query, args...).Scan(&lockedID); err != nil {
+			return "", err
+		}
 	}
 
 	err := ExecBuilder(
@@ -39,7 +75,7 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 				"id",
 				"email",
 				"role",
-				"organization_id",
+				"tenant_id",
 				"first_name",
 				"last_name",
 			).
@@ -47,7 +83,7 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 				userId,
 				createUser.Email,
 				int(createUser.Role),
-				createUser.OrganizationId,
+				tenantID,
 				createUser.FirstName,
 				createUser.LastName,
 			),
@@ -63,6 +99,9 @@ func (repo *MarbleDbRepository) CreateUser(ctx context.Context, exec Executor, c
 			Values(pure_utils.NewId(), "user", userId, "marble", createUser.Role.String()).
 			Suffix("ON CONFLICT DO NOTHING"))
 	}
+	if createUser.OrganizationId == uuid.Nil || createUser.Role == models.NO_ROLE {
+		return userId, nil
+	}
 
 	return userId, ExecBuilder(ctx, exec, NewQueryBuilder().
 		Insert(dbmodels.TABLE_GRANTS).
@@ -75,24 +114,33 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
+	if updateUser.Email == nil && updateUser.Role == nil && updateUser.FirstName == nil && updateUser.LastName == nil {
+		return nil
+	}
 
 	query := NewQueryBuilder().Update(dbmodels.TABLE_USERS).Where(squirrel.Eq{"id": updateUser.UserId})
 	var previousRole models.Role
 	var previousOrganizationID *uuid.UUID
+	if updateUser.OrganizationId != uuid.Nil {
+		previousOrganizationID = &updateUser.OrganizationId
+	}
 	if updateUser.Role != nil && *updateUser.Role != models.NO_ROLE {
 		var role int
 		selectQuery, args, err := NewQueryBuilder().
-			Select("role", "organization_id").
+			Select("role").
 			From(dbmodels.TABLE_USERS).
 			Where(squirrel.Eq{"id": updateUser.UserId}).
 			ToSql()
 		if err != nil {
 			return err
 		}
-		if err := exec.QueryRow(ctx, selectQuery, args...).Scan(&role, &previousOrganizationID); err != nil {
+		if err := exec.QueryRow(ctx, selectQuery, args...).Scan(&role); err != nil {
 			return err
 		}
 		previousRole = models.Role(role)
+		if previousRole == models.MARBLE_ADMIN && *updateUser.Role != models.MARBLE_ADMIN {
+			return errors.Wrap(models.ForbiddenError, "manage platform administrators separately from organization grants")
+		}
 		if previousOrganizationID == nil && *updateUser.Role != models.MARBLE_ADMIN {
 			return errors.Errorf("cannot assign an organization role to a platform user without an organization")
 		}
@@ -122,11 +170,11 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 				"principal_type":      "user",
 				"principal_id":        updateUser.UserId,
 				"principal_authority": "marble",
-				"role":                previousRole.String(),
 				"revoked_at":          nil,
 			})
 		if previousOrganizationID == nil {
 			revokeQuery = revokeQuery.Where(squirrel.Eq{
+				"role":            previousRole.String(),
 				"organization_id": nil,
 				"tenant_id":       nil,
 			})
@@ -151,9 +199,7 @@ func (repo *MarbleDbRepository) UpdateUser(ctx context.Context, exec Executor, u
 		}
 	}
 
-	return exec.Cache(ctx).Exec(func(c *redis.Client) error {
-		return c.Del(ctx, exec.Cache(ctx).Key("user", updateUser.UserId)).Err()
-	})
+	return nil
 }
 
 func (repo *MarbleDbRepository) DeleteUser(ctx context.Context, exec Executor, userID models.UserId) error {
@@ -177,17 +223,16 @@ func (repo *MarbleDbRepository) DeleteUser(ctx context.Context, exec Executor, u
 			Update(dbmodels.TABLE_GRANTS).
 			Set("revoked_at", squirrel.Expr("NOW()")).
 			Where(squirrel.Eq{
-				"principal_type": "user",
-				"principal_id":   userID,
-				"revoked_at":     nil,
+				"principal_type":      "user",
+				"principal_authority": "marble",
+				"principal_id":        userID,
+				"revoked_at":          nil,
 			}),
 	); err != nil {
 		return err
 	}
 
-	return exec.Cache(ctx).Exec(func(c *redis.Client) error {
-		return c.Del(ctx, exec.Cache(ctx).Key("user", string(userID))).Err()
-	})
+	return nil
 }
 
 func (repo *MarbleDbRepository) DeleteUsersOfOrganization(ctx context.Context, exec Executor, organizationId uuid.UUID) error {
@@ -200,31 +245,35 @@ func (repo *MarbleDbRepository) DeleteUsersOfOrganization(ctx context.Context, e
 }
 
 func (repo *MarbleDbRepository) UserById(ctx context.Context, exec Executor, userId string) (models.User, error) {
-	if user, err := RedisLoadModel[models.User](ctx, exec.Cache(ctx),
-		exec.Cache(ctx).Key("user", userId)); err == nil {
-		return user, nil
-	}
-
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.User{}, err
 	}
 
+	query := NewQueryBuilder().Select(dbmodels.UserFields...).From(dbmodels.TABLE_USERS).
+		Where(squirrel.Eq{"id": userId}).Where("deleted_at IS NULL").OrderBy("id")
+	if _, transactional := exec.(Transaction); transactional {
+		query = query.Suffix("FOR UPDATE")
+	}
 	user, err := SqlToModel(
 		ctx,
 		exec,
-		NewQueryBuilder().
-			Select(dbmodels.UserFields...).
-			From(dbmodels.TABLE_USERS).
-			Where(squirrel.Eq{"id": userId}).
-			Where("deleted_at IS NULL").
-			OrderBy("id"),
+		query,
 		dbmodels.AdaptUser,
 	)
 	if err != nil {
 		return user, err
 	}
-
-	_ = exec.Cache(ctx).SaveModel(ctx, exec, exec.Cache(ctx).Key("user", userId), user, time.Hour)
+	memberships, err := repo.ListOrganizationsForUser(ctx, exec, userId)
+	if err != nil {
+		return models.User{}, err
+	}
+	for _, membership := range memberships {
+		user.OrganizationIds = append(user.OrganizationIds, membership.Organization.Id)
+		if user.OrganizationRoles == nil {
+			user.OrganizationRoles = make(map[uuid.UUID][]models.Role)
+		}
+		user.OrganizationRoles[membership.Organization.Id] = membership.Roles
+	}
 
 	return user, nil
 }
@@ -241,15 +290,38 @@ func (repo *MarbleDbRepository) ListUsers(ctx context.Context, exec Executor, or
 		OrderBy("id")
 
 	if orgId != nil {
-		query = query.Where(squirrel.Eq{"organization_id": *orgId})
+		grants := NewQueryBuilder().Select("1").From("active_grants g").
+			Where(squirrel.Eq{"g.principal_type": "user", "g.principal_authority": "marble", "g.organization_id": *orgId}).
+			Where("g.principal_id = users.id::text").PlaceholderFormat(squirrel.Question)
+		query = query.Where(squirrel.Expr("EXISTS (?)", grants))
 	}
 
-	return SqlToListOfModels(
+	users, err := SqlToListOfModels(
 		ctx,
 		exec,
 		query,
 		dbmodels.AdaptUser,
 	)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(users))
+	for i := range users {
+		ids[i] = string(users[i].UserId)
+	}
+	grants, err := repo.ListOrganizationGrantsByUser(ctx, exec, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range users {
+		for _, grant := range grants[ids[i]] {
+			users[i].OrganizationIds = append(users[i].OrganizationIds, grant.OrganizationId)
+			if orgId != nil && grant.OrganizationId == *orgId && users[i].Role != models.MARBLE_ADMIN && slices.Contains(models.GetValidOrganizationGrantRoles(), grant.Role) {
+				users[i].Role = grant.Role
+			}
+		}
+	}
+	return users, nil
 }
 
 func (repo *MarbleDbRepository) UserByEmail(ctx context.Context, exec Executor, email string) (*models.User, error) {
@@ -257,7 +329,7 @@ func (repo *MarbleDbRepository) UserByEmail(ctx context.Context, exec Executor, 
 		return nil, err
 	}
 
-	return SqlToOptionalModel(
+	user, err := SqlToOptionalModel(
 		ctx,
 		exec,
 		NewQueryBuilder().
@@ -268,6 +340,14 @@ func (repo *MarbleDbRepository) UserByEmail(ctx context.Context, exec Executor, 
 			OrderBy("id"),
 		dbmodels.AdaptUser,
 	)
+	if err != nil || user == nil {
+		return user, err
+	}
+	loaded, err := repo.UserById(ctx, exec, string(user.UserId))
+	if err != nil {
+		return nil, err
+	}
+	return &loaded, nil
 }
 
 func (repo *MarbleDbRepository) HasUsers(ctx context.Context, exec Executor) (bool, error) {

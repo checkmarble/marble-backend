@@ -30,6 +30,14 @@ func (repo *MarbleDbRepository) ListCaseEvents(ctx context.Context, exec Executo
 	)
 }
 
+func (repo *MarbleDbRepository) ListCaseEventUsers(ctx context.Context, exec Executor, caseID string) ([]models.User, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+	return SqlToListOfModels(ctx, exec, NewQueryBuilder().Select(columnsNames("u", dbmodels.UserFields)...).
+		From("users u").Where("EXISTS (SELECT 1 FROM case_events e WHERE e.case_id = ? AND e.user_id = u.id) OR EXISTS (SELECT 1 FROM cases c WHERE c.id = ? AND c.assigned_to = u.id)", caseID, caseID), dbmodels.AdaptUser)
+}
+
 func (repo *MarbleDbRepository) GetCaseEventById(ctx context.Context, exec Executor, id string) (models.CaseEvent, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.CaseEvent{}, err

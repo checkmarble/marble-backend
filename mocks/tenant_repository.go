@@ -11,6 +11,10 @@ import (
 
 type TenantRepository struct{ mock.Mock }
 
+func (r *TenantRepository) ReassignTenantUsers(ctx context.Context, exec repositories.Executor, targetId uuid.UUID, sourceIds []uuid.UUID) error {
+	return r.Called(ctx, exec, targetId, sourceIds).Error(0)
+}
+
 func (r *TenantRepository) ListActive(ctx context.Context, exec repositories.Executor) ([]models.Tenant, error) {
 	args := r.Called(ctx, exec)
 	return args.Get(0).([]models.Tenant), args.Error(1)

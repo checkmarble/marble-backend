@@ -29,6 +29,7 @@ const (
 
 	// general
 	UnknownUser        ErrorCode = "unknown_user"
+	AccessPending      ErrorCode = "access_pending"
 	MissingRequirement ErrorCode = "missing_requirement"
 )
 

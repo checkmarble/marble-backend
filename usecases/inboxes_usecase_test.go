@@ -266,8 +266,8 @@ func (suite *InboxUsecaseTestSuite) Test_CreateInboxUser_nominal_non_admin() {
 	}
 
 	targetUser := models.User{
-		OrganizationId: suite.organizationId,
-		UserId:         models.UserId(suite.nonAdminUserId),
+		OrganizationIds: []uuid.UUID{suite.organizationId},
+		UserId:          models.UserId(suite.nonAdminUserId),
 	}
 	targetInbox := models.Inbox{OrganizationId: suite.organizationId, Id: suite.parsedInboxId}
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)

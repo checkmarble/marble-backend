@@ -35,6 +35,7 @@ import (
 type AiAgentUsecaseRepository interface {
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
 	ListCaseEvents(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseEvent, error)
+	ListCaseEventUsers(ctx context.Context, exec repositories.Executor, caseId string) ([]models.User, error)
 	GetRuleById(ctx context.Context, exec repositories.Executor, ruleId string) (models.Rule, error)
 	ListRulesByIterationId(ctx context.Context, exec repositories.Executor, iterationId string) ([]models.Rule, error)
 	UpdateRule(ctx context.Context, exec repositories.Executor, rule models.UpdateRuleInput) error

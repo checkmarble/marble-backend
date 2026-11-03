@@ -49,8 +49,7 @@ func (u User) IntoCredentials() Credentials {
 			FirstName: u.FirstName,
 			LastName:  u.LastName,
 		},
-		OrganizationId: u.OrganizationId,
-		Roles:          []Role{u.Role},
+		TenantId: u.TenantId,
 	}
 }
 

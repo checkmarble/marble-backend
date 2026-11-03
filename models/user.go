@@ -9,16 +9,15 @@ import (
 type UserId string
 
 type User struct {
-	UserId UserId
-	Email  string
-	// TODO(MAR-2251): remove Role after legacy JWT expiry; use grants.
-	Role Role
-	// TODO(MAR-2251): remove OrganizationId after legacy JWT expiry; use grants.
-	OrganizationId uuid.UUID
-	TenantId       uuid.UUID
-	FirstName      string
-	LastName       string
-	DeletedAt      *time.Time
+	UserId            UserId
+	Email             string
+	Role              Role
+	TenantId          uuid.UUID
+	OrganizationIds   []uuid.UUID // Active direct organization memberships, not identity ownership.
+	OrganizationRoles map[uuid.UUID][]Role
+	FirstName         string
+	LastName          string
+	DeletedAt         *time.Time
 
 	// Currently only used to control display of the AI assist button in the UI - DO NOT use for anything else as it will be removed
 	AiAssistEnabled bool
@@ -39,6 +38,7 @@ func (u User) FullName() string {
 }
 
 type CreateUser struct {
+	TenantId       uuid.UUID
 	Email          string
 	Role           Role
 	OrganizationId uuid.UUID
@@ -47,9 +47,10 @@ type CreateUser struct {
 }
 
 type UpdateUser struct {
-	UserId    string
-	Email     *string
-	Role      *Role
-	FirstName *string
-	LastName  *string
+	OrganizationId uuid.UUID
+	UserId         string
+	Email          *string
+	Role           *Role
+	FirstName      *string
+	LastName       *string
 }

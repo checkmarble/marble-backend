@@ -1043,7 +1043,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 			errors.Wrap(err, "could not retrieve case events")
 	}
 
-	users, err := uc.repository.ListUsers(ctx, exec, &c.OrganizationId)
+	users, err := uc.repository.ListCaseEventUsers(ctx, exec, caseId)
 	if err != nil {
 		return caseData{}, casePivotDataByPivot{},
 			errors.Wrap(err, "could not retrieve users for case events")
@@ -1185,13 +1185,17 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 				return caseData{}, casePivotDataByPivot{}, err
 			}
 			previousCase.Events = events
+			previousUsers, err := uc.repository.ListCaseEventUsers(ctx, exec, previousCase.Id)
+			if err != nil {
+				return caseData{}, casePivotDataByPivot{}, errors.Wrap(err, "could not retrieve users for previous case")
+			}
 
 			// Use case DTO without rule execution details and without screening details, in order not to
 			// overload the context with too much data from old cases
 			rc, err := agent_dto.AdaptCaseWithDecisionsDtoWithoutRuleExecDetails(
 				previousCase,
 				decisions,
-				tags, inboxes, users,
+				tags, inboxes, previousUsers,
 				func(scenarioIterationId string) (models.ScenarioIteration, error) {
 					return uc.repository.GetScenarioIteration(ctx, exec, scenarioIterationId, true)
 				},

@@ -18,8 +18,10 @@ type EnforceSecurityCaseImpl struct {
 	Credentials models.Credentials
 }
 
-func EnforceSecurityCaseForUser(user models.User) *EnforceSecurityCaseImpl {
+func EnforceSecurityCaseForUser(user models.User, organizationID uuid.UUID) *EnforceSecurityCaseImpl {
 	creds := user.IntoCredentials()
+	creds.OrganizationId = organizationID
+	creds.Roles = user.OrganizationRoles[organizationID]
 
 	return &EnforceSecurityCaseImpl{
 		EnforceSecurity: NewEnforceSecurity(creds),

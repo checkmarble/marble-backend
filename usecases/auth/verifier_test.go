@@ -157,19 +157,19 @@ func TestGenerator_VerifyToken_FirebaseToken(t *testing.T) {
 	now := time.Now()
 
 	user := models.User{
-		UserId:         "user_id",
-		Email:          "user@email.com",
-		Role:           models.ADMIN,
-		OrganizationId: utils.TextToUUID("organization_id"),
+		UserId:          "user_id",
+		Email:           "user@email.com",
+		Role:            models.ADMIN,
+		OrganizationIds: []uuid.UUID{utils.TextToUUID("organization_id")},
 	}
-	userOrgIdString := user.OrganizationId
+	userOrgIdString := user.OrganizationIds[0]
 
 	idpTokenVerifier := mocks.NewStaticIdpTokenVerifier(infra.MockFirebaseIssuer, firebaseIdentity)
 
 	t.Run("nominal", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
-			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: user.OrganizationId}}, nil)
+			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: user.OrganizationIds[0]}}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, userOrgIdString).
 			Return(models.Organization{}, nil)
 		mockRepository.On("ResolveUserIdentity", mock.Anything, firebaseIdentity.Issuer, firebaseIdentity.Subject, firebaseIdentity.Email).

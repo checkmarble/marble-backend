@@ -65,7 +65,7 @@ func TestUpdateUserRole(t *testing.T) {
 				},
 			}
 
-			target := models.User{OrganizationId: utils.TextToUUID("org"), UserId: "target", Role: tt.from}
+			target := models.User{OrganizationIds: []uuid.UUID{utils.TextToUUID("org")}, UserId: "target", Role: tt.from}
 			if tt.sameUser {
 				target.UserId = "principal"
 				target.Role = tt.principal
@@ -85,6 +85,35 @@ func TestUpdateUserRole(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTenantIdentityAdministration(t *testing.T) {
+	tenantID := uuid.New()
+	e := EnforceSecurityUserImpl{
+		EnforceSecurity: mockUserEnforceSecurity{},
+		Credentials:     models.Credentials{TenantId: tenantID, Roles: []models.Role{models.TENANT_ADMIN}, ActorIdentity: models.Identity{UserId: "admin"}},
+	}
+	target := models.User{UserId: "pending", TenantId: tenantID, Role: models.NO_ROLE}
+	assert.NoError(t, e.ReadUser(target))
+	assert.NoError(t, e.UpdateUser(target, models.UpdateUser{}))
+	assert.NoError(t, e.DeleteUser(target))
+	assert.NoError(t, e.ManageOrganizationGrant(uuid.New(), target))
+	assert.NoError(t, e.ListUserGrants())
+	target.TenantId = uuid.New()
+	assert.ErrorIs(t, e.ReadUser(target), models.ForbiddenError)
+	assert.Error(t, e.UpdateUser(target, models.UpdateUser{}))
+	assert.ErrorIs(t, e.DeleteUser(target), models.ForbiddenError)
+	assert.ErrorIs(t, e.ManageOrganizationGrant(uuid.New(), target), models.ForbiddenError)
+}
+
+func TestOrganizationAdminCannotEditAnotherIdentity(t *testing.T) {
+	orgID := uuid.New()
+	e := EnforceSecurityUserImpl{
+		EnforceSecurity: mockUserEnforceSecurity{},
+		Credentials:     models.Credentials{OrganizationId: orgID, Roles: []models.Role{models.ADMIN}, ActorIdentity: models.Identity{UserId: "admin"}},
+	}
+	name := "changed"
+	assert.ErrorIs(t, e.UpdateUser(models.User{UserId: "other", OrganizationIds: []uuid.UUID{orgID}}, models.UpdateUser{FirstName: &name}), models.ForbiddenError)
 }
 
 func TestTenantUserAccessRequiresAdmin(t *testing.T) {

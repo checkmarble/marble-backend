@@ -309,6 +309,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		router.DELETE("/tenants/:tenant_id/domains/:domain_id", tom, handleDeleteTenantDomain(uc))
 	}
 	router.PUT("/tenants/:tenant_id/users/:user_id/grants", tom, handlePutOrganizationGrant(uc))
+	router.PUT("/tenants/:tenant_id/users/:user_id/administrator", tom, handleSetTenantAdministrator(uc, true))
+	router.DELETE("/tenants/:tenant_id/users/:user_id/administrator", tom, handleSetTenantAdministrator(uc, false))
 	router.DELETE("/tenants/:tenant_id/users/:user_id/grants", tom, handleDeleteOrganizationGrant(uc))
 
 	router.GET("/organizations", tom, handleGetOrganizations(uc))

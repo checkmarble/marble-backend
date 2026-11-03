@@ -3,6 +3,7 @@ package security
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/google/uuid"
+	"slices"
 
 	"github.com/cockroachdb/errors"
 )
@@ -25,15 +26,25 @@ type EnforceSecurityUserImpl struct {
 }
 
 func (e *EnforceSecurityUserImpl) ReadUser(user models.User) error {
-	// Any user can list the users of their own organization, with basic information on their identity and level.
-	// Currently required for the front, to be reworked if necessary.
-	return errors.Join(
-		e.Permission(models.MARBLE_USER_READ),
-		e.ReadOrganization(user.OrganizationId),
-	)
+	if err := e.Permission(models.MARBLE_USER_READ); err != nil {
+		return err
+	}
+	if e.Credentials.HasRole(models.MARBLE_ADMIN) || e.Credentials.ActorIdentity.UserId == user.UserId {
+		return nil
+	}
+	if e.Credentials.HasRole(models.TENANT_ADMIN) && e.Credentials.TenantId != uuid.Nil && e.Credentials.TenantId == user.TenantId {
+		return nil
+	}
+	if e.Credentials.OrganizationId != uuid.Nil && slices.Contains(user.OrganizationIds, e.Credentials.OrganizationId) {
+		return nil
+	}
+	return models.ForbiddenError
 }
 
 func (e *EnforceSecurityUserImpl) CreateUser(input models.CreateUser) error {
+	if e.Credentials.HasRole(models.TENANT_ADMIN) && input.Role != models.MARBLE_ADMIN && input.TenantId == e.Credentials.TenantId && input.TenantId != uuid.Nil {
+		return e.Permission(models.MARBLE_USER_CREATE)
+	}
 	if input.Role == models.MARBLE_ADMIN && !e.Credentials.HasRole(models.MARBLE_ADMIN) {
 		return errors.Wrap(
 			models.ForbiddenError,
@@ -58,6 +69,25 @@ func (e *EnforceSecurityUserImpl) CreateUser(input models.CreateUser) error {
 }
 
 func (e *EnforceSecurityUserImpl) UpdateUser(targetUser models.User, updateUser models.UpdateUser) error {
+	if targetUser.Role == models.MARBLE_ADMIN && !e.Credentials.HasRole(models.MARBLE_ADMIN) {
+		return models.ForbiddenError
+	}
+	if !e.Credentials.HasRole(models.MARBLE_ADMIN) && !e.Credentials.HasRole(models.TENANT_ADMIN) && !e.Credentials.HasRole(models.ADMIN) && e.Credentials.ActorIdentity.UserId != targetUser.UserId {
+		return models.ForbiddenError
+	}
+	if e.Credentials.HasRole(models.ADMIN) && !e.Credentials.HasRole(models.MARBLE_ADMIN) && !e.Credentials.HasRole(models.TENANT_ADMIN) && e.Credentials.ActorIdentity.UserId != targetUser.UserId &&
+		(updateUser.Email != nil || updateUser.FirstName != nil || updateUser.LastName != nil) {
+		return models.ForbiddenError
+	}
+	if e.Credentials.HasRole(models.TENANT_ADMIN) && e.Credentials.TenantId == targetUser.TenantId && targetUser.TenantId != uuid.Nil {
+		if updateUser.Role != nil && *updateUser.Role == models.MARBLE_ADMIN {
+			return models.ForbiddenError
+		}
+		if updateUser.Role != nil && e.Credentials.ActorIdentity.UserId == targetUser.UserId {
+			return models.ForbiddenError
+		}
+		return e.Permission(models.MARBLE_USER_UPDATE)
+	}
 	// Only marble admins can create marble admins
 	if updateUser.Role != nil &&
 		*updateUser.Role == models.MARBLE_ADMIN &&
@@ -98,15 +128,21 @@ func (e *EnforceSecurityUserImpl) UpdateUser(targetUser models.User, updateUser 
 	// lastly, in the most general case allow updates only on users of the same org
 	return errors.Join(
 		e.Permission(models.MARBLE_USER_UPDATE),
-		e.ReadOrganization(targetUser.OrganizationId),
+		e.ReadUser(targetUser),
 	)
 }
 
 func (e *EnforceSecurityUserImpl) DeleteUser(user models.User) error {
-	return errors.Join(
-		e.Permission(models.MARBLE_USER_DELETE),
-		e.ReadOrganization(user.OrganizationId),
-	)
+	if e.Credentials.ActorIdentity.UserId == user.UserId {
+		return models.ForbiddenError
+	}
+	if e.Credentials.HasRole(models.MARBLE_ADMIN) {
+		return e.Permission(models.MARBLE_USER_DELETE)
+	}
+	if user.Role != models.MARBLE_ADMIN && e.Credentials.HasRole(models.TENANT_ADMIN) && user.TenantId != uuid.Nil && user.TenantId == e.Credentials.TenantId {
+		return e.Permission(models.MARBLE_USER_DELETE)
+	}
+	return models.ForbiddenError
 }
 
 func (e *EnforceSecurityUserImpl) ListUsers(organizationId *uuid.UUID) error {
@@ -137,6 +173,9 @@ func (e *EnforceSecurityUserImpl) ListTenantUsers(organizationId uuid.UUID) erro
 }
 
 func (e *EnforceSecurityUserImpl) ManageOrganizationGrant(organizationId uuid.UUID, targetUser models.User) error {
+	if e.Credentials.HasRole(models.TENANT_ADMIN) && targetUser.TenantId != uuid.Nil && targetUser.TenantId == e.Credentials.TenantId && targetUser.Role != models.MARBLE_ADMIN {
+		return e.Permission(models.MARBLE_USER_UPDATE)
+	}
 	if targetUser.Role == models.MARBLE_ADMIN && !e.Credentials.HasRole(models.MARBLE_ADMIN) {
 		return errors.Wrap(models.ForbiddenError, "only marble admins can manage grants for marble admins")
 	}
@@ -151,7 +190,7 @@ func (e *EnforceSecurityUserImpl) ManageOrganizationGrant(organizationId uuid.UU
 
 // ListUserGrants guards the cross-tenant view of a user's grants, which only the backoffice uses.
 func (e *EnforceSecurityUserImpl) ListUserGrants() error {
-	if !e.Credentials.HasRole(models.MARBLE_ADMIN) {
+	if !e.Credentials.HasRole(models.MARBLE_ADMIN) && !(e.Credentials.HasRole(models.TENANT_ADMIN) && e.Credentials.TenantId != uuid.Nil) {
 		return errors.Wrap(models.ForbiddenError, "only marble admins can list user grants")
 	}
 	return e.Permission(models.MARBLE_USER_LIST)

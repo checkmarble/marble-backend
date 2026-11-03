@@ -4,6 +4,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"slices"
 )
 
 type EnforceSecurityInboxes struct {
@@ -71,7 +72,7 @@ func (e EnforceSecurityInboxes) CreateInboxUser(
 	i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser, targetInbox models.Inbox, targetUser models.User,
 ) error {
 	organizationId := e.Credentials.OrganizationId
-	if targetUser.OrganizationId != organizationId {
+	if !slices.Contains(targetUser.OrganizationIds, organizationId) {
 		return errors.Wrap(models.ForbiddenError, "Target user does not belong to the right organization")
 	}
 	if targetInbox.OrganizationId != organizationId {

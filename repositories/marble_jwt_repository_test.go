@@ -31,7 +31,7 @@ func TestMarbleJwtRepository_ValidateMarbleToken(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			authTenantID := uuid.New()
-			token, err := repository.EncodeMarbleToken(tt.identityIssuer, time.Now().Add(time.Hour), models.Credentials{AuthTenantId: authTenantID})
+			token, err := repository.EncodeMarbleToken(tt.identityIssuer, time.Now().Add(time.Hour), models.Credentials{TenantId: uuid.New(), AuthTenantId: authTenantID})
 			require.NoError(t, err)
 			if tt.marbleIssuer == "marble" {
 				var claims Claims
@@ -45,6 +45,9 @@ func TestMarbleJwtRepository_ValidateMarbleToken(t *testing.T) {
 				require.NoError(t, err)
 				assert.Contains(t, rawClaims, "identity_issuer")
 				assert.NotContains(t, rawClaims, "issuer")
+				credentialClaims := rawClaims["credentials"].(map[string]any)
+				assert.NotContains(t, credentialClaims, "tenant_id")
+				assert.Equal(t, authTenantID.String(), credentialClaims["auth_tenant_id"])
 			}
 			if tt.marbleIssuer != "marble" {
 				claims := &Claims{RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)), Issuer: tt.marbleIssuer}}

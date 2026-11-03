@@ -13,6 +13,7 @@ import (
 )
 
 type GrantRepository interface {
+	SetTenantAdministrator(context.Context, Transaction, uuid.UUID, string, bool) error
 	EnsureTenantAdminForOrganization(ctx context.Context, exec Executor, userID string, organizationID uuid.UUID) error
 	ListOrganizationsForUser(ctx context.Context, exec Executor, userID string) ([]models.OrganizationMembership, error)
 	ListOrganizationGrantsByUser(ctx context.Context, exec Executor, userIDs []string) (map[string][]models.Grant, error)
@@ -151,11 +152,9 @@ func (repo *MarbleDbRepository) ListTenantUsersWithDirectOrganizationGrant(ctx c
 			append(columnsNames("u", dbmodels.UserFields), "g.role AS organization_grant_role")...,
 		).
 		From("users u").
-		Join("organizations home_org ON home_org.id = u.organization_id").
 		Join("active_grants g ON g.principal_type = 'user' AND g.principal_id = u.id::text AND g.principal_authority = 'marble' AND g.organization_id = ?", organizationID).
-		Where(squirrel.Eq{"home_org.tenant_id": tenantID}).
+		Where(squirrel.Eq{"u.tenant_id": tenantID}).
 		Where("u.deleted_at IS NULL").
-		Where("home_org.deleted_at IS NULL").
 		OrderBy("u.id")
 
 	return listOrganizationUserGrants(ctx, exec, query)
@@ -171,10 +170,8 @@ func (repo *MarbleDbRepository) ListTenantUsersWithoutOrganizationAccess(ctx con
 			append(columnsNames("u", dbmodels.UserFields), "NULL::text AS organization_grant_role")...,
 		).
 		From("users u").
-		Join("organizations home_org ON home_org.id = u.organization_id").
-		Where(squirrel.Eq{"home_org.tenant_id": tenantID}).
+		Where(squirrel.Eq{"u.tenant_id": tenantID}).
 		Where("u.deleted_at IS NULL").
-		Where("home_org.deleted_at IS NULL").
 		Where(`NOT EXISTS (
 			SELECT 1 FROM active_grants g
 			WHERE g.principal_type = 'user'
@@ -203,6 +200,10 @@ func (repo *MarbleDbRepository) ReplaceOrganizationGrant(ctx context.Context, tx
 
 func (repo *MarbleDbRepository) RevokeOrganizationGrant(ctx context.Context, tx Transaction, userID string, organizationID uuid.UUID) error {
 	if err := validateMarbleDbExecutor(tx); err != nil {
+		return err
+	}
+	// Lock even on direct repository calls, so deletion cannot race a replacement grant.
+	if _, err := repo.UserById(ctx, tx, userID); err != nil {
 		return err
 	}
 	return ExecBuilder(ctx, tx, NewQueryBuilder().

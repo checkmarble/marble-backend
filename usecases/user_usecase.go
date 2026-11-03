@@ -20,6 +20,7 @@ import (
 )
 
 type UserUseCase struct {
+	credentials            models.Credentials
 	enforceUserSecurity    security.EnforceSecurityUser
 	executorFactory        executor_factory.ExecutorFactory
 	transactionFactory     executor_factory.TransactionFactory
@@ -29,15 +30,50 @@ type UserUseCase struct {
 	firebaseAdmin          idp.Adminer
 }
 
+func (usecase *UserUseCase) authorizeTenantAdministration(tenantID uuid.UUID) error {
+	c := usecase.credentials
+	if tenantID == uuid.Nil {
+		return models.BadParameterError
+	}
+	if c.HasRole(models.MARBLE_ADMIN) {
+		return nil
+	}
+	if c.HasRole(models.TENANT_ADMIN) && c.TenantId == tenantID && (c.AuthTenantId == uuid.Nil || c.AuthTenantId == tenantID) {
+		return nil
+	}
+	return models.ForbiddenError
+}
+
+func (usecase *UserUseCase) ListUsersByTenant(ctx context.Context, tenantID uuid.UUID) ([]models.User, error) {
+	if err := usecase.authorizeTenantAdministration(tenantID); err != nil {
+		return nil, err
+	}
+	return usecase.userRepository.ListUsersByTenant(ctx, usecase.executorFactory.NewExecutor(), tenantID)
+}
+
+func (usecase *UserUseCase) SetTenantAdministrator(ctx context.Context, tenantID uuid.UUID, userID string, enabled bool) error {
+	if err := usecase.authorizeTenantAdministration(tenantID); err != nil {
+		return err
+	}
+	if userID == string(usecase.credentials.ActorIdentity.UserId) {
+		return errors.Wrap(models.ForbiddenError, "cannot change your own tenant administrator grant")
+	}
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		return usecase.grantRepository.SetTenantAdministrator(ctx, tx, tenantID, userID, enabled)
+	})
+}
+
 func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.CreateUser) (models.User, error) {
+	if createUser.OrganizationId == uuid.Nil && createUser.Role != models.NO_ROLE && createUser.Role != models.MARBLE_ADMIN {
+		return models.User{}, errors.Wrap(models.BadParameterError, "tenant identities are created without a role; assign grants separately")
+	}
+	if createUser.OrganizationId != uuid.Nil && !slices.Contains(models.GetValidOrganizationGrantRoles(), createUser.Role) && createUser.Role != models.MARBLE_ADMIN {
+		return models.User{}, models.BadParameterError
+	}
 	// Only marble admins can exist outside of an organization
-	if createUser.OrganizationId == uuid.Nil && createUser.Role != models.MARBLE_ADMIN {
+	if createUser.OrganizationId == uuid.Nil && createUser.TenantId == uuid.Nil && createUser.Role != models.MARBLE_ADMIN {
 		return models.User{}, errors.Wrap(models.BadParameterError,
 			"organization_id is required unless the role is MARBLE_ADMIN")
-	}
-
-	if err := usecase.enforceUserSecurity.CreateUser(createUser); err != nil {
-		return models.User{}, err
 	}
 
 	var org models.Organization
@@ -47,8 +83,15 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 		if err != nil {
 			return models.User{}, errors.Wrap(err, "GetOrganizationById error")
 		}
+		if createUser.TenantId != uuid.Nil && createUser.TenantId != org.TenantId {
+			return models.User{}, models.ForbiddenError
+		}
+		createUser.TenantId = org.TenantId
 	}
 
+	if err := usecase.enforceUserSecurity.CreateUser(createUser); err != nil {
+		return models.User{}, err
+	}
 	createdUser, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
@@ -80,28 +123,30 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 		return models.User{}, err
 	}
 	tracking.Identify(ctx, createdUser.UserId, map[string]interface{}{
-		"email":           createdUser.Email,
-		"organization_id": createdUser.OrganizationId,
-		"first_name":      createdUser.FirstName,
-		"last_name":       createdUser.LastName,
+		"email":      createdUser.Email,
+		"tenant_id":  createdUser.TenantId,
+		"first_name": createdUser.FirstName,
+		"last_name":  createdUser.LastName,
 	})
-	if createdUser.OrganizationId != uuid.Nil {
-		tracking.Group(ctx, createdUser.UserId, createdUser.OrganizationId, map[string]any{
+	if createUser.OrganizationId != uuid.Nil {
+		tracking.Group(ctx, createdUser.UserId, createUser.OrganizationId, map[string]any{
 			"name": org.Name,
 		})
 	}
 	tracking.TrackEvent(ctx, models.AnalyticsUserCreated, map[string]interface{}{
-		"user_id":         createdUser.UserId,
-		"email":           createdUser.Email,
-		"organization_id": createdUser.OrganizationId,
+		"user_id":   createdUser.UserId,
+		"email":     createdUser.Email,
+		"tenant_id": createdUser.TenantId,
 	})
 
 	return createdUser, nil
 }
 
 func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.UpdateUser) (models.User, error) {
-	if updateUser.Role != nil && !slices.Contains(models.GetValidUserRoles(), *updateUser.Role) {
-		return models.User{}, errors.Wrap(models.BadParameterError, "Invalid role received")
+	if updateUser.OrganizationId == uuid.Nil {
+		if creds, ok := utils.CredentialsFromCtx(ctx); ok {
+			updateUser.OrganizationId = creds.OrganizationId
+		}
 	}
 
 	updatedUser, err := executor_factory.TransactionReturnValue(
@@ -112,8 +157,36 @@ func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.Up
 			if err != nil {
 				return models.User{}, err
 			}
+			// Profile forms may echo the compatibility role without selecting an organization.
+			if updateUser.Role != nil && updateUser.OrganizationId == uuid.Nil && *updateUser.Role == user.Role {
+				updateUser.Role = nil
+			}
+			if updateUser.Role != nil && !slices.Contains(models.GetValidUserRoles(), *updateUser.Role) {
+				return models.User{}, errors.Wrap(models.BadParameterError, "Invalid role received")
+			}
+			if updateUser.Email != nil && *updateUser.Email == user.Email {
+				updateUser.Email = nil
+			}
+			if updateUser.FirstName != nil && *updateUser.FirstName == user.FirstName {
+				updateUser.FirstName = nil
+			}
+			if updateUser.LastName != nil && *updateUser.LastName == user.LastName {
+				updateUser.LastName = nil
+			}
 			if err := usecase.enforceUserSecurity.UpdateUser(user, updateUser); err != nil {
 				return models.User{}, err
+			}
+			if updateUser.Role != nil && *updateUser.Role != models.MARBLE_ADMIN {
+				org, err := usecase.organizationRepository.GetOrganizationById(ctx, tx, updateUser.OrganizationId)
+				if err != nil {
+					return models.User{}, err
+				}
+				if user.TenantId != org.TenantId {
+					return models.User{}, models.ForbiddenError
+				}
+				if err := usecase.enforceUserSecurity.ManageOrganizationGrant(org.Id, user); err != nil {
+					return models.User{}, err
+				}
 			}
 			if err := usecase.userRepository.UpdateUser(ctx, tx, updateUser); err != nil {
 				return models.User{}, err
@@ -125,15 +198,15 @@ func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.Up
 		return models.User{}, err
 	}
 	tracking.Identify(ctx, updatedUser.UserId, map[string]interface{}{
-		"email":           updatedUser.Email,
-		"organization_id": updatedUser.OrganizationId,
-		"first_name":      updatedUser.FirstName,
-		"last_name":       updatedUser.LastName,
+		"email":      updatedUser.Email,
+		"tenant_id":  updatedUser.TenantId,
+		"first_name": updatedUser.FirstName,
+		"last_name":  updatedUser.LastName,
 	})
 	tracking.TrackEvent(ctx, models.AnalyticsUserUpdated, map[string]interface{}{
-		"user_id":         updatedUser.UserId,
-		"email":           updatedUser.Email,
-		"organization_id": updatedUser.OrganizationId,
+		"user_id":   updatedUser.UserId,
+		"email":     updatedUser.Email,
+		"tenant_id": updatedUser.TenantId,
 	})
 
 	return updatedUser, nil
@@ -143,15 +216,16 @@ func (usecase *UserUseCase) DeleteUser(ctx context.Context, userId, currentUserI
 	if userId == currentUserId {
 		return errors.Wrap(models.ForbiddenError, "cannot delete yourself")
 	}
-	exec := usecase.executorFactory.NewExecutor()
-	user, err := usecase.userRepository.UserById(ctx, exec, userId)
-	if err != nil {
-		return err
-	}
-	if err := usecase.enforceUserSecurity.DeleteUser(user); err != nil {
-		return err
-	}
-	err = usecase.userRepository.DeleteUser(ctx, exec, models.UserId(userId))
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		user, err := usecase.userRepository.UserById(ctx, tx, userId)
+		if err != nil {
+			return err
+		}
+		if err := usecase.enforceUserSecurity.DeleteUser(user); err != nil {
+			return err
+		}
+		return usecase.userRepository.DeleteUser(ctx, tx, models.UserId(userId))
+	})
 	if err != nil {
 		return err
 	}
@@ -211,14 +285,18 @@ func (usecase *UserUseCase) ListUserGrants(ctx context.Context, userID string) (
 		return nil, err
 	}
 	exec := usecase.executorFactory.NewExecutor()
-	if _, err := usecase.userRepository.UserById(ctx, exec, userID); err != nil {
+	user, err := usecase.userRepository.UserById(ctx, exec, userID)
+	if err != nil {
+		return nil, err
+	}
+	if err := usecase.enforceUserSecurity.ReadUser(user); err != nil {
 		return nil, err
 	}
 	grantsByUser, err := usecase.grantRepository.ListOrganizationGrantsByUser(ctx, exec, []string{userID})
 	if err != nil {
 		return nil, err
 	}
-	return grantsByUser[userID], nil
+	return usecase.visibleOrganizationGrants(grantsByUser[userID]), nil
 }
 
 // ListGrantsOfUsers returns the organization grants of the given users, keyed by user id.
@@ -226,13 +304,37 @@ func (usecase *UserUseCase) ListGrantsOfUsers(ctx context.Context, users []model
 	if err := usecase.enforceUserSecurity.ListUserGrants(); err != nil {
 		return nil, err
 	}
+	for _, user := range users {
+		if err := usecase.enforceUserSecurity.ReadUser(user); err != nil {
+			return nil, err
+		}
+	}
 	userIDs := pure_utils.Map(users, func(user models.User) string { return string(user.UserId) })
-	return usecase.grantRepository.ListOrganizationGrantsByUser(ctx, usecase.executorFactory.NewExecutor(), userIDs)
+	grants, err := usecase.grantRepository.ListOrganizationGrantsByUser(ctx, usecase.executorFactory.NewExecutor(), userIDs)
+	if err != nil {
+		return nil, err
+	}
+	for id, userGrants := range grants {
+		grants[id] = usecase.visibleOrganizationGrants(userGrants)
+	}
+	return grants, nil
+}
+
+func (usecase *UserUseCase) visibleOrganizationGrants(grants []models.Grant) []models.Grant {
+	if usecase.credentials.HasRole(models.MARBLE_ADMIN) {
+		return grants
+	}
+	return slices.DeleteFunc(grants, func(grant models.Grant) bool {
+		return grant.TenantId != usecase.credentials.TenantId || grant.TenantId == uuid.Nil
+	})
 }
 
 func (usecase *UserUseCase) ReplaceOrganizationGrant(ctx context.Context, userID string, tenantID, organizationID uuid.UUID, role models.Role) error {
 	if !slices.Contains(models.GetValidOrganizationGrantRoles(), role) {
 		return errors.Wrap(models.BadParameterError, "invalid organization grant role")
+	}
+	if role != models.ADMIN && usecase.isLocalAdministratorSelf(userID) {
+		return models.ForbiddenError
 	}
 
 	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
@@ -258,6 +360,9 @@ func (usecase *UserUseCase) ReplaceOrganizationGrant(ctx context.Context, userID
 }
 
 func (usecase *UserUseCase) RevokeOrganizationGrant(ctx context.Context, userID string, tenantID, organizationID uuid.UUID) error {
+	if usecase.isLocalAdministratorSelf(userID) {
+		return models.ForbiddenError
+	}
 	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		targetOrganization, err := usecase.organizationRepository.GetOrganizationById(ctx, tx, organizationID)
 		if err != nil {
@@ -280,18 +385,16 @@ func (usecase *UserUseCase) RevokeOrganizationGrant(ctx context.Context, userID 
 	})
 }
 
+func (usecase *UserUseCase) isLocalAdministratorSelf(userID string) bool {
+	c := usecase.credentials
+	return userID == string(c.ActorIdentity.UserId) && c.HasRole(models.ADMIN) && !c.HasRole(models.TENANT_ADMIN) && !c.HasRole(models.MARBLE_ADMIN)
+}
+
 func (usecase *UserUseCase) ensureUserBelongsToOrganizationTenant(ctx context.Context, exec repositories.Executor, user models.User, targetOrganization models.Organization) error {
 	if user.Role == models.MARBLE_ADMIN {
 		return nil
 	}
-	if user.OrganizationId == uuid.Nil {
-		return errors.Wrap(models.NotFoundError, "user has no organization")
-	}
-	homeOrganization, err := usecase.organizationRepository.GetOrganizationById(ctx, exec, user.OrganizationId)
-	if err != nil {
-		return err
-	}
-	if homeOrganization.TenantId != targetOrganization.TenantId {
+	if user.TenantId != targetOrganization.TenantId {
 		return errors.Wrap(models.NotFoundError, "user does not belong to organization tenant")
 	}
 	return nil

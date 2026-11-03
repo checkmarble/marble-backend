@@ -16,7 +16,8 @@ var (
 	UnAuthorizedError = errors.New("unauthorized")
 
 	// ForbiddenError is rendered with the http status code 403
-	ForbiddenError = errors.New("forbidden")
+	ForbiddenError   = errors.New("forbidden")
+	ErrAccessPending = errors.Wrap(ForbiddenError, "access_pending")
 
 	// NotFoundError is rendered with the http status code 404
 	NotFoundError = errors.New("not found")

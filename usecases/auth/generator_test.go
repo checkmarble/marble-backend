@@ -115,12 +115,12 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 	now := time.Now()
 
 	user := models.User{
-		UserId:         "user_id",
-		Email:          "user@email.com",
-		Role:           models.ADMIN,
-		OrganizationId: utils.TextToUUID("organization_id"),
+		UserId:          "user_id",
+		Email:           "user@email.com",
+		Role:            models.ADMIN,
+		OrganizationIds: []uuid.UUID{utils.TextToUUID("organization_id")},
 	}
-	orgIdString := user.OrganizationId
+	orgIdString := user.OrganizationIds[0]
 
 	t.Run("nominal", func(t *testing.T) {
 		mockVerifier := new(mocks.FirebaseTokenVerifier)
@@ -129,7 +129,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
-			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: user.OrganizationId}}, nil)
+			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: user.OrganizationIds[0]}}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, orgIdString).
 			Return(models.Organization{}, nil)
 
@@ -169,7 +169,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
-			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: user.OrganizationId}}, nil)
+			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: user.OrganizationIds[0]}}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, orgIdString).
 			Return(models.Organization{}, nil)
 
@@ -209,7 +209,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
-			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: user.OrganizationId}}, nil)
+			Return([]models.Grant{{Role: models.ADMIN, OrganizationId: user.OrganizationIds[0]}}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, orgIdString).
 			Return(models.Organization{}, nil)
 
@@ -251,7 +251,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
 			Return([]models.Grant{
 				{Role: models.TENANT_ADMIN, TenantId: tenantId},
-				{Role: models.ADMIN, OrganizationId: user.OrganizationId},
+				{Role: models.ADMIN, OrganizationId: user.OrganizationIds[0]},
 			}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, orgIdString).
 			Return(models.Organization{TenantId: tenantId}, nil)
@@ -259,6 +259,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, models.Credentials{
 			OrganizationId: orgIdString,
+			TenantId:       tenantId,
 			Roles:          []models.Role{models.ADMIN, models.TENANT_ADMIN},
 			ActorIdentity: models.Identity{
 				UserId: user.UserId,
@@ -332,9 +333,10 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 	secondOrganizationID := utils.TextToUUID("second_organization_id")
 	tenantID := utils.TextToUUID("tenant_id")
 	user := models.User{
-		UserId: "user_id",
-		Email:  "user@email.com",
-		Role:   models.NO_ROLE,
+		UserId:   "user_id",
+		Email:    "user@email.com",
+		Role:     models.NO_ROLE,
+		TenantId: tenantID,
 	}
 	claims := models.FirebaseIdentity{Issuer: infra.MockFirebaseIssuer}
 	now := time.Now()
@@ -440,16 +442,13 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 		mockEncoder.AssertExpectations(t)
 	})
 
-	t.Run("uses a tenant grant for an explicitly selected organization", func(t *testing.T) {
+	t.Run("tenant grant alone cannot select an organization", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
 			Return([]models.Grant{{Role: models.TENANT_ADMIN, TenantId: tenantID}}, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, organizationID).
 			Return(models.Organization{Id: organizationID, TenantId: tenantID, Name: "Acme"}, nil)
 		mockEncoder := new(mocks.JWTEncoderValidator)
-		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, mock.Anything).
-			Return("token", nil)
-
 		generator := auth.NewGenerator(mockRepository, mockEncoder, time.Minute, clock.NewMock(now))
 		token, err := generator.GenerateToken(
 			context.Background(),
@@ -459,9 +458,9 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 			organizationID,
 		)
 
-		assert.NoError(t, err)
-		assert.Equal(t, organizationID, token.Credentials.OrganizationId)
-		assert.Equal(t, []models.Role{models.TENANT_ADMIN}, token.Credentials.Roles)
+		assert.ErrorIs(t, err, models.ForbiddenError)
+		assert.Empty(t, token.Value)
+		mockEncoder.AssertNotCalled(t, "EncodeMarbleToken", mock.Anything, mock.Anything, mock.Anything)
 		mockRepository.AssertExpectations(t)
 		mockEncoder.AssertExpectations(t)
 	})
@@ -542,6 +541,18 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 		mockEncoder.AssertNotCalled(t, "EncodeMarbleToken", mock.Anything, mock.Anything, mock.Anything)
 	})
 
+	t.Run("tenant identity without grants remains pending without a JWT", func(t *testing.T) {
+		mockRepository := new(mocks.Database)
+		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
+			Return([]models.Grant{}, nil)
+		mockEncoder := new(mocks.JWTEncoderValidator)
+		generator := auth.NewGenerator(mockRepository, mockEncoder, time.Minute, clock.NewMock(now))
+		token, err := generator.GenerateToken(context.Background(), auth.Credentials{Type: auth.CredentialsBearer, TenantId: tenantID}, user, claims, uuid.Nil)
+		assert.ErrorIs(t, err, models.ErrAccessPending)
+		assert.Empty(t, token.Value)
+		mockEncoder.AssertNotCalled(t, "EncodeMarbleToken", mock.Anything, mock.Anything, mock.Anything)
+	})
+
 	t.Run("tenant authentication never receives platform roles", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("ActiveGrantsForPrincipal", mock.Anything, "user", string(user.UserId)).
@@ -551,7 +562,7 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 			}, nil)
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", infra.MockFirebaseIssuer, mock.Anything, mock.MatchedBy(func(creds models.Credentials) bool {
-			return creds.AuthTenantId == tenantID && creds.OrganizationId == uuid.Nil && slices.Equal(creds.Roles, []models.Role{})
+			return creds.AuthTenantId == tenantID && creds.TenantId == tenantID && creds.OrganizationId == uuid.Nil && slices.Equal(creds.Roles, []models.Role{models.TENANT_ADMIN})
 		})).Return("token", nil)
 
 		generator := auth.NewGenerator(mockRepository, mockEncoder, time.Minute, clock.NewMock(now))
@@ -565,7 +576,7 @@ func TestGenerator_GenerateToken_OrganizationSelection(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, tenantID, token.Credentials.AuthTenantId)
-		assert.Empty(t, token.Credentials.Roles)
+		assert.Equal(t, []models.Role{models.TENANT_ADMIN}, token.Credentials.Roles)
 		mockRepository.AssertExpectations(t)
 		mockEncoder.AssertExpectations(t)
 	})

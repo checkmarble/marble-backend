@@ -65,7 +65,7 @@ func TestUserUseCaseReplaceOrganizationGrant(t *testing.T) {
 			grantRepository := &mocks.GrantRepository{}
 			organizationRepository := &mocks.OrganizationRepository{}
 
-			userRepository.On("UserById", mock.Anything, mock.Anything, userID).Return(models.User{OrganizationId: tt.homeOrg, Role: tt.userRole}, nil)
+			userRepository.On("UserById", mock.Anything, mock.Anything, userID).Return(models.User{TenantId: tt.homeTenant, Role: tt.userRole}, nil)
 			organizationRepository.On("GetOrganizationById", mock.Anything, mock.Anything, targetOrganizationID).Return(models.Organization{Id: targetOrganizationID, TenantId: tenantID}, nil)
 			if tt.homeOrg != uuid.Nil {
 				organizationRepository.On("GetOrganizationById", mock.Anything, mock.Anything, tt.homeOrg).Return(models.Organization{Id: tt.homeOrg, TenantId: tt.homeTenant}, nil)
@@ -191,7 +191,7 @@ func TestUserUseCaseAddUser(t *testing.T) {
 			transactionFactory.On("Transaction", mock.Anything, mock.Anything).Return(nil)
 			userRepository.On("CreateUser", mock.Anything, mock.Anything, createUser).Return(userID, nil)
 			userRepository.On("UserById", mock.Anything, mock.Anything, userID).
-				Return(models.User{UserId: models.UserId(userID), Role: tt.role, OrganizationId: tt.organization}, nil)
+				Return(models.User{UserId: models.UserId(userID), Role: tt.role, OrganizationIds: []uuid.UUID{tt.organization}}, nil)
 
 			usecase := UserUseCase{
 				enforceUserSecurity:    allowOrganizationGrantSecurity{},
@@ -215,6 +215,24 @@ func TestUserUseCaseAddUser(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestUserUseCaseUpdateTenantProfileDoesNotCreateGrant(t *testing.T) {
+	userID := uuid.NewString()
+	role := models.NO_ROLE
+	name := "Updated"
+	transactions := &mocks.TransactionFactory{TxMock: &mocks.Transaction{}}
+	transactions.On("Transaction", mock.Anything, mock.Anything).Return(nil)
+	users := &mocks.UserRepository{}
+	users.On("UserById", mock.Anything, mock.Anything, userID).
+		Return(models.User{UserId: models.UserId(userID), TenantId: uuid.New(), Role: models.NO_ROLE}, nil)
+	users.On("UpdateUser", mock.Anything, mock.Anything, mock.MatchedBy(func(input models.UpdateUser) bool {
+		return input.UserId == userID && input.Role == nil && input.FirstName != nil && *input.FirstName == name
+	})).Return(nil)
+	usecase := UserUseCase{enforceUserSecurity: allowOrganizationGrantSecurity{}, transactionFactory: transactions, userRepository: users}
+	_, err := usecase.UpdateUser(context.Background(), models.UpdateUser{UserId: userID, Role: &role, FirstName: &name})
+	require.NoError(t, err)
+	users.AssertExpectations(t)
 }
 
 func TestUserUseCaseListUserGrants(t *testing.T) {
@@ -248,6 +266,7 @@ func TestUserUseCaseListUserGrants(t *testing.T) {
 				Return(map[string][]models.Grant{userID: grants}, nil)
 
 			usecase := UserUseCase{
+				credentials:         models.Credentials{Roles: []models.Role{models.MARBLE_ADMIN}},
 				enforceUserSecurity: tt.security,
 				executorFactory:     executorFactory,
 				userRepository:      userRepository,
@@ -280,6 +299,7 @@ func TestUserUseCaseListGrantsOfUsers(t *testing.T) {
 		grantRepository.On("ListOrganizationGrantsByUser", mock.Anything, exec, userIDs).Return(grantsByUser, nil).Once()
 
 		usecase := UserUseCase{
+			credentials:         models.Credentials{Roles: []models.Role{models.MARBLE_ADMIN}},
 			enforceUserSecurity: allowOrganizationGrantSecurity{},
 			executorFactory:     executorFactory,
 			grantRepository:     grantRepository,

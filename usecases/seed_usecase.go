@@ -140,7 +140,7 @@ func (usecase *SeedUseCase) CreateOrgAndUser(ctx context.Context, input models.I
 			if findErr != nil {
 				return findErr
 			}
-			if user.OrganizationId != targetOrg.Id {
+			if user == nil || user.TenantId != targetOrg.TenantId {
 				return errors.Wrap(models.ConflictError,
 					"admin user already belongs to another organization")
 			}

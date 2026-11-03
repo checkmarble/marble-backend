@@ -9,21 +9,21 @@ import (
 )
 
 type User struct {
-	UserId         string     `json:"user_id"`
-	Email          string     `json:"email"`
-	Role           string     `json:"role"`
-	OrganizationId uuid.UUID  `json:"organization_id"`
-	FirstName      string     `json:"first_name"`
-	LastName       string     `json:"last_name"`
-	Picture        string     `json:"picture"`
-	DeletedAt      *time.Time `json:"deleted_at,omitempty"`
-	TfaEnabled     *bool      `json:"tfa_enabled,omitempty"`
+	UserId     string     `json:"user_id"`
+	Email      string     `json:"email"`
+	Role       string     `json:"role"`
+	TenantId   uuid.UUID  `json:"tenant_id"`
+	FirstName  string     `json:"first_name"`
+	LastName   string     `json:"last_name"`
+	Picture    string     `json:"picture"`
+	DeletedAt  *time.Time `json:"deleted_at,omitempty"`
+	TfaEnabled *bool      `json:"tfa_enabled,omitempty"`
 }
 
 type TenantUser struct {
 	UserId                string    `json:"user_id"`
 	Email                 string    `json:"email"`
-	OrganizationId        uuid.UUID `json:"organization_id"`
+	TenantId              uuid.UUID `json:"tenant_id"`
 	FirstName             string    `json:"first_name"`
 	LastName              string    `json:"last_name"`
 	Picture               string    `json:"picture"`
@@ -37,12 +37,12 @@ type TenantUsersResponse struct {
 func AdaptTenantUserDto(grant models.OrganizationUserGrant) TenantUser {
 	user := grant.User
 	dto := TenantUser{
-		UserId:         string(user.UserId),
-		Email:          user.Email,
-		OrganizationId: user.OrganizationId,
-		FirstName:      user.FirstName,
-		LastName:       user.LastName,
-		Picture:        user.Picture,
+		UserId:    string(user.UserId),
+		Email:     user.Email,
+		TenantId:  user.TenantId,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Picture:   user.Picture,
 	}
 	if grant.OrganizationGrantRole != nil {
 		role := grant.OrganizationGrantRole.String()
@@ -53,19 +53,20 @@ func AdaptTenantUserDto(grant models.OrganizationUserGrant) TenantUser {
 
 func AdaptUserDto(user models.User) User {
 	return User{
-		UserId:         string(user.UserId),
-		Email:          user.Email,
-		Role:           user.Role.String(),
-		OrganizationId: user.OrganizationId,
-		FirstName:      user.FirstName,
-		LastName:       user.LastName,
-		Picture:        user.Picture,
-		DeletedAt:      user.DeletedAt,
-		TfaEnabled:     user.TfaEnabled,
+		UserId:     string(user.UserId),
+		Email:      user.Email,
+		Role:       user.Role.String(),
+		TenantId:   user.TenantId,
+		FirstName:  user.FirstName,
+		LastName:   user.LastName,
+		Picture:    user.Picture,
+		DeletedAt:  user.DeletedAt,
+		TfaEnabled: user.TfaEnabled,
 	}
 }
 
 type CreateUser struct {
+	TenantId       uuid.UUID `json:"tenant_id"`
 	Email          string    `json:"email"`
 	Role           string    `json:"role"`
 	OrganizationId uuid.UUID `json:"organization_id"`
@@ -74,10 +75,11 @@ type CreateUser struct {
 }
 
 type UpdateUser struct {
-	Email     *string `json:"email"`
-	Role      *string `json:"role"`
-	FirstName *string `json:"first_name"`
-	LastName  *string `json:"last_name"`
+	OrganizationId uuid.UUID `json:"organization_id"`
+	Email          *string   `json:"email"`
+	Role           *string   `json:"role"`
+	FirstName      *string   `json:"first_name"`
+	LastName       *string   `json:"last_name"`
 }
 
 type UserGrantDto struct {
@@ -113,6 +115,7 @@ type ReplaceOrganizationGrant struct {
 
 func AdaptCreateUser(dto CreateUser) models.CreateUser {
 	return models.CreateUser{
+		TenantId:       dto.TenantId,
 		Email:          dto.Email,
 		Role:           models.RoleFromString(dto.Role),
 		OrganizationId: dto.OrganizationId,
@@ -129,10 +132,11 @@ func AdaptUpdateUser(dto UpdateUser, userId string) models.UpdateUser {
 	}
 
 	return models.UpdateUser{
-		UserId:    userId,
-		Email:     dto.Email,
-		Role:      updatedRole,
-		FirstName: dto.FirstName,
-		LastName:  dto.LastName,
+		OrganizationId: dto.OrganizationId,
+		UserId:         userId,
+		Email:          dto.Email,
+		Role:           updatedRole,
+		FirstName:      dto.FirstName,
+		LastName:       dto.LastName,
 	}
 }

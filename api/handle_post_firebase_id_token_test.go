@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 type mockGenerator struct {
@@ -104,4 +105,21 @@ func TestToken_GenerateToken(t *testing.T) {
 
 		assert.Equal(t, http.StatusUnauthorized, r.Code)
 	})
+}
+
+type pendingTokenHandler struct{}
+
+func (pendingTokenHandler) GetToken(context.Context, *http.Request) (auth.Token, error) {
+	return auth.Token{}, models.ErrAccessPending
+}
+
+func TestPendingAccessNeverReturnsAToken(t *testing.T) {
+	response := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(response)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/token", nil)
+	handler := NewTokenHandler(pendingTokenHandler{})
+	handler.GenerateToken(ctx)
+	require.Equal(t, http.StatusForbidden, response.Code)
+	require.JSONEq(t, `{"message":"Access pending administrator approval","error_code":"access_pending"}`, response.Body.String())
+	require.NotContains(t, response.Body.String(), "access_token")
 }

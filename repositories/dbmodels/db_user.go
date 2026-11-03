@@ -11,7 +11,7 @@ type DBUserResult struct {
 	Id              string             `db:"id"`
 	Email           string             `db:"email"`
 	Role            int                `db:"role"`
-	OrganizationId  *uuid.UUID         `db:"organization_id"`
+	TenantId        *uuid.UUID         `db:"tenant_id"`
 	FirstName       pgtype.Text        `db:"first_name"`
 	LastName        pgtype.Text        `db:"last_name"`
 	DeletedAt       pgtype.Timestamptz `db:"deleted_at"`
@@ -31,8 +31,8 @@ func AdaptUser(db DBUserResult) (models.User, error) {
 		AiAssistEnabled: db.AiAssistEnabled,
 		Picture:         db.Picture,
 	}
-	if db.OrganizationId != nil {
-		user.OrganizationId = *db.OrganizationId
+	if db.TenantId != nil {
+		user.TenantId = *db.TenantId
 	}
 	if db.FirstName.Valid {
 		user.FirstName = db.FirstName.String
