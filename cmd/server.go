@@ -249,7 +249,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	}
 
 	pool, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
-		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections, pgConfig.ImpersonateRole)
+		telemetryRessources.TracerProvider, 0, pgConfig.MaxPoolConnections, pgConfig.ImpersonateRole)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 	}
@@ -258,7 +258,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	// repositories setup. As it is, it does not use the query injecter for audit events and would
 	// produce invalid values.
 	authPool, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
-		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections, pgConfig.ImpersonateRole)
+		telemetryRessources.TracerProvider, 0, pgConfig.MaxPoolConnections, pgConfig.ImpersonateRole)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 	}

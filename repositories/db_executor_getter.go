@@ -180,6 +180,7 @@ func (g ExecutorGetter) getPoolAndSchema(
 			g.appName,
 			config.ConnectionString,
 			g.tp,
+			infra.DEFAULT_CLIENTDB_MIN_CONNECTIONS,
 			config.MaxConns,
 			config.ImpersonateRole,
 		)
@@ -234,11 +235,11 @@ func (g ExecutorGetter) GetPinnedExecutor(
 	}
 
 	return &PgExecutor{
-			databaseSchema: databaseSchema,
-			exec:           conn,
-		}, func() {
-			conn.Release()
-		}, nil
+		databaseSchema: databaseSchema,
+		exec:           conn,
+	}, func() {
+		conn.Release()
+	}, nil
 }
 
 func validateClientDbExecutor(exec databaseSchemaGetter) error {
