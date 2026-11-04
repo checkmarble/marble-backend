@@ -121,7 +121,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	offloadingConfig := infra.OffloadingConfig{
 		Enabled:         utils.GetEnv("OFFLOADING_ENABLED", false),
-		BucketUrl:       utils.GetEnv("OFFLOADING_BUCKET_URL", ""),
+		BucketUrl:       utils.GetRequiredEnv[string]("OFFLOADING_BUCKET_URL"),
 		JobInterval:     utils.GetEnvDuration("OFFLOADING_JOB_INTERVAL", 30*time.Minute),
 		OffloadBefore:   utils.GetEnvDuration("OFFLOADING_BEFORE", 7*24*time.Hour),
 		BatchSize:       utils.GetEnv("OFFLOADING_BATCH_SIZE", 1000),

@@ -82,6 +82,8 @@ const COMMON_ENV = {
 	MARBLE_API_URL: "http://api:8080",
 	INGESTION_BUCKET_URL:
 		"s3://marble?endpoint=http://s3:7070&region=us-east-1&use_path_style=true&disable_https=true",
+	OFFLOADING_BUCKET_URL:
+		"s3://marble?endpoint=http://s3:7070&region=us-east-1&use_path_style=true&disable_https=true",
 	CONTINUOUS_SCREENING_BUCKET_URL:
 		"s3://marble?endpoint=http://s3:7070&region=us-east-1&use_path_style=true&disable_https=true",
 	SCREENING_OPENSANCTIONS_API_HOST: "http://motiva:8000",

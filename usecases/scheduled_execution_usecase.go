@@ -56,7 +56,6 @@ type ScheduledExecutionUsecase struct {
 	executorFactory     executor_factory.ExecutorFactory
 	repository          ScheduledExecutionUsecaseRepository
 	taskQueueRepository scheduledExecutionTaskQueueRepository
-	manifestBucketUrl   string
 }
 
 func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Context, id string) (models.ScheduledExecution, error) {
@@ -207,7 +206,8 @@ func (usecase *ScheduledExecutionUsecase) CancelScheduledExecution(ctx context.C
 			}
 
 			if !usecase.isBatchExecutionV2(execution) {
-				return nil
+				return errors.Wrap(models.UnprocessableEntityError,
+					"this scheduled execution was started with a previous version and cannot be cancelled")
 			}
 
 			cancelDeadline := time.Now().Add(worker_jobs.ScheduledExecutionCancelGracePeriod(execution.Status))
@@ -225,10 +225,9 @@ func (usecase *ScheduledExecutionUsecase) CancelScheduledExecution(ctx context.C
 	})
 }
 
+// isBatchExecutionV2 tells whether an execution runs through the batch coordinator. A pending
+// execution has not been set up yet, and will be. A processing one without a manifest is a v1
+// run that started before v2 became the only path.
 func (usecase *ScheduledExecutionUsecase) isBatchExecutionV2(execution models.ScheduledExecution) bool {
-	if execution.Status == models.ScheduledExecutionPending {
-		// Not set up yet: use the same rule the setup job will use.
-		return worker_jobs.UsesBatchExecutionV2(execution.OrganizationId, usecase.manifestBucketUrl)
-	}
-	return execution.ManifestBlobKey != nil
+	return execution.Status == models.ScheduledExecutionPending || execution.ManifestBlobKey != nil
 }
