@@ -174,10 +174,14 @@ func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(
 	}
 
 	switch scheduledExecution.Status {
+	case models.ScheduledExecutionPending:
 	case models.ScheduledExecutionCancelling:
 		logger.InfoContext(ctx, "Scheduled execution was cancelled before it started")
 		return usecase.repository.AckScheduledExecutionCancel(ctx, exec, scheduledExecutionId)
-	case models.ScheduledExecutionCancelled:
+	default:
+		// Setup already completed, and this job was redelivered. Running it again would replace
+		// the manifest that the coordinator is reading by byte offset.
+		logger.InfoContext(ctx, fmt.Sprintf("Scheduled execution is already %s, skipping setup", scheduledExecution.Status))
 		return nil
 	}
 
