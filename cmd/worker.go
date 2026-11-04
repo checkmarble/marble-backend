@@ -178,7 +178,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	ctx = utils.StoreOpenTelemetryTracerInContext(ctx, telemetryRessources.Tracer)
 
 	pool, err := infra.NewPostgresConnectionPool(ctx, appName, pgConfig.GetConnectionString(),
-		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections, pgConfig.ImpersonateRole)
+		telemetryRessources.TracerProvider, 0, pgConfig.MaxPoolConnections, pgConfig.ImpersonateRole)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 	}

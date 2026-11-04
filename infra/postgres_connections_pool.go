@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	DEFAULT_MAX_CONNECTIONS  = 40
-	MAX_CONNECTION_IDLE_TIME = 5 * time.Minute
+	DEFAULT_CLIENTDB_MIN_CONNECTIONS = 10
+	DEFAULT_MAX_CONNECTIONS          = 40
+	MAX_CONNECTION_IDLE_TIME         = 5 * time.Minute
 )
 
 type ClientDbConfig struct {
@@ -32,7 +33,7 @@ func NewPostgresConnectionPool(
 	appName string,
 	connectionString string,
 	tp trace.TracerProvider,
-	maxConnections int,
+	minConnections, maxConnections int,
 	impersonateRole string,
 ) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(connectionString)
@@ -48,6 +49,7 @@ func NewPostgresConnectionPool(
 	if cfg.MaxConns == 0 {
 		cfg.MaxConns = DEFAULT_MAX_CONNECTIONS
 	}
+	cfg.MinConns = min(int32(minConnections), cfg.MaxConns)
 	cfg.MaxConnIdleTime = MAX_CONNECTION_IDLE_TIME
 	cfg.MaxConnLifetimeJitter = 5 * time.Minute
 
