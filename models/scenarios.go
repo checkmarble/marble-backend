@@ -44,7 +44,7 @@ type Scenario struct {
 	// When set, batch executions create at most one decision per data object for this
 	// scenario, keyed on (scenario, object_id) and persisted in scenario_scored_objects.
 	// Enabling it on an existing scenario does not backfill, so the first run after the
-	// toggle scores everything once. Only honoured under the BATCH_EXECUTION_V2 flag.
+	// toggle scores everything once.
 	DeduplicateBatchObjects bool
 }
 

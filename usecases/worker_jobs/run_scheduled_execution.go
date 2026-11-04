@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -19,6 +18,8 @@ import (
 const (
 	// postgres will only accept 65535 parameters in a query, so we need to batch the decisions_to_create creation
 	// this is taking into account the fact that we have 2 parameters per decision_to_create
+	//
+	//nolint:unused
 	batchSize = 5000
 
 	// Max time (allowing for several retries) for a scheduled (batch) execution to start, before it is definitely marked as failed.
@@ -32,12 +33,6 @@ const (
 	// may still be running.
 	scheduledExecCancelMargin = 1 * time.Minute
 )
-
-// UsesBatchExecutionV2 tells whether an organization's scheduled executions are processed through
-// a manifest and the batch execution coordinator, rather than with one job per object.
-func UsesBatchExecutionV2(organizationId uuid.UUID, manifestBucketUrl string) bool {
-	return infra.HasFeatureFlag(infra.BATCH_EXECUTION_V2_FEATURE_FLAG, organizationId) && manifestBucketUrl != ""
-}
 
 // ScheduledExecutionCancelGracePeriod returns the maximum time the job owning a (v2) scheduled
 // execution in the given status may keep running after a cancellation is requested. Past it, the
@@ -213,22 +208,25 @@ func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(
 		)
 	}
 
-	// When enabled for the org, process the execution by streaming a manifest of object ids to
-	// blob storage and handing off to a single looping coordinator, rather than inserting one
-	// row and one job per object below.
-	if UsesBatchExecutionV2(scenario.OrganizationId, usecase.manifestBucketUrl) {
-		return usecase.executeViaManifest(ctx, db, scheduledExecution, scenario, filters)
-	}
-	if infra.HasFeatureFlag(infra.BATCH_EXECUTION_V2_FEATURE_FLAG, scenario.OrganizationId) {
-		logger.WarnContext(ctx, "manifest-based batch execution is enabled for this org but no manifest bucket is configured; using per-object execution instead")
-	}
+	// Process the execution by streaming a manifest of object ids to blob storage and handing
+	// off to a single looping coordinator.
+	return usecase.executeViaManifest(ctx, db, scheduledExecution, scenario, filters)
+}
 
-	// The dedup setting is only honoured by the v2 coordinator, so warn loudly rather than
-	// let the toggle sit there doing nothing. Read from the snapshotted per-execution value,
-	// not the scenario's live setting, so the warning reflects what this run will actually do.
-	if scheduledExecution.DeduplicateObjects {
-		logger.WarnContext(ctx, "scenario has batch object deduplication enabled but the org is not on BATCH_EXECUTION_V2; the setting is ignored for this execution")
-	}
+// executeViaPerObjectJobs is the v1 batch execution path, inserting one row and one job per
+// object. It is no longer called, and is only kept until it can be deleted.
+//
+//nolint:unused
+func (usecase *RunScheduledExecution) executeViaPerObjectJobs(
+	ctx context.Context,
+	exec repositories.Executor,
+	db repositories.Executor,
+	scheduledExecution models.ScheduledExecution,
+	scenario models.Scenario,
+	filters []models.Filter,
+) error {
+	logger := utils.LoggerFromContext(ctx)
+	scheduledExecutionId := scheduledExecution.Id
 
 	objectIds, err := usecase.ingestedDataReadRepository.ListAllObjectIdsFromTable(ctx, db, scenario.TriggerObjectType, filters...)
 	if err != nil {
