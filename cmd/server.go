@@ -209,7 +209,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		batchIngestionMaxSize:        utils.GetEnv("BATCH_INGESTION_MAX_SIZE", 0),
 		caseManagerBucket:            utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
 		ingestionBucketUrl:           utils.GetEnv("INGESTION_BUCKET_URL", ""),
-		offloadingBucketUrl:          utils.GetEnv("OFFLOADING_BUCKET_URL", ""),
+		offloadingBucketUrl:          utils.GetRequiredEnv[string]("OFFLOADING_BUCKET_URL"),
 		analyticsBucketUrl:           utils.GetEnv("ANALYTICS_BUCKET_URL", ""),
 		jwtSigningKey:                utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
 		jwtSigningKeyFile:            utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY_FILE", ""),

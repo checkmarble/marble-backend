@@ -54,7 +54,6 @@ func (suite *ScheduledExecutionsTestSuite) makeUsecase() *ScheduledExecutionUsec
 		transactionFactory:  suite.transactionFactory,
 		repository:          suite.repository,
 		taskQueueRepository: suite.taskQueue,
-		manifestBucketUrl:   "file:///tmp/manifests",
 	}
 }
 
@@ -163,7 +162,6 @@ func (suite *ScheduledExecutionsTestSuite) TestCancelScheduledExecution_processi
 }
 
 func (suite *ScheduledExecutionsTestSuite) TestCancelScheduledExecution_pending_v2() {
-	suite.T().Setenv("ENABLE_BATCH_EXECUTION_V2", "all")
 	ctx := context.Background()
 	execution := suite.v2Execution(models.ScheduledExecutionPending)
 	execution.ManifestBlobKey = nil
@@ -183,24 +181,18 @@ func (suite *ScheduledExecutionsTestSuite) TestCancelScheduledExecution_pending_
 }
 
 func (suite *ScheduledExecutionsTestSuite) TestCancelScheduledExecution_v1_is_noop() {
-	suite.T().Setenv("ENABLE_BATCH_EXECUTION_V2", "")
 	ctx := context.Background()
-	pending := suite.v2Execution(models.ScheduledExecutionPending)
-	pending.ManifestBlobKey = nil
-	processing := suite.v2Execution(models.ScheduledExecutionProcessing)
-	processing.ManifestBlobKey = nil
+	execution := suite.v2Execution(models.ScheduledExecutionProcessing)
+	execution.ManifestBlobKey = nil
 
-	for _, execution := range []models.ScheduledExecution{pending, processing} {
-		suite.SetupTest()
-		suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
-		suite.repository.On("GetScheduledExecution", suite.transaction, execution.Id).Return(execution, nil)
-		suite.enforceSecurity.On("CancelScheduledExecution", execution).Return(nil)
+	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
+	suite.repository.On("GetScheduledExecution", suite.transaction, execution.Id).Return(execution, nil)
+	suite.enforceSecurity.On("CancelScheduledExecution", execution).Return(nil)
 
-		err := suite.makeUsecase().CancelScheduledExecution(ctx, execution.Id)
+	err := suite.makeUsecase().CancelScheduledExecution(ctx, execution.Id)
 
-		assert.NoError(suite.T(), err)
-		suite.AssertExpectations()
-	}
+	assert.NoError(suite.T(), err)
+	suite.AssertExpectations()
 }
 
 func (suite *ScheduledExecutionsTestSuite) TestCancelScheduledExecution_already_cancelled() {
@@ -260,7 +252,6 @@ func (suite *ScheduledExecutionsTestSuite) TestCancelScheduledExecution_status_c
 	ctx := context.Background()
 	pending := suite.v2Execution(models.ScheduledExecutionPending)
 	processing := suite.v2Execution(models.ScheduledExecutionProcessing)
-	suite.T().Setenv("ENABLE_BATCH_EXECUTION_V2", "all")
 
 	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
 	suite.repository.On("GetScheduledExecution", suite.transaction, pending.Id).Return(pending, nil).Once()

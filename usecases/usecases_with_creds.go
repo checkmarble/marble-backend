@@ -475,7 +475,6 @@ func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecu
 		executorFactory:     usecases.NewExecutorFactory(),
 		repository:          usecases.Repositories.MarbleDbRepository,
 		taskQueueRepository: usecases.Repositories.TaskQueueRepository,
-		manifestBucketUrl:   usecases.offloadingBucketUrl,
 	}
 }
 

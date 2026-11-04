@@ -20,10 +20,6 @@ import (
 // ingested object must create a decision only on the first run, and must skip the object
 // before evaluation (not just before decision creation) on the second run.
 func TestBatchExecutionDeduplication(t *testing.T) {
-	// The feature flag is read live from the environment on every check, and only the v2
-	// coordinator honours the dedup setting.
-	t.Setenv("ENABLE_BATCH_EXECUTION_V2", "all")
-
 	ctx := context.Background()
 	ctx = utils.StoreLoggerInContext(ctx, utils.NewLogger("text"))
 	ctx = utils.StoreSegmentClientInContext(ctx, analytics.New("dummy key"))
@@ -102,8 +98,6 @@ func TestBatchExecutionDeduplication(t *testing.T) {
 // deduplication: an object scored while the setting is off must already be excluded the
 // first time the setting is turned on, with no separate backfill pass required.
 func TestBatchExecutionDeduplicationRetroactive(t *testing.T) {
-	t.Setenv("ENABLE_BATCH_EXECUTION_V2", "all")
-
 	ctx := context.Background()
 	ctx = utils.StoreLoggerInContext(ctx, utils.NewLogger("text"))
 	ctx = utils.StoreSegmentClientInContext(ctx, analytics.New("dummy key"))
