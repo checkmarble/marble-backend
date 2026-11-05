@@ -109,6 +109,9 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 	if len(filters.Qualification) > 0 {
 		query = query.Where(buildQualificationFilter(filters.Qualification))
 	}
+	if len(filters.Types) > 0 {
+		query = query.Where(squirrel.Eq{"c.type": pure_utils.Map(filters.Types, models.CaseType.String)})
+	}
 
 	// Apply pagination, by fetching the offset case (error if not found)
 	var offsetCase models.Case
