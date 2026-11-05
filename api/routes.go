@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -106,6 +107,19 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 
 	router := r.Group("/", auth.AuthedBy(utils.FederatedBearerToken, utils.PublicApiKey),
 		allowedNetworksGuard.Guard(usecases.AllowedNetworksOther))
+
+	// A context deadline preserves artifact streaming; the generic timeout wrapper buffers responses.
+	tracfinRouter := router.Group("", func(c *gin.Context) {
+		deadline := conf.DefaultTimeout
+		if tracfinLongRequest(c.Request.Method, c.FullPath()) {
+			deadline = conf.BatchTimeout
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), deadline)
+		defer cancel()
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	addTracfinRoutes(tracfinRouter, func(ctx context.Context) tracfinHTTPUsecase { return usecasesWithCreds(ctx, uc).NewTracfinUsecase() })
 
 	router.GET("/credentials", tom, handleGetCredentials())
 	router.PATCH("/config/usage-tracking", tom, handleUpdateUsageTracking(uc))

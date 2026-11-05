@@ -1,0 +1,11 @@
+code;label
+NFF04;Evasion fiscale (recours par des personnes morales à des pays ou territoires à fiscalité privilégiée - décret 2009-874 critères de référence : 1° ou 10° ou 12° ou 9°)
+NFF09;Société éphémère (décret 2009-874 critères de référence : 2°)
+NFF08;Prête-nom (décret 2009-874 critères de référence : 3°)
+NFF05;Fraude à la TVA (décret 2009-874 critères de référence : 4° ou 6°)
+NFF01;Activité occulte - activité non déclarée (décret 2009-874 critères de référence : 15° ou 5° ou 8° ou 7°)
+NFF07;Organisation d'insolvabilité (décret 2009-874 critères : 13° ou 7° ou 8°)
+NFF02;Détention de compte(s) bancaire(s) à l'étranger non déclaré(s) (décret 2009-874 critères de référence : 11° ou 14° ou 15°)
+NFF03;Donation non déclarée (décret 2009-874 critères de référence : 15° ou 11°)
+NFF06;Minoration de valeur(s) ou base(s) fiscale(s) / transaction immobilière - (droits de mutations - bases IFI - autres impôts - décret 2009-874 critère de référence : 16°)
+NFF10;Autre(s) fraude(s) soupçonnée(s)

@@ -55,9 +55,10 @@ func buildCorsOptions(ctx context.Context, conf Configuration) (cors.Config, boo
 		AllowOrigins: allowedOrigins,
 		AllowMethods: []string{
 			http.MethodOptions, http.MethodHead, http.MethodGet,
-			http.MethodPost, http.MethodDelete, http.MethodPatch,
+			http.MethodPost, http.MethodDelete, http.MethodPatch, http.MethodPut,
 		},
 		AllowHeaders:     []string{"Authorization", "Content-Type", "X-Api-Key", "baggage", "sentry-trace"},
+		ExposeHeaders:    []string{"Content-Disposition", "X-Tracfin-Draft-Revision"},
 		AllowCredentials: false,
 		MaxAge:           12 * time.Hour,
 	}, len(allowedOrigins) > 0
