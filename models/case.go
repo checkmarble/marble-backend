@@ -184,6 +184,7 @@ type CaseFilters struct {
 	TagId           *uuid.UUID
 	ReviewLevels    []string
 	Qualification   []CaseQualification
+	Types           []CaseType
 
 	UseLinearOrdering bool
 }
@@ -237,6 +238,17 @@ func ValidateCaseQualifications(qualifications []string) ([]CaseQualification, e
 		result[i] = CaseQualification(q)
 		if !slices.Contains(ValidCaseQualifications, result[i]) {
 			return nil, errors.Errorf("invalid qualification: %s %w", q, BadParameterError)
+		}
+	}
+	return result, nil
+}
+
+func ValidateCaseTypes(types []string) ([]CaseType, error) {
+	result := make([]CaseType, len(types))
+	for i, t := range types {
+		result[i] = CaseTypeFromString(t)
+		if result[i] == CaseTypeUnknown {
+			return nil, errors.Wrapf(BadParameterError, "invalid case type: %s", t)
 		}
 	}
 	return result, nil
