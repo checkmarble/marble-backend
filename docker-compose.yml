@@ -109,10 +109,21 @@ services:
       - ./contrib/screening-manifest.json:/tmp/manifest.json
     extra_hosts:
       - "marble-backend:host-gateway"
+  firebase-emulator:
+    container_name: firebase-emulator
+    image: europe-west1-docker.pkg.dev/marble-infra/marble/firebase-emulator:latest
+    restart: always
+    ports:
+      - 9099:9099
+      - 4000:4000
+    volumes:
+      - firebase:/app/firebase-local-data
 
 volumes:
   postgres-db:
     name: marble-backend-postgres-db
     driver: local
   es:
+    driver: local
+  firebase:
     driver: local
