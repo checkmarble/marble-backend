@@ -58,7 +58,7 @@ func handleListScenarioIterations(uc usecases.Usecases) func(c *gin.Context) {
 }
 
 // parseOptionalScenarioId reads a scenario_id query parameter that may be left out, in which case
-// it returns uuid.Nil.
+// it returns uuid.Nil. An explicitly supplied nil UUID is invalid.
 func parseOptionalScenarioId(raw string) (uuid.UUID, error) {
 	if raw == "" {
 		return uuid.Nil, nil
@@ -68,9 +68,14 @@ func parseOptionalScenarioId(raw string) (uuid.UUID, error) {
 	if err != nil {
 		return uuid.Nil, errors.Wrap(models.BadParameterError, err.Error())
 	}
+	if scenarioId == uuid.Nil {
+		return uuid.Nil, errors.Wrap(models.BadParameterError, "scenario_id must not be the nil UUID")
+	}
 	return scenarioId, nil
 }
 
+// handleListScenarioIterationsMetadata lists metadata within the caller's organization,
+// optionally filtered to one scenario when a non-nil scenario_id is supplied.
 func handleListScenarioIterationsMetadata(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
