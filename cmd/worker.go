@@ -324,6 +324,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 			RescueStuckJobsAfter: 2 * time.Minute,
 			Middleware: []rivertype.Middleware{
 				jobs.NewRecoveredMiddleware(),
+				jobs.NewOrganizationCredentialsMiddleware(),
 				jobs.NewSentryMiddleware(),
 				cronMonitorMiddleware,
 				jobs.NewTracingMiddleware(telemetryRessources.Tracer),
@@ -583,6 +584,10 @@ func ensureGlobalQueuesAreActive(ctx context.Context, riverClient *river.Client[
 }
 
 func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion string, workerConfig WorkerConfig, gcpConfig infra.GcpConfig, jobName, jobArgs string) error {
+	ctx, err := singleJobContext(ctx, uc.Credentials, jobArgs)
+	if err != nil {
+		return err
+	}
 	ctx = utils.StoreExecutionSourceInContext(ctx, utils.ExecutionSource{
 		Type:    utils.ExecutionSourceManualJob,
 		JobKind: jobName,
@@ -713,6 +718,23 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion
 	default:
 		return errors.Newf("unknown job %s", jobName)
 	}
+}
+
+func singleJobContext(ctx context.Context, creds models.Credentials, argsJSON string) (context.Context, error) {
+	// Every worker job which is associated with an organization have the org_id in the job arguments.
+	// Use the arg to scope the credentials to the organization. Could be needed when fetching from Redis cache
+	var args struct {
+		OrgID *uuid.UUID `json:"org_id"`
+	}
+	if argsJSON != "" {
+		if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
+			return nil, errors.Wrap(err, "could not parse worker arguments")
+		}
+	}
+	if args.OrgID != nil {
+		creds.OrganizationId = *args.OrgID
+	}
+	return context.WithValue(ctx, utils.ContextKeyCredentials, creds), nil
 }
 
 func singleJobCreate[A river.JobArgs](ctx context.Context, argsJson string) *river.Job[A] {

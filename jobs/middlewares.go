@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/getsentry/sentry-go"
 	"github.com/google/uuid"
@@ -19,6 +20,27 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
+
+// Organization credentials middleware
+
+type OrganizationCredentialsMiddleware struct{}
+
+func (m OrganizationCredentialsMiddleware) IsMiddleware() bool {
+	return true
+}
+
+func (m OrganizationCredentialsMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInner func(context.Context) error) error {
+	// Organization queues are UUIDs; named global queues keep an empty organization.
+	creds := models.Credentials{Roles: []models.Role{models.SYSTEM}}
+	if orgID, err := uuid.Parse(job.Queue); err == nil {
+		creds.OrganizationId = orgID
+	}
+	return doInner(context.WithValue(ctx, utils.ContextKeyCredentials, creds))
+}
+
+func NewOrganizationCredentialsMiddleware() OrganizationCredentialsMiddleware {
+	return OrganizationCredentialsMiddleware{}
+}
 
 const (
 	sentryErrorGroupingTime = 30 * time.Second
