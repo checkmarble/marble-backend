@@ -2,8 +2,10 @@ package integration
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
+	"github.com/gavv/httpexpect/v2"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -55,7 +57,8 @@ func TestListScenarioIterationsMetadataAcrossAnOrganization(t *testing.T) {
 	first, second := insertScenario(t, orgId), insertScenario(t, orgId)
 	firstIteration := insertIteration(t, orgId, first)
 	secondIteration := insertIteration(t, orgId, second)
-	otherOrgIteration := insertIteration(t, otherOrgId, insertScenario(t, otherOrgId))
+	otherOrgScenario := insertScenario(t, otherOrgId)
+	otherOrgIteration := insertIteration(t, otherOrgId, otherOrgScenario)
 
 	creds := models.Credentials{
 		ActorIdentity:  models.Identity{UserId: "iterations-metadata-test-user"},
@@ -91,5 +94,51 @@ func TestListScenarioIterationsMetadataAcrossAnOrganization(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Empty(t, iterations)
+	})
+
+	t.Run("HTTP requests preserve optional filtering and reject invalid IDs", func(t *testing.T) {
+		email := orgId.String() + "@metadata.test"
+		adminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases)
+		userUsecase := adminUsecase.NewUserUseCase()
+		_, err := userUsecase.AddUser(bg, models.CreateUser{
+			Email:          email,
+			OrganizationId: orgId,
+			Role:           models.ADMIN,
+		})
+		require.NoError(t, err)
+
+		e := httpexpect.Default(t, testServer.URL)
+		token := e.POST("/token").
+			WithHeader("Authorization", "Bearer "+firebaseDummyToken(email)).
+			Expect().Status(http.StatusOK).
+			JSON().Object().Value("access_token").String().NotEmpty().Raw()
+
+		tests := []struct {
+			name       string
+			scenarioId string
+			status     int
+			iterations []string
+		}{
+			{name: "omitted", status: http.StatusOK, iterations: []string{firstIteration, secondIteration}},
+			{name: "one scenario", scenarioId: first.String(), status: http.StatusOK, iterations: []string{firstIteration}},
+			{name: "another organization", scenarioId: otherOrgScenario.String(), status: http.StatusOK, iterations: []string{}},
+			{name: "malformed", scenarioId: "not-a-uuid", status: http.StatusBadRequest},
+			{name: "explicit nil UUID", scenarioId: uuid.Nil.String(), status: http.StatusBadRequest},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				e := httpexpect.Default(t, testServer.URL)
+				request := e.GET("/scenario-iterations/metadata").
+					WithHeader("Authorization", "Bearer "+token)
+				if tt.scenarioId != "" {
+					request.WithQuery("scenario_id", tt.scenarioId)
+				}
+				response := request.Expect().Status(tt.status)
+				if tt.status == http.StatusOK {
+					response.JSON().Array().Length().IsEqual(len(tt.iterations))
+					assert.ElementsMatch(t, tt.iterations, response.JSON().Path("$[*].id").Array().Raw())
+				}
+			})
+		}
 	})
 }
