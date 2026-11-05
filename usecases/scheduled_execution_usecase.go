@@ -2,12 +2,14 @@ package usecases
 
 import (
 	"context"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -26,6 +28,10 @@ type ScheduledExecutionUsecaseRepository interface {
 		filters models.ListScheduledExecutionsFilters, paging *models.PaginationAndSorting) ([]models.ScheduledExecution, error)
 	CreateScheduledExecution(ctx context.Context, exec repositories.Executor,
 		input models.CreateScheduledExecutionInput, id string) error
+	RequestScheduledExecutionCancel(ctx context.Context, exec repositories.Executor, id string,
+		fromStatus models.ScheduledExecutionStatus, cancelDeadline time.Time) (bool, error)
+	FinalizeExpiredCancellations(ctx context.Context, exec repositories.Executor,
+		filters models.FinalizeExpiredCancellationsFilters) error
 }
 
 type scheduledExecutionTaskQueueRepository interface {
@@ -34,6 +40,13 @@ type scheduledExecutionTaskQueueRepository interface {
 		tx repositories.Transaction,
 		organizationId uuid.UUID,
 		scheduledExecutionId string,
+	) error
+	EnqueueScheduledExecutionCancelFinalizer(
+		ctx context.Context,
+		tx repositories.Transaction,
+		organizationId uuid.UUID,
+		scheduledExecutionId string,
+		at time.Time,
 	) error
 }
 
@@ -132,6 +145,13 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.C
 		return errors.Errorf("scenario iteration is not live %w", models.BadParameterError)
 	}
 
+	// Release executions whose cancellation was never acknowledged by their worker, but that
+	// cannot be running anymore.
+	if err := usecase.repository.FinalizeExpiredCancellations(ctx, exec,
+		models.FinalizeExpiredCancellationsFilters{ScenarioId: scenario.Id}); err != nil {
+		return err
+	}
+
 	previousExecutions, err := usecase.repository.ListScheduledExecutions(
 		ctx, exec, models.ListScheduledExecutionsFilters{ScenarioId: scenario.Id}, nil,
 	)
@@ -139,8 +159,7 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.C
 		return err
 	}
 	for _, ex := range previousExecutions {
-		if ex.Status == models.ScheduledExecutionPending ||
-			ex.Status == models.ScheduledExecutionProcessing {
+		if ex.Status.IsActive() {
 			return errors.Errorf("a pending execution already exists for this scenario %w", models.BadParameterError)
 		}
 	}
@@ -163,4 +182,51 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.C
 		}
 		return usecase.taskQueueRepository.EnqueueScheduledExecutionTask(ctx, tx, input.OrganizationId, id)
 	})
+}
+
+func (usecase *ScheduledExecutionUsecase) CancelScheduledExecution(ctx context.Context, id string) error {
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		// The status may change between the read and the conditional update (e.g. the execution
+		// starts processing), in which case we try again once with the new status.
+		for range 2 {
+			execution, err := usecase.repository.GetScheduledExecution(ctx, tx, id)
+			if err != nil {
+				return err
+			}
+			if err := usecase.enforceSecurity.CancelScheduledExecution(execution); err != nil {
+				return err
+			}
+
+			switch execution.Status {
+			case models.ScheduledExecutionCancelling, models.ScheduledExecutionCancelled:
+				return nil
+			case models.ScheduledExecutionPending, models.ScheduledExecutionProcessing:
+			default:
+				return errors.Wrap(models.ConflictError, "the scheduled execution is already finished")
+			}
+
+			if !usecase.isBatchExecutionV2(execution) {
+				return nil
+			}
+
+			cancelDeadline := time.Now().Add(worker_jobs.ScheduledExecutionCancelGracePeriod(execution.Status))
+			updated, err := usecase.repository.RequestScheduledExecutionCancel(ctx, tx, id, execution.Status, cancelDeadline)
+			if err != nil {
+				return err
+			}
+			if updated {
+				return usecase.taskQueueRepository.EnqueueScheduledExecutionCancelFinalizer(
+					ctx, tx, execution.OrganizationId, execution.Id, cancelDeadline)
+			}
+		}
+
+		return errors.Wrap(models.ConflictError, "the scheduled execution status changed while cancelling it")
+	})
+}
+
+// isBatchExecutionV2 tells whether an execution runs through the batch coordinator. A pending
+// execution has not been set up yet, and will be. A processing one without a manifest is a v1
+// run that started before v2 became the only path.
+func (usecase *ScheduledExecutionUsecase) isBatchExecutionV2(execution models.ScheduledExecution) bool {
+	return execution.Status == models.ScheduledExecutionPending || execution.ManifestBlobKey != nil
 }

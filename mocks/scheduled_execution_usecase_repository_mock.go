@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -38,8 +39,28 @@ func (s *ScheduledExecutionUsecaseRepository) UpdateScheduledExecutionStatus(
 	ctx context.Context,
 	exec repositories.Executor,
 	updateScheduledEx models.UpdateScheduledExecutionStatusInput,
-) (err error) {
+) (bool, error) {
 	args := s.Called(ctx, exec, updateScheduledEx)
+	return args.Bool(0), args.Error(1)
+}
+
+func (s *ScheduledExecutionUsecaseRepository) RequestScheduledExecutionCancel(
+	ctx context.Context,
+	exec repositories.Executor,
+	id string,
+	fromStatus models.ScheduledExecutionStatus,
+	cancelDeadline time.Time,
+) (bool, error) {
+	args := s.Called(exec, id, fromStatus, cancelDeadline)
+	return args.Bool(0), args.Error(1)
+}
+
+func (s *ScheduledExecutionUsecaseRepository) FinalizeExpiredCancellations(
+	ctx context.Context,
+	exec repositories.Executor,
+	filters models.FinalizeExpiredCancellationsFilters,
+) error {
+	args := s.Called(exec, filters)
 	return args.Error(0)
 }
 

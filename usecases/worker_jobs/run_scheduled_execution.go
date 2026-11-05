@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -19,12 +18,52 @@ import (
 const (
 	// postgres will only accept 65535 parameters in a query, so we need to batch the decisions_to_create creation
 	// this is taking into account the fact that we have 2 parameters per decision_to_create
+	//
+	//nolint:unused
 	batchSize = 5000
 
 	// Max time (allowing for several retries) for a scheduled (batch) execution to start, before it is definitely marked as failed.
 	// Smaller than the typical min interval before a next scheduled iteration (daily as allowed by the UI).
 	scheduledExecMaxInitiationTime = time.Hour * 12
+
+	// Timeout of the job that reads candidates and sets up the execution (see ScheduledExecutionWorker).
+	scheduledExecSetupJobTimeout = 1 * time.Hour
+
+	// Safety margin added to job timeouts when computing how long a cancelled execution's worker
+	// may still be running.
+	scheduledExecCancelMargin = 1 * time.Minute
 )
+
+// ScheduledExecutionCancelGracePeriod returns the maximum time the job owning a (v2) scheduled
+// execution in the given status may keep running after a cancellation is requested. Past it, the
+// execution can safely be considered stopped even if the worker never acknowledged the cancellation.
+func ScheduledExecutionCancelGracePeriod(status models.ScheduledExecutionStatus) time.Duration {
+	if status == models.ScheduledExecutionPending {
+		return scheduledExecSetupJobTimeout + scheduledExecCancelMargin
+	}
+
+	return batchExecJobTimeout + scheduledExecCancelMargin
+}
+
+type scheduledExecutionFinisher interface {
+	UpdateScheduledExecutionStatus(ctx context.Context, exec repositories.Executor, input models.UpdateScheduledExecutionStatusInput) (bool, error)
+	AckScheduledExecutionCancel(ctx context.Context, exec repositories.Executor, id string) error
+}
+
+// finishScheduledExecution sets a final status on an execution the caller has stopped working on.
+// The update only applies to pending or processing executions: if it does not, a cancellation may
+// have been requested since the caller last read the status, so acknowledge it instead, rather than
+// leaving the scenario blocked until the cancel deadline. The acknowledgement only applies to
+// cancelling executions, so it is a no-op otherwise.
+func finishScheduledExecution(ctx context.Context, repository scheduledExecutionFinisher, exec repositories.Executor, id string, status models.ScheduledExecutionStatus) error {
+	updated, err := repository.UpdateScheduledExecutionStatus(ctx, exec,
+		models.UpdateScheduledExecutionStatusInput{Id: id, Status: status})
+	if err != nil || updated {
+		return err
+	}
+
+	return repository.AckScheduledExecutionCancel(ctx, exec, id)
+}
 
 type RunScheduledExecutionRepository interface {
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string, screeningProvider models.ScreeningProvider) (models.Scenario, error)
@@ -46,7 +85,10 @@ type RunScheduledExecutionRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		updateScheduledEx models.UpdateScheduledExecutionStatusInput,
-	) (err error)
+	) (bool, error)
+	AckScheduledExecutionCancel(ctx context.Context, exec repositories.Executor, id string) error
+	FinalizeExpiredCancellations(ctx context.Context, exec repositories.Executor,
+		filters models.FinalizeExpiredCancellationsFilters) error
 	UpdateScheduledExecution(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -131,14 +173,22 @@ func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(
 		return errors.Errorf("error getting scheduled execution %s: %w", scheduledExecutionId, err)
 	}
 
+	switch scheduledExecution.Status {
+	case models.ScheduledExecutionPending:
+	case models.ScheduledExecutionCancelling:
+		logger.InfoContext(ctx, "Scheduled execution was cancelled before it started")
+		return usecase.repository.AckScheduledExecutionCancel(ctx, exec, scheduledExecutionId)
+	default:
+		// Setup already completed, and this job was redelivered. Running it again would replace
+		// the manifest that the coordinator is reading by byte offset.
+		logger.InfoContext(ctx, fmt.Sprintf("Scheduled execution is already %s, skipping setup", scheduledExecution.Status))
+		return nil
+	}
+
 	if time.Now().After(scheduledExecution.StartedAt.Add(scheduledExecMaxInitiationTime)) &&
 		scheduledExecution.Status == models.ScheduledExecutionPending {
 		logger.WarnContext(ctx, fmt.Sprintf("Scheduled execution %s failed to start for too long, and will now be marked as failed", scheduledExecutionId))
-		err := usecase.repository.UpdateScheduledExecutionStatus(ctx, exec, models.UpdateScheduledExecutionStatusInput{
-			Id:     scheduledExecution.Id,
-			Status: models.ScheduledExecutionFailure,
-		})
-		return err
+		return finishScheduledExecution(ctx, usecase.repository, exec, scheduledExecution.Id, models.ScheduledExecutionFailure)
 	}
 
 	scenario := scheduledExecution.Scenario
@@ -162,23 +212,25 @@ func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(
 		)
 	}
 
-	// When enabled for the org, process the execution by streaming a manifest of object ids to
-	// blob storage and handing off to a single looping coordinator, rather than inserting one
-	// row and one job per object below.
-	if infra.HasFeatureFlag(infra.BATCH_EXECUTION_V2_FEATURE_FLAG, scenario.OrganizationId) {
-		if usecase.manifestBucketUrl == "" {
-			logger.WarnContext(ctx, "manifest-based batch execution is enabled for this org but no manifest bucket is configured; using per-object execution instead")
-		} else {
-			return usecase.executeViaManifest(ctx, db, scheduledExecution, scenario, filters)
-		}
-	}
+	// Process the execution by streaming a manifest of object ids to blob storage and handing
+	// off to a single looping coordinator.
+	return usecase.executeViaManifest(ctx, db, scheduledExecution, scenario, filters)
+}
 
-	// The dedup setting is only honoured by the v2 coordinator, so warn loudly rather than
-	// let the toggle sit there doing nothing. Read from the snapshotted per-execution value,
-	// not the scenario's live setting, so the warning reflects what this run will actually do.
-	if scheduledExecution.DeduplicateObjects {
-		logger.WarnContext(ctx, "scenario has batch object deduplication enabled but the org is not on BATCH_EXECUTION_V2; the setting is ignored for this execution")
-	}
+// executeViaPerObjectJobs is the v1 batch execution path, inserting one row and one job per
+// object. It is no longer called, and is only kept until it can be deleted.
+//
+//nolint:unused
+func (usecase *RunScheduledExecution) executeViaPerObjectJobs(
+	ctx context.Context,
+	exec repositories.Executor,
+	db repositories.Executor,
+	scheduledExecution models.ScheduledExecution,
+	scenario models.Scenario,
+	filters []models.Filter,
+) error {
+	logger := utils.LoggerFromContext(ctx)
+	scheduledExecutionId := scheduledExecution.Id
 
 	objectIds, err := usecase.ingestedDataReadRepository.ListAllObjectIdsFromTable(ctx, db, scenario.TriggerObjectType, filters...)
 	if err != nil {
@@ -193,7 +245,7 @@ func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(
 	if err != nil {
 		return err
 	}
-	err = usecase.repository.UpdateScheduledExecutionStatus(ctx, exec, models.UpdateScheduledExecutionStatusInput{
+	_, err = usecase.repository.UpdateScheduledExecutionStatus(ctx, exec, models.UpdateScheduledExecutionStatusInput{
 		Id:     scheduledExecutionId,
 		Status: models.ScheduledExecutionProcessing,
 	})
@@ -289,6 +341,20 @@ func (usecase *RunScheduledExecution) executeViaManifest(
 	deadline := time.Now().Add(scheduledExecutionFullMaxRuntime)
 
 	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		// Strict pending -> processing transition: if a cancellation was requested while the
+		// manifest was being written, roll back so that no coordinator is enqueued.
+		updated, err := usecase.repository.UpdateScheduledExecutionStatus(ctx, tx, models.UpdateScheduledExecutionStatusInput{
+			Id:         scheduledExecution.Id,
+			Status:     models.ScheduledExecutionProcessing,
+			FromStatus: utils.Ptr(models.ScheduledExecutionPending),
+		})
+		if err != nil {
+			return err
+		}
+		if !updated {
+			return models.ErrScheduledExecutionNotProcessing
+		}
+
 		err = usecase.repository.UpdateScheduledExecution(ctx, tx, models.UpdateScheduledExecutionInput{
 			Id:                       scheduledExecution.Id,
 			NumberOfPlannedDecisions: &nbPlanned,
@@ -299,16 +365,13 @@ func (usecase *RunScheduledExecution) executeViaManifest(
 			return err
 		}
 
-		err = usecase.repository.UpdateScheduledExecutionStatus(ctx, tx, models.UpdateScheduledExecutionStatusInput{
-			Id:     scheduledExecution.Id,
-			Status: models.ScheduledExecutionProcessing,
-		})
-		if err != nil {
-			return err
-		}
 		return usecase.taskQueueRepository.EnqueueBatchExecutionCoordinator(
 			ctx, tx, scenario.OrganizationId, scheduledExecution.Id)
 	})
+	if errors.Is(err, models.ErrScheduledExecutionNotProcessing) {
+		logger.InfoContext(ctx, "Scheduled execution was cancelled during setup, not starting the batch coordinator")
+		return usecase.repository.AckScheduledExecutionCancel(ctx, usecase.executorFactory.NewExecutor(), scheduledExecution.Id)
+	}
 	if err != nil {
 		return err
 	}
@@ -359,7 +422,7 @@ func NewScheduledExecutionWorker(runScheduledExecution *RunScheduledExecution) *
 
 // One hour is the timeout to read candidates from ingested data and insert the decisions to create & the job tasks.
 func (w *ScheduledExecutionWorker) Timeout(job *river.Job[models.ScheduledExecutionArgs]) time.Duration {
-	return 1 * time.Hour
+	return scheduledExecSetupJobTimeout
 }
 
 func (w *ScheduledExecutionWorker) Work(ctx context.Context, job *river.Job[models.ScheduledExecutionArgs]) error {

@@ -121,7 +121,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 
 	offloadingConfig := infra.OffloadingConfig{
 		Enabled:         utils.GetEnv("OFFLOADING_ENABLED", false),
-		BucketUrl:       utils.GetEnv("OFFLOADING_BUCKET_URL", ""),
+		BucketUrl:       utils.GetRequiredEnv[string]("OFFLOADING_BUCKET_URL"),
 		JobInterval:     utils.GetEnvDuration("OFFLOADING_JOB_INTERVAL", 30*time.Minute),
 		OffloadBefore:   utils.GetEnvDuration("OFFLOADING_BEFORE", 7*24*time.Hour),
 		BatchSize:       utils.GetEnv("OFFLOADING_BATCH_SIZE", 1000),
@@ -409,6 +409,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewAsyncUploadWorker())
 	river.AddWorker(workers, adminUc.NewScheduledExecutionWorker())
 	river.AddWorker(workers, adminUc.NewBatchExecutionCoordinatorWorker())
+	river.AddWorker(workers, adminUc.NewScheduledExecutionCancelFinalizerWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningMatchEnrichmentWorker())
 	river.AddWorker(workers, adminUc.NewGenerateThumbnailWorker())
 	river.AddWorker(workers, adminUc.NewClientDataPurgeWorker())
@@ -674,6 +675,9 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion
 	case "scheduled_execution":
 		return uc.NewScheduledExecutionWorker().Work(ctx,
 			singleJobCreate[models.ScheduledExecutionArgs](ctx, jobArgs))
+	case "scheduled_execution_cancel_finalizer":
+		return uc.NewScheduledExecutionCancelFinalizerWorker().Work(ctx,
+			singleJobCreate[models.ScheduledExecutionCancelFinalizerArgs](ctx, jobArgs))
 	case "csv_ingestion":
 		return uc.NewCsvIngestionWorker().Work(ctx,
 			singleJobCreate[models.CsvIngestionArgs](ctx, jobArgs))

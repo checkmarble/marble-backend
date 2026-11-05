@@ -1095,6 +1095,11 @@ func (usecases UsecasesWithCreds) NewScheduledExecutionWorker() *worker_jobs.Sch
 	return worker_jobs.NewScheduledExecutionWorker(&runScheduledExecution)
 }
 
+func (usecases UsecasesWithCreds) NewScheduledExecutionCancelFinalizerWorker() *worker_jobs.ScheduledExecutionCancelFinalizerWorker {
+	runScheduledExecution := usecases.NewRunScheduledExecution()
+	return worker_jobs.NewScheduledExecutionCancelFinalizerWorker(&runScheduledExecution)
+}
+
 func (usecases UsecasesWithCreds) NewCsvIngestionWorker() *CsvIngestionWorker {
 	ingestionUsecase := usecases.NewIngestionUseCase()
 	return NewCsvIngestionWorker(&ingestionUsecase)
