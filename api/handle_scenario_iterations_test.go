@@ -37,3 +37,9 @@ func TestParseOptionalScenarioId_ReportsSomethingThatIsNotAnIdAsBadInput(t *test
 
 	assert.ErrorIs(t, err, models.BadParameterError)
 }
+
+func TestParseOptionalScenarioId_RejectsAnExplicitNilId(t *testing.T) {
+	_, err := parseOptionalScenarioId(uuid.Nil.String())
+
+	assert.ErrorIs(t, err, models.BadParameterError)
+}
