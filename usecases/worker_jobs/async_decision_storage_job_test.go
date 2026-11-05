@@ -20,8 +20,9 @@ import (
 )
 
 type fakeAsyncDecisionStorer struct {
-	stored []models.DecisionBundle
-	err    error
+	stored   []models.DecisionBundle
+	testRuns []models.TransientDecision
+	err      error
 }
 
 func (f *fakeAsyncDecisionStorer) StoreDecision(_ context.Context, _ *slog.Logger,
@@ -29,6 +30,10 @@ func (f *fakeAsyncDecisionStorer) StoreDecision(_ context.Context, _ *slog.Logge
 ) (models.DecisionWithRuleExecutions, error) {
 	f.stored = append(f.stored, item)
 	return item.Decision, f.err
+}
+
+func (f *fakeAsyncDecisionStorer) ExecuteTestRunForTransientDecision(_ context.Context, td models.TransientDecision) {
+	f.testRuns = append(f.testRuns, td)
 }
 
 func makeAsyncDecisionStorageJob(t *testing.T, payload []byte) (*river.Job[models.AsyncDecisionStorageArgs], uuid.UUID) {
@@ -40,14 +45,16 @@ func makeAsyncDecisionStorageJob(t *testing.T, payload []byte) (*river.Job[model
 	if payload == nil {
 		var err error
 
-		payload, err = models.NewTransientDecision(models.DecisionBundle{
+		td := models.NewTransientDecision(models.DecisionBundle{
 			Decision: models.DecisionWithRuleExecutions{
 				Decision:       models.Decision{DecisionId: decisionId, OrganizationId: orgId},
 				RuleExecutions: []models.RuleExecution{{Rule: models.Rule{Id: "rule1"}, Outcome: "hit"}},
 			},
 			Scenario: models.Scenario{TriggerObjectType: "transactions"},
 			ObjectId: "obj",
-		}).Encode()
+		})
+
+		payload, err = td.Encode()
 		require.NoError(t, err)
 	}
 
@@ -110,5 +117,26 @@ func TestAsyncDecisionStorageWorker(t *testing.T) {
 		job, _ := makeAsyncDecisionStorageJob(t, nil)
 
 		assert.Error(t, newAsyncDecisionStorageTestWorker(storer).Work(ctx, job))
+		assert.Empty(t, storer.testRuns)
+	})
+
+	t.Run("executes the test run after storing", func(t *testing.T) {
+		storer := &fakeAsyncDecisionStorer{}
+		job, decisionId := makeAsyncDecisionStorageJob(t, nil)
+
+		require.NoError(t, newAsyncDecisionStorageTestWorker(storer).Work(ctx, job))
+		require.Len(t, storer.testRuns, 1)
+		assert.Equal(t, decisionId, storer.testRuns[0].Decision.DecisionId)
+	})
+
+	t.Run("does not execute the test run again if the decision was already stored", func(t *testing.T) {
+		storer := &fakeAsyncDecisionStorer{err: &pgconn.PgError{
+			Code:           pgerrcode.UniqueViolation,
+			ConstraintName: "decisions_pkey",
+		}}
+		job, _ := makeAsyncDecisionStorageJob(t, nil)
+
+		require.NoError(t, newAsyncDecisionStorageTestWorker(storer).Work(ctx, job))
+		assert.Empty(t, storer.testRuns)
 	})
 }

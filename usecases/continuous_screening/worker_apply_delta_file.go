@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -586,8 +587,11 @@ func (w *ApplyDeltaFileWorker) buildOpenSanctionQuery(
 		whitelistedEntityIds[i] = whitelist.CounterpartyId
 	}
 
-	// Create the openSanction query
-	filters := record.Entity.Properties
+	// Filter only the query; preserve the complete source entity for its stored payload.
+	filters := maps.Clone(record.Entity.Properties)
+	for _, property := range datasetUpdatePropertyBlacklist {
+		delete(filters, property)
+	}
 
 	// Upstream -> Organization record searches should not contain topics filters
 	delete(filters, "topics")

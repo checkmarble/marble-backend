@@ -128,6 +128,12 @@ For further information on the API, you can also refer to the following resource
 - [our API docs](https://docs.checkmarble.com/reference/introduction-1) for public facing reference
 - the Open API Specification defined in the frontend repository [here](https://github.com/checkmarble/marble-frontend/blob/main/packages/marble-api/scripts/openapi.yaml).
 
+## Screening
+
+A property blacklist is applied to continuous screening `dataset_updated` queries to reduce request size and stored `search_input`. The [matching properties report](contrib/docs/screening/matching-properties.md) records the fields to preserve, the blacklist, its scope and the audit date.
+
+When changing the matching algorithm, engine/FtM version or supported schemas, review and update this document and the blacklist together.
+
 ## DB Seed and migrations
 
 The application uses [goose](https://github.com/pressly/goose) to manage migrations.

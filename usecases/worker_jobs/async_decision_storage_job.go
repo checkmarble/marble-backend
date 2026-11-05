@@ -15,6 +15,7 @@ import (
 
 type asyncDecisionStorageUsecase interface {
 	StoreDecision(ctx context.Context, logger *slog.Logger, tx repositories.Transaction, item models.DecisionBundle) (models.DecisionWithRuleExecutions, error)
+	ExecuteTestRunForTransientDecision(ctx context.Context, transientDecision models.TransientDecision)
 }
 
 type AsyncDecisionStorageWorker struct {
@@ -71,6 +72,9 @@ func (w AsyncDecisionStorageWorker) Work(ctx context.Context, job *river.Job[mod
 		case nil:
 			logger.InfoContext(ctx, "asynchronously stored decision",
 				"latency", time.Since(storageStart))
+
+			// Only run the test run on first storage, so a retried job does not create duplicate phantom decisions.
+			w.decisionUsecase.ExecuteTestRunForTransientDecision(ctx, transientDecision)
 
 		default:
 			logger.InfoContext(ctx, "skip duplicate async decision storage because it is already persisted",

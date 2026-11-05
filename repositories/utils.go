@@ -38,7 +38,20 @@ type auditCommands struct {
 
 var sqlUpdateVerbs = []string{"insert", "update", "delete"}
 
+type skipAuditSetupKey struct{}
+
+// WithoutAudit disables the audit session configuration for all queries executed with this context.
+// Only use it on code paths that never update or delete rows of audited tables (see the audit triggers in migrations),
+// since those changes would not be recorded in the audit trail.
+func WithoutAudit(ctx context.Context) context.Context {
+	return context.WithValue(ctx, skipAuditSetupKey{}, true)
+}
+
 func injectDbSessionConfig(ctx context.Context, exec executor, query string) (pgconn.CommandTag, error) {
+	if skip, _ := ctx.Value(skipAuditSetupKey{}).(bool); skip {
+		return pgconn.NewCommandTag(""), nil
+	}
+
 	if query != "" {
 		exitEarly := true
 		for _, v := range sqlUpdateVerbs {

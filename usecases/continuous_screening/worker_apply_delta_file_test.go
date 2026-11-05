@@ -228,12 +228,34 @@ func TestBuildOpenSanctionQuery(t *testing.T) {
 			Id:     "entity-123",
 			Schema: "Person",
 			Properties: map[string][]string{
-				"name":      {"John Doe"},
-				"topics":    {"sanction"},
-				"programId": {"GlobalSanctions"},
+				"name":                {"John Doe"},
+				"alias":               {"John D", "J Doe"},
+				"weakAlias":           {"JD"},
+				"abbreviation":        {"J.D."},
+				"birthPlace":          {"Paris"},
+				"gender":              {"male"},
+				"title":               {"Dr"},
+				"nameSuffix":          {"Jr"},
+				"customMatchingField": {"keep unknown properties"},
+				"notes":               {strings.Repeat("Background information. ", 500)},
+				"description":         {"Informational description"},
+				"biography":           {"Informational biography"},
+				"indexText":           {"Full-text content"},
+				"sourceUrl":           {"https://example.com/source/1", "https://example.com/source/2"},
+				"classification":      {"Informational classification"},
+				"appearance":          {"Informational appearance"},
+				"capital":             {"1000000"},
+				"model":               {"Informational model"},
+				"modifiedAt":          {"2026-11-02"},
+				"wikipediaUrl":        {"https://en.wikipedia.org/wiki/Example"},
+				"position":            {"Director"},
+				"topics":              {"sanction"},
+				"programId":           {"GlobalSanctions"},
 			},
 		},
 	}
+	originalPayload, err := json.Marshal(record.Entity)
+	assert.NoError(t, err)
 
 	job := models.EnrichedContinuousScreeningUpdateJob{
 		ContinuousScreeningUpdateJob: models.ContinuousScreeningUpdateJob{OrgId: orgId},
@@ -246,16 +268,28 @@ func TestBuildOpenSanctionQuery(t *testing.T) {
 	}
 
 	query, err := worker.buildOpenSanctionQuery(context.Background(), nil, job, record)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	// ObjectTypes threaded from config
 	assert.Equal(t, []string{"person_A"}, query.ObjectTypes)
 
-	// programId stripped from scoring properties
-	assert.Empty(t, query.Queries[0].Filters["programId"],
-		"programId should be stripped from scoring properties")
+	// Keep matching inputs, including nonmatchable fields used by algorithms and unknown fields.
+	assert.Equal(t, models.OpenSanctionsFilter{
+		"name":                {"John Doe"},
+		"alias":               {"John D", "J Doe"},
+		"weakAlias":           {"JD"},
+		"abbreviation":        {"J.D."},
+		"birthPlace":          {"Paris"},
+		"gender":              {"male"},
+		"title":               {"Dr"},
+		"nameSuffix":          {"Jr"},
+		"customMatchingField": {"keep unknown properties"},
+	}, query.Queries[0].Filters)
 
-	// topics stripped too (existing behaviour)
-	assert.Empty(t, query.Queries[0].Filters["topics"],
-		"topics should be stripped from scoring properties")
+	// The worker still needs the complete source entity for its separately stored payload.
+	entityPayload, err := json.Marshal(record.Entity)
+	assert.NoError(t, err)
+	assert.JSONEq(t, string(originalPayload), string(entityPayload))
 }
