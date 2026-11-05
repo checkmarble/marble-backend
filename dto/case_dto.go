@@ -123,6 +123,7 @@ type CaseFilters struct {
 	TagId           []string      `form:"tag_id,lte=1,dive,uuid"`
 	ReviewLevels    []string      `form:"review_level[]"`
 	Qualification   []string      `form:"qualification"`
+	Types           []string      `form:"type[]"`
 }
 
 func (f CaseFilters) Parse() (models.CaseFilters, error) {
@@ -172,6 +173,14 @@ func (f CaseFilters) Parse() (models.CaseFilters, error) {
 			return out, err
 		}
 		out.Qualification = qualification
+	}
+
+	if len(f.Types) > 0 {
+		types, err := models.ValidateCaseTypes(f.Types)
+		if err != nil {
+			return out, err
+		}
+		out.Types = types
 	}
 
 	return out, nil
