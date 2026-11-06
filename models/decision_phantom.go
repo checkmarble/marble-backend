@@ -39,7 +39,7 @@ func AdaptScenarExecToPhantomDecision(scenarioExecution ScenarioExecution) Phant
 		RuleExecutions:      scenarioExecution.RuleExecutions,
 		ScreeningExecutions: pure_utils.Map(scenarioExecution.ScreeningExecutions,
 			func(screening ScreeningWithMatches) ScreeningWithMatches {
-				screening.Id = pure_utils.NewId().String()
+				screening.Id = ""
 				return MergeScreeningExecWithDefaults(decisionId, scenarioExecution.OrganizationId, nil)(screening)
 			}),
 	}
