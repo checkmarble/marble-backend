@@ -304,7 +304,7 @@ func (scc ScreeningConfig) HasSameQuery(other ScreeningConfig) bool {
 		return false
 	}
 	if scc.Threshold != nil && other.Threshold != nil {
-		if scc.Threshold != other.Threshold {
+		if *scc.Threshold != *other.Threshold {
 			return false
 		}
 	}
