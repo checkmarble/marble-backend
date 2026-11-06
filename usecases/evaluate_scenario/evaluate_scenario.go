@@ -531,6 +531,8 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 	if len(copiedScreening) > 0 {
 		se.ScreeningExecutions = append(se.ScreeningExecutions, copiedScreening...)
 		if triggerPassed {
+			// processScenarioIteration computed the outcome without the cached screenings.
+			// Recompute it with all results, keeping configurations in the same order as screenings.
 			testRunIteration.ScreeningConfigs = append(sccsToRun, copiedScreeningConfigs...)
 			se.Outcome = scenarioOutcome(testRunIteration, se.Score, se.ScreeningExecutions)
 		}
