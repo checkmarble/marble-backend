@@ -160,6 +160,10 @@ func (p ScreeningLexisNexisProvider) BuildQueryString(ctx context.Context,
 			qs.Set("index_type", "scoped")
 		}
 
+		if p.Config.MotivaFeatures(ctx).Explain && query.Explain {
+			qs.Set("explain", "true")
+		}
+
 		query.EffectiveThreshold = utils.Or(query.Config.Threshold, query.OrgConfig.MatchThreshold)
 
 		// Unless determined otherwise, we do not need those results that are *not*

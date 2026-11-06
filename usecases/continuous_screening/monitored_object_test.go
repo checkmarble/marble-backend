@@ -1161,6 +1161,8 @@ func TestPrepareOpenSanctionsQuery(t *testing.T) {
 				assert.Contains(t, err.Error(), tt.errorContains)
 			} else {
 				assert.NoError(t, err)
+				// Continuous screening matches store Motiva's per-feature explanations.
+				assert.True(t, result.Explain)
 				assert.Equal(t, tt.expectedQuery.OrgConfig, result.OrgConfig)
 				assert.Equal(t, tt.expectedQuery.Config.Datasets, result.Config.Datasets)
 				assert.Equal(t, len(tt.expectedQuery.Queries), len(result.Queries))
