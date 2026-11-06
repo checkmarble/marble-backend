@@ -1,14 +1,5 @@
 # Introduction
 
-This repo is the Marble backend implementation:
-
-- 1 single go app
-- Postgres DB
-
-## Getting Started
-
-### Setup your environment
-
 > **Disclaimer**
 >
 > This repository’s README file is intended for internal use by our development team. The documentation provided here is specifically designed for setting up and running the project on macOS.
@@ -17,28 +8,42 @@ This repo is the Marble backend implementation:
 > 
 > For general documentation and user-facing guides, please refer to our main repository: [Marble Documentation](https://github.com/checkmarble/marble/blob/main/README.md).
 
-[Install mise-en-place](https://mise.jdx.dev/getting-started.html) or alternatively [install Go](https://go.dev/doc/install) manually on your laptop (see the version in go.mod).
+This repo is the Marble backend implementation:
+
+- 1 single go app
+- Postgres DB
+
+## Getting Started
+
+### Setup your Environment
+
+You will need the usual C/C++ toolchain to be installed on your system. E.g. on Fedora:
+
+```sh
+sudo dnf install @c-development
+```
+
+You will need also need `docker` and `docker-compose` to be installed.
+
+Install [mise](https://mise.jdx.dev/getting-started.html), and [set up the integration with your shell](https://mise.jdx.dev/shell-setup.html) so that all dev tools are exposed in your PATH and all environment variables from your `.env` are exported. Alternatively, you can run `mise exec -- the_command` to run any tool without shell integration.
+See also [the IDE extensions](https://mise.jdx.dev/ide-integration.html#ide-plugins) to have direct integration in your IDE.
+
+Run `mise install` at the root of the repo to gather all dev dependencies.
+
+Later, you can do:
+- `mise upgrade` when deps are updated
+- `mise prune` when deps are removed
 
 Create your own `.env` file by copying `.env.example`. You can customize it with your own values, but it should work locally with the default values (except for third-party service functionalities).
 
-#### Setup the Database and Services
+### Setup the Database and Services
 
-Launch the Postgres DB and other services used by the backend:
+The `docker compose` of this repository only contains the _dependencies_ required to run the backend service, but does not start the services themselves. It is assumed the developer will run them themselves (see next section).
 
-```sh
-docker compose up -d
-```
+Launch the Postgres DB and other services used by the backend with `docker compose up -d`.
+This also creates the volumes to store data for PG, ElasticSearch and Firebase local emulator.
 
-This creates the volumes to store data for PG, ElasticSearch and Firebase local emulator.
-
-### Launch the project
-
-#### Build from source
-
-**On Linux:** You will need the usual C/C++ toolchain to be installed on your system.
-On Fedora, run `sudo dnf install @c-development`.
-
-Export your `.env` file (e.g [mise](https://mise.jdx.dev/)) and run the root of the project:
+### Build and Run the Project
 
 The backend project is made of five discrete components:
 
@@ -50,16 +55,6 @@ The backend project is made of five discrete components:
 
 Depending on which feature you need while developing, you should run one or more of those services. The last three are one-off commands that are usually run in cron and do not need to run in the background. The worker, though, handles all asynchronous background tasks the API needs (such as index creation) and might be requireed for some of the API functionnality to work properly.
 
-The `docker compose` of this repository only contains the _dependencies_ required to run the backend service, but does not start the services themselves. It is assumed the developer will run them themselves.
-
- 
-```sh
-mise exec -- go run . --migrations --server
-mise exec -- go run . --worker
-```
-
-Alternatively without mise, export your `.env` file (e.g. using [direnv](https://direnv.net/)) :
-
 ```sh
 go run . --migrations --server # To start the API
 go run . --worker # To start the worker
@@ -68,13 +63,6 @@ go run . --worker # To start the worker
 If you need to run the one-off components (for example if you are working on background data ingestion or on scheduled scenario execution), run them directly from your editor or the terminal when required:
 
 ```sh
-mise exec -- go run . --scheduled-executer
-mise exec -- go run . --send-pending-webhook-events
-mise exec -- go run . --data-ingestion
-```
-
-Alternatively, without mise :
-```sh
 go run . --scheduled-executer
 go run . --send-pending-webhook-events
 go run . --data-ingestion
@@ -82,7 +70,14 @@ go run . --data-ingestion
 
 > Using VSCode, you can also run the `Migrate and Launch (.env)` task in the "Run and debug" tab. This will load your env file, migrate the DB and start the server. Other components can also be started with the appropriately-named tasks.
 
-## Application flags
+You can also get live filewatching via `air`:
+
+```sh
+air -- --migrations --server # Run, then automatically rebuild and restart the server whenever a source file changes
+air -- --worker # Same for the worker
+```
+
+## Application Flags
 
 The application can be run with the following flags:
 
@@ -104,7 +99,7 @@ For further information on the API, you can also refer to the following resource
 - [our API docs](https://docs.checkmarble.com/reference/introduction-1) for public facing reference
 - the Open API Specification defined in the frontend repository [here](https://github.com/checkmarble/marble-frontend/blob/main/packages/marble-api/scripts/openapi.yaml).
 
-## DB Seed and migrations
+## DB Seed and Migrations
 
 The application uses [goose](https://github.com/pressly/goose) to manage migrations.
 
