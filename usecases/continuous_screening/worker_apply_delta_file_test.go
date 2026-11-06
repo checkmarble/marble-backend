@@ -275,6 +275,9 @@ func TestBuildOpenSanctionQuery(t *testing.T) {
 	// ObjectTypes threaded from config
 	assert.Equal(t, []string{"person_A"}, query.ObjectTypes)
 
+	// Continuous screening matches store Motiva's per-feature explanations.
+	assert.True(t, query.Explain)
+
 	// Keep matching inputs, including nonmatchable fields used by algorithms and unknown fields.
 	assert.Equal(t, models.OpenSanctionsFilter{
 		"name":                {"John Doe"},
