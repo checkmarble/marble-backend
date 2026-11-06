@@ -311,6 +311,7 @@ func prepareOpenSanctionsQuery(
 			},
 		},
 		WhitelistedEntityIds: whitelistedEntityIds,
+		Explain:              true,
 	}, nil
 }
 
@@ -500,6 +501,7 @@ func (uc *ContinuousScreeningUsecase) DoScreeningForEntity(
 		},
 		WhitelistedEntityIds: whitelistedEntityIds,
 		Scope:                orgCustomDatasetName(orgId),
+		Explain:              true,
 	}
 
 	org, err := uc.repository.GetOrganizationById(ctx, exec, orgId)
