@@ -2,6 +2,7 @@ package evaluate_scenario
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"testing"
@@ -65,5 +66,49 @@ func TestEvalAllScenarioRulesRecoversFromPanic(t *testing.T) {
 	_, _, err := evaluator.evalAllScenarioRules(ctx, ast_eval.NewEvaluationCache(), rules,
 		DataAccessor{}, models.DataModel{}, nil, 0)
 
+	require.ErrorIs(t, err, models.ErrPanicInScenarioEvalution)
+}
+
+func TestScreeningRecoversFromPanic(t *testing.T) {
+	ctx := utils.StoreLoggerInContext(context.Background(), slog.New(slog.DiscardHandler))
+	evaluator := ScenarioEvaluator{evaluateAstExpression: panickingAstEvaluator{}}
+	iteration := models.ScenarioIteration{ScreeningConfigs: []models.ScreeningConfig{
+		{TriggerRule: &ast.Node{Constant: true}},
+	}}
+
+	_, err := evaluator.evaluateScreening(ctx, iteration, ScenarioEvaluationParameters{}, DataAccessor{})
+	require.ErrorIs(t, err, models.ErrPanicInScenarioEvalution)
+}
+
+func TestScreeningRecoversFromConcurrentPanics(t *testing.T) {
+	ctx := utils.StoreLoggerInContext(context.Background(), slog.New(slog.DiscardHandler))
+	evaluator := ScenarioEvaluator{evaluateAstExpression: panickingAstEvaluator{}}
+	configs := make([]models.ScreeningConfig, 20)
+	for i := range configs {
+		configs[i].TriggerRule = &ast.Node{Constant: true}
+	}
+
+	_, err := evaluator.evaluateScreening(ctx, models.ScenarioIteration{ScreeningConfigs: configs}, ScenarioEvaluationParameters{}, DataAccessor{})
+	require.ErrorIs(t, err, models.ErrPanicInScenarioEvalution)
+}
+
+type mixedFailureAstEvaluator struct{}
+
+func (mixedFailureAstEvaluator) EvaluateAstExpression(ctx context.Context, cache *ast_eval.EvaluationCache, node ast.Node, organizationID uuid.UUID, payload models.ClientObject, dataModel models.DataModel) (ast.NodeEvaluation, error) {
+	if node.Constant == true {
+		panic("boom")
+	}
+	return ast.NodeEvaluation{}, errors.New("screening failure")
+}
+
+func TestScreeningPanicTakesPrecedenceOverOtherErrors(t *testing.T) {
+	ctx := utils.StoreLoggerInContext(context.Background(), slog.New(slog.DiscardHandler))
+	evaluator := ScenarioEvaluator{evaluateAstExpression: mixedFailureAstEvaluator{}}
+	iteration := models.ScenarioIteration{ScreeningConfigs: []models.ScreeningConfig{
+		{TriggerRule: &ast.Node{Constant: true}},
+		{TriggerRule: &ast.Node{Constant: false}},
+	}}
+
+	_, err := evaluator.evaluateScreening(ctx, iteration, ScenarioEvaluationParameters{}, DataAccessor{})
 	require.ErrorIs(t, err, models.ErrPanicInScenarioEvalution)
 }
