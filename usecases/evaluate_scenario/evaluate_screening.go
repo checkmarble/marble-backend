@@ -73,6 +73,9 @@ func (e ScenarioEvaluator) evaluateScreening(
 						fmt.Sprintf("recovered from panic during screening execution: '%s'. stacktrace from panic:", r))
 					utils.LogAndReportSentryError(ctx, errors.New(string(debug.Stack())))
 
+					// Concurrent panic handlers can write to the same returned error.
+					lock.Lock()
+					defer lock.Unlock()
 					serr = models.ErrPanicInScenarioEvalution
 				}
 

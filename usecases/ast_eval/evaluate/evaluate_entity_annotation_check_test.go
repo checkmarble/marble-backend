@@ -2,6 +2,7 @@ package evaluate
 
 import (
 	"context"
+	"log/slog"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/mocks"
@@ -14,6 +15,59 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+func TestLinkedTableCheckRecoversFromPanic(t *testing.T) {
+	ctx := utils.StoreLoggerInContext(context.Background(), slog.New(slog.DiscardHandler))
+	orgID := pure_utils.NewId()
+	execFactory := &mocks.ExecutorFactory{}
+	exec := &mocks.Executor{}
+	execFactory.On("NewExecutor").Return(exec)
+	execFactory.On("NewClientDbExecutor", ctx, orgID).Return(exec, nil)
+
+	check := EntityAnnotationCheck{
+		ExecutorFactory: execFactory,
+		OrgId:           orgID,
+		ClientObject:    models.ClientObject{TableName: utils.DummyTableNameFirst},
+		DataModel:       utils.GetDummyDataModel(),
+	}
+	args := buildMonitoringListCheckArgs(ast.EntityAnnotationCheckConfig{
+		TargetTableName: utils.DummyTableNameFirst,
+		LinkedTableChecks: []ast.LinkedTableCheck{{
+			TableName:        utils.DummyTableNameSecond,
+			LinkToSingleName: utils.Ptr(utils.DummyTableNameSecond),
+		}},
+	})
+
+	_, errs := check.Evaluate(ctx, args)
+	assert.Len(t, errs, 1)
+	if len(errs) == 1 {
+		assert.ErrorIs(t, errs[0], models.ErrPanicInScenarioEvalution)
+	}
+}
+
+func TestLinkedTableChecksRecoverFromConcurrentPanics(t *testing.T) {
+	ctx := utils.StoreLoggerInContext(context.Background(), slog.New(slog.DiscardHandler))
+	orgID := pure_utils.NewId()
+	execFactory := &mocks.ExecutorFactory{}
+	exec := &mocks.Executor{}
+	execFactory.On("NewExecutor").Return(exec)
+	execFactory.On("NewClientDbExecutor", ctx, orgID).Return(exec, nil)
+	check := EntityAnnotationCheck{
+		ExecutorFactory: execFactory,
+		OrgId:           orgID,
+		ClientObject:    models.ClientObject{TableName: utils.DummyTableNameFirst},
+		DataModel:       utils.GetDummyDataModel(),
+	}
+	checks := make([]ast.LinkedTableCheck, 20)
+	for i := range checks {
+		checks[i] = ast.LinkedTableCheck{TableName: utils.DummyTableNameSecond, LinkToSingleName: utils.Ptr(utils.DummyTableNameSecond)}
+	}
+	args := buildMonitoringListCheckArgs(ast.EntityAnnotationCheckConfig{TargetTableName: utils.DummyTableNameFirst, LinkedTableChecks: checks})
+	_, errs := check.Evaluate(ctx, args)
+	if assert.Len(t, errs, 1) {
+		assert.ErrorIs(t, errs[0], models.ErrPanicInScenarioEvalution)
+	}
+}
 
 // Mock implementations for interfaces specific to MonitoringListCheck
 
