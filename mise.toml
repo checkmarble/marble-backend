@@ -7,6 +7,7 @@ golangci-lint = "2.13.1" # Sources of truth are in .github/workflows/*.yaml
 
 [env]
 _.file = '.env'
+CGO_ENABLED = 1
 
 [tasks.migrate]
 dir = "repositories/migrations"

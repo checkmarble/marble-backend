@@ -19,7 +19,7 @@ This repo is the Marble backend implementation:
 
 [Install mise-en-place](https://mise.jdx.dev/getting-started.html) or alternatively [install Go](https://go.dev/doc/install) manually on your laptop (see the version in go.mod).
 
-Create your own `.env` file based on `.env.example`. You can customize it with your own values, but it should work locally with the default values (except for third-party service functionalities).
+Create your own `.env` file by copying `.env.example`. You can customize it with your own values, but it should work locally with the default values (except for third-party service functionalities).
 
 #### Setup the Database and Services
 
@@ -29,41 +29,16 @@ Launch the Postgres DB and other services used by the backend:
 docker compose up -d
 ```
 
-> NB: It creates a `marble-backend_postgres-db` volume to store PG data.
-
-#### Firebase emulator suite for local development
-
-Install the [Firebase tools](https://firebase.google.com/docs/emulator-suite):
-
-```sh
-# Install the Firebase CLI
-curl -sL https://firebase.tools | bash
-
-# Check the version is at least 13.16.0
-firebase --version
-
-# Login to firebase cli
-firebase login
-```
-
-Then copy the `./contrib/firebase-local-data.example` folder to `./firebase-local-data`. This folder will be used to store the local data of the Firebase emulator. It is ignored by git.
-```
-cp -r ./contrib/firebase-local-data.example ./firebase-local-data
-```
-
-Then start it using (replace `[GOOGLE_CLOUD_PROJECT]` with the value from your `.env` file):
-
-```sh
-firebase --project [GOOGLE_CLOUD_PROJECT] emulators:start --import=./firebase-local-data --export-on-exit
-```
-
-> NB: The `--import` flag is used to import the local data into the emulator. The `--export-on-exit` flag is used to export the data when the emulator is stopped so you don't lose your changes.
+This creates the volumes to store data for PG, ElasticSearch and Firebase local emulator.
 
 ### Launch the project
 
 #### Build from source
 
- Export your `.env` file (e.g [mise](https://mise.jdx.dev/)) and run the root of the project:
+**On Linux:** You will need the usual C/C++ toolchain to be installed on your system.
+On Fedora, run `sudo dnf install @c-development`.
+
+Export your `.env` file (e.g [mise](https://mise.jdx.dev/)) and run the root of the project:
 
 The backend project is made of five discrete components:
 
@@ -84,6 +59,7 @@ mise exec -- go run . --worker
 ```
 
 Alternatively without mise, export your `.env` file (e.g. using [direnv](https://direnv.net/)) :
+
 ```sh
 go run . --migrations --server # To start the API
 go run . --worker # To start the worker
@@ -156,14 +132,6 @@ All required configuration settings are already included inside the `.vscode/set
 Recommended settings are in the `.vscode/.user-settings.sample.json` file. Cherry-pick them to your user config file.
 
 ## FAQ
-
-### How to update firebase local data ?
-
-- Run firebase emulator with paramater: `--export-on-exit`
-- Add user, change options...
-- Exit the emulator
-
-> NB: The data will be saved in the `./firebase-local-data` folder. If you want to share the data, you can copy it to `./contrib/firebase-local-data.example` and commit it.
 
 ### How to reset the DB ?
 
