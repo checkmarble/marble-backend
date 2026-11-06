@@ -58,6 +58,7 @@ type MotivaFeatures struct {
 	BodyParams    bool
 	ScopedIndex   bool
 	CustomWeights bool
+	Explain       bool
 }
 
 func InitializeScreening(ctx context.Context, client *http.Client, host, authMethod, creds string) Screening {
@@ -245,6 +246,9 @@ func (os *Screening) MotivaFeatures(ctx context.Context) MotivaFeatures {
 					feats.BodyParams = semver.Compare(version, "v0.7.0") >= 0
 					feats.ScopedIndex = semver.Compare(version, "v0.7.0") >= 0
 					feats.CustomWeights = semver.Compare(version, "v0.10.0") >= 0
+					// Features introduced in motiva v0.10.1
+					//  - per-feature match explanations (`explain` query parameter)
+					feats.Explain = semver.Compare(version, "v0.10.1") >= 0
 				}
 			}
 
