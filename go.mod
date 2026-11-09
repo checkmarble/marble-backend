@@ -4,7 +4,7 @@ go 1.27.1
 
 require (
 	cloud.google.com/go/bigquery v1.83.0
-	cloud.google.com/go/iam v1.14.0
+	cloud.google.com/go/iam v1.15.0
 	cloud.google.com/go/profiler v0.7.0
 	cloud.google.com/go/storage v1.68.0
 	dario.cat/mergo v1.0.2
@@ -196,7 +196,7 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/wire v0.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.22 // indirect
-	github.com/googleapis/gax-go/v2 v2.24.1 // indirect
+	github.com/googleapis/gax-go/v2 v2.26.2 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.30.0 // indirect
 	github.com/h2non/parth v0.0.0-20190131123155-b4df798d6542 // indirect
