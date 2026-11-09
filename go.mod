@@ -27,7 +27,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/disintegration/imaging v1.6.2
 	github.com/duckdb/duckdb-go/v2 v2.10505.0
-	github.com/exaring/otelpgx v0.11.1
+	github.com/exaring/otelpgx v0.13.0
 	github.com/gabriel-vasile/mimetype v1.4.16
 	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/getkin/kin-openapi v0.149.0
