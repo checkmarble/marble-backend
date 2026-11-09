@@ -69,6 +69,10 @@ func (pgIndex PGIndex) AdaptConcreteIndex() models.ConcreteIndex {
 		idx.Type = models.IndexTypeAggregation
 	case "obj":
 		idx.Type = models.IndexTypeIngestedObjectsSearch
+	case "gca":
+		idx.Type = models.IndexTypeLifecycleActive
+	case "gcs":
+		idx.Type = models.IndexTypeLifecycleStale
 	default:
 	}
 

@@ -23,8 +23,9 @@ func NewClientDataPurgeJob(orgId uuid.UUID) *river.PeriodicJob {
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.ClientDataPurgeArgs{OrgId: orgId},
 				&river.InsertOpts{
-					Queue:    orgId.String(),
-					Priority: 4,
+					Queue:       orgId.String(),
+					Priority:    4,
+					MaxAttempts: 1,
 					UniqueOpts: river.UniqueOpts{
 						ByQueue:  true,
 						ByPeriod: CLIENT_DATA_PURGE_INTERVAL,
@@ -40,17 +41,20 @@ type ClientDataPurgeWorker struct {
 	executorFactory           executor_factory.ExecutorFactory
 	dataModelRepository       repositories.DataModelRepository
 	clientDataPurgeRepository repositories.ClientDataPurgeRepository
+	indexRepository           lifecycleIndexRepository
 }
 
 func NewClientDataPurgeWorker(
 	executorFactory executor_factory.ExecutorFactory,
 	dataModelRepository repositories.DataModelRepository,
 	clientDataPurgeRepository repositories.ClientDataPurgeRepository,
+	indexRepository lifecycleIndexRepository,
 ) *ClientDataPurgeWorker {
 	return &ClientDataPurgeWorker{
 		executorFactory:           executorFactory,
 		dataModelRepository:       dataModelRepository,
 		clientDataPurgeRepository: clientDataPurgeRepository,
+		indexRepository:           indexRepository,
 	}
 }
 
@@ -74,6 +78,12 @@ func (w *ClientDataPurgeWorker) Work(ctx context.Context, job *river.Job[models.
 	logger.Info("running client data purge job")
 
 	for _, table := range dataModel.Tables {
+		if err := w.checkLifecycleIndexes(ctx, clientDbExec, table.Name, table.Lifecycle); err != nil {
+			return err
+		}
+	}
+
+	for _, table := range dataModel.Tables {
 		if !table.Lifecycle.Enabled {
 			continue
 		}
@@ -90,6 +100,9 @@ func (w *ClientDataPurgeWorker) Work(ctx context.Context, job *river.Job[models.
 					logger.InfoContext(ctx, "lifecycle management was disabled during running purge iteration",
 						"table", table)
 					break
+				}
+				if err := w.checkLifecycleIndexes(ctx, clientDbExec, table.Name, lifecycle); err != nil {
+					return err
 				}
 
 				gate := time.Now().Add(-lifecycle.DeleteActiveRowsAfter.ToTimeDuration())
@@ -127,6 +140,9 @@ func (w *ClientDataPurgeWorker) Work(ctx context.Context, job *river.Job[models.
 						"table", table)
 					break
 				}
+				if err := w.checkLifecycleIndexes(ctx, clientDbExec, table.Name, lifecycle); err != nil {
+					return err
+				}
 
 				gate := time.Now().Add(-lifecycle.DeleteStaleRowsAfter.ToTimeDuration())
 
@@ -150,6 +166,25 @@ func (w *ClientDataPurgeWorker) Work(ctx context.Context, job *river.Job[models.
 		}
 	}
 
+	return nil
+}
+
+func (w *ClientDataPurgeWorker) checkLifecycleIndexes(ctx context.Context, exec repositories.Executor, table string, lifecycle models.TableLifecycle) error {
+	required := models.LifecycleIndexes(table, lifecycle)
+	if len(required) == 0 {
+		return nil
+	}
+	existing, err := w.indexRepository.ListAllIndexes(ctx, exec, models.IndexTypeLifecycleActive, models.IndexTypeLifecycleStale)
+	if err != nil {
+		return errors.Wrap(err, "list lifecycle indexes")
+	}
+	for _, index := range required {
+		if !models.LifecycleIndexExists(index, existing) {
+			return river.JobCancel(
+				errors.Errorf("required lifecycle index for table %s on %v is not ready", table, index.Indexed),
+			)
+		}
+	}
 	return nil
 }
 

@@ -56,3 +56,11 @@ func (e *ExecutorFactory) NewPinnedExecutor(ctx context.Context) (repositories.E
 	}
 	return args.Get(0).(repositories.Executor), args.Get(1).(func()), args.Error(2)
 }
+
+func (e *ExecutorFactory) NewPinnedClientDbExecutor(ctx context.Context, organizationId uuid.UUID) (repositories.Executor, func(), error) {
+	args := e.Called(ctx, organizationId)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(func()), args.Error(2)
+	}
+	return args.Get(0).(repositories.Executor), args.Get(1).(func()), args.Error(2)
+}

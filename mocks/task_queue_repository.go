@@ -52,6 +52,10 @@ func (m *TaskQueueRepository) EnqueueCreateIndexTask(
 	return m.Called(ctx, tx, orgId, indices).Error(0)
 }
 
+func (m *TaskQueueRepository) EnqueueLifecycleIndexProvisionTask(ctx context.Context, tx repositories.Transaction, orgId uuid.UUID, tableID string) error {
+	return m.Called(ctx, tx, orgId, tableID).Error(0)
+}
+
 func (m *TaskQueueRepository) EnqueueMatchEnrichmentTask(
 	ctx context.Context,
 	tx repositories.Transaction,

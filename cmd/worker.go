@@ -388,6 +388,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())
 	river.AddWorker(workers, adminUc.NewNewAsyncScheduledExecWorker())
 	river.AddWorker(workers, adminUc.NewIndexCreationWorker())
+	river.AddWorker(workers, adminUc.NewLifecycleIndexProvisionWorker())
 	river.AddWorker(workers, adminUc.NewIndexCreationStatusWorker())
 	river.AddWorker(workers, adminUc.NewIndexCleanupWorker())
 	river.AddWorker(workers, adminUc.NewGraphBuildWorker(workerConfig.GraphBuildInterval))

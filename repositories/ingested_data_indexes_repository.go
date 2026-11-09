@@ -187,6 +187,19 @@ func (repo *ClientDbRepository) CreateIndexesBlocking(
 	return CreateIndexesBlocking(ctx, exec, indexes)
 }
 
+// CreateIndexesConcurrently waits for concurrent builds to finish and returns their errors.
+func (repo *ClientDbRepository) CreateIndexesConcurrently(ctx context.Context, exec Executor, indexes []models.ConcreteIndex) error {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return err
+	}
+	for _, index := range indexes {
+		if err := createIndexSQL(ctx, exec, index, false); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (repo *ClientDbRepository) CreateIndexesAsync(
 	ctx context.Context,
 	exec Executor,
@@ -310,7 +323,11 @@ func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteInd
 			strings.Join(includedColumns, ","),
 		)
 	}
-	sql += "WHERE valid_until='infinity'"
+	if index.Type == models.IndexTypeLifecycleStale {
+		sql += " WHERE valid_until!='infinity'"
+	} else {
+		sql += " WHERE valid_until='infinity'"
+	}
 
 	if _, err := exec.Exec(ctx, sql); err != nil {
 		errMessage := fmt.Sprintf(

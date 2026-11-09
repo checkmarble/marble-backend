@@ -626,6 +626,11 @@ func (usecase *usecase) UpdateDataModelTableComposite(
 			input.CaptionField, input.PrimaryOrderingField, input.Metadata, input.Lifecycle); err != nil {
 			return err
 		}
+		if input.Lifecycle != nil {
+			if err := usecase.taskQueueRepository.EnqueueLifecycleIndexProvisionTask(ctx, tx, table.OrganizationID, tableID); err != nil {
+				return err
+			}
+		}
 		table, err = usecase.dataModelRepository.GetDataModelTable(ctx, tx, tableID)
 		if err != nil {
 			return err
