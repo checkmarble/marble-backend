@@ -47,6 +47,10 @@ func (stub ExecutorFactoryStub) NewPinnedExecutor(ctx context.Context) (reposito
 	}, func() {}, nil
 }
 
+func (stub ExecutorFactoryStub) NewPinnedClientDbExecutor(ctx context.Context, organizationId uuid.UUID) (repositories.Executor, func(), error) {
+	return stub.NewPinnedExecutor(ctx)
+}
+
 func (stub PgExecutorStub) DatabaseSchema() models.DatabaseSchema {
 	return models.DatabaseSchema{}
 }

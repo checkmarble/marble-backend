@@ -104,6 +104,10 @@ func (i *ConcreteIndex) setName() {
 		prefix = "idx"
 	case IndexTypeIngestedObjectsSearch:
 		prefix = "obj"
+	case IndexTypeLifecycleActive:
+		prefix = "gca"
+	case IndexTypeLifecycleStale:
+		prefix = "gcs"
 	default:
 		prefix = "idx"
 	}
@@ -275,4 +279,6 @@ const (
 	IndexTypeNavigation
 	IndexTypeAggregation
 	IndexTypeIngestedObjectsSearch
+	IndexTypeLifecycleActive
+	IndexTypeLifecycleStale
 )

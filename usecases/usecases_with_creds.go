@@ -699,6 +699,10 @@ func (usecases UsecasesWithCreds) NewIndexCreationWorker() *worker_jobs.IndexCre
 	return &w
 }
 
+func (usecases UsecasesWithCreds) NewLifecycleIndexProvisionWorker() *worker_jobs.LifecycleIndexProvisionWorker {
+	return worker_jobs.NewLifecycleIndexProvisionWorker(usecases.NewExecutorFactory(), usecases.Repositories.MarbleDbRepository, &usecases.Repositories.ClientDbRepository)
+}
+
 func (usecases UsecasesWithCreds) NewIndexCreationStatusWorker() *worker_jobs.IndexCreationStatusWorker {
 	w := worker_jobs.NewIndexCreationStatusWorker(
 		usecases.NewExecutorFactory(),
@@ -1371,6 +1375,7 @@ func (usecases UsecasesWithCreds) NewClientDataPurgeWorker() *worker_jobs.Client
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
+		&usecases.Repositories.ClientDbRepository,
 	)
 }
 

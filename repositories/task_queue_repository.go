@@ -48,6 +48,7 @@ type TaskQueueRepository interface {
 		organizationId uuid.UUID,
 		indices []models.ConcreteIndex,
 	) error
+	EnqueueLifecycleIndexProvisionTask(ctx context.Context, tx Transaction, organizationId uuid.UUID, tableID string) error
 	EnqueueMatchEnrichmentTask(
 		ctx context.Context,
 		tx Transaction,
@@ -342,6 +343,11 @@ func (r riverRepository) EnqueueCreateIndexTask(
 	}
 
 	return nil
+}
+
+func (r riverRepository) EnqueueLifecycleIndexProvisionTask(ctx context.Context, tx Transaction, organizationId uuid.UUID, tableID string) error {
+	_, err := r.client.InsertTx(ctx, tx.RawTx(), models.LifecycleIndexProvisionArgs{OrgId: organizationId, TableID: tableID}, &river.InsertOpts{Queue: organizationId.String()})
+	return err
 }
 
 func (r riverRepository) EnqueueDeleteIndexByNameTask(

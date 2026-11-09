@@ -28,6 +28,13 @@ type IndexCreationArgs struct {
 
 func (IndexCreationArgs) Kind() string { return "index_creation" }
 
+type LifecycleIndexProvisionArgs struct {
+	OrgId   uuid.UUID `json:"org_id"`
+	TableID string    `json:"table_id"`
+}
+
+func (LifecycleIndexProvisionArgs) Kind() string { return "lifecycle_index_provision" }
+
 type IndexCreationStatusArgs struct {
 	OrgId   uuid.UUID       `json:"org_id"`
 	Indices []ConcreteIndex `json:"indices"`

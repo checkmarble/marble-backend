@@ -13,10 +13,21 @@ type TransactionFactory interface {
 	Transaction(ctx context.Context, fn func(tx repositories.Transaction) error) error
 }
 
-// Interface to be used in usecases, implemented by the DbExecutorFactory class in the usecases/db_executor_factory package
-// which itself has the ExecutorGetter repository class injected in it.
+// ExecutorFactory provides executors for the Marble database and an
+// organization's client database. A pinned executor holds a single database
+// connection across operations, which is needed for session-scoped features
+// such as advisory locks. Pinning a connection does not start a transaction.
 type ExecutorFactory interface {
-	NewClientDbExecutor(ctx context.Context, organizationId uuid.UUID) (repositories.Executor, error)
+	// NewExecutor returns an executor for the Marble database. Depending on the
+	// implementation, it may reuse an existing connection.
 	NewExecutor() repositories.Executor
+	// NewClientDbExecutor returns an executor for the organization's client database.
+	NewClientDbExecutor(ctx context.Context, organizationId uuid.UUID) (repositories.Executor, error)
+	// NewPinnedExecutor returns a Marble database executor pinned to one
+	// connection. The caller must invoke the release function after use.
 	NewPinnedExecutor(ctx context.Context) (repositories.Executor, func(), error)
+	// NewPinnedClientDbExecutor returns an executor pinned to one connection in
+	// the organization's client database. The caller must invoke the release
+	// function after use.
+	NewPinnedClientDbExecutor(ctx context.Context, organizationId uuid.UUID) (repositories.Executor, func(), error)
 }

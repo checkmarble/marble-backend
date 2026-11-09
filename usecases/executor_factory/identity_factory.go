@@ -46,6 +46,13 @@ func (f IdentityExecutorFactory) NewPinnedExecutor(ctx context.Context) (reposit
 	return nil, nil, errors.New("cannot create pinned executor on identity factory")
 }
 
+func (f IdentityExecutorFactory) NewPinnedClientDbExecutor(ctx context.Context, orgId uuid.UUID) (repositories.Executor, func(), error) {
+	if orgId != f.org.Id {
+		return nil, nil, errors.Newf("IdentityExecutorFactory was built for organization %s but used for organization %s", f.org.Id, orgId)
+	}
+	return f.getter.GetPinnedExecutor(ctx, models.DATABASE_SCHEMA_TYPE_CLIENT, &f.org)
+}
+
 func (f IdentityExecutorFactory) Transaction(ctx context.Context, cb func(tx repositories.Transaction) error) error {
 	return cb(f.marbleExec)
 }

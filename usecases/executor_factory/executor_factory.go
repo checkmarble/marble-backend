@@ -94,6 +94,14 @@ func (factory DbExecutorFactory) NewPinnedExecutor(
 	)
 }
 
+func (factory DbExecutorFactory) NewPinnedClientDbExecutor(ctx context.Context, organizationId uuid.UUID) (repositories.Executor, func(), error) {
+	org, err := factory.orgGetter.GetOrganizationById(ctx, factory.NewExecutor(), organizationId)
+	if err != nil {
+		return nil, nil, err
+	}
+	return factory.transactionFactoryRepository.GetPinnedExecutor(ctx, models.DATABASE_SCHEMA_TYPE_CLIENT, &org)
+}
+
 func (factory DbExecutorFactory) NewExecutor() repositories.Executor {
 	// when getting a marble db executor, no error should occur and the context also won't be used
 	exec, _ := factory.transactionFactoryRepository.GetExecutor(
