@@ -229,9 +229,14 @@ func (repo *MarbleDbRepository) UserById(ctx context.Context, exec Executor, use
 	return user, nil
 }
 
+// ListUsers lists all users, or with orgId the users holding an active grant on that organization.
 func (repo *MarbleDbRepository) ListUsers(ctx context.Context, exec Executor, orgId *uuid.UUID) ([]models.User, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
+	}
+
+	if orgId != nil {
+		return listOrganizationUsers(ctx, exec, *orgId)
 	}
 
 	query := NewQueryBuilder().
@@ -240,16 +245,39 @@ func (repo *MarbleDbRepository) ListUsers(ctx context.Context, exec Executor, or
 		Where("deleted_at IS NULL").
 		OrderBy("id")
 
-	if orgId != nil {
-		query = query.Where(squirrel.Eq{"organization_id": *orgId})
-	}
-
 	return SqlToListOfModels(
 		ctx,
 		exec,
 		query,
 		dbmodels.AdaptUser,
 	)
+}
+
+// listOrganizationUsers returns the users holding an active organization-scoped grant on the
+// organization, whatever their home organization. Each user is seen from that organization:
+// their organization is the requested one and their role is the one granted on it.
+func listOrganizationUsers(ctx context.Context, exec Executor, orgId uuid.UUID) ([]models.User, error) {
+	query := NewQueryBuilder().
+		Select(append(columnsNames("u", dbmodels.UserFields), "g.role AS organization_grant_role")...).
+		From(dbmodels.TABLE_USERS+" u").
+		Join(`active_grants g ON g.principal_type = 'user'
+			AND g.principal_id = u.id::text
+			AND g.principal_authority = 'marble'
+			AND g.organization_id = ?`, orgId).
+		Where("u.deleted_at IS NULL").
+		OrderBy("u.id")
+
+	return SqlToListOfModels(ctx, exec, query, func(db dbmodels.DBOrganizationUserGrant) (models.User, error) {
+		user, err := dbmodels.AdaptUser(db.DBUserResult)
+		if err != nil {
+			return models.User{}, err
+		}
+		user.OrganizationId = orgId
+		if db.OrganizationGrantRole != nil {
+			user.Role = models.RoleFromString(*db.OrganizationGrantRole)
+		}
+		return user, nil
+	})
 }
 
 func (repo *MarbleDbRepository) UserByEmail(ctx context.Context, exec Executor, email string) (*models.User, error) {
