@@ -196,7 +196,7 @@ func TestTracfinConfigurationSourceAndCurrency(t *testing.T) {
 	}{
 		{"missing entity", models.TracfinMapping{ID: "m", TargetField: "/ds/organisme/libelle", Source: models.TracfinMappingSource{Kind: "ingested", Table: "partner", Field: "name"}}, "INVALID_ENTITY_TYPE"},
 		{"partner", models.TracfinMapping{ID: "m", TargetField: "/ds/organisme/libelle", Source: models.TracfinMappingSource{Kind: "ingested", EntityType: "Partner", Table: "partner", Field: "name"}}, "INVALID_ENTITY_TYPE"},
-		{"missing catalog", models.TracfinMapping{ID: "m", TargetField: "/ds/pieceJointe/piece/type_mime", Source: models.TracfinMappingSource{Kind: "settings", Field: "mime"}, Codes: []models.TracfinCodeMapping{{Source: "PDF", Target: "application/pdf"}}}, "CATALOG_UNAVAILABLE"},
+		{"unsupported MIME", models.TracfinMapping{ID: "m", TargetField: "/ds/pieceJointe/piece/type_mime", Source: models.TracfinMappingSource{Kind: "settings", Field: "mime"}, Codes: []models.TracfinCodeMapping{{Source: "PNG", Target: "image/png"}}}, "UNKNOWN_CATALOG_CODE"},
 		{"excluded code", models.TracfinMapping{ID: "m", TargetField: "/ds/pieceJointe/piece/type", Source: models.TracfinMappingSource{Kind: "settings", Field: "document_type"}, Codes: []models.TracfinCodeMapping{{Source: "tdf", Target: "TA17"}}}, "EXCLUDED_CATALOG_CODE"},
 		{"unknown currency evidence", models.TracfinMapping{ID: "m", TargetField: "/ds/operations/operation/montantTotal", Source: models.TracfinMappingSource{Kind: "decision_snapshot", HistoricalType: "transaction", Field: "amount"}}, "MISSING_TARGET_CURRENCY"},
 	}

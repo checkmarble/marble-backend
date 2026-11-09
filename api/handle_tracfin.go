@@ -65,9 +65,16 @@ func tracfinChangeIDs(changes []models.TracfinChangeInput) bool {
 // technical size limits, so they run under the batch deadline.
 func tracfinLongRequest(method, route string) bool {
 	switch method + " " + route {
-	case http.MethodPatch + " /cases/:case_id/tracfin/draft",
+	case http.MethodPost + " /cases/:case_id/tracfin/ai/prepare",
+		http.MethodPost + " /cases/:case_id/tracfin/ai/runs/:run_id/start",
+		http.MethodPost + " /cases/:case_id/tracfin/ai/runs/:run_id/rework",
+		http.MethodPatch + " /cases/:case_id/tracfin/draft",
 		http.MethodPost + " /cases/:case_id/tracfin/export",
-		http.MethodGet + " /cases/:case_id/tracfin/exports/:export_id":
+		http.MethodGet + " /cases/:case_id/tracfin/exports/:export_id",
+		http.MethodPost + " /cases/:case_id/sar/reports/:report_id/chat",
+		http.MethodPatch + " /cases/:case_id/sar/pivot",
+		http.MethodPatch + " /cases/:case_id/sar/reports/:report_id",
+		http.MethodGet + " /cases/:case_id/sar/reports/:report_id/export":
 		return true
 	}
 	return false

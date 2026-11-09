@@ -58,6 +58,18 @@ var AiAgentExpectedFiles = []string{
 	AiAgentScreeningHitSystemPromptPath,
 }
 
+// AiAgentTracfinPromptPaths are optional for existing AI features, but all are required
+// before a TRACFIN generation starts.
+var AiAgentTracfinPromptPaths = []string{
+	"tracfin/system.md",
+	"tracfin/sections/persons.md",
+	"tracfin/sections/attachments.md",
+	"tracfin/sections/operations.md",
+	"tracfin/sections/declaration.md",
+	"tracfin/repair_section.md",
+	"tracfin/review.md",
+}
+
 // AiAgentPromptsMapFS is a minimal, read-only, in-memory fs.FS backed by a name -> content map.
 // It exists so a downloaded ai prompts bundle (see infra.InitAiPromptsFS) can be held entirely
 // in memory - filled deterministically against AiAgentExpectedFiles, never a generic dump of

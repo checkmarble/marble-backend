@@ -47,7 +47,7 @@ func tracfinDraftDiagnostics(d models.TracfinDraft) models.TracfinDraft {
 	return d
 }
 func compatibleDraftProfile(config models.TracfinConfiguration, catalog tracfin.Catalog) bool {
-	return (config.ProfileVersion == "" || config.ProfileVersion == catalog.Version) && (config.ProfileHash == "" || config.ProfileHash == catalog.Hash)
+	return catalog.CompatibleProfile(config.ProfileVersion, config.ProfileHash)
 }
 func (uc TracfinUsecase) CreateDraft(ctx context.Context, caseID string, declarantIsActor bool) (models.TracfinDraft, error) {
 	actor, err := uc.draftActor(ctx)
@@ -293,11 +293,12 @@ func (uc TracfinUsecase) UpdateDraft(ctx context.Context, caseID string, input m
 				continue
 			}
 			var attachment *models.TracfinAttachment
+			var attachmentFile tracfinAttachmentFile
 			if c.SourceFileID != "" {
 				if c.Action != "add_block" || c.CatalogID != "/ds/pieceJointe/piece" {
 					return models.BadParameterError
 				}
-				attachment, err = uc.selectTracfinAttachment(ctx, tx, caseID, c.SourceFileID)
+				attachment, attachmentFile, err = uc.selectTracfinAttachmentFile(ctx, tx, caseID, c.SourceFileID)
 				if err != nil {
 					return err
 				}
@@ -309,6 +310,11 @@ func (uc TracfinUsecase) UpdateDraft(ctx context.Context, caseID string, input m
 			}
 			if attachment != nil {
 				setTracfinAttachment(&next.Document.Root, c.BlockID, attachment)
+				// Name and MIME type come from the file itself; a type outside the
+				// allowed list is left empty for the analyst.
+				source := models.TracfinAISource{ID: "file:" + attachment.SourceFileID}
+				source.Content, _ = json.Marshal(map[string]string{"name": attachmentFile.Name, "mime": attachmentFile.Mime})
+				next, _ = aiSetAttachmentFileFields(next, catalog, c.BlockID, source, "")
 			}
 			if c.Action == "set_selection" {
 				var selected *models.TracfinSelection
@@ -328,6 +334,32 @@ func (uc TracfinUsecase) UpdateDraft(ctx context.Context, caseID string, input m
 		}
 		d.UpdatedBy = string(actor.UserId)
 		d.Diagnostics = nil
+
+		if d.AI != nil {
+			d.AI.ReviewedRevision = 0
+			values := d.Document.Root.Fields["/ds/analyse"]
+			if len(values) != 1 || values[0].Text == nil {
+				return errors.Wrap(models.BadParameterError, "AI draft requires mandatory human analysis")
+			}
+			text := *values[0].Text
+			if e := validateAIAnalysis(text); e != nil {
+				return e
+			}
+			old := ""
+			for _, a := range d.AI.Analyses {
+				if a.ID == d.AI.CurrentAnalysisID {
+					old = a.Text
+				}
+			}
+			if text != old {
+				putAIAnalysis(&d, text, string(actor.UserId), "")
+			}
+		}
+		if uc.ai != nil && d.AI != nil {
+			if err = uc.ai.Repository.InvalidateTracfinAIActive(ctx, tx, uc.orgID.String(), caseID); err != nil {
+				return err
+			}
+		}
 		if err = uc.draftDependencies.Repository.SaveTracfinDraft(ctx, tx, uc.orgID.String(), caseID, d, input.ExpectedRevision); err != nil {
 			return err
 		}

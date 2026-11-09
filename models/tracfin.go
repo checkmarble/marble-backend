@@ -48,6 +48,7 @@ type TracfinReference struct {
 // parent/child compatibility. Common XSD types share this representation; this
 // is not an arbitrary XML node. Children retain their stable instance identities.
 type TracfinBlock struct {
+	Origin         *TracfinOrigin            `json:"origin,omitempty"`
 	ID             string                    `json:"id"`
 	CatalogID      string                    `json:"catalog_id"`
 	Fields         map[string][]TracfinValue `json:"fields,omitempty"`
@@ -146,11 +147,16 @@ type TracfinSourceRef struct {
 }
 
 type TracfinOrigin struct {
-	SourceFingerprint string             `json:"source_fingerprint,omitempty"`
-	Source            string             `json:"source"` // ingested, decision_snapshot, settings, manual, calculated
-	MappingVersion    string             `json:"mapping_version,omitempty"`
-	Sources           []TracfinSourceRef `json:"sources,omitempty"`
-	Resolution        string             `json:"resolution"` // resolved, conflict, unavailable, cleared
+	Explanation       string              `json:"explanation,omitempty"`
+	Evidence          []TracfinAIEvidence `json:"evidence,omitempty"`
+	RunID             string              `json:"run_id,omitempty"`
+	ActorID           string              `json:"actor_id,omitempty"`
+	AnalysisID        string              `json:"analysis_id,omitempty"`
+	SourceFingerprint string              `json:"source_fingerprint,omitempty"`
+	Source            string              `json:"source"` // ingested, decision_snapshot, settings, manual, calculated
+	MappingVersion    string              `json:"mapping_version,omitempty"`
+	Sources           []TracfinSourceRef  `json:"sources,omitempty"`
+	Resolution        string              `json:"resolution"` // resolved, conflict, unavailable, cleared
 }
 
 type TracfinDiagnostic struct {
@@ -196,6 +202,7 @@ type TracfinExport struct {
 }
 
 type TracfinDraft struct {
+	AI            *TracfinAIMetadata   `json:"ai,omitempty"`
 	Diagnostics   []TracfinDiagnostic  `json:"diagnostics,omitempty"`
 	CaseID        string               `json:"case_id"`
 	OrgID         string               `json:"org_id"`

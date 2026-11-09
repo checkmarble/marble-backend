@@ -60,30 +60,54 @@ func (uc TracfinUsecase) caseFile(ctx context.Context, exec repositories.Executo
 }
 
 func (uc TracfinUsecase) selectTracfinAttachment(ctx context.Context, exec repositories.Executor, caseID, fileID string) (*models.TracfinAttachment, error) {
+	a, _, err := uc.selectTracfinAttachmentFile(ctx, exec, caseID, fileID)
+	return a, err
+}
+
+// tracfinAttachmentFile is what the backend knows of a selected file: its case
+// file name and the media type sniffed from its first bytes (never its name).
+type tracfinAttachmentFile struct {
+	Name string
+	Mime string
+}
+
+func (uc TracfinUsecase) selectTracfinAttachmentFile(ctx context.Context, exec repositories.Executor, caseID, fileID string) (*models.TracfinAttachment, tracfinAttachmentFile, error) {
 	if err := uc.attachmentDependencies(); err != nil {
-		return nil, err
+		return nil, tracfinAttachmentFile{}, err
 	}
 	f, err := uc.caseFile(ctx, exec, caseID, fileID)
 	if err != nil {
-		return nil, err
+		return nil, tracfinAttachmentFile{}, err
 	}
 	blob, err := uc.draftDependencies.Blobs.GetBlob(ctx, f.BucketName, f.FileReference)
 	if err != nil {
-		return nil, err
+		return nil, tracfinAttachmentFile{}, err
 	}
 	if blob.ReadCloser == nil {
-		return nil, errors.New("TRACFIN blob reader unavailable")
+		return nil, tracfinAttachmentFile{}, errors.New("TRACFIN blob reader unavailable")
 	}
 	h := sha256.New()
-	n, readErr := io.Copy(h, io.LimitReader(tracfinContextReader{ctx, blob.ReadCloser}, tracfin.MaxAttachmentBytes+1))
+	head := &tracfinHeadWriter{}
+	n, readErr := io.Copy(io.MultiWriter(h, head), io.LimitReader(tracfinContextReader{ctx, blob.ReadCloser}, tracfin.MaxAttachmentBytes+1))
 	closeErr := blob.ReadCloser.Close()
 	if readErr != nil || closeErr != nil {
-		return nil, errors.Join(readErr, closeErr)
+		return nil, tracfinAttachmentFile{}, errors.Join(readErr, closeErr)
 	}
 	if n > tracfin.MaxAttachmentBytes {
-		return nil, errors.Wrap(errors.Join(models.BadParameterError, models.TracfinSizeLimitError), "TRACFIN_ATTACHMENT_SIZE_LIMIT: technical cumulative raw limit is 64 MiB")
+		return nil, tracfinAttachmentFile{}, errors.Wrap(errors.Join(models.BadParameterError, models.TracfinSizeLimitError), "TRACFIN_ATTACHMENT_SIZE_LIMIT: technical cumulative raw limit is 64 MiB")
 	}
-	return &models.TracfinAttachment{SourceFileID: f.Id, CaseID: caseID, BlobKey: f.FileReference, BucketName: f.BucketName, SHA256: hex.EncodeToString(h.Sum(nil)), Size: n}, nil
+	file := tracfinAttachmentFile{Name: f.FileName, Mime: aiDetectMime(head.data)}
+	return &models.TracfinAttachment{SourceFileID: f.Id, CaseID: caseID, BlobKey: f.FileReference, BucketName: f.BucketName, SHA256: hex.EncodeToString(h.Sum(nil)), Size: n}, file, nil
+}
+
+// tracfinHeadWriter keeps the first 512 bytes, enough for content sniffing.
+type tracfinHeadWriter struct{ data []byte }
+
+func (w *tracfinHeadWriter) Write(p []byte) (int, error) {
+	if room := 512 - len(w.data); room > 0 {
+		w.data = append(w.data, p[:min(room, len(p))]...)
+	}
+	return len(p), nil
 }
 
 func setTracfinAttachment(b *models.TracfinBlock, id string, a *models.TracfinAttachment) {
@@ -125,6 +149,22 @@ func (uc TracfinUsecase) Export(ctx context.Context, caseID string, expectedRevi
 	}
 	if d.Revision != expectedRevision {
 		return models.TracfinExport{}, models.ConflictError
+	}
+
+	if d.AI != nil {
+		if d.AI.RunID == "" || d.AI.ReviewedRevision != d.Revision {
+			return models.TracfinExport{}, errors.Wrap(models.UnprocessableEntityError, "TRACFIN AI export requires human review of the current revision")
+		}
+		if uc.ai == nil {
+			return models.TracfinExport{}, errors.New("TRACFIN AI validation unavailable")
+		}
+		r, e := uc.GetAIRun(ctx, caseID, d.AI.RunID)
+		if e != nil {
+			return models.TracfinExport{}, e
+		}
+		if r.Status != "completed" || !aiValidationPassed(r.Validation) {
+			return models.TracfinExport{}, errors.Wrap(models.UnprocessableEntityError, "TRACFIN AI validation incomplete")
+		}
 	}
 	c, err := tracfin.LoadCatalog()
 	if err != nil {
@@ -254,6 +294,22 @@ func (uc TracfinUsecase) Export(ctx context.Context, caseID string, expectedRevi
 			layer := report.Layers[diag.Layer]
 			layer.Status = "failed"
 			report.Layers[diag.Layer] = layer
+		}
+	}
+
+	if d.AI != nil {
+		if _, err = xmlFile.Seek(0, io.SeekStart); err != nil {
+			return models.TracfinExport{}, err
+		}
+		actual, e := io.ReadAll(io.LimitReader(xmlFile, tracfin.MaxXMLBytes+1))
+		if e != nil {
+			return models.TracfinExport{}, e
+		}
+		layer, diags := tracfin.ValidateOfficialXSD(ctx, actual)
+		report.Layers["official_xsd"] = layer
+		report.Diagnostics = append(report.Diagnostics, diags...)
+		if !aiValidationPassed(&report) {
+			return models.TracfinExport{}, errors.Wrap(models.UnprocessableEntityError, "TRACFIN AI exported XML failed deterministic or XSD validation")
 		}
 	}
 	stat, err := xmlFile.Stat()

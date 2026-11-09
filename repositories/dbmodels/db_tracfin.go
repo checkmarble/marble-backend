@@ -40,6 +40,7 @@ func AdaptTracfinConfiguration(db DBTracfinConfiguration) (models.TracfinConfigu
 // Content deliberately excludes scope, edit metadata and last_export. Only this
 // payload changes when editing or explicitly refreshing the copied configuration.
 type TracfinDraftContent struct {
+	AI            *models.TracfinAIMetadata   `json:"ai,omitempty"`
 	Document      models.TracfinDocument      `json:"document"`
 	Configuration models.TracfinConfiguration `json:"configuration"`
 }
@@ -62,7 +63,7 @@ func AdaptTracfinDraft(db DBTracfinDraft) (models.TracfinDraft, error) {
 	if err := json.Unmarshal(db.Content, &content); err != nil {
 		return models.TracfinDraft{}, errors.Wrap(err, "decode TRACFIN draft")
 	}
-	result := models.TracfinDraft{CaseID: db.CaseID, OrgID: db.OrgID, Document: content.Document, Configuration: content.Configuration, Revision: db.Revision, CreatedAt: db.CreatedAt, UpdatedAt: db.UpdatedAt, UpdatedBy: db.UpdatedBy}
+	result := models.TracfinDraft{AI: content.AI, CaseID: db.CaseID, OrgID: db.OrgID, Document: content.Document, Configuration: content.Configuration, Revision: db.Revision, CreatedAt: db.CreatedAt, UpdatedAt: db.UpdatedAt, UpdatedBy: db.UpdatedBy}
 	if len(db.LastExport) > 0 {
 		if err := json.Unmarshal(db.LastExport, &result.LastExport); err != nil {
 			return models.TracfinDraft{}, errors.Wrap(err, "decode TRACFIN export")

@@ -13,7 +13,11 @@ COPY . .
 RUN curl https://cdn.checkmarble.com/ip-database/marble.mmdb.gz | gzip -d > infra/default-ipdb.mmdb
 RUN CGO_ENABLED=1 go build -o /go/bin/app -trimpath -ldflags="-extldflags=-s -w -X main.apiVersion=${MARBLE_VERSION} -X main.segmentWriteKey=${SEGMENT_WRITE_KEY}"
 
-FROM gcr.io/distroless/cc:latest
+FROM debian:trixie-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates libxml2-utils poppler-utils tesseract-ocr tesseract-ocr-fra \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /go/bin/app /
 COPY --from=build /usr/local/go/lib/time/zoneinfo.zip /

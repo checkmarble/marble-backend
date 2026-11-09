@@ -236,6 +236,16 @@ func applyChange(root *models.TracfinBlock, c Change, catalog Catalog) error {
 		} else if value.ParentValueID != "" {
 			return bad("unexpected scalar owner")
 		}
+		if index < 0 && c.Action != "clear_field" && f.Max == "1" {
+			// Setting a single-valued field that only holds a derived value
+			// (computed, prefilled or generated) replaces it: the analyst
+			// overrides it without having to name its occurrence.
+			for i, v := range values {
+				if v.ParentValueID == value.ParentValueID && v.Kind != "cleared" && v.Origin != nil && v.Origin.Source != "manual" {
+					index = i
+				}
+			}
+		}
 		if index >= 0 && value.ParentValueID != values[index].ParentValueID {
 			return bad("attribute owner cannot change; clear it and add it to the other occurrence")
 		}

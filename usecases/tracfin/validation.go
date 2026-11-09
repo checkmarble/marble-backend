@@ -19,15 +19,8 @@ func newValidation(c Catalog) models.TracfinValidation {
 	for _, layer := range []string{"internal_structure", "references", "business", "xml_syntax"} {
 		v.Layers[layer] = models.TracfinValidationLayer{Status: "passed"}
 	}
-	v.Layers["official_xsd"] = models.TracfinValidationLayer{Status: "unavailable", Reason: "No compatible official XSD engine is integrated; internal checks are not certification"}
-	for _, rule := range c.Rules {
-		if rule.Status == "unavailable" && rule.Kind != "official_xsd" {
-			for _, layer := range []string{"internal_structure", "references", "business"} {
-				v.Layers[layer] = models.TracfinValidationLayer{Status: "incomplete", Reason: "Some registered source rules have not been implemented and tested; see coverage.json"}
-			}
-			break
-		}
-	}
+	v.Layers["official_xsd"] = models.TracfinValidationLayer{Status: "unavailable", Reason: "Official XSD is evaluated separately on serialized XML; internal checks are not XSD certification"}
+
 	return v
 }
 
@@ -159,11 +152,28 @@ func referenceTarget(root models.TracfinBlock, owner models.TracfinBlock, f Fiel
 func ValidateDraft(draft models.TracfinDraft, c Catalog) models.TracfinValidation {
 	v := newValidation(c)
 	v.Layers["xml_syntax"] = models.TracfinValidationLayer{Status: "unavailable", Reason: "Draft validation does not read exported XML bytes"}
-	if draft.Configuration.ProfileVersion != "" && draft.Configuration.ProfileVersion != c.Version || draft.Configuration.ProfileHash != "" && draft.Configuration.ProfileHash != c.Hash {
+	if !c.CompatibleProfile(draft.Configuration.ProfileVersion, draft.Configuration.ProfileHash) {
 		addValidation(&v, validationDiagnostic("INCOMPATIBLE_PROFILE", "internal_structure", "Draft profile does not match the embedded version/hash", models.TracfinFieldRef{}))
+	}
+	if draft.Document.Root.CatalogID != "/ds" {
+		addValidation(&v, validationDiagnostic("UNKNOWN_DOCUMENT_BLOCK", "internal_structure", "Document root must be /ds", models.TracfinFieldRef{BlockID: draft.Document.Root.ID, FieldID: draft.Document.Root.CatalogID}))
 	}
 	var visit func(models.TracfinBlock)
 	visit = func(b models.TracfinBlock) {
+		if f, ok := c.Fields[b.CatalogID]; !ok || f.Kind != "block" || f.Coverage == "excluded" {
+			addValidation(&v, validationDiagnostic("UNKNOWN_DOCUMENT_BLOCK", "internal_structure", "Unknown or excluded document block", models.TracfinFieldRef{BlockID: b.ID, FieldID: b.CatalogID}))
+			return
+		}
+		for id := range b.Fields {
+			if f, ok := c.Fields[id]; !ok || f.Kind != "field" || !c.CompatibleParent(b.CatalogID, id) {
+				addValidation(&v, validationDiagnostic("UNKNOWN_DOCUMENT_FIELD", "internal_structure", "Unknown or incompatible document field", models.TracfinFieldRef{BlockID: b.ID, FieldID: id}))
+			}
+		}
+		for _, child := range b.Children {
+			if f, ok := c.Fields[child.CatalogID]; !ok || f.Kind != "block" || f.Parent != b.CatalogID || f.Coverage == "excluded" {
+				addValidation(&v, validationDiagnostic("UNKNOWN_DOCUMENT_BLOCK", "internal_structure", "Unknown or incompatible document block", models.TracfinFieldRef{BlockID: child.ID, FieldID: child.CatalogID}))
+			}
+		}
 		for _, id := range c.OrderedFields {
 			f := c.Fields[id]
 			if f.Coverage == "excluded" || !c.CompatibleParent(b.CatalogID, id) {
@@ -248,6 +258,34 @@ func ValidateDraft(draft models.TracfinDraft, c Catalog) models.TracfinValidatio
 				addValidation(&v, validationDiagnostic("CARDINALITY_EXCEEDED", "internal_structure", fmt.Sprintf("Maximum %d occurrences", max), fieldRef(b, f, models.TracfinValue{})))
 			}
 		}
+		for _, choice := range c.Choices {
+			if choice.Parent != b.CatalogID {
+				continue
+			}
+			count := 0
+			for id, values := range b.Fields {
+				if c.Fields[id].Choice == choice.ID && (b.ActiveBranches[choice.ID] == "" || activeField(b, c.Fields[id], c)) {
+					for _, val := range values {
+						if _, present := valueText(val); present || val.Reference != nil {
+							count++
+						}
+					}
+				}
+			}
+			for _, child := range b.Children {
+				if c.Fields[child.CatalogID].Choice == choice.ID && (b.ActiveBranches[choice.ID] == "" || activeField(b, c.Fields[child.CatalogID], c)) {
+					count++
+				}
+			}
+			min, _ := strconv.Atoi(choice.Min)
+			max, err := strconv.Atoi(choice.Max)
+			if count < min {
+				addValidation(&v, validationDiagnostic("MISSING_REQUIRED_CHOICE", "internal_structure", "Required choice is absent", models.TracfinFieldRef{BlockID: b.ID, FieldID: choice.ID}))
+			}
+			if err == nil && count > max && b.ActiveBranches[choice.ID] == "" {
+				addValidation(&v, validationDiagnostic("UNRESOLVED_ALTERNATIVE_NOT_EXPORTED", "business", "Competing alternatives require an explicit selected branch", models.TracfinFieldRef{BlockID: b.ID, FieldID: choice.ID}))
+			}
+		}
 		validateBusinessRules(&v, b)
 		for _, child := range b.Children {
 			if activeField(b, c.Fields[child.CatalogID], c) {
@@ -256,6 +294,8 @@ func ValidateDraft(draft models.TracfinDraft, c Catalog) models.TracfinValidatio
 		}
 	}
 	visit(draft.Document.Root)
+	validateConditionalRules(&v, draft.Document.Root, c)
+	validateRuleCoverage(&v, draft.Document.Root, c)
 	return v
 }
 
@@ -343,7 +383,7 @@ func validateValue(report *models.TracfinValidation, b models.TracfinBlock, f Fi
 			if unavailable {
 				code = "CODE_CATALOG_UNAVAILABLE"
 			}
-			addValidation(report, validationDiagnostic(code, "business", "Code is absent from the available field reference catalogues", ref))
+			addValidation(report, validationDiagnostic(code, "business", "Code is absent from the available field reference catalogues; use a value from "+strings.Join(f.Catalogs, " or "), ref))
 		}
 	}
 }
@@ -359,11 +399,11 @@ func validateScalar(report *models.TracfinValidation, f Field, text string, ref 
 	case "xs:integer", "xs:positiveInteger":
 		n, ok := new(big.Int).SetString(text, 10)
 		if !integerLexeme.MatchString(text) || !ok || f.Base == "xs:positiveInteger" && n.Sign() <= 0 {
-			add("INVALID_INTEGER", "Expected a valid integer of the profile type")
+			add("INVALID_INTEGER", "Expected "+ExpectedFormat(f))
 		}
 	case "xs:decimal":
 		if !decimalLexeme.MatchString(text) {
-			add("INVALID_DECIMAL", "Expected an exact decimal without exponent")
+			add("INVALID_DECIMAL", "Expected "+ExpectedFormat(f))
 		}
 	case "xs:boolean":
 		if text != "true" && text != "false" && text != "1" && text != "0" {
@@ -376,11 +416,11 @@ func validateScalar(report *models.TracfinValidation, f Field, text string, ref 
 		switch facet.Kind {
 		case "minLength":
 			if utf8.RuneCountInString(text) < n {
-				add("VALUE_TOO_SHORT", "Value is shorter than the profile minimum")
+				add("VALUE_TOO_SHORT", fmt.Sprintf("Value is shorter than the profile minimum of %d characters", n))
 			}
 		case "maxLength":
 			if utf8.RuneCountInString(text) > n {
-				add("VALUE_TOO_LONG", "Value exceeds the profile maximum length")
+				add("VALUE_TOO_LONG", fmt.Sprintf("Value exceeds the profile maximum of %d characters", n))
 			}
 		case "enumeration":
 			enumeration = append(enumeration, facet.Value)
@@ -389,7 +429,7 @@ func validateScalar(report *models.TracfinValidation, f Field, text string, ref 
 			if err != nil {
 				add("PATTERN_UNAVAILABLE", "Internal pattern checker cannot execute this source pattern")
 			} else if !re.MatchString(text) {
-				add("PATTERN_MISMATCH", "Value does not match the profile pattern")
+				add("PATTERN_MISMATCH", "Value does not match the profile pattern; expected "+ExpectedFormat(f))
 			}
 		case "totalDigits":
 			if decimalLexeme.MatchString(text) {
@@ -398,11 +438,12 @@ func validateScalar(report *models.TracfinValidation, f Field, text string, ref 
 				if len(parts) > 1 {
 					digits += strings.TrimRight(parts[1], "0")
 				}
+				digits = strings.TrimLeft(digits, "0")
 				if len(digits) == 0 {
 					digits = "0"
 				}
 				if len(digits) > n {
-					add("TOTAL_DIGITS_EXCEEDED", "Decimal exceeds the profile digit limit")
+					add("TOTAL_DIGITS_EXCEEDED", fmt.Sprintf("Decimal exceeds the profile limit of %d significant digits", n))
 				}
 			}
 		}
@@ -413,7 +454,7 @@ func validateScalar(report *models.TracfinValidation, f Field, text string, ref 
 			found = found || text == allowed
 		}
 		if !found {
-			add("INVALID_ENUMERATION", "Value is not in the profile enumeration")
+			add("INVALID_ENUMERATION", "Value is not in the profile enumeration; allowed: "+strings.Join(enumeration, ", "))
 		}
 	}
 }

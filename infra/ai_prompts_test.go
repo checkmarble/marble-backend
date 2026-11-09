@@ -310,3 +310,12 @@ func Test_zipToPromptsFS(t *testing.T) {
 		assert.True(t, retry.IsRecoverable(err), "corrupted archive should be retried")
 	})
 }
+
+func TestZipToPromptsFSRetainsOptionalTracfinPrompts(t *testing.T) {
+	archive := writeFullPromptsZip(t, map[string]string{"tracfin/system.md": "tracfin system"})
+	fsys, err := zipToPromptsFS(archive)
+	require.NoError(t, err)
+	assert.Equal(t, "tracfin system", readFileFromFS(t, fsys, "tracfin/system.md"))
+	_, err = fs.ReadFile(fsys, "tracfin/review.md")
+	require.ErrorIs(t, err, fs.ErrNotExist)
+}

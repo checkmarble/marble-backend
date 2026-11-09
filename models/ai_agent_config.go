@@ -20,6 +20,7 @@ const (
 type AiFeature string
 
 const (
+	AiFeatureTracfin                AiFeature = "tracfin"
 	AiFeatureCaseReview             AiFeature = "case_review"
 	AiFeatureRuleDescription        AiFeature = "rule_description"
 	AiFeatureRuleBuilder            AiFeature = "rule_builder"
@@ -41,6 +42,7 @@ type AiAgentModelConfig struct {
 	DefaultLightModel string `json:"default_light_model,omitempty"`
 	DefaultHeavyModel string `json:"default_heavy_model,omitempty"`
 
+	Tracfin                *FeatureModelOverride `json:"tracfin,omitempty"`
 	CaseReview             *FeatureModelOverride `json:"case_review,omitempty"`
 	RuleDescription        *FeatureModelOverride `json:"rule_description,omitempty"`
 	RuleBuilder            *FeatureModelOverride `json:"rule_builder,omitempty"`
@@ -49,6 +51,8 @@ type AiAgentModelConfig struct {
 
 func (c *AiAgentModelConfig) featureOverride(feature AiFeature) *FeatureModelOverride {
 	switch feature {
+	case AiFeatureTracfin:
+		return c.Tracfin
 	case AiFeatureCaseReview:
 		return c.CaseReview
 	case AiFeatureRuleDescription:

@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -1399,5 +1400,38 @@ func (usecases *UsecasesWithCreds) NewTracfinUsecase() TracfinUsecase {
 			Exports: repo, BucketURL: usecases.caseManagerBucketUrl,
 		})
 	uc.configurationDependencies = &TracfinConfigurationDependencies{Repository: repo, Organizations: repo, Security: usecases.NewEnforceOrganizationSecurity()}
+	uc.WithAICollector(TracfinAICollectorDependencies{Repository: repo, Files: usecases.NewCaseUseCase(), Blobs: usecases.Repositories.BlobRepository})
+	llm := usecases.NewAiAgentUsecase()
+	uc.ai = &TracfinAIDependencies{Repository: repo, LLM: &llm, Enqueue: usecases.tracfinAIEnqueue, CheckActor: func(ctx context.Context, caseID, actorID string) error {
+		actorCtx, actor, e := usecases.tracfinAIActor(ctx, usecases.Credentials.OrganizationId, actorID)
+		if e != nil {
+			return e
+		}
+		_, e = actor.NewCaseUseCase().GetCase(actorCtx, caseID)
+		return e
+	}}
+
 	return uc
+}
+
+func (usecases *UsecasesWithCreds) NewSarUsecase() SarUsecase {
+	repo := usecases.Repositories.MarbleDbRepository
+	tracfinUc := usecases.NewTracfinUsecase()
+	ai := usecases.NewAiAgentUsecase()
+	return SarUsecase{
+		orgID: usecases.Credentials.OrganizationId, repo: repo, cases: tracfinUc,
+		executors: usecases.NewExecutorFactory(), transactions: usecases.NewTransactionFactory(),
+		files: repo, blobs: usecases.Repositories.BlobRepository,
+		llm: sarLLM{ai: &ai}, enqueue: usecases.sarEnqueue,
+	}
+}
+
+func (usecases *UsecasesWithCreds) sarEnqueue(ctx context.Context, tx repositories.Transaction, args models.SarRunArgs) error {
+	queue, ok := usecases.Repositories.TaskQueueRepository.(interface {
+		EnqueueSarRunTask(context.Context, repositories.Transaction, models.SarRunArgs) error
+	})
+	if !ok {
+		return models.UnprocessableEntityError
+	}
+	return queue.EnqueueSarRunTask(ctx, tx, args)
 }

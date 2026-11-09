@@ -229,5 +229,21 @@ func zipToPromptsFS(data []byte) (fs.FS, error) {
 		}
 		files[path] = content
 	}
+	// Older bundles omit these files; they remain usable for other AI features.
+	for _, path := range models.AiAgentTracfinPromptPaths {
+		f, err := zr.Open(path)
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not open optional prompt %s", path)
+		}
+		content, err := io.ReadAll(f)
+		f.Close()
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not read optional prompt %s", path)
+		}
+		files[path] = content
+	}
 	return files, nil
 }

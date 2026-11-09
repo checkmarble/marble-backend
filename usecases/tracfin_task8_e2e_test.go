@@ -805,6 +805,7 @@ func TestTracfinEndToEndCompanyLinkedPeopleConflictsCodesAndPieces(t *testing.T)
 		case bytes.Equal(content, kbis):
 			pieceIDs["F1"] = piece.attrs["id"]
 			require.Equal(t, []string{"TA6"}, piece.texts("type"))
+			require.Equal(t, []string{"application/pdf"}, piece.texts("type_mime"))
 		case bytes.Equal(content, passport):
 			pieceIDs["F2"] = piece.attrs["id"]
 			require.Equal(t, []string{"19AB12345"}, piece.texts("infoPieceIdentite/numPieceIdentite"))
@@ -816,8 +817,8 @@ func TestTracfinEndToEndCompanyLinkedPeopleConflictsCodesAndPieces(t *testing.T)
 	require.Equal(t, []string{pieceIDs["F2"]}, person.texts("etatCivil/idPieceJointe"))
 	require.Equal(t, []string{pieceIDs["F1"]}, company.texts("activiteCoordonnee/idPieceJointe"))
 	require.NotContains(t, string(data), base64.StdEncoding.EncodeToString([]byte("other case")))
-	// The MIME catalogue is not among the retained sources; the gap stays visible.
-	require.True(t, task8Diag(e.Validation.Diagnostics, "CODE_CATALOG_UNAVAILABLE", pieces["F1"], t8Piece+"/type_mime"))
+	// PDF is explicitly allowed by local POC policy despite the missing official MIME catalogue.
+	require.False(t, task8Diag(e.Validation.Diagnostics, "CODE_CATALOG_UNAVAILABLE", pieces["F1"], t8Piece+"/type_mime"))
 
 	// A later organization mapping change does not alter the draft silently.
 	w.configure(t, nil, append(append([]models.TracfinMapping{}, mappings[0]), mappings[2:]...))

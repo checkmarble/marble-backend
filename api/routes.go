@@ -120,6 +120,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		c.Next()
 	})
 	addTracfinRoutes(tracfinRouter, func(ctx context.Context) tracfinHTTPUsecase { return usecasesWithCreds(ctx, uc).NewTracfinUsecase() })
+	addTracfinAIRoutes(tracfinRouter, func(ctx context.Context) tracfinAIHTTPUsecase { return usecasesWithCreds(ctx, uc).NewTracfinUsecase() })
+	addSarRoutes(tracfinRouter, func(ctx context.Context) sarHTTPUsecase { return usecasesWithCreds(ctx, uc).NewSarUsecase() })
 
 	router.GET("/credentials", tom, handleGetCredentials())
 	router.PATCH("/config/usage-tracking", tom, handleUpdateUsageTracking(uc))

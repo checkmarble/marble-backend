@@ -356,10 +356,13 @@ func ValidateXML(r io.Reader, c Catalog) models.TracfinValidation {
 		counts    map[string]int
 		fields    map[string][]models.TracfinValue
 		parent    *frame
+		block     models.TracfinBlock
 	}
 	var stack []*frame
 	var nodes []*frame
 	roots := 0
+	var parsedRoot models.TracfinBlock
+	scalarID := 0
 	for {
 		token, err := dec.Token()
 		if errors.Is(err, io.EOF) {
@@ -390,7 +393,7 @@ func ValidateXML(r io.Reader, c Catalog) models.TracfinValidation {
 				}
 				parent.lastOrder = f.Order
 			}
-			fr := &frame{path: path, lastOrder: -1, counts: map[string]int{}, fields: map[string][]models.TracfinValue{}}
+			fr := &frame{path: path, lastOrder: -1, counts: map[string]int{}, fields: map[string][]models.TracfinValue{}, block: models.TracfinBlock{CatalogID: path, Fields: map[string][]models.TracfinValue{}}}
 			if len(stack) > 0 {
 				fr.parent = stack[len(stack)-1]
 			}
@@ -413,7 +416,11 @@ func ValidateXML(r io.Reader, c Catalog) models.TracfinValidation {
 				fr.counts[id]++
 				text := attr.Value
 				fr.fields[id] = append(fr.fields[id], models.TracfinValue{Kind: "text", Text: &text})
-				validateScalar(&report, af, text, models.TracfinFieldRef{FieldID: id})
+				lexicalAttr := af
+				if lexicalAttr.ValueKind == "reference" {
+					lexicalAttr.ValueKind = "text"
+				}
+				validateValue(&report, models.TracfinBlock{Fields: fr.fields}, lexicalAttr, models.TracfinValue{Kind: "text", Text: &text}, c)
 			}
 			stack = append(stack, fr)
 			if path == "/ds/pieceJointe/piece/contenu" {
@@ -442,7 +449,14 @@ func ValidateXML(r io.Reader, c Catalog) models.TracfinValidation {
 			stack = stack[:len(stack)-1]
 			if f, ok := c.Fields[fr.path]; ok && f.Kind == "field" {
 				text := fr.text.String()
-				val := models.TracfinValue{Kind: "text", Text: &text}
+				scalarID++
+				val := models.TracfinValue{ID: fmt.Sprintf("xml-%d", scalarID), Kind: "text", Text: &text}
+				for id, values := range fr.fields {
+					for i := range values {
+						values[i].ParentValueID = val.ID
+					}
+					fr.fields[id] = values
+				}
 				lexicalField := f
 				if lexicalField.ValueKind == "reference" {
 					lexicalField.ValueKind = "text"
@@ -454,9 +468,29 @@ func ValidateXML(r io.Reader, c Catalog) models.TracfinValidation {
 				if len(stack) > 0 {
 					parent := stack[len(stack)-1]
 					parent.fields[fr.path] = append(parent.fields[fr.path], val)
+					parent.block.Fields[fr.path] = append(parent.block.Fields[fr.path], val)
+					for id, values := range fr.fields {
+						for _, attr := range values {
+							attr.ParentValueID = val.ID
+							parent.block.Fields[id] = append(parent.block.Fields[id], attr)
+						}
+					}
 				}
 			} else if strings.TrimSpace(fr.text.String()) != "" {
 				addValidation(&report, validationDiagnostic("XML_BLOCK_HAS_TEXT", "internal_structure", "Structural element contains text", models.TracfinFieldRef{FieldID: fr.path}))
+			}
+			if f, ok := c.Fields[fr.path]; ok && f.Kind == "block" {
+				for id, values := range fr.fields {
+					if c.Fields[id].Attribute {
+						fr.block.Fields[id] = append(fr.block.Fields[id], values...)
+					}
+				}
+				if len(stack) > 0 {
+					parent := stack[len(stack)-1]
+					parent.block.Children = append(parent.block.Children, fr.block)
+				} else {
+					parsedRoot = fr.block
+				}
 			}
 			for _, id := range c.OrderedFields {
 				f := c.Fields[id]
@@ -493,6 +527,10 @@ func ValidateXML(r io.Reader, c Catalog) models.TracfinValidation {
 					if c.Fields[id].Choice == choice.ID {
 						count += n
 					}
+				}
+				min, _ := strconv.Atoi(choice.Min)
+				if count < min {
+					addValidation(&report, validationDiagnostic("MISSING_REQUIRED_CHOICE", "internal_structure", "Required choice is absent", models.TracfinFieldRef{FieldID: choice.ID}))
 				}
 				max, err := strconv.Atoi(choice.Max)
 				if err == nil && count > max {
@@ -579,6 +617,10 @@ func ValidateXML(r io.Reader, c Catalog) models.TracfinValidation {
 		if !valid {
 			addValidation(&report, validationDiagnostic("INVALID_XML_REFERENCE", "references", "Declared reference is absent or belongs to another person", models.TracfinFieldRef{FieldID: node.path}))
 		}
+	}
+	if parsedRoot.CatalogID != "" {
+		validateConditionalRules(&report, parsedRoot, c)
+		validateRuleCoverage(&report, parsedRoot, c)
 	}
 	return report
 }

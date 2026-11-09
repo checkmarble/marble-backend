@@ -9,7 +9,9 @@ import (
 	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/xml"
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -64,14 +66,15 @@ type Source struct {
 }
 
 type SourceRule struct {
-	ID     string   `json:"id"`
-	Source string   `json:"source"`
-	Line   int      `json:"line,omitempty"`
-	Kind   string   `json:"kind"`
-	Text   string   `json:"text"`
-	Fields []string `json:"fields"`
-	Status string   `json:"status"`
-	Reason string   `json:"reason"`
+	ID        string   `json:"id"`
+	Source    string   `json:"source"`
+	Line      int      `json:"line,omitempty"`
+	Kind      string   `json:"kind"`
+	Text      string   `json:"text"`
+	Fields    []string `json:"fields"`
+	Status    string   `json:"status"`
+	Validator string   `json:"validator,omitempty"`
+	Reason    string   `json:"reason"`
 }
 
 type Choice struct {
@@ -100,6 +103,12 @@ type Catalog struct {
 	CatalogBindings     map[string]string   `json:"catalog_bindings"`
 	IngestedEntityTypes []string            `json:"ingested_entity_types"`
 	ExcludedCodes       map[string][]string `json:"excluded_codes"`
+}
+
+// CompatibleProfile accepts the prior coverage-only profile hash for existing drafts.
+func (c Catalog) CompatibleProfile(version, hash string) bool {
+	const previousCoverageHash = "00d222c12baef60e12e35306660a5472d7d5ad88aa736c980bf4a1e4eeb9db68"
+	return (version == "" || version == c.Version) && (hash == "" || hash == c.Hash || hash == previousCoverageHash)
 }
 
 // LoadCatalog verifies every embedded source fingerprint before serving the
@@ -152,6 +161,11 @@ func LoadCatalog() (Catalog, error) {
 		if hex.EncodeToString(sum[:]) != src.SHA256 {
 			return Catalog{}, errors.Errorf("profile source hash mismatch: %s", src.Path)
 		}
+		if strings.HasSuffix(src.Path, ".xsd") {
+			if err = resolveInlineFacets(&c, data); err != nil {
+				return Catalog{}, errors.Wrapf(err, "resolve inline types of %s", src.Path)
+			}
+		}
 		if !strings.HasSuffix(src.Path, ".csv") {
 			continue
 		}
@@ -182,6 +196,10 @@ func LoadCatalog() (Catalog, error) {
 			seen[row[0]] = true
 			c.Codes[name] = append(c.Codes[name], Code{Value: row[0], Label: row[1]})
 		}
+	}
+	// Explicit local POC policy, not a replacement for the missing official catalogue.
+	if _, available := c.Codes["liste_ref_typemime.csv"]; !available {
+		c.Codes["liste_ref_typemime.csv"] = []Code{{Value: "application/pdf", Label: "PDF (local POC allowance; official MIME catalogue unavailable)"}}
 	}
 	return c, nil
 }
@@ -214,15 +232,19 @@ func (c Catalog) CompatibleParent(parent, child string) bool {
 	if !ok || f.Coverage == "excluded" {
 		return false
 	}
-	owner := f.Parent
+	return c.OwnerBlock(child) == parent
+}
+
+// OwnerBlock is the nearest block containing a field; an attribute is owned by its scalar's block.
+func (c Catalog) OwnerBlock(child string) string {
+	owner := c.Fields[child].Parent
 	for {
 		p, exists := c.Fields[owner]
 		if !exists || p.Kind == "block" {
-			break
+			return owner
 		}
 		owner = p.Parent
 	}
-	return owner == parent
 }
 
 func ValidateConfiguration(config models.TracfinConfiguration, catalog Catalog) []models.TracfinDiagnostic {
@@ -230,7 +252,7 @@ func ValidateConfiguration(config models.TracfinConfiguration, catalog Catalog) 
 	add := func(code, message, field string) {
 		diagnostics = append(diagnostics, models.TracfinDiagnostic{Code: code, Layer: "configuration", Severity: "error", Message: message, Field: &models.TracfinFieldRef{FieldID: field}})
 	}
-	if config.ProfileVersion != "" && config.ProfileVersion != catalog.Version || config.ProfileHash != "" && config.ProfileHash != catalog.Hash {
+	if !catalog.CompatibleProfile(config.ProfileVersion, config.ProfileHash) {
 		add("INCOMPATIBLE_PROFILE", "Configuration profile version/hash does not match embedded profile", "")
 	}
 	ids := map[string]bool{}
@@ -366,4 +388,67 @@ func ValidateConfiguration(config models.TracfinConfiguration, catalog Catalog) 
 		}
 	}
 	return diagnostics
+}
+
+type xsdNamedSimpleType struct {
+	Name        string   `xml:"name,attr"`
+	Doc         []string `xml:"annotation>documentation"`
+	Restriction struct {
+		Base   string `xml:"base,attr"`
+		Facets []struct {
+			XMLName xml.Name
+			Value   string `xml:"value,attr"`
+		} `xml:",any"`
+	} `xml:"restriction"`
+}
+
+var xsdBaseAttr = regexp.MustCompile(`base="([^"]+)"`)
+
+// resolveInlineFacets completes inline-typed entries whose manifest lists no facets: an inline
+// <xs:restriction base="t_registre"/> or <xs:extension base="t_string_200_optional"> inherits the
+// named type's facets. The XSD is a hashed profile source, so the profile identity is unchanged.
+func resolveInlineFacets(c *Catalog, schema []byte) error {
+	var doc struct {
+		SimpleTypes []xsdNamedSimpleType `xml:"simpleType"`
+	}
+	if err := xml.Unmarshal(schema, &doc); err != nil {
+		return err
+	}
+	named := map[string]xsdNamedSimpleType{}
+	for _, t := range doc.SimpleTypes {
+		named[t.Name] = t
+	}
+	lines := strings.Split(string(schema), "\n")
+	for id, f := range c.Fields {
+		if f.Kind != "field" || f.XSDType != "inline" || len(f.Constraints) > 0 || f.SourceLine < 1 {
+			continue
+		}
+		for n := f.SourceLine - 1; n < len(lines) && n < f.SourceLine+12; n++ {
+			if n > f.SourceLine-1 && (strings.Contains(lines[n], "<xs:element") || strings.Contains(lines[n], "<xs:attribute")) {
+				break
+			}
+			m := xsdBaseAttr.FindStringSubmatch(lines[n])
+			if m == nil {
+				continue
+			}
+			if t, ok := named[m[1]]; ok {
+				for _, facet := range t.Restriction.Facets {
+					if facet.Value != "" {
+						f.Constraints = append(f.Constraints, Constraint{Kind: facet.XMLName.Local, Value: facet.Value, SourceLine: n + 1})
+					}
+				}
+				if f.Base == "" {
+					f.Base = t.Restriction.Base
+				}
+				if f.TypeDocumentation == "" {
+					f.TypeDocumentation = strings.TrimSpace(strings.Join(t.Doc, " "))
+				}
+			} else if strings.HasPrefix(m[1], "xs:") && f.Base == "" {
+				f.Base = m[1]
+			}
+			break
+		}
+		c.Fields[id] = f
+	}
+	return nil
 }

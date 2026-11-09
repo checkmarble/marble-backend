@@ -34,6 +34,8 @@ type tracfinObjectReader interface {
 	ListIngestedObjects(context.Context, repositories.Executor, models.Table, models.ExplorationOptions, *string, int, ...string) ([]models.DataModelObject, error)
 }
 type TracfinUsecase struct {
+	ai                        *TracfinAIDependencies
+	aiCollector               *TracfinAICollectorDependencies
 	orgID                     uuid.UUID
 	repository                tracfinSourceRepository
 	cases                     tracfinCaseReader

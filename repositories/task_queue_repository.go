@@ -1088,3 +1088,13 @@ func (r riverRepository) EnqueueAsyncDecisionStorage(
 
 	return nil
 }
+
+func (r riverRepository) EnqueueTracfinAITask(ctx context.Context, tx Transaction, args models.TracfinAIArgs) error {
+	_, err := r.client.InsertTx(ctx, tx.RawTx(), args, &river.InsertOpts{Queue: args.OrgID.String(), MaxAttempts: 3})
+	return err
+}
+
+func (r riverRepository) EnqueueSarRunTask(ctx context.Context, tx Transaction, args models.SarRunArgs) error {
+	_, err := r.client.InsertTx(ctx, tx.RawTx(), args, &river.InsertOpts{Queue: args.OrgID, MaxAttempts: 1})
+	return err
+}

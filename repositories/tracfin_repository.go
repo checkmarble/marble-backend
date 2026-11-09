@@ -97,7 +97,7 @@ func (repo *MarbleDbRepository) CreateTracfinDraft(ctx context.Context, exec Exe
 	if draft.OrgID != orgID || draft.CaseID != caseID {
 		return errors.Wrap(models.BadParameterError, "invalid TRACFIN draft scope")
 	}
-	content, err := json.Marshal(dbmodels.TracfinDraftContent{Document: draft.Document, Configuration: draft.Configuration})
+	content, err := json.Marshal(dbmodels.TracfinDraftContent{AI: draft.AI, Document: draft.Document, Configuration: draft.Configuration})
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (repo *MarbleDbRepository) SaveTracfinDraft(ctx context.Context, exec Execu
 	if draft.OrgID != orgID || draft.CaseID != caseID || expectedRevision < 1 {
 		return errors.Wrap(models.BadParameterError, "invalid TRACFIN draft scope or revision")
 	}
-	content, err := json.Marshal(dbmodels.TracfinDraftContent{Document: draft.Document, Configuration: draft.Configuration})
+	content, err := json.Marshal(dbmodels.TracfinDraftContent{AI: draft.AI, Document: draft.Document, Configuration: draft.Configuration})
 	if err != nil {
 		return err
 	}

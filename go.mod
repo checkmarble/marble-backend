@@ -21,7 +21,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.113.2
 	github.com/biter777/countries v1.7.5
 	github.com/buger/jsonparser v1.6.1
-	github.com/checkmarble/llmberjack v0.0.0-20260917164714-cdc16047e091
+	github.com/checkmarble/llmberjack v0.0.0-20261104144301-bdec34cf066b
 	github.com/cockroachdb/errors v1.14.0
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/disintegration/imaging v1.6.2
@@ -80,6 +80,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.46.0
 	go.opentelemetry.io/otel/trace v1.46.0
 	gocloud.dev v0.43.0
+	golang.org/x/image v0.41.0
 	golang.org/x/mod v0.41.0
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sync v0.23.0
@@ -298,7 +299,6 @@ require (
 	golang.org/x/arch v0.30.0 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
-	golang.org/x/image v0.41.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260811182544-a038080d80e5 // indirect
