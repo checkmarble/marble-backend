@@ -83,6 +83,11 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 			return errors.Wrap(models.UnprocessableEntityError,
 				"continuous screening is not in review")
 		}
+		// A reviewed or skipped match keeps its status: a second review would overwrite it.
+		if continuousScreeningMatch.Status != models.ScreeningMatchStatusPending {
+			return errors.Wrap(models.UnprocessableEntityError,
+				"continuous screening match is not pending review")
+		}
 
 		// CaseId exists, we checked above
 		caseData, err := uc.repository.GetCaseById(

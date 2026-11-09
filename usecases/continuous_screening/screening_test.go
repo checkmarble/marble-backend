@@ -143,6 +143,55 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NotAtt
 	suite.AssertExpectations()
 }
 
+func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_MatchAlreadyReviewed() {
+	// Setup: a colleague already marked this match, and another match keeps the screening in review
+	input := models.ScreeningMatchUpdate{
+		MatchId:    suite.matchId.String(),
+		Status:     models.ScreeningMatchStatusConfirmedHit,
+		ReviewerId: &suite.userId,
+	}
+
+	reviewedMatch := models.ContinuousScreeningMatch{
+		Id:                    suite.matchId,
+		ContinuousScreeningId: suite.screeningId,
+		Status:                models.ScreeningMatchStatusNoHit,
+		OpenSanctionEntityId:  "test-entity-id",
+	}
+	pendingMatch := models.ContinuousScreeningMatch{
+		Id:                    pure_utils.NewId(),
+		ContinuousScreeningId: suite.screeningId,
+		Status:                models.ScreeningMatchStatusPending,
+		OpenSanctionEntityId:  "other-entity-id",
+	}
+
+	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:          suite.screeningId,
+			OrgId:       suite.orgId,
+			Status:      models.ScreeningStatusInReview,
+			CaseId:      &suite.caseId,
+			IsPartial:   false,
+			TriggerType: models.ContinuousScreeningTriggerTypeDatasetUpdated,
+		},
+		Matches: []models.ContinuousScreeningMatch{reviewedMatch, pendingMatch},
+	}
+
+	// Mock expectations: nothing is read or written past the guard
+	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
+		suite.matchId).Return(reviewedMatch, nil)
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(continuousScreeningWithMatches, nil)
+
+	// Execute
+	uc := suite.makeUsecase()
+	_, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
+
+	// Assert
+	suite.ErrorIs(err, models.UnprocessableEntityError)
+	suite.Contains(err.Error(), "continuous screening match is not pending review")
+	suite.AssertExpectations()
+}
+
 func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_ConfirmedHit_WithMultipleMatches() {
 	// Setup
 	input := models.ScreeningMatchUpdate{
