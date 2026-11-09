@@ -228,6 +228,7 @@ func TestMain(m *testing.M) {
 	river.AddWorker(workers, adminUc.NewNewAsyncScheduledExecWorker())
 	river.AddWorker(workers, adminUc.NewBatchExecutionCoordinatorWorker())
 	river.AddWorker(workers, adminUc.NewIndexCreationWorker())
+	river.AddWorker(workers, adminUc.NewLifecycleIndexProvisionWorker())
 	river.AddWorker(workers, adminUc.NewIndexCreationStatusWorker())
 	river.AddWorker(workers, adminUc.NewCaseReviewWorker(10*time.Second))
 	river.AddWorker(workers, adminUc.NewRuleDescriptionWorker(10*time.Second))
