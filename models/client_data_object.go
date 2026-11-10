@@ -112,11 +112,6 @@ const (
 	ExplorationFilterLesser         ExplorationFilterOperator = "<"
 )
 
-const (
-	ExplorationMaxFilters        = 20
-	ExplorationMaxFilterInValues = 100
-)
-
 type ExplorationFilter struct {
 	FieldName string
 	Operator  ExplorationFilterOperator

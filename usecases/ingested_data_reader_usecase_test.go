@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"slices"
 	"testing"
 	"time"
 
@@ -119,15 +120,9 @@ func TestValidateExplorationFilters(t *testing.T) {
 		lte      = models.ExplorationFilterLesserOrEqual
 		lt       = models.ExplorationFilterLesser
 	)
-	repeat := func(v any, n int) []any {
-		out := make([]any, n)
-		for i := range out {
-			out[i] = v
-		}
-		return out
-	}
+	repeat := func(v any, n int) []any { return slices.Repeat([]any{v}, n) }
 
-	tts := []struct {
+	tests := []struct {
 		name     string
 		field    string
 		operator models.ExplorationFilterOperator
@@ -221,7 +216,7 @@ func TestValidateExplorationFilters(t *testing.T) {
 		{"field name is not an identifier", `label" = '' OR 1=1 --`, in, []any{"a"}, nil},
 	}
 
-	for _, tt := range tts {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			filter := models.ExplorationFilter{FieldName: tt.field, Operator: tt.operator, Values: tt.values}
 			out, err := validateExplorationFilters(table, []models.ExplorationFilter{filter})
@@ -278,14 +273,11 @@ func TestValidateExplorationFilters(t *testing.T) {
 
 	t.Run("max number of filters", func(t *testing.T) {
 		filter := models.ExplorationFilter{FieldName: "amount", Operator: gte, Values: []any{1.0}}
-		filters := make([]models.ExplorationFilter, models.ExplorationMaxFilters)
-		for i := range filters {
-			filters[i] = filter
-		}
+		filters := slices.Repeat([]models.ExplorationFilter{filter}, explorationMaxFilters)
 
 		out, err := validateExplorationFilters(table, filters)
 		assert.NoError(t, err)
-		assert.Len(t, out, models.ExplorationMaxFilters)
+		assert.Len(t, out, explorationMaxFilters)
 
 		_, err = validateExplorationFilters(table, append(filters, filter))
 		assert.ErrorIs(t, err, models.UnprocessableEntityError)
