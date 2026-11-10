@@ -592,7 +592,8 @@ var explorationFilterRules = map[models.ExplorationFilterOperator]struct {
 }
 
 // validateExplorationFilters checks user-provided filters against the target table, and returns them with their
-// values coerced to the Go type matching the field data type. All failures are UnprocessableEntityError.
+// values coerced to the Go type matching the field data type. An unknown field is a NotFoundError, as for the other
+// fields of the exploration options; all other failures are UnprocessableEntityError.
 func validateExplorationFilters(table models.Table, filters []models.ExplorationFilter) ([]models.ExplorationFilter, error) {
 	if len(filters) > explorationMaxFilters {
 		return nil, errors.Wrapf(models.UnprocessableEntityError,
@@ -603,8 +604,8 @@ func validateExplorationFilters(table models.Table, filters []models.Exploration
 	for i, f := range filters {
 		field, ok := table.Fields[f.FieldName]
 		if !ok {
-			return nil, errors.Wrapf(models.UnprocessableEntityError,
-				"filter field '%s' not found in table '%s'", f.FieldName, table.Name)
+			return nil, errors.Wrapf(models.NotFoundError,
+				"Field '%s' not found in table '%s' in ReadIngestedClientObjects", f.FieldName, table.Name)
 		}
 		invalid := func(format string, args ...any) error {
 			return errors.Wrapf(models.UnprocessableEntityError, "invalid filter '%s' on field '%s' of type %s: %s",

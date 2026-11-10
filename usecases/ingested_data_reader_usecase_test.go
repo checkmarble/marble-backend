@@ -95,7 +95,7 @@ func TestReadIngestedClientObjectsFilters(t *testing.T) {
 				FieldName: "nope",
 				Operator:  models.ExplorationFilterGreaterOrEqual, Values: []any{10.5},
 			}))
-		assert.ErrorIs(t, err, models.UnprocessableEntityError)
+		assert.ErrorIs(t, err, models.NotFoundError)
 	})
 }
 
@@ -212,8 +212,6 @@ func TestValidateExplorationFilters(t *testing.T) {
 		// operator and field
 		{"unknown operator", "label", "=", []any{"a"}, nil},
 		{"empty operator", "label", "", []any{"a"}, nil},
-		{"unknown field", "nope", in, []any{"a"}, nil},
-		{"field name is not an identifier", `label" = '' OR 1=1 --`, in, []any{"a"}, nil},
 	}
 
 	for _, tt := range tests {
@@ -288,6 +286,16 @@ func TestValidateExplorationFilters(t *testing.T) {
 			{FieldName: "amount", Operator: gte, Values: []any{1.0}},
 			{FieldName: "nope", Operator: gte, Values: []any{1.0}},
 		})
-		assert.ErrorIs(t, err, models.UnprocessableEntityError)
+		assert.ErrorIs(t, err, models.NotFoundError)
+	})
+
+	t.Run("unknown field", func(t *testing.T) {
+		for _, name := range []string{"nope", `label" = '' OR 1=1 --`} {
+			_, err := validateExplorationFilters(table, []models.ExplorationFilter{
+				{FieldName: name, Operator: in, Values: []any{"a"}},
+			})
+			assert.ErrorIs(t, err, models.NotFoundError)
+			assert.ErrorContains(t, err, name)
+		}
 	})
 }
