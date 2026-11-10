@@ -1,0 +1,54 @@
+name: Create release
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    runs-on: ubuntu-26.04
+    env:
+      PRERELEASE: ${{ contains(inputs.tag, '-rc.') }}
+      BINARY: marble-backend-${{ inputs.tag }}-linux-amd64
+    steps:
+      - name: Download binary
+        uses: actions/download-artifact@v8
+        with:
+          name: marble-binary
+          path: ${{ runner.temp }}/dist
+
+      - name: Prepare binary
+        run: mv "$RUNNER_TEMP/dist/app" "$RUNNER_TEMP/$BINARY"
+
+      - name: Attest binary
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: ${{ runner.temp }}/${{ env.BINARY }}
+
+      - name: Create release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ inputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ inputs.tag }}
+          generate_release_notes: true
+          make_latest: ${{ env.PRERELEASE == 'false' }}
+          draft: true
+          prerelease: ${{ env.PRERELEASE == 'true' }}
+          files: ${{ runner.temp }}/${{ env.BINARY }}
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ inputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ inputs.tag }}
+          draft: false

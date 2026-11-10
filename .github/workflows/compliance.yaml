@@ -10,15 +10,17 @@ permissions:
 jobs:
   licensing:
     name: Check open source licenses
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
-
-      - uses: actions/setup-go@v7
         with:
-          go-version-file: ./go.mod
+          persist-credentials: false
 
-      - run: go install github.com/google/go-licenses/v2@latest
+      - uses: ./.github/actions/setup-go
+        with:
+          cache-prefix: go-host
+
+      - run: go install github.com/google/go-licenses/v2@v2.0.1
 
       # Ignored packages
       # github.com/checkmarble

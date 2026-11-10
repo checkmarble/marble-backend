@@ -1,0 +1,106 @@
+name: Build container image
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        description: version embedded in the binary (defaults to `git describe --tags`)
+        required: false
+    secrets:
+      segment_write_key_opensource:
+        description: write key for segment (open source deployment)
+
+permissions:
+  contents: read
+
+jobs:
+  binary:
+    name: Build binary
+    runs-on: ubuntu-26.04
+    # Debian 13 to match the glibc of the distroless runtime image
+    container: buildpack-deps:trixie
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      # The workspace is owned by the runner user, not the container's root, which git refuses without this.
+      - name: Mark repository as safe
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Set up Go
+        id: go
+        uses: ./.github/actions/setup-go
+        with:
+          cache-prefix: go-trixie
+
+      - name: Download IP database
+        run: curl -fsSL https://cdn.checkmarble.com/ip-database/marble.mmdb.gz | gzip -d > infra/default-ipdb.mmdb
+
+      - name: Build
+        env:
+          SEGMENT_WRITE_KEY: ${{ secrets.segment_write_key_opensource }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          MARBLE_VERSION="${VERSION:-$(git describe --tags)}"
+          mkdir -p dist
+          CGO_ENABLED=1 go build -o dist/app -trimpath -ldflags="-extldflags=-s -w -X main.apiVersion=${MARBLE_VERSION} -X main.segmentWriteKey=${SEGMENT_WRITE_KEY}"
+          cp "$(go env GOROOT)/lib/time/zoneinfo.zip" dist/
+
+      - name: Save Go cache
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ steps.go.outputs.cache-key }}
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v7
+        with:
+          name: marble-binary
+          path: dist/
+          retention-days: 1
+
+  image:
+    name: Build container image
+    needs: binary
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: Dockerfile
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Download binary
+        uses: actions/download-artifact@v8
+        with:
+          name: marble-binary
+          path: dist
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build
+        uses: docker/build-push-action@v7
+        with:
+          context: dist
+          file: Dockerfile
+          target: prebuilt
+          push: false
+          provenance: mode=max
+          outputs: type=oci,dest=${{ runner.temp }}/image.tar
+
+      - name: Upload image
+        uses: actions/upload-artifact@v7
+        with:
+          name: marble-image
+          path: ${{ runner.temp }}/image.tar
+          retention-days: 1
