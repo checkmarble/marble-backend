@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -128,6 +129,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NotAtt
 	}
 
 	// Mock expectations
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(continuousScreeningMatch, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
@@ -140,6 +143,28 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NotAtt
 	// Assert
 	suite.Error(err)
 	suite.Contains(err.Error(), "continuous screening is not in case")
+	suite.AssertExpectations()
+}
+
+func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_LocksScreeningBeforeReading() {
+	input := models.ScreeningMatchUpdate{
+		MatchId:    suite.matchId.String(),
+		Status:     models.ScreeningMatchStatusNoHit,
+		ReviewerId: &suite.userId,
+	}
+	lockErr := errors.New("lock timeout")
+
+	// Mock expectations: the match and its screening are read only once the lock is held
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(lockErr)
+
+	// Execute
+	uc := suite.makeUsecase()
+	_, err := uc.UpdateContinuousScreeningMatchStatus(suite.ctx, input)
+
+	// Assert
+	suite.ErrorIs(err, lockErr)
+	suite.repository.AssertNotCalled(suite.T(), "GetContinuousScreeningMatch", mock.Anything, mock.Anything, mock.Anything)
 	suite.AssertExpectations()
 }
 
@@ -177,6 +202,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_MatchA
 	}
 
 	// Mock expectations: nothing is read or written past the guard
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(reviewedMatch, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
@@ -246,6 +273,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 	updatedMatch.Status = models.ScreeningMatchStatusConfirmedHit
 
 	// Mock expectations
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(continuousScreeningMatch1, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
@@ -374,6 +403,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 	updatedMatch.Status = models.ScreeningMatchStatusConfirmedHit
 
 	// Mock expectations
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(continuousScreeningMatch, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
@@ -475,6 +506,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Confir
 	updatedMatch.Status = models.ScreeningMatchStatusConfirmedHit
 
 	// Mock expectations
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(continuousScreeningMatch, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
@@ -586,6 +619,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	updatedMatch.Status = models.ScreeningMatchStatusConfirmedHit
 
 	// Mock expectations
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(continuousScreeningMatch, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
@@ -692,6 +727,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 	updatedMatch.Status = models.ScreeningMatchStatusNoHit
 
 	// Mock expectations
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(continuousScreeningMatch1, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
@@ -778,6 +815,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 	updatedMatch.Status = models.ScreeningMatchStatusNoHit
 
 	// Mock expectations
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(continuousScreeningMatch, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
@@ -868,6 +907,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 	updatedMatch.Status = models.ScreeningMatchStatusNoHit
 
 	// Mock expectations
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(continuousScreeningMatch, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
@@ -972,6 +1013,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_NoHit_
 	updatedMatch.Status = models.ScreeningMatchStatusNoHit
 
 	// Mock expectations
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(continuousScreeningMatch, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
@@ -1646,6 +1689,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	updatedMatch.Status = models.ScreeningMatchStatusConfirmedHit
 
 	// Mock expectations
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(continuousScreeningMatch1, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
@@ -1728,6 +1773,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	updatedMatch.Status = models.ScreeningMatchStatusConfirmedHit
 
 	// Mock expectations
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(continuousScreeningMatch1, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
@@ -1830,6 +1877,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	updatedMatch.Status = models.ScreeningMatchStatusNoHit
 
 	// Mock expectations
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(continuousScreeningMatch1, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
@@ -1911,6 +1960,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	updatedMatch.Status = models.ScreeningMatchStatusNoHit
 
 	// Mock expectations
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(continuousScreeningMatch1, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
@@ -2017,6 +2068,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	updatedMatch.Status = models.ScreeningMatchStatusNoHit
 
 	// Mock expectations
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(continuousScreeningMatch1, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
@@ -2111,6 +2164,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	updatedMatch.Status = models.ScreeningMatchStatusConfirmedHit
 
 	// Mock expectations
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(continuousScreeningMatch1, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
@@ -2189,6 +2244,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Datase
 	updatedMatch.Status = models.ScreeningMatchStatusNoHit
 
 	// Mock expectations
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(continuousScreeningMatch1, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
@@ -2277,6 +2334,8 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_WithCo
 	savedComment := commentModel
 	savedComment.Id = pure_utils.NewId().String()
 
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
 	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything,
 		suite.matchId).Return(continuousScreeningMatch, nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,

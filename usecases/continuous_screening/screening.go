@@ -22,7 +22,7 @@ const MaxScreeningCandidates = 500
 // General flow:
 // 1. Validates the input match ID, reviewer ID, and status (must be confirmed_hit or no_hit). Check if the screening is in case and in review.
 // 2. Checks permissions: requires WriteContinuousScreeningHit permission and access to the associated case
-// 3. Updates the match status in a transaction
+// 3. Updates the match status in a transaction that first locks the screening, so concurrent reviews run one at a time
 // 4. Performs case action side effects (e.g., updating case status)
 // 5. Based on the decision and screening type:
 //   - If confirmed_hit on object-triggered screening: immediately marks screening as "confirmed_hit" and skips all other pending matches
@@ -61,6 +61,12 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 	}
 
 	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		// Lock the screening before reading it, so concurrent reviews of its matches run one at a time
+		// and the last one sees no other pending match.
+		if err := uc.repository.LockContinuousScreeningByMatchId(ctx, tx, requestedMatchId); err != nil {
+			return err
+		}
+
 		// Fetch continuous screening match and continuous screening object
 		continuousScreeningMatch, err := uc.repository.GetContinuousScreeningMatch(ctx, tx, requestedMatchId)
 		if err != nil {
