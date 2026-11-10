@@ -98,6 +98,31 @@ type ExplorationOptions struct {
 	FilterFieldName   string
 	FilterFieldValue  StringOrNumber
 	OrderingFieldName string
+	// Optional additional filters on the target table, all ANDed.
+	Filters []ExplorationFilter
+}
+
+type ExplorationFilterOperator string
+
+const (
+	ExplorationFilterContains       ExplorationFilterOperator = "contains"
+	ExplorationFilterIn             ExplorationFilterOperator = "in"
+	ExplorationFilterGreaterOrEqual ExplorationFilterOperator = ">="
+	ExplorationFilterLesserOrEqual  ExplorationFilterOperator = "<="
+	ExplorationFilterLesser         ExplorationFilterOperator = "<"
+)
+
+const (
+	ExplorationMaxFilters        = 20
+	ExplorationMaxFilterInValues = 100
+)
+
+type ExplorationFilter struct {
+	FieldName string
+	Operator  ExplorationFilterOperator
+	// As received from the API, values are string or float64. Once validated by the usecase, they are typed
+	// according to the field data type: string, int64, float64 or time.Time.
+	Values []any
 }
 
 const (

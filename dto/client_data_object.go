@@ -164,10 +164,34 @@ type ClientDataListRequestBody struct {
 }
 
 type ExplorationOptions struct {
-	SourceTableName   string         `json:"source_table_name"`
-	FilterFieldName   string         `json:"filter_field_name"`
-	FilterFieldValue  StringOrNumber `json:"filter_field_value"`
-	OrderingFieldName string         `json:"ordering_field_name"`
+	SourceTableName   string              `json:"source_table_name"`
+	FilterFieldName   string              `json:"filter_field_name"`
+	FilterFieldValue  StringOrNumber      `json:"filter_field_value"`
+	OrderingFieldName string              `json:"ordering_field_name"`
+	Filters           []ExplorationFilter `json:"filters"`
+}
+
+type ExplorationFilter struct {
+	FieldName string           `json:"field_name"`
+	Operator  string           `json:"operator"`
+	Values    []StringOrNumber `json:"values"`
+}
+
+func adaptExplorationFilter(input ExplorationFilter) models.ExplorationFilter {
+	return models.ExplorationFilter{
+		FieldName: input.FieldName,
+		Operator:  models.ExplorationFilterOperator(input.Operator),
+		Values: pure_utils.Map(input.Values, func(v StringOrNumber) any {
+			switch {
+			case v.StringValue != nil:
+				return *v.StringValue
+			case v.FloatValue != nil:
+				return *v.FloatValue
+			default:
+				return nil
+			}
+		}),
+	}
 }
 
 func AdaptClientDataListRequestBody(input ClientDataListRequestBody) models.ClientDataListRequestBody {
@@ -178,6 +202,7 @@ func AdaptClientDataListRequestBody(input ClientDataListRequestBody) models.Clie
 			FilterFieldValue: AdaptStringOrNumber(
 				input.ExplorationOptions.FilterFieldValue),
 			OrderingFieldName: input.ExplorationOptions.OrderingFieldName,
+			Filters:           pure_utils.Map(input.ExplorationOptions.Filters, adaptExplorationFilter),
 		},
 		CursorId: input.CursorId,
 	}

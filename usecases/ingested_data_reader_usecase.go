@@ -2,7 +2,10 @@ package usecases
 
 import (
 	"context"
+	"fmt"
+	"math"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -411,6 +414,12 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 		return
 	}
 
+	// The repository must only ever receive validated and typed filters
+	input.ExplorationOptions.Filters, err = validateExplorationFilters(targetTable, explo.Filters)
+	if err != nil {
+		return
+	}
+
 	// All input validation having passed, now query the objects for real
 	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, orgId)
 	if err != nil {
@@ -560,4 +569,112 @@ func (usecase IngestedDataReaderUsecase) enrichClientDataObjectWithRelatedObject
 			})
 	}
 	return baseObject, nil
+}
+
+// validateExplorationFilters checks user-provided filters against the target table, and returns them with their
+// values coerced to the Go type matching the field data type. All failures are UnprocessableEntityError.
+func validateExplorationFilters(table models.Table, filters []models.ExplorationFilter) ([]models.ExplorationFilter, error) {
+	if len(filters) > models.ExplorationMaxFilters {
+		return nil, errors.Wrapf(models.UnprocessableEntityError,
+			"too many filters: %d, maximum is %d", len(filters), models.ExplorationMaxFilters)
+	}
+
+	out := make([]models.ExplorationFilter, len(filters))
+	for i, f := range filters {
+		field, ok := table.Fields[f.FieldName]
+		if !ok {
+			return nil, errors.Wrapf(models.UnprocessableEntityError,
+				"filter field '%s' not found in table '%s'", f.FieldName, table.Name)
+		}
+		invalid := func(reason string) error {
+			return errors.Wrapf(models.UnprocessableEntityError,
+				"invalid filter '%s' on field '%s' of type %s: %s", f.Operator, f.FieldName, field.DataType, reason)
+		}
+
+		var allowedTypes []models.DataType
+		maxValues := 1
+		switch f.Operator {
+		case models.ExplorationFilterContains:
+			allowedTypes = []models.DataType{models.String, models.IpAddress}
+		case models.ExplorationFilterIn:
+			allowedTypes = []models.DataType{models.String, models.Int, models.Float}
+			maxValues = models.ExplorationMaxFilterInValues
+		case models.ExplorationFilterGreaterOrEqual, models.ExplorationFilterLesserOrEqual, models.ExplorationFilterLesser:
+			allowedTypes = []models.DataType{models.Int, models.Float, models.Timestamp}
+		default:
+			return nil, invalid("unknown operator")
+		}
+		if !slices.Contains(allowedTypes, field.DataType) {
+			return nil, invalid("operator not supported for this field type")
+		}
+		if len(f.Values) < 1 || len(f.Values) > maxValues {
+			return nil, invalid(fmt.Sprintf("expected between 1 and %d values, got %d", maxValues, len(f.Values)))
+		}
+
+		operator := f.Operator
+		values := make([]any, len(f.Values))
+		for j, v := range f.Values {
+			str, isString := v.(string)
+			num, isNumber := v.(float64)
+
+			switch field.DataType {
+			case models.String, models.IpAddress:
+				if !isString {
+					return nil, invalid("value must be a string")
+				}
+				if f.Operator == models.ExplorationFilterContains && str == "" {
+					return nil, invalid("value must not be empty")
+				}
+				// Postgres text cannot hold a NUL character: the query would fail
+				if strings.ContainsRune(str, 0) {
+					return nil, invalid("value must not contain a NUL character")
+				}
+				values[j] = str
+			case models.Float:
+				if !isNumber {
+					return nil, invalid("value must be a number")
+				}
+				values[j] = num
+			case models.Int:
+				if !isNumber {
+					return nil, invalid("value must be a number")
+				}
+				// Int fields only hold integers: move a fractional bound to the nearest integer giving the same result
+				switch f.Operator {
+				case models.ExplorationFilterIn:
+					if num != math.Trunc(num) {
+						return nil, invalid("value must be an integer")
+					}
+				case models.ExplorationFilterLesserOrEqual:
+					num = math.Floor(num)
+				default:
+					num = math.Ceil(num)
+				}
+				// Int fields are stored as postgres INTEGER
+				if num < math.MinInt32 || num > math.MaxInt32 {
+					if f.Operator == models.ExplorationFilterIn {
+						return nil, invalid("value out of range")
+					}
+					// No Int value is past such a bound, so it matches either every non null value or none: use
+					// the equivalent in range filter, respectively ">= MinInt32" and "< MinInt32"
+					operator = models.ExplorationFilterLesser
+					if (num > math.MaxInt32) != (f.Operator == models.ExplorationFilterGreaterOrEqual) {
+						operator = models.ExplorationFilterGreaterOrEqual
+					}
+					num = math.MinInt32
+				}
+				values[j] = int64(num)
+			case models.Timestamp:
+				t, err := time.Parse(time.RFC3339, str)
+				if !isString || err != nil {
+					return nil, invalid("value must be an RFC3339 timestamp")
+				}
+				values[j] = t
+			}
+		}
+
+		out[i] = models.ExplorationFilter{FieldName: f.FieldName, Operator: operator, Values: values}
+	}
+
+	return out, nil
 }
