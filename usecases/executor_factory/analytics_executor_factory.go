@@ -72,7 +72,12 @@ func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (repositories
 				_, err = execer.ExecContext(ctx, `set memory_limit = $1;`, []driver.NamedValue{
 					{Value: memoryLimit, Ordinal: 1},
 				})
+				if err != nil {
+					return err
+				}
 			}
+
+			_, err = execer.ExecContext(ctx, `set allocator_background_threads = true;`, nil)
 
 			return err
 		})
