@@ -873,10 +873,8 @@ func createQueryListIngestedObjects(
 	q := NewQueryBuilder().
 		Select(columnNames...).
 		From(qualifiedTableName).
-		Where(squirrel.Eq{
-			filterFieldName: filterFieldValue,
-			fmt.Sprintf("%s.valid_until", qualifiedTableName): "Infinity",
-		}).
+		Where(squirrel.Eq{filterFieldName: filterFieldValue}).
+		Where(rowIsValid(qualifiedTableName)).
 		OrderBy(qualifiedOrderingField+" DESC", "object_id DESC").
 		Limit(uint64(limit))
 	if cursorValues != nil {

@@ -513,7 +513,7 @@ func TestListIngestedObjectsQueryWithFilters(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
 
-	tts := []struct {
+	tests := []struct {
 		name     string
 		filter   models.ExplorationFilter
 		expected string
@@ -593,7 +593,7 @@ func TestListIngestedObjectsQueryWithFilters(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tts {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			query, err := createQueryListIngestedObjects(TransactionTest{}, listIngestedObjectsTestTable(),
 				listIngestedObjectsTestParams(tt.filter), []string{"object_id"}, nil, 10)
@@ -646,7 +646,7 @@ func TestListIngestedObjectsQueryWithFilters(t *testing.T) {
 }
 
 func TestListIngestedObjectsQueryRejectsInvalidFilters(t *testing.T) {
-	tts := []struct {
+	tests := []struct {
 		name   string
 		filter models.ExplorationFilter
 	}{
@@ -662,7 +662,7 @@ func TestListIngestedObjectsQueryRejectsInvalidFilters(t *testing.T) {
 		}},
 	}
 
-	for _, tt := range tts {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := createQueryListIngestedObjects(TransactionTest{}, listIngestedObjectsTestTable(),
 				listIngestedObjectsTestParams(tt.filter), []string{"object_id"}, nil, 10)
