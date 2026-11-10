@@ -160,6 +160,7 @@ func TestValidateExplorationFilters(t *testing.T) {
 		{"in on Int with string", "count", in, []any{"1"}, nil},
 		{"in on Int with non integral number", "count", in, []any{1.5}, nil},
 		{"in on Int out of range", "count", in, []any{1e12}, nil},
+		{"in on Int below range", "count", in, []any{-1e12}, nil},
 		{"in on Float with string", "amount", in, []any{"1.5"}, nil},
 		{"in on IpAddress", "ip", in, []any{"1.1.1.1"}, nil},
 		{"in on Timestamp", "created_at", in, []any{"2026-01-01T00:00:00Z"}, nil},
@@ -279,6 +280,20 @@ func TestValidateExplorationFilters(t *testing.T) {
 
 		_, err = validateExplorationFilters(table, append(filters, filter))
 		assert.ErrorIs(t, err, models.UnprocessableEntityError)
+	})
+
+	t.Run("each filter keeps its own operator and values", func(t *testing.T) {
+		out, err := validateExplorationFilters(table, []models.ExplorationFilter{
+			{FieldName: "count", Operator: lt, Values: []any{1e12}},
+			{FieldName: "count", Operator: lt, Values: []any{5.0}},
+			{FieldName: "label", Operator: in, Values: []any{"a", "b"}},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, []models.ExplorationFilter{
+			{FieldName: "count", Operator: gte, Values: []any{int64(math.MinInt32)}},
+			{FieldName: "count", Operator: lt, Values: []any{int64(5)}},
+			{FieldName: "label", Operator: in, Values: []any{"a", "b"}},
+		}, out)
 	})
 
 	t.Run("one invalid filter rejects the request", func(t *testing.T) {

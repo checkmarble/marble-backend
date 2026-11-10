@@ -883,8 +883,12 @@ func createQueryListIngestedObjects(
 
 	for _, f := range params.Filters {
 		field, ok := table.Fields[f.FieldName]
-		if !ok || len(f.Values) == 0 {
-			return squirrel.SelectBuilder{}, errors.Newf("invalid filter on field %s in ListIngestedObjects", f.FieldName)
+		if !ok {
+			return squirrel.SelectBuilder{}, errors.Newf("unknown filter field %s in ListIngestedObjects", f.FieldName)
+		}
+		if len(f.Values) == 0 {
+			return squirrel.SelectBuilder{}, errors.Newf(
+				"no value for filter on field %s in ListIngestedObjects", f.FieldName)
 		}
 		qualifiedFieldName := pgIdentifierWithSchema(exec, table.Name, f.FieldName)
 
@@ -896,7 +900,12 @@ func createQueryListIngestedObjects(
 				return squirrel.SelectBuilder{}, errors.Newf(
 					"invalid value for contains filter on field %s in ListIngestedObjects", f.FieldName)
 			}
-			q = q.Where(squirrel.ILike{qualifiedFieldName + "::text": "%" + likeEscaper.Replace(value) + "%"})
+			searchedText := qualifiedFieldName
+			if field.DataType == models.IpAddress {
+				// The text of an inet includes its netmask ("10.0.0.1/32"): only search in the address
+				searchedText = fmt.Sprintf("host(%s)", qualifiedFieldName)
+			}
+			q = q.Where(squirrel.ILike{searchedText: "%" + likeEscaper.Replace(value) + "%"})
 		case models.ExplorationFilterIn:
 			q, err = addConditionForOperator(q, qualifiedFieldName, field.DataType, ast.FILTER_IS_IN_LIST, f.Values)
 		case models.ExplorationFilterGreaterOrEqual:
