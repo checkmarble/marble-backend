@@ -84,3 +84,26 @@ func TestSameMonths(t *testing.T) {
 		"accounts", 2024, time.March, time.March,
 	}, args)
 }
+
+func TestComputeDuckdbMemoryLimit(t *testing.T) {
+	tts := []struct {
+		total uint64
+		want  string
+	}{
+		{1 << 30, "512MiB"},
+		{2 << 30, "1024MiB"},
+		{3_000_000_000, "1430MiB"},
+		{4 << 30, "2048MiB"},
+		{32 << 30, "2048MiB"},
+	}
+
+	for _, tt := range tts {
+		assert.Equal(t, tt.want, computeDuckdbMemoryLimit(tt.total))
+	}
+}
+
+func TestDuckdbMemoryLimitEnvOverride(t *testing.T) {
+	t.Setenv("DUCKDB_MEMORY_LIMIT", "1500MB")
+
+	assert.Equal(t, "1500MB", duckdbMemoryLimit())
+}
