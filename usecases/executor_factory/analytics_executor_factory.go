@@ -7,11 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/infra"
@@ -48,6 +50,8 @@ func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (repositories
 	ddbOnce.Do(func() {
 		var ddb *duckdb.Connector
 
+		memoryLimit := duckdbMemoryLimit()
+
 		// NB for future reference: we tried with cache_httpfs, which for our disk-less containers was a net drag on performance
 		// compared to the native httpfs cache. We will come back to this in the future to give an option for deployments of
 		// Marble that have a persistent disk. It should then be setup at connection dial and configured here.
@@ -60,6 +64,16 @@ func (f AnalyticsExecutorFactory) GetExecutor(ctx context.Context) (repositories
 					Ordinal: 1,
 				},
 			})
+			if err != nil {
+				return err
+			}
+
+			if memoryLimit != "" {
+				_, err = execer.ExecContext(ctx, `set memory_limit = $1;`, []driver.NamedValue{
+					{Value: memoryLimit, Ordinal: 1},
+				})
+			}
+
 			return err
 		})
 		if err != nil {
@@ -104,6 +118,13 @@ func (f AnalyticsExecutorFactory) GetExecutorWithSource(ctx context.Context, ali
 		if _, err = exportDb.ExecContext(ctx, `set threads to 1;`); err != nil {
 			return
 		}
+
+		// The external file cache keeps every remote file written or read by the export and merge jobs in memory, even
+		// after they are deleted, until memory_limit is reached. Those files are never read twice, so the cache only
+		// grows the worker's memory footprint until it gets OOM-killed.
+		if _, err = exportDb.ExecContext(ctx, `set enable_external_file_cache = false;`); err != nil {
+			return
+		}
 	})
 
 	if err != nil {
@@ -112,6 +133,33 @@ func (f AnalyticsExecutorFactory) GetExecutorWithSource(ctx context.Context, ali
 	}
 
 	return exportDb, nil
+}
+
+// DuckDB does not account for some of its native allocations (HTTP buffers, PostgreSQL scanner, allocator
+// fragmentation, ...) in its memory limit, nor for the Go heap living in the same process. Its default of 80% of the
+// available memory leaves too little headroom, so we use half of it, capped to an absolute value.
+const duckdbMaxMemoryLimit uint64 = 2 << 30 // 2 GB, in bytes
+
+// duckdbMemoryLimit returns the value to use for DuckDB's memory_limit setting. An empty value means DuckDB's own
+// default should be kept.
+func duckdbMemoryLimit() string {
+	if v := os.Getenv("DUCKDB_MEMORY_LIMIT"); v != "" {
+		return v
+	}
+
+	total, err := memlimit.FromCgroup()
+	if err != nil || total == 0 {
+		total, err = memlimit.FromSystem()
+	}
+	if err != nil || total == 0 {
+		return ""
+	}
+
+	return computeDuckdbMemoryLimit(total)
+}
+
+func computeDuckdbMemoryLimit(total uint64) string {
+	return fmt.Sprintf("%dMiB", min(total/2, duckdbMaxMemoryLimit)>>20)
 }
 
 func (f AnalyticsExecutorFactory) BuildTarget(table string, orgId uuid.UUID, triggerObjectType string, aliases ...string) string {

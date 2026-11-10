@@ -10,6 +10,7 @@ require (
 	dario.cat/mergo v1.0.2
 	firebase.google.com/go/v4 v4.21.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.0
+	github.com/KimMachineGun/automemlimit v1.0.1
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/TwiN/deepmerge v0.2.2
@@ -239,6 +240,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/opencontainers/runc v1.3.6 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.1 // indirect
+	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
 	github.com/pierrec/lz4/v4 v4.1.25 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
