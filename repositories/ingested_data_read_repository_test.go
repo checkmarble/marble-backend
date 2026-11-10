@@ -543,7 +543,7 @@ func TestListIngestedObjectsQueryWithFilters(t *testing.T) {
 				FieldName: "label",
 				Operator:  models.ExplorationFilterContains, Values: []any{"foo"},
 			},
-			expected: `"test_schema"."transactions"."label"::text ILIKE $3`,
+			expected: `"test_schema"."transactions"."label" ILIKE $3`,
 			args:     []any{"%foo%"},
 		},
 		{
@@ -552,7 +552,7 @@ func TestListIngestedObjectsQueryWithFilters(t *testing.T) {
 				FieldName: "label",
 				Operator:  models.ExplorationFilterContains, Values: []any{`100%_o\k`},
 			},
-			expected: `"test_schema"."transactions"."label"::text ILIKE $3`,
+			expected: `"test_schema"."transactions"."label" ILIKE $3`,
 			args:     []any{`%100\%\_o\\k%`},
 		},
 		{
@@ -561,7 +561,7 @@ func TestListIngestedObjectsQueryWithFilters(t *testing.T) {
 				FieldName: "ip",
 				Operator:  models.ExplorationFilterContains, Values: []any{"192.168."},
 			},
-			expected: `"test_schema"."transactions"."ip"::text ILIKE $3`,
+			expected: `host("test_schema"."transactions"."ip") ILIKE $3`,
 			args:     []any{"%192.168.%"},
 		},
 		{
@@ -647,26 +647,31 @@ func TestListIngestedObjectsQueryWithFilters(t *testing.T) {
 
 func TestListIngestedObjectsQueryRejectsInvalidFilters(t *testing.T) {
 	tests := []struct {
-		name   string
-		filter models.ExplorationFilter
+		name        string
+		filter      models.ExplorationFilter
+		errContains string
 	}{
 		{"unknown field", models.ExplorationFilter{
 			FieldName: `x" = '' OR 1=1 --`,
 			Operator:  models.ExplorationFilterIn, Values: []any{"a"},
-		}},
-		{"no values", models.ExplorationFilter{FieldName: "status", Operator: models.ExplorationFilterIn}},
-		{"unknown operator", models.ExplorationFilter{FieldName: "status", Operator: "=", Values: []any{"a"}}},
+		}, "unknown filter field"},
+		{"no values", models.ExplorationFilter{
+			FieldName: "status", Operator: models.ExplorationFilterIn,
+		}, "no value for filter"},
+		{"unknown operator", models.ExplorationFilter{
+			FieldName: "status", Operator: "=", Values: []any{"a"},
+		}, "unknown filter operator"},
 		{"contains with non string value", models.ExplorationFilter{
 			FieldName: "label",
 			Operator:  models.ExplorationFilterContains, Values: []any{1.0},
-		}},
+		}, "invalid value for contains filter"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := createQueryListIngestedObjects(TransactionTest{}, listIngestedObjectsTestTable(),
 				listIngestedObjectsTestParams(tt.filter), []string{"object_id"}, nil, 10)
-			assert.Error(t, err)
+			assert.ErrorContains(t, err, tt.errContains)
 		})
 	}
 }

@@ -576,11 +576,13 @@ const (
 	explorationMaxFilterInValues = 100
 )
 
-// explorationFilterRules gives, for each filter operator, the field types it applies to and how many values it takes.
-var explorationFilterRules = map[models.ExplorationFilterOperator]struct {
+// explorationFilterRule gives the field types a filter operator applies to, and how many values it takes.
+type explorationFilterRule struct {
 	dataTypes []models.DataType
 	maxValues int
-}{
+}
+
+var explorationFilterRules = map[models.ExplorationFilterOperator]explorationFilterRule{
 	models.ExplorationFilterContains: {[]models.DataType{models.String, models.IpAddress}, 1},
 	models.ExplorationFilterIn: {
 		[]models.DataType{models.String, models.Int, models.Float},
@@ -623,26 +625,66 @@ func validateExplorationFilters(table models.Table, filters []models.Exploration
 			return nil, invalid("expected between 1 and %d values, got %d", rule.maxValues, len(f.Values))
 		}
 
-		out[i] = models.ExplorationFilter{FieldName: f.FieldName, Operator: f.Operator, Values: make([]any, len(f.Values))}
+		// A comparison takes a single value. On an Int field, that bound can be any number: it may have to move, and
+		// the operator with it, to stay within what the column can be compared to.
+		isComparison := f.Operator == models.ExplorationFilterGreaterOrEqual ||
+			f.Operator == models.ExplorationFilterLesserOrEqual || f.Operator == models.ExplorationFilterLesser
+		if field.DataType == models.Int && isComparison {
+			bound, isNumber := f.Values[0].(float64)
+			if !isNumber {
+				return nil, invalid("value must be a number")
+			}
+			operator, intBound := normalizeIntBound(f.Operator, bound)
+			out[i] = models.ExplorationFilter{FieldName: f.FieldName, Operator: operator, Values: []any{intBound}}
+			continue
+		}
+
+		values := make([]any, len(f.Values))
 		for j, v := range f.Values {
-			value, operator, err := coerceExplorationFilterValue(field.DataType, f.Operator, v)
+			value, err := coerceExplorationFilterValue(field.DataType, f.Operator, v)
 			if err != nil {
 				return nil, invalid("%s", err)
 			}
-			out[i].Values[j], out[i].Operator = value, operator
+			values[j] = value
 		}
+		out[i] = models.ExplorationFilter{FieldName: f.FieldName, Operator: f.Operator, Values: values}
 	}
 
 	return out, nil
 }
 
+// normalizeIntBound returns the operator and the bound to use to compare an Int field, stored as a postgres INTEGER,
+// with any number:
+//   - a fractional bound moves to the nearest integer giving the same result (">= 1.5" becomes ">= 2")
+//   - a bound outside of the range of the column cannot be sent to postgres. No value is past it, so the comparison
+//     matches either every non null value or none: it becomes the equivalent ">= MinInt32" or "< MinInt32".
+func normalizeIntBound(
+	operator models.ExplorationFilterOperator,
+	bound float64,
+) (models.ExplorationFilterOperator, int64) {
+	if operator == models.ExplorationFilterLesserOrEqual {
+		bound = math.Floor(bound)
+	} else {
+		bound = math.Ceil(bound)
+	}
+	if bound >= math.MinInt32 && bound <= math.MaxInt32 {
+		return operator, int64(bound)
+	}
+
+	isLowerBound := operator == models.ExplorationFilterGreaterOrEqual
+	if matchesAll := (bound > math.MaxInt32) != isLowerBound; matchesAll {
+		return models.ExplorationFilterGreaterOrEqual, math.MinInt32
+	}
+	return models.ExplorationFilterLesser, math.MinInt32
+}
+
 // coerceExplorationFilterValue converts a filter value, received as a string or a float64, to the Go type matching
-// the field data type. It also returns the operator to apply: an out of range bound on an Int field changes it.
+// the field data type.
 func coerceExplorationFilterValue(
 	dataType models.DataType,
 	operator models.ExplorationFilterOperator,
 	value any,
-) (any, models.ExplorationFilterOperator, error) {
+) (any, error) {
 	str, isString := value.(string)
 	num, isNumber := value.(float64)
 
@@ -650,51 +692,37 @@ func coerceExplorationFilterValue(
 	case models.String, models.IpAddress:
 		switch {
 		case !isString:
-			return nil, operator, errors.New("value must be a string")
+			return nil, errors.New("value must be a string")
 		case operator == models.ExplorationFilterContains && str == "":
-			return nil, operator, errors.New("value must not be empty")
+			return nil, errors.New("value must not be empty")
 		case strings.ContainsRune(str, 0):
 			// Postgres text cannot hold a NUL character: the query would fail
-			return nil, operator, errors.New("value must not contain a NUL character")
+			return nil, errors.New("value must not contain a NUL character")
 		}
-		return str, operator, nil
+		return str, nil
 	case models.Timestamp:
 		t, err := time.Parse(time.RFC3339, str)
 		if !isString || err != nil {
-			return nil, operator, errors.New("value must be an RFC3339 timestamp")
+			return nil, errors.New("value must be an RFC3339 timestamp")
 		}
-		return t, operator, nil
-	case models.Float, models.Int:
+		return t, nil
+	case models.Float:
 		if !isNumber {
-			return nil, operator, errors.New("value must be a number")
+			return nil, errors.New("value must be a number")
 		}
-		if dataType == models.Float {
-			return num, operator, nil
+		return num, nil
+	case models.Int:
+		// Int fields are stored as postgres INTEGER. Only the values of an "in" filter get here: the bound of a
+		// comparison is more lenient, see normalizeIntBound.
+		switch {
+		case !isNumber:
+			return nil, errors.New("value must be a number")
+		case num != math.Trunc(num):
+			return nil, errors.New("value must be an integer")
+		case num < math.MinInt32 || num > math.MaxInt32:
+			return nil, errors.New("value out of range")
 		}
-		// Int fields only hold integers: move a fractional bound to the nearest integer giving the same result
-		switch operator {
-		case models.ExplorationFilterIn:
-			if num != math.Trunc(num) {
-				return nil, operator, errors.New("value must be an integer")
-			}
-		case models.ExplorationFilterLesserOrEqual:
-			num = math.Floor(num)
-		default:
-			num = math.Ceil(num)
-		}
-		// Int fields are stored as postgres INTEGER
-		if num < math.MinInt32 || num > math.MaxInt32 {
-			if operator == models.ExplorationFilterIn {
-				return nil, operator, errors.New("value out of range")
-			}
-			// No Int value is past such a bound, so it matches either every non null value or none: use
-			// the equivalent in range filter, respectively ">= MinInt32" and "< MinInt32"
-			if (num > math.MaxInt32) != (operator == models.ExplorationFilterGreaterOrEqual) {
-				return int64(math.MinInt32), models.ExplorationFilterGreaterOrEqual, nil
-			}
-			return int64(math.MinInt32), models.ExplorationFilterLesser, nil
-		}
-		return int64(num), operator, nil
+		return int64(num), nil
 	}
-	return nil, operator, errors.New("unsupported field type")
+	return nil, errors.New("unsupported field type")
 }
