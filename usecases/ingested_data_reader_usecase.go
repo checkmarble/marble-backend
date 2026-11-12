@@ -2,7 +2,10 @@ package usecases
 
 import (
 	"context"
+	"fmt"
+	"math"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -411,6 +414,12 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 		return
 	}
 
+	// The repository must only ever receive validated and typed filters
+	input.ExplorationOptions.Filters, err = validateExplorationFilters(targetTable, explo.Filters)
+	if err != nil {
+		return
+	}
+
 	// All input validation having passed, now query the objects for real
 	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, orgId)
 	if err != nil {
@@ -560,4 +569,160 @@ func (usecase IngestedDataReaderUsecase) enrichClientDataObjectWithRelatedObject
 			})
 	}
 	return baseObject, nil
+}
+
+const (
+	explorationMaxFilters        = 20
+	explorationMaxFilterInValues = 100
+)
+
+// explorationFilterRule gives the field types a filter operator applies to, and how many values it takes.
+type explorationFilterRule struct {
+	dataTypes []models.DataType
+	maxValues int
+}
+
+var explorationFilterRules = map[models.ExplorationFilterOperator]explorationFilterRule{
+	models.ExplorationFilterContains: {[]models.DataType{models.String, models.IpAddress}, 1},
+	models.ExplorationFilterIn: {
+		[]models.DataType{models.String, models.Int, models.Float},
+		explorationMaxFilterInValues,
+	},
+	models.ExplorationFilterGreaterOrEqual: {[]models.DataType{models.Int, models.Float, models.Timestamp}, 1},
+	models.ExplorationFilterLesserOrEqual:  {[]models.DataType{models.Int, models.Float, models.Timestamp}, 1},
+	models.ExplorationFilterLesser:         {[]models.DataType{models.Int, models.Float, models.Timestamp}, 1},
+}
+
+// validateExplorationFilters checks user-provided filters against the target table, and returns them with their
+// values coerced to the Go type matching the field data type. An unknown field is a NotFoundError, as for the other
+// fields of the exploration options; all other failures are UnprocessableEntityError.
+func validateExplorationFilters(table models.Table, filters []models.ExplorationFilter) ([]models.ExplorationFilter, error) {
+	if len(filters) > explorationMaxFilters {
+		return nil, errors.Wrapf(models.UnprocessableEntityError,
+			"too many filters: %d, maximum is %d", len(filters), explorationMaxFilters)
+	}
+
+	out := make([]models.ExplorationFilter, len(filters))
+	for i, f := range filters {
+		field, ok := table.Fields[f.FieldName]
+		if !ok {
+			return nil, errors.Wrapf(models.NotFoundError,
+				"Field '%s' not found in table '%s' in ReadIngestedClientObjects", f.FieldName, table.Name)
+		}
+		invalid := func(format string, args ...any) error {
+			return errors.Wrapf(models.UnprocessableEntityError, "invalid filter '%s' on field '%s' of type %s: %s",
+				f.Operator, f.FieldName, field.DataType, fmt.Sprintf(format, args...))
+		}
+
+		rule, ok := explorationFilterRules[f.Operator]
+		if !ok {
+			return nil, invalid("unknown operator")
+		}
+		if !slices.Contains(rule.dataTypes, field.DataType) {
+			return nil, invalid("operator not supported for this field type")
+		}
+		if len(f.Values) < 1 || len(f.Values) > rule.maxValues {
+			return nil, invalid("expected between 1 and %d values, got %d", rule.maxValues, len(f.Values))
+		}
+
+		// A comparison takes a single value. On an Int field, that bound can be any number: it may have to move, and
+		// the operator with it, to stay within what the column can be compared to.
+		isComparison := f.Operator == models.ExplorationFilterGreaterOrEqual ||
+			f.Operator == models.ExplorationFilterLesserOrEqual || f.Operator == models.ExplorationFilterLesser
+		if field.DataType == models.Int && isComparison {
+			bound, isNumber := f.Values[0].(float64)
+			if !isNumber {
+				return nil, invalid("value must be a number")
+			}
+			operator, intBound := normalizeIntBound(f.Operator, bound)
+			out[i] = models.ExplorationFilter{FieldName: f.FieldName, Operator: operator, Values: []any{intBound}}
+			continue
+		}
+
+		values := make([]any, len(f.Values))
+		for j, v := range f.Values {
+			value, err := coerceExplorationFilterValue(field.DataType, f.Operator, v)
+			if err != nil {
+				return nil, invalid("%s", err)
+			}
+			values[j] = value
+		}
+		out[i] = models.ExplorationFilter{FieldName: f.FieldName, Operator: f.Operator, Values: values}
+	}
+
+	return out, nil
+}
+
+// normalizeIntBound returns the operator and the bound to use to compare an Int field, stored as a postgres INTEGER,
+// with any number:
+//   - a fractional bound moves to the nearest integer giving the same result (">= 1.5" becomes ">= 2")
+//   - a bound outside of the range of the column cannot be sent to postgres. No value is past it, so the comparison
+//     matches either every non null value or none: it becomes the equivalent ">= MinInt32" or "< MinInt32".
+func normalizeIntBound(
+	operator models.ExplorationFilterOperator,
+	bound float64,
+) (models.ExplorationFilterOperator, int64) {
+	if operator == models.ExplorationFilterLesserOrEqual {
+		bound = math.Floor(bound)
+	} else {
+		bound = math.Ceil(bound)
+	}
+	if bound >= math.MinInt32 && bound <= math.MaxInt32 {
+		return operator, int64(bound)
+	}
+
+	isLowerBound := operator == models.ExplorationFilterGreaterOrEqual
+	if matchesAll := (bound > math.MaxInt32) != isLowerBound; matchesAll {
+		return models.ExplorationFilterGreaterOrEqual, math.MinInt32
+	}
+	return models.ExplorationFilterLesser, math.MinInt32
+}
+
+// coerceExplorationFilterValue converts a filter value, received as a string or a float64, to the Go type matching
+// the field data type.
+func coerceExplorationFilterValue(
+	dataType models.DataType,
+	operator models.ExplorationFilterOperator,
+	value any,
+) (any, error) {
+	str, isString := value.(string)
+	num, isNumber := value.(float64)
+
+	switch dataType {
+	case models.String, models.IpAddress:
+		switch {
+		case !isString:
+			return nil, errors.New("value must be a string")
+		case operator == models.ExplorationFilterContains && str == "":
+			return nil, errors.New("value must not be empty")
+		case strings.ContainsRune(str, 0):
+			// Postgres text cannot hold a NUL character: the query would fail
+			return nil, errors.New("value must not contain a NUL character")
+		}
+		return str, nil
+	case models.Timestamp:
+		t, err := time.Parse(time.RFC3339, str)
+		if !isString || err != nil {
+			return nil, errors.New("value must be an RFC3339 timestamp")
+		}
+		return t, nil
+	case models.Float:
+		if !isNumber {
+			return nil, errors.New("value must be a number")
+		}
+		return num, nil
+	case models.Int:
+		// Int fields are stored as postgres INTEGER. Only the values of an "in" filter get here: the bound of a
+		// comparison is more lenient, see normalizeIntBound.
+		switch {
+		case !isNumber:
+			return nil, errors.New("value must be a number")
+		case num != math.Trunc(num):
+			return nil, errors.New("value must be an integer")
+		case num < math.MinInt32 || num > math.MaxInt32:
+			return nil, errors.New("value out of range")
+		}
+		return int64(num), nil
+	}
+	return nil, errors.New("unsupported field type")
 }

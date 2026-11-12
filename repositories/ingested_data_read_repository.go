@@ -8,6 +8,7 @@ import (
 	"maps"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -840,6 +841,90 @@ func addConditionForOperator(query squirrel.SelectBuilder, fieldName string, fie
 	}
 }
 
+// likeEscaper escapes the LIKE wildcards and the default LIKE escape character (backslash)
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
+// createQueryListIngestedObjects builds the page query of ListIngestedObjects. cursorValues is either nil (first page)
+// or the (ordering field value, object_id) of the cursor object. params.Filters must have been validated and typed
+// by the caller: values are only ever passed as bound parameters.
+func createQueryListIngestedObjects(
+	exec Executor,
+	table models.Table,
+	params models.ExplorationOptions,
+	columnNames []string,
+	cursorValues []any,
+	limit int,
+) (squirrel.SelectBuilder, error) {
+	qualifiedTableName := pgIdentifierWithSchema(exec, table.Name)
+	filterFieldName := pgIdentifierWithSchema(exec, table.Name,
+		params.FilterFieldName)
+	qualifiedOrderingField := pgIdentifierWithSchema(exec, table.Name,
+		params.OrderingFieldName)
+
+	var filterFieldValue any
+	if params.FilterFieldValue.StringValue != nil {
+		filterFieldValue = *params.FilterFieldValue.StringValue
+	} else if params.FilterFieldValue.FloatValue != nil {
+		filterFieldValue = *params.FilterFieldValue.FloatValue
+	} else {
+		return squirrel.SelectBuilder{}, errors.New("invalid nil filter field value")
+	}
+
+	q := NewQueryBuilder().
+		Select(columnNames...).
+		From(qualifiedTableName).
+		Where(squirrel.Eq{filterFieldName: filterFieldValue}).
+		Where(rowIsValid(qualifiedTableName)).
+		OrderBy(qualifiedOrderingField+" DESC", "object_id DESC").
+		Limit(uint64(limit))
+	if cursorValues != nil {
+		q = q.Where(fmt.Sprintf("(%s, %s) < (?, ?)", qualifiedOrderingField, "object_id"), cursorValues...)
+	}
+
+	for _, f := range params.Filters {
+		field, ok := table.Fields[f.FieldName]
+		if !ok {
+			return squirrel.SelectBuilder{}, errors.Newf("unknown filter field %s in ListIngestedObjects", f.FieldName)
+		}
+		if len(f.Values) == 0 {
+			return squirrel.SelectBuilder{}, errors.Newf(
+				"no value for filter on field %s in ListIngestedObjects", f.FieldName)
+		}
+		qualifiedFieldName := pgIdentifierWithSchema(exec, table.Name, f.FieldName)
+
+		var err error
+		switch f.Operator {
+		case models.ExplorationFilterContains:
+			value, ok := f.Values[0].(string)
+			if !ok {
+				return squirrel.SelectBuilder{}, errors.Newf(
+					"invalid value for contains filter on field %s in ListIngestedObjects", f.FieldName)
+			}
+			searchedText := qualifiedFieldName
+			if field.DataType == models.IpAddress {
+				// The text of an inet includes its netmask ("10.0.0.1/32"): only search in the address
+				searchedText = fmt.Sprintf("host(%s)", qualifiedFieldName)
+			}
+			q = q.Where(squirrel.ILike{searchedText: "%" + likeEscaper.Replace(value) + "%"})
+		case models.ExplorationFilterIn:
+			q, err = addConditionForOperator(q, qualifiedFieldName, field.DataType, ast.FILTER_IS_IN_LIST, f.Values)
+		case models.ExplorationFilterGreaterOrEqual:
+			q, err = addConditionForOperator(q, qualifiedFieldName, field.DataType, ast.FILTER_GREATER_OR_EQUAL, f.Values[0])
+		case models.ExplorationFilterLesserOrEqual:
+			q, err = addConditionForOperator(q, qualifiedFieldName, field.DataType, ast.FILTER_LESSER_OR_EQUAL, f.Values[0])
+		case models.ExplorationFilterLesser:
+			q, err = addConditionForOperator(q, qualifiedFieldName, field.DataType, ast.FILTER_LESSER, f.Values[0])
+		default:
+			err = errors.Newf("unknown filter operator %s in ListIngestedObjects", f.Operator)
+		}
+		if err != nil {
+			return squirrel.SelectBuilder{}, err
+		}
+	}
+
+	return q, nil
+}
+
 func (repo *IngestedDataReadRepositoryImpl) ListIngestedObjects(
 	ctx context.Context,
 	exec Executor,
@@ -866,17 +951,7 @@ func (repo *IngestedDataReadRepositoryImpl) ListIngestedObjects(
 	}
 	columnNames = append(columnNames, "valid_from")
 
-	qualifiedTableName := pgIdentifierWithSchema(exec, table.Name)
-	filterFieldName := pgIdentifierWithSchema(exec, table.Name,
-		params.FilterFieldName)
-	qualifiedOrderingField := pgIdentifierWithSchema(exec, table.Name,
-		params.OrderingFieldName)
-
-	type pagination struct {
-		fields string
-		values []any
-	}
-	var paginationValues *pagination
+	var cursorValues []any
 	if cursorId != nil {
 		cursorObjects, err := repo.QueryIngestedObject(ctx, exec, table, *cursorId)
 		if err != nil {
@@ -895,33 +970,12 @@ func (repo *IngestedDataReadRepositoryImpl) ListIngestedObjects(
 		if !ok {
 			return nil, errors.Newf("field %s not found in cursor object", "object_id")
 		}
-		paginationValues = &pagination{
-			fields: fmt.Sprintf("(%s, %s) < (?, ?)", qualifiedOrderingField, "object_id"),
-			values: []any{orderFieldVal, cursorObjectId},
-		}
-
+		cursorValues = []any{orderFieldVal, cursorObjectId}
 	}
 
-	var filterFieldValue any
-	if params.FilterFieldValue.StringValue != nil {
-		filterFieldValue = *params.FilterFieldValue.StringValue
-	} else if params.FilterFieldValue.FloatValue != nil {
-		filterFieldValue = *params.FilterFieldValue.FloatValue
-	} else {
-		return nil, errors.New("invalid nil filter field value")
-	}
-
-	q := NewQueryBuilder().
-		Select(columnNames...).
-		From(qualifiedTableName).
-		Where(squirrel.Eq{
-			filterFieldName: filterFieldValue,
-			fmt.Sprintf("%s.valid_until", qualifiedTableName): "Infinity",
-		}).
-		OrderBy(qualifiedOrderingField+" DESC", "object_id DESC").
-		Limit(uint64(limit))
-	if paginationValues != nil {
-		q = q.Where(paginationValues.fields, paginationValues.values...)
+	q, err := createQueryListIngestedObjects(exec, table, params, columnNames, cursorValues, limit)
+	if err != nil {
+		return nil, err
 	}
 
 	sql, args, err := q.ToSql()
