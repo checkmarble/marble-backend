@@ -101,3 +101,65 @@ func TestEvalTestRunScenarioUsesCachedScreeningForOutcome(t *testing.T) {
 		})
 	}
 }
+
+func TestEvalTestRunScenarioReplaysChangedScreeningBeforeCachedScreening(t *testing.T) {
+	ctx := utils.StoreLoggerInContext(context.Background(), slog.New(slog.DiscardHandler))
+	liveID, testID := uuid.NewString(), uuid.NewString()
+	scenario := models.Scenario{Id: uuid.NewString(), LiveVersionID: &liveID, TriggerObjectType: "transactions"}
+	liveA := models.ScreeningConfig{
+		Id: "live-A", StableId: "A", ScenarioIterationId: liveID, ForcedOutcome: models.Decline,
+		Query: map[string]ast.Node{"name": {Constant: "old A"}},
+	}
+	testA := liveA
+	testA.Id, testA.ScenarioIterationId = "test-A", testID
+	testA.Query = map[string]ast.Node{"name": {Constant: "new A"}}
+	liveB := models.ScreeningConfig{
+		Id: "live-B", StableId: "B", ScenarioIterationId: liveID, ForcedOutcome: models.Review,
+		Query: map[string]ast.Node{"name": {Constant: "B"}},
+	}
+	testB := liveB
+	testB.Id, testB.ScenarioIterationId = "test-B", testID
+	repo := cachedScreeningScenarioRepository{
+		iteration: models.ScenarioIteration{
+			Id: testID, Version: new(2), ScoreReviewThreshold: new(10),
+			ScoreBlockAndReviewThreshold: new(20), ScoreDeclineThreshold: new(30),
+		},
+		configs: map[string][]models.ScreeningConfig{liveID: {liveA, liveB}, testID: {testA, testB}},
+	}
+	executor := &mocks.Executor{}
+	factory := &mocks.ExecutorFactory{}
+	factory.On("NewExecutor").Return(executor)
+	testRuns := &mocks.ScenarioTestrunRepository{}
+	testRuns.On("ListTestRunsByScenarioID", mock.Anything, executor, scenario.Id, models.Up).
+		Return([]models.ScenarioTestRun{{Id: "test-run", Status: models.Up, ScenarioIterationId: testID, ScenarioLiveIterationId: liveID}}, nil)
+	evaluator, screeningExecutor := getScreeningEvaluator()
+	screeningExecutor.Mock.On("Execute", mock.Anything, scenario.OrganizationId, mock.Anything).Return().Once()
+	evaluator.executorFactory = factory
+	evaluator.scenarioTestRunRepository = testRuns
+	evaluator.evalScenarioRepository = repo
+	evaluator.evalScreeningConfigRepository = repo
+	cachedA := models.ScreeningWithMatches{Screening: models.Screening{
+		Id: "cached-A", ScreeningConfigId: liveA.Id, Status: models.ScreeningStatusNoHit,
+	}}
+	cachedB := models.ScreeningWithMatches{Screening: models.Screening{
+		Id: "cached-B", ScreeningConfigId: liveB.Id, Status: models.ScreeningStatusInReview, NumberOfMatches: 1,
+	}}
+
+	triggered, result, err := evaluator.EvalTestRunScenario(ctx, ScenarioEvaluationParameters{
+		Scenario:     scenario,
+		ClientObject: models.ClientObject{TableName: "transactions", Data: map[string]any{"object_id": "transaction"}},
+		CachedScreenings: map[string]models.ScreeningWithMatches{
+			liveA.Id: cachedA, liveB.Id: cachedB,
+		},
+	})
+
+	require.NoError(t, err)
+	require.True(t, triggered)
+	require.Len(t, result.ScreeningExecutions, 2)
+	assert.Equal(t, testA.Id, result.ScreeningExecutions[0].ScreeningConfigId)
+	assert.NotEmpty(t, result.ScreeningExecutions[0].Id)
+	assert.NotEqual(t, cachedA.Id, result.ScreeningExecutions[0].Id)
+	assert.Equal(t, cachedB, result.ScreeningExecutions[1])
+	assert.Equal(t, models.Review, result.Outcome)
+	screeningExecutor.Mock.AssertNumberOfCalls(t, "Execute", 1)
+}
