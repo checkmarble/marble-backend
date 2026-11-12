@@ -30,6 +30,9 @@ type UserUseCase struct {
 }
 
 func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.CreateUser) (models.User, error) {
+	if !slices.Contains(models.GetValidUserRoles(), createUser.Role) {
+		return models.User{}, errors.Wrap(models.BadParameterError, "invalid user role")
+	}
 	// Only marble admins can exist outside of an organization
 	if createUser.OrganizationId == uuid.Nil && createUser.Role != models.MARBLE_ADMIN {
 		return models.User{}, errors.Wrap(models.BadParameterError,

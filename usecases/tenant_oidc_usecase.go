@@ -58,14 +58,14 @@ func NewTenantOIDCUsecase(
 }
 
 func (usecase TenantOIDCUsecase) GetConfiguration(ctx context.Context, tenantId uuid.UUID) (models.TenantOIDCConfiguration, error) {
-	if err := usecase.enforceSecurity.UpdateTenant(tenantId); err != nil {
+	if err := usecase.enforceSecurity.UpdateTenantOIDC(tenantId); err != nil {
 		return models.TenantOIDCConfiguration{}, err
 	}
 	return usecase.repository.GetTenantOIDCConfiguration(ctx, usecase.executorFactory.NewExecutor(), tenantId)
 }
 
 func (usecase TenantOIDCUsecase) SaveConfiguration(ctx context.Context, tenantId uuid.UUID, input TenantOIDCConfigurationInput) error {
-	if err := usecase.enforceSecurity.UpdateTenant(tenantId); err != nil {
+	if err := usecase.enforceSecurity.UpdateTenantOIDC(tenantId); err != nil {
 		return err
 	}
 	if !usecase.ssoEnabled {
@@ -116,7 +116,7 @@ func tenantOIDCScopes(scopes []string) []string {
 }
 
 func (usecase TenantOIDCUsecase) DeleteConfiguration(ctx context.Context, tenantId uuid.UUID) error {
-	if err := usecase.enforceSecurity.UpdateTenant(tenantId); err != nil {
+	if err := usecase.enforceSecurity.UpdateTenantOIDC(tenantId); err != nil {
 		return err
 	}
 	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {

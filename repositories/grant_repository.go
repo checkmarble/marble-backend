@@ -23,6 +23,29 @@ type GrantRepository interface {
 	ReassignTenantGrants(ctx context.Context, tx Transaction, targetId uuid.UUID, sourceIds []uuid.UUID) error
 }
 
+func (repo *MarbleDbRepository) CreateApiKeyGrant(ctx context.Context, tx Transaction, apiKeyID string, grant models.Grant) error {
+	if err := validateMarbleDbExecutor(tx); err != nil {
+		return err
+	}
+	scopeColumn, scopeID := "organization_id", grant.OrganizationId
+	if grant.TenantId != uuid.Nil {
+		scopeColumn, scopeID = "tenant_id", grant.TenantId
+	}
+	return ExecBuilder(ctx, tx, NewQueryBuilder().Insert(dbmodels.TABLE_GRANTS).
+		Columns("id", "principal_type", "principal_id", "principal_authority", scopeColumn, "role").
+		Values(pure_utils.NewId(), "api_key", apiKeyID, "marble", scopeID, grant.Role.String()).
+		Suffix("ON CONFLICT DO NOTHING"))
+}
+
+func (repo *MarbleDbRepository) RevokeApiKeyGrants(ctx context.Context, tx Transaction, apiKeyID string) error {
+	if err := validateMarbleDbExecutor(tx); err != nil {
+		return err
+	}
+	return ExecBuilder(ctx, tx, NewQueryBuilder().Update(dbmodels.TABLE_GRANTS).
+		Set("revoked_at", squirrel.Expr("NOW()")).
+		Where(squirrel.Eq{"principal_type": "api_key", "principal_id": apiKeyID, "revoked_at": nil}))
+}
+
 func (repo *MarbleDbRepository) EnsureTenantAdminForOrganization(ctx context.Context, exec Executor, userID string, organizationID uuid.UUID) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err

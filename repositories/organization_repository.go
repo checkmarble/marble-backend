@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 type OrganizationRepository interface {
@@ -38,6 +39,19 @@ type OrganizationRepository interface {
 	UpdateOrganizationAllowedNetworks(ctx context.Context, exec Executor, orgId uuid.UUID,
 		subnets []net.IPNet) ([]net.IPNet, error)
 	ReassignOrganizationsToTenant(ctx context.Context, exec Executor, targetId uuid.UUID, sourceIds []uuid.UUID) error
+}
+
+func (repo *MarbleDbRepository) LockOrganizationTenant(ctx context.Context, tx Transaction, organizationID uuid.UUID) (uuid.UUID, error) {
+	if err := validateMarbleDbExecutor(tx); err != nil {
+		return uuid.Nil, err
+	}
+	return SqlToRow(ctx, tx, NewQueryBuilder().Select("tenant_id").
+		From(dbmodels.TABLE_ORGANIZATION).Where(squirrel.Eq{"id": organizationID, "deleted_at": nil}).
+		Suffix("FOR SHARE"), func(row pgx.CollectableRow) (uuid.UUID, error) {
+		var id uuid.UUID
+		err := row.Scan(&id)
+		return id, err
+	})
 }
 
 func (repo *MarbleDbRepository) ReassignOrganizationsToTenant(
