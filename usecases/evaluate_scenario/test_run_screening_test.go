@@ -48,13 +48,20 @@ func TestEvalTestRunScenarioUsesCachedScreeningForOutcome(t *testing.T) {
 			testConfig := liveConfig
 			liveConfig.ScenarioIterationId = liveID
 			testConfig.Id, testConfig.ScenarioIterationId, testConfig.Threshold = "test-config", testID, new(70)
+			secondLiveConfig := models.ScreeningConfig{
+				Id: "second-live-config", StableId: "second-screening", ScenarioIterationId: liveID, ForcedOutcome: models.Decline,
+			}
+			secondTestConfig := secondLiveConfig
+			secondTestConfig.Id, secondTestConfig.ScenarioIterationId = "second-test-config", testID
 			repo := cachedScreeningScenarioRepository{
 				iteration: models.ScenarioIteration{
 					Id: testID, Version: new(2), ScoreReviewThreshold: new(10),
 					ScoreBlockAndReviewThreshold: new(20), ScoreDeclineThreshold: new(30),
 					Rules: []models.Rule{{Id: "rule", FormulaAstExpression: &ast.Node{Constant: true}, ScoreModifier: tt.score}},
 				},
-				configs: map[string][]models.ScreeningConfig{liveID: {liveConfig}, testID: {testConfig}},
+				configs: map[string][]models.ScreeningConfig{
+					liveID: {liveConfig, secondLiveConfig}, testID: {testConfig, secondTestConfig},
+				},
 			}
 			executor := &mocks.Executor{}
 			factory := &mocks.ExecutorFactory{}
@@ -71,18 +78,24 @@ func TestEvalTestRunScenarioUsesCachedScreeningForOutcome(t *testing.T) {
 			if tt.matches > 0 {
 				status = models.ScreeningStatusInReview
 			}
+			firstScreening := models.ScreeningWithMatches{Screening: models.Screening{
+				Id: "live-screening", ScreeningConfigId: liveConfig.Id, Status: status, NumberOfMatches: tt.matches,
+			}}
+			secondScreening := models.ScreeningWithMatches{Screening: models.Screening{
+				Id: "second-live-screening", ScreeningConfigId: secondLiveConfig.Id, Status: models.ScreeningStatusNoHit,
+			}}
 
 			triggered, result, err := evaluator.EvalTestRunScenario(ctx, ScenarioEvaluationParameters{
 				Scenario:     scenario,
 				ClientObject: models.ClientObject{TableName: "transactions", Data: map[string]any{"object_id": "transaction"}},
-				CachedScreenings: map[string]models.ScreeningWithMatches{liveID: {Screening: models.Screening{
-					Id: "live-screening", Status: status, NumberOfMatches: tt.matches,
-				}}},
+				CachedScreenings: map[string]models.ScreeningWithMatches{
+					liveConfig.Id: firstScreening, secondLiveConfig.Id: secondScreening,
+				},
 			})
 
 			require.NoError(t, err)
 			require.True(t, triggered)
-			require.Len(t, result.ScreeningExecutions, 1)
+			assert.Equal(t, []models.ScreeningWithMatches{firstScreening, secondScreening}, result.ScreeningExecutions)
 			assert.Equal(t, tt.want, result.Outcome)
 			assert.Equal(t, "test-run", result.TestRunId)
 		})

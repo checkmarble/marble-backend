@@ -48,7 +48,7 @@ type ScenarioEvaluationParameters struct {
 	// Pivots is the set of candidate pivots for the trigger table (polymorphic belongs_to:
 	// at most one applies per row). The applicable one is resolved per row at evaluation time.
 	Pivots           []models.Pivot
-	CachedScreenings map[string]models.ScreeningWithMatches
+	CachedScreenings map[string]models.ScreeningWithMatches // Keyed by live screening configuration ID.
 	ConcurrentRules  int
 	// Asynchronously write the decision. If set, persisting the decision will be done in
 	// a worker.
@@ -506,10 +506,12 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 			return false, se, err
 		}
 
+		// Match each test configuration to its live counterpart by stable ID, then reuse
+		// the live result only if it is cached and both configurations have the same query.
 		for _, testVersionScc := range sccs {
 			for _, liveVersionScc := range liveVersionSccs {
 				if testVersionScc.StableId == liveVersionScc.StableId {
-					if cached, ok := params.CachedScreenings[liveVersionScc.ScenarioIterationId]; ok {
+					if cached, ok := params.CachedScreenings[liveVersionScc.Id]; ok {
 						if liveVersionScc.HasSameQuery(testVersionScc) {
 							copiedScreening = append(copiedScreening, cached)
 							copiedScreeningConfigs = append(copiedScreeningConfigs, testVersionScc)
