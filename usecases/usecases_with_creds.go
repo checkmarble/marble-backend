@@ -596,12 +596,15 @@ func (usecases *UsecasesWithCreds) NewTagUseCase() TagUseCase {
 
 func (usecases *UsecasesWithCreds) NewApiKeyUseCase() ApiKeyUseCase {
 	return ApiKeyUseCase{
-		executorFactory: usecases.NewExecutorFactory(),
+		executorFactory:    usecases.NewExecutorFactory(),
+		transactionFactory: usecases.NewTransactionFactory(),
 		enforceSecurity: &security.EnforceSecurityApiKeyImpl{
 			EnforceSecurity: usecases.NewEnforceSecurity(),
 			Credentials:     usecases.Credentials,
 		},
-		apiKeyRepository: usecases.Repositories.MarbleDbRepository,
+		apiKeyRepository:       usecases.Repositories.MarbleDbRepository,
+		grantRepository:        usecases.Repositories.MarbleDbRepository,
+		organizationRepository: usecases.Repositories.MarbleDbRepository,
 	}
 }
 
