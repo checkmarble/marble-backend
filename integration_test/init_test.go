@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/dockertest/v3"
@@ -191,6 +192,7 @@ func TestMain(m *testing.M) {
 		infra.GcpConfig{},
 		repositories.WithRiverClient(riverClient),
 		repositories.WithRedisClient(redisClient),
+		repositories.WithOIDCSecretsKeeper(auditTestKeeper{}),
 	)
 
 	firebaseAdminClient := &mocks.FirebaseAdminClient{}
@@ -211,6 +213,9 @@ func TestMain(m *testing.M) {
 		FirebaseConfig: api.FirebaseConfig{
 			ProjectId: "project",
 		},
+		TenantOIDCRegistry: infra.NewTenantOIDCRegistry(func(context.Context, uuid.UUID) (models.TenantOIDCConfiguration, error) {
+			return models.TenantOIDCConfiguration{}, models.NotFoundError
+		}, "", false),
 	}
 	testUsecases = usecases.NewUsecases(
 		repos,
