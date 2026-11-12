@@ -928,7 +928,7 @@ func (usecase *DecisionUsecase) executeTestRun(
 		evaluationParameters.CachedScreenings = pure_utils.MapSliceToMap(
 			scenarioExecution.ScreeningExecutions,
 			func(scm models.ScreeningWithMatches) (string, models.ScreeningWithMatches) {
-				return scenarioExecution.ScenarioIterationId.String(), scm
+				return scm.ScreeningConfigId, scm
 			},
 		)
 	}

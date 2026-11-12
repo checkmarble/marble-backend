@@ -739,7 +739,7 @@ func (c *BatchExecutionCoordinator) testRunCallback(
 			evalParams.CachedScreenings = pure_utils.MapSliceToMap(
 				o.scenarioExecution.ScreeningExecutions,
 				func(scm models.ScreeningWithMatches) (string, models.ScreeningWithMatches) {
-					return o.scenarioExecution.ScenarioIterationId.String(), scm
+					return scm.ScreeningConfigId, scm
 				},
 			)
 		}
