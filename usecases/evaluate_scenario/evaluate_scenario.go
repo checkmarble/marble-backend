@@ -515,7 +515,9 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 						if liveVersionScc.HasSameQuery(testVersionScc) {
 							copiedScreening = append(copiedScreening, cached)
 							copiedScreeningConfigs = append(copiedScreeningConfigs, testVersionScc)
-							sccsToRun = slices.Delete(sccsToRun, 0, 1)
+							sccsToRun = slices.DeleteFunc(sccsToRun, func(scc models.ScreeningConfig) bool {
+								return scc.Id == testVersionScc.Id
+							})
 							break
 						}
 					}
