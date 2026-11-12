@@ -8,26 +8,12 @@ import (
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
-	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-type cachedScreeningScenarioRepository struct {
-	iteration models.ScenarioIteration
-	configs   map[string][]models.ScreeningConfig
-}
-
-func (r cachedScreeningScenarioRepository) GetScenarioIteration(context.Context, repositories.Executor, string, bool) (models.ScenarioIteration, error) {
-	return r.iteration, nil
-}
-
-func (r cachedScreeningScenarioRepository) ListScreeningConfigs(_ context.Context, _ repositories.Executor, iterationID string, _ bool) ([]models.ScreeningConfig, error) {
-	return r.configs[iterationID], nil
-}
 
 func TestEvalTestRunScenarioUsesCachedScreeningForOutcome(t *testing.T) {
 	for _, tt := range []struct {
@@ -53,17 +39,19 @@ func TestEvalTestRunScenarioUsesCachedScreeningForOutcome(t *testing.T) {
 			}
 			secondTestConfig := secondLiveConfig
 			secondTestConfig.Id, secondTestConfig.ScenarioIterationId = "second-test-config", testID
-			repo := cachedScreeningScenarioRepository{
-				iteration: models.ScenarioIteration{
-					Id: testID, Version: new(2), ScoreReviewThreshold: new(10),
-					ScoreBlockAndReviewThreshold: new(20), ScoreDeclineThreshold: new(30),
-					Rules: []models.Rule{{Id: "rule", FormulaAstExpression: &ast.Node{Constant: true}, ScoreModifier: tt.score}},
-				},
-				configs: map[string][]models.ScreeningConfig{
-					liveID: {liveConfig, secondLiveConfig}, testID: {testConfig, secondTestConfig},
-				},
+			iteration := models.ScenarioIteration{
+				Id: testID, Version: new(2), ScoreReviewThreshold: new(10),
+				ScoreBlockAndReviewThreshold: new(20), ScoreDeclineThreshold: new(30),
+				Rules: []models.Rule{{Id: "rule", FormulaAstExpression: &ast.Node{Constant: true}, ScoreModifier: tt.score}},
 			}
 			executor := &mocks.Executor{}
+			iterations := &mocks.ScenarioIterationReadRepository{}
+			iterations.On("GetScenarioIteration", mock.Anything, executor, testID, true).Return(iteration, nil)
+			configs := &mocks.ScreeningConfigRepository{}
+			configs.On("ListScreeningConfigs", mock.Anything, executor, testID, true).
+				Return([]models.ScreeningConfig{testConfig, secondTestConfig}, nil)
+			configs.On("ListScreeningConfigs", mock.Anything, executor, liveID, true).
+				Return([]models.ScreeningConfig{liveConfig, secondLiveConfig}, nil)
 			factory := &mocks.ExecutorFactory{}
 			factory.On("NewExecutor").Return(executor)
 			testRuns := &mocks.ScenarioTestrunRepository{}
@@ -71,7 +59,7 @@ func TestEvalTestRunScenarioUsesCachedScreeningForOutcome(t *testing.T) {
 				Return([]models.ScenarioTestRun{{Id: "test-run", Status: models.Up, ScenarioIterationId: testID, ScenarioLiveIterationId: liveID}}, nil)
 			evaluator := ScenarioEvaluator{
 				executorFactory: factory, scenarioTestRunRepository: testRuns,
-				evalScenarioRepository: repo, evalScreeningConfigRepository: repo,
+				evalScenarioRepository: iterations, evalScreeningConfigRepository: configs,
 				evaluateAstExpression: alwaysHitAstEvaluator{},
 			}
 			status := models.ScreeningStatusNoHit
@@ -119,14 +107,18 @@ func TestEvalTestRunScenarioReplaysChangedScreeningBeforeCachedScreening(t *test
 	}
 	testB := liveB
 	testB.Id, testB.ScenarioIterationId = "test-B", testID
-	repo := cachedScreeningScenarioRepository{
-		iteration: models.ScenarioIteration{
-			Id: testID, Version: new(2), ScoreReviewThreshold: new(10),
-			ScoreBlockAndReviewThreshold: new(20), ScoreDeclineThreshold: new(30),
-		},
-		configs: map[string][]models.ScreeningConfig{liveID: {liveA, liveB}, testID: {testA, testB}},
+	iteration := models.ScenarioIteration{
+		Id: testID, Version: new(2), ScoreReviewThreshold: new(10),
+		ScoreBlockAndReviewThreshold: new(20), ScoreDeclineThreshold: new(30),
 	}
 	executor := &mocks.Executor{}
+	iterations := &mocks.ScenarioIterationReadRepository{}
+	iterations.On("GetScenarioIteration", mock.Anything, executor, testID, true).Return(iteration, nil)
+	configs := &mocks.ScreeningConfigRepository{}
+	configs.On("ListScreeningConfigs", mock.Anything, executor, testID, true).
+		Return([]models.ScreeningConfig{testA, testB}, nil)
+	configs.On("ListScreeningConfigs", mock.Anything, executor, liveID, true).
+		Return([]models.ScreeningConfig{liveA, liveB}, nil)
 	factory := &mocks.ExecutorFactory{}
 	factory.On("NewExecutor").Return(executor)
 	testRuns := &mocks.ScenarioTestrunRepository{}
@@ -136,8 +128,8 @@ func TestEvalTestRunScenarioReplaysChangedScreeningBeforeCachedScreening(t *test
 	screeningExecutor.Mock.On("Execute", mock.Anything, scenario.OrganizationId, mock.Anything).Return().Once()
 	evaluator.executorFactory = factory
 	evaluator.scenarioTestRunRepository = testRuns
-	evaluator.evalScenarioRepository = repo
-	evaluator.evalScreeningConfigRepository = repo
+	evaluator.evalScenarioRepository = iterations
+	evaluator.evalScreeningConfigRepository = configs
 	cachedA := models.ScreeningWithMatches{Screening: models.Screening{
 		Id: "cached-A", ScreeningConfigId: liveA.Id, Status: models.ScreeningStatusNoHit,
 	}}
