@@ -532,3 +532,28 @@ func (usecase *UserUseCase) UpdateRolePermissions(ctx context.Context, slug mode
 
 	return usecase.userRepository.GetRoleBySlug(ctx, exec, usecase.enforceUserSecurity.OrgId(), slug)
 }
+
+func (usecase *UserUseCase) DeleteRole(ctx context.Context, slug models.Role) error {
+	if err := usecase.enforceUserSecurity.ManageRoles(); err != nil {
+		return err
+	}
+	if !slug.IsValidCustom() {
+		return errors.Wrap(models.BadParameterError, "invalid custom role slug")
+	}
+
+	orgId := usecase.enforceUserSecurity.OrgId()
+
+	role, err := usecase.userRepository.GetRoleBySlug(ctx, usecase.executorFactory.NewExecutor(), orgId, slug)
+	if err != nil {
+		return err
+	}
+
+	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		return usecase.userRepository.DeleteRole(ctx, tx, orgId, role.Id)
+	})
+	if repositories.IsForeignKeyViolationError(err) {
+		return errors.Wrap(models.ConflictError, "role is still bound to principals")
+	}
+
+	return err
+}
