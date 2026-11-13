@@ -558,6 +558,27 @@ func (repo *MarbleDbRepository) GetContinuousScreeningByObjectId(
 	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningWithMatches)
 }
 
+// LockContinuousScreeningByMatchId locks the screening that owns the match until the transaction ends.
+// Reviews of the same screening then run one after another, and each one sees the matches the previous
+// one reviewed: without it, two reviews of the last two pending matches each count the other as pending,
+// and neither moves the screening out of review.
+func (repo *MarbleDbRepository) LockContinuousScreeningByMatchId(ctx context.Context, exec Executor, matchId uuid.UUID) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	return ExecBuilder(ctx, exec, lockContinuousScreeningByMatchIdQuery(matchId))
+}
+
+func lockContinuousScreeningByMatchIdQuery(matchId uuid.UUID) squirrel.SelectBuilder {
+	return NewQueryBuilder().
+		Select("cs.id").
+		From(dbmodels.TABLE_CONTINUOUS_SCREENINGS + " AS cs").
+		Join(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES + " AS csm ON csm.continuous_screening_id = cs.id").
+		Where(squirrel.Eq{"csm.id": matchId}).
+		Suffix("FOR UPDATE OF cs")
+}
+
 func (repo *MarbleDbRepository) GetContinuousScreeningMatch(ctx context.Context, exec Executor, id uuid.UUID) (models.ContinuousScreeningMatch, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.ContinuousScreeningMatch{}, err

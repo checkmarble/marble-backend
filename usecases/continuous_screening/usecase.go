@@ -119,6 +119,11 @@ type ContinuousScreeningUsecaseRepository interface {
 	) error
 
 	// Continuous screening matches
+	LockContinuousScreeningByMatchId(
+		ctx context.Context,
+		exec repositories.Executor,
+		matchId uuid.UUID,
+	) error
 	GetContinuousScreeningMatch(
 		ctx context.Context,
 		exec repositories.Executor,

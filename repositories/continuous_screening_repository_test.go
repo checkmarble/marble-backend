@@ -278,3 +278,15 @@ func TestContinuousScreeningClientDataIndexingPendingQueryWithoutIndexVersionCou
 		orgId.String(),
 	}, args)
 }
+
+func TestLockContinuousScreeningByMatchIdQueryLocksOnlyTheScreening(t *testing.T) {
+	matchId := uuid.New()
+
+	sql, args, err := lockContinuousScreeningByMatchIdQuery(matchId).ToSql()
+
+	require.NoError(t, err)
+	require.Equal(t, "SELECT cs.id FROM continuous_screenings AS cs "+
+		"JOIN continuous_screening_matches AS csm ON csm.continuous_screening_id = cs.id "+
+		"WHERE csm.id = $1 FOR UPDATE OF cs", sql)
+	require.Equal(t, []any{matchId.String()}, args)
+}
