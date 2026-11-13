@@ -68,6 +68,11 @@ func (r *UserRepository) UpdateRolePermissions(ctx context.Context, exec reposit
 	return args.Error(0)
 }
 
+func (r *UserRepository) UpdateRoleHiddenSections(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, slug models.Role, sections []models.AppSection) error {
+	args := r.Called(ctx, exec, orgId, slug, sections)
+	return args.Error(0)
+}
+
 func (r *UserRepository) ReplaceUserRoleBindings(ctx context.Context, exec repositories.Transaction, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error {
 	args := r.Called(ctx, exec, orgId, userId, bindings)
 	return args.Error(0)

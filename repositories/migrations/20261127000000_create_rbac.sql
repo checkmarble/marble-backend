@@ -7,6 +7,7 @@ create table roles (
   slug text not null,
   name text not null,
   permissions text[] not null default '{}',
+  hidden_sections text[] not null default '{}',
 
   unique (org_id, slug),
   unique (org_id, name)
@@ -34,6 +35,8 @@ where
 
 -- The view depends on the column to drop, so it is recreated afterwards.
 drop view active_grants;
+
+delete from grants where custom_role_id is not null;
 
 alter table grants
     drop constraint grants_custom_role_scope_check,

@@ -29,12 +29,16 @@ type DbRoleBinding struct {
 	DbGrant
 
 	// Resolved from the custom role, if any.
-	CustomPermissions []string `db:"custom_permissions"`
+	CustomRoleFound      bool     `db:"custom_role_found"`
+	CustomPermissions    []string `db:"custom_permissions"`
+	CustomHiddenSections []string `db:"custom_hidden_sections"`
 }
 
 var SelectRoleBindingColumns = append(
 	utils.ColumnList[DbGrant]("g"),
+	"r.id is not null as custom_role_found",
 	"coalesce(r.permissions, array[]::text[]) as custom_permissions",
+	"coalesce(r.hidden_sections, array[]::text[]) as custom_hidden_sections",
 )
 
 func AdaptRoleBinding(db DbRoleBinding) (models.RoleBinding, error) {
@@ -61,13 +65,20 @@ func AdaptRoleBinding(db DbRoleBinding) (models.RoleBinding, error) {
 		}
 	}
 
-	if db.CustomRoleId != nil {
+	switch {
+	case db.CustomRoleId == nil:
+		binding.Permissions = binding.Role.Permissions()
+		binding.HiddenSections = binding.Role.HiddenSections()
+	case !db.CustomRoleFound:
+		binding.HiddenSections = models.AppSections()
+	default:
 		binding.Permissions = models.WithoutPlatformPermissions(
 			pure_utils.Map(db.CustomPermissions, func(permission string) models.Permission {
 				return models.Permission(permission)
 			}))
-	} else {
-		binding.Permissions = binding.Role.Permissions()
+		binding.HiddenSections = pure_utils.Map(db.CustomHiddenSections, func(section string) models.AppSection {
+			return models.AppSection(section)
+		})
 	}
 
 	return binding, nil
