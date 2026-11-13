@@ -431,7 +431,7 @@ func (usecase *UserUseCase) GetUserByEmail(ctx context.Context, email string) (m
 }
 
 func (usecase *UserUseCase) GetRoles(ctx context.Context) ([]models.RbacRole, error) {
-	if err := usecase.enforceUserSecurity.ManageRoles(); err != nil {
+	if err := usecase.enforceUserSecurity.ReadOrganization(usecase.enforceUserSecurity.OrgId()); err != nil {
 		return nil, err
 	}
 
