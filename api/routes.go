@@ -115,6 +115,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/roles", tom, handleCreateRole(uc))
 	router.PUT("/roles/permissions", tom, handleUpdateRolePermissions(uc))
 	router.DELETE("/roles/*slug", tom, handleDeleteRole(uc))
+	router.PUT("/roles/sections", tom, handleUpdateRoleSections(uc))
 
 	router.GET("/decisions",
 		timeoutMiddleware(conf.DecisionTimeout),

@@ -30,6 +30,7 @@ type UserRepository interface {
 	CreateRole(ctx context.Context, exec Executor, orgId uuid.UUID, slug, name string) (models.RbacRole, error)
 	UpdateRolePermissions(ctx context.Context, exec Executor, orgId uuid.UUID, slug models.Role, permissions []models.Permission) error
 	DeleteRole(ctx context.Context, tx Transaction, orgId, roleId uuid.UUID) error
+	UpdateRoleHiddenSections(ctx context.Context, exec Executor, orgId uuid.UUID, slug models.Role, sections []models.AppSection) error
 	ReplaceUserRoleBindings(ctx context.Context, tx Transaction, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error
 	ListUserOrganizationRoleBindings(ctx context.Context, exec Executor, orgId uuid.UUID, userId string) ([]models.RoleBinding, error)
 	ReplaceUserOrganizationRoleBindings(ctx context.Context, tx Transaction, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error
@@ -401,6 +402,32 @@ func (repo *MarbleDbRepository) DeleteRole(ctx context.Context, tx Transaction, 
 	}
 
 	result, err := tx.Exec(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return models.NotFoundError
+	}
+
+	return nil
+}
+
+func (repo *MarbleDbRepository) UpdateRoleHiddenSections(ctx context.Context, exec Executor, orgId uuid.UUID, slug models.Role, sections []models.AppSection) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query, args, err := NewQueryBuilder().
+		Update(dbmodels.TABLE_ROLES).
+		Set("hidden_sections", sections).
+		Where(squirrel.Eq{"org_id": orgId, "slug": slug}).
+		ToSql()
+	if err != nil {
+		return err
+	}
+
+	result, err := exec.Exec(ctx, query, args...)
 	if err != nil {
 		return err
 	}

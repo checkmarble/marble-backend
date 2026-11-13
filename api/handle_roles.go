@@ -99,3 +99,26 @@ func handleUpdateRolePermissions(uc usecases.Usecases) gin.HandlerFunc {
 		c.JSON(http.StatusOK, dto.AdaptRole(role))
 	}
 }
+
+func handleUpdateRoleSections(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var p dto.RoleSections
+
+		if err := c.ShouldBindJSON(&p); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc)
+		userUsecase := uc.NewUserUseCase()
+
+		role, err := userUsecase.UpdateRoleSections(ctx, p.Role, p.Sections)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.AdaptRole(role))
+	}
+}
