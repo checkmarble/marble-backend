@@ -48,7 +48,7 @@ type ScenarioEvaluationParameters struct {
 	// Pivots is the set of candidate pivots for the trigger table (polymorphic belongs_to:
 	// at most one applies per row). The applicable one is resolved per row at evaluation time.
 	Pivots           []models.Pivot
-	CachedScreenings map[string]models.ScreeningWithMatches
+	CachedScreenings map[string]models.ScreeningWithMatches // Keyed by live screening configuration ID.
 	ConcurrentRules  int
 	// Asynchronously write the decision. If set, persisting the decision will be done in
 	// a worker.
@@ -321,8 +321,6 @@ func (e ScenarioEvaluator) processScenarioIteration(
 		rulesDuration = time.Since(beforeRules)
 	}()
 
-	var outcome models.Outcome
-
 	go func() {
 		defer wg.Done()
 		defer recoverEvaluationPanic(ctx, &screeningErr, "screening evaluation")
@@ -356,26 +354,7 @@ func (e ScenarioEvaluator) processScenarioIteration(
 			errors.Wrap(screeningErr, "could not perform screening")
 	}
 
-	for idx, sce := range screeningExecutions {
-		if sce.NumberOfMatches > 0 && iteration.ScreeningConfigs[idx].ForcedOutcome.Priority() > outcome.Priority() {
-			outcome = iteration.ScreeningConfigs[idx].ForcedOutcome
-		}
-	}
-
-	// We only go through the nominal score classifier if no screening returned any match (either no_hit or error)
-	if !slices.ContainsFunc(screeningExecutions, func(e models.ScreeningWithMatches) bool {
-		return e.Status != models.ScreeningStatusNoHit && e.Status != models.ScreeningStatusError
-	}) {
-		if score >= *iteration.ScoreDeclineThreshold {
-			outcome = models.Decline
-		} else if score >= *iteration.ScoreBlockAndReviewThreshold {
-			outcome = models.BlockAndReview
-		} else if score >= *iteration.ScoreReviewThreshold {
-			outcome = models.Review
-		} else {
-			outcome = models.Approve
-		}
-	}
+	outcome := scenarioOutcome(iteration, score, screeningExecutions)
 
 	scenarioID, err := uuid.Parse(params.Scenario.Id)
 	if err != nil {
@@ -435,6 +414,30 @@ func (e ScenarioEvaluator) processScenarioIteration(
 	return true, se, nil
 }
 
+func scenarioOutcome(iteration models.ScenarioIteration, score int, screenings []models.ScreeningWithMatches) models.Outcome {
+	var outcome models.Outcome
+	for idx, screening := range screenings {
+		if screening.NumberOfMatches > 0 && iteration.ScreeningConfigs[idx].ForcedOutcome.Priority() > outcome.Priority() {
+			outcome = iteration.ScreeningConfigs[idx].ForcedOutcome
+		}
+	}
+
+	// Use the score only when no screening returned a match.
+	if !slices.ContainsFunc(screenings, func(screening models.ScreeningWithMatches) bool {
+		return screening.Status != models.ScreeningStatusNoHit && screening.Status != models.ScreeningStatusError
+	}) {
+		if score >= *iteration.ScoreDeclineThreshold {
+			return models.Decline
+		} else if score >= *iteration.ScoreBlockAndReviewThreshold {
+			return models.BlockAndReview
+		} else if score >= *iteration.ScoreReviewThreshold {
+			return models.Review
+		}
+		return models.Approve
+	}
+	return outcome
+}
+
 func (e ScenarioEvaluator) EvalTestRunScenario(
 	ctx context.Context,
 	params ScenarioEvaluationParameters,
@@ -486,6 +489,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 	// If the live version had a screening executed, and if it has the same configuration (except for the trigger rule),
 	// we just reuse the cached screening execution to avoid another (possibly paid) call to the screening service.
 	copiedScreening := make([]models.ScreeningWithMatches, 0)
+	copiedScreeningConfigs := make([]models.ScreeningConfig, 0)
 
 	sccs, err := e.evalScreeningConfigRepository.ListScreeningConfigs(ctx, exec, testRunIteration.Id, true)
 	if err != nil {
@@ -502,13 +506,18 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 			return false, se, err
 		}
 
+		// Match each test configuration to its live counterpart by stable ID, then reuse
+		// the live result only if it is cached and both configurations have the same query.
 		for _, testVersionScc := range sccs {
 			for _, liveVersionScc := range liveVersionSccs {
 				if testVersionScc.StableId == liveVersionScc.StableId {
-					if cached, ok := params.CachedScreenings[liveVersionScc.ScenarioIterationId]; ok {
+					if cached, ok := params.CachedScreenings[liveVersionScc.Id]; ok {
 						if liveVersionScc.HasSameQuery(testVersionScc) {
 							copiedScreening = append(copiedScreening, cached)
-							sccsToRun = slices.Delete(sccsToRun, 0, 1)
+							copiedScreeningConfigs = append(copiedScreeningConfigs, testVersionScc)
+							sccsToRun = slices.DeleteFunc(sccsToRun, func(scc models.ScreeningConfig) bool {
+								return scc.Id == testVersionScc.Id
+							})
 							break
 						}
 					}
@@ -525,6 +534,12 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 	}
 	if len(copiedScreening) > 0 {
 		se.ScreeningExecutions = append(se.ScreeningExecutions, copiedScreening...)
+		if triggerPassed {
+			// processScenarioIteration computed the outcome without the cached screenings.
+			// Recompute it with all results, keeping configurations in the same order as screenings.
+			testRunIteration.ScreeningConfigs = append(sccsToRun, copiedScreeningConfigs...)
+			se.Outcome = scenarioOutcome(testRunIteration, se.Score, se.ScreeningExecutions)
+		}
 	}
 	se.TestRunId = testruns[0].Id
 	return triggerPassed, se, nil

@@ -307,7 +307,7 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 			evaluationParameters.CachedScreenings = pure_utils.MapSliceToMap(
 				se.ScreeningExecutions,
 				func(scm models.ScreeningWithMatches) (string, models.ScreeningWithMatches) {
-					return se.ScenarioIterationId.String(), scm
+					return scm.ScreeningConfigId, scm
 				},
 			)
 		}
