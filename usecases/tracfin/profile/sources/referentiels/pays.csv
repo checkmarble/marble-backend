@@ -1,0 +1,241 @@
+code;label
+FR;France
+AF;Afghanistan
+ZA;Afrique du Sud
+AX;Åland, Îles
+AL;Albanie
+DZ;Algérie
+DE;Allemagne
+AD;Andorre
+AO;Angola
+AI;Anguilla
+AQ;Antarctique
+AG;Antigua-et-Barbuda
+SA;Arabie Saoudite
+AR;Argentine
+AM;Arménie
+AW;Aruba
+AU;Australie
+AT;Autriche
+AZ;Azerbaïdjan
+BS;Bahamas
+BH;Bahreïn
+BD;Bangladesh
+BB;Barbade
+BE;Belgique
+BZ;Belize
+BJ;Bénin
+BM;Bermudes
+BT;Bhoutan
+BY;Biélorussie
+MM;Myanmar
+BO;Bolivie
+BQ;Bonaire, Saint-Eustache et Saba
+BA;Bosnie-Herzégovine
+BW;Botswana
+BV;Bouvet, Île
+BR;Brésil
+BN;Brunei
+BG;Bulgarie
+BF;Burkina Faso
+BI;Burundi
+KY;Caïmans, Îles
+KH;Cambodge
+CM;Cameroun
+CA;Canada
+CV;Cap-Vert
+CL;Chili
+CN;Chine
+CX;Christmas, Île
+CY;Chypre
+CC;Cocos (Keeling), Îles
+CO;Colombie
+KM;Comores
+KP;Corée du Nord
+KR;Corée du Sud
+CR;Costa Rica
+CI;Côte d’Ivoire
+HR;Croatie
+CU;Cuba
+CW;Curaçao
+DK;Danemark
+DJ;Djibouti
+DM;Dominique
+EG;Égypte
+AE;Émirats arabes unis
+EC;Équateur
+ER;Érythrée
+ES;Espagne
+EE;Estonie
+US;États-Unis
+ET;Éthiopie
+FK;Falkland, Îles (Malvinas)
+FO;Féroé, Îles
+FJ;Fidji
+FI;Finlande
+GA;Gabon
+GM;Gambie
+GE;Géorgie
+GS;Géorgie du Sud-et-les Îles Sandwich du Sud
+GH;Ghana
+GI;Gibraltar
+GR;Grèce
+GD;Grenade
+GL;Groenland
+GU;Guam
+GT;Guatemala
+GG;Guernesey
+GN;Guinée
+GQ;Guinée équatoriale
+GW;Guinée-Bissau
+GY;Guyana
+HT;Haïti
+HM;Heard-et-MacDonald, Îles
+HN;Honduras
+HK;Hong Kong
+HU;Hongrie
+IM;Île de Man
+CK;Îles Cook
+MH;Îles Marshall
+UM;Îles mineures éloignées des États-Unis
+VG;Îles Vierges britanniques
+VI;Îles Vierges des États-Unis
+XX;Inconnu
+IN;Inde
+ID;Indonésie
+IQ;Irak
+IR;Iran
+IE;Irlande
+IS;Islande
+IL;Israël
+IT;Italie
+JM;Jamaïque
+JP;Japon
+JE;Jersey
+JO;Jordanie
+KZ;Kazakhstan
+KE;Kenya
+KG;Kirghizistan
+KI;Kiribati
+XK;Kosovo
+KW;Koweït
+LA;Laos
+LS;Lesotho
+LV;Lettonie
+LB;Liban
+LR;Liberia
+LY;Libye
+LI;Liechtenstein
+LT;Lituanie
+LU;Luxembourg
+MO;Macao
+MK;Macédoine
+MG;Madagascar
+MY;Malaisie
+MW;Malawi
+MV;Maldives
+ML;Mali
+MT;Malte
+MP;Mariannes Du Nord, Îles
+MA;Maroc
+MU;Maurice
+MR;Mauritanie
+MX;Mexique
+FM;Micronésie
+MD;Moldavie
+MC;Monaco
+MN;Mongolie
+ME;Monténégro
+MS;Montserrat
+MZ;Mozambique
+NA;Namibie
+NR;Nauru
+NP;Népal
+NI;Nicaragua
+NE;Niger
+NG;Nigeria
+NU;Niue
+NF;Norfolk, Île
+NO;Norvège
+NZ;Nouvelle-Zélande
+IO;Territoire britannique de l'océan Indien
+OM;Oman
+UG;Ouganda
+UZ;Ouzbékistan
+PK;Pakistan
+PW;Palaos
+PS;Palestine
+PA;Panama
+PG;Papouasie-Nouvelle-Guinée
+PY;Paraguay
+NL;Pays-Bas
+PE;Pérou
+PH;Philippines
+PN;Pitcairn
+PL;Pologne
+PR;Porto Rico
+PT;Portugal
+QA;Qatar
+CF;République centrafricaine
+CD;République démocratique du Congo
+DO;République dominicaine
+CG;République du Congo
+CZ;Tchéquie
+RO;Roumanie
+GB;Royaume-Uni
+RU;Russie
+RW;Rwanda
+EH;Sahara occidental
+SH;Sainte-Hélène, Ascension et Tristan da Cunha
+LC;Sainte-Lucie
+KN;Saint-Kitts-et-Nevis
+SM;Saint-Marin
+SX;Saint-Martin (partie néerlandaise)
+VC;Saint-Vincent-et-les-Grenadines
+SB;Salomon
+SV;Salvador
+WS;Samoa
+AS;Samoa américaines
+ST;Sao Tomé-et-Principe
+SN;Sénégal
+RS;Serbie
+SC;Seychelles
+SL;Sierra Leone
+SG;Singapour
+SK;Slovaquie
+SI;Slovénie
+SO;Somalie
+SD;Soudan
+SS;Soudan du Sud
+LK;Sri Lanka
+SE;Suède
+CH;Suisse
+SR;Suriname
+SJ;Svalbard et Île Jan Mayen
+SZ;Eswatini
+SY;Syrie
+TJ;Tadjikistan
+TW;Taïwan
+TZ;Tanzanie
+TD;Tchad
+TH;Thaïlande
+TL;Timor oriental
+TG;Togo
+TK;Tokelau
+TO;Tonga
+TT;Trinité-et-Tobago
+TN;Tunisie
+TM;Turkménistan
+TC;Turks-et-Caïcos, Îles
+TR;Turquie
+TV;Tuvalu
+UA;Ukraine
+UY;Uruguay
+VU;Vanuatu
+VA;Vatican
+VE;Venezuela
+VN;Viêt Nam
+YE;Yémen
+ZM;Zambie
+ZW;Zimbabwe
+1;Autre

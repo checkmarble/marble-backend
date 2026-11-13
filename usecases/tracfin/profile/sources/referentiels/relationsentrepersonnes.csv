@@ -1,0 +1,58 @@
+code;label
+TLP54;Lien familial
+TLP1;Beau père ou belle-mère / gendre ou bru
+TLP53;Lien personnel
+TLP2;Beau-frère / belle-sœur
+TLP57;Economique ou financier
+TLP3;Parent / enfant
+TLP52;Hiérarchique - capitalistique - statutaire - organisationnel
+TLP4;Frère / sœur
+TLP55;Technique
+TLP5;Grand-parent / petit-enfant
+TLP56;Autres
+TLP6;Cousin(e)
+TLP7;Conjoint (mariage/PACS)
+TLP8;Ex-conjoint(e)
+TLP9;Concubin(e)
+TLP10;Oncle ou tante / neveu ou nièce
+TLP11;Autre lien familial
+TLP12;Voisin(e)
+TLP13;Ami(e)
+TLP14;Connaissance
+TLP15;Héberge
+TLP16;Même résidence / domicile
+TLP17;Cooptation - recommandation
+TLP18;Sentimental
+TLP19;Réseaux sociaux
+TLP20;Autre lien personnel
+TLP22;Financier (carte bancaire ou de paiement)
+TLP24;Financier (carte prépayée)
+TLP25;Financier (crypto)
+TLP26;Financier (multiforme)
+TLP23;Financier (transferts d'espèces)
+TLP21;Financier (virements, chèques...)
+TLP27;Client / fournisseur / prestataire
+TLP28;Sous-traitant / donneur d'ordres
+TLP29;Apporteur d'affaires
+TLP30;Emprunteur / prêteur
+TLP31;Sponsor / mécène / donateur / contributeur
+TLP32;Propriétaire / locataire
+TLP33;Achat / vente bien immobilier
+TLP34;Achat / vente bien meuble
+TLP35;Achat / vente de parts sociales
+TLP36;Autre lien économique ou financier
+TLP37;OBNL - Membre de l'instance dirigeante
+TLP38;OBNL - Membre / adhérent
+TLP39;OBNL - Sympathisant
+TLP40;Entreprise - Actionnaire
+TLP41;Entreprise - Bénéficiaire  effectif
+TLP42;Entreprise - Dirigeant (société)
+TLP43;Entreprise - Dirigeant de fait
+TLP44;Entreprise - Société mère / filiale
+TLP45;Divers - Changement de nom d'une personne morale
+TLP46;Divers - Employeur / employé / salarié / collaborateur (…)
+TLP47;Autre lien hiérarchique  - capitalistique - fonctionnel - organisationnel
+TLP48;Device ID
+TLP49;Même n° de téléphone
+TLP50;Autre lien technique
+TLP51;Autre lien
