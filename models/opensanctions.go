@@ -77,6 +77,9 @@ type OpenSanctionsQuery struct {
 	// Map to the `programId` property
 	// Empty = no restriction. Set only for dataset-update (direction B) queries.
 	ObjectTypes []string
+	// Ask Motiva for per-feature explanations (`explain=true`), stored with each match.
+	// Set for continuous screening, whose review compares the customer and the list record field by field.
+	Explain bool
 }
 
 type OpenSanctionsCheckQuery struct {

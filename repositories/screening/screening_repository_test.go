@@ -525,3 +525,66 @@ func TestOpenSanctionsSearch_PartialSubqueryFailure(t *testing.T) {
 	assert.Equal(t, http.StatusServiceUnavailable, errorsByMessage["subquery query_user failed"].StatusCode,
 		"expected query_user to have status 503")
 }
+
+func getMockedMotivaRepository(version string) OpenSanctionsRepository {
+	client := &http.Client{Transport: &http.Transport{}}
+
+	gock.CleanUnmatchedRequest()
+	gock.InterceptClient(client)
+
+	host := "http://motiva.local"
+	if version == "" {
+		gock.New(host).Get("/-/version").Reply(http.StatusNotFound)
+	} else {
+		gock.New(host).Get("/-/version").Reply(http.StatusOK).JSON(map[string]string{"motiva": version})
+	}
+
+	return OpenSanctionsRepository{
+		Config: infra.InitializeScreening(context.TODO(), client, host, "", ""),
+	}
+}
+
+func TestSearchRequest_Explain(t *testing.T) {
+	defer gock.Off()
+
+	tests := []struct {
+		name          string
+		motiva        string
+		explain       bool
+		expectExplain bool
+	}{
+		{name: "explained query on motiva v0.10.1", motiva: "v0.10.1", explain: true, expectExplain: true},
+		{name: "explained query on a later prerelease", motiva: "v0.12.0-rc.1", explain: true, expectExplain: true},
+		{name: "unexplained query", motiva: "v0.10.1", explain: false, expectExplain: false},
+		{name: "motiva before explain support", motiva: "v0.10.0", explain: true, expectExplain: false},
+		{name: "not motiva", motiva: "", explain: true, expectExplain: false},
+	}
+
+	for _, provider := range []models.ScreeningProvider{
+		models.ScreeningProviderOpenSanctions,
+		models.ScreeningProviderLexisNexis,
+	} {
+		for _, tt := range tests {
+			t.Run(fmt.Sprintf("%s/%s", provider, tt.name), func(t *testing.T) {
+				repo := getMockedMotivaRepository(tt.motiva)
+				query := models.OpenSanctionsQuery{
+					Queries: []models.OpenSanctionsCheckQuery{
+						{Type: "Person", Filters: models.OpenSanctionsFilter{"name": []string{"John Doe"}}},
+					},
+					Explain: tt.explain,
+				}
+
+				qs := repo.GetProvider(provider).BuildQueryString(context.TODO(), &query.Config, &query)
+
+				if tt.expectExplain {
+					assert.Equal(t, "true", qs.Get("explain"))
+				} else {
+					assert.False(t, qs.Has("explain"))
+				}
+
+				// Entity enrichment builds its query string without a query: never explained.
+				assert.False(t, repo.GetProvider(provider).BuildQueryString(context.TODO(), nil, nil).Has("explain"))
+			})
+		}
+	}
+}

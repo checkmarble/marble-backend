@@ -617,6 +617,7 @@ func (w *ApplyDeltaFileWorker) buildOpenSanctionQuery(
 		Scope:                orgCustomDatasetName(updateJob.OrgId),
 		Partition:            true,
 		ObjectTypes:          updateJob.Config.ObjectTypes,
+		Explain:              true,
 	}, nil
 }
 
