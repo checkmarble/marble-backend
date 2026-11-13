@@ -11,6 +11,14 @@ import (
 
 type GrantRepository struct{ mock.Mock }
 
+func (r *GrantRepository) CreateApiKeyGrant(ctx context.Context, tx repositories.Transaction, id string, grant models.Grant) error {
+	return r.Called(ctx, tx, id, grant).Error(0)
+}
+
+func (r *GrantRepository) RevokeApiKeyGrants(ctx context.Context, tx repositories.Transaction, id string) error {
+	return r.Called(ctx, tx, id).Error(0)
+}
+
 func (r *GrantRepository) EnsureTenantAdminForOrganization(ctx context.Context, exec repositories.Executor, userID string, organizationID uuid.UUID) error {
 	args := r.Called(ctx, exec, userID, organizationID)
 	return args.Error(0)

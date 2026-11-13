@@ -17,6 +17,7 @@ type tenantMergeSecurityMock struct {
 
 func (s tenantMergeSecurityMock) Permission(models.Permission) error { return s.err }
 func (s tenantMergeSecurityMock) UpdateTenant(uuid.UUID) error       { return s.err }
+func (s tenantMergeSecurityMock) UpdateTenantOIDC(uuid.UUID) error   { return s.err }
 func (tenantMergeSecurityMock) ReadOrganization(uuid.UUID) error     { return nil }
 func (tenantMergeSecurityMock) Permissions([]models.Permission) error {
 	return nil
@@ -36,6 +37,10 @@ func (s *tenantScopeSecurityMock) UpdateTenant(tenant uuid.UUID) error {
 	s.calls++
 	require.Equal(s.t, s.tenant, tenant)
 	return models.ForbiddenError
+}
+
+func (s *tenantScopeSecurityMock) UpdateTenantOIDC(tenant uuid.UUID) error {
+	return s.UpdateTenant(tenant)
 }
 
 func TestTenantUsecaseMerge(t *testing.T) {

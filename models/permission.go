@@ -67,6 +67,7 @@ const (
 	TENANTS_MERGE
 	TENANTS_LIST
 	TENANTS_UPDATE
+	TENANT_OIDC_CONFIG_UPDATE
 )
 
 func (r Permission) String() (string, error) {
@@ -131,6 +132,7 @@ func (r Permission) String() (string, error) {
 		"TENANTS_MERGE",
 		"TENANTS_LIST",
 		"TENANTS_UPDATE",
+		"TENANT_OIDC_CONFIG_UPDATE",
 	}
 	if int(r) > len(permissions)-1 {
 		return "", errors.New("Invalid permission: no string representation has been set")

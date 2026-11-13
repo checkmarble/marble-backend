@@ -166,6 +166,9 @@ func TestUserUseCaseAddUser(t *testing.T) {
 		{name: "admin with organization", role: models.ADMIN, organization: organizationID},
 		{name: "admin without organization", role: models.ADMIN, wantError: models.BadParameterError},
 		{name: "viewer without organization", role: models.VIEWER, wantError: models.BadParameterError},
+		{name: "unknown role", role: models.NO_ROLE, organization: organizationID, wantError: models.BadParameterError},
+		{name: "API role", role: models.API_CLIENT, organization: organizationID, wantError: models.BadParameterError},
+		{name: "tenant admin role", role: models.TENANT_ADMIN, organization: organizationID, wantError: models.BadParameterError},
 	}
 
 	for _, tt := range tests {

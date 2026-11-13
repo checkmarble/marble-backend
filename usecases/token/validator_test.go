@@ -94,6 +94,30 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
 	})
 
+	t.Run("recovery grant is bound to organization tenant", func(t *testing.T) {
+		getter := new(mocks.Database)
+		getter.On("GetApiKeyByHash", ctx, keyHash).Return(apiKey, nil)
+		getter.On("GetOrganizationByID", ctx, apiKey.OrganizationId).Return(organization, nil)
+		getter.On("ActiveGrantsForPrincipal", mock.Anything, "api_key", apiKey.Id).
+			Return([]models.Grant{{Role: models.OIDC_CONFIG_EDITOR, TenantId: organization.TenantId}}, nil)
+		v := Validator{getter: getter}
+		credentials, err := v.ValidateTokenOrKey(ctx, "", key)
+		assert.NoError(t, err)
+		assert.Equal(t, []models.Role{models.OIDC_CONFIG_EDITOR}, credentials.Roles)
+		assert.Equal(t, organization.TenantId, credentials.TenantId)
+	})
+
+	t.Run("recovery grant from another tenant is rejected", func(t *testing.T) {
+		getter := new(mocks.Database)
+		getter.On("GetApiKeyByHash", ctx, keyHash).Return(apiKey, nil)
+		getter.On("GetOrganizationByID", ctx, apiKey.OrganizationId).Return(organization, nil)
+		getter.On("ActiveGrantsForPrincipal", mock.Anything, "api_key", apiKey.Id).
+			Return([]models.Grant{{Role: models.OIDC_CONFIG_EDITOR, TenantId: utils.TextToUUID("other_tenant")}}, nil)
+		v := Validator{getter: getter}
+		_, err := v.ValidateTokenOrKey(ctx, "", key)
+		assert.ErrorIs(t, err, models.UnAuthorizedError)
+	})
+
 	t.Run("nominal", func(t *testing.T) {
 		mockKeyAndOrganizationGetter := new(mocks.Database)
 		mockKeyAndOrganizationGetter.On("GetApiKeyByHash", ctx, keyHash).
