@@ -145,3 +145,32 @@ func TestUpdateRolePermissionsRejectsUnheldAndPlatformPermissions(t *testing.T) 
 		userRepository.AssertNotCalled(t, "UpdateRolePermissions", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 }
+
+func TestGetRolesDoesNotRequireManageRoles(t *testing.T) {
+	ctx := context.Background()
+	orgId := uuid.New()
+	roles := []models.RbacRole{{Id: uuid.New(), OrgId: orgId, Slug: "org/custom.name"}}
+
+	executor := new(mocks.Executor)
+	executorFactory := new(mocks.ExecutorFactory)
+	userRepository := new(mocks.UserRepository)
+	enforceSecurity := new(mocks.EnforceSecurity)
+	executorFactory.On("NewExecutor").Return(executor)
+	enforceSecurity.On("OrgId").Return(orgId)
+	enforceSecurity.On("ReadOrganization", orgId).Return(nil).Once()
+	userRepository.On("ListRoles", ctx, executor, orgId).Return(roles, nil).Once()
+
+	usecase := UserUseCase{
+		executorFactory:     executorFactory,
+		userRepository:      userRepository,
+		enforceUserSecurity: roleEnforceSecurity{enforceSecurity},
+	}
+
+	listed, err := usecase.GetRoles(ctx)
+
+	require.NoError(t, err)
+	assert.Equal(t, roles, listed)
+	enforceSecurity.AssertNotCalled(t, "ManageRoles")
+	enforceSecurity.AssertExpectations(t)
+	userRepository.AssertExpectations(t)
+}
