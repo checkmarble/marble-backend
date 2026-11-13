@@ -55,6 +55,12 @@ func TestDeleteRoleOnlyWhenUnused(t *testing.T) {
 	userGrant := insertGrant("user", uuid.NewString(), "null", "null")
 	apiKeyGrant := insertGrant("api_key", uuid.NewString(), "null", "now() + interval '1 day'")
 
+	groupId := uuid.New()
+	_, err = pgPool.Exec(ctx, "INSERT INTO groups (id, organization_id, name) VALUES ($1, $2, 'Reviewers')", groupId, orgId)
+	require.NoError(t, err)
+
+	groupGrant := insertGrant("group", groupId.String(), "null", "null")
+
 	require.True(t, repositories.IsForeignKeyViolationError(deleteRole()))
 
 	_, err = pgPool.Exec(ctx, "UPDATE grants SET revoked_at = now() WHERE id = $1", userGrant)
@@ -65,12 +71,19 @@ func TestDeleteRoleOnlyWhenUnused(t *testing.T) {
 	_, err = pgPool.Exec(ctx, "UPDATE grants SET revoked_at = now() WHERE id = $1", apiKeyGrant)
 	require.NoError(t, err)
 
+	require.True(t, repositories.IsForeignKeyViolationError(deleteRole()))
+
+	err = transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		return repository.DeleteGroup(ctx, tx, orgId, groupId)
+	})
+	require.NoError(t, err)
+
 	require.NoError(t, deleteRole())
 	require.ErrorIs(t, deleteRole(), models.NotFoundError)
 
 	var remaining int
 	err = pgPool.QueryRow(ctx, "SELECT count(*) FROM grants WHERE id = ANY($1)",
-		[]uuid.UUID{revokedGrant, expiredGrant, userGrant, apiKeyGrant}).Scan(&remaining)
+		[]uuid.UUID{revokedGrant, expiredGrant, userGrant, apiKeyGrant, groupGrant}).Scan(&remaining)
 	require.NoError(t, err)
 	require.Zero(t, remaining)
 }
