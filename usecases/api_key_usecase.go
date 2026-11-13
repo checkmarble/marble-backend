@@ -87,9 +87,11 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 			}
 			binding.CustomRoleId = &role.Id
 			binding.Permissions = role.Permissions
+			binding.HiddenSections = role.HiddenSections
 		} else {
 			binding.CustomRoleId = nil
 			binding.Permissions = binding.Role.Permissions()
+			binding.HiddenSections = binding.Role.HiddenSections()
 		}
 	}
 

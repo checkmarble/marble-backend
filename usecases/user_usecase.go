@@ -178,6 +178,7 @@ func (usecase *UserUseCase) resolveUserRoleBindings(
 			}
 			binding.CustomRoleId = nil
 			binding.Permissions = binding.Role.Permissions()
+			binding.HiddenSections = binding.Role.HiddenSections()
 			continue
 		}
 		if !binding.Role.IsValidCustom() {
@@ -190,6 +191,7 @@ func (usecase *UserUseCase) resolveUserRoleBindings(
 		}
 		binding.CustomRoleId = &role.Id
 		binding.Permissions = role.Permissions
+		binding.HiddenSections = role.HiddenSections
 	}
 
 	return resolved, nil
@@ -556,4 +558,36 @@ func (usecase *UserUseCase) DeleteRole(ctx context.Context, slug models.Role) er
 	}
 
 	return err
+}
+
+func (usecase *UserUseCase) UpdateRoleSections(ctx context.Context, slug models.Role, sections map[models.AppSection]bool) (models.RbacRole, error) {
+	if err := usecase.enforceUserSecurity.ManageRoles(); err != nil {
+		return models.RbacRole{}, err
+	}
+	if !slug.IsValidCustom() {
+		return models.RbacRole{}, errors.Wrap(models.BadParameterError, "invalid custom role slug")
+	}
+
+	for section := range sections {
+		if !section.IsValid() {
+			return models.RbacRole{}, errors.Wrap(models.BadParameterError, "invalid section "+string(section))
+		}
+	}
+
+	hidden := make([]models.AppSection, 0, len(sections))
+
+	for _, section := range models.AppSections() {
+		if visible, exists := sections[section]; exists && !visible {
+			hidden = append(hidden, section)
+		}
+	}
+
+	exec := usecase.executorFactory.NewExecutor()
+	orgId := usecase.enforceUserSecurity.OrgId()
+
+	if err := usecase.userRepository.UpdateRoleHiddenSections(ctx, exec, orgId, slug, hidden); err != nil {
+		return models.RbacRole{}, errors.Wrapf(err, "could not update sections of role %s", slug)
+	}
+
+	return usecase.userRepository.GetRoleBySlug(ctx, exec, orgId, slug)
 }

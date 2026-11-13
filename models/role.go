@@ -9,22 +9,24 @@ import (
 )
 
 type RbacRole struct {
-	Id          uuid.UUID
-	OrgId       uuid.UUID
-	Slug        string
-	Name        string
-	Permissions []Permission
+	Id             uuid.UUID
+	OrgId          uuid.UUID
+	Slug           string
+	Name           string
+	Permissions    []Permission
+	HiddenSections []AppSection
 }
 
 type RoleBinding struct {
-	Id           uuid.UUID
-	TenantId     uuid.UUID
-	OrgId        uuid.UUID
-	UserId       *UserId
-	ApiKeyId     *uuid.UUID
-	Role         Role
-	CustomRoleId *uuid.UUID
-	Permissions  []Permission
+	Id             uuid.UUID
+	TenantId       uuid.UUID
+	OrgId          uuid.UUID
+	UserId         *UserId
+	ApiKeyId       *uuid.UUID
+	Role           Role
+	CustomRoleId   *uuid.UUID
+	Permissions    []Permission
+	HiddenSections []AppSection
 }
 
 // Equivalent reports whether two bindings grant the same role.
@@ -60,7 +62,7 @@ func (b RoleBinding) RoleName() Role {
 }
 
 func NewNativeRoleBinding(role Role) RoleBinding {
-	return RoleBinding{Role: role, Permissions: role.Permissions()}
+	return RoleBinding{Role: role, Permissions: role.Permissions(), HiddenSections: role.HiddenSections()}
 }
 
 func RoleNames(bindings []RoleBinding) []Role {

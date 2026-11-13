@@ -20,10 +20,11 @@ func TestResolveUserRoleBindingsResolvesCustomRoleSlug(t *testing.T) {
 	orgId := uuid.New()
 	slug := models.Role("org/custom.name")
 	role := models.RbacRole{
-		Id:          uuid.New(),
-		OrgId:       orgId,
-		Slug:        string(slug),
-		Permissions: []models.Permission{models.CASE_READ_WRITE},
+		Id:             uuid.New(),
+		OrgId:          orgId,
+		Slug:           string(slug),
+		Permissions:    []models.Permission{models.CASE_READ_WRITE},
+		HiddenSections: []models.AppSection{models.SETTINGS},
 	}
 	executor := new(mocks.Executor)
 	executorFactory := new(mocks.ExecutorFactory)
@@ -43,6 +44,7 @@ func TestResolveUserRoleBindingsResolvesCustomRoleSlug(t *testing.T) {
 	require.NotNil(t, resolved[0].CustomRoleId)
 	assert.Equal(t, role.Id, *resolved[0].CustomRoleId)
 	assert.Equal(t, role.Permissions, resolved[0].Permissions)
+	assert.Equal(t, role.HiddenSections, resolved[0].HiddenSections)
 	executorFactory.AssertExpectations(t)
 	userRepository.AssertExpectations(t)
 }
@@ -65,6 +67,71 @@ func (roleEnforceSecurity) ManageOrganizationGrant(uuid.UUID, models.User) error
 func (roleEnforceSecurity) ListUserGrants() error { return errUnexpectedCall }
 
 var errUnexpectedCall = errors.New("unexpected call")
+
+func TestUpdateRoleSections(t *testing.T) {
+	ctx := context.Background()
+	orgId := uuid.New()
+	slug := models.Role("org/custom.name")
+
+	for _, tt := range []struct {
+		name     string
+		sections map[models.AppSection]bool
+		hidden   []models.AppSection
+	}{
+		{name: "only false entries stored", sections: map[models.AppSection]bool{
+			models.SETTINGS: false, models.SCENARIOS: true,
+		}, hidden: []models.AppSection{models.SETTINGS}},
+		{name: "empty map clears restrictions", sections: map[models.AppSection]bool{}, hidden: []models.AppSection{}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			executor := new(mocks.Executor)
+			factory := new(mocks.ExecutorFactory)
+			repo := new(mocks.UserRepository)
+			security := new(mocks.EnforceSecurity)
+			role := models.RbacRole{OrgId: orgId, Slug: string(slug), HiddenSections: tt.hidden}
+			factory.On("NewExecutor").Return(executor).Once()
+			security.On("ManageRoles").Return(nil).Once()
+			security.On("OrgId").Return(orgId).Once()
+			repo.On("UpdateRoleHiddenSections", ctx, executor, orgId, slug, tt.hidden).Return(nil).Once()
+			repo.On("GetRoleBySlug", ctx, executor, orgId, slug).Return(role, nil).Once()
+			usecase := UserUseCase{executorFactory: factory, userRepository: repo, enforceUserSecurity: roleEnforceSecurity{security}}
+
+			updated, err := usecase.UpdateRoleSections(ctx, slug, tt.sections)
+
+			require.NoError(t, err)
+			assert.Equal(t, role, updated)
+			security.AssertExpectations(t)
+			repo.AssertExpectations(t)
+			factory.AssertExpectations(t)
+		})
+	}
+}
+
+func TestUpdateRoleSectionsRejectsInvalidInputs(t *testing.T) {
+	for _, tt := range []struct {
+		name          string
+		slug          models.Role
+		sections      map[models.AppSection]bool
+		securityError error
+		wantError     error
+	}{
+		{name: "forbidden", slug: "org/custom", securityError: models.ForbiddenError, wantError: models.ForbiddenError},
+		{name: "native role", slug: models.ANALYST, wantError: models.BadParameterError},
+		{name: "invalid slug", slug: "org/invalid-role", wantError: models.BadParameterError},
+		{name: "unknown section", slug: "org/custom", sections: map[models.AppSection]bool{"unknown": true}, wantError: models.BadParameterError},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			security := new(mocks.EnforceSecurity)
+			security.On("ManageRoles").Return(tt.securityError).Once()
+			usecase := UserUseCase{enforceUserSecurity: roleEnforceSecurity{security}}
+
+			_, err := usecase.UpdateRoleSections(context.Background(), tt.slug, tt.sections)
+
+			assert.ErrorIs(t, err, tt.wantError)
+			security.AssertExpectations(t)
+		})
+	}
+}
 
 func TestUpdateRolePermissionsOnlyChecksAddedPermissions(t *testing.T) {
 	ctx := context.Background()

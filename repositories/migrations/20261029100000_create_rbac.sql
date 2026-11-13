@@ -7,6 +7,7 @@ create table roles (
   slug text not null,
   name text not null,
   permissions text[] not null default '{}',
+  hidden_sections text[] not null default '{}',
 
   unique (org_id, slug),
   unique (org_id, name)
