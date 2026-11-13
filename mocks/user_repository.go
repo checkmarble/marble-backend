@@ -93,6 +93,11 @@ func (r *UserRepository) GetRoleBySlugForUpdate(ctx context.Context, tx reposito
 	return args.Get(0).(models.RbacRole), args.Error(1)
 }
 
+func (r *UserRepository) DeleteRole(ctx context.Context, tx repositories.Transaction, orgId, roleId uuid.UUID) error {
+	args := r.Called(ctx, tx, orgId, roleId)
+	return args.Error(0)
+}
+
 
 func (r *UserRepository) ListRoles(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.RbacRole, error) {
 	args := r.Called(ctx, exec, orgId)
