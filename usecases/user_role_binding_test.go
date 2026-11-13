@@ -8,6 +8,8 @@ import (
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -173,4 +175,77 @@ func TestGetRolesDoesNotRequireManageRoles(t *testing.T) {
 	enforceSecurity.AssertNotCalled(t, "ManageRoles")
 	enforceSecurity.AssertExpectations(t)
 	userRepository.AssertExpectations(t)
+}
+
+func TestDeleteRole(t *testing.T) {
+	ctx := context.Background()
+	orgId := uuid.New()
+	slug := models.Role("org/custom.name")
+	role := models.RbacRole{Id: uuid.New(), OrgId: orgId, Slug: string(slug)}
+
+	newUsecase := func(enforceSecurity *mocks.EnforceSecurity, userRepository *mocks.UserRepository) (*UserUseCase, *mocks.Transaction) {
+		executor := new(mocks.Executor)
+		tx := new(mocks.Transaction)
+		executorFactory := new(mocks.ExecutorFactory)
+		transactionFactory := &mocks.TransactionFactory{TxMock: tx}
+		executorFactory.On("NewExecutor").Return(executor)
+		transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
+		enforceSecurity.On("OrgId").Return(orgId)
+
+		return &UserUseCase{
+			executorFactory:     executorFactory,
+			transactionFactory:  transactionFactory,
+			userRepository:      userRepository,
+			enforceUserSecurity: roleEnforceSecurity{enforceSecurity},
+		}, tx
+	}
+
+	t.Run("unused role", func(t *testing.T) {
+		enforceSecurity, userRepository := new(mocks.EnforceSecurity), new(mocks.UserRepository)
+		enforceSecurity.On("ManageRoles").Return(nil)
+		usecase, tx := newUsecase(enforceSecurity, userRepository)
+		userRepository.On("GetRoleBySlug", ctx, mock.Anything, orgId, slug).Return(role, nil)
+		userRepository.On("DeleteRole", ctx, tx, orgId, role.Id).Return(nil).Once()
+
+		err := usecase.DeleteRole(ctx, slug)
+
+		require.NoError(t, err)
+		userRepository.AssertExpectations(t)
+	})
+
+	t.Run("role still bound", func(t *testing.T) {
+		enforceSecurity, userRepository := new(mocks.EnforceSecurity), new(mocks.UserRepository)
+		enforceSecurity.On("ManageRoles").Return(nil)
+		usecase, tx := newUsecase(enforceSecurity, userRepository)
+		userRepository.On("GetRoleBySlug", ctx, mock.Anything, orgId, slug).Return(role, nil)
+		userRepository.On("DeleteRole", ctx, tx, orgId, role.Id).
+			Return(&pgconn.PgError{Code: pgerrcode.ForeignKeyViolation}).Once()
+
+		err := usecase.DeleteRole(ctx, slug)
+
+		assert.ErrorIs(t, err, models.ConflictError)
+	})
+
+	t.Run("unknown role", func(t *testing.T) {
+		enforceSecurity, userRepository := new(mocks.EnforceSecurity), new(mocks.UserRepository)
+		enforceSecurity.On("ManageRoles").Return(nil)
+		usecase, _ := newUsecase(enforceSecurity, userRepository)
+		userRepository.On("GetRoleBySlug", ctx, mock.Anything, orgId, slug).Return(models.RbacRole{}, models.NotFoundError)
+
+		err := usecase.DeleteRole(ctx, slug)
+
+		assert.ErrorIs(t, err, models.NotFoundError)
+		userRepository.AssertNotCalled(t, "DeleteRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("without MANAGE_ROLES", func(t *testing.T) {
+		enforceSecurity, userRepository := new(mocks.EnforceSecurity), new(mocks.UserRepository)
+		enforceSecurity.On("ManageRoles").Return(models.ForbiddenError)
+		usecase, _ := newUsecase(enforceSecurity, userRepository)
+
+		err := usecase.DeleteRole(ctx, slug)
+
+		assert.ErrorIs(t, err, models.ForbiddenError)
+		userRepository.AssertNotCalled(t, "DeleteRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
 }

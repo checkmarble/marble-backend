@@ -29,6 +29,7 @@ type UserRepository interface {
 	GetRoleBySlug(ctx context.Context, exec Executor, orgId uuid.UUID, slug models.Role) (models.RbacRole, error)
 	CreateRole(ctx context.Context, exec Executor, orgId uuid.UUID, slug, name string) (models.RbacRole, error)
 	UpdateRolePermissions(ctx context.Context, exec Executor, orgId uuid.UUID, slug models.Role, permissions []models.Permission) error
+	DeleteRole(ctx context.Context, tx Transaction, orgId, roleId uuid.UUID) error
 	ReplaceUserRoleBindings(ctx context.Context, tx Transaction, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error
 	ListUserOrganizationRoleBindings(ctx context.Context, exec Executor, orgId uuid.UUID, userId string) ([]models.RoleBinding, error)
 	ReplaceUserOrganizationRoleBindings(ctx context.Context, tx Transaction, orgId uuid.UUID, userId string, bindings []models.RoleBinding) error
@@ -361,6 +362,45 @@ func (repo *MarbleDbRepository) UpdateRolePermissions(ctx context.Context, exec 
 	}
 
 	result, err := exec.Exec(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return models.NotFoundError
+	}
+
+	return nil
+}
+
+// DeleteRole deletes a custom role along with its inactive grants. Active
+// grants are kept, so that the foreign key on grants rejects the deletion of
+// a role still in use.
+func (repo *MarbleDbRepository) DeleteRole(ctx context.Context, tx Transaction, orgId, roleId uuid.UUID) error {
+	if err := validateMarbleDbExecutor(tx); err != nil {
+		return err
+	}
+
+	err := ExecBuilder(ctx, tx, NewQueryBuilder().
+		Delete(dbmodels.TABLE_GRANTS).
+		Where(squirrel.Eq{"custom_role_id": roleId, "organization_id": orgId}).
+		Where(squirrel.Or{
+			squirrel.NotEq{"revoked_at": nil},
+			squirrel.Expr("expires_at <= now()"),
+		}))
+	if err != nil {
+		return err
+	}
+
+	query, args, err := NewQueryBuilder().
+		Delete(dbmodels.TABLE_ROLES).
+		Where(squirrel.Eq{"org_id": orgId, "id": roleId}).
+		ToSql()
+	if err != nil {
+		return err
+	}
+
+	result, err := tx.Exec(ctx, query, args...)
 	if err != nil {
 		return err
 	}

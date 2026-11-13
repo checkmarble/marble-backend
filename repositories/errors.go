@@ -19,6 +19,11 @@ func IsUniqueViolationErrorOf(err error, constraint string) bool {
 		pgxErr.ConstraintName == constraint
 }
 
+func IsForeignKeyViolationError(err error) bool {
+	var pgxErr *pgconn.PgError
+	return errors.As(err, &pgxErr) && pgxErr.Code == pgerrcode.ForeignKeyViolation
+}
+
 func IsDeadlockError(err error) bool {
 	var pgxErr *pgconn.PgError
 	return errors.As(err, &pgxErr) && pgxErr.Code == pgerrcode.DeadlockDetected

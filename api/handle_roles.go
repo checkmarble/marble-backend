@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -51,6 +52,28 @@ func handleCreateRole(uc usecases.Usecases) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusCreated, dto.AdaptRole(role))
+	}
+}
+
+func handleDeleteRole(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		slug := models.Role(strings.TrimPrefix(c.Param("slug"), "/"))
+
+		if !slug.IsValidCustom() {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc)
+		userUsecase := uc.NewUserUseCase()
+
+		if err := userUsecase.DeleteRole(ctx, slug); presentError(ctx, c, err) {
+			return
+		}
+
+		c.Status(http.StatusNoContent)
 	}
 }
 
