@@ -4739,17 +4739,6 @@
      {
       "children": [
        {
-        "description": "- Champ présent et obligatoire uniquement dans le cas d'une déclaration complémentaire.",
-        "export": true,
-        "kind": "field",
-        "max": 1,
-        "max_length": 19,
-        "min": 0,
-        "name": "complement",
-        "template": "context.general.complement",
-        "type": "integer"
-       },
-       {
         "export": true,
         "kind": "field",
         "max": 1,
@@ -5914,7 +5903,7 @@
             "min": 1,
             "min_length": 1,
             "name": "iban",
-            "pattern": "^[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{10,30}$",
+            "pattern": "[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{10,30}",
             "template": "personnes.pp[].referencesFinancieres.referenceFinanciereIban[].iban",
             "type": "string"
            }
@@ -6039,7 +6028,7 @@
             "max": 1,
             "min": 1,
             "name": "numeroCarteBancaire",
-            "pattern": "^(?:4[0-9]{12}(?:[0-9]{3})?|[25][1-7][0-9]{14}|6(?:011|5[0-9][0-9])[0-9]{12}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|(?:2131|1800|35\\d{3})\\d{11})$",
+            "pattern": "(?:4[0-9]{12}(?:[0-9]{3})?|[25][1-7][0-9]{14}|6(?:011|5[0-9][0-9])[0-9]{12}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|(?:2131|1800|35\\d{3})\\d{11})",
             "template": "personnes.pp[].referencesFinancieres.referenceFinanciereNumeroCarteBancaire[].numeroCarteBancaire",
             "type": "string"
            }
@@ -8123,7 +8112,7 @@
             "min": 1,
             "min_length": 1,
             "name": "iban",
-            "pattern": "^[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{10,30}$",
+            "pattern": "[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{10,30}",
             "template": "personnes.pm[].referencesFinancieres.referenceFinanciereIban[].iban",
             "type": "string"
            }
@@ -8248,7 +8237,7 @@
             "max": 1,
             "min": 1,
             "name": "numeroCarteBancaire",
-            "pattern": "^(?:4[0-9]{12}(?:[0-9]{3})?|[25][1-7][0-9]{14}|6(?:011|5[0-9][0-9])[0-9]{12}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|(?:2131|1800|35\\d{3})\\d{11})$",
+            "pattern": "(?:4[0-9]{12}(?:[0-9]{3})?|[25][1-7][0-9]{14}|6(?:011|5[0-9][0-9])[0-9]{12}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|(?:2131|1800|35\\d{3})\\d{11})",
             "template": "personnes.pm[].referencesFinancieres.referenceFinanciereNumeroCarteBancaire[].numeroCarteBancaire",
             "type": "string"
            }
@@ -9157,7 +9146,7 @@
             "min": 1,
             "min_length": 1,
             "name": "iban",
-            "pattern": "^[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{10,30}$",
+            "pattern": "[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{10,30}",
             "template": "personnes.pnc[].referencesFinancieres.referenceFinanciereIban[].iban",
             "type": "string"
            }
@@ -9282,7 +9271,7 @@
             "max": 1,
             "min": 1,
             "name": "numeroCarteBancaire",
-            "pattern": "^(?:4[0-9]{12}(?:[0-9]{3})?|[25][1-7][0-9]{14}|6(?:011|5[0-9][0-9])[0-9]{12}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|(?:2131|1800|35\\d{3})\\d{11})$",
+            "pattern": "(?:4[0-9]{12}(?:[0-9]{3})?|[25][1-7][0-9]{14}|6(?:011|5[0-9][0-9])[0-9]{12}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|(?:2131|1800|35\\d{3})\\d{11})",
             "template": "personnes.pnc[].referencesFinancieres.referenceFinanciereNumeroCarteBancaire[].numeroCarteBancaire",
             "type": "string"
            }
@@ -11265,6 +11254,24 @@
     "work.transactions[].emetteurPersonne",
     "work.transactions[].emetteurLibre"
    ],
+   "description": "L'émetteur est obligatoire, soit une personne déclarée, soit un texte libre, sauf pour un versement d'espèces (OT07).",
+   "id": "transaction_emetteur_requis_sauf_ot07",
+   "kind": "exactly_one",
+   "scope": "work.transactions[]",
+   "source": "financier-v1.4.0.xsd:1543-1565 (émetteur obligatoire sauf OT07) ; rule operation_emetteur_requis_sauf_ot07",
+   "when": {
+    "op": "not_in",
+    "path": "work.transactions[].typeOperation",
+    "values": [
+     "OT07"
+    ]
+   }
+  },
+  {
+   "among": [
+    "work.transactions[].emetteurPersonne",
+    "work.transactions[].emetteurLibre"
+   ],
    "description": "L'émetteur est soit une personne déclarée, soit un texte libre : pas les deux.",
    "id": "transaction_emetteur_exclusif",
    "kind": "at_most_one",
@@ -11288,6 +11295,17 @@
      "OT06"
     ]
    }
+  },
+  {
+   "among": [
+    "work.transactions[].beneficiairePersonne",
+    "work.transactions[].beneficiaireLibre"
+   ],
+   "description": "Le bénéficiaire est soit une personne déclarée, soit un texte libre : pas les deux.",
+   "id": "transaction_beneficiaire_exclusif",
+   "kind": "at_most_one",
+   "scope": "work.transactions[]",
+   "source": "financier-v1.4.0.xsd:1566-1573 (id d'une personne déjà déclarée ou champ libre) ; plan Task 2 (working_nodes)"
   }
  ]
 }

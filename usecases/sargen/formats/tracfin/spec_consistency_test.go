@@ -41,6 +41,7 @@ func TestSpec_PatternsCompileInGo(t *testing.T) {
 	})
 	assert.NotContains(t, s.NodeAt("organisme.adresse.tel").Pattern, "^")
 	assert.NotContains(t, s.NodeAt("organisme.adresse.courriel").Pattern, "$")
+	assert.False(t, strings.HasPrefix(s.NodeAt("personnes.pp[].referencesFinancieres.referenceFinanciereIban[].iban").Pattern, "^"))
 }
 
 func TestSpec_CodeListsAndRefsResolve(t *testing.T) {
@@ -107,6 +108,14 @@ func TestSpec_OutOfScopeSectionsAreDropped(t *testing.T) {
 	walkNodes(s.Root, func(n *core.Node) {
 		assert.NotContains(t, n.Name, "idPieceJointe", n.Template)
 	})
+}
+
+func TestSpec_UnknownVersionStaysUnknown(t *testing.T) {
+	for range 2 {
+		s, ok := tracfin.Spec("0.0.1")
+		assert.False(t, ok)
+		assert.Nil(t, s)
+	}
 }
 
 func TestSpec_DromcomCountryListIncludesBothSources(t *testing.T) {

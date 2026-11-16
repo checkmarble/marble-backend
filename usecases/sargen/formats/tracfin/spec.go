@@ -44,6 +44,10 @@ func Key(version string) core.FormatKey {
 // Spec returns the generated description of a version, loaded once per version.
 // The returned value is shared: callers must not modify it.
 func Spec(version string) (*core.Spec, bool) {
+	if _, err := versionsFS.ReadFile("versions/" + version + "/spec.gen.json"); err != nil {
+		// Unknown version: do not grow the cache.
+		return nil, false
+	}
 	specCacheMu.Lock()
 	entry, found := specCache[version]
 	if !found {

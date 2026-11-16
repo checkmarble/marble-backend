@@ -109,6 +109,14 @@
   "t_mail": {
    "strip_anchors": true,
    "source": "financier-v1.4.0.xsd:80-102 : motif ^…$ ; en regex XSD ^ et $ sont littéraux. Hypothèse : ERMES les lit comme des ancres (à confirmer par un import sur ERMES démo)."
+  },
+  "t_iban": {
+   "strip_anchors": true,
+   "source": "financier-v1.4.0.xsd:80-102 et 334-368 : motif ^…$ ; en regex XSD ^ et $ sont littéraux. Hypothèse : ERMES les lit comme des ancres (à confirmer par un import sur ERMES démo) ; le validateur ancre lui-même chaque motif."
+  },
+  "t_numCard": {
+   "strip_anchors": true,
+   "source": "financier-v1.4.0.xsd:80-102 et 334-368 : motif ^…$ ; en regex XSD ^ et $ sont littéraux. Hypothèse : ERMES les lit comme des ancres (à confirmer par un import sur ERMES démo) ; le validateur ancre lui-même chaque motif."
   }
  },
  "code_list_bindings": {
@@ -268,6 +276,10 @@
   {
    "name": "infosFinancieresFiscales",
    "source": "Ne contient que des renvois vers des pièces jointes (financier-v1.4.0.xsd:1443-1452), hors v1 ; minOccurs=0 (XSD:1505)"
+  },
+  {
+   "template": "context.general.complement",
+   "source": "Hors v1 : déclaration complémentaire uniquement (report_types = DS_INITIALE) ; financier-v1.4.0.xsd:1725-1731 minOccurs=0 ; analysis.md §3"
   }
  ],
  "defaults": [
@@ -1230,6 +1242,24 @@
    "source": "financier-v1.4.0.xsd:1566-1588 ; analysis.md §8 et §13"
   },
   {
+   "id": "transaction_emetteur_requis_sauf_ot07",
+   "kind": "exactly_one",
+   "scope": "work.transactions[]",
+   "among": [
+    "work.transactions[].emetteurPersonne",
+    "work.transactions[].emetteurLibre"
+   ],
+   "when": {
+    "path": "work.transactions[].typeOperation",
+    "op": "not_in",
+    "values": [
+     "OT07"
+    ]
+   },
+   "description": "L'émetteur est obligatoire, soit une personne déclarée, soit un texte libre, sauf pour un versement d'espèces (OT07).",
+   "source": "financier-v1.4.0.xsd:1543-1565 (émetteur obligatoire sauf OT07) ; rule operation_emetteur_requis_sauf_ot07"
+  },
+  {
    "id": "transaction_emetteur_exclusif",
    "kind": "at_most_one",
    "scope": "work.transactions[]",
@@ -1256,6 +1286,17 @@
     ]
    },
    "description": "Le bénéficiaire est obligatoire, soit une personne déclarée, soit un texte libre, sauf pour un retrait d'espèces (OT06).",
+   "source": "financier-v1.4.0.xsd:1566-1573 (id d'une personne déjà déclarée ou champ libre) ; plan Task 2 (working_nodes)"
+  },
+  {
+   "id": "transaction_beneficiaire_exclusif",
+   "kind": "at_most_one",
+   "scope": "work.transactions[]",
+   "among": [
+    "work.transactions[].beneficiairePersonne",
+    "work.transactions[].beneficiaireLibre"
+   ],
+   "description": "Le bénéficiaire est soit une personne déclarée, soit un texte libre : pas les deux.",
    "source": "financier-v1.4.0.xsd:1566-1573 (id d'une personne déjà déclarée ou champ libre) ; plan Task 2 (working_nodes)"
   }
  ],
