@@ -239,9 +239,12 @@ func (r *memRepo) GetSarGenerationJob(_ context.Context, _ repositories.Executor
 	return *j, nil
 }
 
-func (r *memRepo) SetSarGenerationJobStatus(_ context.Context, _ repositories.Executor, id uuid.UUID,
+func (r *memRepo) SetSarGenerationJobStatus(ctx context.Context, _ repositories.Executor, id uuid.UUID,
 	status models.SarJobStatus, errMsg string,
 ) error {
+	if err := ctx.Err(); err != nil { // like pgx on a cancelled context
+		return err
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	j := r.jobs[id]
@@ -323,9 +326,12 @@ func (r *memRepo) CompleteSarGenerationTask(_ context.Context, _ repositories.Ex
 	return true, nil
 }
 
-func (r *memRepo) FailSarGenerationTask(_ context.Context, _ repositories.Executor, id uuid.UUID,
+func (r *memRepo) FailSarGenerationTask(ctx context.Context, _ repositories.Executor, id uuid.UUID,
 	attempt int, errMsg string, trace []byte,
 ) (bool, error) {
+	if err := ctx.Err(); err != nil { // like pgx on a cancelled context
+		return false, err
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	t := r.task(id)

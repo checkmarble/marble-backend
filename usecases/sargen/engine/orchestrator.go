@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io/fs"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 const (
@@ -28,6 +30,28 @@ const (
 	// RateLimitSnooze is how long the worker snoozes on models.LLMRateLimitedError.
 	RateLimitSnooze = 30 * time.Second
 )
+
+// RunningElsewhereSnooze is how long the worker snoozes when the only
+// unfinished tasks are running under another worker (no attempt consumed).
+const RunningElsewhereSnooze = 2 * time.Minute
+
+// finalWriteTimeout bounds the writes made after the job context is done
+// (task failure, final job status): they must survive a cancelled context.
+const finalWriteTimeout = 10 * time.Second
+
+var (
+	// ErrTasksRunningElsewhere: nothing is claimable because the unfinished
+	// tasks run under another worker (or a stale one not yet reclaimable).
+	ErrTasksRunningElsewhere = errors.New("des tâches sont en cours d'exécution ailleurs")
+	// ErrPromptMissing: a prompt file is missing; the job is marked failed and
+	// retrying is pointless (the worker cancels the River job).
+	ErrPromptMissing = errors.New("prompt manquant")
+)
+
+// detached returns a context that survives the cancellation of ctx.
+func detached(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), finalWriteTimeout)
+}
 
 // TaskRunner runs one task (LLM agent loop in Task 13; a fake in tests). The
 // returned error is technical (provider down, timeout, network): the task is
@@ -270,12 +294,8 @@ func (r *jobRun) loop(ctx context.Context) error {
 			if known[t.InputHash] {
 				continue
 			}
-			if s.PromptPath != "" && !o.prompts.Exists(s.PromptPath) {
-				msg := "prompt manquant : " + s.PromptPath
-				if err := o.generation.SetSarGenerationJobStatus(ctx, exec, r.job.Id, models.SarJobStatusFailed, msg); err != nil {
-					return errors.Wrap(err, "cannot fail job")
-				}
-				return errors.New(msg)
+			if err := r.checkPrompt(ctx, s); err != nil {
+				return err
 			}
 			known[t.InputHash] = true
 			fresh = append(fresh, t)
@@ -290,6 +310,12 @@ func (r *jobRun) loop(ctx context.Context) error {
 		ready, pending, err := r.readyTasks(tasks)
 		if err != nil {
 			return err
+		}
+		// Resumed tasks too: a prompt may have disappeared since the plan.
+		for _, rt := range ready {
+			if err := r.checkPrompt(ctx, rt.spec); err != nil {
+				return err
+			}
 		}
 		if len(ready) == 0 {
 			if pending > 0 {
@@ -307,9 +333,24 @@ func (r *jobRun) loop(ctx context.Context) error {
 			return err
 		}
 		if !progress {
-			return errors.New("des tâches sont en cours d'exécution ailleurs")
+			return ErrTasksRunningElsewhere
 		}
 	}
+}
+
+// checkPrompt fails the job when the prompt of a spec does not exist.
+func (r *jobRun) checkPrompt(ctx context.Context, s core.TaskSpec) error {
+	if s.PromptPath == "" || r.o.prompts.Exists(s.PromptPath) {
+		return nil
+	}
+	msg := "prompt manquant : " + s.PromptPath
+	dctx, cancel := detached(ctx)
+	defer cancel()
+	if err := r.o.generation.SetSarGenerationJobStatus(dctx, r.o.executorFactory.NewExecutor(),
+		r.job.Id, models.SarJobStatusFailed, msg); err != nil {
+		return errors.Wrap(err, "cannot fail job")
+	}
+	return errors.Mark(errors.New(msg), ErrPromptMissing)
 }
 
 // readyTasks returns the not-done tasks whose dependencies (their spec's
@@ -372,6 +413,13 @@ func (r *jobRun) runWave(ctx context.Context, ready []readyTask) (bool, error) {
 			break // do not start new tasks after a failure
 		}
 		sem <- struct{}{}
+		mu.Lock()
+		stop = failed
+		mu.Unlock()
+		if stop { // a task failed while waiting for a slot
+			<-sem
+			break
+		}
 		wg.Add(1)
 		go func(rt readyTask) {
 			defer wg.Done()
@@ -412,11 +460,21 @@ func (r *jobRun) runTask(ctx context.Context, rt readyTask) (claimed bool, err e
 		return false, nil
 	}
 	fail := func(cause error, trace []byte) error {
-		if _, ferr := o.generation.FailSarGenerationTask(ctx, exec, rt.task.Id, attempt, cause.Error(), trace); ferr != nil {
+		// Detached: on a timeout or shutdown ctx is done, and the task must
+		// still end up failed (claimable) rather than stuck running.
+		dctx, cancel := detached(ctx)
+		defer cancel()
+		if _, ferr := o.generation.FailSarGenerationTask(dctx, exec, rt.task.Id, attempt, cause.Error(), trace); ferr != nil {
 			return errors.Wrap(cause, "cannot record task failure: "+ferr.Error())
 		}
 		return errors.Wrapf(cause, "task %s %s", rt.task.Kind, rt.task.TargetPath)
 	}
+
+	defer func() {
+		if rec := recover(); rec != nil {
+			err = fail(errors.Newf("panic dans la tâche : %v", rec), nil)
+		}
+	}()
 
 	decl, err := o.declarations.GetSarDeclaration(ctx, exec, r.declId)
 	if err != nil {
@@ -437,14 +495,16 @@ func (r *jobRun) runTask(ctx context.Context, rt readyTask) (claimed bool, err e
 		return true, fail(runErr, out.Trace)
 	}
 
-	r.applyMu.Lock()
 	superseded := false
-	applyErr := o.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		var err error
-		superseded, err = r.applyOutput(ctx, tx, rt, attempt, out)
-		return err
-	})
-	r.applyMu.Unlock()
+	applyErr := func() error {
+		r.applyMu.Lock()
+		defer r.applyMu.Unlock()
+		return o.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+			var err error
+			superseded, err = r.applyOutput(ctx, tx, rt, attempt, out)
+			return err
+		})
+	}()
 	if applyErr != nil {
 		return true, fail(applyErr, out.Trace)
 	}
@@ -452,8 +512,10 @@ func (r *jobRun) runTask(ctx context.Context, rt readyTask) (claimed bool, err e
 		return true, nil
 	}
 	// Heartbeat: a live job is told apart from a dead one by updated_at.
+	// The output is applied: a failed heartbeat must not fail the task.
 	if err := o.generation.TouchSarGenerationJob(ctx, exec, r.job.Id); err != nil {
-		return true, errors.Wrap(err, "cannot touch job")
+		utils.LoggerFromContext(ctx).WarnContext(ctx, "sar generation: heartbeat failed",
+			"job_id", r.job.Id, "error", err.Error())
 	}
 	return true, nil
 }
@@ -647,40 +709,49 @@ func (r *jobRun) saveDocument(ctx context.Context, exec repositories.Executor, d
 func (r *jobRun) finish(ctx context.Context) error {
 	o := r.o
 	if r.job.Kind != models.SarJobKindReview {
-		r.applyMu.Lock()
-		err := o.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-			decl, err := o.declarations.GetSarDeclarationForUpdate(ctx, tx, r.declId)
-			if err != nil {
-				return errors.Wrap(err, "cannot lock declaration")
-			}
-			doc, err := decodeDocument(decl.Document)
-			if err != nil {
-				return err
-			}
-			c := r.format.Compute(doc)
-			for _, p := range c.RemoveItems {
-				doc.RemoveItem(p)
-			}
-			fills := make([]core.Fill, len(c.Fills))
-			for i, f := range c.Fills {
-				f.Origin, f.TaskID = core.OriginComputed, nil
-				fills[i] = f
-			}
-			res := core.ApplyFills(r.format.Spec(), doc, fills, core.ApplyOptions{
-				Overwrite: core.OverwriteNonManual, SkipMaxItems: true,
+		err := func() error {
+			r.applyMu.Lock()
+			defer r.applyMu.Unlock()
+			return o.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+				decl, err := o.declarations.GetSarDeclarationForUpdate(ctx, tx, r.declId)
+				if err != nil {
+					return errors.Wrap(err, "cannot lock declaration")
+				}
+				doc, err := decodeDocument(decl.Document)
+				if err != nil {
+					return err
+				}
+				c := r.format.Compute(doc)
+				for _, p := range c.RemoveItems {
+					doc.RemoveItem(p)
+				}
+				fills := make([]core.Fill, len(c.Fills))
+				for i, f := range c.Fills {
+					f.Origin, f.TaskID = core.OriginComputed, nil
+					fills[i] = f
+				}
+				res := core.ApplyFills(r.format.Spec(), doc, fills, core.ApplyOptions{
+					Overwrite: core.OverwriteNonManual, SkipMaxItems: true,
+				})
+				if len(res.Rejected) > 0 || len(res.Conflicts) > 0 {
+					utils.LoggerFromContext(ctx).WarnContext(ctx, "sar generation: computed fills not applied",
+						"job_id", r.job.Id, "rejected", len(res.Rejected), "conflicts", len(res.Conflicts),
+						"first_rejected", firstRejected(res))
+				}
+				if len(c.RemoveItems) == 0 && len(res.Applied) == 0 {
+					return nil
+				}
+				return r.saveDocument(ctx, tx, decl, doc)
 			})
-			if len(c.RemoveItems) == 0 && len(res.Applied) == 0 {
-				return nil
-			}
-			return r.saveDocument(ctx, tx, decl, doc)
-		})
-		r.applyMu.Unlock()
+		}()
 		if err != nil {
 			return errors.Wrap(err, "compute failed")
 		}
 	}
 	exec := o.executorFactory.NewExecutor()
-	if err := o.generation.SetSarGenerationJobStatus(ctx, exec, r.job.Id, models.SarJobStatusDone, ""); err != nil {
+	dctx, cancel := detached(ctx)
+	defer cancel()
+	if err := o.generation.SetSarGenerationJobStatus(dctx, exec, r.job.Id, models.SarJobStatusDone, ""); err != nil {
 		return errors.Wrap(err, "cannot complete job")
 	}
 	return nil
@@ -697,8 +768,18 @@ func decodeDocument(raw []byte) (*core.Document, error) {
 	return doc, nil
 }
 
+func firstRejected(res core.ApplyResult) string {
+	if len(res.Rejected) > 0 {
+		return string(res.Rejected[0].Fill.Path) + ": " + res.Rejected[0].Issue.Message
+	}
+	return ""
+}
+
+// questionKey identifies a question by its (order-independent) paths and text.
 func questionKey(paths []string, text string) string {
-	return strings.Join(paths, "\x00") + "\x01" + text
+	sorted := append([]string(nil), paths...)
+	slices.Sort(sorted)
+	return strings.Join(sorted, "\x00") + "\x01" + text
 }
 
 // taskInput is the persisted Input of a task: enough to rebuild its TaskSpec
