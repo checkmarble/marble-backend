@@ -44,18 +44,21 @@ const (
 var (
 	decimalRe  = regexp.MustCompile(`^-?[0-9]+(\.[0-9]+)?$`)
 	integerRe  = regexp.MustCompile(`^[0-9]+$`)
-	patternMu  sync.Mutex
+	patternMu  sync.RWMutex
 	patternMap = map[string]*regexp.Regexp{}
 )
 
 // anchoredPattern compiles `^(?:p)$` once per pattern. It returns nil when the
 // pattern does not compile (the generator guarantees it does).
 func anchoredPattern(p string) *regexp.Regexp {
-	patternMu.Lock()
-	defer patternMu.Unlock()
-	if re, ok := patternMap[p]; ok {
+	patternMu.RLock()
+	re, ok := patternMap[p]
+	patternMu.RUnlock()
+	if ok {
 		return re
 	}
+	patternMu.Lock()
+	defer patternMu.Unlock()
 	re, err := regexp.Compile("^(?:" + p + ")$")
 	if err != nil {
 		re = nil
@@ -85,7 +88,9 @@ func SortIssues(issues []Issue) {
 // ValidateValue checks one raw value against the node at path: structure
 // (path known, a field, not an identifier node), type, length, pattern, code
 // list. It knows nothing of the rest of the document. An empty value is
-// accepted (it clears the field).
+// accepted (it clears the field). The returned issue may be a warning (for
+// example code_list_unavailable): callers must use Issue.Blocks to decide
+// whether to refuse the value.
 func ValidateValue(spec *Spec, path Path, raw string) *Issue {
 	if _, err := ParsePath(string(path)); err != nil {
 		return blocking(path, CodeUnknownPath, "chemin invalide : "+err.Error())
@@ -125,9 +130,12 @@ func checkValue(spec *Spec, node *Node, path Path, raw string) *Issue {
 		if node.MaxLength > 0 && len(raw) > node.MaxLength {
 			return blocking(path, CodeMaxLength, fmt.Sprintf("%d chiffres au maximum", node.MaxLength))
 		}
-		return nil
+		return checkPattern(node, path, raw)
 	case TypeDecimal:
-		return checkDecimal(node, path, raw)
+		if issue := checkDecimal(node, path, raw); issue != nil {
+			return issue
+		}
+		return checkPattern(node, path, raw)
 	case TypeCode:
 		return checkCode(spec, node, path, raw)
 	case TypeRef:
@@ -143,10 +151,15 @@ func checkValue(spec *Spec, node *Node, path Path, raw string) *Issue {
 	if node.MaxLength > 0 && n > node.MaxLength {
 		return blocking(path, CodeMaxLength, fmt.Sprintf("%d caractères au maximum (%d saisis)", node.MaxLength, n))
 	}
-	if node.Pattern != "" {
-		if re := anchoredPattern(node.Pattern); re != nil && !re.MatchString(raw) {
-			return blocking(path, CodePattern, "format de valeur invalide")
-		}
+	return checkPattern(node, path, raw)
+}
+
+func checkPattern(node *Node, path Path, raw string) *Issue {
+	if node.Pattern == "" {
+		return nil
+	}
+	if re := anchoredPattern(node.Pattern); re != nil && !re.MatchString(raw) {
+		return blocking(path, CodePattern, "format de valeur invalide")
 	}
 	return nil
 }
@@ -186,14 +199,18 @@ func checkCode(spec *Spec, node *Node, path Path, raw string) *Issue {
 type validator struct {
 	spec      *Spec
 	doc       *Document
-	ancestors map[Path]bool
+	ancestors map[Path]bool // paths with a value or an item below (or at)
+	valued    map[Path]bool // paths with a non-empty value below (or at)
 	issues    []Issue
 }
 
 // Validate checks the whole document against the spec and its generic rules.
 // Issues are ordered by path, then code.
 func Validate(spec *Spec, doc *Document) []Issue {
-	v := &validator{spec: spec, doc: doc, ancestors: map[Path]bool{}}
+	if spec == nil {
+		return nil
+	}
+	v := &validator{spec: spec, doc: doc, ancestors: map[Path]bool{}, valued: map[Path]bool{}}
 	v.indexAncestors()
 	v.checkValues()
 	if spec != nil && spec.Root != nil {
@@ -223,6 +240,9 @@ func (v *validator) indexAncestors() {
 	for p, val := range v.doc.Values {
 		if val.Value != "" {
 			v.addAncestors(p)
+			for q := p; q != ""; q = q.Parent() {
+				v.valued[q] = true
+			}
 		}
 	}
 	for container, keys := range v.doc.Items {
@@ -294,9 +314,20 @@ func (v *validator) checkChildren(parent *Node, base Path, parentExport bool) {
 		child := base.Child(c.Name)
 		if c.repeatable() {
 			keys := v.doc.Items[child]
-			if len(keys) < c.Min {
+			// A repeatable field item with an empty value is not written to
+			// the export: it does not count towards the minimum.
+			filled := len(keys)
+			if c.Kind == NodeField {
+				filled = 0
+				for _, k := range keys {
+					if v.hasValue(Path(string(child) + "[" + k + "]")) {
+						filled++
+					}
+				}
+			}
+			if filled < c.Min {
 				v.issues = append(v.issues, Issue{Path: child, Code: CodeTooFewItems, Severity: obligation(!export),
-					Message: fmt.Sprintf("%d élément(s) au minimum (%d présent(s))", c.Min, len(keys))})
+					Message: fmt.Sprintf("%d élément(s) au minimum (%d renseigné(s))", c.Min, filled)})
 			}
 			if c.Max >= 0 && len(keys) > c.Max {
 				v.add(blocking(child, CodeTooManyItems, fmt.Sprintf("%d éléments au maximum (%d présents)", c.Max, len(keys))))
@@ -389,7 +420,7 @@ func (v *validator) resolveStatic(s scopeInstance, tmpl string) Path {
 func (v *validator) presentPaths(s scopeInstance, tmpl string) []Path {
 	var out []Path
 	for _, p := range v.resolve(s, tmpl) {
-		if v.ancestors[p] {
+		if v.valued[p] {
 			out = append(out, p)
 		}
 	}
@@ -424,6 +455,10 @@ func (v *validator) condition(s scopeInstance, c *Condition) bool {
 	return false
 }
 
+func knownOp(c *Condition) bool {
+	return c == nil || slices.Contains([]string{opEq, opIn, opNotIn, opPresent, opAbsent}, c.Op)
+}
+
 func (v *validator) scopes(r Rule) []scopeInstance {
 	if r.Scope == "" {
 		return []scopeInstance{{}}
@@ -452,10 +487,17 @@ func (v *validator) ruleIssue(r Rule, p Path, sev Severity) {
 
 func (v *validator) checkRule(r Rule) {
 	for _, s := range v.scopes(r) {
+		if !knownOp(r.When) {
+			v.add(blocking(s.concrete, "unknown_rule", "opérateur de condition inconnu : "+r.When.Op+" ("+r.ID+")"))
+			return
+		}
 		if !v.condition(s, r.When) {
 			continue
 		}
 		switch r.Kind {
+		default:
+			v.add(blocking(s.concrete, "unknown_rule", "type de règle inconnu : "+r.Kind+" ("+r.ID+")"))
+			return
 		case ruleKindRequiredIf:
 			for _, t := range r.Then {
 				if len(v.presentPaths(s, t)) == 0 {

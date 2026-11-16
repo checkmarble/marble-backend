@@ -14,3 +14,9 @@ type Issue struct {
 	Severity Severity `json:"severity"`
 	RuleID   string   `json:"rule_id,omitempty"`
 }
+
+// Blocks reports whether the issue prevents saving or exporting; a nil issue
+// (value accepted) does not.
+func (i *Issue) Blocks() bool {
+	return i != nil && i.Severity == SeverityBlocking
+}

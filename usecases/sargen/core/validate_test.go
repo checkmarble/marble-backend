@@ -253,3 +253,49 @@ func TestValidate_IssuesAreSortedByPathThenCode(t *testing.T) {
 		}
 	}
 }
+
+func TestIssue_Blocks(t *testing.T) {
+	var none *core.Issue
+	assert.False(t, none.Blocks())
+	assert.True(t, (&core.Issue{Severity: core.SeverityBlocking}).Blocks())
+	assert.False(t, (&core.Issue{Severity: core.SeverityWarning}).Blocks())
+	assert.False(t, core.ValidateValue(validationSpec(), "organisme.equipement", "x").Blocks())
+}
+
+func TestValidate_EmptyRepeatableFieldItemDoesNotSatisfyRule(t *testing.T) {
+	spec := &core.Spec{Root: &core.Node{Children: []*core.Node{
+		{Name: "kind", Template: "kind", Kind: core.NodeField, Type: core.TypeString, Min: 0, Max: 1, Export: true},
+		{Name: "alias", Template: "alias[]", Kind: core.NodeField, Type: core.TypeString, Min: 0, Max: 5, Export: true},
+	}}, Rules: []core.Rule{{
+		ID: "alias_requis", Kind: "required_if",
+		When: &core.Condition{Path: "kind", Op: "eq", Values: []string{"X"}},
+		Then: []string{"alias[]"},
+	}}}
+	d := core.NewDocument()
+	setValue(d, "kind", "X")
+	d.AddItem("alias", "alias") // empty item
+	var fired bool
+	for _, is := range core.Validate(spec, d) {
+		fired = fired || is.Code == "rule:alias_requis"
+	}
+	assert.True(t, fired)
+
+	setValue(d, "alias[alias-1]", "ok")
+	for _, is := range core.Validate(spec, d) {
+		assert.NotEqual(t, "rule:alias_requis", is.Code)
+	}
+}
+
+func TestValidate_UnknownRuleAndNilSpec(t *testing.T) {
+	assert.Nil(t, core.Validate(nil, core.NewDocument()))
+	spec := validationSpec()
+	spec.Rules = []core.Rule{{ID: "bad", Kind: "bogus"}, {ID: "badop", Kind: "required_if",
+		When: &core.Condition{Path: "organisme.profession", Op: "weird"}, Then: []string{"organisme.libelle"}}}
+	var n int
+	for _, is := range core.Validate(spec, core.NewDocument()) {
+		if is.Code == "unknown_rule" && is.Blocks() {
+			n++
+		}
+	}
+	assert.Equal(t, 2, n)
+}

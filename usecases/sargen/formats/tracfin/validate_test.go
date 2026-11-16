@@ -223,3 +223,23 @@ func TestValidate_HandRuleSousCategorieAutre(t *testing.T) {
 	_, found = findIssue(tracfin.Validate(spec, d), "rule:sous_categorie_relation_autre", core.SeverityWarning, rel)
 	assert.False(t, found)
 }
+
+func TestValidateValue_MontantPattern(t *testing.T) {
+	spec := loadTracfinSpec(t)
+	path := core.Path("work.transactions[transactions-1].montant")
+	for _, raw := range []string{"0", "0.00", "-5"} {
+		is := core.ValidateValue(spec, path, raw)
+		require.NotNil(t, is, raw)
+		assert.Equal(t, "pattern", is.Code, raw)
+		assert.True(t, is.Blocks(), raw)
+	}
+	assert.Nil(t, core.ValidateValue(spec, path, "12.50"))
+}
+
+func TestValidate_EmptyCadreLegalItemBlocks(t *testing.T) {
+	spec := loadTracfinSpec(t)
+	d := core.NewDocument()
+	d.AddItem("context.natureSoupcon.cadreLegal", "cl") // empty value
+	_, found := findIssue(tracfin.Validate(spec, d), "too_few_items", core.SeverityBlocking, "context.natureSoupcon.cadreLegal")
+	assert.True(t, found, "an empty item does not satisfy the minimum")
+}
