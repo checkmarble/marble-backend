@@ -118,6 +118,12 @@ type ContinuousScreeningUsecaseRepository interface {
 		enrichedPayload []byte,
 	) error
 
+	LockContinuousScreeningById(
+		ctx context.Context,
+		exec repositories.Executor,
+		id uuid.UUID,
+	) error
+
 	// Continuous screening matches
 	LockContinuousScreeningByMatchId(
 		ctx context.Context,

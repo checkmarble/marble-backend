@@ -287,6 +287,16 @@ func TestLockContinuousScreeningByMatchIdQueryLocksOnlyTheScreening(t *testing.T
 	require.NoError(t, err)
 	require.Equal(t, "SELECT cs.id FROM continuous_screenings AS cs "+
 		"JOIN continuous_screening_matches AS csm ON csm.continuous_screening_id = cs.id "+
-		"WHERE csm.id = $1 FOR UPDATE OF cs", sql)
+		"WHERE csm.id = $1 FOR NO KEY UPDATE OF cs", sql)
 	require.Equal(t, []any{matchId.String()}, args)
+}
+
+func TestLockContinuousScreeningByIdQueryLocksTheScreening(t *testing.T) {
+	id := uuid.New()
+
+	sql, args, err := lockContinuousScreeningByIdQuery(id).ToSql()
+
+	require.NoError(t, err)
+	require.Equal(t, "SELECT id FROM continuous_screenings WHERE id = $1 FOR NO KEY UPDATE", sql)
+	require.Equal(t, []any{id.String()}, args)
 }

@@ -1076,6 +1076,24 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_Invali
 	suite.AssertExpectations()
 }
 
+func (suite *ScreeningTestSuite) TestDismissContinuousScreening_LocksScreeningBeforeReading() {
+	lockErr := errors.New("lock timeout")
+
+	// Mock expectations: the screening is read only once the lock is held
+	suite.repository.On("LockContinuousScreeningById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(lockErr)
+
+	// Execute
+	uc := suite.makeUsecase()
+	_, err := uc.DismissContinuousScreening(suite.ctx, suite.screeningId, &suite.userId)
+
+	// Assert
+	suite.ErrorIs(err, lockErr)
+	suite.repository.AssertNotCalled(suite.T(), "GetContinuousScreeningWithMatchesById",
+		mock.Anything, mock.Anything, mock.Anything)
+	suite.AssertExpectations()
+}
+
 func (suite *ScreeningTestSuite) TestDismissContinuousScreening_InsufficientPermissions() {
 	continuousScreeningWithMatches := models.ContinuousScreeningWithMatches{
 		ContinuousScreening: models.ContinuousScreening{
@@ -1088,6 +1106,8 @@ func (suite *ScreeningTestSuite) TestDismissContinuousScreening_InsufficientPerm
 	// Mock expectations
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
 		suite.screeningId).Return(continuousScreeningWithMatches, nil)
+	suite.repository.On("LockContinuousScreeningById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(nil)
 	suite.enforceSecurity.On("DismissContinuousScreeningHits", suite.orgId).Return(models.ForbiddenError)
 
 	// Execute
@@ -1138,6 +1158,8 @@ func (suite *ScreeningTestSuite) TestDismissContinuousScreening_NoHitChangesOthe
 	expectedResult.Matches = []models.ContinuousScreeningMatch{match1, expectedMatch2, expectedMatch3}
 
 	// Mock expectations
+	suite.repository.On("LockContinuousScreeningById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(nil)
 	suite.enforceSecurity.On("DismissContinuousScreeningHits", suite.orgId).Return(nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
 		suite.screeningId).Return(continuousScreeningWithMatches, nil).Once()
@@ -1234,6 +1256,8 @@ func (suite *ScreeningTestSuite) TestDismissContinuousScreening_ConfirmedHit_NoU
 	}
 
 	// Mock expectations - no pending matches, so no batch update calls
+	suite.repository.On("LockContinuousScreeningById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(nil)
 	suite.enforceSecurity.On("DismissContinuousScreeningHits", suite.orgId).Return(nil)
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
 		suite.screeningId).Return(continuousScreeningWithMatches, nil).Once()
@@ -1281,6 +1305,8 @@ func (suite *ScreeningTestSuite) TestDismissContinuousScreening_NotInCase() {
 	// Mock expectations
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
 		suite.screeningId).Return(continuousScreeningWithMatches, nil)
+	suite.repository.On("LockContinuousScreeningById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(nil)
 	suite.enforceSecurity.On("DismissContinuousScreeningHits", suite.orgId).Return(nil)
 
 	// Execute
@@ -1307,6 +1333,8 @@ func (suite *ScreeningTestSuite) TestDismissContinuousScreening_NotInReview() {
 	// Mock expectations
 	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
 		suite.screeningId).Return(continuousScreeningWithMatches, nil)
+	suite.repository.On("LockContinuousScreeningById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(nil)
 	suite.enforceSecurity.On("DismissContinuousScreeningHits", suite.orgId).Return(nil)
 
 	// Execute
