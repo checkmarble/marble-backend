@@ -145,7 +145,7 @@ func findNode(n *Node, template string) *Node {
 	return nil
 }
 
-func (n *Node) repeatable() bool { return n.Max != 1 }
+func (n *Node) repeatable() bool { return n.Max < 0 || n.Max > 1 }
 
 // Leaves returns the concrete leaf paths under prefix, following the items
 // that exist in doc. Order is the spec child order, items in key order.
@@ -191,4 +191,20 @@ func visitLeaves(n *Node, concrete Path, doc *Document, out []Path) []Path {
 		out = expandLeaves(c, concrete, doc, out)
 	}
 	return out
+}
+
+// EffectiveNature returns the node nature, defaulting to NatureCopied.
+func (n *Node) EffectiveNature() Nature {
+	if n.Nature == "" {
+		return NatureCopied
+	}
+	return n.Nature
+}
+
+// EffectiveSeverity returns the rule severity, defaulting to SeverityBlocking.
+func (r Rule) EffectiveSeverity() Severity {
+	if r.Severity == "" {
+		return SeverityBlocking
+	}
+	return r.Severity
 }

@@ -42,3 +42,17 @@ func TestSpec_Leaves(t *testing.T) {
 	assert.Equal(t, []core.Path{"personnes.pp[pp-2].nom", "personnes.pp[pp-2].prenom"}, s.Leaves("personnes.pp[pp-2]", d))
 	assert.Len(t, s.Leaves("personnes.pp", d), 4)
 }
+
+func TestEffectiveDefaults(t *testing.T) {
+	assert.Equal(t, core.SeverityBlocking, core.Rule{}.EffectiveSeverity())
+	assert.Equal(t, core.SeverityWarning, core.Rule{Severity: core.SeverityWarning}.EffectiveSeverity())
+	assert.Equal(t, core.NatureCopied, (&core.Node{}).EffectiveNature())
+	assert.Equal(t, core.NatureJudgment, (&core.Node{Nature: core.NatureJudgment}).EffectiveNature())
+}
+
+func TestNode_MaxZeroIsNotRepeatable(t *testing.T) {
+	s := &core.Spec{Root: &core.Node{Children: []*core.Node{
+		{Name: "a", Template: "a", Kind: core.NodeField, Max: 0},
+	}}}
+	assert.Equal(t, []core.Path{"a"}, s.Leaves("", core.NewDocument()))
+}

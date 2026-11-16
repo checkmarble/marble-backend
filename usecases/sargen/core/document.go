@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"maps"
 	"slices"
@@ -152,4 +153,28 @@ func (d *Document) Clone() *Document {
 	}
 	maps.Copy(c.NextKey, d.NextKey)
 	return c
+}
+
+// UnmarshalJSON decodes a Document and guarantees all maps are non-nil, so
+// documents stored with missing or null maps can be written to safely.
+func (d *Document) UnmarshalJSON(data []byte) error {
+	type plain Document
+	var p plain
+	if err := json.Unmarshal(data, &p); err != nil {
+		return err
+	}
+	*d = Document(p)
+	if d.Values == nil {
+		d.Values = map[Path]Value{}
+	}
+	if d.Items == nil {
+		d.Items = map[Path][]string{}
+	}
+	if d.ItemSources == nil {
+		d.ItemSources = map[Path][]ObjectRef{}
+	}
+	if d.NextKey == nil {
+		d.NextKey = map[Path]int{}
+	}
+	return nil
 }
