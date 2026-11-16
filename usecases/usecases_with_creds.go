@@ -570,6 +570,12 @@ func (usecases *UsecasesWithCreds) NewSarGenerationUsecase() *sargen.Usecase {
 		utils.Ptr(usecases.NewInboxReader()),
 		usecases.NewCaseUseCase().blobRepository,
 		usecases.caseManagerBucketUrl,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		usecases.NewCaseEntityReader(),
+		usecases.NewIngestedDataReaderUsecase(),
+		utils.Ptr(usecases.NewDataModelUseCase()),
 	)
 }
 
