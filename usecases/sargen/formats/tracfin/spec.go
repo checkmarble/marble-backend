@@ -9,6 +9,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"sync"
 
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
@@ -44,7 +45,7 @@ func Key(version string) core.FormatKey {
 // Spec returns the generated description of a version, loaded once per version.
 // The returned value is shared: callers must not modify it.
 func Spec(version string) (*core.Spec, bool) {
-	if _, err := versionsFS.ReadFile("versions/" + version + "/spec.gen.json"); err != nil {
+	if _, err := fs.Stat(versionsFS, "versions/"+version+"/spec.gen.json"); err != nil {
 		// Unknown version: do not grow the cache.
 		return nil, false
 	}

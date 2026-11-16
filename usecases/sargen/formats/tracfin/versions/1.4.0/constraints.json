@@ -89,6 +89,15 @@
    "source": "financier-v1.4.0.xsd:469-475, 479-480 : attribut facultatif type=\"code\"/\"other\" ; v1 : le pays est toujours un code de liste_ref_pays.csv, le pays en texte libre n'est pas géré"
   }
  ],
+ "code_exclusions": [
+  {
+   "list": "liste_ref_pays.csv",
+   "codes": [
+    "1"
+   ],
+   "source": "pays.csv : le code 1 (Autre) n'a pas la longueur minimale 2 de t_pays / t_pays_dromcom (financier-v1.4.0.xsd:476-504) ; il exige l'attribut type=\"other\" et un pays en texte libre, que v1 ne gère pas (dropped_attributes t_paysName.type). Décision : exclu en v1."
+  }
+ ],
  "ignore_type_doc_patterns": {
   "source": "Les documentations génériques des types de longueur (« Chaines de caractere de taille 50 ») n'apprennent rien au LLM ni à l'analyste.",
   "patterns": [
@@ -812,6 +821,14 @@
      "description": "Code du type d'opération (virement, retrait d'espèces, chèque…)."
     },
     {
+     "name": "autretypeOperation",
+     "type": "string",
+     "min": 0,
+     "max_length": 200,
+     "label": "Précision du type d'opération",
+     "description": "Précision du type d'opération, obligatoire quand le type est « Autre » (OT11). Recopiée dans autretypeOperation de la ligne d'opération."
+    },
+    {
      "name": "emetteurPersonne",
      "type": "ref",
      "min": 0,
@@ -1394,6 +1411,23 @@
    },
    "description": "Le type d'opération doit être précisé quand il est « Autre » (OT11).",
    "source": "financier-v1.4.0.xsd:1536-1542 ; analysis.md §13"
+  },
+  {
+   "id": "transaction_autre_type_requis_ot11",
+   "kind": "required_if",
+   "scope": "work.transactions[]",
+   "then": [
+    "work.transactions[].autretypeOperation"
+   ],
+   "when": {
+    "path": "work.transactions[].typeOperation",
+    "op": "eq",
+    "values": [
+     "OT11"
+    ]
+   },
+   "description": "Le type d'opération de la transaction doit être précisé quand il est « Autre » (OT11) : la précision est recopiée sur la ligne d'opération.",
+   "source": "financier-v1.4.0.xsd:1536-1542 ; les lignes d'opération sont calculées : leur précision vient de ce champ de travail"
   },
   {
    "id": "operation_emetteur_requis_sauf_ot07",

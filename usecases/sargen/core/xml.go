@@ -68,7 +68,7 @@ func (x *xmlWriter) fail(err error) {
 // itemPaths lists the concrete paths of a child node under a concrete parent.
 func (x *xmlWriter) itemPaths(c *Node, parent Path) []Path {
 	base := parent.Child(c.Name)
-	if !c.repeatable() {
+	if !c.IsRepeatable() {
 		return []Path{base}
 	}
 	keys := x.doc.Items[base]
@@ -91,11 +91,6 @@ func (x *xmlWriter) assignIDs(n *Node, concrete Path) {
 			continue
 		}
 		if c.Kind == NodeField {
-			continue
-		}
-		if c.Kind == NodeChoice {
-			// A choice is transparent, as in writeChild.
-			x.assignIDs(c, concrete)
 			continue
 		}
 		for _, p := range x.itemPaths(c, concrete) {
@@ -190,7 +185,7 @@ func (x *xmlWriter) hasContent(n *Node, p Path) bool {
 				}
 				continue
 			}
-			if c.repeatable() || x.hasContent(c, cp) {
+			if c.IsRepeatable() || x.hasContent(c, cp) {
 				return true
 			}
 		}
@@ -299,13 +294,6 @@ func (x *xmlWriter) writeChild(c *Node, parent Path, depth int) {
 		}
 		return
 	}
-	if c.Kind == NodeChoice {
-		// A choice is transparent: its children are written in its place.
-		for _, cc := range c.Children {
-			x.writeChild(cc, parent, depth)
-		}
-		return
-	}
 	for _, cp := range x.itemPaths(c, parent) {
 		switch {
 		case c.Kind == NodeField:
@@ -313,7 +301,7 @@ func (x *xmlWriter) writeChild(c *Node, parent Path, depth int) {
 				continue
 			}
 			x.writeElement(c.Name, c, cp, depth)
-		case c.repeatable():
+		case c.IsRepeatable():
 			// Existing items are always written.
 			x.writeElement(c.Name, c, cp, depth)
 		case x.hasContent(c, cp) || c.Min >= 1:

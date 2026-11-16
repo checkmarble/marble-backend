@@ -28,6 +28,19 @@ CONDITION_OPS = {"eq", "in", "not_in", "present", "absent"}
 REF_START_RE = re.compile(r"[Rr]ef\s*:")
 REF_NAME_RE = re.compile(r"liste_ref_[A-Za-z0-9_]+\.csv")
 
+# Builtin XSD types and how the validator encodes their value space. A builtin
+# whose value space is not encoded here makes the generator fail: it would be
+# silently looser than the XSD.
+#   None  = the plain field type (boolean, string, decimal, integer) is exact;
+#   other = a pattern (full match) that restricts the integer value space.
+BUILTIN_VALUE_PATTERNS = {
+    "xs:boolean": None,
+    "xs:decimal": None,
+    "xs:integer": None,
+    "xs:string": None,
+    "xs:positiveInteger": "0*[1-9][0-9]*",
+}
+
 
 def refs_in(doc):
     """Reference list names cited after a `Ref:` marker, in order, without duplicates."""
@@ -286,9 +299,23 @@ class Generator:
                 lst["codes"] = read_codes(self.dir, self.manifest, binding, name)
                 lst["source"] = "%s ; %s" % (binding["file"], binding["source"])
             self.code_lists[name] = lst
+        self.apply_code_exclusions()
         for name, entry in sorted(self.constraints["inline_code_lists"].items()):
             require_source(entry, "inline_code_lists[%s]" % name)
             self.code_lists[name] = {"name": name, "codes": [dict(c) for c in entry["codes"]], "source": entry["source"]}
+
+    def apply_code_exclusions(self):
+        """Remove from a bound list the codes that v1 cannot express (decision in constraints.json)."""
+        for entry in self.constraints.get("code_exclusions", []):
+            require_source(entry, "code_exclusions[%s]" % entry.get("list"))
+            lst = self.code_lists.get(entry["list"])
+            if lst is None or lst.get("unavailable"):
+                fail("code_exclusions : liste %s introuvable ou non publiée" % entry["list"])
+            for code in entry["codes"]:
+                if code not in [c["value"] for c in lst["codes"]]:
+                    fail("code_exclusions : le code %r n'est pas dans %s (entrée périmée)" % (code, entry["list"]))
+            lst["codes"] = [c for c in lst["codes"] if c["value"] not in entry["codes"]]
+            lst["source"] += " ; codes exclus : " + ", ".join(entry["codes"])
 
     def merged_list(self, refs):
         """Code list key for a type bound to several references (union, first wins)."""
@@ -322,7 +349,9 @@ class Generator:
         if type_name.startswith("xs:"):
             if type_name not in self.builtin_map:
                 fail("type XSD builtin %s absent de constraints.json builtin_types" % type_name)
-            return {"kind": self.builtin_map[type_name], "facets": {}, "refs": [], "enum": None, "enum_type": None, "doc": "", "pattern_type": None}
+            if type_name not in BUILTIN_VALUE_PATTERNS:
+                fail("type XSD builtin %s : espace de valeurs non encodé par le générateur (BUILTIN_VALUE_PATTERNS)" % type_name)
+            return {"kind": self.builtin_map[type_name], "facets": {}, "refs": [], "enum": None, "enum_type": None, "doc": "", "pattern_type": None, "value_pattern": BUILTIN_VALUE_PATTERNS[type_name]}
         if type_name not in self.simple_types:
             fail("type simple inconnu : %s" % type_name)
         el = self.simple_types[type_name]
@@ -426,33 +455,56 @@ class Generator:
                 list_name = info["enum_type"]
                 self.add_inline_enum(list_name, info["enum"])
                 node["code_list"] = list_name
-        else:
-            if has_list:
-                fail("%s : type %s a une liste ou une énumération mais n'est pas déclaré code" % (template, type_name))
-            if kind == "string":
-                if facets.get("minLength", 0) > 0:
-                    node["min_length"] = facets["minLength"]
-                if "maxLength" in facets:
-                    node["max_length"] = facets["maxLength"]
-            elif kind in ("integer", "decimal"):
-                # max_length carries the maximum number of digits (totalDigits).
-                if "totalDigits" in facets:
-                    node["max_length"] = facets["totalDigits"]
-                if "fractionDigits" in facets:
-                    node["fraction_digits"] = facets["fractionDigits"]
-            if kind in ("string", "integer", "decimal") and "pattern" in facets:
-                pattern = facets["pattern"]
-                owner = info["pattern_type"]
-                override = self.pattern_overrides.get(owner)
-                if override is not None:
-                    require_source(override, "pattern_overrides[%s]" % owner)
-                    if override.get("strip_anchors"):
-                        pattern = strip_anchors(pattern)
-                check_regex(pattern, "%s (type %s)" % (template, owner))
-                node["pattern"] = pattern
+        elif has_list:
+            fail("%s : type %s a une liste ou une énumération mais n'est pas déclaré code" % (template, type_name))
+        if kind in ("string", "code"):
+            if facets.get("minLength", 0) > 0:
+                node["min_length"] = facets["minLength"]
+            if "maxLength" in facets:
+                node["max_length"] = facets["maxLength"]
+        elif kind in ("integer", "decimal"):
+            # max_length carries the maximum number of digits (totalDigits).
+            if "totalDigits" in facets:
+                node["max_length"] = facets["totalDigits"]
+            if "fractionDigits" in facets:
+                node["fraction_digits"] = facets["fractionDigits"]
+        if kind in ("string", "code", "integer", "decimal") and "pattern" in facets:
+            pattern = facets["pattern"]
+            owner = info["pattern_type"]
+            override = self.pattern_overrides.get(owner)
+            if override is not None:
+                require_source(override, "pattern_overrides[%s]" % owner)
+                if override.get("strip_anchors"):
+                    pattern = strip_anchors(pattern)
+            check_regex(pattern, "%s (type %s)" % (template, owner))
+            node["pattern"] = pattern
+        if info.get("value_pattern"):
+            if kind != "integer" or "pattern" in node:
+                fail("%s : espace de valeurs de %s non combinable avec un motif ou un type %s" % (template, type_name, kind))
+            node["pattern"] = info["value_pattern"]
+        if kind == "code":
+            self.check_code_facets(node, template)
         if doc:
             node["description"] = doc
         return node
+
+    def check_code_facets(self, node, template):
+        """Every code of the list must satisfy the length and pattern facets of the node."""
+        lst = self.code_lists[node["code_list"]]
+        if lst.get("unavailable"):
+            return
+        pattern = re.compile("(?:%s)" % node["pattern"], re.ASCII) if "pattern" in node else None
+        for code in lst["codes"]:
+            value = code["value"]
+            bad = None
+            if len(value) < node.get("min_length", 0):
+                bad = "plus court que min_length %d" % node["min_length"]
+            elif "max_length" in node and len(value) > node["max_length"]:
+                bad = "plus long que max_length %d" % node["max_length"]
+            elif pattern is not None and not pattern.fullmatch(value):
+                bad = "ne respecte pas le motif %s" % node["pattern"]
+            if bad:
+                fail("%s : le code %r de la liste %s est %s ; l'exclure dans constraints.json code_exclusions (avec source) ou corriger la liste" % (template, value, node["code_list"], bad))
 
     def add_inline_enum(self, list_name, values):
         if list_name in self.code_lists:
@@ -524,11 +576,7 @@ class Generator:
         if kind == "all":
             fail("xs:all non supporté")
         if kind == "choice":
-            inner = []
-            for sub in particle:
-                if tag(sub) != "annotation":
-                    inner.extend(self.walk_particle(sub))
-            return [("choice", particle, inner)]
+            fail("xs:choice non supporté (ni le validateur ni l'écriture XML ne savent choisir une branche)")
         if kind == "sequence":
             if particle.get("minOccurs", "1") != "1" or particle.get("maxOccurs", "1") != "1":
                 fail("xs:sequence avec cardinalité non supportée")
@@ -547,20 +595,10 @@ class Generator:
             child = self.build_attribute(owner, attr, parent_template)
             if child is not None:
                 children.append(child)
-        choice_index = 0
-        for kind, el, inner in items:
-            if kind == "element":
-                child = self.build_element(el, parent_template)
-                if child is not None:
-                    children.append(child)
-            else:
-                choice_index += 1
-                name = "choice%d" % choice_index
-                template = join_template(parent_template, name)
-                mn, mx = occurs(el)
-                node = base_node(name, template, "choice", mn, mx)
-                node["children"] = self.build_children(inner, [], template)
-                children.append(node)
+        for _kind, el, _inner in items:
+            child = self.build_element(el, parent_template)
+            if child is not None:
+                children.append(child)
         return children
 
     def is_excluded(self, el, template):
@@ -662,7 +700,9 @@ class Generator:
             if child is not None:
                 children.append(child)
         text_template = join_template(template, "_text")
-        children.append(self.leaf_from_info(info, "_text", text_template, 0, 1, False, "", type_name))
+        # The element text is mandatory when the base type has a minimum length.
+        text_min = 1 if info["facets"].get("minLength", 0) > 0 else 0
+        children.append(self.leaf_from_info(info, "_text", text_template, text_min, 1, False, "", type_name))
         node["children"] = children
         return node
 

@@ -30,6 +30,8 @@ const (
 	CodeMinLength           = "min_length"
 	CodePattern             = "pattern"
 	CodeUnknownCode         = "unknown_code"
+	CodeBadChar             = "bad_char"
+	CodeBadPattern          = "bad_pattern"
 	CodeCodeListUnavailable = "code_list_unavailable"
 	ruleCodePrefix          = "rule:"
 	ruleKindRequiredIf      = "required_if"
@@ -49,7 +51,7 @@ var (
 )
 
 // anchoredPattern compiles `^(?:p)$` once per pattern. It returns nil when the
-// pattern does not compile (the generator guarantees it does).
+// pattern does not compile (the generator and a test guarantee it does).
 func anchoredPattern(p string) *regexp.Regexp {
 	patternMu.RLock()
 	re, ok := patternMap[p]
@@ -65,6 +67,20 @@ func anchoredPattern(p string) *regexp.Regexp {
 	}
 	patternMap[p] = re
 	return re
+}
+
+// hasIllegalXMLChar reports a value that XML 1.0 cannot carry: an invalid
+// UTF-8 sequence or a rune outside the XML 1.0 Char production.
+func hasIllegalXMLChar(s string) bool {
+	if !utf8.ValidString(s) {
+		return true
+	}
+	for _, r := range s {
+		if !isXMLChar(r) {
+			return true
+		}
+	}
+	return false
 }
 
 func blocking(path Path, code, msg string) *Issue {
@@ -108,6 +124,9 @@ func ValidateValue(spec *Spec, path Path, raw string) *Issue {
 	if raw == "" {
 		return nil
 	}
+	if hasIllegalXMLChar(raw) {
+		return blocking(path, CodeBadChar, "caractère interdit en XML (caractère de contrôle ou séquence UTF-8 invalide)")
+	}
 	return checkValue(spec, node, path, raw)
 }
 
@@ -127,7 +146,8 @@ func checkValue(spec *Spec, node *Node, path Path, raw string) *Issue {
 		if !integerRe.MatchString(raw) {
 			return blocking(path, CodeBadInteger, "nombre entier attendu")
 		}
-		if node.MaxLength > 0 && len(raw) > node.MaxLength {
+		// totalDigits counts the digits of the value: leading zeros do not count.
+		if node.MaxLength > 0 && len(strings.TrimLeft(raw, "0")) > node.MaxLength {
 			return blocking(path, CodeMaxLength, fmt.Sprintf("%d chiffres au maximum", node.MaxLength))
 		}
 		return checkPattern(node, path, raw)
@@ -144,10 +164,33 @@ func checkValue(spec *Spec, node *Node, path Path, raw string) *Issue {
 		}
 		return nil
 	}
+	if node.isWrongKindRef(spec, raw) {
+		return blocking(path, CodeBadRef, "référence vers un élément de type non autorisé")
+	}
 	if node.IsItemRef(raw) {
 		// Id of a declared item: existence is checked against the document.
 		return nil
 	}
+	return checkFacets(node, path, raw)
+}
+
+func checkPattern(node *Node, path Path, raw string) *Issue {
+	if node.Pattern == "" {
+		return nil
+	}
+	re := anchoredPattern(node.Pattern)
+	if re == nil {
+		// Fail closed: a pattern we cannot read must not let a value through.
+		return blocking(path, CodeBadPattern, "motif du format illisible : "+node.Pattern)
+	}
+	if !re.MatchString(raw) {
+		return blocking(path, CodePattern, "format de valeur invalide")
+	}
+	return nil
+}
+
+// checkFacets applies the length and pattern facets common to strings and codes.
+func checkFacets(node *Node, path Path, raw string) *Issue {
 	n := utf8.RuneCountInString(raw)
 	if node.MinLength > 0 && n < node.MinLength {
 		return blocking(path, CodeMinLength, fmt.Sprintf("%d caractères au minimum", node.MinLength))
@@ -158,22 +201,16 @@ func checkValue(spec *Spec, node *Node, path Path, raw string) *Issue {
 	return checkPattern(node, path, raw)
 }
 
-func checkPattern(node *Node, path Path, raw string) *Issue {
-	if node.Pattern == "" {
-		return nil
-	}
-	if re := anchoredPattern(node.Pattern); re != nil && !re.MatchString(raw) {
-		return blocking(path, CodePattern, "format de valeur invalide")
-	}
-	return nil
-}
-
 func checkDecimal(node *Node, path Path, raw string) *Issue {
 	if !decimalRe.MatchString(raw) {
 		return blocking(path, CodeBadDecimal, "nombre décimal attendu (ex. 1234.56)")
 	}
 	digits := strings.TrimPrefix(raw, "-")
 	intPart, frac, _ := strings.Cut(digits, ".")
+	// totalDigits and fractionDigits apply to the value: leading zeros of the
+	// integer part and trailing zeros of the fraction do not count.
+	intPart = strings.TrimLeft(intPart, "0")
+	frac = strings.TrimRight(frac, "0")
 	if node.FractionDigits > 0 && len(frac) > node.FractionDigits {
 		return blocking(path, CodeBadDecimal, fmt.Sprintf("%d décimales au maximum", node.FractionDigits))
 	}
@@ -187,6 +224,10 @@ func checkCode(spec *Spec, node *Node, path Path, raw string) *Issue {
 	list, ok := spec.CodeLists[node.CodeList]
 	if !ok {
 		return blocking(path, CodeUnknownCode, "liste de codes inconnue : "+node.CodeList)
+	}
+	if issue := checkFacets(node, path, raw); issue != nil {
+		// Length and pattern facets of the XSD type also bind code values.
+		return issue
 	}
 	if list.Unavailable {
 		return &Issue{
@@ -316,7 +357,7 @@ func (v *validator) checkChildren(parent *Node, base Path, parentExport bool) {
 		}
 		export := parentExport && c.Export
 		child := base.Child(c.Name)
-		if c.repeatable() {
+		if c.IsRepeatable() {
 			keys := v.doc.Items[child]
 			// A repeatable field item with an empty value is not written to
 			// the export: it does not count towards the minimum.
@@ -333,8 +374,9 @@ func (v *validator) checkChildren(parent *Node, base Path, parentExport bool) {
 				v.issues = append(v.issues, Issue{Path: child, Code: CodeTooFewItems, Severity: obligation(!export),
 					Message: fmt.Sprintf("%d élément(s) au minimum (%d renseigné(s))", c.Min, filled)})
 			}
-			if c.Max >= 0 && len(keys) > c.Max {
-				v.add(blocking(child, CodeTooManyItems, fmt.Sprintf("%d éléments au maximum (%d présents)", c.Max, len(keys))))
+			// Same count as the minimum and as the export: empty field items are ignored.
+			if c.Max >= 0 && filled > c.Max {
+				v.add(blocking(child, CodeTooManyItems, fmt.Sprintf("%d éléments au maximum (%d présents)", c.Max, filled)))
 			}
 			if c.Kind != NodeField {
 				for _, k := range keys {
@@ -363,7 +405,7 @@ func (v *validator) exists(p Path) bool {
 		return true
 	}
 	node := v.spec.NodeAt(p.Template())
-	if node == nil || node.repeatable() || node.Min < 1 {
+	if node == nil || node.IsRepeatable() || node.Min < 1 {
 		return false
 	}
 	return v.exists(p.Parent())

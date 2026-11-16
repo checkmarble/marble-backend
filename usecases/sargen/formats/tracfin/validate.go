@@ -20,6 +20,13 @@ const (
 	sousCategorieSiblingField = "sousCategorieRelation"
 )
 
+// HandRuleIDs lists the hand-written rules implemented in this file. A test
+// checks it against `hand_rules` in constraints.json (nothing missing, nothing
+// extra).
+func HandRuleIDs() []string {
+	return []string{ruleCadreLegalPrincipal, rulePersonnesAuMoinsUne, ruleReferencesFinMax20, ruleSousCategorieAutre}
+}
+
 var (
 	cadreLegalPrincipalCodes = []string{"CL01", "CL02", "CL03"}
 	refFinContainerRe        = regexp.MustCompile(`^(personnes\.(?:pp|pm|pnc)\[[^\]]+\])\.referencesFinancieres\.referenceFinanciere[A-Za-z]+$`)

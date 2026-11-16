@@ -9,9 +9,8 @@ import (
 type NodeKind string
 
 const (
-	NodeGroup  NodeKind = "group"
-	NodeField  NodeKind = "field"
-	NodeChoice NodeKind = "choice"
+	NodeGroup NodeKind = "group"
+	NodeField NodeKind = "field"
 )
 
 type FieldType string
@@ -154,7 +153,9 @@ func findNode(n *Node, template string) *Node {
 	return nil
 }
 
-func (n *Node) repeatable() bool { return n.Max < 0 || n.Max > 1 }
+// IsRepeatable reports whether the node may occur more than once (its
+// instances are keyed items in a document).
+func (n *Node) IsRepeatable() bool { return n.Max < 0 || n.Max > 1 }
 
 // Leaves returns the concrete leaf paths under prefix, following the items
 // that exist in doc. Order is the spec child order, items in key order.
@@ -164,7 +165,7 @@ func (s *Spec) Leaves(prefix Path, doc *Document) []Path {
 	node := s.NodeAt(tmpl)
 	if node == nil {
 		// Container path given without its key segment.
-		if n := s.NodeAt(tmpl + "[]"); n != nil && n.repeatable() {
+		if n := s.NodeAt(tmpl + "[]"); n != nil && n.IsRepeatable() {
 			for _, key := range doc.Items[prefix] {
 				out = visitLeaves(n, Path(string(prefix)+"["+key+"]"), doc, out)
 			}
@@ -183,7 +184,7 @@ func (s *Spec) Leaves(prefix Path, doc *Document) []Path {
 // expandLeaves handles node n as a child of parent, expanding repeatable nodes.
 func expandLeaves(n *Node, parent Path, doc *Document, out []Path) []Path {
 	base := parent.Child(n.Name)
-	if n.repeatable() {
+	if n.IsRepeatable() {
 		for _, key := range doc.Items[base] {
 			out = visitLeaves(n, Path(string(base)+"["+key+"]"), doc, out)
 		}
@@ -228,4 +229,18 @@ func (n *Node) IsItemRef(raw string) bool {
 		return false
 	}
 	return slices.Contains(n.RefTargets, Path(raw).Template())
+}
+
+// isWrongKindRef reports, for a RefOrText node, a raw value that is the path of
+// an item of the format (keyed segment, known template) whose template is not
+// one of RefTargets: it is neither an item reference nor free text.
+func (n *Node) isWrongKindRef(spec *Spec, raw string) bool {
+	if !n.RefOrText || !strings.Contains(raw, "[") {
+		return false
+	}
+	if _, err := ParsePath(raw); err != nil {
+		return false
+	}
+	tmpl := Path(raw).Template()
+	return spec.NodeAt(tmpl) != nil && !slices.Contains(n.RefTargets, tmpl)
 }
