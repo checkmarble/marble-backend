@@ -14,9 +14,9 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
+	"github.com/checkmarble/marble-backend/usecases/sargen"
 	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/checkmarble/marble-backend/usecases/scoring/scoring_jobs"
-	"github.com/checkmarble/marble-backend/usecases/sargen"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/webhooks"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
@@ -568,7 +568,7 @@ func (usecases *UsecasesWithCreds) NewSarGenerationUsecase() *sargen.Usecase {
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
 		utils.Ptr(usecases.NewInboxReader()),
-		usecases.NewCaseUseCase().blobRepository,
+		usecases.Repositories.BlobRepository,
 		usecases.caseManagerBucketUrl,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.MarbleDbRepository,
