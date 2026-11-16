@@ -1,0 +1,148 @@
+name: Deploy back-end
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        description: "Github environment to use"
+        required: true
+      version:
+        type: string
+        description: "version to deploy"
+        required: true
+    secrets:
+      README_API_KEY:
+        description: API key used to publish the OpenAPI specifications to readme.io
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      id-token: write # needed for using open id token to authenticate with GCP services, and for attestations
+      attestations: write
+    env:
+      IMAGE_NAME: europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend
+      COMMIT_IMAGE: europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:${{ github.sha }}
+      VERSION_IMAGE: europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:${{ inputs.version }}
+    steps:
+      - name: Download image
+        uses: actions/download-artifact@v8
+        with:
+          name: marble-image
+          path: ${{ runner.temp }}
+
+      - name: Authentication to GCP
+        id: auth
+        uses: google-github-actions/auth@v3
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+        with:
+          token_format: access_token
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER_ID }}
+          service_account: ${{ vars.SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Login to Google Artifact Registry
+        uses: docker/login-action@v4
+        with:
+          registry: europe-west1-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      - name: Push image
+        id: push
+        run: |
+          skopeo copy \
+            --multi-arch all --preserve-digests \
+            --digestfile "$RUNNER_TEMP/image.digest" \
+            "oci-archive:$RUNNER_TEMP/image.tar" "docker://$COMMIT_IMAGE"
+
+          echo "digest=$(cat "$RUNNER_TEMP/image.digest")" >> "$GITHUB_OUTPUT"
+
+      - name: Attest image
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Tag image with release version
+        run: |
+          echo "Tagging $COMMIT_IMAGE as $VERSION_IMAGE"
+          skopeo copy \
+            --multi-arch all --preserve-digests \
+            "docker://$COMMIT_IMAGE" "docker://$VERSION_IMAGE"
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+      - name: Deploy migration job
+        run: |
+          gcloud run jobs deploy migrations \
+            --quiet \
+            --region="europe-west1" \
+            --execute-now \
+            --wait \
+            --container=migrations \
+            --image="$VERSION_IMAGE"
+
+      - name: Deploy server
+        run: |
+          gcloud run deploy marble-backend \
+            --quiet \
+            --image="$VERSION_IMAGE" \
+            --region="europe-west1"
+
+      - name: Deploy analytics server
+        run: |
+          gcloud run deploy marble-analytics-backend \
+            --quiet \
+            --image="$VERSION_IMAGE" \
+            --region="europe-west1"
+
+      - name: Deploy execute async worker service
+        run: |
+          gcloud run deploy marble-backend-worker \
+            --quiet \
+            --image="$VERSION_IMAGE" \
+            --region="europe-west1"
+
+  docs:
+    name: Publish API documentation
+    needs: deploy
+    if: inputs.environment == 'production'
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    steps:
+      - name: Download OpenAPI specification artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: marble-api-openapi
+          path: /tmp/openapis
+
+      - name: Publish Marble API OpenAPI
+        uses: readmeio/rdme@v10
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+          README_API_KEY: ${{ secrets.README_API_KEY }}
+        with:
+          rdme: openapi upload --version=v1.0.0 --slug=marble-api /tmp/openapis/marble-api-v1.yml
+
+      - name: Publish Marble API OpenAPI beta endpoints
+        uses: readmeio/rdme@v10
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+          README_API_KEY: ${{ secrets.README_API_KEY }}
+        with:
+          rdme: openapi upload --version=v1.0.0 --slug=marble-api-beta /tmp/openapis/marble-api-v1beta.yml

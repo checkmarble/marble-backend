@@ -70,3 +70,5 @@ prompts
 
 # Air (go live rebuild)
 /.air-build
+
+node_modules
