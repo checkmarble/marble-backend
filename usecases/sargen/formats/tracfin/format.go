@@ -32,12 +32,12 @@ func New(version string) (core.Format, bool) {
 	if err != nil {
 		return nil, false
 	}
-	var m manifestStatus
-	if err := json.Unmarshal(raw, &m); err != nil || !m.Status.Valid() {
+	status, err := parseStatus(raw)
+	if err != nil {
 		// Embedded and checked by tests: a bad manifest is a build bug.
-		panic("tracfin " + version + ": manifest.json illisible ou statut inconnu")
+		panic("tracfin " + version + ": " + err.Error())
 	}
-	return &format{key: Key(version), status: m.Status, spec: spec}, true
+	return &format{key: Key(version), status: status, spec: spec}, true
 }
 
 func (f *format) Key() core.FormatKey                      { return f.key }
@@ -47,4 +47,16 @@ func (f *format) Validate(doc *core.Document) []core.Issue { return Validate(f.s
 
 func (f *format) WriteXML(doc *core.Document, w io.Writer) error {
 	return errors.Wrap(core.WriteXML(f.spec, doc, rootElement, w), "export TRACFIN")
+}
+
+// parseStatus reads the version status from a manifest.json.
+func parseStatus(manifest []byte) (core.VersionStatus, error) {
+	var m manifestStatus
+	if err := json.Unmarshal(manifest, &m); err != nil {
+		return "", errors.Wrap(err, "manifest.json illisible")
+	}
+	if !m.Status.Valid() {
+		return "", errors.Newf("statut de version inconnu %q", m.Status)
+	}
+	return m.Status, nil
 }

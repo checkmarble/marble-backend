@@ -112,7 +112,7 @@
   "operations.operation[op-1].emetteurTypeEmetteur": {
    "origin": "manual",
    "reviewed": true,
-   "value": "1"
+   "value": "personnes.pp[pp-1]"
   },
   "operations.operation[op-1].montantTotal": {
    "origin": "manual",
@@ -132,7 +132,7 @@
   "operations.operation[op-1].refFinanciereEmission": {
    "origin": "manual",
    "reviewed": true,
-   "value": "1"
+   "value": "personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban[iban-1]"
   },
   "operations.operation[op-1].refFinanciereReception": {
    "origin": "manual",

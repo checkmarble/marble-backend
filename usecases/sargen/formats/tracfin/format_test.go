@@ -32,6 +32,9 @@ func TestWriteXML_MinimalDocumentIsXSDValid(t *testing.T) {
 	require.NoError(t, f.WriteXML(&doc, &buf))
 
 	if _, err := exec.LookPath("xmllint"); err != nil {
+		if os.Getenv("CI") != "" {
+			t.Fatal("xmllint is required in CI (install libxml2-utils)")
+		}
 		t.Skip("xmllint not installed: XSD validation skipped")
 	}
 

@@ -144,6 +144,10 @@ func checkValue(spec *Spec, node *Node, path Path, raw string) *Issue {
 		}
 		return nil
 	}
+	if node.IsItemRef(raw) {
+		// Id of a declared item: existence is checked against the document.
+		return nil
+	}
 	n := utf8.RuneCountInString(raw)
 	if node.MinLength > 0 && n < node.MinLength {
 		return blocking(path, CodeMinLength, fmt.Sprintf("%d caractères au minimum", node.MinLength))
@@ -287,7 +291,7 @@ func (v *validator) checkValues() {
 			v.add(issue)
 			continue
 		}
-		if node := v.spec.NodeAt(p.Template()); node != nil && node.Type == TypeRef && !v.itemExists(Path(val.Value)) {
+		if node := v.spec.NodeAt(p.Template()); node != nil && (node.Type == TypeRef || node.IsItemRef(val.Value)) && !v.itemExists(Path(val.Value)) {
 			v.add(blocking(p, CodeDanglingRef, "la référence vise un élément absent : "+val.Value))
 		}
 	}

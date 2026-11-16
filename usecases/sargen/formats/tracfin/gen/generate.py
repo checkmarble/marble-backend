@@ -801,12 +801,18 @@ def apply_post(gen, root):
         for target in entry["targets"]:
             if target not in index:
                 fail("refs : cible introuvable %s" % target)
-        node["type"] = "ref"
         node["ref_targets"] = list(entry["targets"])
-        for key in ("max_length", "min_length", "pattern", "fraction_digits", "code_list"):
-            node.pop(key, None)
+        if entry.get("ref_or_text"):
+            # Id of a declared item or free text: stays a string with its facets.
+            if node.get("type") != "string":
+                fail("refs : %s : ref_or_text exige un champ texte" % entry["template"])
+            node["ref_or_text"] = True
+        else:
+            node["type"] = "ref"
+            for key in ("max_length", "min_length", "pattern", "fraction_digits", "code_list"):
+                node.pop(key, None)
     for node in walk(root):
-        if node.get("type") == "ref":
+        if node.get("type") == "ref" or node.get("ref_or_text"):
             for target in node.get("ref_targets", []):
                 if target not in index:
                     fail("%s : cible de ref introuvable %s" % (node["template"], target))

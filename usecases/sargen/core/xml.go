@@ -22,20 +22,23 @@ const xmlIndent = "  "
 //   - nodes with Export false are skipped; attribute nodes become attributes
 //     of their parent element; the `_text` child is the element text;
 //   - export identifiers (ExportID nodes) are numbered 1, 2, 3... in document
-//     order, in two families: items whose template is a target of a ref node
-//     (persons) share one sequence, all other identified items (financial
-//     references) share another. Each sequence is unique across the whole
-//     document so an identifier never designates two elements;
+//     order, in ONE sequence shared by every identified item (persons and
+//     financial references), so an identifier never designates two elements.
+//     The XSD does not constrain id uniqueness (plain t_num_6, no key/keyref);
+//     where each id is used (person reference vs financial reference) tells
+//     the receiver what it designates. That ERMES accepts ids unique across
+//     both families is an unverified assumption;
 //   - a ref value (a concrete item path) is written as the identifier of the
-//     targeted item; an unresolvable ref is an error;
+//     targeted item; an unresolvable ref is an error. A RefOrText value that
+//     is the path of an existing item of its targets is written as that
+//     item's id, any other value as the literal text;
 //   - dates are written JJ/MM/AAAA, XML 1.0 illegal characters are dropped and
-//     text is escaped; no target namespace.
+//     text is escaped; no target namespace. On error nothing is written.
 func WriteXML(spec *Spec, doc *Document, root string, w io.Writer) error {
 	if spec == nil || spec.Root == nil {
 		return errors.New("description du format absente")
 	}
-	x := &xmlWriter{spec: spec, doc: doc, ids: map[Path]int{}}
-	x.refTargets = refTargetTemplates(spec.Root)
+	x := &xmlWriter{spec: spec, doc: doc, ids: map[Path]int{}, buf: &bytes.Buffer{}}
 	x.assignIDs(spec.Root, "")
 
 	x.buf.WriteString(`<?xml version="1.0" encoding="UTF-8"?>` + "\n")
@@ -48,29 +51,12 @@ func WriteXML(spec *Spec, doc *Document, root string, w io.Writer) error {
 }
 
 type xmlWriter struct {
-	spec       *Spec
-	doc        *Document
-	buf        bytes.Buffer
-	err        error
-	refTargets map[string]bool // templates targeted by a ref node
-	ids        map[Path]int    // concrete item path -> assigned export id
-	personSeq  int
-	otherSeq   int
-}
-
-func refTargetTemplates(n *Node) map[string]bool {
-	out := map[string]bool{}
-	var walk func(*Node)
-	walk = func(n *Node) {
-		for _, t := range n.RefTargets {
-			out[t] = true
-		}
-		for _, c := range n.Children {
-			walk(c)
-		}
-	}
-	walk(n)
-	return out
+	spec *Spec
+	doc  *Document
+	buf  *bytes.Buffer
+	err  error
+	ids  map[Path]int // concrete item path -> assigned export id
+	seq  int
 }
 
 func (x *xmlWriter) fail(err error) {
@@ -100,16 +86,16 @@ func (x *xmlWriter) assignIDs(n *Node, concrete Path) {
 			continue
 		}
 		if c.ExportID {
-			if x.refTargets[n.Template] {
-				x.personSeq++
-				x.ids[concrete] = x.personSeq
-			} else {
-				x.otherSeq++
-				x.ids[concrete] = x.otherSeq
-			}
+			x.seq++
+			x.ids[concrete] = x.seq
 			continue
 		}
 		if c.Kind == NodeField {
+			continue
+		}
+		if c.Kind == NodeChoice {
+			// A choice is transparent, as in writeChild.
+			x.assignIDs(c, concrete)
 			continue
 		}
 		for _, p := range x.itemPaths(c, concrete) {
@@ -164,6 +150,15 @@ func (x *xmlWriter) render(n *Node, p Path, raw string) (string, bool) {
 			return "", false
 		}
 		return t.Format("02/01/2006"), true
+	case TypeString:
+		if n.IsItemRef(raw) {
+			if id, ok := x.ids[Path(raw)]; ok {
+				return strconv.Itoa(id), true
+			}
+			// Well-formed path to an item that does not exist: not an id.
+			x.fail(errors.Newf("référence %q à %s : élément visé introuvable", raw, p))
+			return "", false
+		}
 	case TypeRef:
 		id, ok := x.ids[Path(raw)]
 		if !ok {
@@ -244,11 +239,10 @@ func (x *xmlWriter) writeElement(name string, n *Node, p Path, depth int) {
 
 	var body bytes.Buffer
 	outer := x.buf
-	x.buf = body
+	x.buf = &body
 	for _, c := range elems {
 		x.writeChild(c, p, depth+1)
 	}
-	body = x.buf
 	x.buf = outer
 
 	var text string

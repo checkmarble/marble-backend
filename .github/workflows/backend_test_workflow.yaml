@@ -32,7 +32,7 @@ jobs:
         run: go build -v ./...
 
       - name: Install xmllint
-        run: sudo apt-get install -y libxml2-utils
+        run: sudo apt-get update && sudo apt-get install -y libxml2-utils
 
       - name: Test
         run: go test ./...

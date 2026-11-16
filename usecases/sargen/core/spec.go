@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/cockroachdb/errors"
+	"slices"
 	"strings"
 )
 
@@ -54,9 +55,12 @@ type Node struct {
 	FractionDigits int       `json:"fraction_digits,omitempty"`
 	CodeList       string    `json:"code_list,omitempty"`
 	RefTargets     []string  `json:"ref_targets,omitempty"`
-	Label          string    `json:"label,omitempty"`
-	Description    string    `json:"description,omitempty"`
-	Children       []*Node   `json:"children,omitempty"`
+	// RefOrText: the value is either the path of an existing item of RefTargets
+	// (written as its export id) or free text. The type stays TypeString.
+	RefOrText   bool    `json:"ref_or_text,omitempty"`
+	Label       string  `json:"label,omitempty"`
+	Description string  `json:"description,omitempty"`
+	Children    []*Node `json:"children,omitempty"`
 }
 
 type Code struct {
@@ -212,4 +216,16 @@ func (r Rule) EffectiveSeverity() Severity {
 		return SeverityBlocking
 	}
 	return r.Severity
+}
+
+// IsItemRef reports whether raw is, for a RefOrText node, the path of an item
+// whose template is one of RefTargets (otherwise it is free text).
+func (n *Node) IsItemRef(raw string) bool {
+	if !n.RefOrText {
+		return false
+	}
+	if _, err := ParsePath(raw); err != nil {
+		return false
+	}
+	return slices.Contains(n.RefTargets, Path(raw).Template())
 }
