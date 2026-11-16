@@ -1,6 +1,9 @@
 package integration
 
 import (
+	"context"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -8,8 +11,19 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/riverqueue/river"
 	"github.com/stretchr/testify/require"
 )
+
+// noopSarGenerationWorker only lets the harness River client validate and accept
+// sar_generation jobs; it is never started on the org queues used in the tests.
+type noopSarGenerationWorker struct {
+	river.WorkerDefaults[models.SarGenerationArgs]
+}
+
+func (*noopSarGenerationWorker) Work(context.Context, *river.Job[models.SarGenerationArgs]) error {
+	return nil
+}
 
 // newSarGenTestJob builds a pending generation job for a declaration.
 func newSarGenTestJob(declarationId uuid.UUID) models.SarGenerationJob {
@@ -104,24 +118,42 @@ func TestClaimTask_StaleRunningIsClaimable(t *testing.T) {
 	task := newSarGenTestTask(job.Id, "part.a")
 	require.NoError(t, repo.CreateSarGenerationTasks(ctx, exec, []models.SarGenerationTask{task}))
 
-	claimed, err := repo.ClaimSarGenerationTask(ctx, exec, task.Id, time.Now())
+	attempt1, claimed, err := repo.ClaimSarGenerationTask(ctx, exec, task.Id, time.Now())
 	require.NoError(t, err)
 	require.True(t, claimed)
+	require.Equal(t, 1, attempt1)
 
 	// Simulate a worker that died long ago while the task was running.
 	_, err = pgPool.Exec(ctx, "UPDATE sar_generation_tasks SET started_at = $1 WHERE id = $2",
 		time.Now().Add(-2*time.Hour), task.Id)
 	require.NoError(t, err)
 
-	claimed, err = repo.ClaimSarGenerationTask(ctx, exec, task.Id, time.Now().Add(-time.Hour))
+	attempt2, claimed, err := repo.ClaimSarGenerationTask(ctx, exec, task.Id, time.Now().Add(-time.Hour))
 	require.NoError(t, err)
 	require.True(t, claimed)
+	require.Equal(t, 2, attempt2)
 
 	tasks, err := repo.ListSarGenerationTasks(ctx, exec, job.Id)
 	require.NoError(t, err)
 	require.Len(t, tasks, 1)
 	require.Equal(t, models.SarJobStatusRunning, tasks[0].Status)
 	require.Equal(t, 2, tasks[0].Attempts)
+
+	// The superseded first worker cannot complete or fail the task anymore.
+	ok, err := repo.CompleteSarGenerationTask(ctx, exec, task.Id, attempt1, []byte(`{"old":true}`), nil)
+	require.NoError(t, err)
+	require.False(t, ok)
+	ok, err = repo.FailSarGenerationTask(ctx, exec, task.Id, attempt1, "late", nil)
+	require.NoError(t, err)
+	require.False(t, ok)
+	tasks, err = repo.ListSarGenerationTasks(ctx, exec, job.Id)
+	require.NoError(t, err)
+	require.Equal(t, models.SarJobStatusRunning, tasks[0].Status)
+	require.Empty(t, tasks[0].Output)
+
+	ok, err = repo.CompleteSarGenerationTask(ctx, exec, task.Id, attempt2, []byte(`{"new":true}`), nil)
+	require.NoError(t, err)
+	require.True(t, ok)
 }
 
 func TestClaimTask_FreshRunningIsNotClaimable(t *testing.T) {
@@ -132,12 +164,12 @@ func TestClaimTask_FreshRunningIsNotClaimable(t *testing.T) {
 	task := newSarGenTestTask(job.Id, "part.a")
 	require.NoError(t, repo.CreateSarGenerationTasks(ctx, exec, []models.SarGenerationTask{task}))
 
-	claimed, err := repo.ClaimSarGenerationTask(ctx, exec, task.Id, time.Now())
+	_, claimed, err := repo.ClaimSarGenerationTask(ctx, exec, task.Id, time.Now())
 	require.NoError(t, err)
 	require.True(t, claimed)
 
 	// The task just started: a claim whose stale threshold is one hour ago must be refused.
-	claimed, err = repo.ClaimSarGenerationTask(ctx, exec, task.Id, time.Now().Add(-time.Hour))
+	_, claimed, err = repo.ClaimSarGenerationTask(ctx, exec, task.Id, time.Now().Add(-time.Hour))
 	require.NoError(t, err)
 	require.False(t, claimed)
 
@@ -155,13 +187,16 @@ func TestCompleteTask_StoresOutput(t *testing.T) {
 	task := newSarGenTestTask(job.Id, "part.a")
 	require.NoError(t, repo.CreateSarGenerationTasks(ctx, exec, []models.SarGenerationTask{task}))
 
-	claimed, err := repo.ClaimSarGenerationTask(ctx, exec, task.Id, time.Now())
+	attempt, claimed, err := repo.ClaimSarGenerationTask(ctx, exec, task.Id, time.Now())
 	require.NoError(t, err)
 	require.True(t, claimed)
+	require.Equal(t, 1, attempt)
 
 	output := []byte(`{"fills":[{"path":"part.a.nom","value":"Dupont"}]}`)
 	trace := []byte(`[{"role":"assistant","content":"reasoning"}]`)
-	require.NoError(t, repo.CompleteSarGenerationTask(ctx, exec, task.Id, output, trace))
+	ok, err := repo.CompleteSarGenerationTask(ctx, exec, task.Id, attempt, output, trace)
+	require.NoError(t, err)
+	require.True(t, ok)
 
 	tasks, err := repo.ListSarGenerationTasks(ctx, exec, job.Id)
 	require.NoError(t, err)
@@ -174,6 +209,75 @@ func TestCompleteTask_StoresOutput(t *testing.T) {
 	gotTrace, err := repo.GetSarGenerationTaskTrace(ctx, exec, task.Id)
 	require.NoError(t, err)
 	require.JSONEq(t, string(trace), string(gotTrace))
+
+	// Completing or failing again is refused and changes nothing.
+	ok, err = repo.CompleteSarGenerationTask(ctx, exec, task.Id, attempt, []byte(`{"again":true}`), nil)
+	require.NoError(t, err)
+	require.False(t, ok)
+	ok, err = repo.FailSarGenerationTask(ctx, exec, task.Id, attempt, "late", nil)
+	require.NoError(t, err)
+	require.False(t, ok)
+	tasks, err = repo.ListSarGenerationTasks(ctx, exec, job.Id)
+	require.NoError(t, err)
+	require.Equal(t, models.SarJobStatusDone, tasks[0].Status)
+	require.JSONEq(t, string(output), string(tasks[0].Output))
+
+	// A done task is not claimable again, whatever the stale threshold.
+	_, claimed, err = repo.ClaimSarGenerationTask(ctx, exec, task.Id, time.Now().Add(time.Hour))
+	require.NoError(t, err)
+	require.False(t, claimed)
+}
+
+func TestClaimTask_ConcurrentClaimExactlyOne(t *testing.T) {
+	ctx := t.Context()
+	repo, _, job := sarGenTestSetup(t)
+	exec := testUsecases.NewExecutorFactory().NewExecutor()
+
+	task := newSarGenTestTask(job.Id, "part.a")
+	require.NoError(t, repo.CreateSarGenerationTasks(ctx, exec, []models.SarGenerationTask{task}))
+
+	const workers = 8
+	var wins atomic.Int32
+	var wg sync.WaitGroup
+	errs := make(chan error, workers)
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, ok, err := repo.ClaimSarGenerationTask(ctx, exec, task.Id, time.Now().Add(-time.Hour))
+			if err != nil {
+				errs <- err
+				return
+			}
+			if ok {
+				wins.Add(1)
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err)
+	}
+	require.Equal(t, int32(1), wins.Load())
+}
+
+func TestEnqueueSarGenerationTask_InsertsRiverJob(t *testing.T) {
+	ctx := t.Context()
+	orgId, jobId, declarationId := uuid.New(), uuid.New(), uuid.New()
+	taskQueue := repositories.NewTaskQueueRepository(riverClient)
+
+	err := testUsecases.NewTransactionFactory().Transaction(ctx, func(tx repositories.Transaction) error {
+		return taskQueue.EnqueueSarGenerationTask(ctx, tx, orgId, jobId, declarationId)
+	})
+	require.NoError(t, err)
+
+	res, err := riverClient.JobList(ctx, river.NewJobListParams().Kinds("sar_generation").Queues(orgId.String()))
+	require.NoError(t, err)
+	require.Len(t, res.Jobs, 1)
+	require.JSONEq(t,
+		`{"job_id":"`+jobId.String()+`","declaration_id":"`+declarationId.String()+`"}`,
+		string(res.Jobs[0].EncodedArgs))
 }
 
 func TestFailTask_StoresErrorAndClaimableAgain(t *testing.T) {
@@ -184,12 +288,14 @@ func TestFailTask_StoresErrorAndClaimableAgain(t *testing.T) {
 	task := newSarGenTestTask(job.Id, "part.a")
 	require.NoError(t, repo.CreateSarGenerationTasks(ctx, exec, []models.SarGenerationTask{task}))
 
-	claimed, err := repo.ClaimSarGenerationTask(ctx, exec, task.Id, time.Now())
+	attempt, claimed, err := repo.ClaimSarGenerationTask(ctx, exec, task.Id, time.Now())
 	require.NoError(t, err)
 	require.True(t, claimed)
 
 	trace := []byte(`[{"role":"assistant","content":"failed attempt"}]`)
-	require.NoError(t, repo.FailSarGenerationTask(ctx, exec, task.Id, "llm timeout", trace))
+	ok, err := repo.FailSarGenerationTask(ctx, exec, task.Id, attempt, "llm timeout", trace)
+	require.NoError(t, err)
+	require.True(t, ok)
 
 	tasks, err := repo.ListSarGenerationTasks(ctx, exec, job.Id)
 	require.NoError(t, err)
@@ -202,7 +308,7 @@ func TestFailTask_StoresErrorAndClaimableAgain(t *testing.T) {
 	require.JSONEq(t, string(trace), string(gotTrace))
 
 	// A failed task can be claimed again, whatever the stale threshold.
-	claimed, err = repo.ClaimSarGenerationTask(ctx, exec, task.Id, time.Now().Add(-time.Hour))
+	_, claimed, err = repo.ClaimSarGenerationTask(ctx, exec, task.Id, time.Now().Add(-time.Hour))
 	require.NoError(t, err)
 	require.True(t, claimed)
 

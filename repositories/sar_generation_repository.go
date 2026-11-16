@@ -13,6 +13,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// sarActiveJobIndex is the partial unique index allowing one active job per declaration.
+const sarActiveJobIndex = "sar_generation_jobs_one_active_idx"
+
 // nullIfEmpty maps "" to SQL NULL.
 func nullIfEmpty(s string) any {
 	if s == "" {
@@ -44,7 +47,7 @@ func (repo *MarbleDbRepository) CreateSarGenerationJob(
 		Values(j.Id, j.DeclarationId, string(j.Kind), string(j.Status),
 			rawOrNull(j.Input), nullIfEmpty(j.Error), j.CreatedBy)
 	err := ExecBuilder(ctx, exec, query)
-	if IsUniqueViolationError(err) {
+	if IsUniqueViolationErrorOf(err, sarActiveJobIndex) {
 		return models.ErrSarJobAlreadyActive
 	}
 	return err
@@ -78,7 +81,7 @@ func (repo *MarbleDbRepository) SetSarGenerationJobStatus(
 		Set("updated_at", squirrel.Expr("now()")).
 		Where(squirrel.Eq{"id": id})
 	err := ExecBuilder(ctx, exec, query)
-	if IsUniqueViolationError(err) {
+	if IsUniqueViolationErrorOf(err, sarActiveJobIndex) {
 		return models.ErrSarJobAlreadyActive
 	}
 	return err
@@ -166,14 +169,20 @@ func (repo *MarbleDbRepository) GetSarGenerationTaskTrace(
 
 // ClaimSarGenerationTask atomically moves a task to running and increments its
 // attempts. It succeeds only if the task is pending or failed, or running but
-// started before staleBefore (its worker is presumed dead). It returns false
-// when the task is not claimable (done, or running and fresh), so a task is
-// never executed by two workers nor re-executed once done.
+// started before staleBefore (its worker is presumed dead). It returns the new
+// attempt number and ok=true on success; ok=false when the task is not
+// claimable (done, or running and fresh), so a task is never executed by two
+// workers nor re-executed once done. The caller must pass the attempt number
+// to Complete/FailSarGenerationTask: a superseded worker's result is refused.
+//
+// staleBefore is compared with started_at, which is set by the database clock
+// (now()); callers compute staleBefore from the application clock. Clock skew
+// between the two is tolerated (stale timeouts are minutes, not seconds).
 func (repo *MarbleDbRepository) ClaimSarGenerationTask(
 	ctx context.Context, exec Executor, id uuid.UUID, staleBefore time.Time,
-) (bool, error) {
+) (attempt int, ok bool, err error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return false, err
+		return 0, false, err
 	}
 	sql, args, err := NewQueryBuilder().
 		Update(dbmodels.TABLE_SAR_GENERATION_TASKS).
@@ -191,53 +200,86 @@ func (repo *MarbleDbRepository) ClaimSarGenerationTask(
 				squirrel.Lt{"started_at": staleBefore},
 			},
 		}).
-		Suffix("RETURNING id").
+		Suffix("RETURNING attempts").
 		ToSql()
 	if err != nil {
-		return false, errors.Wrap(err, "cannot build sar task claim query")
+		return 0, false, errors.Wrap(err, "cannot build sar task claim query")
 	}
 	rows, err := exec.Query(ctx, sql, args...)
 	if err != nil {
-		return false, errors.Wrap(err, "cannot claim sar task")
+		return 0, false, errors.Wrap(err, "cannot claim sar task")
 	}
 	defer rows.Close()
-	claimed := rows.Next()
-	if err := rows.Err(); err != nil {
-		return false, errors.Wrap(err, "cannot claim sar task")
+	if rows.Next() {
+		if err := rows.Scan(&attempt); err != nil {
+			return 0, false, errors.Wrap(err, "cannot read claimed sar task attempt")
+		}
+		ok = true
 	}
-	return claimed, nil
+	if err := rows.Err(); err != nil {
+		return 0, false, errors.Wrap(err, "cannot claim sar task")
+	}
+	return attempt, ok, nil
 }
 
+// execGuardedTaskUpdate applies the update only if the task is still running
+// at the given attempt; false means the claim was lost (task reclaimed or
+// already finished) and the caller must discard its result.
+func execGuardedTaskUpdate(
+	ctx context.Context, exec Executor, query squirrel.UpdateBuilder, id uuid.UUID, attempt int,
+) (bool, error) {
+	sql, args, err := query.
+		Where(squirrel.Eq{"id": id, "status": string(models.SarJobStatusRunning), "attempts": attempt}).
+		Suffix("RETURNING id").
+		ToSql()
+	if err != nil {
+		return false, errors.Wrap(err, "cannot build sar task update query")
+	}
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return false, errors.Wrap(err, "cannot update sar task")
+	}
+	defer rows.Close()
+	updated := rows.Next()
+	if err := rows.Err(); err != nil {
+		return false, errors.Wrap(err, "cannot update sar task")
+	}
+	return updated, nil
+}
+
+// CompleteSarGenerationTask stores the output and trace and marks the task
+// done, only if it is still running at the given attempt. It returns false
+// when no row matched (superseded worker, or already finished).
 func (repo *MarbleDbRepository) CompleteSarGenerationTask(
-	ctx context.Context, exec Executor, id uuid.UUID, output []byte, trace []byte,
-) error {
+	ctx context.Context, exec Executor, id uuid.UUID, attempt int, output, trace []byte,
+) (bool, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return err
+		return false, err
 	}
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_SAR_GENERATION_TASKS).
 		Set("status", string(models.SarJobStatusDone)).
 		Set("output", rawOrNull(output)).
 		Set("trace", rawOrNull(trace)).
-		Set("finished_at", squirrel.Expr("now()")).
-		Where(squirrel.Eq{"id": id})
-	return ExecBuilder(ctx, exec, query)
+		Set("finished_at", squirrel.Expr("now()"))
+	return execGuardedTaskUpdate(ctx, exec, query, id, attempt)
 }
 
+// FailSarGenerationTask marks the task failed, with the same attempt guard as
+// CompleteSarGenerationTask.
 func (repo *MarbleDbRepository) FailSarGenerationTask(
-	ctx context.Context, exec Executor, id uuid.UUID, errMsg string, trace []byte,
-) error {
+	ctx context.Context, exec Executor, id uuid.UUID, attempt int, errMsg string, trace []byte,
+) (bool, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return err
+		return false, err
 	}
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_SAR_GENERATION_TASKS).
 		Set("status", string(models.SarJobStatusFailed)).
 		Set("error", nullIfEmpty(errMsg)).
 		Set("trace", rawOrNull(trace)).
-		Set("finished_at", squirrel.Expr("now()")).
-		Where(squirrel.Eq{"id": id})
-	return ExecBuilder(ctx, exec, query)
+		Set("finished_at", squirrel.Expr("now()"))
+	return execGuardedTaskUpdate(ctx, exec, query, id, attempt)
 }
 
 func (repo *MarbleDbRepository) CreateSarQuestions(
