@@ -233,6 +233,8 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		repositories.WithLagoConfig(lagoConfig),
 	)
 
+	repositories.ExecutorGetter.WarmupClientDbPools(ctx)
+
 	deploymentMetadata, err := GetDeploymentMetadata(ctx, repositories)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)

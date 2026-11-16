@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/avast/retry-go/v4"
 	"github.com/checkmarble/marble-backend/infra"
@@ -18,7 +19,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const defaultOrgConfigKey = "default"
+const (
+	defaultOrgConfigKey   = "default"
+	clientDbWarmupTimeout = 30 * time.Second
+)
 
 type ExecutorGetter struct {
 	appName              string
@@ -175,17 +179,9 @@ func (g ExecutorGetter) getPoolAndSchema(
 	pool, ok := g.clientDbPools[config.ConnectionString]
 	if !ok {
 		var err error
-		pool, err = infra.NewPostgresConnectionPool(
-			ctx,
-			g.appName,
-			config.ConnectionString,
-			g.tp,
-			infra.DEFAULT_CLIENTDB_MIN_CONNECTIONS,
-			config.MaxConns,
-			config.ImpersonateRole,
-		)
+		pool, err = g.newClientDbPool(ctx, config)
 		if err != nil {
-			return nil, models.DatabaseSchema{}, errors.Wrap(err, "Error creating connection pool")
+			return nil, models.DatabaseSchema{}, err
 		}
 
 		g.clientDbPools[config.ConnectionString] = pool
@@ -195,6 +191,97 @@ func (g ExecutorGetter) getPoolAndSchema(
 		SchemaType: models.DATABASE_SCHEMA_TYPE_CLIENT,
 		Schema:     config.SchemaName,
 	}, nil
+}
+
+func (g ExecutorGetter) newClientDbPool(ctx context.Context, config infra.ClientDbConfig) (*pgxpool.Pool, error) {
+	pool, err := infra.NewPostgresConnectionPool(ctx, g.appName, config.ConnectionString, g.tp, infra.DEFAULT_CLIENTDB_MIN_CONNECTIONS, config.MaxConns, config.ImpersonateRole)
+	if err != nil {
+		// A pool that failed its initial ping would otherwise keep trying to open its minimum connections forever.
+		if pool != nil {
+			pool.Close()
+		}
+
+		return nil, errors.Wrap(err, "Error creating connection pool")
+	}
+
+	return pool, nil
+}
+
+// WarmupClientDbPools opens every configured client database pool along with its minimum connections, so the
+// first request to each organization does not pay for the connection setup. A database that cannot be reached
+// is only logged, and will be retried lazily on its first use. It must be called before the executor getter is
+// used, since it overwrites any pool already registered for the same connection string.
+func (g ExecutorGetter) WarmupClientDbPools(ctx context.Context) {
+	configs := make(map[string]infra.ClientDbConfig, len(g.clientDbConfigs))
+	connectionStrings := make(map[string]struct{}, len(g.clientDbConfigs))
+
+	for configKey, config := range g.clientDbConfigs {
+		if config.ConnectionString == "" {
+			continue
+		}
+
+		if _, ok := connectionStrings[config.ConnectionString]; ok {
+			continue
+		}
+
+		connectionStrings[config.ConnectionString] = struct{}{}
+		configs[configKey] = config
+	}
+
+	if len(configs) == 0 {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, clientDbWarmupTimeout)
+	defer cancel()
+
+	logger := utils.LoggerFromContext(ctx)
+
+	var wg sync.WaitGroup
+
+	for configKey, config := range configs {
+		wg.Go(func() {
+			if err := g.warmupClientDbPool(ctx, configKey, config); err != nil {
+				logger.WarnContext(ctx, "could not warm up client database connection pool",
+					"org_id", configKey,
+					"error", err.Error(),
+				)
+			}
+		})
+	}
+
+	wg.Wait()
+}
+
+func (g ExecutorGetter) warmupClientDbPool(ctx context.Context, configKey string, config infra.ClientDbConfig) error {
+	pool, err := g.newClientDbPool(ctx, config)
+	if err != nil {
+		return err
+	}
+
+	g.mu.Lock()
+	g.clientDbPools[config.ConnectionString] = pool
+	g.mu.Unlock()
+
+	ticker := time.NewTicker(25 * time.Millisecond)
+	defer ticker.Stop()
+
+	for pool.Stat().IdleConns() < pool.Config().MinConns {
+		select {
+		case <-ctx.Done():
+			return errors.Wrap(ctx.Err(), "Error opening minimum connections")
+		case <-ticker.C:
+		}
+	}
+
+	connConfig := pool.Config().ConnConfig
+
+	utils.LoggerFromContext(ctx).DebugContext(ctx, "established client database connections",
+		"org_id", configKey,
+		"database", connConfig.Database,
+	)
+
+	return nil
 }
 
 func (g ExecutorGetter) GetExecutor(
