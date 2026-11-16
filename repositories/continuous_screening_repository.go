@@ -558,7 +558,29 @@ func (repo *MarbleDbRepository) GetContinuousScreeningByObjectId(
 	return SqlToOptionalModel(ctx, exec, query, dbmodels.AdaptContinuousScreeningWithMatches)
 }
 
-// LockContinuousScreeningByMatchId locks the screening that owns the match until the transaction ends.
+// LockContinuousScreeningById locks the screening until the transaction ends. Every transaction that
+// writes a screening's matches takes this lock first, so they always lock the screening before its matches
+// and cannot deadlock each other.
+//
+// It takes FOR NO KEY UPDATE, the lock a plain UPDATE takes: it makes writers of the screening wait for
+// each other, but does not block inserting rows that reference the screening, such as new matches.
+func (repo *MarbleDbRepository) LockContinuousScreeningById(ctx context.Context, exec Executor, id uuid.UUID) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	return ExecBuilder(ctx, exec, lockContinuousScreeningByIdQuery(id))
+}
+
+func lockContinuousScreeningByIdQuery(id uuid.UUID) squirrel.SelectBuilder {
+	return NewQueryBuilder().
+		Select("id").
+		From(dbmodels.TABLE_CONTINUOUS_SCREENINGS).
+		Where(squirrel.Eq{"id": id}).
+		Suffix("FOR NO KEY UPDATE")
+}
+
+// LockContinuousScreeningByMatchId locks the screening that owns the match, like LockContinuousScreeningById.
 // Reviews of the same screening then run one after another, and each one sees the matches the previous
 // one reviewed: without it, two reviews of the last two pending matches each count the other as pending,
 // and neither moves the screening out of review.
@@ -576,7 +598,7 @@ func lockContinuousScreeningByMatchIdQuery(matchId uuid.UUID) squirrel.SelectBui
 		From(dbmodels.TABLE_CONTINUOUS_SCREENINGS + " AS cs").
 		Join(dbmodels.TABLE_CONTINUOUS_SCREENING_MATCHES + " AS csm ON csm.continuous_screening_id = cs.id").
 		Where(squirrel.Eq{"csm.id": matchId}).
-		Suffix("FOR UPDATE OF cs")
+		Suffix("FOR NO KEY UPDATE OF cs")
 }
 
 func (repo *MarbleDbRepository) GetContinuousScreeningMatch(ctx context.Context, exec Executor, id uuid.UUID) (models.ContinuousScreeningMatch, error) {

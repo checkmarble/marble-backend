@@ -309,6 +309,13 @@ func (uc *ContinuousScreeningUsecase) DismissContinuousScreening(ctx context.Con
 	var continuousScreening models.ContinuousScreeningWithMatches
 
 	err := uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		// Lock the screening before reading it, like a review does. A review that commits first is then
+		// seen here, so its decision is not overwritten with skipped, and both lock the screening before
+		// its matches, so they cannot deadlock.
+		if err := uc.repository.LockContinuousScreeningById(ctx, tx, continuousScreeningId); err != nil {
+			return err
+		}
+
 		var err error
 		continuousScreening, err = uc.repository.GetContinuousScreeningWithMatchesById(ctx, tx, continuousScreeningId)
 		if err != nil {

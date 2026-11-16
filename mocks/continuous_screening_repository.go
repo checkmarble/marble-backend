@@ -227,6 +227,15 @@ func (m *ContinuousScreeningRepository) GetContinuousScreeningWithMatchesById(
 	return args.Get(0).(models.ContinuousScreeningWithMatches), args.Error(1)
 }
 
+func (m *ContinuousScreeningRepository) LockContinuousScreeningById(
+	ctx context.Context,
+	exec repositories.Executor,
+	id uuid.UUID,
+) error {
+	args := m.Called(ctx, exec, id)
+	return args.Error(0)
+}
+
 func (m *ContinuousScreeningRepository) LockContinuousScreeningByMatchId(
 	ctx context.Context,
 	exec repositories.Executor,
