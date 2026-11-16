@@ -167,6 +167,7 @@ func TestMain(m *testing.M) {
 	// Register workers so that job enqueueing doesn't fail validation
 	river.AddWorker(workers, usecases.NewCsvIngestionWorker(nil))
 	river.AddWorker(workers, worker_jobs.NewScheduledExecutionWorker(nil))
+	river.AddWorker(workers, &noopSarGenerationWorker{})
 
 	riverClient, err = river.NewClient(riverpgxv5.New(dbPool), &river.Config{
 		Workers: workers,
