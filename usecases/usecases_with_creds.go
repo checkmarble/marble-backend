@@ -16,6 +16,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/checkmarble/marble-backend/usecases/scoring/scoring_jobs"
+	"github.com/checkmarble/marble-backend/usecases/sargen"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/webhooks"
 	"github.com/checkmarble/marble-backend/usecases/worker_jobs"
@@ -557,6 +558,19 @@ func (usecases *UsecasesWithCreds) NewSuspiciousActivityReportUsecase() *Suspici
 		blobRepository:       usecases.NewCaseUseCase().blobRepository,
 		caseManagerBucketUrl: usecases.caseManagerBucketUrl,
 	}
+}
+
+func (usecases *UsecasesWithCreds) NewSarGenerationUsecase() *sargen.Usecase {
+	return sargen.NewUsecase(
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.NewEnforceCaseSecurity(),
+		usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.MarbleDbRepository,
+		utils.Ptr(usecases.NewInboxReader()),
+		usecases.NewCaseUseCase().blobRepository,
+		usecases.caseManagerBucketUrl,
+	)
 }
 
 func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {
