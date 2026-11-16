@@ -53,6 +53,10 @@ func selDataModel(f *fakes) {
 	f.DataModel.Model = models.DataModel{Tables: map[string]models.Table{
 		"transactions": {
 			Name: "transactions",
+			Fields: map[string]models.Field{
+				"object_id":  {Name: "object_id", DataType: models.String},
+				"account_id": {Name: "account_id", DataType: models.String},
+			},
 			LinksToSingle: map[string]models.LinkToSingle{
 				"account": {
 					Name:            "account",
@@ -64,7 +68,8 @@ func selDataModel(f *fakes) {
 			},
 		},
 		"accounts": {
-			Name: "accounts",
+			Name:   "accounts",
+			Fields: map[string]models.Field{"object_id": {Name: "object_id", DataType: models.String}},
 			NavigationOptions: []models.NavigationOption{{
 				SourceTableName:   "accounts",
 				SourceFieldName:   "object_id",
@@ -252,12 +257,14 @@ func TestUpdateAnalysis_WritesAnalyseField(t *testing.T) {
 func TestUpdateSelection_NegativeLinkCases(t *testing.T) {
 	now := time.Now()
 	cases := []struct {
-		name    string
-		add     func(f *fakes) SelectionAdd
-		wantErr error
+		name       string
+		add        func(f *fakes) SelectionAdd
+		wantErr    error
+		wantNoRead bool
 	}{
 		{
-			name: "reached from an object that is neither candidate nor selected",
+			name:       "reached from an object that is neither candidate nor selected",
+			wantNoRead: true,
 			add: func(f *fakes) SelectionAdd {
 				f.Ingested.Put("transactions", "t9", map[string]any{"object_id": "t9", "account_id": "a1"}, now)
 				return SelectionAdd{Ref: selRef("accounts", "a1"),
@@ -303,6 +310,9 @@ func TestUpdateSelection_NegativeLinkCases(t *testing.T) {
 			_, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{add}, nil)
 			require.Error(t, err)
 			assert.ErrorIs(t, err, tc.wantErr)
+			if tc.wantNoRead {
+				assert.Equal(t, 0, f.Ingested.Reads, "nothing may be read from an unreachable source")
+			}
 			assert.Empty(t, f.Selection.Rows)
 			assert.Equal(t, 1, f.Repo.Declarations[declId].Version)
 		})
@@ -364,4 +374,41 @@ func TestAnalystLeaf(t *testing.T) {
 	}}})
 	require.Error(t, err)
 	assert.Equal(t, core.Path(""), two)
+}
+
+func TestUpdateSelection_NothingToChangeKeepsVersion(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	selAddCaseEntity(f, "accounts", "a1", map[string]any{"object_id": "a1"})
+	st, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{{Ref: selRef("accounts", "a1")}}, nil)
+	require.NoError(t, err)
+	require.Equal(t, 2, st.Declaration.Version)
+
+	st, err = uc.UpdateSelection(f.Ctx, declId, 2, nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 2, st.Declaration.Version, "an empty update must not bump the version")
+
+	st, err = uc.UpdateSelection(f.Ctx, declId, 2, []SelectionAdd{{Ref: selRef("accounts", "a1")}}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 2, st.Declaration.Version, "re-adding a selected object changes nothing")
+	assert.Equal(t, 2, f.Repo.Declarations[declId].Version)
+}
+
+func TestGetSelection_OtherOrgForbiddenAndFrozenAfterSourceChange(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	selAddCaseEntity(f, "accounts", "a1", map[string]any{"object_id": "a1", "name": "Acme", "balance": 10})
+	_, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{{Ref: selRef("accounts", "a1")}}, nil)
+	require.NoError(t, err)
+
+	// The source changes after the selection.
+	f.Ingested.Put("accounts", "a1", map[string]any{"object_id": "a1", "name": "Changed", "balance": 99}, time.Now())
+
+	got, err := uc.GetSelection(f.Ctx, declId)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "Acme", got[0].Snapshot["name"], "the snapshot is frozen")
+	assert.EqualValues(t, 10, got[0].Snapshot["balance"])
+	assert.IsType(t, float64(0), got[0].Snapshot["balance"], "the stored snapshot went through JSON")
+
+	_, err = uc.GetSelection(selOtherOrgCtx(), declId)
+	assert.ErrorIs(t, err, models.ForbiddenError)
 }

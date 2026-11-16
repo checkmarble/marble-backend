@@ -28,7 +28,7 @@ type SarSelectedObject struct {
 // SarReachedFrom records the object and link through which a selected object
 // was reached.
 type SarReachedFrom struct {
-	TableName string `json:"table"`
+	TableName string `json:"table"` //nolint:tagliatelle
 	ObjectId  string `json:"object_id"`
 	Link      string `json:"link"`
 }

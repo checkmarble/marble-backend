@@ -2,6 +2,7 @@ package sargen
 
 import (
 	"context"
+	"encoding/json"
 	"sort"
 	"strconv"
 	"sync"
@@ -173,13 +174,40 @@ func (i *fakeIngested) ReadIngestedClientObjects(_ context.Context, _ uuid.UUID,
 			return nil, nil, models.ClientDataListPagination{},
 				errors.Wrap(models.UnprocessableEntityError, "no matching navigation option")
 		}
+		// Like the real reader: the filter is typed from the DataType of the
+		// filtered field of the target table.
+		field, found := i.model.Model.Tables[objectType].Fields[ex.FilterFieldName]
+		if !found {
+			return nil, nil, models.ClientDataListPagination{},
+				errors.Wrap(models.NotFoundError, "filter field not found")
+		}
+		switch field.DataType {
+		case models.String:
+			if ex.FilterFieldValue.StringValue == nil {
+				return nil, nil, models.ClientDataListPagination{},
+					errors.Wrap(models.UnprocessableEntityError, "filter field must be a string")
+			}
+		case models.Float:
+			if ex.FilterFieldValue.FloatValue == nil {
+				return nil, nil, models.ClientDataListPagination{},
+					errors.Wrap(models.UnprocessableEntityError, "filter field must be a number")
+			}
+		default:
+			return nil, nil, models.ClientDataListPagination{},
+				errors.Wrap(models.UnprocessableEntityError, "filter field type not supported")
+		}
 	}
 	var matches []models.ClientObjectDetail
 	for _, o := range i.objects {
 		if o.Metadata.ObjectType != objectType {
 			continue
 		}
-		if v, ok := o.Data[ex.FilterFieldName]; ok && ex.FilterFieldValue.StringValue != nil && v == *ex.FilterFieldValue.StringValue {
+		v, ok := o.Data[ex.FilterFieldName]
+		switch {
+		case !ok:
+		case ex.FilterFieldValue.StringValue != nil && v == *ex.FilterFieldValue.StringValue:
+			matches = append(matches, o)
+		case ex.FilterFieldValue.FloatValue != nil && v == *ex.FilterFieldValue.FloatValue:
 			matches = append(matches, o)
 		}
 	}
@@ -282,9 +310,34 @@ func (r *fakeSelectionRepo) AddSarSelection(_ context.Context, _ repositories.Ex
 		if n.CreatedAt.IsZero() {
 			n.CreatedAt = time.Now()
 		}
-		r.Rows = append(r.Rows, n)
+		r.Rows = append(r.Rows, jsonRoundTrip(n))
 	}
 	return nil
+}
+
+// jsonRoundTrip stores the row like the real repository does: snapshot, origin
+// and reached_from go through JSON (numbers become float64, times strings in
+// the snapshot, UUIDs and times in origin are re-parsed).
+func jsonRoundTrip(o models.SarSelectedObject) models.SarSelectedObject {
+	snap, err := json.Marshal(o.Snapshot)
+	if err != nil {
+		panic(err)
+	}
+	var back map[string]any
+	if err := json.Unmarshal(snap, &back); err != nil {
+		panic(err)
+	}
+	o.Snapshot = back
+	for _, v := range []any{&o.Origin, &o.ReachedFrom} {
+		raw, err := json.Marshal(v)
+		if err != nil {
+			panic(err)
+		}
+		if err := json.Unmarshal(raw, v); err != nil {
+			panic(err)
+		}
+	}
+	return o
 }
 
 func (r *fakeSelectionRepo) RemoveSarSelection(_ context.Context, _ repositories.Executor, declarationId uuid.UUID, refs []models.CaseEntityRef) error {

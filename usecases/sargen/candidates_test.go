@@ -247,3 +247,72 @@ func TestNavigate_FromSelectedObjectNoLongerCandidate(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 }
+
+func TestNavigate_OtherOrgForbidden(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	selDataModel(f)
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t1", "account_id": "a1"}, time.Now())
+
+	_, _, err := uc.Navigate(selOtherOrgCtx(), declId, selRef("transactions", "t1"), "account", nil, 10)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, models.ForbiddenError)
+	assert.Equal(t, 0, f.Ingested.Reads)
+}
+
+func TestNavigate_FilterTypedFromFieldDataType(t *testing.T) {
+	cases := []struct {
+		name       string
+		targetType models.DataType
+		sourceVal  any
+		targetVal  any
+		wantFloat  bool
+	}{
+		{"numeric target field gets a number", models.Float, float64(42), float64(42), true},
+		{"string target field gets a string even from a numeric source", models.String, float64(7), "7", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			uc, f, declId := selSetup(t)
+			f.DataModel.Model = models.DataModel{Tables: map[string]models.Table{
+				"accounts": {
+					Name: "accounts",
+					Fields: map[string]models.Field{
+						"object_id": {Name: "object_id", DataType: models.String},
+						"num":       {Name: "num", DataType: tc.targetType},
+					},
+					NavigationOptions: []models.NavigationOption{{
+						SourceTableName: "accounts", SourceFieldName: "num",
+						TargetTableName: "transactions", FilterFieldName: "ref",
+						OrderingFieldName: "object_id", Status: models.IndexStatusValid,
+					}},
+				},
+				"transactions": {
+					Name: "transactions",
+					Fields: map[string]models.Field{
+						"object_id": {Name: "object_id", DataType: models.String},
+						"ref":       {Name: "ref", DataType: tc.targetType},
+					},
+				},
+			}}
+			selAddCaseEntity(f, "accounts", "a1", map[string]any{"object_id": "a1", "num": tc.sourceVal})
+			f.Ingested.Put("transactions", "t1", map[string]any{"object_id": "t1", "ref": tc.targetVal}, time.Now())
+
+			rec := &recordingIngested{IngestedDataReader: f.Ingested}
+			uc.ingestedReader = rec
+
+			got, _, err := uc.Navigate(f.Ctx, declId, selRef("accounts", "a1"), "transactions.ref", nil, 10)
+			require.NoError(t, err, "the fake reader rejects a mistyped filter like the real one")
+			require.Len(t, got, 1)
+
+			require.NotEmpty(t, rec.calls)
+			fv := rec.calls[len(rec.calls)-1].input.ExplorationOptions.FilterFieldValue
+			if tc.wantFloat {
+				require.NotNil(t, fv.FloatValue)
+				assert.Nil(t, fv.StringValue)
+			} else {
+				require.NotNil(t, fv.StringValue)
+				assert.Nil(t, fv.FloatValue)
+			}
+		})
+	}
+}

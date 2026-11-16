@@ -12,7 +12,6 @@ CREATE TABLE sar_declaration_selections (
     CONSTRAINT sar_declaration_selections_object_unique UNIQUE (declaration_id, table_name, object_id)
 );
 
-CREATE INDEX sar_declaration_selections_declaration_idx ON sar_declaration_selections (declaration_id);
 -- +goose StatementEnd
 
 -- +goose Down

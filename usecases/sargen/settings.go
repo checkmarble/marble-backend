@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 
+	"github.com/Masterminds/semver"
 	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -19,7 +20,7 @@ func (uc *Usecase) settingsSpec(family string) (*core.Spec, error) {
 		if f.Key().Family != family || f.Status() != core.VersionActive {
 			continue
 		}
-		if best == nil || f.Key().Version > best.Key().Version {
+		if best == nil || newerVersion(f.Key().Version, best.Key().Version) {
 			best = f
 		}
 	}
@@ -101,4 +102,21 @@ func (uc *Usecase) PutOrgSettings(ctx context.Context, family string, values map
 		return models.SarOrgFormatSettings{}, nil, err
 	}
 	return s, issues, nil
+}
+
+// newerVersion reports whether version a is strictly newer than b (semantic
+// comparison: 1.10.0 is newer than 1.4.0). An unparsable version never wins
+// over a parsable one; two unparsable ones are compared as strings.
+func newerVersion(a, b string) bool {
+	va, errA := semver.NewVersion(a)
+	vb, errB := semver.NewVersion(b)
+	switch {
+	case errA != nil && errB != nil:
+		return a > b
+	case errA != nil:
+		return false
+	case errB != nil:
+		return true
+	}
+	return va.GreaterThan(vb)
 }
