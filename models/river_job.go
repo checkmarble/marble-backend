@@ -2,7 +2,6 @@ package models
 
 import (
 	"github.com/google/uuid"
-	"github.com/riverqueue/river"
 )
 
 // run async decision job
@@ -110,14 +109,9 @@ type SarGenerationArgs struct {
 func (SarGenerationArgs) Kind() string { return "sar_generation" }
 
 // SarGenerationMaxAttempts is the number of River attempts of a generation
-// job. River fixes MaxAttempts at insert time, hence InsertOpts on the args
-// (merged with the queue given at insert). With River's default backoff it
-// covers a provider outage of about a quarter of an hour.
+// job, set at insert time (River fixes MaxAttempts then). With River's default
+// backoff it covers a provider outage of about a quarter of an hour.
 const SarGenerationMaxAttempts = 5
-
-func (SarGenerationArgs) InsertOpts() river.InsertOpts {
-	return river.InsertOpts{MaxAttempts: SarGenerationMaxAttempts}
-}
 
 type ScreeningHitSuggestionArgs struct {
 	ScreeningId string `json:"screening_id"`

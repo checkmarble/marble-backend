@@ -23,8 +23,8 @@ type ServerConfig struct {
 	otelSamplingRates            string
 	similarityThreshold          float64
 	enableTracing                bool
-	continuousScreeningBucketUrl    string
-	csServeFilesDirectly            bool
+	continuousScreeningBucketUrl string
+	csServeFilesDirectly         bool
 }
 
 func (config ServerConfig) Validate() error {
@@ -44,6 +44,7 @@ type WorkerConfig struct {
 	sentryDsn                    string
 	cloudRunProbePort            string
 	caseReviewTimeout            time.Duration
+	sarGenerationTimeout         time.Duration
 	caseManagerBucket            string
 	telemetryExporter            string
 	otelSamplingRates            string

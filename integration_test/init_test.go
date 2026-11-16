@@ -167,6 +167,9 @@ func TestMain(m *testing.M) {
 	// Register workers so that job enqueueing doesn't fail validation
 	river.AddWorker(workers, usecases.NewCsvIngestionWorker(nil))
 	river.AddWorker(workers, worker_jobs.NewScheduledExecutionWorker(nil))
+	// Only lets the harness accept sar_generation jobs. The real worker is
+	// registered in cmd/worker.go; if it is ever registered in this harness it
+	// must replace this no-op (AddWorker panics on a duplicate kind).
 	river.AddWorker(workers, &noopSarGenerationWorker{})
 
 	riverClient, err = river.NewClient(riverpgxv5.New(dbPool), &river.Config{

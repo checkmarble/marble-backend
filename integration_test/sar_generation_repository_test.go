@@ -275,6 +275,7 @@ func TestEnqueueSarGenerationTask_InsertsRiverJob(t *testing.T) {
 	res, err := riverClient.JobList(ctx, river.NewJobListParams().Kinds("sar_generation").Queues(orgId.String()))
 	require.NoError(t, err)
 	require.Len(t, res.Jobs, 1)
+	require.Equal(t, 5, res.Jobs[0].MaxAttempts)
 	require.JSONEq(t,
 		`{"job_id":"`+jobId.String()+`","declaration_id":"`+declarationId.String()+`"}`,
 		string(res.Jobs[0].EncodedArgs))
