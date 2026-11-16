@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
@@ -173,4 +174,29 @@ func (repo *MarbleDbRepository) ListSarDeclarationExports(ctx context.Context, e
 		Where(squirrel.Eq{"declaration_id": declarationId}).
 		OrderBy("created_at DESC", "id DESC")
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptSarDeclarationExport)
+}
+
+// GetSarDeclarationExportsSummary returns the number of exports of a
+// declaration and the date of the latest one (nil when none), without loading
+// any document.
+func (repo *MarbleDbRepository) GetSarDeclarationExportsSummary(
+	ctx context.Context, exec Executor, declarationId uuid.UUID,
+) (int, *time.Time, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return 0, nil, err
+	}
+	query := NewQueryBuilder().
+		Select("count(*)", "max(created_at)").
+		From(dbmodels.TABLE_SAR_DECLARATION_EXPORTS).
+		Where(squirrel.Eq{"declaration_id": declarationId})
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return 0, nil, errors.Wrap(err, "cannot build sar export summary query")
+	}
+	var count int
+	var lastAt *time.Time
+	if err := exec.QueryRow(ctx, sql, args...).Scan(&count, &lastAt); err != nil {
+		return 0, nil, errors.Wrap(err, "cannot read sar export summary")
+	}
+	return count, lastAt, nil
 }
