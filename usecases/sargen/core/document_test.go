@@ -81,7 +81,8 @@ func TestDocument_UnmarshalEmptyInitialisesMaps(t *testing.T) {
 func TestDocument_CloneIsDeep(t *testing.T) {
 	d, p := fullDocument()
 	vp := p.Child("etatCivil").Child("nomNaissance")
-	orig := d.Clone()
+	before, err := json.Marshal(d)
+	require.NoError(t, err)
 
 	c := d.Clone()
 	v := c.Values[vp]
@@ -95,7 +96,9 @@ func TestDocument_CloneIsDeep(t *testing.T) {
 	c.Items["personnes.pp"][0] = "X"
 	c.AddItem("personnes.pp", "pp")
 
-	assert.Equal(t, orig, d)
+	after, err := json.Marshal(d)
+	require.NoError(t, err)
+	assert.JSONEq(t, string(before), string(after))
 }
 
 func TestDocument_RemoveItemDropsNestedContainers(t *testing.T) {

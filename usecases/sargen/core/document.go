@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -158,6 +159,9 @@ func (d *Document) Clone() *Document {
 // UnmarshalJSON decodes a Document and guarantees all maps are non-nil, so
 // documents stored with missing or null maps can be written to safely.
 func (d *Document) UnmarshalJSON(data []byte) error {
+	if string(bytes.TrimSpace(data)) == "null" {
+		return nil
+	}
 	type plain Document
 	var p plain
 	if err := json.Unmarshal(data, &p); err != nil {
