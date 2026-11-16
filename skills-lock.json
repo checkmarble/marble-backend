@@ -1,0 +1,138 @@
+{
+  "version": 2,
+  "skills": {
+    "golang-benchmark": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-benchmark/SKILL.md",
+      "computedHash": "fbe3a79a9459ab233c8cac5a815cf7b3ad560bda28e842c1bb0ea4fa7a988c97"
+    },
+    "golang-code-style": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-code-style/SKILL.md",
+      "computedHash": "8013e3aeeb53e66e8dd52a1dd2d2f622ed59cde7426fad7f42c77de7fca424f8"
+    },
+    "golang-concurrency": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-concurrency/SKILL.md",
+      "computedHash": "c6c1829be72bba6eb7b2346561bb895605c65eacf35a2535bfca9828006a69e0"
+    },
+    "golang-context": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-context/SKILL.md",
+      "computedHash": "b3d709c734ef05f0ad6a48719d64f2b942f1ae1ef11e5d77975201c95c2a06e0"
+    },
+    "golang-data-structures": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-data-structures/SKILL.md",
+      "computedHash": "be9c0ff5f12c6b0f2a37a4310b6c7d0ccbbe77a6af0bfed049cb05d20c5e9c5c"
+    },
+    "golang-dependency-management": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-dependency-management/SKILL.md",
+      "computedHash": "f06642b4f2b10af0adf0b3b454545bf645b83e9f226c3f2a34717754fd339157"
+    },
+    "golang-design-patterns": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-design-patterns/SKILL.md",
+      "computedHash": "d3e4f4be5506709261b6fa43eee3d52f968c37ca5d83f4408c43a1d1f9c0da86"
+    },
+    "golang-documentation": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-documentation/SKILL.md",
+      "computedHash": "5cbd30122d143c70c06ef2f903db21d12586cc532ad285da9bce9c647c6ba03a"
+    },
+    "golang-gopls": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-gopls/SKILL.md",
+      "computedHash": "6a524531fcbe4fc94c0f333acfd05cf7cf2963c2671f498d4df725ae24388e47"
+    },
+    "golang-how-to": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-how-to/SKILL.md",
+      "computedHash": "17f53db31d588f0798df5736dedf3f6b4655d658a2669a92d72bd33f0de7717b"
+    },
+    "golang-lint": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-lint/SKILL.md",
+      "computedHash": "a1aec81b2c6b8441dd8e5bba762ea1b679bd01cd88879730edc2404af0601503"
+    },
+    "golang-modernize": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-modernize/SKILL.md",
+      "computedHash": "f2759e23978fdc4255cd97390ed6e8e72bcf129af889d4f99e0443abd042fe33"
+    },
+    "golang-observability": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-observability/SKILL.md",
+      "computedHash": "380d7e4e3dc126ad3b3154e8a6c13928f8a78f30dca94c58f6faa4d89edc8bdc"
+    },
+    "golang-performance": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-performance/SKILL.md",
+      "computedHash": "d27f7392a17e63117abd26def53f53bf1b8e3e551fa9f89e8b46303f5813847c"
+    },
+    "golang-project-layout": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-project-layout/SKILL.md",
+      "computedHash": "bd8ad6f0fd05ba05a135af9eb766fdf7d838c33cb07aa4625bfd16a9fbe76903"
+    },
+    "golang-refactoring": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-refactoring/SKILL.md",
+      "computedHash": "afcb3185fb37cddc213ed99c4cd4bbb2459b78048de5b59503537e79ca220eb3"
+    },
+    "golang-safety": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-safety/SKILL.md",
+      "computedHash": "6e1aab5624f6a99e3384bfe6b7a8810d5063df9362f7633ce38812fcaf52eb17"
+    },
+    "golang-structs-interfaces": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-structs-interfaces/SKILL.md",
+      "computedHash": "1620e9c6087f4dc3014c356a341f3458484d2f22783bb1ef4cf04d7b3c3484a0"
+    },
+    "golang-troubleshooting": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-troubleshooting/SKILL.md",
+      "computedHash": "c234f844f87c46cd6ab66f1ba2b2fad54997c03a78b441d7ab39d94649589ff3"
+    }
+  }
+}
