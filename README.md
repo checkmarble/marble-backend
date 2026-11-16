@@ -36,6 +36,8 @@ Later, you can do:
 
 Create your own `.env` file by copying `.env.example`. You can customize it with your own values, but it should work locally with the default values (except for third-party service functionalities).
 
+Consider [installing the recommended coding agents skills](#agents-skills) if you deem them useful.
+
 ### Setup the Database and Services
 
 The `docker compose` of this repository only contains the _dependencies_ required to run the backend service, but does not start the services themselves. It is assumed the developer will run them themselves (see next section).
@@ -125,6 +127,13 @@ There is a recommended extensions list in the `.vscode/extensions.json` file.
 
 All required configuration settings are already included inside the `.vscode/settings.json` file.
 Recommended settings are in the `.vscode/.user-settings.sample.json` file. Cherry-pick them to your user config file.
+
+## Install recommended coding agents skills {#agents-skills}
+
+The recommended list of skills is documented in the `skills-lock.json` file. Use [skills.sh’s CLI](https://www.skills.sh/docs/cli) to install them.
+Make sure you have npm available. Use `mise use -g node` if you want to install a default mise-managed nodejs.
+
+Install them with `npx skills i` or `npx skills i --agent <your-prefered-agent>`
 
 ## FAQ
 

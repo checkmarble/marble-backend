@@ -70,3 +70,7 @@ prompts
 
 # Air (go live rebuild)
 /.air-build
+
+# LLM agents skills
+.agents/skills/
+.claude/skills/
