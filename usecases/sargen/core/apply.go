@@ -16,7 +16,9 @@ const (
 	CodeSourceOutOfScope     = "source_out_of_scope"
 	CodeBadProvisionalKey    = "bad_provisional_key"
 	CodeEmptyNewItem         = "empty_new_item"
-	CodeUnknownRef           = "bad_ref"
+	CodeMissingOrigin        = "missing_origin"
+	CodeBadConfidence        = "bad_confidence"
+	CodeNotFound             = "not_found"
 )
 
 // OverwritePolicy decides what happens when a fill targets a non-empty value.
@@ -43,6 +45,8 @@ type Fill struct {
 	Confidence    Confidence
 	Computation   *Computation
 	TaskID        *uuid.UUID
+	// Reviewed is stored as is (analyst edits may be reviewed at once).
+	Reviewed bool
 }
 
 type ApplyOptions struct {
@@ -53,6 +57,11 @@ type ApplyOptions struct {
 	// new items `a.b[+x]`.
 	AllowedPrefixes []Path
 	Overwrite       OverwritePolicy
+	// SkipMaxItems disables the maximum item count of repeatable containers at
+	// write time (zero value: enforced). Compute sets it so that an excess
+	// surfaces as the validator's blocking too_many_items instead of being
+	// silently dropped. Repeatable field containers count filled items only.
+	SkipMaxItems bool
 	// AllowedSources returns the objects a fill on target may cite; nil = no
 	// check. Target is the path where already-existing and already-created
 	// items carry their real keys; items still to be created stay `[+x]`.
@@ -76,6 +85,53 @@ type ApplyResult struct {
 	Applied   []Path
 	Rejected  []Rejected
 	Conflicts []Conflict
+	// Resolved maps each provisional item prefix as written in the fills
+	// (e.g. `personnes.pp[+a]`, `personnes.pp[+a].etatCivil.prenom[+x]`) to
+	// the real item path it was created as.
+	Resolved map[Path]Path
+}
+
+// Rewrite replaces the provisional prefixes of p that were resolved by their
+// real item path (longest prefix first). Other paths are returned unchanged.
+func (r ApplyResult) Rewrite(p Path) Path {
+	best := Path("")
+	for k := range r.Resolved {
+		if (p == k || strings.HasPrefix(string(p), string(k)+".")) && len(k) > len(best) {
+			best = k
+		}
+	}
+	if best == "" {
+		return p
+	}
+	return Path(string(r.Resolved[best]) + strings.TrimPrefix(string(p), string(best)))
+}
+
+// MarkReviewed sets Reviewed on the existing values at paths. An empty or
+// unknown path yields unknown_path, a known path without value not_found.
+func MarkReviewed(spec *Spec, doc *Document, paths []Path) []Issue {
+	var issues []Issue
+	for _, p := range paths {
+		if p == "" {
+			issues = append(issues, *blocking(p, CodeUnknownPath, "chemin vide"))
+			continue
+		}
+		if _, err := ParsePath(string(p)); err != nil {
+			issues = append(issues, *blocking(p, CodeUnknownPath, "chemin invalide : "+err.Error()))
+			continue
+		}
+		if n := spec.NodeAt(p.Template()); n == nil || n.Template == "" {
+			issues = append(issues, *blocking(p, CodeUnknownPath, "champ inconnu dans le format"))
+			continue
+		}
+		v, ok := doc.Values[p]
+		if !ok || v.Value == "" {
+			issues = append(issues, *blocking(p, CodeNotFound, "aucune valeur à ce chemin"))
+			continue
+		}
+		v.Reviewed = true
+		doc.Values[p] = v
+	}
+	return issues
 }
 
 type pendingSeg struct {
@@ -100,6 +156,9 @@ func ApplyFills(spec *Spec, doc *Document, fills []Fill, opts ApplyOptions) Appl
 
 	for _, f := range fills {
 		real, pend, issue := walkPath(spec, doc, f.Path, opts, resolved, false)
+		if issue == nil {
+			issue = checkFillMeta(f)
+		}
 		if issue == nil {
 			issue = checkNature(spec, f)
 		}
@@ -128,13 +187,13 @@ func ApplyFills(spec *Spec, doc *Document, fills []Fill, opts ApplyOptions) Appl
 				continue
 			}
 			if exists {
-				confirm := before.Value == f.Value &&
-					(opts.Overwrite == OverwriteAll || isAnalystOrigin(f.Origin) && before.Origin != f.Origin)
+				confirm := before.Value == f.Value && isAnalystOrigin(f.Origin) &&
+					(opts.Overwrite == OverwriteAll || before.Origin != f.Origin)
 				switch {
 				case confirm:
 				case before.Value == f.Value:
 					continue
-				case protected(before, opts.Overwrite):
+				case protected(before, f, opts.Overwrite):
 					res.Conflicts = append(res.Conflicts, Conflict{Path: real, Before: before, After: f})
 					continue
 				}
@@ -145,17 +204,28 @@ func ApplyFills(spec *Spec, doc *Document, fills []Fill, opts ApplyOptions) Appl
 		write(doc, real, f)
 		res.Applied = append(res.Applied, real)
 	}
+	if len(resolved) > 0 {
+		res.Resolved = make(map[Path]Path, len(resolved))
+		for k, v := range resolved {
+			res.Resolved[Path(k)] = v
+		}
+	}
 	return res
 }
 
 func isAnalystOrigin(o Origin) bool { return o == OriginManual || o == OriginAnalyst }
 
 // protected reports whether an existing non-empty value must not be replaced.
-func protected(v Value, policy OverwritePolicy) bool {
+// A computed fill may recompute a stored computed value even if reviewed (the
+// new value is written unreviewed).
+func protected(v Value, f Fill, policy OverwritePolicy) bool {
 	switch policy {
 	case OverwriteAll:
 		return false
 	case OverwriteNonManual:
+		if f.Origin == OriginComputed && v.Origin == OriginComputed {
+			return false
+		}
 		return v.Reviewed || isAnalystOrigin(v.Origin)
 	default:
 		return true
@@ -174,7 +244,7 @@ func write(doc *Document, p Path, f Fill) {
 		RuleIDs:       slices.Clone(f.RuleIDs),
 		Justification: f.Justification,
 		Confidence:    f.Confidence,
-		Reviewed:      false,
+		Reviewed:      f.Reviewed,
 		TaskID:        f.TaskID,
 	}
 	if f.Computation != nil {
@@ -251,7 +321,7 @@ func walkPath(spec *Spec, doc *Document, p Path, opts ApplyOptions, resolved map
 		if n == nil || !n.IsRepeatable() {
 			return "", nil, blocking(p, CodeBadProvisionalKey, "clé provisoire sur un bloc non répétable")
 		}
-		if n.Max > 0 && len(doc.Items[container]) >= n.Max {
+		if !opts.SkipMaxItems && n.Max > 0 && countItems(doc, n, container) >= n.Max {
 			return "", nil, blocking(p, CodeTooManyItems, "nombre maximal d'éléments atteint")
 		}
 		pend = append(pend, pendingSeg{index: i, key: literal})
@@ -263,6 +333,34 @@ func walkPath(spec *Spec, doc *Document, p Path, opts ApplyOptions, resolved map
 		}
 	}
 	return real, pend, nil
+}
+
+// countItems counts the items of a container as the validator does: all items
+// of a group container, only filled ones for a field container.
+func countItems(doc *Document, n *Node, container Path) int {
+	keys := doc.Items[container]
+	if n.Kind != NodeField {
+		return len(keys)
+	}
+	c := 0
+	for _, k := range keys {
+		if v, ok := doc.Values[Path(string(container)+"["+k+"]")]; ok && v.Value != "" {
+			c++
+		}
+	}
+	return c
+}
+
+func checkFillMeta(f Fill) *Issue {
+	if f.Origin == "" {
+		return blocking(f.Path, CodeMissingOrigin, "l'origine de la valeur est obligatoire")
+	}
+	switch f.Confidence {
+	case ConfidenceNone, ConfidenceLow, ConfidenceMedium, ConfidenceHigh:
+	default:
+		return blocking(f.Path, CodeBadConfidence, "niveau de confiance inconnu")
+	}
+	return nil
 }
 
 // resolveRef rewrites a reference value naming a provisional item created
@@ -293,7 +391,7 @@ func resolveRef(spec *Spec, doc *Document, f Fill, resolved map[string]Path) (st
 		if strings.HasPrefix(key, "+") {
 			r, ok := resolved[strings.Join(segs[:i+1], ".")]
 			if !ok {
-				return f.Value, blocking(f.Path, CodeUnknownRef, "référence à un élément inconnu")
+				return f.Value, blocking(f.Path, CodeBadRef, "référence à un élément inconnu")
 			}
 			real = r
 			continue

@@ -116,7 +116,7 @@ func TestApplyFills_References(t *testing.T) {
 		doc := core.NewDocument()
 		before := snapshot(t, doc)
 		res := core.ApplyFills(spec, doc, []core.Fill{llmCopiedFill("work.transactions[+t]"+field, "personnes.pp[+z]")}, core.ApplyOptions{})
-		assert.Equal(t, []string{core.CodeUnknownRef}, rejectedCodes(res))
+		assert.Equal(t, []string{core.CodeBadRef}, rejectedCodes(res))
 		requireDocUnchanged(t, before, doc)
 	})
 	t.Run("ref to missing real item is dangling", func(t *testing.T) {
