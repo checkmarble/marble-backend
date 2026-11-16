@@ -58,7 +58,7 @@ func newSarTestDeclaration(organizationID, caseID uuid.UUID) models.SarDeclarati
 		Id:             uuid.New(),
 		OrganizationId: organizationID,
 		CaseId:         caseID,
-		FormatKey:      "fr-tracfin",
+		FormatKey:      "tracfin:FR:1.4.0",
 		ReportType:     "soupcon",
 		Document:       []byte(`{}`),
 		Version:        1,
@@ -79,7 +79,7 @@ func TestSarDeclaration_CreateGetUpdate(t *testing.T) {
 	require.Equal(t, declaration.Id, got.Id)
 	require.Equal(t, organizationID, got.OrganizationId)
 	require.Equal(t, caseID, got.CaseId)
-	require.Equal(t, "fr-tracfin", got.FormatKey)
+	require.Equal(t, "tracfin:FR:1.4.0", got.FormatKey)
 	require.Equal(t, "soupcon", got.ReportType)
 	require.Equal(t, 1, got.Version)
 	require.Equal(t, "", got.Analysis)
@@ -135,7 +135,7 @@ func TestSarOrgFormatSettings_Upsert(t *testing.T) {
 	organizationID, _ := sarDeclarationTestFixture(t)
 	repo := repositories.NewMarbleDbRepository(false, 0)
 	exec := testUsecases.NewExecutorFactory().NewExecutor()
-	const family = "fr-tracfin"
+	const family = "tracfin"
 
 	absent, err := repo.GetSarOrgFormatSettings(ctx, exec, organizationID, family)
 	require.NoError(t, err)
@@ -216,6 +216,19 @@ func TestSarDeclarationExport_CreateGetList(t *testing.T) {
 	second.Outstanding = []byte(`[]`)
 	second.FileReference = "sar/export-2.xml"
 	require.NoError(t, repo.CreateSarDeclarationExport(ctx, exec, second))
+
+	count, lastAt, err := repo.GetSarDeclarationExportsSummary(ctx, exec, declaration.Id)
+	require.NoError(t, err)
+	require.Equal(t, 2, count)
+	require.NotNil(t, lastAt)
+	require.False(t, lastAt.Before(got.CreatedAt))
+
+	noExports := newSarTestDeclaration(organizationID, caseID)
+	require.NoError(t, repo.CreateSarDeclaration(ctx, exec, noExports))
+	count, lastAt, err = repo.GetSarDeclarationExportsSummary(ctx, exec, noExports.Id)
+	require.NoError(t, err)
+	require.Equal(t, 0, count)
+	require.Nil(t, lastAt)
 
 	list, err := repo.ListSarDeclarationExports(ctx, exec, declaration.Id)
 	require.NoError(t, err)
