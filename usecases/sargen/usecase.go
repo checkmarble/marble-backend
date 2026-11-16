@@ -317,7 +317,11 @@ func (uc *Usecase) CreateDeclaration(ctx context.Context, caseId uuid.UUID, form
 			Origin: core.OriginComputed,
 		})
 	}
-	core.ApplyFills(spec, doc, defaults, core.ApplyOptions{Overwrite: core.OverwriteAll})
+	logger := utils.LoggerFromContext(ctx)
+	for _, r := range core.ApplyFills(spec, doc, defaults, core.ApplyOptions{Overwrite: core.OverwriteAll}).Rejected {
+		logger.WarnContext(ctx, "sar declaration: format default rejected",
+			"path", string(r.Fill.Path), "code", r.Issue.Code)
+	}
 
 	settings, err := uc.repository.GetSarOrgFormatSettings(ctx, exec, orgId, key.Family)
 	if err != nil {
@@ -334,7 +338,10 @@ func (uc *Usecase) CreateDeclaration(ctx context.Context, caseId uuid.UUID, form
 			fills = append(fills, core.Fill{Path: core.Path(p), Value: settings.Values[p], Origin: core.OriginOrgSetting})
 		}
 		// Stale or invalid stored settings are skipped (reported by GetOrgSettings).
-		core.ApplyFills(spec, doc, fills, core.ApplyOptions{Overwrite: core.OverwriteAll})
+		for _, r := range core.ApplyFills(spec, doc, fills, core.ApplyOptions{Overwrite: core.OverwriteAll}).Rejected {
+			logger.WarnContext(ctx, "sar declaration: org setting rejected",
+				"path", string(r.Fill.Path), "code", r.Issue.Code)
+		}
 	}
 
 	raw, err := json.Marshal(doc)
@@ -345,7 +352,7 @@ func (uc *Usecase) CreateDeclaration(ctx context.Context, caseId uuid.UUID, form
 		Id:             pure_utils.NewId(),
 		OrganizationId: orgId,
 		CaseId:         caseId,
-		FormatKey:      formatKey,
+		FormatKey:      key.String(),
 		ReportType:     reportType,
 		Document:       raw,
 		Version:        1,
@@ -489,6 +496,11 @@ func (uc *Usecase) AddItem(ctx context.Context, id uuid.UUID, version int, conta
 		if n == nil || !n.IsRepeatable() {
 			return errors.Wrapf(models.BadParameterError, "%s n'est pas une liste", container)
 		}
+		if parent := container.Parent(); parent != "" && strings.HasSuffix(string(parent), "]") {
+			if !itemExists(doc, parent) {
+				return errors.Wrapf(models.BadParameterError, "l'élément parent %s n'existe pas", parent)
+			}
+		}
 		if n.Max > 0 && len(doc.Items[container]) >= n.Max {
 			return errors.Wrapf(models.BadParameterError, "nombre maximal d'éléments atteint pour %s", container)
 		}
@@ -514,6 +526,9 @@ func (uc *Usecase) RemoveItem(ctx context.Context, id uuid.UUID, version int, it
 		if n == nil || !n.IsRepeatable() {
 			return errors.Wrapf(models.BadParameterError, "%s n'est pas un élément de liste", item)
 		}
+		if !itemExists(doc, item) {
+			return errors.Wrapf(models.NotFoundError, "l'élément %s n'existe pas", item)
+		}
 		doc.RemoveItem(item)
 		return nil
 	})
@@ -526,4 +541,19 @@ func (uc *Usecase) MarkReviewed(ctx context.Context, id uuid.UUID, version int, 
 		}
 		return nil
 	})
+}
+
+// itemExists reports whether the keyed item path `a.b[k]` is listed in doc.
+func itemExists(doc *core.Document, item core.Path) bool {
+	str := string(item)
+	i := strings.LastIndex(str, "[")
+	if i < 0 || !strings.HasSuffix(str, "]") {
+		return false
+	}
+	key := str[i+1 : len(str)-1]
+	name := str[:i]
+	if j := strings.LastIndex(name, "."); j >= 0 {
+		name = name[j+1:]
+	}
+	return slices.Contains(doc.Items[item.Parent().Child(name)], key)
 }

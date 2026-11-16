@@ -2,6 +2,7 @@ package sargen
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -17,8 +18,11 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
 	"github.com/checkmarble/marble-backend/usecases/sargen/formats"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
+// TRACFIN fixture constants and the testFormat wrapper below are test fixtures
+// only: package sargen itself holds no TRACFIN knowledge.
 const (
 	tracfinFamily     = "tracfin"
 	tracfinFormatKey  = "tracfin:FR:1.4.0"
@@ -412,4 +416,72 @@ func TestAddItem_RemoveItem(t *testing.T) {
 	removed, err := uc.RemoveItem(f.Ctx, id, added.Declaration.Version, item)
 	require.NoError(t, err)
 	require.Empty(t, removed.Doc.Items["personnes.pp"])
+}
+
+func TestPutOrgSettings_ScopedByCredentialsOrg(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	ctxB := context.WithValue(context.Background(), utils.ContextKeyCredentials,
+		models.Credentials{OrganizationId: uuid.New()})
+
+	_, _, err := uc.PutOrgSettings(f.Ctx, tracfinFamily, map[string]string{"organisme.libelle": "Banque A"})
+	require.NoError(t, err)
+
+	gotB, _, err := uc.GetOrgSettings(ctxB, tracfinFamily)
+	require.NoError(t, err)
+	require.Empty(t, gotB.Values, "org B must not see org A settings")
+
+	_, _, err = uc.PutOrgSettings(ctxB, tracfinFamily, map[string]string{"organisme.libelle": "Banque B"})
+	require.NoError(t, err)
+
+	gotA, _, err := uc.GetOrgSettings(f.Ctx, tracfinFamily)
+	require.NoError(t, err)
+	require.Equal(t, "Banque A", gotA.Values["organisme.libelle"], "org B must not overwrite org A settings")
+}
+
+func TestPutOrgSettings_InvalidValueReturnsIssuesAndSavesNothing(t *testing.T) {
+	uc, f := newTestUsecase(t)
+
+	_, issues, err := uc.PutOrgSettings(f.Ctx, tracfinFamily, map[string]string{
+		"declarant.coordonnees.nom": strings.Repeat("x", 5000),
+	})
+	require.ErrorIs(t, err, models.BadParameterError)
+	require.NotEmpty(t, issues)
+	_, stored := f.Repo.Settings[settingsKey(f.OrgId, tracfinFamily)]
+	require.False(t, stored)
+}
+
+func TestExport_StaleVersionConflict(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	d := seedValidDeclaration(t, uc, f)
+
+	_, err := uc.Export(f.Ctx, d.Id, d.Version+7)
+	require.ErrorIs(t, err, models.ErrSarVersionConflict)
+	require.Empty(t, f.Blobs.Keys())
+	require.Empty(t, f.Repo.Exports)
+}
+
+func TestDownloadExport_UnknownExportNotFound(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	d := seedValidDeclaration(t, uc, f)
+
+	_, err := uc.DownloadExport(f.Ctx, d.Id, uuid.New())
+	require.ErrorIs(t, err, models.NotFoundError)
+}
+
+func TestRemoveItem_UnknownItemNotFound(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	st := createFresh(t, uc, f)
+
+	_, err := uc.RemoveItem(f.Ctx, st.Declaration.Id, st.Declaration.Version, "personnes.pp[nope-1]")
+	require.ErrorIs(t, err, models.NotFoundError)
+	require.Equal(t, st.Declaration.Version, f.Repo.Declarations[st.Declaration.Id].Version)
+}
+
+func TestAddItem_MissingParentRefused(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	st := createFresh(t, uc, f)
+
+	_, _, err := uc.AddItem(f.Ctx, st.Declaration.Id, st.Declaration.Version, "personnes.pp[nope-1].adresse")
+	require.Error(t, err)
+	require.Equal(t, st.Declaration.Version, f.Repo.Declarations[st.Declaration.Id].Version)
 }

@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -15,6 +16,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type outstandingItem struct {
@@ -36,6 +38,7 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 		return models.SarDeclarationExport{}, err
 	}
 	var out models.SarDeclarationExport
+	var writtenKey string
 	err := uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		d, err := uc.repository.GetSarDeclarationForUpdate(ctx, tx, id)
 		if err != nil {
@@ -60,11 +63,14 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 			return err
 		}
 		issues := format.Validate(doc)
+		var blocking []core.Issue
 		for _, i := range issues {
 			if i.Blocks() {
-				return errors.Wrapf(models.BadParameterError,
-					"l'export est impossible : des erreurs bloquantes subsistent (%s : %s)", i.Path, i.Message)
+				blocking = append(blocking, i)
 			}
+		}
+		if len(blocking) > 0 {
+			return errors.Wrap(issuesToError(blocking), "l'export est impossible : des erreurs bloquantes subsistent")
 		}
 
 		var outstanding []outstandingItem
@@ -99,6 +105,7 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 		if err != nil {
 			return errors.Wrap(err, "cannot open export blob")
 		}
+		writtenKey = key
 		if _, err := w.Write(buf.Bytes()); err != nil {
 			_ = w.Close()
 			return errors.Wrap(err, "cannot write export blob")
@@ -116,14 +123,20 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 			FileReference:      key,
 			Sha256:             hex.EncodeToString(sum[:]),
 			CreatedBy:          actorId(ctx),
+			CreatedAt:          time.Now().UTC(),
 		}
 		if err := uc.repository.CreateSarDeclarationExport(ctx, tx, out); err != nil {
-			_ = uc.blobRepository.DeleteFile(ctx, uc.bucketUrl, key)
 			return err
 		}
 		return nil
 	})
 	if err != nil {
+		if writtenKey != "" {
+			if delErr := uc.blobRepository.DeleteFile(ctx, uc.bucketUrl, writtenKey); delErr != nil {
+				utils.LoggerFromContext(ctx).WarnContext(ctx, "sar export: cannot delete orphan blob",
+					"key", writtenKey, "error", delErr.Error())
+			}
+		}
 		return models.SarDeclarationExport{}, err
 	}
 	return out, nil

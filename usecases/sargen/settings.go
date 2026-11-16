@@ -65,7 +65,9 @@ func (uc *Usecase) GetOrgSettings(ctx context.Context, family string) (models.Sa
 	return *stored, settingIssues(spec, stored.Values), nil
 }
 
-// PutOrgSettings replaces the values. Allowed paths are fields whose node
+// PutOrgSettings replaces the values. Settings are scoped to the organization of
+// the credentials. Any user of the organization may write them (accepted V1
+// limit: no finer permission). Allowed paths are fields whose node
 // nature is NatureSetting; each value is validated with core.ValidateValue and
 // a blocking issue refuses the whole write (BadParameterError).
 func (uc *Usecase) PutOrgSettings(ctx context.Context, family string, values map[string]string) (models.SarOrgFormatSettings, []core.Issue, error) {
