@@ -77,6 +77,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		loggingFormat:                utils.GetEnv("LOGGING_FORMAT", "text"),
 		sentryDsn:                    utils.GetEnv("SENTRY_DSN", ""),
 		cloudRunProbePort:            utils.GetEnv("CLOUD_RUN_PROBE_PORT", ""),
+		sarGenerationTimeout:         utils.GetEnvDuration("SAR_GENERATION_TIMEOUT", 30*time.Minute),
 		caseReviewTimeout:            utils.GetEnvDuration("AI_CASE_REVIEW_TIMEOUT", 5*time.Minute),
 		caseManagerBucket:            utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
 		analyticsBucket:              utils.GetEnv("ANALYTICS_BUCKET_URL", ""),
@@ -398,6 +399,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewTestRunSummaryWorker())
 	river.AddWorker(workers, adminUc.NewMatchEnrichmentWorker())
 	river.AddWorker(workers, adminUc.NewCaseReviewWorker(workerConfig.caseReviewTimeout))
+	river.AddWorker(workers, adminUc.NewSarGenerationWorker(workerConfig.sarGenerationTimeout))
 	river.AddWorker(workers, adminUc.NewScreeningHitSuggestionWorker(workerConfig.caseReviewTimeout))
 	river.AddWorker(workers, adminUc.NewRuleDescriptionWorker(workerConfig.caseReviewTimeout))
 	river.AddWorker(workers, adminUc.NewAutoAssignmentWorker())

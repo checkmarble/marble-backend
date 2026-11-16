@@ -434,9 +434,9 @@ func (r riverRepository) EnqueueCaseReviewTask(
 }
 
 // EnqueueSarGenerationTask enqueues the River job running a persisted SAR
-// generation job. Retries are left to the River default (the worker decides,
-// via snooze or cancel, what to do on failure): task-level resumption is
-// handled by the persisted tasks, not by replaying the River job.
+// generation job. MaxAttempts is fixed at insert time (5, with River's default
+// backoff between attempts); the worker snoozes on LLM rate limit, and
+// task-level resumption is handled by the persisted tasks.
 func (r riverRepository) EnqueueSarGenerationTask(
 	ctx context.Context,
 	tx Transaction,
@@ -451,7 +451,8 @@ func (r riverRepository) EnqueueSarGenerationTask(
 			DeclarationId: declarationId,
 		},
 		&river.InsertOpts{
-			Queue: organizationId.String(),
+			Queue:       organizationId.String(),
+			MaxAttempts: models.SarGenerationMaxAttempts,
 		},
 	)
 	if err != nil {
