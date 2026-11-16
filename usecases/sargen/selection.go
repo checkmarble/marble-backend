@@ -2,6 +2,7 @@ package sargen
 
 import (
 	"context"
+	"strings"
 
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -33,6 +34,25 @@ type SelectionAdd struct {
 func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version int,
 	add []SelectionAdd, remove []core.ObjectRef,
 ) (DeclarationState, error) {
+	removed := make(map[core.ObjectRef]bool, len(remove))
+	for _, r := range remove {
+		removed[r] = true
+	}
+	seenAdd := make(map[core.ObjectRef]bool, len(add))
+	uniqueAdd := make([]SelectionAdd, 0, len(add))
+	for _, a := range add {
+		if removed[a.Ref] {
+			return DeclarationState{}, errors.Wrapf(models.BadParameterError,
+				"l'objet %s/%s ne peut pas être ajouté et retiré en même temps", a.Ref.Table, a.Ref.ObjectID)
+		}
+		if seenAdd[a.Ref] {
+			continue
+		}
+		seenAdd[a.Ref] = true
+		uniqueAdd = append(uniqueAdd, a)
+	}
+	add = uniqueAdd
+
 	exec := uc.executorFactory.NewExecutor()
 	d, err := uc.loadDeclaration(ctx, exec, id)
 	if err != nil {
@@ -188,11 +208,16 @@ func (uc *Usecase) UpdateAnalysis(ctx context.Context, id uuid.UUID, version int
 	return uc.mutateWithText(ctx, id, version,
 		func(format core.Format, doc *core.Document, a, e *string) error {
 			*a, *e = analysis, extraInfo
-			if analysis == "" {
-				return nil
+			path, err := analystLeaf(format.Spec())
+			if err != nil {
+				return err
 			}
+			if path == "" {
+				return nil // the format has no analyst field: texts only
+			}
+			// An empty analysis clears the field (overwrite with an empty value).
 			res := core.ApplyFills(format.Spec(), doc, []core.Fill{{
-				Path: core.Path("analyse"), Value: analysis, Origin: core.OriginAnalyst,
+				Path: path, Value: analysis, Origin: core.OriginAnalyst,
 			}}, core.ApplyOptions{Overwrite: core.OverwriteAll})
 			var issues []core.Issue
 			for _, r := range res.Rejected {
@@ -203,4 +228,31 @@ func (uc *Usecase) UpdateAnalysis(ctx context.Context, id uuid.UUID, version int
 			}
 			return nil
 		})
+}
+
+// analystLeaf returns the path of the single non-repeatable field of the spec
+// whose nature is NatureAnalyst, "" if there is none, an error if several.
+func analystLeaf(spec *core.Spec) (core.Path, error) {
+	var found []string
+	var walk func(n *core.Node)
+	walk = func(n *core.Node) {
+		if n == nil {
+			return
+		}
+		if n.Kind == core.NodeField && n.EffectiveNature() == core.NatureAnalyst && !strings.Contains(n.Template, "[]") {
+			found = append(found, n.Template)
+		}
+		for _, c := range n.Children {
+			walk(c)
+		}
+	}
+	walk(spec.Root)
+	switch len(found) {
+	case 0:
+		return "", nil
+	case 1:
+		return core.Path(found[0]), nil
+	default:
+		return "", errors.Newf("le format déclare plusieurs champs d'analyse : %s", strings.Join(found, ", "))
+	}
 }

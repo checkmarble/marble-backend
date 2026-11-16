@@ -52,10 +52,11 @@ func newTestUsecase(t *testing.T) (*Usecase, *fakes) {
 		Security: &fakeSecurity{},
 	}
 	f.Decisions = &fakeDecisions{}
+	f.DataModel = &fakeDataModel{}
 	f.Ingested = newFakeIngested()
+	f.Ingested.model = f.DataModel
 	f.CaseEntities = &fakeCaseEntities{ingested: f.Ingested}
 	f.Selection = &fakeSelectionRepo{}
-	f.DataModel = &fakeDataModel{}
 	f.Ctx = context.WithValue(context.Background(), utils.ContextKeyCredentials,
 		models.Credentials{OrganizationId: f.OrgId})
 	uc := NewUsecase(fakeExecFactory{}, fakeTxFactory{}, f.Security, f.Repo,
