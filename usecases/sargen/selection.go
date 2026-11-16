@@ -63,6 +63,10 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 	}
 	orgId := d.OrganizationId // checked equal to the credentials' organization
 
+	if len(add) == 0 && len(remove) == 0 {
+		return uc.buildState(ctx, exec, d) // nothing to change: no version bump
+	}
+
 	var newRows []models.SarSelectedObject
 	if len(add) > 0 {
 		ctxData, err := uc.loadSelectionContext(ctx, exec, orgId, d)
@@ -81,6 +85,10 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 			row.DeclarationId = id
 			newRows = append(newRows, row)
 		}
+	}
+
+	if len(newRows) == 0 && len(remove) == 0 {
+		return uc.buildState(ctx, exec, d) // everything already selected: no version bump
 	}
 
 	var saved models.SarDeclaration

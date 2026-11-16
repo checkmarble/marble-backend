@@ -341,19 +341,37 @@ func (uc *Usecase) ListCandidates(ctx context.Context, id uuid.UUID) ([]Candidat
 	return out, nil
 }
 
-func filterValue(v any) models.StringOrNumber {
-	switch x := v.(type) {
-	case float64:
-		return models.StringOrNumber{FloatValue: &x}
-	case int:
-		f := float64(x)
-		return models.StringOrNumber{FloatValue: &f}
-	case int64:
-		f := float64(x)
-		return models.StringOrNumber{FloatValue: &f}
+// filterValue types the exploration filter from the DataType of the filtered
+// field of the target table (like the real reader expects), not from the Go
+// type of the source value.
+func filterValue(dataType models.DataType, v any) (models.StringOrNumber, error) {
+	switch dataType {
+	case models.Float, models.Int:
+		switch x := v.(type) {
+		case float64:
+			return models.StringOrNumber{FloatValue: &x}, nil
+		case int:
+			f := float64(x)
+			return models.StringOrNumber{FloatValue: &f}, nil
+		case int64:
+			f := float64(x)
+			return models.StringOrNumber{FloatValue: &f}, nil
+		case string:
+			f, err := strconv.ParseFloat(x, 64)
+			if err != nil {
+				return models.StringOrNumber{}, errors.Wrapf(models.BadParameterError,
+					"la valeur %q n'est pas un nombre", x)
+			}
+			return models.StringOrNumber{FloatValue: &f}, nil
+		}
+		return models.StringOrNumber{}, errors.Wrapf(models.BadParameterError,
+			"la valeur %v n'est pas un nombre", v)
 	default:
-		s := fmt.Sprint(x)
-		return models.StringOrNumber{StringValue: &s}
+		s, ok := valueString(v)
+		if !ok {
+			return models.StringOrNumber{}, errors.Wrap(models.BadParameterError, "valeur de filtre vide")
+		}
+		return models.StringOrNumber{StringValue: &s}, nil
 	}
 }
 
@@ -410,12 +428,21 @@ func (uc *Usecase) Navigate(ctx context.Context, id uuid.UUID, from core.ObjectR
 	if !ok || sourceValue == nil {
 		return []Candidate{}, nil, nil
 	}
+	targetField, ok := c.dataModel.Tables[l.nav.TargetTableName].Fields[l.nav.FilterFieldName]
+	if !ok {
+		return nil, nil, errors.Wrapf(models.NotFoundError, "champ de filtre introuvable : %s.%s",
+			l.nav.TargetTableName, l.nav.FilterFieldName)
+	}
+	filter, err := filterValue(targetField.DataType, sourceValue)
+	if err != nil {
+		return nil, nil, err
+	}
 	objs, _, page, err := uc.ingestedReader.ReadIngestedClientObjects(ctx, orgId, l.nav.TargetTableName,
 		models.ClientDataListRequestBody{
 			ExplorationOptions: models.ExplorationOptions{
 				SourceTableName:   l.nav.SourceTableName,
 				FilterFieldName:   l.nav.FilterFieldName,
-				FilterFieldValue:  filterValue(sourceValue),
+				FilterFieldValue:  filter,
 				OrderingFieldName: l.nav.OrderingFieldName,
 			},
 			CursorId: cursor,

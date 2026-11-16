@@ -485,3 +485,100 @@ func TestAddItem_MissingParentRefused(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, st.Declaration.Version, f.Repo.Declarations[st.Declaration.Id].Version)
 }
+
+func TestUpdateFields_ManualEditKeepsOnlyPathAndValue(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	d := seedValidDeclaration(t, uc, f)
+	taskId := uuid.New()
+
+	st, err := uc.UpdateFields(f.Ctx, d.Id, d.Version, []core.Fill{{
+		Path: "declarant.coordonnees.nom", Value: "Durand", Origin: core.OriginLLM,
+		Reviewed: true, Confidence: core.ConfidenceHigh, Justification: "j", RuleIDs: []string{"r1"},
+		Sources:     []core.SourceRef{{Object: core.ObjectRef{Table: "t", ObjectID: "1"}, Field: "x", RawValue: "y"}},
+		Computation: &core.Computation{Name: "sum"}, TaskID: &taskId,
+	}})
+	require.NoError(t, err)
+
+	v := st.Doc.Values["declarant.coordonnees.nom"]
+	require.Equal(t, "Durand", v.Value)
+	require.Equal(t, core.OriginManual, v.Origin)
+	require.False(t, v.Reviewed)
+	require.Empty(t, v.Sources)
+	require.Empty(t, v.RuleIDs)
+	require.Empty(t, v.Justification)
+	require.Equal(t, core.ConfidenceNone, v.Confidence)
+	require.Nil(t, v.Computation)
+	require.Nil(t, v.TaskID)
+}
+
+func TestUpdateFields_AnalystPathRejected(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	d := seedValidDeclaration(t, uc, f)
+
+	_, err := uc.UpdateFields(f.Ctx, d.Id, d.Version, []core.Fill{{Path: "analyse", Value: "texte"}})
+	require.ErrorIs(t, err, models.BadParameterError)
+	require.ErrorContains(t, err, "mise à jour de l'analyse")
+	require.Equal(t, d.Version, f.Repo.Declarations[d.Id].Version)
+}
+
+func TestAddItem_ChecksEveryKeyedAncestor(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	d := seedValidDeclaration(t, uc, f)
+	const missing = "personnes.pp[nope-1].referencesFinancieres.referenceFinanciereIban"
+
+	_, _, err := uc.AddItem(f.Ctx, d.Id, d.Version, core.Path(missing))
+	require.ErrorIs(t, err, models.BadParameterError)
+	require.Equal(t, d.Version, f.Repo.Declarations[d.Id].Version)
+
+	item, _, err := uc.AddItem(f.Ctx, d.Id, d.Version,
+		"personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban")
+	require.NoError(t, err, "the existing parent item is accepted")
+	require.NotEmpty(t, item)
+}
+
+func TestAddRemoveItem_ComputedContainerRefused(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	d := seedValidDeclaration(t, uc, f)
+
+	_, _, err := uc.AddItem(f.Ctx, d.Id, d.Version, "operations.operation")
+	require.ErrorIs(t, err, models.BadParameterError)
+	require.ErrorContains(t, err, "calculée")
+
+	_, err = uc.RemoveItem(f.Ctx, d.Id, d.Version, "operations.operation[op-1]")
+	require.ErrorIs(t, err, models.BadParameterError)
+	require.ErrorContains(t, err, "calculée")
+	require.Equal(t, d.Version, f.Repo.Declarations[d.Id].Version)
+}
+
+func TestNewerVersion_Semantic(t *testing.T) {
+	require.True(t, newerVersion("1.10.0", "1.4.0"))
+	require.False(t, newerVersion("1.4.0", "1.10.0"))
+	require.False(t, newerVersion("1.4.0", "1.4.0"))
+	require.True(t, newerVersion("2.0.0", "1.99.9"))
+}
+
+func TestListExports_ReturnsExportsAndChecksOrg(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	d := seedValidDeclaration(t, uc, f)
+	exp, err := uc.Export(f.Ctx, d.Id, d.Version)
+	require.NoError(t, err)
+
+	list, err := uc.ListExports(f.Ctx, d.Id)
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	require.Equal(t, exp.Id, list[0].Id)
+
+	_, err = uc.ListExports(selOtherOrgCtx(), d.Id)
+	require.ErrorIs(t, err, models.ForbiddenError)
+}
+
+func TestExport_BlobDeletedWhenExportRowCannotBeCreated(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	d := seedValidDeclaration(t, uc, f)
+	f.Repo.FailExportCreate = errors.New("db down")
+
+	_, err := uc.Export(f.Ctx, d.Id, d.Version)
+	require.Error(t, err)
+	require.Empty(t, f.Blobs.Keys(), "the orphan blob must be deleted")
+	require.Empty(t, f.Repo.Exports)
+}

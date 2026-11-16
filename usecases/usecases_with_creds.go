@@ -561,22 +561,23 @@ func (usecases *UsecasesWithCreds) NewSuspiciousActivityReportUsecase() *Suspici
 }
 
 func (usecases *UsecasesWithCreds) NewSarGenerationUsecase() *sargen.Usecase {
-	return sargen.NewUsecase(
-		usecases.NewExecutorFactory(),
-		usecases.NewTransactionFactory(),
-		usecases.NewEnforceCaseSecurity(),
-		usecases.Repositories.MarbleDbRepository,
-		usecases.Repositories.MarbleDbRepository,
-		utils.Ptr(usecases.NewInboxReader()),
-		usecases.Repositories.BlobRepository,
-		usecases.caseManagerBucketUrl,
-		usecases.Repositories.MarbleDbRepository,
-		usecases.Repositories.MarbleDbRepository,
-		usecases.Repositories.MarbleDbRepository,
-		usecases.NewCaseEntityReader(),
-		usecases.NewIngestedDataReaderUsecase(),
-		utils.Ptr(usecases.NewDataModelUseCase()),
-	)
+	repo := usecases.Repositories.MarbleDbRepository
+	return sargen.NewUsecase(sargen.Deps{
+		ExecutorFactory:     usecases.NewExecutorFactory(),
+		TransactionFactory:  usecases.NewTransactionFactory(),
+		EnforceCaseSecurity: usecases.NewEnforceCaseSecurity(),
+		Repository:          repo,
+		CaseReader:          repo,
+		InboxReader:         utils.Ptr(usecases.NewInboxReader()),
+		BlobRepository:      usecases.Repositories.BlobRepository,
+		BucketUrl:           usecases.caseManagerBucketUrl,
+		SelectionRepo:       repo,
+		DecisionReader:      repo,
+		CaseEntityLister:    repo,
+		CaseEntityObjects:   usecases.NewCaseEntityReader(),
+		IngestedReader:      usecases.NewIngestedDataReaderUsecase(),
+		DataModelReader:     utils.Ptr(usecases.NewDataModelUseCase()),
+	})
 }
 
 func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {

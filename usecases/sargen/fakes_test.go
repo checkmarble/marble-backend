@@ -59,9 +59,22 @@ func newTestUsecase(t *testing.T) (*Usecase, *fakes) {
 	f.Selection = &fakeSelectionRepo{}
 	f.Ctx = context.WithValue(context.Background(), utils.ContextKeyCredentials,
 		models.Credentials{OrganizationId: f.OrgId})
-	uc := NewUsecase(fakeExecFactory{}, fakeTxFactory{}, f.Security, f.Repo,
-		fakeCaseReader{f}, fakeInboxReader{f}, f.Blobs, "mem://bucket",
-		f.Selection, f.Decisions, f.CaseEntities, f.CaseEntities, f.Ingested, f.DataModel)
+	uc := NewUsecase(Deps{
+		ExecutorFactory:     fakeExecFactory{},
+		TransactionFactory:  fakeTxFactory{},
+		EnforceCaseSecurity: f.Security,
+		Repository:          f.Repo,
+		CaseReader:          fakeCaseReader{f},
+		InboxReader:         fakeInboxReader{f},
+		BlobRepository:      f.Blobs,
+		BucketUrl:           "mem://bucket",
+		SelectionRepo:       f.Selection,
+		DecisionReader:      f.Decisions,
+		CaseEntityLister:    f.CaseEntities,
+		CaseEntityObjects:   f.CaseEntities,
+		IngestedReader:      f.Ingested,
+		DataModelReader:     f.DataModel,
+	})
 	return uc, f
 }
 
@@ -114,6 +127,8 @@ type fakeRepo struct {
 	Declarations map[uuid.UUID]models.SarDeclaration
 	Settings     map[string]models.SarOrgFormatSettings // key: orgId/family
 	Exports      map[uuid.UUID]models.SarDeclarationExport
+	// FailExportCreate makes CreateSarDeclarationExport fail.
+	FailExportCreate error
 }
 
 func newFakeRepo() *fakeRepo {
@@ -199,6 +214,9 @@ func (r *fakeRepo) UpsertSarOrgFormatSettings(_ context.Context, _ repositories.
 func (r *fakeRepo) CreateSarDeclarationExport(_ context.Context, _ repositories.Executor, e models.SarDeclarationExport) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.FailExportCreate != nil {
+		return r.FailExportCreate
+	}
 	if e.CreatedAt.IsZero() {
 		e.CreatedAt = time.Now()
 	}

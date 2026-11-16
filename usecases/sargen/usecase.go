@@ -89,37 +89,41 @@ type Usecase struct {
 	formatGetter func(core.FormatKey) (core.Format, bool)
 }
 
-func NewUsecase(
-	executorFactory ExecutorFactory,
-	transactionFactory TransactionFactory,
-	enforceCaseSecurity CaseSecurity,
-	repository SarDeclarationRepository,
-	caseReader CaseReader,
-	inboxReader InboxReader,
-	blobRepository BlobStore,
-	bucketUrl string,
-	selectionRepo SarSelectionRepository,
-	decisionReader DecisionReader,
-	caseEntityLister CaseEntityLister,
-	caseEntityObjects CaseEntityObjectReader,
-	ingestedReader IngestedDataReader,
-	dataModelReader DataModelReader,
-) *Usecase {
+// Deps groups the collaborators of Usecase.
+type Deps struct {
+	ExecutorFactory     ExecutorFactory
+	TransactionFactory  TransactionFactory
+	EnforceCaseSecurity CaseSecurity
+	Repository          SarDeclarationRepository
+	CaseReader          CaseReader
+	InboxReader         InboxReader
+	BlobRepository      BlobStore
+	// BucketUrl is the case manager bucket (caseManagerBucketUrl).
+	BucketUrl         string
+	SelectionRepo     SarSelectionRepository
+	DecisionReader    DecisionReader
+	CaseEntityLister  CaseEntityLister
+	CaseEntityObjects CaseEntityObjectReader
+	IngestedReader    IngestedDataReader
+	DataModelReader   DataModelReader
+}
+
+func NewUsecase(d Deps) *Usecase {
 	return &Usecase{
-		executorFactory:     executorFactory,
-		transactionFactory:  transactionFactory,
-		enforceCaseSecurity: enforceCaseSecurity,
-		repository:          repository,
-		caseReader:          caseReader,
-		inboxReader:         inboxReader,
-		blobRepository:      blobRepository,
-		bucketUrl:           bucketUrl,
-		selectionRepo:       selectionRepo,
-		decisionReader:      decisionReader,
-		caseEntityLister:    caseEntityLister,
-		caseEntityObjects:   caseEntityObjects,
-		ingestedReader:      ingestedReader,
-		dataModelReader:     dataModelReader,
+		executorFactory:     d.ExecutorFactory,
+		transactionFactory:  d.TransactionFactory,
+		enforceCaseSecurity: d.EnforceCaseSecurity,
+		repository:          d.Repository,
+		caseReader:          d.CaseReader,
+		inboxReader:         d.InboxReader,
+		blobRepository:      d.BlobRepository,
+		bucketUrl:           d.BucketUrl,
+		selectionRepo:       d.SelectionRepo,
+		decisionReader:      d.DecisionReader,
+		caseEntityLister:    d.CaseEntityLister,
+		caseEntityObjects:   d.CaseEntityObjects,
+		ingestedReader:      d.IngestedReader,
+		dataModelReader:     d.DataModelReader,
 		formatGetter:        formats.Get,
 	}
 }
@@ -475,9 +479,19 @@ func (uc *Usecase) UpdateFields(ctx context.Context, id uuid.UUID, version int, 
 		spec := format.Spec()
 		var issues []core.Issue
 		prepared := make([]core.Fill, 0, len(fills))
-		for _, f := range fills {
-			f.Origin = core.OriginManual
-			if n := spec.NodeAt(f.Path.Template()); n != nil && n.EffectiveNature() == core.NatureComputed &&
+		for _, in := range fills {
+			// A manual edit carries only a path and a value: caller-supplied
+			// metadata (reviewed, confidence, sources, task) is dropped.
+			f := core.Fill{Path: in.Path, Value: in.Value, Origin: core.OriginManual}
+			n := spec.NodeAt(f.Path.Template())
+			if n != nil && n.EffectiveNature() == core.NatureAnalyst {
+				issues = append(issues, core.Issue{
+					Path: f.Path, Code: "analyst_field", Severity: core.SeverityBlocking,
+					Message: "champ d'analyse : utilisez la mise à jour de l'analyse",
+				})
+				continue
+			}
+			if n != nil && n.EffectiveNature() == core.NatureComputed &&
 				strings.Contains(f.Path.Template(), "[]") {
 				issues = append(issues, core.Issue{
 					Path: f.Path, Code: "computed_line", Severity: core.SeverityBlocking,
@@ -505,9 +519,13 @@ func (uc *Usecase) AddItem(ctx context.Context, id uuid.UUID, version int, conta
 		if n == nil || !n.IsRepeatable() {
 			return errors.Wrapf(models.BadParameterError, "%s n'est pas une liste", container)
 		}
-		if parent := container.Parent(); parent != "" && strings.HasSuffix(string(parent), "]") {
-			if !itemExists(doc, parent) {
-				return errors.Wrapf(models.BadParameterError, "l'élément parent %s n'existe pas", parent)
+		if onlyComputed(n) {
+			return errors.Wrapf(models.BadParameterError,
+				"%s est calculée : les éléments ne s'ajoutent pas à la main", container)
+		}
+		for _, anc := range keyedAncestors(container) {
+			if !itemExists(doc, anc) {
+				return errors.Wrapf(models.BadParameterError, "l'élément parent %s n'existe pas", anc)
 			}
 		}
 		if n.Max > 0 && len(doc.Items[container]) >= n.Max {
@@ -534,6 +552,10 @@ func (uc *Usecase) RemoveItem(ctx context.Context, id uuid.UUID, version int, it
 		n := format.Spec().NodeAt(item.Template())
 		if n == nil || !n.IsRepeatable() {
 			return errors.Wrapf(models.BadParameterError, "%s n'est pas un élément de liste", item)
+		}
+		if onlyComputed(n) {
+			return errors.Wrapf(models.BadParameterError,
+				"%s est calculée : les éléments ne se retirent pas à la main", item)
 		}
 		if !itemExists(doc, item) {
 			return errors.Wrapf(models.NotFoundError, "l'élément %s n'existe pas", item)
@@ -565,4 +587,63 @@ func itemExists(doc *core.Document, item core.Path) bool {
 		name = name[j+1:]
 	}
 	return slices.Contains(doc.Items[item.Parent().Child(name)], key)
+}
+
+// keyedAncestors lists every keyed item prefix of a path, outermost first:
+// `a[x].b[y].c` -> `a[x]`, `a[x].b[y]`.
+func keyedAncestors(p core.Path) []core.Path {
+	str := string(p)
+	var out []core.Path
+	for i, r := range str {
+		if r == ']' {
+			out = append(out, core.Path(str[:i+1]))
+		}
+	}
+	// The path itself is not its own ancestor.
+	if len(out) > 0 && string(out[len(out)-1]) == str {
+		out = out[:len(out)-1]
+	}
+	return out
+}
+
+// onlyComputed reports whether every value field under n is NatureComputed
+// (such items, e.g. operation lines, are derived by the backend).
+func onlyComputed(n *core.Node) bool {
+	found := false
+	var walk func(x *core.Node) bool
+	walk = func(x *core.Node) bool {
+		if x.Kind == core.NodeField {
+			if x.ExportID {
+				return true
+			}
+			found = true
+			return x.EffectiveNature() == core.NatureComputed
+		}
+		for _, c := range x.Children {
+			if !walk(c) {
+				return false
+			}
+		}
+		return true
+	}
+	return walk(n) && found
+}
+
+// ListExports returns the exports of a declaration, newest first. The stored
+// document copy is included (no lighter query exists).
+func (uc *Usecase) ListExports(ctx context.Context, declarationId uuid.UUID) ([]models.SarDeclarationExport, error) {
+	exec := uc.executorFactory.NewExecutor()
+	if _, err := uc.loadDeclaration(ctx, exec, declarationId); err != nil {
+		return nil, err
+	}
+	return uc.repository.ListSarDeclarationExports(ctx, exec, declarationId)
+}
+
+// GetSelection returns the frozen selection of a declaration.
+func (uc *Usecase) GetSelection(ctx context.Context, declarationId uuid.UUID) ([]models.SarSelectedObject, error) {
+	exec := uc.executorFactory.NewExecutor()
+	if _, err := uc.loadDeclaration(ctx, exec, declarationId); err != nil {
+		return nil, err
+	}
+	return uc.selectionRepo.ListSarSelection(ctx, exec, declarationId)
 }
