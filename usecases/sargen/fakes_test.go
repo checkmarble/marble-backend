@@ -29,6 +29,12 @@ type fakes struct {
 	Repo     *fakeRepo
 	Blobs    *fakeBlobs
 	Security *fakeSecurity
+
+	Decisions    *fakeDecisions
+	Ingested     *fakeIngested
+	CaseEntities *fakeCaseEntities
+	Selection    *fakeSelectionRepo
+	DataModel    *fakeDataModel
 }
 
 // newTestUsecase wires a Usecase on in-memory fakes. The case (fakes.CaseId,
@@ -45,10 +51,16 @@ func newTestUsecase(t *testing.T) (*Usecase, *fakes) {
 		Blobs:    &fakeBlobs{files: map[string][]byte{}},
 		Security: &fakeSecurity{},
 	}
+	f.Decisions = &fakeDecisions{}
+	f.Ingested = newFakeIngested()
+	f.CaseEntities = &fakeCaseEntities{ingested: f.Ingested}
+	f.Selection = &fakeSelectionRepo{}
+	f.DataModel = &fakeDataModel{}
 	f.Ctx = context.WithValue(context.Background(), utils.ContextKeyCredentials,
 		models.Credentials{OrganizationId: f.OrgId})
 	uc := NewUsecase(fakeExecFactory{}, fakeTxFactory{}, f.Security, f.Repo,
-		fakeCaseReader{f}, fakeInboxReader{f}, f.Blobs, "mem://bucket")
+		fakeCaseReader{f}, fakeInboxReader{f}, f.Blobs, "mem://bucket",
+		f.Selection, f.Decisions, f.CaseEntities, f.CaseEntities, f.Ingested, f.DataModel)
 	return uc, f
 }
 
@@ -291,4 +303,11 @@ var (
 	_ SarDeclarationRepository = (*fakeRepo)(nil)
 	_ BlobStore                = (*fakeBlobs)(nil)
 	_ CaseSecurity             = (*fakeSecurity)(nil)
+
+	_ SarSelectionRepository = (*fakeSelectionRepo)(nil)
+	_ DecisionReader         = (*fakeDecisions)(nil)
+	_ CaseEntityLister       = (*fakeCaseEntities)(nil)
+	_ CaseEntityObjectReader = (*fakeCaseEntities)(nil)
+	_ IngestedDataReader     = (*fakeIngested)(nil)
+	_ DataModelReader        = (*fakeDataModel)(nil)
 )

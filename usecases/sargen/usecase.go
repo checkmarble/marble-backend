@@ -76,6 +76,12 @@ type Usecase struct {
 	caseReader          CaseReader
 	inboxReader         InboxReader
 	blobRepository      BlobStore
+	selectionRepo       SarSelectionRepository
+	decisionReader      DecisionReader
+	caseEntityLister    CaseEntityLister
+	caseEntityObjects   CaseEntityObjectReader
+	ingestedReader      IngestedDataReader
+	dataModelReader     DataModelReader
 	// bucketUrl is the case manager bucket (caseManagerBucketUrl).
 	bucketUrl string
 	// formatGetter resolves a format key; defaults to formats.Get. Tests inject
@@ -92,6 +98,12 @@ func NewUsecase(
 	inboxReader InboxReader,
 	blobRepository BlobStore,
 	bucketUrl string,
+	selectionRepo SarSelectionRepository,
+	decisionReader DecisionReader,
+	caseEntityLister CaseEntityLister,
+	caseEntityObjects CaseEntityObjectReader,
+	ingestedReader IngestedDataReader,
+	dataModelReader DataModelReader,
 ) *Usecase {
 	return &Usecase{
 		executorFactory:     executorFactory,
@@ -102,6 +114,12 @@ func NewUsecase(
 		inboxReader:         inboxReader,
 		blobRepository:      blobRepository,
 		bucketUrl:           bucketUrl,
+		selectionRepo:       selectionRepo,
+		decisionReader:      decisionReader,
+		caseEntityLister:    caseEntityLister,
+		caseEntityObjects:   caseEntityObjects,
+		ingestedReader:      ingestedReader,
+		dataModelReader:     dataModelReader,
 		formatGetter:        formats.Get,
 	}
 }
