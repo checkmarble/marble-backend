@@ -53,13 +53,24 @@ func (w *Worker) Work(ctx context.Context, job *river.Job[models.SarGenerationAr
 	if err == nil {
 		return nil
 	}
+	if errors.Is(err, ErrPromptMissing) {
+		// The job is already marked failed; retrying cannot help.
+		return river.JobCancel(err)
+	}
+	if errors.Is(err, ErrTasksRunningElsewhere) {
+		// Not a failure: wait for the other worker (or the stale delay).
+		return river.JobSnooze(RunningElsewhereSnooze)
+	}
 	if errors.Is(err, models.LLMRateLimitedError) {
 		// Snooze does not count an attempt, even on the last one.
 		return river.JobSnooze(RateLimitSnooze)
 	}
 	if job.Attempt >= job.MaxAttempts {
 		// Last attempt: make the failure visible before River gives up.
-		if serr := w.jobs.SetSarGenerationJobStatus(ctx, w.executorFactory.NewExecutor(), job.Args.JobId,
+		// Detached: the job context may be done (timeout, shutdown).
+		dctx, cancel := detached(ctx)
+		defer cancel()
+		if serr := w.jobs.SetSarGenerationJobStatus(dctx, w.executorFactory.NewExecutor(), job.Args.JobId,
 			models.SarJobStatusFailed, err.Error()); serr != nil {
 			return errors.Wrap(err, "cannot mark job failed: "+serr.Error())
 		}

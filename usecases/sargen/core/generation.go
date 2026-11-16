@@ -22,25 +22,25 @@ const TaskKindReview = "review"
 
 // TaskSpec is one unit of generation work planned by a Format.
 type TaskSpec struct {
-	Kind string
+	Kind string `json:"kind"`
 	// TargetPath is the part of the document the task is in charge of.
-	TargetPath Path
+	TargetPath Path `json:"target_path"`
 	// AllowedPaths restricts what the task may write; empty = [TargetPath].
-	AllowedPaths []Path
+	AllowedPaths []Path `json:"allowed_paths"`
 	// Inputs are the selected objects the task may read.
-	Inputs []ObjectRef
+	Inputs []ObjectRef `json:"inputs"`
 	// PromptPath is the path of the prompt file in the prompts FS (never
 	// committed to this repository).
-	PromptPath string
+	PromptPath string `json:"prompt_path"`
 	// Tier is TierLight or TierHeavy (model choice).
-	Tier      string
-	ToolNames []string
+	Tier      string   `json:"tier"`
+	ToolNames []string `json:"tool_names"`
 	// DependsOnKinds: the task is ready once every task of these kinds
 	// planned in the same job is done.
-	DependsOnKinds []string
+	DependsOnKinds []string `json:"depends_on_kinds"`
 	// OutputSchema nil = the standard fills schema.
-	OutputSchema *jsonschema.Schema
-	Payload      map[string]any
+	OutputSchema *jsonschema.Schema `json:"output_schema,omitempty"`
+	Payload      map[string]any     `json:"payload"`
 }
 
 // PlanState is what Format.Plan sees; it is called again after each wave of
@@ -56,35 +56,35 @@ type PlanState struct {
 }
 
 type QuestionOption struct {
-	Label string
+	Label string `json:"label"`
 	// Fills are ready-to-apply values (with their sources); empty when the
 	// option is only a label.
-	Fills []Fill
+	Fills []Fill `json:"fills"`
 }
 
 type QuestionDraft struct {
-	Paths   []Path
-	Text    string
-	Options []QuestionOption
+	Paths   []Path           `json:"paths"`
+	Text    string           `json:"text"`
+	Options []QuestionOption `json:"options"`
 }
 
 type ReviewFinding struct {
-	Paths []Path
+	Paths []Path `json:"paths"`
 	// Severity is "important" or "mineur".
-	Severity string
-	Message  string
+	Severity string `json:"severity"`
+	Message  string `json:"message"`
 }
 
 // TaskOutput is the result of a task run. The orchestrator never trusts it:
 // it stamps Origin and TaskID on every fill and restricts paths.
 type TaskOutput struct {
-	Fills     []Fill
-	Questions []QuestionDraft
-	Findings  []ReviewFinding
+	Fills     []Fill          `json:"fills"`
+	Questions []QuestionDraft `json:"questions"`
+	Findings  []ReviewFinding `json:"findings"`
 	// Structured is a non-fills output (e.g. placement), applied by
 	// Format.ApplyStructured.
-	Structured json.RawMessage
-	Trace      []byte
+	Structured json.RawMessage `json:"structured,omitempty"`
+	Trace      []byte          `json:"trace,omitempty"`
 }
 
 // MemoryRuleView is a memory rule shown to tools (always empty in V1).

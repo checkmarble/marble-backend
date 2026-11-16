@@ -37,18 +37,18 @@ const (
 
 // Fill is one requested write of a leaf of the document.
 type Fill struct {
-	Path          Path
-	Value         string
-	Origin        Origin
-	Sources       []SourceRef
-	RuleIDs       []string
-	Justification string
-	Confidence    Confidence
-	Computation   *Computation
-	TaskID        *uuid.UUID
+	Path          Path         `json:"path"`
+	Value         string       `json:"value"`
+	Origin        Origin       `json:"origin"`
+	Sources       []SourceRef  `json:"sources"`
+	RuleIDs       []string     `json:"rule_ids"` //nolint:tagliatelle
+	Justification string       `json:"justification"`
+	Confidence    Confidence   `json:"confidence"`
+	Computation   *Computation `json:"computation,omitempty"`
+	TaskID        *uuid.UUID   `json:"task_id,omitempty"`
 	// Reviewed is stored as is, except that a non-empty value with an analyst
 	// origin (manual or analyst choice) is always stored reviewed.
-	Reviewed bool
+	Reviewed bool `json:"reviewed"`
 }
 
 type ApplyOptions struct {
