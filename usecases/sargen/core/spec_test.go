@@ -1,10 +1,12 @@
 package core_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func testSpec() *core.Spec {
@@ -55,4 +57,15 @@ func TestNode_MaxZeroIsNotRepeatable(t *testing.T) {
 		{Name: "a", Template: "a", Kind: core.NodeField, Max: 0},
 	}}}
 	assert.Equal(t, []core.Path{"a"}, s.Leaves("", core.NewDocument()))
+}
+
+func TestSpec_JSONCarriesExportIDAndDefaults(t *testing.T) {
+	raw := `{"root":{"name":"ds","template":"","kind":"group","min":1,"max":1,"export":true,"children":[` +
+		`{"name":"id","template":"id","kind":"field","min":1,"max":1,"export":true,"export_id":true}]},` +
+		`"defaults":{"id":"{case_id}"}}`
+
+	var s core.Spec
+	require.NoError(t, json.Unmarshal([]byte(raw), &s))
+	assert.True(t, s.NodeAt("id").ExportID)
+	assert.Equal(t, "{case_id}", s.Defaults["id"])
 }

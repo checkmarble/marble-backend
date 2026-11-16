@@ -36,13 +36,16 @@ const (
 )
 
 type Node struct {
-	Name           string    `json:"name"`
-	Template       string    `json:"template"`
-	Kind           NodeKind  `json:"kind"`
-	Min            int       `json:"min"`
-	Max            int       `json:"max"` // -1 = unbounded
-	Attribute      bool      `json:"attribute,omitempty"`
-	Export         bool      `json:"export"` // false = working node, never written to XML
+	Name      string   `json:"name"`
+	Template  string   `json:"template"`
+	Kind      NodeKind `json:"kind"`
+	Min       int      `json:"min"`
+	Max       int      `json:"max"` // -1 = unbounded
+	Attribute bool     `json:"attribute,omitempty"`
+	Export    bool     `json:"export"` // false = working node, never written to XML
+	// ExportID marks an identifier node (element or attribute) that the XML writer
+	// fabricates from internal item keys: it never holds a document value.
+	ExportID       bool      `json:"export_id,omitempty"`
 	Type           FieldType `json:"type,omitempty"`
 	Nature         Nature    `json:"nature,omitempty"`
 	MinLength      int       `json:"min_length,omitempty"` // in characters
@@ -117,6 +120,8 @@ type Spec struct {
 	CodeLists   map[string]CodeList `json:"code_lists,omitempty"`
 	Rules       []Rule              `json:"rules,omitempty"`
 	Inputs      []InputPin          `json:"inputs,omitempty"`
+	// Defaults maps a template to the raw value set when a declaration is created.
+	Defaults map[string]string `json:"defaults,omitempty"`
 }
 
 // NodeAt returns the node with the given template (e.g. `personnes.pp[]`), or nil.
