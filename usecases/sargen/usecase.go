@@ -405,6 +405,15 @@ func (uc *Usecase) ListDeclarations(ctx context.Context, caseId uuid.UUID) ([]mo
 func (uc *Usecase) mutate(ctx context.Context, id uuid.UUID, version int,
 	edit func(format core.Format, doc *core.Document) error,
 ) (DeclarationState, error) {
+	return uc.mutateWithText(ctx, id, version,
+		func(format core.Format, doc *core.Document, _, _ *string) error { return edit(format, doc) })
+}
+
+// mutateWithText is mutate where edit may also change the declaration's
+// analysis and extra info texts.
+func (uc *Usecase) mutateWithText(ctx context.Context, id uuid.UUID, version int,
+	edit func(format core.Format, doc *core.Document, analysis, extraInfo *string) error,
+) (DeclarationState, error) {
 	exec := uc.executorFactory.NewExecutor()
 	// Fail early (404 / 403) before taking the row lock.
 	if _, err := uc.loadDeclaration(ctx, exec, id); err != nil {
@@ -430,7 +439,7 @@ func (uc *Usecase) mutate(ctx context.Context, id uuid.UUID, version int,
 		if err != nil {
 			return err
 		}
-		if err := edit(format, doc); err != nil {
+		if err := edit(format, doc, &d.Analysis, &d.ExtraInfo); err != nil {
 			return err
 		}
 		raw, err := json.Marshal(doc)

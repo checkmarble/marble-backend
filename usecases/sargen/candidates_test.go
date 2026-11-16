@@ -1,0 +1,191 @@
+package sargen
+
+import (
+	"context"
+	"fmt"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/sargen/core"
+)
+
+// pagedDecisions caps the page size of the decision reader so that listing the
+// decisions of a case must follow the cursor across several pages.
+type pagedDecisions struct {
+	DecisionReader
+	page int
+}
+
+func (p pagedDecisions) DecisionsByCaseIdFromCursor(ctx context.Context, exec repositories.Executor,
+	req models.CaseDecisionsRequest,
+) ([]models.DecisionWithRulesAndScreeningsBaseInfo, bool, error) {
+	req.Limit = p.page
+	return p.DecisionReader.DecisionsByCaseIdFromCursor(ctx, exec, req)
+}
+
+// recordedRead is one call of ReadIngestedClientObjects.
+type recordedRead struct {
+	objectType string
+	input      models.ClientDataListRequestBody
+}
+
+// recordingIngested records the ingested list reads and delegates to the fake.
+type recordingIngested struct {
+	IngestedDataReader
+	mu    sync.Mutex
+	calls []recordedRead
+}
+
+func (r *recordingIngested) ReadIngestedClientObjects(ctx context.Context, orgId uuid.UUID, objectType string,
+	input models.ClientDataListRequestBody, fieldsToRead ...string,
+) ([]models.ClientObjectDetail, []models.FieldStatistics, models.ClientDataListPagination, error) {
+	r.mu.Lock()
+	r.calls = append(r.calls, recordedRead{objectType: objectType, input: input})
+	r.mu.Unlock()
+	return r.IngestedDataReader.ReadIngestedClientObjects(ctx, orgId, objectType, input, fieldsToRead...)
+}
+
+// ---- ListCandidates ----
+
+func TestListCandidates_AllDecisionsNotOnlyFive(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	base := time.Now()
+	for i := 1; i <= 7; i++ {
+		f.Decisions.Add(f.OrgId, "transactions",
+			map[string]any{"object_id": fmt.Sprintf("t%d", i)}, base.Add(time.Duration(i)*time.Minute))
+	}
+	// Two decisions per page: the 7 decisions need 4 pages.
+	uc.decisionReader = pagedDecisions{DecisionReader: f.Decisions, page: 2}
+
+	cands, err := uc.ListCandidates(f.Ctx, declId)
+	require.NoError(t, err)
+
+	require.Len(t, cands, 7)
+	seen := map[core.ObjectRef]bool{}
+	for _, c := range cands {
+		assert.Equal(t, "transactions", c.Ref.Table)
+		assert.Equal(t, ReasonTriggerObject, c.Reason)
+		seen[c.Ref] = true
+	}
+	for i := 1; i <= 7; i++ {
+		assert.True(t, seen[selRef("transactions", fmt.Sprintf("t%d", i))], "t%d must be a candidate", i)
+	}
+	assert.GreaterOrEqual(t, f.Decisions.Calls, 4, "the cursor must be followed until the last page")
+}
+
+func TestListCandidates_DeduplicatesAcrossReasons(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	// t1 is the trigger object of a decision, a pivot object and a case entity.
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t1"}, time.Now())
+	f.Ingested.Put("transactions", "t1", map[string]any{"object_id": "t1"}, time.Now())
+	f.CaseEntities.Refs = []models.CaseEntityRef{{TableName: "transactions", ObjectId: "t1"}}
+	f.Ingested.Pivots = []models.PivotObject{
+		{
+			PivotObjectName: "transactions", PivotObjectId: "t1", IsIngested: true,
+			PivotObjectData: models.ClientObjectDetail{Data: map[string]any{"object_id": "t1"}},
+		},
+		{
+			PivotObjectName: "accounts", PivotObjectId: "a1", IsIngested: true,
+			PivotObjectData: models.ClientObjectDetail{Data: map[string]any{"object_id": "a1"}},
+		},
+	}
+
+	cands, err := uc.ListCandidates(f.Ctx, declId)
+	require.NoError(t, err)
+
+	counts := map[core.ObjectRef]int{}
+	for _, c := range cands {
+		counts[c.Ref]++
+	}
+	for ref, n := range counts {
+		assert.Equal(t, 1, n, "%v must be listed once", ref)
+	}
+	assert.Len(t, cands, 2)
+	assert.Equal(t, 1, counts[selRef("transactions", "t1")])
+	assert.Equal(t, 1, counts[selRef("accounts", "a1")])
+}
+
+func TestListCandidates_OtherOrgDeclarationForbidden(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t1"}, time.Now())
+
+	_, err := uc.ListCandidates(selOtherOrgCtx(), declId)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, models.ForbiddenError)
+}
+
+// ---- Navigate ----
+
+func TestNavigate_SourceNotReachableIsForbidden(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	selDataModel(f)
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t1", "account_id": "a1"}, time.Now())
+	// a9 exists in the client data but is neither a candidate nor selected.
+	f.Ingested.Put("accounts", "a9", map[string]any{"object_id": "a9"}, time.Now())
+
+	_, _, err := uc.Navigate(f.Ctx, declId, selRef("accounts", "a9"), "account", nil, 10)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, models.ForbiddenError)
+	assert.Equal(t, 0, f.Ingested.Reads, "nothing must be read from an unreachable source")
+}
+
+func TestNavigate_ToManyUsesNavigationOption(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	selDataModel(f)
+	selAddCaseEntity(f, "accounts", "a1", map[string]any{"object_id": "a1"})
+	selAddCaseEntity(f, "accounts", "a2", map[string]any{"object_id": "a2"})
+	f.Ingested.Put("transactions", "t1", map[string]any{"object_id": "t1", "account_id": "a1"}, time.Now())
+	f.Ingested.Put("transactions", "t2", map[string]any{"object_id": "t2", "account_id": "a1"}, time.Now())
+	f.Ingested.Put("transactions", "t3", map[string]any{"object_id": "t3", "account_id": "a2"}, time.Now())
+
+	cands, err := uc.ListCandidates(f.Ctx, declId)
+	require.NoError(t, err)
+	var link *LinkOption
+	for _, c := range cands {
+		if c.Ref != selRef("accounts", "a1") {
+			continue
+		}
+		for i := range c.Links {
+			if c.Links[i].Kind == LinkKindToMany && c.Links[i].TargetTable == "transactions" {
+				link = &c.Links[i]
+			}
+		}
+	}
+	require.NotNil(t, link, "accounts a1 must offer the to-many link towards transactions")
+
+	rec := &recordingIngested{IngestedDataReader: f.Ingested}
+	uc.ingestedReader = rec
+
+	// Asking for 500 must be capped to MaxNavigateLimit (100).
+	got, _, err := uc.Navigate(f.Ctx, declId, selRef("accounts", "a1"), link.Name, nil, 500)
+	require.NoError(t, err)
+
+	var txReads []recordedRead
+	for _, c := range rec.calls {
+		if c.objectType == "transactions" {
+			txReads = append(txReads, c)
+		}
+	}
+	require.NotEmpty(t, txReads, "the to-many navigation must read the target table")
+	read := txReads[len(txReads)-1]
+	ex := read.input.ExplorationOptions
+	assert.Equal(t, "accounts", ex.SourceTableName)
+	assert.Equal(t, "account_id", ex.FilterFieldName)
+	require.NotNil(t, ex.FilterFieldValue.StringValue)
+	assert.Equal(t, "a1", *ex.FilterFieldValue.StringValue)
+	assert.Equal(t, "object_id", ex.OrderingFieldName)
+	assert.Equal(t, MaxNavigateLimit, read.input.Limit)
+	assert.LessOrEqual(t, read.input.Limit, 100)
+
+	require.Len(t, got, 2)
+	for _, c := range got {
+		assert.Equal(t, "transactions", c.Ref.Table)
+	}
+}
