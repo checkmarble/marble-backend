@@ -127,7 +127,8 @@ func TestNavigate_SourceNotReachableIsForbidden(t *testing.T) {
 	uc, f, declId := selSetup(t)
 	selDataModel(f)
 	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t1", "account_id": "a1"}, time.Now())
-	// a9 exists in the client data but is neither a candidate nor selected.
+	// Reading the candidate set is expected; nothing about the unreachable a9
+	// (neither a candidate nor selected) may be read.
 	f.Ingested.Put("accounts", "a9", map[string]any{"object_id": "a9"}, time.Now())
 
 	_, _, err := uc.Navigate(f.Ctx, declId, selRef("accounts", "a9"), "account", nil, 10)
@@ -188,4 +189,61 @@ func TestNavigate_ToManyUsesNavigationOption(t *testing.T) {
 	for _, c := range got {
 		assert.Equal(t, "transactions", c.Ref.Table)
 	}
+}
+
+func TestNavigate_ToSingle(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	selDataModel(f)
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t1", "account_id": "a1"}, time.Now())
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t2", "account_id": "zz"}, time.Now().Add(-time.Hour))
+	f.Ingested.Put("accounts", "a1", map[string]any{"object_id": "a1"}, time.Now())
+
+	got, next, err := uc.Navigate(f.Ctx, declId, selRef("transactions", "t1"), "account", nil, 10)
+	require.NoError(t, err)
+	assert.Nil(t, next)
+	require.Len(t, got, 1)
+	assert.Equal(t, selRef("accounts", "a1"), got[0].Ref)
+
+	// Parent missing from the ingested data: empty result, no error.
+	got, _, err = uc.Navigate(f.Ctx, declId, selRef("transactions", "t2"), "account", nil, 10)
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}
+
+func TestNavigate_ToManyCursorPassthrough(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	selDataModel(f)
+	selAddCaseEntity(f, "accounts", "a1", map[string]any{"object_id": "a1"})
+	for i := 1; i <= 3; i++ {
+		id := fmt.Sprintf("t%d", i)
+		f.Ingested.Put("transactions", id, map[string]any{"object_id": id, "account_id": "a1"}, time.Now())
+	}
+	from := selRef("accounts", "a1")
+
+	page1, next, err := uc.Navigate(f.Ctx, declId, from, "transactions.account_id", nil, 2)
+	require.NoError(t, err)
+	require.Len(t, page1, 2)
+	require.NotNil(t, next)
+
+	page2, next, err := uc.Navigate(f.Ctx, declId, from, "transactions.account_id", next, 2)
+	require.NoError(t, err)
+	require.Len(t, page2, 1)
+	assert.Equal(t, selRef("transactions", "t3"), page2[0].Ref)
+	assert.Nil(t, next)
+}
+
+func TestNavigate_FromSelectedObjectNoLongerCandidate(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	selDataModel(f)
+	selAddCaseEntity(f, "accounts", "a1", map[string]any{"object_id": "a1"})
+	f.Ingested.Put("transactions", "t1", map[string]any{"object_id": "t1", "account_id": "a1"}, time.Now())
+	from := selRef("accounts", "a1")
+	_, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{{Ref: from}}, nil)
+	require.NoError(t, err)
+
+	f.CaseEntities.Refs = nil // a1 is not a candidate anymore, only selected
+
+	got, _, err := uc.Navigate(f.Ctx, declId, from, "transactions.account_id", nil, 10)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
 }

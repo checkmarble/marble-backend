@@ -103,11 +103,15 @@ type selectionContext struct {
 
 // dataOf returns the data of a candidate or selected object.
 func (c selectionContext) dataOf(ref core.ObjectRef) (map[string]any, bool) {
-	if cand, ok := c.candidates[ref]; ok {
+	cand, isCand := c.candidates[ref]
+	if isCand && cand.data != nil {
 		return cand.data, true
 	}
 	if sel, ok := c.selected[ref]; ok {
 		return sel.Snapshot, true
+	}
+	if isCand {
+		return cand.data, true
 	}
 	return nil, false
 }

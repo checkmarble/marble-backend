@@ -150,6 +150,19 @@ func TestSnapshotSurvivesSourceDeletion(t *testing.T) {
 	st, err := uc.GetDeclaration(f.Ctx, declId)
 	require.NoError(t, err)
 	assert.Equal(t, declId, st.Declaration.Id)
+
+	// Candidates and navigation from the selected object still work.
+	selDataModel(f)
+	cands, err := uc.ListCandidates(f.Ctx, declId)
+	require.NoError(t, err)
+	for _, c := range cands {
+		if c.Ref == selRef("accounts", "a1") {
+			assert.True(t, c.Selected)
+		}
+	}
+	_, _, err = uc.Navigate(f.Ctx, declId, selRef("accounts", "a1"), "transactions.account_id", nil, 10)
+	require.Error(t, err, "reading the deleted source fails, but the selected object is accepted as origin")
+	assert.NotErrorIs(t, err, models.ForbiddenError)
 }
 
 func TestUpdateSelection_IncrementsVersionAndStaleVersionConflicts(t *testing.T) {
@@ -232,4 +245,123 @@ func TestUpdateAnalysis_WritesAnalyseField(t *testing.T) {
 	require.True(t, ok, "the analyse field must be written in the document")
 	assert.Equal(t, "Analyse du soupçon.", v.Value)
 	assert.Equal(t, core.OriginAnalyst, v.Origin)
+}
+
+// ---- security (negative) ----
+
+func TestUpdateSelection_NegativeLinkCases(t *testing.T) {
+	now := time.Now()
+	cases := []struct {
+		name    string
+		add     func(f *fakes) SelectionAdd
+		wantErr error
+	}{
+		{
+			name: "reached from an object that is neither candidate nor selected",
+			add: func(f *fakes) SelectionAdd {
+				f.Ingested.Put("transactions", "t9", map[string]any{"object_id": "t9", "account_id": "a1"}, now)
+				return SelectionAdd{Ref: selRef("accounts", "a1"),
+					ReachedFrom: &models.SarReachedFrom{TableName: "transactions", ObjectId: "t9", Link: "account"}}
+			},
+			wantErr: models.ForbiddenError,
+		},
+		{
+			name: "unknown link name",
+			add: func(f *fakes) SelectionAdd {
+				return SelectionAdd{Ref: selRef("accounts", "a1"),
+					ReachedFrom: &models.SarReachedFrom{TableName: "transactions", ObjectId: "t1", Link: "nope"}}
+			},
+			wantErr: models.ForbiddenError,
+		},
+		{
+			name: "link not targeting the table of the object",
+			add: func(f *fakes) SelectionAdd {
+				f.Ingested.Put("customers", "c1", map[string]any{"object_id": "c1"}, now)
+				return SelectionAdd{Ref: selRef("customers", "c1"),
+					ReachedFrom: &models.SarReachedFrom{TableName: "transactions", ObjectId: "t1", Link: "account"}}
+			},
+			wantErr: models.ForbiddenError,
+		},
+		{
+			name: "object exists but is not the one the link leads to",
+			add: func(f *fakes) SelectionAdd {
+				return SelectionAdd{Ref: selRef("accounts", "a2"),
+					ReachedFrom: &models.SarReachedFrom{TableName: "transactions", ObjectId: "t1", Link: "account"}}
+			},
+			wantErr: models.ForbiddenError,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			uc, f, declId := selSetup(t)
+			selDataModel(f)
+			f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t1", "account_id": "a1"}, now)
+			f.Ingested.Put("accounts", "a1", map[string]any{"object_id": "a1"}, now)
+			f.Ingested.Put("accounts", "a2", map[string]any{"object_id": "a2"}, now)
+			add := tc.add(f)
+
+			_, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{add}, nil)
+			require.Error(t, err)
+			assert.ErrorIs(t, err, tc.wantErr)
+			assert.Empty(t, f.Selection.Rows)
+			assert.Equal(t, 1, f.Repo.Declarations[declId].Version)
+		})
+	}
+}
+
+func TestUpdateSelection_OtherOrgForbidden(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	selAddCaseEntity(f, "accounts", "a1", map[string]any{"object_id": "a1"})
+
+	_, err := uc.UpdateSelection(selOtherOrgCtx(), declId, 1, []SelectionAdd{{Ref: selRef("accounts", "a1")}}, nil)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, models.ForbiddenError)
+	assert.Empty(t, f.Selection.Rows)
+}
+
+func TestUpdateSelection_DedupesAddAndRejectsAddRemoveOfSameRef(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	selAddCaseEntity(f, "accounts", "a1", map[string]any{"object_id": "a1"})
+	ref := selRef("accounts", "a1")
+
+	_, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{{Ref: ref}, {Ref: ref}}, nil)
+	require.NoError(t, err)
+	assert.Len(t, f.Selection.Rows, 1)
+
+	_, err = uc.UpdateSelection(f.Ctx, declId, 2, []SelectionAdd{{Ref: ref}}, []core.ObjectRef{ref})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, models.BadParameterError)
+	assert.Equal(t, 2, f.Repo.Declarations[declId].Version)
+}
+
+func TestUpdateAnalysis_EmptyClearsField(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	_, err := uc.UpdateAnalysis(f.Ctx, declId, 1, "Texte", "")
+	require.NoError(t, err)
+
+	st, err := uc.UpdateAnalysis(f.Ctx, declId, 2, "", "")
+	require.NoError(t, err)
+	v := st.Doc.Values[core.Path("analyse")]
+	assert.Equal(t, "", v.Value)
+	assert.Equal(t, "", st.Declaration.Analysis)
+}
+
+func TestAnalystLeaf(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	st, err := uc.GetDeclaration(f.Ctx, declId)
+	require.NoError(t, err)
+	path, err := analystLeaf(st.Format.Spec())
+	require.NoError(t, err)
+	assert.Equal(t, core.Path("analyse"), path)
+
+	none, err := analystLeaf(&core.Spec{Root: &core.Node{}})
+	require.NoError(t, err)
+	assert.Equal(t, core.Path(""), none)
+
+	two, err := analystLeaf(&core.Spec{Root: &core.Node{Children: []*core.Node{
+		{Template: "a", Kind: core.NodeField, Nature: core.NatureAnalyst},
+		{Template: "b", Kind: core.NodeField, Nature: core.NatureAnalyst},
+	}}})
+	require.Error(t, err)
+	assert.Equal(t, core.Path(""), two)
 }

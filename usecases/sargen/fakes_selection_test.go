@@ -94,6 +94,8 @@ type fakeIngested struct {
 	deleted bool
 	// Pivots is returned by ReadPivotObjectsFromValues.
 	Pivots []models.PivotObject
+	// model, when set, is used to check that explorations match a navigation option.
+	model *fakeDataModel
 	// Reads counts GetIngestedObject + ReadIngestedClientObjects calls.
 	Reads int
 }
@@ -146,7 +148,7 @@ func (i *fakeIngested) GetIngestedObject(_ context.Context, _ uuid.UUID, _ *mode
 
 // ReadIngestedClientObjects returns the objects of objectType whose
 // FilterFieldName equals the filter value, ordered by object_id, paginated by
-// an integer offset cursor. Navigation options are not checked by the fake.
+// an integer offset cursor. The exploration must match a navigation option of the fake data model, else UnprocessableEntityError.
 func (i *fakeIngested) ReadIngestedClientObjects(_ context.Context, _ uuid.UUID, objectType string,
 	input models.ClientDataListRequestBody, _ ...string,
 ) ([]models.ClientObjectDetail, []models.FieldStatistics, models.ClientDataListPagination, error) {
@@ -157,6 +159,21 @@ func (i *fakeIngested) ReadIngestedClientObjects(_ context.Context, _ uuid.UUID,
 		return nil, nil, models.ClientDataListPagination{}, errors.Wrap(models.NotFoundError, "ingested objects deleted")
 	}
 	ex := input.ExplorationOptions
+	if i.model != nil {
+		ok := false
+		for _, t := range i.model.Model.Tables {
+			for _, o := range t.NavigationOptions {
+				if o.SourceTableName == ex.SourceTableName && o.FilterFieldName == ex.FilterFieldName &&
+					o.OrderingFieldName == ex.OrderingFieldName && o.TargetTableName == objectType {
+					ok = true
+				}
+			}
+		}
+		if !ok {
+			return nil, nil, models.ClientDataListPagination{},
+				errors.Wrap(models.UnprocessableEntityError, "no matching navigation option")
+		}
+	}
 	var matches []models.ClientObjectDetail
 	for _, o := range i.objects {
 		if o.Metadata.ObjectType != objectType {
