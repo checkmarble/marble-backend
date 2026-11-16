@@ -1,0 +1,213 @@
+{
+ "item_sources": {},
+ "items": {
+  "context.natureSoupcon.cadreLegal": [
+   "cl-1"
+  ],
+  "context.natureSoupcon.natureSoupconPenale": [
+   "nsp-1"
+  ],
+  "operations.operation": [
+   "op-1"
+  ],
+  "personnes.pp": [
+   "pp-1"
+  ],
+  "personnes.pp[pp-1].etatCivil.prenom": [
+   "fn-1"
+  ],
+  "personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban": [
+   "iban-1"
+  ]
+ },
+ "next_key": {
+  "context.natureSoupcon.cadreLegal": 1,
+  "context.natureSoupcon.natureSoupconPenale": 1,
+  "operations.operation": 1,
+  "personnes.pp": 1,
+  "personnes.pp[pp-1].etatCivil.prenom": 1,
+  "personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban": 1
+ },
+ "values": {
+  "analyse": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "Le client a recu plusieurs virements de provenance inconnue, rapidement retires en especes, sans rapport avec son activite declaree."
+  },
+  "context.general.estPrecisionSignalement": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "false"
+  },
+  "context.general.estRequisitionJudiciaire": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "false"
+  },
+  "context.general.refInterne": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "CASE-2026-0042"
+  },
+  "context.information.correspondanceBancaire": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "false"
+  },
+  "context.information.gestionFortuneBanquePrivee": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "false"
+  },
+  "context.natureSoupcon.cadreLegal[cl-1]": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "CL02"
+  },
+  "context.natureSoupcon.natureSoupconPenale[nsp-1]": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "NSP07"
+  },
+  "declarant.coordonnees.courriel": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "jean.dupont@banque.fr"
+  },
+  "declarant.coordonnees.nom": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "Dupont"
+  },
+  "declarant.coordonnees.prenom": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "Jean"
+  },
+  "declarant.coordonnees.tel": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "+33 1 23 45 67 89"
+  },
+  "operations.dateDebut": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "2026-10-01"
+  },
+  "operations.dateFin": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "2026-10-31"
+  },
+  "operations.montantTotal": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "12500.00"
+  },
+  "operations.operation[op-1].beneficiaireTypeBeneficiaire": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "Société Beta SARL"
+  },
+  "operations.operation[op-1].emetteurTypeEmetteur": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "1"
+  },
+  "operations.operation[op-1].montantTotal": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "12500.00"
+  },
+  "operations.operation[op-1].paysArriveeFonds": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "FR"
+  },
+  "operations.operation[op-1].paysOrigineFonds": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "FR"
+  },
+  "operations.operation[op-1].refFinanciereEmission": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "1"
+  },
+  "operations.operation[op-1].refFinanciereReception": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "FR7612345987650123456789014"
+  },
+  "operations.operation[op-1].typeOperation": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "OT10"
+  },
+  "organisme.adresse.codePostal": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "75002"
+  },
+  "organisme.adresse.nomVoie": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "Rue de la Paix"
+  },
+  "organisme.adresse.numero": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "12"
+  },
+  "organisme.adresse.pays": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "FR"
+  },
+  "organisme.adresse.tel": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "+33 1 40 00 00 00"
+  },
+  "organisme.adresse.ville": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "Paris"
+  },
+  "organisme.libelle": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "Banque Exemple SA"
+  },
+  "organisme.numIdPro": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "123456789"
+  },
+  "organisme.profession": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "TPI1"
+  },
+  "personnes.pp[pp-1].etatCivil.nomNaissance": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "Martin"
+  },
+  "personnes.pp[pp-1].etatCivil.prenom[fn-1]": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "Paul"
+  },
+  "personnes.pp[pp-1].implication": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "Personne soupçonnée / Personne impliquée"
+  },
+  "personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban[iban-1].iban": {
+   "origin": "manual",
+   "reviewed": true,
+   "value": "FR7630006000011234567890189"
+  }
+ }
+}
