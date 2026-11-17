@@ -24,24 +24,27 @@ type DBSarGenerationJob struct {
 	Error         *string         `db:"error"`
 	CreatedBy     *uuid.UUID      `db:"created_by"`
 	Attempt       int             `db:"attempt"`
-	CreatedAt     time.Time       `db:"created_at"`
-	UpdatedAt     time.Time       `db:"updated_at"`
+	// RateLimitedSince is the start of the current provider rate-limit streak.
+	RateLimitedSince *time.Time `db:"rate_limited_since"`
+	CreatedAt        time.Time  `db:"created_at"`
+	UpdatedAt        time.Time  `db:"updated_at"`
 }
 
 var SarGenerationJobColumns = utils.ColumnList[DBSarGenerationJob]()
 
 func AdaptSarGenerationJob(db DBSarGenerationJob) (models.SarGenerationJob, error) {
 	return models.SarGenerationJob{
-		Id:            db.Id,
-		DeclarationId: db.DeclarationId,
-		Kind:          models.SarJobKind(db.Kind),
-		Status:        models.SarJobStatus(db.Status),
-		Input:         db.Input,
-		Error:         derefString(db.Error),
-		CreatedBy:     db.CreatedBy,
-		Attempt:       db.Attempt,
-		CreatedAt:     db.CreatedAt,
-		UpdatedAt:     db.UpdatedAt,
+		Id:               db.Id,
+		DeclarationId:    db.DeclarationId,
+		Kind:             models.SarJobKind(db.Kind),
+		Status:           models.SarJobStatus(db.Status),
+		Input:            db.Input,
+		Error:            derefString(db.Error),
+		CreatedBy:        db.CreatedBy,
+		Attempt:          db.Attempt,
+		RateLimitedSince: db.RateLimitedSince,
+		CreatedAt:        db.CreatedAt,
+		UpdatedAt:        db.UpdatedAt,
 	}, nil
 }
 
