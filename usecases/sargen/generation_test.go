@@ -2,7 +2,9 @@ package sargen
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"github.com/cockroachdb/errors"
 	"testing"
 	"time"
 
@@ -515,4 +517,25 @@ func TestStartGeneration_InvalidRequiredSettingListed(t *testing.T) {
 	require.ErrorIs(t, err, models.BadParameterError)
 	require.ErrorContains(t, err, "organisme.adresse.pays")
 	assert.Zero(t, f.Gen.JobCreates)
+}
+
+type fakeCaseReviewAccess struct {
+	enabled   bool
+	configErr error
+}
+
+func (a fakeCaseReviewAccess) HasAiCaseReviewEnabled(context.Context, uuid.UUID) (bool, error) {
+	return a.enabled, nil
+}
+func (a fakeCaseReviewAccess) CheckSarGenerationConfigured() error { return a.configErr }
+
+func TestAiAccessFromCaseReview_RefusesUnusableConfiguration(t *testing.T) {
+	cfgErr := errors.Wrap(models.BadParameterError, "l'IA n'est pas configurée")
+	err := AiAccessFromCaseReview(fakeCaseReviewAccess{enabled: true, configErr: cfgErr}).CheckAiAccess(context.Background(), uuid.New())
+	require.ErrorIs(t, err, models.BadParameterError)
+
+	err = AiAccessFromCaseReview(fakeCaseReviewAccess{enabled: false, configErr: cfgErr}).CheckAiAccess(context.Background(), uuid.New())
+	require.ErrorIs(t, err, models.ForbiddenError, "access is checked before configuration")
+
+	require.NoError(t, AiAccessFromCaseReview(fakeCaseReviewAccess{enabled: true}).CheckAiAccess(context.Background(), uuid.New()))
 }

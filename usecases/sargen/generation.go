@@ -88,6 +88,12 @@ func AiAccessFromCaseReview(r caseReviewAiAccess) AiAccessChecker { return aiAcc
 
 type aiAccessAdapter struct{ r caseReviewAiAccess }
 
+// aiConfigChecker is an optional capability of the case review access: it
+// refuses (BadParameterError) when the server AI configuration is unusable.
+type aiConfigChecker interface {
+	CheckSarGenerationConfigured() error
+}
+
 func (a aiAccessAdapter) CheckAiAccess(ctx context.Context, orgId uuid.UUID) error {
 	ok, err := a.r.HasAiCaseReviewEnabled(ctx, orgId)
 	if err != nil {
@@ -95,6 +101,9 @@ func (a aiAccessAdapter) CheckAiAccess(ctx context.Context, orgId uuid.UUID) err
 	}
 	if !ok {
 		return errors.Wrap(models.ForbiddenError, "la génération par IA n'est pas disponible pour votre organisation")
+	}
+	if cc, ok := a.r.(aiConfigChecker); ok {
+		return cc.CheckSarGenerationConfigured()
 	}
 	return nil
 }

@@ -479,6 +479,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.POST("/scoring/risk-levels/:recordType/:recordId/compute", tom, handleScoringComputeScore(uc))
 	router.GET("/scoring/distribution/:entityType", tom, handleScoringGetDistribution(uc))
 
+	addSarGenerationRoutes(router, tom, uc)
+
 	if conf.AnalyticsProxyApiUrl == "" {
 		addCaseAnalyticsRoutes(router, conf, uc)
 		addAnalyticsRoutes(router, conf, uc)
