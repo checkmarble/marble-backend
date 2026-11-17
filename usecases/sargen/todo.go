@@ -8,10 +8,8 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
 )
 
-// buildTodo returns one TodoIssue entry per issue plus one TodoLowConfidence
-// entry (severity review) per ConfidenceLow value that is not Reviewed.
-// Sorted: blocking, review, warning.
-func buildTodo(issues []core.Issue, doc *core.Document) []TodoItem {
+// buildTodoBase: issues and low-confidence values, sorted blocking, review, warning.
+func buildTodoBase(issues []core.Issue, doc *core.Document) []TodoItem {
 	var todo []TodoItem
 	for _, i := range issues {
 		sev := TodoWarning
@@ -40,14 +38,15 @@ func buildTodo(issues []core.Issue, doc *core.Document) []TodoItem {
 	return todo
 }
 
-// buildTodoWithQuestions is buildTodo plus, from the open questions and the
+// buildTodo returns one TodoIssue entry per issue, one TodoLowConfidence entry per unreviewed
+// low-confidence value, plus, from the open questions and the
 // spec: one TodoQuestion per open question (blocking when one of its paths is
 // required, i.e. Min >= 1 in the spec, else warning), one TodoReviewFinding
 // (review) per open review finding, and one review entry « valeur calculée à
 // confirmer » per NatureComputed field outside a repeatable item that has a
 // value which is not Reviewed.
-func buildTodoWithQuestions(spec *core.Spec, issues []core.Issue, doc *core.Document, open []models.SarQuestion) []TodoItem {
-	todo := buildTodo(issues, doc)
+func buildTodo(spec *core.Spec, issues []core.Issue, doc *core.Document, open []models.SarQuestion) []TodoItem {
+	todo := buildTodoBase(issues, doc)
 	for _, q := range open {
 		id := q.Id
 		paths := make([]core.Path, len(q.Paths))
@@ -60,7 +59,7 @@ func buildTodoWithQuestions(spec *core.Spec, issues []core.Issue, doc *core.Docu
 		default:
 			sev := TodoWarning
 			for _, p := range paths {
-				if n := spec.NodeAt(p.Template()); n != nil && n.Min >= 1 {
+				if n := spec.NodeAt(p.Template()); spec != nil && n != nil && n.Min >= 1 {
 					sev = TodoBlocking
 					break
 				}
@@ -68,7 +67,7 @@ func buildTodoWithQuestions(spec *core.Spec, issues []core.Issue, doc *core.Docu
 			todo = append(todo, TodoItem{Kind: TodoQuestion, Severity: sev, Paths: paths, Message: q.Text, RefId: &id})
 		}
 	}
-	if doc != nil && spec != nil {
+	if doc != nil && spec != nil && spec.Root != nil {
 		var computed []core.Path
 		for p, v := range doc.Values {
 			if v.Value == "" || v.Reviewed || strings.Contains(p.Template(), "[]") {

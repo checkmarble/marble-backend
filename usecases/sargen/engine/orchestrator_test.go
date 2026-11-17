@@ -497,3 +497,23 @@ func TestWorker_LastAttemptMarksJobFailed(t *testing.T) {
 	require.Equal(t, models.SarJobStatusFailed, j.Status)
 	require.NotEmpty(t, j.Error)
 }
+
+func TestQuestionOptionFillsAreStampedWithLLMOrigin(t *testing.T) {
+	ctx := context.Background()
+	o, f := newTestOrchestrator(t)
+	seedDocument(t, f, withTwoPersons)
+	a := Spec("a", tgtPP1)
+	f.Format.Waves = [][]core.TaskSpec{{a}}
+	f.Runner.On("a", tgtPP1, Step{Out: core.TaskOutput{Questions: []core.QuestionDraft{{
+		Paths: []core.Path{pathImplPP1}, Text: "Implication ?",
+		Options: []core.QuestionOption{{Label: "x", Fills: []core.Fill{{Path: pathImplPP1, Value: "v", Origin: core.OriginOrgSetting}}}},
+	}}}})
+	require.NoError(t, o.RunJob(ctx, f.JobId))
+
+	qs := questionsOf(t, f, "")
+	require.Len(t, qs, 1)
+	var opts []core.QuestionOption
+	require.NoError(t, json.Unmarshal(qs[0].Options, &opts))
+	require.Equal(t, core.OriginLLM, opts[0].Fills[0].Origin, "the model never picks the origin")
+	require.NotNil(t, opts[0].Fills[0].TaskID)
+}

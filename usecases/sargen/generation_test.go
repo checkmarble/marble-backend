@@ -427,3 +427,59 @@ func TestLockDuringJob_AllWriters(t *testing.T) {
 		}
 	}
 }
+
+func TestResumeJob_RefusedWhenAlreadyGenerated(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	failed := f.SeedJob(t, declId, models.SarJobKindGenerate, models.SarJobStatusFailed)
+	f.Clock.Advance(time.Minute)
+	f.SeedDoneGeneration(t, declId)
+
+	_, err := uc.ResumeJob(f.Ctx, failed.Id)
+	require.ErrorIs(t, err, ErrAlreadyGenerated)
+	assert.Equal(t, models.SarJobStatusFailed, f.Gen.Jobs[failed.Id].Status)
+	assert.Empty(t, f.Enqueuer.Calls)
+}
+
+func TestGetJob_StaleRunningReportedFailed(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	job := f.SeedJob(t, declId, models.SarJobKindGenerate, models.SarJobStatusRunning)
+	f.Clock.Advance(61 * time.Minute)
+
+	st, err := uc.GetJob(f.Ctx, job.Id)
+	require.NoError(t, err)
+	assert.Equal(t, models.SarJobStatusFailed, st.Job.Status)
+	assert.NotEmpty(t, st.LastError)
+
+	_, err = uc.UpdateFields(f.Ctx, declId, f.Repo.Declarations[declId].Version,
+		[]core.Fill{{Path: "organisme.libelle", Value: "X"}})
+	require.ErrorIs(t, err, ErrGenerationInProgress)
+	assert.ErrorContains(t, err, "relancez la génération")
+}
+
+func TestRequiredSettingPaths_RealSpec(t *testing.T) {
+	uc, _ := newTestUsecase(t)
+	key, err := core.ParseFormatKey(tracfinFormatKey)
+	require.NoError(t, err)
+	format, ok := uc.formatGetter(key)
+	require.True(t, ok)
+
+	base := requiredSettingPaths(format, nil)
+	assert.Contains(t, base, core.Path("declarant.coordonnees.tel"), "format-provided list")
+	assert.Contains(t, base, core.Path("organisme.libelle"))
+	assert.NotContains(t, base, core.Path("contact.coordonnees.tel"), "optional group absent")
+
+	withContact := requiredSettingPaths(format, map[string]string{"contact.coordonnees.nom": "X"})
+	assert.Contains(t, withContact, core.Path("contact.coordonnees.tel"), "optional group present")
+}
+
+func TestStartGeneration_InvalidRequiredSettingListed(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	bad := genCompleteSettings()
+	bad["organisme.adresse.pays"] = "pas-un-code"
+	genSetSettings(f, bad)
+
+	_, err := uc.StartGeneration(f.Ctx, declId)
+	require.ErrorIs(t, err, models.BadParameterError)
+	require.ErrorContains(t, err, "organisme.adresse.pays")
+	assert.Zero(t, f.Gen.JobCreates)
+}

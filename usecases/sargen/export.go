@@ -82,7 +82,7 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 				Kind: TodoIssue, Code: i.Code, Severity: TodoWarning, Paths: []core.Path{i.Path}, Message: i.Message,
 			})
 		}
-		for _, t := range buildTodo(nil, doc) { // unreviewed low-confidence values
+		for _, t := range buildTodoBase(nil, doc) { // unreviewed low-confidence values
 			outstanding = append(outstanding, outstandingItem{Kind: t.Kind, Severity: t.Severity, Paths: t.Paths, Message: t.Message})
 		}
 		if format.Status() == core.VersionDeprecated {

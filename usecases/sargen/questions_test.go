@@ -62,7 +62,7 @@ func TestManualEditResolvesQuestion(t *testing.T) {
 
 	t.Run("the question stays open until every path is filled", func(t *testing.T) {
 		uc, f, declId := genReady(t, false)
-		q := f.SeedQuestion(t, declId, []core.Path{"organisme.libelle", "organisme.numIdPro"}, "Identité de l'organisme ?", nil)
+		q := f.SeedQuestion(t, declId, []core.Path{"organisme.libelle", "organisme.adresse.numero"}, "Identité de l'organisme ?", nil)
 
 		_, err := uc.UpdateFields(f.Ctx, declId, f.Repo.Declarations[declId].Version,
 			[]core.Fill{{Path: "organisme.libelle", Value: "Banque Test"}})
@@ -72,7 +72,7 @@ func TestManualEditResolvesQuestion(t *testing.T) {
 		assert.Equal(t, models.SarQuestionStatusOpen, genQuestionById(t, qs, q.Id).Status)
 
 		_, err = uc.UpdateFields(f.Ctx, declId, f.Repo.Declarations[declId].Version,
-			[]core.Fill{{Path: "organisme.numIdPro", Value: "123456789"}})
+			[]core.Fill{{Path: "organisme.adresse.numero", Value: "12"}})
 		require.NoError(t, err)
 		qs, err = uc.ListQuestions(f.Ctx, declId)
 		require.NoError(t, err)
@@ -87,11 +87,10 @@ func genOptionWithFill() []core.QuestionOption {
 	return []core.QuestionOption{{
 		Label: "Oui",
 		Fills: []core.Fill{{
-			Path:       "context.general.estRequisitionJudiciaire",
+			Path:       "context.information.activiteLPS",
 			Value:      "true",
-			Origin:     core.OriginDataModel,
 			Sources:    []core.SourceRef{{Object: core.ObjectRef{Table: "transactions", ObjectID: "t1"}, Field: "requisition", RawValue: "true"}},
-			Confidence: core.ConfidenceHigh,
+			Confidence: core.ConfidenceHigh, Justification: "indiqué dans la transaction",
 		}},
 	}, {
 		Label: "Non",
@@ -100,17 +99,17 @@ func genOptionWithFill() []core.QuestionOption {
 
 func TestChooseQuestionOption_AppliesFillsWithoutJob(t *testing.T) {
 	uc, f, declId := genReady(t, false)
-	q := f.SeedQuestion(t, declId, []core.Path{"context.general.estRequisitionJudiciaire"},
-		"S'agit-il d'une réquisition judiciaire ?", genOptionWithFill())
+	q := f.SeedQuestion(t, declId, []core.Path{"context.information.activiteLPS"},
+		"L'organisme exerce-t-il en LPS ?", genOptionWithFill())
 	version := f.Repo.Declarations[declId].Version
 
 	st, err := uc.ChooseQuestionOption(f.Ctx, q.Id, version, 0)
 	require.NoError(t, err)
 
-	v, ok := st.Doc.Values["context.general.estRequisitionJudiciaire"]
+	v, ok := st.Doc.Values["context.information.activiteLPS"]
 	require.True(t, ok, "the option value must be applied")
 	assert.Equal(t, "true", v.Value)
-	assert.Equal(t, core.OriginDataModel, v.Origin, "the origin of the option is kept")
+	assert.Equal(t, core.OriginLLM, v.Origin, "the origin is forced to llm (option fills come from the model)")
 	assert.True(t, v.Reviewed, "the applied value is marked reviewed")
 	require.Len(t, v.Sources, 1, "the sources of the option are kept")
 	assert.Equal(t, "t1", v.Sources[0].Object.ObjectID)
@@ -153,8 +152,8 @@ func TestChooseQuestionOption_OtherOrgForbidden(t *testing.T) {
 	}
 	require.NoError(t, f.Repo.CreateSarDeclaration(f.Ctx, nil, foreign))
 	docBefore := append([]byte(nil), foreign.Document...)
-	q := f.SeedQuestion(t, foreign.Id, []core.Path{"context.general.estRequisitionJudiciaire"},
-		"Réquisition ?", genOptionWithFill())
+	q := f.SeedQuestion(t, foreign.Id, []core.Path{"context.information.activiteLPS"},
+		"LPS ?", genOptionWithFill())
 
 	_, err := uc.ChooseQuestionOption(f.Ctx, q.Id, 1, 0)
 	require.ErrorIs(t, err, models.ForbiddenError)
@@ -240,4 +239,85 @@ func containsPath(paths []core.Path, want core.Path) bool {
 		}
 	}
 	return false
+}
+
+// ---- Option fills are confined to the question's paths and to LLM rules ----
+
+func genChoose(t *testing.T, uc *Usecase, f *fakes, declId uuid.UUID, paths []core.Path, opts []core.QuestionOption) (models.SarQuestion, error) {
+	t.Helper()
+	q := f.SeedQuestion(t, declId, paths, "Question ?", opts)
+	_, err := uc.ChooseQuestionOption(f.Ctx, q.Id, f.Repo.Declarations[declId].Version, 0)
+	return q, err
+}
+
+func TestChooseQuestionOption_ForgedOriginAndForeignPathsRefused(t *testing.T) {
+	cases := []struct {
+		name  string
+		paths []core.Path
+		fill  core.Fill
+	}{
+		{"forged origin on a setting", []core.Path{"organisme.libelle"},
+			core.Fill{Path: "organisme.libelle", Value: "Pirate", Origin: core.OriginOrgSetting}},
+		{"forged origin on a computed path", []core.Path{"operations.montantTotal"},
+			core.Fill{Path: "operations.montantTotal", Value: "1.00", Origin: core.OriginComputed}},
+		{"path outside the question", []core.Path{"context.information.activiteLPS"},
+			core.Fill{Path: "context.information.lienTransportDeFond", Value: "true"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			uc, f, declId := genReady(t, false)
+			docBefore := append([]byte(nil), f.Repo.Declarations[declId].Document...)
+			q, err := genChoose(t, uc, f, declId, c.paths, []core.QuestionOption{{Label: "x", Fills: []core.Fill{c.fill}}})
+			require.ErrorIs(t, err, models.BadParameterError)
+			assert.True(t, bytes.Equal(docBefore, f.Repo.Declarations[declId].Document), "nothing applied")
+			assert.Equal(t, models.SarQuestionStatusOpen, f.Gen.Questions[q.Id].Status)
+		})
+	}
+}
+
+func TestChooseQuestionOption_EmptyValueClearsWithoutError(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	_, err := uc.UpdateFields(f.Ctx, declId, f.Repo.Declarations[declId].Version,
+		[]core.Fill{{Path: "context.general.numeroProcedure", Value: "P-1"}})
+	require.NoError(t, err)
+	q, err := genChoose(t, uc, f, declId, []core.Path{"context.general.numeroProcedure"},
+		[]core.QuestionOption{{Label: "Aucun", Fills: []core.Fill{{Path: "context.general.numeroProcedure", Value: "",
+			Sources: []core.SourceRef{{Object: core.ObjectRef{Table: "transactions", ObjectID: "t1"}, Field: "requisition"}}}}}})
+	require.NoError(t, err)
+	assert.Equal(t, models.SarQuestionStatusResolved, f.Gen.Questions[q.Id].Status)
+}
+
+func TestChooseQuestionOption_RefusedDuringJob(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	f.SeedJob(t, declId, models.SarJobKindReview, models.SarJobStatusRunning)
+	q := f.SeedQuestion(t, declId, []core.Path{"context.information.activiteLPS"}, "LPS ?", genOptionWithFill())
+	_, err := uc.ChooseQuestionOption(f.Ctx, q.Id, f.Repo.Declarations[declId].Version, 0)
+	require.ErrorIs(t, err, ErrGenerationInProgress)
+}
+
+// ---- Other organization ----
+
+func TestQuestions_OtherOrgForbidden(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	foreign := models.SarDeclaration{
+		Id: uuid.New(), OrganizationId: uuid.New(), CaseId: f.CaseId,
+		FormatKey: tracfinFormatKey, ReportType: tracfinReportType, Version: 1,
+		Document: []byte(`{"values":{},"items":{},"item_sources":{},"next_key":{}}`),
+	}
+	require.NoError(t, f.Repo.CreateSarDeclaration(f.Ctx, nil, foreign))
+	q := f.SeedReviewFinding(t, foreign.Id, nil, "mineur", "x")
+	failedJob := f.SeedJob(t, foreign.Id, models.SarJobKindGenerate, models.SarJobStatusFailed)
+
+	_, err := uc.ListQuestions(f.Ctx, foreign.Id)
+	require.ErrorIs(t, err, models.ForbiddenError)
+	require.ErrorIs(t, uc.DismissQuestion(f.Ctx, q.Id), models.ForbiddenError)
+	assert.Equal(t, models.SarQuestionStatusOpen, f.Gen.Questions[q.Id].Status)
+	_, err = uc.StartGeneration(f.Ctx, foreign.Id)
+	require.ErrorIs(t, err, models.ForbiddenError)
+	_, err = uc.StartReview(f.Ctx, foreign.Id)
+	require.ErrorIs(t, err, models.ForbiddenError)
+	_, err = uc.ResumeJob(f.Ctx, failedJob.Id)
+	require.ErrorIs(t, err, models.ForbiddenError)
+	assert.Empty(t, f.Enqueuer.Calls)
+	assert.Equal(t, models.SarJobStatusFailed, f.Gen.Jobs[failedJob.Id].Status)
 }

@@ -627,6 +627,8 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 				op.Fills = append([]core.Fill(nil), op.Fills...)
 				for j := range op.Fills {
 					op.Fills[j].Path = res.Rewrite(op.Fills[j].Path)
+					// Like the task's own fills: the model never picks the origin.
+					op.Fills[j].Origin, op.Fills[j].TaskID = core.OriginLLM, &taskId
 				}
 				opts[i] = op
 			}

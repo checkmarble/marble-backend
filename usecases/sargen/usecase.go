@@ -308,7 +308,7 @@ func (uc *Usecase) buildState(ctx context.Context, exec repositories.Executor, d
 		Format:       format,
 		Doc:          doc,
 		Issues:       issues,
-		Todo:         buildTodoWithQuestions(format.Spec(), issues, doc, open),
+		Todo:         buildTodo(format.Spec(), issues, doc, open),
 		ExportsCount: count,
 		LastExportAt: last,
 	}, nil
