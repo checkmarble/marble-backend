@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"slices"
 	"io/fs"
+	"slices"
 	"strings"
 	"text/template"
 
