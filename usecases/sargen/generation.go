@@ -159,7 +159,7 @@ func (uc *Usecase) StartGeneration(ctx context.Context, id uuid.UUID) (models.Sa
 			return ErrAlreadyGenerated
 		}
 		if hasActiveJob(jobs) {
-			return models.ErrSarJobAlreadyActive
+			return uc.activeJobError(jobs)
 		}
 		if strings.TrimSpace(locked.Analysis) == "" {
 			return errors.Wrap(models.BadParameterError, "l'analyse est vide : renseignez-la avant de générer")
@@ -357,6 +357,19 @@ func (uc *Usecase) ResumeJob(ctx context.Context, jobId uuid.UUID) (models.SarGe
 		if cur.Status != models.SarJobStatusFailed && !uc.isStale(cur) {
 			return errors.Wrap(models.ConflictError, "cette génération ne peut pas être relancée")
 		}
+		if cur.Kind == models.SarJobKindGenerate {
+			jobs, err := uc.generation.ListSarGenerationJobs(ctx, tx, d.Id)
+			if err != nil {
+				return err
+			}
+			if hasDoneGenerate(jobs) {
+				return ErrAlreadyGenerated
+			}
+		}
+		// A stale running job may still have a live River job (e.g. a worker
+		// slowed beyond 2 x timeout): a second River job can then run. This is
+		// safe: task claims and completions are attempt-guarded, so a result is
+		// never applied twice.
 		if err := uc.generation.SetSarGenerationJobStatus(ctx, tx, jobId, models.SarJobStatusPending, ""); err != nil {
 			return err
 		}
@@ -400,7 +413,7 @@ func (uc *Usecase) StartReview(ctx context.Context, id uuid.UUID) (models.SarGen
 			return err
 		}
 		if hasActiveJob(jobs) {
-			return models.ErrSarJobAlreadyActive
+			return uc.activeJobError(jobs)
 		}
 		if !hasDoneGenerate(jobs) {
 			return errors.Wrap(models.ConflictError, "aucune génération terminée : lancez d'abord la génération")
@@ -423,9 +436,31 @@ func (uc *Usecase) requireNoActiveJob(ctx context.Context, exec repositories.Exe
 		return err
 	}
 	if hasActiveJob(jobs) {
-		return ErrGenerationInProgress
+		return uc.lockError(jobs)
 	}
 	return nil
+}
+
+// lockError is ErrGenerationInProgress, with a resume hint when the active job
+// is stale.
+func (uc *Usecase) lockError(jobs []models.SarGenerationJob) error {
+	if uc.hasStaleJob(jobs) {
+		return errors.Wrap(ErrGenerationInProgress, "la génération ne répond plus : relancez la génération")
+	}
+	return ErrGenerationInProgress
+}
+
+func (uc *Usecase) hasStaleJob(jobs []models.SarGenerationJob) bool {
+	return slices.ContainsFunc(jobs, uc.isStale)
+}
+
+// activeJobError is the 409 for a declaration that already has an active job;
+// it hints at resuming when that job is stale.
+func (uc *Usecase) activeJobError(jobs []models.SarGenerationJob) error {
+	if uc.hasStaleJob(jobs) {
+		return errors.Wrap(models.ErrSarJobAlreadyActive, "la génération ne répond plus : relancez la génération")
+	}
+	return models.ErrSarJobAlreadyActive
 }
 
 // requiredSettingPaths returns the organization setting paths that must be
@@ -439,11 +474,9 @@ func (uc *Usecase) requireNoActiveJob(ctx context.Context, exec repositories.Exe
 // PLUS the paths of core.SettingsRequirer.RequiredSettings() when the format
 // implements it.
 //
-// On TRACFIN 1.4.0 the generic part gives organisme.* (profession, libelle,
-// numIdPro, adresse.nomVoie/codePostal/ville/pays/tel) and, only when an
-// optional group is filled, its mandatory leaves (contact.coordonnees.*). It does NOT
-// give declarant.coordonnees.* (group min 0, nothing stored), so tracfin adds
-// them through RequiredSettings: nom, prenom, tel, courriel.
+// A format whose spec leaves a group optional but always needs it lists the
+// paths through SettingsRequirer (the optional group is then not detected by
+// the generic rule above).
 func requiredSettingPaths(format core.Format, values map[string]string) []core.Path {
 	spec := format.Spec()
 	seen := map[core.Path]bool{}

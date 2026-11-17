@@ -19,7 +19,7 @@ func TestBuildTodo_OrdersAndIncludesUnreviewedLowConfidence(t *testing.T) {
 		{Path: "e.block", Code: "test_block", Message: "bloquant", Severity: core.SeverityBlocking},
 	}
 
-	todo := buildTodo(issues, doc)
+	todo := buildTodo(nil, issues, doc, nil)
 	require.Len(t, todo, 3, "two issues plus one unreviewed low-confidence value")
 
 	require.Equal(t, TodoIssue, todo[0].Kind)

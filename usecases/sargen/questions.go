@@ -115,7 +115,18 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 	return uc.mutateWithPost(ctx, q.DeclarationId, version,
 		func(format core.Format, doc *core.Document, _, _ *string) error {
 			spec := format.Spec()
-			res := core.ApplyFills(spec, doc, opt.Fills, core.ApplyOptions{Overwrite: core.OverwriteAll})
+			// Stored option fills come from the LLM: force the origin and task,
+			// and restrict writes to the question's own paths. The analyst's
+			// choice may replace a manual value (OverwriteAll); nature and
+			// source rules apply as for any LLM fill.
+			fills := make([]core.Fill, len(opt.Fills))
+			for i, f := range opt.Fills {
+				f.Origin, f.TaskID = core.OriginLLM, q.TaskId
+				fills[i] = f
+			}
+			res := core.ApplyFills(spec, doc, fills, core.ApplyOptions{
+				AllowedPrefixes: q.Paths, Overwrite: core.OverwriteAll,
+			})
 			var issues []core.Issue
 			for _, r := range res.Rejected {
 				issues = append(issues, r.Issue)
@@ -123,9 +134,11 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 			if len(issues) > 0 {
 				return issuesToError(issues)
 			}
-			paths := make([]core.Path, len(opt.Fills))
-			for i, f := range opt.Fills {
-				paths[i] = f.Path
+			var paths []core.Path
+			for _, f := range fills {
+				if f.Value != "" { // an empty fill clears the value: nothing to mark
+					paths = append(paths, f.Path)
+				}
 			}
 			if issues := core.MarkReviewed(spec, doc, paths); len(issues) > 0 {
 				return issuesToError(issues)
@@ -145,8 +158,8 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 }
 
 // resolveAnsweredQuestions closes (resolved) the open questions of the
-// declaration whose paths are all filled by manual edits (origin manual) in
-// doc, among those touching one of the paths just filled.
+// declaration whose paths all have a non-empty value in doc, among those
+// touching one of the paths just filled (origin does not matter).
 func (uc *Usecase) resolveAnsweredQuestions(ctx context.Context, tx repositories.Transaction,
 	declarationId uuid.UUID, doc *core.Document, filled []core.Path,
 ) error {
@@ -161,7 +174,7 @@ func (uc *Usecase) resolveAnsweredQuestions(ctx context.Context, tx repositories
 		}
 		touched, all := false, true
 		for _, p := range q.Paths {
-			if v, ok := doc.Values[core.Path(p)]; !ok || v.Value == "" || v.Origin != core.OriginManual {
+			if v, ok := doc.Values[core.Path(p)]; !ok || v.Value == "" {
 				all = false
 			}
 			if slices.Contains(filled, core.Path(p)) {
