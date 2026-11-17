@@ -377,7 +377,10 @@ func fieldSpec(f core.Format, args json.RawMessage) string {
 		out["code_list"] = node.CodeList
 		list, ok := spec.CodeLists[node.CodeList]
 		switch {
-		case !ok || list.Unavailable:
+		case !ok:
+			out["code_list_unavailable"] = true
+			out["note"] = "liste de codes introuvable dans le format"
+		case list.Unavailable:
 			out["code_list_unavailable"] = true
 			out["note"] = "liste de codes indisponible : toute valeur est acceptée"
 		case len(list.Codes) <= inlineCodesMax:

@@ -522,6 +522,9 @@ func providerForModel(model string) string {
 	return "main"
 }
 
+// ProviderForModel returns the llmberjack provider name to use for a model.
+func ProviderForModel(model string) string { return providerForModel(model) }
+
 // Call preparePrompt and complete the model with the model configuration
 func (uc *AiAgentUsecase) preparePromptWithModel(spec promptSpec, data map[string]any) (provider string, model string, prompt string, err error) {
 	if uc.aiAgentModelConfig == nil {

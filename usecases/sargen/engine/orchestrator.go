@@ -699,7 +699,9 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 		}
 		res = core.ApplyFills(r.format.Spec(), doc, fills, core.ApplyOptions{
 			AllowedPrefixes: allowed, Overwrite: core.OverwriteNonManual,
+			AllowedSources: AllowedSources(doc, r.selection, r.dataModel, rt.spec.Inputs),
 		})
+		allowedSources := AllowedSources(doc, r.selection, r.dataModel, rt.spec.Inputs)
 		changed = changed || len(res.Applied) > 0
 		result = resultFromApply(res)
 
@@ -746,6 +748,12 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 						result.Rejected = append(result.Rejected, rejectedView{
 							Path: f.Path, Code: core.CodeOutOfScope,
 							Message: "option de question : valeur hors des champs de la question"})
+						continue
+					}
+					if !sourcesAllowed(f, allowedSources(f.Path)) {
+						result.Rejected = append(result.Rejected, rejectedView{
+							Path: f.Path, Code: core.CodeSourceOutOfScope,
+							Message: "option de question : source hors du périmètre autorisé pour ce champ"})
 						continue
 					}
 					// Like the task's own fills: the model never picks the origin.
@@ -842,6 +850,16 @@ func (r *jobRun) saveDocument(ctx context.Context, exec repositories.Executor, d
 		return errors.Wrap(err, "cannot save document")
 	}
 	return nil
+}
+
+// sourcesAllowed tells whether every source of f is among the allowed objects.
+func sourcesAllowed(f core.Fill, allowed []core.ObjectRef) bool {
+	for _, s := range f.Sources {
+		if !slices.Contains(allowed, s.Object) {
+			return false
+		}
+	}
+	return true
 }
 
 // computeInto derives the computed fields into doc (RemoveItems first, then
