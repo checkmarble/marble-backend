@@ -437,3 +437,14 @@ func TestApplyPlacement_PartialOwnerLossIsReportedAndTransactionsMerge(t *testin
 	assert.Contains(t, qs[0].Text, "1 titulaire(s) non déclaré(s)")
 	assert.Contains(t, qs[0].Text, "accounts/a-1")
 }
+
+func TestApplyPlacement_TransactionsSharingAnAccountStaySeparate(t *testing.T) {
+	f := planFormat(t)
+	raw := json.RawMessage(`{"persons":[],"financial_refs":[],"transactions":[
+	  {"objects":[{"table":"accounts","object_id":"a-1"},{"table":"transactions","object_id":"t-1"}]},
+	  {"objects":[{"table":"accounts","object_id":"a-1"},{"table":"transactions","object_id":"t-2"}]},
+	  {"objects":[{"table":"transactions","object_id":"t-2"}]}]}`)
+	doc := core.NewDocument()
+	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw))
+	assert.Len(t, doc.Items["work.transactions"], 2, "t-1 and t-2 are distinct; [t-2] merges into the second")
+}
