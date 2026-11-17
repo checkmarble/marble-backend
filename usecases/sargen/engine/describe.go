@@ -13,7 +13,8 @@ import (
 // DescribeSubtree renders the part of the document entrusted to a task: one
 // line per field with path, label, type, required or not, maximum length, code
 // list name (inline codes when the list has at most 12 codes), nature
-// (recopié / jugement), description and the value already present. It walks the
+// (recopié / jugement), description and the value already present (the only
+// part wrapped in an UntrustedBlock: the rest comes from the format). It walks the
 // spec templates (not only existing items), skips ExportID nodes and fields of
 // nature setting, computed or analyst, shows the bounds of repeatable blocks
 // (e.g. « 0 à 5 ») and how to create an item (`[+a]`). The field detail stays
@@ -155,7 +156,9 @@ func (d *describer) fieldLine(n *core.Node, concrete core.Path) (string, bool) {
 		parts = append(parts, oneLine(n.Description))
 	}
 	if v, ok := d.doc.Values[concrete]; ok && v.Value != "" {
-		parts = append(parts, fmt.Sprintf("valeur actuelle : « %s »", oneLine(v.Value)))
+		// Only the value is client or analyst text: the rest of the line comes
+		// from the format.
+		parts = append(parts, "valeur actuelle : "+UntrustedBlock("valeur_actuelle", oneLine(v.Value)))
 	}
 	return strings.Join(parts, " ; "), true
 }

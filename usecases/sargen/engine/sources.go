@@ -92,3 +92,38 @@ func linkedObjects(sc scope, dm models.DataModel, ref core.ObjectRef) []models.S
 	}
 	return out
 }
+
+// sourcesOutsideSelection lists the ObjectRefs that a structured output added to
+// the item sources of the document (after versus before) and that are not in
+// the frozen selection.
+func sourcesOutsideSelection(before, after *core.Document, sc scope) []core.ObjectRef {
+	var bad []core.ObjectRef
+	for item, refs := range after.ItemSources {
+		old := before.ItemSources[item]
+		for _, ref := range refs {
+			if slices.Contains(old, ref) {
+				continue
+			}
+			if _, ok := sc.get(ref.Table, ref.ObjectID); !ok && !slices.Contains(bad, ref) {
+				bad = append(bad, ref)
+			}
+		}
+	}
+	slices.SortFunc(bad, func(a, b core.ObjectRef) int {
+		if c := strings.Compare(a.Table, b.Table); c != 0 {
+			return c
+		}
+		return strings.Compare(a.ObjectID, b.ObjectID)
+	})
+	return bad
+}
+
+// outsideSelectionMessage is the message (French) of a structured output that
+// cites objects outside the selection.
+func outsideSelectionMessage(bad []core.ObjectRef) string {
+	names := make([]string, len(bad))
+	for i, r := range bad {
+		names[i] = r.Table + "/" + r.ObjectID
+	}
+	return "objet hors sélection : " + strings.Join(names, ", ")
+}

@@ -285,6 +285,24 @@ func (r *memRepo) TouchSarGenerationJob(_ context.Context, _ repositories.Execut
 	return nil
 }
 
+func (r *memRepo) MarkSarGenerationJobRateLimited(_ context.Context, _ repositories.Executor, id uuid.UUID) (time.Duration, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	j := r.jobs[id]
+	if j.RateLimitedSince == nil {
+		now := r.now()
+		j.RateLimitedSince = &now
+	}
+	return r.now().Sub(*j.RateLimitedSince), nil
+}
+
+func (r *memRepo) ClearSarGenerationJobRateLimited(_ context.Context, _ repositories.Executor, id uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.jobs[id].RateLimitedSince = nil
+	return nil
+}
+
 func (r *memRepo) CreateSarGenerationTasks(_ context.Context, _ repositories.Executor, ts []models.SarGenerationTask) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
