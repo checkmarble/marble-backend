@@ -392,12 +392,24 @@ func proves(o models.SarSelectedObject, field, raw string) bool {
 	if decimalRe.MatchString(got) && decimalRe.MatchString(raw) && normDecimal(got) == normDecimal(raw) {
 		return true
 	}
-	for _, layout := range []string{time.RFC3339Nano, "2006-01-02T15:04:05"} {
-		if t, err := time.Parse(layout, got); err == nil {
-			return t.In(parisZone).Format("2006-01-02") == raw
-		}
+	if day, ok := parisDay(got); ok {
+		return day == raw
 	}
 	return false
+}
+
+// parisDay returns the Paris calendar day of a timestamp. A timestamp with a
+// zone is converted to Paris; a naive one (no zone) is read as Paris time.
+func parisDay(s string) (string, bool) {
+	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return t.In(parisZone).Format("2006-01-02"), true
+	}
+	for _, layout := range []string{"2006-01-02T15:04:05.999999999", "2006-01-02 15:04:05.999999999"} {
+		if t, err := time.ParseInLocation(layout, s, parisZone); err == nil {
+			return t.Format("2006-01-02"), true
+		}
+	}
+	return "", false
 }
 
 func normDecimal(s string) string {
@@ -465,7 +477,19 @@ func (c *checker) checkStructured(final json.RawMessage) (err error) {
 func relationError(n *core.Node, value, raw, justification string) string {
 	mismatch := fmt.Sprintf("la valeur ne correspond pas à la valeur source citée (valeur source : « %s »)", shorten(raw, 100))
 	switch {
-	case n.Type == core.TypeBoolean, n.Type == core.TypeRef:
+	case n.Type == core.TypeRef:
+		return ""
+	case n.Type == core.TypeBoolean:
+		rb, isLit := boolLiteral(raw)
+		if !isLit {
+			if strings.TrimSpace(justification) == "" {
+				return "justifiez la correspondance entre la valeur source et le booléen choisi (justification)"
+			}
+			return ""
+		}
+		if vb, ok := boolLiteral(value); !ok || vb != rb {
+			return mismatch
+		}
 		return ""
 	case n.Type == core.TypeCode || n.CodeList != "":
 		if foldAlnum(value) != foldAlnum(raw) && strings.TrimSpace(justification) == "" {
@@ -479,8 +503,7 @@ func relationError(n *core.Node, value, raw, justification string) string {
 		}
 		return ""
 	case n.Type == core.TypeDecimal, n.Type == core.TypeInteger:
-		if !decimalRe.MatchString(raw) || !decimalRe.MatchString(value) ||
-			normDecimal(strings.TrimPrefix(value, "-")) != normDecimal(strings.TrimPrefix(raw, "-")) {
+		if !numberDerives(value, raw) {
 			return mismatch
 		}
 		return ""
@@ -492,6 +515,46 @@ func relationError(n *core.Node, value, raw, justification string) string {
 		return mismatch
 	}
 	return ""
+}
+
+// boolLiteral reads a boolean written as true/false/1/0/oui/non/yes/no (any
+// case); ok is false for any other text.
+func boolLiteral(s string) (value, ok bool) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "true", "1", "oui", "yes":
+		return true, true
+	case "false", "0", "non", "no":
+		return false, true
+	}
+	return false, false
+}
+
+var numberTokenRe = regexp.MustCompile(`-?[0-9]+(?:[.,][0-9]+)?`)
+
+// stripThousands removes the spaces (regular, no-break, narrow no-break) used
+// as thousands separators.
+func stripThousands(s string) string {
+	return strings.NewReplacer(" ", "", "\u00a0", "", "\u202f", "", "\t", "").Replace(strings.TrimSpace(s))
+}
+
+// numberDerives: the value is the number of raw (thousands separators ignored,
+// "1 000" is 1000), or one numeric token of a non-numeric raw ("12" from
+// "12 rue du Test").
+func numberDerives(value, raw string) bool {
+	value = stripThousands(value)
+	if !decimalRe.MatchString(value) {
+		return false
+	}
+	nv := normDecimal(strings.TrimPrefix(value, "-"))
+	if whole := stripThousands(raw); decimalRe.MatchString(whole) {
+		return normDecimal(strings.TrimPrefix(whole, "-")) == nv
+	}
+	for _, tok := range numberTokenRe.FindAllString(raw, -1) {
+		if normDecimal(strings.TrimPrefix(tok, "-")) == nv {
+			return true
+		}
+	}
+	return false
 }
 
 func shorten(s string, n int) string {
@@ -534,10 +597,8 @@ func textDerives(value, raw string, maxLen int) bool {
 // for a timestamp).
 func calendarDay(raw string) (string, bool) {
 	raw = strings.TrimSpace(raw)
-	for _, layout := range []string{time.RFC3339Nano, "2006-01-02T15:04:05", "2006-01-02 15:04:05"} {
-		if t, err := time.Parse(layout, raw); err == nil {
-			return t.In(parisZone).Format("2006-01-02"), true
-		}
+	if day, ok := parisDay(raw); ok {
+		return day, true
 	}
 	for _, layout := range []string{"2006-01-02", "02/01/2006"} {
 		if t, err := time.Parse(layout, raw); err == nil {
