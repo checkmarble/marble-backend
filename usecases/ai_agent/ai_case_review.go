@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"io/fs"
 	"strings"
 	"text/template"
 
@@ -1327,6 +1328,17 @@ func (uc *AiAgentUsecase) CheckSarGenerationConfigured() error {
 		uc.aiAgentModelConfig.GetModel(models.AiFeatureSarGeneration, models.AiModelTierLight) == "" ||
 		uc.aiAgentModelConfig.GetModel(models.AiFeatureSarGeneration, models.AiModelTierHeavy) == "" {
 		return errors.Wrap(models.BadParameterError, "l'IA n'est pas configurée sur ce serveur : aucun modèle pour la génération de déclarations")
+	}
+	for _, name := range models.AiAgentOptionalFiles {
+		if !strings.HasPrefix(name, "sar_generation/") {
+			continue
+		}
+		if uc.promptsFS == nil {
+			return errors.Wrap(models.BadParameterError, "prompts de génération de déclaration absents")
+		}
+		if _, err := fs.Stat(uc.promptsFS, name); err != nil {
+			return errors.Wrap(models.BadParameterError, "prompts de génération de déclaration absents")
+		}
 	}
 	return nil
 }

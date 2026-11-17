@@ -99,6 +99,13 @@ func handlePutSarOrgSettings(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 		s, issues, err := newSarGenerationUsecase(c, uc).PutOrgSettings(c.Request.Context(), c.Param("family"), in.Values)
+		if err != nil && len(issues) > 0 && errors.Is(err, models.BadParameterError) {
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+				Message: err.Error(),
+				Details: dto.SarIssuesDetails{Issues: pure_utils.Map(issues, dto.AdaptSarIssueDto)},
+			})
+			return
+		}
 		if presentError(c.Request.Context(), c, err) {
 			return
 		}
@@ -436,7 +443,7 @@ func handleChooseSarQuestionOption(uc usecases.Usecases) gin.HandlerFunc {
 		if !sarBindJSON(c, &in) {
 			return
 		}
-		st, err := newSarGenerationUsecase(c, uc).ChooseQuestionOption(c.Request.Context(), id, in.Version, in.OptionIndex)
+		st, err := newSarGenerationUsecase(c, uc).ChooseQuestionOption(c.Request.Context(), id, in.Version, *in.OptionIndex)
 		sarState(c, http.StatusOK, st, err)
 	}
 }

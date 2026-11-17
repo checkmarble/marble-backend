@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -64,7 +65,7 @@ func AdaptSarSpecDto(f core.Format) SarSpecDto {
 // ---- org settings ----
 
 type SarOrgSettingsInput struct {
-	Values map[string]string `json:"values"`
+	Values map[string]string `json:"values" binding:"required"`
 }
 
 type SarIssueDto struct {
@@ -232,8 +233,8 @@ type SarFieldInput struct {
 }
 
 type SarUpdateFieldsInput struct {
-	Version int             `json:"version"`
-	Fields  []SarFieldInput `json:"fields" binding:"required,min=1,dive"`
+	Version int             `json:"version" binding:"required,min=1"`
+	Fields  []SarFieldInput `json:"fields" binding:"required,min=1,max=500,dive"`
 }
 
 // AdaptSarFills maps path+value only to core.Fill (no origin/sources/reviewed).
@@ -244,7 +245,7 @@ func AdaptSarFills(in []SarFieldInput) []core.Fill {
 }
 
 type SarAddItemInput struct {
-	Version   int    `json:"version"`
+	Version   int    `json:"version" binding:"required,min=1"`
 	Container string `json:"container" binding:"required"`
 }
 
@@ -254,13 +255,13 @@ type SarAddItemResponse struct {
 }
 
 type SarRemoveItemInput struct {
-	Version int    `json:"version"`
+	Version int    `json:"version" binding:"required,min=1"`
 	Item    string `json:"item" binding:"required"`
 }
 
 type SarMarkReviewedInput struct {
-	Version int      `json:"version"`
-	Paths   []string `json:"paths" binding:"required,min=1"`
+	Version int      `json:"version" binding:"required,min=1"`
+	Paths   []string `json:"paths" binding:"required,min=1,max=500"`
 }
 
 func AdaptSarPaths(in []string) []core.Path {
@@ -268,18 +269,18 @@ func AdaptSarPaths(in []string) []core.Path {
 }
 
 type SarVersionInput struct {
-	Version int `json:"version"`
+	Version int `json:"version" binding:"required,min=1"`
 }
 
 type SarUpdateAnalysisInput struct {
-	Version   int    `json:"version"`
+	Version   int    `json:"version" binding:"required,min=1"`
 	Analysis  string `json:"analysis"`
 	ExtraInfo string `json:"extra_info"`
 }
 
 type SarChooseOptionInput struct {
-	Version     int `json:"version"`
-	OptionIndex int `json:"option_index"`
+	Version     int  `json:"version" binding:"required,min=1"`
+	OptionIndex *int `json:"option_index" binding:"required,min=0"`
 }
 
 // ---- exports ----
@@ -340,9 +341,9 @@ type SarSelectionRemoveInput struct {
 }
 
 type SarUpdateSelectionInput struct {
-	Version int                       `json:"version"`
-	Add     []SarSelectionAddInput    `json:"add" binding:"dive"`
-	Remove  []SarSelectionRemoveInput `json:"remove" binding:"dive"`
+	Version int                       `json:"version" binding:"required,min=1"`
+	Add     []SarSelectionAddInput    `json:"add" binding:"max=200,dive"`
+	Remove  []SarSelectionRemoveInput `json:"remove" binding:"max=200,dive"`
 }
 
 func AdaptSarSelectionRemovals(in []SarSelectionRemoveInput) []core.ObjectRef {
@@ -434,4 +435,15 @@ type SarQuestionDto struct {
 	Options       []SarQuestionOptionDto `json:"options"`
 	CreatedAt     time.Time              `json:"created_at"`
 	ClosedAt      *time.Time             `json:"closed_at"`
+}
+
+// SarIssuesDetails is the details of a 400 that refuses values: the issues
+// (path, code, message) of the refused write.
+type SarIssuesDetails struct {
+	Issues []SarIssueDto `json:"issues"`
+}
+
+func (d SarIssuesDetails) MarshalJSON() ([]byte, error) {
+	type plain SarIssuesDetails
+	return json.Marshal(plain(d))
 }

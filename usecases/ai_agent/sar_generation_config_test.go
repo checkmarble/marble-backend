@@ -1,7 +1,9 @@
 package ai_agent
 
 import (
+	"io/fs"
 	"testing"
+	"testing/fstest"
 
 	"github.com/stretchr/testify/require"
 
@@ -28,7 +30,7 @@ func TestCheckSarGenerationConfigured(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			uc := &AiAgentUsecase{aiAgentModelConfig: tt.models}
+			uc := &AiAgentUsecase{aiAgentModelConfig: tt.models, promptsFS: allSarPrompts()}
 			uc.config.MainAgentProviderType = tt.provider
 			err := uc.CheckSarGenerationConfigured()
 			if tt.ok {
@@ -36,6 +38,31 @@ func TestCheckSarGenerationConfigured(t *testing.T) {
 				return
 			}
 			require.ErrorIs(t, err, models.BadParameterError)
+		})
+	}
+}
+
+func allSarPrompts() fs.FS {
+	m := fstest.MapFS{}
+	for _, name := range models.AiAgentOptionalFiles {
+		m[name] = &fstest.MapFile{Data: []byte("p")}
+	}
+	return m
+}
+
+func TestCheckSarGenerationConfigured_MissingPrompts(t *testing.T) {
+	cfg := &models.AiAgentModelConfig{DefaultLightModel: "l", DefaultHeavyModel: "h"}
+	for name, fsys := range map[string]fs.FS{"nil fs": nil, "empty fs": fstest.MapFS{}, "one missing": func() fs.FS {
+		m := allSarPrompts().(fstest.MapFS)
+		delete(m, models.SarGenerationTracfinReviewPromptPath)
+		return m
+	}()} {
+		t.Run(name, func(t *testing.T) {
+			uc := &AiAgentUsecase{aiAgentModelConfig: cfg, promptsFS: fsys}
+			uc.config.MainAgentProviderType = infra.AIAgentProviderTypeOpenAI
+			err := uc.CheckSarGenerationConfigured()
+			require.ErrorIs(t, err, models.BadParameterError)
+			require.Contains(t, err.Error(), "prompts de génération de déclaration absents")
 		})
 	}
 }
