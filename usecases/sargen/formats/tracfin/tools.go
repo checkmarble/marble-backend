@@ -82,9 +82,9 @@ func operationPreview(doc *core.Document) string {
 		lines = append(lines, line{Attributes: attrs, Transactions: g.txs, TotalAmount: formatDecimal(g.sum, g.maxFrac), Count: g.count})
 	}
 	out := map[string]any{
-		"lignes":        lines,
-		"nombre_lignes": len(lines),
-		"max_lines":     maxOperationLines,
+		"lines":      lines,
+		"line_count": len(lines),
+		"max_lines":  maxOperationLines,
 	}
 	if len(lines) > 0 {
 		out["period_start"], out["period_end"] = minDate, maxDate
