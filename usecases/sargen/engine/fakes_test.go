@@ -89,12 +89,17 @@ type fakeFormat struct {
 	core.Format
 	// Waves: Plan returns the specs of the first wave not fully done (by
 	// Kind+TargetPath among PlanState.Done with status done), nil when all done.
-	Waves        [][]core.TaskSpec
+	Waves [][]core.TaskSpec
+	// OnPlan observes every Plan call (what the format sees).
+	OnPlan       func(st core.PlanState)
 	ComputeFn    func(doc *core.Document) core.ComputeResult
 	StructuredFn func(kind string, doc *core.Document, out json.RawMessage) error
 }
 
 func (f *fakeFormat) Plan(st core.PlanState) []core.TaskSpec {
+	if f.OnPlan != nil {
+		f.OnPlan(st)
+	}
 	done := map[string]bool{}
 	for _, t := range st.Done {
 		if t.Status == models.SarJobStatusDone {
@@ -160,6 +165,8 @@ type memRepo struct {
 	dataModel models.DataModel
 	// Touches counts heartbeats per job.
 	Touches int
+	// StatusHistory lists the successful job status transitions.
+	StatusHistory []models.SarJobStatus
 	// UpdateCalls counts document writes (to assert "version unchanged").
 	UpdateCalls int
 }
@@ -239,16 +246,31 @@ func (r *memRepo) GetSarGenerationJob(_ context.Context, _ repositories.Executor
 	return *j, nil
 }
 
+// SetSarGenerationJobStatus follows the SQL guard: pending|running ->
+// running|done|failed only.
 func (r *memRepo) SetSarGenerationJobStatus(ctx context.Context, _ repositories.Executor, id uuid.UUID,
 	status models.SarJobStatus, errMsg string,
-) error {
+) (bool, error) {
 	if err := ctx.Err(); err != nil { // like pgx on a cancelled context
-		return err
+		return false, err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	j := r.jobs[id]
+	if j.Status != models.SarJobStatusPending && j.Status != models.SarJobStatusRunning {
+		return false, nil
+	}
 	j.Status, j.Error, j.UpdatedAt = status, errMsg, r.now()
+	r.StatusHistory = append(r.StatusHistory, status)
+	return true, nil
+}
+
+func (r *memRepo) SetSarGenerationJobAttempt(_ context.Context, _ repositories.Executor, id uuid.UUID, attempt int) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if j, ok := r.jobs[id]; ok { // like an UPDATE matching no row
+		j.Attempt = attempt
+	}
 	return nil
 }
 
@@ -294,7 +316,7 @@ func (r *memRepo) task(id uuid.UUID) *models.SarGenerationTask {
 }
 
 func (r *memRepo) ClaimSarGenerationTask(_ context.Context, _ repositories.Executor, id uuid.UUID,
-	staleBefore time.Time,
+	staleAfter time.Duration,
 ) (int, bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -303,7 +325,7 @@ func (r *memRepo) ClaimSarGenerationTask(_ context.Context, _ repositories.Execu
 		return 0, false, nil
 	}
 	claimable := t.Status == models.SarJobStatusPending || t.Status == models.SarJobStatusFailed ||
-		(t.Status == models.SarJobStatusRunning && t.StartedAt != nil && t.StartedAt.Before(staleBefore))
+		(t.Status == models.SarJobStatusRunning && t.StartedAt != nil && r.now().Sub(*t.StartedAt) > staleAfter)
 	if !claimable {
 		return 0, false, nil
 	}
@@ -473,14 +495,14 @@ func newTestOrchestrator(t *testing.T) (*Orchestrator, *fakes) {
 	}
 	f.Repo.jobs[f.JobId] = &models.SarGenerationJob{
 		Id: f.JobId, DeclarationId: f.DeclId, Kind: models.SarJobKindGenerate,
-		Status: models.SarJobStatusRunning, UpdatedAt: f.Now(),
+		Status: models.SarJobStatusPending, UpdatedAt: f.Now(),
 	}
 	o := NewOrchestrator(Deps{
 		ExecutorFactory: fakeExecFactory{}, TransactionFactory: fakeTxFactory{},
 		Declarations: f.Repo, Selection: f.Repo, Generation: f.Repo, DataModels: f.Repo,
 		Runner: f.Runner, Prompts: f.Prompts,
 		FormatGetter: func(core.FormatKey) (core.Format, bool) { return f.Format, true },
-		Parallelism:  3, StaleAfter: time.Hour, Now: f.Now,
+		Parallelism:  3, StaleAfter: time.Hour,
 	})
 	return o, f
 }

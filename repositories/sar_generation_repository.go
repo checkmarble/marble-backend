@@ -81,25 +81,104 @@ func (repo *MarbleDbRepository) ListSarGenerationJobs(
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptSarGenerationJob)
 }
 
-// SetSarGenerationJobStatus updates status and error (empty = no error) and
-// bumps updated_at.
+// SetSarGenerationJobStatus is a guarded transition that bumps updated_at.
+// Allowed: pending|running -> running, pending|running -> done|failed (error
+// message stored, empty = none). It returns false when the job is not in an
+// allowed source status (e.g. already done or failed: the caller must stop).
+// Moving a job back to pending is ResumeSarGenerationJob's business.
 func (repo *MarbleDbRepository) SetSarGenerationJobStatus(
 	ctx context.Context, exec Executor, id uuid.UUID, status models.SarJobStatus, errMsg string,
+) (bool, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return false, err
+	}
+	switch status {
+	case models.SarJobStatusRunning, models.SarJobStatusDone, models.SarJobStatusFailed:
+	default:
+		return false, errors.Newf("unsupported sar job transition to %q", status)
+	}
+	sql, args, err := NewQueryBuilder().
+		Update(dbmodels.TABLE_SAR_GENERATION_JOBS).
+		Set("status", string(status)).
+		Set("error", nullIfEmpty(errMsg)).
+		Set("updated_at", squirrel.Expr("now()")).
+		Where(squirrel.Eq{"id": id}).
+		Where(squirrel.Eq{"status": []string{
+			string(models.SarJobStatusPending), string(models.SarJobStatusRunning),
+		}}).
+		Suffix("RETURNING id").
+		ToSql()
+	if err != nil {
+		return false, errors.Wrap(err, "cannot build sar job status query")
+	}
+	return execReturningRow(ctx, exec, sql, args)
+}
+
+// ResumeSarGenerationJob moves a job back to pending (error cleared, updated_at
+// bumped), only from failed, or from pending/running with no update for more
+// than staleAfter (database clock). It returns false when the job is not
+// resumable, and models.ErrSarJobAlreadyActive when another job of the
+// declaration is active.
+func (repo *MarbleDbRepository) ResumeSarGenerationJob(
+	ctx context.Context, exec Executor, id uuid.UUID, staleAfter time.Duration,
+) (bool, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return false, err
+	}
+	sql, args, err := NewQueryBuilder().
+		Update(dbmodels.TABLE_SAR_GENERATION_JOBS).
+		Set("status", string(models.SarJobStatusPending)).
+		Set("error", nil).
+		Set("updated_at", squirrel.Expr("now()")).
+		Where(squirrel.Eq{"id": id}).
+		Where(squirrel.Or{
+			squirrel.Eq{"status": string(models.SarJobStatusFailed)},
+			squirrel.And{
+				squirrel.Eq{"status": []string{
+					string(models.SarJobStatusPending), string(models.SarJobStatusRunning),
+				}},
+				squirrel.Expr("updated_at < now() - make_interval(secs => ?)", staleAfter.Seconds()),
+			},
+		}).
+		Suffix("RETURNING id").
+		ToSql()
+	if err != nil {
+		return false, errors.Wrap(err, "cannot build sar job resume query")
+	}
+	ok, err := execReturningRow(ctx, exec, sql, args)
+	if IsUniqueViolationErrorOf(err, sarActiveJobIndex) {
+		return false, models.ErrSarJobAlreadyActive
+	}
+	return ok, err
+}
+
+// SetSarGenerationJobAttempt stores the River attempt number of the job.
+func (repo *MarbleDbRepository) SetSarGenerationJobAttempt(
+	ctx context.Context, exec Executor, id uuid.UUID, attempt int,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_SAR_GENERATION_JOBS).
-		Set("status", string(status)).
-		Set("error", nullIfEmpty(errMsg)).
-		Set("updated_at", squirrel.Expr("now()")).
+		Set("attempt", attempt).
 		Where(squirrel.Eq{"id": id})
-	err := ExecBuilder(ctx, exec, query)
-	if IsUniqueViolationErrorOf(err, sarActiveJobIndex) {
-		return models.ErrSarJobAlreadyActive
+	return ExecBuilder(ctx, exec, query)
+}
+
+// execReturningRow runs a statement ending with RETURNING and reports whether
+// a row came back.
+func execReturningRow(ctx context.Context, exec Executor, sql string, args []any) (bool, error) {
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return false, errors.Wrap(err, "cannot update sar job")
 	}
-	return err
+	defer rows.Close()
+	found := rows.Next()
+	if err := rows.Err(); err != nil {
+		return false, err
+	}
+	return found, nil
 }
 
 // TouchSarGenerationJob bumps updated_at without changing anything else. The
@@ -158,6 +237,22 @@ func (repo *MarbleDbRepository) ListSarGenerationTasks(
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptSarGenerationTask)
 }
 
+// ListSarGenerationTaskSummaries is the light listing for progress views: no
+// input, output or trace.
+func (repo *MarbleDbRepository) ListSarGenerationTaskSummaries(
+	ctx context.Context, exec Executor, jobId uuid.UUID,
+) ([]models.SarGenerationTask, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+	query := NewQueryBuilder().
+		Select(dbmodels.SarGenerationTaskSummaryColumns...).
+		From(dbmodels.TABLE_SAR_GENERATION_TASKS).
+		Where(squirrel.Eq{"job_id": jobId}).
+		OrderBy("created_at ASC", "id ASC")
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptSarGenerationTaskSummary)
+}
+
 func (repo *MarbleDbRepository) GetSarGenerationTaskTrace(
 	ctx context.Context, exec Executor, id uuid.UUID,
 ) ([]byte, error) {
@@ -184,17 +279,16 @@ func (repo *MarbleDbRepository) GetSarGenerationTaskTrace(
 
 // ClaimSarGenerationTask atomically moves a task to running and increments its
 // attempts. It succeeds only if the task is pending or failed, or running but
-// started before staleBefore (its worker is presumed dead). It returns the new
+// started more than staleAfter ago (its worker is presumed dead). It returns the new
 // attempt number and ok=true on success; ok=false when the task is not
 // claimable (done, or running and fresh), so a task is never executed by two
 // workers nor re-executed once done. The caller must pass the attempt number
 // to Complete/FailSarGenerationTask: a superseded worker's result is refused.
 //
-// staleBefore is compared with started_at, which is set by the database clock
-// (now()); callers compute staleBefore from the application clock. Clock skew
-// between the two is tolerated (stale timeouts are minutes, not seconds).
+// Staleness is evaluated in SQL against started_at with the database clock, so
+// application clock skew is irrelevant.
 func (repo *MarbleDbRepository) ClaimSarGenerationTask(
-	ctx context.Context, exec Executor, id uuid.UUID, staleBefore time.Time,
+	ctx context.Context, exec Executor, id uuid.UUID, staleAfter time.Duration,
 ) (attempt int, ok bool, err error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return 0, false, err
@@ -212,7 +306,7 @@ func (repo *MarbleDbRepository) ClaimSarGenerationTask(
 			}},
 			squirrel.And{
 				squirrel.Eq{"status": string(models.SarJobStatusRunning)},
-				squirrel.Lt{"started_at": staleBefore},
+				squirrel.Expr("started_at < now() - make_interval(secs => ?)", staleAfter.Seconds()),
 			},
 		}).
 		Suffix("RETURNING attempts").

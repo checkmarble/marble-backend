@@ -46,6 +46,9 @@ var (
 	// ErrPromptMissing: a prompt file is missing; the job is marked failed and
 	// retrying is pointless (the worker cancels the River job).
 	ErrPromptMissing = errors.New("prompt manquant")
+	// ErrJobGone: the job or its declaration no longer exists; retrying is
+	// pointless (the worker cancels the River job).
+	ErrJobGone = errors.New("génération ou déclaration introuvable")
 )
 
 // detached returns a context that survives the cancellation of ctx.
@@ -86,13 +89,15 @@ type SelectionRepository interface {
 // caller was superseded and must discard its result without applying it.
 type GenerationRepository interface {
 	GetSarGenerationJob(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.SarGenerationJob, error)
+	// SetSarGenerationJobStatus is a guarded transition (pending|running ->
+	// running|done|failed); false means the job was already finished.
 	SetSarGenerationJobStatus(ctx context.Context, exec repositories.Executor, id uuid.UUID,
-		status models.SarJobStatus, errMsg string) error
+		status models.SarJobStatus, errMsg string) (bool, error)
 	TouchSarGenerationJob(ctx context.Context, exec repositories.Executor, id uuid.UUID) error
 	CreateSarGenerationTasks(ctx context.Context, exec repositories.Executor, tasks []models.SarGenerationTask) error
 	ListSarGenerationTasks(ctx context.Context, exec repositories.Executor, jobId uuid.UUID) ([]models.SarGenerationTask, error)
 	ClaimSarGenerationTask(ctx context.Context, exec repositories.Executor, id uuid.UUID,
-		staleBefore time.Time) (attempt int, ok bool, err error)
+		staleAfter time.Duration) (attempt int, ok bool, err error)
 	CompleteSarGenerationTask(ctx context.Context, exec repositories.Executor, id uuid.UUID,
 		attempt int, output, trace []byte) (bool, error)
 	FailSarGenerationTask(ctx context.Context, exec repositories.Executor, id uuid.UUID,
@@ -130,11 +135,10 @@ type Deps struct {
 	FormatGetter func(core.FormatKey) (core.Format, bool)
 	// Parallelism is SAR_GENERATION_PARALLELISM (<=0 -> DefaultParallelism).
 	Parallelism int
-	// StaleAfter: a running task started longer ago is presumed dead and can
-	// be claimed again (2 x SAR_GENERATION_TIMEOUT in production).
+	// StaleAfter: a running task started longer ago (database clock) is
+	// presumed dead and can be claimed again (2 x SAR_GENERATION_TIMEOUT in
+	// production).
 	StaleAfter time.Duration
-	// Now is the clock (nil -> time.Now).
-	Now func() time.Time
 }
 
 // Orchestrator runs generation jobs. All reads use the declaration's
@@ -151,7 +155,6 @@ type Orchestrator struct {
 	formatGetter       func(core.FormatKey) (core.Format, bool)
 	parallelism        int
 	staleAfter         time.Duration
-	now                func() time.Time
 }
 
 func NewOrchestrator(d Deps) *Orchestrator {
@@ -167,16 +170,12 @@ func NewOrchestrator(d Deps) *Orchestrator {
 		formatGetter:       d.FormatGetter,
 		parallelism:        d.Parallelism,
 		staleAfter:         d.StaleAfter,
-		now:                d.Now,
 	}
 	if o.parallelism <= 0 {
 		o.parallelism = DefaultParallelism
 	}
 	if o.staleAfter <= 0 {
 		o.staleAfter = 2 * DefaultTimeout
-	}
-	if o.now == nil {
-		o.now = time.Now
 	}
 	return o
 }
@@ -191,29 +190,41 @@ func NewOrchestrator(d Deps) *Orchestrator {
 // paths and option fills with ApplyResult.Resolved/Rewrite, persist questions
 // without duplicates (same paths and text, open or closed), save the document
 // with the version read, CompleteSarGenerationTask(attempt); conflicts and
-// rejections stay in the task output. Compute (Origin=OriginComputed,
-// OverwriteNonManual, SkipMaxItems, RemoveItems first) only when no fill task
-// remains. Review tasks write nothing and replace the open review_finding
-// questions with their Findings. If Complete/Fail report false (superseded),
+// rejections stay in the task output. Question paths are kept only within the
+// task's allowed prefixes (and resolved); option fills only within the kept
+// paths. A task of kind core.TaskKindCompute runs without the runner: Compute
+// (Origin=OriginComputed, OverwriteNonManual, SkipMaxItems, RemoveItems first)
+// is applied in one transaction. When the plan never contained such a task,
+// the same Compute runs once at the end of a generation job. Review tasks
+// write nothing and replace the open review_finding questions with their
+// Findings; a review job only runs review specs. If Complete/Fail report false (superseded),
 // the result is discarded and nothing is applied. Before launching the tasks
 // of a step, every PromptPath must exist in Prompts, else the job is set
 // failed with "prompt manquant : <chemin>". A technical task error ->
 // FailSarGenerationTask, other running tasks finish, then RunJob returns the
 // error (River retries); a models.LLMRateLimitedError must stay detectable
-// with errors.Is. Heartbeat: TouchSarGenerationJob between tasks. On success
-// the job is set done.
+// with errors.Is. The job is set running at the start (pending or running ->
+// running, bumping updated_at) and heartbeats (TouchSarGenerationJob) after
+// each task. On success the job is set done.
 func (o *Orchestrator) RunJob(ctx context.Context, jobId uuid.UUID) error {
 	exec := o.executorFactory.NewExecutor()
 	job, err := o.generation.GetSarGenerationJob(ctx, exec, jobId)
 	if err != nil {
-		return errors.Wrap(err, "cannot read generation job")
+		return markGone(errors.Wrap(err, "cannot read generation job"))
 	}
 	if job.Status == models.SarJobStatusDone || job.Status == models.SarJobStatusFailed {
 		return nil
 	}
+	ok, err := o.generation.SetSarGenerationJobStatus(ctx, exec, jobId, models.SarJobStatusRunning, "")
+	if err != nil {
+		return errors.Wrap(err, "cannot mark job running")
+	}
+	if !ok {
+		return nil // finished in the meantime
+	}
 	decl, err := o.declarations.GetSarDeclaration(ctx, exec, job.DeclarationId)
 	if err != nil {
-		return errors.Wrap(err, "cannot read declaration")
+		return markGone(errors.Wrap(err, "cannot read declaration"))
 	}
 	key, err := core.ParseFormatKey(decl.FormatKey)
 	if err != nil {
@@ -237,6 +248,13 @@ func (o *Orchestrator) RunJob(ctx context.Context, jobId uuid.UUID) error {
 		selection: selection, dataModel: dataModel,
 	}
 	return run.loop(ctx)
+}
+
+func markGone(err error) error {
+	if errors.Is(err, models.NotFoundError) {
+		return errors.Mark(err, ErrJobGone)
+	}
+	return err
 }
 
 // jobRun is the state of one RunJob call.
@@ -283,6 +301,10 @@ func (r *jobRun) loop(ctx context.Context) error {
 			Selection: r.selection, Done: done, Issues: r.format.Validate(doc),
 		})
 
+		if r.job.Kind == models.SarJobKindReview {
+			specs = r.reviewSpecsOnly(ctx, specs)
+		}
+
 		// Create the planned tasks that do not exist yet (by input_hash).
 		known := map[string]bool{}
 		for _, t := range tasks {
@@ -325,7 +347,9 @@ func (r *jobRun) loop(ctx context.Context) error {
 			if len(fresh) > 0 {
 				continue
 			}
-			return r.finish(ctx)
+			return r.finish(ctx, slices.ContainsFunc(tasks, func(t models.SarGenerationTask) bool {
+				return t.Kind == core.TaskKindCompute
+			}))
 		}
 
 		progress, err := r.runWave(ctx, ready)
@@ -338,6 +362,21 @@ func (r *jobRun) loop(ctx context.Context) error {
 	}
 }
 
+// reviewSpecsOnly drops, with a warning, the non-review specs planned for a
+// review job: a review never writes the document.
+func (r *jobRun) reviewSpecsOnly(ctx context.Context, specs []core.TaskSpec) []core.TaskSpec {
+	kept := specs[:0:0]
+	for _, s := range specs {
+		if s.Kind != core.TaskKindReview {
+			utils.LoggerFromContext(ctx).WarnContext(ctx, "sar generation: non-review task refused in a review job",
+				"job_id", r.job.Id, "kind", s.Kind, "target", string(s.TargetPath))
+			continue
+		}
+		kept = append(kept, s)
+	}
+	return kept
+}
+
 // checkPrompt fails the job when the prompt of a spec does not exist.
 func (r *jobRun) checkPrompt(ctx context.Context, s core.TaskSpec) error {
 	if s.PromptPath == "" || r.o.prompts.Exists(s.PromptPath) {
@@ -346,7 +385,7 @@ func (r *jobRun) checkPrompt(ctx context.Context, s core.TaskSpec) error {
 	msg := "prompt manquant : " + s.PromptPath
 	dctx, cancel := detached(ctx)
 	defer cancel()
-	if err := r.o.generation.SetSarGenerationJobStatus(dctx, r.o.executorFactory.NewExecutor(),
+	if _, err := r.o.generation.SetSarGenerationJobStatus(dctx, r.o.executorFactory.NewExecutor(),
 		r.job.Id, models.SarJobStatusFailed, msg); err != nil {
 		return errors.Wrap(err, "cannot fail job")
 	}
@@ -452,13 +491,14 @@ func (r *jobRun) runWave(ctx context.Context, ready []readyTask) (bool, error) {
 func (r *jobRun) runTask(ctx context.Context, rt readyTask) (claimed bool, err error) {
 	o := r.o
 	exec := o.executorFactory.NewExecutor()
-	attempt, ok, err := o.generation.ClaimSarGenerationTask(ctx, exec, rt.task.Id, o.now().Add(-o.staleAfter))
+	attempt, ok, err := o.generation.ClaimSarGenerationTask(ctx, exec, rt.task.Id, o.staleAfter)
 	if err != nil {
 		return false, errors.Wrap(err, "cannot claim task")
 	}
 	if !ok {
 		return false, nil
 	}
+	claimed = true
 	fail := func(cause error, trace []byte) error {
 		// Detached: on a timeout or shutdown ctx is done, and the task must
 		// still end up failed (claimable) rather than stuck running.
@@ -476,34 +516,45 @@ func (r *jobRun) runTask(ctx context.Context, rt readyTask) (claimed bool, err e
 		}
 	}()
 
-	decl, err := o.declarations.GetSarDeclaration(ctx, exec, r.declId)
-	if err != nil {
-		return true, fail(err, nil)
+	var (
+		out        core.TaskOutput
+		superseded bool
+	)
+	apply := func(tx repositories.Transaction) error {
+		var err error
+		if rt.spec.Kind == core.TaskKindCompute {
+			superseded, err = r.applyCompute(ctx, tx, rt, attempt)
+		} else {
+			superseded, err = r.applyOutput(ctx, tx, rt, attempt, out)
+		}
+		return err
 	}
-	doc, err := decodeDocument(decl.Document)
-	if err != nil {
-		return true, fail(err, nil)
-	}
-	tc := core.ToolContext{
-		OrgId: r.orgId, DeclarationId: r.declId, TaskId: rt.task.Id, Format: r.format,
-		Doc: doc.Clone(), Selection: r.selection, DataModel: r.dataModel,
-	}
-	task := rt.task
-	task.Attempts = attempt
-	out, runErr := o.runner.Run(ctx, tc, task, rt.spec)
-	if runErr != nil {
-		return true, fail(runErr, out.Trace)
+	if rt.spec.Kind != core.TaskKindCompute {
+		decl, err := o.declarations.GetSarDeclaration(ctx, exec, r.declId)
+		if err != nil {
+			return true, fail(err, nil)
+		}
+		doc, err := decodeDocument(decl.Document)
+		if err != nil {
+			return true, fail(err, nil)
+		}
+		tc := core.ToolContext{
+			OrgId: r.orgId, DeclarationId: r.declId, TaskId: rt.task.Id, Format: r.format,
+			Doc: doc.Clone(), Selection: r.selection, DataModel: r.dataModel,
+		}
+		task := rt.task
+		task.Attempts = attempt
+		var runErr error
+		out, runErr = o.runner.Run(ctx, tc, task, rt.spec)
+		if runErr != nil {
+			return true, fail(runErr, out.Trace)
+		}
 	}
 
-	superseded := false
 	applyErr := func() error {
 		r.applyMu.Lock()
 		defer r.applyMu.Unlock()
-		return o.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-			var err error
-			superseded, err = r.applyOutput(ctx, tx, rt, attempt, out)
-			return err
-		})
+		return o.transactionFactory.Transaction(ctx, apply)
 	}()
 	if applyErr != nil {
 		return true, fail(applyErr, out.Trace)
@@ -528,6 +579,9 @@ type taskResult struct {
 	Questions int            `json:"questions"`
 	Findings  int            `json:"findings"`
 }
+
+// CodeUnresolvedPath marks a question path still holding a provisional key.
+const CodeUnresolvedPath = "unresolved_path"
 
 type rejectedView struct {
 	Path    core.Path `json:"path"`
@@ -590,17 +644,7 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 			AllowedPrefixes: allowed, Overwrite: core.OverwriteNonManual,
 		})
 		changed = changed || len(res.Applied) > 0
-		result.Applied = res.Applied
-		for _, rj := range res.Rejected {
-			result.Rejected = append(result.Rejected, rejectedView{
-				Path: rj.Fill.Path, Code: rj.Issue.Code, Message: rj.Issue.Message,
-			})
-		}
-		for _, c := range res.Conflicts {
-			result.Conflicts = append(result.Conflicts, conflictView{
-				Path: c.Path, Current: c.Before, Value: c.After.Value, Fill: c.After,
-			})
-		}
+		result = resultFromApply(res)
 
 		existing, err := o.generation.ListSarQuestions(ctx, tx, r.declId, "")
 		if err != nil {
@@ -613,9 +657,23 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 			}
 		}
 		for _, d := range out.Questions {
-			paths := make([]string, len(d.Paths))
-			for i, p := range d.Paths {
-				paths[i] = string(res.Rewrite(p))
+			// The model's paths are not trusted either: resolved, within the
+			// task's part and fully created, else dropped from the question.
+			paths := []string{}
+			kept := make([]core.Path, 0, len(d.Paths))
+			for _, p := range d.Paths {
+				rp := res.Rewrite(p)
+				switch {
+				case rp.HasProvisionalKey():
+					result.Rejected = append(result.Rejected, rejectedView{
+						Path: rp, Code: CodeUnresolvedPath, Message: "question : chemin vers un élément non créé"})
+				case !core.PathAllowed(rp, allowed):
+					result.Rejected = append(result.Rejected, rejectedView{
+						Path: rp, Code: core.CodeOutOfScope, Message: "question : chemin hors de la partie confiée à cette tâche"})
+				default:
+					kept = append(kept, rp)
+					paths = append(paths, string(rp))
+				}
 			}
 			k := questionKey(paths, d.Text)
 			if seen[k] {
@@ -624,11 +682,18 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 			seen[k] = true
 			opts := make([]core.QuestionOption, len(d.Options))
 			for i, op := range d.Options {
-				op.Fills = append([]core.Fill(nil), op.Fills...)
-				for j := range op.Fills {
-					op.Fills[j].Path = res.Rewrite(op.Fills[j].Path)
+				op.Fills = nil
+				for _, f := range d.Options[i].Fills {
+					f.Path = res.Rewrite(f.Path)
+					if f.Path.HasProvisionalKey() || !core.PathAllowed(f.Path, kept) {
+						result.Rejected = append(result.Rejected, rejectedView{
+							Path: f.Path, Code: core.CodeOutOfScope,
+							Message: "option de question : valeur hors des champs de la question"})
+						continue
+					}
 					// Like the task's own fills: the model never picks the origin.
-					op.Fills[j].Origin, op.Fills[j].TaskID = core.OriginLLM, &taskId
+					f.Origin, f.TaskID = core.OriginLLM, &taskId
+					op.Fills = append(op.Fills, f)
 				}
 				opts[i] = op
 			}
@@ -694,6 +759,21 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 	return false, nil
 }
 
+func resultFromApply(res core.ApplyResult) taskResult {
+	result := taskResult{Applied: res.Applied}
+	for _, rj := range res.Rejected {
+		result.Rejected = append(result.Rejected, rejectedView{
+			Path: rj.Fill.Path, Code: rj.Issue.Code, Message: rj.Issue.Message,
+		})
+	}
+	for _, c := range res.Conflicts {
+		result.Conflicts = append(result.Conflicts, conflictView{
+			Path: c.Path, Current: c.Before, Value: c.After.Value, Fill: c.After,
+		})
+	}
+	return result
+}
+
 func (r *jobRun) saveDocument(ctx context.Context, exec repositories.Executor, decl models.SarDeclaration, doc *core.Document) error {
 	raw, err := json.Marshal(doc)
 	if err != nil {
@@ -706,11 +786,62 @@ func (r *jobRun) saveDocument(ctx context.Context, exec repositories.Executor, d
 	return nil
 }
 
-// finish runs Compute (generation jobs only; every fill task is done) and
-// marks the job done.
-func (r *jobRun) finish(ctx context.Context) error {
+// computeInto derives the computed fields into doc (RemoveItems first, then
+// the fills as OriginComputed, OverwriteNonManual, SkipMaxItems). changed
+// tells whether the document was modified.
+func (r *jobRun) computeInto(doc *core.Document) (res core.ApplyResult, changed bool) {
+	c := r.format.Compute(doc)
+	for _, p := range c.RemoveItems {
+		doc.RemoveItem(p)
+	}
+	fills := make([]core.Fill, len(c.Fills))
+	for i, f := range c.Fills {
+		f.Origin, f.TaskID = core.OriginComputed, nil
+		fills[i] = f
+	}
+	res = core.ApplyFills(r.format.Spec(), doc, fills, core.ApplyOptions{
+		Overwrite: core.OverwriteNonManual, SkipMaxItems: true,
+	})
+	return res, len(c.RemoveItems) > 0 || len(res.Applied) > 0
+}
+
+// applyCompute runs a compute task in tx (no runner): the declaration is read
+// FOR UPDATE, computed in memory, the task completed with the attempt guard,
+// then the document saved. superseded as in applyOutput.
+func (r *jobRun) applyCompute(ctx context.Context, tx repositories.Transaction, rt readyTask, attempt int,
+) (superseded bool, err error) {
 	o := r.o
-	if r.job.Kind != models.SarJobKindReview {
+	decl, err := o.declarations.GetSarDeclarationForUpdate(ctx, tx, r.declId)
+	if err != nil {
+		return false, errors.Wrap(err, "cannot lock declaration")
+	}
+	doc, err := decodeDocument(decl.Document)
+	if err != nil {
+		return false, err
+	}
+	res, changed := r.computeInto(doc)
+	rawOut, err := json.Marshal(resultFromApply(res))
+	if err != nil {
+		return false, errors.Wrap(err, "cannot encode task output")
+	}
+	ok, err := o.generation.CompleteSarGenerationTask(ctx, tx, rt.task.Id, attempt, rawOut, nil)
+	if err != nil {
+		return false, errors.Wrap(err, "cannot complete task")
+	}
+	if !ok {
+		return true, nil
+	}
+	if changed {
+		return false, r.saveDocument(ctx, tx, decl, doc)
+	}
+	return false, nil
+}
+
+// finish runs Compute once (generation jobs whose plan contained no compute
+// task; every fill task is done) and marks the job done.
+func (r *jobRun) finish(ctx context.Context, computePlanned bool) error {
+	o := r.o
+	if r.job.Kind != models.SarJobKindReview && !computePlanned {
 		err := func() error {
 			r.applyMu.Lock()
 			defer r.applyMu.Unlock()
@@ -723,24 +854,13 @@ func (r *jobRun) finish(ctx context.Context) error {
 				if err != nil {
 					return err
 				}
-				c := r.format.Compute(doc)
-				for _, p := range c.RemoveItems {
-					doc.RemoveItem(p)
-				}
-				fills := make([]core.Fill, len(c.Fills))
-				for i, f := range c.Fills {
-					f.Origin, f.TaskID = core.OriginComputed, nil
-					fills[i] = f
-				}
-				res := core.ApplyFills(r.format.Spec(), doc, fills, core.ApplyOptions{
-					Overwrite: core.OverwriteNonManual, SkipMaxItems: true,
-				})
+				res, changed := r.computeInto(doc)
 				if len(res.Rejected) > 0 || len(res.Conflicts) > 0 {
 					utils.LoggerFromContext(ctx).WarnContext(ctx, "sar generation: computed fills not applied",
 						"job_id", r.job.Id, "rejected", len(res.Rejected), "conflicts", len(res.Conflicts),
 						"first_rejected", firstRejected(res))
 				}
-				if len(c.RemoveItems) == 0 && len(res.Applied) == 0 {
+				if !changed {
 					return nil
 				}
 				return r.saveDocument(ctx, tx, decl, doc)
@@ -753,7 +873,8 @@ func (r *jobRun) finish(ctx context.Context) error {
 	exec := o.executorFactory.NewExecutor()
 	dctx, cancel := detached(ctx)
 	defer cancel()
-	if err := o.generation.SetSarGenerationJobStatus(dctx, exec, r.job.Id, models.SarJobStatusDone, ""); err != nil {
+	// false: the job was finished meanwhile (nothing left to do).
+	if _, err := o.generation.SetSarGenerationJobStatus(dctx, exec, r.job.Id, models.SarJobStatusDone, ""); err != nil {
 		return errors.Wrap(err, "cannot complete job")
 	}
 	return nil

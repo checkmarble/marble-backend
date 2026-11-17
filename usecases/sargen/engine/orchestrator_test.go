@@ -487,9 +487,9 @@ func TestWorker_LastAttemptMarksJobFailed(t *testing.T) {
 	_, f := newTestOrchestrator(t)
 	w := NewWorker(workerRunnerStub{err: errProvider}, f.Repo, fakeExecFactory{}, time.Minute)
 
-	// Not the last attempt: River retries, the job is left running.
+	// Not the last attempt: River retries, the job is left as it was.
 	require.Error(t, w.Work(ctx, workerJob(f, 1)))
-	require.Equal(t, models.SarJobStatusRunning, jobOf(t, f).Status)
+	require.Equal(t, models.SarJobStatusPending, jobOf(t, f).Status)
 
 	// Last attempt: the job is failed before the error is returned.
 	require.Error(t, w.Work(ctx, workerJob(f, models.SarGenerationMaxAttempts)))

@@ -218,8 +218,9 @@ func TestBuildTodo_QuestionsFindingsAndComputedToConfirm(t *testing.T) {
 			strings.Contains(item.Message, "valeur calculée à confirmer") &&
 			containsPath(item.Paths, "operations.montantTotal")
 	}
-	_, ok = findTodo(st.Todo, computed)
+	item, ok = findTodo(st.Todo, computed)
 	assert.True(t, ok, "an unconfirmed computed value must be a review entry")
+	assert.Equal(t, TodoCodeComputedToConfirm, item.Code, "stable code for clients")
 
 	genEditDoc(t, f, declId, func(doc *core.Document) {
 		v := doc.Values["operations.montantTotal"]

@@ -41,11 +41,14 @@ type SarGenerationRepository interface {
 	GetSarGenerationJob(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.SarGenerationJob, error)
 	// ListSarGenerationJobs returns the jobs of a declaration, newest first.
 	ListSarGenerationJobs(ctx context.Context, exec repositories.Executor, declarationId uuid.UUID) ([]models.SarGenerationJob, error)
-	// SetSarGenerationJobStatus also bumps updated_at; it may return
-	// models.ErrSarJobAlreadyActive when moving a job back to pending.
-	SetSarGenerationJobStatus(ctx context.Context, exec repositories.Executor, id uuid.UUID,
-		status models.SarJobStatus, errMsg string) error
-	ListSarGenerationTasks(ctx context.Context, exec repositories.Executor, jobId uuid.UUID) ([]models.SarGenerationTask, error)
+	// ResumeSarGenerationJob moves a job back to pending (updated_at bumped)
+	// only from failed, or from pending/running untouched for longer than
+	// staleAfter (database clock); false = not resumable. It may return
+	// models.ErrSarJobAlreadyActive.
+	ResumeSarGenerationJob(ctx context.Context, exec repositories.Executor, id uuid.UUID,
+		staleAfter time.Duration) (bool, error)
+	// ListSarGenerationTaskSummaries lists the tasks without input, output or trace.
+	ListSarGenerationTaskSummaries(ctx context.Context, exec repositories.Executor, jobId uuid.UUID) ([]models.SarGenerationTask, error)
 	ListSarQuestions(ctx context.Context, exec repositories.Executor, declarationId uuid.UUID, status string) ([]models.SarQuestion, error)
 	GetSarQuestion(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.SarQuestion, error)
 	CloseSarQuestions(ctx context.Context, exec repositories.Executor, ids []uuid.UUID, status string) error
@@ -105,9 +108,9 @@ type TaskSummary struct {
 // plans tasks in waves, so Total can grow while the job runs). LastError is the
 // job error, else the error of the most recently failed task, else "".
 //
-// Attempt / MaxAttempts: no River reader exists, so Attempt is the highest
-// task attempt count of the job (0 before any task started) and MaxAttempts is
-// models.SarGenerationMaxAttempts (the River MaxAttempts fixed at insert time).
+// Attempt is the River attempt stored on the job by the worker (0 before the
+// worker started it); MaxAttempts is models.SarGenerationMaxAttempts (the
+// River MaxAttempts fixed at insert time).
 type JobState struct {
 	Job         models.SarGenerationJob
 	Tasks       []TaskSummary
@@ -273,9 +276,13 @@ func hasDoneGenerate(jobs []models.SarGenerationJob) bool {
 	})
 }
 
-// isStale: running with no update for more than 2 x the job timeout.
+// staleAfter: an active job with no update for this long is presumed lost.
+func (uc *Usecase) staleAfter() time.Duration { return 2 * uc.jobTimeout }
+
+// isStale: pending (River job lost before any worker took it) or running
+// (worker dead) with no update for more than 2 x the job timeout.
 func (uc *Usecase) isStale(j models.SarGenerationJob) bool {
-	return j.Status == models.SarJobStatusRunning && uc.now().Sub(j.UpdatedAt) > 2*uc.jobTimeout
+	return isActiveJob(j.Status) && uc.now().Sub(j.UpdatedAt) > uc.staleAfter()
 }
 
 // GetJob returns the progress of a job. Access is checked through the job's
@@ -289,11 +296,11 @@ func (uc *Usecase) GetJob(ctx context.Context, jobId uuid.UUID) (JobState, error
 	if _, err := uc.loadDeclaration(ctx, exec, job.DeclarationId); err != nil {
 		return JobState{}, err
 	}
-	tasks, err := uc.generation.ListSarGenerationTasks(ctx, exec, jobId)
+	tasks, err := uc.generation.ListSarGenerationTaskSummaries(ctx, exec, jobId)
 	if err != nil {
 		return JobState{}, err
 	}
-	st := JobState{Job: job, Total: len(tasks), MaxAttempts: models.SarGenerationMaxAttempts}
+	st := JobState{Job: job, Total: len(tasks), Attempt: job.Attempt, MaxAttempts: models.SarGenerationMaxAttempts}
 	lastTaskErr := ""
 	for _, t := range tasks {
 		st.Tasks = append(st.Tasks, TaskSummary{
@@ -302,9 +309,6 @@ func (uc *Usecase) GetJob(ctx context.Context, jobId uuid.UUID) (JobState, error
 		})
 		if t.Status == models.SarJobStatusDone {
 			st.Done++
-		}
-		if t.Attempts > st.Attempt {
-			st.Attempt = t.Attempts
 		}
 		if t.Status == models.SarJobStatusFailed && t.Error != "" {
 			lastTaskErr = t.Error
@@ -324,8 +328,9 @@ func (uc *Usecase) GetJob(ctx context.Context, jobId uuid.UUID) (JobState, error
 }
 
 // ResumeJob puts a job back to pending and re-enqueues it (same transaction),
-// only when it is `failed`, or `running` with no update (job updated_at) for
-// more than 2 x the job timeout (Deps.JobTimeout); otherwise 409. Same AI
+// only when it is `failed`, or `pending`/`running` with no update (job
+// updated_at) for more than 2 x the job timeout (Deps.JobTimeout); otherwise
+// 409. The transition is guarded again in SQL (database clock). Same AI
 // access check as StartGeneration. A failed job whose declaration already has
 // another active job conflicts (models.ErrSarJobAlreadyActive).
 func (uc *Usecase) ResumeJob(ctx context.Context, jobId uuid.UUID) (models.SarGenerationJob, error) {
@@ -366,12 +371,16 @@ func (uc *Usecase) ResumeJob(ctx context.Context, jobId uuid.UUID) (models.SarGe
 				return ErrAlreadyGenerated
 			}
 		}
-		// A stale running job may still have a live River job (e.g. a worker
-		// slowed beyond 2 x timeout): a second River job can then run. This is
-		// safe: task claims and completions are attempt-guarded, so a result is
+		// A stale job may still have a live River job (e.g. a worker slowed
+		// beyond 2 x timeout): a second River job can then run. This is safe:
+		// task claims and completions are attempt-guarded, so a result is
 		// never applied twice.
-		if err := uc.generation.SetSarGenerationJobStatus(ctx, tx, jobId, models.SarJobStatusPending, ""); err != nil {
+		ok, err := uc.generation.ResumeSarGenerationJob(ctx, tx, jobId, uc.staleAfter())
+		if err != nil {
 			return err
+		}
+		if !ok {
+			return errors.Wrap(models.ConflictError, "cette génération ne peut pas être relancée")
 		}
 		if err := uc.enqueuer.EnqueueSarGenerationTask(ctx, tx, locked.OrganizationId, jobId, locked.Id); err != nil {
 			return errors.Wrap(err, "cannot enqueue generation job")
