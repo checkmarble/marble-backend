@@ -66,6 +66,21 @@ func (repo *MarbleDbRepository) GetSarGenerationJob(
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptSarGenerationJob)
 }
 
+// ListSarGenerationJobs returns the jobs of a declaration, newest first.
+func (repo *MarbleDbRepository) ListSarGenerationJobs(
+	ctx context.Context, exec Executor, declarationId uuid.UUID,
+) ([]models.SarGenerationJob, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+	query := NewQueryBuilder().
+		Select(dbmodels.SarGenerationJobColumns...).
+		From(dbmodels.TABLE_SAR_GENERATION_JOBS).
+		Where(squirrel.Eq{"declaration_id": declarationId}).
+		OrderBy("created_at DESC", "id DESC")
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptSarGenerationJob)
+}
+
 // SetSarGenerationJobStatus updates status and error (empty = no error) and
 // bumps updated_at.
 func (repo *MarbleDbRepository) SetSarGenerationJobStatus(

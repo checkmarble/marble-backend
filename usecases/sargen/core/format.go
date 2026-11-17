@@ -47,3 +47,11 @@ type Format interface {
 	// Tools returns the LLM tools available for a task.
 	Tools(tc ToolContext) map[string]Tool
 }
+
+// SettingsRequirer is an optional capability of a Format: the organization
+// setting paths that must be filled before a generation can start, beyond what
+// the spec's cardinalities already imply (e.g. an optional group the format
+// nonetheless always needs). Formats that do not implement it add nothing.
+type SettingsRequirer interface {
+	RequiredSettings() []Path
+}

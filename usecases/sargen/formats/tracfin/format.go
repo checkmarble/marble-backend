@@ -79,6 +79,18 @@ func (f *format) ApplyStructured(string, *core.Document, json.RawMessage) error 
 func (f *format) Compute(*core.Document) core.ComputeResult   { return core.ComputeResult{} }
 func (f *format) Tools(core.ToolContext) map[string]core.Tool { return nil }
 
+// RequiredSettings lists the organization settings needed to generate a
+// declaration: the declarant contact is optional in the XSD but always needed
+// to file (core.SettingsRequirer).
+func (f *format) RequiredSettings() []core.Path {
+	return []core.Path{
+		"declarant.coordonnees.nom",
+		"declarant.coordonnees.prenom",
+		"declarant.coordonnees.tel",
+		"declarant.coordonnees.courriel",
+	}
+}
+
 func (f *format) WriteXML(doc *core.Document, w io.Writer) error {
 	return errors.Wrap(core.WriteXML(f.spec, doc, rootElement, w), "export TRACFIN")
 }

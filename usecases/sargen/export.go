@@ -47,6 +47,9 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 		if err := uc.checkDeclarationAccess(ctx, tx, d); err != nil {
 			return err
 		}
+		if err := uc.requireNoActiveJob(ctx, tx, id); err != nil {
+			return err
+		}
 		if d.Version != version {
 			return models.ErrSarVersionConflict
 		}
