@@ -101,15 +101,16 @@ func guarded(call func(context.Context, json.RawMessage) string) func(context.Co
 	}
 }
 
+// ObjectId is a flexString: a model may send a numeric identifier as a number.
 type readObjectArgs struct {
-	Table    string `json:"table" jsonschema:"required,description=Nom de la table de l'objet"`
-	ObjectId string `json:"object_id" jsonschema:"required,description=Identifiant de l'objet"`
+	Table    string     `json:"table" jsonschema:"required,description=Nom de la table de l'objet"`
+	ObjectId flexString `json:"object_id" jsonschema:"required,description=Identifiant de l'objet"`
 }
 
 type followLinkArgs struct {
-	Table    string `json:"table" jsonschema:"required,description=Table de l'objet de départ"`
-	ObjectId string `json:"object_id" jsonschema:"required,description=Identifiant de l'objet de départ"`
-	Link     string `json:"link" jsonschema:"required,description=Nom du lien à suivre (voir data_model)"`
+	Table    string     `json:"table" jsonschema:"required,description=Table de l'objet de départ"`
+	ObjectId flexString `json:"object_id" jsonschema:"required,description=Identifiant de l'objet de départ"`
+	Link     string     `json:"link" jsonschema:"required,description=Nom du lien à suivre (voir data_model)"`
 	// ChildTable disambiguates a to-many link name shared by several tables.
 	ChildTable string `json:"child_table,omitempty" jsonschema:"description=Table enfant du lien (liens vers plusieurs : à préciser si le nom est ambigu)"`
 }
@@ -120,17 +121,19 @@ type fieldSpecArgs struct {
 
 type searchCodeArgs struct {
 	List  string `json:"list" jsonschema:"required,description=Nom de la liste de codes (voir field_spec)"`
-	Query string `json:"query" jsonschema:"description=Texte recherché dans le code ou le libellé"`
-	Limit int    `json:"limit" jsonschema:"description=Nombre maximal de résultats (20 par défaut et au plus)"`
+	Query string `json:"query,omitempty" jsonschema:"description=Texte recherché dans le code ou le libellé (facultatif)"`
+	Limit int    `json:"limit,omitempty" jsonschema:"description=Nombre maximal de résultats (20 par défaut et au plus ; facultatif)"`
 }
 
 type dataModelArgs struct {
 	Table string `json:"table" jsonschema:"required,description=Nom de la table"`
 }
 
+// Value is a flexString: typed string in the schema, a number or a boolean sent
+// by the model is read as its text.
 type validateFill struct {
-	Path  string          `json:"path" jsonschema:"required,description=Chemin du champ"`
-	Value json.RawMessage `json:"value" jsonschema:"description=Valeur candidate (texte)"`
+	Path  string     `json:"path" jsonschema:"required,description=Chemin du champ"`
+	Value flexString `json:"value,omitempty" jsonschema:"description=Valeur candidate (texte)"`
 }
 
 type validateArgs struct {
@@ -180,7 +183,7 @@ func readObject(sc scope, args json.RawMessage) string {
 	if msg, ok := parseArgs(args, &a); !ok {
 		return msg
 	}
-	o, ok := sc.get(a.Table, a.ObjectId)
+	o, ok := sc.get(a.Table, string(a.ObjectId))
 	if !ok {
 		return toolError(outOfScopeMessage)
 	}
@@ -202,7 +205,7 @@ func followLink(sc scope, dm models.DataModel, args json.RawMessage) string {
 	if msg, ok := parseArgs(args, &a); !ok {
 		return msg
 	}
-	src, ok := sc.get(a.Table, a.ObjectId)
+	src, ok := sc.get(a.Table, string(a.ObjectId))
 	if !ok {
 		return toolError(outOfScopeMessage)
 	}
@@ -258,7 +261,7 @@ func followLink(sc scope, dm models.DataModel, args json.RawMessage) string {
 	}
 
 	result := map[string]any{
-		"from":    refOf(a.Table, a.ObjectId),
+		"from":    refOf(a.Table, string(a.ObjectId)),
 		"link":    a.Link,
 		"objects": entries,
 		"total":   total,
@@ -530,22 +533,9 @@ func validateFills(f core.Format, args json.RawMessage) string {
 	}
 	issues := []core.Issue{}
 	for _, fill := range a.Fills {
-		if issue := core.ValidateValue(f.Spec(), core.Path(fill.Path), rawValueText(fill.Value)); issue != nil {
+		if issue := core.ValidateValue(f.Spec(), core.Path(fill.Path), string(fill.Value)); issue != nil {
 			issues = append(issues, *issue)
 		}
 	}
 	return toolJSON(map[string]any{"issues": issues})
-}
-
-// rawValueText turns a JSON value into the raw text the document stores.
-func rawValueText(v json.RawMessage) string {
-	trimmed := strings.TrimSpace(string(v))
-	if trimmed == "" || trimmed == "null" {
-		return ""
-	}
-	var s string
-	if err := json.Unmarshal(v, &s); err == nil {
-		return s
-	}
-	return trimmed
 }

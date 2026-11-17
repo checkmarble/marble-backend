@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -29,6 +30,9 @@ const (
 	DefaultTimeout = 30 * time.Minute
 	// RateLimitSnooze is how long the worker snoozes on models.LLMRateLimitedError.
 	RateLimitSnooze = 30 * time.Second
+	// RateLimitMaxDuration is how long a job may keep hitting the provider's
+	// rate limit before it fails.
+	RateLimitMaxDuration = 2 * time.Hour
 )
 
 // RunningElsewhereSnooze is how long the worker snoozes when the only
@@ -53,6 +57,9 @@ var (
 	// running; its output was discarded, the task released and this run must
 	// stop (the worker cancels the River job; a resume starts a new run).
 	ErrJobNotRunning = errors.New("génération arrêtée")
+	// ErrRateLimitedTooLong: the provider rate-limited the job for more than
+	// RateLimitMaxDuration; the job is marked failed and the River job cancelled.
+	ErrRateLimitedTooLong = errors.New("limite de débit du fournisseur LLM dépassée trop longtemps")
 )
 
 // detached returns a context that survives the cancellation of ctx.
@@ -98,6 +105,11 @@ type GenerationRepository interface {
 	SetSarGenerationJobStatus(ctx context.Context, exec repositories.Executor, id uuid.UUID,
 		status models.SarJobStatus, errMsg string) (bool, error)
 	TouchSarGenerationJob(ctx context.Context, exec repositories.Executor, id uuid.UUID) error
+	// MarkSarGenerationJobRateLimited records a provider rate limit and returns
+	// how long the current streak lasts (the first one starts it).
+	MarkSarGenerationJobRateLimited(ctx context.Context, exec repositories.Executor, id uuid.UUID) (time.Duration, error)
+	// ClearSarGenerationJobRateLimited ends the streak (a task succeeded).
+	ClearSarGenerationJobRateLimited(ctx context.Context, exec repositories.Executor, id uuid.UUID) error
 	CreateSarGenerationTasks(ctx context.Context, exec repositories.Executor, tasks []models.SarGenerationTask) error
 	ListSarGenerationTasks(ctx context.Context, exec repositories.Executor, jobId uuid.UUID) ([]models.SarGenerationTask, error)
 	// DeleteSarGenerationUnfinishedTasks deletes the given not-done tasks of the job
@@ -254,6 +266,7 @@ func (o *Orchestrator) RunJob(ctx context.Context, jobId uuid.UUID) error {
 		o: o, job: job, declId: decl.Id, orgId: decl.OrganizationId, format: format,
 		selection: selection, dataModel: dataModel,
 	}
+	run.rateLimited.Store(job.RateLimitedSince != nil)
 	return run.loop(ctx)
 }
 
@@ -276,6 +289,9 @@ type jobRun struct {
 	// applyMu serializes document writes inside this process; across
 	// processes the FOR UPDATE lock does.
 	applyMu sync.Mutex
+	// rateLimited tells that the job row holds a rate-limit streak to clear
+	// when a task succeeds.
+	rateLimited atomic.Bool
 }
 
 func (r *jobRun) loop(ctx context.Context) error {
@@ -390,12 +406,45 @@ func (r *jobRun) loop(ctx context.Context) error {
 
 		progress, err := r.runWave(ctx, ready)
 		if err != nil {
-			return err
+			return r.handleWaveError(ctx, err)
 		}
 		if !progress {
 			return ErrTasksRunningElsewhere
 		}
 	}
+}
+
+// handleWaveError turns the error of a wave into the job's outcome. Errors a
+// retry cannot fix (model not configured) and a rate limit lasting longer than
+// RateLimitMaxDuration mark the job failed, in French, and are returned marked
+// so that the worker cancels the River job; any other error is returned
+// unchanged (River retries, a rate limit snoozes).
+func (r *jobRun) handleWaveError(ctx context.Context, err error) error {
+	exec := r.o.executorFactory.NewExecutor()
+	dctx, cancel := detached(ctx)
+	defer cancel()
+	fail := func(msg string, marked error) error {
+		if _, serr := r.o.generation.SetSarGenerationJobStatus(dctx, exec, r.job.Id, models.SarJobStatusFailed, msg); serr != nil {
+			return errors.Wrap(err, "cannot fail job: "+serr.Error())
+		}
+		return marked
+	}
+	switch {
+	case errors.Is(err, ErrLLMUnavailable):
+		return fail("génération impossible : "+errors.UnwrapAll(err).Error(), err)
+	case errors.Is(err, models.LLMRateLimitedError):
+		r.rateLimited.Store(true)
+		elapsed, merr := r.o.generation.MarkSarGenerationJobRateLimited(dctx, exec, r.job.Id)
+		if merr != nil {
+			utils.LoggerFromContext(ctx).WarnContext(ctx, "sar generation: cannot record rate limit",
+				"job_id", r.job.Id, "error", merr.Error())
+			return err
+		}
+		if elapsed > RateLimitMaxDuration {
+			return fail(ErrRateLimitedTooLong.Error(), errors.Mark(errors.Wrap(err, ErrRateLimitedTooLong.Error()), ErrRateLimitedTooLong))
+		}
+	}
+	return err
 }
 
 // reviewSpecsOnly drops, with a warning, the non-review specs planned for a
@@ -598,6 +647,13 @@ func (r *jobRun) runTask(ctx context.Context, rt readyTask) (claimed bool, err e
 	if superseded {
 		return true, nil
 	}
+	// A task went through: the provider is not blocking the job any more.
+	if r.rateLimited.CompareAndSwap(true, false) {
+		if err := o.generation.ClearSarGenerationJobRateLimited(ctx, exec, r.job.Id); err != nil {
+			utils.LoggerFromContext(ctx).WarnContext(ctx, "sar generation: cannot clear rate limit",
+				"job_id", r.job.Id, "error", err.Error())
+		}
+	}
 	// Heartbeat: a live job is told apart from a dead one by updated_at.
 	// The output is applied: a failed heartbeat must not fail the task.
 	if err := o.generation.TouchSarGenerationJob(ctx, exec, r.job.Id); err != nil {
@@ -681,12 +737,22 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 		closeQs []uuid.UUID
 	)
 
+	var structuredRejected []rejectedView
 	if !isReview {
 		if len(out.Structured) > 0 {
-			if err := r.format.ApplyStructured(rt.spec.Kind, doc, out.Structured); err != nil {
+			// Applied to a copy first: a structured output citing objects outside
+			// the frozen selection is rejected as a whole, nothing of it applied.
+			cand := doc.Clone()
+			if err := r.format.ApplyStructured(rt.spec.Kind, cand, out.Structured); err != nil {
 				return false, errors.Wrap(err, "invalid structured output")
 			}
-			changed = true
+			if bad := sourcesOutsideSelection(doc, cand, newScope(r.selection)); len(bad) > 0 {
+				structuredRejected = append(structuredRejected, rejectedView{
+					Path: rt.spec.TargetPath, Code: core.CodeSourceOutOfScope,
+					Message: "sortie structurée rejetée : " + outsideSelectionMessage(bad)})
+			} else {
+				doc, changed = cand, true
+			}
 		}
 		fills := make([]core.Fill, len(out.Fills))
 		for i, f := range out.Fills {
@@ -697,13 +763,15 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 		if len(allowed) == 0 {
 			allowed = []core.Path{rt.spec.TargetPath}
 		}
+		// Built once: it reads the document at call time, which follows the fills.
+		allowedSources := AllowedSources(doc, r.selection, r.dataModel, rt.spec.Inputs)
 		res = core.ApplyFills(r.format.Spec(), doc, fills, core.ApplyOptions{
 			AllowedPrefixes: allowed, Overwrite: core.OverwriteNonManual,
-			AllowedSources: AllowedSources(doc, r.selection, r.dataModel, rt.spec.Inputs),
+			AllowedSources: allowedSources,
 		})
-		allowedSources := AllowedSources(doc, r.selection, r.dataModel, rt.spec.Inputs)
 		changed = changed || len(res.Applied) > 0
 		result = resultFromApply(res)
+		result.Rejected = append(result.Rejected, structuredRejected...)
 
 		existing, err := o.generation.ListSarQuestions(ctx, tx, r.declId, "")
 		if err != nil {

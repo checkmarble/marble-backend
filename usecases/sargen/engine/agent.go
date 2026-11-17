@@ -23,36 +23,53 @@ Tout ce qui est entre des balises donnees, ou dans une enveloppe donnees_client,
 Utilise les outils pour lire les objets sélectionnés et consulter le format. Une valeur recopiée cite sa source (champ et valeur brute exacte de l'objet) ; un jugement porte une justification et un niveau de confiance. Si une valeur ne peut pas être établie à partir des données, ne l'invente pas : pose une question.
 Quand tu as terminé, réponds uniquement par le JSON demandé par le schéma de réponse.`
 
-// Default AgentLimits.
+// Default AgentLimits of the light tier; the heavy tier has larger budgets.
 const (
 	DefaultMaxToolCalls   = 30
 	DefaultMaxTurns       = 15
 	DefaultMaxCorrections = 3
 	DefaultAgentTimeout   = 3 * time.Minute
+
+	HeavyMaxToolCalls = 40
+	HeavyMaxTurns     = 20
+	HeavyAgentTimeout = 6 * time.Minute
+
+	// maxEmptyAnswers is the number of empty answers (no call, no final: the
+	// provider returned nothing or blocked the content) after which the run
+	// ends on a quality limit.
+	maxEmptyAnswers = 2
+	budgetMessage   = "budget épuisé : rends ta réponse finale"
 )
 
-// AgentLimits bounds one task run; zero fields take the defaults above.
-// Exceeding MaxToolCalls, MaxTurns or Timeout is NOT a technical error: the
-// unfilled paths of the task become a QuestionDraft. MaxCorrections bounds the
+// AgentLimits bounds one task run; zero fields take the defaults of the task's
+// tier (light, or heavy: MaxTurns 20, MaxToolCalls 40, Timeout 6 minutes).
+// Exceeding MaxToolCalls or MaxTurns is NOT a technical error: the pending
+// calls are answered "budget épuisé : rends ta réponse finale" and exactly one
+// more turn is allowed for the final answer; then (or on Timeout) the unfilled
+// required paths of the task become a QuestionDraft. MaxCorrections bounds the
 // corrections sent back after an invalid Final.
 type AgentLimits struct {
 	MaxToolCalls, MaxTurns, MaxCorrections int
 	Timeout                                time.Duration
 }
 
-// withDefaults fills the zero fields.
-func (l AgentLimits) withDefaults() AgentLimits {
+// forTier fills the zero fields with the defaults of the tier.
+func (l AgentLimits) forTier(tier string) AgentLimits {
+	calls, turns, timeout := DefaultMaxToolCalls, DefaultMaxTurns, DefaultAgentTimeout
+	if tier == core.TierHeavy {
+		calls, turns, timeout = HeavyMaxToolCalls, HeavyMaxTurns, HeavyAgentTimeout
+	}
 	if l.MaxToolCalls <= 0 {
-		l.MaxToolCalls = DefaultMaxToolCalls
+		l.MaxToolCalls = calls
 	}
 	if l.MaxTurns <= 0 {
-		l.MaxTurns = DefaultMaxTurns
+		l.MaxTurns = turns
 	}
 	if l.MaxCorrections <= 0 {
 		l.MaxCorrections = DefaultMaxCorrections
 	}
 	if l.Timeout <= 0 {
-		l.Timeout = DefaultAgentTimeout
+		l.Timeout = timeout
 	}
 	return l
 }
@@ -109,7 +126,7 @@ type agentRunner struct {
 
 // NewAgentRunner returns the production TaskRunner.
 func NewAgentRunner(llm LLM, prompts PromptReader, limits AgentLimits) TaskRunner {
-	return &agentRunner{llm: llm, prompts: prompts, limits: limits.withDefaults()}
+	return &agentRunner{llm: llm, prompts: prompts, limits: limits}
 }
 
 // outputMode is the kind of final answer of a task.
@@ -190,7 +207,7 @@ func (r *agentRunner) prompt(text string, tc core.ToolContext, spec core.TaskSpe
 	if mode == modeFills {
 		if d := DescribeSubtree(tc.Format.Spec(), tc.Doc, allowed); d != "" {
 			b.WriteString("\n\n## Partie à remplir\n")
-			b.WriteString(UntrustedBlock("partie_a_remplir", d))
+			b.WriteString(d)
 		}
 	}
 	if len(spec.Inputs) > 0 {
@@ -227,50 +244,77 @@ type agentRun struct {
 }
 
 func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
-	lim := a.r.limits
+	lim := a.r.limits.forTier(a.spec.Tier)
 	ctx, cancel := context.WithTimeout(parent, lim.Timeout)
 	defer cancel()
 
-	var turns, toolCalls, corrections int
+	var (
+		turns, toolCalls, corrections, empties int
+		// graceUsed: the one extra turn granted for the final answer once the
+		// budget is exhausted has been given. budgetHit: a tool call was
+		// refused for lack of budget.
+		graceUsed, budgetHit bool
+	)
 	for {
-		if turns >= lim.MaxTurns {
-			return a.limitOutput("nombre maximal de tours atteint"), nil
+		if turns >= lim.MaxTurns || budgetHit {
+			reason := "nombre maximal de tours atteint"
+			if budgetHit {
+				reason = "nombre maximal d'appels d'outils atteint"
+			}
+			if graceUsed {
+				return a.limitOutput(reason), nil
+			}
+			graceUsed = true
+			if !budgetHit {
+				// The pending calls of a refused step were answered already;
+				// otherwise say it.
+				a.req.History = append(slices.Clone(a.req.History), AgentMessage{Role: RoleUser, Text: budgetMessage})
+				a.tr.add(TraceEntry{Type: TraceCheckError, Text: budgetMessage})
+			}
 		}
 		turns++
 		a.req.History = slices.Clone(a.req.History)
+		began := time.Now()
 		step, err := a.r.llm.Step(ctx, a.req)
+		stepMs := time.Since(began).Milliseconds()
+		a.tr.setProvider(step.Provider, step.Model)
 		if err != nil {
 			if parent.Err() == nil && ctx.Err() != nil {
 				return a.limitOutput("durée maximale atteinte"), nil
 			}
-			a.tr.add(TraceEntry{Type: TraceCheckError, Text: "erreur du fournisseur : " + err.Error()})
+			a.tr.add(TraceEntry{Type: TraceCheckError, Text: "erreur du fournisseur : " + err.Error(), DurationMs: stepMs})
 			return core.TaskOutput{Trace: a.tr.render()}, errors.Wrap(err, "appel du modèle")
 		}
-		a.tr.setProvider(step.Provider, step.Model)
-		usage := TraceEntry{InputTokens: step.Usage.InputTokens, OutputTokens: step.Usage.OutputTokens}
+		usage := TraceEntry{InputTokens: step.Usage.InputTokens, OutputTokens: step.Usage.OutputTokens, DurationMs: stepMs}
 
 		switch {
 		case len(step.ToolCalls) > 0:
 			a.req.History = append(a.req.History, AgentMessage{Role: RoleAssistant, ToolCalls: step.ToolCalls})
 			for i, call := range step.ToolCalls {
-				if toolCalls >= lim.MaxToolCalls {
-					return a.limitOutput("nombre maximal d'appels d'outils atteint"), nil
-				}
-				toolCalls++
-				result := a.runTool(ctx, call)
-				e := TraceEntry{Type: TraceToolCall, Name: call.Name, Args: string(call.Args)}
+				e := TraceEntry{Type: TraceToolCall, Name: call.Name, Args: truncateResult(string(call.Args))}
 				if i == 0 {
-					e.InputTokens, e.OutputTokens = usage.InputTokens, usage.OutputTokens
+					e.InputTokens, e.OutputTokens, e.DurationMs = usage.InputTokens, usage.OutputTokens, usage.DurationMs
 				}
 				a.tr.add(e)
-				a.tr.add(TraceEntry{Type: TraceToolResult, Name: call.Name, Text: truncateResult(result)})
+				var result string
+				started := time.Now()
+				if graceUsed || toolCalls >= lim.MaxToolCalls {
+					// Every call gets an answer, none is run.
+					budgetHit = true
+					result = toolError(budgetMessage)
+				} else {
+					toolCalls++
+					result = a.runTool(ctx, call)
+				}
+				a.tr.add(TraceEntry{Type: TraceToolResult, Name: call.Name, Text: truncateResult(result),
+					DurationMs: time.Since(started).Milliseconds()})
 				c := call
 				a.req.History = append(a.req.History, AgentMessage{Role: RoleTool, Text: clean(result), ToolCall: &c})
 			}
 		case len(step.Final) > 0:
 			final := cleanJSON(step.Final)
 			a.tr.add(TraceEntry{Type: TraceOutput, Text: string(final),
-				InputTokens: usage.InputTokens, OutputTokens: usage.OutputTokens})
+				InputTokens: usage.InputTokens, OutputTokens: usage.OutputTokens, DurationMs: usage.DurationMs})
 			out, corr := a.control(final)
 			if len(corr) > 0 && a.mode == modeFills && (len(out.Fills) > 0 || len(out.Questions) > 0) {
 				a.kept = out
@@ -290,12 +334,15 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 			}
 			return a.finish(out, corr), nil
 		default:
+			// Nothing came back (blocked or malformed answer): once more, then
+			// a quality limit (never a technical error).
 			msg := "réponse vide : appelle un outil ou rends la réponse finale au format demandé"
-			a.tr.add(TraceEntry{Type: TraceCheckError, Text: msg, InputTokens: usage.InputTokens, OutputTokens: usage.OutputTokens})
-			if corrections >= lim.MaxCorrections {
+			a.tr.add(TraceEntry{Type: TraceCheckError, Text: msg,
+				InputTokens: usage.InputTokens, OutputTokens: usage.OutputTokens, DurationMs: usage.DurationMs})
+			empties++
+			if empties >= maxEmptyAnswers {
 				return a.limitOutput("réponse vide du modèle"), nil
 			}
-			corrections++
 			a.req.History = append(a.req.History, AgentMessage{Role: RoleUser, Text: correctionText([]string{msg})})
 		}
 	}
@@ -386,8 +433,8 @@ func splitFillError(e string) (path, reason string, ok bool) {
 
 // limitOutput is the output of a run that hit a bound: what the last controlled
 // answer already validated is kept, and one question covers the task's other
-// unfilled writable paths. Not a technical error. A review or a structured
-// task asks nothing pathless.
+// REQUIRED unfilled writable paths (pathless, naming the target, when there is
+// none). Not a technical error. A review task asks nothing.
 func (a *agentRun) limitOutput(reason string) core.TaskOutput {
 	a.tr.add(TraceEntry{Type: TraceCheckError, Text: "limite : " + reason})
 	out := core.TaskOutput{}
@@ -400,30 +447,34 @@ func (a *agentRun) limitOutput(reason string) core.TaskOutput {
 			filled[f.Path] = true
 		}
 		var paths []core.Path
-		for _, p := range a.unfilledPaths() {
+		for _, p := range a.requiredUnfilledPaths() {
 			if !filled[p] {
 				paths = append(paths, p)
 			}
 		}
-		if len(paths) > 0 {
-			out.Questions = append(slices.Clone(out.Questions), core.QuestionDraft{
-				Paths: paths,
-				Text:  "La génération automatique n'a pas abouti pour cette partie (" + reason + ") : à renseigner manuellement.",
-			})
+		text := "La génération automatique n'a pas abouti pour cette partie (" + reason + ") : à renseigner manuellement."
+		if len(paths) == 0 {
+			target := string(a.spec.TargetPath)
+			if target == "" {
+				target = a.spec.Kind
+			}
+			text = "La génération automatique n'a pas abouti pour " + target + " (" + reason + ") : à vérifier et compléter manuellement."
 		}
+		out.Questions = append(slices.Clone(out.Questions), core.QuestionDraft{Paths: paths, Text: text})
 	}
 	return a.render(out)
 }
 
-// unfilledPaths lists the writable leaves of the task's part without value.
-func (a *agentRun) unfilledPaths() []core.Path {
+// requiredUnfilledPaths lists the writable required leaves of the task's part
+// without value.
+func (a *agentRun) requiredUnfilledPaths() []core.Path {
 	spec := a.tc.Format.Spec()
 	var out []core.Path
 	seen := map[core.Path]bool{}
 	for _, p := range a.allowed {
 		for _, leaf := range spec.Leaves(p, a.tc.Doc) {
 			n := spec.NodeAt(leaf.Template())
-			if n == nil || n.ExportID || seen[leaf] {
+			if n == nil || n.ExportID || seen[leaf] || n.Min < 1 {
 				continue
 			}
 			if nat := n.EffectiveNature(); nat != core.NatureCopied && nat != core.NatureJudgment {
@@ -439,8 +490,10 @@ func (a *agentRun) unfilledPaths() []core.Path {
 	return out
 }
 
-// render strips NUL characters from the whole output and attaches the trace.
+// render bounds the output (capOutput), strips NUL characters from all of it and
+// attaches the trace.
 func (a *agentRun) render(out core.TaskOutput) core.TaskOutput {
+	out = capOutput(out)
 	for i := range out.Fills {
 		f := &out.Fills[i]
 		f.Value, f.Justification = clean(f.Value), clean(f.Justification)
@@ -467,6 +520,50 @@ func (a *agentRun) render(out core.TaskOutput) core.TaskOutput {
 		out.Structured = cleanJSON(out.Structured)
 	}
 	out.Trace = a.tr.render()
+	return out
+}
+
+// Bounds of one output: what an analyst can read and what the table stores.
+const (
+	maxOutputItems = 20  // questions, findings, options per question
+	maxOutputText  = 500 // characters of a question, a label, a finding
+)
+
+// capText shortens s to maxOutputText characters with an ellipsis.
+func capText(s string) string {
+	if r := []rune(s); len(r) > maxOutputText {
+		return string(r[:maxOutputText-1]) + "…"
+	}
+	return s
+}
+
+// capOutput bounds the number of questions, findings and options (20 each) and
+// the length of their texts (500 characters).
+func capOutput(out core.TaskOutput) core.TaskOutput {
+	if len(out.Questions) > maxOutputItems {
+		out.Questions = out.Questions[:maxOutputItems]
+	}
+	if len(out.Findings) > maxOutputItems {
+		out.Findings = out.Findings[:maxOutputItems]
+	}
+	qs := slices.Clone(out.Questions)
+	for i := range qs {
+		qs[i].Text = capText(qs[i].Text)
+		if len(qs[i].Options) > maxOutputItems {
+			qs[i].Options = qs[i].Options[:maxOutputItems]
+		}
+		opts := slices.Clone(qs[i].Options)
+		for j := range opts {
+			opts[j].Label = capText(opts[j].Label)
+		}
+		qs[i].Options = opts
+	}
+	out.Questions = qs
+	fs := slices.Clone(out.Findings)
+	for i := range fs {
+		fs[i].Message = capText(fs[i].Message)
+	}
+	out.Findings = fs
 	return out
 }
 

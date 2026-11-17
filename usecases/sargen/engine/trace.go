@@ -4,16 +4,17 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"slices"
 	"strings"
 )
 
 // Trace entry types (TraceEntry.Type). TaskOutput.Trace is the JSON array of
 // the entries, stored in sar_generation_tasks.trace.
 const (
-	TraceHeader     = "header"      // first element: provider, model, prompt_path, prompt_sha256
+	TraceHeader     = "header"      // first element: provider, model, prompt_path, prompt_sha256, total tokens
 	TraceInstruct   = "instruction" // system instruction
 	TracePrompt     = "prompt"
-	TraceToolCall   = "tool_call"   // name, args
+	TraceToolCall   = "tool_call"   // name, args (truncated to TraceResultMax chars)
 	TraceToolResult = "tool_result" // name, result (truncated to TraceResultMax chars)
 	TraceOutput     = "output"      // each Final, raw JSON
 	TraceCheckError = "check_error" // each output-control error sent back (or kept)
@@ -35,6 +36,9 @@ type TraceEntry struct {
 	Text         string `json:"text,omitempty"` // instruction, prompt, result, output, error
 	InputTokens  int64  `json:"input_tokens,omitempty"`
 	OutputTokens int64  `json:"output_tokens,omitempty"`
+	// DurationMs is the duration of the LLM step (on the first entry the step
+	// produced) or of the tool call (tool_result).
+	DurationMs int64 `json:"duration_ms,omitempty"`
 }
 
 // clean strips NUL characters, which Postgres rejects in text and jsonb.
@@ -106,8 +110,17 @@ func (t *trace) add(e TraceEntry) {
 	t.entries = append(t.entries, e)
 }
 
+// render encodes the entries; the header carries the total token usage of the
+// run.
 func (t *trace) render() []byte {
-	b, err := json.Marshal(t.entries)
+	entries := slices.Clone(t.entries)
+	var in, out int64
+	for _, e := range entries[1:] {
+		in += e.InputTokens
+		out += e.OutputTokens
+	}
+	entries[0].InputTokens, entries[0].OutputTokens = in, out
+	b, err := json.Marshal(entries)
 	if err != nil {
 		return []byte("[]")
 	}

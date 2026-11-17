@@ -86,10 +86,17 @@ type checker struct {
 	taskID  uuid.UUID
 	allowed []core.Path
 	sc      scope
+	// ruleIDs are the memory rules the LLM may cite; any other rule_id is
+	// dropped.
+	ruleIDs map[string]bool
 }
 
 func newChecker(tc core.ToolContext, spec core.TaskSpec, taskID uuid.UUID, allowed []core.Path) *checker {
-	return &checker{tc: tc, spec: spec, taskID: taskID, allowed: allowed, sc: newScope(tc.Selection)}
+	rules := make(map[string]bool, len(tc.Rules))
+	for _, r := range tc.Rules {
+		rules[r.Id.String()] = true
+	}
+	return &checker{tc: tc, spec: spec, taskID: taskID, allowed: allowed, sc: newScope(tc.Selection), ruleIDs: rules}
 }
 
 // checkResult is the outcome of the control of one final answer.
@@ -122,9 +129,18 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 		idx  int
 		fill core.Fill
 	}
+	// Last wins when a path appears several times in one answer.
+	last := map[core.Path]int{}
+	for i, w := range out.Fills {
+		last[core.Path(w.Path)] = i
+	}
 	var good []pending
 	for i, w := range out.Fills {
 		path := core.Path(w.Path)
+		if last[path] != i {
+			res.Notes = append(res.Notes, fmt.Sprintf("fills[%d] %s : chemin en double dans la réponse, la dernière valeur est retenue", i, path))
+			continue
+		}
 		node := c.tc.Format.Spec().NodeAt(path.Template())
 		if w.Value == "" && node != nil && node.Kind == core.NodeField && !node.ExportID {
 			// The LLM never clears a value. An empty required field is left to
@@ -145,6 +161,12 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 		}
 		good = append(good, pending{i, f})
 	}
+
+	// References to items created in the same answer ([+a]) are applied after
+	// the other values, so that the item exists when they are checked.
+	slices.SortStableFunc(good, func(x, y pending) int {
+		return boolToInt(c.isRefFill(x.fill)) - boolToInt(c.isRefFill(y.fill))
+	})
 
 	// Dry run on a copy of the document: natures, sources, scope, values. Each
 	// fill carries its position in a marker so that a rejection is matched to
@@ -175,11 +197,28 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 			res.Questions = append(res.Questions, unverifiable(g.fill, issue.Message))
 			continue
 		}
-		res.Corrections = append(res.Corrections, fmt.Sprintf("fills[%d] %s : %s", g.idx, g.fill.Path, issue.Message))
+		msg := issue.Message
+		if issue.Code == core.CodeBadRef || issue.Code == core.CodeDanglingRef {
+			msg += " (les valeurs qui référencent un élément sont appliquées après toutes les autres de la réponse : crée l'élément visé dans la même réponse, avec la même clé provisoire, ou cite un élément existant)"
+		}
+		res.Corrections = append(res.Corrections, fmt.Sprintf("fills[%d] %s : %s", g.idx, g.fill.Path, msg))
 	}
 
 	c.checkQuestions(&res, out.Questions, clone)
 	return res
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+// isRefFill tells whether the fill's value is a reference to another item.
+func (c *checker) isRefFill(f core.Fill) bool {
+	n := c.tc.Format.Spec().NodeAt(f.Path.Template())
+	return n != nil && n.Kind == core.NodeField && (n.Type == core.TypeRef || n.IsItemRef(f.Value))
 }
 
 func (c *checker) applyOptions(doc *core.Document) core.ApplyOptions {
@@ -275,7 +314,7 @@ func (c *checker) toFill(w wireFill) (core.Fill, string) {
 	f := core.Fill{
 		Path: path, Value: string(w.Value), Origin: core.OriginLLM, TaskID: &c.taskID,
 	}
-	if w.RuleID != nil && *w.RuleID != "" {
+	if w.RuleID != nil && c.ruleIDs[string(*w.RuleID)] {
 		f.RuleIDs = []string{string(*w.RuleID)}
 	}
 	if w.Justification != nil {
@@ -468,7 +507,14 @@ func (c *checker) checkStructured(final json.RawMessage) (err error) {
 			err = errors.Newf("%v", r)
 		}
 	}()
-	return c.tc.Format.ApplyStructured(c.spec.Kind, c.tc.Doc.Clone(), final)
+	clone := c.tc.Doc.Clone()
+	if err := c.tc.Format.ApplyStructured(c.spec.Kind, clone, final); err != nil {
+		return err
+	}
+	if bad := sourcesOutsideSelection(c.tc.Doc, clone, c.sc); len(bad) > 0 {
+		return errors.New(outsideSelectionMessage(bad))
+	}
+	return nil
 }
 
 // relationError checks that the value of a copied fill derives from the raw

@@ -191,7 +191,10 @@ func TestAgent_InvalidAfterMaxCorrectionsBecomesQuestion(t *testing.T) {
 }
 
 func TestAgent_ToolCallLimitEndsWithQuestions(t *testing.T) {
+	// Call 2 is refused (budget), the one more turn granted for the final
+	// answer asks for yet another call: the limit path.
 	llm := newScriptedLLM(
+		ToolCallStep("read_object", agReadP1Args),
 		ToolCallStep("read_object", agReadP1Args),
 		ToolCallStep("read_object", agReadP1Args),
 	)
@@ -546,7 +549,7 @@ func TestAgent_LimitAfterValidFinalKeepsValidatedFills(t *testing.T) {
 		agFill(agNomPath, "Dupont", agSrc("last_name", "Dupont")),
 		agFill("personnes.pp[pp-1].etatCivil.lieuNaissance", "Lyon", agSrc("last_name", "Dupont")),
 	)
-	llm := newScriptedLLM(FinalStep(final))
+	llm := newScriptedLLM(FinalStep(final), FinalStep(final)) // the second is the grace turn
 	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{MaxTurns: 1}, agentToolContext(t), agentSpec("fill", agentPersonPath))
 	require.NoError(t, err)
 
@@ -555,7 +558,8 @@ func TestAgent_LimitAfterValidFinalKeepsValidatedFills(t *testing.T) {
 	require.NotEmpty(t, out.Questions)
 	last := out.Questions[len(out.Questions)-1]
 	assert.NotContains(t, last.Paths, core.Path(agNomPath), "the limit question covers only what is left")
-	assert.Contains(t, last.Paths, core.Path("personnes.pp[pp-1].etatCivil.lieuNaissance"))
+	assert.NotContains(t, last.Paths, core.Path("personnes.pp[pp-1].etatCivil.lieuNaissance"), "optional fields are not asked")
+	assert.Contains(t, last.Paths, core.Path("personnes.pp[pp-1].implication"), "required unfilled fields are")
 }
 
 func TestAgent_NoAllowedPartFailsClosed(t *testing.T) {
@@ -618,7 +622,8 @@ func TestAgent_NewItemDefaultsToSingleInput(t *testing.T) {
 
 func TestAgent_LimitOnReviewAsksNothing(t *testing.T) {
 	spec := agentSpec(core.TaskKindReview, agentPersonPath)
-	llm := newScriptedLLM(ToolCallStep("read_object", agReadP1Args), ToolCallStep("read_object", agReadP1Args))
+	llm := newScriptedLLM(ToolCallStep("read_object", agReadP1Args), ToolCallStep("read_object", agReadP1Args),
+		ToolCallStep("read_object", agReadP1Args))
 	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{MaxToolCalls: 1}, agentToolContext(t), spec)
 	require.NoError(t, err)
 	assert.Empty(t, out.Questions)
