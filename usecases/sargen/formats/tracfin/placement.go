@@ -3,6 +3,7 @@ package tracfin
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -87,7 +88,7 @@ func placementSchema(refKinds []string) jsonschema.Schema {
 // parsePlacement decodes and checks a placement output. References without a
 // valid declared owner are returned apart (dropped, reported as a question); any
 // other error refuses the whole output.
-func (f *format) parsePlacement(raw json.RawMessage) (out placementOutput, dropped [][]core.ObjectRef, err error) {
+func (f *format) parsePlacement(raw json.RawMessage) (out placementOutput, dropped []droppedRef, err error) {
 	if err := json.NewDecoder(bytes.NewReader(raw)).Decode(&out); err != nil {
 		return out, nil, errors.Wrap(err, "sortie de placement illisible")
 	}
@@ -110,18 +111,26 @@ func (f *format) parsePlacement(raw json.RawMessage) (out placementOutput, dropp
 		}
 		owners := r.Owners[:0:0]
 		var seen []int
+		lost := 0
 		for _, o := range r.Owners {
 			if o.PersonIndex == nil || *o.PersonIndex < 0 || *o.PersonIndex >= len(out.Persons) {
+				lost++
 				continue
 			}
-			if _, ok := liens[o.Lien]; !ok || slices.Contains(seen, *o.PersonIndex) {
+			if _, ok := liens[o.Lien]; !ok {
+				lost++
+				continue
+			}
+			if slices.Contains(seen, *o.PersonIndex) {
 				continue
 			}
 			seen = append(seen, *o.PersonIndex)
 			owners = append(owners, o)
 		}
+		if len(owners) == 0 || lost > 0 {
+			dropped = append(dropped, droppedRef{objects: r.Objects, wholly: len(owners) == 0, lostOwners: lost})
+		}
 		if len(owners) == 0 {
-			dropped = append(dropped, r.Objects)
 			continue
 		}
 		r.Owners = owners
@@ -140,6 +149,14 @@ func (f *format) parsePlacement(raw json.RawMessage) (out placementOutput, dropp
 	return out, dropped, nil
 }
 
+// droppedRef is a financial reference left out (wholly: no valid owner) or
+// declared with fewer owners than listed.
+type droppedRef struct {
+	objects    []core.ObjectRef
+	wholly     bool
+	lostOwners int
+}
+
 // StructuredQuestions reports what a placement output left out: the financial
 // references without a valid declared owner (core.StructuredQuestioner).
 func (f *format) StructuredQuestions(kind string, raw json.RawMessage) []core.QuestionDraft {
@@ -151,12 +168,17 @@ func (f *format) StructuredQuestions(kind string, raw json.RawMessage) []core.Qu
 		return nil
 	}
 	var out []core.QuestionDraft
-	for _, objs := range dropped {
-		names := make([]string, len(objs))
-		for i, o := range objs {
+	for _, d := range dropped {
+		names := make([]string, len(d.objects))
+		for i, o := range d.objects {
 			names[i] = o.Table + "/" + o.ObjectID
 		}
-		out = append(out, core.QuestionDraft{Text: "référence financière sans titulaire déclaré : " + strings.Join(names, ", ")})
+		list := strings.Join(names, ", ")
+		if d.wholly {
+			out = append(out, core.QuestionDraft{Text: "référence financière sans titulaire déclaré : " + list})
+		} else {
+			out = append(out, core.QuestionDraft{Text: fmt.Sprintf("référence financière : %d titulaire(s) non déclaré(s) ignoré(s) : %s", d.lostOwners, list)})
+		}
 	}
 	return out
 }
@@ -178,11 +200,19 @@ func (f *format) ApplyStructured(kind string, doc *core.Document, raw json.RawMe
 		return err
 	}
 
-	// A transaction listed twice (same objects) is created once.
+	// A transaction is identified by its first object: listed twice (with or
+	// without its account) it is created once, with the union of the objects.
 	var txs [][]core.ObjectRef
 	for _, t := range out.Transactions {
-		if !slices.ContainsFunc(txs, func(o []core.ObjectRef) bool { return slices.Equal(o, t.Objects) }) {
-			txs = append(txs, t.Objects)
+		i := slices.IndexFunc(txs, func(o []core.ObjectRef) bool { return o[0] == t.Objects[0] })
+		if i < 0 {
+			txs = append(txs, slices.Clone(t.Objects))
+			continue
+		}
+		for _, o := range t.Objects[1:] {
+			if !slices.Contains(txs[i], o) {
+				txs[i] = append(txs[i], o)
+			}
 		}
 	}
 

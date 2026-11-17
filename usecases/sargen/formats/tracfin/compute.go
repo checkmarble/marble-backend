@@ -294,7 +294,7 @@ func ibanCountry(spec *core.Spec, doc *core.Document, ref string) string {
 		iban = v.Value
 	}
 	iban = strings.ReplaceAll(strings.TrimSpace(iban), " ", "")
-	if !ibanPrefixRe.MatchString(iban) {
+	if !ibanPrefixRe.MatchString(iban) || !validIBAN(iban) {
 		return ""
 	}
 	code := strings.ToUpper(iban[:2])
@@ -308,6 +308,26 @@ func ibanCountry(spec *core.Spec, doc *core.Document, ref string) string {
 		}
 	}
 	return ""
+}
+
+// validIBAN checks the plausible length (15 to 34) and the mod-97 checksum.
+func validIBAN(iban string) bool {
+	if len(iban) < 15 || len(iban) > 34 {
+		return false
+	}
+	rearranged := strings.ToUpper(iban[4:] + iban[:4])
+	rem := 0
+	for _, r := range rearranged {
+		switch {
+		case r >= '0' && r <= '9':
+			rem = (rem*10 + int(r-'0')) % 97
+		case r >= 'A' && r <= 'Z':
+			rem = (rem*100 + int(r-'A'+10)) % 97
+		default:
+			return false
+		}
+	}
+	return rem == 1
 }
 
 func validDate(s string) bool {

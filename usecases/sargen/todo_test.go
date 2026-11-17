@@ -82,3 +82,19 @@ func TestBuildTodo_ConfirmsOnlyTheFormatsComputedValues(t *testing.T) {
 	require.Len(t, got, 1)
 	assert.Equal(t, []core.Path{"operations.montantTotal"}, got[0].Paths)
 }
+
+func TestBuildTodo_MissingLineFieldListsTheLinesSourceTransactions(t *testing.T) {
+	doc := core.NewDocument()
+	doc.Values["operations.operation[operation-1].nombreOperations"] = core.Value{
+		Value: "1", Origin: core.OriginComputed,
+		Computation: &core.Computation{Name: "n", Inputs: []core.Path{"work.transactions[transactions-1]"}},
+	}
+	issues := []core.Issue{{
+		Path: "operations.operation[operation-1].emetteurTypeEmetteur", Code: core.CodeRequired,
+		Severity: core.SeverityBlocking, Message: "émetteur manquant",
+	}}
+	todo := buildTodo(nil, nil, issues, doc, nil)
+	require.Len(t, todo, 1)
+	assert.Contains(t, todo[0].Paths, core.Path("work.transactions[transactions-1]"))
+	assert.Contains(t, todo[0].Message, "corrigez les transactions sources")
+}

@@ -22,9 +22,9 @@ func buildTodoBase(issues []core.Issue, doc *core.Document) []TodoItem {
 			sev = TodoBlocking
 		}
 		paths, msg := []core.Path{i.Path}, i.Message
-		if v, ok := doc.ValueAt(i.Path); ok && v.Computation != nil && i.Severity == core.SeverityBlocking {
+		if inputs := computedSources(doc, i.Path); inputs != nil && i.Severity == core.SeverityBlocking {
 			// A computed value cannot be corrected itself: its source fields can.
-			paths = append(paths, v.Computation.Inputs...)
+			paths = append(paths, inputs...)
 			msg += " — corrigez les transactions sources"
 		}
 		todo = append(todo, TodoItem{Kind: TodoIssue, Severity: sev, Paths: paths, Message: msg})
@@ -110,6 +110,32 @@ func buildTodo(spec *core.Spec, confirm []core.Path, issues []core.Issue, doc *c
 func confirmComputedOf(f core.Format) []core.Path {
 	if c, ok := f.(core.ConfirmComputer); ok {
 		return c.ConfirmComputed()
+	}
+	return nil
+}
+
+// computedSources returns the source paths of a computed value: those of the
+// value at p, or, when p is a missing field of a computed line, those of the
+// line's other computed values (the same transactions fed them).
+func computedSources(doc *core.Document, p core.Path) []core.Path {
+	if v, ok := doc.ValueAt(p); ok && v.Computation != nil {
+		return v.Computation.Inputs
+	}
+	if doc == nil || p.Parent() == "" || !strings.HasSuffix(string(p.Parent()), "]") {
+		return nil
+	}
+	line := p.Parent()
+	var names []string
+	for q, v := range doc.Values {
+		if v.Computation != nil && q.Parent() == line {
+			names = append(names, string(q))
+		}
+	}
+	sort.Strings(names)
+	for _, q := range names {
+		if in := doc.Values[core.Path(q)].Computation.Inputs; len(in) > 0 {
+			return in
+		}
 	}
 	return nil
 }
