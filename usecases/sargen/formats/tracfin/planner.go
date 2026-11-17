@@ -259,6 +259,8 @@ func (f *format) judgmentSpec(st core.PlanState) core.TaskSpec {
 		Tier:       core.TierHeavy,
 		ToolNames:  append(slices.Clone(fillTools), toolReadDocument),
 		Payload:    analystPayload(st),
+
+		NeedsCaseContext: true,
 	}
 }
 
@@ -270,6 +272,8 @@ func (f *format) reviewSpec(st core.PlanState) core.TaskSpec {
 		Tier:       core.TierHeavy,
 		ToolNames:  append(slices.Clone(commonReadTools), toolReadDocument),
 		Payload:    analystPayload(st),
+
+		NeedsCaseContext: true,
 	}
 }
 

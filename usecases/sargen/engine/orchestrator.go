@@ -170,8 +170,10 @@ type Deps struct {
 	Selection          SelectionRepository
 	Generation         GenerationRepository
 	DataModels         DataModelReader
-	Runner             TaskRunner
-	Prompts            PromptSource
+	// CaseContext is optional: without it no task receives a case context.
+	CaseContext CaseContextReader
+	Runner      TaskRunner
+	Prompts     PromptSource
 	// FormatGetter resolves a format key; defaults to formats.Get in the
 	// constructor wiring (usecases_with_creds.go), injected in tests.
 	FormatGetter func(core.FormatKey) (core.Format, bool)
@@ -192,6 +194,7 @@ type Orchestrator struct {
 	selection          SelectionRepository
 	generation         GenerationRepository
 	dataModels         DataModelReader
+	caseContext        CaseContextReader
 	runner             TaskRunner
 	prompts            PromptSource
 	formatGetter       func(core.FormatKey) (core.Format, bool)
@@ -207,6 +210,7 @@ func NewOrchestrator(d Deps) *Orchestrator {
 		selection:          d.Selection,
 		generation:         d.Generation,
 		dataModels:         d.DataModels,
+		caseContext:        d.CaseContext,
 		runner:             d.Runner,
 		prompts:            d.Prompts,
 		formatGetter:       d.FormatGetter,
@@ -286,7 +290,7 @@ func (o *Orchestrator) RunJob(ctx context.Context, jobId uuid.UUID) error {
 		return errors.Wrap(err, "cannot read data model")
 	}
 	run := &jobRun{
-		o: o, job: job, declId: decl.Id, orgId: decl.OrganizationId, format: format,
+		o: o, job: job, declId: decl.Id, caseId: decl.CaseId, orgId: decl.OrganizationId, format: format,
 		selection: selection, dataModel: dataModel,
 	}
 	run.rateLimited.Store(job.RateLimitedSince != nil)
@@ -309,6 +313,11 @@ type jobRun struct {
 	format    core.Format
 	selection []models.SarSelectedObject
 	dataModel models.DataModel
+	caseId    uuid.UUID
+	// caseCtx is the case context, built once per job on first need.
+	caseCtxOnce sync.Once
+	caseCtx     string
+	caseCtxErr  error
 	// applyMu serializes document writes inside this process; across
 	// processes the FOR UPDATE lock does.
 	applyMu sync.Mutex
@@ -693,6 +702,13 @@ func (r *jobRun) runTask(ctx context.Context, rt readyTask) (claimed bool, err e
 		tc := core.ToolContext{
 			OrgId: r.orgId, DeclarationId: r.declId, TaskId: rt.task.Id, Format: r.format,
 			Doc: doc.Clone(), Selection: r.selection, DataModel: r.dataModel,
+		}
+		if rt.spec.NeedsCaseContext {
+			cc, err := r.caseContextText(ctx)
+			if err != nil {
+				return true, fail(err, nil)
+			}
+			tc.CaseContext = cc
 		}
 		task := rt.task
 		task.Attempts = attempt
@@ -1307,4 +1323,16 @@ func newItemPathKnown(spec *core.Spec, p core.Path) bool {
 	}
 	n := spec.NodeAt(strings.Join(tmpl, "."))
 	return n != nil && n.Template != ""
+}
+
+// caseContextText returns the case context of the job, read once with the
+// declaration's organization and case (never from a model output).
+func (r *jobRun) caseContextText(ctx context.Context) (string, error) {
+	if r.o.caseContext == nil {
+		return "", nil
+	}
+	r.caseCtxOnce.Do(func() {
+		r.caseCtx, r.caseCtxErr = buildCaseContext(ctx, r.o.executorFactory.NewExecutor(), r.o.caseContext, r.orgId, r.caseId)
+	})
+	return r.caseCtx, r.caseCtxErr
 }
