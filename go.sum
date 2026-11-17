@@ -14,8 +14,8 @@ cloud.google.com/go/datacatalog v1.32.0 h1:fyYn8ODkGil5y3zTIqgIhOfzTu1ACaU2o+C75
 cloud.google.com/go/datacatalog v1.32.0/go.mod h1:DE272tynQUwheJeQAyVfV+nO8yrdkuDyOgH2LtOrkWM=
 cloud.google.com/go/firestore v1.24.0 h1:x0Z3hrgjYgo2wI9whuBRQcNc2hYwzZDQy/7pkUXbXcs=
 cloud.google.com/go/firestore v1.24.0/go.mod h1:5aojyjN4olKUnBZDCRWwM+NsdrrCX3t1qfyERZGOonM=
-cloud.google.com/go/iam v1.15.0 h1:U/wqjfrM0ceBFdPlOI2+cu68yPAxh72M8fe9uLG0+ZE=
-cloud.google.com/go/iam v1.15.0/go.mod h1:HAVf7PNhTrNTrEc6fVB21l8ejkbzNTulJHYf7QtD424=
+cloud.google.com/go/iam v1.15.1 h1:i6EXLKyIi0Sh72p+5+Fz0PfnzB63bkneVpaBCGrjlWs=
+cloud.google.com/go/iam v1.15.1/go.mod h1:nDJ/rfCzLKyBUY1AeiSQwOAJg/AN7zZ2QmNzRTcK2jM=
 cloud.google.com/go/kms v1.22.0 h1:dBRIj7+GDeeEvatJeTB19oYZNV0aj6wEqSIT/7gLqtk=
 cloud.google.com/go/kms v1.22.0/go.mod h1:U7mf8Sva5jpOb4bxYZdtw/9zsbIjrklYwPcvMk34AL8=
 cloud.google.com/go/logging v1.20.0 h1:l7yzCB8/JSY5PHT9RsaqdT1jaBGbM6KlSJDX210HlXM=
