@@ -579,6 +579,10 @@ func (usecases *UsecasesWithCreds) NewSarGenerationUsecase() *sargen.Usecase {
 		CaseEntityObjects:   usecases.NewCaseEntityReader(),
 		IngestedReader:      usecases.NewIngestedDataReaderUsecase(),
 		DataModelReader:     utils.Ptr(usecases.NewDataModelUseCase()),
+		Generation:          repo,
+		Enqueuer:            usecases.Repositories.TaskQueueRepository,
+		AiAccess:            sargen.AiAccessFromCaseReview(utils.Ptr(usecases.NewAiAgentUsecase())),
+		JobTimeout:          utils.GetEnvDuration("SAR_GENERATION_TIMEOUT", engine.DefaultTimeout),
 	})
 }
 

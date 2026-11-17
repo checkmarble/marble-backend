@@ -82,6 +82,13 @@ type Usecase struct {
 	caseEntityObjects   CaseEntityObjectReader
 	ingestedReader      IngestedDataReader
 	dataModelReader     DataModelReader
+	generation          SarGenerationRepository
+	enqueuer            GenerationEnqueuer
+	aiAccess            AiAccessChecker
+	// jobTimeout is SAR_GENERATION_TIMEOUT: a running job without update for
+	// more than 2 x jobTimeout can be resumed.
+	jobTimeout time.Duration
+	now        func() time.Time
 	// bucketUrl is the case manager bucket (caseManagerBucketUrl).
 	bucketUrl string
 	// formatGetter resolves a format key; defaults to formats.Get. Tests inject
@@ -106,10 +113,30 @@ type Deps struct {
 	CaseEntityObjects CaseEntityObjectReader
 	IngestedReader    IngestedDataReader
 	DataModelReader   DataModelReader
+	// Generation, Enqueuer, AiAccess, JobTimeout serve StartGeneration,
+	// GetJob, ResumeJob, StartReview and the questions.
+	Generation SarGenerationRepository
+	Enqueuer   GenerationEnqueuer
+	AiAccess   AiAccessChecker
+	// JobTimeout is SAR_GENERATION_TIMEOUT (<=0 -> 30 minutes).
+	JobTimeout time.Duration
+	// Now is the clock (nil -> time.Now).
+	Now func() time.Time
 }
 
 func NewUsecase(d Deps) *Usecase {
+	if d.JobTimeout <= 0 {
+		d.JobTimeout = 30 * time.Minute
+	}
+	if d.Now == nil {
+		d.Now = time.Now
+	}
 	return &Usecase{
+		generation:          d.Generation,
+		enqueuer:            d.Enqueuer,
+		aiAccess:            d.AiAccess,
+		jobTimeout:          d.JobTimeout,
+		now:                 d.Now,
 		executorFactory:     d.ExecutorFactory,
 		transactionFactory:  d.TransactionFactory,
 		enforceCaseSecurity: d.EnforceCaseSecurity,
@@ -133,6 +160,12 @@ type TodoKind string
 const (
 	TodoIssue         TodoKind = "issue"
 	TodoLowConfidence TodoKind = "low_confidence"
+	// TodoQuestion is an open LLM question (RefId = question id); blocking when
+	// one of its paths is required, else warning.
+	TodoQuestion TodoKind = "question"
+	// TodoReviewFinding is an open review finding (RefId = question id),
+	// severity review, never blocking.
+	TodoReviewFinding TodoKind = "review_finding"
 )
 
 type TodoSeverity string
@@ -266,12 +299,16 @@ func (uc *Usecase) buildState(ctx context.Context, exec repositories.Executor, d
 	if err != nil {
 		return DeclarationState{}, err
 	}
+	open, err := uc.generation.ListSarQuestions(ctx, exec, d.Id, models.SarQuestionStatusOpen)
+	if err != nil {
+		return DeclarationState{}, err
+	}
 	return DeclarationState{
 		Declaration:  d,
 		Format:       format,
 		Doc:          doc,
 		Issues:       issues,
-		Todo:         buildTodo(issues, doc),
+		Todo:         buildTodoWithQuestions(format.Spec(), issues, doc, open),
 		ExportsCount: count,
 		LastExportAt: last,
 	}, nil
@@ -418,6 +455,17 @@ func (uc *Usecase) mutate(ctx context.Context, id uuid.UUID, version int,
 func (uc *Usecase) mutateWithText(ctx context.Context, id uuid.UUID, version int,
 	edit func(format core.Format, doc *core.Document, analysis, extraInfo *string) error,
 ) (DeclarationState, error) {
+	return uc.mutateWithPost(ctx, id, version, edit, nil)
+}
+
+// mutateWithPost is mutateWithText with a hook that runs in the same
+// transaction after the document is saved (e.g. to close questions). The
+// declaration is refused (ErrGenerationInProgress) while a job is active,
+// checked inside the transaction under the row lock.
+func (uc *Usecase) mutateWithPost(ctx context.Context, id uuid.UUID, version int,
+	edit func(format core.Format, doc *core.Document, analysis, extraInfo *string) error,
+	post func(tx repositories.Transaction, doc *core.Document) error,
+) (DeclarationState, error) {
 	exec := uc.executorFactory.NewExecutor()
 	// Fail early (404 / 403) before taking the row lock.
 	if _, err := uc.loadDeclaration(ctx, exec, id); err != nil {
@@ -430,6 +478,9 @@ func (uc *Usecase) mutateWithText(ctx context.Context, id uuid.UUID, version int
 			return err
 		}
 		if err := uc.checkDeclarationAccess(ctx, tx, d); err != nil {
+			return err
+		}
+		if err := uc.requireNoActiveJob(ctx, tx, id); err != nil {
 			return err
 		}
 		if d.Version != version {
@@ -456,6 +507,9 @@ func (uc *Usecase) mutateWithText(ctx context.Context, id uuid.UUID, version int
 		}
 		d.Document, d.Version = raw, newVersion
 		saved = d
+		if post != nil {
+			return post(tx, doc)
+		}
 		return nil
 	})
 	if err != nil {
@@ -475,7 +529,11 @@ func issuesToError(issues []core.Issue) error {
 // UpdateFields applies fills with OriginManual and OverwriteAll, all-or-nothing.
 // Computed fields inside a repeatable item are rejected (computed_line).
 func (uc *Usecase) UpdateFields(ctx context.Context, id uuid.UUID, version int, fills []core.Fill) (DeclarationState, error) {
-	return uc.mutate(ctx, id, version, func(format core.Format, doc *core.Document) error {
+	filled := make([]core.Path, 0, len(fills))
+	for _, f := range fills {
+		filled = append(filled, f.Path)
+	}
+	return uc.mutateWithPost(ctx, id, version, func(format core.Format, doc *core.Document, _, _ *string) error {
 		spec := format.Spec()
 		var issues []core.Issue
 		prepared := make([]core.Fill, 0, len(fills))
@@ -509,6 +567,8 @@ func (uc *Usecase) UpdateFields(ctx context.Context, id uuid.UUID, version int, 
 			return issuesToError(issues)
 		}
 		return nil
+	}, func(tx repositories.Transaction, doc *core.Document) error {
+		return uc.resolveAnsweredQuestions(ctx, tx, id, doc, filled)
 	})
 }
 

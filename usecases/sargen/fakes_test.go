@@ -42,6 +42,14 @@ type fakes struct {
 	CaseEntities *fakeCaseEntities
 	Selection    *fakeSelectionRepo
 	DataModel    *fakeDataModel
+
+	// Generation jobs, tasks, questions; the enqueuer and the AI access check
+	// (allowed by default: f.AI.Deny()); the usecase clock (starts at a fixed
+	// instant, f.Clock.Advance(d)).
+	Gen      *fakeGenRepo
+	Enqueuer *fakeEnqueuer
+	AI       *fakeAiAccess
+	Clock    *fakeClock
 }
 
 // newTestUsecase wires a Usecase on in-memory fakes. The case (fakes.CaseId,
@@ -72,6 +80,10 @@ func newTestUsecase(t *testing.T) (*Usecase, *fakes) {
 	f.Ingested.model = f.DataModel
 	f.CaseEntities = &fakeCaseEntities{CaseId: f.CaseId.String(), ingested: f.Ingested}
 	f.Selection = &fakeSelectionRepo{}
+	f.Clock = &fakeClock{t: time.Date(2026, 11, 16, 12, 0, 0, 0, time.UTC)}
+	f.Gen = newFakeGenRepo(f.Clock.Now)
+	f.Enqueuer = &fakeEnqueuer{}
+	f.AI = &fakeAiAccess{allowed: true}
 	f.Ctx = context.WithValue(context.Background(), utils.ContextKeyCredentials,
 		models.Credentials{OrganizationId: f.OrgId})
 	uc := NewUsecase(Deps{
@@ -89,6 +101,11 @@ func newTestUsecase(t *testing.T) (*Usecase, *fakes) {
 		CaseEntityObjects:   f.CaseEntities,
 		IngestedReader:      f.Ingested,
 		DataModelReader:     f.DataModel,
+		Generation:          f.Gen,
+		Enqueuer:            f.Enqueuer,
+		AiAccess:            f.AI,
+		JobTimeout:          30 * time.Minute,
+		Now:                 f.Clock.Now,
 	})
 	return uc, f
 }
