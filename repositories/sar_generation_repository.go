@@ -131,6 +131,7 @@ func (repo *MarbleDbRepository) ResumeSarGenerationJob(
 		Update(dbmodels.TABLE_SAR_GENERATION_JOBS).
 		Set("status", string(models.SarJobStatusPending)).
 		Set("error", nil).
+		Set("rate_limited_since", nil).
 		Set("updated_at", squirrel.Expr("now()")).
 		Where(squirrel.Eq{"id": id}).
 		Where(squirrel.Or{
@@ -265,6 +266,47 @@ func (repo *MarbleDbRepository) SetSarGenerationJobAttempt(
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_SAR_GENERATION_JOBS).
 		Set("attempt", attempt).
+		Where(squirrel.Eq{"id": id})
+	return ExecBuilder(ctx, exec, query)
+}
+
+// MarkSarGenerationJobRateLimited records a provider rate limit: the first one
+// of a streak sets rate_limited_since (database clock). It returns how long the
+// streak has lasted.
+func (repo *MarbleDbRepository) MarkSarGenerationJobRateLimited(
+	ctx context.Context, exec Executor, id uuid.UUID,
+) (time.Duration, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return 0, err
+	}
+	rows, err := exec.Query(ctx, `UPDATE `+dbmodels.TABLE_SAR_GENERATION_JOBS+`
+		SET rate_limited_since = COALESCE(rate_limited_since, now()), updated_at = now()
+		WHERE id = $1
+		RETURNING extract(epoch FROM (now() - rate_limited_since))::float8`, id)
+	if err != nil {
+		return 0, errors.Wrap(err, "cannot mark sar job rate limited")
+	}
+	defer rows.Close()
+	if !rows.Next() {
+		return 0, rows.Err()
+	}
+	var secs float64
+	if err := rows.Scan(&secs); err != nil {
+		return 0, errors.Wrap(err, "cannot read rate limit duration")
+	}
+	return time.Duration(secs * float64(time.Second)), nil
+}
+
+// ClearSarGenerationJobRateLimited ends a rate-limit streak (a task succeeded).
+func (repo *MarbleDbRepository) ClearSarGenerationJobRateLimited(
+	ctx context.Context, exec Executor, id uuid.UUID,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_SAR_GENERATION_JOBS).
+		Set("rate_limited_since", nil).
 		Where(squirrel.Eq{"id": id})
 	return ExecBuilder(ctx, exec, query)
 }
