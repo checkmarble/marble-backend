@@ -315,9 +315,9 @@ type jobRun struct {
 	dataModel models.DataModel
 	caseId    uuid.UUID
 	// caseCtx is the case context, built once per job on first need.
-	caseCtxOnce sync.Once
+	caseCtxMu   sync.Mutex
 	caseCtx     string
-	caseCtxErr  error
+	caseCtxDone bool
 	// applyMu serializes document writes inside this process; across
 	// processes the FOR UPDATE lock does.
 	applyMu sync.Mutex
@@ -894,6 +894,9 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 				if !bytes.Equal(before, after) {
 					doc, changed = cand, true
 				}
+				if sq, ok := r.format.(core.StructuredQuestioner); ok {
+					out.Questions = append(slices.Clone(out.Questions), sq.StructuredQuestions(rt.spec.Kind, out.Structured)...)
+				}
 			}
 		}
 		fills := make([]core.Fill, len(out.Fills))
@@ -1459,8 +1462,15 @@ func (r *jobRun) caseContextText(ctx context.Context) (string, error) {
 	if r.o.caseContext == nil {
 		return "", nil
 	}
-	r.caseCtxOnce.Do(func() {
-		r.caseCtx, r.caseCtxErr = buildCaseContext(ctx, r.o.executorFactory.NewExecutor(), r.o.caseContext, r.orgId, r.caseId)
-	})
-	return r.caseCtx, r.caseCtxErr
+	r.caseCtxMu.Lock()
+	defer r.caseCtxMu.Unlock()
+	if r.caseCtxDone {
+		return r.caseCtx, nil
+	}
+	text, err := buildCaseContext(ctx, r.o.executorFactory.NewExecutor(), r.o.caseContext, r.orgId, r.caseId)
+	if err != nil {
+		return "", err // not cached: the next task tries again
+	}
+	r.caseCtx, r.caseCtxDone = text, true
+	return text, nil
 }

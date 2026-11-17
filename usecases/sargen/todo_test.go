@@ -4,11 +4,13 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/checkmarble/marble-backend/models"
 
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
+	"github.com/checkmarble/marble-backend/usecases/sargen/formats/tracfin"
 )
 
 func TestBuildTodo_OrdersAndIncludesUnreviewedLowConfidence(t *testing.T) {
@@ -22,7 +24,7 @@ func TestBuildTodo_OrdersAndIncludesUnreviewedLowConfidence(t *testing.T) {
 		{Path: "e.block", Code: "test_block", Message: "bloquant", Severity: core.SeverityBlocking},
 	}
 
-	todo := buildTodo(nil, issues, doc, nil)
+	todo := buildTodo(nil, nil, issues, doc, nil)
 	require.Len(t, todo, 3, "two issues plus one unreviewed low-confidence value")
 
 	require.Equal(t, TodoIssue, todo[0].Kind)
@@ -41,7 +43,42 @@ func TestBuildTodo_OrdersAndIncludesUnreviewedLowConfidence(t *testing.T) {
 // A question on a nil spec must not panic.
 func TestBuildTodo_NilSpecWithQuestion(t *testing.T) {
 	q := models.SarQuestion{Id: uuid.New(), Kind: models.SarQuestionKindQuestion, Paths: []string{"a.b"}, Text: "?"}
-	todo := buildTodo(nil, nil, nil, []models.SarQuestion{q})
+	todo := buildTodo(nil, nil, nil, nil, []models.SarQuestion{q})
 	require.Len(t, todo, 1)
 	require.Equal(t, TodoWarning, todo[0].Severity)
+}
+
+func TestBuildTodo_BlockingIssueOnComputedValueListsItsSources(t *testing.T) {
+	doc := core.NewDocument()
+	doc.Values["operations.operation[operation-1].montantTotal"] = core.Value{
+		Value: "x", Origin: core.OriginComputed,
+		Computation: &core.Computation{Name: "n", Inputs: []core.Path{"work.transactions[transactions-1].montant"}},
+	}
+	issues := []core.Issue{{
+		Path: "operations.operation[operation-1].montantTotal", Code: "bad_decimal",
+		Severity: core.SeverityBlocking, Message: "montant invalide",
+	}}
+	todo := buildTodo(nil, nil, issues, doc, nil)
+	require.Len(t, todo, 1)
+	assert.Equal(t, []core.Path{"operations.operation[operation-1].montantTotal", "work.transactions[transactions-1].montant"}, todo[0].Paths)
+	assert.Contains(t, todo[0].Message, "corrigez les transactions sources")
+
+	// A warning, or a value that is not computed, is left as is.
+	warn := []core.Issue{{Path: issues[0].Path, Code: "x", Severity: core.SeverityWarning, Message: "m"}}
+	assert.Len(t, buildTodo(nil, nil, warn, doc, nil)[0].Paths, 1)
+}
+
+func TestBuildTodo_ConfirmsOnlyTheFormatsComputedValues(t *testing.T) {
+	spec, ok := tracfin.Spec(tracfin.CurrentVersion)
+	require.True(t, ok)
+	doc := core.NewDocument()
+	doc.Values["operations.montantTotal"] = core.Value{Value: "10", Origin: core.OriginComputed}
+	doc.Values["operations.dateDebut"] = core.Value{Value: "2026-01-01", Origin: core.OriginComputed}
+
+	none := buildTodo(spec, nil, nil, doc, nil)
+	assert.Empty(t, none, "a format that asks for no confirmation lists none")
+
+	got := buildTodo(spec, []core.Path{"operations.montantTotal"}, nil, doc, nil)
+	require.Len(t, got, 1)
+	assert.Equal(t, []core.Path{"operations.montantTotal"}, got[0].Paths)
 }

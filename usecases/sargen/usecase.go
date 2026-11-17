@@ -311,7 +311,7 @@ func (uc *Usecase) buildState(ctx context.Context, exec repositories.Executor, d
 		Format:       format,
 		Doc:          doc,
 		Issues:       issues,
-		Todo:         buildTodo(format.Spec(), issues, doc, open),
+		Todo:         buildTodo(format.Spec(), confirmComputedOf(format), issues, doc, open),
 		ExportsCount: count,
 		LastExportAt: last,
 	}, nil
@@ -570,7 +570,7 @@ func (uc *Usecase) UpdateFields(ctx context.Context, id uuid.UUID, version int, 
 			return issuesToError(issues)
 		}
 		// Computed values follow the edit, in the same write.
-		core.ComputeInto(format, doc)
+		uc.recompute(ctx, format, doc)
 		return nil
 	}, func(tx repositories.Transaction, doc *core.Document) error {
 		return uc.resolveAnsweredQuestions(ctx, tx, id, doc, filled)
@@ -601,7 +601,7 @@ func (uc *Usecase) AddItem(ctx context.Context, id uuid.UUID, version int, conta
 			prefix = "item"
 		}
 		item = doc.AddItem(container, prefix)
-		core.ComputeInto(format, doc)
+		uc.recompute(ctx, format, doc)
 		return nil
 	})
 	if err != nil {
@@ -627,7 +627,7 @@ func (uc *Usecase) RemoveItem(ctx context.Context, id uuid.UUID, version int, it
 			return errors.Wrapf(models.NotFoundError, "l'élément %s n'existe pas", item)
 		}
 		doc.RemoveItem(item)
-		core.ComputeInto(format, doc)
+		uc.recompute(ctx, format, doc)
 		return nil
 	})
 }
@@ -713,4 +713,18 @@ func (uc *Usecase) GetSelection(ctx context.Context, declarationId uuid.UUID) ([
 		return nil, err
 	}
 	return uc.selectionRepo.ListSarSelection(ctx, exec, declarationId)
+}
+
+// recompute derives the computed values after a manual edit (same write) and
+// logs the computed fills that could not be applied (the edit itself is kept).
+func (uc *Usecase) recompute(ctx context.Context, format core.Format, doc *core.Document) {
+	res, _ := core.ComputeInto(format, doc)
+	if len(res.Rejected) > 0 || len(res.Conflicts) > 0 {
+		first := ""
+		if len(res.Rejected) > 0 {
+			first = string(res.Rejected[0].Fill.Path) + ": " + res.Rejected[0].Issue.Message
+		}
+		utils.LoggerFromContext(ctx).WarnContext(ctx, "sar declaration: computed fills not applied",
+			"rejected", len(res.Rejected), "conflicts", len(res.Conflicts), "first_rejected", first)
+	}
 }

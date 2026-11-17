@@ -1,6 +1,7 @@
 package sargen
 
 import (
+	"slices"
 	"sort"
 	"strings"
 
@@ -20,7 +21,13 @@ func buildTodoBase(issues []core.Issue, doc *core.Document) []TodoItem {
 		if i.Severity == core.SeverityBlocking {
 			sev = TodoBlocking
 		}
-		todo = append(todo, TodoItem{Kind: TodoIssue, Severity: sev, Paths: []core.Path{i.Path}, Message: i.Message})
+		paths, msg := []core.Path{i.Path}, i.Message
+		if v, ok := doc.ValueAt(i.Path); ok && v.Computation != nil && i.Severity == core.SeverityBlocking {
+			// A computed value cannot be corrected itself: its source fields can.
+			paths = append(paths, v.Computation.Inputs...)
+			msg += " — corrigez les transactions sources"
+		}
+		todo = append(todo, TodoItem{Kind: TodoIssue, Severity: sev, Paths: paths, Message: msg})
 	}
 	if doc != nil {
 		var low []core.Path
@@ -49,7 +56,7 @@ func buildTodoBase(issues []core.Issue, doc *core.Document) []TodoItem {
 // (review) per open review finding, and one review entry « valeur calculée à
 // confirmer » per NatureComputed field outside a repeatable item that has a
 // value which is not Reviewed.
-func buildTodo(spec *core.Spec, issues []core.Issue, doc *core.Document, open []models.SarQuestion) []TodoItem {
+func buildTodo(spec *core.Spec, confirm []core.Path, issues []core.Issue, doc *core.Document, open []models.SarQuestion) []TodoItem {
 	todo := buildTodoBase(issues, doc)
 	for _, q := range open {
 		id := q.Id
@@ -80,7 +87,8 @@ func buildTodo(spec *core.Spec, issues []core.Issue, doc *core.Document, open []
 			if v.Value == "" || v.Reviewed || strings.Contains(p.Template(), "[]") {
 				continue
 			}
-			if n := spec.NodeAt(p.Template()); n != nil && n.EffectiveNature() == core.NatureComputed {
+			if n := spec.NodeAt(p.Template()); n != nil && n.EffectiveNature() == core.NatureComputed &&
+				slices.Contains(confirm, core.Path(p.Template())) {
 				computed = append(computed, p)
 			}
 		}
@@ -95,4 +103,13 @@ func buildTodo(spec *core.Spec, issues []core.Issue, doc *core.Document, open []
 	rank := map[TodoSeverity]int{TodoBlocking: 0, TodoReview: 1, TodoWarning: 2}
 	sort.SliceStable(todo, func(a, b int) bool { return rank[todo[a].Severity] < rank[todo[b].Severity] })
 	return todo
+}
+
+// confirmComputedOf returns the computed values the format wants the analyst to
+// confirm (core.ConfirmComputer); none by default.
+func confirmComputedOf(f core.Format) []core.Path {
+	if c, ok := f.(core.ConfirmComputer); ok {
+		return c.ConfirmComputed()
+	}
+	return nil
 }

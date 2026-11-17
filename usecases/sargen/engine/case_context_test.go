@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -124,4 +125,39 @@ func TestAgentPrompt_IncludesCaseContextAsUntrustedBlock(t *testing.T) {
 	_, err = NewAgentRunner(llm2, fakeAgentPrompts{}, AgentLimits{}).Run(context.Background(), tc, agentTask(spec), spec)
 	require.NoError(t, err)
 	assert.NotContains(t, llm2.Requests[0].Prompt, "contexte_du_case")
+}
+
+func TestBuildCaseContext_HasTriggerObjectIdAndRuleDescriptions(t *testing.T) {
+	cc := &fakeCaseContext{decisions: []models.DecisionWithRulesAndScreeningsBaseInfo{{
+		Decision:       models.Decision{ClientObject: models.ClientObject{TableName: "transactions", Data: map[string]any{"object_id": "t1"}}},
+		RuleExecutions: []models.RuleExecution{{Outcome: "hit", Rule: models.Rule{Name: "R", Description: "fractionnement de virements"}}},
+	}}}
+	out, err := buildCaseContext(context.Background(), nil, cc, uuid.New(), uuid.New())
+	require.NoError(t, err)
+	assert.Contains(t, out, `"object_id":"t1"`)
+	assert.Contains(t, out, "fractionnement de virements")
+}
+
+type failOnceCaseContext struct {
+	fakeCaseContext
+	failed bool
+}
+
+func (c *failOnceCaseContext) ListCaseEvents(ctx context.Context, e repositories.Executor, id string) ([]models.CaseEvent, error) {
+	if !c.failed {
+		c.failed = true
+		return nil, errors.New("lecture impossible")
+	}
+	return c.fakeCaseContext.ListCaseEvents(ctx, e, id)
+}
+
+func TestCaseContextText_ErrorIsNotCached(t *testing.T) {
+	o, f := newTestOrchestrator(t)
+	o.caseContext = &failOnceCaseContext{}
+	r := &jobRun{o: o, orgId: f.OrgId, caseId: uuid.New()}
+	_, err := r.caseContextText(context.Background())
+	require.Error(t, err)
+	text, err := r.caseContextText(context.Background())
+	require.NoError(t, err, "the next task tries again")
+	assert.Contains(t, text, "decisions")
 }

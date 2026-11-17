@@ -89,7 +89,7 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 		if err != nil {
 			return err
 		}
-		for _, t := range buildTodo(format.Spec(), nil, doc, open) {
+		for _, t := range buildTodo(format.Spec(), confirmComputedOf(format), nil, doc, open) {
 			outstanding = append(outstanding, outstandingItem{
 				Kind: t.Kind, Code: t.Code, Severity: t.Severity, Paths: t.Paths, Message: t.Message,
 			})
