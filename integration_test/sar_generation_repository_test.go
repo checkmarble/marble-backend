@@ -369,3 +369,28 @@ func TestSarQuestions_CreateListClose(t *testing.T) {
 	require.Len(t, open, 1)
 	require.Equal(t, finding.Id, open[0].Id)
 }
+
+func TestListSarGenerationJobs_NewestFirstAndScopedToDeclaration(t *testing.T) {
+	ctx := t.Context()
+	repo, declaration, first := sarGenTestSetup(t)
+	exec := testUsecases.NewExecutorFactory().NewExecutor()
+
+	require.NoError(t, repo.SetSarGenerationJobStatus(ctx, exec, first.Id, models.SarJobStatusDone, ""))
+	second := newSarGenTestJob(declaration.Id)
+	second.Kind = models.SarJobKindReview
+	require.NoError(t, repo.CreateSarGenerationJob(ctx, exec, second))
+
+	// A job of another declaration must not be listed.
+	_, otherDeclaration, _ := sarGenTestSetup(t)
+
+	jobs, err := repo.ListSarGenerationJobs(ctx, exec, declaration.Id)
+	require.NoError(t, err)
+	require.Len(t, jobs, 2)
+	require.Equal(t, second.Id, jobs[0].Id, "newest first")
+	require.Equal(t, first.Id, jobs[1].Id)
+
+	other, err := repo.ListSarGenerationJobs(ctx, exec, otherDeclaration.Id)
+	require.NoError(t, err)
+	require.Len(t, other, 1)
+	require.NotEqual(t, declaration.Id, other[0].DeclarationId)
+}

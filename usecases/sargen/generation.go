@@ -18,9 +18,6 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-// errNotImplemented is returned by the method bodies that are still skeleton.
-var errNotImplemented = errors.New("not implemented")
-
 var (
 	// ErrGenerationInProgress (409) is returned by every write on a declaration
 	// while one of its jobs is pending or running.
