@@ -196,6 +196,14 @@ type DeclarationState struct {
 	// ExportsCount and LastExportAt come from GetSarDeclarationExportsSummary.
 	ExportsCount int
 	LastExportAt *time.Time
+	// ActiveJobId is the pending or running generation job, nil when none
+	// (set by buildState; exposed as active_job_id by the API).
+	ActiveJobId *uuid.UUID
+	// Resolved maps each provisional item prefix written in the fills of an
+	// UpdateFields call to the real item path it was given (core.ApplyResult.
+	// Resolved). Set by UpdateFields only. AddItem returns the created item path itself,
+	// so it needs no mapping.
+	Resolved map[core.Path]core.Path
 }
 
 // credsOrg returns the organization of the credentials in ctx.
@@ -306,6 +314,18 @@ func (uc *Usecase) buildState(ctx context.Context, exec repositories.Executor, d
 	if err != nil {
 		return DeclarationState{}, err
 	}
+	jobs, err := uc.generation.ListSarGenerationJobs(ctx, exec, d.Id)
+	if err != nil {
+		return DeclarationState{}, err
+	}
+	var activeJobId *uuid.UUID
+	for _, j := range jobs {
+		if isActiveJob(j.Status) {
+			id := j.Id
+			activeJobId = &id
+			break
+		}
+	}
 	return DeclarationState{
 		Declaration:  d,
 		Format:       format,
@@ -314,6 +334,7 @@ func (uc *Usecase) buildState(ctx context.Context, exec repositories.Executor, d
 		Todo:         withComputedNotes(buildTodo(format.Spec(), confirmComputedOf(format), issues, doc, open), format, doc),
 		ExportsCount: count,
 		LastExportAt: last,
+		ActiveJobId:  activeJobId,
 	}, nil
 }
 
@@ -536,7 +557,8 @@ func (uc *Usecase) UpdateFields(ctx context.Context, id uuid.UUID, version int, 
 	for _, f := range fills {
 		filled = append(filled, f.Path)
 	}
-	return uc.mutateWithPost(ctx, id, version, func(format core.Format, doc *core.Document, _, _ *string) error {
+	var resolved map[core.Path]core.Path
+	st, err := uc.mutateWithPost(ctx, id, version, func(format core.Format, doc *core.Document, _, _ *string) error {
 		spec := format.Spec()
 		var issues []core.Issue
 		prepared := make([]core.Fill, 0, len(fills))
@@ -563,6 +585,7 @@ func (uc *Usecase) UpdateFields(ctx context.Context, id uuid.UUID, version int, 
 			prepared = append(prepared, f)
 		}
 		res := core.ApplyFills(spec, doc, prepared, core.ApplyOptions{Overwrite: core.OverwriteAll})
+		resolved = res.Resolved
 		for _, r := range res.Rejected {
 			issues = append(issues, r.Issue)
 		}
@@ -575,6 +598,11 @@ func (uc *Usecase) UpdateFields(ctx context.Context, id uuid.UUID, version int, 
 	}, func(tx repositories.Transaction, doc *core.Document) error {
 		return uc.resolveAnsweredQuestions(ctx, tx, id, doc, filled)
 	})
+	if err != nil {
+		return DeclarationState{}, err
+	}
+	st.Resolved = resolved
+	return st, nil
 }
 
 func (uc *Usecase) AddItem(ctx context.Context, id uuid.UUID, version int, container core.Path) (core.Path, DeclarationState, error) {

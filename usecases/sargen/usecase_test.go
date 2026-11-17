@@ -586,3 +586,28 @@ func TestExport_BlobDeletedWhenExportRowCannotBeCreated(t *testing.T) {
 	require.Empty(t, f.Blobs.Keys(), "the orphan blob must be deleted")
 	require.Empty(t, f.Repo.Exports)
 }
+
+func TestUpdateFields_ExposesResolvedProvisionalKeys(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	d := seedValidDeclaration(t, uc, f)
+
+	item, st, err := uc.AddItem(f.Ctx, d.Id, d.Version, "personnes.pp")
+	require.NoError(t, err)
+	prenom := core.Path(string(item) + ".etatCivil.prenom")
+
+	st, err = uc.UpdateFields(f.Ctx, d.Id, st.Declaration.Version, []core.Fill{
+		{Path: core.Path(string(prenom) + "[+a]"), Value: "Jean"},
+	})
+	require.NoError(t, err)
+	real, ok := st.Resolved[core.Path(string(prenom)+"[+a]")]
+	require.True(t, ok, "resolved: %v", st.Resolved)
+	require.NotContains(t, string(real), "+")
+	require.Equal(t, "Jean", st.Doc.Values[real].Value)
+
+	// A batch without provisional keys resolves nothing.
+	st, err = uc.UpdateFields(f.Ctx, d.Id, st.Declaration.Version, []core.Fill{
+		{Path: "declarant.coordonnees.prenom", Value: "Paul"},
+	})
+	require.NoError(t, err)
+	require.Empty(t, st.Resolved)
+}
