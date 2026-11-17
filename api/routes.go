@@ -240,6 +240,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		handleDeleteContinuousScreeningObject(uc))
 	router.PATCH("/continuous-screenings/matches/:id", tom,
 		handleUpdateContinuousScreeningMatchStatus(uc))
+	router.POST("/continuous-screenings/matches/review", tom,
+		handleReviewContinuousScreeningMatches(uc))
 	router.GET("/continuous-screenings/dataset-updates", tom,
 		handleListContinuousScreeningDatasetUpdates(uc))
 	router.GET("/continuous-screenings/update-jobs", tom,
