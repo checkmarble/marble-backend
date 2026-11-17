@@ -42,6 +42,7 @@ func Validate(spec *core.Spec, doc *core.Document) []core.Issue {
 	issues = append(issues, referencesFinancieresMax(doc)...)
 	issues = append(issues, sousCategorieAutre(spec, doc)...)
 	issues = append(issues, montantHorsEuro(doc)...)
+	tooManyOperationsIssue(issues, doc)
 	core.SortIssues(issues)
 	return issues
 }
