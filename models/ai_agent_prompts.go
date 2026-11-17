@@ -58,6 +58,33 @@ var AiAgentExpectedFiles = []string{
 	AiAgentScreeningHitSystemPromptPath,
 }
 
+// SAR generation prompts (TRACFIN steps). The prompt files live in the private prompts
+// repository, never in this one; only their paths are here. They are optional: a prompts
+// archive without them still enables the other AI features, and a generation job that needs a
+// missing one fails with a clear message (see AiAgentOptionalFiles).
+const (
+	SarGenerationTracfinPlacementPromptPath       = "sar_generation/tracfin/placement.md"
+	SarGenerationTracfinFillPersonPromptPath      = "sar_generation/tracfin/fill_person.md"
+	SarGenerationTracfinFillTransactionPromptPath = "sar_generation/tracfin/fill_transaction.md"
+	SarGenerationTracfinJudgmentPromptPath        = "sar_generation/tracfin/judgment.md"
+	SarGenerationTracfinCorrectionPromptPath      = "sar_generation/tracfin/correction.md"
+	SarGenerationTracfinReviewPromptPath          = "sar_generation/tracfin/review.md"
+)
+
+// AiAgentOptionalFiles lists the prompt files loaded from a downloaded prompts archive when
+// they are present, without being required: their absence is not an error and
+// ValidatePromptsFS ignores them (a missing expected file disables all AI features, a missing
+// optional one only fails the feature that needs it). Local prompts directories are served
+// as is.
+var AiAgentOptionalFiles = []string{
+	SarGenerationTracfinPlacementPromptPath,
+	SarGenerationTracfinFillPersonPromptPath,
+	SarGenerationTracfinFillTransactionPromptPath,
+	SarGenerationTracfinJudgmentPromptPath,
+	SarGenerationTracfinCorrectionPromptPath,
+	SarGenerationTracfinReviewPromptPath,
+}
+
 // AiAgentPromptsMapFS is a minimal, read-only, in-memory fs.FS backed by a name -> content map.
 // It exists so a downloaded ai prompts bundle (see infra.InitAiPromptsFS) can be held entirely
 // in memory - filled deterministically against AiAgentExpectedFiles, never a generic dump of

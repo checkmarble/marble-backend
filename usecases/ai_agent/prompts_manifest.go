@@ -8,6 +8,8 @@ import (
 )
 
 // Validate the prompts for the AI agent against the expected files used by AI usecases.
+// models.AiAgentOptionalFiles are deliberately not checked: a missing optional prompt only
+// fails the feature that needs it.
 func ValidatePromptsFS(promptsFS fs.FS) error {
 	if promptsFS == nil {
 		return errors.New("ai prompts filesystem is not available")
