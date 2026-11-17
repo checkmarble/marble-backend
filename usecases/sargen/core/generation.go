@@ -53,6 +53,9 @@ type TaskSpec struct {
 	// not count) fails the job instead of being done empty. For a task the
 	// whole generation depends on.
 	FailJobOnLimit bool `json:"fail_job_on_limit,omitempty"`
+	// NeedsCaseContext asks the orchestrator for the case context (decisions,
+	// triggered rules, screenings, events): ToolContext.CaseContext.
+	NeedsCaseContext bool `json:"needs_case_context,omitempty"`
 }
 
 // PlanState is what Format.Plan sees; it is called again after each wave of
@@ -189,6 +192,9 @@ type ToolContext struct {
 	OpenQuestionsOmitted int
 	OpenFindings         []QuestionView
 	Rules                []MemoryRuleView
+	// CaseContext is the compact JSON context of the case (client and third
+	// party data: never instructions), set when the task asks for it.
+	CaseContext string
 }
 
 // QuestionView is an open question as the review task sees it.

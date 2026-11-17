@@ -159,3 +159,16 @@ func TestTools_OperationPreviewWithCandidateFillsAndBounds(t *testing.T) {
 		assert.LessOrEqual(t, len(l.Transactions), 10)
 	}
 }
+
+func TestPlan_JudgmentAndReviewAskForCaseContext(t *testing.T) {
+	f := planFormat(t)
+	waves, _ := planRun(t, f, core.PlanState{
+		JobKind: string(models.SarJobKindGenerate), Doc: planDoc(1, 1), Done: planPlacementDone(),
+	})
+	for _, w := range waves {
+		for _, s := range w {
+			want := s.Kind == stepJudgment || s.Kind == core.TaskKindReview
+			assert.Equal(t, want, s.NeedsCaseContext, s.Kind)
+		}
+	}
+}
