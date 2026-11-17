@@ -200,16 +200,20 @@ func (f *format) ApplyStructured(kind string, doc *core.Document, raw json.RawMe
 		return err
 	}
 
-	// A transaction is identified by its first object: listed twice (with or
-	// without its account) it is created once, with the union of the objects.
+	// Two entries are the same transaction only when one object set contains the
+	// other ([t1] and [t1, account]): they merge into the union. [account, t1] and
+	// [account, t2] are two transactions sharing an account.
+	subset := func(a, b []core.ObjectRef) bool {
+		return !slices.ContainsFunc(a, func(o core.ObjectRef) bool { return !slices.Contains(b, o) })
+	}
 	var txs [][]core.ObjectRef
 	for _, t := range out.Transactions {
-		i := slices.IndexFunc(txs, func(o []core.ObjectRef) bool { return o[0] == t.Objects[0] })
+		i := slices.IndexFunc(txs, func(o []core.ObjectRef) bool { return subset(o, t.Objects) || subset(t.Objects, o) })
 		if i < 0 {
 			txs = append(txs, slices.Clone(t.Objects))
 			continue
 		}
-		for _, o := range t.Objects[1:] {
+		for _, o := range t.Objects {
 			if !slices.Contains(txs[i], o) {
 				txs[i] = append(txs[i], o)
 			}
