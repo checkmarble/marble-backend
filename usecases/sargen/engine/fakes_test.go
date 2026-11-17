@@ -140,6 +140,8 @@ func Spec(kind, target string, dependsOnKinds ...string) core.TaskSpec {
 	return core.TaskSpec{
 		Kind: kind, TargetPath: core.Path(target), PromptPath: "prompts/" + kind + ".md",
 		Tier: core.TierLight, DependsOnKinds: dependsOnKinds,
+		// Fill() cites t/o: the task inputs are the fallback allowed sources.
+		Inputs: []core.ObjectRef{{Table: "t", ObjectID: "o"}},
 	}
 }
 
