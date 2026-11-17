@@ -45,6 +45,7 @@ func NewOrganizationCredentialsMiddleware() OrganizationCredentialsMiddleware {
 const (
 	sentryErrorGroupingTime = 30 * time.Second
 	sdkIdentifier           = "sentry.go.river.marble"
+	slowJobLogThreshold     = 15 * time.Second
 )
 
 // Logger middleware
@@ -73,13 +74,13 @@ func (m LoggerMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInn
 		"priority", job.Priority,
 	)
 	start := time.Now()
-	logger.InfoContext(ctx, fmt.Sprintf("Starting %s job n°%d - attempt %d", job.Kind, job.ID, job.Attempt))
+	logger.DebugContext(ctx, fmt.Sprintf("Starting %s job n°%d - attempt %d", job.Kind, job.ID, job.Attempt))
 
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 	err := doInner(ctx)
 	var snoozeErr *river.JobSnoozeError
 	if err != nil && errors.As(err, &snoozeErr) {
-		logger.InfoContext(ctx, fmt.Sprintf("%s job n°%d snoozed after %s", job.Kind, job.ID, time.Since(start)))
+		logger.DebugContext(ctx, fmt.Sprintf("%s job n°%d snoozed after %s", job.Kind, job.ID, time.Since(start)))
 		return err
 	} else if err != nil {
 		logger.ErrorContext(ctx, fmt.Sprintf("%s job n°%d failed after %s", job.Kind, job.ID, time.Since(start)))
@@ -87,11 +88,18 @@ func (m LoggerMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInn
 		return err
 	}
 
+	duration := time.Since(start)
+
 	utils.MetricJobDuration.
 		With(prometheus.Labels{"queue": job.Queue, "job_name": job.Kind}).
-		Observe(time.Since(start).Seconds())
+		Observe(duration.Seconds())
 
-	logger.InfoContext(ctx, fmt.Sprintf("%s job n°%d succeeded after %s", job.Kind, job.ID, time.Since(start)))
+	level := slog.LevelDebug
+	if duration >= slowJobLogThreshold {
+		level = slog.LevelInfo
+	}
+
+	logger.Log(ctx, level, fmt.Sprintf("%s job n°%d succeeded after %s", job.Kind, job.ID, duration))
 	return nil
 }
 
