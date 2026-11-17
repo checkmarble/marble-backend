@@ -3,6 +3,8 @@ package cmd
 import (
 	"errors"
 	"time"
+
+	"github.com/checkmarble/marble-backend/usecases"
 )
 
 type CompiledConfig struct {
@@ -23,8 +25,8 @@ type ServerConfig struct {
 	otelSamplingRates            string
 	similarityThreshold          float64
 	enableTracing                bool
-	continuousScreeningBucketUrl    string
-	csServeFilesDirectly            bool
+	continuousScreeningBucketUrl string
+	csServeFilesDirectly         bool
 }
 
 func (config ServerConfig) Validate() error {
@@ -35,6 +37,7 @@ func (config ServerConfig) Validate() error {
 }
 
 type WorkerConfig struct {
+	queueWorkers                 usecases.OrganizationQueueWorkers
 	appName                      string
 	env                          string
 	failedWebhooksRetryPageSize  int

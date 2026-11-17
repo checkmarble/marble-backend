@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"reflect"
 	"slices"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -41,6 +42,10 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	appName := fmt.Sprintf("marble-worker %s", apiVersion)
 
 	// This is where we read the environment variables and set up the configuration for the application.
+	queueWorkers, err := loadOrganizationQueueWorkers()
+	if err != nil {
+		return err
+	}
 	pgConfig := infra.PgConfig{
 		ConnectionString:   utils.GetEnv("PG_CONNECTION_STRING", ""),
 		Database:           utils.GetEnv("PG_DATABASE", "marble"),
@@ -70,6 +75,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	}
 
 	workerConfig := WorkerConfig{
+		queueWorkers:                 queueWorkers,
 		appName:                      "marble-backend-worker",
 		env:                          utils.GetEnv("ENV", "production"),
 		failedWebhooksRetryPageSize:  utils.GetEnv("FAILED_WEBHOOKS_RETRY_PAGE_SIZE", 1000),
@@ -249,7 +255,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 		GraphBuild:                     workerConfig.GraphBuildInterval,
 	}
 	queues, orgPeriodics, err := usecases.QueuesFromOrgs(ctx, appName, repositories.MarbleDbRepository,
-		repositories.ExecutorGetter, offloadingConfig, analyticsConfig, periodicIntervals)
+		repositories.ExecutorGetter, offloadingConfig, analyticsConfig, periodicIntervals, workerConfig.queueWorkers)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err
@@ -466,6 +472,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	taskQueueWorker := uc.NewTaskQueueWorker(
 		riverClient,
 		slices.Collect(maps.Keys(nonOrgQueues)),
+		workerConfig.queueWorkers,
 	)
 	go taskQueueWorker.RefreshQueuesFromOrgIds(ctx, offloadingConfig, analyticsConfig, periodicIntervals)
 
@@ -479,6 +486,33 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	logger.InfoContext(ctx, "River client stopped")
 
 	return nil
+}
+
+func loadOrganizationQueueWorkers() (usecases.OrganizationQueueWorkers, error) {
+	config := usecases.OrganizationQueueWorkers{}
+	settings := []struct {
+		name         string
+		defaultValue int
+		environment  models.OrganizationEnvironment
+	}{
+		{"MAX_WORKERS_PRODUCTION_ORG", 5, models.OrganizationEnvironmentProduction},
+		{"MAX_WORKERS_DEMO_ORG", 2, models.OrganizationEnvironmentDemo},
+		{"MAX_WORKERS_STAGING_ORG", 2, models.OrganizationEnvironmentStaging},
+		{"MAX_WORKERS_UNKNOWN_ORG", 2, models.OrganizationEnvironmentUnknown},
+	}
+	for _, setting := range settings {
+		value, ok := os.LookupEnv(setting.name)
+		if !ok {
+			config[setting.environment] = setting.defaultValue
+		} else {
+			count, err := strconv.Atoi(value)
+			if err != nil || count <= 0 || count > river.QueueNumWorkersMax {
+				return config, errors.Errorf("%s must be a number between 1 and %d. Got %q", setting.name, river.QueueNumWorkersMax, value)
+			}
+			config[setting.environment] = count
+		}
+	}
+	return config, nil
 }
 
 func runHealthcheckServer(ctx context.Context, uc usecases.Usecases, apiVersion string, gcpConfig infra.GcpConfig, workerConfig WorkerConfig) {

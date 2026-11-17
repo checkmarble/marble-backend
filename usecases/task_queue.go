@@ -23,15 +23,30 @@ import (
 	"github.com/riverqueue/river"
 )
 
-const (
-	numberWorkersPerQueue = 5
-)
+type OrganizationQueueWorkers map[models.OrganizationEnvironment]int
+
+func (c OrganizationQueueWorkers) queueConfig(environment models.OrganizationEnvironment) river.QueueConfig {
+	count, ok := c[environment]
+	if !ok {
+		count = c[models.OrganizationEnvironmentUnknown]
+	}
+	return river.QueueConfig{MaxWorkers: count}
+}
+
+func (c OrganizationQueueWorkers) queuesForOrganizations(orgs []models.Organization) map[string]river.QueueConfig {
+	queues := make(map[string]river.QueueConfig, len(orgs))
+	for _, org := range orgs {
+		queues[org.Id.String()] = c.queueConfig(org.Environment)
+	}
+	return queues
+}
 
 type TaskQueueWorker struct {
 	executorFactory executor_factory.ExecutorFactory
 	orgRepository   repositories.OrganizationRepository
 	queueWhitelist  []string
 	riverClient     *river.Client[pgx.Tx]
+	queueWorkers    OrganizationQueueWorkers
 	mu              *sync.Mutex
 }
 
@@ -40,12 +55,14 @@ func NewTaskQueueWorker(
 	orgRepository repositories.OrganizationRepository,
 	queueWhitelist []string,
 	riverClient *river.Client[pgx.Tx],
+	queueWorkers OrganizationQueueWorkers,
 ) *TaskQueueWorker {
 	return &TaskQueueWorker{
 		executorFactory: executorFactory,
 		orgRepository:   orgRepository,
 		queueWhitelist:  queueWhitelist,
 		riverClient:     riverClient,
+		queueWorkers:    queueWorkers,
 		mu:              &sync.Mutex{},
 	}
 }
@@ -69,12 +86,7 @@ func (w *TaskQueueWorker) RefreshQueuesFromOrgIds(
 		if err != nil {
 			return err
 		}
-		queues := make(map[string]river.QueueConfig, len(orgs))
-		for _, org := range orgs {
-			queues[org.Id.String()] = river.QueueConfig{
-				MaxWorkers: numberWorkersPerQueue,
-			}
-		}
+		queues := w.queueWorkers.queuesForOrganizations(orgs)
 
 		err = w.addMissingQueues(ctx, queues, offloadingConfig, analyticsConfig, intervals)
 		if err != nil {
@@ -235,6 +247,7 @@ func QueuesFromOrgs(
 	offloadingConfig infra.OffloadingConfig,
 	analyticsConfig infra.AnalyticsConfig,
 	intervals PeriodicIntervals,
+	queueWorkers OrganizationQueueWorkers,
 ) (queues map[string]river.QueueConfig, periodics []*river.PeriodicJob, err error) {
 	exec_fac := executor_factory.NewDbExecutorFactory(appName, orgsRepo, execGetter, uuid.Nil)
 	orgs, err := orgsRepo.AllOrganizations(ctx, exec_fac.NewExecutor())
@@ -243,15 +256,12 @@ func QueuesFromOrgs(
 		return nil, nil, err
 	}
 
-	queues = make(map[string]river.QueueConfig, len(orgs))
+	queues = queueWorkers.queuesForOrganizations(orgs)
 
 	for _, org := range orgs {
 		periodics = append(periodics, listOrgPeriodics(org, offloadingConfig,
 			analyticsConfig, intervals)...)
 
-		queues[org.Id.String()] = river.QueueConfig{
-			MaxWorkers: numberWorkersPerQueue,
-		}
 	}
 
 	return queues, periodics, nil
