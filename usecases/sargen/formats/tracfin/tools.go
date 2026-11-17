@@ -23,11 +23,11 @@ func (f *format) Tools(tc core.ToolContext) map[string]core.Tool {
 		toolOperationPreview: {
 			Name: toolOperationPreview,
 			Description: "Montre le regroupement en lignes d'opération que produirait le calcul sur l'état courant du document " +
-				"(lignes, montants, nombres, période, total) : sert à vérifier les attributs de ligne des transactions " +
+				"(lignes, montants, nombres, période, total), avec en option des valeurs candidates de transactions (fills) appliquées sur une copie avant le regroupement : sert à vérifier les attributs de ligne des transactions " +
 				"(type, émetteur, bénéficiaire, références, pays). Plus de 30 lignes bloque la déclaration.",
-			Params: jsonschema.Schema{Type: "object", AdditionalProperties: jsonschema.FalseSchema},
-			Call: func(context.Context, json.RawMessage) string {
-				return operationPreview(tc.Doc)
+			Params: previewParams(),
+			Call: func(_ context.Context, args json.RawMessage) string {
+				return f.operationPreview(tc.Doc, args)
 			},
 		},
 		toolReadDocument: {
@@ -59,9 +59,59 @@ func toolError(msg string) string {
 	return string(b)
 }
 
-func operationPreview(doc *core.Document) string {
+type previewFill struct {
+	Path  string `json:"path" jsonschema:"required,description=Chemin du champ de la transaction (ex. work.transactions[transactions-1].montant)"`
+	Value string `json:"value" jsonschema:"description=Valeur candidate"`
+}
+
+type previewArgs struct {
+	Fills []previewFill `json:"fills,omitempty" jsonschema:"description=Valeurs candidates de transactions à appliquer sur une copie du document avant le regroupement (facultatif) : permet de voir le résultat de ses propres valeurs avant de répondre"`
+}
+
+const (
+	previewMaxFills        = 500
+	previewMaxTxPerLine    = 10
+	previewAllowedPrefix   = "work.transactions"
+	previewTooManyFillsMsg = "trop de valeurs candidates"
+)
+
+func previewParams() jsonschema.Schema {
+	r := jsonschema.Reflector{DoNotReference: true, ExpandedStruct: true}
+	s := r.Reflect(&previewArgs{})
+	s.AdditionalProperties = jsonschema.FalseSchema
+	s.Version, s.ID = "", ""
+	return *s
+}
+
+// operationPreview groups the transactions of doc as Compute would. The
+// optional fills (candidate values of transactions) are applied to a copy first,
+// without sources or origin rules: the preview never writes the document.
+func (f *format) operationPreview(doc *core.Document, args json.RawMessage) string {
 	if doc == nil {
 		return toolError("document indisponible")
+	}
+	var a previewArgs
+	if t := strings.TrimSpace(string(args)); t != "" && t != "null" {
+		if err := json.Unmarshal(args, &a); err != nil {
+			return toolError("arguments invalides : " + err.Error())
+		}
+	}
+	var rejected []string
+	if len(a.Fills) > 0 {
+		if len(a.Fills) > previewMaxFills {
+			return toolError(previewTooManyFillsMsg)
+		}
+		doc = doc.Clone()
+		fills := make([]core.Fill, 0, len(a.Fills))
+		for _, pf := range a.Fills {
+			fills = append(fills, core.Fill{Path: core.Path(pf.Path), Value: pf.Value, Origin: core.OriginManual})
+		}
+		res := core.ApplyFills(f.spec, doc, fills, core.ApplyOptions{
+			AllowedPrefixes: []core.Path{previewAllowedPrefix}, Overwrite: core.OverwriteAll,
+		})
+		for _, r := range res.Rejected {
+			rejected = append(rejected, string(r.Fill.Path)+" : "+r.Issue.Message)
+		}
 	}
 	groups, order, minDate, maxDate, total, totalFrac, _ := groupTransactions(doc)
 	type line struct {
@@ -70,8 +120,11 @@ func operationPreview(doc *core.Document) string {
 		TotalAmount  string            `json:"total_amount"`
 		Count        int               `json:"count"`
 	}
-	lines := make([]line, 0, len(order))
-	for _, k := range order {
+	lines := make([]line, 0, min(len(order), maxOperationLines))
+	for i, k := range order {
+		if i >= maxOperationLines {
+			break
+		}
 		g := groups[k]
 		attrs := map[string]string{}
 		for name, v := range g.attrs {
@@ -79,19 +132,25 @@ func operationPreview(doc *core.Document) string {
 				attrs[name] = v
 			}
 		}
-		lines = append(lines, line{Attributes: attrs, Transactions: g.txs, TotalAmount: formatDecimal(g.sum, g.maxFrac), Count: g.count})
+		txs := g.txs
+		if len(txs) > previewMaxTxPerLine {
+			txs = txs[:previewMaxTxPerLine]
+		}
+		lines = append(lines, line{Attributes: attrs, Transactions: txs, TotalAmount: formatDecimal(g.sum, g.maxFrac), Count: g.count})
 	}
-	out := map[string]any{
-		"lines":      lines,
-		"line_count": len(lines),
-		"max_lines":  maxOperationLines,
-	}
-	if len(lines) > 0 {
+	out := map[string]any{"lines": lines, "line_count": len(order), "max_lines": maxOperationLines}
+	if len(order) > 0 {
 		out["period_start"], out["period_end"] = minDate, maxDate
 		out["total_amount"] = formatDecimal(total, totalFrac)
 	}
-	if len(lines) > maxOperationLines {
-		out["warning"] = fmt.Sprintf("plus de %d lignes : regroupez des opérations en modifiant les attributs de ligne des transactions", maxOperationLines)
+	if len(order) > maxOperationLines {
+		out["warning"] = fmt.Sprintf("plus de %d lignes (%d) : regroupez des opérations en modifiant les attributs de ligne des transactions ; seules les %d premières sont listées", maxOperationLines, len(order), maxOperationLines)
+	}
+	if len(rejected) > 0 {
+		if len(rejected) > 10 {
+			rejected = rejected[:10]
+		}
+		out["rejected_fills"] = rejected
 	}
 	b, err := json.Marshal(out)
 	if err != nil {
