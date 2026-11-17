@@ -134,7 +134,8 @@ func (f *fakeSarGenerationUsecase) GetOrgSettings(_ context.Context, family stri
 
 func (f *fakeSarGenerationUsecase) PutOrgSettings(_ context.Context, family string, values map[string]string) (models.SarOrgFormatSettings, []core.Issue, error) {
 	if err := f.rec("PutOrgSettings", family, values); err != nil {
-		return models.SarOrgFormatSettings{}, nil, err
+		// Like the usecase, a refused write still returns its issues.
+		return models.SarOrgFormatSettings{}, f.Issues, err
 	}
 	return f.Settings, f.Issues, nil
 }

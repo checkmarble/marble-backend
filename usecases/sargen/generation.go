@@ -81,18 +81,15 @@ type AiAccessChecker interface {
 // the organization feature access CaseAiAssist (license / entitlement).
 type caseReviewAiAccess interface {
 	HasAiCaseReviewEnabled(ctx context.Context, orgId uuid.UUID) (bool, error)
+	// CheckSarGenerationConfigured refuses (BadParameterError, French) when the
+	// server AI configuration or the prompts cannot run a generation.
+	CheckSarGenerationConfigured() error
 }
 
 // AiAccessFromCaseReview adapts the case review access check to AiAccessChecker.
 func AiAccessFromCaseReview(r caseReviewAiAccess) AiAccessChecker { return aiAccessAdapter{r} }
 
 type aiAccessAdapter struct{ r caseReviewAiAccess }
-
-// aiConfigChecker is an optional capability of the case review access: it
-// refuses (BadParameterError) when the server AI configuration is unusable.
-type aiConfigChecker interface {
-	CheckSarGenerationConfigured() error
-}
 
 func (a aiAccessAdapter) CheckAiAccess(ctx context.Context, orgId uuid.UUID) error {
 	ok, err := a.r.HasAiCaseReviewEnabled(ctx, orgId)
@@ -102,10 +99,7 @@ func (a aiAccessAdapter) CheckAiAccess(ctx context.Context, orgId uuid.UUID) err
 	if !ok {
 		return errors.Wrap(models.ForbiddenError, "la génération par IA n'est pas disponible pour votre organisation")
 	}
-	if cc, ok := a.r.(aiConfigChecker); ok {
-		return cc.CheckSarGenerationConfigured()
-	}
-	return nil
+	return a.r.CheckSarGenerationConfigured()
 }
 
 // TaskSummary is the analyst view of a generation task (no input, output or

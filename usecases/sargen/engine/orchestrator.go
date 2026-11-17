@@ -478,7 +478,8 @@ func (r *jobRun) handleWaveError(ctx context.Context, err error) error {
 	}
 	switch {
 	case errors.Is(err, ErrLLMUnavailable):
-		return fail("génération impossible : "+errors.UnwrapAll(err).Error(), err)
+		utils.LoggerFromContext(ctx).WarnContext(ctx, "sar generation: model unavailable", "job_id", r.job.Id, "error", err.Error())
+		return fail(PublicError(err), err)
 	case errors.Is(err, ErrTaskLimitReached):
 		msg := ErrTaskLimitReached.Error()
 		// The agent error carries the limit reason, in French (limitReachedMessage).
@@ -685,7 +686,9 @@ func (r *jobRun) runTask(ctx context.Context, rt readyTask) (claimed bool, err e
 		// still end up failed (claimable) rather than stuck running.
 		dctx, cancel := detached(ctx)
 		defer cancel()
-		if _, ferr := o.generation.FailSarGenerationTask(dctx, exec, rt.task.Id, attempt, cause.Error(), trace); ferr != nil {
+		utils.LoggerFromContext(ctx).WarnContext(ctx, "sar generation: task failed",
+			"task_id", rt.task.Id, "kind", rt.task.Kind, "error", cause.Error())
+		if _, ferr := o.generation.FailSarGenerationTask(dctx, exec, rt.task.Id, attempt, PublicError(cause), trace); ferr != nil {
 			return errors.Wrap(cause, "cannot record task failure: "+ferr.Error())
 		}
 		return errors.Wrapf(cause, "task %s %s", rt.task.Kind, rt.task.TargetPath)
