@@ -419,3 +419,217 @@ func TestFollowLink_ToManyReturnsSelectedChildrenOnly(t *testing.T) {
 	require.Contains(t, raw, "txn-1")
 	require.NotContains(t, raw, "txn-9")
 }
+
+// specOnlyFormat is a hand-made format exposing a spec; other methods panic
+// if called (nil embedded interface).
+type specOnlyFormat struct {
+	core.Format
+	spec *core.Spec
+}
+
+func (f specOnlyFormat) Spec() *core.Spec { return f.spec }
+
+func toolsHandSpec() *core.Spec {
+	return &core.Spec{
+		Root: &core.Node{Kind: core.NodeGroup, Children: []*core.Node{
+			{Name: "grp", Template: "grp", Kind: core.NodeGroup, Min: 0, Max: 1, Export: true, Children: []*core.Node{
+				{Name: "statut", Template: "grp.statut", Kind: core.NodeField, Type: core.TypeCode, CodeList: "L_OFF", Max: 1, Export: true},
+				{Name: "taux", Template: "grp.taux", Kind: core.NodeField, Type: core.TypeCode, CodeList: "L_SMALL", Max: 1, Export: true},
+			}},
+			{Name: "items", Template: "items[]", Kind: core.NodeGroup, Max: -1, Export: true, Children: []*core.Node{
+				{Name: "label", Template: "items[].label", Kind: core.NodeField, Type: core.TypeString, MaxLength: 10, Max: 1, Export: true},
+			}},
+		}},
+		CodeLists: map[string]core.CodeList{
+			"L_OFF":   {Name: "L_OFF", Unavailable: true},
+			"L_SMALL": {Name: "L_SMALL", Codes: []core.Code{{Value: "A", Label: "Œuvre"}, {Value: "B", Label: "Straße"}}},
+		},
+	}
+}
+
+func toolsHandCtx(selection ...models.SarSelectedObject) core.ToolContext {
+	return core.ToolContext{
+		Format:    specOnlyFormat{spec: toolsHandSpec()},
+		Selection: selection,
+		DataModel: models.DataModel{},
+	}
+}
+
+func obj(table, id string, snap map[string]any) models.SarSelectedObject {
+	return models.SarSelectedObject{TableName: table, ObjectId: id, Snapshot: snap}
+}
+
+func TestFollowLink_ToManyNeedsChildTableWhenAmbiguous(t *testing.T) {
+	dm := models.DataModel{Tables: map[string]models.Table{
+		"accounts": {Name: "accounts"},
+		"cards": {Name: "cards", LinksToSingle: map[string]models.LinkToSingle{
+			"owner": {ParentTableName: "accounts", ParentFieldName: "object_id", ChildTableName: "cards", ChildFieldName: "account_id"},
+		}},
+		"loans": {Name: "loans", LinksToSingle: map[string]models.LinkToSingle{
+			"owner": {ParentTableName: "accounts", ParentFieldName: "object_id", ChildTableName: "loans", ChildFieldName: "account_id"},
+		}},
+		// self-referencing: an account has a "parent" account.
+		"people": {Name: "people", LinksToSingle: map[string]models.LinkToSingle{
+			"boss": {ParentTableName: "people", ParentFieldName: "object_id", ChildTableName: "people", ChildFieldName: "boss_id"},
+		}},
+	}}
+	tc := core.ToolContext{DataModel: dm, Selection: []models.SarSelectedObject{
+		obj("accounts", "acc-1", map[string]any{"object_id": "acc-1"}),
+		obj("cards", "c-1", map[string]any{"account_id": "acc-1"}),
+		obj("loans", "l-1", map[string]any{"account_id": "acc-1"}),
+		obj("people", "p-1", map[string]any{"object_id": "p-1", "boss_id": "p-0"}),
+		obj("people", "p-2", map[string]any{"object_id": "p-2", "boss_id": "p-1"}),
+	}}
+	tools := CommonTools(tc)
+
+	raw := toolsCall(t, tools, "follow_link", `{"table":"accounts","object_id":"acc-1","link":"owner"}`)
+	m := toolsParseObj(t, raw)
+	require.Contains(t, m["error"], "cards")
+	require.Contains(t, m["error"], "loans")
+	require.Contains(t, m["error"], "child_table")
+
+	raw = toolsCall(t, tools, "follow_link", `{"table":"accounts","object_id":"acc-1","link":"owner","child_table":"loans"}`)
+	objs := toolsFindMaps(toolsParseAny(t, raw), func(m map[string]any) bool { return m["selected"] == true })
+	require.Len(t, objs, 1, raw)
+	require.Equal(t, map[string]any{"table": "loans", "object_id": "l-1"}, objs[0]["ref"])
+
+	// Self-referencing: to-single by default (p-2's boss is p-1)...
+	raw = toolsCall(t, tools, "follow_link", `{"table":"people","object_id":"p-2","link":"boss"}`)
+	objs = toolsFindMaps(toolsParseAny(t, raw), func(m map[string]any) bool { return m["selected"] == true })
+	require.Len(t, objs, 1, raw)
+	require.Equal(t, map[string]any{"table": "people", "object_id": "p-1"}, objs[0]["ref"])
+	// ...and to-many (the people p-1 is boss of) with child_table.
+	raw = toolsCall(t, tools, "follow_link", `{"table":"people","object_id":"p-1","link":"boss","child_table":"people"}`)
+	objs = toolsFindMaps(toolsParseAny(t, raw), func(m map[string]any) bool { return m["selected"] == true })
+	require.Len(t, objs, 1, raw)
+	require.Equal(t, map[string]any{"table": "people", "object_id": "p-2"}, objs[0]["ref"])
+
+	// Unknown child table.
+	raw = toolsCall(t, tools, "follow_link", `{"table":"accounts","object_id":"acc-1","link":"owner","child_table":"nope"}`)
+	require.NotEmpty(t, toolsParseObj(t, raw)["error"])
+}
+
+func TestFollowLink_ToManyIsCapped(t *testing.T) {
+	dm := models.DataModel{Tables: map[string]models.Table{
+		"accounts": {Name: "accounts"},
+		"cards": {Name: "cards", LinksToSingle: map[string]models.LinkToSingle{
+			"owner": {ParentTableName: "accounts", ParentFieldName: "object_id", ChildTableName: "cards", ChildFieldName: "account_id"},
+		}},
+	}}
+	sel := []models.SarSelectedObject{obj("accounts", "a", map[string]any{"object_id": "a"})}
+	for i := 0; i < 45; i++ {
+		sel = append(sel, obj("cards", fmt.Sprintf("c-%d", i), map[string]any{"account_id": "a"}))
+	}
+	tools := CommonTools(core.ToolContext{DataModel: dm, Selection: sel})
+
+	raw := toolsCall(t, tools, "follow_link", `{"table":"accounts","object_id":"a","link":"owner"}`)
+	data := toolsParseObj(t, raw)["data"].(map[string]any)
+	require.Len(t, data["objects"], 30)
+	require.Equal(t, float64(45), data["total"])
+	require.Equal(t, true, data["truncated"])
+}
+
+func TestReadObject_TruncatesLongStringsWithoutMutatingSnapshot(t *testing.T) {
+	long := strings.Repeat("é", 5000)
+	sel := obj("transactions", "t", map[string]any{"commentaire": long, "n": float64(3)})
+	tools := CommonTools(toolsCtx(t, sel))
+
+	raw := toolsCall(t, tools, "read_object", `{"table":"transactions","object_id":"t"}`)
+	data := toolsParseObj(t, raw)["data"].(map[string]any)
+	got := data["commentaire"].(string)
+	require.Less(t, len([]rune(got)), 2100)
+	require.True(t, strings.HasSuffix(got, "[tronqué]"))
+	require.Equal(t, long, sel.Snapshot["commentaire"], "snapshot partagé jamais modifié")
+	require.Equal(t, float64(3), data["n"])
+}
+
+func TestFollowLink_IDsFloatVsString(t *testing.T) {
+	dm := toolsDataModel()
+	txn := obj("transactions", "txn-1", map[string]any{"account_id": float64(42)})
+	acc := obj("accounts", "42", map[string]any{"object_id": "42", "name": "Num"})
+	tools := CommonTools(core.ToolContext{DataModel: dm, Selection: []models.SarSelectedObject{txn, acc}})
+
+	raw := toolsCall(t, tools, "follow_link", `{"table":"transactions","object_id":"txn-1","link":"account"}`)
+	require.True(t, toolsContainsString(t, toolsParseObj(t, raw)["data"], "Num"), raw)
+
+	// Unselected parent: reference carries table, field and value.
+	tools = CommonTools(core.ToolContext{DataModel: dm, Selection: []models.SarSelectedObject{txn}})
+	raw = toolsCall(t, tools, "follow_link", `{"table":"transactions","object_id":"txn-1","link":"account"}`)
+	refs := toolsFindMaps(toolsParseAny(t, raw), func(m map[string]any) bool { return m["selected"] == false })
+	require.Len(t, refs, 1, raw)
+	require.Equal(t, "accounts", refs[0]["ref"].(map[string]any)["table"])
+	require.Equal(t, "object_id", refs[0]["ref"].(map[string]any)["field"])
+	require.Equal(t, "42", refs[0]["ref"].(map[string]any)["value"])
+}
+
+func TestFollowLink_ToManyStructuredResult(t *testing.T) {
+	other := obj("transactions", "txn-9", map[string]any{"account_id": "acc-2"})
+	tools := CommonTools(toolsCtx(t, toolsAccountSelected(), toolsTxnSelected(), other))
+	raw := toolsCall(t, tools, "follow_link", `{"table":"accounts","object_id":"acc-1","link":"account"}`)
+	data := toolsParseObj(t, raw)["data"].(map[string]any)
+	objs := data["objects"].([]any)
+	require.Len(t, objs, 1)
+	first := objs[0].(map[string]any)
+	require.Equal(t, true, first["selected"])
+	require.Equal(t, map[string]any{"table": "transactions", "object_id": "txn-1"}, first["ref"])
+}
+
+func TestSearchCode_Ligatures(t *testing.T) {
+	tools := CommonTools(toolsHandCtx())
+	for q, want := range map[string]string{"oeuvre": "A", "strasse": "B"} {
+		raw := toolsCall(t, tools, "search_code", fmt.Sprintf(`{"list":"L_SMALL","query":%q}`, q))
+		found := toolsFindMaps(toolsParseAny(t, raw), func(m map[string]any) bool { return m["value"] == want })
+		require.NotEmpty(t, found, raw)
+	}
+}
+
+func TestUnavailableCodeList(t *testing.T) {
+	tools := CommonTools(toolsHandCtx())
+
+	raw := toolsCall(t, tools, "search_code", `{"list":"L_OFF","query":"x"}`)
+	require.Contains(t, toolsParseObj(t, raw)["error"], "toute valeur est acceptée")
+
+	raw = toolsCall(t, tools, "field_spec", `{"path":"grp.statut"}`)
+	m := toolsParseObj(t, raw)
+	require.Equal(t, true, m["code_list_unavailable"])
+	require.Contains(t, m["note"], "toute valeur est acceptée")
+
+	raw = toolsCall(t, tools, "validate", `{"fills":[{"path":"grp.statut","value":"ZZ"}]}`)
+	issues := toolsFindMaps(toolsParseAny(t, raw), func(m map[string]any) bool { return m["code"] != nil })
+	require.Len(t, issues, 1, raw)
+	require.Equal(t, "warning", issues[0]["severity"], raw)
+}
+
+func TestFieldSpec_ProvisionalPathAndGroup(t *testing.T) {
+	tools := CommonTools(toolsHandCtx())
+
+	m := toolsParseObj(t, toolsCall(t, tools, "field_spec", `{"path":"items[+a].label"}`))
+	require.Equal(t, "string", m["type"])
+	require.Equal(t, float64(10), m["max_length"])
+
+	raw := toolsCall(t, tools, "field_spec", `{"path":"grp"}`)
+	m = toolsParseObj(t, raw)
+	require.Equal(t, "group", m["kind"], raw)
+	require.Len(t, m["children"], 2)
+
+	m = toolsParseObj(t, toolsCall(t, tools, "field_spec", `{"path":"grp.taux"}`))
+	require.Len(t, m["codes"], 2, "liste de 12 codes ou moins : codes en ligne")
+}
+
+func TestTools_ParamsSchemaIsStrict(t *testing.T) {
+	for name, tool := range CommonTools(toolsHandCtx()) {
+		raw, err := json.Marshal(tool.Params)
+		require.NoError(t, err)
+		m := toolsParseObj(t, string(raw))
+		require.Equal(t, false, m["additionalProperties"], name)
+		require.NotEmpty(t, m["required"], name)
+	}
+}
+
+func TestTools_PanicBecomesError(t *testing.T) {
+	// A nil-format spec lookup must not panic; and the recover guard turns any
+	// internal panic into a JSON error.
+	call := guarded(func(context.Context, json.RawMessage) string { panic("boom") })
+	m := toolsParseObj(t, call(context.Background(), nil))
+	require.Equal(t, "erreur interne de l'outil", m["error"])
+}
