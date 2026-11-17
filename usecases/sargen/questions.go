@@ -189,6 +189,8 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 				return issuesToError(issues)
 			}
 			written = paths
+			// Computed values follow the chosen option, in the same write.
+			core.ComputeInto(format, doc)
 			return nil
 		},
 		func(tx repositories.Transaction, doc *core.Document) error {

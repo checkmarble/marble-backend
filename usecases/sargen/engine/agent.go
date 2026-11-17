@@ -260,7 +260,10 @@ func hasUsableOutput(out core.TaskOutput) bool {
 func (r *agentRunner) tools(tc core.ToolContext, spec core.TaskSpec) []core.Tool {
 	all := CommonTools(tc)
 	if tc.Format != nil {
-		maps.Copy(all, tc.Format.Tools(tc))
+		for name, t := range tc.Format.Tools(tc) {
+			t.Call = guarded(t.Call) // a format tool never panics the run either
+			all[name] = t
+		}
 	}
 	var out []core.Tool
 	for _, name := range slices.Sorted(maps.Keys(all)) {

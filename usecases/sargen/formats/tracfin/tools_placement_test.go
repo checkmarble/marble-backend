@@ -109,3 +109,53 @@ func TestTools_OperationPreviewAndReadDocument(t *testing.T) {
 	assert.NotContains(t, out, "transactions-2")
 	assert.Contains(t, tools["read_document"].Call(context.Background(), json.RawMessage(`{`)), "error")
 }
+
+func TestTools_OperationPreviewWithCandidateFillsAndBounds(t *testing.T) {
+	f := planFormat(t)
+	doc := core.NewDocument()
+	item := doc.AddItem("work.transactions", "transactions") // empty: nothing to preview yet
+	tools := f.Tools(core.ToolContext{Format: f, Doc: doc})
+	call := func(args string) map[string]any {
+		var out map[string]any
+		require.NoError(t, json.Unmarshal([]byte(tools["tracfin_operation_preview"].Call(context.Background(), json.RawMessage(args))), &out))
+		return out
+	}
+	assert.EqualValues(t, 0, call(`{}`)["line_count"])
+
+	args, err := json.Marshal(map[string]any{"fills": []map[string]string{
+		{"path": string(item.Child("montant")), "value": "12.5"},
+		{"path": string(item.Child("devise")), "value": "EUR"},
+		{"path": string(item.Child("typeOperation")), "value": "OT10"},
+		{"path": "context.general.refInterne", "value": "x"}, // outside the transactions: refused
+	}})
+	require.NoError(t, err)
+	out := call(string(args))
+	assert.EqualValues(t, 1, out["line_count"])
+	assert.Equal(t, "12.5", out["total_amount"])
+	assert.NotEmpty(t, out["rejected_fills"])
+	assert.Empty(t, doc.Values, "the preview works on a copy")
+
+	// Bounded: many groups list at most 30 lines and many transactions at most 10 per line.
+	big := core.NewDocument()
+	for i := 0; i < 40; i++ {
+		addCompTx(big, compTx{montant: "1", date: "2026-03-01", devise: "EUR", typeOperation: "OT10", emetteurLibre: string(rune('A'+i%26)) + string(rune('a'+i/26))})
+	}
+	for i := 0; i < 15; i++ {
+		addCompTx(big, compBase("1", "2026-03-02"))
+	}
+	bigOut := f.Tools(core.ToolContext{Format: f, Doc: big})["tracfin_operation_preview"].Call(context.Background(), json.RawMessage(`{}`))
+	var parsed struct {
+		Lines []struct {
+			Transactions []string `json:"transactions"`
+		} `json:"lines"`
+		LineCount int    `json:"line_count"`
+		Warning   string `json:"warning"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(bigOut), &parsed))
+	assert.Len(t, parsed.Lines, 30)
+	assert.Equal(t, 41, parsed.LineCount)
+	assert.NotEmpty(t, parsed.Warning)
+	for _, l := range parsed.Lines {
+		assert.LessOrEqual(t, len(l.Transactions), 10)
+	}
+}

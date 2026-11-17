@@ -103,3 +103,29 @@ func TestManualTotalIsNotOverwrittenByCompute(t *testing.T) {
 	assert.InDelta(t, 150, compDecimalOf(t, st.Doc.Values[line.Child("montantTotal")].Value), 0.001,
 		"the line itself is still recomputed")
 }
+
+func TestChooseQuestionOption_RecomputesOperations(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	st := createFresh(t, uc, f)
+	id := st.Declaration.Id
+
+	tx, st, err := uc.AddItem(f.Ctx, id, st.Declaration.Version, "work.transactions")
+	require.NoError(t, err)
+	st, err = uc.UpdateFields(f.Ctx, id, st.Declaration.Version, compTxFills(tx, "100.00", "2026-03-10"))
+	require.NoError(t, err)
+
+	q := f.SeedQuestion(t, id, []core.Path{tx.Child("montant")}, "Quel montant ?", []core.QuestionOption{{
+		Label: "Centimes convertis",
+		Fills: []core.Fill{{
+			Path: tx.Child("montant"), Value: "250",
+			Sources:    []core.SourceRef{{Object: core.ObjectRef{Table: "transactions", ObjectID: "t1"}, Field: "amount", RawValue: "250"}},
+			Confidence: core.ConfidenceHigh,
+		}},
+	}})
+	st, err = uc.ChooseQuestionOption(f.Ctx, q.Id, st.Declaration.Version, 0)
+	require.NoError(t, err)
+
+	line := compOnlyLine(t, st.Doc)
+	assert.InDelta(t, 250, compDecimalOf(t, st.Doc.Values[line.Child("montantTotal")].Value), 0.001)
+	assert.InDelta(t, 250, compDecimalOf(t, st.Doc.Values["operations.montantTotal"].Value), 0.001)
+}
