@@ -309,6 +309,63 @@ func handleUpdateContinuousScreeningMatchStatus(uc usecases.Usecases) func(c *gi
 	}
 }
 
+// handleReviewContinuousScreeningMatches reviews each match like handleUpdateContinuousScreeningMatchStatus,
+// one transaction per match, and reports each outcome instead of failing the whole request.
+func handleReviewContinuousScreeningMatches(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var payload dto.ContinuousScreeningMatchesReviewDto
+		if presentError(ctx, c, c.ShouldBindJSON(&payload)) {
+			return
+		}
+
+		creds, ok := utils.CredentialsFromCtx(ctx)
+		if !ok {
+			presentError(ctx, c, models.ErrUnknownUser)
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
+		results := make([]dto.ContinuousScreeningMatchReviewResultDto, 0, len(payload.Matches))
+		for _, match := range payload.Matches {
+			update, err := dto.AdaptScreeningMatchUpdateInputDto(
+				match.MatchId, creds.ActorIdentity.UserId, match.ScreeningMatchUpdateDto)
+			if err == nil {
+				_, err = usecase.UpdateContinuousScreeningMatchStatus(ctx, update)
+			}
+			result := dto.ContinuousScreeningMatchReviewResultDto{
+				MatchId:    match.MatchId,
+				StatusCode: matchReviewStatusCode(err),
+			}
+			if err != nil {
+				result.Message = err.Error()
+			}
+			results = append(results, result)
+		}
+
+		c.JSON(http.StatusOK, gin.H{"results": results})
+	}
+}
+
+// matchReviewStatusCode is the status presentError answers for the errors a match review returns.
+func matchReviewStatusCode(err error) int {
+	switch {
+	case err == nil:
+		return http.StatusOK
+	case errors.Is(err, models.BadParameterError):
+		return http.StatusBadRequest
+	case errors.Is(err, models.UnprocessableEntityError):
+		return http.StatusUnprocessableEntity
+	case errors.Is(err, models.ForbiddenError):
+		return http.StatusForbidden
+	case errors.Is(err, models.NotFoundError):
+		return http.StatusNotFound
+	default:
+		return http.StatusInternalServerError
+	}
+}
+
 func handleDeleteContinuousScreeningObject(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()

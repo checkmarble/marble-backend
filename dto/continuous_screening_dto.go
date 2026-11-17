@@ -233,3 +233,22 @@ func AdaptContinuousScreeningMatchDto(m models.ContinuousScreeningMatch) Continu
 		UpdatedAt:             m.UpdatedAt,
 	}
 }
+
+// ContinuousScreeningMatchesReviewDto reviews several matches in one request. Each match is reviewed
+// on its own, as with the single match endpoint, so one refused match doesn't stop the others.
+type ContinuousScreeningMatchesReviewDto struct {
+	Matches []ContinuousScreeningMatchReviewDto `json:"matches" binding:"required,min=1,max=1000,dive"`
+}
+
+type ContinuousScreeningMatchReviewDto struct {
+	MatchId string `json:"match_id" binding:"required"`
+	ScreeningMatchUpdateDto
+}
+
+// ContinuousScreeningMatchReviewResultDto is the outcome of one match's review: the HTTP status the
+// single match endpoint would have answered, with its error message.
+type ContinuousScreeningMatchReviewResultDto struct {
+	MatchId    string `json:"match_id"`
+	StatusCode int    `json:"status_code"`
+	Message    string `json:"message,omitempty"`
+}
