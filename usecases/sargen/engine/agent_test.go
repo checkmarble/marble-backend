@@ -445,3 +445,182 @@ func TestAgent_EmptyRequiredFieldIsNotSentBack(t *testing.T) {
 	require.Len(t, out.Questions, 1)
 	assert.Equal(t, []core.Path{"personnes.pp[pp-1].implication"}, out.Questions[0].Paths)
 }
+
+// agFill builds a fill object (raw JSON); source is the raw JSON of the source or "null".
+func agFill(path, value, source string, extra ...string) string {
+	return `{"path":"` + path + `","value":"` + value + `","source":` + source + strings.Join(append([]string{""}, extra...), ",") + `}`
+}
+
+func agSrc(field, raw string) string {
+	return `{"field":"` + field + `","raw_value":"` + raw + `"}`
+}
+
+func TestAgent_ValueNotDerivedFromSourceIsCorrectedThenQuestion(t *testing.T) {
+	// The cited raw value is real (last_name = Dupont) but the value invented.
+	bad := agFinal(agFill(agNomPath, "Martin", agSrc("last_name", "Dupont")))
+	llm := newScriptedLLM(FinalStep(bad), FinalStep(bad))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{MaxCorrections: 1}, agentToolContext(t), agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+
+	assert.Equal(t, 2, llm.Calls())
+	assert.Contains(t, agLastIsCorrection(t, llm.Requests[1]), "ne correspond pas à la valeur source citée")
+	assert.Empty(t, out.Fills, "an invented value must never land as sourced")
+	require.NotEmpty(t, out.Questions)
+	assert.Contains(t, out.Questions[0].Text, "valeur non vérifiable")
+	assert.Contains(t, out.Questions[0].Paths, core.Path(agNomPath))
+}
+
+func TestAgent_NameSplitIsAccepted(t *testing.T) {
+	sel := agentSelection("persons", "p1", map[string]any{"object_id": "p1", "full_name": "Jean Pierre DUPONT"})
+	final := agFinal(
+		agFill(agNomPath, "DUPONT", agSrc("full_name", "Jean Pierre DUPONT")),
+		agFill("personnes.pp[pp-1].etatCivil.prenom[+a]", "Jean", agSrc("full_name", "Jean Pierre DUPONT")),
+		agFill("personnes.pp[pp-1].etatCivil.prenom[+b]", "Pierre", agSrc("full_name", "Jean Pierre DUPONT")),
+	)
+	llm := newScriptedLLM(FinalStep(final))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t, sel), agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, llm.Calls())
+	assert.Len(t, out.Fills, 3)
+	assert.Empty(t, out.Questions)
+}
+
+func TestAgent_AbsoluteAmountIsAccepted(t *testing.T) {
+	sel := agentSelection("persons", "p1", map[string]any{"object_id": "p1", "balance": -9900.0})
+	path := "personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban[+a].soldeRestant"
+	llm := newScriptedLLM(FinalStep(agFinal(agFill(path, "9900", agSrc("balance", "-9900.00")))))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t, sel), agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, llm.Calls(), "%v", llm.Requests)
+	require.Len(t, out.Fills, 1)
+	assert.Equal(t, "9900", out.Fills[0].Value)
+}
+
+func TestAgent_DateFromOtherDayIsCorrected(t *testing.T) {
+	sel := agentSelection("persons", "p1", map[string]any{"object_id": "p1", "birth_ts": "2026-03-31T23:30:00Z"})
+	path := "personnes.pp[pp-1].etatCivil.dateNaissance"
+	bad := agFinal(agFill(path, "2026-03-31", agSrc("birth_ts", "2026-03-31T23:30:00Z")))
+	good := agFinal(agFill(path, "2026-04-01", agSrc("birth_ts", "2026-03-31T23:30:00Z")))
+	llm := newScriptedLLM(FinalStep(bad), FinalStep(good))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t, sel), agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+
+	assert.Equal(t, 2, llm.Calls())
+	require.Len(t, out.Fills, 1)
+	assert.Equal(t, "2026-04-01", out.Fills[0].Value)
+}
+
+func TestAgent_CodeMappingNeedsJustification(t *testing.T) {
+	sel := agentSelection("persons", "p1", map[string]any{"object_id": "p1", "country": "FRA"})
+	path := "personnes.pp[pp-1].etatCivil.paysNaissance"
+	without := agFinal(agFill(path, "FR", agSrc("country", "FRA")))
+	with := agFinal(agFill(path, "FR", agSrc("country", "FRA"), `"justification":"FRA est le code ISO alpha-3 de la France"`, `"confidence":"high"`))
+	llm := newScriptedLLM(FinalStep(without), FinalStep(with))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t, sel), agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+
+	assert.Equal(t, 2, llm.Calls())
+	assert.Contains(t, agLastIsCorrection(t, llm.Requests[1]), "justifiez la correspondance")
+	require.Len(t, out.Fills, 1)
+	assert.Equal(t, "FR", out.Fills[0].Value)
+}
+
+func TestAgent_TechnicalErrorKeepsTrace(t *testing.T) {
+	llm := newScriptedLLM(ToolCallStep("read_object", agReadP1Args), ErrStep(errors.New("boum")))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t), agentSpec("fill", agentPersonPath))
+	require.Error(t, err)
+
+	entries := agTraceOf(t, out)
+	require.NotEmpty(t, entries)
+	assert.Equal(t, TraceHeader, entries[0].Type)
+	assert.True(t, agHasType(entries, TraceToolResult))
+	assert.True(t, agHasType(entries, TraceCheckError), "the provider error is traced")
+}
+
+func TestAgent_LimitAfterValidFinalKeepsValidatedFills(t *testing.T) {
+	// One valid fill, one invented: a correction is asked, the turn limit ends
+	// the run: the valid fill stays and the limit question covers the rest.
+	final := agFinal(
+		agFill(agNomPath, "Dupont", agSrc("last_name", "Dupont")),
+		agFill("personnes.pp[pp-1].etatCivil.lieuNaissance", "Lyon", agSrc("last_name", "Dupont")),
+	)
+	llm := newScriptedLLM(FinalStep(final))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{MaxTurns: 1}, agentToolContext(t), agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+
+	require.Len(t, out.Fills, 1)
+	assert.Equal(t, core.Path(agNomPath), out.Fills[0].Path)
+	require.NotEmpty(t, out.Questions)
+	last := out.Questions[len(out.Questions)-1]
+	assert.NotContains(t, last.Paths, core.Path(agNomPath), "the limit question covers only what is left")
+	assert.Contains(t, last.Paths, core.Path("personnes.pp[pp-1].etatCivil.lieuNaissance"))
+}
+
+func TestAgent_NoAllowedPartFailsClosed(t *testing.T) {
+	spec := agentSpec("fill", "")
+	llm := newScriptedLLM(FinalStep(agFinal()))
+	_, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t), spec)
+	require.Error(t, err)
+	assert.Equal(t, 0, llm.Calls())
+}
+
+func TestAgent_AllowedPathsEmptyFallsBackToTarget(t *testing.T) {
+	spec := agentSpec("fill", agentPersonPath)
+	spec.AllowedPaths = nil
+	outside := agFinal(agFill("personnes.pp[pp-2].etatCivil.nomNaissance", "Martin", agSrc("last_name", "Martin")))
+	llm := newScriptedLLM(FinalStep(outside), FinalStep(outside))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{MaxCorrections: 1}, agentToolContext(t), spec)
+	require.NoError(t, err)
+	assert.Empty(t, out.Fills)
+}
+
+func TestAgent_QuestionsWithoutRemainingPathsAreDropped(t *testing.T) {
+	final := `{"fills":[],"questions":[
+	 {"paths":["personnes.pp[pp-2].etatCivil.nomNaissance"],"text":"hors partie"},
+	 {"paths":[],"text":"question générale","options":[{"label":"Oui","fills":[{"path":"personnes.pp[pp-1].etatCivil.nomNaissance","value":"Dupont","source":null}]},{"label":"Non"}]}]}`
+	llm := newScriptedLLM(FinalStep(final))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t), agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+
+	require.Len(t, out.Questions, 1)
+	assert.Equal(t, "question générale", out.Questions[0].Text)
+	for _, o := range out.Questions[0].Options {
+		assert.Empty(t, o.Fills, "a pathless question keeps its options as labels")
+	}
+}
+
+func TestAgent_OptionWithEmptyValueStaysLabel(t *testing.T) {
+	final := `{"fills":[],"questions":[{"paths":["personnes.pp[pp-1].etatCivil.nomNaissance"],"text":"Nom ?",
+	 "options":[{"label":"Effacer","fills":[{"path":"personnes.pp[pp-1].etatCivil.nomNaissance","value":"","source":null}]}]}]}`
+	llm := newScriptedLLM(FinalStep(final))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t), agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+
+	require.Len(t, out.Questions, 1)
+	require.Len(t, out.Questions[0].Options, 1)
+	assert.Empty(t, out.Questions[0].Options[0].Fills)
+}
+
+func TestAgent_NewItemDefaultsToSingleInput(t *testing.T) {
+	spec := agentSpec("fill", "personnes.pp")
+	spec.Inputs = []core.ObjectRef{{Table: "persons", ObjectID: "p1"}}
+	final := agFinal(agFill("personnes.pp[+a].etatCivil.nomNaissance", "Dupont", agSrc("last_name", "Dupont")))
+	llm := newScriptedLLM(FinalStep(final))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t), spec)
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, llm.Calls(), "%v", llm.Requests)
+	require.Len(t, out.Fills, 1)
+	assert.Equal(t, "p1", out.Fills[0].Sources[0].Object.ObjectID)
+}
+
+func TestAgent_LimitOnReviewAsksNothing(t *testing.T) {
+	spec := agentSpec(core.TaskKindReview, agentPersonPath)
+	llm := newScriptedLLM(ToolCallStep("read_object", agReadP1Args), ToolCallStep("read_object", agReadP1Args))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{MaxToolCalls: 1}, agentToolContext(t), spec)
+	require.NoError(t, err)
+	assert.Empty(t, out.Questions)
+	assert.Empty(t, out.Findings)
+}

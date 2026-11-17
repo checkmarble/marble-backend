@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 	_ "time/tzdata" // Paris day of timestamps, whatever the host's zoneinfo
+	"unicode"
 
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -35,6 +38,8 @@ func (f *flexString) UnmarshalJSON(b []byte) error {
 	}
 	return nil
 }
+
+const indexMarker = "\x00idx:"
 
 type wireSource struct {
 	Table    flexString `json:"table"`
@@ -141,24 +146,24 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 		good = append(good, pending{i, f})
 	}
 
-	// Dry run on a copy of the document: natures, sources, scope, values.
+	// Dry run on a copy of the document: natures, sources, scope, values. Each
+	// fill carries its position in a marker so that a rejection is matched to
+	// its input by index (the clone is discarded: the markers never leak).
 	clone := c.tc.Doc.Clone()
 	fills := make([]core.Fill, len(good))
 	for i, g := range good {
-		fills[i] = g.fill
+		f := g.fill
+		f.RuleIDs = append(slices.Clone(f.RuleIDs), indexMarker+strconv.Itoa(i))
+		fills[i] = f
 	}
 	applied := core.ApplyFills(c.tc.Format.Spec(), clone, fills, c.applyOptions(clone))
 	rejectedIdx := map[int]core.Issue{}
-	cursor := 0
 	for _, rj := range applied.Rejected {
-		for cursor < len(fills) && fills[cursor].Path != rj.Fill.Path {
-			cursor++
+		if n := len(rj.Fill.RuleIDs); n > 0 && strings.HasPrefix(rj.Fill.RuleIDs[n-1], indexMarker) {
+			if i, err := strconv.Atoi(strings.TrimPrefix(rj.Fill.RuleIDs[n-1], indexMarker)); err == nil {
+				rejectedIdx[i] = rj.Issue
+			}
 		}
-		if cursor >= len(fills) {
-			break
-		}
-		rejectedIdx[cursor] = rj.Issue
-		cursor++
 	}
 	for i, g := range good {
 		issue, bad := rejectedIdx[i]
@@ -178,18 +183,15 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 }
 
 func (c *checker) applyOptions(doc *core.Document) core.ApplyOptions {
-	opts := core.ApplyOptions{
-		Overwrite:      core.OverwriteNonManual,
-		AllowedSources: AllowedSources(doc, c.tc.Selection, c.tc.DataModel, c.spec.Inputs),
+	return core.ApplyOptions{
+		AllowedPrefixes: c.allowed,
+		Overwrite:       core.OverwriteNonManual,
+		AllowedSources:  AllowedSources(doc, c.tc.Selection, c.tc.DataModel, c.spec.Inputs),
 	}
-	if len(c.allowed) > 0 {
-		opts.AllowedPrefixes = c.allowed
-	}
-	return opts
 }
 
 func (c *checker) pathAllowed(p core.Path) bool {
-	return len(c.allowed) == 0 || core.PathAllowed(p, c.allowed)
+	return core.PathAllowed(p, c.allowed)
 }
 
 // checkQuestions keeps the model's questions: paths outside the task's part are
@@ -214,6 +216,10 @@ func (c *checker) checkQuestions(res *checkResult, qs []wireQuestion, afterFills
 			opt.Fills = fills
 			q.Options = append(q.Options, opt)
 		}
+		if len(wq.Paths) > 0 && len(q.Paths) == 0 {
+			res.Notes = append(res.Notes, fmt.Sprintf("questions[%d] : plus aucun chemin dans la partie confiée, question ignorée", qi))
+			continue
+		}
 		res.Questions = append(res.Questions, q)
 	}
 }
@@ -226,6 +232,9 @@ func (c *checker) optionFills(ws []wireFill, questionPaths []core.Path, doc *cor
 	}
 	fills := make([]core.Fill, 0, len(ws))
 	for _, w := range ws {
+		if w.Value == "" {
+			return nil, "valeur vide"
+		}
 		f, msg := c.toFill(w)
 		if msg != "" {
 			return nil, msg
@@ -281,6 +290,12 @@ func (c *checker) toFill(w wireFill) (core.Fill, string) {
 			return core.Fill{}, msg
 		}
 		f.Sources = []core.SourceRef{src}
+		if node := c.tc.Format.Spec().NodeAt(path.Template()); node != nil && node.Kind == core.NodeField &&
+			node.EffectiveNature() == core.NatureCopied {
+			if msg := relationError(node, f.Value, src.RawValue, f.Justification); msg != "" {
+				return core.Fill{}, msg
+			}
+		}
 	}
 	return f, ""
 }
@@ -340,6 +355,9 @@ func (c *checker) defaultSource(target core.Path) (core.ObjectRef, string) {
 			}
 			return core.ObjectRef{}, "l'élément a plusieurs objets sources (" + strings.Join(names, ", ") + ") : précise table et object_id"
 		}
+	}
+	if len(c.spec.Inputs) == 1 {
+		return c.spec.Inputs[0], ""
 	}
 	return core.ObjectRef{}, "cet élément n'a pas d'objet source par défaut : précise table et object_id"
 }
@@ -439,4 +457,92 @@ func (c *checker) checkStructured(final json.RawMessage) (err error) {
 		}
 	}()
 	return c.tc.Format.ApplyStructured(c.spec.Kind, c.tc.Doc.Clone(), final)
+}
+
+// relationError checks that the value of a copied fill derives from the raw
+// value of its cited source, by field type; "" when it does (or when the
+// relation is not checked).
+func relationError(n *core.Node, value, raw, justification string) string {
+	mismatch := fmt.Sprintf("la valeur ne correspond pas à la valeur source citée (valeur source : « %s »)", shorten(raw, 100))
+	switch {
+	case n.Type == core.TypeBoolean, n.Type == core.TypeRef:
+		return ""
+	case n.Type == core.TypeCode || n.CodeList != "":
+		if foldAlnum(value) != foldAlnum(raw) && strings.TrimSpace(justification) == "" {
+			return "justifiez la correspondance entre la valeur source et le code choisi (justification)"
+		}
+		return ""
+	case n.Type == core.TypeDate:
+		d, ok := calendarDay(raw)
+		if !ok || d != value {
+			return mismatch
+		}
+		return ""
+	case n.Type == core.TypeDecimal, n.Type == core.TypeInteger:
+		if !decimalRe.MatchString(raw) || !decimalRe.MatchString(value) ||
+			normDecimal(strings.TrimPrefix(value, "-")) != normDecimal(strings.TrimPrefix(raw, "-")) {
+			return mismatch
+		}
+		return ""
+	}
+	if n.IsItemRef(value) {
+		return ""
+	}
+	if !textDerives(value, raw, n.MaxLength) {
+		return mismatch
+	}
+	return ""
+}
+
+func shorten(s string, n int) string {
+	if r := []rune(s); len(r) > n {
+		return string(r[:n]) + "…"
+	}
+	return s
+}
+
+// foldAlnum folds case and accents and drops everything but letters and digits.
+func foldAlnum(s string) string {
+	return strings.Join(foldTokens(s), "")
+}
+
+// foldTokens folds s and splits it on anything but letters and digits.
+func foldTokens(s string) []string {
+	return strings.FieldsFunc(foldText(s), func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) })
+}
+
+// textDerives: folded equality, a contiguous token subsequence of the raw text
+// (name or address split), or a truncation to the maximum length.
+func textDerives(value, raw string, maxLen int) bool {
+	vt, rt := foldTokens(value), foldTokens(raw)
+	if len(vt) == 0 {
+		return false
+	}
+	vj, rj := strings.Join(vt, ""), strings.Join(rt, "")
+	if vj == rj {
+		return true
+	}
+	for i := 0; i+len(vt) <= len(rt); i++ {
+		if slices.Equal(rt[i:i+len(vt)], vt) {
+			return true
+		}
+	}
+	return maxLen > 0 && len([]rune(value)) >= maxLen && strings.HasPrefix(rj, vj)
+}
+
+// calendarDay returns the AAAA-MM-JJ day of a raw date or timestamp (Paris day
+// for a timestamp).
+func calendarDay(raw string) (string, bool) {
+	raw = strings.TrimSpace(raw)
+	for _, layout := range []string{time.RFC3339Nano, "2006-01-02T15:04:05", "2006-01-02 15:04:05"} {
+		if t, err := time.Parse(layout, raw); err == nil {
+			return t.In(parisZone).Format("2006-01-02"), true
+		}
+	}
+	for _, layout := range []string{"2006-01-02", "02/01/2006"} {
+		if t, err := time.Parse(layout, raw); err == nil {
+			return t.Format("2006-01-02"), true
+		}
+	}
+	return "", false
 }
