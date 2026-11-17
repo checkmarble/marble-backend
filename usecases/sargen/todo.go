@@ -8,6 +8,10 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
 )
 
+// TodoCodeComputedToConfirm is the stable Code of the « valeur calculée à
+// confirmer » item.
+const TodoCodeComputedToConfirm = "computed_to_confirm"
+
 // buildTodoBase: issues and low-confidence values, sorted blocking, review, warning.
 func buildTodoBase(issues []core.Issue, doc *core.Document) []TodoItem {
 	var todo []TodoItem
@@ -59,7 +63,10 @@ func buildTodo(spec *core.Spec, issues []core.Issue, doc *core.Document, open []
 		default:
 			sev := TodoWarning
 			for _, p := range paths {
-				if n := spec.NodeAt(p.Template()); spec != nil && n != nil && n.Min >= 1 {
+				if spec == nil {
+					break
+				}
+				if n := spec.NodeAt(p.Template()); n != nil && n.Min >= 1 {
 					sev = TodoBlocking
 					break
 				}
@@ -80,7 +87,7 @@ func buildTodo(spec *core.Spec, issues []core.Issue, doc *core.Document, open []
 		sort.Slice(computed, func(a, b int) bool { return computed[a] < computed[b] })
 		for _, p := range computed {
 			todo = append(todo, TodoItem{
-				Kind: TodoIssue, Severity: TodoReview, Paths: []core.Path{p},
+				Kind: TodoIssue, Severity: TodoReview, Code: TodoCodeComputedToConfirm, Paths: []core.Path{p},
 				Message: "valeur calculée à confirmer",
 			})
 		}

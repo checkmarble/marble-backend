@@ -23,6 +23,7 @@ type DBSarGenerationJob struct {
 	Input         json.RawMessage `db:"input"`
 	Error         *string         `db:"error"`
 	CreatedBy     *uuid.UUID      `db:"created_by"`
+	Attempt       int             `db:"attempt"`
 	CreatedAt     time.Time       `db:"created_at"`
 	UpdatedAt     time.Time       `db:"updated_at"`
 }
@@ -38,6 +39,7 @@ func AdaptSarGenerationJob(db DBSarGenerationJob) (models.SarGenerationJob, erro
 		Input:         db.Input,
 		Error:         derefString(db.Error),
 		CreatedBy:     db.CreatedBy,
+		Attempt:       db.Attempt,
 		CreatedAt:     db.CreatedAt,
 		UpdatedAt:     db.UpdatedAt,
 	}, nil
@@ -78,6 +80,36 @@ func AdaptSarGenerationTask(db DBSarGenerationTask) (models.SarGenerationTask, e
 		Status:     models.SarJobStatus(db.Status),
 		Attempts:   db.Attempts,
 		Output:     db.Output,
+		Error:      derefString(db.Error),
+		StartedAt:  db.StartedAt,
+		FinishedAt: db.FinishedAt,
+	}, nil
+}
+
+// DBSarGenerationTaskSummary is the light projection of a task (no input,
+// output or trace).
+type DBSarGenerationTaskSummary struct {
+	Id         uuid.UUID  `db:"id"`
+	JobId      uuid.UUID  `db:"job_id"`
+	Kind       string     `db:"kind"`
+	TargetPath *string    `db:"target_path"`
+	Status     string     `db:"status"`
+	Attempts   int        `db:"attempts"`
+	Error      *string    `db:"error"`
+	StartedAt  *time.Time `db:"started_at"`
+	FinishedAt *time.Time `db:"finished_at"`
+}
+
+var SarGenerationTaskSummaryColumns = utils.ColumnList[DBSarGenerationTaskSummary]()
+
+func AdaptSarGenerationTaskSummary(db DBSarGenerationTaskSummary) (models.SarGenerationTask, error) {
+	return models.SarGenerationTask{
+		Id:         db.Id,
+		JobId:      db.JobId,
+		Kind:       db.Kind,
+		TargetPath: derefString(db.TargetPath),
+		Status:     models.SarJobStatus(db.Status),
+		Attempts:   db.Attempts,
 		Error:      derefString(db.Error),
 		StartedAt:  db.StartedAt,
 		FinishedAt: db.FinishedAt,

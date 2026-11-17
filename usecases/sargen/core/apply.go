@@ -300,6 +300,14 @@ func write(doc *Document, p Path, f Fill) {
 	doc.Values[p] = v
 }
 
+// PathAllowed reports whether p lies within one of the prefixes (by segments,
+// an item key `[k]` on the prefix's last segment counting as within it). No
+// prefix allows nothing here, unlike ApplyOptions.AllowedPrefixes where an
+// empty list means "no restriction".
+func PathAllowed(p Path, prefixes []Path) bool {
+	return slices.ContainsFunc(prefixes, func(pre Path) bool { return prefixAllows(p, pre) })
+}
+
 func prefixAllows(real, prefix Path) bool {
 	if prefix == "" {
 		return false
@@ -373,7 +381,7 @@ func walkPath(spec *Spec, doc *Document, p Path, opts ApplyOptions, resolved map
 		real = Path(string(container) + "[" + key + "]")
 	}
 	if !create && len(opts.AllowedPrefixes) > 0 {
-		if !slices.ContainsFunc(opts.AllowedPrefixes, func(pre Path) bool { return prefixAllows(real, pre) }) {
+		if !PathAllowed(real, opts.AllowedPrefixes) {
 			return "", nil, blocking(p, CodeOutOfScope, "chemin hors de la partie confiée à cette tâche")
 		}
 	}

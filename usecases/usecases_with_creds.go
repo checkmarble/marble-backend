@@ -588,7 +588,9 @@ func (usecases *UsecasesWithCreds) NewSarGenerationUsecase() *sargen.Usecase {
 
 // NewSarGenerationWorker builds the River worker of SAR generation jobs. The
 // orchestrator reads with the declaration's organization, not the credentials.
-func (usecases *UsecasesWithCreds) NewSarGenerationWorker(timeout time.Duration) *engine.Worker {
+// timeout is SAR_GENERATION_TIMEOUT and parallelism SAR_GENERATION_PARALLELISM
+// (<= 0 -> engine defaults), both parsed by the worker config.
+func (usecases *UsecasesWithCreds) NewSarGenerationWorker(timeout time.Duration, parallelism int) *engine.Worker {
 	repo := usecases.Repositories.MarbleDbRepository
 	o := engine.NewOrchestrator(engine.Deps{
 		ExecutorFactory:    usecases.NewExecutorFactory(),
@@ -600,7 +602,7 @@ func (usecases *UsecasesWithCreds) NewSarGenerationWorker(timeout time.Duration)
 		Runner:             engine.UnavailableRunner{}, // Task 13
 		Prompts:            engine.FSPrompts{FS: usecases.aiPromptsFS},
 		FormatGetter:       formats.Get,
-		Parallelism:        utils.GetEnv("SAR_GENERATION_PARALLELISM", engine.DefaultParallelism),
+		Parallelism:        parallelism,
 		StaleAfter:         2 * timeout,
 	})
 	return engine.NewWorker(o, repo, usecases.NewExecutorFactory(), timeout)

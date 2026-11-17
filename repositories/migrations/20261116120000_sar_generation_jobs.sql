@@ -8,9 +8,12 @@ CREATE TABLE sar_generation_jobs (
     input jsonb,
     error text,
     created_by uuid,
+    attempt int NOT NULL DEFAULT 0,
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     updated_at timestamp with time zone NOT NULL DEFAULT now()
 );
+
+CREATE INDEX sar_generation_jobs_declaration_id_idx ON sar_generation_jobs (declaration_id);
 
 -- At most one active job per declaration.
 CREATE UNIQUE INDEX sar_generation_jobs_one_active_idx

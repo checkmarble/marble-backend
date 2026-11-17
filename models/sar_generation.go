@@ -36,8 +36,10 @@ type SarGenerationJob struct {
 	Input         []byte
 	Error         string
 	CreatedBy     *uuid.UUID
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	// Attempt is the River attempt currently (or last) running the job.
+	Attempt   int
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type SarGenerationTask struct {

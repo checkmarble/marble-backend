@@ -179,9 +179,12 @@ const (
 type TodoItem struct {
 	Kind     TodoKind
 	Severity TodoSeverity
-	Paths    []core.Path
-	Message  string
-	RefId    *uuid.UUID
+	// Code is a stable machine-readable identifier for items that need one
+	// (e.g. TodoCodeComputedToConfirm); empty otherwise.
+	Code    string
+	Paths   []core.Path
+	Message string
+	RefId   *uuid.UUID
 }
 
 type DeclarationState struct {

@@ -123,7 +123,30 @@ func (r *fakeGenRepo) SetSarGenerationJobStatus(_ context.Context, _ repositorie
 	return nil
 }
 
-func (r *fakeGenRepo) ListSarGenerationTasks(_ context.Context, _ repositories.Executor, jobId uuid.UUID) ([]models.SarGenerationTask, error) {
+// ResumeSarGenerationJob mirrors the SQL guard: failed, or pending/running
+// untouched for longer than staleAfter on the fake clock.
+func (r *fakeGenRepo) ResumeSarGenerationJob(_ context.Context, _ repositories.Executor, id uuid.UUID,
+	staleAfter time.Duration,
+) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	j, ok := r.Jobs[id]
+	if !ok {
+		return false, errors.Wrap(models.NotFoundError, "job")
+	}
+	stale := isActiveStatus(j.Status) && r.clock().Sub(j.UpdatedAt) > staleAfter
+	if j.Status != models.SarJobStatusFailed && !stale {
+		return false, nil
+	}
+	if r.hasActive(j.DeclarationId, id) {
+		return false, models.ErrSarJobAlreadyActive
+	}
+	j.Status, j.Error, j.UpdatedAt = models.SarJobStatusPending, "", r.clock()
+	r.Jobs[id] = j
+	return true, nil
+}
+
+func (r *fakeGenRepo) ListSarGenerationTaskSummaries(_ context.Context, _ repositories.Executor, jobId uuid.UUID) ([]models.SarGenerationTask, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return append([]models.SarGenerationTask(nil), r.Tasks[jobId]...), nil
@@ -233,6 +256,15 @@ func (f *fakes) SeedJob(t *testing.T, declId uuid.UUID, kind models.SarJobKind, 
 	f.Gen.Jobs[j.Id] = j
 	f.Gen.mu.Unlock()
 	return j
+}
+
+// SetJobAttempt overrides the River attempt stored on the job.
+func (f *fakes) SetJobAttempt(jobId uuid.UUID, attempt int) {
+	f.Gen.mu.Lock()
+	defer f.Gen.mu.Unlock()
+	j := f.Gen.Jobs[jobId]
+	j.Attempt = attempt
+	f.Gen.Jobs[jobId] = j
 }
 
 // SetJobUpdatedAt overrides updated_at (heartbeat age).

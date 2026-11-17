@@ -45,6 +45,7 @@ type WorkerConfig struct {
 	cloudRunProbePort            string
 	caseReviewTimeout            time.Duration
 	sarGenerationTimeout         time.Duration
+	sarGenerationParallelism     int
 	caseManagerBucket            string
 	telemetryExporter            string
 	otelSamplingRates            string

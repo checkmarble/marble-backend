@@ -113,6 +113,7 @@ func TestGetJob_ReportsProgressAndLastError(t *testing.T) {
 		f.SeedTask(job.Id, "fill", "operations.montantTotal", models.SarJobStatusFailed, 3, "erreur de tâche")
 		f.SeedTask(job.Id, "fill", "personnes.pp", models.SarJobStatusPending, 0, "")
 		genMarkJob(t, f, job.Id, models.SarJobStatusFailed, "délai dépassé")
+		f.SetJobAttempt(job.Id, 3)
 
 		st, err := uc.GetJob(f.Ctx, job.Id)
 		require.NoError(t, err)
@@ -122,13 +123,14 @@ func TestGetJob_ReportsProgressAndLastError(t *testing.T) {
 		assert.Equal(t, 4, st.Total, "all tasks")
 		assert.Len(t, st.Tasks, 4)
 		assert.Equal(t, "délai dépassé", st.LastError)
-		assert.Equal(t, 3, st.Attempt, "highest task attempt count")
+		assert.Equal(t, 3, st.Attempt, "River attempt stored on the job")
 		assert.Equal(t, models.SarGenerationMaxAttempts, st.MaxAttempts)
 	})
 
 	t.Run("without job error the last failed task error is reported", func(t *testing.T) {
 		job := f.SeedJob(t, declId, models.SarJobKindGenerate, models.SarJobStatusRunning)
 		f.SeedTask(job.Id, "fill", "operations.montantTotal", models.SarJobStatusFailed, 2, "erreur de tâche")
+		f.SetJobAttempt(job.Id, 2)
 
 		st, err := uc.GetJob(f.Ctx, job.Id)
 		require.NoError(t, err)
@@ -310,6 +312,35 @@ func TestResumeJob_OnlyFailedOrStale(t *testing.T) {
 }
 
 // ---- StartReview ----
+
+// A job whose River job was lost (never picked up, still pending) must not
+// lock the declaration forever: after 2 x the job timeout it is reported
+// failed and can be resumed.
+func TestResumeJob_LostPendingJobAfterStartGeneration(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	job, err := uc.StartGeneration(f.Ctx, declId)
+	require.NoError(t, err)
+	require.Equal(t, models.SarJobStatusPending, job.Status)
+	require.Len(t, f.Enqueuer.Calls, 1)
+
+	// No worker ever runs it.
+	_, err = uc.ResumeJob(f.Ctx, job.Id)
+	require.ErrorIs(t, err, models.ConflictError, "a fresh pending job is not stale")
+
+	f.Clock.Advance(61 * time.Minute)
+	st, err := uc.GetJob(f.Ctx, job.Id)
+	require.NoError(t, err)
+	assert.Equal(t, models.SarJobStatusFailed, st.Job.Status)
+	_, err = uc.StartGeneration(f.Ctx, declId)
+	require.ErrorIs(t, err, models.ErrSarJobAlreadyActive)
+	assert.ErrorContains(t, err, "relancez la génération")
+
+	resumed, err := uc.ResumeJob(f.Ctx, job.Id)
+	require.NoError(t, err)
+	assert.Equal(t, models.SarJobStatusPending, resumed.Status)
+	require.Len(t, f.Enqueuer.Calls, 2)
+	assert.Equal(t, job.Id, f.Enqueuer.Calls[1].JobId)
+}
 
 func TestStartReview_RefusedBeforeFirstGeneration(t *testing.T) {
 	uc, f, declId := genReady(t, false)
