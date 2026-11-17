@@ -227,7 +227,7 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 
 		// Check if the previous object data is the same as the new object data, if yes, skip screening
 		if areObjectsEqual(previousObjectData, newObjectData, configuredFields) {
-			logger.InfoContext(ctx, "Continuous Screening - previous object data is the same as the new object data, skipping screening",
+			logger.DebugContext(ctx, "Continuous Screening - previous object data is the same as the new object data, skipping screening",
 				"previous_internal_id", previousObjectInternalId,
 				"new_internal_id", newObjectInternalId)
 			return nil
@@ -255,7 +255,7 @@ func (w *DoScreeningWorker) Work(ctx context.Context, job *river.Job[models.Cont
 			return nil
 		}
 		if existingScreeningWithMatches.CreatedAt.After(ingestedObjectValidFrom) {
-			logger.InfoContext(ctx, "Continuous Screening - ingested object valid from is before the latest continuous screening result, skipping screening",
+			logger.DebugContext(ctx, "Continuous Screening - ingested object valid from is before the latest continuous screening result, skipping screening",
 				"object_id", monitoredObject.ObjectId,
 				"object_type", job.Args.ObjectType,
 				"org_id", config.OrgId,

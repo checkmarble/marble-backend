@@ -183,7 +183,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 	exec := w.executorFactory.NewExecutor()
 
 	if utils.GetEnv("DISABLE_CONTINUOUS_SCREENING_APPLY_DELTA_FILE", false) {
-		logger.InfoContext(ctx, "Continuous screening apply delta file is disabled, skipping job",
+		logger.DebugContext(ctx, "Continuous screening apply delta file is disabled, skipping job",
 			"update_id", job.Args.UpdateId,
 			"org_id", job.Args.OrgId)
 		if err := w.repository.UpdateContinuousScreeningUpdateJob(

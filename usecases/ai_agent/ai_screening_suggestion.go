@@ -82,7 +82,7 @@ func (uc *AiAgentUsecase) AnalyseScreeningHits(ctx context.Context, screeningId 
 		}
 	}
 	if len(pendingMatches) == 0 {
-		logger.InfoContext(ctx, "No pending matches to analyse", "screening_id", screeningId)
+		logger.DebugContext(ctx, "No pending matches to analyse", "screening_id", screeningId)
 		return nil
 	}
 

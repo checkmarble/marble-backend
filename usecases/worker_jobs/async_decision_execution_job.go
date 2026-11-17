@@ -91,7 +91,7 @@ func (w *AsyncDecisionExecutionWorker) Work(ctx context.Context, job *river.Job[
 	switch execution.Status {
 	case models.AsyncDecisionExecutionStatusCompleted,
 		models.AsyncDecisionExecutionStatusFailed:
-		logger.InfoContext(ctx, "async decision execution already in terminal state, skipping",
+		logger.DebugContext(ctx, "async decision execution already in terminal state, skipping",
 			"execution_id", job.Args.AsyncDecisionExecutionId,
 			"status", execution.Status,
 		)
