@@ -628,12 +628,13 @@ func (usecases *Usecases) NewPromptServingUsecase() PromptServingUsecase {
 	)
 }
 
-func (usecases *Usecases) NewTaskQueueWorker(riverClient *river.Client[pgx.Tx], queueWhitelist []string) *TaskQueueWorker {
+func (usecases *Usecases) NewTaskQueueWorker(riverClient *river.Client[pgx.Tx], queueWhitelist []string, queueWorkers OrganizationQueueWorkers) *TaskQueueWorker {
 	return NewTaskQueueWorker(
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.MarbleDbRepository,
 		queueWhitelist,
 		riverClient,
+		queueWorkers,
 	)
 }
 
