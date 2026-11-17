@@ -10669,7 +10669,7 @@
         "kind": "field",
         "label": "Sens",
         "max": 1,
-        "min": 1,
+        "min": 0,
         "name": "sens",
         "template": "work.transactions[].sens",
         "type": "code"
@@ -11822,6 +11822,44 @@
    "kind": "at_most_one",
    "scope": "work.transactions[]",
    "source": "financier-v1.4.0.xsd:1566-1573 (id d'une personne déjà déclarée ou champ libre) ; plan Task 2 (working_nodes)"
+  },
+  {
+   "description": "La référence financière d'émission et le pays d'origine des fonds sont à renseigner sauf pour un versement d'espèces (OT07) : la ligne d'opération les exige.",
+   "id": "transaction_origine_requise_sauf_ot07",
+   "kind": "required_if",
+   "scope": "work.transactions[]",
+   "severity": "warning",
+   "source": "financier-v1.4.0.xsd:1543-1587 (références et pays obligatoires sur la ligne d'opération, calculés depuis ce champ de travail) ; obligation du champ de travail : avertissement, l'obligation bloquante est celle de la ligne",
+   "then": [
+    "work.transactions[].refEmission",
+    "work.transactions[].paysOrigine"
+   ],
+   "when": {
+    "op": "not_in",
+    "path": "work.transactions[].typeOperation",
+    "values": [
+     "OT07"
+    ]
+   }
+  },
+  {
+   "description": "La référence financière de réception et le pays d'arrivée des fonds sont à renseigner sauf pour un retrait d'espèces (OT06) : la ligne d'opération les exige.",
+   "id": "transaction_arrivee_requise_sauf_ot06",
+   "kind": "required_if",
+   "scope": "work.transactions[]",
+   "severity": "warning",
+   "source": "financier-v1.4.0.xsd:1543-1587 (références et pays obligatoires sur la ligne d'opération, calculés depuis ce champ de travail) ; obligation du champ de travail : avertissement, l'obligation bloquante est celle de la ligne",
+   "then": [
+    "work.transactions[].refReception",
+    "work.transactions[].paysArrivee"
+   ],
+   "when": {
+    "op": "not_in",
+    "path": "work.transactions[].typeOperation",
+    "values": [
+     "OT06"
+    ]
+   }
   }
  ]
 }
