@@ -69,14 +69,18 @@ type opGroup struct {
 // financial reference of its emitter / beneficiary person (the data model is
 // not available here: no link is followed; otherwise the LLM or the analyst
 // fills them).
+//
+// paysOrigine / paysArrivee left empty are derived from the country code (first
+// two letters) of the IBAN of the emitter's / beneficiary's financial reference,
+// when it is in the country list. A derived value is written as computed: it is
+// recomputed while it stays computed, and never replaces a value written by the
+// analyst or the model, nor a field the analyst cleared by hand.
+//
+// A line whose group attributes change gets a NEW path (the old line is removed):
+// questions that cite the old line path become stale.
 func (f *format) Compute(doc *core.Document) core.ComputeResult {
-	return Compute(doc)
-}
-
-// Compute is the format-independent entry of f.Compute.
-func Compute(doc *core.Document) core.ComputeResult {
 	var res core.ComputeResult
-	groups, order, minDate, maxDate, total, totalFrac, refFills := groupTransactions(doc)
+	groups, order, minDate, maxDate, total, totalFrac, refFills := groupTransactions(f.spec, doc)
 	res.Fills = append(res.Fills, refFills...)
 
 	if len(groups) == 0 {
@@ -105,6 +109,13 @@ func Compute(doc *core.Document) core.ComputeResult {
 	if minDate != "" {
 		put(operationsPeriodStart, minDate, nil)
 		put(operationsPeriodEnd, maxDate, nil)
+	} else {
+		// No valid date remains: a stale computed period goes away.
+		for _, p := range []core.Path{operationsPeriodStart, operationsPeriodEnd} {
+			if v, ok := doc.Values[p]; ok && v.Origin == core.OriginComputed {
+				res.RemoveItems = append(res.RemoveItems, p)
+			}
+		}
 	}
 	put(operationsTotal, formatDecimal(total, totalFrac), txAmounts(allInputs))
 
@@ -136,13 +147,13 @@ func Compute(doc *core.Document) core.ComputeResult {
 		put(line.Child(lineAmount), formatDecimal(g.sum, g.maxFrac), txAmounts(g.txs))
 		put(line.Child(lineCount), fmt.Sprint(g.count), g.txs)
 	}
-	res.RemoveItems = stale
+	res.RemoveItems = append(res.RemoveItems, stale...)
 	return res
 }
 
 // groupTransactions builds the groups of the usable transactions, in order of
 // first appearance, with the period, the total and the derived references.
-func groupTransactions(doc *core.Document) (groups map[string]*opGroup, order []string, minDate, maxDate string,
+func groupTransactions(spec *core.Spec, doc *core.Document) (groups map[string]*opGroup, order []string, minDate, maxDate string,
 	total *big.Rat, totalFrac int, refFills []core.Fill,
 ) {
 	groups = map[string]*opGroup{}
@@ -150,7 +161,24 @@ func groupTransactions(doc *core.Document) (groups map[string]*opGroup, order []
 	for _, k := range doc.Items[transactionsContainer] {
 		tx := core.Path(string(transactionsContainer) + "[" + k + "]")
 		val := func(name string) string { return strings.TrimSpace(doc.Values[tx.Child(name)].Value) }
-		if d := val("devise"); d != "" && d != "EUR" {
+		// derived returns the value a derivable field has once derivation ran, and
+		// the fill to write: derivation applies when the field is empty (and not
+		// cleared by hand) or holds a computed value.
+		derived := func(name, derivation string) string {
+			cur := doc.Values[tx.Child(name)]
+			if cur.Value != "" && cur.Origin != core.OriginComputed {
+				return strings.TrimSpace(cur.Value)
+			}
+			if cur.Value == "" && cur.Origin != "" { // manual or analyst clear
+				return ""
+			}
+			if derivation != cur.Value {
+				refFills = append(refFills, core.Fill{Path: tx.Child(name), Value: derivation,
+					Origin: core.OriginComputed, Computation: &core.Computation{Name: computationOperations}})
+			}
+			return derivation
+		}
+		if d := val("devise"); d != "EUR" { // empty is not EUR either
 			continue
 		}
 		amount, frac, ok := parseDecimal(val("montant"))
@@ -159,26 +187,15 @@ func groupTransactions(doc *core.Document) (groups map[string]*opGroup, order []
 		}
 		emitter := counterparty(val("emetteurPersonne"), val("emetteurLibre"))
 		beneficiary := counterparty(val("beneficiairePersonne"), val("beneficiaireLibre"))
-		refFrom, refTo := val("refEmission"), val("refReception")
-		if refFrom == "" {
-			if ref := derivedFinancialRef(doc, tx, val("emetteurPersonne")); ref != "" {
-				refFrom = string(ref)
-				refFills = append(refFills, core.Fill{Path: tx.Child("refEmission"), Value: refFrom,
-					Origin: core.OriginComputed, Computation: &core.Computation{Name: computationOperations}})
-			}
-		}
-		if refTo == "" {
-			if ref := derivedFinancialRef(doc, tx, val("beneficiairePersonne")); ref != "" {
-				refTo = string(ref)
-				refFills = append(refFills, core.Fill{Path: tx.Child("refReception"), Value: refTo,
-					Origin: core.OriginComputed, Computation: &core.Computation{Name: computationOperations}})
-			}
-		}
+		refFrom := derived("refEmission", string(derivedFinancialRef(doc, tx, val("emetteurPersonne"))))
+		refTo := derived("refReception", string(derivedFinancialRef(doc, tx, val("beneficiairePersonne"))))
+		countryFrom := derived("paysOrigine", ibanCountry(spec, doc, refFrom))
+		countryTo := derived("paysArrivee", ibanCountry(spec, doc, refTo))
 		attrs := map[string]string{
 			lineType: val("typeOperation"), lineOtherType: val("autretypeOperation"),
 			lineEmitter: emitter, lineRefFrom: refFrom,
 			lineBeneficiry: beneficiary, lineRefTo: refTo,
-			lineCountryFrom: val("paysOrigine"), lineCountryTo: val("paysArrivee"),
+			lineCountryFrom: countryFrom, lineCountryTo: countryTo,
 		}
 		gk := lineKey(func(name string) string { return attrs[name] })
 		g := groups[gk]
@@ -266,6 +283,33 @@ func derivedFinancialRef(doc *core.Document, tx core.Path, person string) core.P
 	return found[0]
 }
 
+var ibanPrefixRe = regexp.MustCompile(`^[A-Za-z]{2}[0-9]{2}`)
+
+// ibanCountry returns the country code of the IBAN behind a financial reference
+// (the path of a declared reference holding an `iban`, or the IBAN as text) when
+// the code is in the country list, else "".
+func ibanCountry(spec *core.Spec, doc *core.Document, ref string) string {
+	iban := ref
+	if v, ok := doc.Values[core.Path(ref).Child("iban")]; ok && strings.Contains(ref, "[") {
+		iban = v.Value
+	}
+	iban = strings.ReplaceAll(strings.TrimSpace(iban), " ", "")
+	if !ibanPrefixRe.MatchString(iban) {
+		return ""
+	}
+	code := strings.ToUpper(iban[:2])
+	node := spec.NodeAt("work.transactions[].paysOrigine")
+	if node == nil {
+		return ""
+	}
+	for _, c := range spec.CodeLists[node.CodeList].Codes {
+		if c.Value == code {
+			return code
+		}
+	}
+	return ""
+}
+
 func validDate(s string) bool {
 	_, err := time.Parse("2006-01-02", s)
 	return err == nil
@@ -273,7 +317,7 @@ func validDate(s string) bool {
 
 // strictDecimalRe is a plain decimal: digits, optionally a dot and digits (no
 // fraction "1/2", no exponent, no sign, no separator).
-var strictDecimalRe = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?$`)
+var strictDecimalRe = regexp.MustCompile(`^([0-9]+(\.[0-9]+)?|\.[0-9]+)$`)
 
 // parseDecimal reads a positive decimal; frac is its number of fraction digits.
 func parseDecimal(s string) (r *big.Rat, frac int, ok bool) {
@@ -307,4 +351,10 @@ func tooManyOperationsIssue(issues []core.Issue, doc *core.Document) {
 			issues[i].Message = fmt.Sprintf(msgTooManyOperations, maxOperationLines, len(doc.Items[operationsContainer]))
 		}
 	}
+}
+
+// ConfirmComputed lists the computed values the analyst confirms: the total of
+// the operations is "à l'appréciation du déclarant" (core.ConfirmComputer).
+func (f *format) ConfirmComputed() []core.Path {
+	return []core.Path{operationsTotal}
 }

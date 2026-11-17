@@ -25,6 +25,10 @@ const (
 	maxCorrectionWaves   = 2
 )
 
+// PayloadDeclared is the payload block of the transaction tasks listing the
+// declared persons and financial references (path, kind, owner, sources).
+const PayloadDeclared = "declared_persons_and_references"
+
 // Tool names (the common tools are those of the engine).
 const (
 	toolOperationPreview = "tracfin_operation_preview"
@@ -53,7 +57,8 @@ var formCodes = []string{
 // Plan returns the tasks to run next, one wave per call: placement, then the
 // person and transaction fills with the computation that follows them, then
 // the judgment, then at most two waves of corrections, then the review (once).
-// A review job only plans the review. The specs depend only on the state (no
+// A review job only plans the review. A computed operation line whose group
+// attributes change gets a new path: questions on the old line path go stale. The specs depend only on the state (no
 // clock, no random value), so a resumed job finds its tasks again.
 func (f *format) Plan(st core.PlanState) []core.TaskSpec {
 	done := newDoneSet(st.Done)
@@ -198,7 +203,7 @@ func (f *format) fillSpecs(st core.PlanState) []core.TaskSpec {
 			item := core.Path(string(container) + "[" + key + "]")
 			out = append(out, core.TaskSpec{
 				Kind: StepFillPerson, TargetPath: item,
-				AllowedPaths: f.personFillPaths(kind, item),
+				AllowedPaths: f.personFillPaths(kind, item, st.Doc),
 				Inputs:       slices.Clone(st.Doc.ItemSources[item]),
 				PromptPath:   models.SarGenerationTracfinFillPersonPromptPath,
 				Tier:         core.TierLight,
@@ -213,7 +218,8 @@ func (f *format) fillSpecs(st core.PlanState) []core.TaskSpec {
 			Kind: StepFillTransaction, TargetPath: transactionsContainer,
 			PromptPath: models.SarGenerationTracfinFillTransactionPromptPath,
 			Tier:       core.TierLight,
-			ToolNames:  append(slices.Clone(fillTools), toolOperationPreview),
+			ToolNames:  append(slices.Clone(fillTools), toolOperationPreview, toolReadDocument),
+			Payload:    map[string]any{PayloadDeclared: f.declaredBlock(st.Doc)},
 		}
 		for _, k := range batch {
 			item := core.Path(string(transactionsContainer) + "[" + k + "]")
@@ -227,18 +233,72 @@ func (f *format) fillSpecs(st core.PlanState) []core.TaskSpec {
 }
 
 // personFillPaths lists what a person fill task may write: everything of the
-// person but the relation fields (the judgment's) and its export id.
-func (f *format) personFillPaths(kind string, item core.Path) []core.Path {
+// person but the relation fields (the judgment's), its export id and its
+// financial references; of those, only the fields of the references the
+// placement declared (never their lien, never a new reference).
+func (f *format) personFillPaths(kind string, item core.Path, doc *core.Document) []core.Path {
 	node := f.spec.NodeAt("personnes." + kind + "[]")
-	var out []core.Path
 	if node == nil {
 		return []core.Path{item}
 	}
+	var out []core.Path
 	for _, c := range node.Children {
 		if c.ExportID || slices.Contains(judgmentFields, c.Name) {
 			continue
 		}
+		if c.Name == "referencesFinancieres" {
+			for _, rk := range c.Children {
+				container := item.Child(c.Name).Child(rk.Name)
+				for _, key := range doc.Items[container] {
+					ref := core.Path(string(container) + "[" + key + "]")
+					for _, field := range rk.Children {
+						if field.ExportID || field.Name == "lien" {
+							continue
+						}
+						out = append(out, ref.Child(field.Name))
+					}
+				}
+			}
+			continue
+		}
 		out = append(out, item.Child(c.Name))
+	}
+	return out
+}
+
+// declaredBlock lists the persons and financial references the placement
+// declared (path, kind, owner, source objects), in document order: what a
+// transaction task needs to name them. It holds no value, so it never changes
+// while the fills run (the specs stay deterministic).
+func (f *format) declaredBlock(doc *core.Document) []map[string]any {
+	refs := func(p core.Path) []map[string]string {
+		out := []map[string]string{}
+		for _, o := range doc.ItemSources[p] {
+			out = append(out, map[string]string{"table": o.Table, "object_id": o.ObjectID})
+		}
+		return out
+	}
+	var out []map[string]any
+	for _, kind := range personKinds {
+		container := core.Path("personnes." + kind)
+		for _, key := range doc.Items[container] {
+			person := core.Path(string(container) + "[" + key + "]")
+			out = append(out, map[string]any{"path": string(person), "kind": kind, "sources": refs(person)})
+			node := f.spec.NodeAt("personnes." + kind + "[].referencesFinancieres")
+			if node == nil {
+				continue
+			}
+			for _, rk := range node.Children {
+				rc := person.Child("referencesFinancieres").Child(rk.Name)
+				for _, rkey := range doc.Items[rc] {
+					ref := core.Path(string(rc) + "[" + rkey + "]")
+					out = append(out, map[string]any{
+						"path": string(ref), "kind": strings.TrimPrefix(rk.Name, referenceContainerPrefix),
+						"owner": string(person), "sources": refs(ref),
+					})
+				}
+			}
+		}
 	}
 	return out
 }
@@ -254,7 +314,7 @@ func computeSpec() core.TaskSpec {
 // payload makes it a distinct task).
 func computeAfterCorrectionSpec(wave int) core.TaskSpec {
 	return core.TaskSpec{
-		Kind: core.TaskKindCompute, TargetPath: "operations",
+		Kind: core.TaskKindCompute, TargetPath: "operations", DependsOnKinds: []string{StepCorrection},
 		Payload: map[string]any{"wave": wave},
 	}
 }
@@ -348,7 +408,7 @@ func (f *format) correctionSpecs(st core.PlanState, wave int) []core.TaskSpec {
 			Inputs:     slices.Clone(st.Doc.ItemSources[root]),
 			PromptPath: models.SarGenerationTracfinCorrectionPromptPath,
 			Tier:       core.TierLight,
-			ToolNames:  slices.Clone(fillTools),
+			ToolNames:  append(slices.Clone(fillTools), toolReadDocument),
 			Payload:    map[string]any{"wave": wave, "issues": listed},
 		})
 	}

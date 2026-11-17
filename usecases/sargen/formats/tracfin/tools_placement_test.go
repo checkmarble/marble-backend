@@ -10,6 +10,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
+	"github.com/checkmarble/marble-backend/usecases/sargen/formats/tracfin"
 )
 
 func TestPlan_PlacementDoneWithNothingPlacedIsNotRepeated(t *testing.T) {
@@ -35,9 +36,6 @@ func TestApplyPlacement_InvalidOutputsAreRefusedWithoutChange(t *testing.T) {
 		"unknown person kind":        `{"persons":[{"kind":"xx","objects":` + obj + `}],"financial_refs":[],"transactions":[]}`,
 		"person without object":      `{"persons":[{"kind":"pp","objects":[]}],"financial_refs":[],"transactions":[]}`,
 		"unknown ref kind":           `{"persons":[{"kind":"pp","objects":` + obj + `}],"financial_refs":[{"ref_kind":"Bitcoin","owners":[{"person_index":0,"lien":"titulaire"}],"objects":` + obj + `}],"transactions":[]}`,
-		"bad person index":           `{"persons":[{"kind":"pp","objects":` + obj + `}],"financial_refs":[{"ref_kind":"Iban","owners":[{"person_index":3,"lien":"titulaire"}],"objects":` + obj + `}],"transactions":[]}`,
-		"bad lien":                   `{"persons":[{"kind":"pp","objects":` + obj + `}],"financial_refs":[{"ref_kind":"Iban","owners":[{"person_index":0,"lien":"proprietaire"}],"objects":` + obj + `}],"transactions":[]}`,
-		"no owner":                   `{"persons":[{"kind":"pp","objects":` + obj + `}],"financial_refs":[{"ref_kind":"Iban","owners":[],"objects":` + obj + `}],"transactions":[]}`,
 		"transaction without object": `{"persons":[],"financial_refs":[],"transactions":[{"object":{"table":"","object_id":""}}]}`,
 		"not json":                   `[`,
 	}
@@ -204,4 +202,209 @@ func TestApplyPlacement_DuplicatesAreCreatedOnce(t *testing.T) {
 	require.NoError(t, f.ApplyStructured(stepPlacement, doc, json.RawMessage(out)))
 	assert.Len(t, doc.Items["work.transactions"], 1)
 	assert.Len(t, doc.Items["personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban"], 1)
+}
+
+func TestApplyPlacement_ReferenceWithoutValidOwnerIsDroppedAndReported(t *testing.T) {
+	f := planFormat(t)
+	obj := `{"table":"accounts","object_id":"a-9"}`
+	person := `{"kind":"pp","objects":[{"table":"persons","object_id":"p-1"}]}`
+	for name, owners := range map[string]string{
+		"no owner":         `[]`,
+		"bad person index": `[{"person_index":3,"lien":"titulaire"}]`,
+		"bad lien":         `[{"person_index":0,"lien":"proprietaire"}]`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			raw := json.RawMessage(`{"persons":[` + person + `],"financial_refs":[
+				{"ref_kind":"Iban","owners":` + owners + `,"objects":[` + obj + `]},
+				{"ref_kind":"Iban","owners":[{"person_index":0,"lien":"titulaire"}],"objects":[{"table":"accounts","object_id":"a-1"}]}],
+				"transactions":[]}`)
+			doc := core.NewDocument()
+			require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw))
+			assert.Len(t, doc.Items["personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban"], 1, "the valid reference is kept")
+
+			sq, ok := f.(core.StructuredQuestioner)
+			require.True(t, ok)
+			qs := sq.StructuredQuestions(stepPlacement, raw)
+			require.Len(t, qs, 1)
+			assert.Equal(t, "référence financière sans titulaire déclaré : accounts/a-9", qs[0].Text)
+		})
+	}
+}
+
+func TestApplyPlacement_TransactionSourcesIncludeLinkedAccount(t *testing.T) {
+	f := planFormat(t)
+	doc := core.NewDocument()
+	raw := json.RawMessage(`{"persons":[],"financial_refs":[],"transactions":[
+		{"objects":[{"table":"transactions","object_id":"t-1"},{"table":"accounts","object_id":"a-1"}]}]}`)
+	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw))
+	tx := core.Path("work.transactions[" + doc.Items["work.transactions"][0] + "]")
+	assert.Equal(t, []core.ObjectRef{{Table: "transactions", ObjectID: "t-1"}, {Table: "accounts", ObjectID: "a-1"}}, doc.ItemSources[tx])
+}
+
+// derivedDoc is a document with a person holding an IBAN reference, and a
+// transaction sharing the account object with that reference.
+func derivedDoc() (doc *core.Document, tx, iban core.Path) {
+	doc = core.NewDocument()
+	person := doc.AddItem("personnes.pp", "pp")
+	iban = doc.AddItem(person.Child("referencesFinancieres").Child("referenceFinanciereIban"), "referenceFinanciereIban")
+	doc.Values[iban.Child("iban")] = core.Value{Value: "DE89370400440532013000", Origin: core.OriginLLM}
+	account := core.ObjectRef{Table: "accounts", ObjectID: "a-1"}
+	doc.ItemSources[iban] = []core.ObjectRef{account}
+	b := compBase("100", "2026-03-01")
+	b.paysOrigine, b.paysArrivee = "", ""
+	b.emetteurPersonne = string(person)
+	tx = addCompTx(doc, b)
+	doc.ItemSources[tx] = []core.ObjectRef{{Table: "transactions", ObjectID: "t-1"}, account}
+	return doc, tx, iban
+}
+
+func TestCompute_DerivesReferenceAndCountryFromTheIban(t *testing.T) {
+	f := compFormat(t)
+	doc, tx, iban := derivedDoc()
+	compApply(t, f, doc, f.Compute(doc))
+
+	assert.Equal(t, string(iban), doc.Values[tx.Child("refEmission")].Value)
+	assert.Equal(t, "DE", doc.Values[tx.Child("paysOrigine")].Value)
+	assert.Equal(t, core.OriginComputed, doc.Values[tx.Child("paysOrigine")].Origin)
+	assert.Equal(t, "DE", compLineValue(doc, compLines(doc)[0], "paysOrigineFonds"))
+}
+
+func TestCompute_DerivedValuesYieldToManualLLMAndCleared(t *testing.T) {
+	f := compFormat(t)
+	doc, tx, _ := derivedDoc()
+	doc.Values[tx.Child("paysOrigine")] = core.Value{Value: "FR", Origin: core.OriginLLM}
+	compApply(t, f, doc, f.Compute(doc))
+	assert.Equal(t, "FR", doc.Values[tx.Child("paysOrigine")].Value, "a value written by the model is never replaced")
+
+	// The analyst clears the derived reference: it stays cleared.
+	core.ApplyFills(f.Spec(), doc, []core.Fill{{Path: tx.Child("refEmission"), Value: "", Origin: core.OriginManual}},
+		core.ApplyOptions{Overwrite: core.OverwriteAll})
+	compApply(t, f, doc, f.Compute(doc))
+	assert.Equal(t, "", doc.Values[tx.Child("refEmission")].Value)
+	assert.Equal(t, core.OriginManual, doc.Values[tx.Child("refEmission")].Origin)
+	assert.Equal(t, "", compLineValue(doc, compLines(doc)[0], "refFinanciereEmission"))
+}
+
+func TestCompute_StaleDerivedValueIsRecomputedAndCleared(t *testing.T) {
+	f := compFormat(t)
+	doc, tx, iban := derivedDoc()
+	compApply(t, f, doc, f.Compute(doc))
+	require.Equal(t, "DE", doc.Values[tx.Child("paysOrigine")].Value)
+
+	doc.Values[iban.Child("iban")] = core.Value{Value: "FR7630006000011234567890189", Origin: core.OriginManual}
+	compApply(t, f, doc, f.Compute(doc))
+	assert.Equal(t, "FR", doc.Values[tx.Child("paysOrigine")].Value)
+
+	doc.Values[iban.Child("iban")] = core.Value{Value: "1234", Origin: core.OriginManual} // not an IBAN
+	compApply(t, f, doc, f.Compute(doc))
+	_, has := doc.Values[tx.Child("paysOrigine")]
+	assert.False(t, has, "a derived value that no longer derives goes away")
+}
+
+func TestCompute_StalePeriodGoesAwayAndEmptyCurrencyIsExcluded(t *testing.T) {
+	f := compFormat(t)
+	doc := core.NewDocument()
+	item := addCompTx(doc, compBase(".5", "2026-03-01"))
+	compApply(t, f, doc, f.Compute(doc))
+	assert.Equal(t, "0.5", doc.Values["operations.montantTotal"].Value, "a leading-dot amount is read like the montant pattern")
+	assert.Equal(t, "2026-03-01", doc.Values["operations.dateDebut"].Value)
+
+	doc.Values[item.Child("date")] = core.Value{Value: "2026-02-30", Origin: core.OriginManual}
+	compApply(t, f, doc, f.Compute(doc))
+	_, has := doc.Values["operations.dateDebut"]
+	assert.False(t, has, "no valid date: the computed period is removed")
+
+	delete(doc.Values, item.Child("devise"))
+	res := f.Compute(doc)
+	compApply(t, f, doc, res)
+	assert.Empty(t, compLines(doc), "an empty currency is not EUR")
+}
+
+func TestPlan_TransactionAndCorrectionTasksSeeDeclaredPersons(t *testing.T) {
+	f := planFormat(t)
+	doc := core.NewDocument()
+	person := doc.AddItem("personnes.pp", "pp")
+	iban := doc.AddItem(person.Child("referencesFinancieres").Child("referenceFinanciereIban"), "referenceFinanciereIban")
+	doc.ItemSources[person] = []core.ObjectRef{{Table: "clients", ObjectID: "c1"}}
+	doc.ItemSources[iban] = []core.ObjectRef{{Table: "accounts", ObjectID: "a1"}}
+	doc.AddItem("work.transactions", "transactions")
+
+	specs := f.Plan(core.PlanState{JobKind: string(models.SarJobKindGenerate), Doc: doc, Done: planPlacementDone()})
+	tx := planWaveOf(planBatch(specs), stepFillTransaction)
+	require.Len(t, tx, 1)
+	assert.Contains(t, tx[0].ToolNames, "read_document")
+	assert.Contains(t, tx[0].ToolNames, "tracfin_operation_preview")
+	block, ok := tx[0].Payload[tracfin.PayloadDeclared].([]map[string]any)
+	require.True(t, ok)
+	require.Len(t, block, 2)
+	assert.Equal(t, string(person), block[0]["path"])
+	assert.Equal(t, "pp", block[0]["kind"])
+	assert.Equal(t, string(iban), block[1]["path"])
+	assert.Equal(t, "Iban", block[1]["kind"])
+	assert.Equal(t, string(person), block[1]["owner"])
+
+	// A person's fill task may fill its declared references (not their lien), never add one.
+	p := planWaveOf(planBatch(specs), stepFillPerson)[0]
+	assert.True(t, planAllows(p, iban.Child("iban")))
+	assert.False(t, planAllows(p, iban.Child("lien")))
+	assert.False(t, planAllows(p, person.Child("referencesFinancieres").Child("referenceFinanciereIban[+x]").Child("iban")))
+	assert.False(t, planAllows(p, person.Child("referencesFinancieres").Child("referenceFinanciereAutre[+y]").Child("NumeroReference")))
+	assert.True(t, planAllows(p, person.Child("etatCivil").Child("nomNaissance")))
+}
+
+func TestPlan_ComputeAfterCorrectionWaitsForTheCorrections(t *testing.T) {
+	f := planFormat(t)
+	st := planUntil(t, f, core.PlanState{
+		JobKind: string(models.SarJobKindGenerate), Doc: planDoc(1, 0), Done: planPlacementDone(),
+	}, core.TaskKindReview)
+	st.Issues = []core.Issue{{Path: "personnes.pp[pp-1].etatCivil.dateNaissance", Code: core.CodeBadDate, Severity: core.SeverityBlocking, Message: "m"}}
+	wave := f.Plan(st)
+	st.Done = append(st.Done, planDone(wave...)...)
+	recompute := f.Plan(st)
+	require.Len(t, recompute, 1)
+	assert.Equal(t, core.TaskKindCompute, recompute[0].Kind)
+	assert.Equal(t, []string{stepCorrection}, recompute[0].DependsOnKinds)
+}
+
+func TestTransactionRules_AreWarningsAndSensIsOptional(t *testing.T) {
+	f := compFormat(t)
+	doc := core.NewDocument()
+	item := addCompTx(doc, compTx{montant: "10", date: "2026-03-01", devise: "EUR", typeOperation: "OT10", emetteurLibre: "A", beneficiaireLibre: "B"})
+	issues := f.Validate(doc)
+	for p, rule := range map[string]string{
+		"refEmission": "transaction_origine_requise_sauf_ot07", "paysOrigine": "transaction_origine_requise_sauf_ot07",
+		"refReception": "transaction_arrivee_requise_sauf_ot06", "paysArrivee": "transaction_arrivee_requise_sauf_ot06",
+	} {
+		_, found := findIssue(issues, "rule:"+rule+"@work.transactions[]", core.SeverityWarning, item.Child(p))
+		if !found {
+			_, found = findIssue(issues, "rule:"+rule, core.SeverityWarning, item.Child(p))
+		}
+		assert.True(t, found, "%s is a working-node obligation (warning)", p)
+	}
+	_, found := findIssue(issues, core.CodeRequired, core.SeverityBlocking, item.Child("sens"))
+	assert.False(t, found, "sens is optional")
+	_, found = findIssue(issues, core.CodeRequired, core.SeverityWarning, item.Child("sens"))
+	assert.False(t, found)
+}
+
+func TestTools_ReadDocumentReportsTotalAndTruncation(t *testing.T) {
+	f := planFormat(t)
+	doc := core.NewDocument()
+	for i := 0; i < 450; i++ {
+		item := doc.AddItem("work.transactions", "transactions")
+		doc.Values[item.Child("montant")] = core.Value{Value: "1", Origin: core.OriginManual}
+	}
+	tool := f.Tools(core.ToolContext{Format: f, Doc: doc})["read_document"]
+	assert.Contains(t, tool.Description, "400")
+	var out struct {
+		Values    []any  `json:"values"`
+		Total     int    `json:"total"`
+		Truncated bool   `json:"truncated"`
+		Type      string `json:"type"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(tool.Call(context.Background(), json.RawMessage(`{}`))), &out))
+	assert.Len(t, out.Values, 400)
+	assert.Equal(t, 450, out.Total)
+	assert.True(t, out.Truncated)
+	assert.Equal(t, core.ClientDataType, out.Type)
 }

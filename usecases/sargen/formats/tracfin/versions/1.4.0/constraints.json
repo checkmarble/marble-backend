@@ -867,7 +867,7 @@
     {
      "name": "sens",
      "type": "code",
-     "min": 1,
+     "min": 0,
      "code_list": "sens_transaction",
      "label": "Sens",
      "description": "debit si l'argent sort du compte du client, credit s'il y entre."
@@ -1599,6 +1599,44 @@
    ],
    "description": "Le bénéficiaire est soit une personne déclarée, soit un texte libre : pas les deux.",
    "source": "financier-v1.4.0.xsd:1566-1573 (id d'une personne déjà déclarée ou champ libre), appliqué aux nœuds de travail (working_nodes)"
+  },
+  {
+   "id": "transaction_origine_requise_sauf_ot07",
+   "kind": "required_if",
+   "scope": "work.transactions[]",
+   "then": [
+    "work.transactions[].refEmission",
+    "work.transactions[].paysOrigine"
+   ],
+   "when": {
+    "path": "work.transactions[].typeOperation",
+    "op": "not_in",
+    "values": [
+     "OT07"
+    ]
+   },
+   "severity": "warning",
+   "description": "La référence financière d'émission et le pays d'origine des fonds sont à renseigner sauf pour un versement d'espèces (OT07) : la ligne d'opération les exige.",
+   "source": "financier-v1.4.0.xsd:1543-1587 (références et pays obligatoires sur la ligne d'opération, calculés depuis ce champ de travail) ; obligation du champ de travail : avertissement, l'obligation bloquante est celle de la ligne"
+  },
+  {
+   "id": "transaction_arrivee_requise_sauf_ot06",
+   "kind": "required_if",
+   "scope": "work.transactions[]",
+   "then": [
+    "work.transactions[].refReception",
+    "work.transactions[].paysArrivee"
+   ],
+   "when": {
+    "path": "work.transactions[].typeOperation",
+    "op": "not_in",
+    "values": [
+     "OT06"
+    ]
+   },
+   "severity": "warning",
+   "description": "La référence financière de réception et le pays d'arrivée des fonds sont à renseigner sauf pour un retrait d'espèces (OT06) : la ligne d'opération les exige.",
+   "source": "financier-v1.4.0.xsd:1543-1587 (références et pays obligatoires sur la ligne d'opération, calculés depuis ce champ de travail) ; obligation du champ de travail : avertissement, l'obligation bloquante est celle de la ligne"
   }
  ],
  "hand_rules": [

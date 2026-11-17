@@ -214,7 +214,11 @@ func (l *e2eLLM) Step(_ context.Context, req engine.AgentRequest) (engine.AgentS
 		l.runs[req.RunID]++
 		l.Requests[path]++
 		if n >= len(steps) {
-			return engine.AgentStep{}, errors.Newf("scripted LLM: no step %d for %s", n, path)
+			last := ""
+			if len(req.History) > 0 {
+				last = req.History[len(req.History)-1].Text
+			}
+			return engine.AgentStep{}, errors.Newf("scripted LLM: no step %d for %s (last message: %s)", n, path, last)
 		}
 		step := steps[n]
 		step.Provider, step.Model = "fake", "fake-model"
@@ -241,7 +245,9 @@ type m = map[string]any
 func e2eFill(path, value string, source m, justification, confidence string) m {
 	f := m{"path": path, "value": value, "rule_id": nil, "source": nil, "justification": nil, "confidence": nil}
 	if source != nil {
-		source["table"], source["object_id"] = nil, nil
+		if _, ok := source["table"]; !ok {
+			source["table"], source["object_id"] = nil, nil
+		}
 		f["source"] = source
 	}
 	if justification != "" {
@@ -254,6 +260,12 @@ func e2eFill(path, value string, source m, justification, confidence string) m {
 }
 
 func e2eSrc(field, raw string) m { return m{"field": field, "raw_value": raw} }
+
+// e2eTxSrc cites a field of a transaction explicitly: a work transaction has
+// several source objects (the transaction and its account).
+func e2eTxSrc(id, field, raw string) m {
+	return m{"field": field, "raw_value": raw, "table": "transactions", "object_id": id}
+}
 
 func fillsAnswer(fills ...m) m { return m{"fills": fills, "questions": []any{}} }
 
@@ -281,7 +293,7 @@ func e2eScript() map[string][]engine.AgentStep {
 	obj := func(table, id string) m { return m{"table": table, "object_id": id} }
 	txObjects := make([]m, 0, len(e2eTransactions))
 	for _, tx := range e2eTransactions {
-		txObjects = append(txObjects, m{"object": obj("transactions", tx.id)})
+		txObjects = append(txObjects, m{"objects": []m{obj("transactions", tx.id), obj("accounts", "a1")}})
 	}
 	placement := e2eFinal(m{
 		"persons": []m{{"kind": "pp", "objects": []m{obj("clients", "c1")}}},
@@ -302,18 +314,19 @@ func e2eScript() map[string][]engine.AgentStep {
 	var txFills []m
 	for i, tx := range e2eTransactions {
 		item := fmt.Sprintf("work.transactions[transactions-%d]", i+1)
+		src := func(field, raw string) m { return e2eTxSrc(tx.id, field, raw) }
+		// refEmission, paysOrigine: not filled by the model, derived by the backend
+		// (the emitter's reference shares the account with the transaction).
 		txFills = append(txFills,
-			e2eFill(item+".montant", fmt.Sprint(tx.amount), e2eSrc("amount", fmt.Sprint(tx.amount)), "", ""),
-			e2eFill(item+".date", tx.date, e2eSrc("date", tx.date), "", ""),
-			e2eFill(item+".sens", "debit", e2eSrc("direction", "debit"), "", ""),
-			e2eFill(item+".devise", "EUR", e2eSrc("currency", "EUR"), "", ""),
-			e2eFill(item+".typeOperation", "OT10", e2eSrc("type_label", "virement"), "un virement est le code OT10", "high"),
-			e2eFill(item+".emetteurPersonne", e2ePerson, e2eSrc("account_id", "a1"), "", ""),
-			e2eFill(item+".refEmission", e2eIbanItem, e2eSrc("account_id", "a1"), "", ""),
-			e2eFill(item+".beneficiaireLibre", tx.counterparty, e2eSrc("counterparty", tx.counterparty), "", ""),
-			e2eFill(item+".refReception", tx.counterIban, e2eSrc("counterparty_iban", tx.counterIban), "", ""),
-			e2eFill(item+".paysOrigine", "FR", e2eSrc("country_from", "FR"), "", ""),
-			e2eFill(item+".paysArrivee", "DE", e2eSrc("country_to", "DE"), "", ""),
+			e2eFill(item+".montant", fmt.Sprint(tx.amount), src("amount", fmt.Sprint(tx.amount)), "", ""),
+			e2eFill(item+".date", tx.date, src("date", tx.date), "", ""),
+			e2eFill(item+".sens", "debit", src("direction", "debit"), "", ""),
+			e2eFill(item+".devise", "EUR", src("currency", "EUR"), "", ""),
+			e2eFill(item+".typeOperation", "OT10", src("type_label", "virement"), "un virement est le code OT10", "high"),
+			e2eFill(item+".emetteurPersonne", e2ePerson, src("account_id", "a1"), "", ""),
+			e2eFill(item+".beneficiaireLibre", tx.counterparty, src("counterparty", tx.counterparty), "", ""),
+			e2eFill(item+".refReception", tx.counterIban, src("counterparty_iban", tx.counterIban), "", ""),
+			e2eFill(item+".paysArrivee", "DE", src("country_to", "DE"), "", ""),
 		)
 	}
 
@@ -432,6 +445,14 @@ func TestGenerate_EndToEndWithScriptedLLM(t *testing.T) {
 	assert.Equal(t, "FR7630006000011234567890189", doc.Values[e2eIbanItem+".iban"].Value)
 	assert.Equal(t, "Personne soupçonnée / Personne impliquée", doc.Values[e2ePerson+".implication"].Value)
 	assert.Equal(t, core.ConfidenceHigh, doc.Values[e2ePerson+".implication"].Confidence)
+
+	// The emitter's reference and country are derived, not filled by the model.
+	for _, k := range doc.Items["work.transactions"] {
+		tx := core.Path("work.transactions[" + k + "]")
+		assert.Equal(t, e2eIbanItem, doc.Values[tx.Child("refEmission")].Value)
+		assert.Equal(t, core.OriginComputed, doc.Values[tx.Child("refEmission")].Origin)
+		assert.Equal(t, "FR", doc.Values[tx.Child("paysOrigine")].Value)
+	}
 
 	// Computations: five transactions in two operation lines, period and total.
 	require.Len(t, doc.Items["operations.operation"], 2)

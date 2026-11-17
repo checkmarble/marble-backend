@@ -192,6 +192,15 @@ func ApplyFills(spec *Spec, doc *Document, fills []Fill, opts ApplyOptions) Appl
 		}
 		if len(pend) == 0 {
 			before, exists := doc.Values[real]
+			if isTombstone(before) && exists && !isAnalystOrigin(f.Origin) && f.Value != "" && opts.Overwrite != OverwriteAll {
+				// The analyst cleared this field by hand: no computation and no
+				// model output brings the value back (a model's attempt is a
+				// conflict the analyst sees; a computation stays silent).
+				if f.Origin != OriginComputed {
+					res.Conflicts = append(res.Conflicts, Conflict{Path: real, Before: before, After: f})
+				}
+				continue
+			}
 			if exists && before.Value == "" {
 				exists = false
 			}
@@ -276,8 +285,17 @@ func protected(v Value, f Fill, policy OverwritePolicy) bool {
 	}
 }
 
+// isTombstone reports a manual clear: an empty value written by the analyst,
+// kept so that nothing recomputes or refills the field. A tombstone counts as
+// absent everywhere a value is read.
+func isTombstone(v Value) bool { return v.Value == "" && isAnalystOrigin(v.Origin) }
+
 func write(doc *Document, p Path, f Fill) {
 	if f.Value == "" {
+		if isAnalystOrigin(f.Origin) {
+			doc.Values[p] = Value{Origin: f.Origin, Reviewed: f.Reviewed}
+			return
+		}
 		delete(doc.Values, p)
 		return
 	}
