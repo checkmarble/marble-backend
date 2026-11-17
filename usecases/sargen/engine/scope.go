@@ -10,6 +10,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases/sargen/core"
 )
 
 const (
@@ -61,13 +62,72 @@ func envelope(data any) map[string]any {
 	}
 }
 
-// snapshotData returns the snapshot as a value safe to marshal: never nil.
-// The map is only read by the JSON encoder, not mutated.
-func snapshotData(o models.SarSelectedObject) map[string]any {
-	if o.Snapshot == nil {
-		return map[string]any{}
+const (
+	maxStringChars = 2000
+	truncationMark = "… [tronqué]"
+)
+
+// boundedSnapshot returns a copy of the snapshot with long strings truncated.
+// The shared snapshot is never mutated.
+func boundedSnapshot(o models.SarSelectedObject) map[string]any {
+	out := make(map[string]any, len(o.Snapshot))
+	for k, v := range o.Snapshot {
+		out[k] = boundValue(v, 0)
 	}
-	return o.Snapshot
+	return out
+}
+
+func boundValue(v any, depth int) any {
+	switch x := v.(type) {
+	case string:
+		if r := []rune(x); len(r) > maxStringChars {
+			return string(r[:maxStringChars]) + truncationMark
+		}
+		return x
+	case map[string]any:
+		if depth > 8 {
+			return x
+		}
+		m := make(map[string]any, len(x))
+		for k, c := range x {
+			m[k] = boundValue(c, depth+1)
+		}
+		return m
+	case []any:
+		if depth > 8 {
+			return x
+		}
+		l := make([]any, len(x))
+		for i, c := range x {
+			l[i] = boundValue(c, depth+1)
+		}
+		return l
+	default:
+		return v
+	}
+}
+
+type foldedCode struct {
+	code         core.Code
+	value, label string
+}
+
+// codeIndex holds the folded codes of each list, computed once per tool set.
+type codeIndex map[string][]foldedCode
+
+func newCodeIndex(f core.Format) codeIndex {
+	idx := codeIndex{}
+	if f == nil || f.Spec() == nil {
+		return idx
+	}
+	for name, list := range f.Spec().CodeLists {
+		fc := make([]foldedCode, 0, len(list.Codes))
+		for _, c := range list.Codes {
+			fc = append(fc, foldedCode{code: c, value: foldText(c.Value), label: foldText(c.Label)})
+		}
+		idx[name] = fc
+	}
+	return idx
 }
 
 // valueString renders a snapshot value as a comparable string. Snapshots went
@@ -112,5 +172,7 @@ func foldText(s string) string {
 	if err != nil {
 		out = s
 	}
-	return strings.ToLower(out)
+	return ligatures.Replace(strings.ToLower(out))
 }
+
+var ligatures = strings.NewReplacer("œ", "oe", "æ", "ae", "ß", "ss")

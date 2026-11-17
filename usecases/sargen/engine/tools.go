@@ -19,6 +19,8 @@ const (
 	// by field_spec.
 	inlineCodesMax   = 12
 	validateMaxFills = 200
+	// followLinkMaxObjects caps the objects returned by one to-many follow_link.
+	followLinkMaxObjects = 30
 )
 
 // CommonTools returns the tools every task may use, frozen to the scope of the
@@ -28,6 +30,7 @@ const (
 // map is returned on each call.
 func CommonTools(tc core.ToolContext) map[string]core.Tool {
 	sc := newScope(tc.Selection)
+	codes := newCodeIndex(tc.Format)
 	tools := []core.Tool{
 		{
 			Name:        "read_object",
@@ -58,7 +61,7 @@ func CommonTools(tc core.ToolContext) map[string]core.Tool {
 			Description: "Cherche dans une liste de codes du format ceux dont le code ou le libellé contient la requête (sans tenir compte de la casse ni des accents).",
 			Params:      paramsOf(&searchCodeArgs{}),
 			Call: func(_ context.Context, args json.RawMessage) string {
-				return searchCode(tc.Format, args)
+				return searchCode(tc.Format, codes, args)
 			},
 		},
 		{
@@ -80,9 +83,22 @@ func CommonTools(tc core.ToolContext) map[string]core.Tool {
 	}
 	out := make(map[string]core.Tool, len(tools))
 	for _, t := range tools {
+		t.Call = guarded(t.Call)
 		out[t.Name] = t
 	}
 	return out
+}
+
+// guarded makes a tool never panic: a panic becomes a JSON error text.
+func guarded(call func(context.Context, json.RawMessage) string) func(context.Context, json.RawMessage) string {
+	return func(ctx context.Context, args json.RawMessage) (res string) {
+		defer func() {
+			if r := recover(); r != nil {
+				res = toolError("erreur interne de l'outil")
+			}
+		}()
+		return call(ctx, args)
+	}
 }
 
 type readObjectArgs struct {
@@ -94,6 +110,8 @@ type followLinkArgs struct {
 	Table    string `json:"table" jsonschema:"required,description=Table de l'objet de départ"`
 	ObjectId string `json:"object_id" jsonschema:"required,description=Identifiant de l'objet de départ"`
 	Link     string `json:"link" jsonschema:"required,description=Nom du lien à suivre (voir data_model)"`
+	// ChildTable disambiguates a to-many link name shared by several tables.
+	ChildTable string `json:"child_table,omitempty" jsonschema:"description=Table enfant du lien (liens vers plusieurs : à préciser si le nom est ambigu)"`
 }
 
 type fieldSpecArgs struct {
@@ -122,6 +140,7 @@ type validateArgs struct {
 func paramsOf(v any) jsonschema.Schema {
 	r := jsonschema.Reflector{DoNotReference: true, ExpandedStruct: true}
 	s := r.Reflect(v)
+	s.AdditionalProperties = jsonschema.FalseSchema
 	s.Version = ""
 	s.ID = ""
 	return *s
@@ -165,13 +184,17 @@ func readObject(sc scope, args json.RawMessage) string {
 	if !ok {
 		return toolError(outOfScopeMessage)
 	}
-	return toolJSON(envelope(snapshotData(o)))
+	return toolJSON(envelope(boundedSnapshot(o)))
 }
 
 type linkEntry struct {
 	Ref      map[string]string `json:"ref"`
 	Selected bool              `json:"selected"`
 	Data     map[string]any    `json:"data,omitempty"`
+}
+
+func selectedEntry(o models.SarSelectedObject) linkEntry {
+	return linkEntry{Ref: refOf(o.TableName, o.ObjectId), Selected: true, Data: boundedSnapshot(o)}
 }
 
 func followLink(sc scope, dm models.DataModel, args json.RawMessage) string {
@@ -185,40 +208,65 @@ func followLink(sc scope, dm models.DataModel, args json.RawMessage) string {
 	}
 
 	entries := []linkEntry{}
-	if link, found := dm.Tables[a.Table].LinksToSingle[a.Link]; found {
+	total := 0
+	toSingle, isToSingle := dm.Tables[a.Table].LinksToSingle[a.Link]
+	if a.ChildTable == "" && isToSingle {
 		// To-single: the parent holds the value of the child field.
-		if value, has := valueString(src.Snapshot[link.ChildFieldName]); has {
-			if parent, sel := findByField(sc, link.ParentTableName, link.ParentFieldName, value); sel {
-				entries = append(entries, linkEntry{
-					Ref: refOf(parent.TableName, parent.ObjectId), Selected: true, Data: snapshotData(parent),
-				})
+		if value, has := valueString(src.Snapshot[toSingle.ChildFieldName]); has {
+			total = 1
+			if parent, sel := findByField(sc, toSingle.ParentTableName, toSingle.ParentFieldName, value); sel {
+				entries = append(entries, selectedEntry(parent))
 			} else {
-				entries = append(entries, linkEntry{Ref: refOf(link.ParentTableName, value)})
-			}
-		}
-	} else if link, found := findChildLink(dm, a.Table, a.Link); found {
-		// To-many: only the selected children are known.
-		if value, has := valueString(src.Snapshot[link.ParentFieldName]); has || link.ParentFieldName == "object_id" {
-			if link.ParentFieldName == "object_id" {
-				value = src.ObjectId
-			}
-			for _, child := range sc.byTable[link.ChildTableName] {
-				if got, ok := valueString(child.Snapshot[link.ChildFieldName]); ok && got == value {
-					entries = append(entries, linkEntry{
-						Ref: refOf(child.TableName, child.ObjectId), Selected: true, Data: snapshotData(child),
-					})
+				ref := map[string]string{
+					"table": toSingle.ParentTableName, "field": toSingle.ParentFieldName, "value": value,
 				}
+				if toSingle.ParentFieldName == "object_id" {
+					ref["object_id"] = value
+				}
+				entries = append(entries, linkEntry{Ref: ref})
 			}
 		}
 	} else {
-		return toolError(fmt.Sprintf("lien %q inconnu pour la table %q (voir data_model)", a.Link, a.Table))
+		cands := childLinks(dm, a.Table, a.Link, a.ChildTable)
+		switch len(cands) {
+		case 0:
+			return toolError(fmt.Sprintf("lien %q inconnu pour la table %q (voir data_model)", a.Link, a.Table))
+		case 1:
+		default:
+			names := make([]string, 0, len(cands))
+			for _, c := range cands {
+				names = append(names, c.ChildTableName)
+			}
+			return toolError(fmt.Sprintf("lien %q ambigu : plusieurs tables enfants (%s) ; précise child_table", a.Link, strings.Join(names, ", ")))
+		}
+		link := cands[0]
+		// To-many: only the selected children are known.
+		value, has := valueString(src.Snapshot[link.ParentFieldName])
+		if link.ParentFieldName == "object_id" {
+			value, has = src.ObjectId, true
+		}
+		if has {
+			for _, child := range sc.byTable[link.ChildTableName] {
+				if got, ok := valueString(child.Snapshot[link.ChildFieldName]); ok && got == value {
+					total++
+					if len(entries) < followLinkMaxObjects {
+						entries = append(entries, selectedEntry(child))
+					}
+				}
+			}
+		}
 	}
 
-	return toolJSON(envelope(map[string]any{
+	result := map[string]any{
 		"from":    refOf(a.Table, a.ObjectId),
 		"link":    a.Link,
 		"objects": entries,
-	}))
+		"total":   total,
+	}
+	if total > len(entries) {
+		result["truncated"] = true
+	}
+	return toolJSON(envelope(result))
 }
 
 // findByField returns the selected object of the table holding value in field.
@@ -236,19 +284,24 @@ func findByField(sc scope, table, field, value string) (models.SarSelectedObject
 	return models.SarSelectedObject{}, false
 }
 
-// findChildLink finds, by name, a link of another table whose parent is table.
-func findChildLink(dm models.DataModel, table, name string) (models.LinkToSingle, bool) {
+// childLinks returns, sorted by child table, the links named name whose parent
+// is table, optionally restricted to one child table.
+func childLinks(dm models.DataModel, table, name, childTable string) []models.LinkToSingle {
 	names := make([]string, 0, len(dm.Tables))
 	for n := range dm.Tables {
-		names = append(names, n)
-	}
-	sort.Strings(names)
-	for _, n := range names {
-		if l, ok := dm.Tables[n].LinksToSingle[name]; ok && l.ParentTableName == table {
-			return l, true
+		if childTable == "" || n == childTable {
+			names = append(names, n)
 		}
 	}
-	return models.LinkToSingle{}, false
+	sort.Strings(names)
+	var out []models.LinkToSingle
+	for _, n := range names {
+		if l, ok := dm.Tables[n].LinksToSingle[name]; ok && l.ParentTableName == table {
+			l.ChildTableName = n
+			out = append(out, l)
+		}
+	}
+	return out
 }
 
 func fieldSpec(f core.Format, args json.RawMessage) string {
@@ -326,6 +379,7 @@ func fieldSpec(f core.Format, args json.RawMessage) string {
 		switch {
 		case !ok || list.Unavailable:
 			out["code_list_unavailable"] = true
+			out["note"] = "liste de codes indisponible : toute valeur est acceptée"
 		case len(list.Codes) <= inlineCodesMax:
 			out["codes"] = codesOrEmpty(list.Codes)
 		default:
@@ -342,7 +396,7 @@ func codesOrEmpty(c []core.Code) []core.Code {
 	return c
 }
 
-func searchCode(f core.Format, args json.RawMessage) string {
+func searchCode(f core.Format, codes codeIndex, args json.RawMessage) string {
 	var a searchCodeArgs
 	if msg, ok := parseArgs(args, &a); !ok {
 		return msg
@@ -363,12 +417,12 @@ func searchCode(f core.Format, args json.RawMessage) string {
 	}
 	query := foldText(strings.TrimSpace(a.Query))
 	out := []core.Code{}
-	for _, c := range list.Codes {
+	for _, c := range codes[a.List] {
 		if len(out) >= limit {
 			break
 		}
-		if query == "" || strings.Contains(foldText(c.Value), query) || strings.Contains(foldText(c.Label), query) {
-			out = append(out, c)
+		if query == "" || strings.Contains(c.value, query) || strings.Contains(c.label, query) {
+			out = append(out, c.code)
 		}
 	}
 	return toolJSON(out)
@@ -425,16 +479,16 @@ func describeTable(dm models.DataModel, args json.RawMessage) string {
 	}
 	sort.Strings(others)
 	for _, n := range others {
-		for _, l := range dm.Tables[n].LinksToSingle {
+		for key, l := range dm.Tables[n].LinksToSingle {
 			if l.ParentTableName == a.Table {
 				children = append(children, map[string]any{
-					"name": l.Name, "child_table": l.ChildTableName, "child_field": l.ChildFieldName, "parent_field": l.ParentFieldName,
+					"name": key, "child_table": n, "child_field": l.ChildFieldName, "parent_field": l.ParentFieldName,
 				})
 			}
 		}
 	}
 	sort.Slice(children, func(i, j int) bool {
-		return fmt.Sprint(children[i]["child_table"], children[i]["name"]) < fmt.Sprint(children[j]["child_table"], children[j]["name"])
+		return fmt.Sprint(children[i]["child_table"], "/", children[i]["name"]) < fmt.Sprint(children[j]["child_table"], "/", children[j]["name"])
 	})
 	if children == nil {
 		children = []map[string]any{}
