@@ -67,7 +67,7 @@ func operationPreview(doc *core.Document) string {
 	type line struct {
 		Attributes   map[string]string `json:"attributes"`
 		Transactions []core.Path       `json:"transactions"`
-		MontantTotal string            `json:"total_amount"`
+		TotalAmount  string            `json:"total_amount"`
 		Count        int               `json:"count"`
 	}
 	lines := make([]line, 0, len(order))
@@ -79,7 +79,7 @@ func operationPreview(doc *core.Document) string {
 				attrs[name] = v
 			}
 		}
-		lines = append(lines, line{Attributes: attrs, Transactions: g.txs, MontantTotal: formatDecimal(g.sum, g.maxFrac), Count: g.count})
+		lines = append(lines, line{Attributes: attrs, Transactions: g.txs, TotalAmount: formatDecimal(g.sum, g.maxFrac), Count: g.count})
 	}
 	out := map[string]any{
 		"lignes":        lines,
