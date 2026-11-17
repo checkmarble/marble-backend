@@ -44,8 +44,8 @@ type caseCtxDecision struct {
 	Scenario   string             `json:"scenario"`
 	Outcome    string             `json:"outcome"`
 	Score      int                `json:"score"`
-	Object     string             `json:"trigger_object,omitempty"`
-	Rules      []caseCtxRule      `json:"triggered_rules,omitempty"`
+	Object     string             `json:"object,omitempty"`
+	Rules      []caseCtxRule      `json:"rules,omitempty"`
 	Screenings []caseCtxScreening `json:"screenings,omitempty"`
 }
 
