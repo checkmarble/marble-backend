@@ -1,6 +1,7 @@
 package tracfin_test
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -242,4 +243,21 @@ func TestValidate_EmptyCadreLegalItemBlocks(t *testing.T) {
 	d.AddItem("context.natureSoupcon.cadreLegal", "cl") // empty value
 	_, found := findIssue(tracfin.Validate(spec, d), "too_few_items", core.SeverityBlocking, "context.natureSoupcon.cadreLegal")
 	assert.True(t, found, "an empty item does not satisfy the minimum")
+}
+
+func TestValidate_EmptyPPEFunctionItemDoesNotMakePPEPresent(t *testing.T) {
+	spec := loadTracfinSpec(t)
+	d := core.NewDocument()
+	pp := d.AddItem("personnes.pp", "pp")
+	d.AddItem(pp.Child("ppe.function"), "fn")
+
+	issues := core.Validate(spec, d)
+	_, found := findIssue(issues, core.CodeRequired, core.SeverityBlocking, pp.Child("ppe"))
+	assert.False(t, found, "empty ppe.function item must not require politiquementExpose")
+
+	var buf bytes.Buffer
+	require.NoError(t, core.WriteXML(spec, d, "ds", &buf))
+	assert.NotContains(t, buf.String(), "<ppe")
+
+	setTracfinValue(d, pp.Child("ppe.function[fn]"), "")
 }

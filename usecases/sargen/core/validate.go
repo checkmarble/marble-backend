@@ -291,8 +291,18 @@ func (v *validator) indexAncestors() {
 		}
 	}
 	for container, keys := range v.doc.Items {
+		// Items of a repeatable field container with an empty value are skipped by
+		// the writer: they must not make their ancestor groups present.
+		isField := false
+		if node := v.spec.NodeAt(container.Template() + "[]"); node != nil && node.Kind == NodeField {
+			isField = true
+		}
 		for _, k := range keys {
-			v.addAncestors(Path(string(container) + "[" + k + "]"))
+			item := Path(string(container) + "[" + k + "]")
+			if isField && !v.hasValue(item) {
+				continue
+			}
+			v.addAncestors(item)
 		}
 	}
 }

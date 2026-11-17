@@ -223,3 +223,23 @@ func TestValidate_TooManyItemsIgnoresEmptyFieldItems(t *testing.T) {
 	require.Len(t, issues, 1)
 	assert.Equal(t, core.CodeTooManyItems, issues[0].Code)
 }
+
+func TestValidate_EmptyRepeatableFieldItemDoesNotMakeGroupPresent(t *testing.T) {
+	spec := &core.Spec{
+		Key: core.FormatKey{Family: "test", Country: "FR", Version: "0"},
+		Root: &core.Node{Export: true, Children: []*core.Node{
+			{Name: "grp", Template: "grp", Kind: core.NodeGroup, Min: 0, Max: 1, Export: true, Children: []*core.Node{
+				{Name: "must", Template: "grp.must", Kind: core.NodeField, Type: core.TypeString, Min: 1, Max: 1, Export: true},
+				{Name: "tags", Template: "grp.tags[]", Kind: core.NodeField, Type: core.TypeString, Min: 0, Max: 5, Export: true},
+			}},
+		}},
+	}
+	d := core.NewDocument()
+	item := d.AddItem("grp.tags", "t")
+	assert.Empty(t, blockingIssues(core.Validate(spec, d)), "empty item must not make the group present")
+
+	setValue(d, item, "x")
+	issues := blockingIssues(core.Validate(spec, d))
+	require.Len(t, issues, 1)
+	assert.Equal(t, core.Path("grp.must"), issues[0].Path)
+}
