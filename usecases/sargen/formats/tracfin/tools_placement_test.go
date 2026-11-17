@@ -408,3 +408,32 @@ func TestTools_ReadDocumentReportsTotalAndTruncation(t *testing.T) {
 	assert.True(t, out.Truncated)
 	assert.Equal(t, core.ClientDataType, out.Type)
 }
+
+func TestCompute_IgnoresIbanWithBadChecksum(t *testing.T) {
+	f := compFormat(t)
+	doc, tx, iban := derivedDoc()
+	doc.Values[iban.Child("iban")] = core.Value{Value: "DE89370400440532013001", Origin: core.OriginLLM} // checksum broken
+	compApply(t, f, doc, f.Compute(doc))
+	_, has := doc.Values[tx.Child("paysOrigine")]
+	assert.False(t, has, "an IBAN whose checksum fails gives no country")
+}
+
+func TestApplyPlacement_PartialOwnerLossIsReportedAndTransactionsMerge(t *testing.T) {
+	f := planFormat(t)
+	raw := json.RawMessage(`{"persons":[{"kind":"pp","objects":[{"table":"persons","object_id":"p-1"}]}],
+	 "financial_refs":[{"ref_kind":"Iban","owners":[{"person_index":0,"lien":"titulaire"},{"person_index":5,"lien":"co-titulaire"}],"objects":[{"table":"accounts","object_id":"a-1"}]}],
+	 "transactions":[
+	  {"objects":[{"table":"transactions","object_id":"t-1"}]},
+	  {"objects":[{"table":"transactions","object_id":"t-1"},{"table":"accounts","object_id":"a-1"}]}]}`)
+	doc := core.NewDocument()
+	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw))
+	require.Len(t, doc.Items["work.transactions"], 1, "the same transaction given with and without its account is one")
+	tx := core.Path("work.transactions[" + doc.Items["work.transactions"][0] + "]")
+	assert.Equal(t, []core.ObjectRef{{Table: "transactions", ObjectID: "t-1"}, {Table: "accounts", ObjectID: "a-1"}}, doc.ItemSources[tx])
+	assert.Len(t, doc.Items["personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban"], 1)
+
+	qs := f.(core.StructuredQuestioner).StructuredQuestions(stepPlacement, raw)
+	require.Len(t, qs, 1)
+	assert.Contains(t, qs[0].Text, "1 titulaire(s) non déclaré(s)")
+	assert.Contains(t, qs[0].Text, "accounts/a-1")
+}
