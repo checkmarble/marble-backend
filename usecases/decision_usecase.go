@@ -825,7 +825,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	// Note: do not do anything that may take time after this, otherwise the info logs about decision execution time will be incorrect.
 
 	sinceLastWrite := time.Since(lastWriteTime)
-	logger.InfoContext(ctx, fmt.Sprintf("In CreateAllDecisions, committed all decisions in %dms", sinceLastWrite.Milliseconds()),
+	logger.DebugContext(ctx, fmt.Sprintf("In CreateAllDecisions, committed all decisions in %dms", sinceLastWrite.Milliseconds()),
 		"since_last_write", sinceLastWrite.Milliseconds(),
 		"nb_decisions", len(decisions),
 	)
