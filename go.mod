@@ -8,7 +8,7 @@ require (
 	cloud.google.com/go/profiler v0.7.1
 	cloud.google.com/go/storage v1.68.0
 	dario.cat/mergo v1.0.2
-	firebase.google.com/go/v4 v4.21.0
+	firebase.google.com/go/v4 v4.22.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.3
 	github.com/KimMachineGun/automemlimit v1.0.1
 	github.com/Masterminds/semver v1.5.0
