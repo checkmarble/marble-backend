@@ -250,7 +250,7 @@ func (e ScenarioEvaluator) processScenarioIteration(
 		})
 
 		if len(eligible) > 1 {
-			utils.LoggerFromContext(ctx).InfoContext(ctx,
+			utils.LoggerFromContext(ctx).DebugContext(ctx,
 				"multiple eligible pivot values present in payload; selecting deterministically by pivot start field",
 				"scenario_id", params.Scenario.Id,
 				"trigger_object_type", params.Scenario.TriggerObjectType,
@@ -703,7 +703,7 @@ func (e ScenarioEvaluator) evalScenarioRule(
 	if hasError {
 		ruleExecution.Outcome = "error"
 		ruleExecution.ExecutionError = execErr
-		logger.InfoContext(ctx, ruleExecution.ExecutionError.String(),
+		logger.DebugContext(ctx, ruleExecution.ExecutionError.String(),
 			slog.String("ruleName", rule.Name),
 			slog.String("ruleId", rule.Id),
 		)

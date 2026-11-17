@@ -70,14 +70,14 @@ func (w AsyncDecisionStorageWorker) Work(ctx context.Context, job *river.Job[mod
 
 		switch err {
 		case nil:
-			logger.InfoContext(ctx, "asynchronously stored decision",
+			logger.DebugContext(ctx, "asynchronously stored decision",
 				"latency", time.Since(storageStart))
 
 			// Only run the test run on first storage, so a retried job does not create duplicate phantom decisions.
 			w.decisionUsecase.ExecuteTestRunForTransientDecision(ctx, transientDecision)
 
 		default:
-			logger.InfoContext(ctx, "skip duplicate async decision storage because it is already persisted",
+			logger.DebugContext(ctx, "skip duplicate async decision storage because it is already persisted",
 				"latency", time.Since(storageStart))
 		}
 

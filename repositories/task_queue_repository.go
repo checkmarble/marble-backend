@@ -261,7 +261,7 @@ func (r riverRepository) EnqueueDecisionTaskMany(
 	scenarioIterationId string,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
-	logger.InfoContext(ctx, "start enqueueing batch of decision tasks")
+	logger.DebugContext(ctx, "start enqueueing batch of decision tasks")
 	t := time.Now()
 	params := make([]river.InsertManyParams, len(decisions))
 	for i, decision := range decisions {
