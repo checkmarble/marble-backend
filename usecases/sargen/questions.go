@@ -112,6 +112,11 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 	if len(opt.Fills) == 0 {
 		return DeclarationState{}, errors.Wrap(models.BadParameterError, "cette option ne propose aucune valeur")
 	}
+	if len(q.Paths) == 0 {
+		// No paths means no restriction in ApplyFills: refuse rather than write anywhere.
+		return DeclarationState{}, errors.Wrap(models.BadParameterError,
+			"cette question ne désigne aucun champ : ses options ne peuvent rien écrire")
+	}
 	return uc.mutateWithPost(ctx, q.DeclarationId, version,
 		func(format core.Format, doc *core.Document, _, _ *string) error {
 			spec := format.Spec()

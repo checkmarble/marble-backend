@@ -285,6 +285,19 @@ func TestChooseQuestionOption_EmptyValueClearsWithoutError(t *testing.T) {
 			Sources: []core.SourceRef{{Object: core.ObjectRef{Table: "transactions", ObjectID: "t1"}, Field: "requisition"}}}}}})
 	require.NoError(t, err)
 	assert.Equal(t, models.SarQuestionStatusResolved, f.Gen.Questions[q.Id].Status)
+	doc := decodeDoc(t, f.Repo.Declarations[declId].Document)
+	v, ok := doc.Values["context.general.numeroProcedure"]
+	assert.True(t, !ok || v.Value == "", "the value must be cleared")
+}
+
+func TestChooseQuestionOption_PathlessQuestionCannotWrite(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	docBefore := append([]byte(nil), f.Repo.Declarations[declId].Document...)
+	q, err := genChoose(t, uc, f, declId, nil, []core.QuestionOption{{Label: "x",
+		Fills: []core.Fill{{Path: "organisme.libelle", Value: "Pirate"}}}})
+	require.ErrorIs(t, err, models.BadParameterError)
+	assert.True(t, bytes.Equal(docBefore, f.Repo.Declarations[declId].Document))
+	assert.Equal(t, models.SarQuestionStatusOpen, f.Gen.Questions[q.Id].Status)
 }
 
 func TestChooseQuestionOption_RefusedDuringJob(t *testing.T) {
