@@ -139,6 +139,10 @@ func (r *agentRunner) Run(ctx context.Context, tc core.ToolContext, task models.
 		mode, schema = modeStructured, *spec.OutputSchema
 	}
 
+	if mode == modeFills && len(allowed) == 0 {
+		return core.TaskOutput{}, errors.Newf("tâche %s sans partie confiée (ni chemins autorisés ni chemin cible)", spec.Kind)
+	}
+
 	runID := uuid.NewString()
 	if e, ok := r.llm.(RunEnder); ok {
 		defer e.EndRun(runID)
@@ -217,6 +221,9 @@ type agentRun struct {
 	tr      *trace
 	chk     *checker
 	tools   map[string]core.Tool
+	// kept is what the last controlled final already validated (fills and
+	// questions), kept when a limit ends the run before a corrected answer.
+	kept core.TaskOutput
 }
 
 func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
@@ -237,7 +244,7 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 				return a.limitOutput("durée maximale atteinte"), nil
 			}
 			a.tr.add(TraceEntry{Type: TraceCheckError, Text: "erreur du fournisseur : " + err.Error()})
-			return core.TaskOutput{}, errors.Wrap(err, "appel du modèle")
+			return core.TaskOutput{Trace: a.tr.render()}, errors.Wrap(err, "appel du modèle")
 		}
 		a.tr.setProvider(step.Provider, step.Model)
 		usage := TraceEntry{InputTokens: step.Usage.InputTokens, OutputTokens: step.Usage.OutputTokens}
@@ -265,6 +272,9 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 			a.tr.add(TraceEntry{Type: TraceOutput, Text: string(final),
 				InputTokens: usage.InputTokens, OutputTokens: usage.OutputTokens})
 			out, corr := a.control(final)
+			if len(corr) > 0 && a.mode == modeFills && (len(out.Fills) > 0 || len(out.Questions) > 0) {
+				a.kept = out
+			}
 			if len(corr) > 0 && corrections < lim.MaxCorrections {
 				corrections++
 				for _, m := range corr {
@@ -374,15 +384,35 @@ func splitFillError(e string) (path, reason string, ok bool) {
 	return path, reason, found
 }
 
-// limitOutput is the output of a run that hit a bound: one question over the
-// task's unfilled writable paths. Not a technical error.
+// limitOutput is the output of a run that hit a bound: what the last controlled
+// answer already validated is kept, and one question covers the task's other
+// unfilled writable paths. Not a technical error. A review or a structured
+// task asks nothing pathless.
 func (a *agentRun) limitOutput(reason string) core.TaskOutput {
 	a.tr.add(TraceEntry{Type: TraceCheckError, Text: "limite : " + reason})
-	q := core.QuestionDraft{
-		Paths: a.unfilledPaths(),
-		Text:  "La génération automatique n'a pas abouti pour cette partie (" + reason + ") : à renseigner manuellement.",
+	out := core.TaskOutput{}
+	if a.mode == modeFills {
+		out = a.kept
 	}
-	return a.render(core.TaskOutput{Questions: []core.QuestionDraft{q}})
+	if a.mode != modeReview {
+		filled := map[core.Path]bool{}
+		for _, f := range out.Fills {
+			filled[f.Path] = true
+		}
+		var paths []core.Path
+		for _, p := range a.unfilledPaths() {
+			if !filled[p] {
+				paths = append(paths, p)
+			}
+		}
+		if len(paths) > 0 {
+			out.Questions = append(slices.Clone(out.Questions), core.QuestionDraft{
+				Paths: paths,
+				Text:  "La génération automatique n'a pas abouti pour cette partie (" + reason + ") : à renseigner manuellement.",
+			})
+		}
+	}
+	return a.render(out)
 }
 
 // unfilledPaths lists the writable leaves of the task's part without value.
