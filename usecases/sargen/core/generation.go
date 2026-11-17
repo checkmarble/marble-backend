@@ -23,8 +23,8 @@ const TaskKindReview = "review"
 // TaskKindCompute is the engine-known task kind that derives backend-computed
 // fields (Format.Compute). The orchestrator runs it without the TaskRunner. A
 // Format may plan it (DependsOnKinds = the fill kinds it must follow) so that
-// later tasks see the computed values; when the plan never contains one, the
-// orchestrator computes once at the end of a generation job.
+// later tasks see the computed values; the orchestrator also always computes
+// once at the end of a generation job.
 const TaskKindCompute = "compute"
 
 // TaskSpec is one unit of generation work planned by a Format.

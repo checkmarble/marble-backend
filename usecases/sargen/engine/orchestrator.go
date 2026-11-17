@@ -236,8 +236,8 @@ func NewOrchestrator(d Deps) *Orchestrator {
 // task's allowed prefixes (and resolved); option fills only within the kept
 // paths. A task of kind core.TaskKindCompute runs without the runner: Compute
 // (Origin=OriginComputed, OverwriteNonManual, SkipMaxItems, RemoveItems first)
-// is applied in one transaction. When the plan never contained such a task,
-// the same Compute runs once at the end of a generation job. Review tasks
+// is applied in one transaction. The same Compute also always runs at the end
+// of a generation job (idempotent: it recomputes what later tasks changed). Review tasks
 // write nothing and replace the open review_finding questions with their
 // Findings; a review job only runs review specs. If Complete/Fail report false (superseded),
 // the result is discarded and nothing is applied. Before launching the tasks
@@ -422,9 +422,7 @@ func (r *jobRun) loop(ctx context.Context) error {
 			if len(fresh) > 0 {
 				continue
 			}
-			return r.finish(ctx, slices.ContainsFunc(tasks, func(t models.SarGenerationTask) bool {
-				return t.Kind == core.TaskKindCompute
-			}))
+			return r.finish(ctx)
 		}
 
 		progress, err := r.runWave(ctx, ready)
@@ -1063,19 +1061,7 @@ func sourcesAllowed(f core.Fill, allowed []core.ObjectRef) bool {
 // the fills as OriginComputed, OverwriteNonManual, SkipMaxItems). changed
 // tells whether the document was modified.
 func (r *jobRun) computeInto(doc *core.Document) (res core.ApplyResult, changed bool) {
-	c := r.format.Compute(doc)
-	for _, p := range c.RemoveItems {
-		doc.RemoveItem(p)
-	}
-	fills := make([]core.Fill, len(c.Fills))
-	for i, f := range c.Fills {
-		f.Origin, f.TaskID = core.OriginComputed, nil
-		fills[i] = f
-	}
-	res = core.ApplyFills(r.format.Spec(), doc, fills, core.ApplyOptions{
-		Overwrite: core.OverwriteNonManual, SkipMaxItems: true,
-	})
-	return res, len(c.RemoveItems) > 0 || len(res.Applied) > 0
+	return core.ComputeInto(r.format, doc)
 }
 
 // applyCompute runs a compute task in tx (no runner): the declaration is read
@@ -1119,11 +1105,12 @@ func (r *jobRun) applyCompute(ctx context.Context, tx repositories.Transaction, 
 	return false, nil
 }
 
-// finish runs Compute once (generation jobs whose plan contained no compute
-// task; every fill task is done) and marks the job done.
-func (r *jobRun) finish(ctx context.Context, computePlanned bool) error {
+// finish runs Compute (generation jobs, always: it is idempotent, and it
+// recomputes what the tasks that ran after a planned compute task changed, e.g.
+// corrections) and marks the job done.
+func (r *jobRun) finish(ctx context.Context) error {
 	o := r.o
-	if r.job.Kind != models.SarJobKindReview && !computePlanned {
+	if r.job.Kind != models.SarJobKindReview {
 		err := func() error {
 			r.applyMu.Lock()
 			defer r.applyMu.Unlock()

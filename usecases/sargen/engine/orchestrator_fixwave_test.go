@@ -103,7 +103,8 @@ func TestRunJob_QuestionOutsideTargetIsNotPersisted(t *testing.T) {
 }
 
 // I2: a planned compute task runs without the runner, after its dependencies,
-// and later tasks see the computed values; no second compute at the end.
+// and later tasks see the computed values; the end-of-job compute still runs (idempotent: it
+// recomputes what later tasks changed).
 func TestRunJob_ComputeTaskRunsWithoutRunner(t *testing.T) {
 	ctx := context.Background()
 	o, f := newTestOrchestrator(t)
@@ -137,7 +138,7 @@ func TestRunJob_ComputeTaskRunsWithoutRunner(t *testing.T) {
 	require.Equal(t, []string{key("fill", tgtPP1), key("judgment", tgtPP2)}, f.Runner.Calls,
 		"the compute task never goes through the runner")
 	require.Equal(t, "100", judgmentSaw, "judgment runs after the computed values were written")
-	require.Equal(t, 1, computes, "no second compute at the end of the job")
+	require.Equal(t, 2, computes, "the compute task, then the end-of-job compute")
 	v, ok := valueOf(t, f, pathMontantTotal)
 	require.True(t, ok)
 	require.Equal(t, core.OriginComputed, v.Origin)
@@ -150,7 +151,8 @@ func TestRunJob_ComputeTaskRunsWithoutRunner(t *testing.T) {
 	require.Contains(t, planSawComputed, true, "Plan sees the computed values")
 }
 
-// A compute task already done is not recomputed on resume.
+// A compute task already done is not run again on resume (only the end-of-job
+// compute runs, once more).
 func TestResume_ComputeTaskNotRerun(t *testing.T) {
 	ctx := context.Background()
 	o, f := newTestOrchestrator(t)
@@ -168,7 +170,7 @@ func TestResume_ComputeTaskNotRerun(t *testing.T) {
 	f.Runner.On("judgment", tgtPP2, Step{Err: errProvider}, Step{})
 	require.Error(t, o.RunJob(ctx, f.JobId))
 	require.NoError(t, o.RunJob(ctx, f.JobId))
-	require.Equal(t, 1, computes)
+	require.Equal(t, 2, computes, "the compute task once, the end-of-job compute once")
 }
 
 // M1: a review job refuses non-review specs.

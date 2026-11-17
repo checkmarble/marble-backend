@@ -338,6 +338,11 @@ func (c *checker) optionFills(ws []wireFill, questionPaths []core.Path, doc *cor
 		f.Origin, f.TaskID = core.OriginAnalyst, nil
 		fills = append(fills, f)
 	}
+	// Like direct fills: values referencing an item created by the same option
+	// are applied after the others.
+	slices.SortStableFunc(fills, func(x, y core.Fill) int {
+		return boolToInt(c.isRefFill(x)) - boolToInt(c.isRefFill(y))
+	})
 	clone := doc.Clone()
 	opts := c.applyOptions(clone)
 	opts.Overwrite = core.OverwriteAll

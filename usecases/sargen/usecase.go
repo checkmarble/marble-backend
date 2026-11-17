@@ -569,6 +569,8 @@ func (uc *Usecase) UpdateFields(ctx context.Context, id uuid.UUID, version int, 
 		if len(issues) > 0 {
 			return issuesToError(issues)
 		}
+		// Computed values follow the edit, in the same write.
+		core.ComputeInto(format, doc)
 		return nil
 	}, func(tx repositories.Transaction, doc *core.Document) error {
 		return uc.resolveAnsweredQuestions(ctx, tx, id, doc, filled)
@@ -599,6 +601,7 @@ func (uc *Usecase) AddItem(ctx context.Context, id uuid.UUID, version int, conta
 			prefix = "item"
 		}
 		item = doc.AddItem(container, prefix)
+		core.ComputeInto(format, doc)
 		return nil
 	})
 	if err != nil {
@@ -624,6 +627,7 @@ func (uc *Usecase) RemoveItem(ctx context.Context, id uuid.UUID, version int, it
 			return errors.Wrapf(models.NotFoundError, "l'élément %s n'existe pas", item)
 		}
 		doc.RemoveItem(item)
+		core.ComputeInto(format, doc)
 		return nil
 	})
 }

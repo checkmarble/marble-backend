@@ -685,6 +685,9 @@ func (a *agentRun) control(final json.RawMessage) (core.TaskOutput, []string) {
 // is kept; what failed is dropped, except fills (already turned into
 // questions) and a structured output (questions on the unfilled paths).
 func (a *agentRun) finish(out core.TaskOutput, remaining []string) core.TaskOutput {
+	// The model's own questions and findings are bounded before the engine adds
+	// its own (limit, unverifiable value), which the bound must not cut.
+	out = capOutput(out)
 	if len(remaining) > 0 {
 		switch a.mode {
 		case modeStructured:
@@ -695,7 +698,11 @@ func (a *agentRun) finish(out core.TaskOutput, remaining []string) core.TaskOutp
 					return a.limitOutput("réponse non conforme au schéma après corrections")
 				}
 			}
-			out.Questions = append(out.Questions, a.unverifiableFromErrors(remaining)...)
+			unverifiable := a.unverifiableFromErrors(remaining)
+			if len(unverifiable) > maxOutputItems {
+				unverifiable = unverifiable[:maxOutputItems]
+			}
+			out.Questions = append(slices.Clone(out.Questions), unverifiable...)
 		}
 	}
 	return a.render(out)
@@ -755,6 +762,7 @@ func (a *agentRun) limitOutput(reason string) core.TaskOutput {
 func (a *agentRun) limitOutputFrom(reason string, out core.TaskOutput) core.TaskOutput {
 	a.tr.add(TraceEntry{Type: TraceCheckError, Text: "limite : " + reason})
 	a.limited, a.limitReason = true, reason
+	out = capOutput(out)
 	if a.mode != modeReview {
 		filled := map[core.Path]bool{}
 		for _, f := range out.Fills {
@@ -824,7 +832,7 @@ func (a *agentRun) requiredUnfilledPaths() []core.Path {
 // render bounds the output (capOutput), strips NUL characters from all of it and
 // attaches the trace.
 func (a *agentRun) render(out core.TaskOutput) core.TaskOutput {
-	out = capOutput(out)
+	out = capTexts(out)
 	for i := range out.Fills {
 		f := &out.Fills[i]
 		f.Value, f.Justification = clean(f.Value), clean(f.Justification)
@@ -868,12 +876,22 @@ func capText(s string) string {
 	return s
 }
 
-// capOutput bounds the number of questions, findings and options (20 each) and
-// the length of their texts (500 characters).
+// capOutput bounds the number of questions and findings (20 each) of what the
+// model produced; capTexts then bounds the options and the length of the texts.
 func capOutput(out core.TaskOutput) core.TaskOutput {
 	if len(out.Questions) > maxOutputItems {
 		out.Questions = out.Questions[:maxOutputItems]
 	}
+	if len(out.Findings) > maxOutputItems {
+		out.Findings = out.Findings[:maxOutputItems]
+	}
+	return out
+}
+
+// capTexts bounds the options per question (20) and the length of the texts
+// (500 characters) of questions, options and findings; the number of questions
+// is bounded by capOutput before the engine adds its own.
+func capTexts(out core.TaskOutput) core.TaskOutput {
 	if len(out.Findings) > maxOutputItems {
 		out.Findings = out.Findings[:maxOutputItems]
 	}
