@@ -129,6 +129,12 @@ func (usecase *OrganizationUseCase) UpdateOrganization(
 			return models.Organization{}, err
 		}
 
+		if organization.Environment != nil || organization.SentryReplayEnabled != nil {
+			if err := usecase.enforceSecurity.EditOrganizationRestrictedSettings(); err != nil {
+				return models.Organization{}, err
+			}
+		}
+
 		if organization.ScreeningConfig.Providers != nil {
 			featureAccess, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
 			if err != nil {

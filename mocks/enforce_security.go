@@ -180,6 +180,11 @@ func (e *EnforceSecurity) EditOrganization(org models.Organization) error {
 	return args.Error(0)
 }
 
+func (e *EnforceSecurity) EditOrganizationRestrictedSettings() error {
+	args := e.Called()
+	return args.Error(0)
+}
+
 func (e *EnforceSecurity) EditOrganizationScreeningProvider(org models.Organization, isManagedMarble bool) error {
 	args := e.Called(org, isManagedMarble)
 	return args.Error(0)

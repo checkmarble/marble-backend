@@ -11,6 +11,7 @@ type EnforceSecurityOrganization interface {
 	ListOrganization() error
 	CreateOrganization() error
 	EditOrganization(org models.Organization) error
+	EditOrganizationRestrictedSettings() error
 	EditOrganizationScreeningProvider(org models.Organization, isManagedMarble bool) error
 	DeleteOrganization() error
 	ReadDataModel() error
@@ -40,6 +41,13 @@ func (e *EnforceSecurityOrganizationImpl) EditOrganization(org models.Organizati
 		e.Permission(models.ORGANIZATIONS_UPDATE),
 		e.ReadOrganization(org.Id),
 	)
+}
+
+func (e *EnforceSecurityOrganizationImpl) EditOrganizationRestrictedSettings() error {
+	if !e.Credentials.HasRole(models.MARBLE_ADMIN) {
+		return errors.Wrap(models.ForbiddenError, "only marble admins can change environment or sentry replay")
+	}
+	return nil
 }
 
 // EditOrganizationScreeningProvider enforces the correct permissions for editing the screening provider,
