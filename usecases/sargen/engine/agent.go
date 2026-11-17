@@ -899,9 +899,6 @@ func capOutput(out core.TaskOutput) core.TaskOutput {
 // (500 characters) of questions, options and findings; the number of questions
 // is bounded by capOutput before the engine adds its own.
 func capTexts(out core.TaskOutput) core.TaskOutput {
-	if len(out.Findings) > maxOutputItems {
-		out.Findings = out.Findings[:maxOutputItems]
-	}
 	qs := slices.Clone(out.Questions)
 	for i := range qs {
 		qs[i].Text = capText(qs[i].Text)

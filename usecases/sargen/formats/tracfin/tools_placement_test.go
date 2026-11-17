@@ -172,3 +172,36 @@ func TestPlan_JudgmentAndReviewAskForCaseContext(t *testing.T) {
 		}
 	}
 }
+
+func TestCompute_ExactDecimalsAndStrictAmounts(t *testing.T) {
+	f := compFormat(t)
+	doc := core.NewDocument()
+	addCompTx(doc, compBase("0.1", "2026-03-01"))
+	addCompTx(doc, compBase("0.2", "2026-03-02"))
+	addCompTx(doc, compBase("1.125", "2026-03-03"))
+	addCompTx(doc, compBase("1/2", "2026-03-04")) // not a decimal: ignored
+	addCompTx(doc, compBase("1e3", "2026-03-04"))
+	addCompTx(doc, compBase("5", "2026-02-30")) // counted, but its date is not a real day
+	compApply(t, f, doc, f.Compute(doc))
+
+	assert.Equal(t, "6.425", doc.Values["operations.montantTotal"].Value)
+	assert.Equal(t, "2026-03-01", doc.Values["operations.dateDebut"].Value)
+	assert.Equal(t, "2026-03-03", doc.Values["operations.dateFin"].Value)
+
+	only := core.NewDocument()
+	addCompTx(only, compBase("0.1", "2026-03-01"))
+	addCompTx(only, compBase("0.2", "2026-03-02"))
+	compApply(t, f, only, f.Compute(only))
+	assert.Equal(t, "0.3", only.Values["operations.montantTotal"].Value)
+}
+
+func TestApplyPlacement_DuplicatesAreCreatedOnce(t *testing.T) {
+	f := planFormat(t)
+	doc := core.NewDocument()
+	out := `{"persons":[{"kind":"pp","objects":[{"table":"persons","object_id":"p-1"}]}],
+	 "financial_refs":[{"ref_kind":"Iban","owners":[{"person_index":0,"lien":"titulaire"},{"person_index":0,"lien":"titulaire"}],"objects":[{"table":"accounts","object_id":"a-1"}]}],
+	 "transactions":[{"object":{"table":"transactions","object_id":"t-1"}},{"object":{"table":"transactions","object_id":"t-1"}}]}`
+	require.NoError(t, f.ApplyStructured(stepPlacement, doc, json.RawMessage(out)))
+	assert.Len(t, doc.Items["work.transactions"], 1)
+	assert.Len(t, doc.Items["personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban"], 1)
+}

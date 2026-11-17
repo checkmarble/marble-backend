@@ -380,7 +380,7 @@ func TestPlan_CorrectionOnlyForBlockingPathsAndAtMostTwoWaves(t *testing.T) {
 		assert.Equal(t, []string{core.TaskKindReview}, planKinds(asBatch(f.Plan(st))))
 	})
 
-	t.Run("at most two correction waves", func(t *testing.T) {
+	t.Run("at most two correction waves, each followed by a recompute", func(t *testing.T) {
 		st := base
 		st.Issues = blocking
 
@@ -388,12 +388,21 @@ func TestPlan_CorrectionOnlyForBlockingPathsAndAtMostTwoWaves(t *testing.T) {
 		require.NotEmpty(t, wave1)
 		st.Done = append(slices.Clip(st.Done), planDone(wave1...)...)
 
+		// The computed values are refreshed before the next wave (and the review).
+		recompute1 := asBatch(f.Plan(st))
+		require.Equal(t, []string{core.TaskKindCompute}, planKinds(recompute1))
+		st.Done = append(slices.Clip(st.Done), planDone(recompute1...)...)
+
 		wave2 := asBatch(f.Plan(st))
 		require.NotEmpty(t, wave2, "the second correction wave is allowed")
 		for _, s := range wave2 {
 			assert.Equal(t, stepCorrection, s.Kind)
 		}
 		st.Done = append(slices.Clip(st.Done), planDone(wave2...)...)
+
+		recompute2 := asBatch(f.Plan(st))
+		require.Equal(t, []string{core.TaskKindCompute}, planKinds(recompute2))
+		st.Done = append(slices.Clip(st.Done), planDone(recompute2...)...)
 
 		wave3 := asBatch(f.Plan(st))
 		assert.Equal(t, []string{core.TaskKindReview}, planKinds(wave3),

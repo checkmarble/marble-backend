@@ -131,6 +131,15 @@ func (f *format) ApplyStructured(kind string, doc *core.Document, raw json.RawMe
 		}
 	}
 
+	// Duplicates are dropped: a transaction object listed twice and an owner
+	// listed twice for one reference are created once.
+	var txs []core.ObjectRef
+	for _, t := range out.Transactions {
+		if !slices.Contains(txs, t.Object) {
+			txs = append(txs, t.Object)
+		}
+	}
+
 	persons := make([]core.Path, len(out.Persons))
 	for i, p := range out.Persons {
 		item := doc.AddItem(core.Path("personnes."+p.Kind), p.Kind)
@@ -138,16 +147,21 @@ func (f *format) ApplyStructured(kind string, doc *core.Document, raw json.RawMe
 		persons[i] = item
 	}
 	for _, r := range out.FinancialRefs {
+		var seenOwners []int
 		for _, o := range r.Owners {
+			if slices.Contains(seenOwners, *o.PersonIndex) {
+				continue
+			}
+			seenOwners = append(seenOwners, *o.PersonIndex)
 			container := persons[*o.PersonIndex].Child("referencesFinancieres").Child(referenceContainerPrefix + r.RefKind)
 			item := doc.AddItem(container, referenceContainerPrefix+r.RefKind)
 			doc.ItemSources[item] = slices.Clone(r.Objects)
 			doc.Values[item.Child("lien")] = core.Value{Value: liens[o.Lien], Origin: core.OriginLLM, Confidence: core.ConfidenceMedium}
 		}
 	}
-	for _, t := range out.Transactions {
+	for _, obj := range txs {
 		item := doc.AddItem(transactionsContainer, "transactions")
-		doc.ItemSources[item] = []core.ObjectRef{t.Object}
+		doc.ItemSources[item] = []core.ObjectRef{obj}
 	}
 	return nil
 }

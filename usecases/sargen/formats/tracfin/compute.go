@@ -3,8 +3,10 @@ package tracfin
 import (
 	"fmt"
 	"math/big"
+	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
 )
@@ -265,12 +267,17 @@ func derivedFinancialRef(doc *core.Document, tx core.Path, person string) core.P
 }
 
 func validDate(s string) bool {
-	return len(s) == 10 && s[4] == '-' && s[7] == '-'
+	_, err := time.Parse("2006-01-02", s)
+	return err == nil
 }
+
+// strictDecimalRe is a plain decimal: digits, optionally a dot and digits (no
+// fraction "1/2", no exponent, no sign, no separator).
+var strictDecimalRe = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?$`)
 
 // parseDecimal reads a positive decimal; frac is its number of fraction digits.
 func parseDecimal(s string) (r *big.Rat, frac int, ok bool) {
-	if s == "" {
+	if !strictDecimalRe.MatchString(s) {
 		return nil, 0, false
 	}
 	r, ok = new(big.Rat).SetString(s)

@@ -92,7 +92,13 @@ func (f *format) Plan(st core.PlanState) []core.TaskSpec {
 		return []core.TaskSpec{f.judgmentSpec(st)}
 	}
 
-	if n := done.correctionWaves(); n < maxCorrectionWaves {
+	n := done.correctionWaves()
+	if n > 0 && done.computeWave < n {
+		// A correction wave is done: recompute before the next wave and the
+		// review, which must not see stale computed values.
+		return []core.TaskSpec{computeAfterCorrectionSpec(n)}
+	}
+	if n < maxCorrectionWaves {
 		if corrections := f.correctionSpecs(st, n+1); len(corrections) > 0 {
 			return corrections
 		}
@@ -109,6 +115,8 @@ type doneSet struct {
 	kinds map[string]bool
 	specs map[string]bool
 	waves int
+	// computeWave is the highest correction wave a done compute task followed.
+	computeWave int
 }
 
 func newDoneSet(tasks []models.SarGenerationTask) doneSet {
@@ -123,8 +131,11 @@ func newDoneSet(tasks []models.SarGenerationTask) doneSet {
 			spec = in.Spec
 		}
 		d.specs[specKey(spec)] = true
-		if t.Kind == StepCorrection {
+		switch t.Kind {
+		case StepCorrection:
 			d.waves = max(d.waves, waveOf(spec))
+		case core.TaskKindCompute:
+			d.computeWave = max(d.computeWave, waveOf(spec))
 		}
 	}
 	return d
@@ -236,6 +247,15 @@ func computeSpec() core.TaskSpec {
 	return core.TaskSpec{
 		Kind: core.TaskKindCompute, TargetPath: "operations",
 		DependsOnKinds: []string{StepFillPerson, StepFillTransaction},
+	}
+}
+
+// computeAfterCorrectionSpec recomputes after a correction wave (the wave in the
+// payload makes it a distinct task).
+func computeAfterCorrectionSpec(wave int) core.TaskSpec {
+	return core.TaskSpec{
+		Kind: core.TaskKindCompute, TargetPath: "operations",
+		Payload: map[string]any{"wave": wave},
 	}
 }
 
