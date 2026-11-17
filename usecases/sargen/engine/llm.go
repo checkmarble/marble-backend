@@ -74,9 +74,12 @@ type AgentRequest struct {
 
 // AgentStep is the model's reply: either ToolCalls (run them, send the results
 // back through History) or Final (JSON matching AgentRequest.OutputSchema).
-// Parallel tool calls need llmberjack#15 (not merged): until then an
-// implementation may return at most one call per step. Provider and Model are
-// reported by the LLM (used for the trace header); Usage feeds the trace.
+// Several calls in one step are supported by the runner (results come back in
+// call order, one RoleTool message per call); whether the provider accepts them
+// depends on the llmberjack version in use. Provider and Model are reported by
+// the LLM (used for the trace header); Usage feeds the trace. A step with
+// neither ToolCalls nor Final is an empty answer (provider returned nothing or
+// blocked the content): the runner corrects, then ends on a quality limit.
 type AgentStep struct {
 	ToolCalls []ToolCall
 	Final     json.RawMessage
@@ -100,8 +103,16 @@ type AgentUsage struct {
 // answer is OverrideResponseSchema(req.OutputSchema) in the same request as the
 // tools (spike). The request is typed (a response schema must be set for the
 // provider to apply the override). One llmberjack thread per RunID.
-// Parallel tool calls: keep the current llmberjack version (#15 not merged), so
-// a model answering with several calls in one turn may be refused by Vertex.
+//
+// Mistakes of the model never become technical errors: a call to an unknown
+// tool is answered by the runner's error text (a stub tool carries it), an
+// answer without candidate or a provider "no content" is an empty step.
+// Configuration errors (no config, no model for the tier, no client) wrap
+// ErrLLMUnavailable: retrying cannot help, the worker cancels the River job.
+//
+// Parked: a failure of the FIRST turn of a run leaks its llmberjack thread
+// (the thread is only returned with a successful response, so EndRun cannot
+// close it); the history entry of that thread lives until the process ends.
 type llmberjackLLM struct {
 	agent  *ai_agent.AiAgentUsecase
 	config *models.AiAgentModelConfig
@@ -110,8 +121,17 @@ type llmberjackLLM struct {
 	runs map[string]*llmRun
 }
 
+// ErrLLMUnavailable marks a configuration error of the model (not configured,
+// no model for the tier, no client): non-retryable, the job is failed and the
+// River job cancelled.
+var ErrLLMUnavailable = errors.New("modèle de génération indisponible")
+
+func unavailable(err error) error { return errors.Mark(err, ErrLLMUnavailable) }
+
 // llmRun is the thread state of one conversation.
 type llmRun struct {
+	// prev is the last response of the thread. Without candidates (blocked or
+	// empty answer) it only carries the thread: the next turn continues in it.
 	prev     *llmberjack.Response[map[string]any]
 	consumed int // History messages already sent
 }
@@ -143,18 +163,18 @@ func (l *llmberjackLLM) EndRun(runID string) {
 	}
 }
 
-func (l *llmberjackLLM) Step(ctx context.Context, req AgentRequest) (AgentStep, error) {
+func (l *llmberjackLLM) Step(ctx context.Context, req AgentRequest) (step AgentStep, err error) {
 	if l.agent == nil || l.config == nil {
-		return AgentStep{}, errors.New("modèle de génération non configuré")
+		return AgentStep{}, unavailable(errors.New("modèle de génération non configuré"))
 	}
 	model := l.config.GetModel(models.AiFeatureSarGeneration, models.AiModelTier(req.Tier))
 	if model == "" {
-		return AgentStep{}, errors.Newf("aucun modèle configuré pour la génération (niveau %s)", req.Tier)
+		return AgentStep{}, unavailable(errors.Newf("aucun modèle configuré pour la génération (niveau %s)", req.Tier))
 	}
 	provider := ai_agent.ProviderForModel(model)
 	client, err := l.agent.GetClient(ctx)
 	if err != nil {
-		return AgentStep{}, errors.Wrap(err, "client LLM indisponible")
+		return AgentStep{}, unavailable(errors.Wrap(err, "client LLM indisponible"))
 	}
 
 	st := l.run(req.RunID)
@@ -162,17 +182,35 @@ func (l *llmberjackLLM) Step(ctx context.Context, req AgentRequest) (AgentStep, 
 	if err != nil {
 		return AgentStep{}, err
 	}
-	resp, err := ai_agent.DoLLMRequest(ctx, client, r)
+	// A malformed provider response must not crash the task: it is an empty
+	// answer like the provider's own "no content".
+	var resp *llmberjack.Response[map[string]any]
+	func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				err = errors.Newf("%s (%v)", noContentMessage, rec)
+			}
+		}()
+		resp, err = ai_agent.DoLLMRequest(ctx, client, r)
+	}()
+	step = AgentStep{Provider: provider, Model: model}
 	if err != nil {
-		return AgentStep{}, errors.Wrap(err, "appel du modèle")
+		if !isNoContent(err) {
+			// Provider and model still reach the trace header.
+			return step, errors.Wrap(err, "appel du modèle")
+		}
+		// The input of this turn is in the thread's history but nothing
+		// answered it: the next turn continues the thread (not a candidate).
+		st.consumed = len(req.History)
+		if st.prev != nil {
+			st.prev = &llmberjack.Response[map[string]any]{ThreadId: st.prev.ThreadId}
+		}
+		return step, nil
 	}
 	st.consumed = len(req.History)
 	st.prev = resp
 
-	step := AgentStep{
-		Provider: provider, Model: model,
-		Usage: AgentUsage{InputTokens: resp.Usage.InputTokens, OutputTokens: resp.Usage.OutputTokens},
-	}
+	step.Usage = AgentUsage{InputTokens: resp.Usage.InputTokens, OutputTokens: resp.Usage.OutputTokens}
 	if len(resp.Candidates) == 0 {
 		return step, nil
 	}
@@ -186,10 +224,20 @@ func (l *llmberjackLLM) Step(ctx context.Context, req AgentRequest) (AgentStep, 
 	return step, nil
 }
 
+// noContentMessage is the llmberjack/Gemini error for a candidate without
+// parts (blocked or malformed answer).
+const noContentMessage = "LLM provider generated no content"
+
+func isNoContent(err error) bool {
+	return strings.Contains(err.Error(), noContentMessage)
+}
+
 // buildTurnRequest builds the llmberjack request of the next turn of a run. On
 // the first turn it opens the thread (instruction, prompt, tools); afterwards it
 // continues from the previous candidate: tool results of History (consumed
-// excluded) answer its tool calls, a user message (correction) follows a final.
+// excluded) answer its tool calls (in call order, per tool name), a user
+// message (correction) follows. When the previous response has no candidate the
+// thread is continued directly (InThread), with the user messages only.
 func buildTurnRequest(st *llmRun, req AgentRequest, provider, model string) (llmberjack.Request[map[string]any], error) {
 	r := llmberjack.NewRequest[map[string]any]().
 		WithProvider(provider).
@@ -211,9 +259,12 @@ func buildTurnRequest(st *llmRun, req AgentRequest, provider, model string) (llm
 		}
 	}
 
-	for _, ct := range req.Tools {
-		name := ct.Name
-		t := llmberjack.NewTool[map[string]any](name, ct.Description, llmberjack.Function(func(map[string]any) (string, error) {
+	// The Go function of a tool only hands back the result the runner already
+	// computed for that call (one per call, in order).
+	withStub := func(r llmberjack.Request[map[string]any], name, description string, params jsonschema.Schema,
+	) llmberjack.Request[map[string]any] {
+		// json.RawMessage accepts whatever arguments the model sent.
+		t := llmberjack.NewTool[json.RawMessage](name, description, llmberjack.Function(func(json.RawMessage) (string, error) {
 			q := results[name]
 			if len(q) == 0 {
 				return `{"error":"résultat indisponible"}`, nil
@@ -221,8 +272,13 @@ func buildTurnRequest(st *llmRun, req AgentRequest, provider, model string) (llm
 			results[name] = q[1:]
 			return q[0], nil
 		}))
-		t.Parameters = ct.Params
-		r = r.WithTools(t)
+		t.Parameters = params
+		return r.WithTools(t)
+	}
+	declared := map[string]bool{}
+	for _, ct := range req.Tools {
+		declared[ct.Name] = true
+		r = withStub(r, ct.Name, ct.Description, ct.Params)
 	}
 
 	if st.prev == nil {
@@ -230,9 +286,28 @@ func buildTurnRequest(st *llmRun, req AgentRequest, provider, model string) (llm
 			WithInstruction(req.Instruction).
 			WithText(llmberjack.RoleUser, req.Prompt), nil
 	}
-	r = r.FromCandidate(st.prev, 0)
-	if len(st.prev.Candidates) > 0 && len(st.prev.Candidates[0].ToolCalls) > 0 {
-		r = r.WithToolExecution()
+	if len(st.prev.Candidates) == 0 {
+		r = r.InThread(st.prev.ThreadId)
+	} else {
+		// A call without arguments arrives as null (or nothing): llmberjack
+		// panics decoding it into the tool's argument type.
+		for i, call := range st.prev.Candidates[0].ToolCalls {
+			if p := strings.TrimSpace(string(call.Parameters)); p == "" || p == "null" {
+				st.prev.Candidates[0].ToolCalls[i].Parameters = []byte("{}")
+			}
+		}
+		r = r.FromCandidate(st.prev, 0)
+		if calls := st.prev.Candidates[0].ToolCalls; len(calls) > 0 {
+			// A tool the model made up is not in req.Tools: a stub for that name
+			// lets llmberjack attach the runner's error result instead of failing.
+			for _, call := range calls {
+				if !declared[call.Name] {
+					declared[call.Name] = true
+					r = withStub(r, call.Name, "outil inconnu", jsonschema.Schema{Type: "object"})
+				}
+			}
+			r = r.WithToolExecution()
+		}
 	}
 	for _, c := range corrections {
 		r = r.WithText(llmberjack.RoleUser, c)
