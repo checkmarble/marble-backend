@@ -190,7 +190,7 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 			}
 			written = paths
 			// Computed values follow the chosen option, in the same write.
-			core.ComputeInto(format, doc)
+			uc.recompute(ctx, format, doc)
 			return nil
 		},
 		func(tx repositories.Transaction, doc *core.Document) error {

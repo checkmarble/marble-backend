@@ -30,6 +30,7 @@ type CaseContextReader interface {
 
 type caseCtxRule struct {
 	Name          string `json:"name"`
+	Description   string `json:"description,omitempty"`
 	ScoreModifier int    `json:"score_modifier"`
 }
 
@@ -45,6 +46,7 @@ type caseCtxDecision struct {
 	Outcome    string             `json:"outcome"`
 	Score      int                `json:"score"`
 	Object     string             `json:"object,omitempty"`
+	ObjectID   string             `json:"object_id,omitempty"`
 	Rules      []caseCtxRule      `json:"rules,omitempty"`
 	Screenings []caseCtxScreening `json:"screenings,omitempty"`
 }
@@ -87,11 +89,12 @@ func buildCaseContext(ctx context.Context, exec repositories.Executor, reader Ca
 		}
 		cd := caseCtxDecision{
 			CreatedAt: d.CreatedAt, Scenario: d.ScenarioName, Outcome: d.Outcome.String(), Score: d.Score,
-			Object: d.ClientObject.TableName,
+			Object: d.ClientObject.TableName, ObjectID: objectIdOf(d.ClientObject.Data),
 		}
 		for _, r := range d.RuleExecutions {
 			if r.Outcome == "hit" {
-				cd.Rules = append(cd.Rules, caseCtxRule{Name: r.Rule.Name, ScoreModifier: r.ResultScoreModifier})
+				cd.Rules = append(cd.Rules, caseCtxRule{
+					Name: r.Rule.Name, Description: shorten(r.Rule.Description, 300), ScoreModifier: r.ResultScoreModifier})
 			}
 		}
 		for _, s := range d.ScreeningExecutions {
@@ -133,4 +136,11 @@ func buildCaseContext(ctx context.Context, exec repositories.Executor, reader Ca
 			return `{"decisions":[],"events":[],"truncated":true}`, nil
 		}
 	}
+}
+
+func objectIdOf(data map[string]any) string {
+	if id, ok := valueString(data["object_id"]); ok {
+		return id
+	}
+	return ""
 }
