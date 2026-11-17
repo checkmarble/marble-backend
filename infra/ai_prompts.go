@@ -199,8 +199,9 @@ func downloadAiPromptsFS(ctx context.Context, version, licenseKey string) fs.FS 
 }
 
 // zipToPromptsFS parses data as a zip archive and fills a models.AiAgentPromptsMapFS with
-// exactly the files in models.AiAgentExpectedFiles, read from the archive by name. Anything
-// present in the zip but not in the manifest is ignored.
+// the files in models.AiAgentExpectedFiles (required) and models.AiAgentOptionalFiles (loaded when
+// present), read from the archive by name. Anything present in the zip but not in the manifests
+// is ignored.
 //
 // The two failure modes it can return are deliberately distinguished, since only one of them
 // is worth retrying (see downloadAiPromptsFS, which calls this from inside its retry.Do):
@@ -226,6 +227,18 @@ func zipToPromptsFS(data []byte) (fs.FS, error) {
 		f.Close()
 		if err != nil {
 			return nil, errors.Wrapf(err, "could not read expected file %s from ai prompts zip archive", path)
+		}
+		files[path] = content
+	}
+	for _, path := range models.AiAgentOptionalFiles {
+		f, err := zr.Open(path)
+		if err != nil {
+			continue // optional: absence is not an error
+		}
+		content, err := io.ReadAll(f)
+		f.Close()
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not read optional file %s from ai prompts zip archive", path)
 		}
 		files[path] = content
 	}
