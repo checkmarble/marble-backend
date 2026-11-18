@@ -3,6 +3,7 @@ package engine
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"regexp"
 	"slices"
 	"strconv"
@@ -331,8 +332,16 @@ func (c *checker) toFill(w wireFill) (core.Fill, string) {
 		f.Sources = []core.SourceRef{src}
 		if node := c.tc.Format.Spec().NodeAt(path.Template()); node != nil && node.Kind == core.NodeField &&
 			node.EffectiveNature() == core.NatureCopied {
-			if msg := relationError(node, f.Value, src.RawValue, f.Justification); msg != "" {
+			var codes []core.Code
+			if node.CodeList != "" {
+				codes = c.tc.Format.Spec().CodeLists[node.CodeList].Codes
+			}
+			msg, forceLow := relationError(node, codes, f.Value, src.RawValue, f.Justification, f.Confidence)
+			if msg != "" {
 				return core.Fill{}, msg
+			}
+			if forceLow {
+				f.Confidence = core.ConfidenceLow
 			}
 		}
 	}
@@ -518,49 +527,85 @@ func (c *checker) checkStructured(final json.RawMessage) (err error) {
 }
 
 // relationError checks that the value of a copied fill derives from the raw
-// value of its cited source, by field type; "" when it does (or when the
-// relation is not checked).
-func relationError(n *core.Node, value, raw, justification string) string {
+// value of its cited source, by field type; msg is "" when it does (or when the
+// relation is not checked). forceLow tells that the value is a correspondence
+// the engine cannot prove (it needed a justification): its confidence is forced
+// to low, whatever the model said. codes are the labels of the field's code
+// list (nil when none).
+//
+//   - boolean: a boolean literal source must match; any other source needs a
+//     justification and a confidence (forced low);
+//   - code list: the value or its label matches the raw value (folded like text
+//     proofs), else justification and confidence are required (forced low on an
+//     exported field, a working node is left alone);
+//   - decimal: the number of raw, or value x 100 == raw exactly (cents to euros)
+//     with a justification (forced low).
+func relationError(n *core.Node, codes []core.Code, value, raw, justification string, confidence core.Confidence) (msg string, forceLow bool) {
 	mismatch := fmt.Sprintf("la valeur ne correspond pas à la valeur source citée (valeur source : « %s »)", shorten(raw, 100))
+	judged := func(what string) (string, bool) {
+		if strings.TrimSpace(justification) == "" || confidence == core.ConfidenceNone {
+			return "justifiez la correspondance entre la valeur source et " + what + " (justification et niveau de confiance)", false
+		}
+		return "", n.Export
+	}
 	switch {
 	case n.Type == core.TypeRef:
-		return ""
+		return "", false
 	case n.Type == core.TypeBoolean:
 		rb, isLit := boolLiteral(raw)
 		if !isLit {
-			if strings.TrimSpace(justification) == "" {
-				return "justifiez la correspondance entre la valeur source et le booléen choisi (justification)"
-			}
-			return ""
+			return judged("le booléen choisi")
 		}
 		if vb, ok := boolLiteral(value); !ok || vb != rb {
-			return mismatch
+			return mismatch, false
 		}
-		return ""
+		return "", false
 	case n.Type == core.TypeCode || n.CodeList != "":
-		if foldAlnum(value) != foldAlnum(raw) && strings.TrimSpace(justification) == "" {
-			return "justifiez la correspondance entre la valeur source et le code choisi (justification)"
+		if foldAlnum(value) == foldAlnum(raw) || slices.ContainsFunc(codes, func(c core.Code) bool {
+			return c.Value == value && c.Label != "" && foldAlnum(c.Label) == foldAlnum(raw)
+		}) {
+			return "", false
 		}
-		return ""
+		return judged("le code choisi")
 	case n.Type == core.TypeDate:
 		d, ok := calendarDay(raw)
 		if !ok || d != value {
-			return mismatch
+			return mismatch, false
 		}
-		return ""
+		return "", false
 	case n.Type == core.TypeDecimal, n.Type == core.TypeInteger:
-		if !numberDerives(value, raw) {
-			return mismatch
+		if numberDerives(value, raw) {
+			return "", false
 		}
-		return ""
+		if n.Type == core.TypeDecimal && centsOf(value, raw) {
+			if strings.TrimSpace(justification) == "" {
+				return "justifiez la conversion des centimes en euros (justification)", false
+			}
+			return "", true
+		}
+		return mismatch, false
 	}
 	if n.IsItemRef(value) {
-		return ""
+		return "", false
 	}
 	if !textDerives(value, raw, n.MaxLength) {
-		return mismatch
+		return mismatch, false
 	}
-	return ""
+	return "", false
+}
+
+// centsOf tells whether value x 100 == raw, exactly (no float).
+func centsOf(value, raw string) bool {
+	value, raw = stripThousands(value), stripThousands(raw)
+	if !decimalRe.MatchString(value) || !decimalRe.MatchString(raw) {
+		return false
+	}
+	v, ok1 := new(big.Rat).SetString(strings.Replace(value, ",", ".", 1))
+	r, ok2 := new(big.Rat).SetString(strings.Replace(raw, ",", ".", 1))
+	if !ok1 || !ok2 {
+		return false
+	}
+	return v.Mul(v, big.NewRat(100, 1)).Cmp(r) == 0
 }
 
 // boolLiteral reads a boolean written as true/false/1/0/oui/non/yes/no (any

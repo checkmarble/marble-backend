@@ -50,6 +50,11 @@ var (
 	// ErrPromptMissing: a prompt file is missing; the job is marked failed and
 	// retrying is pointless (the worker cancels the River job).
 	ErrPromptMissing = errors.New("prompt manquant")
+
+	// ErrTaskLimitReached: a task flagged FailJobOnLimit ended on a limit with
+	// no usable output; the job is marked failed (resumable) and the River job
+	// cancelled, as a retry would meet the same limit.
+	ErrTaskLimitReached = errors.New("une étape essentielle de la génération n'a pas abouti (limite atteinte) ; relancez la génération")
 	// ErrJobGone: the job or its declaration no longer exists; retrying is
 	// pointless (the worker cancels the River job).
 	ErrJobGone = errors.New("génération ou déclaration introuvable")
@@ -432,6 +437,8 @@ func (r *jobRun) handleWaveError(ctx context.Context, err error) error {
 	switch {
 	case errors.Is(err, ErrLLMUnavailable):
 		return fail("génération impossible : "+errors.UnwrapAll(err).Error(), err)
+	case errors.Is(err, ErrTaskLimitReached):
+		return fail(ErrTaskLimitReached.Error(), err)
 	case errors.Is(err, models.LLMRateLimitedError):
 		r.rateLimited.Store(true)
 		elapsed, merr := r.o.generation.MarkSarGenerationJobRateLimited(dctx, exec, r.job.Id)

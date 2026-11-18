@@ -29,6 +29,11 @@ const (
 	DefaultMaxTurns       = 15
 	DefaultMaxCorrections = 3
 	DefaultAgentTimeout   = 3 * time.Minute
+	// DefaultCallTimeout bounds ONE provider call (not the task). It is
+	// generous on purpose: a batch answer is 10 to 12 000 output tokens and a
+	// correction asks for the whole answer again. Its expiry is a technical
+	// error (the job is retried), never a quality limit.
+	DefaultCallTimeout = 3 * time.Minute
 
 	HeavyMaxToolCalls = 40
 	HeavyMaxTurns     = 20
@@ -51,6 +56,10 @@ const (
 type AgentLimits struct {
 	MaxToolCalls, MaxTurns, MaxCorrections int
 	Timeout                                time.Duration
+	// CallTimeout bounds each LLM call (default DefaultCallTimeout). Unlike
+	// Timeout (the task budget, checked before each turn and ending on a
+	// quality limit), its expiry is a technical error.
+	CallTimeout time.Duration
 }
 
 // forTier fills the zero fields with the defaults of the tier.
@@ -70,6 +79,9 @@ func (l AgentLimits) forTier(tier string) AgentLimits {
 	}
 	if l.Timeout <= 0 {
 		l.Timeout = timeout
+	}
+	if l.CallTimeout <= 0 {
+		l.CallTimeout = DefaultCallTimeout
 	}
 	return l
 }
@@ -182,7 +194,17 @@ func (r *agentRunner) Run(ctx context.Context, tc core.ToolContext, task models.
 	for _, t := range tools {
 		run.tools[t.Name] = t
 	}
-	return run.loop(ctx)
+	out, err := run.loop(ctx)
+	if err == nil && spec.FailJobOnLimit && run.limited && !hasUsableOutput(out) {
+		return out, errors.Mark(errors.Newf("%s (%s)", ErrTaskLimitReached.Error(), run.limitReason), ErrTaskLimitReached)
+	}
+	return out, err
+}
+
+// hasUsableOutput: at least one fill, finding or structured output (questions
+// alone do not count).
+func hasUsableOutput(out core.TaskOutput) bool {
+	return len(out.Fills) > 0 || len(out.Findings) > 0 || len(out.Structured) > 0
 }
 
 // tools returns the tools of the step: common tools and the format's, filtered
@@ -241,12 +263,19 @@ type agentRun struct {
 	// kept is what the last controlled final already validated (fills and
 	// questions), kept when a limit ends the run before a corrected answer.
 	kept core.TaskOutput
+	// limited: the run ended on a bound (limitReason says which).
+	limited     bool
+	limitReason string
 }
 
 func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 	lim := a.r.limits.forTier(a.spec.Tier)
+	// The task budget is a deadline checked before each turn; the calls are
+	// bounded by their own timeout, drawn from the parent context, so that a
+	// silent provider is a technical error and not a finished task.
 	ctx, cancel := context.WithTimeout(parent, lim.Timeout)
 	defer cancel()
+	deadline := time.Now().Add(lim.Timeout)
 
 	var (
 		turns, toolCalls, corrections, empties int
@@ -256,6 +285,12 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 		graceUsed, budgetHit bool
 	)
 	for {
+		if err := parent.Err(); err != nil {
+			return core.TaskOutput{Trace: a.tr.render()}, errors.Wrap(err, "tâche interrompue")
+		}
+		if !time.Now().Before(deadline) {
+			return a.limitOutput("durée maximale atteinte"), nil
+		}
 		if turns >= lim.MaxTurns || budgetHit {
 			reason := "nombre maximal de tours atteint"
 			if budgetHit {
@@ -275,13 +310,12 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 		turns++
 		a.req.History = slices.Clone(a.req.History)
 		began := time.Now()
-		step, err := a.r.llm.Step(ctx, a.req)
+		callCtx, cancelCall := context.WithTimeout(parent, lim.CallTimeout)
+		step, err := a.r.llm.Step(callCtx, a.req)
+		cancelCall()
 		stepMs := time.Since(began).Milliseconds()
 		a.tr.setProvider(step.Provider, step.Model)
 		if err != nil {
-			if parent.Err() == nil && ctx.Err() != nil {
-				return a.limitOutput("durée maximale atteinte"), nil
-			}
 			a.tr.add(TraceEntry{Type: TraceCheckError, Text: "erreur du fournisseur : " + err.Error(), DurationMs: stepMs})
 			return core.TaskOutput{Trace: a.tr.render()}, errors.Wrap(err, "appel du modèle")
 		}
@@ -437,6 +471,7 @@ func splitFillError(e string) (path, reason string, ok bool) {
 // none). Not a technical error. A review task asks nothing.
 func (a *agentRun) limitOutput(reason string) core.TaskOutput {
 	a.tr.add(TraceEntry{Type: TraceCheckError, Text: "limite : " + reason})
+	a.limited, a.limitReason = true, reason
 	out := core.TaskOutput{}
 	if a.mode == modeFills {
 		out = a.kept
