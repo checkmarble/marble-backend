@@ -94,7 +94,7 @@ func TestGeneratedSpecIsUpToDate(t *testing.T) {
 			cmd := exec.Command("python3", "-I", "gen/generate.py", "--version", v, "--out", out)
 			cmd.Dir = pkgDir
 			combined, err := cmd.CombinedOutput()
-			require.NoError(t, err, "generate.py a échoué : %s", string(combined))
+			require.NoError(t, err, "generate.py failed: %s", string(combined))
 
 			generated, err := os.ReadFile(out)
 			require.NoError(t, err)
@@ -103,7 +103,7 @@ func TestGeneratedSpecIsUpToDate(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.True(t, bytes.Equal(committed, generated),
-				"versions/%s/spec.gen.json n'est pas à jour : relancer gen/generate.py", v)
+				"versions/%s/spec.gen.json is stale: rerun gen/generate.py", v)
 		})
 	}
 }

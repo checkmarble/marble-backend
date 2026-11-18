@@ -87,16 +87,16 @@ def verify_inputs(version_dir, manifest):
         path = os.path.join(version_dir, entry["path"])
         listed.add(os.path.normpath(path))
         if not os.path.isfile(path):
-            fail("entrée introuvable : %s" % entry["path"])
+            fail("input not found: %s" % entry["path"])
         with open(path, "rb") as handle:
             digest = hashlib.sha256(handle.read()).hexdigest()
         if digest != entry["sha256"]:
-            fail("empreinte différente pour %s : attendu %s, calculé %s" % (entry["path"], entry["sha256"], digest))
+            fail("digest mismatch for %s: expected %s, computed %s" % (entry["path"], entry["sha256"], digest))
     inputs_dir = os.path.join(version_dir, "inputs")
     for root, _dirs, files in os.walk(inputs_dir):
         for name in files:
             if os.path.normpath(os.path.join(root, name)) not in listed:
-                fail("fichier d'entrée absent du manifest : %s" % os.path.join(root, name))
+                fail("input file missing from the manifest: %s" % os.path.join(root, name))
 
 
 def read_codes(version_dir, manifest, binding, list_name):
@@ -106,27 +106,27 @@ def read_codes(version_dir, manifest, binding, list_name):
         if entry["path"] == path:
             encoding = entry["encoding"]
     if encoding is None:
-        fail("liste %s : %s absent du manifest" % (list_name, path))
+        fail("list %s: %s missing from the manifest" % (list_name, path))
     codes = []
     seen = set()
     with open(os.path.join(version_dir, path), "r", encoding=encoding, newline="") as handle:
         reader = csv.DictReader(handle, delimiter=";")
         for column in (binding["code_column"], binding["label_column"]):
             if column not in (reader.fieldnames or []):
-                fail("liste %s : colonne %r absente de %s" % (list_name, column, path))
+                fail("list %s: column %r missing from %s" % (list_name, column, path))
         for row in reader:
             value = (row[binding["code_column"]] or "").strip()
             label = (row[binding["label_column"]] or "").strip()
             if not value and not label:
                 continue
             if not value:
-                fail("liste %s : code vide dans %s" % (list_name, path))
+                fail("list %s: empty code in %s" % (list_name, path))
             if value in seen:
-                fail("liste %s : code en double %r dans %s" % (list_name, value, path))
+                fail("list %s: duplicate code %r in %s" % (list_name, value, path))
             seen.add(value)
             codes.append({"value": value, "label": label})
     if not codes:
-        fail("liste %s : aucun code dans %s" % (list_name, path))
+        fail("list %s: no code in %s" % (list_name, path))
     return codes
 
 
@@ -143,17 +143,17 @@ def check_regex(pattern, where):
         char = pattern[i]
         if char == "\\":
             if i + 1 >= len(pattern):
-                fail("%s : motif terminé par une barre oblique inverse" % where)
+                fail("%s: pattern ends with a backslash" % where)
             nxt = pattern[i + 1]
             if nxt in "iIcC":
-                fail("%s : construction XSD non supportée \\%s dans %r (à traiter dans pattern_overrides)" % (where, nxt, pattern))
+                fail("%s: unsupported XSD construct \\%s in %r (handle it in pattern_overrides)" % (where, nxt, pattern))
             if nxt in "pP" and pattern[i + 2 : i + 4] == "{I":
-                fail("%s : bloc Unicode XSD non supporté dans %r" % (where, pattern))
+                fail("%s: unsupported XSD Unicode block in %r" % (where, pattern))
             i += 2
             continue
         if in_class:
             if char == "-" and pattern[i + 1 : i + 2] == "[":
-                fail("%s : soustraction de classes XSD non supportée dans %r (à traiter dans pattern_overrides)" % (where, pattern))
+                fail("%s: unsupported XSD character class subtraction in %r (handle it in pattern_overrides)" % (where, pattern))
             if char == "]":
                 in_class = False
         elif char == "[":
@@ -205,14 +205,14 @@ class Generator:
         for entry in self.manifest["inputs"]:
             if entry["path"].endswith(".xsd"):
                 if xsd_path is not None:
-                    fail("plusieurs XSD dans le manifest")
+                    fail("several XSDs in the manifest")
                 xsd_path = os.path.join(version_dir, entry["path"])
         if xsd_path is None:
-            fail("aucun XSD dans le manifest")
+            fail("no XSD in the manifest")
         self.xsd_name = os.path.basename(xsd_path)
         root = ET.parse(xsd_path).getroot()
         for pattern_el in root.iter(XS + "pattern"):
-            check_regex(pattern_el.get("value", ""), "XSD (tous les motifs sont contrôlés)")
+            check_regex(pattern_el.get("value", ""), "XSD (all patterns are checked)")
 
         self.simple_types = {}
         self.complex_types = {}
@@ -231,7 +231,7 @@ class Generator:
         for table in (self.type_map, self.builtin_map):
             for name, kind in table.items():
                 if kind not in FIELD_TYPES:
-                    fail("type %s : type de champ inconnu %r" % (name, kind))
+                    fail("type %s: unknown field type %r" % (name, kind))
         self.ignore_doc = [re.compile(p) for p in self.constraints["ignore_type_doc_patterns"]["patterns"]]
         self.ignored_facets = set(self.constraints["ignored_facets"]["facets"])
         self.pattern_overrides = self.constraints["pattern_overrides"]
@@ -258,13 +258,13 @@ class Generator:
     def check_all_types_mapped(self):
         for name in sorted(self.simple_types):
             if name not in self.type_map:
-                fail("type simple %s du XSD absent de constraints.json type_map : décider son type avant de générer" % name)
+                fail("simple type %s of the XSD missing from constraints.json type_map: decide its type before generating" % name)
         for name in sorted(self.complex_types):
             if self.complex_text_base(name) is not None and name not in self.type_map:
-                fail("type complexe à contenu simple %s du XSD absent de constraints.json type_map" % name)
+                fail("complex type with simple content %s of the XSD missing from constraints.json type_map" % name)
         for name in sorted(self.type_map):
             if name not in self.simple_types and name not in self.complex_types:
-                fail("type_map : %s n'existe pas dans le XSD" % name)
+                fail("type_map: %s does not exist in the XSD" % name)
 
     def complex_text_base(self, name):
         """Return the xs:simpleContent derivation of a complex type, or None."""
@@ -282,11 +282,11 @@ class Generator:
         bindings = self.constraints["code_list_bindings"]
         for ref in sorted(found):
             if ref not in bindings:
-                fail("référence %s du XSD sans lien dans code_list_bindings" % ref)
+                fail("XSD reference %s has no binding in code_list_bindings" % ref)
         for name, binding in sorted(bindings.items()):
             require_source(binding, "code_list_bindings[%s]" % name)
             if name not in found and not binding.get("extra"):
-                fail("code_list_bindings : %s n'est référencée nulle part dans le XSD (marquer extra si voulu)" % name)
+                fail("code_list_bindings: %s is not referenced anywhere in the XSD (mark it extra if intended)" % name)
 
     def build_bound_lists(self):
         for name, binding in sorted(self.constraints["code_list_bindings"].items()):
@@ -310,10 +310,10 @@ class Generator:
             require_source(entry, "code_exclusions[%s]" % entry.get("list"))
             lst = self.code_lists.get(entry["list"])
             if lst is None or lst.get("unavailable"):
-                fail("code_exclusions : liste %s introuvable ou non publiée" % entry["list"])
+                fail("code_exclusions: list %s not found or not published" % entry["list"])
             for code in entry["codes"]:
                 if code not in [c["value"] for c in lst["codes"]]:
-                    fail("code_exclusions : le code %r n'est pas dans %s (entrée périmée)" % (code, entry["list"]))
+                    fail("code_exclusions: code %r is not in %s (stale entry)" % (code, entry["list"]))
             lst["codes"] = [c for c in lst["codes"] if c["value"] not in entry["codes"]]
             lst["source"] += " ; codes exclus : " + ", ".join(entry["codes"])
 
@@ -348,23 +348,23 @@ class Generator:
         """Resolve a named simple type (or xs: builtin) to its effective facets."""
         if type_name.startswith("xs:"):
             if type_name not in self.builtin_map:
-                fail("type XSD builtin %s absent de constraints.json builtin_types" % type_name)
+                fail("XSD builtin type %s missing from constraints.json builtin_types" % type_name)
             if type_name not in BUILTIN_VALUE_PATTERNS:
-                fail("type XSD builtin %s : espace de valeurs non encodé par le générateur (BUILTIN_VALUE_PATTERNS)" % type_name)
+                fail("XSD builtin type %s: value space not encoded by the generator (BUILTIN_VALUE_PATTERNS)" % type_name)
             return {"kind": self.builtin_map[type_name], "facets": {}, "refs": [], "enum": None, "enum_type": None, "doc": "", "pattern_type": None, "value_pattern": BUILTIN_VALUE_PATTERNS[type_name]}
         if type_name not in self.simple_types:
-            fail("type simple inconnu : %s" % type_name)
+            fail("unknown simple type: %s" % type_name)
         el = self.simple_types[type_name]
         restriction = el.find(XS + "restriction")
         if restriction is None:
-            fail("type %s : seule xs:restriction est supportée" % type_name)
+            fail("type %s: only xs:restriction is supported" % type_name)
         info = self.restriction_info(restriction, type_name, self.type_map[type_name], documentation(el))
         return info
 
     def restriction_info(self, restriction, owner, kind, own_doc, base_info=None):
         base = restriction.get("base")
         if base is None:
-            fail("%s : restriction sans base" % owner)
+            fail("%s: restriction without base" % owner)
         info = dict(base_info if base_info is not None else self.simple_info(base))
         info["facets"] = dict(info["facets"])
         info["kind"] = kind
@@ -382,9 +382,9 @@ class Generator:
                 enums.append(facet.get("value"))
             elif name == "pattern":
                 if "pattern" in info["facets"] and info["pattern_type"] != owner:
-                    fail("%s : motifs cumulés sur deux niveaux de types, non supporté" % owner)
+                    fail("%s: patterns accumulated over two type levels, not supported" % owner)
                 if info["pattern_type"] == owner:
-                    fail("%s : plusieurs motifs dans une même restriction, non supporté" % owner)
+                    fail("%s: several patterns in a single restriction, not supported" % owner)
                 info["facets"]["pattern"] = facet.get("value")
                 info["pattern_type"] = owner
             elif name in ("maxLength", "minLength", "totalDigits", "fractionDigits"):
@@ -392,7 +392,7 @@ class Generator:
             elif name in self.ignored_facets:
                 continue
             else:
-                fail("%s : facette XSD %s non supportée" % (owner, name))
+                fail("%s: unsupported XSD facet %s" % (owner, name))
         if enums:
             info["enum"] = enums
             info["enum_type"] = owner
@@ -408,7 +408,7 @@ class Generator:
             derivation = sc.find(XS + "restriction")
             is_restriction = True
         if derivation is None:
-            fail("%s : simpleContent sans extension ni restriction" % type_name)
+            fail("%s: simpleContent without extension or restriction" % type_name)
         base = derivation.get("base")
         if base in self.complex_types:
             info, attrs = self.complex_text_info(base)
@@ -431,7 +431,7 @@ class Generator:
     def inline_simple_info(self, simple_type_el, owner):
         restriction = simple_type_el.find(XS + "restriction")
         if restriction is None:
-            fail("%s : simpleType anonyme sans restriction" % owner)
+            fail("%s: anonymous simpleType without restriction" % owner)
         base = restriction.get("base")
         info = self.restriction_info(restriction, owner, self.simple_info(base)["kind"], "")
         return info
@@ -448,7 +448,7 @@ class Generator:
         has_list = bool(info["refs"]) or bool(info["enum"])
         if kind == "code":
             if not has_list:
-                fail("%s : type %s déclaré code sans liste de référence ni énumération" % (template, type_name))
+                fail("%s: type %s is declared code but has no reference list or enumeration" % (template, type_name))
             if info["refs"]:
                 node["code_list"] = self.merged_list(info["refs"])
             else:
@@ -456,7 +456,7 @@ class Generator:
                 self.add_inline_enum(list_name, info["enum"])
                 node["code_list"] = list_name
         elif has_list:
-            fail("%s : type %s a une liste ou une énumération mais n'est pas déclaré code" % (template, type_name))
+            fail("%s: type %s has a list or an enumeration but is not declared code" % (template, type_name))
         if kind in ("string", "code"):
             if facets.get("minLength", 0) > 0:
                 node["min_length"] = facets["minLength"]
@@ -480,7 +480,7 @@ class Generator:
             node["pattern"] = pattern
         if info.get("value_pattern"):
             if kind != "integer" or "pattern" in node:
-                fail("%s : espace de valeurs de %s non combinable avec un motif ou un type %s" % (template, type_name, kind))
+                fail("%s: value space of %s cannot be combined with a pattern or a %s type" % (template, type_name, kind))
             node["pattern"] = info["value_pattern"]
         if kind == "code":
             self.check_code_facets(node, template)
@@ -498,19 +498,19 @@ class Generator:
             value = code["value"]
             bad = None
             if len(value) < node.get("min_length", 0):
-                bad = "plus court que min_length %d" % node["min_length"]
+                bad = "shorter than min_length %d" % node["min_length"]
             elif "max_length" in node and len(value) > node["max_length"]:
-                bad = "plus long que max_length %d" % node["max_length"]
+                bad = "longer than max_length %d" % node["max_length"]
             elif pattern is not None and not pattern.fullmatch(value):
-                bad = "ne respecte pas le motif %s" % node["pattern"]
+                bad = "does not match pattern %s" % node["pattern"]
             if bad:
-                fail("%s : le code %r de la liste %s est %s ; l'exclure dans constraints.json code_exclusions (avec source) ou corriger la liste" % (template, value, node["code_list"], bad))
+                fail("%s: code %r of list %s is %s; exclude it in constraints.json code_exclusions (with a source) or fix the list" % (template, value, node["code_list"], bad))
 
     def add_inline_enum(self, list_name, values):
         if list_name in self.code_lists:
             existing = [c["value"] for c in self.code_lists[list_name]["codes"]]
             if existing != values:
-                fail("liste en ligne %s définie deux fois avec des valeurs différentes" % list_name)
+                fail("inline list %s defined twice with different values" % list_name)
             return
         self.code_lists[list_name] = {
             "name": list_name,
@@ -523,7 +523,7 @@ class Generator:
 
     def build_root(self):
         if "ds" not in self.top_elements:
-            fail("élément racine ds introuvable")
+            fail("root element ds not found")
         ds = self.top_elements["ds"]
         node = base_node("ds", "", "group", 1, 1)
         ctype = ds.find(XS + "complexType")
@@ -549,14 +549,14 @@ class Generator:
             elif name == "complexContent":
                 ext = child.find(XS + "extension")
                 if ext is None:
-                    fail("complexContent : seule xs:extension est supportée")
+                    fail("complexContent: only xs:extension is supported")
                 base = ext.get("base")
                 if base in self.complex_types:
                     b_items, b_attrs = self.collect(self.complex_types[base])
                     items.extend(b_items)
                     attrs.extend(b_attrs)
                 elif base != "xs:anyType":
-                    fail("complexContent : base %s non supportée" % base)
+                    fail("complexContent: base %s not supported" % base)
                 for sub in ext:
                     sname = tag(sub)
                     if sname in ("sequence", "choice", "all"):
@@ -564,22 +564,22 @@ class Generator:
                     elif sname == "attribute":
                         attrs.append(("", sub))
                     elif sname != "annotation":
-                        fail("complexContent : %s non supporté" % sname)
+                        fail("complexContent: %s not supported" % sname)
             elif name == "simpleContent":
-                fail("contenu simple inattendu ici")
+                fail("unexpected simple content here")
             else:
-                fail("complexType : %s non supporté" % name)
+                fail("complexType: %s not supported" % name)
         return items, attrs
 
     def walk_particle(self, particle):
         kind = tag(particle)
         if kind == "all":
-            fail("xs:all non supporté")
+            fail("xs:all not supported")
         if kind == "choice":
-            fail("xs:choice non supporté (ni le validateur ni l'écriture XML ne savent choisir une branche)")
+            fail("xs:choice not supported (neither the validator nor the XML writer can pick a branch)")
         if kind == "sequence":
             if particle.get("minOccurs", "1") != "1" or particle.get("maxOccurs", "1") != "1":
-                fail("xs:sequence avec cardinalité non supportée")
+                fail("xs:sequence with cardinality not supported")
             out = []
             for sub in particle:
                 if tag(sub) != "annotation":
@@ -587,7 +587,7 @@ class Generator:
             return out
         if kind == "element":
             return [("element", particle, None)]
-        fail("particule %s non supportée" % kind)
+        fail("particle %s not supported" % kind)
 
     def build_children(self, items, attrs, parent_template):
         children = []
@@ -612,7 +612,7 @@ class Generator:
         else:
             matched = False
         if matched and el.get("minOccurs", "1") != "0":
-            fail("exclusion de %s impossible : l'élément est obligatoire dans le XSD" % template)
+            fail("cannot exclude %s: the element is mandatory in the XSD" % template)
         return matched
 
     def build_element(self, el, parent_template):
@@ -632,7 +632,7 @@ class Generator:
             info = self.inline_simple_info(inline_simple, template)
             return self.leaf_from_info(info, name, template, mn, mx, False, own_doc or self.type_doc(info), "anonyme")
         if type_name is None:
-            fail("%s : élément sans type" % template)
+            fail("%s: element without type" % template)
         if type_name in self.complex_types:
             ct = self.complex_types[type_name]
             if ct.find(XS + "simpleContent") is not None:
@@ -648,7 +648,7 @@ class Generator:
             if key in self.dropped:
                 self.dropped[key] = True
                 if attr.get("use") == "required":
-                    fail("attribut obligatoire %s.%s ne peut pas être ignoré" % key)
+                    fail("mandatory attribute %s.%s cannot be dropped" % key)
                 continue
             out.append((owner, attr))
         return out
@@ -667,7 +667,7 @@ class Generator:
             # anonymous complex type with simple content (e.g. numeroIdentification)
             derivation = sc.find(XS + "extension")
             if derivation is None:
-                fail("%s : simpleContent anonyme sans extension" % template)
+                fail("%s: anonymous simpleContent without extension" % template)
             base = derivation.get("base")
             if base in self.complex_types:
                 base_info, attrs = self.complex_text_info(base)
@@ -686,7 +686,7 @@ class Generator:
         attrs = self.visible_attrs(attrs)
         node["children"] = self.build_children(items, attrs, template)
         if not node["children"]:
-            fail("%s : groupe sans aucun enfant après exclusions" % template)
+            fail("%s: group without any child after exclusions" % template)
         return node
 
     def group_with_text(self, name, template, mn, mx, doc, info, attrs, type_name):
@@ -720,7 +720,7 @@ class Generator:
         elif type_name is not None:
             info = self.simple_info(type_name)
         else:
-            fail("%s : attribut sans type" % template)
+            fail("%s: attribute without type" % template)
         return self.leaf_from_info(info, name, template, mn, 1, True, doc or self.type_doc(info), type_name)
 
 
@@ -741,7 +741,7 @@ def join_template(parent, name):
 
 def require_source(entry, where):
     if not isinstance(entry, dict) or not str(entry.get("source", "")).strip():
-        fail("%s : champ source obligatoire" % where)
+        fail("%s: source field is required" % where)
 
 
 # --------------------------------------------------------------------------
@@ -767,7 +767,7 @@ def index_by_template(root):
     index = {}
     for node in walk(root):
         if node["template"] in index and node["template"] != "":
-            fail("gabarit en double : %s" % node["template"])
+            fail("duplicate template: %s" % node["template"])
         index[node["template"]] = node
     return index
 
@@ -797,7 +797,7 @@ def add_working_nodes(gen, root):
         node["export"] = False
         node["type"] = field["type"]
         if field["type"] not in FIELD_TYPES and field["type"] != "ref":
-            fail("%s : type inconnu %r" % (ftemplate, field["type"]))
+            fail("%s: unknown type %r" % (ftemplate, field["type"]))
         for key in ("max_length", "min_length", "pattern", "code_list", "ref_targets", "label", "description"):
             if key in field:
                 node[key] = field[key]
@@ -806,12 +806,12 @@ def add_working_nodes(gen, root):
         if node["type"] == "code":
             list_name = node.get("code_list")
             if list_name is None:
-                fail("%s : champ code sans code_list" % ftemplate)
+                fail("%s: code field without code_list" % ftemplate)
             if list_name not in gen.code_lists:
                 if "+" in list_name:
                     gen.merged_list(list_name.split("+"))
                 else:
-                    fail("%s : liste de codes inconnue %s" % (ftemplate, list_name))
+                    fail("%s: unknown code list %s" % (ftemplate, list_name))
         tx["children"].append(node)
     work["children"] = [tx]
     root["children"].append(work)
@@ -824,28 +824,28 @@ def apply_post(gen, root):
     # excluded entries must all have matched something
     for template, used in sorted(gen.excluded_templates.items()):
         if not used:
-            fail("excluded : %s n'a rien exclu (entrée périmée)" % template)
+            fail("excluded: %s excluded nothing (stale entry)" % template)
     for name, used in sorted(gen.excluded_names.items()):
         if not used:
-            fail("excluded : l'élément %s n'a rien exclu (entrée périmée)" % name)
+            fail("excluded: element %s excluded nothing (stale entry)" % name)
     for key, used in sorted(gen.dropped.items()):
         if not used:
-            fail("dropped_attributes : %s.%s n'a rien retiré (entrée périmée)" % key)
+            fail("dropped_attributes: %s.%s dropped nothing (stale entry)" % key)
 
     # refs
     for entry in c["refs"]:
         require_source(entry, "refs[%s]" % entry.get("template"))
         node = index.get(entry["template"])
         if node is None:
-            fail("refs : gabarit introuvable %s" % entry["template"])
+            fail("refs: template not found %s" % entry["template"])
         for target in entry["targets"]:
             if target not in index:
-                fail("refs : cible introuvable %s" % target)
+                fail("refs: target not found %s" % target)
         node["ref_targets"] = list(entry["targets"])
         if entry.get("ref_or_text"):
             # Id of a declared item or free text: stays a string with its facets.
             if node.get("type") != "string":
-                fail("refs : %s : ref_or_text exige un champ texte" % entry["template"])
+                fail("refs: %s: ref_or_text requires a text field" % entry["template"])
             node["ref_or_text"] = True
         else:
             node["type"] = "ref"
@@ -855,7 +855,7 @@ def apply_post(gen, root):
         if node.get("type") == "ref" or node.get("ref_or_text"):
             for target in node.get("ref_targets", []):
                 if target not in index:
-                    fail("%s : cible de ref introuvable %s" % (node["template"], target))
+                    fail("%s: ref target not found %s" % (node["template"], target))
 
     # export ids
     for entry in c["export_ids"]:
@@ -863,10 +863,10 @@ def apply_post(gen, root):
         pattern = glob_to_regex(entry["template"])
         matched = [n for n in walk(root) if pattern.match(n["template"])]
         if not matched:
-            fail("export_ids : %s ne correspond à aucun nœud" % entry["template"])
+            fail("export_ids: %s matches no node" % entry["template"])
         for node in matched:
             if node["kind"] != "field":
-                fail("export_ids : %s n'est pas un champ" % node["template"])
+                fail("export_ids: %s is not a field" % node["template"])
             node["export_id"] = True
 
     # natures: the nearest entry (longest template) applies to the whole subtree
@@ -874,9 +874,9 @@ def apply_post(gen, root):
     for entry in natures:
         require_source(entry, "natures[%s]" % entry.get("template"))
         if entry["template"] not in index:
-            fail("natures : gabarit introuvable %s" % entry["template"])
+            fail("natures: template not found %s" % entry["template"])
         if entry["nature"] not in NATURES:
-            fail("natures : nature inconnue %r" % entry["nature"])
+            fail("natures: unknown nature %r" % entry["nature"])
     for node in walk(root):
         best = None
         for entry in natures:
@@ -891,13 +891,13 @@ def apply_post(gen, root):
         require_source(entry, "labels[%s]" % entry.get("template"))
         node = index.get(entry["template"])
         if node is None:
-            fail("labels : gabarit introuvable %s" % entry["template"])
+            fail("labels: template not found %s" % entry["template"])
         node["label"] = entry["label"]
     for entry in c["descriptions"]:
         require_source(entry, "descriptions[%s]" % entry.get("template"))
         node = index.get(entry["template"])
         if node is None:
-            fail("descriptions : gabarit introuvable %s" % entry["template"])
+            fail("descriptions: template not found %s" % entry["template"])
         node["description"] = entry["text"]
 
 
@@ -913,7 +913,7 @@ def expand_rules(gen, index):
         for rule_id, scope in variants:
             rule = build_rule(entry, rule_id, scope)
             if rule_id in seen:
-                fail("règle en double : %s" % rule_id)
+                fail("duplicate rule: %s" % rule_id)
             seen.add(rule_id)
             check_rule(rule, index, gen.code_lists)
             rules.append(rule)
@@ -943,33 +943,33 @@ def build_rule(entry, rule_id, scope):
 def check_rule(rule, index, code_lists):
     rid = rule["id"]
     if rule["kind"] not in RULE_KINDS:
-        fail("règle %s : kind inconnu %r" % (rid, rule["kind"]))
+        fail("rule %s: unknown kind %r" % (rid, rule["kind"]))
     if rule.get("severity", "blocking") not in ("blocking", "warning"):
-        fail("règle %s : severity inconnue" % rid)
+        fail("rule %s: unknown severity" % rid)
     if not rule.get("scope") or rule["scope"] not in index:
-        fail("règle %s : scope introuvable %r" % (rid, rule.get("scope")))
+        fail("rule %s: scope not found %r" % (rid, rule.get("scope")))
     if rule["kind"] in ("required_if", "forbidden_if"):
         if not rule.get("then"):
-            fail("règle %s : then obligatoire" % rid)
+            fail("rule %s: then is required" % rid)
         if "when" not in rule:
-            fail("règle %s : when obligatoire" % rid)
+            fail("rule %s: when is required" % rid)
     else:
         if len(rule.get("among", [])) < 2:
-            fail("règle %s : among doit lister au moins deux gabarits" % rid)
+            fail("rule %s: among must list at least two templates" % rid)
     paths = list(rule.get("then", [])) + list(rule.get("among", []))
     if "when" in rule:
         when = rule["when"]
         if when.get("op") not in CONDITION_OPS:
-            fail("règle %s : opérateur inconnu %r" % (rid, when.get("op")))
+            fail("rule %s: unknown operator %r" % (rid, when.get("op")))
         if when["op"] in ("eq", "in", "not_in") and not when.get("values"):
-            fail("règle %s : values obligatoires pour %s" % (rid, when["op"]))
+            fail("rule %s: values required for %s" % (rid, when["op"]))
         paths.append(when["path"])
     for path in paths:
         if path not in index:
-            fail("règle %s : gabarit introuvable %s" % (rid, path))
+            fail("rule %s: template not found %s" % (rid, path))
         scope = rule["scope"]
         if not under(path, scope) and "[]" in path:
-            fail("règle %s : %s est répété mais hors de la portée %s" % (rid, path, scope))
+            fail("rule %s: %s is repeated but outside the scope %s" % (rid, path, scope))
     # code values used in conditions must exist in the bound list
     if "when" in rule and rule["when"].get("values"):
         node = index[rule["when"]["path"]]
@@ -985,7 +985,7 @@ def check_values(code_lists, rid, list_name, values):
     known = {c["value"] for c in lst["codes"]}
     for value in values:
         if value not in known:
-            fail("règle %s : valeur %r absente de la liste %s" % (rid, value, list_name))
+            fail("rule %s: value %r is not in list %s" % (rid, value, list_name))
 
 
 def check_hand_rules(gen):
@@ -994,9 +994,9 @@ def check_hand_rules(gen):
     for entry in gen.constraints["hand_rules"]:
         require_source(entry, "hand_rules[%s]" % entry.get("id"))
         if not entry.get("id") or not entry.get("description"):
-            fail("hand_rules : id et description obligatoires")
+            fail("hand_rules: id and description are required")
         if entry["id"] in seen:
-            fail("hand_rules : id en double %s" % entry["id"])
+            fail("hand_rules: duplicate id %s" % entry["id"])
         seen.add(entry["id"])
         out.append(entry["id"])
     return out
@@ -1008,7 +1008,7 @@ def build_defaults(gen, index):
         require_source(entry, "defaults[%s]" % entry.get("template"))
         node = index.get(entry["template"])
         if node is None or node["kind"] != "field":
-            fail("defaults : champ introuvable %s" % entry["template"])
+            fail("defaults: field not found %s" % entry["template"])
         out[entry["template"]] = entry["value"]
     return out
 
@@ -1017,11 +1017,11 @@ def generate(version):
     here = os.path.dirname(os.path.abspath(__file__))
     version_dir = os.path.normpath(os.path.join(here, "..", "versions", version))
     if not os.path.isdir(version_dir):
-        fail("version inconnue : %s (dossier %s absent)" % (version, version_dir))
+        fail("unknown version: %s (folder %s missing)" % (version, version_dir))
     gen = Generator(version, version_dir)
     key = gen.manifest["format"].split(":")
     if len(key) != 3 or key[2] != version:
-        fail("manifest.format %r ne correspond pas à la version %s" % (gen.manifest["format"], version))
+        fail("manifest.format %r does not match version %s" % (gen.manifest["format"], version))
 
     root = gen.build_root()
     add_working_nodes(gen, root)
@@ -1034,7 +1034,7 @@ def generate(version):
     # every referenced code list must exist
     for node in walk(root):
         if node.get("code_list") and node["code_list"] not in gen.code_lists:
-            fail("%s : liste de codes absente %s" % (node["template"], node["code_list"]))
+            fail("%s: code list missing %s" % (node["template"], node["code_list"]))
 
     inputs = [{"path": e["path"], "sha256": e["sha256"]} for e in gen.manifest["inputs"]]
     spec = {
@@ -1063,18 +1063,18 @@ def main(argv):
     parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
     if not re.match(r"^[0-9]+(\.[0-9]+)*$", args.version):
-        sys.stderr.write("generate.py : version invalide %r\n" % args.version)
+        sys.stderr.write("generate.py: invalid version %r\n" % args.version)
         return 2
     try:
         spec, stats = generate(args.version)
     except GenError as error:
-        sys.stderr.write("generate.py : %s\n" % error)
+        sys.stderr.write("generate.py: %s\n" % error)
         return 1
     text = json.dumps(spec, indent=1, sort_keys=True, ensure_ascii=False) + "\n"
     with open(args.out, "w", encoding="utf-8", newline="\n") as handle:
         handle.write(text)
     sys.stderr.write(
-        "spec %s : %d noeuds, %d feuilles, %d listes, %d règles, %d règles à la main\n"
+        "spec %s: %d nodes, %d leaves, %d lists, %d rules, %d hand rules\n"
         % (args.version, stats["nodes"], stats["leaves"], stats["code_lists"], stats["rules"], stats["hand_rules"])
     )
     return 0
