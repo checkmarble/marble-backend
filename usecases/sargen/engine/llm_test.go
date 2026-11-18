@@ -129,7 +129,7 @@ func TestBuildTurnRequest_UnknownToolGetsTheRunnersErrorResult(t *testing.T) {
 	thread := &llmberjack.ThreadId{}
 	st := turnTwoRun(thread, llmberjack.ResponseToolCall{Id: "9", Name: "ghost_tool", Parameters: []byte(`"not an object"`)})
 	call := ToolCall{ID: "9", Name: "ghost_tool"}
-	msg := toolError("outil inconnu : ghost_tool")
+	msg := toolError("unknown tool: ghost_tool")
 	req := turnTwoRequest(t, AgentMessage{Role: RoleTool, Text: msg, ToolCall: &call})
 	r, err := buildTurnRequest(st, req, "main", "m")
 	require.NoError(t, err)

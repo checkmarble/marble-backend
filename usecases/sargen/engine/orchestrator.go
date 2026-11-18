@@ -787,7 +787,7 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 			if bad := sourcesOutsideSelection(doc, cand, newScope(r.selection)); len(bad) > 0 {
 				structuredRejected = append(structuredRejected, rejectedView{
 					Path: rt.spec.TargetPath, Code: core.CodeSourceOutOfScope,
-					Message: "sortie structurée rejetée : " + outsideSelectionMessage(bad)})
+					Message: "structured output rejected: " + outsideSelectionMessage(bad)})
 			} else {
 				doc, changed = cand, true
 			}
@@ -831,10 +831,10 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 				switch {
 				case rp.HasProvisionalKey():
 					result.Rejected = append(result.Rejected, rejectedView{
-						Path: rp, Code: CodeUnresolvedPath, Message: "question : chemin vers un élément non créé"})
+						Path: rp, Code: CodeUnresolvedPath, Message: "question: path to an element that was not created"})
 				case !core.PathAllowed(rp, allowed):
 					result.Rejected = append(result.Rejected, rejectedView{
-						Path: rp, Code: core.CodeOutOfScope, Message: "question : chemin hors de la partie confiée à cette tâche"})
+						Path: rp, Code: core.CodeOutOfScope, Message: "question: path outside the part assigned to this task"})
 				default:
 					kept = append(kept, rp)
 					paths = append(paths, string(rp))
@@ -853,13 +853,13 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 					if f.Path.HasProvisionalKey() || !core.PathAllowed(f.Path, kept) {
 						result.Rejected = append(result.Rejected, rejectedView{
 							Path: f.Path, Code: core.CodeOutOfScope,
-							Message: "option de question : valeur hors des champs de la question"})
+							Message: "question option: value outside the fields of the question"})
 						continue
 					}
 					if !sourcesAllowed(f, allowedSources(f.Path)) {
 						result.Rejected = append(result.Rejected, rejectedView{
 							Path: f.Path, Code: core.CodeSourceOutOfScope,
-							Message: "option de question : source hors du périmètre autorisé pour ce champ"})
+							Message: "question option: source outside the scope allowed for this field"})
 						continue
 					}
 					// Like the task's own fills: the model never picks the origin.

@@ -13,11 +13,11 @@ import (
 // DescribeSubtree renders the part of the document entrusted to a task: one
 // line per field with path, label, type, required or not, maximum length, code
 // list name (inline codes when the list has at most 12 codes), nature
-// (recopié / jugement), description and the value already present (the only
+// (copied / judgment), description and the value already present (the only
 // part wrapped in an UntrustedBlock: the rest comes from the format). It walks the
 // spec templates (not only existing items), skips ExportID nodes and fields of
 // nature setting, computed or analyst, shows the bounds of repeatable blocks
-// (e.g. « 0 à 5 ») and how to create an item (`[+a]`). The field detail stays
+// (e.g. "0 to 5") and how to create an item (`[+a]`). The field detail stays
 // available through the field_spec tool.
 func DescribeSubtree(spec *core.Spec, doc *core.Document, allowed []core.Path) string {
 	if spec == nil || doc == nil {
@@ -95,7 +95,7 @@ func (d *describer) inner(n *core.Node, concrete core.Path, depth int) {
 		return
 	}
 	if n.IsRepeatable() {
-		d.lines = append(d.lines, fmt.Sprintf("- %s — bloc %s, %s%s",
+		d.lines = append(d.lines, fmt.Sprintf("- %s — block %s, %s%s",
 			concrete, label(n), bounds(n), creation(concrete)))
 	}
 	for _, c := range n.Children {
@@ -105,7 +105,7 @@ func (d *describer) inner(n *core.Node, concrete core.Path, depth int) {
 
 func creation(p core.Path) string {
 	if p.HasProvisionalKey() {
-		return " ; élément à créer : utilise cette clé provisoire dans les chemins (même clé pour le même élément)"
+		return " ; element to create: use this provisional key in the paths (same key for the same element)"
 	}
 	return ""
 }
@@ -119,9 +119,9 @@ func label(n *core.Node) string {
 
 func bounds(n *core.Node) string {
 	if n.Max < 0 {
-		return fmt.Sprintf("%d à n éléments", n.Min)
+		return fmt.Sprintf("%d to n elements", n.Min)
 	}
-	return fmt.Sprintf("%d à %d", n.Min, n.Max)
+	return fmt.Sprintf("%d to %d", n.Min, n.Max)
 }
 
 func (d *describer) fieldLine(n *core.Node, concrete core.Path) (string, bool) {
@@ -134,23 +134,23 @@ func (d *describer) fieldLine(n *core.Node, concrete core.Path) (string, bool) {
 		parts = append(parts, "type "+typeLabel(n.Type))
 	}
 	if n.Min >= 1 {
-		parts = append(parts, "obligatoire")
+		parts = append(parts, "required")
 	} else {
-		parts = append(parts, "facultatif")
+		parts = append(parts, "optional")
 	}
 	if n.IsRepeatable() {
-		parts = append(parts, "répétable, "+bounds(n))
+		parts = append(parts, "repeatable, "+bounds(n))
 	}
 	if n.MaxLength > 0 {
-		parts = append(parts, fmt.Sprintf("longueur max %d", n.MaxLength))
+		parts = append(parts, fmt.Sprintf("max length %d", n.MaxLength))
 	}
 	if n.CodeList != "" {
 		parts = append(parts, d.codeList(n.CodeList))
 	}
 	if nature == core.NatureJudgment {
-		parts = append(parts, "nature : jugement (justification et confiance requises)")
+		parts = append(parts, "nature: judgment (justification and confidence required)")
 	} else {
-		parts = append(parts, "nature : recopié (source requise)")
+		parts = append(parts, "nature: copied (source required)")
 	}
 	if n.Description != "" {
 		parts = append(parts, oneLine(n.Description))
@@ -158,7 +158,7 @@ func (d *describer) fieldLine(n *core.Node, concrete core.Path) (string, bool) {
 	if v, ok := d.doc.Values[concrete]; ok && v.Value != "" {
 		// Only the value is client or analyst text: the rest of the line comes
 		// from the format.
-		parts = append(parts, "valeur actuelle : "+UntrustedBlock("valeur_actuelle", oneLine(v.Value)))
+		parts = append(parts, "current value: "+UntrustedBlock("current_value", oneLine(v.Value)))
 	}
 	return strings.Join(parts, " ; "), true
 }
@@ -166,17 +166,17 @@ func (d *describer) fieldLine(n *core.Node, concrete core.Path) (string, bool) {
 func typeLabel(t core.FieldType) string {
 	switch t {
 	case core.TypeDate:
-		return "date AAAA-MM-JJ"
+		return "date YYYY-MM-DD"
 	case core.TypeDecimal:
-		return "décimal (point)"
+		return "decimal (dot)"
 	case core.TypeInteger:
-		return "entier"
+		return "integer"
 	case core.TypeBoolean:
-		return "booléen (true/false)"
+		return "boolean (true/false)"
 	case core.TypeCode:
 		return "code"
 	case core.TypeRef:
-		return "référence à un élément"
+		return "reference to an element"
 	default:
 		return string(t)
 	}
@@ -185,24 +185,24 @@ func typeLabel(t core.FieldType) string {
 func (d *describer) codeList(name string) string {
 	list, ok := d.spec.CodeLists[name]
 	if !ok || list.Unavailable || len(list.Codes) == 0 || len(list.Codes) > inlineCodesMax {
-		return "liste de codes : " + name
+		return "code list: " + name
 	}
 	codes := make([]string, len(list.Codes))
 	for i, c := range list.Codes {
 		codes[i] = c.Value + " (" + oneLine(c.Label) + ")"
 	}
-	return "liste de codes : " + name + " [" + strings.Join(codes, ", ") + "]"
+	return "code list: " + name + " [" + strings.Join(codes, ", ") + "]"
 }
 
 func oneLine(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }
 
-var closingTagRe = regexp.MustCompile(`(?i)</\s*donnees`)
+var closingTagRe = regexp.MustCompile(`(?i)</\s*data`)
 
 // UntrustedBlock wraps client or case text inserted in a prompt:
 //
-//	<donnees id="<nonce>" source="<label>">…</donnees id="<nonce>">
+//	<data id="<nonce>" source="<label>">…</data id="<nonce>">
 //
 // The nonce is random per call; any occurrence of the closing tag in content
 // is neutralised.
@@ -213,6 +213,6 @@ func UntrustedBlock(label, content string) string {
 	}
 	nonce := hex.EncodeToString(b[:])
 	label = strings.NewReplacer(`"`, "'", "<", "(", ">", ")", "\n", " ").Replace(label)
-	content = closingTagRe.ReplaceAllString(content, "&lt;/donnees")
-	return fmt.Sprintf("<donnees id=%q source=%q>\n%s\n</donnees id=%q>", nonce, label, content, nonce)
+	content = closingTagRe.ReplaceAllString(content, "&lt;/data")
+	return fmt.Sprintf("<data id=%q source=%q>\n%s\n</data id=%q>", nonce, label, content, nonce)
 }

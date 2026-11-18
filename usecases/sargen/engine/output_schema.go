@@ -8,20 +8,20 @@ import (
 
 const sourceSchemaJSON = `{"anyOf":[{"type":"object","additionalProperties":false,"required":["field","raw_value","table","object_id"],
  "properties":{
-  "field":{"type":"string","description":"nom du champ de l'objet source"},
-  "raw_value":{"type":"string","description":"valeur brute exacte lue dans l'objet source"},
-  "table":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"table de l'objet source ; null = l'objet source unique de l'élément"},
-  "object_id":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"identifiant de l'objet source ; null = l'objet source unique de l'élément"}}},
+  "field":{"type":"string","description":"name of the field of the source object"},
+  "raw_value":{"type":"string","description":"exact raw value read in the source object"},
+  "table":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"table of the source object; null = the single source object of the element"},
+  "object_id":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"identifier of the source object; null = the single source object of the element"}}},
  {"type":"null"}]}`
 
 const fillSchemaJSON = `{"type":"object","additionalProperties":false,
  "required":["path","value","source","rule_id","justification","confidence"],
  "properties":{
-  "path":{"type":"string","description":"chemin du champ à remplir, clés d'éléments existants ou provisoires (ex. bloc.element[+a].groupe.champ)"},
-  "value":{"type":"string","description":"valeur au format du champ (date AAAA-MM-JJ, décimal avec point, code exact)"},
+  "path":{"type":"string","description":"path of the field to fill, with existing or provisional element keys (e.g. block.element[+a].group.field)"},
+  "value":{"type":"string","description":"value in the field's format (date YYYY-MM-DD, decimal with a dot, exact code)"},
   "source":` + sourceSchemaJSON + `,
   "rule_id":{"anyOf":[{"type":"string"},{"type":"null"}]},
-  "justification":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"obligatoire pour un champ de jugement : la donnée lue qui le motive"},
+  "justification":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"required for a judgment field: the data read that motivates it"},
   "confidence":{"anyOf":[{"type":"string","enum":["low","medium","high"]},{"type":"null"}]}}}`
 
 const optionFillSchemaJSON = `{"type":"object","additionalProperties":false,

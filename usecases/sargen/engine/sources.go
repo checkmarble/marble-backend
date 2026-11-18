@@ -125,5 +125,5 @@ func outsideSelectionMessage(bad []core.ObjectRef) string {
 	for i, r := range bad {
 		names[i] = r.Table + "/" + r.ObjectID
 	}
-	return "objet hors sélection : " + strings.Join(names, ", ")
+	return "object outside the selection: " + strings.Join(names, ", ")
 }
