@@ -23,8 +23,15 @@ func agentPEPContext(t *testing.T, snapshot map[string]any) core.ToolContext {
 	for k, v := range snapshot {
 		base[k] = v
 	}
-	return agentToolContext(t, agentSelection("persons", "p1", base),
+	tc := agentToolContext(t, agentSelection("persons", "p1", base),
 		agentSelection("persons", "p2", map[string]any{"object_id": "p2", "last_name": "Martin"}))
+	tc.DataModel.Tables["persons"] = models.Table{Name: "persons", Fields: map[string]models.Field{
+		"object_id": {Name: "object_id", DataType: models.String},
+		"is_pep":    {Name: "is_pep", DataType: models.Bool},
+		"nb_flags":  {Name: "nb_flags", DataType: models.Int},
+		"siren":     {Name: "siren", DataType: models.String},
+	}}
+	return tc
 }
 
 func pepFill(value, field, raw, extra string) string {
@@ -121,12 +128,74 @@ func TestAgent_UnknownCodeList_OptionFillsNeedNoProof(t *testing.T) {
 	require.Len(t, out.Questions[0].Options[0].Fills, 1)
 }
 
+// A boolean literal proves a yes/no code only when the source field is a boolean
+// in the data model: a count of 1 or a score of 0 prove nothing.
+func TestAgent_BooleanLiteralNeedsBooleanField(t *testing.T) {
+	llm := newScriptedLLM(FinalStep(agFinal(pepFill("Oui", "nb_flags", "1", `,"justification":"un signalement","confidence":"medium"`))))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentPEPContext(t, map[string]any{"nb_flags": 1}), agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+	require.Len(t, out.Fills, 1, "Oui is not a strict code: a weak relation with a justification is accepted")
+	assert.Equal(t, core.ConfidenceLow, out.Fills[0].Confidence)
+
+	llm = newScriptedLLM(FinalStep(agFinal(pepFill("Non", "nb_flags", "0", ""))))
+	out, err = agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentPEPContext(t, map[string]any{"nb_flags": 0}), agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+	assert.Empty(t, out.Fills, "Non from a numeric 0 is not a strict proof")
+	require.Len(t, out.Questions, 1)
+}
+
+// Oui is not a strict code: a weak source with a justification is accepted, low.
+func TestAgent_NonStrictCodeWeakSourceAccepted(t *testing.T) {
+	fill := pepFill("Oui", "kyc_risk", "low", `,"justification":"surveillance renforcée","confidence":"medium"`)
+	llm := newScriptedLLM(FinalStep(agFinal(fill)))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentPEPContext(t, nil), agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+	require.Len(t, out.Fills, 1)
+	assert.Equal(t, "Oui", out.Fills[0].Value)
+	assert.Equal(t, core.ConfidenceLow, out.Fills[0].Confidence)
+	assert.Empty(t, out.Questions)
+}
+
+// The unknown code with an unrelated source is accepted and the source dropped.
+func TestAgent_UnknownCodeUnrelatedSourceDropped(t *testing.T) {
+	fill := pepFill("Je ne sais pas", "kyc_risk", "low", "")
+	llm := newScriptedLLM(FinalStep(agFinal(fill)))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentPEPContext(t, nil), agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+	assert.Equal(t, 1, llm.Calls(), "no correction round")
+	require.Len(t, out.Fills, 1)
+	assert.Empty(t, out.Fills[0].Sources)
+}
+
+// Registry type: a SIREN number cited from a siren column, with a justification,
+// is accepted (low); Non is strict and becomes a question when the source only
+// says the person has an occupation.
+func TestAgent_RegistryList(t *testing.T) {
+	path := "personnes.pp[pp-1].activite.numeroIdentification.type"
+	tc := agentPEPContext(t, map[string]any{"siren": "552100554", "occupation": "plombier"})
+	siren := `{"path":"` + path + `","value":"SIREN","source":{"field":"siren","raw_value":"552100554"},"justification":"numéro SIREN","confidence":"medium"}`
+	llm := newScriptedLLM(FinalStep(agFinal(siren)))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, tc, agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+	require.Len(t, out.Fills, 1)
+	assert.Equal(t, "SIREN", out.Fills[0].Value)
+	assert.Equal(t, core.ConfidenceLow, out.Fills[0].Confidence)
+
+	non := `{"path":"` + path + `","value":"Non","source":{"field":"occupation","raw_value":"plombier"},"justification":"exerce un métier","confidence":"medium"}`
+	llm = newScriptedLLM(FinalStep(agFinal(non)))
+	out, err = agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, tc, agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+	assert.Empty(t, out.Fills)
+	require.Len(t, out.Questions, 1)
+}
+
 func TestFieldSpecAndDescribe_ShowUnknownCode(t *testing.T) {
 	tc := agentPEPContext(t, nil)
 	raw := toolsCall(t, CommonTools(tc), "field_spec", `{"path":"`+agPolitiqueePath+`"}`)
 	m := toolsParseObj(t, raw)
 	assert.Equal(t, "Je ne sais pas", m["unknown_code"])
 	assert.Contains(t, m["unknown_code_rule"], "when the data say nothing")
+	assert.Contains(t, m["unknown_code_rule"], `"Non" needs a source that establishes it`)
 
 	d := DescribeSubtree(tc.Format.Spec(), tc.Doc, []core.Path{agentPersonPath})
 	assert.Contains(t, d, `unknown code "Je ne sais pas": use it when the data say nothing`)
@@ -253,3 +322,24 @@ func TestFrenchReason_EveryCheckerErrorKindIsMapped(t *testing.T) {
 }
 
 var _ = json.Marshal
+
+// The analyst never reads the model's English wording or the internal name of a
+// step: an unparsable fill error gets a generic French reason, and a limit on a
+// task without target does not name the step kind.
+func TestAgent_AnalystTextNeverShowsEnglishOrStepKind(t *testing.T) {
+	tc := agentToolContext(t)
+	spec := core.TaskSpec{Kind: "understanding", PromptPath: "prompts/understanding.md"}
+	run := &agentRun{
+		tc: tc, spec: spec, mode: modeStructured, tr: newTrace("", ""),
+		chk: newChecker(tc, spec, tc.TaskId, nil),
+	}
+
+	qs := run.unverifiableFromErrors([]string{"fills[3] without separator in English"})
+	require.Len(t, qs, 1)
+	assert.Equal(t, "valeur non vérifiable : la réponse du modèle n'a pas pu être exploitée", qs[0].Text)
+
+	out := run.limitOutput("durée maximale atteinte")
+	require.Len(t, out.Questions, 1)
+	assert.NotContains(t, out.Questions[0].Text, "understanding")
+	assert.Equal(t, "La génération automatique n'a pas abouti (durée maximale atteinte) : à vérifier et compléter manuellement.", out.Questions[0].Text)
+}
