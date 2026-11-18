@@ -4,6 +4,7 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -491,12 +492,25 @@ func (r *jobRun) reviewSpecsOnly(ctx context.Context, specs []core.TaskSpec) []c
 	return kept
 }
 
-// checkPrompt fails the job when the prompt of a spec does not exist.
+// checkPrompt fails the job when the prompt of a spec, or the instructions of
+// the format, does not exist.
 func (r *jobRun) checkPrompt(ctx context.Context, s core.TaskSpec) error {
-	if s.PromptPath == "" || r.o.prompts.Exists(s.PromptPath) {
+	missing := ""
+	switch {
+	case s.PromptPath != "" && !r.o.prompts.Exists(s.PromptPath):
+		missing = s.PromptPath
+	default:
+		// The format's own instructions are prepended to every step prompt.
+		if fi, ok := r.format.(FormatInstructions); ok {
+			if p := fi.InstructionsPromptPath(); p != "" && !r.o.prompts.Exists(p) {
+				missing = p
+			}
+		}
+	}
+	if missing == "" {
 		return nil
 	}
-	msg := "prompt manquant : " + s.PromptPath
+	msg := "prompt manquant : " + missing
 	dctx, cancel := detached(ctx)
 	defer cancel()
 	if _, err := r.o.generation.SetSarGenerationJobStatus(dctx, r.o.executorFactory.NewExecutor(),
@@ -789,7 +803,20 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 					Path: rt.spec.TargetPath, Code: core.CodeSourceOutOfScope,
 					Message: "structured output rejected: " + outsideSelectionMessage(bad)})
 			} else {
-				doc, changed = cand, true
+				// A structured output that leaves the document identical (a
+				// note kept in the task output only) writes nothing and bumps
+				// no version.
+				before, err := json.Marshal(doc)
+				if err != nil {
+					return false, errors.Wrap(err, "cannot encode document")
+				}
+				after, err := json.Marshal(cand)
+				if err != nil {
+					return false, errors.Wrap(err, "cannot encode document")
+				}
+				if !bytes.Equal(before, after) {
+					doc, changed = cand, true
+				}
 			}
 		}
 		fills := make([]core.Fill, len(out.Fills))

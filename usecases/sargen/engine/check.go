@@ -135,7 +135,10 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 	for i, w := range out.Fills {
 		last[core.Path(w.Path)] = i
 	}
-	var good []pending
+	var (
+		good          []pending
+		unprovenFills []core.Fill
+	)
 	for i, w := range out.Fills {
 		path := core.Path(w.Path)
 		if last[path] != i {
@@ -155,9 +158,16 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 			res.Notes = append(res.Notes, fmt.Sprintf("fills[%d] %s : empty value ignored", i, path))
 			continue
 		}
-		f, msg := c.toFill(w)
+		f, msg, unproven := c.toFill(w, true)
 		if msg != "" {
 			res.Corrections = append(res.Corrections, fmt.Sprintf("fills[%d] %s : %s", i, path, msg))
+			continue
+		}
+		if unproven {
+			// A value other than the unknown code is not established: it is not
+			// applied, the analyst chooses.
+			unprovenFills = append(unprovenFills, f)
+			res.Notes = append(res.Notes, fmt.Sprintf("fills[%d] %s : value other than the unknown code without a strict proof, turned into a question", i, path))
 			continue
 		}
 		good = append(good, pending{i, f})
@@ -200,11 +210,14 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 		}
 		msg := issue.Message
 		if issue.Code == core.CodeBadRef || issue.Code == core.CodeDanglingRef {
-			msg += " (values that reference an element are applied after all the others of the answer: create the targeted element in the same answer, with the same provisional key, or cite an existing element)"
+			msg += refHint + " are applied after all the others of the answer: create the targeted element in the same answer, with the same provisional key, or cite an existing element)"
 		}
 		res.Corrections = append(res.Corrections, fmt.Sprintf("fills[%d] %s : %s", g.idx, g.fill.Path, msg))
 	}
 
+	for _, f := range unprovenFills {
+		res.Questions = append(res.Questions, c.unprovenCodeQuestion(f, clone))
+	}
 	c.checkQuestions(&res, out.Questions, clone)
 	return res
 }
@@ -279,7 +292,9 @@ func (c *checker) optionFills(ws []wireFill, questionPaths []core.Path, doc *cor
 		if w.Value == "" {
 			return nil, "empty value"
 		}
-		f, msg := c.toFill(w)
+		// An option is the analyst's choice: the unknown-code proof rule does
+		// not apply.
+		f, msg, _ := c.toFill(w, false)
 		if msg != "" {
 			return nil, msg
 		}
@@ -317,13 +332,16 @@ func unverifiable(f core.Fill, reason string) core.QuestionDraft {
 }
 
 // toFill converts one wire fill; the message is a form error for the LLM.
-func (c *checker) toFill(w wireFill) (core.Fill, string) {
+// unproven (only with strict) tells that the fill is a copied value of a field
+// whose code list has an unknown code, that it is another code, and that its
+// source is not a strict proof: the caller must not apply it.
+func (c *checker) toFill(w wireFill, strict bool) (fill core.Fill, msg string, unproven bool) {
 	path := core.Path(w.Path)
 	if _, err := core.ParsePath(string(path)); err != nil {
-		return core.Fill{}, "invalid path: " + err.Error()
+		return core.Fill{}, "invalid path: " + err.Error(), false
 	}
 	if !c.pathAllowed(path) {
-		return core.Fill{}, "path outside the part assigned to this task; allowed paths: " + joinPaths(c.allowed)
+		return core.Fill{}, "path outside the part assigned to this task; allowed paths: " + joinPaths(c.allowed), false
 	}
 	f := core.Fill{
 		Path: path, Value: string(w.Value), Origin: core.OriginLLM, TaskID: &c.taskID,
@@ -337,28 +355,75 @@ func (c *checker) toFill(w wireFill) (core.Fill, string) {
 	if w.Confidence != nil {
 		f.Confidence = core.Confidence(*w.Confidence)
 	}
-	if w.Source != nil {
-		src, msg := c.toSource(path, *w.Source)
-		if msg != "" {
-			return core.Fill{}, msg
-		}
-		f.Sources = []core.SourceRef{src}
-		if node := c.tc.Format.Spec().NodeAt(path.Template()); node != nil && node.Kind == core.NodeField &&
-			node.EffectiveNature() == core.NatureCopied {
-			var codes []core.Code
-			if node.CodeList != "" {
-				codes = c.tc.Format.Spec().CodeLists[node.CodeList].Codes
-			}
-			msg, forceLow := relationError(node, codes, f.Value, src.RawValue, f.Justification, f.Confidence)
-			if msg != "" {
-				return core.Fill{}, msg
-			}
-			if forceLow {
-				f.Confidence = core.ConfidenceLow
-			}
-		}
+	node := c.tc.Format.Spec().NodeAt(path.Template())
+	copied := node != nil && node.Kind == core.NodeField && node.EffectiveNature() == core.NatureCopied
+	var list core.CodeList
+	if copied && node.CodeList != "" {
+		list = c.tc.Format.Spec().CodeLists[node.CodeList]
 	}
-	return f, ""
+	// A copied value on a list with an unknown code, other than that code, needs
+	// a strict proof; the unknown code itself is always accepted.
+	gated := strict && list.UnknownCode != "" && f.Value != list.UnknownCode
+	if w.Source == nil {
+		return f, "", gated
+	}
+	src, smsg := c.toSource(path, *w.Source)
+	if smsg != "" {
+		return core.Fill{}, smsg, false
+	}
+	f.Sources = []core.SourceRef{src}
+	if !copied {
+		return f, "", false
+	}
+	if gated {
+		return f, "", !strictCodeProof(list.Codes, f.Value, src.RawValue)
+	}
+	rmsg, forceLow := relationError(node, list.Codes, f.Value, src.RawValue, f.Justification, f.Confidence)
+	if rmsg != "" {
+		return core.Fill{}, rmsg, false
+	}
+	if forceLow {
+		f.Confidence = core.ConfidenceLow
+	}
+	return f, "", false
+}
+
+// strictCodeProof tells whether the raw value of the source proves the code
+// without interpretation: it is the code itself, its label (folded like text
+// proofs), or a boolean literal matching a yes/no code.
+func strictCodeProof(codes []core.Code, value, raw string) bool {
+	if foldAlnum(value) == foldAlnum(raw) || slices.ContainsFunc(codes, func(c core.Code) bool {
+		return c.Value == value && c.Label != "" && foldAlnum(c.Label) == foldAlnum(raw)
+	}) {
+		return true
+	}
+	rb, rok := boolLiteral(raw)
+	vb, vok := boolLiteral(value)
+	return rok && vok && rb == vb
+}
+
+// unprovenCodeQuestion asks the analyst to choose among the codes of the list
+// of a field whose proposed value was not strictly proven. Each option writes
+// its code on the field.
+func (c *checker) unprovenCodeQuestion(f core.Fill, doc *core.Document) core.QuestionDraft {
+	node := c.tc.Format.Spec().NodeAt(f.Path.Template())
+	list := c.tc.Format.Spec().CodeLists[node.CodeList]
+	q := core.QuestionDraft{
+		Paths: []core.Path{f.Path},
+		Text: fmt.Sprintf("valeur non établie : %s — « %s » proposé sans preuve suffisante dans les données ; choisissez la valeur (« %s » si rien ne l'établit)",
+			f.Path, shorten(f.Value, 100), list.UnknownCode),
+	}
+	for _, code := range list.Codes {
+		label := code.Label
+		if label == "" {
+			label = code.Value
+		}
+		opt := core.QuestionOption{Label: label}
+		fills, _ := c.optionFills([]wireFill{{Path: flexString(f.Path), Value: flexString(code.Value)}}, q.Paths, doc)
+		opt.Fills = fills
+		q.Options = append(q.Options, opt)
+	}
+	return q
 }
 
 func joinPaths(ps []core.Path) string {

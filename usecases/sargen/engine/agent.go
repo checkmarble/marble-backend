@@ -106,6 +106,17 @@ func (p FSPrompts) Read(path string) (string, error) {
 	return string(b), nil
 }
 
+// FormatInstructions is implemented by a format that has conventions shared by
+// every step of its tasks (domain rules, vocabulary). The runner reads the prompt
+// at InstructionsPromptPath and puts it before the step prompt, under a
+// "Format conventions" header. An empty path means no conventions.
+type FormatInstructions interface {
+	InstructionsPromptPath() string
+}
+
+// formatConventionsHeader introduces the format instructions in the prompt.
+const formatConventionsHeader = "## Format conventions\n"
+
 // agentRunner is the TaskRunner running the bounded agent loop.
 //
 // Run, per task:
@@ -156,6 +167,14 @@ func (r *agentRunner) Run(ctx context.Context, tc core.ToolContext, task models.
 	if err != nil {
 		return core.TaskOutput{}, errors.Wrapf(err, "prompt %s", spec.PromptPath)
 	}
+	var instrPath, instrText string
+	if fi, ok := tc.Format.(FormatInstructions); ok {
+		if instrPath = fi.InstructionsPromptPath(); instrPath != "" {
+			if instrText, err = r.prompts.Read(instrPath); err != nil {
+				return core.TaskOutput{}, errors.Wrapf(err, "prompt %s", instrPath)
+			}
+		}
+	}
 
 	allowed := spec.AllowedPaths
 	if len(allowed) == 0 && spec.TargetPath != "" {
@@ -181,9 +200,12 @@ func (r *agentRunner) Run(ctx context.Context, tc core.ToolContext, task models.
 	tools := r.tools(tc, spec)
 	req := AgentRequest{
 		RunID: runID, Tier: spec.Tier, Instruction: systemInstruction,
-		Prompt: r.prompt(promptText, tc, spec, allowed, mode), Tools: tools, OutputSchema: schema,
+		Prompt: r.prompt(withConventions(instrText, promptText), tc, spec, allowed, mode), Tools: tools, OutputSchema: schema,
 	}
 	tr := newTrace(spec.PromptPath, promptText)
+	if instrPath != "" {
+		tr.setConventions(instrPath, instrText)
+	}
 	tr.add(TraceEntry{Type: TraceInstruct, Text: req.Instruction})
 	tr.add(TraceEntry{Type: TracePrompt, Text: req.Prompt})
 
@@ -222,6 +244,14 @@ func (r *agentRunner) tools(tc core.ToolContext, spec core.TaskSpec) []core.Tool
 		}
 	}
 	return out
+}
+
+// withConventions puts the format instructions before the step prompt.
+func withConventions(conventions, step string) string {
+	if strings.TrimSpace(conventions) == "" {
+		return step
+	}
+	return formatConventionsHeader + strings.TrimSpace(conventions) + "\n\n" + step
 }
 
 func (r *agentRunner) prompt(text string, tc core.ToolContext, spec core.TaskSpec, allowed []core.Path, mode outputMode) string {
@@ -438,7 +468,7 @@ func (a *agentRun) unverifiableFromErrors(errs []string) []core.QuestionDraft {
 	for _, e := range errs {
 		path, reason, ok := splitFillError(e)
 		if !ok {
-			qs = append(qs, core.QuestionDraft{Text: "valeur non vérifiable : " + e})
+			qs = append(qs, core.QuestionDraft{Text: "valeur non vérifiable : " + frenchReason(e)})
 			continue
 		}
 		p := core.Path(path)
@@ -447,7 +477,7 @@ func (a *agentRun) unverifiableFromErrors(errs []string) []core.QuestionDraft {
 		}
 		qs = append(qs, core.QuestionDraft{
 			Paths: []core.Path{p},
-			Text:  fmt.Sprintf("valeur non vérifiable : %s — %s", path, reason),
+			Text:  fmt.Sprintf("valeur non vérifiable : %s — %s", path, frenchReason(reason)),
 		})
 	}
 	return qs

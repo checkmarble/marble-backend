@@ -95,7 +95,11 @@ type fakeFormat struct {
 	OnPlan       func(st core.PlanState)
 	ComputeFn    func(doc *core.Document) core.ComputeResult
 	StructuredFn func(kind string, doc *core.Document, out json.RawMessage) error
+	// InstructionsPath is the format instructions prompt (none when empty).
+	InstructionsPath string
 }
+
+func (f *fakeFormat) InstructionsPromptPath() string { return f.InstructionsPath }
 
 func (f *fakeFormat) Plan(st core.PlanState) []core.TaskSpec {
 	if f.OnPlan != nil {
