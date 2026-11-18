@@ -89,7 +89,7 @@ func TestRunJob_LimitErrorNotShadowedByOtherTaskError(t *testing.T) {
 			<-otherFailed
 			time.Sleep(100 * time.Millisecond) // let the other error be recorded first
 		},
-		Err: errors.Mark(errors.Newf("%s (%s)", ErrTaskLimitReached.Error(), "nombre maximal de tours atteint"), ErrTaskLimitReached),
+		Err: errors.Mark(errors.New(limitReachedMessage("nombre maximal de tours atteint")), ErrTaskLimitReached),
 	})
 	w := NewWorker(o, f.Repo, fakeExecFactory{}, time.Minute)
 
@@ -100,5 +100,6 @@ func TestRunJob_LimitErrorNotShadowedByOtherTaskError(t *testing.T) {
 	j := jobOf(t, f)
 	require.Equal(t, models.SarJobStatusFailed, j.Status)
 	assert.Contains(t, j.Error, "limite atteinte")
-	assert.Contains(t, j.Error, "nombre maximal de tours atteint", "the job error names the limit reason")
+	assert.Equal(t, "une étape essentielle de la génération n'a pas abouti (limite atteinte : nombre maximal de tours atteint). "+
+		"Réduisez la sélection ou relancez la génération.", j.Error, "reason before the advice")
 }
