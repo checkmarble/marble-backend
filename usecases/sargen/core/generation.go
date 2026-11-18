@@ -53,9 +53,9 @@ type TaskSpec struct {
 	// not count) fails the job instead of being done empty. For a task the
 	// whole generation depends on.
 	FailJobOnLimit bool `json:"fail_job_on_limit,omitempty"`
-	// Limits overrides the runner's budget for this task (zero fields keep the
-	// runner's value): a task whose work grows with the selection asks for more.
-	Limits TaskLimits `json:"limits,omitempty"`
+	// Limits raises the runner's budget for this task (per field, the larger of
+	// both; zero fields keep the runner's value): a task whose work grows with the selection asks for more.
+	Limits TaskLimits `json:"limits"`
 	// NeedsCaseContext asks the orchestrator for the case context (decisions,
 	// triggered rules, screenings, events): ToolContext.CaseContext.
 	NeedsCaseContext bool `json:"needs_case_context,omitempty"`

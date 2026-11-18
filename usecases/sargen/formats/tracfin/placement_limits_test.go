@@ -14,5 +14,5 @@ func TestPlacementLimitsScaleWithSelectionAndAreCapped(t *testing.T) {
 	assert.Greater(t, big.TimeoutSeconds, small.TimeoutSeconds)
 	assert.Equal(t, 300, huge.MaxToolCalls)
 	assert.Equal(t, 150, huge.MaxTurns)
-	assert.Equal(t, 1200, huge.TimeoutSeconds)
+	assert.Equal(t, 600, huge.TimeoutSeconds)
 }

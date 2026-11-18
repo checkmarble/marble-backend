@@ -200,13 +200,13 @@ func (f *format) placementSpec(st core.PlanState) core.TaskSpec {
 
 // Placement budget: it reads and places every selected object, so it grows
 // with the selection n: tool calls 30 + n/2 (cap 300), turns 15 + n/4 (cap 150),
-// time 3 min + 3 s per object (cap 20 min). At n = 10 this is 35 calls, 17 turns,
-// 3.5 min; at n = 200, 130 calls, 65 turns, 13 min.
+// time 3 min + 3 s per object (cap 10 min). At n = 10 this is 35 calls, 17 turns,
+// 3.5 min; at n = 200, 130 calls, 65 turns, 10 min.
 func placementLimits(n int) core.TaskLimits {
 	return core.TaskLimits{
 		MaxToolCalls:   min(30+n/2, 300),
 		MaxTurns:       min(15+n/4, 150),
-		TimeoutSeconds: min(180+3*n, 1200),
+		TimeoutSeconds: min(180+3*n, 600),
 	}
 }
 
