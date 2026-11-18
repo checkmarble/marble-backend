@@ -99,7 +99,6 @@ func (f *format) parsePlacement(raw json.RawMessage) (out placementOutput, dropp
 			return out, nil, errors.Wrapf(err, "personne %d", i)
 		}
 	}
-	allRefs := slices.Clone(out.FinancialRefs)
 	kept := out.FinancialRefs[:0:0]
 	for i, r := range out.FinancialRefs {
 		if !slices.Contains(refKinds, r.RefKind) {
@@ -136,24 +135,9 @@ func (f *format) parsePlacement(raw json.RawMessage) (out placementOutput, dropp
 		kept = append(kept, r)
 	}
 	out.FinancialRefs = kept
-	declared := map[core.ObjectRef]bool{}
-	for _, p := range out.Persons {
-		for _, o := range p.Objects {
-			declared[o] = true
-		}
-	}
-	for _, r := range allRefs {
-		for _, o := range r.Objects {
-			declared[o] = true
-		}
-	}
 	for i, t := range out.Transactions {
 		if err := checkObjects([]core.ObjectRef{t.Object}); err != nil {
 			return out, nil, errors.Wrapf(err, "transaction %d", i)
-		}
-		if declared[t.Object] {
-			return out, nil, errors.Newf("transaction %d : l'objet %s/%s est un objet de personne ou de compte déclaré ; la transaction doit citer son propre objet transaction",
-				i, t.Object.Table, t.Object.ObjectID)
 		}
 	}
 	return out, dropped, nil
@@ -189,6 +173,48 @@ func (f *format) StructuredQuestions(kind string, raw json.RawMessage) []core.Qu
 		} else {
 			out = append(out, core.QuestionDraft{Text: fmt.Sprintf("référence financière : %d titulaire(s) non déclaré(s) ignoré(s) : %s", d.lostOwners, list)})
 		}
+	}
+	out = append(out, f.mixedUseQuestions(raw)...)
+	return out
+}
+
+// mixedUseQuestions asks the analyst to check the transactions whose object is
+// also the object of a declared person or financial reference (a model where
+// the transaction row carries its counterparty or IBAN is legitimate, but so is
+// a model confusion). The path is the working transaction ApplyStructured
+// creates for it (transactions are numbered in order of first appearance).
+func (f *format) mixedUseQuestions(raw json.RawMessage) []core.QuestionDraft {
+	var in placementOutput
+	if err := json.Unmarshal(raw, &in); err != nil {
+		return nil
+	}
+	declared := map[core.ObjectRef]bool{}
+	for _, p := range in.Persons {
+		for _, o := range p.Objects {
+			declared[o] = true
+		}
+	}
+	for _, r := range in.FinancialRefs {
+		for _, o := range r.Objects {
+			declared[o] = true
+		}
+	}
+	var out []core.QuestionDraft
+	var seen []core.ObjectRef
+	for _, t := range in.Transactions {
+		if slices.Contains(seen, t.Object) {
+			continue
+		}
+		seen = append(seen, t.Object)
+		if !declared[t.Object] {
+			continue
+		}
+		path := core.Path(fmt.Sprintf("%s[transactions-%d]", transactionsContainer, len(seen)))
+		out = append(out, core.QuestionDraft{
+			Paths: []core.Path{path},
+			Text: fmt.Sprintf("L'objet %s/%s est utilisé à la fois comme transaction et comme personne ou référence financière : à vérifier.",
+				t.Object.Table, t.Object.ObjectID),
+		})
 	}
 	return out
 }
