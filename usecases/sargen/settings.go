@@ -40,25 +40,47 @@ func settingsFormat(family string) (core.Format, error) {
 	return best, nil
 }
 
-// MissingSettings returns the required organization setting paths of a format
-// family that have no (or a blank) value in values, using the same rule as the
-// start of a generation (requiredSettingPaths).
-func MissingSettings(family string, values map[string]string) ([]core.Path, error) {
-	format, err := settingsFormat(family)
-	if err != nil {
-		return nil, err
-	}
-	return missingSettingPaths(format, values), nil
+// SettingsReadiness is whether the stored organization settings let a
+// generation start: Missing are the required paths without a value, Invalid the
+// required paths whose value is blocked. Complete is true when both are empty.
+// It is the single rule of StartGeneration and of the settings API.
+type SettingsReadiness struct {
+	Missing  []core.Path
+	Invalid  []core.Path
+	Complete bool
 }
 
-func missingSettingPaths(format core.Format, values map[string]string) []core.Path {
-	missing := []core.Path{}
+func settingsReadiness(format core.Format, values map[string]string) SettingsReadiness {
+	r := SettingsReadiness{Missing: []core.Path{}, Invalid: []core.Path{}}
+	spec := format.Spec()
 	for _, p := range requiredSettingPaths(format, values) {
-		if strings.TrimSpace(values[string(p)]) == "" {
-			missing = append(missing, p)
+		v := values[string(p)]
+		if strings.TrimSpace(v) == "" {
+			r.Missing = append(r.Missing, p)
+			continue
+		}
+		if issue := core.ValidateValue(spec, p, v); issue != nil && issue.Blocks() {
+			r.Invalid = append(r.Invalid, p)
 		}
 	}
-	return missing
+	r.Complete = len(r.Missing) == 0 && len(r.Invalid) == 0
+	return r
+}
+
+// ReadinessOfSettings evaluates values against the most recent active format of
+// the family. StartGeneration evaluates the declaration's own format: both agree
+// unless two active versions of the family require different settings.
+func ReadinessOfSettings(family string, values map[string]string) (SettingsReadiness, error) {
+	format, err := settingsFormat(family)
+	if err != nil {
+		return SettingsReadiness{}, err
+	}
+	return settingsReadiness(format, values), nil
+}
+
+// SettingsReadiness is ReadinessOfSettings as a usecase method (the API calls it).
+func (uc *Usecase) SettingsReadiness(_ context.Context, family string, values map[string]string) (SettingsReadiness, error) {
+	return ReadinessOfSettings(family, values)
 }
 
 func settingIssues(spec *core.Spec, values map[string]string) []core.Issue {

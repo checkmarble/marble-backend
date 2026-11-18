@@ -2,7 +2,6 @@ package dto
 
 import (
 	"encoding/json"
-	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -81,26 +80,15 @@ func AdaptSarIssueDto(i core.Issue) SarIssueDto {
 	return SarIssueDto{Path: string(i.Path), Code: i.Code, Message: i.Message, Severity: string(i.Severity), RuleId: i.RuleID}
 }
 
-// SarOrgSettingsDto: Missing lists the required setting paths without a value;
-// Complete is true when none is missing and no stored value is blocked.
+// SarOrgSettingsDto: Missing and Invalid are the required setting paths without
+// a value or with a blocked value; Complete is true when generation may start
+// for settings reasons. Issues are all the problems of the stored values.
 type SarOrgSettingsDto struct {
 	Values   map[string]string `json:"values"`
 	Issues   []SarIssueDto     `json:"issues"`
 	Missing  []string          `json:"missing"`
+	Invalid  []string          `json:"invalid"`
 	Complete bool              `json:"complete"`
-}
-
-func AdaptSarOrgSettingsDto(s models.SarOrgFormatSettings, issues []core.Issue, missing []core.Path) SarOrgSettingsDto {
-	values := s.Values
-	if values == nil {
-		values = map[string]string{}
-	}
-	out := SarOrgSettingsDto{
-		Values: values, Issues: pure_utils.Map(issues, AdaptSarIssueDto),
-		Missing: pure_utils.Map(missing, func(p core.Path) string { return string(p) }),
-	}
-	out.Complete = len(missing) == 0 && !slices.ContainsFunc(issues, func(i core.Issue) bool { return i.Blocks() })
-	return out
 }
 
 // ---- declaration state ----
@@ -156,7 +144,7 @@ type SarTodoDto struct {
 type SarGenerationStateDto struct {
 	Status string    `json:"status"`
 	JobId  uuid.UUID `json:"job_id"`
-	Error  string    `json:"error"`
+	Error  *string   `json:"error"` // null when the job has no public error
 }
 
 type SarDeclarationDto struct {

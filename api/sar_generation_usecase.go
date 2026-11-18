@@ -24,6 +24,7 @@ type sarGenerationUsecase interface {
 	MarkReviewed(ctx context.Context, id uuid.UUID, version int, paths []core.Path) (sargen.DeclarationState, error)
 	GetOrgSettings(ctx context.Context, family string) (models.SarOrgFormatSettings, []core.Issue, error)
 	PutOrgSettings(ctx context.Context, family string, values map[string]string) (models.SarOrgFormatSettings, []core.Issue, error)
+	SettingsReadiness(ctx context.Context, family string, values map[string]string) (sargen.SettingsReadiness, error)
 	Export(ctx context.Context, id uuid.UUID, version int) (models.SarDeclarationExport, error)
 	ListExports(ctx context.Context, declarationId uuid.UUID) ([]models.SarDeclarationExport, error)
 	DownloadExport(ctx context.Context, declarationId, exportId uuid.UUID) (models.Blob, error)

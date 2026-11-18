@@ -192,7 +192,8 @@ type TodoItem struct {
 type GenerationState struct {
 	Status models.SarJobStatus `json:"status"`
 	JobId  uuid.UUID           `json:"job_id"`
-	Error  string              `json:"error"`
+	// Error is the public message of the job, empty when none.
+	Error string `json:"error"`
 }
 
 type DeclarationState struct {
@@ -331,7 +332,8 @@ func (uc *Usecase) buildState(ctx context.Context, exec repositories.Executor, d
 	}
 	var activeJobId *uuid.UUID
 	for _, j := range jobs {
-		if isActiveJob(j.Status) {
+		// A stale active job reads failed (see lastGeneration): not active.
+		if isActiveJob(j.Status) && !uc.isStale(j) {
 			id := j.Id
 			activeJobId = &id
 			break
@@ -574,8 +576,11 @@ func (e *IssuesError) Unwrap() error { return models.BadParameterError }
 // SarIssues returns the issues of the refused write.
 func (e *IssuesError) SarIssues() []core.Issue { return e.issues }
 
+// NewIssuesError builds the refusal of a write rejected with issues.
+func NewIssuesError(issues []core.Issue) *IssuesError { return &IssuesError{issues: issues} }
+
 func issuesToError(issues []core.Issue) error {
-	return &IssuesError{issues: issues}
+	return NewIssuesError(issues)
 }
 
 // UpdateFields applies fills with OriginManual and OverwriteAll, all-or-nothing.
