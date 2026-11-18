@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -125,4 +126,53 @@ func TestUpdateSelection_ReviewJobDoesNotFreeze(t *testing.T) {
 	_, err := uc.UpdateSelection(f.Ctx, declId, version, []SelectionAdd{{Ref: selRef("transactions", "t2")}}, nil)
 	require.NoError(t, err)
 	assert.Len(t, f.Gen.Tasks[rv.Id], 1, "review job tasks are untouched")
+}
+
+// ---- Final review M2: ResumeJob applies the preconditions of StartGeneration ----
+
+func TestResumeJob_GenerateAppliesStartPreconditions(t *testing.T) {
+	failedJob := func(t *testing.T) (*Usecase, *fakes, uuid.UUID, models.SarGenerationJob) {
+		uc, f, declId := genReady(t, false)
+		job := f.SeedJob(t, declId, models.SarJobKindGenerate, models.SarJobStatusFailed)
+		return uc, f, declId, job
+	}
+	assertRefused := func(t *testing.T, f *fakes, jobId uuid.UUID, err error, contains string) {
+		t.Helper()
+		require.ErrorIs(t, err, models.BadParameterError)
+		if contains != "" {
+			require.ErrorContains(t, err, contains)
+		}
+		assert.Equal(t, models.SarJobStatusFailed, f.Gen.Jobs[jobId].Status, "the job stays failed")
+		assert.Empty(t, f.Enqueuer.Calls, "nothing is enqueued")
+	}
+
+	t.Run("empty selection", func(t *testing.T) {
+		uc, f, _, job := failedJob(t)
+		f.Selection.Rows = nil
+		_, err := uc.ResumeJob(f.Ctx, job.Id)
+		assertRefused(t, f, job.Id, err, "sélection")
+	})
+	t.Run("empty analysis", func(t *testing.T) {
+		uc, f, declId, job := failedJob(t)
+		d := f.Repo.Declarations[declId]
+		d.Analysis = ""
+		f.Repo.Declarations[declId] = d
+		_, err := uc.ResumeJob(f.Ctx, job.Id)
+		assertRefused(t, f, job.Id, err, "analyse")
+	})
+	t.Run("incomplete settings", func(t *testing.T) {
+		uc, f, _, job := failedJob(t)
+		incomplete := genCompleteSettings()
+		delete(incomplete, "declarant.coordonnees.tel")
+		genSetSettings(f, incomplete)
+		_, err := uc.ResumeJob(f.Ctx, job.Id)
+		assertRefused(t, f, job.Id, err, "declarant.coordonnees.tel")
+	})
+	t.Run("a review job is not subject to them", func(t *testing.T) {
+		uc, f, declId := genReady(t, false)
+		job := f.SeedJob(t, declId, models.SarJobKindReview, models.SarJobStatusFailed)
+		f.Selection.Rows = nil
+		_, err := uc.ResumeJob(f.Ctx, job.Id)
+		require.NoError(t, err)
+	})
 }

@@ -49,6 +49,10 @@ var (
 	// ErrJobGone: the job or its declaration no longer exists; retrying is
 	// pointless (the worker cancels the River job).
 	ErrJobGone = errors.New("génération ou déclaration introuvable")
+	// ErrJobNotRunning: the job was failed or finished while a task was
+	// running; its output was discarded, the task released and this run must
+	// stop (the worker cancels the River job; a resume starts a new run).
+	ErrJobNotRunning = errors.New("génération arrêtée")
 )
 
 // detached returns a context that survives the cancellation of ctx.
@@ -628,7 +632,9 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 	if running, err := r.stillRunning(ctx, tx); err != nil {
 		return false, err
 	} else if !running {
-		return true, nil // job failed or finished meanwhile: nothing written
+		// Job failed or finished meanwhile: nothing written (the transaction
+		// rolls back); runTask releases the task and stops the run.
+		return false, ErrJobNotRunning
 	}
 	doc, err := decodeDocument(decl.Document)
 	if err != nil {
@@ -838,7 +844,9 @@ func (r *jobRun) applyCompute(ctx context.Context, tx repositories.Transaction, 
 	if running, err := r.stillRunning(ctx, tx); err != nil {
 		return false, err
 	} else if !running {
-		return true, nil // job failed or finished meanwhile: nothing written
+		// Job failed or finished meanwhile: nothing written (the transaction
+		// rolls back); runTask releases the task and stops the run.
+		return false, ErrJobNotRunning
 	}
 	doc, err := decodeDocument(decl.Document)
 	if err != nil {

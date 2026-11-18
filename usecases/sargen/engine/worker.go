@@ -72,6 +72,10 @@ func (w *Worker) Work(ctx context.Context, job *river.Job[models.SarGenerationAr
 	if errors.Is(err, ErrJobGone) {
 		return river.JobCancel(err)
 	}
+	if errors.Is(err, ErrJobNotRunning) {
+		// The job was failed or finished elsewhere; a resume enqueues a new run.
+		return river.JobCancel(err)
+	}
 	if errors.Is(err, ErrPromptMissing) {
 		// The job is already marked failed; retrying cannot help.
 		return river.JobCancel(err)

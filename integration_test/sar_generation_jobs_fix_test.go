@@ -250,3 +250,34 @@ func TestSarGenerationTasks_CreateOnlyForActiveJob(t *testing.T) {
 		require.Empty(t, got, "a %s job must not receive tasks", status)
 	}
 }
+
+// Final review M1: an output discarded because the job is no longer running
+// releases the task (failed, claimable again) and stops that run, so a
+// resumed job is not blocked until the task goes stale.
+func TestSarEngine_DiscardedOutputReleasesTaskAndResumeProgresses(t *testing.T) {
+	h := newEngHarness(t, time.Hour)
+	h.format.waves = [][]core.TaskSpec{{engSpec("a", engPP1)}}
+	first := true
+	h.runner.steps["a"] = func(int) (core.TaskOutput, error) {
+		if first {
+			first = false
+			ok, err := h.repo.SetSarGenerationJobStatus(context.Background(), h.exec, h.job.Id, models.SarJobStatusFailed, "stale")
+			require.NoError(t, err)
+			require.True(t, ok)
+		}
+		return core.TaskOutput{Fills: []core.Fill{engFill(engPP1Name, "DUPONT")}}, nil
+	}
+
+	err := h.orch.RunJob(t.Context(), h.job.Id)
+	require.ErrorIs(t, err, engine.ErrJobNotRunning, "the zombie run stops")
+	require.Equal(t, models.SarJobStatusFailed, h.task(t, "a").Status, "the task is released")
+	require.Equal(t, 1, h.runner.count("a"))
+
+	ok, err := h.repo.ResumeSarGenerationJob(t.Context(), h.exec, h.job.Id, time.Hour)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.NoError(t, h.orch.RunJob(t.Context(), h.job.Id), "the resumed job is not blocked by the discarded task")
+	require.Equal(t, models.SarJobStatusDone, h.jobStatus(t).Status)
+	_, doc := h.declaration(t)
+	require.Equal(t, "DUPONT", doc.Values[engPP1Name].Value)
+}
