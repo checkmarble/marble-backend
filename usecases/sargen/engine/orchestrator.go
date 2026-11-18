@@ -43,6 +43,23 @@ const RunningElsewhereSnooze = 2 * time.Minute
 // (task failure, final job status): they must survive a cancelled context.
 const finalWriteTimeout = 10 * time.Second
 
+// The failure message of a task that hit a limit: the reason comes before the
+// advice (a relaunch without a change meets the same limit: the budget only
+// depends on the size of the selection).
+const (
+	limitMessagePrefix = "une étape essentielle de la génération n'a pas abouti (limite atteinte"
+	limitMessageAdvice = ". Réduisez la sélection ou relancez la génération."
+)
+
+// limitReachedMessage is the analyst-facing message of ErrTaskLimitReached for
+// a limit reason (French, may be empty).
+func limitReachedMessage(reason string) string {
+	if reason == "" {
+		return ErrTaskLimitReached.Error()
+	}
+	return limitMessagePrefix + " : " + reason + ")" + limitMessageAdvice
+}
+
 var (
 	// ErrTasksRunningElsewhere: nothing is claimable because the unfinished
 	// tasks run under another worker (or a stale one not yet reclaimable).
@@ -54,7 +71,7 @@ var (
 	// ErrTaskLimitReached: a task flagged FailJobOnLimit ended on a limit with
 	// no usable output; the job is marked failed (resumable) and the River job
 	// cancelled, as a retry would meet the same limit.
-	ErrTaskLimitReached = errors.New("une étape essentielle de la génération n'a pas abouti (limite atteinte) ; relancez la génération")
+	ErrTaskLimitReached = errors.New(limitMessagePrefix + ")" + limitMessageAdvice)
 	// ErrJobGone: the job or its declaration no longer exists; retrying is
 	// pointless (the worker cancels the River job).
 	ErrJobGone = errors.New("génération ou déclaration introuvable")
@@ -439,8 +456,8 @@ func (r *jobRun) handleWaveError(ctx context.Context, err error) error {
 		return fail("génération impossible : "+errors.UnwrapAll(err).Error(), err)
 	case errors.Is(err, ErrTaskLimitReached):
 		msg := ErrTaskLimitReached.Error()
-		// The agent error carries the limit reason, in French, in parentheses.
-		if cause := errors.UnwrapAll(err).Error(); strings.HasPrefix(cause, msg) {
+		// The agent error carries the limit reason, in French (limitReachedMessage).
+		if cause := errors.UnwrapAll(err).Error(); strings.HasPrefix(cause, limitMessagePrefix) {
 			msg = cause
 		}
 		return fail(msg, err)

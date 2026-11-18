@@ -196,7 +196,7 @@ func (r *agentRunner) Run(ctx context.Context, tc core.ToolContext, task models.
 	}
 	out, err := run.loop(ctx)
 	if err == nil && spec.FailJobOnLimit && run.limited && !hasUsableOutput(out) {
-		return out, errors.Mark(errors.Newf("%s (%s)", ErrTaskLimitReached.Error(), run.limitReason), ErrTaskLimitReached)
+		return out, errors.Mark(errors.New(limitReachedMessage(run.limitReason)), ErrTaskLimitReached)
 	}
 	return out, err
 }
