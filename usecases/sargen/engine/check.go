@@ -265,7 +265,11 @@ func (c *checker) checkQuestions(res *checkResult, qs []wireQuestion, afterFills
 }
 
 // optionFills returns the fills of an option when all pass, else none and the
-// reason.
+// reason. An option is the analyst's choice when clicked, so no source is
+// required: fills are validated with the analyst origin (the nature and source
+// requirements for LLM values do not apply) and a replaceable manual value
+// does not block them. Settings and computed fields are refused; a cited
+// source still goes through the proof checks of toFill.
 func (c *checker) optionFills(ws []wireFill, questionPaths []core.Path, doc *core.Document) ([]core.Fill, string) {
 	if len(ws) == 0 {
 		return nil, ""
@@ -282,10 +286,19 @@ func (c *checker) optionFills(ws []wireFill, questionPaths []core.Path, doc *cor
 		if !core.PathAllowed(f.Path, questionPaths) {
 			return nil, fmt.Sprintf("%s hors des champs de la question", f.Path)
 		}
+		if node := c.tc.Format.Spec().NodeAt(f.Path.Template()); node != nil {
+			switch node.EffectiveNature() {
+			case core.NatureSetting, core.NatureComputed:
+				return nil, fmt.Sprintf("%s est un réglage ou un champ calculé", f.Path)
+			}
+		}
+		f.Origin, f.TaskID = core.OriginAnalyst, nil
 		fills = append(fills, f)
 	}
 	clone := doc.Clone()
-	res := core.ApplyFills(c.tc.Format.Spec(), clone, fills, c.applyOptions(clone))
+	opts := c.applyOptions(clone)
+	opts.Overwrite = core.OverwriteAll
+	res := core.ApplyFills(c.tc.Format.Spec(), clone, fills, opts)
 	if len(res.Rejected) > 0 {
 		return nil, fmt.Sprintf("%s : %s", res.Rejected[0].Fill.Path, res.Rejected[0].Issue.Message)
 	}
