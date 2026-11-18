@@ -257,15 +257,28 @@ func TestApplyPlacement_TransactionSourcesIncludeLinkedAccount(t *testing.T) {
 	assert.Equal(t, []core.ObjectRef{{Table: "transactions", ObjectID: "t-1"}, {Table: "accounts", ObjectID: "a-1"}}, doc.ItemSources[tx])
 }
 
-func TestApplyPlacement_AccountGivenAsTransactionObjectIsRefused(t *testing.T) {
+// A model where the transaction row also carries its counterparty or IBAN is
+// legitimate: the output is accepted and the analyst is asked to check it.
+func TestApplyPlacement_TransactionObjectAlsoDeclaredIsAcceptedWithAQuestion(t *testing.T) {
 	f := planFormat(t)
-	raw := json.RawMessage(fmt.Sprintf(placementWithAccount, `{"object":{"table":"accounts","object_id":"a-1"}}`))
-	err := f.ApplyStructured(stepPlacement, core.NewDocument(), raw, linkedTo())
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "objet de personne ou de compte déclaré")
+	for name, tobj := range map[string]string{
+		"reference object": `{"table":"accounts","object_id":"a-1"}`,
+		"person object":    `{"table":"persons","object_id":"p-1"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			raw := json.RawMessage(fmt.Sprintf(placementWithAccount,
+				`{"object":{"table":"transactions","object_id":"t-1"}},{"object":`+tobj+`}`))
+			doc := core.NewDocument()
+			require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, linkedTo()))
+			require.Len(t, doc.Items["work.transactions"], 2)
 
-	rawPerson := json.RawMessage(fmt.Sprintf(placementWithAccount, `{"object":{"table":"persons","object_id":"p-1"}}`))
-	require.Error(t, f.ApplyStructured(stepPlacement, core.NewDocument(), rawPerson, linkedTo()))
+			qs := f.(core.StructuredQuestioner).StructuredQuestions(stepPlacement, raw)
+			require.Len(t, qs, 1)
+			assert.Contains(t, qs[0].Text, "à la fois comme transaction et comme personne ou référence financière")
+			require.Len(t, qs[0].Paths, 1)
+			assert.Equal(t, core.Path("work.transactions["+doc.Items["work.transactions"][1]+"]"), qs[0].Paths[0])
+		})
+	}
 }
 
 // derivedDoc is a document with a person holding an IBAN reference, and a
