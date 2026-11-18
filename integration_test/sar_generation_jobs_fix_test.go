@@ -297,3 +297,38 @@ func TestSarEngine_DiscardedOutputReleasesTaskAndResumeProgresses(t *testing.T) 
 	_, doc := h.declaration(t)
 	require.Equal(t, "DUPONT", doc.Values[engPP1Name].Value)
 }
+
+// DeleteSarGenerationUnfinishedTasks removes only the given not-done tasks of
+// the job: a done task, a task not listed and a task of another job survive.
+func TestSarGenerationTasks_DeleteUnfinishedOnly(t *testing.T) {
+	ctx := t.Context()
+	repo, _, job := sarGenTestSetup(t)
+	exec := testUsecases.NewExecutorFactory().NewExecutor()
+
+	stale := newSarGenTestTask(job.Id, "part.stale")
+	kept := newSarGenTestTask(job.Id, "part.kept")
+	done := newSarGenTestTask(job.Id, "part.done")
+	require.NoError(t, repo.CreateSarGenerationTasks(ctx, exec, []models.SarGenerationTask{stale, kept, done}))
+	attempt, claimed, err := repo.ClaimSarGenerationTask(ctx, exec, done.Id, time.Hour)
+	require.NoError(t, err)
+	require.True(t, claimed)
+	ok, err := repo.CompleteSarGenerationTask(ctx, exec, done.Id, attempt, []byte(`{}`), nil)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	_, _, otherJob := sarGenTestSetup(t)
+	other := newSarGenTestTask(otherJob.Id, "part.other")
+	require.NoError(t, repo.CreateSarGenerationTasks(ctx, exec, []models.SarGenerationTask{other}))
+
+	require.NoError(t, repo.DeleteSarGenerationUnfinishedTasks(ctx, exec, job.Id,
+		[]uuid.UUID{stale.Id, done.Id, other.Id}))
+
+	tasks, err := repo.ListSarGenerationTasks(ctx, exec, job.Id)
+	require.NoError(t, err)
+	require.Len(t, tasks, 2)
+	ids := []uuid.UUID{tasks[0].Id, tasks[1].Id}
+	require.ElementsMatch(t, []uuid.UUID{kept.Id, done.Id}, ids)
+	others, err := repo.ListSarGenerationTasks(ctx, exec, otherJob.Id)
+	require.NoError(t, err)
+	require.Len(t, others, 1)
+}
