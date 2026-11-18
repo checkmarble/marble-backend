@@ -47,6 +47,68 @@ type tenantOIDCTestRepository struct {
 	saved   *models.TenantOIDCConfiguration
 }
 
+type tenantDomainWriteRepository struct {
+	repositories.TenantOIDCRepository
+	domain models.TenantDomain
+}
+
+func (r *tenantDomainWriteRepository) CreateTenantDomain(_ context.Context, _ repositories.Executor, domain models.TenantDomain) error {
+	r.domain = domain
+	return nil
+}
+
+func TestTenantOIDCAddDomainVerification(t *testing.T) {
+	tenant := uuid.New()
+	for _, tt := range []struct {
+		name     string
+		role     models.Role
+		verified bool
+		wantErr  error
+	}{
+		{name: "tenant admin creates pending domain", role: models.TENANT_ADMIN},
+		{name: "OIDC key creates pending domain", role: models.OIDC_CONFIG_EDITOR},
+		{name: "tenant admin cannot create verified domain", role: models.TENANT_ADMIN, verified: true, wantErr: models.ForbiddenError},
+		{name: "OIDC key cannot create verified domain", role: models.OIDC_CONFIG_EDITOR, verified: true, wantErr: models.ForbiddenError},
+		{name: "marble admin creates verified domain", role: models.MARBLE_ADMIN, verified: true},
+		{name: "marble admin creates pending domain", role: models.MARBLE_ADMIN},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			creds := models.Credentials{TenantId: tenant, Roles: []models.Role{tt.role}}
+			guard := &security.EnforceSecurityTenantImpl{EnforceSecurity: security.NewEnforceSecurity(creds), Credentials: creds}
+			tx := &mocks.TransactionFactory{TxMock: &mocks.Transaction{}}
+			tx.On("Transaction", mock.Anything, mock.Anything).Return(nil).Maybe()
+			tenants := &mocks.TenantRepository{}
+			tenants.On("LockAndValidateUpdate", mock.Anything, mock.Anything, tenant).Return(nil).Maybe()
+			repo := &tenantDomainWriteRepository{}
+			uc := NewTenantOIDCUsecase(guard, tx, &mocks.ExecutorFactory{}, repo, tenants, true, false)
+			domain, err := uc.AddDomain(t.Context(), tenant, "Example.TEST", tt.verified)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+				require.Equal(t, uuid.Nil, repo.domain.Id)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, "example.test", domain.Domain)
+			require.Equal(t, tt.verified, domain.VerifiedAt != nil)
+			require.Equal(t, domain, repo.domain)
+		})
+	}
+}
+
+func TestTenantOIDCDomainsRejectOtherTenant(t *testing.T) {
+	tenant := uuid.New()
+	creds := models.Credentials{TenantId: uuid.New(), Roles: []models.Role{models.TENANT_ADMIN}}
+	guard := &security.EnforceSecurityTenantImpl{EnforceSecurity: security.NewEnforceSecurity(creds), Credentials: creds}
+	uc := NewTenantOIDCUsecase(guard, &mocks.TransactionFactory{}, &mocks.ExecutorFactory{},
+		&tenantOIDCTestRepository{}, &mocks.TenantRepository{}, true, false)
+	_, err := uc.ListDomains(t.Context(), tenant)
+	require.ErrorIs(t, err, models.ForbiddenError)
+	_, err = uc.AddDomain(t.Context(), tenant, "example.test", false)
+	require.ErrorIs(t, err, models.ForbiddenError)
+	require.ErrorIs(t, uc.SetDomainVerified(t.Context(), tenant, uuid.New(), true), models.ForbiddenError)
+	require.ErrorIs(t, uc.SetDomainVerified(t.Context(), tenant, uuid.New(), false), models.ForbiddenError)
+}
+
 type tenantOIDCReadRepository struct {
 	repositories.TenantOIDCRepository
 	exec        repositories.Executor
@@ -178,7 +240,7 @@ func TestTenantOIDCWritesRejectUnauthorizedTenant(t *testing.T) {
 	ctx := t.Context()
 	require.ErrorIs(t, uc.SaveConfiguration(ctx, tenant, TenantOIDCConfigurationInput{}), models.ForbiddenError)
 	require.ErrorIs(t, uc.DeleteConfiguration(ctx, tenant), models.ForbiddenError)
-	_, err := uc.AddDomain(ctx, tenant, "example.com")
+	_, err := uc.AddDomain(ctx, tenant, "example.com", false)
 	require.ErrorIs(t, err, models.ForbiddenError)
 	require.ErrorIs(t, uc.DeleteDomain(ctx, tenant, uuid.New()), models.ForbiddenError)
 	require.Equal(t, 4, security.calls)
