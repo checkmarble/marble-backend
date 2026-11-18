@@ -155,6 +155,7 @@ func TestApplyFills_UnknownOriginRejected(t *testing.T) {
 			assert.Empty(t, res.Applied)
 			require.Len(t, res.Rejected, 1)
 			assert.True(t, res.Rejected[0].Issue.Blocks())
+			assert.Equal(t, core.CodeUnknownOrigin, res.Rejected[0].Issue.Code)
 			requireDocUnchanged(t, before, doc)
 		})
 	}

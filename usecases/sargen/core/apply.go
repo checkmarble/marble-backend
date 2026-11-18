@@ -17,6 +17,7 @@ const (
 	CodeBadProvisionalKey    = "bad_provisional_key"
 	CodeEmptyNewItem         = "empty_new_item"
 	CodeMissingOrigin        = "missing_origin"
+	CodeUnknownOrigin        = "unknown_origin"
 	CodeBadConfidence        = "bad_confidence"
 	CodeNotFound             = "not_found"
 )
@@ -51,10 +52,11 @@ type Fill struct {
 
 type ApplyOptions struct {
 	// AllowedPrefixes restricts writable paths (by segments); an empty list
-	// means "no restriction" (plan semantics), not "nothing allowed". Empty entries are ignored. An item prefix (`a.b[k]`) allows
-	// everything below it, including new provisional items; a prefix naming a
-	// repeatable container without key (`a.b`) allows its existing items and
-	// new items `a.b[+x]`.
+	// means "no restriction" (plan semantics), not "nothing allowed". Empty
+	// entries are ignored. An item prefix (`a.b[k]`) allows everything below
+	// it, including new provisional items; a prefix naming a repeatable
+	// container without key (`a.b`) allows its existing items and new items
+	// `a.b[+x]`.
 	AllowedPrefixes []Path
 	Overwrite       OverwritePolicy
 	// SkipMaxItems disables the maximum item count of repeatable containers at
@@ -148,8 +150,10 @@ type pendingSeg struct {
 //
 // Writing the value already stored is a no-op (neither applied nor a
 // conflict), except an analyst confirmation (OverwriteAll, or a manual or
-// analyst fill over a value of another origin) which rewrites the metadata
-// and counts as applied. An empty value clears the field.
+// analyst fill over a value of another origin). A confirmation keeps the
+// stored provenance (sources, rule ids, justification, confidence,
+// computation, task), takes the analyst's origin, sets Reviewed and counts as
+// applied. An empty value clears the field.
 func ApplyFills(spec *Spec, doc *Document, fills []Fill, opts ApplyOptions) ApplyResult {
 	var res ApplyResult
 	resolved := map[string]Path{} // provisional literal prefix -> real item path
@@ -367,7 +371,7 @@ func checkFillMeta(f Fill) *Issue {
 	switch f.Origin {
 	case OriginDataModel, OriginLLM, OriginMemory, OriginOrgSetting, OriginComputed, OriginManual, OriginAnalyst:
 	default:
-		return blocking(f.Path, CodeMissingOrigin, "origine de la valeur inconnue")
+		return blocking(f.Path, CodeUnknownOrigin, "origine de la valeur inconnue")
 	}
 	switch f.Confidence {
 	case ConfidenceNone, ConfidenceLow, ConfidenceMedium, ConfidenceHigh:
