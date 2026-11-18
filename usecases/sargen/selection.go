@@ -186,7 +186,7 @@ func (uc *Usecase) snapshotFor(ctx context.Context, orgId uuid.UUID, c selection
 func ingestedOrigin(obj models.ClientObjectDetail) models.SarSnapshotOrigin {
 	o := models.SarSnapshotOrigin{Kind: models.SarOriginKindIngested}
 	if obj.Metadata.ValidFrom != nil && !obj.Metadata.ValidFrom.IsZero() {
-		vf := *obj.Metadata.ValidFrom
+		vf := obj.Metadata.ValidFrom.UTC()
 		o.ValidFrom = &vf
 	}
 	return o

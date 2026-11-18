@@ -412,3 +412,60 @@ func TestGetSelection_OtherOrgForbiddenAndFrozenAfterSourceChange(t *testing.T) 
 	_, err = uc.GetSelection(selOtherOrgCtx(), declId)
 	assert.ErrorIs(t, err, models.ForbiddenError)
 }
+
+// UpdateSelection only needs the trigger objects of the case: it must not run
+// the heavy decision loader (D2).
+func TestUpdateSelection_DoesNotLoadRulesOfEveryCaseDecision(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t1"}, time.Now())
+
+	_, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{{Ref: selRef("transactions", "t1")}}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 0, f.Decisions.Calls, "selection must not page through DecisionsByCaseIdFromCursor")
+}
+
+// Reaching an object from a selected object is checked against the frozen copy
+// of that object (D3): a2 is not reached from the a1 frozen in the selection.
+func TestUpdateSelection_ReachedFromUsesFrozenCopy(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	selDataModel(f)
+	base := time.Now().Add(-time.Hour)
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t1", "account_id": "a1"}, base)
+	f.Ingested.Put("accounts", "a1", map[string]any{"object_id": "a1"}, base)
+	f.Ingested.Put("accounts", "a2", map[string]any{"object_id": "a2"}, base)
+
+	st, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{{Ref: selRef("transactions", "t1")}}, nil)
+	require.NoError(t, err)
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t1", "account_id": "a2"}, time.Now())
+
+	_, err = uc.UpdateSelection(f.Ctx, declId, st.Declaration.Version, []SelectionAdd{{
+		Ref:         selRef("accounts", "a2"),
+		ReachedFrom: &models.SarReachedFrom{TableName: "transactions", ObjectId: "t1", Link: "account"},
+	}}, nil)
+	require.ErrorIs(t, err, models.ForbiddenError, "a2 is not reached from the frozen copy of t1 (account a1)")
+	assert.Len(t, f.Selection.Rows, 1, "only the trigger object is selected")
+}
+
+// Captured timestamps are frozen in UTC, whatever the offset of the source
+// value (D4).
+func TestUpdateSelection_FrozenTimestampsAreUTC(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	selDataModel(f)
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t1", "account_id": "a1"}, time.Now())
+	zone := time.FixedZone("UTC+0545", 5*3600+45*60)
+	validFrom := time.Date(2026, 5, 1, 10, 0, 0, 0, zone)
+	f.Ingested.Put("accounts", "a1", map[string]any{"object_id": "a1"}, validFrom)
+
+	_, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{{
+		Ref:         selRef("accounts", "a1"),
+		ReachedFrom: &models.SarReachedFrom{TableName: "transactions", ObjectId: "t1", Link: "account"},
+	}}, nil)
+	require.NoError(t, err)
+	require.Len(t, f.Selection.Rows, 1)
+
+	row := f.Selection.Rows[0]
+	require.NotNil(t, row.Origin.ValidFrom)
+	assert.True(t, row.Origin.ValidFrom.Equal(validFrom))
+	_, offset := row.Origin.ValidFrom.Zone()
+	assert.Equal(t, 0, offset, "the frozen valid_from must be stored in UTC, got %s", row.Origin.ValidFrom)
+}

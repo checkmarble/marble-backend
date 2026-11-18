@@ -12,23 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
 )
-
-// pagedDecisions caps the page size of the decision reader so that listing the
-// decisions of a case must follow the cursor across several pages.
-type pagedDecisions struct {
-	DecisionReader
-	page int
-}
-
-func (p pagedDecisions) DecisionsByCaseIdFromCursor(ctx context.Context, exec repositories.Executor,
-	req models.CaseDecisionsRequest,
-) ([]models.DecisionWithRulesAndScreeningsBaseInfo, bool, error) {
-	req.Limit = p.page
-	return p.DecisionReader.DecisionsByCaseIdFromCursor(ctx, exec, req)
-}
 
 // recordedRead is one call of ReadIngestedClientObjects.
 type recordedRead struct {
@@ -61,9 +46,6 @@ func TestListCandidates_AllDecisionsNotOnlyFive(t *testing.T) {
 		f.Decisions.Add(f.OrgId, "transactions",
 			map[string]any{"object_id": fmt.Sprintf("t%d", i)}, base.Add(time.Duration(i)*time.Minute))
 	}
-	// Two decisions per page: the 7 decisions need 4 pages.
-	uc.decisionReader = pagedDecisions{DecisionReader: f.Decisions, page: 2}
-
 	cands, err := uc.ListCandidates(f.Ctx, declId)
 	require.NoError(t, err)
 
@@ -77,7 +59,8 @@ func TestListCandidates_AllDecisionsNotOnlyFive(t *testing.T) {
 	for i := 1; i <= 7; i++ {
 		assert.True(t, seen[selRef("transactions", fmt.Sprintf("t%d", i))], "t%d must be a candidate", i)
 	}
-	assert.GreaterOrEqual(t, f.Decisions.Calls, 4, "the cursor must be followed until the last page")
+	assert.Equal(t, 1, f.Decisions.LightCalls, "all the decisions of the case come from one light query")
+	assert.Equal(t, 0, f.Decisions.Calls)
 }
 
 func TestListCandidates_DeduplicatesAcrossReasons(t *testing.T) {
@@ -315,4 +298,45 @@ func TestNavigate_FilterTypedFromFieldDataType(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Navigation only needs the trigger objects of the case: it must not run the
+// heavy decision loader that also reads the rules and screenings of every
+// decision (D2).
+func TestNavigate_DoesNotLoadRulesOfEveryCaseDecision(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	selDataModel(f)
+	base := time.Now().Add(-time.Hour)
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t1", "account_id": "a1"}, base)
+	for i := 2; i <= 4; i++ {
+		f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": fmt.Sprintf("t%d", i)}, base)
+	}
+	f.Ingested.Put("accounts", "a1", map[string]any{"object_id": "a1"}, base)
+
+	got, _, err := uc.Navigate(f.Ctx, declId, selRef("transactions", "t1"), "account", nil, 10)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, 0, f.Decisions.Calls,
+		"navigation must not page through DecisionsByCaseIdFromCursor (rules and screenings of every decision)")
+}
+
+// A selected object is followed from its frozen copy, not from the live client
+// data: a newer decision on t1 that now points to a2 must not change the
+// navigation from the a1 the analyst selected (D3).
+func TestNavigate_SelectedObjectUsesFrozenCopy(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	selDataModel(f)
+	base := time.Now().Add(-time.Hour)
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t1", "account_id": "a1"}, base)
+	f.Ingested.Put("accounts", "a1", map[string]any{"object_id": "a1", "name": "Acme"}, base)
+	f.Ingested.Put("accounts", "a2", map[string]any{"object_id": "a2", "name": "Autre"}, base)
+
+	_, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{{Ref: selRef("transactions", "t1")}}, nil)
+	require.NoError(t, err)
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t1", "account_id": "a2"}, time.Now())
+
+	got, _, err := uc.Navigate(f.Ctx, declId, selRef("transactions", "t1"), "account", nil, 10)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "a1", got[0].Ref.ObjectID, "the link must be followed from the frozen copy (a1), not the live data (a2)")
 }
