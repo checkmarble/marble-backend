@@ -27,7 +27,7 @@ func TestGenerate_PlacementWithoutAccountLinksItFromTheDataModel(t *testing.T) {
 	obj := func(table, id string) m { return m{"table": table, "object_id": id} }
 	txObjects := make([]m, 0, len(e2eTransactions))
 	for _, tx := range e2eTransactions {
-		txObjects = append(txObjects, m{"objects": []m{obj("transactions", tx.id)}})
+		txObjects = append(txObjects, m{"object": obj("transactions", tx.id)})
 	}
 	script := e2eScript()
 	script["sar_generation/tracfin/placement.md"] = []engine.AgentStep{e2eFinal(m{
@@ -97,7 +97,7 @@ func TestGenerate_PlacementBudgetGrowsWithSelection(t *testing.T) {
 	ids = append(ids, bulk...)
 	txObjects := make([]m, 0, len(ids))
 	for _, id := range ids {
-		txObjects = append(txObjects, m{"objects": []m{obj("transactions", id), obj("accounts", "a1")}})
+		txObjects = append(txObjects, m{"object": obj("transactions", id)})
 	}
 	steps := make([]engine.AgentStep, 0, 41)
 	for i := 0; i < 40; i++ {

@@ -36,12 +36,9 @@ type placementOutput struct {
 		Objects []core.ObjectRef `json:"objects"`
 	} `json:"financial_refs"`
 	Transactions []struct {
-		// Objects are the transaction object (first) and, optionally, the selected
-		// objects linked to it: they all become the sources of the working
-		// transaction. The backend adds the linked objects it finds itself.
-		Objects []core.ObjectRef `json:"objects"`
-		// Object is the former single-object form, still accepted.
-		Object *core.ObjectRef `json:"object"`
+		// Object is the transaction object. The backend adds the selected objects
+		// linked to it (its accounts) as sources.
+		Object core.ObjectRef `json:"object"`
 	} `json:"transactions"`
 }
 
@@ -78,7 +75,7 @@ func placementSchema(refKinds []string) jsonschema.Schema {
      "person_index":{"type":"integer","description":"position de la personne dans persons (à partir de 0)"},
      "lien":{"type":"string","enum":["titulaire","co-titulaire","mandataire"]}}}},
    "objects":{"type":"array","items":` + obj + `}}}},
- "transactions":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["objects"],"properties":{"objects":{"type":"array","description":"l'objet transaction en premier (les objets liés, comme son compte, sont ajoutés par le système)","items":` + obj + `}}}}}}`
+ "transactions":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["object"],"properties":{"object":{"description":"l'objet transaction (jamais un objet de personne ni de compte déclaré) ; les comptes liés sont ajoutés par le système","type":"object","additionalProperties":false,"required":["table","object_id"],"properties":{"table":{"type":"string"},"object_id":{"type":"string"}}}}}}}}`
 	var s jsonschema.Schema
 	if err := json.Unmarshal([]byte(raw), &s); err != nil {
 		panic("placement schema: " + err.Error()) // constant above: a programming error
@@ -102,6 +99,7 @@ func (f *format) parsePlacement(raw json.RawMessage) (out placementOutput, dropp
 			return out, nil, errors.Wrapf(err, "personne %d", i)
 		}
 	}
+	allRefs := slices.Clone(out.FinancialRefs)
 	kept := out.FinancialRefs[:0:0]
 	for i, r := range out.FinancialRefs {
 		if !slices.Contains(refKinds, r.RefKind) {
@@ -138,13 +136,24 @@ func (f *format) parsePlacement(raw json.RawMessage) (out placementOutput, dropp
 		kept = append(kept, r)
 	}
 	out.FinancialRefs = kept
-	for i := range out.Transactions {
-		t := &out.Transactions[i]
-		if len(t.Objects) == 0 && t.Object != nil {
-			t.Objects = []core.ObjectRef{*t.Object}
+	declared := map[core.ObjectRef]bool{}
+	for _, p := range out.Persons {
+		for _, o := range p.Objects {
+			declared[o] = true
 		}
-		if err := checkObjects(t.Objects); err != nil {
+	}
+	for _, r := range allRefs {
+		for _, o := range r.Objects {
+			declared[o] = true
+		}
+	}
+	for i, t := range out.Transactions {
+		if err := checkObjects([]core.ObjectRef{t.Object}); err != nil {
 			return out, nil, errors.Wrapf(err, "transaction %d", i)
+		}
+		if declared[t.Object] {
+			return out, nil, errors.Newf("transaction %d : l'objet %s/%s est un objet de personne ou de compte déclaré ; la transaction doit citer son propre objet transaction",
+				i, t.Object.Table, t.Object.ObjectID)
 		}
 	}
 	return out, dropped, nil
@@ -197,8 +206,8 @@ func sameObjects(a, b []core.ObjectRef) bool {
 //
 // Dedupe: persons with the same type and the same objects are one person;
 // references of the same type and objects are one reference (their owners are
-// merged); transactions are identified by their transaction object (the first
-// object listed) and merge into the union of their objects. An object shared by
+// merged); transactions are identified by their transaction object (one id per
+// entry; it may not be a person or reference object, see parsePlacement). An object shared by
 // two distinct persons stays allowed.
 //
 // A transaction's sources are its objects plus the selected objects linked to
@@ -259,29 +268,24 @@ func (f *format) ApplyStructured(kind string, doc *core.Document, raw json.RawMe
 		}
 	}
 
-	// Transactions: the transaction object is the first one listed.
+	// Transactions: one per transaction object; its sources are that object and
+	// the selected objects linked to it that are objects of a declared financial
+	// reference (its accounts).
 	var txs [][]core.ObjectRef
+	var seen []core.ObjectRef
 	for _, t := range out.Transactions {
-		i := slices.IndexFunc(txs, func(o []core.ObjectRef) bool { return o[0] == t.Objects[0] })
-		if i < 0 {
-			txs = append(txs, slices.Clone(t.Objects))
+		if slices.Contains(seen, t.Object) {
 			continue
 		}
-		for _, o := range t.Objects {
-			if !slices.Contains(txs[i], o) {
-				txs[i] = append(txs[i], o)
+		seen = append(seen, t.Object)
+		objs := []core.ObjectRef{t.Object}
+		for _, linked := range sc.Linked(t.Object) {
+			if !slices.Contains(objs, linked) &&
+				slices.ContainsFunc(refs, func(r reference) bool { return slices.Contains(r.objects, linked) }) {
+				objs = append(objs, linked)
 			}
 		}
-	}
-	for i, objs := range txs {
-		for _, linked := range sc.Linked(objs[0]) {
-			if slices.Contains(objs, linked) {
-				continue
-			}
-			if slices.ContainsFunc(refs, func(r reference) bool { return slices.Contains(r.objects, linked) }) {
-				txs[i] = append(txs[i], linked)
-			}
-		}
+		txs = append(txs, objs)
 	}
 
 	items := make([]core.Path, len(people))

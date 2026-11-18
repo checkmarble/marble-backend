@@ -293,7 +293,7 @@ func e2eScript() map[string][]engine.AgentStep {
 	obj := func(table, id string) m { return m{"table": table, "object_id": id} }
 	txObjects := make([]m, 0, len(e2eTransactions))
 	for _, tx := range e2eTransactions {
-		txObjects = append(txObjects, m{"objects": []m{obj("transactions", tx.id), obj("accounts", "a1")}})
+		txObjects = append(txObjects, m{"object": obj("transactions", tx.id)})
 	}
 	placement := e2eFinal(m{
 		"persons": []m{{"kind": "pp", "objects": []m{obj("clients", "c1")}}},
@@ -402,6 +402,7 @@ func e2eReady(t *testing.T) (*Usecase, *fakes, uuid.UUID) {
 
 func TestGenerate_EndToEndWithScriptedLLM(t *testing.T) {
 	uc, f, declId := e2eReady(t)
+	selDataModel(f) // the placement lists transaction objects only: the account comes from the link
 	llm := &e2eLLM{script: e2eScript(), runs: map[string]int{}, Requests: map[string]int{}}
 	o, repo := e2eOrchestrator(f, llm, e2ePrompts{})
 

@@ -99,8 +99,8 @@ func TestApplyPlacement_SameTransactionListedTwiceIsOneTransaction(t *testing.T)
 	f := planFormat(t)
 	doc := core.NewDocument()
 	raw := json.RawMessage(`{"persons":[],"financial_refs":[],"transactions":[
-	  {"objects":[{"table":"transactions","object_id":"t-1"},{"table":"accounts","object_id":"a-1"}]},
-	  {"objects":[{"table":"transactions","object_id":"t-1"},{"table":"accounts","object_id":"a-2"}]}]}`)
+	  {"object":{"table":"transactions","object_id":"t-1"}},
+	  {"object":{"table":"transactions","object_id":"t-1"}}]}`)
 	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, core.StructuredContext{}))
 
 	require.Len(t, doc.Items["work.transactions"], 1, "one transaction object is one working transaction")

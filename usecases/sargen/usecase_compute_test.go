@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
 )
 
@@ -128,4 +129,28 @@ func TestChooseQuestionOption_RecomputesOperations(t *testing.T) {
 	line := compOnlyLine(t, st.Doc)
 	assert.InDelta(t, 250, compDecimalOf(t, st.Doc.Values[line.Child("montantTotal")].Value), 0.001)
 	assert.InDelta(t, 250, compDecimalOf(t, st.Doc.Values["operations.montantTotal"].Value), 0.001)
+}
+
+func TestTransactionWithoutCurrencyBlocksTheExport(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	st := createFresh(t, uc, f)
+	id := st.Declaration.Id
+
+	tx, st, err := uc.AddItem(f.Ctx, id, st.Declaration.Version, "work.transactions")
+	require.NoError(t, err)
+	st, err = uc.UpdateFields(f.Ctx, id, st.Declaration.Version, []core.Fill{
+		{Path: tx.Child("montant"), Value: "100.00"},
+		{Path: tx.Child("date"), Value: "2026-03-10"},
+	})
+	require.NoError(t, err)
+
+	var found bool
+	for _, is := range st.Issues {
+		if is.Code == "transaction_non_comptee" && is.Path == tx.Child("devise") && is.Blocks() {
+			found = true
+		}
+	}
+	require.True(t, found, "the uncounted transaction is a blocking issue on its currency field")
+	_, err = uc.Export(f.Ctx, id, st.Declaration.Version)
+	require.ErrorIs(t, err, models.BadParameterError)
 }

@@ -150,18 +150,21 @@ func uncountedTransactions(doc *core.Document, existing []core.Issue) []core.Iss
 			return strings.TrimSpace(doc.Values[tx.Child(name)].Value)
 		})
 		var msg string
+		path := tx
 		switch status {
 		case txNoCurrency:
+			path = tx.Child("devise")
 			msg = "Transaction non comptée dans les opérations : la devise est manquante (elle doit être EUR)."
 		case txNoAmount:
-			if slices.ContainsFunc(existing, func(is core.Issue) bool { return is.Blocks() && is.Path == tx.Child("montant") }) {
+			path = tx.Child("montant")
+			if slices.ContainsFunc(existing, func(is core.Issue) bool { return is.Blocks() && is.Path == path }) {
 				continue
 			}
 			msg = "Transaction non comptée dans les opérations : le montant est manquant ou n'est pas un nombre décimal."
 		default:
 			continue
 		}
-		out = append(out, core.Issue{Path: tx, Code: codeTransactionNonComptee, Severity: core.SeverityBlocking, Message: msg})
+		out = append(out, core.Issue{Path: path, Code: codeTransactionNonComptee, Severity: core.SeverityBlocking, Message: msg})
 	}
 	return out
 }
@@ -171,10 +174,11 @@ func montantHorsEuro(doc *core.Document) []core.Issue {
 	var out []core.Issue
 	for _, k := range doc.Items[container] {
 		tx := core.Path(string(container) + "[" + k + "]")
-		if devise := doc.Values[tx.Child("devise")].Value; devise != "" && devise != "EUR" {
+		val := func(name string) string { return strings.TrimSpace(doc.Values[tx.Child(name)].Value) }
+		if _, _, status := countableTransaction(val); status == txForeignCurrency {
 			out = append(out, core.Issue{
 				Path: tx.Child("montant"), Code: codeMontantHorsEuro, Severity: core.SeverityBlocking,
-				Message: "Le montant doit être en euros : convertir avant l'export (devise saisie : " + devise + ").",
+				Message: "Le montant doit être en euros : convertir avant l'export (devise saisie : " + val("devise") + ").",
 			})
 		}
 	}

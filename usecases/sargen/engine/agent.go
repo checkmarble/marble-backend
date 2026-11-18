@@ -470,16 +470,14 @@ type agentRun struct {
 
 func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 	lim := a.r.limits.forTier(a.spec.Tier)
-	if l := a.spec.Limits; l.MaxToolCalls > 0 || l.MaxTurns > 0 || l.TimeoutSeconds > 0 {
-		if l.MaxToolCalls > 0 {
-			lim.MaxToolCalls = l.MaxToolCalls
-		}
-		if l.MaxTurns > 0 {
-			lim.MaxTurns = l.MaxTurns
-		}
-		if l.TimeoutSeconds > 0 {
-			lim.Timeout = time.Duration(l.TimeoutSeconds) * time.Second
-		}
+	l := a.spec.Limits
+	lim.MaxToolCalls = max(lim.MaxToolCalls, l.MaxToolCalls)
+	lim.MaxTurns = max(lim.MaxTurns, l.MaxTurns)
+	lim.Timeout = max(lim.Timeout, time.Duration(l.TimeoutSeconds)*time.Second)
+	// The task must end on its own limit before the job does: at most half of
+	// what the job context still allows.
+	if dl, ok := parent.Deadline(); ok {
+		lim.Timeout = min(lim.Timeout, time.Until(dl)/2)
 	}
 	// The task budget is a deadline checked before each turn; the calls are
 	// bounded by their own timeout, drawn from the parent context, so that a
