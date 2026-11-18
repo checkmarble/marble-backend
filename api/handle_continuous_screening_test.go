@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -22,6 +23,7 @@ func TestMatchReviewStatusCode(t *testing.T) {
 		{errors.Wrap(models.UnprocessableEntityError, "continuous screening match is not pending review"), http.StatusUnprocessableEntity},
 		{errors.Wrap(models.ForbiddenError, "no access"), http.StatusForbidden},
 		{errors.Wrap(models.NotFoundError, "no match"), http.StatusNotFound},
+		{errors.Wrap(context.DeadlineExceeded, "review"), http.StatusRequestTimeout},
 		{errors.New("database"), http.StatusInternalServerError},
 	}
 	for _, tt := range tests {
