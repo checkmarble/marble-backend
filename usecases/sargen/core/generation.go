@@ -48,6 +48,11 @@ type TaskSpec struct {
 	// OutputSchema nil = the standard fills schema.
 	OutputSchema *jsonschema.Schema `json:"output_schema,omitempty"`
 	Payload      map[string]any     `json:"payload"`
+	// FailJobOnLimit: a task ending on a limit (turns, tool calls, time) with
+	// no usable output (no fill, finding nor structured output; questions do
+	// not count) fails the job instead of being done empty. For a task the
+	// whole generation depends on.
+	FailJobOnLimit bool `json:"fail_job_on_limit,omitempty"`
 }
 
 // PlanState is what Format.Plan sees; it is called again after each wave of

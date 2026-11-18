@@ -25,7 +25,7 @@ func TestRelationError_CopiedBoolean(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			msg := relationError(n, c.value, c.raw, c.just)
+			msg, _ := relationError(n, nil, c.value, c.raw, c.just, core.ConfidenceLow)
 			if c.ok {
 				require.Empty(t, msg)
 			} else {
@@ -54,7 +54,7 @@ func TestRelationError_NumbersFromNonNumericRaw(t *testing.T) {
 		}
 		for _, c := range cases {
 			t.Run(string(typ)+"/"+c.name, func(t *testing.T) {
-				msg := relationError(n, c.value, c.raw, "")
+				msg, _ := relationError(n, nil, c.value, c.raw, "", core.ConfidenceNone)
 				if c.ok {
 					require.Empty(t, msg)
 				} else {
