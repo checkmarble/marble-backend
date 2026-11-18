@@ -294,21 +294,30 @@ func TestHandleAddSarItem_RefusalWithIssues(t *testing.T) {
 	assert.Contains(t, sarHTTPDecode(t, w), "details")
 }
 
-// The export refusal keeps its message and carries no details (blocking issues
-// are in the state); a move to presentSarError would drop the prefix.
+// The export refusal is a clean French message (no transaction prefix) with the
+// blocking issues in details.issues.
 func TestHandleExport_RefusalMessageLocked(t *testing.T) {
 	id := uuid.New()
 	f := &fakeSarGenerationUsecase{}
-	f.Fail("Export", errors.Wrap(sargen.NewIssuesError([]core.Issue{{Path: "a", Code: "c", Message: "m"}}),
-		"l'export est impossible : des erreurs bloquantes subsistent"))
+	f.Fail("Export", errors.Wrap(sargen.NewIssuesErrorWithMessage(
+		"l'export est impossible : des erreurs bloquantes subsistent",
+		[]core.Issue{{Path: "a.b", Code: "c", Severity: core.SeverityBlocking, Message: "m"}}),
+		"Error executing transaction"))
 	r := newSarTestRouter(t, f)
 
 	w := doSarRequest(r, http.MethodPost, "/sar-declarations/"+id.String()+"/exports", map[string]any{"version": 3})
 
 	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
 	body := sarHTTPDecode(t, w)
-	assert.Contains(t, body["message"], "l'export est impossible : des erreurs bloquantes subsistent")
-	assert.NotContains(t, body, "details")
+	assert.Equal(t, "l'export est impossible : des erreurs bloquantes subsistent : a.b : m", body["message"])
+	assert.NotContains(t, body["message"], "Error executing transaction")
+	issues := body["details"].(map[string]any)["issues"].([]any)
+	require.Len(t, issues, 1)
+	issue := issues[0].(map[string]any)
+	assert.Equal(t, "a.b", issue["path"])
+	assert.Equal(t, "c", issue["code"])
+	assert.Equal(t, "m", issue["message"])
+	assert.Contains(t, issue, "severity")
 }
 
 func TestHandleUpdateSarAnalysis_ExtraInfoCountsCharacters(t *testing.T) {

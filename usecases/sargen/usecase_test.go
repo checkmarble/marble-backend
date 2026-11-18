@@ -267,6 +267,17 @@ func TestExport_RefusedWithBlockingIssues(t *testing.T) {
 
 	_, err := uc.Export(f.Ctx, st.Declaration.Id, st.Declaration.Version)
 	require.ErrorIs(t, err, models.BadParameterError)
+	var carrier interface{ SarIssues() []core.Issue }
+	require.True(t, errors.As(err, &carrier), "the refusal must expose its structured issues")
+	require.NotEmpty(t, carrier.SarIssues())
+	for _, is := range carrier.SarIssues() {
+		require.True(t, is.Blocks())
+		require.NotEmpty(t, is.Path)
+		require.NotEmpty(t, is.Code)
+		require.NotEmpty(t, is.Message)
+	}
+	require.True(t, strings.HasPrefix(err.Error(), "l'export est impossible : des erreurs bloquantes subsistent : "), err.Error())
+	require.NotContains(t, err.Error(), "Error executing transaction")
 	require.Empty(t, f.Blobs.Keys(), "nothing may be written to the bucket")
 	require.Empty(t, f.Repo.Exports)
 }

@@ -256,7 +256,7 @@ func handleExportSarDeclaration(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 		e, err := newSarGenerationUsecase(c, uc).Export(c.Request.Context(), id, in.Version)
-		if presentError(c.Request.Context(), c, err) {
+		if presentSarError(c, err) {
 			return
 		}
 		c.JSON(http.StatusCreated, dto.AdaptSarExportDto(e))

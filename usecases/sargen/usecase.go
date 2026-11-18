@@ -561,9 +561,18 @@ func (uc *Usecase) mutateWithPost(ctx context.Context, id uuid.UUID, version int
 // the clean French text the analyst reads (no code, no sentinel suffix).
 type IssuesError struct {
 	issues []core.Issue
+	// prefix, when set, introduces the message (e.g. why the operation is refused).
+	prefix string
 }
 
 func (e *IssuesError) Error() string {
+	if e.prefix != "" {
+		return e.prefix + " : " + e.issuesText()
+	}
+	return e.issuesText()
+}
+
+func (e *IssuesError) issuesText() string {
 	msgs := make([]string, 0, len(e.issues))
 	for _, i := range e.issues {
 		msgs = append(msgs, string(i.Path)+" : "+i.Message)
@@ -578,6 +587,12 @@ func (e *IssuesError) SarIssues() []core.Issue { return e.issues }
 
 // NewIssuesError builds the refusal of a write rejected with issues.
 func NewIssuesError(issues []core.Issue) *IssuesError { return &IssuesError{issues: issues} }
+
+// NewIssuesErrorWithMessage is NewIssuesError with a French sentence introducing
+// the issues in the message.
+func NewIssuesErrorWithMessage(prefix string, issues []core.Issue) *IssuesError {
+	return &IssuesError{issues: issues, prefix: prefix}
+}
 
 func issuesToError(issues []core.Issue) error {
 	return NewIssuesError(issues)
