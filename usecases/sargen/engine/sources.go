@@ -98,10 +98,12 @@ func linkedObjects(sc scope, dm models.DataModel, ref core.ObjectRef) []models.S
 func StructuredContextFor(selection []models.SarSelectedObject, dm models.DataModel) core.StructuredContext {
 	sc := newScope(selection)
 	refs := make([]core.ObjectRef, len(selection))
+	snapshots := make(map[core.ObjectRef]map[string]any, len(selection))
 	for i, o := range selection {
 		refs[i] = core.ObjectRef{Table: o.TableName, ObjectID: o.ObjectId}
+		snapshots[refs[i]] = o.Snapshot
 	}
-	return core.StructuredContext{Selection: refs, LinkedObjects: func(ref core.ObjectRef) []core.ObjectRef {
+	return core.StructuredContext{Selection: refs, Snapshots: snapshots, LinkedObjects: func(ref core.ObjectRef) []core.ObjectRef {
 		var out []core.ObjectRef
 		for _, o := range linkedObjects(sc, dm, ref) {
 			out = append(out, core.ObjectRef{Table: o.TableName, ObjectID: o.ObjectId})

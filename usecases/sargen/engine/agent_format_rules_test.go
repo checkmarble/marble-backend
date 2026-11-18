@@ -374,7 +374,7 @@ func TestAgent_AnalystTextNeverShowsEnglishOrStepKind(t *testing.T) {
 	tc := agentToolContext(t)
 	spec := core.TaskSpec{Kind: "understanding", PromptPath: "prompts/understanding.md"}
 	run := &agentRun{
-		tc: tc, spec: spec, mode: modeStructured, tr: newTrace("", ""),
+		tc: tc, spec: spec, mode: modeFills, tr: newTrace("", ""),
 		chk: newChecker(tc, spec, tc.TaskId, nil),
 	}
 

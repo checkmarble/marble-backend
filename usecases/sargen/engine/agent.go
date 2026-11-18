@@ -700,7 +700,11 @@ func (a *agentRun) control(final json.RawMessage) (core.TaskOutput, []string) {
 		if err := a.chk.checkStructured(final); err != nil {
 			return core.TaskOutput{}, []string{"structured output refused: " + err.Error()}
 		}
-		return core.TaskOutput{Structured: final}, nil
+		cleaned, dropped := a.chk.cleanStructured(final)
+		for _, d := range dropped {
+			a.tr.add(TraceEntry{Type: TraceCheckError, Text: d})
+		}
+		return core.TaskOutput{Structured: cleaned}, nil
 	default:
 		res := a.chk.checkFills(final)
 		for _, n := range res.Notes {
@@ -814,7 +818,9 @@ func (a *agentRun) limitOutputFrom(reason string, out core.TaskOutput) core.Task
 	a.tr.add(TraceEntry{Type: TraceCheckError, Text: "limite : " + reason})
 	a.limited, a.limitReason = true, reason
 	out = capOutput(out)
-	if a.mode != modeReview {
+	// A step without target writes nothing (e.g. a reading aid): nothing to
+	// complete for the analyst.
+	if a.mode != modeReview && !(a.mode == modeStructured && a.spec.TargetPath == "") {
 		filled := map[core.Path]bool{}
 		for _, f := range out.Fills {
 			filled[f.Path] = true

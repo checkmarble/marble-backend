@@ -108,68 +108,131 @@ func understandingSchema() jsonschema.Schema {
 	return s
 }
 
-// checkUnderstanding decodes and checks an understanding note against the
-// selection and the analyst's text. Anything wrong refuses the whole note (the
-// engine's correction loop asks the model again).
-func checkUnderstanding(raw json.RawMessage, sc core.StructuredContext) error {
+// minQuoteWords is the least number of words of a phrase quoted from the
+// analyst's text: a shorter one ("de", "le client") proves nothing.
+const minQuoteWords = 3
+
+// cleanUnderstanding decodes an understanding note and checks it against the
+// selection and the analyst's text. The note is a reading aid, so the check is
+// best-effort: an entity, link, fact, suspicion, key operation or unknown whose
+// references, quote or bounds fail is dropped (and listed in dropped), the rest
+// is kept. Only a note that does not parse, or whose summary, typology or array
+// sizes exceed the hard bounds, is refused.
+func cleanUnderstanding(raw json.RawMessage, sc core.StructuredContext) (cleaned json.RawMessage, dropped []string, err error) {
 	var n understandingNote
 	if err := json.NewDecoder(bytes.NewReader(raw)).Decode(&n); err != nil {
-		return errors.Wrap(err, "unreadable understanding note")
+		return nil, nil, errors.Wrap(err, "unreadable understanding note")
 	}
 	v := noteValidator{sc: sc, text: foldAnalystText(sc.AnalystText)}
 	v.bounded("summary", n.Summary, maxNoteSummary)
 	v.bounded("typology", n.Typology, maxNoteString)
 	v.size("entities", len(n.Entities))
-	for i, e := range n.Entities {
-		at := "entities[" + itoa(i) + "]"
-		v.object(at+".object", e.Object)
-		v.enum(at+".role", e.Role, entityRoles)
-		v.bounded(at+".description", e.Description, maxNoteString)
-		v.basis(at, e.Basis)
-	}
 	v.size("links", len(n.Links))
-	for i, l := range n.Links {
-		at := "links[" + itoa(i) + "]"
-		v.object(at+".from", l.From)
-		v.object(at+".to", l.To)
-		v.bounded(at+".nature", l.Nature, maxNoteString)
-		v.basis(at, l.Basis)
-	}
 	v.size("facts", len(n.Facts))
-	for i, f := range n.Facts {
-		at := "facts[" + itoa(i) + "]"
-		v.bounded(at+".statement", f.Statement, maxNoteString)
-		v.objects(at+".objects", f.Objects)
-		v.basis(at, f.Basis)
-	}
 	v.size("suspicions", len(n.Suspicions))
-	for i, s := range n.Suspicions {
-		at := "suspicions[" + itoa(i) + "]"
-		v.bounded(at+".qualification", s.Qualification, maxNoteString)
-		v.bounded(at+".quote", s.Quote, maxNoteString)
-		v.enum(at+".status", s.Status, suspicionStatuses)
-		if s.Status == "asserted" && !v.inText(s.Quote) {
-			v.fail(at + ".quote: an asserted suspicion needs a phrase copied verbatim from the analyst's text (analysis or extra_info)")
+	v.size("key_operations", len(n.KeyOperations))
+	v.size("unknowns", len(n.Unknowns))
+	if len(v.problems) > 0 {
+		return nil, nil, errors.New("invalid understanding note: " + strings.Join(v.problems, "; "))
+	}
+
+	// keep runs check on one item: the item is kept when it adds no problem.
+	keep := func(at string, check func()) bool {
+		before := len(v.problems)
+		check()
+		if len(v.problems) == before {
+			return true
+		}
+		dropped = append(dropped, "dropped "+at+": "+strings.Join(v.problems[before:], "; "))
+		v.problems = v.problems[:before]
+		return false
+	}
+
+	out := n
+	out.Entities = out.Entities[:0:0]
+	out.Links = out.Links[:0:0]
+	out.Facts = out.Facts[:0:0]
+	out.Suspicions = out.Suspicions[:0:0]
+	out.KeyOperations = out.KeyOperations[:0:0]
+	out.Unknowns = out.Unknowns[:0:0]
+	for i, e := range n.Entities {
+		if keep("entities["+itoa(i)+"]", func() {
+			v.object("object", e.Object)
+			v.enum("role", e.Role, entityRoles)
+			v.bounded("description", e.Description, maxNoteString)
+			v.basis("", e.Basis)
+		}) {
+			out.Entities = append(out.Entities, e)
 		}
 	}
-	v.size("key_operations", len(n.KeyOperations))
+	for i, l := range n.Links {
+		if keep("links["+itoa(i)+"]", func() {
+			v.object("from", l.From)
+			v.object("to", l.To)
+			v.bounded("nature", l.Nature, maxNoteString)
+			v.basis("", l.Basis)
+		}) {
+			out.Links = append(out.Links, l)
+		}
+	}
+	for i, f := range n.Facts {
+		if keep("facts["+itoa(i)+"]", func() {
+			v.bounded("statement", f.Statement, maxNoteString)
+			v.objects("objects", f.Objects)
+			v.basis("", f.Basis)
+		}) {
+			out.Facts = append(out.Facts, f)
+		}
+	}
+	for i, s := range n.Suspicions {
+		if keep("suspicions["+itoa(i)+"]", func() {
+			v.bounded("qualification", s.Qualification, maxNoteString)
+			v.bounded("quote", s.Quote, maxNoteString)
+			v.enum("status", s.Status, suspicionStatuses)
+			if s.Status == "asserted" && !v.inText(s.Quote) {
+				v.fail("quote: an asserted suspicion needs a phrase of at least " + itoa(minQuoteWords) + " words copied verbatim from the analyst's text (analysis or extra_info)")
+			}
+		}) {
+			out.Suspicions = append(out.Suspicions, s)
+		}
+	}
 	for i, k := range n.KeyOperations {
-		at := "key_operations[" + itoa(i) + "]"
-		v.objects(at+".objects", k.Objects)
-		v.bounded(at+".description", k.Description, maxNoteString)
+		if keep("key_operations["+itoa(i)+"]", func() {
+			v.objects("objects", k.Objects)
+			v.bounded("description", k.Description, maxNoteString)
+		}) {
+			out.KeyOperations = append(out.KeyOperations, k)
+		}
 	}
-	v.size("unknowns", len(n.Unknowns))
 	for i, u := range n.Unknowns {
-		at := "unknowns[" + itoa(i) + "]"
-		v.bounded(at+".topic", u.Topic, maxNoteString)
-		v.objects(at+".objects", u.Objects)
-		v.bounded(at+".why", u.Why, maxNoteString)
+		if keep("unknowns["+itoa(i)+"]", func() {
+			v.bounded("topic", u.Topic, maxNoteString)
+			v.objects("objects", u.Objects)
+			v.bounded("why", u.Why, maxNoteString)
+		}) {
+			out.Unknowns = append(out.Unknowns, u)
+		}
 	}
-	return v.err()
+	if len(dropped) == 0 {
+		return raw, nil, nil
+	}
+	cleaned, err = json.Marshal(out)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "cannot encode understanding note")
+	}
+	return cleaned, dropped, nil
 }
 
-// noteValidator collects every problem of a note, so that the model corrects
-// them all at once.
+// CleanStructured implements core.StructuredCleaner: the understanding note
+// keeps its valid items. Other kinds are returned as they are.
+func (f *format) CleanStructured(kind string, raw json.RawMessage, sc core.StructuredContext) (json.RawMessage, []string, error) {
+	if kind != StepUnderstanding {
+		return raw, nil, nil
+	}
+	return cleanUnderstanding(raw, sc)
+}
+
+// noteValidator collects the problems of the item being checked.
 type noteValidator struct {
 	sc       core.StructuredContext
 	text     string
@@ -177,16 +240,7 @@ type noteValidator struct {
 }
 
 func (v *noteValidator) fail(msg string) {
-	if len(v.problems) < 20 {
-		v.problems = append(v.problems, msg)
-	}
-}
-
-func (v *noteValidator) err() error {
-	if len(v.problems) == 0 {
-		return nil
-	}
-	return errors.New("invalid understanding note: " + strings.Join(v.problems, "; "))
+	v.problems = append(v.problems, msg)
 }
 
 func (v *noteValidator) size(name string, n int) {
@@ -220,25 +274,31 @@ func (v *noteValidator) object(name string, ref core.ObjectRef) {
 }
 
 func (v *noteValidator) objects(name string, refs []core.ObjectRef) {
-	v.size(name, len(refs))
+	if len(refs) > maxNoteItems {
+		v.fail(name + ": at most " + itoa(maxNoteItems) + " items")
+		return
+	}
 	for i, r := range refs {
 		v.object(name+"["+itoa(i)+"]", r)
 	}
 }
 
 func (v *noteValidator) basis(owner string, basis []noteBasis) {
-	v.size(owner+".basis", len(basis))
+	if len(basis) > maxNoteItems {
+		v.fail("basis: at most " + itoa(maxNoteItems) + " items")
+		return
+	}
 	for i, b := range basis {
-		at := owner + ".basis[" + itoa(i) + "]"
+		at := "basis[" + itoa(i) + "]"
 		v.bounded(at+".reference", b.Reference, maxNoteString)
 		switch b.Kind {
 		case "analysis":
 			if !v.inText(b.Reference) {
-				v.fail(at + ".reference: an analysis basis must be a phrase copied verbatim from the analyst's text (analysis or extra_info): " + quote(b.Reference))
+				v.fail(at + ".reference: an analysis basis must be a phrase of at least " + itoa(minQuoteWords) + " words copied verbatim from the analyst's text (analysis or extra_info): " + quote(b.Reference))
 			}
 		case "data":
 			if !v.dataReference(b.Reference) {
-				v.fail(at + ".reference: a data basis is table/object_id.field of a selected object: " + quote(b.Reference))
+				v.fail(at + ".reference: a data basis is table/object_id.field of a selected object, the field being one of its fields: " + quote(b.Reference))
 			}
 		case "hypothesis":
 			if strings.TrimSpace(b.Reference) == "" {
@@ -252,21 +312,29 @@ func (v *noteValidator) basis(owner string, basis []noteBasis) {
 
 // dataReference tells whether ref is table/object_id.field of a selected object
 // (the object id may itself hold dots: the field is what follows the object
-// prefix).
+// prefix) and, when the frozen snapshots are known, the field exists in the
+// snapshot of that object.
 func (v *noteValidator) dataReference(ref string) bool {
 	for _, s := range v.sc.Selection {
-		if field, ok := strings.CutPrefix(ref, s.Table+"/"+s.ObjectID+"."); ok && strings.TrimSpace(field) != "" {
+		field, ok := strings.CutPrefix(ref, s.Table+"/"+s.ObjectID+".")
+		if !ok || strings.TrimSpace(field) == "" {
+			continue
+		}
+		if v.sc.Snapshots == nil || field == "object_id" {
+			return true
+		}
+		if _, exists := v.sc.Snapshots[s][field]; exists {
 			return true
 		}
 	}
 	return false
 }
 
-// inText tells whether phrase appears in the analyst's text, compared
-// case-, accent- and whitespace-insensitively.
+// inText tells whether phrase (at least minQuoteWords words) appears in the
+// analyst's text, compared case-, accent- and whitespace-insensitively.
 func (v *noteValidator) inText(phrase string) bool {
 	p := foldAnalystText(phrase)
-	return p != "" && strings.Contains(v.text, p)
+	return len(strings.Fields(p)) >= minQuoteWords && strings.Contains(v.text, p)
 }
 
 var ligatureFold = strings.NewReplacer("œ", "oe", "æ", "ae", "ß", "ss", "’", "'", "‘", "'", "“", `"`, "”", `"`)

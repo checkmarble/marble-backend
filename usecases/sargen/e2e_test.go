@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -88,6 +89,19 @@ func (r *e2eRepo) CreateSarGenerationTasks(_ context.Context, _ repositories.Exe
 	for _, t := range ts {
 		r.tasks = append(r.tasks, &t)
 	}
+	return nil
+}
+
+func (r *e2eRepo) DeleteSarGenerationUnfinishedTasks(_ context.Context, _ repositories.Executor, jobId uuid.UUID, ids []uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	kept := r.tasks[:0:0]
+	for _, t := range r.tasks {
+		if !(t.JobId == jobId && t.Status != models.SarJobStatusDone && slices.Contains(ids, t.Id)) {
+			kept = append(kept, t)
+		}
+	}
+	r.tasks = kept
 	return nil
 }
 
