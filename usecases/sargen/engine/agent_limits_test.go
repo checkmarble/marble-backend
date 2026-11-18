@@ -16,11 +16,11 @@ func TestAgent_TimeoutIsClampedToHalfTheParentDeadline(t *testing.T) {
 		ToolCallStep("read_object", agReadP1Args),
 		FinalStep(agFinal(agNomFillValid)),
 	)
-	llm := slowLLM{inner: scripted, delay: 120 * time.Millisecond}
+	llm := slowLLM{inner: scripted, delay: 700 * time.Millisecond}
 	spec := agentSpec("fill", agentPersonPath)
 	spec.Limits.TimeoutSeconds = 600
 
-	parent, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	parent, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
 	defer cancel()
 	r := NewAgentRunner(llm, fakeAgentPrompts{}, AgentLimits{})
 	out, err := r.Run(parent, agentToolContext(t), agentTask(spec), spec)

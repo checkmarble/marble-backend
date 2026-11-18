@@ -153,7 +153,7 @@ type droppedRef struct {
 
 // StructuredQuestions reports what a placement output left out: the financial
 // references without a valid declared owner (core.StructuredQuestioner).
-func (f *format) StructuredQuestions(kind string, raw json.RawMessage) []core.QuestionDraft {
+func (f *format) StructuredQuestions(kind string, raw json.RawMessage, applied *core.Document) []core.QuestionDraft {
 	if kind != StepPlacement {
 		return nil
 	}
@@ -174,16 +174,16 @@ func (f *format) StructuredQuestions(kind string, raw json.RawMessage) []core.Qu
 			out = append(out, core.QuestionDraft{Text: fmt.Sprintf("référence financière : %d titulaire(s) non déclaré(s) ignoré(s) : %s", d.lostOwners, list)})
 		}
 	}
-	out = append(out, f.mixedUseQuestions(raw)...)
+	out = append(out, f.mixedUseQuestions(raw, applied)...)
 	return out
 }
 
 // mixedUseQuestions asks the analyst to check the transactions whose object is
 // also the object of a declared person or financial reference (a model where
 // the transaction row carries its counterparty or IBAN is legitimate, but so is
-// a model confusion). The path is the working transaction ApplyStructured
-// creates for it (transactions are numbered in order of first appearance).
-func (f *format) mixedUseQuestions(raw json.RawMessage) []core.QuestionDraft {
+// a model confusion). The path is the working transaction of the applied
+// document whose first source is that object (the newest one).
+func (f *format) mixedUseQuestions(raw json.RawMessage, applied *core.Document) []core.QuestionDraft {
 	var in placementOutput
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return nil
@@ -206,10 +206,19 @@ func (f *format) mixedUseQuestions(raw json.RawMessage) []core.QuestionDraft {
 			continue
 		}
 		seen = append(seen, t.Object)
-		if !declared[t.Object] {
+		if !declared[t.Object] || applied == nil {
 			continue
 		}
-		path := core.Path(fmt.Sprintf("%s[transactions-%d]", transactionsContainer, len(seen)))
+		path := core.Path("")
+		for _, k := range applied.Items[transactionsContainer] {
+			item := core.Path(string(transactionsContainer) + "[" + k + "]")
+			if src := applied.ItemSources[item]; len(src) > 0 && src[0] == t.Object {
+				path = item
+			}
+		}
+		if path == "" {
+			continue
+		}
 		out = append(out, core.QuestionDraft{
 			Paths: []core.Path{path},
 			Text: fmt.Sprintf("L'objet %s/%s est utilisé à la fois comme transaction et comme personne ou référence financière : à vérifier.",
