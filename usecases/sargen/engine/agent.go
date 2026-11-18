@@ -474,9 +474,11 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 	lim.MaxToolCalls = max(lim.MaxToolCalls, l.MaxToolCalls)
 	lim.MaxTurns = max(lim.MaxTurns, l.MaxTurns)
 	lim.Timeout = max(lim.Timeout, time.Duration(l.TimeoutSeconds)*time.Second)
-	// The task must end on its own limit before the job does: at most half of
-	// what the job context still allows.
-	if dl, ok := parent.Deadline(); ok {
+	// A task that fails the job on a limit must end on that limit before the
+	// job does: at most half of what the job context still allows. Any other
+	// task keeps its own budget: if the job context expires first, it fails
+	// technically, River retries and the resume redoes the task.
+	if dl, ok := parent.Deadline(); ok && a.spec.FailJobOnLimit {
 		lim.Timeout = min(lim.Timeout, time.Until(dl)/2)
 	}
 	// The task budget is a deadline checked before each turn; the calls are
