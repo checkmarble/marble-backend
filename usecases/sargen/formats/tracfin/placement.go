@@ -67,15 +67,15 @@ func placementSchema(refKinds []string) jsonschema.Schema {
 	const obj = `{"type":"object","additionalProperties":false,"required":["table","object_id"],"properties":{"table":{"type":"string"},"object_id":{"type":"string"}}}`
 	raw := `{"type":"object","additionalProperties":false,"required":["persons","financial_refs","transactions"],"properties":{
  "persons":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["kind","objects"],"properties":{
-   "kind":{"type":"string","enum":["pp","pm","pnc"],"description":"pp = personne physique, pm = personne morale, pnc = personne non caractérisée"},
+   "kind":{"type":"string","enum":["pp","pm","pnc"],"description":"pp = natural person (personne physique), pm = legal entity (personne morale), pnc = uncharacterized person (personne non caractérisée)"},
    "objects":{"type":"array","items":` + obj + `}}}},
  "financial_refs":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["ref_kind","owners","objects"],"properties":{
    "ref_kind":{"type":"string","enum":[` + strings.Join(enum, ",") + `]},
    "owners":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["person_index","lien"],"properties":{
-     "person_index":{"type":"integer","description":"position de la personne dans persons (à partir de 0)"},
+     "person_index":{"type":"integer","description":"position of the person in persons (starting at 0)"},
      "lien":{"type":"string","enum":["titulaire","co-titulaire","mandataire"]}}}},
    "objects":{"type":"array","items":` + obj + `}}}},
- "transactions":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["object"],"properties":{"object":{"description":"l'objet transaction (jamais un objet de personne ni de compte déclaré) ; les comptes liés sont ajoutés par le système","type":"object","additionalProperties":false,"required":["table","object_id"],"properties":{"table":{"type":"string"},"object_id":{"type":"string"}}}}}}}}`
+ "transactions":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["object"],"properties":{"object":{"description":"the transaction object (never a person object nor a declared account); linked accounts are added by the system","type":"object","additionalProperties":false,"required":["table","object_id"],"properties":{"table":{"type":"string"},"object_id":{"type":"string"}}}}}}}}`
 	var s jsonschema.Schema
 	if err := json.Unmarshal([]byte(raw), &s); err != nil {
 		panic("placement schema: " + err.Error()) // constant above: a programming error
@@ -88,24 +88,24 @@ func placementSchema(refKinds []string) jsonschema.Schema {
 // other error refuses the whole output.
 func (f *format) parsePlacement(raw json.RawMessage) (out placementOutput, dropped []droppedRef, err error) {
 	if err := json.NewDecoder(bytes.NewReader(raw)).Decode(&out); err != nil {
-		return out, nil, errors.Wrap(err, "sortie de placement illisible")
+		return out, nil, errors.Wrap(err, "unreadable placement output")
 	}
 	refKinds := f.referenceKinds()
 	for i, p := range out.Persons {
 		if !slices.Contains(personKinds, p.Kind) {
-			return out, nil, errors.Newf("personne %d : type %q inconnu (pp, pm ou pnc)", i, p.Kind)
+			return out, nil, errors.Newf("person %d: unknown kind %q (pp, pm or pnc)", i, p.Kind)
 		}
 		if err := checkObjects(p.Objects); err != nil {
-			return out, nil, errors.Wrapf(err, "personne %d", i)
+			return out, nil, errors.Wrapf(err, "person %d", i)
 		}
 	}
 	kept := out.FinancialRefs[:0:0]
 	for i, r := range out.FinancialRefs {
 		if !slices.Contains(refKinds, r.RefKind) {
-			return out, nil, errors.Newf("référence financière %d : ref_kind %q inconnu (%s)", i, r.RefKind, strings.Join(refKinds, ", "))
+			return out, nil, errors.Newf("financial reference %d: unknown ref_kind %q (%s)", i, r.RefKind, strings.Join(refKinds, ", "))
 		}
 		if err := checkObjects(r.Objects); err != nil {
-			return out, nil, errors.Wrapf(err, "référence financière %d", i)
+			return out, nil, errors.Wrapf(err, "financial reference %d", i)
 		}
 		owners := r.Owners[:0:0]
 		var seen []int
@@ -256,7 +256,7 @@ func sameObjects(a, b []core.ObjectRef) bool {
 // copy of the document untouched.
 func (f *format) ApplyStructured(kind string, doc *core.Document, raw json.RawMessage, sc core.StructuredContext) error {
 	if kind != StepPlacement {
-		return errors.Newf("sortie structurée inconnue : %q", kind)
+		return errors.Newf("unknown structured output: %q", kind)
 	}
 	out, _, err := f.parsePlacement(raw)
 	if err != nil {
@@ -348,11 +348,11 @@ func (f *format) ApplyStructured(kind string, doc *core.Document, raw json.RawMe
 
 func checkObjects(objs []core.ObjectRef) error {
 	if len(objs) == 0 {
-		return errors.New("au moins un objet source est obligatoire")
+		return errors.New("at least one source object is required")
 	}
 	for _, o := range objs {
 		if strings.TrimSpace(o.Table) == "" || strings.TrimSpace(o.ObjectID) == "" {
-			return errors.New("objet source sans table ou sans identifiant")
+			return errors.New("source object without table or identifier")
 		}
 	}
 	return nil

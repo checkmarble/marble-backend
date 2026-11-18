@@ -320,8 +320,8 @@ func (r *agentRunner) prompt(text string, tc core.ToolContext, spec core.TaskSpe
 		b.WriteString(UntrustedBlock("selected_objects", strings.Join(lines, "\n")+inline))
 	}
 	if spec.NeedsCaseContext && tc.CaseContext != "" {
-		b.WriteString("\n\n## Contexte du case\n")
-		b.WriteString(UntrustedBlock("contexte_du_case", tc.CaseContext))
+		b.WriteString("\n\n## Case context\n")
+		b.WriteString(UntrustedBlock("case_context", tc.CaseContext))
 	}
 	if len(spec.Payload) > 0 {
 		if raw, err := json.Marshal(spec.Payload); err == nil {
