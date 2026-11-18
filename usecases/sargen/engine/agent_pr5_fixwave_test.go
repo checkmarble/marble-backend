@@ -15,11 +15,6 @@ import (
 )
 
 // Fix wave PR 5 (verification-proof items 1-3, verification-jobs item 5).
-//
-// Some tests set a field that does not exist yet (AgentLimits.CallTimeout,
-// TaskSpec.FailJobOnLimit). They go through setField so that this file compiles
-// today; each such test fails with "has no field ..." until the field is added.
-// Once it exists, the implementer may replace the setField calls by literals.
 
 // agentBirthCountryContext: the default person context, with persons/p1 holding
 // a birth_country (the source of paysNaissance).
@@ -217,6 +212,18 @@ func TestAgent_DecimalWrongScaleRefusedEvenWithJustification(t *testing.T) {
 	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, tc, agentSpec("fill_transaction", tx))
 	require.NoError(t, err)
 	assert.Empty(t, out.Fills, "the wrong scale is never applied")
+	assert.NotEmpty(t, out.Questions)
+}
+
+// Cents are integers: a fractional raw value (1234.5) is not a count of cents,
+// whatever the justification.
+func TestAgent_DecimalCentsRawMustBeInteger(t *testing.T) {
+	tc, tx := agentTransactionContext(t, 1234.5)
+	fill := `{"path":"` + string(tx) + `.montant","value":"12.345","source":{"field":"amount","raw_value":"1234.5"},"justification":"montant en centimes, divisé par 100","confidence":"low"}`
+	llm := newScriptedLLM(FinalStep(agFinal(fill)), FinalStep(agFinal(fill)), FinalStep(agFinal(fill)), FinalStep(agFinal(fill)))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, tc, agentSpec("fill_transaction", tx))
+	require.NoError(t, err)
+	assert.Empty(t, out.Fills, "a fractional raw value is never a cents amount")
 	assert.NotEmpty(t, out.Questions)
 }
 

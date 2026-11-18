@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -66,4 +67,38 @@ func TestRunJob_LimitWithoutFailJobOnLimitJobIsDone(t *testing.T) {
 
 	require.NoError(t, o.RunJob(ctx, f.JobId))
 	require.Equal(t, models.SarJobStatusDone, jobOf(t, f).Status)
+}
+
+// In a parallel wave, the limit failure of a FailJobOnLimit task must not be
+// shadowed by the technical error of another task that finished first: the job
+// fails and the River job is cancelled (no retry), and the job error names the
+// limit reason.
+func TestRunJob_LimitErrorNotShadowedByOtherTaskError(t *testing.T) {
+	ctx := context.Background()
+	o, f := newTestOrchestrator(t)
+	f.Format.Waves = [][]core.TaskSpec{{Spec("other", ""), Spec("critical", "")}}
+
+	otherFailed := make(chan struct{})
+	var once sync.Once
+	f.Runner.On("other", "", Step{
+		Before: func() { once.Do(func() { close(otherFailed) }) },
+		Err:    errors.New("erreur technique"),
+	})
+	f.Runner.On("critical", "", Step{
+		Before: func() {
+			<-otherFailed
+			time.Sleep(100 * time.Millisecond) // let the other error be recorded first
+		},
+		Err: errors.Mark(errors.Newf("%s (%s)", ErrTaskLimitReached.Error(), "nombre maximal de tours atteint"), ErrTaskLimitReached),
+	})
+	w := NewWorker(o, f.Repo, fakeExecFactory{}, time.Minute)
+
+	err := w.Work(ctx, workerJob(f, 1))
+	var cancelErr *river.JobCancelError
+	require.True(t, errors.As(err, &cancelErr), "the River job is cancelled, not retried, got %v", err)
+
+	j := jobOf(t, f)
+	require.Equal(t, models.SarJobStatusFailed, j.Status)
+	assert.Contains(t, j.Error, "limite atteinte")
+	assert.Contains(t, j.Error, "nombre maximal de tours atteint", "the job error names the limit reason")
 }

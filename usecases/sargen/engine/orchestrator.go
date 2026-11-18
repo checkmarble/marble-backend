@@ -438,7 +438,12 @@ func (r *jobRun) handleWaveError(ctx context.Context, err error) error {
 	case errors.Is(err, ErrLLMUnavailable):
 		return fail("génération impossible : "+errors.UnwrapAll(err).Error(), err)
 	case errors.Is(err, ErrTaskLimitReached):
-		return fail(ErrTaskLimitReached.Error(), err)
+		msg := ErrTaskLimitReached.Error()
+		// The agent error carries the limit reason, in French, in parentheses.
+		if cause := errors.UnwrapAll(err).Error(); strings.HasPrefix(cause, msg) {
+			msg = cause
+		}
+		return fail(msg, err)
 	case errors.Is(err, models.LLMRateLimitedError):
 		r.rateLimited.Store(true)
 		elapsed, merr := r.o.generation.MarkSarGenerationJobRateLimited(dctx, exec, r.job.Id)
@@ -533,6 +538,7 @@ func (r *jobRun) runWave(ctx context.Context, ready []readyTask) (bool, error) {
 		claimed  bool
 		firstErr error
 		rateErr  error
+		limitErr error
 		sem      = make(chan struct{}, r.o.parallelism)
 		failed   bool
 	)
@@ -561,6 +567,9 @@ func (r *jobRun) runWave(ctx context.Context, ready []readyTask) (bool, error) {
 			claimed = claimed || ok
 			if err != nil {
 				failed = true
+				if errors.Is(err, ErrTaskLimitReached) && limitErr == nil {
+					limitErr = err
+				}
 				if errors.Is(err, models.LLMRateLimitedError) && rateErr == nil {
 					rateErr = err
 				}
@@ -571,6 +580,11 @@ func (r *jobRun) runWave(ctx context.Context, ready []readyTask) (bool, error) {
 		}(rt)
 	}
 	wg.Wait()
+	// A limit failure of an essential task ends the job: it wins over a rate
+	// limit (snooze) and over the first error (retry).
+	if limitErr != nil {
+		return claimed, limitErr
+	}
 	if rateErr != nil {
 		return claimed, rateErr
 	}
