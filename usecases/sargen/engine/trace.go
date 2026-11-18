@@ -81,7 +81,7 @@ func cleanValue(v any) any {
 // truncateResult bounds a tool result in the trace.
 func truncateResult(s string) string {
 	if r := []rune(s); len(r) > TraceResultMax {
-		return string(r[:TraceResultMax]) + "… [tronqué]"
+		return string(r[:TraceResultMax]) + "… [truncated]"
 	}
 	return s
 }

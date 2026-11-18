@@ -99,7 +99,7 @@ func TestRunJob_StructuredOutputOutsideSelectionIsRejectedWhole(t *testing.T) {
 	require.NoError(t, o.RunJob(ctx, f.JobId))
 	require.Empty(t, f.Repo.Doc(t).Items["personnes.pp"], "nothing of the structured output is applied")
 	out := string(f.Repo.Task(t, "place", "").Output)
-	require.Contains(t, out, "objet hors sélection : persons/stranger")
+	require.Contains(t, out, "object outside the selection: persons/stranger")
 	require.Contains(t, out, core.CodeSourceOutOfScope)
 }
 

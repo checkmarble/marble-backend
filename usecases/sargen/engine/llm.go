@@ -267,7 +267,7 @@ func buildTurnRequest(st *llmRun, req AgentRequest, provider, model string) (llm
 		t := llmberjack.NewTool[json.RawMessage](name, description, llmberjack.Function(func(json.RawMessage) (string, error) {
 			q := results[name]
 			if len(q) == 0 {
-				return `{"error":"résultat indisponible"}`, nil
+				return `{"error":"result unavailable"}`, nil
 			}
 			results[name] = q[1:]
 			return q[0], nil

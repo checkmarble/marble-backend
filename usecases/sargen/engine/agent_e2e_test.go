@@ -62,7 +62,7 @@ func TestRunJob_AgentRunnerEndToEnd(t *testing.T) {
 	assert.Contains(t, hist[1].Text, "Dupont")
 	assert.Equal(t, "field_spec", hist[2].ToolCall.Name)
 	// The bad raw_value was sent back, then corrected.
-	assert.Contains(t, agLastIsCorrection(t, llm.Requests[2]), "raw_value ne correspond pas")
+	assert.Contains(t, agLastIsCorrection(t, llm.Requests[2]), "raw_value does not match")
 
 	task := f.Repo.Task(t, "fill", tgtPP1)
 	require.Equal(t, models.SarJobStatusDone, task.Status)

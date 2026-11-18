@@ -122,7 +122,7 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 	var res checkResult
 	var out wireOutput
 	if err := json.Unmarshal(final, &out); err != nil {
-		res.Corrections = append(res.Corrections, "la réponse n'est pas un JSON conforme au schéma demandé : "+err.Error())
+		res.Corrections = append(res.Corrections, "the answer is not JSON conforming to the requested schema: "+err.Error())
 		return res
 	}
 
@@ -139,7 +139,7 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 	for i, w := range out.Fills {
 		path := core.Path(w.Path)
 		if last[path] != i {
-			res.Notes = append(res.Notes, fmt.Sprintf("fills[%d] %s : chemin en double dans la réponse, la dernière valeur est retenue", i, path))
+			res.Notes = append(res.Notes, fmt.Sprintf("fills[%d] %s : duplicate path in the answer, the last value is kept", i, path))
 			continue
 		}
 		node := c.tc.Format.Spec().NodeAt(path.Template())
@@ -152,7 +152,7 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 					Text:  fmt.Sprintf("valeur absente : le champ %s est obligatoire et n'a pas pu être renseigné automatiquement", path),
 				})
 			}
-			res.Notes = append(res.Notes, fmt.Sprintf("fills[%d] %s : valeur vide ignorée", i, path))
+			res.Notes = append(res.Notes, fmt.Sprintf("fills[%d] %s : empty value ignored", i, path))
 			continue
 		}
 		f, msg := c.toFill(w)
@@ -200,7 +200,7 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 		}
 		msg := issue.Message
 		if issue.Code == core.CodeBadRef || issue.Code == core.CodeDanglingRef {
-			msg += " (les valeurs qui référencent un élément sont appliquées après toutes les autres de la réponse : crée l'élément visé dans la même réponse, avec la même clé provisoire, ou cite un élément existant)"
+			msg += " (values that reference an element are applied after all the others of the answer: create the targeted element in the same answer, with the same provisional key, or cite an existing element)"
 		}
 		res.Corrections = append(res.Corrections, fmt.Sprintf("fills[%d] %s : %s", g.idx, g.fill.Path, msg))
 	}
@@ -244,20 +244,20 @@ func (c *checker) checkQuestions(res *checkResult, qs []wireQuestion, afterFills
 			if c.pathAllowed(core.Path(p)) {
 				q.Paths = append(q.Paths, core.Path(p))
 			} else {
-				res.Notes = append(res.Notes, fmt.Sprintf("questions[%d] : chemin hors de la partie confiée ignoré : %s", qi, p))
+				res.Notes = append(res.Notes, fmt.Sprintf("questions[%d] : path outside the assigned part ignored: %s", qi, p))
 			}
 		}
 		for oi, wo := range wq.Options {
 			opt := core.QuestionOption{Label: string(wo.Label)}
 			fills, note := c.optionFills(wo.Fills, q.Paths, afterFills)
 			if note != "" {
-				res.Notes = append(res.Notes, fmt.Sprintf("questions[%d].options[%d] : %s ; gardée comme simple libellé", qi, oi, note))
+				res.Notes = append(res.Notes, fmt.Sprintf("questions[%d].options[%d] : %s ; kept as a plain label", qi, oi, note))
 			}
 			opt.Fills = fills
 			q.Options = append(q.Options, opt)
 		}
 		if len(wq.Paths) > 0 && len(q.Paths) == 0 {
-			res.Notes = append(res.Notes, fmt.Sprintf("questions[%d] : plus aucun chemin dans la partie confiée, question ignorée", qi))
+			res.Notes = append(res.Notes, fmt.Sprintf("questions[%d] : no path left in the assigned part, question ignored", qi))
 			continue
 		}
 		res.Questions = append(res.Questions, q)
@@ -277,19 +277,19 @@ func (c *checker) optionFills(ws []wireFill, questionPaths []core.Path, doc *cor
 	fills := make([]core.Fill, 0, len(ws))
 	for _, w := range ws {
 		if w.Value == "" {
-			return nil, "valeur vide"
+			return nil, "empty value"
 		}
 		f, msg := c.toFill(w)
 		if msg != "" {
 			return nil, msg
 		}
 		if !core.PathAllowed(f.Path, questionPaths) {
-			return nil, fmt.Sprintf("%s hors des champs de la question", f.Path)
+			return nil, fmt.Sprintf("%s is outside the fields of the question", f.Path)
 		}
 		if node := c.tc.Format.Spec().NodeAt(f.Path.Template()); node != nil {
 			switch node.EffectiveNature() {
 			case core.NatureSetting, core.NatureComputed:
-				return nil, fmt.Sprintf("%s est un réglage ou un champ calculé", f.Path)
+				return nil, fmt.Sprintf("%s is a setting or a computed field", f.Path)
 			}
 		}
 		f.Origin, f.TaskID = core.OriginAnalyst, nil
@@ -320,10 +320,10 @@ func unverifiable(f core.Fill, reason string) core.QuestionDraft {
 func (c *checker) toFill(w wireFill) (core.Fill, string) {
 	path := core.Path(w.Path)
 	if _, err := core.ParsePath(string(path)); err != nil {
-		return core.Fill{}, "chemin invalide : " + err.Error()
+		return core.Fill{}, "invalid path: " + err.Error()
 	}
 	if !c.pathAllowed(path) {
-		return core.Fill{}, "chemin hors de la partie confiée à cette tâche ; chemins autorisés : " + joinPaths(c.allowed)
+		return core.Fill{}, "path outside the part assigned to this task; allowed paths: " + joinPaths(c.allowed)
 	}
 	f := core.Fill{
 		Path: path, Value: string(w.Value), Origin: core.OriginLLM, TaskID: &c.taskID,
@@ -374,7 +374,7 @@ func joinPaths(ps []core.Path) string {
 // selection.
 func (c *checker) toSource(target core.Path, w wireSource) (core.SourceRef, string) {
 	if w.Field == "" {
-		return core.SourceRef{}, "source sans champ (field)"
+		return core.SourceRef{}, "source without field (field)"
 	}
 	ref := core.ObjectRef{Table: string(w.Table), ObjectID: string(w.ObjectID)}
 	switch {
@@ -384,15 +384,15 @@ func (c *checker) toSource(target core.Path, w wireSource) (core.SourceRef, stri
 			return core.SourceRef{}, msg
 		}
 	case ref.Table == "" || ref.ObjectID == "":
-		return core.SourceRef{}, "table et object_id vont ensemble : donne les deux ou aucun"
+		return core.SourceRef{}, "table and object_id go together: give both or neither"
 	}
 	obj, ok := c.sc.get(ref.Table, ref.ObjectID)
 	if !ok {
-		return core.SourceRef{}, "l'objet source " + ref.Table + "/" + ref.ObjectID + " ne fait pas partie de la sélection"
+		return core.SourceRef{}, "the source object " + ref.Table + "/" + ref.ObjectID + " is not part of the selection"
 	}
 	if !proves(obj, string(w.Field), string(w.RawValue)) {
 		return core.SourceRef{}, fmt.Sprintf(
-			"raw_value ne correspond pas à la valeur du champ %q de l'objet %s/%s : relis l'objet avec read_object et recopie la valeur exacte",
+			"raw_value does not match the value of field %q of object %s/%s: read the object again with read_object and copy the exact value",
 			w.Field, ref.Table, ref.ObjectID)
 	}
 	return core.SourceRef{Object: ref, Field: string(w.Field), RawValue: string(w.RawValue)}, ""
@@ -414,13 +414,13 @@ func (c *checker) defaultSource(target core.Path) (core.ObjectRef, string) {
 			for j, r := range refs {
 				names[j] = r.Table + "/" + r.ObjectID
 			}
-			return core.ObjectRef{}, "l'élément a plusieurs objets sources (" + strings.Join(names, ", ") + ") : précise table et object_id"
+			return core.ObjectRef{}, "the element has several source objects (" + strings.Join(names, ", ") + "): specify table and object_id"
 		}
 	}
 	if len(c.spec.Inputs) == 1 {
 		return c.spec.Inputs[0], ""
 	}
-	return core.ObjectRef{}, "cet élément n'a pas d'objet source par défaut : précise table et object_id"
+	return core.ObjectRef{}, "this element has no default source object: specify table and object_id"
 }
 
 var (
@@ -491,7 +491,7 @@ func (c *checker) checkReview(final json.RawMessage) ([]core.ReviewFinding, []st
 		Findings []wireFinding `json:"findings"`
 	}
 	if err := json.Unmarshal(final, &out); err != nil {
-		return nil, []string{"la réponse n'est pas un JSON conforme au schéma demandé : " + err.Error()}
+		return nil, []string{"the answer is not JSON conforming to the requested schema: " + err.Error()}
 	}
 	var (
 		findings []core.ReviewFinding
@@ -501,11 +501,11 @@ func (c *checker) checkReview(final json.RawMessage) ([]core.ReviewFinding, []st
 		f := core.ReviewFinding{Severity: string(w.Severity), Message: strings.TrimSpace(string(w.Message))}
 		bad := false
 		if f.Severity != "important" && f.Severity != "mineur" {
-			errs = append(errs, fmt.Sprintf("findings[%d] : severity doit valoir important ou mineur", i))
+			errs = append(errs, fmt.Sprintf("findings[%d] : severity must be important or mineur", i))
 			bad = true
 		}
 		if f.Message == "" {
-			errs = append(errs, fmt.Sprintf("findings[%d] : message vide", i))
+			errs = append(errs, fmt.Sprintf("findings[%d] : empty message", i))
 			bad = true
 		}
 		for _, p := range w.Paths {
@@ -555,10 +555,10 @@ func (c *checker) checkStructured(final json.RawMessage) (err error) {
 //   - decimal: the number of raw, or value x 100 == raw exactly (cents to euros)
 //     with a justification (forced low).
 func relationError(n *core.Node, codes []core.Code, value, raw, justification string, confidence core.Confidence) (msg string, forceLow bool) {
-	mismatch := fmt.Sprintf("la valeur ne correspond pas à la valeur source citée (valeur source : « %s »)", shorten(raw, 100))
+	mismatch := fmt.Sprintf("the value does not match the cited source value (source value: \"%s\")", shorten(raw, 100))
 	judged := func(what string) (string, bool) {
 		if strings.TrimSpace(justification) == "" || confidence == core.ConfidenceNone {
-			return "justifiez la correspondance entre la valeur source et " + what + " (justification et niveau de confiance)", false
+			return "justify the correspondence between the source value and " + what + " (justification and confidence level)", false
 		}
 		return "", n.Export
 	}
@@ -568,7 +568,7 @@ func relationError(n *core.Node, codes []core.Code, value, raw, justification st
 	case n.Type == core.TypeBoolean:
 		rb, isLit := boolLiteral(raw)
 		if !isLit {
-			return judged("le booléen choisi")
+			return judged("the chosen boolean")
 		}
 		if vb, ok := boolLiteral(value); !ok || vb != rb {
 			return mismatch, false
@@ -580,7 +580,7 @@ func relationError(n *core.Node, codes []core.Code, value, raw, justification st
 		}) {
 			return "", false
 		}
-		return judged("le code choisi")
+		return judged("the chosen code")
 	case n.Type == core.TypeDate:
 		d, ok := calendarDay(raw)
 		if !ok || d != value {
@@ -593,7 +593,7 @@ func relationError(n *core.Node, codes []core.Code, value, raw, justification st
 		}
 		if n.Type == core.TypeDecimal && centsOf(value, raw) {
 			if strings.TrimSpace(justification) == "" {
-				return "justifiez la conversion des centimes en euros (justification)", false
+				return "justify the conversion from cents to euros (justification)", false
 			}
 			return "", true
 		}
