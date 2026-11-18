@@ -37,7 +37,7 @@ func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context, organizationI
 		return nil, err
 	}
 
-	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx, exec, organizationId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
+	scenarios, err := usecase.repository.ListScenariosOfOrganizationWithLatestVersion(ctx, exec, organizationId, org.GetScreeningProviderFor(models.ScreeningFeatureTransactionMonitoring))
 	if err != nil {
 		return nil, err
 	}

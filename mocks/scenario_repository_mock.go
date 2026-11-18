@@ -28,6 +28,13 @@ func (s *ScenarioRepository) ListScenariosOfOrganization(ctx context.Context,
 	return args.Get(0).([]models.Scenario), args.Error(1)
 }
 
+func (s *ScenarioRepository) ListScenariosOfOrganizationWithLatestVersion(ctx context.Context,
+	exec repositories.Executor, organizationId uuid.UUID, screeningProvider models.ScreeningProvider,
+) ([]models.Scenario, error) {
+	args := s.Called(ctx, exec, organizationId, screeningProvider)
+	return args.Get(0).([]models.Scenario), args.Error(1)
+}
+
 func (s *ScenarioRepository) ListAllScenarios(ctx context.Context, exec repositories.Executor) ([]models.Scenario, error) {
 	args := s.Called(exec)
 	return args.Get(0).([]models.Scenario), args.Error(1)
