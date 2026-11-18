@@ -194,26 +194,29 @@ func TestKey(t *testing.T) {
 	assert.Equal(t, "tracfin:FR:1.4.0", tracfin.Key("1.4.0").String())
 }
 
-// Every list that offers "Je ne sais pas" declares it as its unknown code, and the
-// code exists in the list; other lists declare none.
+// The lists that declare an unknown code, and their strict codes: "Non" must be
+// established by a source. t_implication offers "Je ne sais pas" but is a judgment
+// field: it is not marked.
 func TestSpec_UnknownCodes(t *testing.T) {
 	s, ok := tracfin.Spec(tracfin.CurrentVersion)
 	require.True(t, ok)
 
 	declared := map[string]bool{}
 	for name, list := range s.CodeLists {
-		offersUnknown := false
+		if list.UnknownCode == "" {
+			assert.Empty(t, list.StrictCodes, name)
+			continue
+		}
+		declared[name] = true
+		assert.Equal(t, "Je ne sais pas", list.UnknownCode, name)
+		assert.Equal(t, []string{"Non"}, list.StrictCodes, name)
+		values := map[string]bool{}
 		for _, c := range list.Codes {
-			if c.Label == "Je ne sais pas" {
-				offersUnknown = true
-				assert.Equal(t, c.Value, list.UnknownCode, name)
-			}
+			values[c.Value] = true
 		}
-		if offersUnknown {
-			declared[name] = true
-		} else {
-			assert.Empty(t, list.UnknownCode, name)
-		}
+		assert.True(t, values[list.UnknownCode], name)
+		assert.True(t, values["Non"], name)
 	}
-	assert.Equal(t, map[string]bool{"t_choix_oui_non_nesaispas": true, "t_implication": true, "t_registre": true}, declared)
+	assert.Equal(t, map[string]bool{"t_choix_oui_non_nesaispas": true, "t_registre": true}, declared)
+	assert.Empty(t, s.CodeLists["t_implication"].UnknownCode)
 }

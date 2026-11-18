@@ -102,17 +102,14 @@
  {
    "list": "t_choix_oui_non_nesaispas",
    "code": "Je ne sais pas",
-   "source": "financier-v1.4.0.xsd : énumération du type t_choix_oui_non_nesaispas ; décision de conception : « Je ne sais pas » est le code à prendre quand les données ne disent rien ; une autre valeur doit être prouvée"
-  },
- {
-   "list": "t_implication",
-   "code": "Je ne sais pas",
-   "source": "financier-v1.4.0.xsd : énumération du type t_implication ; décision de conception : « Je ne sais pas » est le code à prendre quand les données ne disent rien ; une autre valeur doit être prouvée"
+   "strict_codes": ["Non"],
+   "source": "financier-v1.4.0.xsd : énumération du type t_choix_oui_non_nesaispas ; décision de conception : « Je ne sais pas » est le code à prendre quand les données ne disent rien ; « Non » exige une source qui l'établit, il ne se déduit pas d'un silence"
   },
  {
    "list": "t_registre",
    "code": "Je ne sais pas",
-   "source": "financier-v1.4.0.xsd : énumération du type t_registre ; décision de conception : « Je ne sais pas » est le code à prendre quand les données ne disent rien ; une autre valeur doit être prouvée"
+   "strict_codes": ["Non"],
+   "source": "financier-v1.4.0.xsd : énumération du type t_registre ; décision de conception : « Je ne sais pas » est le code à prendre quand les données ne disent rien ; « Non » exige une source qui l'établit, il ne se déduit pas d'un silence"
   }
  ],
  "ignore_type_doc_patterns": {

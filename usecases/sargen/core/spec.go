@@ -75,6 +75,10 @@ type CodeList struct {
 	// UnknownCode is the code to take when the data say nothing about the field
 	// (e.g. "Je ne sais pas"). Empty when the list has none.
 	UnknownCode string `json:"unknown_code,omitempty"`
+	// StrictCodes are the codes of the list that need a source establishing them
+	// (e.g. "Non": a negative is never affirmed from silence). The other codes keep
+	// the usual rules. Empty when the list has none.
+	StrictCodes []string `json:"strict_codes,omitempty"`
 }
 
 type Condition struct {

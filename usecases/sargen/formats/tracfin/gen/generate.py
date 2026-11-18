@@ -315,7 +315,7 @@ class Generator:
                 if code not in [c["value"] for c in lst["codes"]]:
                     fail("code_exclusions: code %r is not in %s (stale entry)" % (code, entry["list"]))
             lst["codes"] = [c for c in lst["codes"] if c["value"] not in entry["codes"]]
-            lst["source"] += " ; codes exclus : " + ", ".join(entry["codes"])
+            lst["source"] += " ; excluded codes: " + ", ".join(entry["codes"])
 
     def apply_unknown_codes(self):
         """Mark the code that means "unknown" in the lists that have one (decision in constraints.json)."""
@@ -329,6 +329,14 @@ class Generator:
             if "unknown_code" in lst:
                 fail("unknown_codes: list %s declared twice" % entry["list"])
             lst["unknown_code"] = entry["code"]
+            strict = entry.get("strict_codes", [])
+            for code in strict:
+                if code not in [c["value"] for c in lst["codes"]]:
+                    fail("unknown_codes: strict code %r is not in %s (stale entry)" % (code, entry["list"]))
+                if code == entry["code"]:
+                    fail("unknown_codes: the unknown code of %s cannot be strict" % entry["list"])
+            if strict:
+                lst["strict_codes"] = list(strict)
 
     def merged_list(self, refs):
         """Code list key for a type bound to several references (union, first wins)."""

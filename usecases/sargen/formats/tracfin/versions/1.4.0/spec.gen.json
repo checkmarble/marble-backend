@@ -3180,7 +3180,7 @@
     }
    ],
    "name": "liste_ref_pays.csv",
-   "source": "inputs/referentiels/pays.csv ; financier-v1.4.0.xsd:476-490 (t_pays) ; analysis.md §13 (pays.csv, 240 codes) ; codes exclus : 1"
+   "source": "inputs/referentiels/pays.csv ; financier-v1.4.0.xsd:476-490 (t_pays) ; analysis.md §13 (pays.csv, 240 codes) ; excluded codes: 1"
   },
   "liste_ref_piece_jointe.csv": {
    "codes": [
@@ -4034,6 +4034,9 @@
    ],
    "name": "t_choix_oui_non_nesaispas",
    "source": "financier-v1.4.0.xsd: enumeration of type t_choix_oui_non_nesaispas",
+   "strict_codes": [
+    "Non"
+   ],
    "unknown_code": "Je ne sais pas"
   },
   "t_implication": {
@@ -4052,8 +4055,7 @@
     }
    ],
    "name": "t_implication",
-   "source": "financier-v1.4.0.xsd: enumeration of type t_implication",
-   "unknown_code": "Je ne sais pas"
+   "source": "financier-v1.4.0.xsd: enumeration of type t_implication"
   },
   "t_lien": {
    "codes": [
@@ -4140,6 +4142,9 @@
    ],
    "name": "t_registre",
    "source": "financier-v1.4.0.xsd: enumeration of type t_registre",
+   "strict_codes": [
+    "Non"
+   ],
    "unknown_code": "Je ne sais pas"
   }
  },
