@@ -27,7 +27,10 @@ func adaptSarDeclarationDto(st sargen.DeclarationState) dto.SarDeclarationDto {
 		}),
 	}
 	if g := st.Generation; g != nil {
-		out.Generation = &dto.SarGenerationStateDto{Status: string(g.Status), JobId: g.JobId, Error: g.Error}
+		out.Generation = &dto.SarGenerationStateDto{Status: string(g.Status), JobId: g.JobId}
+		if g.Error != "" {
+			out.Generation.Error = &g.Error
+		}
 	}
 	if st.Format != nil {
 		out.FormatStatus = string(st.Format.Status())
@@ -91,5 +94,19 @@ func adaptSarQuestionDto(q sargen.Question) dto.SarQuestionDto {
 			}
 		}),
 		CreatedAt: q.CreatedAt, ClosedAt: q.ClosedAt,
+	}
+}
+
+func adaptSarOrgSettingsDto(s models.SarOrgFormatSettings, issues []core.Issue, ready sargen.SettingsReadiness) dto.SarOrgSettingsDto {
+	values := s.Values
+	if values == nil {
+		values = map[string]string{}
+	}
+	paths := func(ps []core.Path) []string {
+		return pure_utils.Map(ps, func(p core.Path) string { return string(p) })
+	}
+	return dto.SarOrgSettingsDto{
+		Values: values, Issues: pure_utils.Map(issues, dto.AdaptSarIssueDto),
+		Missing: paths(ready.Missing), Invalid: paths(ready.Invalid), Complete: ready.Complete,
 	}
 }

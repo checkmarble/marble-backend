@@ -283,3 +283,7 @@ func doSarRequest(r http.Handler, method, path string, body any) *httptest.Respo
 	r.ServeHTTP(w, req)
 	return w
 }
+
+func (f *fakeSarGenerationUsecase) SettingsReadiness(_ context.Context, family string, values map[string]string) (sargen.SettingsReadiness, error) {
+	return sargen.ReadinessOfSettings(family, values)
+}

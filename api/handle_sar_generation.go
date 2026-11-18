@@ -20,8 +20,8 @@ import (
 )
 
 // HTTP handlers of the SAR declarations. Rulings: the request DTO maps only path+value to core.Fill; errors go through
-// presentError (Conflict 409, BadParameter 400, Forbidden 403, NotFound 404,
-// invalid UUID 400); the usecase comes from newSarGenerationUsecase(c, uc).
+// presentError, or presentSarError for writes that can be refused with issues
+// (Conflict 409, BadParameter 400, Forbidden 403, NotFound 404, invalid UUID 400); the usecase comes from newSarGenerationUsecase(c, uc).
 
 const (
 	sarNavigateDefaultLimit = 100
@@ -55,6 +55,7 @@ func sarBindJSON(c *gin.Context, into any) bool {
 
 // sarIssuesCarrier is a refused write exposing its structured issues.
 type sarIssuesCarrier interface {
+	error
 	SarIssues() []core.Issue
 }
 
@@ -65,7 +66,7 @@ func presentSarError(c *gin.Context, err error) bool {
 	var carrier sarIssuesCarrier
 	if err != nil && errors.Is(err, models.BadParameterError) && errors.As(err, &carrier) {
 		c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
-			Message: carrier.(error).Error(),
+			Message: carrier.Error(),
 			Details: dto.SarIssuesDetails{Issues: pure_utils.Map(carrier.SarIssues(), dto.AdaptSarIssueDto)},
 		})
 		return true
@@ -108,11 +109,11 @@ func handleGetSarOrgSettings(uc usecases.Usecases) gin.HandlerFunc {
 		if presentError(c.Request.Context(), c, err) {
 			return
 		}
-		missing, err := sargen.MissingSettings(c.Param("family"), s.Values)
+		ready, err := newSarGenerationUsecase(c, uc).SettingsReadiness(c.Request.Context(), c.Param("family"), s.Values)
 		if presentError(c.Request.Context(), c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, dto.AdaptSarOrgSettingsDto(s, issues, missing))
+		c.JSON(http.StatusOK, adaptSarOrgSettingsDto(s, issues, ready))
 	}
 }
 
@@ -133,11 +134,11 @@ func handlePutSarOrgSettings(uc usecases.Usecases) gin.HandlerFunc {
 		if presentError(c.Request.Context(), c, err) {
 			return
 		}
-		missing, err := sargen.MissingSettings(c.Param("family"), s.Values)
+		ready, err := newSarGenerationUsecase(c, uc).SettingsReadiness(c.Request.Context(), c.Param("family"), s.Values)
 		if presentError(c.Request.Context(), c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, dto.AdaptSarOrgSettingsDto(s, issues, missing))
+		c.JSON(http.StatusOK, adaptSarOrgSettingsDto(s, issues, ready))
 	}
 }
 
@@ -207,7 +208,7 @@ func handleAddSarItem(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 		item, st, err := newSarGenerationUsecase(c, uc).AddItem(c.Request.Context(), id, in.Version, core.Path(in.Container))
-		if presentError(c.Request.Context(), c, err) {
+		if presentSarError(c, err) {
 			return
 		}
 		c.JSON(http.StatusCreated, dto.SarAddItemResponse{Item: string(item), State: adaptSarDeclarationDto(st)})

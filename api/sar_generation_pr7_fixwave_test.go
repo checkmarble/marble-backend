@@ -6,11 +6,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases/sargen"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
 )
 
@@ -226,4 +228,100 @@ func TestHandleUpdateSarAnalysis_ExtraInfoBounded(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
 		assert.Len(t, f.Called("UpdateAnalysis"), 1)
 	})
+}
+
+// ---- Round 1 ----
+
+func TestHandleGetSarDeclaration_GenerationExposed(t *testing.T) {
+	id := uuid.New()
+	jobId := uuid.New()
+	t.Run("failed with public error", func(t *testing.T) {
+		st := sarHTTPState(id, uuid.New())
+		st.Generation = &sargen.GenerationState{Status: models.SarJobStatusFailed, JobId: jobId, Error: "la génération ne répond plus"}
+		r := newSarTestRouter(t, &fakeSarGenerationUsecase{State: st})
+
+		body := sarHTTPDecode(t, doSarRequest(r, http.MethodGet, "/sar-declarations/"+id.String(), nil))
+
+		gen, ok := body["generation"].(map[string]any)
+		require.True(t, ok, "generation must be an object")
+		assert.Equal(t, "failed", gen["status"])
+		assert.Equal(t, jobId.String(), gen["job_id"])
+		assert.Equal(t, "la génération ne répond plus", gen["error"])
+		assert.Nil(t, body["active_job_id"])
+	})
+	t.Run("no error is null", func(t *testing.T) {
+		st := sarHTTPState(id, uuid.New())
+		st.Generation = &sargen.GenerationState{Status: models.SarJobStatusDone, JobId: jobId}
+		r := newSarTestRouter(t, &fakeSarGenerationUsecase{State: st})
+
+		body := sarHTTPDecode(t, doSarRequest(r, http.MethodGet, "/sar-declarations/"+id.String(), nil))
+
+		gen := body["generation"].(map[string]any)
+		assert.Contains(t, gen, "error")
+		assert.Nil(t, gen["error"])
+	})
+}
+
+// The real IssuesError of the usecase goes through the handler.
+func TestHandleRefusedWrites_RealIssuesError(t *testing.T) {
+	id := uuid.New()
+	f := &fakeSarGenerationUsecase{}
+	f.Fail("UpdateFields", errors.Wrap(sargen.NewIssuesError([]core.Issue{{
+		Path: "declarant.coordonnees.nom", Code: "max_length", Severity: core.SeverityBlocking, Message: "trop long",
+	}}), "Error executing transaction"))
+	r := newSarTestRouter(t, f)
+
+	w := doSarRequest(r, http.MethodPatch, "/sar-declarations/"+id.String()+"/fields",
+		map[string]any{"version": 3, "fields": []map[string]string{{"path": "declarant.coordonnees.nom", "value": "x"}}})
+
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	body := sarHTTPDecode(t, w)
+	assert.Equal(t, "declarant.coordonnees.nom : trop long", body["message"])
+	details := body["details"].(map[string]any)
+	assert.Len(t, details["issues"], 1)
+}
+
+func TestHandleAddSarItem_RefusalWithIssues(t *testing.T) {
+	id := uuid.New()
+	f := &fakeSarGenerationUsecase{}
+	f.Fail("AddItem", pr7IssuesErr{issues: []core.Issue{{Path: "a", Code: "c", Message: "m"}}})
+	r := newSarTestRouter(t, f)
+
+	w := doSarRequest(r, http.MethodPost, "/sar-declarations/"+id.String()+"/items",
+		map[string]any{"version": 3, "container": "operations.operation"})
+
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assert.Contains(t, sarHTTPDecode(t, w), "details")
+}
+
+// The export refusal keeps its message and carries no details (blocking issues
+// are in the state); a move to presentSarError would drop the prefix.
+func TestHandleExport_RefusalMessageLocked(t *testing.T) {
+	id := uuid.New()
+	f := &fakeSarGenerationUsecase{}
+	f.Fail("Export", errors.Wrap(sargen.NewIssuesError([]core.Issue{{Path: "a", Code: "c", Message: "m"}}),
+		"l'export est impossible : des erreurs bloquantes subsistent"))
+	r := newSarTestRouter(t, f)
+
+	w := doSarRequest(r, http.MethodPost, "/sar-declarations/"+id.String()+"/exports", map[string]any{"version": 3})
+
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	body := sarHTTPDecode(t, w)
+	assert.Contains(t, body["message"], "l'export est impossible : des erreurs bloquantes subsistent")
+	assert.NotContains(t, body, "details")
+}
+
+func TestHandleUpdateSarAnalysis_ExtraInfoCountsCharacters(t *testing.T) {
+	id := uuid.New()
+	f := &fakeSarGenerationUsecase{State: sarHTTPState(id, uuid.New())}
+	r := newSarTestRouter(t, f)
+
+	// 10000 multi-byte characters (20000 bytes) are accepted.
+	w := doSarRequest(r, http.MethodPut, "/sar-declarations/"+id.String()+"/analysis",
+		map[string]any{"version": 3, "analysis": "a", "extra_info": strings.Repeat("é", 10000)})
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	w = doSarRequest(r, http.MethodPut, "/sar-declarations/"+id.String()+"/analysis",
+		map[string]any{"version": 3, "analysis": "a", "extra_info": strings.Repeat("é", 10001)})
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
 }

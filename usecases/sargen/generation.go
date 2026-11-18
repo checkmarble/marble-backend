@@ -265,17 +265,12 @@ func (uc *Usecase) checkGenerationPreconditions(ctx context.Context, tx reposito
 		values = settings.Values
 	}
 	var bad []string
-	for _, p := range missingSettingPaths(format, values) {
+	ready := settingsReadiness(format, values)
+	for _, p := range ready.Missing {
 		bad = append(bad, string(p)+" (manquant)")
 	}
-	for _, p := range requiredSettingPaths(format, values) {
-		v := values[string(p)]
-		if strings.TrimSpace(v) == "" {
-			continue
-		}
-		if issue := core.ValidateValue(spec, p, v); issue != nil && issue.Blocks() {
-			bad = append(bad, string(p)+" (invalide)")
-		}
+	for _, p := range ready.Invalid {
+		bad = append(bad, string(p)+" (invalide)")
 	}
 	if len(bad) > 0 {
 		return nil, nil, nil, errors.Wrapf(models.BadParameterError, "réglage de l'organisation incomplet : %s", strings.Join(bad, ", "))
