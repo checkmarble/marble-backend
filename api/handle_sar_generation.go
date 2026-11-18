@@ -53,8 +53,28 @@ func sarBindJSON(c *gin.Context, into any) bool {
 	return false
 }
 
+// sarIssuesCarrier is a refused write exposing its structured issues.
+type sarIssuesCarrier interface {
+	SarIssues() []core.Issue
+}
+
+// presentSarError is presentError, except that a refusal carrying issues is a
+// 400 with details.issues (same shape as PUT /sar-format-settings) and the clean
+// message of the refusal.
+func presentSarError(c *gin.Context, err error) bool {
+	var carrier sarIssuesCarrier
+	if err != nil && errors.Is(err, models.BadParameterError) && errors.As(err, &carrier) {
+		c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+			Message: carrier.(error).Error(),
+			Details: dto.SarIssuesDetails{Issues: pure_utils.Map(carrier.SarIssues(), dto.AdaptSarIssueDto)},
+		})
+		return true
+	}
+	return presentError(c.Request.Context(), c, err)
+}
+
 func sarState(c *gin.Context, code int, st sargen.DeclarationState, err error) {
-	if presentError(c.Request.Context(), c, err) {
+	if presentSarError(c, err) {
 		return
 	}
 	c.JSON(code, adaptSarDeclarationDto(st))
@@ -88,7 +108,11 @@ func handleGetSarOrgSettings(uc usecases.Usecases) gin.HandlerFunc {
 		if presentError(c.Request.Context(), c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, dto.AdaptSarOrgSettingsDto(s, issues))
+		missing, err := sargen.MissingSettings(c.Param("family"), s.Values)
+		if presentError(c.Request.Context(), c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, dto.AdaptSarOrgSettingsDto(s, issues, missing))
 	}
 }
 
@@ -109,7 +133,11 @@ func handlePutSarOrgSettings(uc usecases.Usecases) gin.HandlerFunc {
 		if presentError(c.Request.Context(), c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, dto.AdaptSarOrgSettingsDto(s, issues))
+		missing, err := sargen.MissingSettings(c.Param("family"), s.Values)
+		if presentError(c.Request.Context(), c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, dto.AdaptSarOrgSettingsDto(s, issues, missing))
 	}
 }
 

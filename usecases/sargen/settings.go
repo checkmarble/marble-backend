@@ -3,6 +3,7 @@ package sargen
 import (
 	"context"
 	"slices"
+	"strings"
 
 	"github.com/Masterminds/semver"
 	"github.com/cockroachdb/errors"
@@ -15,6 +16,15 @@ import (
 // settingsSpec returns the spec used to validate the settings of a family: the
 // most recent active version of the family.
 func (uc *Usecase) settingsSpec(family string) (*core.Spec, error) {
+	best, err := settingsFormat(family)
+	if err != nil {
+		return nil, err
+	}
+	return best.Spec(), nil
+}
+
+// settingsFormat returns the most recent active format of a family.
+func settingsFormat(family string) (core.Format, error) {
 	var best core.Format
 	for _, f := range formats.List() {
 		if f.Key().Family != family || f.Status() != core.VersionActive {
@@ -27,7 +37,28 @@ func (uc *Usecase) settingsSpec(family string) (*core.Spec, error) {
 	if best == nil {
 		return nil, errors.Wrapf(models.BadParameterError, "famille de format inconnue : %s", family)
 	}
-	return best.Spec(), nil
+	return best, nil
+}
+
+// MissingSettings returns the required organization setting paths of a format
+// family that have no (or a blank) value in values, using the same rule as the
+// start of a generation (requiredSettingPaths).
+func MissingSettings(family string, values map[string]string) ([]core.Path, error) {
+	format, err := settingsFormat(family)
+	if err != nil {
+		return nil, err
+	}
+	return missingSettingPaths(format, values), nil
+}
+
+func missingSettingPaths(format core.Format, values map[string]string) []core.Path {
+	missing := []core.Path{}
+	for _, p := range requiredSettingPaths(format, values) {
+		if strings.TrimSpace(values[string(p)]) == "" {
+			missing = append(missing, p)
+		}
+	}
+	return missing
 }
 
 func settingIssues(spec *core.Spec, values map[string]string) []core.Issue {
