@@ -26,6 +26,9 @@ func adaptSarDeclarationDto(st sargen.DeclarationState) dto.SarDeclarationDto {
 			}
 		}),
 	}
+	if g := st.Generation; g != nil {
+		out.Generation = &dto.SarGenerationStateDto{Status: string(g.Status), JobId: g.JobId, Error: g.Error}
+	}
 	if st.Format != nil {
 		out.FormatStatus = string(st.Format.Status())
 	}

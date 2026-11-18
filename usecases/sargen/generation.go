@@ -265,10 +265,12 @@ func (uc *Usecase) checkGenerationPreconditions(ctx context.Context, tx reposito
 		values = settings.Values
 	}
 	var bad []string
+	for _, p := range missingSettingPaths(format, values) {
+		bad = append(bad, string(p)+" (manquant)")
+	}
 	for _, p := range requiredSettingPaths(format, values) {
-		v, ok := values[string(p)]
-		if !ok || strings.TrimSpace(v) == "" {
-			bad = append(bad, string(p)+" (manquant)")
+		v := values[string(p)]
+		if strings.TrimSpace(v) == "" {
 			continue
 		}
 		if issue := core.ValidateValue(spec, p, v); issue != nil && issue.Blocks() {

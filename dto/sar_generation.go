@@ -2,6 +2,7 @@ package dto
 
 import (
 	"encoding/json"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -80,17 +81,26 @@ func AdaptSarIssueDto(i core.Issue) SarIssueDto {
 	return SarIssueDto{Path: string(i.Path), Code: i.Code, Message: i.Message, Severity: string(i.Severity), RuleId: i.RuleID}
 }
 
+// SarOrgSettingsDto: Missing lists the required setting paths without a value;
+// Complete is true when none is missing and no stored value is blocked.
 type SarOrgSettingsDto struct {
-	Values map[string]string `json:"values"`
-	Issues []SarIssueDto     `json:"issues"`
+	Values   map[string]string `json:"values"`
+	Issues   []SarIssueDto     `json:"issues"`
+	Missing  []string          `json:"missing"`
+	Complete bool              `json:"complete"`
 }
 
-func AdaptSarOrgSettingsDto(s models.SarOrgFormatSettings, issues []core.Issue) SarOrgSettingsDto {
+func AdaptSarOrgSettingsDto(s models.SarOrgFormatSettings, issues []core.Issue, missing []core.Path) SarOrgSettingsDto {
 	values := s.Values
 	if values == nil {
 		values = map[string]string{}
 	}
-	return SarOrgSettingsDto{Values: values, Issues: pure_utils.Map(issues, AdaptSarIssueDto)}
+	out := SarOrgSettingsDto{
+		Values: values, Issues: pure_utils.Map(issues, AdaptSarIssueDto),
+		Missing: pure_utils.Map(missing, func(p core.Path) string { return string(p) }),
+	}
+	out.Complete = len(missing) == 0 && !slices.ContainsFunc(issues, func(i core.Issue) bool { return i.Blocks() })
+	return out
 }
 
 // ---- declaration state ----
@@ -141,21 +151,31 @@ type SarTodoDto struct {
 	RefId    *uuid.UUID `json:"ref_id,omitempty"`
 }
 
+// SarGenerationStateDto: status is pending, running, done or failed; error is
+// the public (French) message of the job.
+type SarGenerationStateDto struct {
+	Status string    `json:"status"`
+	JobId  uuid.UUID `json:"job_id"`
+	Error  string    `json:"error"`
+}
+
 type SarDeclarationDto struct {
-	Id           uuid.UUID      `json:"id"`
-	CaseId       uuid.UUID      `json:"case_id"`
-	FormatKey    string         `json:"format_key"`
-	ReportType   string         `json:"report_type"`
-	FormatStatus string         `json:"format_status"`
-	Version      int            `json:"version"`
-	Analysis     string         `json:"analysis"`
-	ExtraInfo    string         `json:"extra_info"`
-	ExportsCount int            `json:"exports_count"`
-	LastExportAt *time.Time     `json:"last_export_at"`
-	ActiveJobId  *uuid.UUID     `json:"active_job_id"`
-	Document     SarDocumentDto `json:"document"`
-	Issues       []SarIssueDto  `json:"issues"`
-	Todo         []SarTodoDto   `json:"todo"`
+	Id           uuid.UUID  `json:"id"`
+	CaseId       uuid.UUID  `json:"case_id"`
+	FormatKey    string     `json:"format_key"`
+	ReportType   string     `json:"report_type"`
+	FormatStatus string     `json:"format_status"`
+	Version      int        `json:"version"`
+	Analysis     string     `json:"analysis"`
+	ExtraInfo    string     `json:"extra_info"`
+	ExportsCount int        `json:"exports_count"`
+	LastExportAt *time.Time `json:"last_export_at"`
+	ActiveJobId  *uuid.UUID `json:"active_job_id"`
+	// Generation is the last generate job, null when never generated.
+	Generation *SarGenerationStateDto `json:"generation"`
+	Document   SarDocumentDto         `json:"document"`
+	Issues     []SarIssueDto          `json:"issues"`
+	Todo       []SarTodoDto           `json:"todo"`
 	// Resolved maps provisional item prefixes to the real item paths; only set
 	// on the response of a field update.
 	Resolved map[string]string `json:"resolved,omitempty"`
@@ -273,9 +293,10 @@ type SarVersionInput struct {
 }
 
 type SarUpdateAnalysisInput struct {
-	Version   int    `json:"version" binding:"required,min=1"`
-	Analysis  string `json:"analysis"`
-	ExtraInfo string `json:"extra_info"`
+	Version  int    `json:"version" binding:"required,min=1"`
+	Analysis string `json:"analysis"`
+	// ExtraInfo is limited to 10000 characters.
+	ExtraInfo string `json:"extra_info" binding:"max=10000"`
 }
 
 type SarChooseOptionInput struct {

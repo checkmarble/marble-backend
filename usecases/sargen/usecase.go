@@ -187,6 +187,14 @@ type TodoItem struct {
 	RefId   *uuid.UUID
 }
 
+// GenerationState is the state of the last generate job: its status (a stale
+// active job reads failed, as in GetJob), its id and its public error.
+type GenerationState struct {
+	Status models.SarJobStatus `json:"status"`
+	JobId  uuid.UUID           `json:"job_id"`
+	Error  string              `json:"error"`
+}
+
 type DeclarationState struct {
 	Declaration models.SarDeclaration
 	Format      core.Format
@@ -199,6 +207,9 @@ type DeclarationState struct {
 	// ActiveJobId is the pending or running generation job, nil when none
 	// (set by buildState; exposed as active_job_id by the API).
 	ActiveJobId *uuid.UUID
+	// Generation is the last generate job of the declaration, nil when it was
+	// never generated (set by buildState).
+	Generation *GenerationState
 	// Resolved maps each provisional item prefix written in the fills of an
 	// UpdateFields call to the real item path it was given (core.ApplyResult.
 	// Resolved). Set by UpdateFields only. AddItem returns the created item path itself,
@@ -335,6 +346,7 @@ func (uc *Usecase) buildState(ctx context.Context, exec repositories.Executor, d
 		ExportsCount: count,
 		LastExportAt: last,
 		ActiveJobId:  activeJobId,
+		Generation:   uc.lastGeneration(jobs),
 	}, nil
 }
 
@@ -542,12 +554,28 @@ func (uc *Usecase) mutateWithPost(ctx context.Context, id uuid.UUID, version int
 	return uc.buildState(ctx, exec, saved)
 }
 
-func issuesToError(issues []core.Issue) error {
-	msgs := make([]string, 0, len(issues))
-	for _, i := range issues {
-		msgs = append(msgs, i.Code+" ("+string(i.Path)+") : "+i.Message)
+// IssuesError is a BadParameterError that carries the structured issues of a
+// refused write, so the API can return them as details.issues. Its message is
+// the clean French text the analyst reads (no code, no sentinel suffix).
+type IssuesError struct {
+	issues []core.Issue
+}
+
+func (e *IssuesError) Error() string {
+	msgs := make([]string, 0, len(e.issues))
+	for _, i := range e.issues {
+		msgs = append(msgs, string(i.Path)+" : "+i.Message)
 	}
-	return errors.Wrap(models.BadParameterError, strings.Join(msgs, " ; "))
+	return strings.Join(msgs, " ; ")
+}
+
+func (e *IssuesError) Unwrap() error { return models.BadParameterError }
+
+// SarIssues returns the issues of the refused write.
+func (e *IssuesError) SarIssues() []core.Issue { return e.issues }
+
+func issuesToError(issues []core.Issue) error {
+	return &IssuesError{issues: issues}
 }
 
 // UpdateFields applies fills with OriginManual and OverwriteAll, all-or-nothing.
@@ -758,4 +786,23 @@ func (uc *Usecase) recompute(ctx context.Context, format core.Format, doc *core.
 		utils.LoggerFromContext(ctx).WarnContext(ctx, "sar declaration: computed fills not applied",
 			"rejected", len(res.Rejected), "conflicts", len(res.Conflicts), "first_rejected", first)
 	}
+}
+
+// lastGeneration returns the state of the most recent generate job (jobs are
+// newest first), nil when there is none.
+func (uc *Usecase) lastGeneration(jobs []models.SarGenerationJob) *GenerationState {
+	for _, j := range jobs {
+		if j.Kind != models.SarJobKindGenerate {
+			continue
+		}
+		g := &GenerationState{Status: j.Status, JobId: j.Id, Error: j.Error}
+		if uc.isStale(j) {
+			g.Status = models.SarJobStatusFailed
+			if g.Error == "" {
+				g.Error = "la génération ne répond plus"
+			}
+		}
+		return g
+	}
+	return nil
 }

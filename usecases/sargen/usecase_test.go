@@ -243,7 +243,11 @@ func TestUpdateFields_ComputedLineFieldRejected(t *testing.T) {
 		{Path: "operations.operation[op-1].montantTotal", Value: "100.00"},
 	})
 	require.ErrorIs(t, err, models.BadParameterError)
-	require.ErrorContains(t, err, "computed_line")
+	// The code lives in the structured issue, not in the French message (PR 7 P3).
+	var carrier interface{ SarIssues() []core.Issue }
+	require.True(t, errors.As(err, &carrier))
+	require.Len(t, carrier.SarIssues(), 1)
+	require.Equal(t, "computed_line", carrier.SarIssues()[0].Code)
 }
 
 func TestUpdateFields_NonLineComputedFieldAllowed(t *testing.T) {
