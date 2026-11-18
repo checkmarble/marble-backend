@@ -242,8 +242,10 @@ func sameObjects(a, b []core.ObjectRef) bool {
 // Dedupe: persons with the same type and the same objects are one person;
 // references of the same type and objects are one reference (their owners are
 // merged); transactions are identified by their transaction object (one id per
-// entry; it may not be a person or reference object, see parsePlacement). An object shared by
-// two distinct persons stays allowed.
+// entry). The object of a transaction may also be the object of a declared
+// person or reference: it is accepted and the analyst is asked to check it
+// (see mixedUseQuestions). An object shared by two distinct persons stays
+// allowed.
 //
 // A transaction's sources are its objects plus the selected objects linked to
 // its transaction object by the data model that are the objects of a declared
