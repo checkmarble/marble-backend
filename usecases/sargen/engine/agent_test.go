@@ -629,3 +629,44 @@ func TestAgent_LimitOnReviewAsksNothing(t *testing.T) {
 	assert.Empty(t, out.Questions)
 	assert.Empty(t, out.Findings)
 }
+
+func optionQuestion(path, optionFill string) string {
+	return `{"fills":[],"questions":[{"paths":["` + path + `"],"text":"Question ?","options":[{"label":"Oui","fills":[` + optionFill + `]},{"label":"Non"}]}]}`
+}
+
+func TestAgent_OptionWithoutSourceKeepsItsFills(t *testing.T) {
+	final := optionQuestion(agNomPath, `{"path":"`+agNomPath+`","value":"Dupont","source":null}`)
+	llm := newScriptedLLM(FinalStep(final))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t), agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+
+	require.Len(t, out.Questions, 1)
+	require.Len(t, out.Questions[0].Options[0].Fills, 1, "an option needs no source: the analyst's click is the proof")
+	assert.Equal(t, "Dupont", out.Questions[0].Options[0].Fills[0].Value)
+	assert.Equal(t, core.OriginAnalyst, out.Questions[0].Options[0].Fills[0].Origin)
+	assert.Empty(t, out.Questions[0].Options[0].Fills[0].Sources)
+}
+
+func TestAgent_OptionWithFakeSourceStaysLabel(t *testing.T) {
+	final := optionQuestion(agNomPath, agFill(agNomPath, "Martin", agSrc("last_name", "Dupont")))
+	llm := newScriptedLLM(FinalStep(final))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t), agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+
+	require.Len(t, out.Questions, 1)
+	assert.Empty(t, out.Questions[0].Options[0].Fills, "a cited source must still prove the value")
+}
+
+func TestAgent_OptionOnSettingOrComputedStaysLabel(t *testing.T) {
+	for _, path := range []core.Path{"declarant.fonction", "operations.montantTotal"} {
+		t.Run(string(path), func(t *testing.T) {
+			final := optionQuestion(string(path), `{"path":"`+string(path)+`","value":"x","source":null}`)
+			llm := newScriptedLLM(FinalStep(final))
+			spec := agentSpec("fill", path)
+			out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t), spec)
+			require.NoError(t, err)
+			require.Len(t, out.Questions, 1)
+			assert.Empty(t, out.Questions[0].Options[0].Fills)
+		})
+	}
+}
