@@ -76,3 +76,33 @@ func TestCourrielWithHyphenIsAcceptedAndExported(t *testing.T) {
 	require.NoError(t, f.WriteXML(&doc, &buf))
 	xmllintOK(t, buf.Bytes())
 }
+
+// Addresses the t_mail pattern must refuse are refused by both the Go
+// validator and xmllint (the validator must not be more permissive than the XSD).
+func TestCourrielInvalidIsRefusedByValidatorAndXSD(t *testing.T) {
+	requireXmllint(t)
+	spec := currentSpec(t)
+
+	raw, err := os.ReadFile("testdata/minimal.json")
+	require.NoError(t, err)
+
+	for _, mail := range []string{"jean.dupont.ma-banque.fr", "jean dupont@ma-banque.fr", "jean@banque", "jean@ma-banque.fr."} {
+		t.Run(mail, func(t *testing.T) {
+			assert.NotNil(t, core.ValidateValue(spec, "declarant.coordonnees.courriel", mail),
+				"le validateur Go accepte une adresse que le XSD refuse")
+
+			var doc core.Document
+			require.NoError(t, json.Unmarshal(raw, &doc))
+			setTracfinValue(&doc, "declarant.coordonnees.courriel", mail)
+			f, ok := tracfin.New(tracfin.CurrentVersion)
+			require.True(t, ok)
+			var buf bytes.Buffer
+			require.NoError(t, f.WriteXML(&doc, &buf))
+
+			path := filepath.Join(t.TempDir(), "out.xml")
+			require.NoError(t, os.WriteFile(path, buf.Bytes(), 0o600))
+			out, err := exec.Command("xmllint", "--noout", "--schema", "testdata/financier-v1.4.0-test.xsd", path).CombinedOutput()
+			require.Error(t, err, "xmllint accepted an invalid address:\n%s", string(out))
+		})
+	}
+}
