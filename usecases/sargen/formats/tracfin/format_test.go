@@ -106,3 +106,13 @@ func TestCourrielInvalidIsRefusedByValidatorAndXSD(t *testing.T) {
 		})
 	}
 }
+
+// The format offers its conventions prompt to the engine, which prepends it to
+// every step prompt.
+func TestFormat_InstructionsPromptPath(t *testing.T) {
+	f, ok := tracfin.New(tracfin.CurrentVersion)
+	require.True(t, ok)
+	fi, ok := f.(interface{ InstructionsPromptPath() string })
+	require.True(t, ok)
+	assert.Equal(t, "sar_generation/tracfin/format.md", fi.InstructionsPromptPath())
+}

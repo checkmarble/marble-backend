@@ -63,6 +63,7 @@ var AiAgentExpectedFiles = []string{
 // archive without them still enables the other AI features, and a generation job that needs a
 // missing one fails with a clear message (see AiAgentOptionalFiles).
 const (
+	SarGenerationTracfinFormatPromptPath          = "sar_generation/tracfin/format.md"
 	SarGenerationTracfinUnderstandingPromptPath   = "sar_generation/tracfin/understanding.md"
 	SarGenerationTracfinPlacementPromptPath       = "sar_generation/tracfin/placement.md"
 	SarGenerationTracfinFillPersonPromptPath      = "sar_generation/tracfin/fill_person.md"
@@ -78,6 +79,7 @@ const (
 // optional one only fails the feature that needs it). Local prompts directories are served
 // as is.
 var AiAgentOptionalFiles = []string{
+	SarGenerationTracfinFormatPromptPath,
 	SarGenerationTracfinUnderstandingPromptPath,
 	SarGenerationTracfinPlacementPromptPath,
 	SarGenerationTracfinFillPersonPromptPath,

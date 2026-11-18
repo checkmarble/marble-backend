@@ -5,6 +5,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
 	"github.com/cockroachdb/errors"
 )
@@ -66,9 +67,16 @@ func New(version string) (core.Format, bool) {
 	return entry.f, true
 }
 
-func (f *format) Key() core.FormatKey                      { return f.key }
-func (f *format) Status() core.VersionStatus               { return f.status }
-func (f *format) Spec() *core.Spec                         { return f.spec }
+func (f *format) Key() core.FormatKey        { return f.key }
+func (f *format) Status() core.VersionStatus { return f.status }
+func (f *format) Spec() *core.Spec           { return f.spec }
+
+// InstructionsPromptPath is the prompt of the TRACFIN conventions shared by every
+// step (the engine prepends it to each step prompt).
+func (f *format) InstructionsPromptPath() string {
+	return models.SarGenerationTracfinFormatPromptPath
+}
+
 func (f *format) Validate(doc *core.Document) []core.Issue { return Validate(f.spec, doc) }
 
 // Plan, ApplyStructured, Compute and Tools: see planner.go, placement.go, compute.go and tools.go.

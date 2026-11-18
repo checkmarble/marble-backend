@@ -296,6 +296,7 @@ func TestAgent_FormatInstructionsMissingIsAnError(t *testing.T) {
 
 func TestAgent_FormatWithoutInstructionsIsUnchanged(t *testing.T) {
 	tc := agentToolContext(t)
+	tc.Format = instructedFormat{Format: tc.Format} // implements the interface, empty path
 	llm := newScriptedLLM(FinalStep(agFinal()))
 	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, tc, agentSpec("fill", agentPersonPath))
 	require.NoError(t, err)

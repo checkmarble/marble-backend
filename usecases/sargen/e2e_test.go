@@ -571,3 +571,44 @@ func TestRunJob_MissingPromptFailsJob(t *testing.T) {
 	// which comes first, ran before the placement prompt was found missing.
 	assert.Equal(t, map[string]int{"sar_generation/tracfin/understanding.md": 1}, llm.Requests)
 }
+
+// The TRACFIN conventions prompt is put before every step prompt.
+func TestRunJob_FormatConventionsPrecedeEveryStepPrompt(t *testing.T) {
+	uc, f, declId := e2eReady(t)
+	selDataModel(f)
+	llm := &e2eLLM{script: e2eScript(), runs: map[string]int{}, Requests: map[string]int{}}
+	o, _ := e2eOrchestrator(f, llm, e2ePrompts{})
+
+	job, err := uc.StartGeneration(f.Ctx, declId)
+	require.NoError(t, err)
+	require.NoError(t, o.RunJob(f.Ctx, job.Id))
+
+	require.NotEmpty(t, llm.Prompts)
+	for path, prompts := range llm.Prompts {
+		for _, p := range prompts {
+			conv := strings.Index(p, "## Format conventions\nPROMPT[sar_generation/tracfin/format.md]")
+			step := strings.Index(p, "PROMPT["+path+"]")
+			require.GreaterOrEqual(t, conv, 0, "%s: conventions missing", path)
+			assert.Less(t, conv, step, "%s: conventions come before the step prompt", path)
+		}
+	}
+}
+
+// A missing conventions prompt fails the job before any model call.
+func TestRunJob_MissingFormatPromptFailsJob(t *testing.T) {
+	uc, f, declId := e2eReady(t)
+	llm := &e2eLLM{script: e2eScript(), runs: map[string]int{}, Requests: map[string]int{}}
+	o, _ := e2eOrchestrator(f, llm, e2ePrompts{missing: map[string]bool{"sar_generation/tracfin/format.md": true}})
+
+	job, err := uc.StartGeneration(f.Ctx, declId)
+	require.NoError(t, err)
+	err = o.RunJob(f.Ctx, job.Id)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, engine.ErrPromptMissing))
+
+	failed, err := f.Gen.GetSarGenerationJob(f.Ctx, nil, job.Id)
+	require.NoError(t, err)
+	assert.Equal(t, models.SarJobStatusFailed, failed.Status)
+	assert.Equal(t, "prompt manquant : sar_generation/tracfin/format.md", failed.Error)
+	assert.Empty(t, llm.Requests)
+}
