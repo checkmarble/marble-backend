@@ -114,3 +114,23 @@ func TestRunJob_StructuredOutputInsideSelectionIsApplied(t *testing.T) {
 	require.NoError(t, o.RunJob(ctx, f.JobId))
 	require.Len(t, f.Repo.Doc(t).Items["personnes.pp"], 1)
 }
+
+// A structured output that leaves the document byte-identical (the understanding
+// note) completes the task and stores its output, but writes no document and
+// bumps no version.
+func TestRunJob_StructuredOutputThatChangesNothingBumpsNoVersion(t *testing.T) {
+	ctx := context.Background()
+	o, f := newTestOrchestrator(t)
+	f.Format.Waves = [][]core.TaskSpec{{Spec("note", "")}}
+	f.Format.StructuredFn = func(string, *core.Document, json.RawMessage) error { return nil }
+	f.Runner.On("note", "", Step{Out: core.TaskOutput{Structured: json.RawMessage(`{"x":1}`)}})
+	versionBefore := f.Repo.decl.Version
+
+	require.NoError(t, o.RunJob(ctx, f.JobId))
+
+	task := f.Repo.Task(t, "note", "")
+	require.Equal(t, models.SarJobStatusDone, task.Status)
+	require.Equal(t, versionBefore, f.Repo.decl.Version, "no version bump")
+	require.Equal(t, 0, f.Repo.UpdateCalls, "the document is not written")
+	require.Contains(t, string(task.Output), `"wrote":false`)
+}

@@ -84,15 +84,16 @@ func TestAgent_CopiedCodeLabelMatchAccepted(t *testing.T) {
 
 // A code that mismatches its source, with justification and confidence, is
 // accepted, and the engine forces the confidence to low whatever the model said.
+// (A list with an unknown code is stricter: see agent_format_rules_test.go.)
 func TestAgent_CopiedCodeMismatchWithConfidenceAcceptedForcedLow(t *testing.T) {
-	const fill = `{"path":"` + agPolitiqueePath + `","value":"Non","source":{"field":"last_name","raw_value":"Dupont"},"justification":"aucune mention dans le dossier","confidence":"high"}`
+	const fill = `{"path":"` + agPaysNaissancePath + `","value":"FR","source":{"field":"birth_country","raw_value":"Russie"},"justification":"pays cité par le dossier","confidence":"high"}`
 	llm := newScriptedLLM(FinalStep(agFinal(fill)))
-	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t), agentSpec("fill", agentPersonPath))
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentBirthCountryContext(t, "Russie"), agentSpec("fill", agentPersonPath))
 	require.NoError(t, err)
 	assert.Equal(t, 1, llm.Calls())
 	require.Len(t, out.Fills, 1)
 	assert.Equal(t, core.ConfidenceLow, out.Fills[0].Confidence)
-	assert.Equal(t, "aucune mention dans le dossier", out.Fills[0].Justification)
+	assert.Equal(t, "pays cité par le dossier", out.Fills[0].Justification)
 }
 
 // A copied boolean whose source is not a boolean literal: justification alone is

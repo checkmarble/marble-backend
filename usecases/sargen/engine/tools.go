@@ -391,6 +391,10 @@ func fieldSpec(f core.Format, args json.RawMessage) string {
 		default:
 			out["code_count"] = len(list.Codes)
 		}
+		if ok && list.UnknownCode != "" {
+			out["unknown_code"] = list.UnknownCode
+			out["unknown_code_rule"] = unknownCodeRule(list.UnknownCode)
+		}
 	}
 	return toolJSON(out)
 }

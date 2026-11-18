@@ -184,14 +184,26 @@ func typeLabel(t core.FieldType) string {
 
 func (d *describer) codeList(name string) string {
 	list, ok := d.spec.CodeLists[name]
-	if !ok || list.Unavailable || len(list.Codes) == 0 || len(list.Codes) > inlineCodesMax {
+	if !ok || list.Unavailable || len(list.Codes) == 0 {
 		return "code list: " + name
 	}
-	codes := make([]string, len(list.Codes))
-	for i, c := range list.Codes {
-		codes[i] = c.Value + " (" + oneLine(c.Label) + ")"
+	desc := "code list: " + name
+	if len(list.Codes) <= inlineCodesMax {
+		codes := make([]string, len(list.Codes))
+		for i, c := range list.Codes {
+			codes[i] = c.Value + " (" + oneLine(c.Label) + ")"
+		}
+		desc += " [" + strings.Join(codes, ", ") + "]"
 	}
-	return "code list: " + name + " [" + strings.Join(codes, ", ") + "]"
+	if list.UnknownCode != "" {
+		desc += " ; " + unknownCodeRule(list.UnknownCode)
+	}
+	return desc
+}
+
+// unknownCodeRule is the rule shown to the model for a list with an unknown code.
+func unknownCodeRule(code string) string {
+	return fmt.Sprintf("unknown code %q: use it when the data say nothing; any other code needs a source whose raw value is that code or its label (or a boolean for a yes/no list), else it becomes a question for the analyst", code)
 }
 
 func oneLine(s string) string {

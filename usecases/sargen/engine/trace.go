@@ -31,11 +31,15 @@ type TraceEntry struct {
 	Model        string `json:"model,omitempty"`
 	PromptPath   string `json:"prompt_path,omitempty"`
 	PromptSHA256 string `json:"prompt_sha256,omitempty"`
-	Name         string `json:"name,omitempty"`
-	Args         string `json:"args,omitempty"`
-	Text         string `json:"text,omitempty"` // instruction, prompt, result, output, error
-	InputTokens  int64  `json:"input_tokens,omitempty"`
-	OutputTokens int64  `json:"output_tokens,omitempty"`
+	// FormatPromptPath and FormatPromptSHA256 identify the format instructions
+	// prepended to the step prompt, when the format has some.
+	FormatPromptPath   string `json:"format_prompt_path,omitempty"`
+	FormatPromptSHA256 string `json:"format_prompt_sha256,omitempty"`
+	Name               string `json:"name,omitempty"`
+	Args               string `json:"args,omitempty"`
+	Text               string `json:"text,omitempty"` // instruction, prompt, result, output, error
+	InputTokens        int64  `json:"input_tokens,omitempty"`
+	OutputTokens       int64  `json:"output_tokens,omitempty"`
 	// DurationMs is the duration of the LLM step (on the first entry the step
 	// produced) or of the tool call (tool_result).
 	DurationMs int64 `json:"duration_ms,omitempty"`
@@ -97,6 +101,11 @@ func newTrace(promptPath, promptText string) *trace {
 	return &trace{entries: []TraceEntry{{
 		Type: TraceHeader, PromptPath: clean(promptPath), PromptSHA256: hex.EncodeToString(sum[:]),
 	}}}
+}
+
+func (t *trace) setConventions(path, text string) {
+	sum := sha256.Sum256([]byte(text))
+	t.entries[0].FormatPromptPath, t.entries[0].FormatPromptSHA256 = clean(path), hex.EncodeToString(sum[:])
 }
 
 func (t *trace) setProvider(provider, model string) {
