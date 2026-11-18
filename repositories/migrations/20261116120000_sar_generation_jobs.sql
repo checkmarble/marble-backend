@@ -9,6 +9,7 @@ CREATE TABLE sar_generation_jobs (
     error text,
     created_by uuid,
     attempt int NOT NULL DEFAULT 0,
+    rate_limited_since timestamp with time zone,
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     updated_at timestamp with time zone NOT NULL DEFAULT now()
 );
@@ -39,6 +40,9 @@ CREATE TABLE sar_generation_tasks (
 );
 
 CREATE INDEX sar_generation_tasks_job_id_idx ON sar_generation_tasks (job_id);
+
+-- A task is identified by its input within a job: concurrent planners share the same rows.
+CREATE UNIQUE INDEX sar_generation_tasks_job_input_hash_idx ON sar_generation_tasks (job_id, input_hash);
 
 CREATE TABLE sar_declaration_questions (
     id uuid PRIMARY KEY,

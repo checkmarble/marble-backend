@@ -331,13 +331,12 @@ func TestResumeJob_LostPendingJobAfterStartGeneration(t *testing.T) {
 	st, err := uc.GetJob(f.Ctx, job.Id)
 	require.NoError(t, err)
 	assert.Equal(t, models.SarJobStatusFailed, st.Job.Status)
-	_, err = uc.StartGeneration(f.Ctx, declId)
-	require.ErrorIs(t, err, models.ErrSarJobAlreadyActive)
-	assert.ErrorContains(t, err, "relancez la génération")
-
-	resumed, err := uc.ResumeJob(f.Ctx, job.Id)
+	// Starting again fails the stale job (database clock) and resumes it.
+	again, err := uc.StartGeneration(f.Ctx, declId)
 	require.NoError(t, err)
-	assert.Equal(t, models.SarJobStatusPending, resumed.Status)
+	assert.Equal(t, job.Id, again.Id)
+	assert.Equal(t, models.SarJobStatusPending, again.Status)
+	assert.Equal(t, 1, f.Gen.JobCreates)
 	require.Len(t, f.Enqueuer.Calls, 2)
 	assert.Equal(t, job.Id, f.Enqueuer.Calls[1].JobId)
 }
@@ -481,10 +480,13 @@ func TestGetJob_StaleRunningReportedFailed(t *testing.T) {
 	assert.Equal(t, models.SarJobStatusFailed, st.Job.Status)
 	assert.NotEmpty(t, st.LastError)
 
+	// A writer does not stay blocked by the stale job: it fails it and goes on.
 	_, err = uc.UpdateFields(f.Ctx, declId, f.Repo.Declarations[declId].Version,
 		[]core.Fill{{Path: "organisme.libelle", Value: "X"}})
-	require.ErrorIs(t, err, ErrGenerationInProgress)
-	assert.ErrorContains(t, err, "relancez la génération")
+	require.NoError(t, err)
+	stored := f.Gen.Jobs[job.Id]
+	assert.Equal(t, models.SarJobStatusFailed, stored.Status)
+	assert.Contains(t, stored.Error, "ne répond plus")
 }
 
 func TestRequiredSettingPaths_RealSpec(t *testing.T) {

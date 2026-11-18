@@ -326,7 +326,11 @@ func (r *jobRun) loop(ctx context.Context) error {
 			if err := o.generation.CreateSarGenerationTasks(ctx, exec, fresh); err != nil {
 				return errors.Wrap(err, "cannot create tasks")
 			}
-			tasks = append(tasks, fresh...)
+			// Concurrent planners may have inserted the same tasks (unique on
+			// job and input hash): work on the rows that exist.
+			if tasks, err = o.generation.ListSarGenerationTasks(ctx, exec, r.job.Id); err != nil {
+				return errors.Wrap(err, "cannot list tasks")
+			}
 		}
 
 		ready, pending, err := r.readyTasks(tasks)
@@ -571,6 +575,17 @@ func (r *jobRun) runTask(ctx context.Context, rt readyTask) (claimed bool, err e
 	return true, nil
 }
 
+// stillRunning reads the job status inside the transaction, after the
+// declaration row lock: nothing may be written for a job that is not running
+// any more (failed by a writer for staleness, or finished).
+func (r *jobRun) stillRunning(ctx context.Context, tx repositories.Transaction) (bool, error) {
+	job, err := r.o.generation.GetSarGenerationJob(ctx, tx, r.job.Id)
+	if err != nil {
+		return false, errors.Wrap(err, "cannot read job")
+	}
+	return job.Status == models.SarJobStatusRunning, nil
+}
+
 // taskResult is the persisted output of a task.
 type taskResult struct {
 	Applied   []core.Path    `json:"applied"`
@@ -609,6 +624,11 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 	decl, err := o.declarations.GetSarDeclarationForUpdate(ctx, tx, r.declId)
 	if err != nil {
 		return false, errors.Wrap(err, "cannot lock declaration")
+	}
+	if running, err := r.stillRunning(ctx, tx); err != nil {
+		return false, err
+	} else if !running {
+		return true, nil // job failed or finished meanwhile: nothing written
 	}
 	doc, err := decodeDocument(decl.Document)
 	if err != nil {
@@ -814,6 +834,11 @@ func (r *jobRun) applyCompute(ctx context.Context, tx repositories.Transaction, 
 	decl, err := o.declarations.GetSarDeclarationForUpdate(ctx, tx, r.declId)
 	if err != nil {
 		return false, errors.Wrap(err, "cannot lock declaration")
+	}
+	if running, err := r.stillRunning(ctx, tx); err != nil {
+		return false, err
+	} else if !running {
+		return true, nil // job failed or finished meanwhile: nothing written
 	}
 	doc, err := decodeDocument(decl.Document)
 	if err != nil {

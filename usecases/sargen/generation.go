@@ -23,7 +23,7 @@ var (
 	// while one of its jobs is pending or running.
 	ErrGenerationInProgress = errors.Wrap(models.ConflictError, "une génération est en cours")
 	// ErrSelectionFrozen (409) is returned by UpdateSelection once a generate
-	// job is done for the declaration.
+	// job is done, or has at least one done task, for the declaration.
 	ErrSelectionFrozen = errors.Wrap(models.ConflictError,
 		"la sélection ne peut plus changer après la génération ; créez une nouvelle déclaration")
 	// ErrAlreadyGenerated (409) is returned by StartGeneration when a generate
@@ -47,6 +47,11 @@ type SarGenerationRepository interface {
 	// models.ErrSarJobAlreadyActive.
 	ResumeSarGenerationJob(ctx context.Context, exec repositories.Executor, id uuid.UUID,
 		staleAfter time.Duration) (bool, error)
+	// FailStaleSarGenerationJobs moves the pending/running jobs of a declaration
+	// untouched for longer than staleAfter (database clock) to failed, with
+	// errMsg; it returns how many jobs were failed.
+	FailStaleSarGenerationJobs(ctx context.Context, exec repositories.Executor, declarationId uuid.UUID,
+		staleAfter time.Duration, errMsg string) (int, error)
 	// ListSarGenerationTaskSummaries lists the tasks without input, output or trace.
 	ListSarGenerationTaskSummaries(ctx context.Context, exec repositories.Executor, jobId uuid.UUID) ([]models.SarGenerationTask, error)
 	ListSarQuestions(ctx context.Context, exec repositories.Executor, declarationId uuid.UUID, status string) ([]models.SarQuestion, error)
@@ -135,7 +140,10 @@ type JobState struct {
 //     the document is saved with a version bump only if it changed;
 //   - creates the job (status pending, kind generate, created_by) and enqueues
 //     it (GenerationEnqueuer) in the same transaction, under the declaration
-//     row lock (GetSarDeclarationForUpdate).
+//     row lock (GetSarDeclarationForUpdate); when the last generate job failed,
+//     that job is resumed instead (same id, done tasks kept, enqueued again);
+//   - an active job that is stale (no update for 2 x the job timeout, database
+//     clock) is failed first, so it neither blocks nor survives the call.
 func (uc *Usecase) StartGeneration(ctx context.Context, id uuid.UUID) (models.SarGenerationJob, error) {
 	exec := uc.executorFactory.NewExecutor()
 	d, err := uc.loadDeclaration(ctx, exec, id)
@@ -154,7 +162,7 @@ func (uc *Usecase) StartGeneration(ctx context.Context, id uuid.UUID) (models.Sa
 		if err := uc.checkDeclarationAccess(ctx, tx, locked); err != nil {
 			return err
 		}
-		jobs, err := uc.generation.ListSarGenerationJobs(ctx, tx, id)
+		jobs, err := uc.listJobsFailingStale(ctx, tx, id)
 		if err != nil {
 			return err
 		}
@@ -162,7 +170,7 @@ func (uc *Usecase) StartGeneration(ctx context.Context, id uuid.UUID) (models.Sa
 			return ErrAlreadyGenerated
 		}
 		if hasActiveJob(jobs) {
-			return uc.activeJobError(jobs)
+			return models.ErrSarJobAlreadyActive
 		}
 		if strings.TrimSpace(locked.Analysis) == "" {
 			return errors.Wrap(models.BadParameterError, "l'analyse est vide : renseignez-la avant de générer")
@@ -236,6 +244,12 @@ func (uc *Usecase) StartGeneration(ctx context.Context, id uuid.UUID) (models.Sa
 			}
 		}
 
+		// A failed generation is resumed, never replaced: a new job would not
+		// know the tasks already done (placement included) and would replay them.
+		if failed, ok := lastFailedGenerate(jobs); ok {
+			job, err = uc.resumeLocked(ctx, tx, locked, failed.Id)
+			return err
+		}
 		job, err = uc.createAndEnqueue(ctx, tx, locked, models.SarJobKindGenerate)
 		return err
 	})
@@ -268,6 +282,56 @@ func hasActiveJob(jobs []models.SarGenerationJob) bool {
 
 func isActiveJob(s models.SarJobStatus) bool {
 	return s == models.SarJobStatusPending || s == models.SarJobStatusRunning
+}
+
+// lastFailedGenerate returns the most recent failed generate job (jobs are
+// newest first).
+func lastFailedGenerate(jobs []models.SarGenerationJob) (models.SarGenerationJob, bool) {
+	for _, j := range jobs {
+		if j.Kind == models.SarJobKindGenerate && j.Status == models.SarJobStatusFailed {
+			return j, true
+		}
+	}
+	return models.SarGenerationJob{}, false
+}
+
+// staleJobMessage is the public error of a job failed for staleness.
+const staleJobMessage = "la génération ne répond plus et a été arrêtée ; vous pouvez la relancer"
+
+// listJobsFailingStale fails the stale active jobs of the declaration (SQL,
+// database clock), then lists its jobs. Called inside the writers'
+// transactions after the declaration row lock.
+func (uc *Usecase) listJobsFailingStale(ctx context.Context, exec repositories.Executor,
+	declarationId uuid.UUID,
+) ([]models.SarGenerationJob, error) {
+	if _, err := uc.generation.FailStaleSarGenerationJobs(ctx, exec, declarationId,
+		uc.staleAfter(), staleJobMessage); err != nil {
+		return nil, err
+	}
+	return uc.generation.ListSarGenerationJobs(ctx, exec, declarationId)
+}
+
+// hasGeneratedTask tells whether a generate job of the declaration has at
+// least one done task: its results (placement, created items) exist and the
+// selection must not change any more.
+func (uc *Usecase) hasGeneratedTask(ctx context.Context, exec repositories.Executor,
+	jobs []models.SarGenerationJob,
+) (bool, error) {
+	for _, j := range jobs {
+		if j.Kind != models.SarJobKindGenerate {
+			continue
+		}
+		tasks, err := uc.generation.ListSarGenerationTaskSummaries(ctx, exec, j.Id)
+		if err != nil {
+			return false, err
+		}
+		if slices.ContainsFunc(tasks, func(t models.SarGenerationTask) bool {
+			return t.Status == models.SarJobStatusDone
+		}) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func hasDoneGenerate(jobs []models.SarGenerationJob) bool {
@@ -371,27 +435,37 @@ func (uc *Usecase) ResumeJob(ctx context.Context, jobId uuid.UUID) (models.SarGe
 				return ErrAlreadyGenerated
 			}
 		}
-		// A stale job may still have a live River job (e.g. a worker slowed
-		// beyond 2 x timeout): a second River job can then run. This is safe:
-		// task claims and completions are attempt-guarded, so a result is
-		// never applied twice.
-		ok, err := uc.generation.ResumeSarGenerationJob(ctx, tx, jobId, uc.staleAfter())
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return errors.Wrap(models.ConflictError, "cette génération ne peut pas être relancée")
-		}
-		if err := uc.enqueuer.EnqueueSarGenerationTask(ctx, tx, locked.OrganizationId, jobId, locked.Id); err != nil {
-			return errors.Wrap(err, "cannot enqueue generation job")
-		}
-		out, err = uc.generation.GetSarGenerationJob(ctx, tx, jobId)
+		out, err = uc.resumeLocked(ctx, tx, locked, jobId)
 		return err
 	})
 	if err != nil {
 		return models.SarGenerationJob{}, err
 	}
 	return out, nil
+}
+
+// resumeLocked puts the job back to pending (SQL-guarded) and enqueues it, in
+// tx, under the declaration row lock.
+//
+// A stale job may still have a live River job (e.g. a worker slowed beyond
+// 2 x timeout): a second River job can then run. This is safe: tasks are
+// unique per (job, input hash), task claims and completions are
+// attempt-guarded, and the orchestrator writes nothing once the job is not
+// running.
+func (uc *Usecase) resumeLocked(ctx context.Context, tx repositories.Transaction,
+	locked models.SarDeclaration, jobId uuid.UUID,
+) (models.SarGenerationJob, error) {
+	ok, err := uc.generation.ResumeSarGenerationJob(ctx, tx, jobId, uc.staleAfter())
+	if err != nil {
+		return models.SarGenerationJob{}, err
+	}
+	if !ok {
+		return models.SarGenerationJob{}, errors.Wrap(models.ConflictError, "cette génération ne peut pas être relancée")
+	}
+	if err := uc.enqueuer.EnqueueSarGenerationTask(ctx, tx, locked.OrganizationId, jobId, locked.Id); err != nil {
+		return models.SarGenerationJob{}, errors.Wrap(err, "cannot enqueue generation job")
+	}
+	return uc.generation.GetSarGenerationJob(ctx, tx, jobId)
 }
 
 // StartReview starts a `review` job (the format plans only the `review` task,
@@ -417,12 +491,12 @@ func (uc *Usecase) StartReview(ctx context.Context, id uuid.UUID) (models.SarGen
 		if err := uc.checkDeclarationAccess(ctx, tx, locked); err != nil {
 			return err
 		}
-		jobs, err := uc.generation.ListSarGenerationJobs(ctx, tx, id)
+		jobs, err := uc.listJobsFailingStale(ctx, tx, id)
 		if err != nil {
 			return err
 		}
 		if hasActiveJob(jobs) {
-			return uc.activeJobError(jobs)
+			return models.ErrSarJobAlreadyActive
 		}
 		if !hasDoneGenerate(jobs) {
 			return errors.Wrap(models.ConflictError, "aucune génération terminée : lancez d'abord la génération")
@@ -437,39 +511,18 @@ func (uc *Usecase) StartReview(ctx context.Context, id uuid.UUID) (models.SarGen
 }
 
 // requireNoActiveJob returns ErrGenerationInProgress while a job of the
-// declaration is pending or running. Called inside the writers' transactions
-// after the row lock.
+// declaration is pending or running. A stale job (no update for 2 x the job
+// timeout, database clock) is failed first, so a lost job never locks the
+// declaration. Called inside the writers' transactions after the row lock.
 func (uc *Usecase) requireNoActiveJob(ctx context.Context, exec repositories.Executor, declarationId uuid.UUID) error {
-	jobs, err := uc.generation.ListSarGenerationJobs(ctx, exec, declarationId)
+	jobs, err := uc.listJobsFailingStale(ctx, exec, declarationId)
 	if err != nil {
 		return err
 	}
 	if hasActiveJob(jobs) {
-		return uc.lockError(jobs)
+		return ErrGenerationInProgress
 	}
 	return nil
-}
-
-// lockError is ErrGenerationInProgress, with a resume hint when the active job
-// is stale.
-func (uc *Usecase) lockError(jobs []models.SarGenerationJob) error {
-	if uc.hasStaleJob(jobs) {
-		return errors.Wrap(ErrGenerationInProgress, "la génération ne répond plus : relancez la génération")
-	}
-	return ErrGenerationInProgress
-}
-
-func (uc *Usecase) hasStaleJob(jobs []models.SarGenerationJob) bool {
-	return slices.ContainsFunc(jobs, uc.isStale)
-}
-
-// activeJobError is the 409 for a declaration that already has an active job;
-// it hints at resuming when that job is stale.
-func (uc *Usecase) activeJobError(jobs []models.SarGenerationJob) error {
-	if uc.hasStaleJob(jobs) {
-		return errors.Wrap(models.ErrSarJobAlreadyActive, "la génération ne répond plus : relancez la génération")
-	}
-	return models.ErrSarJobAlreadyActive
 }
 
 // requiredSettingPaths returns the organization setting paths that must be
