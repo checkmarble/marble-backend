@@ -86,3 +86,43 @@ func TestStaleJobDoesNotBlockWriters(t *testing.T) {
 		assert.Equal(t, models.SarJobStatusFailed, f.Gen.Jobs[job.Id].Status, "the stale job is failed by the export")
 	})
 }
+
+// ---- Round 1: selection of a failed job with no done task ----
+
+// A failed generation with no done task keeps the selection open; the
+// unfinished tasks (old snapshots) are dropped so that the resume replans
+// from the new selection and runs nothing stale.
+func TestUpdateSelection_FailedJobWithoutDoneTaskStaysOpenAndDropsUnfinishedTasks(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	j1, err := uc.StartGeneration(f.Ctx, declId)
+	require.NoError(t, err)
+	f.SeedTask(j1.Id, "fill", "organisme.libelle", models.SarJobStatusPending, 0, "")
+	f.SeedTask(j1.Id, "fill", "organisme.adresse", models.SarJobStatusFailed, 1, "boom")
+	f.SeedTask(j1.Id, "fill", "declarant", models.SarJobStatusRunning, 1, "")
+	genMarkJob(t, f, j1.Id, models.SarJobStatusFailed, "fournisseur indisponible")
+
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t2", "amount": 7}, time.Now())
+	version := f.Repo.Declarations[declId].Version
+	_, err = uc.UpdateSelection(f.Ctx, declId, version, []SelectionAdd{{Ref: selRef("transactions", "t2")}}, nil)
+	require.NoError(t, err)
+	assert.Len(t, f.Selection.Rows, 2, "the selection changed")
+	assert.Empty(t, f.Gen.Tasks[j1.Id], "unfinished tasks of the failed job are dropped")
+
+	resumed, err := uc.StartGeneration(f.Ctx, declId)
+	require.NoError(t, err)
+	assert.Equal(t, j1.Id, resumed.Id)
+	assert.Empty(t, f.Gen.Tasks[j1.Id], "nothing stale left for the resume: the orchestrator plans from the new selection")
+}
+
+// A review job never freezes the selection, even with done tasks.
+func TestUpdateSelection_ReviewJobDoesNotFreeze(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	rv := f.SeedJob(t, declId, models.SarJobKindReview, models.SarJobStatusFailed)
+	f.SeedTask(rv.Id, "review", "", models.SarJobStatusDone, 1, "")
+
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t2", "amount": 7}, time.Now())
+	version := f.Repo.Declarations[declId].Version
+	_, err := uc.UpdateSelection(f.Ctx, declId, version, []SelectionAdd{{Ref: selRef("transactions", "t2")}}, nil)
+	require.NoError(t, err)
+	assert.Len(t, f.Gen.Tasks[rv.Id], 1, "review job tasks are untouched")
+}

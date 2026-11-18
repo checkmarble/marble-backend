@@ -52,6 +52,8 @@ type SarGenerationRepository interface {
 	// errMsg; it returns how many jobs were failed.
 	FailStaleSarGenerationJobs(ctx context.Context, exec repositories.Executor, declarationId uuid.UUID,
 		staleAfter time.Duration, errMsg string) (int, error)
+	// DeleteUnfinishedSarGenerationTasks deletes the tasks of a job that are not done.
+	DeleteUnfinishedSarGenerationTasks(ctx context.Context, exec repositories.Executor, jobId uuid.UUID) error
 	// ListSarGenerationTaskSummaries lists the tasks without input, output or trace.
 	ListSarGenerationTaskSummaries(ctx context.Context, exec repositories.Executor, jobId uuid.UUID) ([]models.SarGenerationTask, error)
 	ListSarQuestions(ctx context.Context, exec repositories.Executor, declarationId uuid.UUID, status string) ([]models.SarQuestion, error)

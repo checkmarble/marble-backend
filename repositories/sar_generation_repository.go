@@ -188,6 +188,22 @@ func (repo *MarbleDbRepository) FailStaleSarGenerationJobs(
 	return n, rows.Err()
 }
 
+// DeleteUnfinishedSarGenerationTasks deletes the tasks of a job that are not
+// done (pending, failed, running): a failed job resumed after its inputs
+// changed replans them instead of running stale ones.
+func (repo *MarbleDbRepository) DeleteUnfinishedSarGenerationTasks(
+	ctx context.Context, exec Executor, jobId uuid.UUID,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+	query := NewQueryBuilder().
+		Delete(dbmodels.TABLE_SAR_GENERATION_TASKS).
+		Where(squirrel.Eq{"job_id": jobId}).
+		Where(squirrel.NotEq{"status": string(models.SarJobStatusDone)})
+	return ExecBuilder(ctx, exec, query)
+}
+
 // SetSarGenerationJobAttempt stores the River attempt number of the job.
 func (repo *MarbleDbRepository) SetSarGenerationJobAttempt(
 	ctx context.Context, exec Executor, id uuid.UUID, attempt int,
