@@ -23,6 +23,8 @@ func PublicError(err error) string {
 	case errors.Is(err, ErrLLMUnavailable):
 		// Configuration errors are our own French messages (no provider detail).
 		return "génération impossible : " + errors.UnwrapAll(err).Error()
+	case errors.Is(err, ErrJobNotRunning):
+		return ErrJobNotRunning.Error()
 	case errors.Is(err, ErrTaskLimitReached):
 		return ErrTaskLimitReached.Error()
 	case errors.Is(err, ErrRateLimitedTooLong), errors.Is(err, models.LLMRateLimitedError):
