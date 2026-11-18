@@ -421,7 +421,7 @@ func TestUpdateSelection_DoesNotLoadRulesOfEveryCaseDecision(t *testing.T) {
 
 	_, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{{Ref: selRef("transactions", "t1")}}, nil)
 	require.NoError(t, err)
-	assert.Equal(t, 0, f.Decisions.Calls, "selection must not page through DecisionsByCaseIdFromCursor")
+	assert.Positive(t, f.Decisions.LightCalls, "selection reads the case decisions through the light reader")
 }
 
 // Reaching an object from a selected object is checked against the frozen copy
@@ -468,4 +468,35 @@ func TestUpdateSelection_FrozenTimestampsAreUTC(t *testing.T) {
 	assert.True(t, row.Origin.ValidFrom.Equal(validFrom))
 	_, offset := row.Origin.ValidFrom.Zone()
 	assert.Equal(t, 0, offset, "the frozen valid_from must be stored in UTC, got %s", row.Origin.ValidFrom)
+}
+
+// time.Time values inside the frozen data (not only the origin valid_from) are
+// stored in UTC too, nested ones included.
+func TestUpdateSelection_FrozenSnapshotTimesAreUTC(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	selDataModel(f)
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t1", "account_id": "a1"}, time.Now())
+	zone := time.FixedZone("UTC+0545", 5*3600+45*60)
+	updatedAt := time.Date(2026, 5, 1, 10, 0, 0, 0, zone)
+	f.Ingested.Put("accounts", "a1", map[string]any{
+		"object_id":  "a1",
+		"updated_at": updatedAt,
+		"nested":     map[string]any{"at": updatedAt},
+		"list":       []any{updatedAt},
+	}, updatedAt)
+
+	_, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{{
+		Ref:         selRef("accounts", "a1"),
+		ReachedFrom: &models.SarReachedFrom{TableName: "transactions", ObjectId: "t1", Link: "account"},
+	}}, nil)
+	require.NoError(t, err)
+	require.Len(t, f.Selection.Rows, 1)
+
+	// The fake repository stores rows through JSON, like the jsonb column: a
+	// UTC time is serialized with a "Z" suffix, any other zone with its offset.
+	const want = "2026-05-01T04:15:00Z"
+	snap := f.Selection.Rows[0].Snapshot
+	assert.Equal(t, want, snap["updated_at"])
+	assert.Equal(t, want, snap["nested"].(map[string]any)["at"])
+	assert.Equal(t, want, snap["list"].([]any)[0])
 }

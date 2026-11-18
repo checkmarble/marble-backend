@@ -112,11 +112,9 @@ func (c selectionContext) dataOf(ref core.ObjectRef) (map[string]any, bool) {
 	if isCand && cand.data != nil {
 		return cand.data, true
 	}
-	if sel, ok := c.selected[ref]; ok {
-		return sel.Snapshot, true
-	}
-	if isCand {
-		return cand.data, true
+	// A known object without data: reachable, nothing to follow from it.
+	if _, isSel := c.selected[ref]; isSel || isCand {
+		return nil, true
 	}
 	return nil, false
 }

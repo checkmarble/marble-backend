@@ -28,9 +28,6 @@ type fakeDecisions struct {
 	// DefaultCase is the case of the decisions recorded with Add.
 	DefaultCase string
 	caseOf      map[uuid.UUID]string
-	// Calls counts DecisionsByCaseIdFromCursor calls: the heavy loader, which
-	// also reads the rules and screenings of every decision of each page.
-	Calls int
 	// LightCalls counts DecisionsByCaseId calls (no rules, no screenings).
 	LightCalls int
 }
@@ -70,34 +67,6 @@ func (d *fakeDecisions) inScope(orgId uuid.UUID, caseId string) []models.Decisio
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].CreatedAt.After(out[j].CreatedAt) })
 	return out
-}
-
-// DecisionsByCaseIdFromCursor pages the decisions of req.OrgId in req.CaseId,
-// newest first, with cursor pagination on the decision id.
-func (d *fakeDecisions) DecisionsByCaseIdFromCursor(_ context.Context, _ repositories.Executor,
-	req models.CaseDecisionsRequest,
-) ([]models.DecisionWithRulesAndScreeningsBaseInfo, bool, error) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.Calls++
-	all := d.inScope(req.OrgId, req.CaseId)
-	start := 0
-	if req.CursorId != "" {
-		for i, x := range all {
-			if x.DecisionId.String() == req.CursorId {
-				start = i + 1
-			}
-		}
-	}
-	all = all[start:]
-	limit := req.Limit
-	if limit <= 0 {
-		limit = 5
-	}
-	if len(all) > limit {
-		return all[:limit], true, nil
-	}
-	return all, false, nil
 }
 
 // DecisionsByCaseId returns every decision of orgId in caseId, newest first,
