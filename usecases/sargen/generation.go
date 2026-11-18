@@ -174,42 +174,9 @@ func (uc *Usecase) StartGeneration(ctx context.Context, id uuid.UUID) (models.Sa
 		if hasActiveJob(jobs) {
 			return models.ErrSarJobAlreadyActive
 		}
-		if strings.TrimSpace(locked.Analysis) == "" {
-			return errors.Wrap(models.BadParameterError, "l'analyse est vide : renseignez-la avant de générer")
-		}
-		selection, err := uc.selectionRepo.ListSarSelection(ctx, tx, id)
+		_, spec, values, err := uc.checkGenerationPreconditions(ctx, tx, locked)
 		if err != nil {
 			return err
-		}
-		if len(selection) == 0 {
-			return errors.Wrap(models.BadParameterError, "la sélection est vide : sélectionnez des objets avant de générer")
-		}
-		format, err := uc.formatOf(locked)
-		if err != nil {
-			return err
-		}
-		spec := format.Spec()
-		settings, err := uc.repository.GetSarOrgFormatSettings(ctx, tx, locked.OrganizationId, format.Key().Family)
-		if err != nil {
-			return err
-		}
-		values := map[string]string{}
-		if settings != nil {
-			values = settings.Values
-		}
-		var bad []string
-		for _, p := range requiredSettingPaths(format, values) {
-			v, ok := values[string(p)]
-			if !ok || strings.TrimSpace(v) == "" {
-				bad = append(bad, string(p)+" (manquant)")
-				continue
-			}
-			if issue := core.ValidateValue(spec, p, v); issue != nil && issue.Blocks() {
-				bad = append(bad, string(p)+" (invalide)")
-			}
-		}
-		if len(bad) > 0 {
-			return errors.Wrapf(models.BadParameterError, "réglage de l'organisation incomplet : %s", strings.Join(bad, ", "))
 		}
 
 		// Re-apply the organization settings to the document.
@@ -259,6 +226,53 @@ func (uc *Usecase) StartGeneration(ctx context.Context, id uuid.UUID) (models.Sa
 		return models.SarGenerationJob{}, err
 	}
 	return job, nil
+}
+
+// checkGenerationPreconditions applies, under the declaration lock, what a
+// generation needs: a non-empty analysis, a non-empty selection and complete,
+// valid organization settings. StartGeneration and ResumeJob (generate jobs)
+// share it. It returns the format, its spec and the settings values.
+func (uc *Usecase) checkGenerationPreconditions(ctx context.Context, tx repositories.Transaction,
+	locked models.SarDeclaration,
+) (core.Format, *core.Spec, map[string]string, error) {
+	if strings.TrimSpace(locked.Analysis) == "" {
+		return nil, nil, nil, errors.Wrap(models.BadParameterError, "l'analyse est vide : renseignez-la avant de générer")
+	}
+	selection, err := uc.selectionRepo.ListSarSelection(ctx, tx, locked.Id)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if len(selection) == 0 {
+		return nil, nil, nil, errors.Wrap(models.BadParameterError, "la sélection est vide : sélectionnez des objets avant de générer")
+	}
+	format, err := uc.formatOf(locked)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	spec := format.Spec()
+	settings, err := uc.repository.GetSarOrgFormatSettings(ctx, tx, locked.OrganizationId, format.Key().Family)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	values := map[string]string{}
+	if settings != nil {
+		values = settings.Values
+	}
+	var bad []string
+	for _, p := range requiredSettingPaths(format, values) {
+		v, ok := values[string(p)]
+		if !ok || strings.TrimSpace(v) == "" {
+			bad = append(bad, string(p)+" (manquant)")
+			continue
+		}
+		if issue := core.ValidateValue(spec, p, v); issue != nil && issue.Blocks() {
+			bad = append(bad, string(p)+" (invalide)")
+		}
+	}
+	if len(bad) > 0 {
+		return nil, nil, nil, errors.Wrapf(models.BadParameterError, "réglage de l'organisation incomplet : %s", strings.Join(bad, ", "))
+	}
+	return format, spec, values, nil
 }
 
 // createAndEnqueue inserts a pending job and enqueues it, in tx.
@@ -435,6 +449,11 @@ func (uc *Usecase) ResumeJob(ctx context.Context, jobId uuid.UUID) (models.SarGe
 			}
 			if hasDoneGenerate(jobs) {
 				return ErrAlreadyGenerated
+			}
+			// Same preconditions as StartGeneration: the selection of a failed
+			// job may have changed (even emptied) since it failed.
+			if _, _, _, err := uc.checkGenerationPreconditions(ctx, tx, locked); err != nil {
+				return err
 			}
 		}
 		out, err = uc.resumeLocked(ctx, tx, locked, jobId)
