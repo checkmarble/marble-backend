@@ -42,6 +42,74 @@ func TestTenantOIDCDiscovery(t *testing.T) {
 	})
 }
 
+func TestTenantDomainVerification(t *testing.T) {
+	ctx := t.Context()
+	tenantID, otherTenantID := uuid.New(), uuid.New()
+	createTenantOIDCDiscoveryFixture(t, tenantID, "verified.example.test", true)
+	createTenantOIDCDiscoveryFixture(t, otherTenantID, "other.example.test", true)
+	repo := testUsecases.Repositories.MarbleDbRepository
+	exec := testUsecases.NewExecutorFactory().NewExecutor()
+	pending := models.TenantDomain{Id: uuid.New(), TenantId: tenantID, Domain: "pending.example.test"}
+	require.NoError(t, repo.CreateTenantDomain(ctx, exec, pending))
+	require.ErrorIs(t, repo.CreateTenantDomain(ctx, exec, models.TenantDomain{
+		Id: uuid.New(), TenantId: tenantID, Domain: pending.Domain,
+	}), models.ConflictError)
+
+	domains, err := repo.ListTenantDomains(ctx, exec, tenantID)
+	require.NoError(t, err)
+	require.Len(t, domains, 2)
+	require.Nil(t, domains[0].VerifiedAt)
+	config, err := repo.GetTenantOIDCConfigurationForAuthentication(ctx, exec, tenantID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"@verified.example.test"}, config.AllowedDomains)
+	_, err = repo.DiscoverTenantOIDCConfigurationByDomain(ctx, exec, pending.Domain)
+	require.ErrorIs(t, err, models.NotFoundError)
+
+	for _, domain := range domains {
+		if domain.VerifiedAt != nil {
+			require.NoError(t, repo.DeleteTenantDomain(ctx, exec, tenantID, domain.Id))
+		}
+	}
+	config, err = repo.GetTenantOIDCConfigurationForAuthentication(ctx, exec, tenantID)
+	require.NoError(t, err)
+	require.Empty(t, config.AllowedDomains)
+
+	require.ErrorIs(t, repo.SetTenantDomainVerified(ctx, exec, otherTenantID, pending.Id, true), models.NotFoundError)
+	require.NoError(t, repo.SetTenantDomainVerified(ctx, exec, tenantID, pending.Id, true))
+	domains, err = repo.ListTenantDomains(ctx, exec, tenantID)
+	require.NoError(t, err)
+	require.NotNil(t, domains[0].VerifiedAt)
+	verifiedAt := *domains[0].VerifiedAt
+	require.NoError(t, repo.SetTenantDomainVerified(ctx, exec, tenantID, pending.Id, true))
+	domains, err = repo.ListTenantDomains(ctx, exec, tenantID)
+	require.NoError(t, err)
+	require.Equal(t, verifiedAt, *domains[0].VerifiedAt)
+	config, err = repo.GetTenantOIDCConfigurationForAuthentication(ctx, exec, tenantID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"@pending.example.test"}, config.AllowedDomains)
+	discovered, err := repo.DiscoverTenantOIDCConfigurationByDomain(ctx, exec, pending.Domain)
+	require.NoError(t, err)
+	require.Equal(t, tenantID, discovered.TenantId)
+
+	conflict := models.TenantDomain{Id: uuid.New(), TenantId: otherTenantID, Domain: pending.Domain}
+	require.NoError(t, repo.CreateTenantDomain(ctx, exec, conflict))
+	require.ErrorIs(t, repo.SetTenantDomainVerified(ctx, exec, otherTenantID, conflict.Id, true), models.ConflictError)
+	require.NoError(t, repo.SetTenantDomainVerified(ctx, exec, tenantID, pending.Id, false))
+	domains, err = repo.ListTenantDomains(ctx, exec, tenantID)
+	require.NoError(t, err)
+	require.Nil(t, domains[0].VerifiedAt)
+	config, err = repo.GetTenantOIDCConfigurationForAuthentication(ctx, exec, tenantID)
+	require.NoError(t, err)
+	require.Empty(t, config.AllowedDomains)
+	_, err = repo.DiscoverTenantOIDCConfigurationByDomain(ctx, exec, pending.Domain)
+	require.ErrorIs(t, err, models.NotFoundError)
+	require.NoError(t, repo.SetTenantDomainVerified(ctx, exec, tenantID, pending.Id, false))
+	require.NoError(t, repo.SetTenantDomainVerified(ctx, exec, tenantID, pending.Id, true))
+	discovered, err = repo.DiscoverTenantOIDCConfigurationByDomain(ctx, exec, pending.Domain)
+	require.NoError(t, err)
+	require.Equal(t, tenantID, discovered.TenantId)
+}
+
 func createTenantOIDCDiscoveryFixture(t *testing.T, tenantID uuid.UUID, domain string, ssoEnabled bool) {
 	t.Helper()
 	ctx := t.Context()

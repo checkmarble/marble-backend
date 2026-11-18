@@ -75,3 +75,26 @@ func TestUpdateTenantOIDC(t *testing.T) {
 	enforcer := EnforceSecurityTenantImpl{EnforceSecurity: NewEnforceSecurity(creds), Credentials: creds}
 	require.ErrorIs(t, enforcer.UpdateTenant(tenant), models.ForbiddenError)
 }
+
+func TestVerifyTenantDomainRequiresMarbleAdmin(t *testing.T) {
+	tenant := uuid.New()
+	for _, tt := range []struct {
+		role  models.Role
+		allow bool
+	}{
+		{role: models.TENANT_ADMIN},
+		{role: models.OIDC_CONFIG_EDITOR},
+		{role: models.MARBLE_ADMIN, allow: true},
+	} {
+		t.Run(tt.role.String(), func(t *testing.T) {
+			creds := models.Credentials{TenantId: tenant, Roles: []models.Role{tt.role}}
+			enforcer := EnforceSecurityTenantImpl{EnforceSecurity: NewEnforceSecurity(creds), Credentials: creds}
+			err := enforcer.VerifyTenantDomain(tenant)
+			if tt.allow {
+				require.NoError(t, err)
+			} else {
+				require.ErrorIs(t, err, models.ForbiddenError)
+			}
+		})
+	}
+}

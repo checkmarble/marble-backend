@@ -19,6 +19,7 @@ type TenantOIDCRepository interface {
 	DeleteTenantOIDCConfiguration(ctx context.Context, exec Executor, tenantId uuid.UUID) error
 	ListTenantDomains(ctx context.Context, exec Executor, tenantId uuid.UUID) ([]models.TenantDomain, error)
 	CreateTenantDomain(ctx context.Context, exec Executor, domain models.TenantDomain) error
+	SetTenantDomainVerified(ctx context.Context, exec Executor, tenantId, domainId uuid.UUID, verified bool) error
 	DeleteTenantDomain(ctx context.Context, exec Executor, tenantId, domainId uuid.UUID) error
 	DiscoverTenantOIDCConfigurationByDomain(ctx context.Context, exec Executor, domain string) (models.TenantOIDCConfiguration, error)
 }
@@ -71,7 +72,9 @@ func (repo *MarbleDbRepository) getTenantOIDCConfiguration(ctx context.Context, 
 	}
 	config.AllowedDomains = make([]string, 0, len(domains))
 	for _, domain := range domains {
-		config.AllowedDomains = append(config.AllowedDomains, "@"+domain.Domain)
+		if domain.VerifiedAt != nil {
+			config.AllowedDomains = append(config.AllowedDomains, "@"+domain.Domain)
+		}
 	}
 	return config, nil
 }
@@ -128,6 +131,28 @@ func (repo *MarbleDbRepository) CreateTenantDomain(ctx context.Context, exec Exe
 	err := ExecBuilder(ctx, exec, NewQueryBuilder().Insert("tenant_domains").
 		Columns("id", "tenant_id", "domain", "verified_at").
 		Values(domain.Id, domain.TenantId, domain.Domain, domain.VerifiedAt))
+	if IsUniqueViolationErrorOf(err, "tenant_domains_verified_domain_unique_idx") ||
+		IsUniqueViolationErrorOf(err, "tenant_domains_tenant_domain_unique_idx") {
+		return models.ConflictError
+	}
+	return err
+}
+
+func (repo *MarbleDbRepository) SetTenantDomainVerified(ctx context.Context, exec Executor, tenantId, domainId uuid.UUID, verified bool) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+	var verifiedAt any
+	if verified {
+		verifiedAt = squirrel.Expr("COALESCE(verified_at, now())")
+	}
+	_, err := SqlToRow(ctx, exec, NewQueryBuilder().Update("tenant_domains").
+		Set("verified_at", verifiedAt).
+		Where(squirrel.Eq{"id": domainId, "tenant_id": tenantId}).
+		Suffix("RETURNING id"), func(row pgx.CollectableRow) (uuid.UUID, error) {
+		var id uuid.UUID
+		return id, row.Scan(&id)
+	})
 	if IsUniqueViolationErrorOf(err, "tenant_domains_verified_domain_unique_idx") {
 		return models.ConflictError
 	}
@@ -165,6 +190,7 @@ func (repo *MarbleDbRepository) DiscoverTenantOIDCConfigurationByDomain(ctx cont
 		Join("tenants t ON t.id = c.tenant_id").
 		Where(squirrel.Eq{"c.sso_enabled": true, "t.deleted_at": nil}).
 		Where(squirrel.Eq{"d.domain": domain}).
+		Where(squirrel.NotEq{"d.verified_at": nil}).
 		Limit(1), func(row pgx.CollectableRow) (models.TenantOIDCConfiguration, error) {
 		var config models.TenantOIDCConfiguration
 		var extraParams []byte

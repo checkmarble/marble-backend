@@ -27,6 +27,6 @@ type TenantDomain struct {
 	Id         uuid.UUID
 	TenantId   uuid.UUID
 	Domain     string
-	VerifiedAt time.Time
+	VerifiedAt *time.Time
 	CreatedAt  time.Time
 }

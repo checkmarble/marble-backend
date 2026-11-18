@@ -23,15 +23,20 @@ type tenantOIDCConfigurationBody struct {
 }
 
 type tenantDomainBody struct {
-	Domain string `json:"domain" binding:"required"`
+	Domain   string `json:"domain" binding:"required"`
+	Verified bool   `json:"verified"`
+}
+
+type tenantDomainPatchBody struct {
+	Verified *bool `json:"verified" binding:"required"`
 }
 
 type tenantDomainResponse struct {
-	Id         uuid.UUID `json:"id"`
-	TenantId   uuid.UUID `json:"tenant_id"`
-	Domain     string    `json:"domain"`
-	VerifiedAt time.Time `json:"verified_at"`
-	CreatedAt  time.Time `json:"created_at"`
+	Id         uuid.UUID  `json:"id"`
+	TenantId   uuid.UUID  `json:"tenant_id"`
+	Domain     string     `json:"domain"`
+	VerifiedAt *time.Time `json:"verified_at"`
+	CreatedAt  time.Time  `json:"created_at"`
 }
 
 func tenantIDFromParam(c *gin.Context) (uuid.UUID, error) {
@@ -135,11 +140,35 @@ func handlePostTenantDomain(uc usecases.Usecases) gin.HandlerFunc {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
-		domain, err := usecasesWithCreds(ctx, uc).NewTenantOIDCUsecase().AddDomain(ctx, tenantId, body.Domain)
+		domain, err := usecasesWithCreds(ctx, uc).NewTenantOIDCUsecase().AddDomain(ctx, tenantId, body.Domain, body.Verified)
 		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusCreated, adaptTenantDomain(domain))
+	}
+}
+
+func handlePatchTenantDomain(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		tenantId, err := tenantIDFromParam(c)
+		if presentError(ctx, c, err) {
+			return
+		}
+		domainId, err := uuid.Parse(c.Param("domain_id"))
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid domain ID"))
+			return
+		}
+		var body tenantDomainPatchBody
+		if err := c.ShouldBindJSON(&body); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+		if presentError(ctx, c, usecasesWithCreds(ctx, uc).NewTenantOIDCUsecase().SetDomainVerified(ctx, tenantId, domainId, *body.Verified)) {
+			return
+		}
+		c.Status(http.StatusNoContent)
 	}
 }
 

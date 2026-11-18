@@ -34,6 +34,7 @@ func TestTenantOIDCConfigurationWithAPIKey(t *testing.T) {
 		cleanupCtx := context.Background()
 		for _, query := range []squirrel.DeleteBuilder{
 			repositories.NewQueryBuilder().Delete("audit.audit_events").Where(squirrel.Eq{"tenant_id": tenantID}),
+			repositories.NewQueryBuilder().Delete("tenant_domains").Where(squirrel.Eq{"tenant_id": tenantID}),
 			repositories.NewQueryBuilder().Delete("tenant_oidc_configurations").Where(squirrel.Eq{"tenant_id": tenantID}),
 			repositories.NewQueryBuilder().Delete("grants").Where(squirrel.Or{squirrel.Eq{"tenant_id": tenantID}, squirrel.Eq{"organization_id": orgID}}),
 			repositories.NewQueryBuilder().Delete("api_keys").Where(squirrel.Eq{"org_id": orgID}),
@@ -79,6 +80,27 @@ func TestTenantOIDCConfigurationWithAPIKey(t *testing.T) {
 	config["sso_enabled"] = false
 	keyClient.PUT(path).WithJSON(config).Expect().Status(http.StatusNoContent)
 	admin.GET(path).Expect().Status(http.StatusOK).JSON().Object().Value("sso_enabled").Boolean().IsFalse()
+
+	domainsPath := fmt.Sprintf("/tenants/%s/domains", tenantID)
+	domain := keyClient.POST(domainsPath).WithJSON(map[string]any{"domain": "pending.example.test"}).
+		Expect().Status(http.StatusCreated).JSON().Object()
+	domainID := domain.Value("id").String().Raw()
+	domain.Value("verified_at").IsNull()
+	keyClient.GET(domainsPath).Expect().Status(http.StatusOK).JSON().Array().Length().IsEqual(1)
+	keyClient.POST(domainsPath).WithJSON(map[string]any{"domain": "verified.example.test", "verified": true}).
+		Expect().Status(http.StatusForbidden)
+	keyClient.PATCH(domainsPath + "/" + domainID).WithJSON(map[string]any{"verified": true}).Expect().Status(http.StatusForbidden)
+	keyClient.PATCH(domainsPath + "/" + domainID).WithJSON(map[string]any{"verified": false}).Expect().Status(http.StatusForbidden)
+	keyClient.PATCH(domainsPath + "/" + domainID).WithJSON(map[string]any{}).Expect().Status(http.StatusBadRequest)
+	keyClient.PATCH(domainsPath + "/" + domainID).WithJSON(map[string]any{"verified": nil}).Expect().Status(http.StatusBadRequest)
+	marbleToken := e.POST("/token").WithHeader("Authorization", "Bearer "+firebaseDummyToken(marbleAdminEmail)).
+		Expect().Status(http.StatusOK).JSON().Object().Value("access_token").String().Raw()
+	marbleAdmin := e.Builder(func(req *httpexpect.Request) { req.WithHeader("Authorization", "Bearer "+marbleToken) })
+	marbleAdmin.PATCH(domainsPath + "/" + domainID).WithJSON(map[string]any{"verified": true}).Expect().Status(http.StatusNoContent)
+	marbleAdmin.GET(domainsPath).Expect().Status(http.StatusOK).JSON().Array().Value(0).Object().Value("verified_at").String().NotEmpty()
+	marbleAdmin.PATCH(domainsPath + "/" + domainID).WithJSON(map[string]any{"verified": false}).Expect().Status(http.StatusNoContent)
+	marbleAdmin.GET(domainsPath).Expect().Status(http.StatusOK).JSON().Array().Value(0).Object().Value("verified_at").IsNull()
+	marbleAdmin.PATCH(domainsPath + "/" + domainID).WithJSON(map[string]any{"verified": true}).Expect().Status(http.StatusNoContent)
 
 	var configID uuid.UUID
 	require.NoError(t, pgPool.QueryRow(ctx, "SELECT id FROM tenant_oidc_configurations WHERE tenant_id = $1", tenantID).Scan(&configID))
