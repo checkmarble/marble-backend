@@ -91,7 +91,7 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 			}
 		}
 		if len(blocking) > 0 {
-			return errors.Wrap(issuesToError(blocking), "l'export est impossible : des erreurs bloquantes subsistent")
+			return NewIssuesErrorWithMessage("l'export est impossible : des erreurs bloquantes subsistent", blocking)
 		}
 
 		var outstanding []outstandingItem
