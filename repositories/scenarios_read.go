@@ -18,6 +18,7 @@ import (
 type ScenarioUsecaseRepository interface {
 	GetScenarioById(ctx context.Context, exec Executor, scenarioId string, screeningProvider models.ScreeningProvider) (models.Scenario, error)
 	ListScenariosOfOrganization(ctx context.Context, exec Executor, organizationId uuid.UUID, screeningProvider models.ScreeningProvider) ([]models.Scenario, error)
+	ListScenariosOfOrganizationWithLatestVersion(ctx context.Context, exec Executor, organizationId uuid.UUID, screeningProvider models.ScreeningProvider) ([]models.Scenario, error)
 	CreateScenario(
 		ctx context.Context,
 		exec Executor,
@@ -81,6 +82,42 @@ func (repo *MarbleDbRepository) ListScenariosOfOrganization(ctx context.Context,
 		return nil, err
 	}
 
+	return repo.filterScenariosForProvider(ctx, exec, scenarios, screeningProvider)
+}
+
+// ListScenariosOfOrganizationWithLatestVersion is ListScenariosOfOrganization with LatestVersion
+// filled. scenario_iterations has no index on scenario_id, so the versions come from one grouped join
+// (a single scan of the table) rather than one lookup per scenario. Keep it off hot paths.
+func (repo *MarbleDbRepository) ListScenariosOfOrganizationWithLatestVersion(ctx context.Context, exec Executor, organizationId uuid.UUID, screeningProvider models.ScreeningProvider) ([]models.Scenario, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	scenarios, err := SqlToListOfModels(
+		ctx,
+		exec,
+		scenariosWithLatestVersionQuery(organizationId),
+		dbmodels.AdaptScenarioWithLatestVersion,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return repo.filterScenariosForProvider(ctx, exec, scenarios, screeningProvider)
+}
+
+func scenariosWithLatestVersionQuery(organizationId uuid.UUID) squirrel.SelectBuilder {
+	return NewQueryBuilder().
+		Select(columnsNames("s", dbmodels.SelectScenarioColumn)...).
+		Column("max(si.version) AS latest_version").
+		From(dbmodels.TABLE_SCENARIOS+" AS s").
+		LeftJoin(dbmodels.TABLE_SCENARIO_ITERATIONS+" AS si ON si.scenario_id = s.id AND si.org_id = s.org_id").
+		Where(squirrel.Eq{"s.org_id": organizationId}).
+		GroupBy("s.id").
+		OrderBy("s.archived ASC", "s.created_at DESC")
+}
+
+func (repo *MarbleDbRepository) filterScenariosForProvider(ctx context.Context, exec Executor, scenarios []models.Scenario, screeningProvider models.ScreeningProvider) ([]models.Scenario, error) {
 	activeScenarios := make([]models.Scenario, 0, len(scenarios))
 
 	for _, scenario := range scenarios {
@@ -93,7 +130,7 @@ func (repo *MarbleDbRepository) ListScenariosOfOrganization(ctx context.Context,
 		}
 	}
 
-	return activeScenarios, err
+	return activeScenarios, nil
 }
 
 func (repo *MarbleDbRepository) isValidScenarioForProvider(ctx context.Context, exec Executor, scenario models.Scenario, provider models.ScreeningProvider) (bool, error) {

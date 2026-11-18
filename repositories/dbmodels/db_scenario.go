@@ -46,6 +46,25 @@ func AdaptScenario(dto DBScenario) (models.Scenario, error) {
 	return scenario, nil
 }
 
+type DBScenarioWithLatestVersion struct {
+	DBScenario
+	LatestVersion pgtype.Int2 `db:"latest_version"`
+}
+
+func AdaptScenarioWithLatestVersion(dto DBScenarioWithLatestVersion) (models.Scenario, error) {
+	scenario, err := AdaptScenario(dto.DBScenario)
+	if err != nil {
+		return models.Scenario{}, err
+	}
+
+	if dto.LatestVersion.Valid {
+		latestVersion := int(dto.LatestVersion.Int16)
+		scenario.LatestVersion = &latestVersion
+	}
+
+	return scenario, nil
+}
+
 type DBScenarioRuleLatestVersion struct {
 	Type              string                   `db:"type"`
 	StableRuleId      string                   `db:"stable_rule_id"`

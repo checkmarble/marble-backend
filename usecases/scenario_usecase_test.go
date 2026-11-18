@@ -75,7 +75,7 @@ func (suite *ScenarioUsecaseTestSuite) TestListScenarios() {
 	suite.enforceSecurity.On("OrgId").Return(suite.organizationId)
 	suite.orgRepository.On("GetOrganizationById", suite.ctx, suite.transaction, mock.Anything).
 		Return(models.Organization{Id: suite.organizationId}, nil)
-	suite.scenarioRepository.On("ListScenariosOfOrganization", suite.ctx, suite.transaction,
+	suite.scenarioRepository.On("ListScenariosOfOrganizationWithLatestVersion", suite.ctx, suite.transaction,
 		suite.organizationId, mock.Anything).Return(expected, nil)
 	suite.enforceSecurity.On("ReadScenario", suite.scenario).Return(nil)
 
@@ -93,7 +93,7 @@ func (suite *ScenarioUsecaseTestSuite) TestListScenarios_security() {
 	suite.enforceSecurity.On("OrgId").Return(suite.organizationId)
 	suite.orgRepository.On("GetOrganizationById", suite.ctx, suite.transaction, mock.Anything).
 		Return(models.Organization{Id: suite.organizationId}, nil)
-	suite.scenarioRepository.On("ListScenariosOfOrganization", suite.ctx, suite.transaction,
+	suite.scenarioRepository.On("ListScenariosOfOrganizationWithLatestVersion", suite.ctx, suite.transaction,
 		suite.organizationId, mock.Anything).Return([]models.Scenario{suite.scenario}, nil)
 	suite.enforceSecurity.On("ReadScenario", suite.scenario).Return(suite.securityError)
 

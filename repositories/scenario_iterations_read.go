@@ -81,31 +81,21 @@ func (repo *MarbleDbRepository) ListScenarioIterationsMetadata(
 		return nil, err
 	}
 
+	sql := NewQueryBuilder().
+		Select(dbmodels.SelectScenarioIterationMetadataColumn...).
+		From(dbmodels.TABLE_SCENARIO_ITERATIONS).
+		Where(squirrel.Eq{
+			"org_id":      organizationId,
+			"scenario_id": filters.ScenarioId,
+		}).
+		OrderBy("created_at DESC")
+
 	return SqlToListOfModels(
 		ctx,
 		exec,
-		scenarioIterationsMetadataQuery(organizationId, filters),
+		sql,
 		dbmodels.AdaptScenarioIterationMetadata,
 	)
-}
-
-// scenarioIterationsMetadataQuery lists every iteration of the organization, narrowed down to one
-// scenario if filters.ScenarioId is set.
-func scenarioIterationsMetadataQuery(
-	organizationId uuid.UUID,
-	filters models.GetScenarioIterationFilters,
-) squirrel.SelectBuilder {
-	query := NewQueryBuilder().
-		Select(dbmodels.SelectScenarioIterationMetadataColumn...).
-		From(dbmodels.TABLE_SCENARIO_ITERATIONS).
-		Where(squirrel.Eq{"org_id": organizationId}).
-		OrderBy("created_at DESC")
-
-	if filters.ScenarioId != uuid.Nil {
-		query = query.Where(squirrel.Eq{"scenario_id": filters.ScenarioId})
-	}
-
-	return query
 }
 
 func selectScenarioIterations() squirrel.SelectBuilder {

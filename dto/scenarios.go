@@ -18,6 +18,8 @@ type ScenarioDto struct {
 	TriggerObjectType       string    `json:"trigger_object_type"`
 	Archived                bool      `json:"archived"`
 	DeduplicateBatchObjects bool      `json:"deduplicate_batch_objects"`
+	// Only returned when listing scenarios, and only once an iteration has a version.
+	LatestVersion *int `json:"latest_version,omitempty"`
 }
 
 func AdaptScenarioDto(scenario models.Scenario) ScenarioDto {
@@ -31,6 +33,7 @@ func AdaptScenarioDto(scenario models.Scenario) ScenarioDto {
 		TriggerObjectType:       scenario.TriggerObjectType,
 		Archived:                scenario.Archived,
 		DeduplicateBatchObjects: scenario.DeduplicateBatchObjects,
+		LatestVersion:           scenario.LatestVersion,
 	}
 }
 

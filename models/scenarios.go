@@ -41,6 +41,10 @@ type Scenario struct {
 	TriggerObjectType string
 	Archived          bool
 
+	// Highest version among the scenario's iterations, nil while every iteration is a draft.
+	// Only filled by ListScenariosOfOrganizationWithLatestVersion.
+	LatestVersion *int
+
 	// When set, batch executions create at most one decision per data object for this
 	// scenario, keyed on (scenario, object_id) and persisted in scenario_scored_objects.
 	// Enabling it on an existing scenario does not backfill, so the first run after the
