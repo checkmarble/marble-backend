@@ -517,3 +517,29 @@ func TestQuestionOptionFillsAreStampedWithLLMOrigin(t *testing.T) {
 	require.Equal(t, core.OriginLLM, opts[0].Fills[0].Origin, "the model never picks the origin")
 	require.NotNil(t, opts[0].Fills[0].TaskID)
 }
+
+// A task output records whether it changed the document: the selection stays
+// editable after a failed job whose done tasks all wrote nothing.
+func TestRunJob_TaskOutputRecordsWhetherTheDocumentChanged(t *testing.T) {
+	ctx := context.Background()
+	o, f := newTestOrchestrator(t)
+	seedDocument(t, f, withTwoPersons)
+
+	writer := Spec("a", tgtPP1)
+	silent := Spec("b", tgtPP2)
+	f.Format.Waves = [][]core.TaskSpec{{writer, silent}}
+	f.Runner.On("a", tgtPP1, Step{Out: outputWith(Fill(pathNomPP1, "DUPONT"))})
+	f.Runner.On("b", tgtPP2, Step{Out: core.TaskOutput{}})
+
+	require.NoError(t, o.RunJob(ctx, f.JobId))
+
+	wrote := func(task models.SarGenerationTask) bool {
+		var out struct {
+			Wrote bool `json:"wrote"`
+		}
+		require.NoError(t, json.Unmarshal(task.Output, &out))
+		return out.Wrote
+	}
+	require.True(t, wrote(f.Repo.Task(t, "a", tgtPP1)))
+	require.False(t, wrote(f.Repo.Task(t, "b", tgtPP2)))
+}

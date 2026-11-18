@@ -90,8 +90,8 @@ func TestStaleJobDoesNotBlockWriters(t *testing.T) {
 
 // ---- Round 1: selection of a failed job with no done task ----
 
-// A failed generation with no done task keeps the selection open; the
-// unfinished tasks (old snapshots) are dropped so that the resume replans
+// A failed generation with no done task keeps the selection open; its
+// tasks (old snapshots) are dropped so that the resume replans
 // from the new selection and runs nothing stale.
 func TestUpdateSelection_FailedJobWithoutDoneTaskStaysOpenAndDropsUnfinishedTasks(t *testing.T) {
 	uc, f, declId := genReady(t, false)
@@ -113,6 +113,51 @@ func TestUpdateSelection_FailedJobWithoutDoneTaskStaysOpenAndDropsUnfinishedTask
 	require.NoError(t, err)
 	assert.Equal(t, j1.Id, resumed.Id)
 	assert.Empty(t, f.Gen.Tasks[j1.Id], "nothing stale left for the resume: the orchestrator plans from the new selection")
+}
+
+// A done task that wrote nothing (the understanding step) does not freeze the
+// selection: the job failed at the placement, the analyst changes the selection
+// and the resume replans everything, the understanding included.
+func TestUpdateSelection_ReadOnlyDoneTaskDoesNotFreeze(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	j1, err := uc.StartGeneration(f.Ctx, declId)
+	require.NoError(t, err)
+	f.SeedReadOnlyDoneTask(j1.Id, "understanding")
+	f.SeedTask(j1.Id, "placement", "personnes", models.SarJobStatusFailed, 1, "boom")
+	genMarkJob(t, f, j1.Id, models.SarJobStatusFailed, "fournisseur indisponible")
+
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t2", "amount": 7}, time.Now())
+	version := f.Repo.Declarations[declId].Version
+	_, err = uc.UpdateSelection(f.Ctx, declId, version, []SelectionAdd{{Ref: selRef("transactions", "t2")}}, nil)
+	require.NoError(t, err)
+	assert.Len(t, f.Selection.Rows, 2, "the selection changed")
+	assert.Empty(t, f.Gen.Tasks[j1.Id], "every task is dropped, the done read-only one included")
+
+	resumed, err := uc.StartGeneration(f.Ctx, declId)
+	require.NoError(t, err)
+	assert.Equal(t, j1.Id, resumed.Id)
+	assert.Empty(t, f.Gen.Tasks[j1.Id], "the orchestrator replans from the understanding")
+}
+
+// Once a task wrote to the document the selection is frozen, whatever the
+// read-only tasks around it.
+func TestUpdateSelection_FrozenWhenAWritingTaskIsDone(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	j1, err := uc.StartGeneration(f.Ctx, declId)
+	require.NoError(t, err)
+	f.SeedReadOnlyDoneTask(j1.Id, "understanding")
+	wrote := f.SeedTask(j1.Id, "placement", "personnes", models.SarJobStatusDone, 1, "")
+	f.Gen.mu.Lock()
+	f.Gen.Tasks[j1.Id][1].Output = []byte(`{"applied":["personnes.pp[0].nom"],"wrote":true}`)
+	f.Gen.mu.Unlock()
+	_ = wrote
+	genMarkJob(t, f, j1.Id, models.SarJobStatusFailed, "fournisseur indisponible")
+
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t2", "amount": 7}, time.Now())
+	version := f.Repo.Declarations[declId].Version
+	_, err = uc.UpdateSelection(f.Ctx, declId, version, []SelectionAdd{{Ref: selRef("transactions", "t2")}}, nil)
+	require.ErrorIs(t, err, ErrSelectionFrozen)
+	assert.Len(t, f.Gen.Tasks[j1.Id], 2, "nothing deleted")
 }
 
 // A review job never freezes the selection, even with done tasks.

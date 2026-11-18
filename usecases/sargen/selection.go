@@ -198,11 +198,12 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 		if generated {
 			return ErrSelectionFrozen
 		}
-		// A failed generation with no done task stays resumable: its unfinished
-		// tasks carry snapshots of the old selection, so they are dropped and
-		// the resume replans from the new selection.
+		// A failed generation that wrote nothing stays resumable: its tasks, the
+		// done read-only ones included, carry snapshots or notes of the old
+		// selection, so they are all dropped and the resume replans from the new
+		// selection.
 		if failed, ok := lastFailedGenerate(jobs); ok {
-			if err := uc.generation.DeleteUnfinishedSarGenerationTasks(ctx, tx, failed.Id); err != nil {
+			if err := uc.generation.DeleteSarGenerationTasks(ctx, tx, failed.Id); err != nil {
 				return err
 			}
 		}

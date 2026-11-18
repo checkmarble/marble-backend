@@ -190,10 +190,10 @@ func (repo *MarbleDbRepository) FailStaleSarGenerationJobs(
 	return n, rows.Err()
 }
 
-// DeleteUnfinishedSarGenerationTasks deletes the tasks of a job that are not
-// done (pending, failed, running): a failed job resumed after its inputs
-// changed replans them instead of running stale ones.
-func (repo *MarbleDbRepository) DeleteUnfinishedSarGenerationTasks(
+// DeleteSarGenerationTasks deletes every task of a job, done ones included: a
+// failed job whose tasks wrote nothing to the document is resumed from a fresh
+// plan once its inputs (the selection) changed.
+func (repo *MarbleDbRepository) DeleteSarGenerationTasks(
 	ctx context.Context, exec Executor, jobId uuid.UUID,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -201,9 +201,37 @@ func (repo *MarbleDbRepository) DeleteUnfinishedSarGenerationTasks(
 	}
 	query := NewQueryBuilder().
 		Delete(dbmodels.TABLE_SAR_GENERATION_TASKS).
-		Where(squirrel.Eq{"job_id": jobId}).
-		Where(squirrel.NotEq{"status": string(models.SarJobStatusDone)})
+		Where(squirrel.Eq{"job_id": jobId})
 	return ExecBuilder(ctx, exec, query)
+}
+
+// SarGenerationJobWroteToDocument tells whether a done task of the job changed
+// the declaration document. Tasks record it in their output ("wrote"); an
+// output without the key (older rows) counts as a write, the safe side for the
+// selection freeze.
+func (repo *MarbleDbRepository) SarGenerationJobWroteToDocument(
+	ctx context.Context, exec Executor, jobId uuid.UUID,
+) (bool, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return false, err
+	}
+	sql, args, err := NewQueryBuilder().
+		Select("1").
+		From(dbmodels.TABLE_SAR_GENERATION_TASKS).
+		Where(squirrel.Eq{"job_id": jobId, "status": string(models.SarJobStatusDone)}).
+		Where("coalesce((output->>'wrote')::boolean, true)").
+		Limit(1).
+		ToSql()
+	if err != nil {
+		return false, errors.Wrap(err, "cannot build sar job writes query")
+	}
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return false, errors.Wrap(err, "cannot read sar job writes")
+	}
+	defer rows.Close()
+	found := rows.Next()
+	return found, rows.Err()
 }
 
 // SetSarGenerationJobAttempt stores the River attempt number of the job.

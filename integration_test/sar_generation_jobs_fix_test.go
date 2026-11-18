@@ -175,9 +175,10 @@ func TestSarGenerationJobs_FailStale(t *testing.T) {
 	require.Equal(t, "arrêtée", status().Error)
 }
 
-// DeleteUnfinishedSarGenerationTasks keeps the done tasks of the job and
-// removes the pending, running and failed ones; other jobs are untouched.
-func TestSarGenerationTasks_DeleteUnfinishedKeepsDone(t *testing.T) {
+// DeleteSarGenerationTasks removes every task of the job, done ones included;
+// other jobs are untouched. SarGenerationJobWroteToDocument only counts done
+// tasks whose output did not record wrote=false.
+func TestSarGenerationTasks_DeleteAllAndWroteFlag(t *testing.T) {
 	ctx := t.Context()
 	repo, _, job := sarGenTestSetup(t)
 	exec := testUsecases.NewExecutorFactory().NewExecutor()
@@ -205,22 +206,37 @@ func TestSarGenerationTasks_DeleteUnfinishedKeepsDone(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ok)
 
+	wrote, err := repo.SarGenerationJobWroteToDocument(ctx, exec, job.Id)
+	require.NoError(t, err)
+	require.True(t, wrote, "an output without the wrote key counts as a write")
+
 	// A task of another job must survive.
 	_, _, otherJob := sarGenTestSetup(t)
 	otherTask := newSarGenTestTask(otherJob.Id, "part.other")
 	require.NoError(t, repo.CreateSarGenerationTasks(ctx, exec, []models.SarGenerationTask{otherTask}))
 
-	require.NoError(t, repo.DeleteUnfinishedSarGenerationTasks(ctx, exec, job.Id))
+	require.NoError(t, repo.DeleteSarGenerationTasks(ctx, exec, job.Id))
 
 	tasks, err := repo.ListSarGenerationTasks(ctx, exec, job.Id)
 	require.NoError(t, err)
-	require.Len(t, tasks, 1)
-	require.Equal(t, done.Id, tasks[0].Id)
-	require.Equal(t, models.SarJobStatusDone, tasks[0].Status)
+	require.Empty(t, tasks)
 
 	others, err := repo.ListSarGenerationTasks(ctx, exec, otherJob.Id)
 	require.NoError(t, err)
 	require.Len(t, others, 1)
+
+	// A done task recording wrote=false does not count.
+	readOnly := newSarGenTestTask(otherJob.Id, "part.readonly")
+	require.NoError(t, repo.CreateSarGenerationTasks(ctx, exec, []models.SarGenerationTask{readOnly}))
+	attempt, claimed, err := repo.ClaimSarGenerationTask(ctx, exec, readOnly.Id, time.Hour)
+	require.NoError(t, err)
+	require.True(t, claimed)
+	ok, err = repo.CompleteSarGenerationTask(ctx, exec, readOnly.Id, attempt, []byte(`{"wrote":false}`), nil)
+	require.NoError(t, err)
+	require.True(t, ok)
+	wrote, err = repo.SarGenerationJobWroteToDocument(ctx, exec, otherJob.Id)
+	require.NoError(t, err)
+	require.False(t, wrote)
 }
 
 // Tasks are only inserted into a pending or running job: a finished job gets
