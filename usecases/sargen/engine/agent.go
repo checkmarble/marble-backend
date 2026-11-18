@@ -468,7 +468,9 @@ func (a *agentRun) unverifiableFromErrors(errs []string) []core.QuestionDraft {
 	for _, e := range errs {
 		path, reason, ok := splitFillError(e)
 		if !ok {
-			qs = append(qs, core.QuestionDraft{Text: "valeur non vérifiable : " + frenchReason(e)})
+			// An error that cannot be parsed is the model's wording, English: the
+			// analyst gets a generic reason.
+			qs = append(qs, core.QuestionDraft{Text: "valeur non vérifiable : la réponse du modèle n'a pas pu être exploitée"})
 			continue
 		}
 		p := core.Path(path)
@@ -520,11 +522,12 @@ func (a *agentRun) limitOutput(reason string) core.TaskOutput {
 		}
 		text := "La génération automatique n'a pas abouti pour cette partie (" + reason + ") : à renseigner manuellement."
 		if len(paths) == 0 {
-			target := string(a.spec.TargetPath)
-			if target == "" {
-				target = a.spec.Kind
+			// The step kind is an internal name: only a target path is shown.
+			subject := ""
+			if target := string(a.spec.TargetPath); target != "" {
+				subject = " pour " + target
 			}
-			text = "La génération automatique n'a pas abouti pour " + target + " (" + reason + ") : à vérifier et compléter manuellement."
+			text = "La génération automatique n'a pas abouti" + subject + " (" + reason + ") : à vérifier et compléter manuellement."
 		}
 		out.Questions = append(slices.Clone(out.Questions), core.QuestionDraft{Paths: paths, Text: text})
 	}

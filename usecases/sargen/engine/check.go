@@ -164,10 +164,10 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 			continue
 		}
 		if unproven {
-			// A value other than the unknown code is not established: it is not
-			// applied, the analyst chooses.
+			// A strict code (e.g. "Non") is not established: it is not applied,
+			// the analyst chooses.
 			unprovenFills = append(unprovenFills, f)
-			res.Notes = append(res.Notes, fmt.Sprintf("fills[%d] %s : value other than the unknown code without a strict proof, turned into a question", i, path))
+			res.Notes = append(res.Notes, fmt.Sprintf("fills[%d] %s : strict code without a strict proof, turned into a question", i, path))
 			continue
 		}
 		good = append(good, pending{i, f})
@@ -333,8 +333,8 @@ func unverifiable(f core.Fill, reason string) core.QuestionDraft {
 
 // toFill converts one wire fill; the message is a form error for the LLM.
 // unproven (only with strict) tells that the fill is a copied value of a field
-// whose code list has an unknown code, that it is another code, and that its
-// source is not a strict proof: the caller must not apply it.
+// whose code list declares the code as strict (e.g. "Non") and that its source is
+// not a strict proof: the caller must not apply it.
 func (c *checker) toFill(w wireFill, strict bool) (fill core.Fill, msg string, unproven bool) {
 	path := core.Path(w.Path)
 	if _, err := core.ParsePath(string(path)); err != nil {
@@ -361,9 +361,13 @@ func (c *checker) toFill(w wireFill, strict bool) (fill core.Fill, msg string, u
 	if copied && node.CodeList != "" {
 		list = c.tc.Format.Spec().CodeLists[node.CodeList]
 	}
-	// A copied value on a list with an unknown code, other than that code, needs
-	// a strict proof; the unknown code itself is always accepted.
-	gated := strict && list.UnknownCode != "" && f.Value != list.UnknownCode
+	// The unknown code needs no source: any source given with it is dropped. A
+	// code the format declares strict (e.g. "Non") needs a strict proof; the other
+	// codes of the list keep the usual relation rules.
+	if list.UnknownCode != "" && f.Value == list.UnknownCode {
+		return f, "", false
+	}
+	gated := strict && slices.Contains(list.StrictCodes, f.Value)
 	if w.Source == nil {
 		return f, "", gated
 	}
@@ -376,7 +380,10 @@ func (c *checker) toFill(w wireFill, strict bool) (fill core.Fill, msg string, u
 		return f, "", false
 	}
 	if gated {
-		return f, "", !strictCodeProof(list.Codes, f.Value, src.RawValue)
+		return f, "", !strictCodeProof(list.Codes, f.Value, src.RawValue, c.sourceIsBoolean(src))
+	}
+	if list.UnknownCode != "" && strictCodeProof(list.Codes, f.Value, src.RawValue, c.sourceIsBoolean(src)) {
+		return f, "", false // a strict proof needs no judgment, for any code of the list
 	}
 	rmsg, forceLow := relationError(node, list.Codes, f.Value, src.RawValue, f.Justification, f.Confidence)
 	if rmsg != "" {
@@ -388,14 +395,30 @@ func (c *checker) toFill(w wireFill, strict bool) (fill core.Fill, msg string, u
 	return f, "", false
 }
 
+// sourceIsBoolean tells whether the cited field is a boolean in the data model:
+// only then does a boolean literal prove a yes/no code (0, 1, yes or no in a
+// text or numeric column prove nothing).
+func (c *checker) sourceIsBoolean(src core.SourceRef) bool {
+	table, ok := c.tc.DataModel.Tables[src.Object.Table]
+	if !ok {
+		return false
+	}
+	field, ok := table.Fields[src.Field]
+	return ok && field.DataType == models.Bool
+}
+
 // strictCodeProof tells whether the raw value of the source proves the code
 // without interpretation: it is the code itself, its label (folded like text
-// proofs), or a boolean literal matching a yes/no code.
-func strictCodeProof(codes []core.Code, value, raw string) bool {
+// proofs), or, when the source field is a boolean, a boolean literal matching a
+// yes/no code.
+func strictCodeProof(codes []core.Code, value, raw string, boolSource bool) bool {
 	if foldAlnum(value) == foldAlnum(raw) || slices.ContainsFunc(codes, func(c core.Code) bool {
 		return c.Value == value && c.Label != "" && foldAlnum(c.Label) == foldAlnum(raw)
 	}) {
 		return true
+	}
+	if !boolSource {
+		return false
 	}
 	rb, rok := boolLiteral(raw)
 	vb, vok := boolLiteral(value)

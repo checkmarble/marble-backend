@@ -196,14 +196,22 @@ func (d *describer) codeList(name string) string {
 		desc += " [" + strings.Join(codes, ", ") + "]"
 	}
 	if list.UnknownCode != "" {
-		desc += " ; " + unknownCodeRule(list.UnknownCode)
+		desc += " ; " + unknownCodeRule(list)
 	}
 	return desc
 }
 
 // unknownCodeRule is the rule shown to the model for a list with an unknown code.
-func unknownCodeRule(code string) string {
-	return fmt.Sprintf("unknown code %q: use it when the data say nothing; any other code needs a source whose raw value is that code or its label (or a boolean for a yes/no list), else it becomes a question for the analyst", code)
+func unknownCodeRule(list core.CodeList) string {
+	rule := fmt.Sprintf("unknown code %q: use it when the data say nothing", list.UnknownCode)
+	if len(list.StrictCodes) > 0 {
+		quoted := make([]string, len(list.StrictCodes))
+		for i, c := range list.StrictCodes {
+			quoted[i] = fmt.Sprintf("%q", c)
+		}
+		rule += "; " + strings.Join(quoted, ", ") + " needs a source that establishes it (its raw value is that code or its label, or a boolean field), else it becomes a question for the analyst"
+	}
+	return rule
 }
 
 func oneLine(s string) string {

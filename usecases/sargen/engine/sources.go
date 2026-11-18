@@ -118,7 +118,7 @@ func sourcesOutsideSelection(before, after *core.Document, sc scope) []core.Obje
 	return bad
 }
 
-// outsideSelectionMessage is the message (French) of a structured output that
+// outsideSelectionMessage is the message of a structured output that
 // cites objects outside the selection.
 func outsideSelectionMessage(bad []core.ObjectRef) string {
 	names := make([]string, len(bad))

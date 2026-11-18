@@ -169,7 +169,7 @@ func parseArgs(args json.RawMessage, into any) (string, bool) {
 		return "", true
 	}
 	if err := json.Unmarshal(args, into); err != nil {
-		return toolError("arguments invalides : JSON attendu"), false
+		return toolError("invalid arguments: a JSON object is expected"), false
 	}
 	return "", true
 }
@@ -313,12 +313,12 @@ func fieldSpec(f core.Format, args json.RawMessage) string {
 		return msg
 	}
 	if f == nil || f.Spec() == nil {
-		return toolError("format indisponible")
+		return toolError("format unavailable")
 	}
 	spec := f.Spec()
 	path, err := core.ParsePath(a.Path)
 	if err != nil {
-		return toolError("chemin invalide : " + err.Error())
+		return toolError("invalid path: " + err.Error())
 	}
 	node := spec.NodeAt(path.Template())
 	if node == nil || node.Template == "" {
@@ -393,7 +393,7 @@ func fieldSpec(f core.Format, args json.RawMessage) string {
 		}
 		if ok && list.UnknownCode != "" {
 			out["unknown_code"] = list.UnknownCode
-			out["unknown_code_rule"] = unknownCodeRule(list.UnknownCode)
+			out["unknown_code_rule"] = unknownCodeRule(list)
 		}
 	}
 	return toolJSON(out)
@@ -412,11 +412,11 @@ func searchCode(f core.Format, codes codeIndex, args json.RawMessage) string {
 		return msg
 	}
 	if f == nil || f.Spec() == nil {
-		return toolError("format indisponible")
+		return toolError("format unavailable")
 	}
 	list, ok := f.Spec().CodeLists[a.List]
 	if !ok {
-		return toolError(fmt.Sprintf("liste de codes %q inconnue", a.List))
+		return toolError(fmt.Sprintf("unknown code list %q", a.List))
 	}
 	if list.Unavailable {
 		return toolError(fmt.Sprintf("list %q is not available: any value is accepted", a.List))
@@ -445,7 +445,7 @@ func describeTable(dm models.DataModel, args json.RawMessage) string {
 	}
 	table, ok := dm.Tables[a.Table]
 	if !ok {
-		return toolError(fmt.Sprintf("table %q inconnue", a.Table))
+		return toolError(fmt.Sprintf("unknown table %q", a.Table))
 	}
 
 	fieldNames := make([]string, 0, len(table.Fields))
@@ -530,7 +530,7 @@ func validateFills(f core.Format, args json.RawMessage) string {
 		return msg
 	}
 	if f == nil || f.Spec() == nil {
-		return toolError("format indisponible")
+		return toolError("format unavailable")
 	}
 	if len(a.Fills) > validateMaxFills {
 		return toolError(fmt.Sprintf("too many values to validate (%d at most)", validateMaxFills))
