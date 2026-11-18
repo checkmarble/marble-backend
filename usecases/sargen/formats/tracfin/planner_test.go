@@ -19,6 +19,7 @@ import (
 // Step kinds of the TRACFIN plan (the other kinds are core.TaskKindCompute and
 // core.TaskKindReview).
 const (
+	stepUnderstanding   = "understanding"
 	stepPlacement       = "placement"
 	stepFillPerson      = "fill_person"
 	stepFillTransaction = "fill_transaction"
@@ -204,18 +205,29 @@ func TestApplyPlacement_JointAccountCreatedUnderEachOwner(t *testing.T) {
 	assert.Equal(t, []core.ObjectRef{{Table: "transactions", ObjectID: "t-1"}}, doc.ItemSources[tx])
 }
 
-func TestPlan_FirstStepIsPlacement(t *testing.T) {
+func TestPlan_FirstStepIsPlacementAfterTheUnderstanding(t *testing.T) {
 	f := planFormat(t)
+	gen := string(models.SarJobKindGenerate)
 
-	specs := f.Plan(core.PlanState{JobKind: string(models.SarJobKindGenerate), Doc: core.NewDocument()})
+	// The first wave is exactly the understanding.
+	specs := f.Plan(core.PlanState{JobKind: gen, Doc: core.NewDocument()})
+	require.Len(t, specs, 1)
+	assert.Equal(t, stepUnderstanding, specs[0].Kind)
+	assert.Equal(t, "sar_generation/tracfin/understanding.md", specs[0].PromptPath)
+
+	// Then the placement.
+	specs = f.Plan(core.PlanState{JobKind: gen, Doc: core.NewDocument(), Done: planDone(core.TaskSpec{Kind: stepUnderstanding})})
 	require.Len(t, specs, 1)
 	assert.Equal(t, stepPlacement, specs[0].Kind)
 	assert.Equal(t, "sar_generation/tracfin/placement.md", specs[0].PromptPath)
 
-	// Without a placement done, the plan stays on placement even with items.
-	specs = f.Plan(core.PlanState{JobKind: string(models.SarJobKindGenerate), Doc: planDoc(2, 12)})
-	require.Len(t, specs, 1)
-	assert.Equal(t, stepPlacement, specs[0].Kind)
+	// A job that placed without a note (created before the understanding step)
+	// never plans it: the plan goes on with the fills.
+	st := core.PlanState{JobKind: gen, Doc: planDoc(2, 12), Done: planPlacementDone()}
+	waves, _ := planRun(t, f, st)
+	assert.Equal(t, -1, waveIndexOf(waves, stepUnderstanding))
+	require.NotEmpty(t, waves)
+	assert.NotEmpty(t, planWaveOf(waves[0], stepFillPerson))
 }
 
 func TestPlan_FillTasksAfterPlacement(t *testing.T) {
@@ -497,4 +509,122 @@ func TestPlan_IsDeterministic(t *testing.T) {
 	first, _ := planRun(t, f, st)
 	second, _ := planRun(t, f, st)
 	assert.Equal(t, first, second, "same state, same waves")
+}
+
+// planUnderstandingDone is a done understanding task holding a note, as the
+// orchestrator stores it (the structured output in the task output).
+func planUnderstandingDone(note string) []models.SarGenerationTask {
+	done := planDone(core.TaskSpec{Kind: stepUnderstanding})
+	done[0].Output = []byte(`{"applied":[],"rejected":[],"conflicts":[],"questions":0,"findings":0,"structured":` + note + `}`)
+	return done
+}
+
+func TestPlan_EveryStepReceivesTheNoteAndTheAnalysis(t *testing.T) {
+	f := planFormat(t)
+	const note = `{"summary":"the story","typology":"","entities":[]}`
+	st := core.PlanState{
+		JobKind: string(models.SarJobKindGenerate),
+		Declaration: models.SarDeclaration{
+			Analysis: "  Le client est président.  ", ExtraInfo: "Complément",
+		},
+		Doc:  planDoc(1, 3),
+		Done: planUnderstandingDone(note),
+	}
+	// A blocking form issue on a person plans a correction wave.
+	st.Issues = []core.Issue{{Path: "personnes.pp[pp-1].etatCivil.dateNaissance", Code: core.CodeBadDate, Severity: core.SeverityBlocking}}
+
+	var wantNote any
+	require.NoError(t, json.Unmarshal([]byte(note), &wantNote))
+	check := func(kind string, s core.TaskSpec) {
+		t.Helper()
+		assert.Equal(t, wantNote, s.Payload[tracfin.PayloadUnderstanding], "%s receives the note", kind)
+		assert.Equal(t, "Le client est président.", s.Payload["analysis"], "%s receives the analysis", kind)
+		assert.Equal(t, "Complément", s.Payload["extra_info"], "%s receives the extra information", kind)
+	}
+
+	// Placement (nothing placed yet).
+	placementState := st
+	placementState.Doc = core.NewDocument()
+	specs := f.Plan(placementState)
+	require.Len(t, specs, 1)
+	require.Equal(t, stepPlacement, specs[0].Kind)
+	check("placement", specs[0])
+	assert.False(t, specs[0].NeedsCaseContext, "the note carries what matters from the case context")
+
+	// Following waves, from the placement done on.
+	st.Done = append(st.Done, planPlacementDone()...)
+	waves, _ := planRun(t, f, st)
+	seen := map[string]bool{}
+	for _, w := range waves {
+		for _, s := range w {
+			switch s.Kind {
+			case stepFillPerson, stepFillTransaction, stepJudgment, stepCorrection, core.TaskKindReview:
+				check(s.Kind, s)
+				seen[s.Kind] = true
+				// The case context stays on judgment and review only.
+				assert.Equal(t, s.Kind == stepJudgment || s.Kind == core.TaskKindReview, s.NeedsCaseContext, s.Kind)
+			case core.TaskKindCompute:
+				assert.Empty(t, s.Payload["understanding"])
+			}
+		}
+	}
+	for _, k := range []string{stepFillPerson, stepFillTransaction, stepJudgment, stepCorrection, core.TaskKindReview} {
+		assert.True(t, seen[k], "%s planned", k)
+	}
+	// The fill and correction payloads keep their own entries.
+	first := f.Plan(st)
+	assert.NotNil(t, planWaveOf(first, stepFillTransaction)[0].Payload[tracfin.PayloadDeclared])
+
+	// The understanding itself gets the analysis and no note.
+	u := f.Plan(core.PlanState{JobKind: string(models.SarJobKindGenerate), Declaration: st.Declaration, Doc: core.NewDocument()})
+	require.Len(t, u, 1)
+	assert.Equal(t, "Le client est président.", u[0].Payload["analysis"])
+	assert.NotContains(t, u[0].Payload, tracfin.PayloadUnderstanding)
+	assert.True(t, u[0].NeedsCaseContext)
+}
+
+func TestPlan_StepsWithoutNoteStillGetTheAnalysis(t *testing.T) {
+	f := planFormat(t)
+	st := core.PlanState{
+		JobKind:     string(models.SarJobKindGenerate),
+		Declaration: models.SarDeclaration{Analysis: "texte"},
+		Doc:         planDoc(1, 1),
+		Done:        planPlacementDone(), // an old job: placed without a note
+	}
+	waves, _ := planRun(t, f, st)
+	for _, w := range waves {
+		for _, s := range w {
+			if s.Kind == core.TaskKindCompute {
+				continue
+			}
+			assert.NotContains(t, s.Payload, tracfin.PayloadUnderstanding, s.Kind)
+			assert.Equal(t, "texte", s.Payload["analysis"], s.Kind)
+		}
+	}
+}
+
+func TestPlan_ReviewJobStillOnlyPlansTheReviewWithoutNote(t *testing.T) {
+	f := planFormat(t)
+	specs := f.Plan(core.PlanState{
+		JobKind: string(models.SarJobKindReview), Declaration: models.SarDeclaration{Analysis: "texte"}, Doc: planDoc(1, 1),
+	})
+	require.Len(t, specs, 1)
+	assert.Equal(t, core.TaskKindReview, specs[0].Kind)
+	assert.NotContains(t, specs[0].Payload, tracfin.PayloadUnderstanding)
+	assert.Equal(t, "texte", specs[0].Payload["analysis"])
+}
+
+func TestPlan_ResumeWithTheNoteIsDeterministic(t *testing.T) {
+	f := planFormat(t)
+	st := core.PlanState{
+		JobKind: string(models.SarJobKindGenerate),
+		Doc:     planDoc(2, 12),
+		Done:    append(planUnderstandingDone(`{"b":1,"a":[2,{"z":1,"y":2}]}`), planPlacementDone()...),
+	}
+	first, _ := planRun(t, f, st)
+	second, _ := planRun(t, f, st)
+	assert.Equal(t, first, second)
+	a, _ := json.Marshal(f.Plan(st))
+	b, _ := json.Marshal(f.Plan(st))
+	assert.Equal(t, string(a), string(b))
 }

@@ -201,6 +201,8 @@ type e2eLLM struct {
 	runs   map[string]int
 	// Requests counts the steps played per prompt path.
 	Requests map[string]int
+	// Prompts keeps the prompt of the first step of each run, per prompt path.
+	Prompts map[string][]string
 }
 
 func (l *e2eLLM) Step(_ context.Context, req engine.AgentRequest) (engine.AgentStep, error) {
@@ -213,6 +215,12 @@ func (l *e2eLLM) Step(_ context.Context, req engine.AgentRequest) (engine.AgentS
 		n := l.runs[req.RunID]
 		l.runs[req.RunID]++
 		l.Requests[path]++
+		if n == 0 {
+			if l.Prompts == nil {
+				l.Prompts = map[string][]string{}
+			}
+			l.Prompts[path] = append(l.Prompts[path], req.Prompt)
+		}
 		if n >= len(steps) {
 			last := ""
 			if len(req.History) > 0 {
@@ -295,6 +303,29 @@ func e2eScript() map[string][]engine.AgentStep {
 	for _, tx := range e2eTransactions {
 		txObjects = append(txObjects, m{"object": obj("transactions", tx.id)})
 	}
+	// The understanding note: every quote is a phrase of the analysis, every
+	// object is selected.
+	understanding := e2eFinal(m{
+		"summary":  "A client received and sent five transfers in March 2026 to two companies.",
+		"typology": "",
+		"entities": []m{{
+			"object": obj("clients", "c1"), "role": "suspect", "description": "holder of the debited account",
+			"basis": []m{{"kind": "analysis", "reference": "Le client a reçu et viré cinq opérations"}},
+		}},
+		"links": []m{{
+			"from": obj("clients", "c1"), "to": obj("accounts", "a1"), "nature": "holder",
+			"basis": []m{{"kind": "data", "reference": "accounts/a1.client_id"}},
+		}},
+		"facts": []m{{
+			"statement": "the transfers have no link with the client's activity", "objects": []m{obj("transactions", "t1")},
+			"basis": []m{{"kind": "analysis", "reference": "sans rapport avec son activité"}},
+		}},
+		"suspicions": []m{{
+			"qualification": "transfers unrelated to the activity", "status": "asserted", "quote": "sans rapport avec son activité",
+		}},
+		"key_operations": []m{{"objects": []m{obj("transactions", "t1"), obj("transactions", "t4")}, "description": "first transfer to each company"}},
+		"unknowns":       []m{{"topic": "origin of the funds", "objects": []m{obj("accounts", "a1")}, "why": "nothing in the data establishes it"}},
+	})
 	placement := e2eFinal(m{
 		"persons": []m{{"kind": "pp", "objects": []m{obj("clients", "c1")}}},
 		"financial_refs": []m{{
@@ -344,6 +375,7 @@ func e2eScript() map[string][]engine.AgentStep {
 	}}})
 
 	return map[string][]engine.AgentStep{
+		"sar_generation/tracfin/understanding.md":    {understanding},
 		"sar_generation/tracfin/placement.md":        {placement},
 		"sar_generation/tracfin/fill_person.md":      {person},
 		"sar_generation/tracfin/fill_transaction.md": {e2eCall("tracfin_operation_preview", `{}`), e2eFinal(fillsAnswer(txFills...))},
@@ -417,7 +449,7 @@ func TestGenerate_EndToEndWithScriptedLLM(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, models.SarJobStatusDone, done.Status, done.Error)
 	for kind, n := range map[string]int{
-		"placement": 1, "fill_person": 1, "fill_transaction": 1, core.TaskKindCompute: 1, "judgment": 1, core.TaskKindReview: 1, "correction": 0,
+		"understanding": 1, "placement": 1, "fill_person": 1, "fill_transaction": 1, core.TaskKindCompute: 1, "judgment": 1, core.TaskKindReview: 1, "correction": 0,
 	} {
 		ts := repo.tasksOfKind(kind)
 		assert.Len(t, ts, n, "tasks of kind %s", kind)
@@ -535,5 +567,7 @@ func TestRunJob_MissingPromptFailsJob(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, models.SarJobStatusFailed, failed.Status)
 	assert.Equal(t, "prompt manquant : sar_generation/tracfin/placement.md", failed.Error)
-	assert.Empty(t, llm.Requests, "no LLM call before the prompt check")
+	// The prompt is checked when its wave is planned: only the understanding,
+	// which comes first, ran before the placement prompt was found missing.
+	assert.Equal(t, map[string]int{"sar_generation/tracfin/understanding.md": 1}, llm.Requests)
 }

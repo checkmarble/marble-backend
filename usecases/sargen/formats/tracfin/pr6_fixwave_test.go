@@ -224,7 +224,10 @@ func TestPlan_FillPersonToolsExist(t *testing.T) {
 
 func TestPlan_PlacementFailsTheJobOnLimit(t *testing.T) {
 	f := planFormat(t)
-	specs := f.Plan(core.PlanState{JobKind: string(models.SarJobKindGenerate), Doc: core.NewDocument()})
+	specs := f.Plan(core.PlanState{
+		JobKind: string(models.SarJobKindGenerate), Doc: core.NewDocument(),
+		Done: planDone(core.TaskSpec{Kind: stepUnderstanding}),
+	})
 	require.Len(t, specs, 1)
 	require.Equal(t, stepPlacement, specs[0].Kind)
 	assert.True(t, specs[0].FailJobOnLimit, "a placement ending on a limit must fail the job")

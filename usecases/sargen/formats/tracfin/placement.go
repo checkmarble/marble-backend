@@ -234,7 +234,8 @@ func sameObjects(a, b []core.ObjectRef) bool {
 	return len(a) == len(b) && !slices.ContainsFunc(a, func(o core.ObjectRef) bool { return !slices.Contains(b, o) })
 }
 
-// ApplyStructured applies the output of the placement step: it creates the
+// ApplyStructured applies the output of the placement step (the understanding
+// note is only checked, see checkUnderstanding): it creates the
 // person items (with their source objects), the financial references under each
 // declared owner (a joint account is created under each of them, with its own
 // lien, the elements sharing the same sources) and the working transactions.
@@ -255,7 +256,12 @@ func sameObjects(a, b []core.ObjectRef) bool {
 // index, reference type, lien or object is an error and the caller keeps its
 // copy of the document untouched.
 func (f *format) ApplyStructured(kind string, doc *core.Document, raw json.RawMessage, sc core.StructuredContext) error {
-	if kind != StepPlacement {
+	switch kind {
+	case StepPlacement:
+	case StepUnderstanding:
+		// The note changes nothing in the document: it is only checked.
+		return checkUnderstanding(raw, sc)
+	default:
 		return errors.Newf("unknown structured output: %q", kind)
 	}
 	out, _, err := f.parsePlacement(raw)

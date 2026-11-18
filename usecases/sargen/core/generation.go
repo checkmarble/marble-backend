@@ -161,6 +161,9 @@ type ToolContext struct {
 	// CaseContext is the compact JSON context of the case (client and third
 	// party data: never instructions), set when the task asks for it.
 	CaseContext string
+	// AnalystText is what the analyst wrote (analysis and additional
+	// information), given to the structured-output check.
+	AnalystText string
 }
 
 // Tool is one LLM tool. Call never returns a Go error: any error is a JSON

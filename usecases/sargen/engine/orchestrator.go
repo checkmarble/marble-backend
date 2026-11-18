@@ -702,6 +702,7 @@ func (r *jobRun) runTask(ctx context.Context, rt readyTask) (claimed bool, err e
 		tc := core.ToolContext{
 			OrgId: r.orgId, DeclarationId: r.declId, TaskId: rt.task.Id, Format: r.format,
 			Doc: doc.Clone(), Selection: r.selection, DataModel: r.dataModel,
+			AnalystText: analystText(decl),
 		}
 		if rt.spec.NeedsCaseContext {
 			cc, err := r.caseContextText(ctx)
@@ -776,6 +777,9 @@ type taskResult struct {
 	// Wrote tells whether applying the task changed the document. The selection
 	// stays editable after a failed job whose done tasks all wrote nothing.
 	Wrote bool `json:"wrote"`
+	// Structured is the structured output of the task (e.g. the understanding
+	// note), kept so that the planner can hand it to the later steps.
+	Structured json.RawMessage `json:"structured,omitempty"`
 }
 
 // CodeUnresolvedPath marks a question path still holding a provisional key.
@@ -835,7 +839,9 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 			// Applied to a copy first: a structured output citing objects outside
 			// the frozen selection is rejected as a whole, nothing of it applied.
 			cand := doc.Clone()
-			if err := r.format.ApplyStructured(rt.spec.Kind, cand, out.Structured, StructuredContextFor(r.selection, r.dataModel)); err != nil {
+			sctx := StructuredContextFor(r.selection, r.dataModel)
+			sctx.AnalystText = analystText(decl)
+			if err := r.format.ApplyStructured(rt.spec.Kind, cand, out.Structured, sctx); err != nil {
 				return false, errors.Wrap(err, "invalid structured output")
 			}
 			if bad := sourcesOutsideSelection(doc, cand, newScope(r.selection)); len(bad) > 0 {
@@ -880,6 +886,9 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 		changed = changed || len(res.Applied) > 0
 		result = resultFromApply(res)
 		result.Rejected = append(result.Rejected, structuredRejected...)
+		if len(out.Structured) > 0 && len(structuredRejected) == 0 {
+			result.Structured = out.Structured
+		}
 
 		existing, err := o.generation.ListSarQuestions(ctx, tx, r.declId, "")
 		if err != nil {

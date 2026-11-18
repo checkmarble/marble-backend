@@ -97,13 +97,23 @@ func linkedObjects(sc scope, dm models.DataModel, ref core.ObjectRef) []models.S
 // data model: the selected objects linked to an object by a data-model link.
 func StructuredContextFor(selection []models.SarSelectedObject, dm models.DataModel) core.StructuredContext {
 	sc := newScope(selection)
-	return core.StructuredContext{LinkedObjects: func(ref core.ObjectRef) []core.ObjectRef {
+	refs := make([]core.ObjectRef, len(selection))
+	for i, o := range selection {
+		refs[i] = core.ObjectRef{Table: o.TableName, ObjectID: o.ObjectId}
+	}
+	return core.StructuredContext{Selection: refs, LinkedObjects: func(ref core.ObjectRef) []core.ObjectRef {
 		var out []core.ObjectRef
 		for _, o := range linkedObjects(sc, dm, ref) {
 			out = append(out, core.ObjectRef{Table: o.TableName, ObjectID: o.ObjectId})
 		}
 		return out
 	}}
+}
+
+// analystText is what the analyst wrote: the analysis and the additional
+// information.
+func analystText(decl models.SarDeclaration) string {
+	return strings.TrimSpace(decl.Analysis + "\n" + decl.ExtraInfo)
 }
 
 // sourcesOutsideSelection lists the ObjectRefs that a structured output added to

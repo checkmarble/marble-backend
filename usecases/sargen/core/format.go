@@ -55,6 +55,12 @@ type StructuredContext struct {
 	// LinkedObjects returns the selected objects linked to ref by a data-model
 	// link (one hop, either direction). Nil: no link is known.
 	LinkedObjects func(ref ObjectRef) []ObjectRef
+	// Selection is the frozen selection (the objects a structured output may
+	// designate). Empty: none is known.
+	Selection []ObjectRef
+	// AnalystText is what the analyst wrote (the analysis and the additional
+	// information, joined), for outputs that quote it.
+	AnalystText string
 }
 
 // Linked returns the selected objects linked to ref (none without a resolver).
