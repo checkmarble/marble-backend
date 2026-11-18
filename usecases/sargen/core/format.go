@@ -61,6 +61,9 @@ type StructuredContext struct {
 	// AnalystText is what the analyst wrote (the analysis and the additional
 	// information, joined), for outputs that quote it.
 	AnalystText string
+	// Snapshots are the frozen snapshots of the selected objects, to check that a
+	// cited field exists. Nil: not known, the check is skipped.
+	Snapshots map[ObjectRef]map[string]any
 }
 
 // Linked returns the selected objects linked to ref (none without a resolver).
@@ -85,6 +88,15 @@ type SettingsRequirer interface {
 // after the output was applied (question paths are read from it).
 type StructuredQuestioner interface {
 	StructuredQuestions(kind string, out json.RawMessage, applied *Document) []QuestionDraft
+}
+
+// StructuredCleaner is an optional capability of a Format: a structured output
+// that is only a reading aid keeps its valid parts. CleanStructured returns the
+// output without the parts that fail their checks, and a description of what was
+// dropped; an error refuses the output as a whole. A kind it does not clean is
+// returned unchanged.
+type StructuredCleaner interface {
+	CleanStructured(kind string, out json.RawMessage, sc StructuredContext) (cleaned json.RawMessage, dropped []string, err error)
 }
 
 // ConfirmComputer is an optional capability of a Format: the templates of the

@@ -235,7 +235,7 @@ func sameObjects(a, b []core.ObjectRef) bool {
 }
 
 // ApplyStructured applies the output of the placement step (the understanding
-// note is only checked, see checkUnderstanding): it creates the
+// note is only checked, see cleanUnderstanding): it creates the
 // person items (with their source objects), the financial references under each
 // declared owner (a joint account is created under each of them, with its own
 // lien, the elements sharing the same sources) and the working transactions.
@@ -259,8 +259,10 @@ func (f *format) ApplyStructured(kind string, doc *core.Document, raw json.RawMe
 	switch kind {
 	case StepPlacement:
 	case StepUnderstanding:
-		// The note changes nothing in the document: it is only checked.
-		return checkUnderstanding(raw, sc)
+		// The note changes nothing in the document: it is only checked (the
+		// engine keeps its valid items, see CleanStructured).
+		_, _, err := cleanUnderstanding(raw, sc)
+		return err
 	default:
 		return errors.Newf("unknown structured output: %q", kind)
 	}

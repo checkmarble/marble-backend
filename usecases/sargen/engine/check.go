@@ -678,6 +678,23 @@ func (c *checker) checkStructured(final json.RawMessage) (err error) {
 	return nil
 }
 
+// cleanStructured keeps the valid parts of an accepted structured output, for a
+// format that supports it (see core.StructuredCleaner); dropped says what was
+// left out.
+func (c *checker) cleanStructured(final json.RawMessage) (json.RawMessage, []string) {
+	cleaner, ok := c.tc.Format.(core.StructuredCleaner)
+	if !ok {
+		return final, nil
+	}
+	sc := StructuredContextFor(c.tc.Selection, c.tc.DataModel)
+	sc.AnalystText = c.tc.AnalystText
+	cleaned, dropped, err := cleaner.CleanStructured(c.spec.Kind, final, sc)
+	if err != nil {
+		return final, nil // already checked by checkStructured
+	}
+	return cleaned, dropped
+}
+
 // relationError checks that the value of a copied fill derives from the raw
 // value of its cited source, by field type; msg is "" when it does (or when the
 // relation is not checked). forceLow tells that the value is a correspondence

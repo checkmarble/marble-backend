@@ -65,48 +65,127 @@ func TestApplyUnderstanding_ValidNoteLeavesTheDocumentUnchanged(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestApplyUnderstanding_Rejections(t *testing.T) {
+func cleanNote(t *testing.T, note any, sc core.StructuredContext) (map[string]any, []string, error) {
+	t.Helper()
+	raw, err := json.Marshal(note)
+	require.NoError(t, err)
+	cleaned, dropped, err := planFormat(t).(core.StructuredCleaner).CleanStructured("understanding", raw, sc)
+	if err != nil {
+		return nil, dropped, err
+	}
+	var out map[string]any
+	require.NoError(t, json.Unmarshal(cleaned, &out))
+	return out, dropped, nil
+}
+
+// The note is best-effort: an item whose references, quote or bounds fail is
+// dropped and reported, the other items are kept.
+func TestCleanUnderstanding_DropsInvalidItems(t *testing.T) {
 	obj := func(t, id string) map[string]any { return map[string]any{"table": t, "object_id": id} }
 	cases := map[string]struct {
 		mutate func(n map[string]any)
+		array  string // the array that loses its first item
 		want   string
 	}{
 		"object outside the selection (entity)": {func(n map[string]any) {
 			n["entities"].([]any)[0].(map[string]any)["object"] = obj("clients", "c9")
-		}, "clients/c9 is not a selected object"},
+		}, "entities", "clients/c9 is not a selected object"},
 		"object outside the selection (link)": {func(n map[string]any) {
 			n["links"].([]any)[0].(map[string]any)["to"] = obj("accounts", "zz")
-		}, "accounts/zz is not a selected object"},
+		}, "links", "accounts/zz is not a selected object"},
 		"object outside the selection (key operation)": {func(n map[string]any) {
 			n["key_operations"].([]any)[0].(map[string]any)["objects"] = []any{obj("transactions", "t9")}
-		}, "transactions/t9"},
+		}, "key_operations", "transactions/t9"},
 		"object outside the selection (unknown)": {func(n map[string]any) {
 			n["unknowns"].([]any)[0].(map[string]any)["objects"] = []any{obj("x", "y")}
-		}, "x/y"},
+		}, "unknowns", "x/y"},
 		"analysis basis not in the text": {func(n map[string]any) {
-			n["entities"].([]any)[0].(map[string]any)["basis"] = []any{map[string]any{"kind": "analysis", "reference": "directeur général"}}
-		}, "copied verbatim"},
+			n["entities"].([]any)[0].(map[string]any)["basis"] = []any{map[string]any{"kind": "analysis", "reference": "directeur général adjoint"}}
+		}, "entities", "copied verbatim"},
+		"analysis basis too short": {func(n map[string]any) {
+			n["entities"].([]any)[0].(map[string]any)["basis"] = []any{map[string]any{"kind": "analysis", "reference": "le client"}}
+		}, "entities", "at least 3 words"},
 		"empty analysis basis": {func(n map[string]any) {
 			n["entities"].([]any)[0].(map[string]any)["basis"] = []any{map[string]any{"kind": "analysis", "reference": "  "}}
-		}, "copied verbatim"},
+		}, "entities", "copied verbatim"},
 		"asserted suspicion quote not in the text": {func(n map[string]any) {
-			n["suspicions"].([]any)[0].(map[string]any)["quote"] = "blanchiment avéré"
-		}, "asserted suspicion"},
+			n["suspicions"].([]any)[0].(map[string]any)["quote"] = "blanchiment très avéré"
+		}, "suspicions", "asserted suspicion"},
+		"asserted suspicion quote of one word": {func(n map[string]any) {
+			n["suspicions"].([]any)[0].(map[string]any)["quote"] = "virements"
+		}, "suspicions", "asserted suspicion"},
 		"data basis without a field": {func(n map[string]any) {
 			n["links"].([]any)[0].(map[string]any)["basis"] = []any{map[string]any{"kind": "data", "reference": "accounts/a.1."}}
-		}, "table/object_id.field"},
+		}, "links", "table/object_id.field"},
 		"data basis on an object that is not selected": {func(n map[string]any) {
 			n["links"].([]any)[0].(map[string]any)["basis"] = []any{map[string]any{"kind": "data", "reference": "accounts/a2.iban"}}
-		}, "table/object_id.field"},
+		}, "links", "table/object_id.field"},
+		"data basis on a field absent from the snapshot": {func(n map[string]any) {
+			n["links"].([]any)[0].(map[string]any)["basis"] = []any{map[string]any{"kind": "data", "reference": "accounts/a.1.nope"}}
+		}, "links", "table/object_id.field"},
 		"unknown basis kind": {func(n map[string]any) {
 			n["facts"].([]any)[0].(map[string]any)["basis"] = []any{map[string]any{"kind": "guess", "reference": "x"}}
-		}, "unknown value"},
+		}, "facts", "unknown value"},
 		"unknown role": {func(n map[string]any) {
 			n["entities"].([]any)[0].(map[string]any)["role"] = "boss"
-		}, "entities[0].role"},
+		}, "entities", "role"},
 		"unknown suspicion status": {func(n map[string]any) {
 			n["suspicions"].([]any)[1].(map[string]any)["status"] = "maybe"
-		}, "suspicions[1].status"},
+		}, "suspicions", "status"},
+		"item string too long": {func(n map[string]any) {
+			n["entities"].([]any)[0].(map[string]any)["description"] = strings.Repeat("a", 1001)
+		}, "entities", "longer than 1000"},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			n := validNote()
+			c.mutate(n)
+			sc := noteContext()
+			sc.Snapshots = map[core.ObjectRef]map[string]any{
+				{Table: "accounts", ObjectID: "a.1"}: {"client_id": "c1"},
+			}
+			cleaned, dropped, err := cleanNote(t, n, sc)
+			require.NoError(t, err, "the note is not refused")
+			require.Len(t, dropped, 1)
+			assert.Contains(t, dropped[0], c.want)
+			orig := validNote()[c.array].([]any)
+			kept := cleaned[c.array].([]any)
+			if c.array == "suspicions" && strings.Contains(name, "status") {
+				assert.Len(t, kept, len(orig)-1)
+				return
+			}
+			assert.Len(t, kept, len(orig)-1, "the invalid item is dropped")
+			for k, v := range cleaned {
+				if k != c.array {
+					assert.Equal(t, validNote()[k], v, "the other parts are kept: %s", k)
+				}
+			}
+		})
+	}
+
+	t.Run("a valid note is returned unchanged", func(t *testing.T) {
+		cleaned, dropped, err := cleanNote(t, validNote(), noteContext())
+		require.NoError(t, err)
+		assert.Empty(t, dropped)
+		assert.Equal(t, validNote()["facts"], cleaned["facts"])
+	})
+	t.Run("no selection known: every object item is dropped, the note stays", func(t *testing.T) {
+		sc := noteContext()
+		sc.Selection = nil
+		cleaned, dropped, err := cleanNote(t, validNote(), sc)
+		require.NoError(t, err)
+		assert.NotEmpty(t, dropped)
+		assert.Empty(t, cleaned["entities"])
+		assert.Equal(t, "story", cleaned["summary"])
+	})
+}
+
+// Only a note that cannot be read, or that exceeds the hard bounds, is refused.
+func TestCleanUnderstanding_RefusesUnreadableOrOversized(t *testing.T) {
+	for name, c := range map[string]struct {
+		mutate func(n map[string]any)
+		want   string
+	}{
 		"summary too long": {func(n map[string]any) { n["summary"] = strings.Repeat("é", 4001) }, "summary"},
 		"string too long":  {func(n map[string]any) { n["typology"] = strings.Repeat("a", 1001) }, "typology"},
 		"too many items": {func(n map[string]any) {
@@ -116,8 +195,7 @@ func TestApplyUnderstanding_Rejections(t *testing.T) {
 			}
 			n["unknowns"] = items
 		}, "unknowns: at most 300"},
-	}
-	for name, c := range cases {
+	} {
 		t.Run(name, func(t *testing.T) {
 			n := validNote()
 			c.mutate(n)
@@ -126,7 +204,6 @@ func TestApplyUnderstanding_Rejections(t *testing.T) {
 			assert.Contains(t, err.Error(), c.want)
 		})
 	}
-
 	t.Run("summary at the bound is accepted", func(t *testing.T) {
 		n := validNote()
 		n["summary"] = strings.Repeat("é", 4000)
@@ -137,11 +214,11 @@ func TestApplyUnderstanding_Rejections(t *testing.T) {
 		err := planFormat(t).ApplyStructured("understanding", core.NewDocument(), json.RawMessage(`{"summary":3}`), noteContext())
 		require.Error(t, err)
 	})
-	t.Run("no selection known: nothing is selected", func(t *testing.T) {
-		sc := noteContext()
-		sc.Selection = nil
-		_, err := applyNote(t, validNote(), sc)
-		require.Error(t, err)
+	t.Run("invalid items do not refuse the note", func(t *testing.T) {
+		n := validNote()
+		n["entities"].([]any)[0].(map[string]any)["role"] = "boss"
+		_, err := applyNote(t, n, noteContext())
+		require.NoError(t, err)
 	})
 }
 
@@ -153,7 +230,7 @@ func TestUnderstandingSchema_IsStrictAndInTheSpec(t *testing.T) {
 	assert.Equal(t, core.Path(""), s.TargetPath)
 	assert.Empty(t, s.AllowedPaths)
 	assert.Equal(t, core.TierHeavy, s.Tier)
-	assert.True(t, s.FailJobOnLimit)
+	assert.False(t, s.FailJobOnLimit, "without a note the later steps run on the analysis alone")
 	assert.True(t, s.NeedsCaseContext)
 	assert.Equal(t, []string{"read_object", "follow_link", "field_spec", "search_code", "data_model"}, s.ToolNames)
 	require.NotNil(t, s.OutputSchema)

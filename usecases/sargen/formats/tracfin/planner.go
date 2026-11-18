@@ -202,8 +202,8 @@ func (f *format) understandingSpec(st core.PlanState) core.TaskSpec {
 		ToolNames:    slices.Clone(commonReadTools),
 		OutputSchema: &schema,
 		Payload:      analystPayload(st),
-		// The note is the base of every later step.
-		FailJobOnLimit:   true,
+		// A reading aid: without a note the later steps run on the analysis alone.
+		FailJobOnLimit:   false,
 		Limits:           placementLimits(len(st.Selection)),
 		NeedsCaseContext: true,
 	}
