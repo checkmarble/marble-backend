@@ -240,7 +240,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		handleDeleteContinuousScreeningObject(uc))
 	router.PATCH("/continuous-screenings/matches/:id", tom,
 		handleUpdateContinuousScreeningMatchStatus(uc))
-	router.POST("/continuous-screenings/matches/review", tom,
+	// A batch reviews its matches one by one, each in its own transaction, which can outlast the default timeout.
+	router.POST("/continuous-screenings/matches/review", timeoutMiddleware(conf.BatchTimeout),
 		handleReviewContinuousScreeningMatches(uc))
 	router.GET("/continuous-screenings/dataset-updates", tom,
 		handleListContinuousScreeningDatasetUpdates(uc))
