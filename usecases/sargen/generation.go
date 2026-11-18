@@ -23,7 +23,7 @@ var (
 	// while one of its jobs is pending or running.
 	ErrGenerationInProgress = errors.Wrap(models.ConflictError, "une génération est en cours")
 	// ErrSelectionFrozen (409) is returned by UpdateSelection once a generate
-	// job is done, or has at least one done task, for the declaration.
+	// job is done, or has written to the document, for the declaration.
 	ErrSelectionFrozen = errors.Wrap(models.ConflictError,
 		"la sélection ne peut plus changer après la génération ; créez une nouvelle déclaration")
 	// ErrAlreadyGenerated (409) is returned by StartGeneration when a generate
@@ -52,8 +52,11 @@ type SarGenerationRepository interface {
 	// errMsg; it returns how many jobs were failed.
 	FailStaleSarGenerationJobs(ctx context.Context, exec repositories.Executor, declarationId uuid.UUID,
 		staleAfter time.Duration, errMsg string) (int, error)
-	// DeleteUnfinishedSarGenerationTasks deletes the tasks of a job that are not done.
-	DeleteUnfinishedSarGenerationTasks(ctx context.Context, exec repositories.Executor, jobId uuid.UUID) error
+	// DeleteSarGenerationTasks deletes every task of a job, done ones included.
+	DeleteSarGenerationTasks(ctx context.Context, exec repositories.Executor, jobId uuid.UUID) error
+	// SarGenerationJobWroteToDocument tells whether a done task of the job changed
+	// the declaration document.
+	SarGenerationJobWroteToDocument(ctx context.Context, exec repositories.Executor, jobId uuid.UUID) (bool, error)
 	// ListSarGenerationTaskSummaries lists the tasks without input, output or trace.
 	ListSarGenerationTaskSummaries(ctx context.Context, exec repositories.Executor, jobId uuid.UUID) ([]models.SarGenerationTask, error)
 	ListSarQuestions(ctx context.Context, exec repositories.Executor, declarationId uuid.UUID, status string) ([]models.SarQuestion, error)
@@ -327,9 +330,10 @@ func (uc *Usecase) listJobsFailingStale(ctx context.Context, exec repositories.E
 	return uc.generation.ListSarGenerationJobs(ctx, exec, declarationId)
 }
 
-// hasGeneratedTask tells whether a generate job of the declaration has at
-// least one done task: its results (placement, created items) exist and the
-// selection must not change any more.
+// hasGeneratedTask tells whether a generate job of the declaration has written
+// to the document (a done task whose output changed it): its results exist and
+// the selection must not change any more. A done task that wrote nothing, such
+// as the understanding step, does not count.
 func (uc *Usecase) hasGeneratedTask(ctx context.Context, exec repositories.Executor,
 	jobs []models.SarGenerationJob,
 ) (bool, error) {
@@ -337,13 +341,11 @@ func (uc *Usecase) hasGeneratedTask(ctx context.Context, exec repositories.Execu
 		if j.Kind != models.SarJobKindGenerate {
 			continue
 		}
-		tasks, err := uc.generation.ListSarGenerationTaskSummaries(ctx, exec, j.Id)
+		wrote, err := uc.generation.SarGenerationJobWroteToDocument(ctx, exec, j.Id)
 		if err != nil {
 			return false, err
 		}
-		if slices.ContainsFunc(tasks, func(t models.SarGenerationTask) bool {
-			return t.Status == models.SarJobStatusDone
-		}) {
+		if wrote {
 			return true, nil
 		}
 	}

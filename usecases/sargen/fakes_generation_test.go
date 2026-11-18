@@ -146,17 +146,31 @@ func (r *fakeGenRepo) ResumeSarGenerationJob(_ context.Context, _ repositories.E
 	return true, nil
 }
 
-func (r *fakeGenRepo) DeleteUnfinishedSarGenerationTasks(_ context.Context, _ repositories.Executor, jobId uuid.UUID) error {
+func (r *fakeGenRepo) DeleteSarGenerationTasks(_ context.Context, _ repositories.Executor, jobId uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	kept := []models.SarGenerationTask{}
+	r.Tasks[jobId] = []models.SarGenerationTask{}
+	return nil
+}
+
+// SarGenerationJobWroteToDocument mirrors the SQL: a done task whose output
+// records wrote=false does not count; an output without the key does.
+func (r *fakeGenRepo) SarGenerationJobWroteToDocument(_ context.Context, _ repositories.Executor, jobId uuid.UUID) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	for _, t := range r.Tasks[jobId] {
-		if t.Status == models.SarJobStatusDone {
-			kept = append(kept, t)
+		if t.Status != models.SarJobStatusDone {
+			continue
+		}
+		var out struct {
+			Wrote *bool `json:"wrote"`
+		}
+		_ = json.Unmarshal(t.Output, &out)
+		if out.Wrote == nil || *out.Wrote {
+			return true, nil
 		}
 	}
-	r.Tasks[jobId] = kept
-	return nil
+	return false, nil
 }
 
 // FailStaleSarGenerationJobs mirrors the SQL guard on the fake clock.
@@ -315,6 +329,18 @@ func (f *fakes) SeedTask(jobId uuid.UUID, kind, target string, status models.Sar
 	f.Gen.mu.Lock()
 	f.Gen.Tasks[jobId] = append(f.Gen.Tasks[jobId], task)
 	f.Gen.mu.Unlock()
+	return task
+}
+
+// SeedReadOnlyDoneTask inserts a done task whose output records that it did not
+// change the document (e.g. the understanding step).
+func (f *fakes) SeedReadOnlyDoneTask(jobId uuid.UUID, kind string) models.SarGenerationTask {
+	task := f.SeedTask(jobId, kind, "", models.SarJobStatusDone, 1, "")
+	f.Gen.mu.Lock()
+	defer f.Gen.mu.Unlock()
+	ts := f.Gen.Tasks[jobId]
+	ts[len(ts)-1].Output = []byte(`{"applied":[],"wrote":false}`)
+	task.Output = ts[len(ts)-1].Output
 	return task
 }
 

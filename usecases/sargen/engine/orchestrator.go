@@ -597,6 +597,9 @@ type taskResult struct {
 	Conflicts []conflictView `json:"conflicts"`
 	Questions int            `json:"questions"`
 	Findings  int            `json:"findings"`
+	// Wrote tells whether applying the task changed the document. The selection
+	// stays editable after a failed job whose done tasks all wrote nothing.
+	Wrote bool `json:"wrote"`
 }
 
 // CodeUnresolvedPath marks a question path still holding a provisional key.
@@ -760,6 +763,7 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 		result.Findings = len(qs)
 	}
 
+	result.Wrote = changed
 	rawOut, err := json.Marshal(result)
 	if err != nil {
 		return false, errors.Wrap(err, "cannot encode task output")
@@ -853,7 +857,9 @@ func (r *jobRun) applyCompute(ctx context.Context, tx repositories.Transaction, 
 		return false, err
 	}
 	res, changed := r.computeInto(doc)
-	rawOut, err := json.Marshal(resultFromApply(res))
+	result := resultFromApply(res)
+	result.Wrote = changed
+	rawOut, err := json.Marshal(result)
 	if err != nil {
 		return false, errors.Wrap(err, "cannot encode task output")
 	}
