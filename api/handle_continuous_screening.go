@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"io"
 	"net/http"
 
@@ -337,6 +336,12 @@ func handleReviewContinuousScreeningMatches(uc usecases.Usecases) func(c *gin.Co
 			if err == nil {
 				_, err = usecase.UpdateContinuousScreeningMatchStatus(ctx, update)
 			}
+			// Past the route deadline or after the client left, nobody reads the results: stop
+			// instead of failing every remaining match. The client refreshes match states.
+			if ctx.Err() != nil {
+				presentError(ctx, c, ctx.Err())
+				return
+			}
 			result := dto.ContinuousScreeningMatchReviewResultDto{
 				MatchId:    match.MatchId,
 				StatusCode: matchReviewStatusCode(err),
@@ -345,8 +350,6 @@ func handleReviewContinuousScreeningMatches(uc usecases.Usecases) func(c *gin.Co
 			case result.StatusCode == http.StatusInternalServerError:
 				reportUnexpectedError(ctx, c, err)
 				result.Message = unexpectedErrorMsg
-			case result.StatusCode == http.StatusRequestTimeout:
-				result.Message = timeoutMst
 			case err != nil:
 				result.Message = err.Error()
 			}
@@ -370,8 +373,6 @@ func matchReviewStatusCode(err error) int {
 		return http.StatusForbidden
 	case errors.Is(err, models.NotFoundError):
 		return http.StatusNotFound
-	case errors.Is(err, context.DeadlineExceeded), errors.Is(err, context.Canceled):
-		return http.StatusRequestTimeout
 	default:
 		return http.StatusInternalServerError
 	}
