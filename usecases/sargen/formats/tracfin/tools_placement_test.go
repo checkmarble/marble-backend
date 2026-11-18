@@ -42,11 +42,11 @@ func TestApplyPlacement_InvalidOutputsAreRefusedWithoutChange(t *testing.T) {
 	for name, raw := range cases {
 		t.Run(name, func(t *testing.T) {
 			doc := core.NewDocument()
-			require.Error(t, f.ApplyStructured(stepPlacement, doc, json.RawMessage(raw)))
+			require.Error(t, f.ApplyStructured(stepPlacement, doc, json.RawMessage(raw), core.StructuredContext{}))
 			assert.Empty(t, doc.Items, "a refused output leaves the document untouched")
 		})
 	}
-	require.Error(t, f.ApplyStructured("unknown", core.NewDocument(), json.RawMessage(`{}`)))
+	require.Error(t, f.ApplyStructured("unknown", core.NewDocument(), json.RawMessage(`{}`), core.StructuredContext{}))
 }
 
 func TestCompute_DerivesReferenceFromSharedSourceObject(t *testing.T) {
@@ -199,7 +199,7 @@ func TestApplyPlacement_DuplicatesAreCreatedOnce(t *testing.T) {
 	out := `{"persons":[{"kind":"pp","objects":[{"table":"persons","object_id":"p-1"}]}],
 	 "financial_refs":[{"ref_kind":"Iban","owners":[{"person_index":0,"lien":"titulaire"},{"person_index":0,"lien":"titulaire"}],"objects":[{"table":"accounts","object_id":"a-1"}]}],
 	 "transactions":[{"object":{"table":"transactions","object_id":"t-1"}},{"object":{"table":"transactions","object_id":"t-1"}}]}`
-	require.NoError(t, f.ApplyStructured(stepPlacement, doc, json.RawMessage(out)))
+	require.NoError(t, f.ApplyStructured(stepPlacement, doc, json.RawMessage(out), core.StructuredContext{}))
 	assert.Len(t, doc.Items["work.transactions"], 1)
 	assert.Len(t, doc.Items["personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban"], 1)
 }
@@ -219,7 +219,7 @@ func TestApplyPlacement_ReferenceWithoutValidOwnerIsDroppedAndReported(t *testin
 				{"ref_kind":"Iban","owners":[{"person_index":0,"lien":"titulaire"}],"objects":[{"table":"accounts","object_id":"a-1"}]}],
 				"transactions":[]}`)
 			doc := core.NewDocument()
-			require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw))
+			require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, core.StructuredContext{}))
 			assert.Len(t, doc.Items["personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban"], 1, "the valid reference is kept")
 
 			sq, ok := f.(core.StructuredQuestioner)
@@ -236,7 +236,7 @@ func TestApplyPlacement_TransactionSourcesIncludeLinkedAccount(t *testing.T) {
 	doc := core.NewDocument()
 	raw := json.RawMessage(`{"persons":[],"financial_refs":[],"transactions":[
 		{"objects":[{"table":"transactions","object_id":"t-1"},{"table":"accounts","object_id":"a-1"}]}]}`)
-	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw))
+	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, core.StructuredContext{}))
 	tx := core.Path("work.transactions[" + doc.Items["work.transactions"][0] + "]")
 	assert.Equal(t, []core.ObjectRef{{Table: "transactions", ObjectID: "t-1"}, {Table: "accounts", ObjectID: "a-1"}}, doc.ItemSources[tx])
 }
@@ -426,7 +426,7 @@ func TestApplyPlacement_PartialOwnerLossIsReportedAndTransactionsMerge(t *testin
 	  {"objects":[{"table":"transactions","object_id":"t-1"}]},
 	  {"objects":[{"table":"transactions","object_id":"t-1"},{"table":"accounts","object_id":"a-1"}]}]}`)
 	doc := core.NewDocument()
-	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw))
+	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, core.StructuredContext{}))
 	require.Len(t, doc.Items["work.transactions"], 1, "the same transaction given with and without its account is one")
 	tx := core.Path("work.transactions[" + doc.Items["work.transactions"][0] + "]")
 	assert.Equal(t, []core.ObjectRef{{Table: "transactions", ObjectID: "t-1"}, {Table: "accounts", ObjectID: "a-1"}}, doc.ItemSources[tx])
@@ -441,10 +441,10 @@ func TestApplyPlacement_PartialOwnerLossIsReportedAndTransactionsMerge(t *testin
 func TestApplyPlacement_TransactionsSharingAnAccountStaySeparate(t *testing.T) {
 	f := planFormat(t)
 	raw := json.RawMessage(`{"persons":[],"financial_refs":[],"transactions":[
-	  {"objects":[{"table":"accounts","object_id":"a-1"},{"table":"transactions","object_id":"t-1"}]},
-	  {"objects":[{"table":"accounts","object_id":"a-1"},{"table":"transactions","object_id":"t-2"}]},
+	  {"objects":[{"table":"transactions","object_id":"t-1"},{"table":"accounts","object_id":"a-1"}]},
+	  {"objects":[{"table":"transactions","object_id":"t-2"},{"table":"accounts","object_id":"a-1"}]},
 	  {"objects":[{"table":"transactions","object_id":"t-2"}]}]}`)
 	doc := core.NewDocument()
-	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw))
+	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, core.StructuredContext{}))
 	assert.Len(t, doc.Items["work.transactions"], 2, "t-1 and t-2 are distinct; [t-2] merges into the second")
 }

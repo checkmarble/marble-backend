@@ -53,9 +53,19 @@ type TaskSpec struct {
 	// not count) fails the job instead of being done empty. For a task the
 	// whole generation depends on.
 	FailJobOnLimit bool `json:"fail_job_on_limit,omitempty"`
+	// Limits overrides the runner's budget for this task (zero fields keep the
+	// runner's value): a task whose work grows with the selection asks for more.
+	Limits TaskLimits `json:"limits,omitempty"`
 	// NeedsCaseContext asks the orchestrator for the case context (decisions,
 	// triggered rules, screenings, events): ToolContext.CaseContext.
 	NeedsCaseContext bool `json:"needs_case_context,omitempty"`
+}
+
+// TaskLimits is the optional per-task budget of a TaskSpec.
+type TaskLimits struct {
+	MaxToolCalls   int `json:"max_tool_calls,omitempty"`
+	MaxTurns       int `json:"max_turns,omitempty"`
+	TimeoutSeconds int `json:"timeout_seconds,omitempty"`
 }
 
 // PlanState is what Format.Plan sees; it is called again after each wave of

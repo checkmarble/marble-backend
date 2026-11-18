@@ -835,7 +835,7 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 			// Applied to a copy first: a structured output citing objects outside
 			// the frozen selection is rejected as a whole, nothing of it applied.
 			cand := doc.Clone()
-			if err := r.format.ApplyStructured(rt.spec.Kind, cand, out.Structured); err != nil {
+			if err := r.format.ApplyStructured(rt.spec.Kind, cand, out.Structured, StructuredContextFor(r.selection, r.dataModel)); err != nil {
 				return false, errors.Wrap(err, "invalid structured output")
 			}
 			if bad := sourcesOutsideSelection(doc, cand, newScope(r.selection)); len(bad) > 0 {

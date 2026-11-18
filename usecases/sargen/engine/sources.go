@@ -93,6 +93,19 @@ func linkedObjects(sc scope, dm models.DataModel, ref core.ObjectRef) []models.S
 	return out
 }
 
+// StructuredContextFor builds the core.StructuredContext of a selection and its
+// data model: the selected objects linked to an object by a data-model link.
+func StructuredContextFor(selection []models.SarSelectedObject, dm models.DataModel) core.StructuredContext {
+	sc := newScope(selection)
+	return core.StructuredContext{LinkedObjects: func(ref core.ObjectRef) []core.ObjectRef {
+		var out []core.ObjectRef
+		for _, o := range linkedObjects(sc, dm, ref) {
+			out = append(out, core.ObjectRef{Table: o.TableName, ObjectID: o.ObjectId})
+		}
+		return out
+	}}
+}
+
 // sourcesOutsideSelection lists the ObjectRefs that a structured output added to
 // the item sources of the document (after versus before) and that are not in
 // the frozen selection.

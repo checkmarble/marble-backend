@@ -3,6 +3,7 @@ package tracfin
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
@@ -14,6 +15,7 @@ const (
 	ruleReferencesFinMax20    = "references_financieres_max_20"
 	ruleSousCategorieAutre    = "sous_categorie_relation_autre"
 	codeMontantHorsEuro       = "montant_hors_euro"
+	codeTransactionNonComptee = "transaction_non_comptee"
 	maxReferencesFinancieres  = 20
 	relationsCodeList         = "liste_ref_relations.csv"
 	sousCategorieAutreSuffix  = ".typeRelation[].sousCategorieRelationAutre"
@@ -42,6 +44,7 @@ func Validate(spec *core.Spec, doc *core.Document) []core.Issue {
 	issues = append(issues, referencesFinancieresMax(doc)...)
 	issues = append(issues, sousCategorieAutre(spec, doc)...)
 	issues = append(issues, montantHorsEuro(doc)...)
+	issues = append(issues, uncountedTransactions(doc, issues)...)
 	tooManyOperationsIssue(issues, doc)
 	core.SortIssues(issues)
 	return issues
@@ -130,6 +133,35 @@ func sousCategorieAutre(spec *core.Spec, doc *core.Document) []core.Issue {
 			out = append(out, ruleIssue(ruleSousCategorieAutre, p, core.SeverityWarning,
 				"La précision n'est à remplir que si la sous-catégorie de relation choisie est « autre »."))
 		}
+	}
+	return out
+}
+
+// uncountedTransactions blocks every working transaction that Compute leaves
+// out of the operations for a missing currency or amount (a foreign currency
+// already has its own blocking issue, and an amount the generic validator
+// already flags is not reported twice).
+func uncountedTransactions(doc *core.Document, existing []core.Issue) []core.Issue {
+	const container core.Path = "work.transactions"
+	var out []core.Issue
+	for _, k := range doc.Items[container] {
+		tx := core.Path(string(container) + "[" + k + "]")
+		_, _, status := countableTransaction(func(name string) string {
+			return strings.TrimSpace(doc.Values[tx.Child(name)].Value)
+		})
+		var msg string
+		switch status {
+		case txNoCurrency:
+			msg = "Transaction non comptée dans les opérations : la devise est manquante (elle doit être EUR)."
+		case txNoAmount:
+			if slices.ContainsFunc(existing, func(is core.Issue) bool { return is.Blocks() && is.Path == tx.Child("montant") }) {
+				continue
+			}
+			msg = "Transaction non comptée dans les opérations : le montant est manquant ou n'est pas un nombre décimal."
+		default:
+			continue
+		}
+		out = append(out, core.Issue{Path: tx, Code: codeTransactionNonComptee, Severity: core.SeverityBlocking, Message: msg})
 	}
 	return out
 }

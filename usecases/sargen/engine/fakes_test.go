@@ -132,7 +132,7 @@ func (f *fakeFormat) Compute(doc *core.Document) core.ComputeResult {
 	return f.ComputeFn(doc)
 }
 
-func (f *fakeFormat) ApplyStructured(kind string, doc *core.Document, out json.RawMessage) error {
+func (f *fakeFormat) ApplyStructured(kind string, doc *core.Document, out json.RawMessage, _ core.StructuredContext) error {
 	if f.StructuredFn == nil {
 		return nil
 	}

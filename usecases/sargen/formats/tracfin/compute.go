@@ -151,6 +151,38 @@ func (f *format) Compute(doc *core.Document) core.ComputeResult {
 	return res
 }
 
+// txStatus tells whether Compute counts a working transaction, and if not why.
+type txStatus int
+
+const (
+	txCountable txStatus = iota
+	// txForeignCurrency: a currency other than EUR (excluded on purpose; the
+	// montant_hors_euro rule blocks it).
+	txForeignCurrency
+	// txNoCurrency: no currency, which is not EUR either.
+	txNoCurrency
+	// txNoAmount: no amount, or one that is not a decimal.
+	txNoAmount
+)
+
+// countableTransaction is the single rule shared by Compute and Validate: a
+// transaction is counted when its currency is EUR and its amount is a decimal.
+// val returns the trimmed value of a transaction field.
+func countableTransaction(val func(name string) string) (amount *big.Rat, frac int, status txStatus) {
+	switch d := val("devise"); d {
+	case "EUR":
+	case "":
+		return nil, 0, txNoCurrency
+	default:
+		return nil, 0, txForeignCurrency
+	}
+	amount, frac, ok := parseDecimal(val("montant"))
+	if !ok {
+		return nil, 0, txNoAmount
+	}
+	return amount, frac, txCountable
+}
+
 // groupTransactions builds the groups of the usable transactions, in order of
 // first appearance, with the period, the total and the derived references.
 func groupTransactions(spec *core.Spec, doc *core.Document) (groups map[string]*opGroup, order []string, minDate, maxDate string,
@@ -178,11 +210,8 @@ func groupTransactions(spec *core.Spec, doc *core.Document) (groups map[string]*
 			}
 			return derivation
 		}
-		if d := val("devise"); d != "EUR" { // empty is not EUR either
-			continue
-		}
-		amount, frac, ok := parseDecimal(val("montant"))
-		if !ok {
+		amount, frac, status := countableTransaction(val)
+		if status != txCountable {
 			continue
 		}
 		emitter := counterparty(val("emetteurPersonne"), val("emetteurLibre"))

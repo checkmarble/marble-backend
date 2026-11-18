@@ -40,12 +40,29 @@ type Format interface {
 	// each wave of finished tasks until it returns nothing.
 	Plan(st PlanState) []TaskSpec
 	// ApplyStructured applies a non-fills task output (e.g. placement): creates
-	// the items and their ItemSources.
-	ApplyStructured(kind string, doc *Document, out json.RawMessage) error
+	// the items and their ItemSources. sc tells how the selected objects are
+	// linked (the zero value links nothing).
+	ApplyStructured(kind string, doc *Document, out json.RawMessage, sc StructuredContext) error
 	// Compute derives fields from the document (backend-computed values).
 	Compute(doc *Document) ComputeResult
 	// Tools returns the LLM tools available for a task.
 	Tools(tc ToolContext) map[string]Tool
+}
+
+// StructuredContext is what a structured output may need to be applied beyond
+// the document: the data-model links between the selected objects.
+type StructuredContext struct {
+	// LinkedObjects returns the selected objects linked to ref by a data-model
+	// link (one hop, either direction). Nil: no link is known.
+	LinkedObjects func(ref ObjectRef) []ObjectRef
+}
+
+// Linked returns the selected objects linked to ref (none without a resolver).
+func (sc StructuredContext) Linked(ref ObjectRef) []ObjectRef {
+	if sc.LinkedObjects == nil {
+		return nil
+	}
+	return sc.LinkedObjects(ref)
 }
 
 // SettingsRequirer is an optional capability of a Format: the organization
