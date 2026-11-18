@@ -206,6 +206,31 @@ func TestApplyFills_AnalystRetypeSameValueConfirmsAndKeepsProvenance(t *testing.
 		assert.Equal(t, stored.Computation, got.Computation)
 	})
 
+	t.Run("analyst origin retype confirms and keeps provenance", func(t *testing.T) {
+		doc, _ := docWithPerson(t)
+		path := mustParsePath(t, pp1Name)
+		stored := core.Value{
+			Value:         "Dupont",
+			Origin:        core.OriginLLM,
+			Sources:       []core.SourceRef{llmSource("p", "Dupont")},
+			Justification: "nom relevé sur la pièce",
+			Confidence:    core.ConfidenceHigh,
+		}
+		doc.Values[path] = stored
+
+		res := core.ApplyFills(spec, doc, []core.Fill{{Path: path, Value: "Dupont", Origin: core.OriginAnalyst}},
+			core.ApplyOptions{Overwrite: core.OverwriteAll})
+
+		assert.Empty(t, res.Rejected)
+		assert.Equal(t, []core.Path{path}, res.Applied)
+		got := doc.Values[path]
+		assert.Equal(t, core.OriginAnalyst, got.Origin)
+		assert.True(t, got.Reviewed)
+		assert.Equal(t, stored.Sources, got.Sources)
+		assert.Equal(t, stored.Justification, got.Justification)
+		assert.Equal(t, stored.Confidence, got.Confidence)
+	})
+
 	// Guard (passes today): a differing value keeps the overwrite behaviour,
 	// the new fill replaces the value and its metadata.
 	t.Run("differing value still overwrites", func(t *testing.T) {
