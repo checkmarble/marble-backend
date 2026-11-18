@@ -56,6 +56,10 @@ func TestCheckSarGenerationConfigured_MissingPrompts(t *testing.T) {
 		m := allSarPrompts().(fstest.MapFS)
 		delete(m, models.SarGenerationTracfinReviewPromptPath)
 		return m
+	}(), "understanding missing": func() fs.FS {
+		m := allSarPrompts().(fstest.MapFS)
+		delete(m, models.SarGenerationTracfinUnderstandingPromptPath)
+		return m
 	}()} {
 		t.Run(name, func(t *testing.T) {
 			uc := &AiAgentUsecase{aiAgentModelConfig: cfg, promptsFS: fsys}
