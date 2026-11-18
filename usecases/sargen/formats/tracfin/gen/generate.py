@@ -317,6 +317,19 @@ class Generator:
             lst["codes"] = [c for c in lst["codes"] if c["value"] not in entry["codes"]]
             lst["source"] += " ; codes exclus : " + ", ".join(entry["codes"])
 
+    def apply_unknown_codes(self):
+        """Mark the code that means "unknown" in the lists that have one (decision in constraints.json)."""
+        for entry in self.constraints.get("unknown_codes", []):
+            require_source(entry, "unknown_codes[%s]" % entry.get("list"))
+            lst = self.code_lists.get(entry["list"])
+            if lst is None or lst.get("unavailable"):
+                fail("unknown_codes: list %s not found or not published" % entry["list"])
+            if entry["code"] not in [c["value"] for c in lst["codes"]]:
+                fail("unknown_codes: code %r is not in %s (stale entry)" % (entry["code"], entry["list"]))
+            if "unknown_code" in lst:
+                fail("unknown_codes: list %s declared twice" % entry["list"])
+            lst["unknown_code"] = entry["code"]
+
     def merged_list(self, refs):
         """Code list key for a type bound to several references (union, first wins)."""
         if len(refs) == 1:
@@ -515,7 +528,7 @@ class Generator:
         self.code_lists[list_name] = {
             "name": list_name,
             "codes": [{"value": v, "label": v} for v in values],
-            "source": "%s : énumération du type %s" % (self.xsd_name, list_name),
+            "source": "%s: enumeration of type %s" % (self.xsd_name, list_name),
         }
 
     def type_doc(self, info):
@@ -1030,6 +1043,8 @@ def generate(version):
     rules = expand_rules(gen, index)
     hand = check_hand_rules(gen)
     defaults = build_defaults(gen, index)
+
+    gen.apply_unknown_codes()
 
     # every referenced code list must exist
     for node in walk(root):

@@ -4033,7 +4033,8 @@
     }
    ],
    "name": "t_choix_oui_non_nesaispas",
-   "source": "financier-v1.4.0.xsd : énumération du type t_choix_oui_non_nesaispas"
+   "source": "financier-v1.4.0.xsd: enumeration of type t_choix_oui_non_nesaispas",
+   "unknown_code": "Je ne sais pas"
   },
   "t_implication": {
    "codes": [
@@ -4051,7 +4052,8 @@
     }
    ],
    "name": "t_implication",
-   "source": "financier-v1.4.0.xsd : énumération du type t_implication"
+   "source": "financier-v1.4.0.xsd: enumeration of type t_implication",
+   "unknown_code": "Je ne sais pas"
   },
   "t_lien": {
    "codes": [
@@ -4069,7 +4071,7 @@
     }
    ],
    "name": "t_lien",
-   "source": "financier-v1.4.0.xsd : énumération du type t_lien"
+   "source": "financier-v1.4.0.xsd: enumeration of type t_lien"
   },
   "t_natureRelation": {
    "codes": [
@@ -4091,7 +4093,7 @@
     }
    ],
    "name": "t_natureRelation",
-   "source": "financier-v1.4.0.xsd : énumération du type t_natureRelation"
+   "source": "financier-v1.4.0.xsd: enumeration of type t_natureRelation"
   },
   "t_registre": {
    "codes": [
@@ -4137,7 +4139,8 @@
     }
    ],
    "name": "t_registre",
-   "source": "financier-v1.4.0.xsd : énumération du type t_registre"
+   "source": "financier-v1.4.0.xsd: enumeration of type t_registre",
+   "unknown_code": "Je ne sais pas"
   }
  },
  "defaults": {

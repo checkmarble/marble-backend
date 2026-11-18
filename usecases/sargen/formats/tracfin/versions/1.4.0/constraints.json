@@ -98,6 +98,23 @@
    "source": "pays.csv : le code 1 (Autre) n'a pas la longueur minimale 2 de t_pays / t_pays_dromcom (financier-v1.4.0.xsd:476-504) ; il exige l'attribut type=\"other\" et un pays en texte libre, que v1 ne gère pas (dropped_attributes t_paysName.type). Décision : exclu en v1."
   }
  ],
+ "unknown_codes": [
+ {
+   "list": "t_choix_oui_non_nesaispas",
+   "code": "Je ne sais pas",
+   "source": "financier-v1.4.0.xsd : énumération du type t_choix_oui_non_nesaispas ; décision de conception : « Je ne sais pas » est le code à prendre quand les données ne disent rien ; une autre valeur doit être prouvée"
+  },
+ {
+   "list": "t_implication",
+   "code": "Je ne sais pas",
+   "source": "financier-v1.4.0.xsd : énumération du type t_implication ; décision de conception : « Je ne sais pas » est le code à prendre quand les données ne disent rien ; une autre valeur doit être prouvée"
+  },
+ {
+   "list": "t_registre",
+   "code": "Je ne sais pas",
+   "source": "financier-v1.4.0.xsd : énumération du type t_registre ; décision de conception : « Je ne sais pas » est le code à prendre quand les données ne disent rien ; une autre valeur doit être prouvée"
+  }
+ ],
  "ignore_type_doc_patterns": {
   "source": "Les documentations génériques des types de longueur (« Chaines de caractere de taille 50 ») n'apprennent rien au LLM ni à l'analyste.",
   "patterns": [

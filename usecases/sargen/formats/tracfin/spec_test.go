@@ -193,3 +193,27 @@ func TestSpec_UnknownVersion(t *testing.T) {
 func TestKey(t *testing.T) {
 	assert.Equal(t, "tracfin:FR:1.4.0", tracfin.Key("1.4.0").String())
 }
+
+// Every list that offers "Je ne sais pas" declares it as its unknown code, and the
+// code exists in the list; other lists declare none.
+func TestSpec_UnknownCodes(t *testing.T) {
+	s, ok := tracfin.Spec(tracfin.CurrentVersion)
+	require.True(t, ok)
+
+	declared := map[string]bool{}
+	for name, list := range s.CodeLists {
+		offersUnknown := false
+		for _, c := range list.Codes {
+			if c.Label == "Je ne sais pas" {
+				offersUnknown = true
+				assert.Equal(t, c.Value, list.UnknownCode, name)
+			}
+		}
+		if offersUnknown {
+			declared[name] = true
+		} else {
+			assert.Empty(t, list.UnknownCode, name)
+		}
+	}
+	assert.Equal(t, map[string]bool{"t_choix_oui_non_nesaispas": true, "t_implication": true, "t_registre": true}, declared)
+}

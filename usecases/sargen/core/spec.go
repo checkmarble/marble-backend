@@ -72,6 +72,9 @@ type CodeList struct {
 	Codes       []Code `json:"codes,omitempty"`
 	Unavailable bool   `json:"unavailable,omitempty"`
 	Source      string `json:"source,omitempty"`
+	// UnknownCode is the code to take when the data say nothing about the field
+	// (e.g. "Je ne sais pas"). Empty when the list has none.
+	UnknownCode string `json:"unknown_code,omitempty"`
 }
 
 type Condition struct {
