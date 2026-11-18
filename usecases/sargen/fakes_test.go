@@ -26,6 +26,13 @@ type fakes struct {
 	// Ctx carries credentials of OrgId.
 	Ctx context.Context
 
+	// SiblingCaseId is another case of OrgId (same inbox). OtherOrgId,
+	// OtherInboxId and OtherCaseId belong to another organization.
+	SiblingCaseId uuid.UUID
+	OtherOrgId    uuid.UUID
+	OtherInboxId  uuid.UUID
+	OtherCaseId   uuid.UUID
+
 	Repo     *fakeRepo
 	Blobs    *fakeBlobs
 	Security *fakeSecurity
@@ -39,23 +46,31 @@ type fakes struct {
 
 // newTestUsecase wires a Usecase on in-memory fakes. The case (fakes.CaseId,
 // organization fakes.OrgId, inbox fakes.InboxId) exists and is accessible;
-// call f.Security.Forbid() to make ReadOrUpdateCase fail. Inject a custom
+// fakes.SiblingCaseId is another case of the same organization and
+// fakes.OtherCaseId a case of fakes.OtherOrgId. Readers serve each
+// organization's data only to that organization.
+// Call f.Security.Forbid() to make ReadOrUpdateCase fail. Inject a custom
 // format with uc.formatGetter = ....
 func newTestUsecase(t *testing.T) (*Usecase, *fakes) {
 	t.Helper()
 	f := &fakes{
-		OrgId:    uuid.New(),
-		CaseId:   uuid.New(),
-		InboxId:  uuid.New(),
-		Repo:     newFakeRepo(),
-		Blobs:    &fakeBlobs{files: map[string][]byte{}},
-		Security: &fakeSecurity{},
+		OrgId:         uuid.New(),
+		CaseId:        uuid.New(),
+		InboxId:       uuid.New(),
+		SiblingCaseId: uuid.New(),
+		OtherOrgId:    uuid.New(),
+		OtherInboxId:  uuid.New(),
+		OtherCaseId:   uuid.New(),
+		Repo:          newFakeRepo(),
+		Blobs:         &fakeBlobs{files: map[string][]byte{}},
+		Security:      &fakeSecurity{},
 	}
-	f.Decisions = &fakeDecisions{}
-	f.DataModel = &fakeDataModel{}
+	f.Decisions = &fakeDecisions{DefaultCase: f.CaseId.String()}
+	f.DataModel = &fakeDataModel{OrgId: f.OrgId}
 	f.Ingested = newFakeIngested()
+	f.Ingested.OrgId = f.OrgId
 	f.Ingested.model = f.DataModel
-	f.CaseEntities = &fakeCaseEntities{ingested: f.Ingested}
+	f.CaseEntities = &fakeCaseEntities{CaseId: f.CaseId.String(), ingested: f.Ingested}
 	f.Selection = &fakeSelectionRepo{}
 	f.Ctx = context.WithValue(context.Background(), utils.ContextKeyCredentials,
 		models.Credentials{OrganizationId: f.OrgId})
@@ -93,16 +108,27 @@ func (fakeTxFactory) Transaction(ctx context.Context, fn func(tx repositories.Tr
 type fakeCaseReader struct{ f *fakes }
 
 func (r fakeCaseReader) GetCaseById(_ context.Context, _ repositories.Executor, caseId string) (models.Case, error) {
-	if caseId != r.f.CaseId.String() {
-		return models.Case{}, models.NotFoundError
+	switch caseId {
+	case r.f.CaseId.String(), r.f.SiblingCaseId.String():
+		return models.Case{Id: caseId, OrganizationId: r.f.OrgId, InboxId: r.f.InboxId}, nil
+	case r.f.OtherCaseId.String():
+		return models.Case{Id: caseId, OrganizationId: r.f.OtherOrgId, InboxId: r.f.OtherInboxId}, nil
 	}
-	return models.Case{Id: caseId, OrganizationId: r.f.OrgId, InboxId: r.f.InboxId}, nil
+	return models.Case{}, models.NotFoundError
 }
 
+// fakeInboxReader lists the inbox of each organization; an organization
+// without fixtures has none.
 type fakeInboxReader struct{ f *fakes }
 
 func (r fakeInboxReader) ListInboxes(_ context.Context, _ repositories.Executor, orgId uuid.UUID, _ bool) ([]models.Inbox, error) {
-	return []models.Inbox{{Id: r.f.InboxId, OrganizationId: orgId}}, nil
+	switch orgId {
+	case r.f.OrgId:
+		return []models.Inbox{{Id: r.f.InboxId, OrganizationId: orgId}}, nil
+	case r.f.OtherOrgId:
+		return []models.Inbox{{Id: r.f.OtherInboxId, OrganizationId: orgId}}, nil
+	}
+	return nil, nil
 }
 
 type fakeSecurity struct {
@@ -129,6 +155,12 @@ type fakeRepo struct {
 	Exports      map[uuid.UUID]models.SarDeclarationExport
 	// FailExportCreate makes CreateSarDeclarationExport fail.
 	FailExportCreate error
+	// OnLock, when set, runs under the repository lock each time a declaration
+	// is read for update, on the copy about to be returned. It may edit the
+	// stored row through r (no locking there) to simulate a concurrent write
+	// committed before the lock, or edit the copy to simulate a row that changed
+	// under the lock.
+	OnLock func(r *fakeRepo, d *models.SarDeclaration)
 }
 
 func newFakeRepo() *fakeRepo {
@@ -159,8 +191,17 @@ func (r *fakeRepo) GetSarDeclaration(_ context.Context, _ repositories.Executor,
 	return d, nil
 }
 
-func (r *fakeRepo) GetSarDeclarationForUpdate(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.SarDeclaration, error) {
-	return r.GetSarDeclaration(ctx, exec, id)
+func (r *fakeRepo) GetSarDeclarationForUpdate(_ context.Context, _ repositories.Executor, id uuid.UUID) (models.SarDeclaration, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	d, ok := r.Declarations[id]
+	if !ok {
+		return models.SarDeclaration{}, errors.Wrap(models.NotFoundError, "declaration")
+	}
+	if r.OnLock != nil {
+		r.OnLock(r, &d)
+	}
+	return d, nil
 }
 
 func (r *fakeRepo) ListSarDeclarationsByCase(_ context.Context, _ repositories.Executor, caseId uuid.UUID) ([]models.SarDeclaration, error) {

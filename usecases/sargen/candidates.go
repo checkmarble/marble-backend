@@ -48,8 +48,9 @@ type LinkOption struct {
 // DecisionReader is the subset of the decision repository used to list the
 // objects behind a case.
 type DecisionReader interface {
-	DecisionsByCaseIdFromCursor(ctx context.Context, exec repositories.Executor,
-		req models.CaseDecisionsRequest) ([]models.DecisionWithRulesAndScreeningsBaseInfo, bool, error)
+	// DecisionsByCaseId lists every decision of the case in one query, without
+	// rules or screenings (not needed to list or navigate objects).
+	DecisionsByCaseId(ctx context.Context, exec repositories.Executor, orgId uuid.UUID, caseId string) ([]models.Decision, error)
 	DecisionPivotValuesByCase(ctx context.Context, exec repositories.Executor, caseId string) ([]models.PivotDataWithCount, error)
 }
 
@@ -101,8 +102,12 @@ type selectionContext struct {
 	selected   map[core.ObjectRef]models.SarSelectedObject
 }
 
-// dataOf returns the data of a candidate or selected object.
+// dataOf returns the data of a candidate or selected object (frozen copy first).
 func (c selectionContext) dataOf(ref core.ObjectRef) (map[string]any, bool) {
+	// The frozen copy of an already selected object wins over the live data.
+	if sel, ok := c.selected[ref]; ok && sel.Snapshot != nil {
+		return sel.Snapshot, true
+	}
 	cand, isCand := c.candidates[ref]
 	if isCand && cand.data != nil {
 		return cand.data, true
@@ -148,34 +153,26 @@ func (uc *Usecase) loadSelectionContext(ctx context.Context, exec repositories.E
 
 	caseId := d.CaseId.String()
 	// 1. Trigger objects of every decision of the case.
-	cursor := ""
-	for {
-		page, hasMore, err := uc.decisionReader.DecisionsByCaseIdFromCursor(ctx, exec,
-			models.CaseDecisionsRequest{OrgId: orgId, CaseId: caseId, CursorId: cursor, Limit: 100})
-		if err != nil {
-			return c, err
+	decisions, err := uc.decisionReader.DecisionsByCaseId(ctx, exec, orgId, caseId)
+	if err != nil {
+		return c, err
+	}
+	for _, dec := range decisions {
+		id, ok := objectIdOf(dec.ClientObject.Data)
+		if !ok {
+			continue
 		}
-		for _, dec := range page {
-			id, ok := objectIdOf(dec.ClientObject.Data)
-			if !ok {
-				continue
-			}
-			ref := core.ObjectRef{Table: dec.ClientObject.TableName, ObjectID: id}
-			cand := c.candidates[ref]
-			if cand == nil {
-				cand = &candidateInfo{reason: ReasonTriggerObject}
-				c.candidates[ref] = cand
-				c.order = append(c.order, ref)
-			}
-			if cand.trigger == nil || dec.CreatedAt.After(cand.trigger.createdAt) {
-				cand.trigger = &triggerInfo{decisionId: dec.DecisionId, createdAt: dec.CreatedAt, data: dec.ClientObject.Data}
-				cand.data = dec.ClientObject.Data
-			}
+		ref := core.ObjectRef{Table: dec.ClientObject.TableName, ObjectID: id}
+		cand := c.candidates[ref]
+		if cand == nil {
+			cand = &candidateInfo{reason: ReasonTriggerObject}
+			c.candidates[ref] = cand
+			c.order = append(c.order, ref)
 		}
-		if !hasMore || len(page) == 0 {
-			break
+		if cand.trigger == nil || dec.CreatedAt.After(cand.trigger.createdAt) {
+			cand.trigger = &triggerInfo{decisionId: dec.DecisionId, createdAt: dec.CreatedAt, data: dec.ClientObject.Data}
+			cand.data = dec.ClientObject.Data
 		}
-		cursor = page[len(page)-1].DecisionId.String()
 	}
 
 	add := func(ref core.ObjectRef, reason string, data map[string]any) {
