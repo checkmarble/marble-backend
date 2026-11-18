@@ -3,6 +3,8 @@ package repositories
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -250,9 +252,11 @@ func (repo *MarbleDbRepository) TouchSarGenerationJob(
 	return ExecBuilder(ctx, exec, query)
 }
 
-// CreateSarGenerationTasks inserts the tasks; a task whose (job, input hash)
-// already exists is skipped (concurrent planners share the same rows), so the
-// caller must re-read the tasks of the job.
+// CreateSarGenerationTasks inserts the tasks of pending or running jobs; a task
+// whose (job, input hash) already exists is skipped (concurrent planners share
+// the same rows), and so is a task of a job that is already finished (the job
+// status is checked in the same statement, so a late planner cannot attach
+// tasks to a done or failed job). The caller must re-read the tasks of the job.
 func (repo *MarbleDbRepository) CreateSarGenerationTasks(
 	ctx context.Context, exec Executor, tasks []models.SarGenerationTask,
 ) error {
@@ -262,19 +266,34 @@ func (repo *MarbleDbRepository) CreateSarGenerationTasks(
 	if len(tasks) == 0 {
 		return nil
 	}
-	query := NewQueryBuilder().
-		Insert(dbmodels.TABLE_SAR_GENERATION_TASKS).
-		Columns("id", "job_id", "kind", "target_path", "input", "input_hash", "depends_on", "status").
-		Suffix("ON CONFLICT (job_id, input_hash) DO NOTHING")
-	for _, t := range tasks {
+	const columns = "id, job_id, kind, target_path, input, input_hash, depends_on, status"
+	var (
+		sb   strings.Builder
+		args []any
+	)
+	sb.WriteString("INSERT INTO " + dbmodels.TABLE_SAR_GENERATION_TASKS + " (" + columns + ") ")
+	sb.WriteString("SELECT v.id, v.job_id, v.kind, v.target_path, v.input, v.input_hash, v.depends_on, v.status FROM (VALUES ")
+	for i, t := range tasks {
 		dependsOn := t.DependsOn
 		if dependsOn == nil {
 			dependsOn = []uuid.UUID{}
 		}
-		query = query.Values(t.Id, t.JobId, t.Kind, nullIfEmpty(t.TargetPath),
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		n := len(args)
+		fmt.Fprintf(&sb, "($%d::uuid, $%d::uuid, $%d::text, $%d::text, $%d::jsonb, $%d::text, $%d::uuid[], $%d::text)",
+			n+1, n+2, n+3, n+4, n+5, n+6, n+7, n+8)
+		args = append(args, t.Id, t.JobId, t.Kind, nullIfEmpty(t.TargetPath),
 			json.RawMessage(t.Input), t.InputHash, dependsOn, string(t.Status))
 	}
-	return ExecBuilder(ctx, exec, query)
+	sb.WriteString(") AS v(" + columns + ") WHERE EXISTS (SELECT 1 FROM " + dbmodels.TABLE_SAR_GENERATION_JOBS +
+		" j WHERE j.id = v.job_id AND j.status IN ('" + string(models.SarJobStatusPending) + "', '" +
+		string(models.SarJobStatusRunning) + "')) ON CONFLICT (job_id, input_hash) DO NOTHING")
+	if _, err := exec.Exec(ctx, sb.String(), args...); err != nil {
+		return errors.Wrap(err, "cannot create sar generation tasks")
+	}
+	return nil
 }
 
 // ListSarGenerationTasks returns the tasks of a job in creation order, without

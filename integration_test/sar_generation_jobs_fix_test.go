@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -172,4 +173,80 @@ func TestSarGenerationJobs_FailStale(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, n)
 	require.Equal(t, "arrêtée", status().Error)
+}
+
+// DeleteUnfinishedSarGenerationTasks keeps the done tasks of the job and
+// removes the pending, running and failed ones; other jobs are untouched.
+func TestSarGenerationTasks_DeleteUnfinishedKeepsDone(t *testing.T) {
+	ctx := t.Context()
+	repo, _, job := sarGenTestSetup(t)
+	exec := testUsecases.NewExecutorFactory().NewExecutor()
+
+	pending := newSarGenTestTask(job.Id, "part.pending")
+	running := newSarGenTestTask(job.Id, "part.running")
+	failed := newSarGenTestTask(job.Id, "part.failed")
+	done := newSarGenTestTask(job.Id, "part.done")
+	require.NoError(t, repo.CreateSarGenerationTasks(ctx, exec,
+		[]models.SarGenerationTask{pending, running, failed, done}))
+
+	claim := func(id uuid.UUID) int {
+		attempt, claimed, err := repo.ClaimSarGenerationTask(ctx, exec, id, time.Hour)
+		require.NoError(t, err)
+		require.True(t, claimed)
+		return attempt
+	}
+	claim(running.Id)
+	attempt := claim(failed.Id)
+	ok, err := repo.FailSarGenerationTask(ctx, exec, failed.Id, attempt, "boom", nil)
+	require.NoError(t, err)
+	require.True(t, ok)
+	attempt = claim(done.Id)
+	ok, err = repo.CompleteSarGenerationTask(ctx, exec, done.Id, attempt, []byte(`{}`), nil)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	// A task of another job must survive.
+	_, _, otherJob := sarGenTestSetup(t)
+	otherTask := newSarGenTestTask(otherJob.Id, "part.other")
+	require.NoError(t, repo.CreateSarGenerationTasks(ctx, exec, []models.SarGenerationTask{otherTask}))
+
+	require.NoError(t, repo.DeleteUnfinishedSarGenerationTasks(ctx, exec, job.Id))
+
+	tasks, err := repo.ListSarGenerationTasks(ctx, exec, job.Id)
+	require.NoError(t, err)
+	require.Len(t, tasks, 1)
+	require.Equal(t, done.Id, tasks[0].Id)
+	require.Equal(t, models.SarJobStatusDone, tasks[0].Status)
+
+	others, err := repo.ListSarGenerationTasks(ctx, exec, otherJob.Id)
+	require.NoError(t, err)
+	require.Len(t, others, 1)
+}
+
+// Tasks are only inserted into a pending or running job: a finished job gets
+// none, and the rows of an active job are unaffected.
+func TestSarGenerationTasks_CreateOnlyForActiveJob(t *testing.T) {
+	ctx := t.Context()
+	repo, _, job := sarGenTestSetup(t)
+	exec := testUsecases.NewExecutorFactory().NewExecutor()
+
+	first := newSarGenTestTask(job.Id, "part.a")
+	require.NoError(t, repo.CreateSarGenerationTasks(ctx, exec, []models.SarGenerationTask{first}))
+
+	mustSetJobStatus(t, repo, exec, job.Id, models.SarJobStatusRunning, "")
+	second := newSarGenTestTask(job.Id, "part.b")
+	require.NoError(t, repo.CreateSarGenerationTasks(ctx, exec, []models.SarGenerationTask{second}))
+	tasks, err := repo.ListSarGenerationTasks(ctx, exec, job.Id)
+	require.NoError(t, err)
+	require.Len(t, tasks, 2, "a running job accepts new tasks")
+
+	for _, status := range []models.SarJobStatus{models.SarJobStatusFailed, models.SarJobStatusDone} {
+		_, _, finished := sarGenTestSetup(t)
+		mustSetJobStatus(t, repo, exec, finished.Id, status, "")
+		late := newSarGenTestTask(finished.Id, "part.late")
+		require.NoError(t, repo.CreateSarGenerationTasks(ctx, exec, []models.SarGenerationTask{late}))
+		got, err := repo.ListSarGenerationTasks(ctx, exec, finished.Id)
+		require.NoError(t, err)
+		require.Empty(t, got, "a %s job must not receive tasks", status)
+	}
 }
