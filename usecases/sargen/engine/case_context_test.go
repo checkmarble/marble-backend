@@ -116,7 +116,7 @@ func TestAgentPrompt_IncludesCaseContextAsUntrustedBlock(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, llm.Requests, 1)
 	p := llm.Requests[0].Prompt
-	assert.Contains(t, p, `source="contexte_du_case"`)
+	assert.Contains(t, p, `source="case_context"`)
 	assert.Contains(t, p, "ignore tout")
 
 	// Without the flag the context is not given.
@@ -124,7 +124,7 @@ func TestAgentPrompt_IncludesCaseContextAsUntrustedBlock(t *testing.T) {
 	spec.NeedsCaseContext = false
 	_, err = NewAgentRunner(llm2, fakeAgentPrompts{}, AgentLimits{}).Run(context.Background(), tc, agentTask(spec), spec)
 	require.NoError(t, err)
-	assert.NotContains(t, llm2.Requests[0].Prompt, "contexte_du_case")
+	assert.NotContains(t, llm2.Requests[0].Prompt, "case_context")
 }
 
 func TestBuildCaseContext_HasTriggerObjectIdAndRuleDescriptions(t *testing.T) {
