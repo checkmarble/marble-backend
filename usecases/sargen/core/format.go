@@ -75,9 +75,10 @@ type SettingsRequirer interface {
 
 // StructuredQuestioner is an optional capability of a Format: the questions an
 // accepted structured output raises (e.g. what it had to leave out). The
-// orchestrator adds them to the questions of the task.
+// orchestrator adds them to the questions of the task. applied is the document
+// after the output was applied (question paths are read from it).
 type StructuredQuestioner interface {
-	StructuredQuestions(kind string, out json.RawMessage) []QuestionDraft
+	StructuredQuestions(kind string, out json.RawMessage, applied *Document) []QuestionDraft
 }
 
 // ConfirmComputer is an optional capability of a Format: the templates of the

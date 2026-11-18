@@ -225,7 +225,7 @@ func TestApplyPlacement_ReferenceWithoutValidOwnerIsDroppedAndReported(t *testin
 
 			sq, ok := f.(core.StructuredQuestioner)
 			require.True(t, ok)
-			qs := sq.StructuredQuestions(stepPlacement, raw)
+			qs := sq.StructuredQuestions(stepPlacement, raw, doc)
 			require.Len(t, qs, 1)
 			assert.Equal(t, "référence financière sans titulaire déclaré : accounts/a-9", qs[0].Text)
 		})
@@ -268,15 +268,18 @@ func TestApplyPlacement_TransactionObjectAlsoDeclaredIsAcceptedWithAQuestion(t *
 		t.Run(name, func(t *testing.T) {
 			raw := json.RawMessage(fmt.Sprintf(placementWithAccount,
 				`{"object":{"table":"transactions","object_id":"t-1"}},{"object":`+tobj+`}`))
+			// The container already held an item, and a removed one: keys do not restart.
 			doc := core.NewDocument()
+			doc.AddItem("work.transactions", "transactions")
+			doc.RemoveItem(doc.AddItem("work.transactions", "transactions"))
 			require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, linkedTo()))
-			require.Len(t, doc.Items["work.transactions"], 2)
+			require.Len(t, doc.Items["work.transactions"], 3)
 
-			qs := f.(core.StructuredQuestioner).StructuredQuestions(stepPlacement, raw)
+			qs := f.(core.StructuredQuestioner).StructuredQuestions(stepPlacement, raw, doc)
 			require.Len(t, qs, 1)
 			assert.Contains(t, qs[0].Text, "à la fois comme transaction et comme personne ou référence financière")
 			require.Len(t, qs[0].Paths, 1)
-			assert.Equal(t, core.Path("work.transactions["+doc.Items["work.transactions"][1]+"]"), qs[0].Paths[0])
+			assert.Equal(t, core.Path("work.transactions["+doc.Items["work.transactions"][2]+"]"), qs[0].Paths[0])
 		})
 	}
 }
@@ -472,7 +475,7 @@ func TestApplyPlacement_PartialOwnerLossIsReportedAndTransactionsMerge(t *testin
 	assert.Equal(t, []core.ObjectRef{{Table: "transactions", ObjectID: "t-1"}, {Table: "accounts", ObjectID: "a-1"}}, doc.ItemSources[tx])
 	assert.Len(t, doc.Items["personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban"], 1)
 
-	qs := f.(core.StructuredQuestioner).StructuredQuestions(stepPlacement, raw)
+	qs := f.(core.StructuredQuestioner).StructuredQuestions(stepPlacement, raw, doc)
 	require.Len(t, qs, 1)
 	assert.Contains(t, qs[0].Text, "1 titulaire(s) non déclaré(s)")
 	assert.Contains(t, qs[0].Text, "accounts/a-1")
