@@ -138,6 +138,39 @@ func TestApplyFills_MetaChecks(t *testing.T) {
 	assert.Len(t, res.Applied, 1)
 }
 
+// S1: an origin that is not one of the defined constants must be refused, so
+// that the nature rules (which only look at OriginLLM) cannot be bypassed by a
+// free string. declarant.coordonnees.nom is a setting field: the LLM may not write it.
+func TestApplyFills_UnknownOriginRejected(t *testing.T) {
+	spec := loadTracfinSpec(t)
+	path := core.Path("declarant.coordonnees.nom")
+	for _, origin := range []core.Origin{"LLM ", "Llm", "foo"} {
+		t.Run(string(origin), func(t *testing.T) {
+			doc := core.NewDocument()
+			before := snapshot(t, doc)
+			fill := core.Fill{Path: path, Value: "Ada", Origin: origin, Reviewed: true}
+
+			res := core.ApplyFills(spec, doc, []core.Fill{fill}, core.ApplyOptions{})
+
+			assert.Empty(t, res.Applied)
+			require.Len(t, res.Rejected, 1)
+			assert.True(t, res.Rejected[0].Issue.Blocks())
+			requireDocUnchanged(t, before, doc)
+		})
+	}
+}
+
+// Guard (passes today): a defined origin written by its legitimate writer is
+// still accepted on the same setting field.
+func TestApplyFills_DefinedOriginAccepted(t *testing.T) {
+	spec := loadTracfinSpec(t)
+	path := core.Path("declarant.coordonnees.nom")
+	doc := core.NewDocument()
+	res := core.ApplyFills(spec, doc, []core.Fill{{Path: path, Value: "Ada", Origin: core.OriginOrgSetting}}, core.ApplyOptions{})
+	assert.Empty(t, res.Rejected)
+	assert.Equal(t, []core.Path{path}, res.Applied)
+}
+
 func TestApplyFills_SameValueConfirmationOnlyAnalyst(t *testing.T) {
 	spec := loadTracfinSpec(t)
 	path := mustParsePath(t, pp1Name)

@@ -50,8 +50,8 @@ type Fill struct {
 }
 
 type ApplyOptions struct {
-	// AllowedPrefixes restricts writable paths (by segments); empty list = no
-	// restriction, empty entries are ignored. An item prefix (`a.b[k]`) allows
+	// AllowedPrefixes restricts writable paths (by segments); an empty list
+	// means "no restriction" (plan semantics), not "nothing allowed". Empty entries are ignored. An item prefix (`a.b[k]`) allows
 	// everything below it, including new provisional items; a prefix naming a
 	// repeatable container without key (`a.b`) allows its existing items and
 	// new items `a.b[+x]`.
@@ -191,6 +191,15 @@ func ApplyFills(spec *Spec, doc *Document, fills []Fill, opts ApplyOptions) Appl
 					(opts.Overwrite == OverwriteAll || before.Origin != f.Origin)
 				switch {
 				case confirm:
+					// Retyping the stored value confirms it: provenance is kept,
+					// only the origin becomes the analyst's and Reviewed is set.
+					f.Sources = slices.Clone(before.Sources)
+					f.RuleIDs = slices.Clone(before.RuleIDs)
+					f.Justification = before.Justification
+					f.Confidence = before.Confidence
+					f.Computation = before.Computation
+					f.TaskID = before.TaskID
+					f.Reviewed = true
 				case before.Value == f.Value:
 					continue
 				case protected(before, f, opts.Overwrite):
@@ -354,6 +363,11 @@ func countItems(doc *Document, n *Node, container Path) int {
 func checkFillMeta(f Fill) *Issue {
 	if f.Origin == "" {
 		return blocking(f.Path, CodeMissingOrigin, "l'origine de la valeur est obligatoire")
+	}
+	switch f.Origin {
+	case OriginDataModel, OriginLLM, OriginMemory, OriginOrgSetting, OriginComputed, OriginManual, OriginAnalyst:
+	default:
+		return blocking(f.Path, CodeMissingOrigin, "origine de la valeur inconnue")
 	}
 	switch f.Confidence {
 	case ConfidenceNone, ConfidenceLow, ConfidenceMedium, ConfidenceHigh:

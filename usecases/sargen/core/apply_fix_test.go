@@ -151,6 +151,83 @@ func TestApplyFills_AnalystConfirmationOfSameValue(t *testing.T) {
 	assert.Equal(t, "Dupont", valueOf(doc, path))
 }
 
+// S2: an analyst retyping the stored value must confirm it (Reviewed=true) and
+// keep its provenance (sources, rule ids, justification, confidence,
+// computation); only the origin becomes manual.
+func TestApplyFills_AnalystRetypeSameValueConfirmsAndKeepsProvenance(t *testing.T) {
+	spec := loadTracfinSpec(t)
+	retype := func(path core.Path, value string) core.Fill {
+		return core.Fill{Path: path, Value: value, Origin: core.OriginManual}
+	}
+
+	t.Run("llm value with sources", func(t *testing.T) {
+		doc, _ := docWithPerson(t)
+		path := mustParsePath(t, pp1Name)
+		stored := core.Value{
+			Value:         "Dupont",
+			Origin:        core.OriginLLM,
+			Sources:       []core.SourceRef{llmSource("p", "Dupont")},
+			RuleIDs:       []string{"R-NOM"},
+			Justification: "nom relevé sur la pièce",
+			Confidence:    core.ConfidenceHigh,
+		}
+		doc.Values[path] = stored
+
+		res := core.ApplyFills(spec, doc, []core.Fill{retype(path, "Dupont")}, core.ApplyOptions{Overwrite: core.OverwriteAll})
+
+		assert.Empty(t, res.Rejected)
+		assert.Equal(t, []core.Path{path}, res.Applied)
+		got := doc.Values[path]
+		assert.Equal(t, "Dupont", got.Value)
+		assert.Equal(t, core.OriginManual, got.Origin)
+		assert.True(t, got.Reviewed, "retyping the same value confirms it")
+		assert.Equal(t, stored.Sources, got.Sources)
+		assert.Equal(t, stored.RuleIDs, got.RuleIDs)
+		assert.Equal(t, stored.Justification, got.Justification)
+		assert.Equal(t, stored.Confidence, got.Confidence)
+	})
+
+	t.Run("computed total is confirmed and keeps its computation", func(t *testing.T) {
+		doc := core.NewDocument()
+		path := core.Path(total)
+		stored := core.Value{
+			Value:       "1000",
+			Origin:      core.OriginComputed,
+			Computation: &core.Computation{Name: "somme", Inputs: []core.Path{"operations.montantTotal"}},
+		}
+		doc.Values[path] = stored
+
+		res := core.ApplyFills(spec, doc, []core.Fill{retype(path, "1000")}, core.ApplyOptions{Overwrite: core.OverwriteAll})
+
+		assert.Empty(t, res.Rejected)
+		got := doc.Values[path]
+		assert.Equal(t, core.OriginManual, got.Origin)
+		assert.True(t, got.Reviewed, "a confirmed computed total is no longer to be confirmed")
+		assert.Equal(t, stored.Computation, got.Computation)
+	})
+
+	// Guard (passes today): a differing value keeps the overwrite behaviour,
+	// the new fill replaces the value and its metadata.
+	t.Run("differing value still overwrites", func(t *testing.T) {
+		doc, _ := docWithPerson(t)
+		path := mustParsePath(t, pp1Name)
+		doc.Values[path] = core.Value{
+			Value:   "Dupont",
+			Origin:  core.OriginLLM,
+			Sources: []core.SourceRef{llmSource("p", "Dupont")},
+		}
+
+		res := core.ApplyFills(spec, doc, []core.Fill{retype(path, "Martin")}, core.ApplyOptions{Overwrite: core.OverwriteAll})
+
+		assert.Equal(t, []core.Path{path}, res.Applied)
+		got := doc.Values[path]
+		assert.Equal(t, "Martin", got.Value)
+		assert.Equal(t, core.OriginManual, got.Origin)
+		assert.False(t, got.Reviewed)
+		assert.Empty(t, got.Sources)
+	})
+}
+
 func TestApplyFills_OverwritePolicies(t *testing.T) {
 	spec := loadTracfinSpec(t)
 	path := mustParsePath(t, pp1Name)
