@@ -286,7 +286,8 @@ func handleUpdateContinuousScreeningMatchStatus(uc usecases.Usecases) func(c *gi
 		matchId := c.Param("id")
 
 		var payload dto.ScreeningMatchUpdateDto
-		if presentError(ctx, c, c.ShouldBindJSON(&payload)) {
+		if err := c.ShouldBindJSON(&payload); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
@@ -317,7 +318,8 @@ func handleReviewContinuousScreeningMatches(uc usecases.Usecases) func(c *gin.Co
 		ctx := c.Request.Context()
 
 		var payload dto.ContinuousScreeningMatchesReviewDto
-		if presentError(ctx, c, c.ShouldBindJSON(&payload)) {
+		if err := c.ShouldBindJSON(&payload); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 

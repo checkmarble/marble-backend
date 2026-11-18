@@ -4,11 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/cockroachdb/errors"
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,4 +46,23 @@ func TestContinuousScreeningMatchesReviewDtoReadsEachMatchUpdate(t *testing.T) {
 	assert.Equal(t, "no_hit", payload.Matches[0].Status)
 	require.NotNil(t, payload.Matches[0].Comment)
 	assert.Equal(t, "Different birth date", *payload.Matches[0].Comment)
+}
+
+func TestReviewHandlersRejectMalformedBodyWithBadRequest(t *testing.T) {
+	handlers := map[string]func(usecases.Usecases) func(*gin.Context){
+		"single match": handleUpdateContinuousScreeningMatchStatus,
+		"batch":        handleReviewContinuousScreeningMatches,
+	}
+	for name, handler := range handlers {
+		t.Run(name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"matches":[`))
+			c.Request.Header.Set("Content-Type", "application/json")
+
+			handler(usecases.Usecases{})(c)
+
+			assert.Equal(t, http.StatusBadRequest, w.Code)
+		})
+	}
 }
