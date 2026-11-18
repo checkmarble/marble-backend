@@ -3,6 +3,7 @@ package sargen
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -142,7 +143,7 @@ func (uc *Usecase) snapshotFor(ctx context.Context, orgId uuid.UUID, c selection
 		if cand.trigger != nil {
 			// Trigger object: the object recorded in the most recent decision.
 			decisionId := cand.trigger.decisionId
-			row.Snapshot = cand.trigger.data
+			row.Snapshot = utcTimes(cand.trigger.data)
 			row.Origin = models.SarSnapshotOrigin{Kind: models.SarOriginKindDecision, DecisionId: &decisionId}
 			return row, nil
 		}
@@ -150,7 +151,7 @@ func (uc *Usecase) snapshotFor(ctx context.Context, orgId uuid.UUID, c selection
 		if err != nil {
 			return row, err
 		}
-		row.Snapshot, row.Origin = obj.Data, ingestedOrigin(obj)
+		row.Snapshot, row.Origin = utcTimes(obj.Data), ingestedOrigin(obj)
 		return row, nil
 	}
 
@@ -177,10 +178,47 @@ func (uc *Usecase) snapshotFor(ctx context.Context, orgId uuid.UUID, c selection
 		return row, errors.Wrapf(models.ForbiddenError,
 			"l'objet %s/%s n'est pas atteignable par le lien %q", a.Ref.Table, a.Ref.ObjectID, a.ReachedFrom.Link)
 	}
-	row.Snapshot, row.Origin = obj.Data, ingestedOrigin(obj)
+	row.Snapshot, row.Origin = utcTimes(obj.Data), ingestedOrigin(obj)
 	rf := *a.ReachedFrom
 	row.ReachedFrom = &rf
 	return row, nil
+}
+
+// utcTimes returns a copy of data where every time.Time (also inside nested
+// maps and slices) is expressed in UTC, so that the frozen copy does not depend
+// on the zone of the server or of the database session.
+func utcTimes(data map[string]any) map[string]any {
+	if data == nil {
+		return nil
+	}
+	out := make(map[string]any, len(data))
+	for k, v := range data {
+		out[k] = utcValue(v)
+	}
+	return out
+}
+
+func utcValue(v any) any {
+	switch x := v.(type) {
+	case time.Time:
+		return x.UTC()
+	case *time.Time:
+		if x == nil {
+			return x
+		}
+		u := x.UTC()
+		return &u
+	case map[string]any:
+		return utcTimes(x)
+	case []any:
+		out := make([]any, len(x))
+		for i, e := range x {
+			out[i] = utcValue(e)
+		}
+		return out
+	default:
+		return v
+	}
 }
 
 func ingestedOrigin(obj models.ClientObjectDetail) models.SarSnapshotOrigin {
