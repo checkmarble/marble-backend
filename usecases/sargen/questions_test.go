@@ -109,7 +109,8 @@ func TestChooseQuestionOption_AppliesFillsWithoutJob(t *testing.T) {
 	v, ok := st.Doc.Values["context.information.activiteLPS"]
 	require.True(t, ok, "the option value must be applied")
 	assert.Equal(t, "true", v.Value)
-	assert.Equal(t, core.OriginLLM, v.Origin, "the origin is forced to llm (option fills come from the model)")
+	assert.Equal(t, core.OriginAnalyst, v.Origin, "an option is the analyst's choice")
+	assert.Nil(t, v.TaskID)
 	assert.True(t, v.Reviewed, "the applied value is marked reviewed")
 	require.Len(t, v.Sources, 1, "the sources of the option are kept")
 	assert.Equal(t, "t1", v.Sources[0].Object.ObjectID)
@@ -334,4 +335,18 @@ func TestQuestions_OtherOrgForbidden(t *testing.T) {
 	require.ErrorIs(t, err, models.ForbiddenError)
 	assert.Empty(t, f.Enqueuer.Calls)
 	assert.Equal(t, models.SarJobStatusFailed, f.Gen.Jobs[failedJob.Id].Status)
+}
+
+func TestChooseQuestionOption_WithoutSourceAppliesAsAnalyst(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	q := f.SeedQuestion(t, declId, []core.Path{"context.information.activiteLPS"}, "LPS ?",
+		[]core.QuestionOption{{Label: "Oui", Fills: []core.Fill{{Path: "context.information.activiteLPS", Value: "true"}}}})
+	st, err := uc.ChooseQuestionOption(f.Ctx, q.Id, f.Repo.Declarations[declId].Version, 0)
+	require.NoError(t, err)
+	v := st.Doc.Values["context.information.activiteLPS"]
+	assert.Equal(t, "true", v.Value)
+	assert.Equal(t, core.OriginAnalyst, v.Origin)
+	assert.True(t, v.Reviewed)
+	assert.Empty(t, v.Sources)
+	assert.Equal(t, models.SarQuestionStatusResolved, f.Gen.Questions[q.Id].Status)
 }

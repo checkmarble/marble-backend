@@ -88,7 +88,7 @@ func (uc *Usecase) DismissQuestion(ctx context.Context, questionId uuid.UUID) er
 // (resolved). Checks: declaration version (models.ErrSarVersionConflict),
 // optionIndex in range (400), the option has fills (400), no active job
 // (ErrGenerationInProgress). Rejected fills (LLM-provided paths) -> 400 and
-// nothing is applied. Returns the new declaration state.
+// nothing is applied, as is a fill on a setting or computed field. Returns the new declaration state.
 func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUID, version int, optionIndex int) (DeclarationState, error) {
 	exec := uc.executorFactory.NewExecutor()
 	row, err := uc.generation.GetSarQuestion(ctx, exec, questionId)
@@ -120,13 +120,21 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 	return uc.mutateWithPost(ctx, q.DeclarationId, version,
 		func(format core.Format, doc *core.Document, _, _ *string) error {
 			spec := format.Spec()
-			// Stored option fills come from the LLM: force the origin and task,
-			// and restrict writes to the question's own paths. The analyst's
-			// choice may replace a manual value (OverwriteAll); nature and
-			// source rules apply as for any LLM fill.
+			// The analyst's click is the proof: the fill takes the analyst
+			// origin (no source or justification required, no task), writes
+			// are restricted to the question's own paths, and the choice may
+			// replace a manual value (OverwriteAll). Settings and computed
+			// fields are never writable through an option.
 			fills := make([]core.Fill, len(opt.Fills))
 			for i, f := range opt.Fills {
-				f.Origin, f.TaskID = core.OriginLLM, q.TaskId
+				if node := spec.NodeAt(f.Path.Template()); node != nil {
+					switch node.EffectiveNature() {
+					case core.NatureSetting, core.NatureComputed:
+						return errors.Wrapf(models.BadParameterError,
+							"le champ %s est un réglage ou un champ calculé : il ne peut pas être renseigné par une option", f.Path)
+					}
+				}
+				f.Origin, f.TaskID = core.OriginAnalyst, nil
 				fills[i] = f
 			}
 			res := core.ApplyFills(spec, doc, fills, core.ApplyOptions{
