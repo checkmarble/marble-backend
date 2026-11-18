@@ -189,6 +189,49 @@ func TestAgent_RegistryList(t *testing.T) {
 	require.Len(t, out.Questions, 1)
 }
 
+// Sex list: SEX3 (Inconnu) is the unknown code, SEX1/SEX2 are strict. A gender
+// column spelled with an alias proves the code; a first name does not.
+func TestAgent_SexList(t *testing.T) {
+	const sexePath = "personnes.pp[pp-1].etatCivil.sexe"
+	fill := func(value, field, raw string) string {
+		src := ""
+		if field != "" {
+			src = `,"source":{"field":"` + field + `","raw_value":"` + raw + `"}`
+		}
+		return `{"path":"` + sexePath + `","value":"` + value + `"` + src + `}`
+	}
+	run := func(f string, snap map[string]any) core.TaskOutput {
+		llm := newScriptedLLM(FinalStep(agFinal(f)))
+		out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentPEPContext(t, snap), agentSpec("fill", agentPersonPath))
+		require.NoError(t, err)
+		return out
+	}
+	out := run(fill("SEX1", "gender", "M"), map[string]any{"gender": "M"})
+	require.Len(t, out.Fills, 1)
+	assert.Equal(t, "SEX1", out.Fills[0].Value)
+	assert.Empty(t, out.Questions)
+
+	out = run(fill("SEX2", "gender", "F"), map[string]any{"gender": "F"})
+	require.Len(t, out.Fills, 1)
+	assert.Equal(t, "SEX2", out.Fills[0].Value)
+
+	out = run(fill("SEX2", "gender", "féminin"), map[string]any{"gender": "féminin"})
+	require.Len(t, out.Fills, 1, "alias, accent- and case-insensitive")
+
+	out = run(fill("SEX1", "first_name", "Jean"), map[string]any{"first_name": "Jean"})
+	assert.Empty(t, out.Fills, "a sex inferred from a first name is not a proof")
+	require.Len(t, out.Questions, 1)
+	var codes []string
+	for _, o := range out.Questions[0].Options {
+		codes = append(codes, o.Fills[0].Value)
+	}
+	assert.Equal(t, []string{"SEX1", "SEX2", "SEX3"}, codes)
+
+	out = run(fill("SEX3", "", ""), nil)
+	require.Len(t, out.Fills, 1)
+	assert.Empty(t, out.Questions)
+}
+
 func TestFieldSpecAndDescribe_ShowUnknownCode(t *testing.T) {
 	tc := agentPEPContext(t, nil)
 	raw := toolsCall(t, CommonTools(tc), "field_spec", `{"path":"`+agPolitiqueePath+`"}`)

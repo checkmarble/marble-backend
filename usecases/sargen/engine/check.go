@@ -409,11 +409,17 @@ func (c *checker) sourceIsBoolean(src core.SourceRef) bool {
 
 // strictCodeProof tells whether the raw value of the source proves the code
 // without interpretation: it is the code itself, its label (folded like text
-// proofs), or, when the source field is a boolean, a boolean literal matching a
+// proofs), one of its aliases, or, when the source field is a boolean, a boolean literal matching a
 // yes/no code.
 func strictCodeProof(codes []core.Code, value, raw string, boolSource bool) bool {
 	if foldAlnum(value) == foldAlnum(raw) || slices.ContainsFunc(codes, func(c core.Code) bool {
-		return c.Value == value && c.Label != "" && foldAlnum(c.Label) == foldAlnum(raw)
+		if c.Value != value {
+			return false
+		}
+		if c.Label != "" && foldAlnum(c.Label) == foldAlnum(raw) {
+			return true
+		}
+		return slices.ContainsFunc(c.Aliases, func(a string) bool { return foldAlnum(a) == foldAlnum(raw) })
 	}) {
 		return true
 	}
@@ -431,10 +437,16 @@ func strictCodeProof(codes []core.Code, value, raw string, boolSource bool) bool
 func (c *checker) unprovenCodeQuestion(f core.Fill, doc *core.Document) core.QuestionDraft {
 	node := c.tc.Format.Spec().NodeAt(f.Path.Template())
 	list := c.tc.Format.Spec().CodeLists[node.CodeList]
+	unknown := list.UnknownCode
+	for _, code := range list.Codes {
+		if code.Value == unknown && code.Label != "" {
+			unknown = code.Label
+		}
+	}
 	q := core.QuestionDraft{
 		Paths: []core.Path{f.Path},
 		Text: fmt.Sprintf("valeur non établie : %s — « %s » proposé sans preuve suffisante dans les données ; choisissez la valeur (« %s » si rien ne l'établit)",
-			f.Path, shorten(f.Value, 100), list.UnknownCode),
+			f.Path, shorten(f.Value, 100), unknown),
 	}
 	for _, code := range list.Codes {
 		label := code.Label
