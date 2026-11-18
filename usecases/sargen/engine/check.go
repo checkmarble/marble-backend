@@ -412,6 +412,7 @@ func (c *checker) defaultSource(target core.Path) (core.ObjectRef, string) {
 
 var (
 	decimalRe = regexp.MustCompile(`^-?[0-9]+([.,][0-9]+)?$`)
+	integerRe = regexp.MustCompile(`^-?[0-9]+$`)
 	parisZone = mustParis()
 )
 
@@ -594,10 +595,11 @@ func relationError(n *core.Node, codes []core.Code, value, raw, justification st
 	return "", false
 }
 
-// centsOf tells whether value x 100 == raw, exactly (no float).
+// centsOf tells whether value x 100 == raw, exactly (no float). A count of
+// cents is an integer: a fractional raw value is refused.
 func centsOf(value, raw string) bool {
 	value, raw = stripThousands(value), stripThousands(raw)
-	if !decimalRe.MatchString(value) || !decimalRe.MatchString(raw) {
+	if !decimalRe.MatchString(value) || !integerRe.MatchString(raw) {
 		return false
 	}
 	v, ok1 := new(big.Rat).SetString(strings.Replace(value, ",", ".", 1))
