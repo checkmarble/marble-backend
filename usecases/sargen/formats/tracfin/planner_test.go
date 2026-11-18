@@ -173,7 +173,7 @@ func TestApplyPlacement_JointAccountCreatedUnderEachOwner(t *testing.T) {
 		]
 	}`)
 
-	require.NoError(t, f.ApplyStructured(stepPlacement, doc, out))
+	require.NoError(t, f.ApplyStructured(stepPlacement, doc, out, core.StructuredContext{}))
 
 	persons := doc.Items["personnes.pp"]
 	require.Len(t, persons, 2)

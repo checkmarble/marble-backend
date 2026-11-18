@@ -36,8 +36,9 @@ type placementOutput struct {
 		Objects []core.ObjectRef `json:"objects"`
 	} `json:"financial_refs"`
 	Transactions []struct {
-		// Objects are the transaction object and the selected objects linked to it
-		// (its account): they all become the sources of the working transaction.
+		// Objects are the transaction object (first) and, optionally, the selected
+		// objects linked to it: they all become the sources of the working
+		// transaction. The backend adds the linked objects it finds itself.
 		Objects []core.ObjectRef `json:"objects"`
 		// Object is the former single-object form, still accepted.
 		Object *core.ObjectRef `json:"object"`
@@ -77,7 +78,7 @@ func placementSchema(refKinds []string) jsonschema.Schema {
      "person_index":{"type":"integer","description":"position de la personne dans persons (à partir de 0)"},
      "lien":{"type":"string","enum":["titulaire","co-titulaire","mandataire"]}}}},
    "objects":{"type":"array","items":` + obj + `}}}},
- "transactions":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["objects"],"properties":{"objects":{"type":"array","description":"l'objet transaction puis, s'il y en a, les objets sélectionnés qui lui sont liés (son compte)","items":` + obj + `}}}}}}`
+ "transactions":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["objects"],"properties":{"objects":{"type":"array","description":"l'objet transaction en premier (les objets liés, comme son compte, sont ajoutés par le système)","items":` + obj + `}}}}}}`
 	var s jsonschema.Schema
 	if err := json.Unmarshal([]byte(raw), &s); err != nil {
 		panic("placement schema: " + err.Error()) // constant above: a programming error
@@ -183,15 +184,31 @@ func (f *format) StructuredQuestions(kind string, raw json.RawMessage) []core.Qu
 	return out
 }
 
+// sameObjects tells whether two object lists hold the same objects, in any
+// order.
+func sameObjects(a, b []core.ObjectRef) bool {
+	return len(a) == len(b) && !slices.ContainsFunc(a, func(o core.ObjectRef) bool { return !slices.Contains(b, o) })
+}
+
 // ApplyStructured applies the output of the placement step: it creates the
 // person items (with their source objects), the financial references under each
 // declared owner (a joint account is created under each of them, with its own
-// lien, the elements sharing the same sources) and the working transactions
-// (sources: the transaction object and its linked account objects). A reference
-// without a valid declared owner is dropped; any other invalid index, reference
-// type, lien or object is an error and the caller keeps its copy of the document
-// untouched.
-func (f *format) ApplyStructured(kind string, doc *core.Document, raw json.RawMessage) error {
+// lien, the elements sharing the same sources) and the working transactions.
+//
+// Dedupe: persons with the same type and the same objects are one person;
+// references of the same type and objects are one reference (their owners are
+// merged); transactions are identified by their transaction object (the first
+// object listed) and merge into the union of their objects. An object shared by
+// two distinct persons stays allowed.
+//
+// A transaction's sources are its objects plus the selected objects linked to
+// its transaction object by the data model that are the objects of a declared
+// financial reference (its account): the model does not have to list them.
+//
+// A reference without a valid declared owner is dropped; any other invalid
+// index, reference type, lien or object is an error and the caller keeps its
+// copy of the document untouched.
+func (f *format) ApplyStructured(kind string, doc *core.Document, raw json.RawMessage, sc core.StructuredContext) error {
 	if kind != StepPlacement {
 		return errors.Newf("sortie structurée inconnue : %q", kind)
 	}
@@ -200,15 +217,52 @@ func (f *format) ApplyStructured(kind string, doc *core.Document, raw json.RawMe
 		return err
 	}
 
-	// Two entries are the same transaction only when one object set contains the
-	// other ([t1] and [t1, account]): they merge into the union. [account, t1] and
-	// [account, t2] are two transactions sharing an account.
-	subset := func(a, b []core.ObjectRef) bool {
-		return !slices.ContainsFunc(a, func(o core.ObjectRef) bool { return !slices.Contains(b, o) })
+	// Persons: identical entries merge; remap[i] is the person index of entry i.
+	type person struct {
+		kind    string
+		objects []core.ObjectRef
 	}
+	var people []person
+	remap := make([]int, len(out.Persons))
+	for i, p := range out.Persons {
+		j := slices.IndexFunc(people, func(q person) bool { return q.kind == p.Kind && sameObjects(q.objects, p.Objects) })
+		if j < 0 {
+			people = append(people, person{kind: p.Kind, objects: slices.Clone(p.Objects)})
+			j = len(people) - 1
+		}
+		remap[i] = j
+	}
+
+	// References: identical type and objects merge, with the union of the owners
+	// (one entry per person, the first lien kept).
+	type owner struct {
+		person int
+		lien   string
+	}
+	type reference struct {
+		kind    string
+		objects []core.ObjectRef
+		owners  []owner
+	}
+	var refs []reference
+	for _, r := range out.FinancialRefs {
+		j := slices.IndexFunc(refs, func(q reference) bool { return q.kind == r.RefKind && sameObjects(q.objects, r.Objects) })
+		if j < 0 {
+			refs = append(refs, reference{kind: r.RefKind, objects: slices.Clone(r.Objects)})
+			j = len(refs) - 1
+		}
+		for _, o := range r.Owners {
+			p := remap[*o.PersonIndex]
+			if !slices.ContainsFunc(refs[j].owners, func(x owner) bool { return x.person == p }) {
+				refs[j].owners = append(refs[j].owners, owner{person: p, lien: o.Lien})
+			}
+		}
+	}
+
+	// Transactions: the transaction object is the first one listed.
 	var txs [][]core.ObjectRef
 	for _, t := range out.Transactions {
-		i := slices.IndexFunc(txs, func(o []core.ObjectRef) bool { return subset(o, t.Objects) || subset(t.Objects, o) })
+		i := slices.IndexFunc(txs, func(o []core.ObjectRef) bool { return o[0] == t.Objects[0] })
 		if i < 0 {
 			txs = append(txs, slices.Clone(t.Objects))
 			continue
@@ -219,19 +273,29 @@ func (f *format) ApplyStructured(kind string, doc *core.Document, raw json.RawMe
 			}
 		}
 	}
-
-	persons := make([]core.Path, len(out.Persons))
-	for i, p := range out.Persons {
-		item := doc.AddItem(core.Path("personnes."+p.Kind), p.Kind)
-		doc.ItemSources[item] = slices.Clone(p.Objects)
-		persons[i] = item
+	for i, objs := range txs {
+		for _, linked := range sc.Linked(objs[0]) {
+			if slices.Contains(objs, linked) {
+				continue
+			}
+			if slices.ContainsFunc(refs, func(r reference) bool { return slices.Contains(r.objects, linked) }) {
+				txs[i] = append(txs[i], linked)
+			}
+		}
 	}
-	for _, r := range out.FinancialRefs {
-		for _, o := range r.Owners {
-			container := persons[*o.PersonIndex].Child("referencesFinancieres").Child(referenceContainerPrefix + r.RefKind)
-			item := doc.AddItem(container, referenceContainerPrefix+r.RefKind)
-			doc.ItemSources[item] = slices.Clone(r.Objects)
-			doc.Values[item.Child("lien")] = core.Value{Value: liens[o.Lien], Origin: core.OriginLLM, Confidence: core.ConfidenceMedium}
+
+	items := make([]core.Path, len(people))
+	for i, p := range people {
+		item := doc.AddItem(core.Path("personnes."+p.kind), p.kind)
+		doc.ItemSources[item] = p.objects
+		items[i] = item
+	}
+	for _, r := range refs {
+		for _, o := range r.owners {
+			container := items[o.person].Child("referencesFinancieres").Child(referenceContainerPrefix + r.kind)
+			item := doc.AddItem(container, referenceContainerPrefix+r.kind)
+			doc.ItemSources[item] = slices.Clone(r.objects)
+			doc.Values[item.Child("lien")] = core.Value{Value: liens[o.lien], Origin: core.OriginLLM, Confidence: core.ConfidenceMedium}
 		}
 	}
 	for _, objs := range txs {

@@ -25,7 +25,7 @@ const (
 	maxCorrectionWaves   = 2
 )
 
-// PayloadDeclared is the payload block of the transaction tasks listing the
+// PayloadDeclared is the payload block of the person and transaction tasks listing the
 // declared persons and financial references (path, kind, owner, sources).
 const PayloadDeclared = "declared_persons_and_references"
 
@@ -191,6 +191,22 @@ func (f *format) placementSpec(st core.PlanState) core.TaskSpec {
 		Tier:         core.TierLight,
 		ToolNames:    slices.Clone(commonReadTools),
 		OutputSchema: &schema,
+		// The whole generation depends on the placement: a placement cut short by
+		// a limit must not leave an empty declaration.
+		FailJobOnLimit: true,
+		Limits:         placementLimits(len(st.Selection)),
+	}
+}
+
+// Placement budget: it reads and places every selected object, so it grows
+// with the selection n: tool calls 30 + n/2 (cap 300), turns 15 + n/4 (cap 150),
+// time 3 min + 3 s per object (cap 20 min). At n = 10 this is 35 calls, 17 turns,
+// 3.5 min; at n = 200, 130 calls, 65 turns, 13 min.
+func placementLimits(n int) core.TaskLimits {
+	return core.TaskLimits{
+		MaxToolCalls:   min(30+n/2, 300),
+		MaxTurns:       min(15+n/4, 150),
+		TimeoutSeconds: min(180+3*n, 1200),
 	}
 }
 
@@ -208,6 +224,7 @@ func (f *format) fillSpecs(st core.PlanState) []core.TaskSpec {
 				PromptPath:   models.SarGenerationTracfinFillPersonPromptPath,
 				Tier:         core.TierLight,
 				ToolNames:    slices.Clone(fillTools),
+				Payload:      map[string]any{PayloadDeclared: f.declaredBlock(st.Doc)},
 			})
 		}
 	}

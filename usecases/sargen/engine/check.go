@@ -898,7 +898,7 @@ func (c *checker) checkStructured(final json.RawMessage) (err error) {
 		}
 	}()
 	clone := c.tc.Doc.Clone()
-	if err := c.tc.Format.ApplyStructured(c.spec.Kind, clone, final); err != nil {
+	if err := c.tc.Format.ApplyStructured(c.spec.Kind, clone, final, StructuredContextFor(c.tc.Selection, c.tc.DataModel)); err != nil {
 		return err
 	}
 	if bad := sourcesOutsideSelection(c.tc.Doc, clone, c.sc); len(bad) > 0 {
