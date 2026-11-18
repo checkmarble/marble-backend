@@ -181,14 +181,21 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 		if err := uc.checkDeclarationAccess(ctx, tx, locked); err != nil {
 			return err
 		}
-		jobs, err := uc.generation.ListSarGenerationJobs(ctx, tx, id)
+		jobs, err := uc.listJobsFailingStale(ctx, tx, id)
 		if err != nil {
 			return err
 		}
 		if hasActiveJob(jobs) {
-			return uc.lockError(jobs)
+			return ErrGenerationInProgress
 		}
 		if hasDoneGenerate(jobs) {
+			return ErrSelectionFrozen
+		}
+		generated, err := uc.hasGeneratedTask(ctx, tx, jobs)
+		if err != nil {
+			return err
+		}
+		if generated {
 			return ErrSelectionFrozen
 		}
 		if locked.Version != version {

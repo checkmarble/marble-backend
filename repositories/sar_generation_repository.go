@@ -152,6 +152,42 @@ func (repo *MarbleDbRepository) ResumeSarGenerationJob(
 	return ok, err
 }
 
+// FailStaleSarGenerationJobs moves the pending/running jobs of a declaration
+// with no update for more than staleAfter (database clock) to failed, with the
+// given error message. It returns the number of jobs failed.
+func (repo *MarbleDbRepository) FailStaleSarGenerationJobs(
+	ctx context.Context, exec Executor, declarationId uuid.UUID, staleAfter time.Duration, errMsg string,
+) (int, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return 0, err
+	}
+	sql, args, err := NewQueryBuilder().
+		Update(dbmodels.TABLE_SAR_GENERATION_JOBS).
+		Set("status", string(models.SarJobStatusFailed)).
+		Set("error", nullIfEmpty(errMsg)).
+		Set("updated_at", squirrel.Expr("now()")).
+		Where(squirrel.Eq{"declaration_id": declarationId}).
+		Where(squirrel.Eq{"status": []string{
+			string(models.SarJobStatusPending), string(models.SarJobStatusRunning),
+		}}).
+		Where(squirrel.Expr("updated_at < now() - make_interval(secs => ?)", staleAfter.Seconds())).
+		Suffix("RETURNING id").
+		ToSql()
+	if err != nil {
+		return 0, errors.Wrap(err, "cannot build sar stale jobs query")
+	}
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return 0, errors.Wrap(err, "cannot fail stale sar jobs")
+	}
+	defer rows.Close()
+	n := 0
+	for rows.Next() {
+		n++
+	}
+	return n, rows.Err()
+}
+
 // SetSarGenerationJobAttempt stores the River attempt number of the job.
 func (repo *MarbleDbRepository) SetSarGenerationJobAttempt(
 	ctx context.Context, exec Executor, id uuid.UUID, attempt int,
@@ -198,6 +234,9 @@ func (repo *MarbleDbRepository) TouchSarGenerationJob(
 	return ExecBuilder(ctx, exec, query)
 }
 
+// CreateSarGenerationTasks inserts the tasks; a task whose (job, input hash)
+// already exists is skipped (concurrent planners share the same rows), so the
+// caller must re-read the tasks of the job.
 func (repo *MarbleDbRepository) CreateSarGenerationTasks(
 	ctx context.Context, exec Executor, tasks []models.SarGenerationTask,
 ) error {
@@ -209,7 +248,8 @@ func (repo *MarbleDbRepository) CreateSarGenerationTasks(
 	}
 	query := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SAR_GENERATION_TASKS).
-		Columns("id", "job_id", "kind", "target_path", "input", "input_hash", "depends_on", "status")
+		Columns("id", "job_id", "kind", "target_path", "input", "input_hash", "depends_on", "status").
+		Suffix("ON CONFLICT (job_id, input_hash) DO NOTHING")
 	for _, t := range tasks {
 		dependsOn := t.DependsOn
 		if dependsOn == nil {

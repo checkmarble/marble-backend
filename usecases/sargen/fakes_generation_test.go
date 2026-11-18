@@ -146,6 +146,23 @@ func (r *fakeGenRepo) ResumeSarGenerationJob(_ context.Context, _ repositories.E
 	return true, nil
 }
 
+// FailStaleSarGenerationJobs mirrors the SQL guard on the fake clock.
+func (r *fakeGenRepo) FailStaleSarGenerationJobs(_ context.Context, _ repositories.Executor, declId uuid.UUID,
+	staleAfter time.Duration, errMsg string,
+) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	n := 0
+	for id, j := range r.Jobs {
+		if j.DeclarationId == declId && isActiveStatus(j.Status) && r.clock().Sub(j.UpdatedAt) > staleAfter {
+			j.Status, j.Error, j.UpdatedAt = models.SarJobStatusFailed, errMsg, r.clock()
+			r.Jobs[id] = j
+			n++
+		}
+	}
+	return n, nil
+}
+
 func (r *fakeGenRepo) ListSarGenerationTaskSummaries(_ context.Context, _ repositories.Executor, jobId uuid.UUID) ([]models.SarGenerationTask, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

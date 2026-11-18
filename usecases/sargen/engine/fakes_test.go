@@ -287,7 +287,13 @@ func (r *memRepo) CreateSarGenerationTasks(_ context.Context, _ repositories.Exe
 	defer r.mu.Unlock()
 	for _, t := range ts {
 		t := t
-		r.tasks = append(r.tasks, &t)
+		dup := false
+		for _, e := range r.tasks { // unique (job_id, input_hash), ON CONFLICT DO NOTHING
+			dup = dup || (e.JobId == t.JobId && e.InputHash == t.InputHash)
+		}
+		if !dup {
+			r.tasks = append(r.tasks, &t)
+		}
 	}
 	return nil
 }
