@@ -70,10 +70,13 @@ func TestReviewHandlersRejectMalformedBodyWithBadRequest(t *testing.T) {
 func TestReviewContinuousScreeningMatchesStopsWhenContextIsDone(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	ctx, cancel := context.WithCancel(context.WithValue(context.Background(), utils.ContextKeyCredentials, models.Credentials{}))
+	// A valid reviewer and review: a dispatched update gets past validation into the empty usecases
+	// and fails the test, so a 408 here means nothing was dispatched.
+	creds := models.Credentials{ActorIdentity: models.Identity{UserId: "0b5e8f3a-2c4d-4e6f-8a9b-1c2d3e4f5a6b"}}
+	ctx, cancel := context.WithCancel(context.WithValue(context.Background(), utils.ContextKeyCredentials, creds))
 	cancel()
 	c.Request = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(
-		`{"matches":[{"match_id":"m1","status":"invalid"},{"match_id":"m2","status":"invalid"}]}`,
+		`{"matches":[{"match_id":"6f2b1c1e-8d3a-4c5e-9b7f-0a1d2e3f4a5b","status":"no_hit"}]}`,
 	)).WithContext(ctx)
 	c.Request.Header.Set("Content-Type", "application/json")
 
