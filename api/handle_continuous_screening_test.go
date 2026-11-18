@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -27,7 +28,6 @@ func TestMatchReviewStatusCode(t *testing.T) {
 		{errors.Wrap(models.UnprocessableEntityError, "continuous screening match is not pending review"), http.StatusUnprocessableEntity},
 		{errors.Wrap(models.ForbiddenError, "no access"), http.StatusForbidden},
 		{errors.Wrap(models.NotFoundError, "no match"), http.StatusNotFound},
-		{errors.Wrap(context.DeadlineExceeded, "review"), http.StatusRequestTimeout},
 		{errors.New("database"), http.StatusInternalServerError},
 	}
 	for _, tt := range tests {
@@ -65,4 +65,20 @@ func TestReviewHandlersRejectMalformedBodyWithBadRequest(t *testing.T) {
 			assert.Equal(t, http.StatusBadRequest, w.Code)
 		})
 	}
+}
+
+func TestReviewContinuousScreeningMatchesStopsWhenContextIsDone(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	ctx, cancel := context.WithCancel(context.WithValue(context.Background(), utils.ContextKeyCredentials, models.Credentials{}))
+	cancel()
+	c.Request = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(
+		`{"matches":[{"match_id":"m1","status":"invalid"},{"match_id":"m2","status":"invalid"}]}`,
+	)).WithContext(ctx)
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handleReviewContinuousScreeningMatches(usecases.Usecases{})(c)
+
+	assert.Equal(t, http.StatusRequestTimeout, w.Code)
+	assert.NotContains(t, w.Body.String(), "results")
 }
