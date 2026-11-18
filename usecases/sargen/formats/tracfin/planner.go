@@ -13,6 +13,7 @@ import (
 // Step kinds of the TRACFIN plan. The other kinds are core.TaskKindCompute and
 // core.TaskKindReview.
 const (
+	StepUnderstanding   = "understanding"
 	StepPlacement       = "placement"
 	StepFillPerson      = "fill_person"
 	StepFillTransaction = "fill_transaction"
@@ -54,7 +55,8 @@ var formCodes = []string{
 	core.CodeBadChar, core.CodeBadPattern,
 }
 
-// Plan returns the tasks to run next, one wave per call: placement, then the
+// Plan returns the tasks to run next, one wave per call: the understanding of
+// the case, then placement, then the
 // person and transaction fills with the computation that follows them, then
 // the judgment, then at most two waves of corrections, then the review (once).
 // A review job only plans the review. A computed operation line whose group
@@ -71,6 +73,12 @@ func (f *format) Plan(st core.PlanState) []core.TaskSpec {
 			return nil
 		}
 		return []core.TaskSpec{f.reviewSpec(st)}
+	}
+
+	// A job that already placed without a note (created before this step
+	// existed) never plans it: the later steps then run without a note.
+	if !done.kind(StepUnderstanding) && !done.kind(StepPlacement) {
+		return []core.TaskSpec{f.understandingSpec(st)}
 	}
 
 	if !done.kind(StepPlacement) {
@@ -181,12 +189,33 @@ func selectionRefs(sel []models.SarSelectedObject) []core.ObjectRef {
 	return out
 }
 
+// understandingSpec is the first step: it reads the analysis, the case context
+// and every selected object and writes the shared note (structured output, no
+// document write).
+func (f *format) understandingSpec(st core.PlanState) core.TaskSpec {
+	schema := understandingSchema()
+	return core.TaskSpec{
+		Kind:         StepUnderstanding,
+		Inputs:       selectionRefs(st.Selection),
+		PromptPath:   models.SarGenerationTracfinUnderstandingPromptPath,
+		Tier:         core.TierHeavy,
+		ToolNames:    slices.Clone(commonReadTools),
+		OutputSchema: &schema,
+		Payload:      analystPayload(st),
+		// The note is the base of every later step.
+		FailJobOnLimit:   true,
+		Limits:           placementLimits(len(st.Selection)),
+		NeedsCaseContext: true,
+	}
+}
+
 func (f *format) placementSpec(st core.PlanState) core.TaskSpec {
 	schema := placementSchema(f.referenceKinds())
 	return core.TaskSpec{
 		Kind: StepPlacement, TargetPath: "personnes",
 		AllowedPaths: []core.Path{"personnes", transactionsContainer},
 		Inputs:       selectionRefs(st.Selection),
+		Payload:      sharedPayload(st, nil),
 		PromptPath:   models.SarGenerationTracfinPlacementPromptPath,
 		Tier:         core.TierLight,
 		ToolNames:    slices.Clone(commonReadTools),
@@ -224,7 +253,7 @@ func (f *format) fillSpecs(st core.PlanState) []core.TaskSpec {
 				PromptPath:   models.SarGenerationTracfinFillPersonPromptPath,
 				Tier:         core.TierLight,
 				ToolNames:    slices.Clone(fillTools),
-				Payload:      map[string]any{PayloadDeclared: f.declaredBlock(st.Doc)},
+				Payload:      sharedPayload(st, map[string]any{PayloadDeclared: f.declaredBlock(st.Doc)}),
 			})
 		}
 	}
@@ -236,7 +265,7 @@ func (f *format) fillSpecs(st core.PlanState) []core.TaskSpec {
 			PromptPath: models.SarGenerationTracfinFillTransactionPromptPath,
 			Tier:       core.TierLight,
 			ToolNames:  append(slices.Clone(fillTools), toolOperationPreview, toolReadDocument),
-			Payload:    map[string]any{PayloadDeclared: f.declaredBlock(st.Doc)},
+			Payload:    sharedPayload(st, map[string]any{PayloadDeclared: f.declaredBlock(st.Doc)}),
 		}
 		for _, k := range batch {
 			item := core.Path(string(transactionsContainer) + "[" + k + "]")
@@ -355,7 +384,7 @@ func (f *format) judgmentSpec(st core.PlanState) core.TaskSpec {
 		PromptPath: models.SarGenerationTracfinJudgmentPromptPath,
 		Tier:       core.TierHeavy,
 		ToolNames:  append(slices.Clone(fillTools), toolReadDocument),
-		Payload:    analystPayload(st),
+		Payload:    sharedPayload(st, nil),
 
 		NeedsCaseContext: true,
 	}
@@ -368,10 +397,56 @@ func (f *format) reviewSpec(st core.PlanState) core.TaskSpec {
 		PromptPath: models.SarGenerationTracfinReviewPromptPath,
 		Tier:       core.TierHeavy,
 		ToolNames:  append(slices.Clone(commonReadTools), toolReadDocument),
-		Payload:    analystPayload(st),
+		Payload:    sharedPayload(st, nil),
 
 		NeedsCaseContext: true,
 	}
+}
+
+// PayloadUnderstanding is the payload key of the understanding note.
+const PayloadUnderstanding = "understanding"
+
+// sharedPayload is what every step after the understanding receives: the note
+// (absent for a job planned without one) and the analyst's analysis and extra
+// information (absent when empty), plus the extra entries of the step. The case
+// context is not part of it: only the steps that need it ask for it.
+func sharedPayload(st core.PlanState, extra map[string]any) map[string]any {
+	p := map[string]any{}
+	for k, v := range analystPayload(st) {
+		p[k] = v
+	}
+	if note := understandingOf(st.Done); note != nil {
+		p[PayloadUnderstanding] = note
+	}
+	for k, v := range extra {
+		p[k] = v
+	}
+	if len(p) == 0 {
+		return nil
+	}
+	return p
+}
+
+// understandingOf returns the note of the done understanding task of the job,
+// decoded (so that the payload is the same value, key order included, however
+// it was stored), or nil.
+func understandingOf(done []models.SarGenerationTask) any {
+	for _, t := range done {
+		if t.Kind != StepUnderstanding {
+			continue
+		}
+		var out struct {
+			Structured json.RawMessage `json:"structured"`
+		}
+		if json.Unmarshal(t.Output, &out) != nil || len(out.Structured) == 0 {
+			continue
+		}
+		var note any
+		if json.Unmarshal(out.Structured, &note) == nil && note != nil {
+			return note
+		}
+	}
+	return nil
 }
 
 // analystPayload is what the analyst wrote: the analysis and the additional
@@ -426,7 +501,7 @@ func (f *format) correctionSpecs(st core.PlanState, wave int) []core.TaskSpec {
 			PromptPath: models.SarGenerationTracfinCorrectionPromptPath,
 			Tier:       core.TierLight,
 			ToolNames:  append(slices.Clone(fillTools), toolReadDocument),
-			Payload:    map[string]any{"wave": wave, "issues": listed},
+			Payload:    sharedPayload(st, map[string]any{"wave": wave, "issues": listed}),
 		})
 	}
 	return out

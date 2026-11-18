@@ -205,6 +205,9 @@ type ToolContext struct {
 	// CaseContext is the compact JSON context of the case (client and third
 	// party data: never instructions), set when the task asks for it.
 	CaseContext string
+	// AnalystText is what the analyst wrote (analysis and additional
+	// information), given to the structured-output check.
+	AnalystText string
 }
 
 // QuestionView is an open question as the review task sees it.
