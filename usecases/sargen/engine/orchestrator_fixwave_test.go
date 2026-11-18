@@ -240,3 +240,35 @@ func TestWorker_ShutdownSnoozesAndGoneJobCancels(t *testing.T) {
 	var cancelErr *river.JobCancelError
 	require.True(t, errors.As(err, &cancelErr), "got %v", err)
 }
+
+// Round 1: finish() runs the inline compute under the declaration lock; a job
+// failed meanwhile (stale) gets no compute write and no version bump.
+func TestRunJob_FinishWritesNothingWhenJobNotRunning(t *testing.T) {
+	ctx := context.Background()
+	o, f := newTestOrchestrator(t)
+	seedDocument(t, f, withTwoPersons)
+	f.Format.ComputeFn = func(*core.Document) core.ComputeResult {
+		return core.ComputeResult{Fills: []core.Fill{{Path: pathMontantTotal, Value: "100"}}}
+	}
+	f.Format.Waves = [][]core.TaskSpec{{Spec("fill", tgtPP1)}}
+	f.Runner.On("fill", tgtPP1, Step{})
+	// The job is failed (stale) between the last task and the end of the job:
+	// at the second plan, when nothing is left to launch.
+	plans := 0
+	f.Format.OnPlan = func(core.PlanState) {
+		plans++
+		if plans == 2 {
+			ok, err := f.Repo.SetSarGenerationJobStatus(ctx, nil, f.JobId, models.SarJobStatusFailed, "stale")
+			require.NoError(t, err)
+			require.True(t, ok)
+		}
+	}
+	versionBefore := f.Repo.decl.Version
+
+	_ = o.RunJob(ctx, f.JobId)
+
+	_, ok := valueOf(t, f, pathMontantTotal)
+	require.False(t, ok, "no computed value written for a job that is not running")
+	require.Equal(t, versionBefore, f.Repo.decl.Version, "no version bump")
+	require.Equal(t, models.SarJobStatusFailed, jobOf(t, f).Status)
+}

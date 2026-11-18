@@ -875,6 +875,11 @@ func (r *jobRun) finish(ctx context.Context, computePlanned bool) error {
 				if err != nil {
 					return errors.Wrap(err, "cannot lock declaration")
 				}
+				if running, err := r.stillRunning(ctx, tx); err != nil {
+					return err
+				} else if !running {
+					return nil // job failed meanwhile: nothing written
+				}
 				doc, err := decodeDocument(decl.Document)
 				if err != nil {
 					return err

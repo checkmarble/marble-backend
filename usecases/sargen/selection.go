@@ -198,6 +198,14 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 		if generated {
 			return ErrSelectionFrozen
 		}
+		// A failed generation with no done task stays resumable: its unfinished
+		// tasks carry snapshots of the old selection, so they are dropped and
+		// the resume replans from the new selection.
+		if failed, ok := lastFailedGenerate(jobs); ok {
+			if err := uc.generation.DeleteUnfinishedSarGenerationTasks(ctx, tx, failed.Id); err != nil {
+				return err
+			}
+		}
 		if locked.Version != version {
 			return models.ErrSarVersionConflict
 		}

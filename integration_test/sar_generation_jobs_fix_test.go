@@ -134,3 +134,42 @@ func TestSarGenerationJobs_RateLimitedSinceColumn(t *testing.T) {
 	require.Equal(t, "timestamp with time zone", cols[0][0])
 	require.Equal(t, "YES", cols[0][1], "nullable")
 }
+
+// ---- Round 1: FailStaleSarGenerationJobs against the real database ----
+
+func TestSarGenerationJobs_FailStale(t *testing.T) {
+	h := newEngHarness(t, time.Hour)
+	repo, declId := h.repo, h.job.DeclarationId
+	ctx := t.Context()
+	age := func(id any, d string) {
+		_, err := pgPool.Exec(ctx, `UPDATE sar_generation_jobs SET updated_at = now() - $2::interval WHERE id = $1`, id, d)
+		require.NoError(t, err)
+	}
+	status := func() models.SarGenerationJob {
+		j, err := repo.GetSarGenerationJob(ctx, h.exec, h.job.Id)
+		require.NoError(t, err)
+		return j
+	}
+
+	// Fresh active job: untouched.
+	n, err := repo.FailStaleSarGenerationJobs(ctx, h.exec, declId, time.Hour, "arrêtée")
+	require.NoError(t, err)
+	require.Zero(t, n)
+	require.NotEqual(t, models.SarJobStatusFailed, status().Status)
+
+	// Old active job: failed with the message.
+	age(h.job.Id, "3 hours")
+	n, err = repo.FailStaleSarGenerationJobs(ctx, h.exec, declId, time.Hour, "arrêtée")
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
+	j := status()
+	require.Equal(t, models.SarJobStatusFailed, j.Status)
+	require.Equal(t, "arrêtée", j.Error)
+
+	// Already failed job: untouched (error kept).
+	age(h.job.Id, "5 hours")
+	n, err = repo.FailStaleSarGenerationJobs(ctx, h.exec, declId, time.Hour, "autre")
+	require.NoError(t, err)
+	require.Zero(t, n)
+	require.Equal(t, "arrêtée", status().Error)
+}
