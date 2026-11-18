@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"io"
 	"net/http"
 
@@ -338,7 +339,13 @@ func handleReviewContinuousScreeningMatches(uc usecases.Usecases) func(c *gin.Co
 				MatchId:    match.MatchId,
 				StatusCode: matchReviewStatusCode(err),
 			}
-			if err != nil {
+			switch {
+			case result.StatusCode == http.StatusInternalServerError:
+				reportUnexpectedError(ctx, c, err)
+				result.Message = unexpectedErrorMsg
+			case result.StatusCode == http.StatusRequestTimeout:
+				result.Message = timeoutMst
+			case err != nil:
 				result.Message = err.Error()
 			}
 			results = append(results, result)
@@ -361,6 +368,8 @@ func matchReviewStatusCode(err error) int {
 		return http.StatusForbidden
 	case errors.Is(err, models.NotFoundError):
 		return http.StatusNotFound
+	case errors.Is(err, context.DeadlineExceeded), errors.Is(err, context.Canceled):
+		return http.StatusRequestTimeout
 	default:
 		return http.StatusInternalServerError
 	}

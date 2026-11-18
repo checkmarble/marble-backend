@@ -92,17 +92,23 @@ func presentError(ctx context.Context, c *gin.Context, err error) bool {
 		c.JSON(http.StatusRequestTimeout, dto.APIErrorResponse{Message: timeoutMst})
 
 	default:
-		if !utils.MaybeSuppressTransient(ctx, err) {
-			logger.ErrorContext(ctx, fmt.Sprintf("Unexpected Error: %+v", err))
-			if hub := sentrygin.GetHubFromContext(c); hub != nil {
-				utils.CaptureSentryException(ctx, hub, err)
-			} else {
-				sentry.CaptureException(err)
-			}
-		}
-		c.JSON(http.StatusInternalServerError, dto.APIErrorResponse{
-			Message: "An unexpected error occurred. Please try again later, or contact support if the problem persists.",
-		})
+		reportUnexpectedError(ctx, c, err)
+		c.JSON(http.StatusInternalServerError, dto.APIErrorResponse{Message: unexpectedErrorMsg})
 	}
 	return true
+}
+
+const unexpectedErrorMsg = "An unexpected error occurred. Please try again later, or contact support if the problem persists."
+
+// reportUnexpectedError logs err and sends it to Sentry, unless it is a transient network error.
+func reportUnexpectedError(ctx context.Context, c *gin.Context, err error) {
+	if utils.MaybeSuppressTransient(ctx, err) {
+		return
+	}
+	utils.LoggerFromContext(ctx).ErrorContext(ctx, fmt.Sprintf("Unexpected Error: %+v", err))
+	if hub := sentrygin.GetHubFromContext(c); hub != nil {
+		utils.CaptureSentryException(ctx, hub, err)
+	} else {
+		sentry.CaptureException(err)
+	}
 }
