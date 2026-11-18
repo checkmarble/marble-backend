@@ -208,15 +208,30 @@ func TestSpec_UnknownCodes(t *testing.T) {
 			continue
 		}
 		declared[name] = true
-		assert.Equal(t, "Je ne sais pas", list.UnknownCode, name)
-		assert.Equal(t, []string{"Non"}, list.StrictCodes, name)
 		values := map[string]bool{}
 		for _, c := range list.Codes {
 			values[c.Value] = true
 		}
 		assert.True(t, values[list.UnknownCode], name)
-		assert.True(t, values["Non"], name)
+		for _, sc := range list.StrictCodes {
+			assert.True(t, values[sc], name)
+		}
+		if name == "liste_ref_sexe.csv" {
+			assert.Equal(t, "SEX3", list.UnknownCode)
+			assert.Equal(t, []string{"SEX1", "SEX2"}, list.StrictCodes)
+			for _, c := range list.Codes {
+				switch c.Value {
+				case "SEX1":
+					assert.Equal(t, []string{"M", "Homme", "Masculin", "Male"}, c.Aliases)
+				case "SEX2":
+					assert.Equal(t, []string{"Femme", "Féminin", "Female"}, c.Aliases)
+				}
+			}
+			continue
+		}
+		assert.Equal(t, "Je ne sais pas", list.UnknownCode, name)
+		assert.Equal(t, []string{"Non"}, list.StrictCodes, name)
 	}
-	assert.Equal(t, map[string]bool{"t_choix_oui_non_nesaispas": true, "t_registre": true}, declared)
+	assert.Equal(t, map[string]bool{"t_choix_oui_non_nesaispas": true, "t_registre": true, "liste_ref_sexe.csv": true}, declared)
 	assert.Empty(t, s.CodeLists["t_implication"].UnknownCode)
 }

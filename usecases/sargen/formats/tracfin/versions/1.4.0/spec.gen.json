@@ -3683,10 +3683,21 @@
   "liste_ref_sexe.csv": {
    "codes": [
     {
+     "aliases": [
+      "M",
+      "Homme",
+      "Masculin",
+      "Male"
+     ],
      "label": "H",
      "value": "SEX1"
     },
     {
+     "aliases": [
+      "Femme",
+      "Féminin",
+      "Female"
+     ],
      "label": "F",
      "value": "SEX2"
     },
@@ -3696,7 +3707,12 @@
     }
    ],
    "name": "liste_ref_sexe.csv",
-   "source": "inputs/referentiels/genres.csv ; financier-v1.4.0.xsd:516-527 (t_pp_sexe, SEX1-SEX3)"
+   "source": "inputs/referentiels/genres.csv ; financier-v1.4.0.xsd:516-527 (t_pp_sexe, SEX1-SEX3)",
+   "strict_codes": [
+    "SEX1",
+    "SEX2"
+   ],
+   "unknown_code": "SEX3"
   },
   "liste_ref_type_adresse.csv": {
    "codes": [

@@ -65,6 +65,9 @@ type Node struct {
 type Code struct {
 	Value string `json:"value"`
 	Label string `json:"label"`
+	// Aliases are other spellings a data model commonly uses for the code (e.g.
+	// "M" for a male code); a strict proof accepts them like the label.
+	Aliases []string `json:"aliases,omitempty"`
 }
 
 type CodeList struct {

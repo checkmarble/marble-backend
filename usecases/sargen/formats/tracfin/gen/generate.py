@@ -337,6 +337,11 @@ class Generator:
                     fail("unknown_codes: the unknown code of %s cannot be strict" % entry["list"])
             if strict:
                 lst["strict_codes"] = list(strict)
+            for code, aliases in entry.get("aliases", {}).items():
+                target = [c for c in lst["codes"] if c["value"] == code]
+                if not target:
+                    fail("unknown_codes: aliases of %r: code not in %s (stale entry)" % (code, entry["list"]))
+                target[0]["aliases"] = list(aliases)
 
     def merged_list(self, refs):
         """Code list key for a type bound to several references (union, first wins)."""

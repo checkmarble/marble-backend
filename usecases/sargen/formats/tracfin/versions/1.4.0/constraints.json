@@ -106,6 +106,16 @@
    "source": "financier-v1.4.0.xsd : énumération du type t_choix_oui_non_nesaispas ; décision de conception : « Je ne sais pas » est le code à prendre quand les données ne disent rien ; « Non » exige une source qui l'établit, il ne se déduit pas d'un silence"
   },
  {
+   "list": "liste_ref_sexe.csv",
+   "code": "SEX3",
+   "strict_codes": ["SEX1", "SEX2"],
+   "aliases": {
+    "SEX1": ["M", "Homme", "Masculin", "Male"],
+    "SEX2": ["Femme", "Féminin", "Female"]
+   },
+   "source": "financier-v1.4.0.xsd:516-527 (t_pp_sexe) : SEX3 (Inconnu) est le code à prendre quand les données ne disent rien ; H et F exigent une source qui les établit (un sexe déduit d'un prénom ne suffit pas) ; alias : valeurs courantes d'un modèle de données"
+  },
+ {
    "list": "t_registre",
    "code": "Je ne sais pas",
    "strict_codes": ["Non"],
