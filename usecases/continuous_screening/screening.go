@@ -429,7 +429,8 @@ func (uc *ContinuousScreeningUsecase) DismissContinuousScreening(ctx context.Con
 // 3. Fetches the screening configuration and data model mapping for the object type
 // 4. Retrieves the ingested data for the monitored object
 // 5. Re-runs the screening with MatchLimit set to MaxScreeningCandidates (500)
-// 6. Filters out matches that already exist in the screening to avoid duplicates
+// 6. Locks the screening, reads it again and checks it is still in review, then filters out matches
+// that already exist in the screening to avoid duplicates
 // 7. Inserts only the new matches into the database
 // 8. Updates the screening's IsPartial and NumberOfMatches fields:
 //   - IsPartial is set to false if the full result set is now loaded
@@ -505,6 +506,24 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 				models.UnprocessableEntityError,
 				"unsupported trigger type: %s",
 				continuousScreening.TriggerType.String(),
+			)
+		}
+
+		// Lock the screening only now, so the lock is not held during the screening search, then read
+		// it again: a review or dismiss that committed meanwhile may have taken it out of review, and
+		// pending matches must not be added to a finished screening. The fresh matches also include
+		// those a concurrent load more inserted, so they are not inserted twice.
+		if err := uc.repository.LockContinuousScreeningById(ctx, tx, continuousScreeningId); err != nil {
+			return err
+		}
+		continuousScreening, err = uc.repository.GetContinuousScreeningWithMatchesById(ctx, tx, continuousScreeningId)
+		if err != nil {
+			return err
+		}
+		if continuousScreening.Status != models.ScreeningStatusInReview {
+			return errors.Wrap(
+				models.UnprocessableEntityError,
+				"continuous screening is not in review, can't load more results",
 			)
 		}
 

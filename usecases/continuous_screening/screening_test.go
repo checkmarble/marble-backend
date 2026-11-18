@@ -1433,6 +1433,9 @@ func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches() {
 	suite.enforceSecurity.On("WriteContinuousScreeningHit", suite.orgId).
 		Return(nil)
 
+	suite.repository.On("LockContinuousScreeningById", mock.Anything, mock.Anything, suite.screeningId).
+		Return(nil)
+
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything, stableId).
 		Return(config, nil)
 
@@ -1627,6 +1630,9 @@ func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches_NoNewMat
 	suite.enforceSecurity.On("WriteContinuousScreeningHit", suite.orgId).
 		Return(nil)
 
+	suite.repository.On("LockContinuousScreeningById", mock.Anything, mock.Anything, suite.screeningId).
+		Return(nil)
+
 	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything, stableId).
 		Return(config, nil)
 
@@ -1668,6 +1674,91 @@ func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches_NoNewMat
 	suite.Equal(3, result.NumberOfMatches) // No new matches added
 	suite.False(result.IsPartial)
 	suite.Len(result.Matches, 3) // Still only existing matches
+	suite.AssertExpectations()
+}
+
+// A review or dismiss that finishes the screening while load more is searching must stop load more
+// from adding pending matches to it.
+func (suite *ScreeningTestSuite) TestLoadMoreContinuousScreeningMatches_FinishedDuringSearch() {
+	configId := pure_utils.NewId()
+	stableId := pure_utils.NewId()
+
+	ftmEntityValue := models.FollowTheMoneyEntityPerson
+	ftmPropertyValue := models.FollowTheMoneyPropertyName
+	table := models.Table{
+		Name:      "person",
+		FTMEntity: &ftmEntityValue,
+		Fields: map[string]models.Field{
+			"id":   {Name: "id"},
+			"name": {Name: "name", FTMProperty: &ftmPropertyValue},
+		},
+	}
+	dataModel := models.DataModel{Tables: map[string]models.Table{"person": table}}
+	ingestedObject := models.DataModelObject{
+		Data: map[string]any{"name": "test person"},
+		Metadata: map[string]any{
+			"id": [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
+		},
+	}
+
+	inReview := models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:                                suite.screeningId,
+			OrgId:                             suite.orgId,
+			ContinuousScreeningConfigId:       configId,
+			ContinuousScreeningConfigStableId: stableId,
+			Status:                            models.ScreeningStatusInReview,
+			IsPartial:                         true,
+			NumberOfMatches:                   1,
+			ObjectType:                        utils.Ptr("person"),
+			ObjectId:                          utils.Ptr("test-object-id"),
+			TriggerType:                       models.ContinuousScreeningTriggerTypeObjectAdded,
+		},
+		Matches: []models.ContinuousScreeningMatch{{OpenSanctionEntityId: "existing_1"}},
+	}
+	finished := inReview
+	finished.Status = models.ScreeningStatusNoHit
+
+	config := models.ContinuousScreeningConfig{
+		Id:       configId,
+		StableId: stableId,
+		OrgId:    suite.orgId,
+		Datasets: []string{"dataset1"},
+	}
+
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything, suite.screeningId).
+		Return(inReview, nil).Once()
+	suite.enforceSecurity.On("WriteContinuousScreeningHit", suite.orgId).Return(nil)
+	suite.repository.On("GetContinuousScreeningConfigByStableId", mock.Anything, mock.Anything, stableId).
+		Return(config, nil)
+	suite.repository.On("GetDataModel", mock.Anything, mock.Anything, suite.orgId, false, false).
+		Return(dataModel, nil)
+	suite.repository.On("SearchScreeningMatchWhitelist", mock.Anything, mock.Anything,
+		suite.orgId, mock.Anything, mock.Anything).
+		Return([]models.ScreeningWhitelist{}, nil)
+	suite.ingestedDataReader.On("QueryIngestedObject", mock.Anything, mock.Anything, table, "test-object-id", mock.Anything).
+		Return([]models.DataModelObject{ingestedObject}, nil)
+	suite.screeningProvider.On("Search", mock.Anything, mock.Anything, mock.Anything).
+		Return(models.ScreeningRawSearchResponseWithMatches{
+			Matches: []models.ScreeningMatch{{EntityId: "existing_1"}, {EntityId: "new_1"}},
+			Count:   2,
+		}, nil)
+
+	// The screening was finished while the search ran: the read after the lock sees it.
+	suite.repository.On("LockContinuousScreeningById", mock.Anything, mock.Anything, suite.screeningId).
+		Return(nil)
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything, suite.screeningId).
+		Return(finished, nil).Once()
+
+	uc := suite.makeUsecase()
+	_, err := uc.LoadMoreContinuousScreeningMatches(suite.ctx, suite.screeningId)
+
+	suite.ErrorIs(err, models.UnprocessableEntityError)
+	suite.Contains(err.Error(), "continuous screening is not in review, can't load more results")
+	suite.repository.AssertNotCalled(suite.T(), "InsertContinuousScreeningMatches",
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	suite.repository.AssertNotCalled(suite.T(), "UpdateContinuousScreening",
+		mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	suite.AssertExpectations()
 }
 
