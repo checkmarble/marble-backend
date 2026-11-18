@@ -331,13 +331,18 @@ func handleReviewContinuousScreeningMatches(uc usecases.Usecases) func(c *gin.Co
 		usecase := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
 		results := make([]dto.ContinuousScreeningMatchReviewResultDto, 0, len(payload.Matches))
 		for _, match := range payload.Matches {
+			// Past the route deadline or after the client left, nobody reads the results: stop
+			// instead of failing every remaining match. The client refreshes match states.
+			if ctx.Err() != nil {
+				presentError(ctx, c, ctx.Err())
+				return
+			}
 			update, err := dto.AdaptScreeningMatchUpdateInputDto(
 				match.MatchId, creds.ActorIdentity.UserId, match.ScreeningMatchUpdateDto)
 			if err == nil {
 				_, err = usecase.UpdateContinuousScreeningMatchStatus(ctx, update)
 			}
-			// Past the route deadline or after the client left, nobody reads the results: stop
-			// instead of failing every remaining match. The client refreshes match states.
+			// A deadline during the update would otherwise turn into a per-match 500 in a 200.
 			if ctx.Err() != nil {
 				presentError(ctx, c, ctx.Err())
 				return
@@ -348,8 +353,8 @@ func handleReviewContinuousScreeningMatches(uc usecases.Usecases) func(c *gin.Co
 			}
 			switch {
 			case result.StatusCode == http.StatusInternalServerError:
-				reportUnexpectedError(ctx, c, err)
-				result.Message = unexpectedErrorMsg
+				utils.LogAndReportSentryError(ctx, err)
+				result.Message = unexpectedMatchReviewErrorMsg
 			case err != nil:
 				result.Message = err.Error()
 			}
@@ -359,6 +364,10 @@ func handleReviewContinuousScreeningMatches(uc usecases.Usecases) func(c *gin.Co
 		c.JSON(http.StatusOK, gin.H{"results": results})
 	}
 }
+
+// unexpectedMatchReviewErrorMsg replaces the error text of a match review that failed unexpectedly,
+// as presentError does for a 500.
+const unexpectedMatchReviewErrorMsg = "An unexpected error occurred. Please try again later, or contact support if the problem persists."
 
 // matchReviewStatusCode is the status presentError answers for the errors a match review returns.
 func matchReviewStatusCode(err error) int {
