@@ -160,6 +160,7 @@ func (d *Document) Clone() *Document {
 // documents stored with missing or null maps can be written to safely.
 func (d *Document) UnmarshalJSON(data []byte) error {
 	if string(bytes.TrimSpace(data)) == "null" {
+		*d = *NewDocument()
 		return nil
 	}
 	type plain Document

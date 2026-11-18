@@ -130,3 +130,19 @@ func TestDocument_RemoveItemDropsNestedContainers(t *testing.T) {
 	assert.Equal(t, "keep", d.Values[p10.Child("x")].Value)
 	assert.Equal(t, "DE", d.Values[n10.Child("code")].Value)
 }
+
+// A JSON null document must come back with usable maps: AddItem writes to
+// NextKey and Items, so a nil map there panics.
+func TestDocument_UnmarshalNullInitialisesMaps(t *testing.T) {
+	var d core.Document
+	require.NoError(t, json.Unmarshal([]byte("null"), &d))
+	assert.NotNil(t, d.Values)
+	assert.NotNil(t, d.Items)
+	assert.NotNil(t, d.ItemSources)
+	assert.NotNil(t, d.NextKey)
+	assert.NotPanics(t, func() {
+		p := d.AddItem("personnes.pp", "pp")
+		d.Values[p.Child("x")] = core.Value{Value: "v"}
+		d.ItemSources[p] = nil
+	})
+}

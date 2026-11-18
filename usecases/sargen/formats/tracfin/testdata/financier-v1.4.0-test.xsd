@@ -9,6 +9,10 @@
   them as anchors. Second change, same type t_numCard: the non-capturing group
   marker "(?:" is replaced by "(" (XSD regular expressions have no such marker
   and libxml2 refuses to compile it; the language matched is identical).
+  Third change, t_mail: the first class "[\w-\._]" becomes "[\w\-\._]"
+  (libxml2 reads "\w-\." as an invalid range and drops the hyphen, rejecting
+  valid e-mails such as jean-pierre.dupont@ma-banque.fr; the language matched
+  by the intended class is identical). See gen/README.md.
   Everything else is identical to the official file.
 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
@@ -109,7 +113,7 @@
 		</xs:annotation>
 		<xs:restriction base="xs:string">
 			<xs:maxLength value="200" />
-			<xs:pattern value="[\w-\._]+@([\w-]+\.)+[\w-]{2,4}"/>
+			<xs:pattern value="[\w\-\._]+@([\w-]+\.)+[\w-]{2,4}"/>
 		</xs:restriction>
 	</xs:simpleType>
 	<xs:simpleType name="t_string_10">

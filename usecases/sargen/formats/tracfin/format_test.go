@@ -51,3 +51,28 @@ func TestFormat_StatusActive(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, core.VersionActive, f.Status())
 }
+
+// A hyphen in the local part of an e-mail address must pass both the Go
+// validator and the XSD test copy: the pattern of t_mail is
+// [\w-\._]+@([\w-]+\.)+[\w-]{2,4}, and libxml2 silently drops a hyphen placed
+// between \w and \. (the test copy must write it as [\w\-\._]).
+func TestCourrielWithHyphenIsAcceptedAndExported(t *testing.T) {
+	requireXmllint(t)
+	const mail = "jean-pierre.dupont@ma-banque.fr"
+
+	spec := currentSpec(t)
+	require.Nil(t, core.ValidateValue(spec, "declarant.coordonnees.courriel", mail),
+		"le validateur Go refuse une adresse valide au regard du XSD")
+
+	raw, err := os.ReadFile("testdata/minimal.json")
+	require.NoError(t, err)
+	var doc core.Document
+	require.NoError(t, json.Unmarshal(raw, &doc))
+	setTracfinValue(&doc, "declarant.coordonnees.courriel", mail)
+
+	f, ok := tracfin.New(tracfin.CurrentVersion)
+	require.True(t, ok)
+	var buf bytes.Buffer
+	require.NoError(t, f.WriteXML(&doc, &buf))
+	xmllintOK(t, buf.Bytes())
+}
