@@ -205,6 +205,27 @@ func (repo *MarbleDbRepository) DeleteSarGenerationTasks(
 	return ExecBuilder(ctx, exec, query)
 }
 
+// DeleteSarGenerationUnfinishedTasks deletes, among the given tasks of the job,
+// those that are not done: a task is only deleted when it belongs to the job and
+// has not completed, so a done task (whose output may already be applied) is
+// never touched. A worker still running a deleted task has its result refused
+// by the attempt guard.
+func (repo *MarbleDbRepository) DeleteSarGenerationUnfinishedTasks(
+	ctx context.Context, exec Executor, jobId uuid.UUID, taskIds []uuid.UUID,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+	if len(taskIds) == 0 {
+		return nil
+	}
+	query := NewQueryBuilder().
+		Delete(dbmodels.TABLE_SAR_GENERATION_TASKS).
+		Where(squirrel.Eq{"job_id": jobId, "id": taskIds}).
+		Where(squirrel.NotEq{"status": string(models.SarJobStatusDone)})
+	return ExecBuilder(ctx, exec, query)
+}
+
 // SarGenerationJobWroteToDocument tells whether a done task of the job changed
 // the declaration document. Tasks record it in their output ("wrote"); an
 // output without the key (older rows) counts as a write, the safe side for the

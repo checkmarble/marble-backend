@@ -100,6 +100,9 @@ type GenerationRepository interface {
 	TouchSarGenerationJob(ctx context.Context, exec repositories.Executor, id uuid.UUID) error
 	CreateSarGenerationTasks(ctx context.Context, exec repositories.Executor, tasks []models.SarGenerationTask) error
 	ListSarGenerationTasks(ctx context.Context, exec repositories.Executor, jobId uuid.UUID) ([]models.SarGenerationTask, error)
+	// DeleteSarGenerationUnfinishedTasks deletes the given not-done tasks of the job
+	// (one atomic statement, scoped to the job; done tasks are never deleted).
+	DeleteSarGenerationUnfinishedTasks(ctx context.Context, exec repositories.Executor, jobId uuid.UUID, taskIds []uuid.UUID) error
 	ClaimSarGenerationTask(ctx context.Context, exec repositories.Executor, id uuid.UUID,
 		staleAfter time.Duration) (attempt int, ok bool, err error)
 	CompleteSarGenerationTask(ctx context.Context, exec repositories.Executor, id uuid.UUID,
@@ -307,6 +310,31 @@ func (r *jobRun) loop(ctx context.Context) error {
 
 		if r.job.Kind == models.SarJobKindReview {
 			specs = r.reviewSpecsOnly(ctx, specs)
+		}
+
+		// A not-done task whose spec is no longer planned (its input changed since,
+		// e.g. the analysis was edited between a failure and the resume) must never
+		// run: it would apply a stale output next to the current one.
+		planned := make(map[string]bool, len(specs))
+		for _, s := range specs {
+			planned[taskFromSpec(r.job.Id, s, r.selection).InputHash] = true
+		}
+		var stale []uuid.UUID
+		kept := tasks[:0:0]
+		for _, t := range tasks {
+			if t.Status != models.SarJobStatusDone && !planned[t.InputHash] {
+				stale = append(stale, t.Id)
+				continue
+			}
+			kept = append(kept, t)
+		}
+		if len(stale) > 0 {
+			if err := o.generation.DeleteSarGenerationUnfinishedTasks(ctx, exec, r.job.Id, stale); err != nil {
+				return errors.Wrap(err, "cannot delete stale tasks")
+			}
+			utils.LoggerFromContext(ctx).InfoContext(ctx, "sar generation: stale tasks deleted",
+				"job_id", r.job.Id, "count", len(stale))
+			tasks = kept
 		}
 
 		// Create the planned tasks that do not exist yet (by input_hash).

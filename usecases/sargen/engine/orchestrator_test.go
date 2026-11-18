@@ -543,3 +543,34 @@ func TestRunJob_TaskOutputRecordsWhetherTheDocumentChanged(t *testing.T) {
 	require.True(t, wrote(f.Repo.Task(t, "a", tgtPP1)))
 	require.False(t, wrote(f.Repo.Task(t, "b", tgtPP2)))
 }
+
+// A failed task whose spec is no longer planned when the job resumes (the
+// analysis changed in between) is deleted and never runs: only the task of the
+// current plan runs, so its output is applied once.
+func TestResume_StaleNotDoneTaskIsDeletedNotRun(t *testing.T) {
+	ctx := context.Background()
+	o, f := newTestOrchestrator(t)
+	seedDocument(t, f, withTwoPersons)
+
+	old := Spec("a", tgtPP1)
+	old.Payload = map[string]any{"analysis": "first text"}
+	f.Format.Waves = [][]core.TaskSpec{{old}}
+	f.Runner.On("a", tgtPP1, Step{Err: errProvider})
+	require.Error(t, o.RunJob(ctx, f.JobId))
+	require.Equal(t, 1, f.Runner.Count("a", tgtPP1))
+
+	// The analyst edits the analysis: the plan now carries another payload.
+	cur := Spec("a", tgtPP1)
+	cur.Payload = map[string]any{"analysis": "edited text"}
+	f.Format.Waves = [][]core.TaskSpec{{cur}}
+	f.Runner.On("a", tgtPP1, Step{Out: outputWith(Fill(pathNomPP1, "DUPONT"))})
+
+	require.NoError(t, o.RunJob(ctx, f.JobId))
+
+	require.Equal(t, 2, f.Runner.Count("a", tgtPP1), "one run for the failed task, one for the current plan, none for the stale task")
+	tasks, err := f.Repo.ListSarGenerationTasks(ctx, nil, f.JobId)
+	require.NoError(t, err)
+	require.Len(t, tasks, 1, "the stale task is deleted")
+	require.Equal(t, models.SarJobStatusDone, tasks[0].Status)
+	require.Contains(t, string(tasks[0].Input), "edited text")
+}
