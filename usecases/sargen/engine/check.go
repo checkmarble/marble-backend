@@ -260,6 +260,9 @@ func (c *checker) checkQuestions(res *checkResult, qs []wireQuestion, afterFills
 				res.Notes = append(res.Notes, fmt.Sprintf("questions[%d] : path outside the assigned part ignored: %s", qi, p))
 			}
 		}
+		createsItem := false
+		var declines []int // indexes (in the wire options) of the options with no fill at all
+		kept := map[int]core.QuestionOption{}
 		for oi, wo := range wq.Options {
 			opt := core.QuestionOption{Label: string(wo.Label)}
 			fills, note := c.optionFills(wo.Fills, q.Paths, afterFills)
@@ -267,13 +270,32 @@ func (c *checker) checkQuestions(res *checkResult, qs []wireQuestion, afterFills
 				res.Notes = append(res.Notes, fmt.Sprintf("questions[%d].options[%d] : %s", qi, oi, note))
 			}
 			if len(fills) == 0 {
-				// An option that writes nothing cannot be chosen: dropped, and a
-				// question left with no option is a free question.
-				res.Notes = append(res.Notes, fmt.Sprintf("questions[%d].options[%d] : no value to write, option dropped", qi, oi))
+				if len(wo.Fills) == 0 {
+					declines = append(declines, oi)
+				} else {
+					res.Notes = append(res.Notes, fmt.Sprintf("questions[%d].options[%d] : no value to write, option dropped", qi, oi))
+				}
 				continue
 			}
+			for _, f := range fills {
+				createsItem = createsItem || f.Path.HasProvisionalKey()
+			}
 			opt.Fills = fills
-			q.Options = append(q.Options, opt)
+			kept[oi] = opt
+		}
+		for _, oi := range declines {
+			// An option that writes nothing cannot be chosen, unless it declines
+			// the addition of a list item proposed by a sibling option.
+			if createsItem {
+				kept[oi] = core.QuestionOption{Label: string(wq.Options[oi].Label)}
+			} else {
+				res.Notes = append(res.Notes, fmt.Sprintf("questions[%d].options[%d] : no value to write, option dropped", qi, oi))
+			}
+		}
+		for oi := range wq.Options {
+			if opt, ok := kept[oi]; ok {
+				q.Options = append(q.Options, opt)
+			}
 		}
 		if len(wq.Paths) > 0 && len(q.Paths) == 0 {
 			res.Notes = append(res.Notes, fmt.Sprintf("questions[%d] : no path left in the assigned part, question ignored", qi))
