@@ -279,6 +279,13 @@ func withConventions(conventions, step string) string {
 	return formatConventionsHeader + strings.TrimSpace(conventions) + "\n\n" + step
 }
 
+// contextOnlyMarker is the only text about context-only objects inside the
+// untrusted data block; its meaning is given by contextOnlyLegend, outside it.
+const contextOnlyMarker = "context-only"
+
+const contextOnlyLegend = "Objects marked \"" + contextOnlyMarker + "\" below were added by the system as parents of the analyst's choices: " +
+	"they may be cited and attached to a declared entity, but are not declared on their own."
+
 func (r *agentRunner) prompt(text string, tc core.ToolContext, spec core.TaskSpec, allowed []core.Path, mode outputMode) string {
 	var b strings.Builder
 	b.WriteString(text)
@@ -294,7 +301,11 @@ func (r *agentRunner) prompt(text string, tc core.ToolContext, spec core.TaskSpe
 			lines[i] = in.Table + "/" + in.ObjectID
 		}
 		b.WriteString("\n\n## Selected objects for this task\n")
-		b.WriteString(UntrustedBlock("selected_objects", strings.Join(lines, "\n")+inlineObjects(tc, spec, allowed, mode)))
+		inline := inlineObjects(tc, spec, allowed, mode)
+		if strings.Contains(inline, contextOnlyMarker) {
+			b.WriteString(contextOnlyLegend + "\n")
+		}
+		b.WriteString(UntrustedBlock("selected_objects", strings.Join(lines, "\n")+inline))
 	}
 	if len(spec.Payload) > 0 {
 		if raw, err := json.Marshal(spec.Payload); err == nil {
@@ -402,7 +413,7 @@ func inlineObjects(tc core.ToolContext, spec core.TaskSpec, allowed []core.Path,
 		switch {
 		case e.obj.ContextOnly:
 			// Added by the system as a parent of the analyst's choices.
-			kind += ", auto-added: may be cited and attached to a declared entity, not declared on its own"
+			kind += ", " + contextOnlyMarker
 		case e.obj.AutoAdded:
 			kind += ", auto-added"
 		}

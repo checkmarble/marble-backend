@@ -314,7 +314,12 @@ func TestPrompt_AutoAddedObjectsAreMarkedAsContext(t *testing.T) {
 		}
 	}
 	prompt := promptOf(t, tc, spec)
-	assert.Contains(t, prompt, "accounts/acc-1 (linked, auto-added: may be cited and attached to a declared entity, not declared on its own)")
+	assert.Contains(t, prompt, "accounts/acc-1 (linked, context-only)")
+	legend := strings.Index(prompt, contextOnlyLegend)
+	block := strings.Index(prompt, "selected_objects")
+	require.GreaterOrEqual(t, legend, 0, "the legend is written")
+	assert.Less(t, legend, block, "the legend sits outside the untrusted block")
+	assert.NotContains(t, prompt[block:], "may be cited", "no guidance inside the untrusted block")
 	assert.Contains(t, prompt, "transactions/txn-1 (input) ")
 }
 
