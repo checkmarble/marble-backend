@@ -40,6 +40,9 @@ type TraceEntry struct {
 	Text               string `json:"text,omitempty"` // instruction, prompt, result, output, error
 	InputTokens        int64  `json:"input_tokens,omitempty"`
 	OutputTokens       int64  `json:"output_tokens,omitempty"`
+	// CachedInputTokens is the part of InputTokens read from the provider's
+	// prompt cache.
+	CachedInputTokens int64 `json:"cached_input_tokens,omitempty"`
 	// DurationMs is the duration of the LLM step (on the first entry the step
 	// produced) or of the tool call (tool_result).
 	DurationMs int64 `json:"duration_ms,omitempty"`
@@ -123,12 +126,13 @@ func (t *trace) add(e TraceEntry) {
 // run.
 func (t *trace) render() []byte {
 	entries := slices.Clone(t.entries)
-	var in, out int64
+	var in, out, cached int64
 	for _, e := range entries[1:] {
 		in += e.InputTokens
 		out += e.OutputTokens
+		cached += e.CachedInputTokens
 	}
-	entries[0].InputTokens, entries[0].OutputTokens = in, out
+	entries[0].InputTokens, entries[0].OutputTokens, entries[0].CachedInputTokens = in, out, cached
 	b, err := json.Marshal(entries)
 	if err != nil {
 		return []byte("[]")

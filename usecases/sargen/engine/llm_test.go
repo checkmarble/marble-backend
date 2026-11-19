@@ -156,3 +156,8 @@ func TestIsNoContent(t *testing.T) {
 	assert.True(t, isNoContent(errors.Wrap(errors.New("LLM provider generated no content"), "x")))
 	assert.False(t, isNoContent(errors.New("Error 429")))
 }
+
+func TestUsageFromResponse_CarriesCacheReads(t *testing.T) {
+	u := usageFromResponse(llmberjack.ResponseUsage{InputTokens: 100, OutputTokens: 7, CacheReadTokens: 60})
+	assert.Equal(t, AgentUsage{InputTokens: 100, OutputTokens: 7, CachedInputTokens: 60}, u)
+}

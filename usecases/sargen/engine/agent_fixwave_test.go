@@ -330,3 +330,31 @@ func TestTools_NumericObjectIDAndOptionalParams(t *testing.T) {
 	res = tools["validate"].Call(context.Background(), []byte(`{"fills":[{"path":"personnes.pp[pp-1].etatCivil.nomNaissance","value":12}]}`))
 	assert.Contains(t, res, "issues")
 }
+
+func TestAgent_CacheReadsReachTheTraceAndTheHeaderTotal(t *testing.T) {
+	steps := []ScriptedStep{
+		{Step: AgentStep{ToolCalls: []ToolCall{{Name: "read_object", Args: []byte(`{"table":"persons","object_id":"x"}`)}},
+			Usage: AgentUsage{InputTokens: 10, OutputTokens: 1, CachedInputTokens: 4}}},
+		{Step: AgentStep{Final: []byte(agFinal(agNomFillValid)), Usage: AgentUsage{InputTokens: 20, OutputTokens: 2, CachedInputTokens: 15}}},
+	}
+	out, err := agRun(t, newScriptedLLM(steps...), fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t), agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+	entries := agTraceOf(t, out)
+	assert.EqualValues(t, 19, entries[0].CachedInputTokens, "the header sums the cache reads")
+	var perStep []int64
+	for _, e := range entries[1:] {
+		if e.CachedInputTokens != 0 {
+			perStep = append(perStep, e.CachedInputTokens)
+		}
+	}
+	assert.Equal(t, []int64{4, 15}, perStep, "each step's cache reads reach its entry")
+}
+
+func TestTraceEntry_NoCacheReadsOmitsTheKey(t *testing.T) {
+	b, err := json.Marshal(TraceEntry{Type: TraceOutput, InputTokens: 5})
+	require.NoError(t, err)
+	assert.NotContains(t, string(b), "cached_input_tokens")
+	b, err = json.Marshal(TraceEntry{Type: TraceOutput, InputTokens: 5, CachedInputTokens: 3})
+	require.NoError(t, err)
+	assert.Contains(t, string(b), `"cached_input_tokens":3`)
+}

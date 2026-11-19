@@ -509,7 +509,8 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 			}
 			return core.TaskOutput{Trace: a.tr.render()}, errors.Wrap(err, "model call")
 		}
-		usage := TraceEntry{InputTokens: step.Usage.InputTokens, OutputTokens: step.Usage.OutputTokens, DurationMs: stepMs}
+		usage := TraceEntry{InputTokens: step.Usage.InputTokens, OutputTokens: step.Usage.OutputTokens,
+			CachedInputTokens: step.Usage.CachedInputTokens, DurationMs: stepMs}
 
 		switch {
 		case len(step.ToolCalls) > 0:
@@ -523,7 +524,8 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 					a.tr.add(TraceEntry{Type: TraceCheckError,
 						Text: "candidate fills of a validate call after the budget, taken as the final answer"})
 					a.tr.add(TraceEntry{Type: TraceOutput, Text: string(final),
-						InputTokens: usage.InputTokens, OutputTokens: usage.OutputTokens, DurationMs: usage.DurationMs})
+						InputTokens: usage.InputTokens, OutputTokens: usage.OutputTokens,
+						CachedInputTokens: usage.CachedInputTokens, DurationMs: usage.DurationMs})
 					out, corr := a.control(final)
 					for _, m := range corr {
 						a.tr.add(TraceEntry{Type: TraceCheckError, Text: m})
@@ -536,7 +538,8 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 			for i, call := range step.ToolCalls {
 				e := TraceEntry{Type: TraceToolCall, Name: call.Name, Args: truncateResult(string(call.Args))}
 				if i == 0 {
-					e.InputTokens, e.OutputTokens, e.DurationMs = usage.InputTokens, usage.OutputTokens, usage.DurationMs
+					e.InputTokens, e.OutputTokens, e.CachedInputTokens, e.DurationMs =
+						usage.InputTokens, usage.OutputTokens, usage.CachedInputTokens, usage.DurationMs
 				}
 				a.tr.add(e)
 				var result string
@@ -557,7 +560,8 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 		case len(step.Final) > 0:
 			final := cleanJSON(step.Final)
 			a.tr.add(TraceEntry{Type: TraceOutput, Text: string(final),
-				InputTokens: usage.InputTokens, OutputTokens: usage.OutputTokens, DurationMs: usage.DurationMs})
+				InputTokens: usage.InputTokens, OutputTokens: usage.OutputTokens,
+				CachedInputTokens: usage.CachedInputTokens, DurationMs: usage.DurationMs})
 			out, corr := a.control(final)
 			if len(corr) > 0 && a.mode == modeFills && (len(out.Fills) > 0 || len(out.Questions) > 0) {
 				a.kept = out
@@ -581,7 +585,8 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 			// a quality limit (never a technical error).
 			msg := "empty answer: call a tool or give the final answer in the requested format"
 			a.tr.add(TraceEntry{Type: TraceCheckError, Text: msg,
-				InputTokens: usage.InputTokens, OutputTokens: usage.OutputTokens, DurationMs: usage.DurationMs})
+				InputTokens: usage.InputTokens, OutputTokens: usage.OutputTokens,
+				CachedInputTokens: usage.CachedInputTokens, DurationMs: usage.DurationMs})
 			empties++
 			if empties >= maxEmptyAnswers {
 				return a.limitOutput("réponse vide du modèle"), nil

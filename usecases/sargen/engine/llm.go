@@ -88,8 +88,17 @@ type AgentStep struct {
 	Usage     AgentUsage
 }
 
+// AgentUsage is the token usage of one model call. InputTokens is the total
+// input, prompt-cache reads included; CachedInputTokens is the part of it the
+// provider served from its prompt cache.
 type AgentUsage struct {
-	InputTokens, OutputTokens int64
+	InputTokens, OutputTokens, CachedInputTokens int64
+}
+
+// usageFromResponse maps the provider-normalized usage of a llmberjack
+// response.
+func usageFromResponse(u llmberjack.ResponseUsage) AgentUsage {
+	return AgentUsage{InputTokens: u.InputTokens, OutputTokens: u.OutputTokens, CachedInputTokens: u.CacheReadTokens}
 }
 
 // llmberjackLLM is the production LLM. It gets its client from
@@ -210,7 +219,7 @@ func (l *llmberjackLLM) Step(ctx context.Context, req AgentRequest) (step AgentS
 	st.consumed = len(req.History)
 	st.prev = resp
 
-	step.Usage = AgentUsage{InputTokens: resp.Usage.InputTokens, OutputTokens: resp.Usage.OutputTokens}
+	step.Usage = usageFromResponse(resp.Usage)
 	if len(resp.Candidates) == 0 {
 		return step, nil
 	}
