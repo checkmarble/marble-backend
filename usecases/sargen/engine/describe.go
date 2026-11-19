@@ -16,7 +16,7 @@ const (
 	// sections together. They depend on the number of field templates of the
 	// part, not on the number of items, so the bound holds for any part. A
 	// template that does not fit loses its description, then is left out.
-	describeMaxBytes = 24 * 1024
+	describeMaxBytes = 48 * 1024
 	// describeInlineCodesMax is the largest code list written in the « Code
 	// lists » section; a longer list is named with its size and searched with
 	// search_code.
@@ -68,7 +68,8 @@ func describeSubtree(spec *core.Spec, doc *core.Document, allowed []core.Path, l
 	}
 	var out []string
 	if len(d.fields) > 0 || d.omitted > 0 {
-		out = append(out, "### Fields (replace `[]` with the item key, or with a provisional key `[+x]` to create an element)")
+		out = append(out, "### Fields (replace `[]` with the item key, or with a provisional key `[+x]` to create an element)",
+			"Every field of this part is fully described below, with the same content field_spec returns: call field_spec only for a field outside this list.")
 		out = append(out, d.fields...)
 		if d.omitted > 0 {
 			out = append(out, fmt.Sprintf("- (%d more fields not described here: use field_spec)", d.omitted))
@@ -149,9 +150,24 @@ func (d *describer) repeatable(n *core.Node, base core.Path) {
 	if n.ExportID {
 		return
 	}
-	d.template(n)
+	d.templates(n)
 	for _, k := range d.doc.Items[base] {
 		d.inner(n, core.Path(string(base)+"["+k+"]"))
+	}
+}
+
+// templates registers the template of n and of everything below it, whether or
+// not an item exists yet: the model must see how to write a new item, including
+// nested lists (`a[+a].b[+b].c`).
+func (d *describer) templates(n *core.Node) {
+	if n.ExportID {
+		return
+	}
+	if n.Kind == core.NodeField || n.IsRepeatable() {
+		d.template(n)
+	}
+	for _, c := range n.Children {
+		d.templates(c)
 	}
 }
 
@@ -235,7 +251,7 @@ func (d *describer) template(n *core.Node) {
 // find the codes.
 func (d *describer) line(n *core.Node, full, inSection bool) string {
 	if n.Kind != core.NodeField {
-		return fmt.Sprintf("- %s — block %s, %s ; new element: key [+x]", n.Template, label(n), bounds(n))
+		return fmt.Sprintf("- %s — block %s, %s ; new item: %s", n.Template, label(n), bounds(n), newItemForm(n.Template))
 	}
 	parts := []string{fmt.Sprintf("- %s — %s", n.Template, label(n))}
 	if n.Type != "" {
@@ -247,7 +263,7 @@ func (d *describer) line(n *core.Node, full, inSection bool) string {
 		parts = append(parts, "optional")
 	}
 	if n.IsRepeatable() {
-		parts = append(parts, "repeatable, "+bounds(n)+", new element: key [+x]")
+		parts = append(parts, "repeatable, "+bounds(n)+", new item: "+newItemForm(n.Template))
 	}
 	if full {
 		switch {
@@ -283,6 +299,25 @@ func (d *describer) line(n *core.Node, full, inSection bool) string {
 		parts = append(parts, trimRunes(oneLine(n.Description), describeDescriptionRunes))
 	}
 	return strings.Join(parts, " ; ")
+}
+
+// newItemForm shows how to write a new item of the template: each `[]` becomes
+// a provisional key `[+a]`, `[+b]`, ... (an existing ancestor keeps its real key).
+func newItemForm(template string) string {
+	var b strings.Builder
+	i := 0
+	for {
+		j := strings.Index(template, "[]")
+		if j < 0 {
+			b.WriteString(template)
+			break
+		}
+		b.WriteString(template[:j])
+		fmt.Fprintf(&b, "[+%c]", 'a'+rune(i%26))
+		template = template[j+2:]
+		i++
+	}
+	return b.String()
 }
 
 func trimRunes(s string, n int) string {
