@@ -160,18 +160,20 @@ func TestAgent_ProviderCallPastItsTimeoutIsTechnicalError(t *testing.T) {
 	assert.Empty(t, out.Questions, "no limit output: the task is not done")
 }
 
-// The task time budget is checked before each turn: once it is exhausted, no
-// further LLM call is made and the run ends on the limit path.
+// The task time budget is checked before each turn: once the time left is under
+// one call, the run gets the grace turn (an answer, no tool run) and then ends
+// on the limit path.
 func TestAgent_BudgetCheckedBeforeEachTurn(t *testing.T) {
 	scripted := newScriptedLLM(
 		ToolCallStep("read_object", agReadP1Args),
-		FinalStep(agFinal(agNomFillValid)),
+		ToolCallStep("read_object", agReadP1Args),
+		ToolCallStep("read_object", agReadP1Args),
 	)
 	// The first call takes longer than the whole task budget.
 	llm := slowLLM{inner: scripted, delay: 100 * time.Millisecond}
 	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{Timeout: 30 * time.Millisecond}, agentToolContext(t), agentSpec("fill", agentPersonPath))
 	require.NoError(t, err, "a budget exhausted before a turn is a quality limit")
-	assert.Equal(t, 1, scripted.Calls(), "no LLM call once the budget is exhausted")
+	assert.Equal(t, 2, scripted.Calls(), "one grace turn, then no LLM call once the budget is exhausted")
 	assert.Empty(t, out.Fills)
 	assert.NotEmpty(t, out.Questions, "the unfilled required paths become questions")
 }

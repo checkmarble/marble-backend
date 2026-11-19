@@ -74,8 +74,8 @@ func CommonTools(tc core.ToolContext) map[string]core.Tool {
 		},
 		{
 			Name:        "validate",
-			Description: "Validates candidate values (path and value) without writing anything: returns the problems detected, by path.",
-			Params:      paramsOf(&validateArgs{}),
+			Description: "Checks candidate fills without writing anything, exactly as the final answer will be checked (value format, source and proof, allowed paths): returns the problems found, by path. Give the same fields as in the final answer (path, value, source, justification, confidence).",
+			Params:      ValidateParams(),
 			Call: func(_ context.Context, args json.RawMessage) string {
 				return validateFills(tc.Format, args)
 			},
@@ -129,15 +129,10 @@ type dataModelArgs struct {
 	Table string `json:"table" jsonschema:"required,description=Name of the table"`
 }
 
-// Value is a flexString: typed string in the schema, a number or a boolean sent
-// by the model is read as its text.
-type validateFill struct {
-	Path  string     `json:"path" jsonschema:"required,description=Path of the field"`
-	Value flexString `json:"value,omitempty" jsonschema:"description=Candidate value (text)"`
-}
-
+// validateArgs are the fills of a validate call, in the shape of the fills of a
+// final answer.
 type validateArgs struct {
-	Fills []validateFill `json:"fills" jsonschema:"required,description=Values to validate"`
+	Fills []wireFill `json:"fills"`
 }
 
 func paramsOf(v any) jsonschema.Schema {
