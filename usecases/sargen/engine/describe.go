@@ -57,7 +57,9 @@ func describeSubtree(spec *core.Spec, doc *core.Document, allowed []core.Path, l
 	if spec == nil || doc == nil {
 		return ""
 	}
-	d := &describer{spec: spec, doc: doc, limit: limit, tmplSeen: map[string]bool{}, listSeen: map[string]bool{}, nonce: newNonce()}
+	d := &describer{spec: spec, doc: doc, limit: limit, tmplSeen: map[string]bool{}, listSeen: map[string]bool{}, nonce: newNonce(),
+		allowed: allowed, headers: map[string]bool{}}
+	d.prefix = commonItemPrefix(allowed)
 	seen := map[core.Path]bool{}
 	for _, p := range allowed {
 		if p == "" || seen[p] {
@@ -69,7 +71,7 @@ func describeSubtree(spec *core.Spec, doc *core.Document, allowed []core.Path, l
 	var out []string
 	if len(d.fields) > 0 || d.omitted > 0 {
 		out = append(out, "### Fields (replace `[]` with the item key, or with a provisional key `[+x]` to create an element)",
-			"Every field of this part is fully described below, with the same content field_spec returns: call field_spec only for a field outside this list.")
+			"Every field of this part is described below with the same content field_spec returns, except the lines marked (detail: field_spec): call field_spec only for those or for a field outside this list.")
 		out = append(out, d.fields...)
 		if d.omitted > 0 {
 			out = append(out, fmt.Sprintf("- (%d more fields not described here: use field_spec)", d.omitted))
@@ -108,6 +110,11 @@ type describer struct {
 	listSeen map[string]bool
 	items    []string
 	itemsCut int
+	// allowed are the paths of the part; prefix is the item prefix they all
+	// share (`personnes.pp[pp-2]`), empty when they do not share one.
+	allowed []core.Path
+	prefix  core.Path
+	headers map[string]bool
 }
 
 func (d *describer) addItem(line string) {
@@ -121,6 +128,7 @@ func (d *describer) addItem(line string) {
 // entry describes one allowed path: a concrete item or field, or a repeatable
 // container without key (its existing items).
 func (d *describer) entry(p core.Path) {
+	d.itemHeader(itemPrefix(p))
 	tmpl := p.Template()
 	if n := d.spec.NodeAt(tmpl); n != nil && n.Template != "" {
 		d.inner(n, p)
@@ -182,11 +190,118 @@ func (d *describer) inner(n *core.Node, concrete core.Path) {
 	}
 	if n.IsRepeatable() {
 		d.template(n)
-		d.addItem(fmt.Sprintf("- %s — block %s (fields: %s.*)", concrete, label(n), n.Template))
+		d.itemHeader(concrete)
 	}
 	for _, c := range n.Children {
 		d.child(c, concrete)
 	}
+}
+
+// itemHeader writes the « Items » header of an item of the part, once, even
+// when none of its fields holds a value yet.
+func (d *describer) itemHeader(item core.Path) {
+	if item == "" || d.headers[string(item)] {
+		return
+	}
+	n := d.spec.NodeAt(item.Template())
+	if n == nil || n.Template == "" {
+		return
+	}
+	d.headers[string(item)] = true
+	d.addItem(fmt.Sprintf("- %s — %s %s (fields: %s.*)", item, kindWord(n), label(n), item))
+}
+
+func kindWord(n *core.Node) string {
+	if n.Kind == core.NodeField {
+		return "item"
+	}
+	return "block"
+}
+
+// itemPrefix is the path up to and including its last real item key
+// (`personnes.pp[pp-2].etatCivil` -> `personnes.pp[pp-2]`), empty when it has none.
+func itemPrefix(p core.Path) core.Path {
+	segs := strings.Split(string(p), ".")
+	last := -1
+	for i, seg := range segs {
+		if j := strings.Index(seg, "["); j >= 0 && !strings.HasPrefix(seg[j+1:], "+") {
+			last = i
+		}
+	}
+	if last < 0 {
+		return ""
+	}
+	return core.Path(strings.Join(segs[:last+1], "."))
+}
+
+// commonItemPrefix is the item prefix shared by every allowed path, empty when
+// there is none or when the paths do not share it (a lot of transactions).
+func commonItemPrefix(allowed []core.Path) core.Path {
+	var common core.Path
+	for _, p := range allowed {
+		if p == "" {
+			continue
+		}
+		ip := itemPrefix(p)
+		if ip == "" || (common != "" && ip != common) {
+			return ""
+		}
+		common = ip
+	}
+	return common
+}
+
+// display is the template as written to the model: under the part's own item
+// prefix when there is one (`personnes.pp[pp-2].etatCivil.prenom[]`).
+func (d *describer) display(template string) string {
+	if d.prefix == "" {
+		return template
+	}
+	pt := d.prefix.Template()
+	if template == pt || strings.HasPrefix(template, pt+".") {
+		return string(d.prefix) + template[len(pt):]
+	}
+	return template
+}
+
+// newItemForm returns the path to write a new item of the container template,
+// built on an allowed path so that it is within the part (existing ancestors keep
+// their real key, the other `[]` become `[+a]`, `[+b]`, ...), or "" when the part
+// may not create an item of this container.
+func (d *describer) newItemForm(template string) string {
+	segs := strings.Split(template, ".")
+	nth := strings.Count(template, "[]")
+	for _, a := range d.allowed {
+		asegs := strings.Split(string(a), ".")
+		out := make([]string, len(segs))
+		same, slot, letter := true, 0, 0
+		for i, seg := range segs {
+			if !strings.HasSuffix(seg, "[]") {
+				out[i] = seg
+				same = same && i < len(asegs) && strings.SplitN(asegs[i], "[", 2)[0] == seg
+				continue
+			}
+			name := strings.TrimSuffix(seg, "[]")
+			slot++
+			key := ""
+			if same && slot < nth && i < len(asegs) && strings.SplitN(asegs[i], "[", 2)[0] == name {
+				if j := strings.Index(asegs[i], "["); j >= 0 && !strings.HasPrefix(asegs[i][j+1:], "+") {
+					key = asegs[i][j+1 : len(asegs[i])-1]
+				}
+			}
+			if key == "" {
+				same = false
+				key = fmt.Sprintf("+%c", 'a'+rune(letter%26))
+				letter++
+			}
+			out[i] = name + "[" + key + "]"
+		}
+		cand := strings.Join(out, ".")
+		if core.PathAllowed(core.Path(cand), d.allowed) {
+			return cand
+		}
+	}
+	return ""
 }
 
 // leaf registers the template of a field the model writes and lists its
@@ -237,7 +352,7 @@ func (d *describer) template(n *core.Node) {
 		}
 		return
 	}
-	short := d.line(n, false, d.listSeen[n.CodeList])
+	short := d.line(n, false, d.listSeen[n.CodeList]) + " ; (detail: field_spec)"
 	if d.used+len(short)+1 <= d.limit {
 		d.fields = append(d.fields, short)
 		d.used += len(short) + 1
@@ -251,9 +366,9 @@ func (d *describer) template(n *core.Node) {
 // find the codes.
 func (d *describer) line(n *core.Node, full, inSection bool) string {
 	if n.Kind != core.NodeField {
-		return fmt.Sprintf("- %s — block %s, %s ; new item: %s", n.Template, label(n), bounds(n), newItemForm(n.Template))
+		return fmt.Sprintf("- %s — block %s, %s ; %s", d.display(n.Template), label(n), bounds(n), d.creation(n.Template))
 	}
-	parts := []string{fmt.Sprintf("- %s — %s", n.Template, label(n))}
+	parts := []string{fmt.Sprintf("- %s — %s", d.display(n.Template), label(n))}
 	if n.Type != "" {
 		parts = append(parts, "type "+typeLabel(n.Type))
 	}
@@ -263,7 +378,7 @@ func (d *describer) line(n *core.Node, full, inSection bool) string {
 		parts = append(parts, "optional")
 	}
 	if n.IsRepeatable() {
-		parts = append(parts, "repeatable, "+bounds(n)+", new item: "+newItemForm(n.Template))
+		parts = append(parts, "repeatable, "+bounds(n)+", "+d.creation(n.Template))
 	}
 	if full {
 		switch {
@@ -301,23 +416,11 @@ func (d *describer) line(n *core.Node, full, inSection bool) string {
 	return strings.Join(parts, " ; ")
 }
 
-// newItemForm shows how to write a new item of the template: each `[]` becomes
-// a provisional key `[+a]`, `[+b]`, ... (an existing ancestor keeps its real key).
-func newItemForm(template string) string {
-	var b strings.Builder
-	i := 0
-	for {
-		j := strings.Index(template, "[]")
-		if j < 0 {
-			b.WriteString(template)
-			break
-		}
-		b.WriteString(template[:j])
-		fmt.Fprintf(&b, "[+%c]", 'a'+rune(i%26))
-		template = template[j+2:]
-		i++
+func (d *describer) creation(template string) string {
+	if f := d.newItemForm(template); f != "" {
+		return "new item: " + f
 	}
-	return b.String()
+	return "existing items only"
 }
 
 func trimRunes(s string, n int) string {
