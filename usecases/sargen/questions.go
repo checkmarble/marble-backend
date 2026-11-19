@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -124,7 +125,7 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 		return DeclarationState{}, errors.Wrap(models.BadParameterError,
 			"cette question ne désigne aucun champ : ses options ne peuvent rien écrire")
 	}
-	return uc.mutateWithPost(ctx, q.DeclarationId, version,
+	st, err := uc.mutateWithPost(ctx, q.DeclarationId, version,
 		func(format core.Format, doc *core.Document, _, _ *string) error {
 			spec := format.Spec()
 			// The analyst's click is the proof: the fill takes the analyst
@@ -141,11 +142,25 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 							"le champ %s est un réglage ou un champ calculé : il ne peut pas être renseigné par une option", f.Path)
 					}
 				}
+				// Raw paths against the question's paths, both with their
+				// provisional keys: every fill sharing `[+a]` stays within the
+				// question once the first one has created the item.
+				if !core.PathAllowed(f.Path, q.Paths) {
+					return issuesToError([]core.Issue{{
+						Path: f.Path, Code: core.CodeOutOfScope, Severity: core.SeverityBlocking,
+						Message: "chemin hors des champs de la question",
+					}})
+				}
 				f.Origin, f.TaskID = core.OriginAnalyst, nil
 				fills[i] = f
 			}
+			if optionAlreadyPresent(doc, fills) {
+				return errOptionAlreadyApplied
+			}
 			res := core.ApplyFills(spec, doc, fills, core.ApplyOptions{
-				AllowedPrefixes: q.Paths, Overwrite: core.OverwriteAll,
+				// A provisional item segment is cut to its container so that the
+				// item created by the first fill is allowed for the next ones.
+				AllowedPrefixes: containerPrefixes(q.Paths), Overwrite: core.OverwriteAll,
 			})
 			var issues []core.Issue
 			for _, r := range res.Rejected {
@@ -176,6 +191,89 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 			}
 			return uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{questionId}, models.SarQuestionStatusResolved)
 		})
+	if errors.Is(err, errOptionAlreadyApplied) {
+		// The analyst already added what the option adds: the question is
+		// answered, nothing is written and the version is kept.
+		return uc.declineQuestion(ctx, q, version)
+	}
+	return st, err
+}
+
+// errOptionAlreadyApplied tells that the chosen option would add an item the
+// list already holds.
+var errOptionAlreadyApplied = errors.New("option already applied")
+
+// containerPrefixes cuts each provisional item segment of the paths to its
+// container (`a.b[+x].c` -> `a.b`).
+func containerPrefixes(paths []core.Path) []core.Path {
+	out := make([]core.Path, len(paths))
+	for i, p := range paths {
+		out[i] = p
+		if j := strings.Index(string(p), "[+"); j >= 0 {
+			out[i] = core.Path(string(p)[:j])
+		}
+	}
+	return out
+}
+
+// optionAlreadyPresent reports whether every fill creates, under a provisional
+// item key, an item whose values equal those of an existing item of its
+// container (e.g. the same code already in a list). Fills nested under a
+// second provisional key are not comparable: the option is then applied.
+func optionAlreadyPresent(doc *core.Document, fills []core.Fill) bool {
+	type group struct {
+		container core.Path
+		suffixes  map[string]string // path below the item -> value
+	}
+	groups := map[string]*group{}
+	var order []string
+	for _, f := range fills {
+		s := string(f.Path)
+		j := strings.Index(s, "[+")
+		if j < 0 || f.Value == "" {
+			return false
+		}
+		end := strings.Index(s[j:], "]")
+		if end < 0 {
+			return false
+		}
+		literal, suffix := s[:j+end+1], s[j+end+1:]
+		if strings.Contains(suffix, "[+") {
+			return false
+		}
+		g := groups[literal]
+		if g == nil {
+			g = &group{container: core.Path(s[:j]), suffixes: map[string]string{}}
+			groups[literal] = g
+			order = append(order, literal)
+		}
+		g.suffixes[suffix] = f.Value
+	}
+	if len(order) == 0 {
+		return false
+	}
+	for _, lit := range order {
+		g := groups[lit]
+		found := false
+		for _, k := range doc.Items[g.container] {
+			item := string(g.container) + "[" + k + "]"
+			match := true
+			for suf, val := range g.suffixes {
+				if v, ok := doc.Values[core.Path(item+suf)]; !ok || v.Value != val {
+					match = false
+					break
+				}
+			}
+			if match {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 // questionCreatesItem reports whether an option of q fills a path holding a
