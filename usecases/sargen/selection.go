@@ -2,6 +2,7 @@ package sargen
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"time"
 
@@ -150,6 +151,7 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 	// Additions: analyst choices first, then their useful parents.
 	var newRows []models.SarSelectedObject
 	var clearAuto, clearExclusions []models.CaseEntityRef
+	var converted []models.SarSelectedObject
 	for _, a := range add {
 		if excluded[a.Ref] {
 			clearExclusions = append(clearExclusions, caseEntityRef(a.Ref))
@@ -157,9 +159,12 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 		}
 		if o, selected := remaining[a.Ref]; selected {
 			if o.AutoAdded {
+				// An analyst choice from now on: its own parents are followed
+				// like those of any addition.
 				clearAuto = append(clearAuto, caseEntityRef(a.Ref))
-				o.AutoAdded = false
+				o.AutoAdded, o.ContextOnly = false, false
 				remaining[a.Ref] = o
+				converted = append(converted, o)
 			}
 			continue
 		}
@@ -172,8 +177,8 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 		newRows = append(newRows, row)
 		remaining[a.Ref] = row
 	}
-	if len(newRows) > 0 {
-		parents, err := uc.autoParents(ctx, orgId, ctxData.dataModel, id, newRows, remaining, excluded)
+	if seeds := append(slices.Clone(newRows), converted...); len(seeds) > 0 {
+		parents, err := uc.autoParents(ctx, orgId, ctxData, id, seeds, remaining, excluded)
 		if err != nil {
 			return DeclarationState{}, err
 		}

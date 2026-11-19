@@ -31,6 +31,7 @@ type DBSarSelectedObject struct {
 	Origin        json.RawMessage `db:"origin"`
 	ReachedFrom   json.RawMessage `db:"reached_from"`
 	AutoAdded     bool            `db:"auto_added"`
+	ContextOnly   bool            `db:"context_only"`
 	CreatedAt     time.Time       `db:"created_at"`
 }
 
@@ -44,6 +45,7 @@ func AdaptSarSelectedObject(db DBSarSelectedObject) (models.SarSelectedObject, e
 		ObjectId:      db.ObjectId,
 		CreatedAt:     db.CreatedAt,
 		AutoAdded:     db.AutoAdded,
+		ContextOnly:   db.ContextOnly,
 	}
 	if err := json.Unmarshal(db.Snapshot, &out.Snapshot); err != nil {
 		return models.SarSelectedObject{}, errors.Wrap(err, "invalid sar selection snapshot")

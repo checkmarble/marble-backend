@@ -111,17 +111,19 @@ func TestSarSelection_AutoAddedMarkerAndExclusions(t *testing.T) {
 	require.NoError(t, repo.CreateSarDeclaration(ctx, exec, declaration))
 
 	auto := newSarTestSelected(declaration.Id, "accounts", "a1", time.Now())
-	auto.AutoAdded = true
+	auto.AutoAdded, auto.ContextOnly = true, true
 	require.NoError(t, repo.AddSarSelection(ctx, exec, []models.SarSelectedObject{auto}))
 	list, err := repo.ListSarSelection(ctx, exec, declaration.Id)
 	require.NoError(t, err)
 	require.True(t, list[0].AutoAdded)
+	require.True(t, list[0].ContextOnly)
 
 	ref := models.CaseEntityRef{TableName: "accounts", ObjectId: "a1"}
 	require.NoError(t, repo.ClearSarSelectionAutoAdded(ctx, exec, declaration.Id, []models.CaseEntityRef{ref}))
 	list, err = repo.ListSarSelection(ctx, exec, declaration.Id)
 	require.NoError(t, err)
 	require.False(t, list[0].AutoAdded)
+	require.False(t, list[0].ContextOnly)
 
 	require.NoError(t, repo.AddSarSelectionExclusions(ctx, exec, declaration.Id, []models.CaseEntityRef{ref}))
 	require.NoError(t, repo.AddSarSelectionExclusions(ctx, exec, declaration.Id, []models.CaseEntityRef{ref}), "idempotent")

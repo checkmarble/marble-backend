@@ -25,7 +25,12 @@ type SarSelectedObject struct {
 	// AutoAdded is true when the server added the object on its own as a
 	// useful parent of a selected object (not an analyst choice).
 	AutoAdded bool
-	CreatedAt time.Time
+	// ContextOnly: the object is context to read and cite but is never
+	// declared on its own. True for an auto-added parent that is not a direct
+	// candidate of the declaration; an auto-added direct candidate (decision
+	// trigger, pivot, case entity) stays declarable.
+	ContextOnly bool
+	CreatedAt   time.Time
 }
 
 // SarReachedFrom records the object and link through which a selected object

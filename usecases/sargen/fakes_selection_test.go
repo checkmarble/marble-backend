@@ -351,7 +351,7 @@ func (r *fakeSelectionRepo) ClearSarSelectionAutoAdded(_ context.Context, _ repo
 	for i, o := range r.Rows {
 		for _, ref := range refs {
 			if o.DeclarationId == declarationId && ref.TableName == o.TableName && ref.ObjectId == o.ObjectId {
-				r.Rows[i].AutoAdded = false
+				r.Rows[i].AutoAdded, r.Rows[i].ContextOnly = false, false
 			}
 		}
 	}
