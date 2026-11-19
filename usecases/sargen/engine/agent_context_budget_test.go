@@ -218,3 +218,7 @@ func TestPrompt_AutoAddedObjectsAreMarkedAsContext(t *testing.T) {
 	assert.Contains(t, prompt, "accounts/acc-1 (linked, auto-added context)")
 	assert.Contains(t, prompt, "transactions/txn-1 (input) ")
 }
+
+func TestSystemInstructionAsksForParallelToolCalls(t *testing.T) {
+	assert.Contains(t, systemInstruction, "request them all in the same turn")
+}
