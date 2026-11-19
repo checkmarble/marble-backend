@@ -213,7 +213,7 @@ func TestDescribeSubtree_ListTemplatesCoverFieldsWithoutItem(t *testing.T) {
 	tc := agentToolContext(t)
 	text := DescribeSubtree(tc.Format.Spec(), tc.Doc, []core.Path{"context.natureSoupcon", agentPersonPath})
 
-	assert.Contains(t, text, "call field_spec only for a field outside this list")
+	assert.Contains(t, text, "except the lines marked (detail: field_spec)")
 	pen := agLineWith(text, "- context.natureSoupcon.natureSoupconPenale[] ")
 	require.NotEmpty(t, pen, text)
 	assert.Contains(t, pen, "new item: context.natureSoupcon.natureSoupconPenale[+a]")
@@ -221,7 +221,7 @@ func TestDescribeSubtree_ListTemplatesCoverFieldsWithoutItem(t *testing.T) {
 	require.NotEmpty(t, cat, "a nested list field with no item yet is described")
 	rel := agLineWith(text, "- personnes.pp[].lienAutrePersonneDejaDeclaree[].typeRelation[] ")
 	require.NotEmpty(t, rel)
-	assert.Contains(t, rel, "new item: personnes.pp[+a].lienAutrePersonneDejaDeclaree[+b].typeRelation[+c]")
+	assert.Contains(t, rel, "new item: personnes.pp[pp-1].lienAutrePersonneDejaDeclaree[+a].typeRelation[+b]")
 }
 
 func TestDescribeSubtree_RealPersonPartHasTheFullRelationsListOnce(t *testing.T) {
@@ -244,4 +244,64 @@ func TestDescribeSubtree_RealPersonPartHasTheFullRelationsListOnce(t *testing.T)
 		assert.Equal(t, 1, strings.Count(text, "\n"+c.Value+" = "), "code %s written once", c.Value)
 	}
 	assert.NotContains(t, text, "more fields not described here", "the whole part fits the bound")
+}
+
+func personPartPaths(tc core.ToolContext, item core.Path, kind string) []core.Path {
+	var out []core.Path
+	for _, c := range tc.Format.Spec().NodeAt("personnes." + kind + "[]").Children {
+		if c.ExportID || c.Name == "implication" || c.Name == "natureRelation" || c.Name == "elementsRelation" {
+			continue
+		}
+		out = append(out, item.Child(c.Name))
+	}
+	return out
+}
+
+func TestDescribeSubtree_PartIsBoundToItsOwnItem(t *testing.T) {
+	tc := agentToolContext(t)
+	pm := tc.Doc.AddItem("personnes.pm", "pm")
+	text := DescribeSubtree(tc.Format.Spec(), tc.Doc, personPartPaths(tc, pm, "pm"))
+
+	assert.Contains(t, text, "- personnes.pm[pm-1] — block", "the item is named even with no value")
+	assert.Contains(t, text, "- personnes.pm[pm-1].activiteCoordonnee")
+	assert.NotContains(t, text, "\n- personnes.pm[]", "templates are written under the item of the part")
+	assert.NotContains(t, text, "new item: personnes.pm[+a]", "a new person is never offered")
+	assert.NotContains(t, text, "personnes.pm[+a]")
+	rel := agLineWith(text, "- personnes.pm[pm-1].lienAutrePersonneDejaDeclaree[].typeRelation[] ")
+	assert.Contains(t, rel, "new item: personnes.pm[pm-1].lienAutrePersonneDejaDeclaree[+a].typeRelation[+b]")
+}
+
+func TestDescribeSubtree_SecondPersonTaskNamesItsPerson(t *testing.T) {
+	tc := agentToolContext(t)
+	text := DescribeSubtree(tc.Format.Spec(), tc.Doc, personPartPaths(tc, agentPerson2Path, "pp"))
+
+	assert.Contains(t, text, "- "+string(agentPerson2Path)+" — block")
+	assert.Contains(t, text, string(agentPerson2Path)+".etatCivil.nomNaissance")
+	assert.NotContains(t, text, "personnes.pp[+a]")
+	assert.NotContains(t, text, string(agentPersonPath), "the other person is not mentioned")
+	assert.Contains(t, text, "new item: "+string(agentPerson2Path)+".etatCivil.prenom[+a]")
+}
+
+func TestDescribeSubtree_LotOffersNoNewTransaction(t *testing.T) {
+	tc := agentToolContext(t)
+	var allowed []core.Path
+	for i := 0; i < 3; i++ {
+		allowed = append(allowed, tc.Doc.AddItem("work.transactions", "transaction"))
+	}
+	text := DescribeSubtree(tc.Format.Spec(), tc.Doc, allowed)
+	assert.NotContains(t, text, "transactions[+a]")
+	assert.Contains(t, agLineWith(text, "- work.transactions[] — block"), "existing items only")
+	for _, k := range allowed {
+		assert.Contains(t, text, "- "+string(k)+" — block")
+	}
+}
+
+func TestDescribeSubtree_ShortFormIsMarked(t *testing.T) {
+	var fields []*core.Node
+	for i := 0; i < 40; i++ {
+		fields = append(fields, describeField(fmt.Sprintf("f%02d", i), func(n *core.Node) { n.Description = strings.Repeat("d", 150) }))
+	}
+	text := describeSubtree(describeSpec(nil, fields...), core.NewDocument(), []core.Path{"g"}, 3000)
+	assert.Contains(t, text, "(detail: field_spec)")
+	assert.NotContains(t, agLineWith(text, "g.f00"), "(detail: field_spec)")
 }
