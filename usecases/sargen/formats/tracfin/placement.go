@@ -98,14 +98,15 @@ type placementLeftOut struct {
 // Objects the server added on its own (core.StructuredContext.ContextOnly) are
 // context to read and cite, never declared on their own:
 //   - a person is declared only if at least one of its objects is chosen by the
-//     analyst (not context only) and is not also the object of a financial
-//     reference of the output; when the person also holds context-only objects,
-//     that object must come from a person-, company- or partner-like table (a
-//     transaction or an account does not make a person; an unknown table
-//     semantic is not held against it). A person made only of analyst objects
-//     is declared whatever their table; the others are
-//     returned in left, the references they owned lose them as an owner and the
-//     remaining persons are renumbered;
+//     analyst (not context only). When the person also holds context-only
+//     objects, that analyst object must in addition not be the object of a
+//     financial reference of the output and must come from a person-, company-
+//     or partner-like table (a transaction or an account does not make a
+//     person; an unknown table semantic is not held against it). A person made
+//     only of analyst objects is declared whatever their table, even when one
+//     of them is also a reference object. The others are returned in left, the
+//     references they owned lose them as an owner and the remaining persons are
+//     renumbered;
 //   - a transaction made only of a context object is not created (left);
 //   - a financial reference made only of context objects is kept only when the
 //     data links one of them to an object of one of its owners; otherwise it is
@@ -149,12 +150,13 @@ func (f *format) parsePlacement(raw json.RawMessage, sc core.StructuredContext) 
 	newIndex := make([]int, asked)
 	keptPersons := out.Persons[:0:0]
 	for i, p := range out.Persons {
-		// The table semantic is only asked of a person that mixes in context-only
-		// objects (the case the rule guards against): a person made only of
-		// analyst-chosen objects keeps the plain behaviour, whatever the table.
+		// The reference-object and table-semantic restrictions only apply to a
+		// person that mixes in context-only objects (the case they guard
+		// against): a person made only of analyst-chosen objects keeps the plain
+		// behaviour, whatever the table and even on a reference object.
 		mixed := slices.ContainsFunc(p.Objects, sc.IsContextOnly)
 		carried := slices.ContainsFunc(p.Objects, func(o core.ObjectRef) bool {
-			return !sc.IsContextOnly(o) && !usedAsReference[o] && (!mixed || sc.CanCarryEntity(o))
+			return !sc.IsContextOnly(o) && (!mixed || (!usedAsReference[o] && sc.CanCarryEntity(o)))
 		})
 		if !carried {
 			newIndex[i] = -1
