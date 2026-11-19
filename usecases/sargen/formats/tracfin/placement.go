@@ -86,32 +86,53 @@ func placementSchema(refKinds []string) jsonschema.Schema {
 // parsePlacement decodes and checks a placement output. References without a
 // valid declared owner are returned apart (dropped, reported as a question); any
 // other error refuses the whole output.
-func (f *format) parsePlacement(raw json.RawMessage) (out placementOutput, dropped []droppedRef, err error) {
+//
+// A person whose objects are all auto-added (selected by the system as parents
+// of the analyst's choices, see core.StructuredContext.AutoAdded) is not
+// declared: auto-added objects are context to read and cite, not entities. Such
+// a person is returned in skipped (the analyst is asked), the references it
+// owned lose it as an owner, and the remaining persons are renumbered.
+func (f *format) parsePlacement(raw json.RawMessage, sc core.StructuredContext) (out placementOutput, dropped []droppedRef, skipped [][]core.ObjectRef, err error) {
 	if err := json.NewDecoder(bytes.NewReader(raw)).Decode(&out); err != nil {
-		return out, nil, errors.Wrap(err, "unreadable placement output")
+		return out, nil, nil, errors.Wrap(err, "unreadable placement output")
 	}
 	refKinds := f.referenceKinds()
 	for i, p := range out.Persons {
 		if !slices.Contains(personKinds, p.Kind) {
-			return out, nil, errors.Newf("person %d: unknown kind %q (pp, pm or pnc)", i, p.Kind)
+			return out, nil, nil, errors.Newf("person %d: unknown kind %q (pp, pm or pnc)", i, p.Kind)
 		}
 		if err := checkObjects(p.Objects); err != nil {
-			return out, nil, errors.Wrapf(err, "person %d", i)
+			return out, nil, nil, errors.Wrapf(err, "person %d", i)
 		}
 	}
+	// Persons made only of auto-added objects are left out; newIndex maps the
+	// index the model used to the index among the kept persons (-1: left out).
+	asked := len(out.Persons)
+	newIndex := make([]int, asked)
+	keptPersons := out.Persons[:0:0]
+	for i, p := range out.Persons {
+		if !slices.ContainsFunc(p.Objects, func(o core.ObjectRef) bool { return !sc.IsAutoAdded(o) }) {
+			newIndex[i] = -1
+			skipped = append(skipped, slices.Clone(p.Objects))
+			continue
+		}
+		newIndex[i] = len(keptPersons)
+		keptPersons = append(keptPersons, p)
+	}
+	out.Persons = keptPersons
 	kept := out.FinancialRefs[:0:0]
 	for i, r := range out.FinancialRefs {
 		if !slices.Contains(refKinds, r.RefKind) {
-			return out, nil, errors.Newf("financial reference %d: unknown ref_kind %q (%s)", i, r.RefKind, strings.Join(refKinds, ", "))
+			return out, nil, nil, errors.Newf("financial reference %d: unknown ref_kind %q (%s)", i, r.RefKind, strings.Join(refKinds, ", "))
 		}
 		if err := checkObjects(r.Objects); err != nil {
-			return out, nil, errors.Wrapf(err, "financial reference %d", i)
+			return out, nil, nil, errors.Wrapf(err, "financial reference %d", i)
 		}
 		owners := r.Owners[:0:0]
 		var seen []int
 		lost := 0
 		for _, o := range r.Owners {
-			if o.PersonIndex == nil || *o.PersonIndex < 0 || *o.PersonIndex >= len(out.Persons) {
+			if o.PersonIndex == nil || *o.PersonIndex < 0 || *o.PersonIndex >= asked || newIndex[*o.PersonIndex] < 0 {
 				lost++
 				continue
 			}
@@ -119,10 +140,12 @@ func (f *format) parsePlacement(raw json.RawMessage) (out placementOutput, dropp
 				lost++
 				continue
 			}
-			if slices.Contains(seen, *o.PersonIndex) {
+			idx := newIndex[*o.PersonIndex]
+			if slices.Contains(seen, idx) {
 				continue
 			}
-			seen = append(seen, *o.PersonIndex)
+			seen = append(seen, idx)
+			o.PersonIndex = &idx
 			owners = append(owners, o)
 		}
 		if len(owners) == 0 || lost > 0 {
@@ -137,10 +160,10 @@ func (f *format) parsePlacement(raw json.RawMessage) (out placementOutput, dropp
 	out.FinancialRefs = kept
 	for i, t := range out.Transactions {
 		if err := checkObjects([]core.ObjectRef{t.Object}); err != nil {
-			return out, nil, errors.Wrapf(err, "transaction %d", i)
+			return out, nil, nil, errors.Wrapf(err, "transaction %d", i)
 		}
 	}
-	return out, dropped, nil
+	return out, dropped, skipped, nil
 }
 
 // droppedRef is a financial reference left out (wholly: no valid owner) or
@@ -151,17 +174,26 @@ type droppedRef struct {
 	lostOwners int
 }
 
-// StructuredQuestions reports what a placement output left out: the financial
-// references without a valid declared owner (core.StructuredQuestioner).
-func (f *format) StructuredQuestions(kind string, raw json.RawMessage, applied *core.Document) []core.QuestionDraft {
+// StructuredQuestions reports what a placement output left out: the persons
+// made only of auto-added objects and the financial references without a valid
+// declared owner (core.StructuredQuestioner).
+func (f *format) StructuredQuestions(kind string, raw json.RawMessage, applied *core.Document, sc core.StructuredContext) []core.QuestionDraft {
 	if kind != StepPlacement {
 		return nil
 	}
-	_, dropped, err := f.parsePlacement(raw)
+	_, dropped, skipped, err := f.parsePlacement(raw, sc)
 	if err != nil {
 		return nil
 	}
 	var out []core.QuestionDraft
+	for _, objs := range skipped {
+		names := make([]string, len(objs))
+		for i, o := range objs {
+			names[i] = o.Table + "/" + o.ObjectID
+		}
+		out = append(out, core.QuestionDraft{Text: "personne non déclarée : " + strings.Join(names, ", ") +
+			" a été ajouté automatiquement comme contexte (lié à un objet sélectionné) et n'est pas déclaré comme personne ; à déclarer manuellement si nécessaire"})
+	}
 	for _, d := range dropped {
 		names := make([]string, len(d.objects))
 		for i, o := range d.objects {
@@ -266,7 +298,7 @@ func (f *format) ApplyStructured(kind string, doc *core.Document, raw json.RawMe
 	default:
 		return errors.Newf("unknown structured output: %q", kind)
 	}
-	out, _, err := f.parsePlacement(raw)
+	out, _, _, err := f.parsePlacement(raw, sc)
 	if err != nil {
 		return err
 	}
