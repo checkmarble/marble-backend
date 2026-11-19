@@ -10,7 +10,17 @@ import (
 	"github.com/google/uuid"
 )
 
-const TABLE_SAR_DECLARATION_SELECTIONS = "sar_declaration_selections"
+const (
+	TABLE_SAR_DECLARATION_SELECTIONS           = "sar_declaration_selections"
+	TABLE_SAR_DECLARATION_SELECTION_EXCLUSIONS = "sar_declaration_selection_exclusions"
+)
+
+// DBSarSelectionExclusion is an object removed by the analyst although it had
+// been added automatically.
+type DBSarSelectionExclusion struct {
+	TableName string `db:"table_name"`
+	ObjectId  string `db:"object_id"`
+}
 
 type DBSarSelectedObject struct {
 	Id            uuid.UUID       `db:"id"`
@@ -20,6 +30,7 @@ type DBSarSelectedObject struct {
 	Snapshot      json.RawMessage `db:"snapshot"`
 	Origin        json.RawMessage `db:"origin"`
 	ReachedFrom   json.RawMessage `db:"reached_from"`
+	AutoAdded     bool            `db:"auto_added"`
 	CreatedAt     time.Time       `db:"created_at"`
 }
 
@@ -32,6 +43,7 @@ func AdaptSarSelectedObject(db DBSarSelectedObject) (models.SarSelectedObject, e
 		TableName:     db.TableName,
 		ObjectId:      db.ObjectId,
 		CreatedAt:     db.CreatedAt,
+		AutoAdded:     db.AutoAdded,
 	}
 	if err := json.Unmarshal(db.Snapshot, &out.Snapshot); err != nil {
 		return models.SarSelectedObject{}, errors.Wrap(err, "invalid sar selection snapshot")

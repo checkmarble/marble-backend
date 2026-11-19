@@ -22,7 +22,10 @@ type SarSelectedObject struct {
 	Snapshot      map[string]any
 	Origin        SarSnapshotOrigin
 	ReachedFrom   *SarReachedFrom // nil for a direct candidate
-	CreatedAt     time.Time
+	// AutoAdded is true when the server added the object on its own as a
+	// useful parent of a selected object (not an analyst choice).
+	AutoAdded bool
+	CreatedAt time.Time
 }
 
 // SarReachedFrom records the object and link through which a selected object

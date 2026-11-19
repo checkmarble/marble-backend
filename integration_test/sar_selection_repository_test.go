@@ -101,3 +101,35 @@ func TestSarSelection_CascadeOnDeclarationDelete(t *testing.T) {
 		"SELECT count(*) FROM sar_declaration_selections WHERE declaration_id = $1", declaration.Id).Scan(&n))
 	require.Equal(t, 0, n)
 }
+
+func TestSarSelection_AutoAddedMarkerAndExclusions(t *testing.T) {
+	ctx := t.Context()
+	organizationID, caseID := sarDeclarationTestFixture(t)
+	repo := repositories.NewMarbleDbRepository(false, 0)
+	exec := testUsecases.NewExecutorFactory().NewExecutor()
+	declaration := newSarTestDeclaration(organizationID, caseID)
+	require.NoError(t, repo.CreateSarDeclaration(ctx, exec, declaration))
+
+	auto := newSarTestSelected(declaration.Id, "accounts", "a1", time.Now())
+	auto.AutoAdded = true
+	require.NoError(t, repo.AddSarSelection(ctx, exec, []models.SarSelectedObject{auto}))
+	list, err := repo.ListSarSelection(ctx, exec, declaration.Id)
+	require.NoError(t, err)
+	require.True(t, list[0].AutoAdded)
+
+	ref := models.CaseEntityRef{TableName: "accounts", ObjectId: "a1"}
+	require.NoError(t, repo.ClearSarSelectionAutoAdded(ctx, exec, declaration.Id, []models.CaseEntityRef{ref}))
+	list, err = repo.ListSarSelection(ctx, exec, declaration.Id)
+	require.NoError(t, err)
+	require.False(t, list[0].AutoAdded)
+
+	require.NoError(t, repo.AddSarSelectionExclusions(ctx, exec, declaration.Id, []models.CaseEntityRef{ref}))
+	require.NoError(t, repo.AddSarSelectionExclusions(ctx, exec, declaration.Id, []models.CaseEntityRef{ref}), "idempotent")
+	ex, err := repo.ListSarSelectionExclusions(ctx, exec, declaration.Id)
+	require.NoError(t, err)
+	require.Equal(t, []models.CaseEntityRef{ref}, ex)
+	require.NoError(t, repo.RemoveSarSelectionExclusions(ctx, exec, declaration.Id, []models.CaseEntityRef{ref}))
+	ex, err = repo.ListSarSelectionExclusions(ctx, exec, declaration.Id)
+	require.NoError(t, err)
+	require.Empty(t, ex)
+}

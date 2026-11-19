@@ -41,7 +41,7 @@ func (repo *MarbleDbRepository) AddSarSelection(
 	}
 	query := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SAR_DECLARATION_SELECTIONS).
-		Columns("id", "declaration_id", "table_name", "object_id", "snapshot", "origin", "reached_from", "created_at")
+		Columns("id", "declaration_id", "table_name", "object_id", "snapshot", "origin", "reached_from", "auto_added", "created_at")
 	now := time.Now()
 	for _, o := range objs {
 		snapshot, err := json.Marshal(o.Snapshot)
@@ -65,7 +65,7 @@ func (repo *MarbleDbRepository) AddSarSelection(
 			createdAt = now
 		}
 		query = query.Values(o.Id, o.DeclarationId, o.TableName, o.ObjectId,
-			json.RawMessage(snapshot), json.RawMessage(origin), reached, createdAt)
+			json.RawMessage(snapshot), json.RawMessage(origin), reached, o.AutoAdded, createdAt)
 	}
 	err := ExecBuilder(ctx, exec, query)
 	if IsUniqueViolationError(err) {
@@ -91,6 +91,87 @@ func (repo *MarbleDbRepository) RemoveSarSelection(
 	}
 	query := NewQueryBuilder().
 		Delete(dbmodels.TABLE_SAR_DECLARATION_SELECTIONS).
+		Where(squirrel.Eq{"declaration_id": declarationId}).
+		Where(match)
+	return ExecBuilder(ctx, exec, query)
+}
+
+// ClearSarSelectionAutoAdded turns auto-added objects into analyst choices.
+func (repo *MarbleDbRepository) ClearSarSelectionAutoAdded(
+	ctx context.Context, exec Executor, declarationId uuid.UUID, refs []models.CaseEntityRef,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+	if len(refs) == 0 {
+		return nil
+	}
+	match := squirrel.Or{}
+	for _, r := range refs {
+		match = append(match, squirrel.Eq{"table_name": r.TableName, "object_id": r.ObjectId})
+	}
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_SAR_DECLARATION_SELECTIONS).
+		Set("auto_added", false).
+		Where(squirrel.Eq{"declaration_id": declarationId}).
+		Where(match)
+	return ExecBuilder(ctx, exec, query)
+}
+
+// ListSarSelectionExclusions returns the objects the analyst removed although
+// they had been added automatically.
+func (repo *MarbleDbRepository) ListSarSelectionExclusions(
+	ctx context.Context, exec Executor, declarationId uuid.UUID,
+) ([]models.CaseEntityRef, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+	query := NewQueryBuilder().
+		Select("table_name", "object_id").
+		From(dbmodels.TABLE_SAR_DECLARATION_SELECTION_EXCLUSIONS).
+		Where(squirrel.Eq{"declaration_id": declarationId}).
+		OrderBy("table_name ASC", "object_id ASC")
+	return SqlToListOfModels(ctx, exec, query, func(r dbmodels.DBSarSelectionExclusion) (models.CaseEntityRef, error) {
+		return models.CaseEntityRef{TableName: r.TableName, ObjectId: r.ObjectId}, nil
+	})
+}
+
+// AddSarSelectionExclusions records exclusions (already recorded ones are ignored).
+func (repo *MarbleDbRepository) AddSarSelectionExclusions(
+	ctx context.Context, exec Executor, declarationId uuid.UUID, refs []models.CaseEntityRef,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+	if len(refs) == 0 {
+		return nil
+	}
+	query := NewQueryBuilder().
+		Insert(dbmodels.TABLE_SAR_DECLARATION_SELECTION_EXCLUSIONS).
+		Columns("declaration_id", "table_name", "object_id").
+		Suffix("ON CONFLICT DO NOTHING")
+	for _, r := range refs {
+		query = query.Values(declarationId, r.TableName, r.ObjectId)
+	}
+	return ExecBuilder(ctx, exec, query)
+}
+
+// RemoveSarSelectionExclusions forgets exclusions (absent ones are ignored).
+func (repo *MarbleDbRepository) RemoveSarSelectionExclusions(
+	ctx context.Context, exec Executor, declarationId uuid.UUID, refs []models.CaseEntityRef,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+	if len(refs) == 0 {
+		return nil
+	}
+	match := squirrel.Or{}
+	for _, r := range refs {
+		match = append(match, squirrel.Eq{"table_name": r.TableName, "object_id": r.ObjectId})
+	}
+	query := NewQueryBuilder().
+		Delete(dbmodels.TABLE_SAR_DECLARATION_SELECTION_EXCLUSIONS).
 		Where(squirrel.Eq{"declaration_id": declarationId}).
 		Where(match)
 	return ExecBuilder(ctx, exec, query)
