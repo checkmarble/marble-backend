@@ -26,6 +26,12 @@ const (
 	maxCorrectionWaves   = 2
 )
 
+// Hard maxima of the budget of a fill task (see fillLimits).
+const (
+	fillMaxTurnsCap     = 30
+	fillMaxToolCallsCap = 60
+)
+
 // PayloadDeclared is the payload block of the person and transaction tasks listing the
 // declared persons and financial references (path, kind, owner, sources).
 const PayloadDeclared = "declared_persons_and_references"
@@ -239,6 +245,18 @@ func placementLimits(n int) core.TaskLimits {
 	}
 }
 
+// fillLimits is the budget of a fill task reading n objects: turns 15 + n and
+// tool calls 30 + 2n, capped at fillMaxTurnsCap and fillMaxToolCallsCap. Some
+// models make one tool call per turn, so a batch needs about one turn per
+// object; the task time keeps its default. At n = 10 this is 25 turns and 50
+// calls; at n = 1, 16 and 32.
+func fillLimits(n int) core.TaskLimits {
+	return core.TaskLimits{
+		MaxTurns:     min(15+n, fillMaxTurnsCap),
+		MaxToolCalls: min(30+2*n, fillMaxToolCallsCap),
+	}
+}
+
 // personSpecs returns the fill tasks, one per person item.
 func (f *format) fillSpecs(st core.PlanState) []core.TaskSpec {
 	var out []core.TaskSpec
@@ -246,7 +264,7 @@ func (f *format) fillSpecs(st core.PlanState) []core.TaskSpec {
 		container := core.Path("personnes." + kind)
 		for _, key := range st.Doc.Items[container] {
 			item := core.Path(string(container) + "[" + key + "]")
-			out = append(out, core.TaskSpec{
+			spec := core.TaskSpec{
 				Kind: StepFillPerson, TargetPath: item,
 				AllowedPaths: f.personFillPaths(kind, item, st.Doc),
 				Inputs:       slices.Clone(st.Doc.ItemSources[item]),
@@ -254,7 +272,9 @@ func (f *format) fillSpecs(st core.PlanState) []core.TaskSpec {
 				Tier:         core.TierLight,
 				ToolNames:    slices.Clone(fillTools),
 				Payload:      sharedPayload(st, map[string]any{PayloadDeclared: f.declaredBlock(st.Doc)}),
-			})
+			}
+			spec.Limits = fillLimits(len(spec.Inputs))
+			out = append(out, spec)
 		}
 	}
 	keys := st.Doc.Items[transactionsContainer]
@@ -273,6 +293,7 @@ func (f *format) fillSpecs(st core.PlanState) []core.TaskSpec {
 			spec.Inputs = append(spec.Inputs, st.Doc.ItemSources[item]...)
 		}
 		spec.Inputs = dedupeRefs(spec.Inputs)
+		spec.Limits = fillLimits(len(spec.Inputs))
 		out = append(out, spec)
 	}
 	return out

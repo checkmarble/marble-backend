@@ -64,7 +64,15 @@ type StructuredContext struct {
 	// Snapshots are the frozen snapshots of the selected objects, to check that a
 	// cited field exists. Nil: not known, the check is skipped.
 	Snapshots map[ObjectRef]map[string]any
+	// AutoAdded holds the selected objects the server added on its own as
+	// parents of the analyst's choices. They are context: readable and citable
+	// like any selected object, but a format must not declare an entity from
+	// one (it asks the analyst instead). Nil: none.
+	AutoAdded map[ObjectRef]bool
 }
+
+// IsAutoAdded tells whether ref is a selected object added automatically.
+func (sc StructuredContext) IsAutoAdded(ref ObjectRef) bool { return sc.AutoAdded[ref] }
 
 // Linked returns the selected objects linked to ref (none without a resolver).
 func (sc StructuredContext) Linked(ref ObjectRef) []ObjectRef {
@@ -85,9 +93,10 @@ type SettingsRequirer interface {
 // StructuredQuestioner is an optional capability of a Format: the questions an
 // accepted structured output raises (e.g. what it had to leave out). The
 // orchestrator adds them to the questions of the task. applied is the document
-// after the output was applied (question paths are read from it).
+// after the output was applied (question paths are read from it); sc is the
+// context the output was applied with.
 type StructuredQuestioner interface {
-	StructuredQuestions(kind string, out json.RawMessage, applied *Document) []QuestionDraft
+	StructuredQuestions(kind string, out json.RawMessage, applied *Document, sc StructuredContext) []QuestionDraft
 }
 
 // StructuredCleaner is an optional capability of a Format: a structured output

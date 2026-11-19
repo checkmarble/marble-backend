@@ -225,7 +225,7 @@ func TestApplyPlacement_ReferenceWithoutValidOwnerIsDroppedAndReported(t *testin
 
 			sq, ok := f.(core.StructuredQuestioner)
 			require.True(t, ok)
-			qs := sq.StructuredQuestions(stepPlacement, raw, doc)
+			qs := sq.StructuredQuestions(stepPlacement, raw, doc, core.StructuredContext{})
 			require.Len(t, qs, 1)
 			assert.Equal(t, "référence financière sans titulaire déclaré : accounts/a-9", qs[0].Text)
 		})
@@ -275,7 +275,7 @@ func TestApplyPlacement_TransactionObjectAlsoDeclaredIsAcceptedWithAQuestion(t *
 			require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, linkedTo()))
 			require.Len(t, doc.Items["work.transactions"], 3)
 
-			qs := f.(core.StructuredQuestioner).StructuredQuestions(stepPlacement, raw, doc)
+			qs := f.(core.StructuredQuestioner).StructuredQuestions(stepPlacement, raw, doc, core.StructuredContext{})
 			require.Len(t, qs, 1)
 			assert.Contains(t, qs[0].Text, "à la fois comme transaction et comme personne ou référence financière")
 			require.Len(t, qs[0].Paths, 1)
@@ -475,7 +475,7 @@ func TestApplyPlacement_PartialOwnerLossIsReportedAndTransactionsMerge(t *testin
 	assert.Equal(t, []core.ObjectRef{{Table: "transactions", ObjectID: "t-1"}, {Table: "accounts", ObjectID: "a-1"}}, doc.ItemSources[tx])
 	assert.Len(t, doc.Items["personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban"], 1)
 
-	qs := f.(core.StructuredQuestioner).StructuredQuestions(stepPlacement, raw, doc)
+	qs := f.(core.StructuredQuestioner).StructuredQuestions(stepPlacement, raw, doc, core.StructuredContext{})
 	require.Len(t, qs, 1)
 	assert.Contains(t, qs[0].Text, "1 titulaire(s) non déclaré(s)")
 	assert.Contains(t, qs[0].Text, "accounts/a-1")

@@ -901,7 +901,7 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 					doc, changed = cand, true
 				}
 				if sq, ok := r.format.(core.StructuredQuestioner); ok {
-					out.Questions = append(slices.Clone(out.Questions), sq.StructuredQuestions(rt.spec.Kind, out.Structured, cand)...)
+					out.Questions = append(slices.Clone(out.Questions), sq.StructuredQuestions(rt.spec.Kind, out.Structured, cand, sctx)...)
 				}
 			}
 		}
