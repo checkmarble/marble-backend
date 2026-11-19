@@ -156,6 +156,10 @@ func (uc *Usecase) recomputeAutoParents(ctx context.Context, orgId uuid.UUID, c 
 	}
 	cache := map[string]parentRead{}
 	budget := &readBudget{}
+	byTable := map[string][]models.SarSelectedObject{}
+	for _, o := range selected {
+		byTable[o.TableName] = append(byTable[o.TableName], o)
+	}
 	var out []models.SarSelectedObject
 	defer func() { complete = complete && !budget.exhausted }()
 
@@ -174,9 +178,14 @@ func (uc *Usecase) recomputeAutoParents(ctx context.Context, orgId uuid.UUID, c 
 				if _, known := dm.Tables[l.single.ParentTableName]; !known {
 					continue
 				}
-				read, rerr := uc.readParent(ctx, orgId, dm, cache, budget, n.data, l)
-				if rerr != nil {
-					return nil, nil, rerr
+				// A parent already selected is taken from the selection (its stored
+				// snapshot): no read, nothing counted against the budget.
+				read, inSelection := selectedParent(byTable, n.data, l)
+				if !inSelection {
+					var rerr error
+					if read, rerr = uc.readParent(ctx, orgId, dm, cache, budget, n.data, l); rerr != nil {
+						return nil, nil, rerr
+					}
 				}
 				if !read.found || visited[read.ref] || excluded[read.ref] {
 					continue
@@ -218,8 +227,10 @@ func (uc *Usecase) recomputeAutoParents(ctx context.Context, orgId uuid.UUID, c 
 				continue
 			}
 			if autoCount >= maxAutoAddedPerDeclaration {
-				complete = false
-				return out, nil, nil
+				// The cap stops additions only: the traversal goes on so that the
+				// existing auto-added rows are still found reached.
+				next = append(next, f.node)
+				continue
 			}
 			from := f.from
 			row := models.SarSelectedObject{
@@ -252,6 +263,26 @@ func (uc *Usecase) recomputeAutoParents(ctx context.Context, orgId uuid.UUID, c 
 		frontier = next
 	}
 	return out, nil, nil
+}
+
+// selectedParent resolves the parent reached from data through the to-single
+// link l among the selected rows (by the parent field of the link, like the
+// engine does), so that it is not read again.
+func selectedParent(byTable map[string][]models.SarSelectedObject, data map[string]any, l linkInfo) (parentRead, bool) {
+	value, ok := valueString(data[l.single.ChildFieldName])
+	if !ok {
+		return parentRead{}, false
+	}
+	for _, o := range byTable[l.single.ParentTableName] {
+		got, has := valueString(o.Snapshot[l.single.ParentFieldName])
+		if l.single.ParentFieldName == "object_id" {
+			got, has = o.ObjectId, true
+		}
+		if has && got == value {
+			return parentRead{ref: rowRef(o), obj: models.ClientObjectDetail{Data: o.Snapshot}, found: true}, true
+		}
+	}
+	return parentRead{}, false
 }
 
 // readParent reads the parent reached from data through the to-single link l.
