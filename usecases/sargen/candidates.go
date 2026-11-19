@@ -40,6 +40,7 @@ type Candidate struct {
 	// on its own as a parent of another selected object (the object and link
 	// it was reached through).
 	AutoAdded   bool
+	ContextOnly bool
 	ReachedFrom *models.SarReachedFrom
 }
 
@@ -320,7 +321,7 @@ func (uc *Usecase) toCandidate(c selectionContext, ref core.ObjectRef, reason st
 	sel, selected := c.selected[ref]
 	cand := Candidate{Ref: ref, Reason: reason, Summary: data, Links: opts, Selected: selected}
 	if selected {
-		cand.AutoAdded, cand.ReachedFrom = sel.AutoAdded, sel.ReachedFrom
+		cand.AutoAdded, cand.ContextOnly, cand.ReachedFrom = sel.AutoAdded, sel.ContextOnly, sel.ReachedFrom
 	}
 	return cand
 }
