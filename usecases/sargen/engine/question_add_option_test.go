@@ -125,3 +125,26 @@ func TestAgent_EmptyOptionDroppedWhenNoSiblingAddsAnItem(t *testing.T) {
 	require.Len(t, out.Questions[0].Options, 1, "« Non » writes nothing and nothing is added: dropped")
 	assert.Equal(t, "Oui", out.Questions[0].Options[0].Label)
 }
+
+func TestRunJob_OptionWhoseFillsAreAllRejectedIsNeverADecline(t *testing.T) {
+	d := addQuestionDraft(addFirstNamePath)
+	d.Options = append(d.Options, core.QuestionOption{Label: "Ajouter Paul", Fills: []core.Fill{
+		{Path: core.Path(addFirstNamePath), Value: "Paul"},
+		{Path: "personnes.pp[pp-2].etatCivil.nomNaissance", Value: "X"}, // outside the question
+	}})
+	d.Options[2].Fills = d.Options[2].Fills[1:] // only the rejected fill
+	_, opts, _ := runAddQuestion(t, d)
+	require.Len(t, opts, 2, "the add option and the declining one; the emptied option is dropped")
+	assert.Equal(t, "Ajouter", opts[0].Label)
+	assert.Equal(t, "Ne pas ajouter", opts[1].Label)
+}
+
+func TestRunJob_MalformedProvisionalPathDoesNotPanic(t *testing.T) {
+	_, _, paths := runAddQuestion(t, addQuestionDraft("personnes.pp[pp-1].etatCivil.a[.prenom[+f]"))
+	assert.Empty(t, paths)
+}
+
+func TestRunJob_UnknownContainerIsUnresolved(t *testing.T) {
+	_, _, paths := runAddQuestion(t, addQuestionDraft("personnes.pp[pp-1].etatCivil.nomNaissance[+f]"))
+	assert.Empty(t, paths)
+}
