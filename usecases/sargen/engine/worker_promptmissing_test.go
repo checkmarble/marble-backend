@@ -21,7 +21,7 @@ func TestWorker_PromptMissingFromATaskCancelsWithoutRetry(t *testing.T) {
 	o, f := newTestOrchestrator(t)
 	seedDocument(t, f, withTwoPersons)
 	f.Format.Waves = [][]core.TaskSpec{{Spec("a", tgtPP1)}}
-	f.Runner.On("a", tgtPP1, Step{Err: promptMissing("prompts/a.md")})
+	f.Runner.On("a", tgtPP1, Step{Err: promptMissing("prompts/a.md", nil)})
 
 	w := NewWorker(o, f.Repo, fakeExecFactory{}, time.Minute)
 	err := w.Work(ctx, workerJob(f, 1))

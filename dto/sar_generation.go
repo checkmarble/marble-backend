@@ -374,8 +374,11 @@ type SarSelectedObjectDto struct {
 	ReachedFrom *SarReachedFromDto `json:"reached_from"`
 	// AutoAdded: selected by the system as a parent of another selected object
 	// (not an analyst choice); ReachedFrom tells which object and link led to it.
-	AutoAdded bool      `json:"auto_added"`
-	CreatedAt time.Time `json:"created_at"`
+	AutoAdded bool `json:"auto_added"`
+	// ContextOnly: context to read and cite, never declared on its own (an
+	// auto-added object that is also a direct candidate stays declarable).
+	ContextOnly bool      `json:"context_only"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 func adaptSarReachedFromDto(r *models.SarReachedFrom) *SarReachedFromDto {
@@ -393,7 +396,7 @@ func AdaptSarCandidateReachedFromDto(r *models.SarReachedFrom) *SarReachedFromDt
 func AdaptSarSelectedObjectDto(o models.SarSelectedObject) SarSelectedObjectDto {
 	out := SarSelectedObjectDto{
 		Table: o.TableName, ObjectId: o.ObjectId, Snapshot: o.Snapshot, Origin: o.Origin.Kind,
-		ReachedFrom: adaptSarReachedFromDto(o.ReachedFrom), AutoAdded: o.AutoAdded, CreatedAt: o.CreatedAt,
+		ReachedFrom: adaptSarReachedFromDto(o.ReachedFrom), AutoAdded: o.AutoAdded, ContextOnly: o.ContextOnly, CreatedAt: o.CreatedAt,
 	}
 	return out
 }

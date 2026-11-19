@@ -156,6 +156,11 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 		newRows = append(newRows, row)
 		remaining[a.Ref] = row
 	}
+	// A frozen selection refuses the change anyway: do not pay for the
+	// traversal reads first (the transaction below checks again, under lock).
+	if err := uc.refuseIfSelectionFrozen(ctx, exec, id); err != nil {
+		return DeclarationState{}, err
+	}
 	// The auto-added set is recomputed from every analyst row left (not only the
 	// new ones): a parent that several rows reach stays while one of them does,
 	// a parent nothing reaches any more leaves, a new one joins.

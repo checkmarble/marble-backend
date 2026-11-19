@@ -17,13 +17,14 @@ func TestSelectionAndCandidateDtosExposeAutoAddedAndPath(t *testing.T) {
 	rf := &models.SarReachedFrom{TableName: "transactions", ObjectId: "t1", Link: "account"}
 
 	sel := dto.AdaptSarSelectedObjectDto(models.SarSelectedObject{
-		TableName: "accounts", ObjectId: "a1", AutoAdded: true, ReachedFrom: rf,
+		TableName: "accounts", ObjectId: "a1", AutoAdded: true, ContextOnly: true, ReachedFrom: rf,
 	})
 	raw, err := json.Marshal(sel)
 	require.NoError(t, err)
 	var got map[string]any
 	require.NoError(t, json.Unmarshal(raw, &got))
 	assert.Equal(t, true, got["auto_added"])
+	assert.Equal(t, true, got["context_only"])
 	assert.Equal(t, map[string]any{"table": "transactions", "object_id": "t1", "link": "account"}, got["reached_from"])
 
 	cand := adaptSarCandidateDto(sargen.Candidate{
