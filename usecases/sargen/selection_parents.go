@@ -123,7 +123,6 @@ func (uc *Usecase) recomputeAutoParents(ctx context.Context, orgId uuid.UUID, c 
 	declarationId uuid.UUID, selected map[core.ObjectRef]models.SarSelectedObject, excluded map[core.ObjectRef]bool,
 ) (added, dead []models.SarSelectedObject, err error) {
 	dm := c.dataModel
-	autoCount := 0
 	var seeds []models.SarSelectedObject
 	for _, o := range selected {
 		if !o.AutoAdded {
@@ -142,6 +141,19 @@ func (uc *Usecase) recomputeAutoParents(ctx context.Context, orgId uuid.UUID, c 
 			}
 		}
 		slices.SortFunc(dead, func(a, b models.SarSelectedObject) int { return compareRefs(rowRef(a), rowRef(b)) })
+		// The cap is never exceeded: the existing auto-added rows still reached
+		// (or kept because the traversal was incomplete) count first, the new
+		// rows, in traversal order, fill what is left.
+		existing := 0
+		for _, o := range selected {
+			if o.AutoAdded {
+				existing++
+			}
+		}
+		room := max(maxAutoAddedPerDeclaration-(existing-len(dead)), 0)
+		if len(added) > room {
+			added = added[:room]
+		}
 	}()
 
 	frontier := make([]parentNode, 0, len(seeds))
@@ -216,9 +228,6 @@ func (uc *Usecase) recomputeAutoParents(ctx context.Context, orgId uuid.UUID, c 
 				}
 				f.node.root = r
 				reached[r] = true
-				if sel.AutoAdded {
-					autoCount++
-				}
 				next = append(next, f.node)
 				continue
 			}
@@ -226,9 +235,10 @@ func (uc *Usecase) recomputeAutoParents(ctx context.Context, orgId uuid.UUID, c 
 				next = append(next, f.node) // traversed, not added, keeps its root
 				continue
 			}
-			if autoCount >= maxAutoAddedPerDeclaration {
-				// The cap stops additions only: the traversal goes on so that the
-				// existing auto-added rows are still found reached.
+			if len(out) >= maxAutoAddedPerDeclaration {
+				// Enough new rows for the cap whatever the existing ones are (the
+				// exact room is applied after the traversal). The traversal goes
+				// on so that the existing auto-added rows are still found reached.
 				next = append(next, f.node)
 				continue
 			}
@@ -256,7 +266,6 @@ func (uc *Usecase) recomputeAutoParents(ctx context.Context, orgId uuid.UUID, c 
 			}
 			out = append(out, row)
 			reached[r] = true
-			autoCount++
 			f.node.root = r
 			next = append(next, f.node)
 		}
