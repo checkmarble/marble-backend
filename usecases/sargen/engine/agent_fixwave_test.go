@@ -141,10 +141,10 @@ func TestAgent_OutputIsBounded(t *testing.T) {
 	long := strings.Repeat("é", 800)
 	var qs, opts []string
 	for i := 0; i < 30; i++ {
-		opts = append(opts, `{"label":"`+long+`"}`)
+		opts = append(opts, `{"label":"`+long+`","fills":[{"path":"`+agNomPath+`","value":"Dupont","source":null}]}`)
 	}
 	for i := 0; i < 30; i++ {
-		qs = append(qs, `{"paths":[],"text":"`+long+`","options":[`+strings.Join(opts, ",")+`]}`)
+		qs = append(qs, `{"paths":["`+agNomPath+`"],"text":"`+long+`","options":[`+strings.Join(opts, ",")+`]}`)
 	}
 	final := `{"fills":[],"questions":[` + strings.Join(qs, ",") + `]}`
 	out, err := agRun(t, newScriptedLLM(FinalStep(final)), fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t), agentSpec("fill", agentPersonPath))

@@ -595,16 +595,15 @@ func TestAgent_QuestionsWithoutRemainingPathsAreDropped(t *testing.T) {
 	}
 }
 
-func TestAgent_OptionWithEmptyValueStaysLabel(t *testing.T) {
+func TestAgent_OptionWithEmptyValueIsDropped(t *testing.T) {
 	final := `{"fills":[],"questions":[{"paths":["personnes.pp[pp-1].etatCivil.nomNaissance"],"text":"Nom ?",
 	 "options":[{"label":"Effacer","fills":[{"path":"personnes.pp[pp-1].etatCivil.nomNaissance","value":"","source":null}]}]}]}`
 	llm := newScriptedLLM(FinalStep(final))
 	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t), agentSpec("fill", agentPersonPath))
 	require.NoError(t, err)
 
-	require.Len(t, out.Questions, 1)
-	require.Len(t, out.Questions[0].Options, 1)
-	assert.Empty(t, out.Questions[0].Options[0].Fills)
+	require.Len(t, out.Questions, 1, "the question stays, as a free question")
+	assert.Empty(t, out.Questions[0].Options, "an option that writes nothing is never offered")
 }
 
 func TestAgent_NewItemDefaultsToSingleInput(t *testing.T) {
@@ -647,17 +646,17 @@ func TestAgent_OptionWithoutSourceKeepsItsFills(t *testing.T) {
 	assert.Empty(t, out.Questions[0].Options[0].Fills[0].Sources)
 }
 
-func TestAgent_OptionWithFakeSourceStaysLabel(t *testing.T) {
+func TestAgent_OptionWithFakeSourceIsDropped(t *testing.T) {
 	final := optionQuestion(agNomPath, agFill(agNomPath, "Martin", agSrc("last_name", "Dupont")))
 	llm := newScriptedLLM(FinalStep(final))
 	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t), agentSpec("fill", agentPersonPath))
 	require.NoError(t, err)
 
 	require.Len(t, out.Questions, 1)
-	assert.Empty(t, out.Questions[0].Options[0].Fills, "a cited source must still prove the value")
+	assert.Empty(t, out.Questions[0].Options, "a cited source must still prove the value, else the option is dropped (and the label-only one with it)")
 }
 
-func TestAgent_OptionOnSettingOrComputedStaysLabel(t *testing.T) {
+func TestAgent_OptionOnSettingOrComputedIsDropped(t *testing.T) {
 	for _, path := range []core.Path{"declarant.fonction", "operations.montantTotal"} {
 		t.Run(string(path), func(t *testing.T) {
 			final := optionQuestion(string(path), `{"path":"`+string(path)+`","value":"x","source":null}`)
@@ -666,7 +665,7 @@ func TestAgent_OptionOnSettingOrComputedStaysLabel(t *testing.T) {
 			out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, agentToolContext(t), spec)
 			require.NoError(t, err)
 			require.Len(t, out.Questions, 1)
-			assert.Empty(t, out.Questions[0].Options[0].Fills)
+			assert.Empty(t, out.Questions[0].Options)
 		})
 	}
 }

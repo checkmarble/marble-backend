@@ -165,13 +165,13 @@ const (
 func (r *agentRunner) Run(ctx context.Context, tc core.ToolContext, task models.SarGenerationTask, spec core.TaskSpec) (core.TaskOutput, error) {
 	promptText, err := r.prompts.Read(spec.PromptPath)
 	if err != nil {
-		return core.TaskOutput{}, errors.Wrapf(err, "prompt %s", spec.PromptPath)
+		return core.TaskOutput{}, promptMissing(spec.PromptPath)
 	}
 	var instrPath, instrText string
 	if fi, ok := tc.Format.(FormatInstructions); ok {
 		if instrPath = fi.InstructionsPromptPath(); instrPath != "" {
 			if instrText, err = r.prompts.Read(instrPath); err != nil {
-				return core.TaskOutput{}, errors.Wrapf(err, "prompt %s", instrPath)
+				return core.TaskOutput{}, promptMissing(instrPath)
 			}
 		}
 	}
@@ -224,6 +224,15 @@ func (r *agentRunner) Run(ctx context.Context, tc core.ToolContext, task models.
 	return out, err
 }
 
+// promptMissing is the error of a prompt file that cannot be read when a task
+// starts (the prompts folder changed under the running worker): like the
+// check made before the tasks are created, it is marked ErrPromptMissing so
+// that the job is failed at once and not retried, and its message is the one
+// the analyst sees on the task.
+func promptMissing(path string) error {
+	return errors.Mark(errors.Newf("%s : %s", ErrPromptMissing.Error(), path), ErrPromptMissing)
+}
+
 // hasUsableOutput: at least one fill, finding or structured output (questions
 // alone do not count).
 func hasUsableOutput(out core.TaskOutput) bool {
@@ -269,7 +278,7 @@ func (r *agentRunner) prompt(text string, tc core.ToolContext, spec core.TaskSpe
 			lines[i] = in.Table + "/" + in.ObjectID
 		}
 		b.WriteString("\n\n## Selected objects for this task\n")
-		b.WriteString(UntrustedBlock("selected_objects", strings.Join(lines, "\n")))
+		b.WriteString(UntrustedBlock("selected_objects", strings.Join(lines, "\n")+inlineObjects(tc, spec.Inputs)))
 	}
 	if len(spec.Payload) > 0 {
 		if raw, err := json.Marshal(spec.Payload); err == nil {
@@ -278,6 +287,95 @@ func (r *agentRunner) prompt(text string, tc core.ToolContext, spec core.TaskSpe
 		}
 	}
 	return clean(b.String())
+}
+
+// Inline objects of the prompt.
+const (
+	// inlineObjectsMaxBytes caps the data written in the prompt; the objects
+	// past it are listed as references and read with the tools.
+	inlineObjectsMaxBytes = 60 * 1024
+	// inlineParentDepth is how many to-single links are followed from an input
+	// to find the selected objects written with it.
+	inlineParentDepth = 3
+)
+
+// inlineObjects writes, after the references of the task inputs, the frozen
+// snapshot of each input (the same bounded copy read_object returns) and of the
+// selected objects reached from the inputs through to-single links (the
+// account of a transaction, its holder...), each object once, in a
+// deterministic order (inputs in their order, then breadth-first by link name).
+// Past inlineObjectsMaxBytes the remaining objects are only referenced. The
+// result is meant to be written inside the same untrusted block as the
+// references; it starts with a newline, or is empty when nothing is selected.
+func inlineObjects(tc core.ToolContext, inputs []core.ObjectRef) string {
+	sc := newScope(tc.Selection)
+	type entry struct {
+		obj    models.SarSelectedObject
+		linked bool
+	}
+	var order []entry
+	seen := map[objectKey]bool{}
+	var frontier []models.SarSelectedObject
+	for _, in := range inputs {
+		o, ok := sc.get(in.Table, in.ObjectID)
+		if !ok || seen[objectKey{o.TableName, o.ObjectId}] {
+			continue
+		}
+		seen[objectKey{o.TableName, o.ObjectId}] = true
+		order = append(order, entry{obj: o})
+		frontier = append(frontier, o)
+	}
+	for depth := 0; depth < inlineParentDepth && len(frontier) > 0; depth++ {
+		var next []models.SarSelectedObject
+		for _, o := range frontier {
+			table := tc.DataModel.Tables[o.TableName]
+			for _, name := range slices.Sorted(maps.Keys(table.LinksToSingle)) {
+				l := table.LinksToSingle[name]
+				value, has := valueString(o.Snapshot[l.ChildFieldName])
+				if !has {
+					continue
+				}
+				parent, ok := findByField(sc, l.ParentTableName, l.ParentFieldName, value)
+				if !ok || seen[objectKey{parent.TableName, parent.ObjectId}] {
+					continue
+				}
+				seen[objectKey{parent.TableName, parent.ObjectId}] = true
+				order = append(order, entry{obj: parent, linked: true})
+				next = append(next, parent)
+			}
+		}
+		frontier = next
+	}
+	if len(order) == 0 {
+		return ""
+	}
+
+	var inlined, referenced strings.Builder
+	used := 0
+	for _, e := range order {
+		raw, err := json.Marshal(boundedSnapshot(e.obj))
+		ref := e.obj.TableName + "/" + e.obj.ObjectId
+		if err != nil || used+len(raw)+len(ref) > inlineObjectsMaxBytes {
+			referenced.WriteString("\n" + ref)
+			continue
+		}
+		used += len(raw) + len(ref)
+		kind := "input"
+		if e.linked {
+			kind = "linked"
+		}
+		inlined.WriteString("\n" + ref + " (" + kind + ") " + string(raw))
+	}
+	var b strings.Builder
+	if inlined.Len() > 0 {
+		b.WriteString("\n\nFrozen data of the objects (as read_object returns them; \"linked\" objects are selected objects reached from the inputs through links):")
+		b.WriteString(inlined.String())
+	}
+	if referenced.Len() > 0 {
+		b.WriteString("\n\nNot written here (too large), read them with read_object:")
+		b.WriteString(referenced.String())
+	}
+	return b.String()
 }
 
 // agentRun is the state of one Run.
@@ -331,6 +429,8 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 				return a.limitOutput(reason), nil
 			}
 			graceUsed = true
+			// The grace turn is sent without tools: the model can only answer.
+			a.req.Tools = nil
 			if !budgetHit {
 				// The pending calls of a refused step were answered already;
 				// otherwise say it.
@@ -354,6 +454,22 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 
 		switch {
 		case len(step.ToolCalls) > 0:
+			if graceUsed && a.mode == modeFills {
+				// Tools were withheld for this turn, yet the model asked for
+				// some. Candidate fills it sent to validate are its prepared
+				// answer: they take the normal control as the final answer.
+				if final, ok := fillsFromValidateCalls(step.ToolCalls); ok {
+					a.tr.add(TraceEntry{Type: TraceCheckError,
+						Text: "candidate fills of a validate call after the budget, taken as the final answer"})
+					a.tr.add(TraceEntry{Type: TraceOutput, Text: string(final),
+						InputTokens: usage.InputTokens, OutputTokens: usage.OutputTokens, DurationMs: usage.DurationMs})
+					out, corr := a.control(final)
+					for _, m := range corr {
+						a.tr.add(TraceEntry{Type: TraceCheckError, Text: m})
+					}
+					return a.finish(out, corr), nil
+				}
+			}
 			a.req.History = append(a.req.History, AgentMessage{Role: RoleAssistant, ToolCalls: step.ToolCalls})
 			for i, call := range step.ToolCalls {
 				e := TraceEntry{Type: TraceToolCall, Name: call.Name, Args: truncateResult(string(call.Args))}
@@ -411,6 +527,36 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 			a.req.History = append(a.req.History, AgentMessage{Role: RoleUser, Text: correctionText([]string{msg})})
 		}
 	}
+}
+
+// fillsFromValidateCalls builds a final answer from the candidate fills of the
+// validate calls among calls (in call order; a path given twice keeps its last
+// value, the checker's rule). ok is false when there is none.
+func fillsFromValidateCalls(calls []ToolCall) (json.RawMessage, bool) {
+	var fills []wireFill
+	for _, c := range calls {
+		if c.Name != "validate" {
+			continue
+		}
+		var args validateArgs
+		if json.Unmarshal(c.Args, &args) != nil {
+			continue
+		}
+		for _, f := range args.Fills {
+			if f.Path == "" {
+				continue
+			}
+			fills = append(fills, wireFill{Path: flexString(f.Path), Value: f.Value})
+		}
+	}
+	if len(fills) == 0 {
+		return nil, false
+	}
+	raw, err := json.Marshal(wireOutput{Fills: fills})
+	if err != nil {
+		return nil, false
+	}
+	return raw, true
 }
 
 func (a *agentRun) runTool(ctx context.Context, call ToolCall) string {

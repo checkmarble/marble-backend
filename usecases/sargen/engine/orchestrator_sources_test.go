@@ -48,9 +48,8 @@ func TestRunJob_FillAndOptionSourcesOutsideScopeRejected(t *testing.T) {
 	require.Len(t, qs, 1)
 	var opts []core.QuestionOption
 	require.NoError(t, json.Unmarshal(qs[0].Options, &opts))
-	require.Len(t, opts, 2)
-	require.Empty(t, opts[0].Fills, "the option with a foreign source stays a plain label")
-	require.Len(t, opts[1].Fills, 1)
+	require.Len(t, opts, 1, "the option with a foreign source writes nothing: dropped")
+	require.Len(t, opts[0].Fills, 1)
 
 	var res taskResult
 	require.NoError(t, json.Unmarshal(f.Repo.Task(t, "a", tgtPP1).Output, &res))
