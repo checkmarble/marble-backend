@@ -84,3 +84,20 @@ func FillsOutputSchema() jsonschema.Schema { return mustSchema(fillsSchemaJSON) 
 // {findings: [{paths, severity: "important"|"mineur", message}]} (all
 // properties required, strict-compatible).
 func ReviewOutputSchema() jsonschema.Schema { return mustSchema(reviewSchemaJSON) }
+
+// validateParamsJSON is the parameter schema of the validate tool: the fills of
+// a final answer, every property but the path optional. The tool runs the same
+// control as a final answer, without writing anything.
+const validateParamsJSON = `{"type":"object","additionalProperties":false,"required":["fills"],
+ "properties":{"fills":{"type":"array","description":"Candidate values, in the shape of the final answer's fills (source, justification and confidence are optional here)","items":{"type":"object","additionalProperties":false,"required":["path"],
+  "properties":{
+   "path":{"type":"string","description":"path of the field"},
+   "value":{"type":"string","description":"candidate value in the field's format"},
+   "source":{"anyOf":[{"type":"object","additionalProperties":false,"properties":{
+     "field":{"type":"string"},"raw_value":{"type":"string"},"table":{"type":"string"},"object_id":{"type":"string"}}},{"type":"null"}]},
+   "rule_id":{"anyOf":[{"type":"string"},{"type":"null"}]},
+   "justification":{"anyOf":[{"type":"string"},{"type":"null"}]},
+   "confidence":{"anyOf":[{"type":"string","enum":["low","medium","high"]},{"type":"null"}]}}}}}}`
+
+// ValidateParams is the parameter schema of the validate tool.
+func ValidateParams() jsonschema.Schema { return mustSchema(validateParamsJSON) }

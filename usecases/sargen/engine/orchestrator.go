@@ -573,14 +573,15 @@ type readyTask struct {
 // returned once every in-flight task has finished.
 func (r *jobRun) runWave(ctx context.Context, ready []readyTask) (bool, error) {
 	var (
-		wg       sync.WaitGroup
-		mu       sync.Mutex
-		claimed  bool
-		firstErr error
-		rateErr  error
-		limitErr error
-		sem      = make(chan struct{}, r.o.parallelism)
-		failed   bool
+		wg        sync.WaitGroup
+		mu        sync.Mutex
+		claimed   bool
+		firstErr  error
+		rateErr   error
+		limitErr  error
+		promptErr error
+		sem       = make(chan struct{}, r.o.parallelism)
+		failed    bool
 	)
 	for _, rt := range ready {
 		mu.Lock()
@@ -610,6 +611,9 @@ func (r *jobRun) runWave(ctx context.Context, ready []readyTask) (bool, error) {
 				if errors.Is(err, ErrTaskLimitReached) && limitErr == nil {
 					limitErr = err
 				}
+				if errors.Is(err, ErrPromptMissing) && promptErr == nil {
+					promptErr = err
+				}
 				if errors.Is(err, models.LLMRateLimitedError) && rateErr == nil {
 					rateErr = err
 				}
@@ -620,8 +624,12 @@ func (r *jobRun) runWave(ctx context.Context, ready []readyTask) (bool, error) {
 		}(rt)
 	}
 	wg.Wait()
-	// A limit failure of an essential task ends the job: it wins over a rate
-	// limit (snooze) and over the first error (retry).
+	// A missing prompt ends the job for good: it wins over everything else (no
+	// retry, no snooze). A limit failure of an essential task ends the job too:
+	// it wins over a rate limit (snooze) and over the first error (retry).
+	if promptErr != nil {
+		return claimed, promptErr
+	}
 	if limitErr != nil {
 		return claimed, limitErr
 	}

@@ -822,3 +822,32 @@ func calendarDay(raw string) (string, bool) {
 	}
 	return "", false
 }
+
+// dryRun is the validate tool of a task: the candidate fills go through the same
+// control as the fills of a final answer (paths of the task's part, value
+// format, source and proof), nothing is written. It reports what would be
+// refused, what would be turned into a question and how many fills would pass.
+func (c *checker) dryRun(args json.RawMessage) string {
+	var a validateArgs
+	if msg, ok := parseArgs(args, &a); !ok {
+		return msg
+	}
+	if len(a.Fills) > validateMaxFills {
+		return toolError(fmt.Sprintf("too many values to validate (%d at most)", validateMaxFills))
+	}
+	raw, err := json.Marshal(wireOutput{Fills: a.Fills})
+	if err != nil {
+		return toolError("unreadable fills")
+	}
+	res := c.checkFills(raw)
+	questions := make([]string, 0, len(res.Questions))
+	for _, q := range res.Questions {
+		questions = append(questions, q.Text)
+	}
+	return toolJSON(map[string]any{
+		"accepted":  len(res.Fills),
+		"problems":  append([]string{}, res.Corrections...),
+		"notes":     append([]string{}, res.Notes...),
+		"would_ask": questions,
+	})
+}

@@ -312,12 +312,6 @@ func buildTurnRequest(st *llmRun, req AgentRequest, provider, model string) (llm
 	for _, c := range corrections {
 		r = r.WithText(llmberjack.RoleUser, c)
 	}
-	if len(req.Tools) == 0 {
-		// A turn without tools (the grace turn after the budget): the stubs
-		// above only served to attach the results of the previous calls; no
-		// tool definition is sent, so the model can only answer.
-		clear(r.Tools)
-	}
 	return r, nil
 }
 
