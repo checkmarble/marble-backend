@@ -352,6 +352,27 @@ func (uc *Usecase) hasGeneratedTask(ctx context.Context, exec repositories.Execu
 	return false, nil
 }
 
+// refuseIfSelectionFrozen is the read-only, lock-free pre-check of the selection
+// freeze: it only refuses what is already certain (a done generate job, or one
+// that wrote to the document). The authoritative check stays in the transaction.
+func (uc *Usecase) refuseIfSelectionFrozen(ctx context.Context, exec repositories.Executor, id uuid.UUID) error {
+	jobs, err := uc.generation.ListSarGenerationJobs(ctx, exec, id)
+	if err != nil {
+		return err
+	}
+	if hasDoneGenerate(jobs) {
+		return ErrSelectionFrozen
+	}
+	generated, err := uc.hasGeneratedTask(ctx, exec, jobs)
+	if err != nil {
+		return err
+	}
+	if generated {
+		return ErrSelectionFrozen
+	}
+	return nil
+}
+
 func hasDoneGenerate(jobs []models.SarGenerationJob) bool {
 	return slices.ContainsFunc(jobs, func(j models.SarGenerationJob) bool {
 		return j.Kind == models.SarJobKindGenerate && j.Status == models.SarJobStatusDone
