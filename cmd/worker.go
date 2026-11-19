@@ -46,6 +46,10 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	if err != nil {
 		return err
 	}
+	batchExecutionConcurrency, err := loadBatchExecutionConcurrency()
+	if err != nil {
+		return err
+	}
 	pgConfig := infra.PgConfig{
 		ConnectionString:   utils.GetEnv("PG_CONNECTION_STRING", ""),
 		Database:           utils.GetEnv("PG_DATABASE", "marble"),
@@ -364,6 +368,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	uc := usecases.NewUsecases(
 		repositories,
 		usecases.WithAppName(appName),
+		usecases.WithBatchExecutionConcurrency(batchExecutionConcurrency),
 		usecases.WithIngestionBucketUrl(workerConfig.ingestionBucketUrl),
 		usecases.WithOffloadingBucketUrl(offloadingConfig.BucketUrl),
 		usecases.WithOffloading(offloadingConfig),
@@ -486,6 +491,27 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	logger.InfoContext(ctx, "River client stopped")
 
 	return nil
+}
+
+func loadBatchExecutionConcurrency() (map[models.OrganizationEnvironment]int, error) {
+	config := worker_jobs.DefaultBatchExecutionConcurrency()
+	settings := []struct {
+		name        string
+		environment models.OrganizationEnvironment
+	}{
+		{"BATCH_EXECUTION_CONCURRENCY_PRODUCTION_ORG", models.OrganizationEnvironmentProduction},
+		{"BATCH_EXECUTION_CONCURRENCY_DEMO_ORG", models.OrganizationEnvironmentDemo},
+		{"BATCH_EXECUTION_CONCURRENCY_STAGING_ORG", models.OrganizationEnvironmentStaging},
+		{"BATCH_EXECUTION_CONCURRENCY_UNKNOWN_ORG", models.OrganizationEnvironmentUnknown},
+	}
+	for _, setting := range settings {
+		count := utils.GetEnv(setting.name, config[setting.environment])
+		if count <= 0 {
+			return nil, errors.Errorf("%s must be a positive integer. Got %d", setting.name, count)
+		}
+		config[setting.environment] = count
+	}
+	return config, nil
 }
 
 func loadOrganizationQueueWorkers() (usecases.OrganizationQueueWorkers, error) {
