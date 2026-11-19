@@ -203,6 +203,9 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 		// selection, so they are all dropped and the resume replans from the new
 		// selection.
 		if failed, ok := lastFailedGenerate(jobs); ok {
+			if err := uc.dismissQuestionsOfTasks(ctx, tx, id, failed.Id); err != nil {
+				return err
+			}
 			if err := uc.generation.DeleteSarGenerationTasks(ctx, tx, failed.Id); err != nil {
 				return err
 			}
@@ -242,6 +245,36 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 		return DeclarationState{}, err
 	}
 	return uc.buildState(ctx, exec, saved)
+}
+
+// dismissQuestionsOfTasks dismisses the open questions and review findings
+// raised by the tasks of a job that are about to be deleted: they may be about
+// objects the new selection no longer holds.
+func (uc *Usecase) dismissQuestionsOfTasks(ctx context.Context, tx repositories.Transaction,
+	declarationId, jobId uuid.UUID,
+) error {
+	tasks, err := uc.generation.ListSarGenerationTaskSummaries(ctx, tx, jobId)
+	if err != nil {
+		return err
+	}
+	if len(tasks) == 0 {
+		return nil
+	}
+	taskIds := make(map[uuid.UUID]bool, len(tasks))
+	for _, t := range tasks {
+		taskIds[t.Id] = true
+	}
+	open, err := uc.generation.ListSarQuestions(ctx, tx, declarationId, models.SarQuestionStatusOpen)
+	if err != nil {
+		return err
+	}
+	var ids []uuid.UUID
+	for _, q := range open {
+		if q.TaskId != nil && taskIds[*q.TaskId] {
+			ids = append(ids, q.Id)
+		}
+	}
+	return uc.generation.CloseSarQuestions(ctx, tx, ids, models.SarQuestionStatusDismissed)
 }
 
 // snapshotFor checks that the object is reachable and takes its frozen copy.
