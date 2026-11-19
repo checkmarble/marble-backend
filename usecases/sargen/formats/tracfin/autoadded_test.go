@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
 )
 
@@ -187,4 +188,29 @@ func TestPlacement_ContextAccountReferenceNeedsALinkToItsOwner(t *testing.T) {
 	doc = core.NewDocument()
 	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, linked))
 	assert.Len(t, doc.Items["personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban"], 1)
+}
+
+// A context-only person next to an analyst transaction is not declared: the
+// analyst object must come from a person-, company- or partner-like table.
+func TestPlacement_AnalystTransactionDoesNotCarryAPerson(t *testing.T) {
+	f := planFormat(t)
+	raw := json.RawMessage(`{"persons":[{"kind":"pp","objects":[{"table":"persons","object_id":"p-ctx"},{"table":"transactions","object_id":"t-1"}]}],
+	 "financial_refs":[],"transactions":[]}`)
+	person := core.ObjectRef{Table: "persons", ObjectID: "p-ctx"}
+	txn := core.ObjectRef{Table: "transactions", ObjectID: "t-1"}
+	sc := core.StructuredContext{
+		ContextOnly: map[core.ObjectRef]bool{person: true},
+		Semantics: map[core.ObjectRef]models.SemanticType{
+			person: models.SemanticTypePerson, txn: models.SemanticTypeTransaction,
+		},
+	}
+	doc := core.NewDocument()
+	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, sc))
+	assert.Empty(t, doc.Items["personnes.pp"])
+
+	// With an analyst-chosen person-like object it is declared.
+	sc.ContextOnly = nil
+	doc = core.NewDocument()
+	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, sc))
+	assert.Len(t, doc.Items["personnes.pp"], 1)
 }

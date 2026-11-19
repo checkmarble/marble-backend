@@ -29,7 +29,7 @@ func TestAgent_TimeoutIsClampedToHalfTheParentDeadline(t *testing.T) {
 	r := NewAgentRunner(llm, fakeAgentPrompts{}, AgentLimits{})
 	out, err := r.Run(parent, agentToolContext(t), agentTask(spec), spec)
 	require.True(t, errors.Is(err, ErrTaskLimitReached), "the task ends on its own limit before the job context expires")
-	assert.Equal(t, 2, scripted.Calls(), "once half of the remaining time is used: the grace turn only")
+	assert.Equal(t, 1, scripted.Calls(), "a grace call expected to outlast the clamped deadline is not made")
 	assert.Empty(t, out.Fills)
 	assert.NoError(t, parent.Err(), "the job context is still alive")
 }
@@ -86,4 +86,22 @@ func TestAgent_SpecLimitsOnlyRaiseTheRunnerBudget(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 4, llm.Calls(), "the run is not cut at the spec's 1 call / 1 turn")
 	assert.NotEmpty(t, out.Fills)
+}
+
+// A clamped task that hits its turn limit with time to spare still gets the
+// grace turn (its expected duration fits before the clamped deadline).
+func TestAgent_ClampedTaskGetsTheGraceTurnWhenItFits(t *testing.T) {
+	scripted := newScriptedLLM(
+		ToolCallStep("read_object", agReadP1Args),
+		FinalStep(agFinal(agNomFillValid)),
+	)
+	spec := agentSpec("fill", agentPersonPath)
+	spec.FailJobOnLimit = true
+	parent, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	r := NewAgentRunner(scripted, fakeAgentPrompts{}, AgentLimits{MaxTurns: 1})
+	out, err := r.Run(parent, agentToolContext(t), agentTask(spec), spec)
+	require.NoError(t, err)
+	assert.Equal(t, 2, scripted.Calls())
+	require.Len(t, out.Fills, 1)
 }

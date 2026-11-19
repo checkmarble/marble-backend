@@ -516,6 +516,13 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 			if graceUsed {
 				return a.limitOutput(reason), nil
 			}
+			if a.spec.FailJobOnLimit && turns > 0 && time.Until(deadline) < lastCall {
+				// A task clamped to end before the job does: a grace call that is
+				// expected to outlast its clamped deadline could run into the job
+				// deadline (a technical failure and a retry): the limit output
+				// right away.
+				return a.limitOutput(reason), nil
+			}
 			graceUsed, graceReason = true, reason
 			// The grace turn keeps the tool declarations (some providers reject
 			// a tool history without them): every call it makes is answered with

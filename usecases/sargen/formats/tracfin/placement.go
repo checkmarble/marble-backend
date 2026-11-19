@@ -97,9 +97,11 @@ type placementLeftOut struct {
 //
 // Objects the server added on its own (core.StructuredContext.ContextOnly) are
 // context to read and cite, never declared on their own:
-//   - a person is declared only if at least one of its objects is not context
-//     only and is not also the object of a financial reference of the output (an
-//     account used as a reference does not make a person); the others are
+//   - a person is declared only if at least one of its objects is chosen by the
+//     analyst (not context only), comes from a person-, company- or
+//     partner-like table (a transaction or an account does not make a person;
+//     an unknown table semantic is not held against it) and is not also the
+//     object of a financial reference of the output; the others are
 //     returned in left, the references they owned lose them as an owner and the
 //     remaining persons are renumbered;
 //   - a transaction made only of a context object is not created (left);
@@ -146,7 +148,7 @@ func (f *format) parsePlacement(raw json.RawMessage, sc core.StructuredContext) 
 	keptPersons := out.Persons[:0:0]
 	for i, p := range out.Persons {
 		carried := slices.ContainsFunc(p.Objects, func(o core.ObjectRef) bool {
-			return !sc.IsContextOnly(o) && !usedAsReference[o]
+			return !sc.IsContextOnly(o) && !usedAsReference[o] && sc.CanCarryEntity(o)
 		})
 		if !carried {
 			newIndex[i] = -1
