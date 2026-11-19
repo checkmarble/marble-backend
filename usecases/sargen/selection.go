@@ -2,7 +2,6 @@ package sargen
 
 import (
 	"context"
-	"slices"
 	"strings"
 	"time"
 
@@ -95,27 +94,11 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 		return uc.buildState(ctx, exec, d) // nothing to change: no version bump
 	}
 
-	// Current selection and data model.
-	var ctxData selectionContext
-	if len(add) > 0 {
-		ctxData, err = uc.loadSelectionContext(ctx, exec, orgId, d)
-		if err != nil {
-			return DeclarationState{}, err
-		}
-	} else {
-		ctxData.selected = map[core.ObjectRef]models.SarSelectedObject{}
-		rows, err := uc.selectionRepo.ListSarSelection(ctx, exec, id)
-		if err != nil {
-			return DeclarationState{}, err
-		}
-		for _, o := range rows {
-			ctxData.selected[rowRef(o)] = o
-		}
-		ctxData.dataModel, err = uc.dataModelReader.GetDataModel(ctx, orgId,
-			models.DataModelReadOptions{IncludeNavigationOptions: true}, true)
-		if err != nil {
-			return DeclarationState{}, err
-		}
+	// Current selection (read from the database: the frozen copies are never
+	// read again from the source) and data model.
+	ctxData, err := uc.loadSelectionContext(ctx, exec, orgId, d)
+	if err != nil {
+		return DeclarationState{}, err
 	}
 	exclusionList, err := uc.selectionRepo.ListSarSelectionExclusions(ctx, exec, id)
 	if err != nil {
@@ -126,8 +109,8 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 		excluded[objectRefOf(e)] = true
 	}
 
-	// Removals: explicit ones (an auto-added object records an exclusion) and
-	// auto-added parents nothing leads to any more.
+	// Removals: explicit ones (an auto-added object records an exclusion); the
+	// auto-added parents nothing leads to any more are found below.
 	var removeRefs, addExclusions []models.CaseEntityRef
 	remaining := make(map[core.ObjectRef]models.SarSelectedObject, len(ctxData.selected))
 	for ref, o := range ctxData.selected {
@@ -143,15 +126,10 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 			delete(remaining, r)
 		}
 	}
-	for _, o := range orphanedAutoAdded(ctxData.dataModel, remaining) {
-		removeRefs = append(removeRefs, caseEntityRef(rowRef(o)))
-		delete(remaining, rowRef(o))
-	}
 
 	// Additions: analyst choices first, then their useful parents.
 	var newRows []models.SarSelectedObject
 	var clearAuto, clearExclusions []models.CaseEntityRef
-	var converted []models.SarSelectedObject
 	for _, a := range add {
 		if excluded[a.Ref] {
 			clearExclusions = append(clearExclusions, caseEntityRef(a.Ref))
@@ -164,7 +142,6 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 				clearAuto = append(clearAuto, caseEntityRef(a.Ref))
 				o.AutoAdded, o.ContextOnly = false, false
 				remaining[a.Ref] = o
-				converted = append(converted, o)
 			}
 			continue
 		}
@@ -177,15 +154,19 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 		newRows = append(newRows, row)
 		remaining[a.Ref] = row
 	}
-	if seeds := append(slices.Clone(newRows), converted...); len(seeds) > 0 {
-		parents, err := uc.autoParents(ctx, orgId, ctxData, id, seeds, remaining, excluded)
-		if err != nil {
-			return DeclarationState{}, err
-		}
-		newRows = append(newRows, parents...)
+	// The auto-added set is recomputed from every analyst row left (not only the
+	// new ones): a parent that several rows reach stays while one of them does,
+	// a parent nothing reaches any more leaves, a new one joins.
+	parents, dead, err := uc.recomputeAutoParents(ctx, orgId, ctxData, id, remaining, excluded)
+	if err != nil {
+		return DeclarationState{}, err
 	}
+	for _, o := range dead {
+		removeRefs = append(removeRefs, caseEntityRef(rowRef(o)))
+	}
+	newRows = append(newRows, parents...)
 
-	if len(newRows) == 0 && len(remove) == 0 && len(clearAuto) == 0 {
+	if len(newRows) == 0 && len(removeRefs) == 0 && len(clearAuto) == 0 {
 		return uc.buildState(ctx, exec, d) // everything already selected: no version bump
 	}
 

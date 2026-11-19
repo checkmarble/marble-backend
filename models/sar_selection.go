@@ -34,7 +34,11 @@ type SarSelectedObject struct {
 }
 
 // SarReachedFrom records the object and link through which a selected object
-// was reached.
+// was reached. For an auto-added object it is display information only (« lié à
+// X »): Table/ObjectId is the nearest selected object it was reached from when
+// it was added and Link the last link followed, which behind an unselected
+// intermediate table is not a link of Table. It never decides whether the
+// object stays selected and must not be used to navigate.
 type SarReachedFrom struct {
 	TableName string `json:"table"` //nolint:tagliatelle
 	ObjectId  string `json:"object_id"`

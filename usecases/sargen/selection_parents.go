@@ -75,14 +75,23 @@ type parentNode struct {
 	data map[string]any
 }
 
+// readBudget counts the object reads of one selection change.
+type readBudget struct {
+	used      int
+	exhausted bool
+}
+
 type parentRead struct {
 	ref   core.ObjectRef
 	obj   models.ClientObjectDetail
 	found bool
 }
 
-// autoParents returns the parent objects to add automatically for the seeds
-// (the objects the analyst just chose, or turned from auto-added into a choice):
+// recomputeAutoParents recomputes the auto-added set of a declaration from all
+// its analyst rows (the rows that are not auto-added), the seeds. It returns the
+// parent rows to add and the existing auto-added rows nothing reaches any more
+// (to remove): an auto-added object stays while at least one analyst row still
+// reaches it, however many roots it has. The traversal follows
 // objects reached through to-single links of the data model (never to-many),
 // transitively up to maxParentDepth hops, cycle-safe and deduplicated, at most
 // maxAutoAddedPerDeclaration auto-added objects in the declaration, in a
@@ -103,17 +112,37 @@ type parentRead struct {
 //
 // selected holds the selection after the current change, seeds included; the
 // caller owns it and does not see the returned objects in it.
-func (uc *Usecase) autoParents(ctx context.Context, orgId uuid.UUID, c selectionContext,
-	declarationId uuid.UUID, seeds []models.SarSelectedObject,
-	selected map[core.ObjectRef]models.SarSelectedObject, excluded map[core.ObjectRef]bool,
-) ([]models.SarSelectedObject, error) {
+//
+// When the traversal could not finish (read budget or cap reached), the existing
+// auto-added rows it did not reach are kept: absence of proof is not a removal.
+// Rows already selected are traversed on their frozen snapshots, never re-read.
+//
+// ReachedFrom of a row is display information only (the nearest selected object
+// at the time it was added): liveness never depends on it.
+func (uc *Usecase) recomputeAutoParents(ctx context.Context, orgId uuid.UUID, c selectionContext,
+	declarationId uuid.UUID, selected map[core.ObjectRef]models.SarSelectedObject, excluded map[core.ObjectRef]bool,
+) (added, dead []models.SarSelectedObject, err error) {
 	dm := c.dataModel
 	autoCount := 0
+	var seeds []models.SarSelectedObject
 	for _, o := range selected {
-		if o.AutoAdded {
-			autoCount++
+		if !o.AutoAdded {
+			seeds = append(seeds, o)
 		}
 	}
+	reached := map[core.ObjectRef]bool{}
+	complete := true
+	defer func() {
+		if err != nil {
+			return
+		}
+		for r, o := range selected {
+			if o.AutoAdded && !reached[r] && complete {
+				dead = append(dead, o)
+			}
+		}
+		slices.SortFunc(dead, func(a, b models.SarSelectedObject) int { return compareRefs(rowRef(a), rowRef(b)) })
+	}()
 
 	frontier := make([]parentNode, 0, len(seeds))
 	for _, s := range seeds {
@@ -126,8 +155,9 @@ func (uc *Usecase) autoParents(ctx context.Context, orgId uuid.UUID, c selection
 		visited[n.ref] = true
 	}
 	cache := map[string]parentRead{}
-	reads := 0
+	budget := &readBudget{}
 	var out []models.SarSelectedObject
+	defer func() { complete = complete && !budget.exhausted }()
 
 	for depth := 1; depth <= maxParentDepth && len(frontier) > 0; depth++ {
 		type found struct {
@@ -144,9 +174,9 @@ func (uc *Usecase) autoParents(ctx context.Context, orgId uuid.UUID, c selection
 				if _, known := dm.Tables[l.single.ParentTableName]; !known {
 					continue
 				}
-				read, err := uc.readParent(ctx, orgId, dm, cache, &reads, n.data, l)
-				if err != nil {
-					return nil, err
+				read, rerr := uc.readParent(ctx, orgId, dm, cache, budget, n.data, l)
+				if rerr != nil {
+					return nil, nil, rerr
 				}
 				if !read.found || visited[read.ref] || excluded[read.ref] {
 					continue
@@ -176,6 +206,10 @@ func (uc *Usecase) autoParents(ctx context.Context, orgId uuid.UUID, c selection
 					f.node.data = sel.Snapshot
 				}
 				f.node.root = r
+				reached[r] = true
+				if sel.AutoAdded {
+					autoCount++
+				}
 				next = append(next, f.node)
 				continue
 			}
@@ -184,7 +218,8 @@ func (uc *Usecase) autoParents(ctx context.Context, orgId uuid.UUID, c selection
 				continue
 			}
 			if autoCount >= maxAutoAddedPerDeclaration {
-				return out, nil
+				complete = false
+				return out, nil, nil
 			}
 			from := f.from
 			row := models.SarSelectedObject{
@@ -201,28 +236,29 @@ func (uc *Usecase) autoParents(ctx context.Context, orgId uuid.UUID, c selection
 			if _, direct := c.candidates[r]; direct {
 				// Same snapshot as an analyst choice (a trigger object comes from
 				// its decision).
-				snap, err := uc.snapshotFor(ctx, orgId, c, SelectionAdd{Ref: r})
-				if err != nil {
-					return nil, err
+				snap, serr := uc.snapshotFor(ctx, orgId, c, SelectionAdd{Ref: r})
+				if serr != nil {
+					return nil, nil, serr
 				}
 				row.Snapshot, row.Origin, row.ContextOnly = snap.Snapshot, snap.Origin, false
 				f.node.data = row.Snapshot
 			}
 			out = append(out, row)
+			reached[r] = true
 			autoCount++
 			f.node.root = r
 			next = append(next, f.node)
 		}
 		frontier = next
 	}
-	return out, nil
+	return out, nil, nil
 }
 
 // readParent reads the parent reached from data through the to-single link l.
 // Reads are cached for the duration of one selection change. A missing parent
 // is not an error.
 func (uc *Usecase) readParent(ctx context.Context, orgId uuid.UUID, dm models.DataModel,
-	cache map[string]parentRead, reads *int, data map[string]any, l linkInfo,
+	cache map[string]parentRead, budget *readBudget, data map[string]any, l linkInfo,
 ) (parentRead, error) {
 	value, ok := valueString(data[l.single.ChildFieldName])
 	if !ok {
@@ -232,10 +268,11 @@ func (uc *Usecase) readParent(ctx context.Context, orgId uuid.UUID, dm models.Da
 	if r, hit := cache[key]; hit {
 		return r, nil
 	}
-	if *reads >= maxParentReads {
+	if budget.used >= maxParentReads {
+		budget.exhausted = true
 		return parentRead{}, nil // read budget spent: nothing more is followed
 	}
-	*reads++
+	budget.used++
 	objs, err := uc.ingestedReader.GetIngestedObject(ctx, orgId, &dm,
 		l.single.ParentTableName, value, l.single.ParentFieldName)
 	if err != nil && !errors.Is(err, models.NotFoundError) {
@@ -250,62 +287,6 @@ func (uc *Usecase) readParent(ctx context.Context, orgId uuid.UUID, dm models.Da
 	}
 	cache[key] = r
 	return r, nil
-}
-
-// orphanedAutoAdded returns the auto-added objects of selected that are no
-// longer reachable from an analyst's choice (a row that is not auto-added): an
-// auto-added object stays while it was reached from a live object (its
-// ReachedFrom) or a live object leads to it through a to-single link (compared
-// on the frozen copies). Liveness is computed from the analyst's rows, so a
-// cycle of parents never keeps itself alive and a parent reached through a
-// table that was not added is not lost. The order is deterministic.
-func orphanedAutoAdded(dm models.DataModel, selected map[core.ObjectRef]models.SarSelectedObject) []models.SarSelectedObject {
-	alive := map[core.ObjectRef]bool{}
-	var pending []models.SarSelectedObject
-	for r, o := range selected {
-		if o.AutoAdded {
-			pending = append(pending, o)
-		} else {
-			alive[r] = true
-		}
-	}
-	for changed := true; changed; {
-		changed = false
-		rest := pending[:0:0]
-		for _, p := range pending {
-			if reachedFromAlive(dm, selected, alive, p) {
-				alive[rowRef(p)] = true
-				changed = true
-			} else {
-				rest = append(rest, p)
-			}
-		}
-		pending = rest
-	}
-	slices.SortFunc(pending, func(a, b models.SarSelectedObject) int { return compareRefs(rowRef(a), rowRef(b)) })
-	return pending
-}
-
-// reachedFromAlive tells whether a live object is the recorded origin of p or
-// leads to p through a to-single link.
-func reachedFromAlive(dm models.DataModel, selected map[core.ObjectRef]models.SarSelectedObject,
-	alive map[core.ObjectRef]bool, p models.SarSelectedObject,
-) bool {
-	if rf := p.ReachedFrom; rf != nil && alive[core.ObjectRef{Table: rf.TableName, ObjectID: rf.ObjectId}] {
-		return true
-	}
-	for r := range alive {
-		from := selected[r]
-		if r == rowRef(p) {
-			continue
-		}
-		for _, l := range linksOf(dm, from.TableName) {
-			if l.single != nil && l.single.ParentTableName == p.TableName && l.reaches(from.Snapshot, p.Snapshot) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func compareRefs(a, b core.ObjectRef) int {
