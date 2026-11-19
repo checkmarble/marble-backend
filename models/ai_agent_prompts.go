@@ -28,6 +28,7 @@ const (
 	AiAgentRuleDescriptionPromptPath                           = "rule/rule_description.md"
 	AiAgentRuleGenerationStep1PromptPath                       = "rule/rule_generation_step1.md"
 	AiAgentRuleGenerationStep2PromptPath                       = "rule/rule_generation_step2.md"
+	AiAgentRuleGenerationCorrectionPromptPath                  = "rule/rule_generation_correction.md"
 	AiAgentScreeningHitEvaluatePromptPath                      = "screening_hit_suggestion/evaluate_match.md"
 	AiAgentScreeningHitSystemPromptPath                        = "screening_hit_suggestion/system.md"
 )
@@ -54,6 +55,7 @@ var AiAgentExpectedFiles = []string{
 	AiAgentRuleDescriptionPromptPath,
 	AiAgentRuleGenerationStep1PromptPath,
 	AiAgentRuleGenerationStep2PromptPath,
+	AiAgentRuleGenerationCorrectionPromptPath,
 	AiAgentScreeningHitEvaluatePromptPath,
 	AiAgentScreeningHitSystemPromptPath,
 }
