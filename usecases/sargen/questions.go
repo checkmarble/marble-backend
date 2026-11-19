@@ -87,7 +87,9 @@ func (uc *Usecase) DismissQuestion(ctx context.Context, questionId uuid.UUID) er
 // sources, then core.MarkReviewed on their paths, then closes the question
 // (resolved). Checks: declaration version (models.ErrSarVersionConflict),
 // optionIndex in range (400), the option has fills (400), no active job
-// (ErrGenerationInProgress). Rejected fills (LLM-provided paths) -> 400 and
+// (ErrGenerationInProgress). An option without fills is accepted only when a
+// sibling option creates a new list item (provisional key): it closes the
+// question without writing or bumping the version. Rejected fills (LLM-provided paths) -> 400 and
 // nothing is applied, as is a fill on a setting or computed field. Returns the new declaration state.
 func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUID, version int, optionIndex int) (DeclarationState, error) {
 	exec := uc.executorFactory.NewExecutor()
@@ -110,6 +112,11 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 	}
 	opt := q.Options[optionIndex]
 	if len(opt.Fills) == 0 {
+		if questionCreatesItem(q) {
+			// « Do not add »: the option declines the addition proposed by a
+			// sibling option. It closes the question and writes nothing.
+			return uc.declineQuestion(ctx, q, version)
+		}
 		return DeclarationState{}, errors.Wrap(models.BadParameterError, "cette option ne propose aucune valeur")
 	}
 	if len(q.Paths) == 0 {
@@ -150,7 +157,8 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 			var paths []core.Path
 			for _, f := range fills {
 				if f.Value != "" { // an empty fill clears the value: nothing to mark
-					paths = append(paths, f.Path)
+					// A provisional item key was resolved to the created item.
+					paths = append(paths, res.Rewrite(f.Path))
 				}
 			}
 			if issues := core.MarkReviewed(spec, doc, paths); len(issues) > 0 {
@@ -168,6 +176,56 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 			}
 			return uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{questionId}, models.SarQuestionStatusResolved)
 		})
+}
+
+// questionCreatesItem reports whether an option of q fills a path holding a
+// provisional key, i.e. choosing it creates a new list item.
+func questionCreatesItem(q Question) bool {
+	for _, o := range q.Options {
+		for _, f := range o.Fills {
+			if f.Path.HasProvisionalKey() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// declineQuestion closes an open question as resolved (answered, not
+// dismissed) without writing to the document: the version is not bumped. The
+// declaration version is still checked, and no job may be active, like any
+// choice of an option.
+func (uc *Usecase) declineQuestion(ctx context.Context, q Question, version int) (DeclarationState, error) {
+	exec := uc.executorFactory.NewExecutor()
+	var saved models.SarDeclaration
+	err := uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		d, err := uc.repository.GetSarDeclarationForUpdate(ctx, tx, q.DeclarationId)
+		if err != nil {
+			return err
+		}
+		if err := uc.checkDeclarationAccess(ctx, tx, d); err != nil {
+			return err
+		}
+		if err := uc.requireNoActiveJob(ctx, tx, q.DeclarationId); err != nil {
+			return err
+		}
+		if d.Version != version {
+			return models.ErrSarVersionConflict
+		}
+		cur, err := uc.generation.GetSarQuestion(ctx, tx, q.Id)
+		if err != nil {
+			return err
+		}
+		if cur.Status != models.SarQuestionStatusOpen {
+			return errors.Wrap(models.ConflictError, "cette question est déjà fermée")
+		}
+		saved = d
+		return uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{q.Id}, models.SarQuestionStatusResolved)
+	})
+	if err != nil {
+		return DeclarationState{}, err
+	}
+	return uc.buildState(ctx, exec, saved)
 }
 
 // resolveAnsweredQuestions closes (resolved) the open questions of the
