@@ -289,3 +289,114 @@ func TestAutoParents_CandidateExposesMarkerAndPath(t *testing.T) {
 	assert.False(t, cands[0].AutoAdded, "the analyst's own choice")
 	assert.Nil(t, cands[0].ReachedFrom)
 }
+
+func TestAutoParents_ParentBehindANonUsefulTableSurvivesAnUnrelatedAddition(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	parentsModel(f)
+	acc := f.DataModel.Model.Tables["accounts"]
+	acc.SemanticType = models.SemanticTypeUnset
+	f.DataModel.Model.Tables["accounts"] = acc
+	putChain(f)
+	f.Ingested.Put("accounts", "a2", map[string]any{"object_id": "a2"}, time.Now())
+	addTrigger(f, "t1", "a1")
+	addTrigger(f, "t2", "a2")
+
+	st, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{{Ref: selRef("transactions", "t1")}}, nil)
+	require.NoError(t, err)
+	_, err = uc.UpdateSelection(f.Ctx, declId, st.Declaration.Version, []SelectionAdd{{Ref: selRef("transactions", "t2")}}, nil)
+	require.NoError(t, err)
+	got := selectedTables(f)
+	assert.Contains(t, got, "persons/p1", "reached through a table that was not added: still alive")
+	assert.Contains(t, got, "companies/c1")
+	for _, r := range f.Selection.Rows {
+		if r.TableName == "persons" {
+			assert.Equal(t, "t1", r.ReachedFrom.ObjectId, "the nearest selected object it was reached from")
+		}
+	}
+}
+
+func TestAutoParents_CycleOfParentsLeavesWithItsLastAnalystChild(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	parentsModel(f)
+	// companies point back to persons: persons <-> companies.
+	co := f.DataModel.Model.Tables["companies"]
+	co.Fields["ceo_id"] = models.Field{Name: "ceo_id", DataType: models.String}
+	co.LinksToSingle["persons"] = models.LinkToSingle{Name: "persons", ChildTableName: "companies",
+		ChildFieldName: "ceo_id", ParentTableName: "persons", ParentFieldName: "object_id"}
+	f.DataModel.Model.Tables["companies"] = co
+	putChain(f)
+	f.Ingested.Put("companies", "c1", map[string]any{"object_id": "c1", "group_id": "g1", "ceo_id": "p1"}, time.Now())
+	addTrigger(f, "t1", "a1")
+
+	st, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{{Ref: selRef("transactions", "t1")}}, nil)
+	require.NoError(t, err)
+	require.Contains(t, selectedTables(f), "companies/c1")
+	_, err = uc.UpdateSelection(f.Ctx, declId, st.Declaration.Version, nil, []core.ObjectRef{selRef("transactions", "t1")})
+	require.NoError(t, err)
+	assert.Empty(t, f.Selection.Rows, "a cycle never keeps itself alive")
+}
+
+func TestAutoParents_DirectCandidateParentStaysDeclarable(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	parentsModel(f)
+	putChain(f)
+	addTrigger(f, "t1", "a1")
+	// The person is also a trigger object of another decision of the case.
+	f.Decisions.Add(f.OrgId, "persons", map[string]any{"object_id": "p1", "company_id": "c1"}, time.Now())
+
+	_, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{{Ref: selRef("transactions", "t1")}}, nil)
+	require.NoError(t, err)
+	byKey := map[string]models.SarSelectedObject{}
+	for _, r := range f.Selection.Rows {
+		byKey[r.TableName+"/"+r.ObjectId] = r
+	}
+	p := byKey["persons/p1"]
+	assert.True(t, p.AutoAdded, "still shown as added automatically")
+	assert.False(t, p.ContextOnly, "a direct candidate can be declared")
+	assert.Equal(t, models.SarOriginKindDecision, p.Origin.Kind, "snapshot like an analyst choice")
+	assert.True(t, byKey["accounts/a1"].ContextOnly)
+	assert.True(t, byKey["companies/c1"].ContextOnly)
+	assert.False(t, byKey["transactions/t1"].AutoAdded)
+}
+
+func TestAutoParents_ExplicitAdditionOfAnAutoRowFollowsItsParents(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	parentsModel(f)
+	putChain(f)
+	addTrigger(f, "t1", "a1")
+	st, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{{Ref: selRef("transactions", "t1")}}, nil)
+	require.NoError(t, err)
+	require.NotContains(t, selectedTables(f), "groups/g1", "4th hop")
+
+	_, err = uc.UpdateSelection(f.Ctx, declId, st.Declaration.Version, []SelectionAdd{{Ref: selRef("companies", "c1")}}, nil)
+	require.NoError(t, err)
+	got := selectedTables(f)
+	assert.Equal(t, false, got["companies/c1"])
+	assert.Contains(t, got, "groups/g1", "traversal restarts from the converted row")
+	for _, r := range f.Selection.Rows {
+		if r.TableName == "companies" {
+			assert.False(t, r.ContextOnly)
+		}
+	}
+}
+
+func TestAutoParents_ReadsAreBounded(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	parentsModel(f)
+	acc := f.DataModel.Model.Tables["accounts"]
+	acc.SemanticType = models.SemanticTypeUnset // never added: nothing stops the traversal but the budget
+	f.DataModel.Model.Tables["accounts"] = acc
+	now := time.Now()
+	var adds []SelectionAdd
+	n := maxParentReads + 20
+	for i := 0; i < n; i++ {
+		a, id := fmt.Sprintf("a%04d", i), fmt.Sprintf("t%04d", i)
+		f.Ingested.Put("accounts", a, map[string]any{"object_id": a}, now)
+		addTrigger(f, id, a)
+		adds = append(adds, SelectionAdd{Ref: selRef("transactions", id)})
+	}
+	before := f.Ingested.Reads
+	_, err := uc.UpdateSelection(f.Ctx, declId, 1, adds, nil)
+	require.NoError(t, err)
+	assert.LessOrEqual(t, f.Ingested.Reads-before, maxParentReads)
+}

@@ -41,7 +41,7 @@ func (repo *MarbleDbRepository) AddSarSelection(
 	}
 	query := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SAR_DECLARATION_SELECTIONS).
-		Columns("id", "declaration_id", "table_name", "object_id", "snapshot", "origin", "reached_from", "auto_added", "created_at")
+		Columns("id", "declaration_id", "table_name", "object_id", "snapshot", "origin", "reached_from", "auto_added", "context_only", "created_at")
 	now := time.Now()
 	for _, o := range objs {
 		snapshot, err := json.Marshal(o.Snapshot)
@@ -65,7 +65,7 @@ func (repo *MarbleDbRepository) AddSarSelection(
 			createdAt = now
 		}
 		query = query.Values(o.Id, o.DeclarationId, o.TableName, o.ObjectId,
-			json.RawMessage(snapshot), json.RawMessage(origin), reached, o.AutoAdded, createdAt)
+			json.RawMessage(snapshot), json.RawMessage(origin), reached, o.AutoAdded, o.ContextOnly, createdAt)
 	}
 	err := ExecBuilder(ctx, exec, query)
 	if IsUniqueViolationError(err) {
@@ -96,7 +96,8 @@ func (repo *MarbleDbRepository) RemoveSarSelection(
 	return ExecBuilder(ctx, exec, query)
 }
 
-// ClearSarSelectionAutoAdded turns auto-added objects into analyst choices.
+// ClearSarSelectionAutoAdded turns auto-added objects into analyst choices
+// (marker and context-only flag cleared).
 func (repo *MarbleDbRepository) ClearSarSelectionAutoAdded(
 	ctx context.Context, exec Executor, declarationId uuid.UUID, refs []models.CaseEntityRef,
 ) error {
@@ -113,6 +114,7 @@ func (repo *MarbleDbRepository) ClearSarSelectionAutoAdded(
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_SAR_DECLARATION_SELECTIONS).
 		Set("auto_added", false).
+		Set("context_only", false).
 		Where(squirrel.Eq{"declaration_id": declarationId}).
 		Where(match)
 	return ExecBuilder(ctx, exec, query)
