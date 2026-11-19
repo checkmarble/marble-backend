@@ -334,11 +334,11 @@ func TestDescribeSubtree_ListsWritableFieldsOnly(t *testing.T) {
 	tc := agentToolContext(t)
 	text := DescribeSubtree(tc.Format.Spec(), tc.Doc, []core.Path{agentPersonPath, "declarant.fonction", "context.general.refInterne"})
 
-	nom := agLineWith(text, "personnes.pp[pp-1].etatCivil.nomNaissance")
+	nom := agLineWith(text, "personnes.pp[].etatCivil.nomNaissance")
 	require.NotEmpty(t, nom, text)
 	assert.Contains(t, nom, "copied", "nomNaissance is a copied field")
 
-	impl := agLineWith(text, "personnes.pp[pp-1].implication")
+	impl := agLineWith(text, "personnes.pp[].implication")
 	require.NotEmpty(t, impl, text)
 	assert.Contains(t, impl, "judgment")
 

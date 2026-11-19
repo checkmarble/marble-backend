@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -91,7 +92,7 @@ func TestDescribeSubtree_LongCodeListIsNamedWithItsSize(t *testing.T) {
 	assert.NotContains(t, text, "B05 = ", "the codes of a long list are not written")
 }
 
-func TestDescribeSubtree_BoundFallsBackToTheShortForm(t *testing.T) {
+func TestDescribeSubtree_BoundIsHardOnFieldsAndCodeLists(t *testing.T) {
 	var fields []*core.Node
 	for i := 0; i < 40; i++ {
 		fields = append(fields, describeField(fmt.Sprintf("f%02d", i), func(n *core.Node) {
@@ -103,26 +104,107 @@ func TestDescribeSubtree_BoundFallsBackToTheShortForm(t *testing.T) {
 	doc := core.NewDocument()
 
 	full := describeSubtree(spec, doc, []core.Path{"g"}, describeMaxBytes)
-	assert.NotContains(t, full, "max length 30 ; nature", "within the bound every field has the full form")
-	assert.Equal(t, 40, strings.Count(full, "length 1 to 30"))
+	assert.Equal(t, 40, strings.Count(full, "length 1 to 30"), "within the bound every template has the full form")
 
 	const limit = 3000
 	text := describeSubtree(spec, doc, []core.Path{"g"}, limit)
-	assert.Equal(t, 40, strings.Count(text, "\n- g.f")+1, "every field is still described")
-	assert.Less(t, strings.Count(text, "length 1 to 30"), 40, "past the bound the full form stops")
-	assert.NotEmpty(t, agLineWith(text, "g.f39"))
-	assert.NotContains(t, agLineWith(text, "g.f39"), "pattern", "the last field is in the short form")
-	assert.Contains(t, agLineWith(text, "g.f39"), "max length 30")
+	assert.LessOrEqual(t, len(text), limit+200, "fields and code lists respect the bound")
+	assert.Less(t, strings.Count(text, "length 1 to 30"), 40, "past the bound the description is dropped")
 	assert.Contains(t, agLineWith(text, "g.f00"), "pattern", "the first fields keep the full form")
-	// The full-form lines respect the bound: only short lines come after it.
-	assert.LessOrEqual(t, strings.LastIndex(text, "length 1 to 30"), limit)
+	assert.Contains(t, text, "more fields not described here: use field_spec", "fields that do not fit are counted")
 }
 
-func TestDescribeSubtree_Deterministic(t *testing.T) {
-	tc := agentToolContext(t)
-	allowed := []core.Path{agentPersonPath, "context.general.refInterne"}
-	first := DescribeSubtree(tc.Format.Spec(), tc.Doc, allowed)
-	for i := 0; i < 5; i++ {
-		require.Equal(t, first, DescribeSubtree(tc.Format.Spec(), tc.Doc, allowed))
+func TestDescribeSubtree_ItemsShareTheirTemplate(t *testing.T) {
+	spec := describeSpec(nil,
+		describeField("ref", func(n *core.Node) { n.Pattern = "[A-Z]{3}"; n.Description = "reference of the line" }),
+		describeField("amount", func(n *core.Node) { n.Type = core.TypeDecimal }),
+	)
+	// Make the group repeatable: items keyed by the document.
+	spec.Root.Children[0].Max = 5
+	for _, c := range spec.Root.Children[0].Children {
+		c.Template = "g[]." + c.Name
 	}
+	spec.Root.Children[0].Template = "g[]"
+	doc := core.NewDocument()
+	var allowed []core.Path
+	for i := 0; i < 10; i++ {
+		k := doc.AddItem("g", "g")
+		allowed = append(allowed, k)
+	}
+	doc.Values[core.Path(string(allowed[3])+".ref")] = core.Value{Value: "ABC"}
+
+	text := DescribeSubtree(spec, doc, allowed)
+
+	assert.Equal(t, 1, strings.Count(text, "pattern [A-Z]{3}"), "the detail of a field is written once for all the items")
+	assert.Equal(t, 1, strings.Count(text, "reference of the line"))
+	assert.Equal(t, 1, strings.Count(text, "- g[]."+"ref"))
+	for _, k := range allowed {
+		assert.Contains(t, text, "- "+string(k)+" — block", "every item is listed by its key")
+	}
+	assert.Contains(t, text, string(allowed[3])+".ref ; current value: ")
+	assert.Equal(t, 1, strings.Count(text, "current value: "), "only valued fields are listed")
+}
+
+func TestDescribeSubtree_RepeatableFieldItemsReadEmpty(t *testing.T) {
+	spec := describeSpec(nil, describeField("tags", func(n *core.Node) { n.Max = 5; n.Template = "g.tags[]" }))
+	doc := core.NewDocument()
+	k := doc.AddItem("g.tags", "tags")
+	text := DescribeSubtree(spec, doc, []core.Path{"g"})
+	assert.Contains(t, text, "- "+string(k)+" ; (empty)")
+}
+
+func TestDescribeSubtree_LateShortListStillHasItsEntry(t *testing.T) {
+	var fields []*core.Node
+	for i := 0; i < 30; i++ {
+		fields = append(fields, describeField(fmt.Sprintf("f%02d", i), nil))
+	}
+	fields = append(fields, describeField("late", func(n *core.Node) { n.Type, n.CodeList = core.TypeCode, "mid.csv" }))
+	spec := describeSpec(map[string]core.CodeList{"mid.csv": {Name: "mid.csv", Codes: describeCodes("M", 45)}}, fields...)
+	text := DescribeSubtree(spec, core.NewDocument(), []core.Path{"g"})
+	assert.Contains(t, text, "mid.csv (45 codes)")
+	assert.Contains(t, text, "M44 = Label M 44")
+	assert.NotContains(t, agLineWith(text, "g.late"), "M01", "the field line only names its list")
+	assert.NotContains(t, agLineWith(text, "g.late"), "Label M")
+}
+
+func TestDescribeSubtree_RealSpecLotOfTenTransactions(t *testing.T) {
+	tc := agentToolContext(t)
+	var allowed []core.Path
+	for i := 0; i < 10; i++ {
+		allowed = append(allowed, tc.Doc.AddItem("work.transactions", "transaction"))
+	}
+	text := DescribeSubtree(tc.Format.Spec(), tc.Doc, allowed)
+
+	assert.LessOrEqual(t, len(text), 12*1024, "ten transactions: templates once, items by key")
+	fieldLines := 0
+	seen := map[string]int{}
+	for _, l := range strings.Split(text, "\n") {
+		if strings.HasPrefix(l, "- work.transactions[].") {
+			seen[strings.SplitN(l, " ", 3)[1]]++
+			fieldLines++
+		}
+	}
+	require.NotZero(t, fieldLines)
+	for tmpl, n := range seen {
+		assert.Equal(t, 1, n, "template %s written once", tmpl)
+	}
+	for _, k := range allowed {
+		assert.Contains(t, text, "- "+string(k)+" — block")
+	}
+}
+
+func TestDescribeSubtree_DeterministicUpToTheNonce(t *testing.T) {
+	tc := agentToolContext(t)
+	tc.Doc.Values[agNomPath] = core.Value{Value: "Durand", Origin: core.OriginManual}
+	allowed := []core.Path{agentPersonPath, "context.general.refInterne"}
+	nonce := regexp.MustCompile(`id="[0-9a-f]+"`)
+	norm := func() string {
+		return nonce.ReplaceAllString(DescribeSubtree(tc.Format.Spec(), tc.Doc, allowed), `id="N"`)
+	}
+	first := norm()
+	for i := 0; i < 5; i++ {
+		require.Equal(t, first, norm())
+	}
+	one := DescribeSubtree(tc.Format.Spec(), tc.Doc, allowed)
+	assert.Equal(t, 2, strings.Count(one, `id="`), "one nonce per description: opening and closing tag share it")
 }
