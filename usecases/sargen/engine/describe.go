@@ -234,21 +234,32 @@ func itemPrefix(p core.Path) core.Path {
 	return core.Path(strings.Join(segs[:last+1], "."))
 }
 
-// commonItemPrefix is the item prefix shared by every allowed path, empty when
-// there is none or when the paths do not share it (a lot of transactions).
+// commonItemPrefix is the longest item prefix shared by every allowed path
+// (`personnes.pp[pp-2]` for a person with declared financial references, whose
+// fields carry their own deeper item prefix), empty when there is none or when
+// the paths do not share one (a lot of transactions).
 func commonItemPrefix(allowed []core.Path) core.Path {
-	var common core.Path
+	var common []string
+	first := true
 	for _, p := range allowed {
 		if p == "" {
 			continue
 		}
-		ip := itemPrefix(p)
-		if ip == "" || (common != "" && ip != common) {
+		if itemPrefix(p) == "" {
 			return ""
 		}
-		common = ip
+		segs := strings.Split(string(p), ".")
+		if first {
+			common, first = segs, false
+			continue
+		}
+		n := 0
+		for n < len(common) && n < len(segs) && common[n] == segs[n] {
+			n++
+		}
+		common = common[:n]
 	}
-	return common
+	return itemPrefix(core.Path(strings.Join(common, ".")))
 }
 
 // display is the template as written to the model: under the part's own item

@@ -305,3 +305,44 @@ func TestDescribeSubtree_ShortFormIsMarked(t *testing.T) {
 	assert.Contains(t, text, "(detail: field_spec)")
 	assert.NotContains(t, agLineWith(text, "g.f00"), "(detail: field_spec)")
 }
+
+func TestDescribeSubtree_PersonWithDeclaredIbanIsStillBoundToItsPerson(t *testing.T) {
+	tc := agentToolContext(t)
+	spec := tc.Format.Spec()
+	item := agentPerson2Path
+	iban := tc.Doc.AddItem(item.Child("referencesFinancieres").Child("referenceFinanciereIban"), "referenceFinanciereIban")
+
+	// The allowed paths as the TRACFIN fill_person task builds them: the person's
+	// children except the judgment fields, the fields of each declared reference
+	// apart from its link.
+	var allowed []core.Path
+	for _, c := range spec.NodeAt("personnes.pp[]").Children {
+		if c.ExportID || c.Name == "implication" || c.Name == "natureRelation" || c.Name == "elementsRelation" {
+			continue
+		}
+		if c.Name == "referencesFinancieres" {
+			for _, rk := range c.Children {
+				if rk.Name != "referenceFinanciereIban" {
+					continue
+				}
+				for _, field := range rk.Children {
+					if field.ExportID || field.Name == "lien" {
+						continue
+					}
+					allowed = append(allowed, iban.Child(field.Name))
+				}
+			}
+			continue
+		}
+		allowed = append(allowed, item.Child(c.Name))
+	}
+	text := DescribeSubtree(spec, tc.Doc, allowed)
+
+	for _, l := range strings.Split(text, "\n") {
+		assert.False(t, strings.HasPrefix(l, "- personnes.pp[]"), "generic template line: %s", l)
+	}
+	assert.Contains(t, text, "- personnes.pp[pp-2].etatCivil.nomNaissance")
+	assert.Contains(t, text, "- "+string(item)+" — block")
+	assert.Contains(t, text, "- "+string(iban)+" — block")
+	assert.NotContains(t, text, "personnes.pp[+a]")
+}
