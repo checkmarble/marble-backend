@@ -882,13 +882,15 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 			for _, p := range d.Paths {
 				rp := res.Rewrite(p)
 				switch {
-				case rp.HasProvisionalKey():
+				case rp.HasProvisionalKey() && !(newItemPathKnown(r.format.Spec(), rp) && core.PathAllowed(rp, allowed)):
 					result.Rejected = append(result.Rejected, rejectedView{
 						Path: rp, Code: CodeUnresolvedPath, Message: "question: path to an element that was not created"})
 				case !core.PathAllowed(rp, allowed):
 					result.Rejected = append(result.Rejected, rejectedView{
 						Path: rp, Code: core.CodeOutOfScope, Message: "question: path outside the part assigned to this task"})
 				default:
+					// A path still holding a provisional key designates an item
+					// the analyst creates by choosing an option: kept as is.
 					kept = append(kept, rp)
 					paths = append(paths, string(rp))
 				}
@@ -899,11 +901,13 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 			}
 			seen[k] = true
 			opts := make([]core.QuestionOption, 0, len(d.Options))
+			createsItem := false
 			for i, op := range d.Options {
 				op.Fills = nil
 				for _, f := range d.Options[i].Fills {
 					f.Path = res.Rewrite(f.Path)
-					if f.Path.HasProvisionalKey() || !core.PathAllowed(f.Path, kept) {
+					if (f.Path.HasProvisionalKey() && !newItemPathKnown(r.format.Spec(), f.Path)) ||
+						!core.PathAllowed(f.Path, kept) {
 						result.Rejected = append(result.Rejected, rejectedView{
 							Path: f.Path, Code: core.CodeOutOfScope,
 							Message: "question option: value outside the fields of the question"})
@@ -917,12 +921,15 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 					}
 					// Like the task's own fills: the model never picks the origin.
 					f.Origin, f.TaskID = core.OriginLLM, &taskId
+					createsItem = createsItem || f.Path.HasProvisionalKey()
 					op.Fills = append(op.Fills, f)
 				}
-				if len(op.Fills) == 0 {
-					continue // an option that writes nothing cannot be chosen
-				}
 				opts = append(opts, op)
+			}
+			// An option that writes nothing cannot be chosen, unless it declines
+			// the addition of a new list item proposed by a sibling option.
+			if !createsItem {
+				opts = slices.DeleteFunc(opts, func(op core.QuestionOption) bool { return len(op.Fills) == 0 })
 			}
 			var rawOpts []byte
 			if len(opts) > 0 {
@@ -1223,4 +1230,32 @@ type UnavailableRunner struct{}
 
 func (UnavailableRunner) Run(context.Context, core.ToolContext, models.SarGenerationTask, core.TaskSpec) (core.TaskOutput, error) {
 	return core.TaskOutput{}, errors.New("agent de génération non disponible")
+}
+
+// newItemPathKnown tells whether p, a path holding provisional keys, designates
+// a new item of repeatable containers that exist in the spec (every segment
+// with a provisional key is a repeatable node) and a known node.
+func newItemPathKnown(spec *core.Spec, p core.Path) bool {
+	if spec == nil {
+		return false
+	}
+	segs := strings.Split(string(p), ".")
+	tmpl := make([]string, 0, len(segs))
+	for _, seg := range segs {
+		name, key := seg, ""
+		if j := strings.Index(seg, "["); j >= 0 {
+			name, key = seg[:j], seg[j+1:len(seg)-1]
+			tmpl = append(tmpl, name+"[]")
+		} else {
+			tmpl = append(tmpl, name)
+		}
+		if strings.HasPrefix(key, "+") {
+			n := spec.NodeAt(strings.Join(tmpl, "."))
+			if n == nil || !n.IsRepeatable() {
+				return false
+			}
+		}
+	}
+	n := spec.NodeAt(strings.Join(tmpl, "."))
+	return n != nil && n.Template != ""
 }
