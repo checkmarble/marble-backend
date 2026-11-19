@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/checkmarble/marble-backend/utils"
 	"io/fs"
 	"maps"
 	"slices"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 // systemInstruction is the system instruction of every task.
@@ -498,10 +498,13 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 		a.tr.setProvider(step.Provider, step.Model)
 		if err != nil {
 			a.tr.add(TraceEntry{Type: TraceCheckError, Text: "provider error: " + err.Error(), DurationMs: stepMs})
-			if graceUsed && parent.Err() == nil {
+			if graceUsed && parent.Err() == nil &&
+				!errors.Is(err, models.LLMRateLimitedError) && !errors.Is(err, ErrLLMUnavailable) {
 				// The budget is spent and only an answer was asked: a failure of
 				// this call must not fail (and retry) the task, what was prepared
-				// is kept with the limit question.
+				// is kept with the limit question. A rate limit or an unavailable
+				// model keeps its job-level handling (snooze, failure): the task
+				// is redone later with its whole budget.
 				return a.limitOutput(graceReason), nil
 			}
 			return core.TaskOutput{Trace: a.tr.render()}, errors.Wrap(err, "model call")
@@ -741,11 +744,27 @@ func (a *agentRun) limitOutputFrom(reason string, out core.TaskOutput) core.Task
 		for _, f := range out.Fills {
 			filled[f.Path] = true
 		}
+		// A path already covered by a question (e.g. « valeur non vérifiable »
+		// after a recovery) is not asked about a second time.
+		asked := map[core.Path]bool{}
+		for _, q := range out.Questions {
+			for _, p := range q.Paths {
+				asked[p] = true
+			}
+		}
 		var paths []core.Path
+		pending := 0
 		for _, p := range a.requiredUnfilledPaths() {
-			if !filled[p] {
+			if filled[p] {
+				continue
+			}
+			pending++
+			if !asked[p] {
 				paths = append(paths, p)
 			}
+		}
+		if pending > 0 && len(paths) == 0 {
+			return a.render(out) // every unfilled required path already has its question
 		}
 		text := "La génération automatique n'a pas abouti pour cette partie (" + reason + ") : à renseigner manuellement."
 		if len(paths) == 0 {

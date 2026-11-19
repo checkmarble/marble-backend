@@ -337,3 +337,56 @@ func TestRunJob_MissingPromptWinsOverAnotherTaskError(t *testing.T) {
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, ErrPromptMissing), "%v", err)
 }
+
+// A rate limit on the grace turn keeps its job-level handling: it propagates
+// (the job snoozes and the task is redone later with its whole budget).
+func TestAgent_RateLimitOnTheGraceTurnPropagates(t *testing.T) {
+	llm := newScriptedLLM(
+		ToolCallStep("read_object", agReadP1Args),
+		ErrStep(errors.Wrap(models.LLMRateLimitedError, "quota")),
+	)
+	_, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{MaxTurns: 1}, agentToolContext(t), agentSpec("fill", agentPersonPath))
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, models.LLMRateLimitedError))
+}
+
+func TestAgent_UnavailableModelOnTheGraceTurnPropagates(t *testing.T) {
+	llm := newScriptedLLM(
+		ToolCallStep("read_object", agReadP1Args),
+		ErrStep(unavailable(errors.New("aucun modèle"))),
+	)
+	_, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{MaxTurns: 1}, agentToolContext(t), agentSpec("fill", agentPersonPath))
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, ErrLLMUnavailable))
+}
+
+// After a recovery, a path that got a « valeur non vérifiable » question is not
+// asked about again by the limit question.
+func TestAgent_RecoveryAsksOnceAboutAPath(t *testing.T) {
+	llm := newScriptedLLM(
+		ToolCallStep("read_object", agReadP1Args),
+		// copied value without source: becomes « valeur non vérifiable » on this path
+		ToolCallStep("validate", `{"fills":[{"path":"personnes.pp[pp-1].implication","value":"Je ne sais pas"}]}`),
+	)
+	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{MaxTurns: 1}, agentToolContext(t), agentSpec("fill", agentPersonPath))
+	require.NoError(t, err)
+	count := map[core.Path]int{}
+	for _, q := range out.Questions {
+		for _, p := range q.Paths {
+			count[p]++
+		}
+	}
+	for p, n := range count {
+		assert.Equal(t, 1, n, "one question per path: %s", p)
+	}
+	assert.Equal(t, 1, count["personnes.pp[pp-1].implication"])
+	var unverifiable bool
+	for _, q := range out.Questions {
+		for _, p := range q.Paths {
+			if p == "personnes.pp[pp-1].implication" {
+				unverifiable = strings.Contains(q.Text, "valeur non vérifiable")
+			}
+		}
+	}
+	assert.True(t, unverifiable, "the « valeur non vérifiable » question wins: %v", out.Questions)
+}
