@@ -543,3 +543,30 @@ func TestDeclineQuestion_OtherOrgForbidden(t *testing.T) {
 	require.ErrorIs(t, err, models.ForbiddenError)
 	assert.Equal(t, models.SarQuestionStatusOpen, f.Gen.Questions[q.Id].Status)
 }
+
+func TestDismissQuestion_RefusedDuringJob(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	finding := f.SeedReviewFinding(t, declId, []core.Path{"organisme.libelle"}, "important", "Libellé à vérifier")
+	f.SeedJob(t, declId, models.SarJobKindGenerate, models.SarJobStatusRunning)
+
+	err := uc.DismissQuestion(f.Ctx, finding.Id)
+	require.ErrorIs(t, err, ErrGenerationInProgress)
+	assert.Equal(t, models.SarQuestionStatusOpen, f.Gen.Questions[finding.Id].Status)
+}
+
+// Choosing an option also closes the other open questions whose paths are all
+// filled by it, like a manual edit; a question that adds a list item is not
+// closed that way.
+func TestChooseQuestionOption_ClosesTheOtherQuestionsOnTheWrittenPaths(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	q := f.SeedQuestion(t, declId, []core.Path{"context.information.activiteLPS"}, "LPS ?", genOptionWithFill())
+	other := f.SeedQuestion(t, declId, []core.Path{"context.information.activiteLPS"}, "Valeur non établie ?", nil)
+	unrelated := f.SeedQuestion(t, declId, []core.Path{"organisme.libelle"}, "Libellé ?", nil)
+
+	_, err := uc.ChooseQuestionOption(f.Ctx, q.Id, f.Repo.Declarations[declId].Version, 0)
+	require.NoError(t, err)
+	assert.Equal(t, models.SarQuestionStatusResolved, f.Gen.Questions[q.Id].Status)
+	assert.Equal(t, models.SarQuestionStatusResolved, f.Gen.Questions[other.Id].Status,
+		"another open question on the written path is answered too")
+	assert.Equal(t, models.SarQuestionStatusOpen, f.Gen.Questions[unrelated.Id].Status)
+}

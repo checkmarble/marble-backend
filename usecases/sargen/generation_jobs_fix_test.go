@@ -221,3 +221,25 @@ func TestResumeJob_GenerateAppliesStartPreconditions(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
+
+// The questions raised by the tasks of a failed job are dismissed with those
+// tasks when a selection change deletes them; the other questions stay open.
+func TestUpdateSelection_DismissesTheQuestionsOfTheDroppedTasks(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	j1, err := uc.StartGeneration(f.Ctx, declId)
+	require.NoError(t, err)
+	task := f.SeedTask(j1.Id, "placement", "personnes", models.SarJobStatusFailed, 1, "boom")
+	genMarkJob(t, f, j1.Id, models.SarJobStatusFailed, "fournisseur indisponible")
+	ofTask := f.SeedQuestion(t, declId, []core.Path{"organisme.libelle"}, "Personne non déclarée ?", nil)
+	ofTask.TaskId = &task.Id
+	f.Gen.Questions[ofTask.Id] = ofTask
+	foreign := f.SeedReviewFinding(t, declId, []core.Path{"organisme.adresse"}, "mineur", "Autre")
+
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t2", "amount": 7}, time.Now())
+	version := f.Repo.Declarations[declId].Version
+	_, err = uc.UpdateSelection(f.Ctx, declId, version, []SelectionAdd{{Ref: selRef("transactions", "t2")}}, nil)
+	require.NoError(t, err)
+	assert.Empty(t, f.Gen.Tasks[j1.Id])
+	assert.Equal(t, models.SarQuestionStatusDismissed, f.Gen.Questions[ofTask.Id].Status)
+	assert.Equal(t, models.SarQuestionStatusOpen, f.Gen.Questions[foreign.Id].Status)
+}

@@ -58,7 +58,8 @@ func (uc *Usecase) ListQuestions(ctx context.Context, declarationId uuid.UUID) (
 
 // DismissQuestion closes a question or review finding as dismissed (« ignoré »
 // / « traité » for a finding). The question is loaded by id, then its
-// declaration is authorized (organization + case access). 409 if not open.
+// declaration is authorized (organization + case access). 409 if not open,
+// ErrGenerationInProgress while a job is active, like every other write.
 func (uc *Usecase) DismissQuestion(ctx context.Context, questionId uuid.UUID) error {
 	exec := uc.executorFactory.NewExecutor()
 	q, err := uc.generation.GetSarQuestion(ctx, exec, questionId)
@@ -70,6 +71,9 @@ func (uc *Usecase) DismissQuestion(ctx context.Context, questionId uuid.UUID) er
 	}
 	return uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if _, err := uc.repository.GetSarDeclarationForUpdate(ctx, tx, q.DeclarationId); err != nil {
+			return err
+		}
+		if err := uc.requireNoActiveJob(ctx, tx, q.DeclarationId); err != nil {
 			return err
 		}
 		cur, err := uc.generation.GetSarQuestion(ctx, tx, questionId)
@@ -84,14 +88,18 @@ func (uc *Usecase) DismissQuestion(ctx context.Context, questionId uuid.UUID) er
 }
 
 // ChooseQuestionOption applies option optionIndex of an open question without
-// LLM or job: its fills with core.OverwriteAll, keeping each fill's origin and
-// sources, then core.MarkReviewed on their paths, then closes the question
-// (resolved). Checks: declaration version (models.ErrSarVersionConflict),
+// LLM or job: its fills with core.OverwriteAll and the analyst origin (the
+// click is the proof: no source or justification required, no task; the
+// sources of the option are kept), then core.MarkReviewed on their
+// paths, then closes the question (resolved) and the other open questions
+// whose paths are now all filled (resolveAnsweredQuestions, like a manual
+// edit; a question that adds a list item is never closed that way). Checks: declaration version (models.ErrSarVersionConflict),
 // optionIndex in range (400), the option has fills (400), no active job
 // (ErrGenerationInProgress). An option without fills is accepted only when a
 // sibling option creates a new list item (provisional key): it closes the
-// question without writing or bumping the version. Rejected fills (LLM-provided paths) -> 400 and
-// nothing is applied, as is a fill on a setting or computed field. Returns the new declaration state.
+// question without writing or bumping the version. A fill outside the
+// question's paths -> 400 and nothing is applied, as is a fill on a setting or
+// computed field. Returns the new declaration state.
 func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUID, version int, optionIndex int) (DeclarationState, error) {
 	exec := uc.executorFactory.NewExecutor()
 	row, err := uc.generation.GetSarQuestion(ctx, exec, questionId)
@@ -125,6 +133,7 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 		return DeclarationState{}, errors.Wrap(models.BadParameterError,
 			"cette question ne désigne aucun champ : ses options ne peuvent rien écrire")
 	}
+	var written []core.Path
 	st, err := uc.mutateWithPost(ctx, q.DeclarationId, version,
 		func(format core.Format, doc *core.Document, _, _ *string) error {
 			spec := format.Spec()
@@ -179,9 +188,10 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 			if issues := core.MarkReviewed(spec, doc, paths); len(issues) > 0 {
 				return issuesToError(issues)
 			}
+			written = paths
 			return nil
 		},
-		func(tx repositories.Transaction, _ *core.Document) error {
+		func(tx repositories.Transaction, doc *core.Document) error {
 			cur, err := uc.generation.GetSarQuestion(ctx, tx, questionId)
 			if err != nil {
 				return err
@@ -189,7 +199,11 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 			if cur.Status != models.SarQuestionStatusOpen {
 				return errors.Wrap(models.ConflictError, "cette question est déjà fermée")
 			}
-			return uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{questionId}, models.SarQuestionStatusResolved)
+			if err := uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{questionId}, models.SarQuestionStatusResolved); err != nil {
+				return err
+			}
+			// The other open questions on the paths just written are answered too.
+			return uc.resolveAnsweredQuestions(ctx, tx, q.DeclarationId, doc, written)
 		})
 	if errors.Is(err, errOptionAlreadyApplied) {
 		// The analyst already added what the option adds: the question is

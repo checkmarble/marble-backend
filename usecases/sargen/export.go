@@ -82,8 +82,17 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 				Kind: TodoIssue, Code: i.Code, Severity: TodoWarning, Paths: []core.Path{i.Path}, Message: i.Message,
 			})
 		}
-		for _, t := range buildTodoBase(nil, doc) { // unreviewed low-confidence values
-			outstanding = append(outstanding, outstandingItem{Kind: t.Kind, Severity: t.Severity, Paths: t.Paths, Message: t.Message})
+		// Unreviewed low-confidence values, open questions, open review findings
+		// and computed values to confirm (the blocking issues are refused above,
+		// the warnings are recorded just before).
+		open, err := uc.generation.ListSarQuestions(ctx, tx, id, models.SarQuestionStatusOpen)
+		if err != nil {
+			return err
+		}
+		for _, t := range buildTodo(format.Spec(), nil, doc, open) {
+			outstanding = append(outstanding, outstandingItem{
+				Kind: t.Kind, Code: t.Code, Severity: t.Severity, Paths: t.Paths, Message: t.Message,
+			})
 		}
 		if format.Status() == core.VersionDeprecated {
 			outstanding = append(outstanding, outstandingItem{
