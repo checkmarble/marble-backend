@@ -433,3 +433,113 @@ func TestChooseQuestionOption_AddOptionBeyondMaxItemsRefused(t *testing.T) {
 	assert.Equal(t, version, f.Repo.Declarations[declId].Version)
 	assert.Equal(t, models.SarQuestionStatusOpen, f.Gen.Questions[q.Id].Status)
 }
+
+func TestChooseQuestionOption_MultiFillAddOptionCreatesOneItem(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	genEditDoc(t, f, declId, func(doc *core.Document) { doc.AddItem("personnes.pp", "pp") })
+	addr := core.Path("personnes.pp[pp-1].coordonnees.autreAdresse[+a]")
+	fills := []core.Fill{
+		{Path: addr + ".pays", Value: "FR"},
+		{Path: addr + ".ville", Value: "Lyon"},
+		{Path: addr + ".nomVoie", Value: "des Lilas"},
+	}
+	q := f.SeedQuestion(t, declId, []core.Path{addr + ".pays", addr + ".ville", addr + ".nomVoie"}, "Ajouter l'autre adresse ?",
+		[]core.QuestionOption{{Label: "Ajouter", Fills: fills}, {Label: "Non"}})
+
+	st, err := uc.ChooseQuestionOption(f.Ctx, q.Id, f.Repo.Declarations[declId].Version, 0)
+	require.NoError(t, err)
+
+	keys := st.Doc.Items["personnes.pp[pp-1].coordonnees.autreAdresse"]
+	require.Len(t, keys, 1, "one item holds all the fills")
+	item := "personnes.pp[pp-1].coordonnees.autreAdresse[" + keys[0] + "]"
+	for suffix, want := range map[string]string{".pays": "FR", ".ville": "Lyon", ".nomVoie": "des Lilas"} {
+		v := st.Doc.Values[core.Path(item+suffix)]
+		assert.Equal(t, want, v.Value, suffix)
+		assert.Equal(t, core.OriginAnalyst, v.Origin)
+		assert.True(t, v.Reviewed)
+	}
+	// A question that names the item prefix works as well.
+	q2 := f.SeedQuestion(t, declId, []core.Path{addr}, "Encore ?", []core.QuestionOption{{Label: "Ajouter", Fills: []core.Fill{
+		{Path: addr + ".pays", Value: "PT"}, {Path: addr + ".ville", Value: "Lisbonne"}}}, {Label: "Non"}})
+	st, err = uc.ChooseQuestionOption(f.Ctx, q2.Id, st.Declaration.Version, 0)
+	require.NoError(t, err)
+	assert.Len(t, st.Doc.Items["personnes.pp[pp-1].coordonnees.autreAdresse"], 2)
+}
+
+func TestChooseQuestionOption_FillOutsideTheQuestionPathsRefusedOnAddQuestion(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	genEditDoc(t, f, declId, func(doc *core.Document) { doc.AddItem("personnes.pp", "pp") })
+	addr := core.Path("personnes.pp[pp-1].coordonnees.autreAdresse[+a]")
+	docBefore := append([]byte(nil), f.Repo.Declarations[declId].Document...)
+	q := f.SeedQuestion(t, declId, []core.Path{addr + ".ville"}, "Ajouter ?", []core.QuestionOption{
+		{Label: "Ajouter", Fills: []core.Fill{{Path: addr + ".ville", Value: "Lyon"}, {Path: addr + ".nomVoie", Value: "x"}}}, {Label: "Non"}})
+	_, err := uc.ChooseQuestionOption(f.Ctx, q.Id, f.Repo.Declarations[declId].Version, 0)
+	require.ErrorIs(t, err, models.BadParameterError)
+	assert.True(t, bytes.Equal(docBefore, f.Repo.Declarations[declId].Document))
+}
+
+func TestChooseQuestionOption_AddOptionAlreadyPresentClosesWithoutWriting(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	_, err := uc.UpdateFields(f.Ctx, declId, f.Repo.Declarations[declId].Version,
+		[]core.Fill{{Path: "context.natureSoupcon.cadreLegal[+c]", Value: "CL02"},
+			{Path: "context.natureSoupcon.natureSoupconPenale[+n]", Value: "NSP07"}})
+	require.NoError(t, err)
+	q := f.SeedQuestion(t, declId, []core.Path{genPenalPath}, "Déclarer ?", genAddOptions(genPenalPath, "NSP07"))
+	version := f.Repo.Declarations[declId].Version
+	docBefore := append([]byte(nil), f.Repo.Declarations[declId].Document...)
+
+	st, err := uc.ChooseQuestionOption(f.Ctx, q.Id, version, 0)
+	require.NoError(t, err)
+	assert.Len(t, st.Doc.Items["context.natureSoupcon.natureSoupconPenale"], 1, "no duplicate")
+	assert.True(t, bytes.Equal(docBefore, f.Repo.Declarations[declId].Document))
+	assert.Equal(t, version, f.Repo.Declarations[declId].Version)
+	assert.Equal(t, models.SarQuestionStatusResolved, f.Gen.Questions[q.Id].Status)
+}
+
+// ---- Decline path checks ----
+
+func genDeclineQuestion(t *testing.T, f *fakes, declId uuid.UUID) models.SarQuestion {
+	t.Helper()
+	return f.SeedQuestion(t, declId, []core.Path{genPenalPath}, "Déclarer ?", genAddOptions(genPenalPath, "NSP07"))
+}
+
+func TestDeclineQuestion_StaleVersionConflict(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	q := genDeclineQuestion(t, f, declId)
+	_, err := uc.ChooseQuestionOption(f.Ctx, q.Id, f.Repo.Declarations[declId].Version-1, 1)
+	require.ErrorIs(t, err, models.ErrSarVersionConflict)
+	assert.Equal(t, models.SarQuestionStatusOpen, f.Gen.Questions[q.Id].Status)
+}
+
+func TestDeclineQuestion_RefusedDuringJob(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	f.SeedJob(t, declId, models.SarJobKindReview, models.SarJobStatusRunning)
+	q := genDeclineQuestion(t, f, declId)
+	_, err := uc.ChooseQuestionOption(f.Ctx, q.Id, f.Repo.Declarations[declId].Version, 1)
+	require.ErrorIs(t, err, ErrGenerationInProgress)
+	assert.Equal(t, models.SarQuestionStatusOpen, f.Gen.Questions[q.Id].Status)
+}
+
+func TestDeclineQuestion_AlreadyClosedConflict(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	q := genDeclineQuestion(t, f, declId)
+	version := f.Repo.Declarations[declId].Version
+	_, err := uc.ChooseQuestionOption(f.Ctx, q.Id, version, 1)
+	require.NoError(t, err)
+	_, err = uc.ChooseQuestionOption(f.Ctx, q.Id, version, 1)
+	require.ErrorIs(t, err, models.ConflictError)
+}
+
+func TestDeclineQuestion_OtherOrgForbidden(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	foreign := models.SarDeclaration{
+		Id: uuid.New(), OrganizationId: uuid.New(), CaseId: f.CaseId, FormatKey: tracfinFormatKey,
+		ReportType: tracfinReportType, Version: 1,
+		Document: []byte(`{"values":{},"items":{},"item_sources":{},"next_key":{}}`),
+	}
+	require.NoError(t, f.Repo.CreateSarDeclaration(f.Ctx, nil, foreign))
+	q := genDeclineQuestion(t, f, foreign.Id)
+	_, err := uc.ChooseQuestionOption(f.Ctx, q.Id, 1, 1)
+	require.ErrorIs(t, err, models.ForbiddenError)
+	assert.Equal(t, models.SarQuestionStatusOpen, f.Gen.Questions[q.Id].Status)
+}
