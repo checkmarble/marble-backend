@@ -64,15 +64,16 @@ type StructuredContext struct {
 	// Snapshots are the frozen snapshots of the selected objects, to check that a
 	// cited field exists. Nil: not known, the check is skipped.
 	Snapshots map[ObjectRef]map[string]any
-	// AutoAdded holds the selected objects the server added on its own as
-	// parents of the analyst's choices. They are context: readable and citable
-	// like any selected object, but a format must not declare an entity from
-	// one (it asks the analyst instead). Nil: none.
-	AutoAdded map[ObjectRef]bool
+	// ContextOnly holds the selected objects the server added on its own as
+	// parents of the analyst's choices and that are not direct candidates of the
+	// declaration. They are context: readable and citable like any selected
+	// object, but a format must not declare an entity from one alone (it asks
+	// the analyst instead). Nil: none.
+	ContextOnly map[ObjectRef]bool
 }
 
-// IsAutoAdded tells whether ref is a selected object added automatically.
-func (sc StructuredContext) IsAutoAdded(ref ObjectRef) bool { return sc.AutoAdded[ref] }
+// IsContextOnly tells whether ref is a selected object that is context only.
+func (sc StructuredContext) IsContextOnly(ref ObjectRef) bool { return sc.ContextOnly[ref] }
 
 // Linked returns the selected objects linked to ref (none without a resolver).
 func (sc StructuredContext) Linked(ref ObjectRef) []ObjectRef {

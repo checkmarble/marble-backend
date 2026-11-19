@@ -83,51 +83,83 @@ func placementSchema(refKinds []string) jsonschema.Schema {
 	return s
 }
 
+// placementLeftOut is what a placement output proposed and the context rule
+// refused: persons without any object of the analyst, and transaction lines
+// made only of context objects.
+type placementLeftOut struct {
+	persons      [][]core.ObjectRef
+	transactions []core.ObjectRef
+}
+
 // parsePlacement decodes and checks a placement output. References without a
 // valid declared owner are returned apart (dropped, reported as a question); any
 // other error refuses the whole output.
 //
-// A person whose objects are all auto-added (selected by the system as parents
-// of the analyst's choices, see core.StructuredContext.AutoAdded) is not
-// declared: auto-added objects are context to read and cite, not entities. Such
-// a person is returned in skipped (the analyst is asked), the references it
-// owned lose it as an owner, and the remaining persons are renumbered.
-func (f *format) parsePlacement(raw json.RawMessage, sc core.StructuredContext) (out placementOutput, dropped []droppedRef, skipped [][]core.ObjectRef, err error) {
+// Objects the server added on its own (core.StructuredContext.ContextOnly) are
+// context to read and cite, never declared on their own:
+//   - a person is declared only if at least one of its objects is not context
+//     only and is not also the object of a financial reference of the output (an
+//     account used as a reference does not make a person); the others are
+//     returned in left, the references they owned lose them as an owner and the
+//     remaining persons are renumbered;
+//   - a transaction made only of a context object is not created (left);
+//   - a financial reference made only of context objects is kept only when the
+//     data links one of them to an object of one of its owners; otherwise it is
+//     dropped and the analyst is asked.
+func (f *format) parsePlacement(raw json.RawMessage, sc core.StructuredContext) (out placementOutput, dropped []droppedRef, left placementLeftOut, err error) {
 	if err := json.NewDecoder(bytes.NewReader(raw)).Decode(&out); err != nil {
-		return out, nil, nil, errors.Wrap(err, "unreadable placement output")
+		return out, nil, left, errors.Wrap(err, "unreadable placement output")
 	}
 	refKinds := f.referenceKinds()
 	for i, p := range out.Persons {
 		if !slices.Contains(personKinds, p.Kind) {
-			return out, nil, nil, errors.Newf("person %d: unknown kind %q (pp, pm or pnc)", i, p.Kind)
+			return out, nil, left, errors.Newf("person %d: unknown kind %q (pp, pm or pnc)", i, p.Kind)
 		}
 		if err := checkObjects(p.Objects); err != nil {
-			return out, nil, nil, errors.Wrapf(err, "person %d", i)
+			return out, nil, left, errors.Wrapf(err, "person %d", i)
 		}
 	}
-	// Persons made only of auto-added objects are left out; newIndex maps the
-	// index the model used to the index among the kept persons (-1: left out).
+	for i, r := range out.FinancialRefs {
+		if !slices.Contains(refKinds, r.RefKind) {
+			return out, nil, left, errors.Newf("financial reference %d: unknown ref_kind %q (%s)", i, r.RefKind, strings.Join(refKinds, ", "))
+		}
+		if err := checkObjects(r.Objects); err != nil {
+			return out, nil, left, errors.Wrapf(err, "financial reference %d", i)
+		}
+	}
+	for i, t := range out.Transactions {
+		if err := checkObjects([]core.ObjectRef{t.Object}); err != nil {
+			return out, nil, left, errors.Wrapf(err, "transaction %d", i)
+		}
+	}
+
+	usedAsReference := map[core.ObjectRef]bool{}
+	for _, r := range out.FinancialRefs {
+		for _, o := range r.Objects {
+			usedAsReference[o] = true
+		}
+	}
+	// newIndex maps the index the model used to the index among the kept persons
+	// (-1: left out).
 	asked := len(out.Persons)
 	newIndex := make([]int, asked)
 	keptPersons := out.Persons[:0:0]
 	for i, p := range out.Persons {
-		if !slices.ContainsFunc(p.Objects, func(o core.ObjectRef) bool { return !sc.IsAutoAdded(o) }) {
+		carried := slices.ContainsFunc(p.Objects, func(o core.ObjectRef) bool {
+			return !sc.IsContextOnly(o) && !usedAsReference[o]
+		})
+		if !carried {
 			newIndex[i] = -1
-			skipped = append(skipped, slices.Clone(p.Objects))
+			left.persons = append(left.persons, slices.Clone(p.Objects))
 			continue
 		}
 		newIndex[i] = len(keptPersons)
 		keptPersons = append(keptPersons, p)
 	}
 	out.Persons = keptPersons
+
 	kept := out.FinancialRefs[:0:0]
-	for i, r := range out.FinancialRefs {
-		if !slices.Contains(refKinds, r.RefKind) {
-			return out, nil, nil, errors.Newf("financial reference %d: unknown ref_kind %q (%s)", i, r.RefKind, strings.Join(refKinds, ", "))
-		}
-		if err := checkObjects(r.Objects); err != nil {
-			return out, nil, nil, errors.Wrapf(err, "financial reference %d", i)
-		}
+	for _, r := range out.FinancialRefs {
 		owners := r.Owners[:0:0]
 		var seen []int
 		lost := 0
@@ -148,6 +180,10 @@ func (f *format) parsePlacement(raw json.RawMessage, sc core.StructuredContext) 
 			o.PersonIndex = &idx
 			owners = append(owners, o)
 		}
+		if len(owners) > 0 && !f.referenceAttached(r.Objects, owners, out.Persons, sc) {
+			dropped = append(dropped, droppedRef{objects: r.Objects, wholly: true, unlinked: true})
+			continue
+		}
 		if len(owners) == 0 || lost > 0 {
 			dropped = append(dropped, droppedRef{objects: r.Objects, wholly: len(owners) == 0, lostOwners: lost})
 		}
@@ -158,19 +194,52 @@ func (f *format) parsePlacement(raw json.RawMessage, sc core.StructuredContext) 
 		kept = append(kept, r)
 	}
 	out.FinancialRefs = kept
-	for i, t := range out.Transactions {
-		if err := checkObjects([]core.ObjectRef{t.Object}); err != nil {
-			return out, nil, nil, errors.Wrapf(err, "transaction %d", i)
+
+	txs := out.Transactions[:0:0]
+	for _, t := range out.Transactions {
+		if sc.IsContextOnly(t.Object) {
+			left.transactions = append(left.transactions, t.Object)
+			continue
 		}
+		txs = append(txs, t)
 	}
-	return out, dropped, skipped, nil
+	out.Transactions = txs
+	return out, dropped, left, nil
 }
 
-// droppedRef is a financial reference left out (wholly: no valid owner) or
+// referenceAttached tells whether a financial reference may be declared: one of
+// its objects is not context only, or the data links one of its (context)
+// objects to an object of one of its owners.
+func (f *format) referenceAttached(objs []core.ObjectRef, owners []struct {
+	PersonIndex *int   `json:"person_index"`
+	Lien        string `json:"lien"`
+}, persons []struct {
+	Kind    string           `json:"kind"`
+	Objects []core.ObjectRef `json:"objects"`
+}, sc core.StructuredContext,
+) bool {
+	if slices.ContainsFunc(objs, func(o core.ObjectRef) bool { return !sc.IsContextOnly(o) }) {
+		return true
+	}
+	for _, ow := range owners {
+		for _, po := range persons[*ow.PersonIndex].Objects {
+			for _, o := range objs {
+				if slices.Contains(sc.Linked(o), po) || slices.Contains(sc.Linked(po), o) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// droppedRef is a financial reference left out (wholly: no valid owner, or
+// unlinked: a context-only object the data does not link to its owners) or
 // declared with fewer owners than listed.
 type droppedRef struct {
 	objects    []core.ObjectRef
 	wholly     bool
+	unlinked   bool
 	lostOwners int
 }
 
@@ -181,26 +250,32 @@ func (f *format) StructuredQuestions(kind string, raw json.RawMessage, applied *
 	if kind != StepPlacement {
 		return nil
 	}
-	_, dropped, skipped, err := f.parsePlacement(raw, sc)
+	_, dropped, left, err := f.parsePlacement(raw, sc)
 	if err != nil {
 		return nil
 	}
 	var out []core.QuestionDraft
-	for _, objs := range skipped {
-		names := make([]string, len(objs))
+	names := func(objs []core.ObjectRef) string {
+		n := make([]string, len(objs))
 		for i, o := range objs {
-			names[i] = o.Table + "/" + o.ObjectID
+			n[i] = o.Table + "/" + o.ObjectID
 		}
-		out = append(out, core.QuestionDraft{Text: "personne non déclarée : " + strings.Join(names, ", ") +
-			" a été ajouté automatiquement comme contexte (lié à un objet sélectionné) et n'est pas déclaré comme personne ; à déclarer manuellement si nécessaire"})
+		return strings.Join(n, ", ")
+	}
+	for _, objs := range left.persons {
+		out = append(out, core.QuestionDraft{Text: "personne non déclarée : " + names(objs) +
+			" n'est portée par aucun objet choisi par l'analyste (objet de contexte ajouté automatiquement, ou déjà utilisé comme référence financière) ; à déclarer manuellement si nécessaire"})
+	}
+	for _, o := range left.transactions {
+		out = append(out, core.QuestionDraft{Text: "ligne d'opération non créée : " + names([]core.ObjectRef{o}) +
+			" est un objet de contexte ajouté automatiquement ; à ajouter manuellement si nécessaire"})
 	}
 	for _, d := range dropped {
-		names := make([]string, len(d.objects))
-		for i, o := range d.objects {
-			names[i] = o.Table + "/" + o.ObjectID
-		}
-		list := strings.Join(names, ", ")
-		if d.wholly {
+		list := names(d.objects)
+		if d.unlinked {
+			out = append(out, core.QuestionDraft{Text: "référence financière non déclarée : " + list +
+				" est un objet de contexte que les données ne rattachent à aucun de ses titulaires ; à déclarer manuellement si nécessaire"})
+		} else if d.wholly {
 			out = append(out, core.QuestionDraft{Text: "référence financière sans titulaire déclaré : " + list})
 		} else {
 			out = append(out, core.QuestionDraft{Text: fmt.Sprintf("référence financière : %d titulaire(s) non déclaré(s) ignoré(s) : %s", d.lostOwners, list)})

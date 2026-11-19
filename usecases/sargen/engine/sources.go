@@ -103,11 +103,11 @@ func StructuredContextFor(selection []models.SarSelectedObject, dm models.DataMo
 	for i, o := range selection {
 		refs[i] = core.ObjectRef{Table: o.TableName, ObjectID: o.ObjectId}
 		snapshots[refs[i]] = o.Snapshot
-		if o.AutoAdded {
+		if o.ContextOnly {
 			auto[refs[i]] = true
 		}
 	}
-	return core.StructuredContext{Selection: refs, Snapshots: snapshots, AutoAdded: auto, LinkedObjects: func(ref core.ObjectRef) []core.ObjectRef {
+	return core.StructuredContext{Selection: refs, Snapshots: snapshots, ContextOnly: auto, LinkedObjects: func(ref core.ObjectRef) []core.ObjectRef {
 		var out []core.ObjectRef
 		for _, o := range linkedObjects(sc, dm, ref) {
 			out = append(out, core.ObjectRef{Table: o.TableName, ObjectID: o.ObjectId})

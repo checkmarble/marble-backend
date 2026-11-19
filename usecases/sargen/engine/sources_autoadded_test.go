@@ -14,7 +14,7 @@ import (
 func TestAutoAddedObjectIsCitableAndReported(t *testing.T) {
 	txn := agentSelection("transactions", "txn-1", map[string]any{"object_id": "txn-1", "account_id": "acc-1"})
 	acc := agentSelection("accounts", "acc-1", map[string]any{"object_id": "acc-1", "name": "ACME"})
-	acc.AutoAdded = true
+	acc.AutoAdded, acc.ContextOnly = true, true
 	sel := []models.SarSelectedObject{txn, acc}
 
 	doc := core.NewDocument()
@@ -24,6 +24,6 @@ func TestAutoAddedObjectIsCitableAndReported(t *testing.T) {
 	assert.Contains(t, allowed, core.ObjectRef{Table: "accounts", ObjectID: "acc-1"})
 
 	sc := StructuredContextFor(sel, toolsDataModel())
-	assert.True(t, sc.IsAutoAdded(core.ObjectRef{Table: "accounts", ObjectID: "acc-1"}))
-	assert.False(t, sc.IsAutoAdded(core.ObjectRef{Table: "transactions", ObjectID: "txn-1"}))
+	assert.True(t, sc.IsContextOnly(core.ObjectRef{Table: "accounts", ObjectID: "acc-1"}))
+	assert.False(t, sc.IsContextOnly(core.ObjectRef{Table: "transactions", ObjectID: "txn-1"}))
 }

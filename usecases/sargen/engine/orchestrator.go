@@ -324,6 +324,10 @@ type jobRun struct {
 	// rateLimited tells that the job row holds a rate-limit streak to clear
 	// when a task succeeds.
 	rateLimited atomic.Bool
+	// plannedLimits are the budgets of the current plan by input hash: a task
+	// created before they changed resumes with them (the limits are not part of
+	// the hash).
+	plannedLimits map[string]core.TaskLimits
 }
 
 func (r *jobRun) loop(ctx context.Context) error {
@@ -364,8 +368,11 @@ func (r *jobRun) loop(ctx context.Context) error {
 		// e.g. the analysis was edited between a failure and the resume) must never
 		// run: it would apply a stale output next to the current one.
 		planned := make(map[string]bool, len(specs))
+		r.plannedLimits = make(map[string]core.TaskLimits, len(specs))
 		for _, s := range specs {
-			planned[taskFromSpec(r.job.Id, s, r.selection).InputHash] = true
+			h := taskFromSpec(r.job.Id, s, r.selection).InputHash
+			planned[h] = true
+			r.plannedLimits[h] = s.Limits
 		}
 		var stale []uuid.UUID
 		kept := tasks[:0:0]
@@ -564,6 +571,9 @@ func (r *jobRun) readyTasks(tasks []models.SarGenerationTask) (ready []readyTask
 		if wait {
 			blocked++
 			continue
+		}
+		if lim, ok := r.plannedLimits[t.InputHash]; ok {
+			in.Spec.Limits = lim
 		}
 		ready = append(ready, readyTask{task: t, spec: in.Spec})
 	}

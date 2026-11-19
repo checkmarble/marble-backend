@@ -16,9 +16,10 @@ import (
 func TestAgent_TimeoutIsClampedToHalfTheParentDeadline(t *testing.T) {
 	scripted := newScriptedLLM(
 		ToolCallStep("read_object", agReadP1Args),
-		FinalStep(agFinal(agNomFillValid)),
+		ToolCallStep("read_object", agReadP1Args),
+		ToolCallStep("read_object", agReadP1Args),
 	)
-	llm := slowLLM{inner: scripted, delay: 700 * time.Millisecond}
+	llm := slowLLM{inner: scripted, delay: 300 * time.Millisecond}
 	spec := agentSpec("fill", agentPersonPath)
 	spec.Limits.TimeoutSeconds = 600
 	spec.FailJobOnLimit = true
@@ -28,7 +29,7 @@ func TestAgent_TimeoutIsClampedToHalfTheParentDeadline(t *testing.T) {
 	r := NewAgentRunner(llm, fakeAgentPrompts{}, AgentLimits{})
 	out, err := r.Run(parent, agentToolContext(t), agentTask(spec), spec)
 	require.True(t, errors.Is(err, ErrTaskLimitReached), "the task ends on its own limit before the job context expires")
-	assert.Equal(t, 1, scripted.Calls(), "no turn once half of the remaining time is used")
+	assert.Equal(t, 2, scripted.Calls(), "once half of the remaining time is used: the grace turn only")
 	assert.Empty(t, out.Fills)
 	assert.NoError(t, parent.Err(), "the job context is still alive")
 }
