@@ -513,8 +513,9 @@ func TestPlan_IsDeterministic(t *testing.T) {
 
 // planUnderstandingDone is a done understanding task holding a note, as the
 // orchestrator stores it (the structured output in the task output).
-func planUnderstandingDone(note string) []models.SarGenerationTask {
-	done := planDone(core.TaskSpec{Kind: stepUnderstanding})
+// payload is the analyst payload (analysis, extra_info) it was planned with.
+func planUnderstandingDone(note string, payload map[string]any) []models.SarGenerationTask {
+	done := planDone(core.TaskSpec{Kind: stepUnderstanding, Payload: payload})
 	done[0].Output = []byte(`{"applied":[],"rejected":[],"conflicts":[],"questions":0,"findings":0,"structured":` + note + `}`)
 	return done
 }
@@ -528,7 +529,7 @@ func TestPlan_EveryStepReceivesTheNoteAndTheAnalysis(t *testing.T) {
 			Analysis: "  Le client est président.  ", ExtraInfo: "Complément",
 		},
 		Doc:  planDoc(1, 3),
-		Done: planUnderstandingDone(note),
+		Done: planUnderstandingDone(note, map[string]any{"analysis": "Le client est président.", "extra_info": "Complément"}),
 	}
 	// A blocking form issue on a person plans a correction wave.
 	st.Issues = []core.Issue{{Path: "personnes.pp[pp-1].etatCivil.dateNaissance", Code: core.CodeBadDate, Severity: core.SeverityBlocking}}
@@ -619,7 +620,7 @@ func TestPlan_ResumeWithTheNoteIsDeterministic(t *testing.T) {
 	st := core.PlanState{
 		JobKind: string(models.SarJobKindGenerate),
 		Doc:     planDoc(2, 12),
-		Done:    append(planUnderstandingDone(`{"b":1,"a":[2,{"z":1,"y":2}]}`), planPlacementDone()...),
+		Done:    append(planUnderstandingDone(`{"b":1,"a":[2,{"z":1,"y":2}]}`, nil), planPlacementDone()...),
 	}
 	first, _ := planRun(t, f, st)
 	second, _ := planRun(t, f, st)
@@ -627,4 +628,113 @@ func TestPlan_ResumeWithTheNoteIsDeterministic(t *testing.T) {
 	a, _ := json.Marshal(f.Plan(st))
 	b, _ := json.Marshal(f.Plan(st))
 	assert.Equal(t, string(a), string(b))
+}
+
+// ---- Resume after the analyst changed the selection or the analysis ----
+
+// stateAfterJudgment is the state of a job whose fills, computation and
+// judgment are done (the review is next).
+func stateAfterJudgment(t *testing.T, f core.Format, persons, transactions int) core.PlanState {
+	t.Helper()
+	st := core.PlanState{
+		JobKind: string(models.SarJobKindGenerate),
+		Doc:     planDoc(persons, transactions),
+		Done:    planPlacementDone(),
+	}
+	st = planUntil(t, f, st, core.TaskKindReview)
+	require.Empty(t, planWaveOf(asBatch(f.Plan(st)), stepFillTransaction))
+	return st
+}
+
+// A job failed after the judgment; the analyst removes the 3rd of 25
+// transactions: no lot is shifted, no fill runs again.
+func TestPlan_RemovingAnItemAfterTheFillsPlansNoFill(t *testing.T) {
+	f := planFormat(t)
+	st := stateAfterJudgment(t, f, 1, 25)
+	st.Doc.RemoveItem(itemOf("work.transactions", "transactions-3"))
+
+	wave := asBatch(f.Plan(st))
+	assert.Empty(t, planWaveOf(wave, stepFillTransaction))
+	assert.Empty(t, planWaveOf(wave, stepFillPerson))
+	assert.Equal(t, []string{core.TaskKindReview}, planKinds(wave))
+}
+
+// A financial reference added under a done person does not plan the person
+// again, whether the fill phase is over or not.
+func TestPlan_AddingAReferenceAfterTheFillsDoesNotPlanThePersonAgain(t *testing.T) {
+	f := planFormat(t)
+	st := stateAfterJudgment(t, f, 1, 3)
+	st.Doc.AddItem("personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban", "referenceFinanciereIban")
+	assert.Empty(t, planWaveOf(asBatch(f.Plan(st)), stepFillPerson))
+
+	// Fills done but the computation not yet: still no person fill.
+	mid := core.PlanState{
+		JobKind: string(models.SarJobKindGenerate),
+		Doc:     planDoc(1, 3),
+		Done:    planPlacementDone(),
+	}
+	first := asBatch(f.Plan(mid))
+	mid.Done = append(mid.Done, planDone(planWaveOf(first, stepFillPerson)...)...)
+	mid.Done = append(mid.Done, planDone(planWaveOf(first, stepFillTransaction)...)...)
+	mid.Doc.AddItem("personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban", "referenceFinanciereIban")
+	assert.Empty(t, planWaveOf(asBatch(f.Plan(mid)), stepFillPerson))
+}
+
+// During the fill phase, the lots are built from the items no done fill
+// covers: removing an item does not shift the done lots, added items form their
+// own lot.
+func TestPlan_MidFillPhaseOnlyUncoveredItemsAreLotted(t *testing.T) {
+	f := planFormat(t)
+	st := core.PlanState{
+		JobKind: string(models.SarJobKindGenerate),
+		Doc:     planDoc(0, 25),
+		Done:    planPlacementDone(),
+	}
+	first := planWaveOf(asBatch(f.Plan(st)), stepFillTransaction)
+	require.Len(t, first, 3)
+	// The first lot (items 1-10) is done; the others are not.
+	st.Done = append(st.Done, planDone(first[0])...)
+
+	st.Doc.RemoveItem(itemOf("work.transactions", "transactions-3"))
+	st.Doc.AddItem("work.transactions", "transactions")
+
+	lots := planWaveOf(asBatch(f.Plan(st)), stepFillTransaction)
+	covered := map[string]bool{}
+	for _, l := range lots {
+		assert.LessOrEqual(t, len(l.AllowedPaths), 10)
+		for _, p := range l.AllowedPaths {
+			assert.False(t, covered[string(p)], "an item is in one lot only")
+			covered[string(p)] = true
+		}
+	}
+	for i := 1; i <= 10; i++ {
+		assert.NotContains(t, covered, fmt.Sprintf("work.transactions[transactions-%d]", i), "done lot items are not planned again")
+	}
+	assert.Len(t, covered, 16, "items 11 to 25 and the added one")
+	assert.Contains(t, covered, "work.transactions[transactions-26]")
+}
+
+// An analysis edited after the understanding is done plans the understanding
+// again, and nothing else that is done; the later steps then take the new note.
+func TestPlan_UnderstandingIsMadeAgainForAnotherAnalysis(t *testing.T) {
+	f := planFormat(t)
+	st := core.PlanState{
+		JobKind:     string(models.SarJobKindGenerate),
+		Declaration: models.SarDeclaration{Analysis: "nouvelle analyse"},
+		Doc:         planDoc(1, 1),
+		Done: append(planUnderstandingDone(`{"summary":"old"}`, map[string]any{"analysis": "ancienne analyse"}),
+			planPlacementDone()...),
+	}
+	wave := asBatch(f.Plan(st))
+	require.Equal(t, []string{stepUnderstanding}, planKinds(wave))
+	assert.Equal(t, "nouvelle analyse", wave[0].Payload["analysis"])
+
+	// Once the new note is done, the plan goes on with fills (placement is not
+	// planned again) and they carry the new note, not the old one.
+	st.Done = append(st.Done, planUnderstandingDone(`{"summary":"new"}`, map[string]any{"analysis": "nouvelle analyse"})...)
+	next := asBatch(f.Plan(st))
+	require.NotEmpty(t, planWaveOf(next, stepFillPerson))
+	assert.Equal(t, map[string]any{"summary": "new"}, planWaveOf(next, stepFillPerson)[0].Payload[tracfin.PayloadUnderstanding])
+	assert.Empty(t, planWaveOf(next, stepPlacement))
+	assert.Empty(t, planWaveOf(next, stepUnderstanding))
 }

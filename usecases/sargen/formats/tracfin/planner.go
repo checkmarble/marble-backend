@@ -88,8 +88,14 @@ func (f *format) Plan(st core.PlanState) []core.TaskSpec {
 	}
 
 	// A job that already placed without a note (created before this step
-	// existed) never plans it: the later steps then run without a note.
+	// existed) never plans it: the later steps then run without a note. A note
+	// written for another analysis (the analyst edited it between a failure and
+	// the resume) is made again; its outputs replace the note, and no other done
+	// step is planned again for this reason.
 	if !done.kind(StepUnderstanding) && !done.kind(StepPlacement) {
+		return []core.TaskSpec{f.understandingSpec(st)}
+	}
+	if done.kind(StepUnderstanding) && !currentUnderstanding(st.Done, st) {
 		return []core.TaskSpec{f.understandingSpec(st)}
 	}
 
@@ -99,11 +105,18 @@ func (f *format) Plan(st core.PlanState) []core.TaskSpec {
 
 	// Fills, then the computation that must follow them. A placement that
 	// placed nothing has no fill: the plan goes on and the review and the
-	// to-do list show what is missing.
+	// to-do list show what is missing. Once the computation or the judgment is
+	// done the fill phase is over: items the analyst added or removed since
+	// (the selection and the document may change while the job is failed)
+	// never plan a fill again, which would make the model rewrite values it
+	// already wrote. During the phase, the done fills are never replanned
+	// either: the lots are built from the items no done fill covers.
 	var wave []core.TaskSpec
-	for _, s := range f.fillSpecs(st) {
-		if !done.spec(s) {
-			wave = append(wave, s)
+	if !done.kind(core.TaskKindCompute) && !done.kind(StepJudgment) {
+		for _, s := range f.fillSpecs(st, done) {
+			if !done.spec(s) {
+				wave = append(wave, s)
+			}
 		}
 	}
 	if !done.kind(core.TaskKindCompute) {
@@ -139,13 +152,20 @@ func (f *format) Plan(st core.PlanState) []core.TaskSpec {
 type doneSet struct {
 	kinds map[string]bool
 	specs map[string]bool
-	waves int
+	// persons are the targets of the done person fills; covered the paths
+	// (transaction items) the done transaction fills were allowed to write.
+	persons map[core.Path]bool
+	covered map[core.Path]bool
+	waves   int
 	// computeWave is the highest correction wave a done compute task followed.
 	computeWave int
 }
 
 func newDoneSet(tasks []models.SarGenerationTask) doneSet {
-	d := doneSet{kinds: map[string]bool{}, specs: map[string]bool{}}
+	d := doneSet{
+		kinds: map[string]bool{}, specs: map[string]bool{},
+		persons: map[core.Path]bool{}, covered: map[core.Path]bool{},
+	}
 	for _, t := range tasks {
 		d.kinds[t.Kind] = true
 		var in struct {
@@ -156,6 +176,14 @@ func newDoneSet(tasks []models.SarGenerationTask) doneSet {
 			spec = in.Spec
 		}
 		d.specs[specKey(spec)] = true
+		switch t.Kind {
+		case StepFillPerson:
+			d.persons[spec.TargetPath] = true
+		case StepFillTransaction:
+			for _, p := range spec.AllowedPaths {
+				d.covered[p] = true
+			}
+		}
 		switch t.Kind {
 		case StepCorrection:
 			d.waves = max(d.waves, waveOf(spec))
@@ -264,13 +292,19 @@ func fillLimits(n int) core.TaskLimits {
 	}
 }
 
-// personSpecs returns the fill tasks, one per person item.
-func (f *format) fillSpecs(st core.PlanState) []core.TaskSpec {
+// fillSpecs returns the fill tasks: one per person item that no done person
+// fill targeted, and the transaction lots of the items no done transaction fill
+// was allowed to write (a lot is a slice of transactionBatchSize uncovered
+// items, in document order).
+func (f *format) fillSpecs(st core.PlanState, done doneSet) []core.TaskSpec {
 	var out []core.TaskSpec
 	for _, kind := range personKinds {
 		container := core.Path("personnes." + kind)
 		for _, key := range st.Doc.Items[container] {
 			item := core.Path(string(container) + "[" + key + "]")
+			if done.persons[item] {
+				continue // a reference added since does not plan the person again
+			}
 			spec := core.TaskSpec{
 				Kind: StepFillPerson, TargetPath: item,
 				AllowedPaths: f.personFillPaths(kind, item, st.Doc),
@@ -284,7 +318,12 @@ func (f *format) fillSpecs(st core.PlanState) []core.TaskSpec {
 			out = append(out, spec)
 		}
 	}
-	keys := st.Doc.Items[transactionsContainer]
+	var keys []string
+	for _, k := range st.Doc.Items[transactionsContainer] {
+		if !done.covered[core.Path(string(transactionsContainer)+"["+k+"]")] {
+			keys = append(keys, k)
+		}
+	}
 	for start := 0; start < len(keys); start += transactionBatchSize {
 		batch := keys[start:min(start+transactionBatchSize, len(keys))]
 		spec := core.TaskSpec{
@@ -443,7 +482,7 @@ func sharedPayload(st core.PlanState, extra map[string]any) map[string]any {
 	for k, v := range analystPayload(st) {
 		p[k] = v
 	}
-	if note := understandingOf(st.Done); note != nil {
+	if note := understandingOf(st.Done, st); note != nil {
 		p[PayloadUnderstanding] = note
 	}
 	for k, v := range extra {
@@ -455,12 +494,45 @@ func sharedPayload(st core.PlanState, extra map[string]any) map[string]any {
 	return p
 }
 
-// understandingOf returns the note of the done understanding task of the job,
-// decoded (so that the payload is the same value, key order included, however
-// it was stored), or nil.
-func understandingOf(done []models.SarGenerationTask) any {
+// understandingPayloadOf returns the analyst payload (analysis and extra info)
+// the done understanding task was planned with, JSON-encoded.
+func understandingPayloadOf(t models.SarGenerationTask) string {
+	var in struct {
+		Spec core.TaskSpec `json:"spec"`
+	}
+	if json.Unmarshal(t.Input, &in) != nil {
+		return ""
+	}
+	return payloadKey(in.Spec.Payload)
+}
+
+func payloadKey(p map[string]any) string {
+	if len(p) == 0 {
+		return ""
+	}
+	raw, _ := json.Marshal(p)
+	return string(raw)
+}
+
+// currentUnderstanding tells whether a done understanding task was made for the
+// analysis and extra info of the declaration as they are now.
+func currentUnderstanding(done []models.SarGenerationTask, st core.PlanState) bool {
+	want := payloadKey(analystPayload(st))
 	for _, t := range done {
-		if t.Kind != StepUnderstanding {
+		if t.Kind == StepUnderstanding && understandingPayloadOf(t) == want {
+			return true
+		}
+	}
+	return false
+}
+
+// understandingOf returns the note of the done understanding task of the job
+// made for the current analysis, decoded (so that the payload is the same value,
+// key order included, however it was stored), or nil.
+func understandingOf(done []models.SarGenerationTask, st core.PlanState) any {
+	want := payloadKey(analystPayload(st))
+	for _, t := range done {
+		if t.Kind != StepUnderstanding || understandingPayloadOf(t) != want {
 			continue
 		}
 		var out struct {
