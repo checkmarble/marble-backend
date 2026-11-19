@@ -364,6 +364,11 @@ func inlineObjects(tc core.ToolContext, inputs []core.ObjectRef) string {
 		if e.linked {
 			kind = "linked"
 		}
+		if e.obj.AutoAdded {
+			// Added by the system as a parent of the analyst's choices: context
+			// to read and cite, not an entity to declare.
+			kind += ", auto-added context"
+		}
 		inlined.WriteString("\n" + ref + " (" + kind + ") " + string(raw))
 	}
 	var b strings.Builder

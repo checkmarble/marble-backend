@@ -206,3 +206,15 @@ func TestRunJob_PromptMissingDuringATaskFailsJobWithoutRetry(t *testing.T) {
 	assert.Equal(t, models.SarJobStatusFailed, task.Status)
 	assert.Equal(t, "prompt manquant : prompts/a.md", task.Error, "the reason is on the task, not only on the job")
 }
+
+func TestPrompt_AutoAddedObjectsAreMarkedAsContext(t *testing.T) {
+	tc, spec := txnAccountContext(t)
+	for i := range tc.Selection {
+		if tc.Selection[i].TableName == "accounts" && tc.Selection[i].ObjectId == "acc-1" {
+			tc.Selection[i].AutoAdded = true
+		}
+	}
+	prompt := promptOf(t, tc, spec)
+	assert.Contains(t, prompt, "accounts/acc-1 (linked, auto-added context)")
+	assert.Contains(t, prompt, "transactions/txn-1 (input) ")
+}
