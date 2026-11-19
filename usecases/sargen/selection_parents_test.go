@@ -430,3 +430,59 @@ func TestAutoParents_SharedParentStaysWhileOneAnalystRowReachesIt(t *testing.T) 
 	assert.Empty(t, f.Selection.Rows)
 	assert.Empty(t, f.Selection.Exclusions)
 }
+
+// At the cap, additions stop but the traversal goes on: a removal still drops
+// the parents nothing reaches any more.
+func TestAutoParents_RemovalStillDropsParentsAtTheCap(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	parentsModel(f)
+	now := time.Now()
+	var adds []SelectionAdd
+	for i := 0; i < 200; i++ {
+		a, id := fmt.Sprintf("a%03d", i), fmt.Sprintf("t%03d", i)
+		f.Ingested.Put("accounts", a, map[string]any{"object_id": a}, now)
+		addTrigger(f, id, a)
+		adds = append(adds, SelectionAdd{Ref: selRef("transactions", id)})
+	}
+	st, err := uc.UpdateSelection(f.Ctx, declId, 1, adds, nil)
+	require.NoError(t, err)
+	require.Contains(t, selectedTables(f), "accounts/a000")
+	autos := 0
+	for _, r := range f.Selection.Rows {
+		if r.AutoAdded {
+			autos++
+		}
+	}
+	require.Equal(t, maxAutoAddedPerDeclaration, autos)
+
+	_, err = uc.UpdateSelection(f.Ctx, declId, st.Declaration.Version, nil, []core.ObjectRef{selRef("transactions", "t000")})
+	require.NoError(t, err)
+	assert.NotContains(t, selectedTables(f), "accounts/a000", "nothing leads to it any more")
+	assert.Empty(t, f.Selection.Exclusions, "an orphan removal is not an exclusion")
+}
+
+// Parents already selected are taken from the selection: a removal-only change
+// reads nothing.
+func TestAutoParents_SelectedParentsAreNotReadAgain(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	parentsModel(f)
+	now := time.Now()
+	var adds []SelectionAdd
+	for i := 0; i < 15; i++ {
+		a, p, c, id := fmt.Sprintf("a%02d", i), fmt.Sprintf("p%02d", i), fmt.Sprintf("c%02d", i), fmt.Sprintf("t%02d", i)
+		f.Ingested.Put("accounts", a, map[string]any{"object_id": a, "person_id": p}, now)
+		f.Ingested.Put("persons", p, map[string]any{"object_id": p, "company_id": c}, now)
+		f.Ingested.Put("companies", c, map[string]any{"object_id": c}, now)
+		addTrigger(f, id, a)
+		adds = append(adds, SelectionAdd{Ref: selRef("transactions", id)})
+	}
+	st, err := uc.UpdateSelection(f.Ctx, declId, 1, adds, nil)
+	require.NoError(t, err)
+	require.Len(t, f.Selection.Rows, 15*4)
+
+	before := f.Ingested.Reads
+	_, err = uc.UpdateSelection(f.Ctx, declId, st.Declaration.Version, nil, []core.ObjectRef{selRef("transactions", "t00")})
+	require.NoError(t, err)
+	assert.Equal(t, before, f.Ingested.Reads, "a removal reads nothing: every parent is in the selection")
+	assert.NotContains(t, selectedTables(f), "accounts/a00")
+}
