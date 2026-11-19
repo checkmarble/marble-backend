@@ -264,7 +264,13 @@ func (c *checker) checkQuestions(res *checkResult, qs []wireQuestion, afterFills
 			opt := core.QuestionOption{Label: string(wo.Label)}
 			fills, note := c.optionFills(wo.Fills, q.Paths, afterFills)
 			if note != "" {
-				res.Notes = append(res.Notes, fmt.Sprintf("questions[%d].options[%d] : %s ; kept as a plain label", qi, oi, note))
+				res.Notes = append(res.Notes, fmt.Sprintf("questions[%d].options[%d] : %s", qi, oi, note))
+			}
+			if len(fills) == 0 {
+				// An option that writes nothing cannot be chosen: dropped, and a
+				// question left with no option is a free question.
+				res.Notes = append(res.Notes, fmt.Sprintf("questions[%d].options[%d] : no value to write, option dropped", qi, oi))
+				continue
 			}
 			opt.Fills = fills
 			q.Options = append(q.Options, opt)
@@ -455,6 +461,9 @@ func (c *checker) unprovenCodeQuestion(f core.Fill, doc *core.Document) core.Que
 		}
 		opt := core.QuestionOption{Label: label}
 		fills, _ := c.optionFills([]wireFill{{Path: flexString(f.Path), Value: flexString(code.Value)}}, q.Paths, doc)
+		if len(fills) == 0 {
+			continue // an option that writes nothing is not offered
+		}
 		opt.Fills = fills
 		q.Options = append(q.Options, opt)
 	}

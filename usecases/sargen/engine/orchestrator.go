@@ -511,13 +511,22 @@ func (r *jobRun) checkPrompt(ctx context.Context, s core.TaskSpec) error {
 		return nil
 	}
 	msg := "prompt manquant : " + missing
+	if err := r.failJob(ctx, msg); err != nil {
+		return err
+	}
+	return errors.Mark(errors.New(msg), ErrPromptMissing)
+}
+
+// failJob sets the job failed with msg, on a context that survives the
+// cancellation of ctx.
+func (r *jobRun) failJob(ctx context.Context, msg string) error {
 	dctx, cancel := detached(ctx)
 	defer cancel()
 	if _, err := r.o.generation.SetSarGenerationJobStatus(dctx, r.o.executorFactory.NewExecutor(),
 		r.job.Id, models.SarJobStatusFailed, msg); err != nil {
 		return errors.Wrap(err, "cannot fail job")
 	}
-	return errors.Mark(errors.New(msg), ErrPromptMissing)
+	return nil
 }
 
 // readyTasks returns the not-done tasks whose dependencies (their spec's
@@ -684,7 +693,16 @@ func (r *jobRun) runTask(ctx context.Context, rt readyTask) (claimed bool, err e
 		var runErr error
 		out, runErr = o.runner.Run(ctx, tc, task, rt.spec)
 		if runErr != nil {
-			return true, fail(runErr, out.Trace)
+			failed := fail(runErr, out.Trace)
+			if errors.Is(runErr, ErrPromptMissing) {
+				// A prompt that disappeared after the plan (checked before the
+				// tasks start): same outcome as the check, the job is failed and
+				// the worker does not retry.
+				if jerr := r.failJob(ctx, runErr.Error()); jerr != nil {
+					return true, errors.Wrap(failed, jerr.Error())
+				}
+			}
+			return true, failed
 		}
 	}
 
@@ -872,7 +890,7 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 				continue
 			}
 			seen[k] = true
-			opts := make([]core.QuestionOption, len(d.Options))
+			opts := make([]core.QuestionOption, 0, len(d.Options))
 			for i, op := range d.Options {
 				op.Fills = nil
 				for _, f := range d.Options[i].Fills {
@@ -893,7 +911,10 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 					f.Origin, f.TaskID = core.OriginLLM, &taskId
 					op.Fills = append(op.Fills, f)
 				}
-				opts[i] = op
+				if len(op.Fills) == 0 {
+					continue // an option that writes nothing cannot be chosen
+				}
+				opts = append(opts, op)
 			}
 			var rawOpts []byte
 			if len(opts) > 0 {
