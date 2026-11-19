@@ -30,6 +30,12 @@ const (
 const (
 	fillMaxTurnsCap     = 30
 	fillMaxToolCallsCap = 60
+	// The task time grows with the inputs: 3 minutes plus 8 s per input, at most
+	// 7 minutes (the turns of a slow model take 2 to 5 s each, the prompt now
+	// carries the objects).
+	fillBaseTimeoutSeconds     = 180
+	fillTimeoutPerInputSeconds = 8
+	fillMaxTimeoutSeconds      = 420
 )
 
 // PayloadDeclared is the payload block of the person and transaction tasks listing the
@@ -246,14 +252,15 @@ func placementLimits(n int) core.TaskLimits {
 }
 
 // fillLimits is the budget of a fill task reading n objects: turns 15 + n and
-// tool calls 30 + 2n, capped at fillMaxTurnsCap and fillMaxToolCallsCap. Some
-// models make one tool call per turn, so a batch needs about one turn per
-// object; the task time keeps its default. At n = 10 this is 25 turns and 50
-// calls; at n = 1, 16 and 32.
+// tool calls 30 + 2n, capped at fillMaxTurnsCap and fillMaxToolCallsCap, time
+// min(180 + 8n, 420) seconds. Some models make one tool call per turn, so a
+// batch needs about one turn per object. At n = 10 this is 25 turns, 50 calls
+// and 260 s; at n = 1, 16, 32 and 188 s.
 func fillLimits(n int) core.TaskLimits {
 	return core.TaskLimits{
-		MaxTurns:     min(15+n, fillMaxTurnsCap),
-		MaxToolCalls: min(30+2*n, fillMaxToolCallsCap),
+		MaxTurns:       min(15+n, fillMaxTurnsCap),
+		MaxToolCalls:   min(30+2*n, fillMaxToolCallsCap),
+		TimeoutSeconds: min(fillBaseTimeoutSeconds+fillTimeoutPerInputSeconds*n, fillMaxTimeoutSeconds),
 	}
 }
 

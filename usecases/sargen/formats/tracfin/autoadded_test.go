@@ -12,9 +12,9 @@ import (
 
 func autoCtx(refs ...core.ObjectRef) core.StructuredContext {
 	sc := linkedTo()
-	sc.AutoAdded = map[core.ObjectRef]bool{}
+	sc.ContextOnly = map[core.ObjectRef]bool{}
 	for _, r := range refs {
-		sc.AutoAdded[r] = true
+		sc.ContextOnly[r] = true
 	}
 	return sc
 }
@@ -105,7 +105,7 @@ func TestFillLimitsScaleWithInputsAndAreCapped(t *testing.T) {
 		require.Len(t, person.Inputs, tc.inputs)
 		assert.Equal(t, tc.turns, person.Limits.MaxTurns, "inputs=%d", tc.inputs)
 		assert.Equal(t, tc.calls, person.Limits.MaxToolCalls, "inputs=%d", tc.inputs)
-		assert.Zero(t, person.Limits.TimeoutSeconds, "the task time keeps its default")
+		assert.Equal(t, min(180+8*tc.inputs, 420), person.Limits.TimeoutSeconds, "inputs=%d", tc.inputs)
 	}
 }
 
@@ -126,4 +126,65 @@ func TestFillLimitsLargeBatchIsCappedAt30And60(t *testing.T) {
 	require.NotNil(t, tx)
 	assert.Equal(t, 25, tx.Limits.MaxTurns)
 	assert.Equal(t, 50, tx.Limits.MaxToolCalls)
+}
+
+// An account used as a financial reference does not make a person: a person
+// carried only by it (next to a context object) is not declared.
+func TestPlacement_PersonCarriedOnlyByAReferenceObjectIsNotDeclared(t *testing.T) {
+	f := planFormat(t)
+	raw := json.RawMessage(`{"persons":[
+	  {"kind":"pp","objects":[{"table":"persons","object_id":"p-1"}]},
+	  {"kind":"pm","objects":[{"table":"companies","object_id":"c-1"},{"table":"accounts","object_id":"a-1"}]}],
+	 "financial_refs":[{"ref_kind":"Iban","owners":[{"person_index":0,"lien":"titulaire"}],"objects":[{"table":"accounts","object_id":"a-1"}]}],
+	 "transactions":[]}`)
+	doc := core.NewDocument()
+	sc := autoCtx(autoCompany)
+	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, sc))
+	assert.Empty(t, doc.Items["personnes.pm"])
+	assert.Len(t, doc.Items["personnes.pp"], 1)
+}
+
+// A transaction line made only of a context object is not created.
+func TestPlacement_TransactionOfAContextObjectIsNotCreated(t *testing.T) {
+	f := planFormat(t)
+	raw := json.RawMessage(`{"persons":[{"kind":"pp","objects":[{"table":"persons","object_id":"p-1"}]}],"financial_refs":[],
+	 "transactions":[{"object":{"table":"transactions","object_id":"t-1"}},{"object":{"table":"transactions","object_id":"t-ctx"}}]}`)
+	doc := core.NewDocument()
+	sc := autoCtx(core.ObjectRef{Table: "transactions", ObjectID: "t-ctx"})
+	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, sc))
+	require.Len(t, doc.Items["work.transactions"], 1)
+	qs := f.(core.StructuredQuestioner).StructuredQuestions(stepPlacement, raw, doc, sc)
+	require.Len(t, qs, 1)
+	assert.Contains(t, qs[0].Text, "ligne d'opération non créée : transactions/t-ctx")
+}
+
+// A context-only account is a reference of a declared person only when the data
+// links it to that person.
+func TestPlacement_ContextAccountReferenceNeedsALinkToItsOwner(t *testing.T) {
+	f := planFormat(t)
+	raw := json.RawMessage(`{"persons":[{"kind":"pp","objects":[{"table":"persons","object_id":"p-1"}]}],
+	 "financial_refs":[{"ref_kind":"Iban","owners":[{"person_index":0,"lien":"titulaire"}],"objects":[{"table":"accounts","object_id":"a-ctx"}]}],
+	 "transactions":[]}`)
+	account := core.ObjectRef{Table: "accounts", ObjectID: "a-ctx"}
+	person := core.ObjectRef{Table: "persons", ObjectID: "p-1"}
+
+	unlinked := core.StructuredContext{ContextOnly: map[core.ObjectRef]bool{account: true},
+		LinkedObjects: func(core.ObjectRef) []core.ObjectRef { return nil }}
+	doc := core.NewDocument()
+	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, unlinked))
+	assert.Empty(t, doc.Items["personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban"])
+	qs := f.(core.StructuredQuestioner).StructuredQuestions(stepPlacement, raw, doc, unlinked)
+	require.Len(t, qs, 1)
+	assert.Contains(t, qs[0].Text, "référence financière non déclarée : accounts/a-ctx")
+
+	linked := core.StructuredContext{ContextOnly: map[core.ObjectRef]bool{account: true},
+		LinkedObjects: func(ref core.ObjectRef) []core.ObjectRef {
+			if ref == account {
+				return []core.ObjectRef{person}
+			}
+			return nil
+		}}
+	doc = core.NewDocument()
+	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, linked))
+	assert.Len(t, doc.Items["personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban"], 1)
 }
