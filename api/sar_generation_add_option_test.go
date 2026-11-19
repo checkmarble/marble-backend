@@ -106,3 +106,22 @@ func TestHandleChooseOption_RefusedAddOptionIsAFrench400(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "nombre maximal d'éléments atteint")
 	assert.Contains(t, w.Body.String(), "issues")
 }
+
+func TestHandleListQuestions_MultiFillAddOption(t *testing.T) {
+	declId := uuid.New()
+	addr := core.Path("personnes.pp[pp-1].coordonnees.autreAdresse[+a]")
+	q := sarAddQuestion(declId)
+	q.Paths = []core.Path{addr + ".pays", addr + ".ville"}
+	q.Options[0].Fills = []core.Fill{{Path: addr + ".pays", Value: "PT"}, {Path: addr + ".ville", Value: "Lisbonne"}}
+	f := &fakeSarGenerationUsecase{Questions: []sargen.Question{q}}
+	r := newSarTestRouter(t, f)
+
+	w := doSarRequest(r, http.MethodGet, "/sar-declarations/"+declId.String()+"/questions", nil)
+
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var qs []map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &qs))
+	fills := qs[0]["options"].([]any)[0].(map[string]any)["fills"].([]any)
+	require.Len(t, fills, 2, "both fills of the add option share the provisional item")
+	assert.Equal(t, string(addr)+".ville", fills[1].(map[string]any)["path"])
+}

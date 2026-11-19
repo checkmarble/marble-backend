@@ -462,6 +462,14 @@ func handleListSarQuestions(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
+// handleChooseSarQuestionOption applies an option of a question. Version
+// contract: choosing an option that writes (including one that adds a list item)
+// bumps the declaration version. Choosing the option that declines an addition,
+// or an addition whose value the list already holds, closes the question as
+// resolved without writing: the response is 200 and keeps the same version, so
+// the client must not expect it to grow. The client still sends the version it
+// saw: a stale one is a 409, like for any option. Unlike dismiss, which takes
+// no version.
 func handleChooseSarQuestionOption(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, ok := sarUuidParam(c, "question_id")
