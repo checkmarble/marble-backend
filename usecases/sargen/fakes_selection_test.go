@@ -3,6 +3,7 @@ package sargen
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"sort"
 	"strconv"
 	"sync"
@@ -339,8 +340,52 @@ func (c *fakeCaseEntities) ReadCaseEntityObjects(_ context.Context, orgId uuid.U
 // fakeSelectionRepo is an in-memory SarSelectionRepository. Add returns
 // models.ConflictError on a duplicate (declaration, table, object).
 type fakeSelectionRepo struct {
-	mu   sync.Mutex
-	Rows []models.SarSelectedObject
+	mu         sync.Mutex
+	Rows       []models.SarSelectedObject
+	Exclusions []models.CaseEntityRef
+}
+
+func (r *fakeSelectionRepo) ClearSarSelectionAutoAdded(_ context.Context, _ repositories.Executor, declarationId uuid.UUID, refs []models.CaseEntityRef) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for i, o := range r.Rows {
+		for _, ref := range refs {
+			if o.DeclarationId == declarationId && ref.TableName == o.TableName && ref.ObjectId == o.ObjectId {
+				r.Rows[i].AutoAdded = false
+			}
+		}
+	}
+	return nil
+}
+
+func (r *fakeSelectionRepo) ListSarSelectionExclusions(_ context.Context, _ repositories.Executor, _ uuid.UUID) ([]models.CaseEntityRef, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]models.CaseEntityRef{}, r.Exclusions...), nil
+}
+
+func (r *fakeSelectionRepo) AddSarSelectionExclusions(_ context.Context, _ repositories.Executor, _ uuid.UUID, refs []models.CaseEntityRef) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, ref := range refs {
+		if !slices.Contains(r.Exclusions, ref) {
+			r.Exclusions = append(r.Exclusions, ref)
+		}
+	}
+	return nil
+}
+
+func (r *fakeSelectionRepo) RemoveSarSelectionExclusions(_ context.Context, _ repositories.Executor, _ uuid.UUID, refs []models.CaseEntityRef) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	kept := r.Exclusions[:0]
+	for _, e := range r.Exclusions {
+		if !slices.Contains(refs, e) {
+			kept = append(kept, e)
+		}
+	}
+	r.Exclusions = kept
+	return nil
 }
 
 func (r *fakeSelectionRepo) ListSarSelection(_ context.Context, _ repositories.Executor, declarationId uuid.UUID) ([]models.SarSelectedObject, error) {

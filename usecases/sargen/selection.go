@@ -19,6 +19,13 @@ type SarSelectionRepository interface {
 	ListSarSelection(ctx context.Context, exec repositories.Executor, declarationId uuid.UUID) ([]models.SarSelectedObject, error)
 	AddSarSelection(ctx context.Context, exec repositories.Executor, objs []models.SarSelectedObject) error
 	RemoveSarSelection(ctx context.Context, exec repositories.Executor, declarationId uuid.UUID, refs []models.CaseEntityRef) error
+	// ClearSarSelectionAutoAdded turns auto-added objects into analyst choices.
+	ClearSarSelectionAutoAdded(ctx context.Context, exec repositories.Executor, declarationId uuid.UUID, refs []models.CaseEntityRef) error
+	// Exclusions: auto-added objects the analyst removed, never added back
+	// automatically.
+	ListSarSelectionExclusions(ctx context.Context, exec repositories.Executor, declarationId uuid.UUID) ([]models.CaseEntityRef, error)
+	AddSarSelectionExclusions(ctx context.Context, exec repositories.Executor, declarationId uuid.UUID, refs []models.CaseEntityRef) error
+	RemoveSarSelectionExclusions(ctx context.Context, exec repositories.Executor, declarationId uuid.UUID, refs []models.CaseEntityRef) error
 }
 
 // SelectionAdd asks to select Ref; ReachedFrom is set when Ref was reached by
@@ -28,10 +35,29 @@ type SelectionAdd struct {
 	ReachedFrom *models.SarReachedFrom
 }
 
+func caseEntityRef(r core.ObjectRef) models.CaseEntityRef {
+	return models.CaseEntityRef{TableName: r.Table, ObjectId: r.ObjectID}
+}
+
+func objectRefOf(r models.CaseEntityRef) core.ObjectRef {
+	return core.ObjectRef{Table: r.TableName, ObjectID: r.ObjectId}
+}
+
+func rowRef(o models.SarSelectedObject) core.ObjectRef {
+	return core.ObjectRef{Table: o.TableName, ObjectID: o.ObjectId}
+}
+
 // UpdateSelection removes then adds selected objects (frozen snapshots taken
 // now) and increments the declaration version, all in one transaction. A stale
 // version returns models.ErrSarVersionConflict and writes nothing. Adding an
-// already selected object is a no-op.
+// already selected object is a no-op, except that adding an auto-added object
+// turns it into an analyst choice.
+//
+// Useful parent objects of the added objects are added automatically (see
+// autoParents). Removing an auto-added object records an exclusion so that it
+// does not come back; adding it explicitly clears the exclusion. Auto-added
+// objects no other selected object leads to any more are removed with their
+// last child.
 func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version int,
 	add []SelectionAdd, remove []core.ObjectRef,
 ) (DeclarationState, error) {
@@ -68,27 +94,93 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 		return uc.buildState(ctx, exec, d) // nothing to change: no version bump
 	}
 
-	var newRows []models.SarSelectedObject
+	// Current selection and data model.
+	var ctxData selectionContext
 	if len(add) > 0 {
-		ctxData, err := uc.loadSelectionContext(ctx, exec, orgId, d)
+		ctxData, err = uc.loadSelectionContext(ctx, exec, orgId, d)
 		if err != nil {
 			return DeclarationState{}, err
 		}
-		for _, a := range add {
-			if _, selected := ctxData.selected[a.Ref]; selected {
-				continue
-			}
-			row, err := uc.snapshotFor(ctx, orgId, ctxData, a)
-			if err != nil {
-				return DeclarationState{}, err
-			}
-			row.Id = pure_utils.NewId()
-			row.DeclarationId = id
-			newRows = append(newRows, row)
+	} else {
+		ctxData.selected = map[core.ObjectRef]models.SarSelectedObject{}
+		rows, err := uc.selectionRepo.ListSarSelection(ctx, exec, id)
+		if err != nil {
+			return DeclarationState{}, err
+		}
+		for _, o := range rows {
+			ctxData.selected[rowRef(o)] = o
+		}
+		ctxData.dataModel, err = uc.dataModelReader.GetDataModel(ctx, orgId,
+			models.DataModelReadOptions{IncludeNavigationOptions: true}, true)
+		if err != nil {
+			return DeclarationState{}, err
 		}
 	}
+	exclusionList, err := uc.selectionRepo.ListSarSelectionExclusions(ctx, exec, id)
+	if err != nil {
+		return DeclarationState{}, err
+	}
+	excluded := make(map[core.ObjectRef]bool, len(exclusionList))
+	for _, e := range exclusionList {
+		excluded[objectRefOf(e)] = true
+	}
 
-	if len(newRows) == 0 && len(remove) == 0 {
+	// Removals: explicit ones (an auto-added object records an exclusion) and
+	// auto-added parents nothing leads to any more.
+	var removeRefs, addExclusions []models.CaseEntityRef
+	remaining := make(map[core.ObjectRef]models.SarSelectedObject, len(ctxData.selected))
+	for ref, o := range ctxData.selected {
+		remaining[ref] = o
+	}
+	for _, r := range remove {
+		removeRefs = append(removeRefs, caseEntityRef(r))
+		if o, ok := remaining[r]; ok {
+			if o.AutoAdded {
+				addExclusions = append(addExclusions, caseEntityRef(r))
+				excluded[r] = true
+			}
+			delete(remaining, r)
+		}
+	}
+	for _, o := range orphanedAutoAdded(ctxData.dataModel, remaining) {
+		removeRefs = append(removeRefs, caseEntityRef(rowRef(o)))
+		delete(remaining, rowRef(o))
+	}
+
+	// Additions: analyst choices first, then their useful parents.
+	var newRows []models.SarSelectedObject
+	var clearAuto, clearExclusions []models.CaseEntityRef
+	for _, a := range add {
+		if excluded[a.Ref] {
+			clearExclusions = append(clearExclusions, caseEntityRef(a.Ref))
+			delete(excluded, a.Ref)
+		}
+		if o, selected := remaining[a.Ref]; selected {
+			if o.AutoAdded {
+				clearAuto = append(clearAuto, caseEntityRef(a.Ref))
+				o.AutoAdded = false
+				remaining[a.Ref] = o
+			}
+			continue
+		}
+		row, err := uc.snapshotFor(ctx, orgId, ctxData, a)
+		if err != nil {
+			return DeclarationState{}, err
+		}
+		row.Id = pure_utils.NewId()
+		row.DeclarationId = id
+		newRows = append(newRows, row)
+		remaining[a.Ref] = row
+	}
+	if len(newRows) > 0 {
+		parents, err := uc.autoParents(ctx, orgId, ctxData.dataModel, id, newRows, remaining, excluded)
+		if err != nil {
+			return DeclarationState{}, err
+		}
+		newRows = append(newRows, parents...)
+	}
+
+	if len(newRows) == 0 && len(remove) == 0 && len(clearAuto) == 0 {
 		return uc.buildState(ctx, exec, d) // everything already selected: no version bump
 	}
 
@@ -104,14 +196,19 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 		if locked.Version != version {
 			return models.ErrSarVersionConflict
 		}
-		if len(remove) > 0 {
-			refs := make([]models.CaseEntityRef, len(remove))
-			for i, r := range remove {
-				refs[i] = models.CaseEntityRef{TableName: r.Table, ObjectId: r.ObjectID}
-			}
-			if err := uc.selectionRepo.RemoveSarSelection(ctx, tx, id, refs); err != nil {
+		if len(removeRefs) > 0 {
+			if err := uc.selectionRepo.RemoveSarSelection(ctx, tx, id, removeRefs); err != nil {
 				return err
 			}
+		}
+		if err := uc.selectionRepo.AddSarSelectionExclusions(ctx, tx, id, addExclusions); err != nil {
+			return err
+		}
+		if err := uc.selectionRepo.RemoveSarSelectionExclusions(ctx, tx, id, clearExclusions); err != nil {
+			return err
+		}
+		if err := uc.selectionRepo.ClearSarSelectionAutoAdded(ctx, tx, id, clearAuto); err != nil {
+			return err
 		}
 		if len(newRows) > 0 {
 			if err := uc.selectionRepo.AddSarSelection(ctx, tx, newRows); err != nil {
