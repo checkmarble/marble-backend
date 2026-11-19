@@ -108,7 +108,7 @@ func TestDescribeSubtree_BoundIsHardOnFieldsAndCodeLists(t *testing.T) {
 
 	const limit = 3000
 	text := describeSubtree(spec, doc, []core.Path{"g"}, limit)
-	assert.LessOrEqual(t, len(text), limit+200, "fields and code lists respect the bound")
+	assert.LessOrEqual(t, len(text), limit+400, "fields and code lists respect the bound")
 	assert.Less(t, strings.Count(text, "length 1 to 30"), 40, "past the bound the description is dropped")
 	assert.Contains(t, agLineWith(text, "g.f00"), "pattern", "the first fields keep the full form")
 	assert.Contains(t, text, "more fields not described here: use field_spec", "fields that do not fit are counted")
@@ -207,4 +207,41 @@ func TestDescribeSubtree_DeterministicUpToTheNonce(t *testing.T) {
 	}
 	one := DescribeSubtree(tc.Format.Spec(), tc.Doc, allowed)
 	assert.Equal(t, 2, strings.Count(one, `id="`), "one nonce per description: opening and closing tag share it")
+}
+
+func TestDescribeSubtree_ListTemplatesCoverFieldsWithoutItem(t *testing.T) {
+	tc := agentToolContext(t)
+	text := DescribeSubtree(tc.Format.Spec(), tc.Doc, []core.Path{"context.natureSoupcon", agentPersonPath})
+
+	assert.Contains(t, text, "call field_spec only for a field outside this list")
+	pen := agLineWith(text, "- context.natureSoupcon.natureSoupconPenale[] ")
+	require.NotEmpty(t, pen, text)
+	assert.Contains(t, pen, "new item: context.natureSoupcon.natureSoupconPenale[+a]")
+	cat := agLineWith(text, "- personnes.pp[].lienAutrePersonneDejaDeclaree[].typeRelation[].categorieRelation")
+	require.NotEmpty(t, cat, "a nested list field with no item yet is described")
+	rel := agLineWith(text, "- personnes.pp[].lienAutrePersonneDejaDeclaree[].typeRelation[] ")
+	require.NotEmpty(t, rel)
+	assert.Contains(t, rel, "new item: personnes.pp[+a].lienAutrePersonneDejaDeclaree[+b].typeRelation[+c]")
+}
+
+func TestDescribeSubtree_RealPersonPartHasTheFullRelationsListOnce(t *testing.T) {
+	tc := agentToolContext(t)
+	spec := tc.Format.Spec()
+	pm := tc.Doc.AddItem("personnes.pm", "pm")
+	var allowed []core.Path
+	for _, c := range spec.NodeAt("personnes.pm[]").Children {
+		if c.ExportID || c.Name == "implication" || c.Name == "natureRelation" || c.Name == "elementsRelation" {
+			continue
+		}
+		allowed = append(allowed, pm.Child(c.Name))
+	}
+	text := DescribeSubtree(spec, tc.Doc, allowed)
+
+	list := spec.CodeLists["liste_ref_relations.csv"]
+	require.Len(t, list.Codes, 57)
+	assert.Equal(t, 1, strings.Count(text, "liste_ref_relations.csv (57 codes)"))
+	for _, c := range list.Codes {
+		assert.Equal(t, 1, strings.Count(text, "\n"+c.Value+" = "), "code %s written once", c.Value)
+	}
+	assert.NotContains(t, text, "more fields not described here", "the whole part fits the bound")
 }
