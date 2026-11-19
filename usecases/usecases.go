@@ -30,6 +30,7 @@ import (
 
 type Usecases struct {
 	Repositories                 repositories.Repositories
+	batchExecutionConcurrency    map[models.OrganizationEnvironment]int
 	appName                      string
 	apiVersion                   string
 	disableSegment               bool
@@ -67,6 +68,12 @@ type Usecases struct {
 }
 
 type Option func(*options)
+
+func WithBatchExecutionConcurrency(limits map[models.OrganizationEnvironment]int) Option {
+	return func(o *options) {
+		o.batchExecutionConcurrency = limits
+	}
+}
 
 func WithDisableSegment(disableSegment bool) Option {
 	return func(o *options) {
@@ -258,6 +265,7 @@ func WithAIAgentModelConfig(config *models.AiAgentModelConfig) Option {
 }
 
 type options struct {
+	batchExecutionConcurrency    map[models.OrganizationEnvironment]int
 	appName                      string
 	apiVersion                   string
 	batchIngestionMaxSize        int
@@ -291,6 +299,9 @@ type options struct {
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
+	if o.batchExecutionConcurrency == nil {
+		o.batchExecutionConcurrency = worker_jobs.DefaultBatchExecutionConcurrency()
+	}
 	if o.batchIngestionMaxSize == 0 {
 		o.batchIngestionMaxSize = DefaultApiBatchIngestionSize
 	}
@@ -302,6 +313,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 
 	return Usecases{
 		Repositories:                 repositories,
+		batchExecutionConcurrency:    o.batchExecutionConcurrency,
 		appName:                      o.appName,
 		apiVersion:                   o.apiVersion,
 		disableSegment:               o.disableSegment,

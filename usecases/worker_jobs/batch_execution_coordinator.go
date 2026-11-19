@@ -27,9 +27,6 @@ import (
 )
 
 const (
-	// batchExecBatchSize is the number of decisions evaluated concurrently in a batch execution.
-	batchExecBatchSize = 20
-
 	// batchExecCommitBatchSize is the number of object ids read from the manifest per loop iteration.
 	// They are evaluated concurrently and the surviving decisions are inserted in a single
 	// transaction together with the manifest cursor advance. Kept small to bound the number of
@@ -62,7 +59,17 @@ const (
 	batchExecRetryBackoffCap = 30 * time.Minute
 )
 
+func DefaultBatchExecutionConcurrency() map[models.OrganizationEnvironment]int {
+	return map[models.OrganizationEnvironment]int{
+		models.OrganizationEnvironmentProduction: 20,
+		models.OrganizationEnvironmentDemo:       5,
+		models.OrganizationEnvironmentStaging:    5,
+		models.OrganizationEnvironmentUnknown:    5,
+	}
+}
+
 type batchCoordinatorRepository interface {
+	GetOrganizationById(ctx context.Context, exec repositories.Executor, organizationId uuid.UUID) (models.Organization, error)
 	GetScheduledExecution(ctx context.Context, exec repositories.Executor, id string) (models.ScheduledExecution, error)
 	UpdateScheduledExecutionStatus(
 		ctx context.Context,
@@ -91,21 +98,22 @@ type batchCoordinatorRepository interface {
 }
 
 type BatchExecutionCoordinator struct {
-	repository                 batchCoordinatorRepository
-	executorFactory            executor_factory.ExecutorFactory
-	transactionFactory         executor_factory.TransactionFactory
-	dataModelRepository        repositories.DataModelRepository
-	ingestedDataReadRepository repositories.IngestedDataReadRepository
-	decisionRepository         repositories.DecisionRepository
-	offloadedReader            repositories.OffloadedReadWriter
-	blobRepository             repositories.BlobRepository
-	manifestBucketUrl          string
-	webhookEventsSender        webhookEventsUsecase
-	scenarioFetcher            scenarios.ScenarioFetcher
-	phantomDecision            decision_phantom.PhantomDecisionUsecase
-	scenarioEvaluator          ScenarioEvaluator
-	screeningRepository        decisionWorkerScreeningWriter
-	taskQueueRepository        repositories.TaskQueueRepository
+	repository                     batchCoordinatorRepository
+	maxConcurrentObjectEvaluations map[models.OrganizationEnvironment]int
+	executorFactory                executor_factory.ExecutorFactory
+	transactionFactory             executor_factory.TransactionFactory
+	dataModelRepository            repositories.DataModelRepository
+	ingestedDataReadRepository     repositories.IngestedDataReadRepository
+	decisionRepository             repositories.DecisionRepository
+	offloadedReader                repositories.OffloadedReadWriter
+	blobRepository                 repositories.BlobRepository
+	manifestBucketUrl              string
+	webhookEventsSender            webhookEventsUsecase
+	scenarioFetcher                scenarios.ScenarioFetcher
+	phantomDecision                decision_phantom.PhantomDecisionUsecase
+	scenarioEvaluator              ScenarioEvaluator
+	screeningRepository            decisionWorkerScreeningWriter
+	taskQueueRepository            repositories.TaskQueueRepository
 }
 
 func NewBatchExecutionCoordinator(
@@ -124,36 +132,39 @@ func NewBatchExecutionCoordinator(
 	scenarioEvaluator ScenarioEvaluator,
 	screeningRepository decisionWorkerScreeningWriter,
 	taskQueueRepository repositories.TaskQueueRepository,
+	maxConcurrentObjectEvaluations map[models.OrganizationEnvironment]int,
 ) BatchExecutionCoordinator {
 	return BatchExecutionCoordinator{
-		repository:                 repository,
-		executorFactory:            executorFactory,
-		transactionFactory:         transactionFactory,
-		dataModelRepository:        dataModelRepository,
-		ingestedDataReadRepository: ingestedDataReadRepository,
-		decisionRepository:         decisionRepository,
-		offloadedReader:            offloadedReader,
-		blobRepository:             blobRepository,
-		manifestBucketUrl:          manifestBucketUrl,
-		webhookEventsSender:        webhookEventsSender,
-		scenarioFetcher:            scenarioFetcher,
-		phantomDecision:            phantom,
-		scenarioEvaluator:          scenarioEvaluator,
-		screeningRepository:        screeningRepository,
-		taskQueueRepository:        taskQueueRepository,
+		repository:                     repository,
+		maxConcurrentObjectEvaluations: maxConcurrentObjectEvaluations,
+		executorFactory:                executorFactory,
+		transactionFactory:             transactionFactory,
+		dataModelRepository:            dataModelRepository,
+		ingestedDataReadRepository:     ingestedDataReadRepository,
+		decisionRepository:             decisionRepository,
+		offloadedReader:                offloadedReader,
+		blobRepository:                 blobRepository,
+		manifestBucketUrl:              manifestBucketUrl,
+		webhookEventsSender:            webhookEventsSender,
+		scenarioFetcher:                scenarioFetcher,
+		phantomDecision:                phantom,
+		scenarioEvaluator:              scenarioEvaluator,
+		screeningRepository:            screeningRepository,
+		taskQueueRepository:            taskQueueRepository,
 	}
 }
 
 // batchInvariants holds the per-run context (scenario, data model, pivots, client DB handle)
 // loaded once and reused for every object in every batch, rather than reloaded per object.
 type batchInvariants struct {
-	scenario             models.Scenario
-	scenarioIterationId  string
-	dataModel            models.DataModel
-	table                models.Table
-	pivots               []models.Pivot
-	clientDb             repositories.Executor
-	scheduledExecutionId string
+	scenario                       models.Scenario
+	maxConcurrentObjectEvaluations int
+	scenarioIterationId            string
+	dataModel                      models.DataModel
+	table                          models.Table
+	pivots                         []models.Pivot
+	clientDb                       repositories.Executor
+	scheduledExecutionId           string
 
 	// deduplicate gates *enforcement* only: pre-filtering objects before evaluation and
 	// requiring a successful claim before storing a decision. It does not gate whether
@@ -503,6 +514,14 @@ func (c *BatchExecutionCoordinator) loadInvariants(
 		return batchInvariants{}, err
 	}
 	scenario := scenarioAndIteration.Scenario
+	organization, err := c.repository.GetOrganizationById(ctx, exec, scenario.OrganizationId)
+	if err != nil {
+		return batchInvariants{}, err
+	}
+	maxConcurrentObjectEvaluations, ok := c.maxConcurrentObjectEvaluations[organization.Environment]
+	if !ok {
+		maxConcurrentObjectEvaluations = c.maxConcurrentObjectEvaluations[models.OrganizationEnvironmentUnknown]
+	}
 
 	dataModel, err := c.dataModelRepository.GetDataModel(ctx, exec, scenario.OrganizationId, false, true)
 	if err != nil {
@@ -530,14 +549,15 @@ func (c *BatchExecutionCoordinator) loadInvariants(
 	}
 
 	return batchInvariants{
-		scenario:             scenario,
-		scenarioIterationId:  se.ScenarioIterationId,
-		dataModel:            dataModel,
-		table:                table,
-		pivots:               pivots,
-		clientDb:             clientDb,
-		scheduledExecutionId: se.Id,
-		deduplicate:          se.DeduplicateObjects,
+		scenario:                       scenario,
+		maxConcurrentObjectEvaluations: maxConcurrentObjectEvaluations,
+		scenarioIterationId:            se.ScenarioIterationId,
+		dataModel:                      dataModel,
+		table:                          table,
+		pivots:                         pivots,
+		clientDb:                       clientDb,
+		scheduledExecutionId:           se.Id,
+		deduplicate:                    se.DeduplicateObjects,
 	}, nil
 }
 
@@ -578,7 +598,7 @@ func (c *BatchExecutionCoordinator) evaluateBatch(
 	defer cancel()
 	outcomes := make([]evalOutcome, len(ids))
 	var g errgroup.Group
-	g.SetLimit(batchExecBatchSize)
+	g.SetLimit(inv.maxConcurrentObjectEvaluations)
 	for i, id := range ids {
 		g.Go(func() (err error) {
 			defer func() {
