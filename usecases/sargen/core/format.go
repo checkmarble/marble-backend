@@ -3,6 +3,8 @@ package core
 import (
 	"encoding/json"
 	"io"
+
+	"github.com/checkmarble/marble-backend/models"
 )
 
 // VersionStatus tells what can still be done with a format version.
@@ -70,6 +72,21 @@ type StructuredContext struct {
 	// object, but a format must not declare an entity from one alone (it asks
 	// the analyst instead). Nil: none.
 	ContextOnly map[ObjectRef]bool
+	// Semantics is the semantic type of the data-model table of each selected
+	// object (models.SemanticType values; empty or absent: unknown).
+	Semantics map[ObjectRef]models.SemanticType
+}
+
+// CanCarryEntity tells whether ref may be what a declared person or company
+// rests on: its table is person-like, company-like or partner-like, or its
+// semantic is not known (then nothing is assumed against it).
+func (sc StructuredContext) CanCarryEntity(ref ObjectRef) bool {
+	switch sc.Semantics[ref] {
+	case models.SemanticTypePerson, models.SemanticTypeCompany, models.SemanticTypePartner,
+		models.SemanticTypeUnset, models.SemanticTypeUnknown:
+		return true
+	}
+	return false
 }
 
 // IsContextOnly tells whether ref is a selected object that is context only.

@@ -27,3 +27,21 @@ func TestAutoAddedObjectIsCitableAndReported(t *testing.T) {
 	assert.True(t, sc.IsContextOnly(core.ObjectRef{Table: "accounts", ObjectID: "acc-1"}))
 	assert.False(t, sc.IsContextOnly(core.ObjectRef{Table: "transactions", ObjectID: "txn-1"}))
 }
+
+func TestStructuredContextCarriesTableSemantics(t *testing.T) {
+	dm := toolsDataModel()
+	tr := dm.Tables["transactions"]
+	tr.SemanticType = models.SemanticTypeTransaction
+	dm.Tables["transactions"] = tr
+	ac := dm.Tables["accounts"]
+	ac.SemanticType = models.SemanticTypeAccount
+	dm.Tables["accounts"] = ac
+	sel := []models.SarSelectedObject{
+		agentSelection("transactions", "txn-1", map[string]any{"object_id": "txn-1"}),
+		agentSelection("accounts", "acc-1", map[string]any{"object_id": "acc-1"}),
+	}
+	sc := StructuredContextFor(sel, dm)
+	assert.False(t, sc.CanCarryEntity(core.ObjectRef{Table: "transactions", ObjectID: "txn-1"}))
+	assert.False(t, sc.CanCarryEntity(core.ObjectRef{Table: "accounts", ObjectID: "acc-1"}))
+	assert.True(t, sc.CanCarryEntity(core.ObjectRef{Table: "unknown", ObjectID: "x"}), "unknown semantic: nothing assumed")
+}

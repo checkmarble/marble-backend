@@ -100,14 +100,16 @@ func StructuredContextFor(selection []models.SarSelectedObject, dm models.DataMo
 	refs := make([]core.ObjectRef, len(selection))
 	snapshots := make(map[core.ObjectRef]map[string]any, len(selection))
 	auto := map[core.ObjectRef]bool{}
+	semantics := make(map[core.ObjectRef]models.SemanticType, len(selection))
 	for i, o := range selection {
 		refs[i] = core.ObjectRef{Table: o.TableName, ObjectID: o.ObjectId}
 		snapshots[refs[i]] = o.Snapshot
+		semantics[refs[i]] = dm.Tables[o.TableName].SemanticType
 		if o.ContextOnly {
 			auto[refs[i]] = true
 		}
 	}
-	return core.StructuredContext{Selection: refs, Snapshots: snapshots, ContextOnly: auto, LinkedObjects: func(ref core.ObjectRef) []core.ObjectRef {
+	return core.StructuredContext{Selection: refs, Snapshots: snapshots, ContextOnly: auto, Semantics: semantics, LinkedObjects: func(ref core.ObjectRef) []core.ObjectRef {
 		var out []core.ObjectRef
 		for _, o := range linkedObjects(sc, dm, ref) {
 			out = append(out, core.ObjectRef{Table: o.TableName, ObjectID: o.ObjectId})
