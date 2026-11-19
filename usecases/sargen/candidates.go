@@ -36,6 +36,11 @@ type Candidate struct {
 	Summary  map[string]any
 	Links    []LinkOption
 	Selected bool
+	// AutoAdded and ReachedFrom describe a selected candidate the server added
+	// on its own as a parent of another selected object (the object and link
+	// it was reached through).
+	AutoAdded   bool
+	ReachedFrom *models.SarReachedFrom
 }
 
 // LinkOption is a link that can be followed from a candidate.
@@ -312,8 +317,12 @@ func (uc *Usecase) toCandidate(c selectionContext, ref core.ObjectRef, reason st
 	for i, l := range links {
 		opts[i] = l.LinkOption
 	}
-	_, selected := c.selected[ref]
-	return Candidate{Ref: ref, Reason: reason, Summary: data, Links: opts, Selected: selected}
+	sel, selected := c.selected[ref]
+	cand := Candidate{Ref: ref, Reason: reason, Summary: data, Links: opts, Selected: selected}
+	if selected {
+		cand.AutoAdded, cand.ReachedFrom = sel.AutoAdded, sel.ReachedFrom
+	}
+	return cand
 }
 
 // ListCandidates returns the trigger objects of all the case decisions, the

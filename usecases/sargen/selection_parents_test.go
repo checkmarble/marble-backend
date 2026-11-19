@@ -266,3 +266,26 @@ func TestAutoParents_SnapshotsFrozenAndUTC(t *testing.T) {
 	}
 	require.Contains(t, selectedTables(f), "accounts/a1")
 }
+
+func TestAutoParents_CandidateExposesMarkerAndPath(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	parentsModel(f)
+	putChain(f)
+	addTrigger(f, "t1", "a1")
+	_, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{{Ref: selRef("transactions", "t1")}}, nil)
+	require.NoError(t, err)
+
+	objs, _, err := uc.Navigate(f.Ctx, declId, selRef("transactions", "t1"), "accounts", nil, 10)
+	require.NoError(t, err)
+	require.Len(t, objs, 1)
+	assert.True(t, objs[0].Selected)
+	assert.True(t, objs[0].AutoAdded)
+	require.NotNil(t, objs[0].ReachedFrom)
+	assert.Equal(t, "t1", objs[0].ReachedFrom.ObjectId)
+
+	cands, err := uc.ListCandidates(f.Ctx, declId)
+	require.NoError(t, err)
+	require.Len(t, cands, 1)
+	assert.False(t, cands[0].AutoAdded, "the analyst's own choice")
+	assert.Nil(t, cands[0].ReachedFrom)
+}
