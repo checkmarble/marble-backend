@@ -325,6 +325,11 @@ type SarCandidateDto struct {
 	Summary  map[string]any     `json:"summary"`
 	Links    []SarLinkOptionDto `json:"links"`
 	Selected bool               `json:"selected"`
+	// AutoAdded: selected by the system as a parent of another selected
+	// object (the analyst can remove it); ReachedFrom is the object and link it
+	// was reached through.
+	AutoAdded   bool               `json:"auto_added"`
+	ReachedFrom *SarReachedFromDto `json:"reached_from"`
 }
 
 type SarNavigateResponse struct {
@@ -367,17 +372,28 @@ type SarSelectedObjectDto struct {
 	Snapshot    map[string]any     `json:"snapshot"`
 	Origin      string             `json:"origin"`
 	ReachedFrom *SarReachedFromDto `json:"reached_from"`
-	CreatedAt   time.Time          `json:"created_at"`
+	// AutoAdded: selected by the system as a parent of another selected object
+	// (not an analyst choice); ReachedFrom tells which object and link led to it.
+	AutoAdded bool      `json:"auto_added"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func adaptSarReachedFromDto(r *models.SarReachedFrom) *SarReachedFromDto {
+	if r == nil {
+		return nil
+	}
+	return &SarReachedFromDto{Table: r.TableName, ObjectId: r.ObjectId, Link: r.Link}
+}
+
+// AdaptSarCandidateReachedFromDto adapts the path of a selected candidate.
+func AdaptSarCandidateReachedFromDto(r *models.SarReachedFrom) *SarReachedFromDto {
+	return adaptSarReachedFromDto(r)
 }
 
 func AdaptSarSelectedObjectDto(o models.SarSelectedObject) SarSelectedObjectDto {
 	out := SarSelectedObjectDto{
-		Table: o.TableName, ObjectId: o.ObjectId, Snapshot: o.Snapshot, Origin: o.Origin.Kind, CreatedAt: o.CreatedAt,
-	}
-	if o.ReachedFrom != nil {
-		out.ReachedFrom = &SarReachedFromDto{
-			Table: o.ReachedFrom.TableName, ObjectId: o.ReachedFrom.ObjectId, Link: o.ReachedFrom.Link,
-		}
+		Table: o.TableName, ObjectId: o.ObjectId, Snapshot: o.Snapshot, Origin: o.Origin.Kind,
+		ReachedFrom: adaptSarReachedFromDto(o.ReachedFrom), AutoAdded: o.AutoAdded, CreatedAt: o.CreatedAt,
 	}
 	return out
 }
