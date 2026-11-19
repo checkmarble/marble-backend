@@ -2,6 +2,7 @@ package sargen
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -63,6 +64,23 @@ func selectedTables(f *fakes) map[string]bool {
 	for _, r := range f.Selection.Rows {
 		out[r.TableName+"/"+r.ObjectId] = r.AutoAdded
 	}
+	return out
+}
+
+func exclusionTables(f *fakes) map[string]bool {
+	out := map[string]bool{}
+	for _, r := range f.Selection.Exclusions {
+		out[r.TableName+"/"+r.ObjectId] = true
+	}
+	return out
+}
+
+func exclusionList(f *fakes) []string {
+	var out []string
+	for k := range exclusionTables(f) {
+		out = append(out, k)
+	}
+	slices.Sort(out)
 	return out
 }
 
@@ -211,7 +229,7 @@ func TestAutoParents_ExplicitAdditionClearsMarkerAndExclusion(t *testing.T) {
 	_, err = uc.UpdateSelection(f.Ctx, declId, st.Declaration.Version,
 		[]SelectionAdd{{Ref: selRef("companies", "c1"), ReachedFrom: &models.SarReachedFrom{TableName: "persons", ObjectId: "p1", Link: "companies"}}}, nil)
 	require.NoError(t, err)
-	assert.Empty(t, f.Selection.Exclusions)
+	assert.NotContains(t, exclusionTables(f), "companies/c1")
 	assert.False(t, selectedTables(f)["companies/c1"])
 }
 
@@ -231,7 +249,8 @@ func TestAutoParents_ParentLeftWhileAnotherChildLeadsToIt(t *testing.T) {
 	_, err = uc.UpdateSelection(f.Ctx, declId, st.Declaration.Version, nil, []core.ObjectRef{selRef("transactions", "t2")})
 	require.NoError(t, err)
 	assert.Empty(t, f.Selection.Rows)
-	assert.Empty(t, f.Selection.Exclusions, "an orphan removal is not an analyst exclusion")
+	assert.Equal(t, []string{"transactions/t1", "transactions/t2"}, exclusionList(f),
+		"only the explicit removals are excluded, not the orphan parent")
 }
 
 func TestAutoParents_CrossOrgAndMissingParentsNeverRead(t *testing.T) {
@@ -428,7 +447,8 @@ func TestAutoParents_SharedParentStaysWhileOneAnalystRowReachesIt(t *testing.T) 
 	_, err = uc.UpdateSelection(f.Ctx, declId, st.Declaration.Version, nil, []core.ObjectRef{selRef("transactions", "t2")})
 	require.NoError(t, err)
 	assert.Empty(t, f.Selection.Rows)
-	assert.Empty(t, f.Selection.Exclusions)
+	assert.Equal(t, []string{"transactions/t1", "transactions/t2"}, exclusionList(f),
+		"only the explicit removals are excluded, not the orphan parents")
 }
 
 // At the cap, additions stop but the traversal goes on: a removal still drops
@@ -458,7 +478,7 @@ func TestAutoParents_RemovalStillDropsParentsAtTheCap(t *testing.T) {
 	_, err = uc.UpdateSelection(f.Ctx, declId, st.Declaration.Version, nil, []core.ObjectRef{selRef("transactions", "t000")})
 	require.NoError(t, err)
 	assert.NotContains(t, selectedTables(f), "accounts/a000", "nothing leads to it any more")
-	assert.Empty(t, f.Selection.Exclusions, "an orphan removal is not an exclusion")
+	assert.Equal(t, []string{"transactions/t000"}, exclusionList(f), "an orphan parent is not excluded")
 }
 
 // Parents already selected are taken from the selection: a removal-only change
@@ -485,4 +505,73 @@ func TestAutoParents_SelectedParentsAreNotReadAgain(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, before, f.Ingested.Reads, "a removal reads nothing: every parent is in the selection")
 	assert.NotContains(t, selectedTables(f), "accounts/a00")
+}
+
+// An analyst removes a parent they had chosen explicitly: it must not come back
+// in the same call as an auto-added parent of the transaction that leads to it.
+func TestAutoParents_RemovedAnalystParentDoesNotComeBack(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	parentsModel(f)
+	putChain(f)
+	addTrigger(f, "t1", "a1")
+	st, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{{Ref: selRef("transactions", "t1")}}, nil)
+	require.NoError(t, err)
+	st, err = uc.UpdateSelection(f.Ctx, declId, st.Declaration.Version, []SelectionAdd{{Ref: selRef("persons", "p1")}}, nil)
+	require.NoError(t, err)
+	require.False(t, selectedTables(f)["persons/p1"], "p1 is an analyst choice now")
+
+	st, err = uc.UpdateSelection(f.Ctx, declId, st.Declaration.Version, nil, []core.ObjectRef{selRef("persons", "p1")})
+	require.NoError(t, err)
+	got := selectedTables(f)
+	assert.NotContains(t, got, "persons/p1", "an explicit removal is not undone")
+	assert.Contains(t, exclusionTables(f), "persons/p1")
+	assert.Contains(t, got, "accounts/a1")
+
+	// An explicit addition clears the exclusion.
+	_, err = uc.UpdateSelection(f.Ctx, declId, st.Declaration.Version, []SelectionAdd{{
+		Ref:         selRef("persons", "p1"),
+		ReachedFrom: &models.SarReachedFrom{TableName: "accounts", ObjectId: "a1", Link: "persons"},
+	}}, nil)
+	require.NoError(t, err)
+	assert.NotContains(t, exclusionTables(f), "persons/p1")
+	autoAdded, selected := selectedTables(f)["persons/p1"]
+	assert.True(t, selected)
+	assert.False(t, autoAdded, "an analyst choice again")
+}
+
+// 50 auto-added rows already exist, two levels deep: a new seed whose parent is
+// shallower must not push the declaration past the cap.
+func TestAutoParents_CapIsNeverExceededByShallowerNewParents(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	parentsModel(f)
+	now := time.Now()
+	var adds []SelectionAdd
+	for i := 0; i < 25; i++ {
+		acc, per, id := fmt.Sprintf("a%02d", i), fmt.Sprintf("p%02d", i), fmt.Sprintf("t%02d", i)
+		f.Ingested.Put("accounts", acc, map[string]any{"object_id": acc, "person_id": per}, now)
+		f.Ingested.Put("persons", per, map[string]any{"object_id": per}, now)
+		addTrigger(f, id, acc)
+		adds = append(adds, SelectionAdd{Ref: selRef("transactions", id)})
+	}
+	st, err := uc.UpdateSelection(f.Ctx, declId, 1, adds, nil)
+	require.NoError(t, err)
+	countAuto := func() int {
+		n := 0
+		for _, r := range f.Selection.Rows {
+			if r.AutoAdded {
+				n++
+			}
+		}
+		return n
+	}
+	require.Equal(t, maxAutoAddedPerDeclaration, countAuto())
+
+	f.Ingested.Put("accounts", "a99", map[string]any{"object_id": "a99", "person_id": "p99"}, now)
+	f.Ingested.Put("persons", "p99", map[string]any{"object_id": "p99"}, now)
+	addTrigger(f, "t99", "a99")
+	_, err = uc.UpdateSelection(f.Ctx, declId, st.Declaration.Version, []SelectionAdd{{Ref: selRef("transactions", "t99")}}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, maxAutoAddedPerDeclaration, countAuto(), "the cap is never exceeded")
+	assert.NotContains(t, selectedTables(f), "accounts/a99")
+	assert.Contains(t, selectedTables(f), "accounts/a24", "existing auto rows are kept")
 }

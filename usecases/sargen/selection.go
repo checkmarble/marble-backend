@@ -55,7 +55,9 @@ func rowRef(o models.SarSelectedObject) core.ObjectRef {
 //
 // Useful parent objects of the added objects are added automatically (see
 // autoParents). Removing an auto-added object records an exclusion so that it
-// does not come back; adding it explicitly clears the exclusion. Auto-added
+// does not come back; adding it explicitly clears the exclusion. Removing an
+// analyst choice records an exclusion too, so that it does not come back as an
+// auto-added parent of another selected object. Auto-added
 // objects no other selected object leads to any more are removed with their
 // last child.
 func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version int,
@@ -109,7 +111,7 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 		excluded[objectRefOf(e)] = true
 	}
 
-	// Removals: explicit ones (an auto-added object records an exclusion); the
+	// Removals: explicit ones (a selected object records an exclusion); the
 	// auto-added parents nothing leads to any more are found below.
 	var removeRefs, addExclusions []models.CaseEntityRef
 	remaining := make(map[core.ObjectRef]models.SarSelectedObject, len(ctxData.selected))
@@ -118,11 +120,11 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 	}
 	for _, r := range remove {
 		removeRefs = append(removeRefs, caseEntityRef(r))
-		if o, ok := remaining[r]; ok {
-			if o.AutoAdded {
-				addExclusions = append(addExclusions, caseEntityRef(r))
-				excluded[r] = true
-			}
+		if _, ok := remaining[r]; ok {
+			// Whether it was an analyst choice or an auto-added row, an explicit
+			// removal is never undone by the recomputation of the parents.
+			addExclusions = append(addExclusions, caseEntityRef(r))
+			excluded[r] = true
 			delete(remaining, r)
 		}
 	}
