@@ -230,3 +230,49 @@ func TestPlacement_AnalystOnlyPersonIgnoresTheTableSemantic(t *testing.T) {
 		assert.Len(t, doc.Items["personnes.pp"], 1, "semantic %q", sem)
 	}
 }
+
+// A person made only of analyst objects is declared even when its object is
+// also the object of a financial reference (a data model that keeps the
+// holder's identity on the account row): one person, with its IBAN, and no
+// question.
+func TestPlacement_AnalystOnlyPersonOnAReferenceObjectIsDeclared(t *testing.T) {
+	f := planFormat(t)
+	raw := json.RawMessage(`{"persons":[{"kind":"pp","objects":[{"table":"accounts","object_id":"a-1"}]}],
+	 "financial_refs":[{"ref_kind":"Iban","owners":[{"person_index":0,"lien":"titulaire"}],"objects":[{"table":"accounts","object_id":"a-1"}]}],
+	 "transactions":[]}`)
+	account := core.ObjectRef{Table: "accounts", ObjectID: "a-1"}
+	sc := core.StructuredContext{Semantics: map[core.ObjectRef]models.SemanticType{account: models.SemanticTypeAccount}}
+	doc := core.NewDocument()
+	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, sc))
+
+	require.Len(t, doc.Items["personnes.pp"], 1)
+	person := core.Path("personnes.pp[" + doc.Items["personnes.pp"][0] + "]")
+	assert.Len(t, doc.Items[person.Child("referencesFinancieres").Child("referenceFinanciereIban")], 1)
+	assert.Empty(t, f.(core.StructuredQuestioner).StructuredQuestions(stepPlacement, raw, doc, sc))
+}
+
+// A mixed person (a context-only object plus an analyst object) is refused when
+// its analyst object is also the object of a financial reference, even if that
+// object's table could carry a person.
+func TestPlacement_MixedPersonOnAReferenceObjectIsRefused(t *testing.T) {
+	f := planFormat(t)
+	raw := json.RawMessage(`{"persons":[{"kind":"pp","objects":[{"table":"companies","object_id":"c-1"},{"table":"customers","object_id":"cu-1"}]}],
+	 "financial_refs":[{"ref_kind":"Iban","owners":[{"person_index":0,"lien":"titulaire"}],"objects":[{"table":"customers","object_id":"cu-1"}]}],
+	 "transactions":[]}`)
+	customer := core.ObjectRef{Table: "customers", ObjectID: "cu-1"}
+	sc := core.StructuredContext{
+		ContextOnly: map[core.ObjectRef]bool{autoCompany: true},
+		Semantics:   map[core.ObjectRef]models.SemanticType{customer: models.SemanticTypePerson},
+	}
+	doc := core.NewDocument()
+	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, sc))
+	assert.Empty(t, doc.Items["personnes.pp"])
+
+	qs := f.(core.StructuredQuestioner).StructuredQuestions(stepPlacement, raw, doc, sc)
+	var texts []string
+	for _, q := range qs {
+		texts = append(texts, q.Text)
+	}
+	require.NotEmpty(t, texts)
+	assert.Contains(t, texts[0], "personne non déclarée : companies/c-1")
+}
