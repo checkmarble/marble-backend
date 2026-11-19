@@ -214,3 +214,19 @@ func TestPlacement_AnalystTransactionDoesNotCarryAPerson(t *testing.T) {
 	require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, sc))
 	assert.Len(t, doc.Items["personnes.pp"], 1)
 }
+
+// A person made only of analyst-chosen objects is declared whatever the table
+// semantic (account, event, other, unset): the check only guards persons that
+// also hold context objects.
+func TestPlacement_AnalystOnlyPersonIgnoresTheTableSemantic(t *testing.T) {
+	f := planFormat(t)
+	for _, sem := range []models.SemanticType{models.SemanticTypeAccount, models.SemanticTypeEvent,
+		models.SemanticTypeOther, models.SemanticTypeUnset, models.SemanticTypeTransaction} {
+		raw := json.RawMessage(`{"persons":[{"kind":"pp","objects":[{"table":"customers","object_id":"c-9"}]}],"financial_refs":[],"transactions":[]}`)
+		obj := core.ObjectRef{Table: "customers", ObjectID: "c-9"}
+		sc := core.StructuredContext{Semantics: map[core.ObjectRef]models.SemanticType{obj: sem}}
+		doc := core.NewDocument()
+		require.NoError(t, f.ApplyStructured(stepPlacement, doc, raw, sc))
+		assert.Len(t, doc.Items["personnes.pp"], 1, "semantic %q", sem)
+	}
+}

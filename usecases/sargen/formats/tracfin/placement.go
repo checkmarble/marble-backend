@@ -98,10 +98,12 @@ type placementLeftOut struct {
 // Objects the server added on its own (core.StructuredContext.ContextOnly) are
 // context to read and cite, never declared on their own:
 //   - a person is declared only if at least one of its objects is chosen by the
-//     analyst (not context only), comes from a person-, company- or
-//     partner-like table (a transaction or an account does not make a person;
-//     an unknown table semantic is not held against it) and is not also the
-//     object of a financial reference of the output; the others are
+//     analyst (not context only) and is not also the object of a financial
+//     reference of the output; when the person also holds context-only objects,
+//     that object must come from a person-, company- or partner-like table (a
+//     transaction or an account does not make a person; an unknown table
+//     semantic is not held against it). A person made only of analyst objects
+//     is declared whatever their table; the others are
 //     returned in left, the references they owned lose them as an owner and the
 //     remaining persons are renumbered;
 //   - a transaction made only of a context object is not created (left);
@@ -147,8 +149,12 @@ func (f *format) parsePlacement(raw json.RawMessage, sc core.StructuredContext) 
 	newIndex := make([]int, asked)
 	keptPersons := out.Persons[:0:0]
 	for i, p := range out.Persons {
+		// The table semantic is only asked of a person that mixes in context-only
+		// objects (the case the rule guards against): a person made only of
+		// analyst-chosen objects keeps the plain behaviour, whatever the table.
+		mixed := slices.ContainsFunc(p.Objects, sc.IsContextOnly)
 		carried := slices.ContainsFunc(p.Objects, func(o core.ObjectRef) bool {
-			return !sc.IsContextOnly(o) && !usedAsReference[o] && sc.CanCarryEntity(o)
+			return !sc.IsContextOnly(o) && !usedAsReference[o] && (!mixed || sc.CanCarryEntity(o))
 		})
 		if !carried {
 			newIndex[i] = -1
