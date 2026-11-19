@@ -46,7 +46,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 	scenarioId string,
 	instruction string,
 ) (dto.GenerateRuleResponse, error) {
-	logger := utils.LoggerFromContext(ctx)
+	logger := utils.LoggerFromContext(ctx).With("scenario_id", scenarioId)
 
 	featureAccess, err := uc.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
 	if err != nil {
@@ -141,6 +141,7 @@ func (uc *AiAgentUsecase) GenerateRule(
 	}
 	logger.DebugContext(ctx, "Rule generation LLM request completed",
 		"step", 1,
+		"attempt", 1,
 		"provider", provider,
 		"model", resp.Model,
 		"duration_ms", time.Since(startedAt).Milliseconds(),
@@ -164,21 +165,34 @@ func (uc *AiAgentUsecase) GenerateRule(
 		return dto.GenerateRuleResponse{}, err
 	}
 
-	startedAt = time.Now()
-	resp, err = DoLLMRequest(ctx, client, llmberjack.NewRequest[string]().
-		FromCandidate(resp, 0).
+	astRequest := llmberjack.NewRequest[string]().
 		WithProvider(provider).
 		WithModel(model).
 		WithThinkingLevel(ruleGenerationThinkingLevel).
-		WithPromptCaching(true).
+		WithPromptCaching(true)
+
+	startedAt = time.Now()
+	resp, err = DoLLMRequest(ctx, client, astRequest.
+		FromCandidate(resp, 0).
 		WithText(llmberjack.RoleUser, ruleGenerationPrompt))
 	if err != nil {
-		return dto.GenerateRuleResponse{}, errors.Errorf(
-			"failed to generate rule from LLM: %w", err,
-		)
+		logger.WarnContext(ctx, "Rule generation LLM request failed",
+			"step", 2, "attempt", 1, "provider", provider, "model", model,
+			"duration_ms", time.Since(startedAt).Milliseconds(), "error", err)
+		return dto.GenerateRuleResponse{}, errors.Wrap(err, "failed to generate rule from LLM")
 	}
+	rawAST, err := resp.Get(0)
+	if err != nil {
+		logger.WarnContext(ctx, "Rule generation LLM response could not be read",
+			"step", 2, "attempt", 1, "provider", provider, "model", resp.Model,
+			"duration_ms", time.Since(startedAt).Milliseconds(), "error", err)
+		return dto.GenerateRuleResponse{}, errors.Wrap(err, "failed to get LLM response")
+	}
+	var ruleAstDto dto.NodeDto
+	parseErr := json.Unmarshal([]byte(rawAST), &ruleAstDto)
 	logger.DebugContext(ctx, "Rule generation LLM request completed",
 		"step", 2,
+		"attempt", 1,
 		"provider", provider,
 		"model", resp.Model,
 		"duration_ms", time.Since(startedAt).Milliseconds(),
@@ -186,21 +200,59 @@ func (uc *AiAgentUsecase) GenerateRule(
 		"output_tokens", resp.Usage.OutputTokens,
 		"cache_write_tokens", resp.Usage.CacheWriteTokens,
 		"cache_read_tokens", resp.Usage.CacheReadTokens,
+		"json_valid", parseErr == nil,
 	)
+	logger.DebugContext(ctx, "Rule generation LLM response",
+		"step", 2, "attempt", 1, "response", rawAST)
 
-	ruleAsStringStep2, err := resp.Get(0)
-	if err != nil {
-		return dto.GenerateRuleResponse{}, errors.Errorf("failed to get LLM response: %w", err)
-	}
-
-	logger.DebugContext(ctx, fmt.Sprintf("LLM response step 2 as json string:\n%s\n", ruleAsStringStep2))
-
-	var ruleAstDto dto.NodeDto
-	err = json.Unmarshal([]byte(ruleAsStringStep2), &ruleAstDto)
-	if err != nil {
-		return dto.GenerateRuleResponse{}, errors.Errorf(
-			"failed to parse LLM response as JSON: %w", err,
+	if parseErr != nil {
+		logger.WarnContext(ctx, "Generated rule JSON could not be decoded",
+			"step", 2, "attempt", 1, "attempts_remaining", 1, "error", parseErr)
+		correctionPrompt, err := uc.preparePrompt(
+			models.AiAgentRuleGenerationCorrectionPromptPath,
+			map[string]any{"parsing_error": parseErr.Error()},
 		)
+		if err != nil {
+			return dto.GenerateRuleResponse{}, errors.Wrap(err, "failed to prepare rule correction prompt")
+		}
+		startedAt := time.Now()
+		resp, err := DoLLMRequest(ctx, client, astRequest.
+			FromCandidate(resp, 0).
+			WithText(llmberjack.RoleUser, correctionPrompt))
+		if err != nil {
+			logger.WarnContext(ctx, "Rule generation LLM request failed",
+				"step", 2, "attempt", 2, "provider", provider, "model", model,
+				"duration_ms", time.Since(startedAt).Milliseconds(), "error", err)
+			return dto.GenerateRuleResponse{}, errors.Wrap(err, "failed to generate rule from LLM")
+		}
+		rawAST, err := resp.Get(0)
+		if err != nil {
+			logger.WarnContext(ctx, "Rule generation LLM response could not be read",
+				"step", 2, "attempt", 2, "provider", provider, "model", resp.Model,
+				"duration_ms", time.Since(startedAt).Milliseconds(), "error", err)
+			return dto.GenerateRuleResponse{}, errors.Wrap(err, "failed to get LLM response")
+		}
+		ruleAstDto = dto.NodeDto{}
+		parseErr := json.Unmarshal([]byte(rawAST), &ruleAstDto)
+		logger.DebugContext(ctx, "Rule generation LLM request completed",
+			"step", 2,
+			"attempt", 2,
+			"provider", provider,
+			"model", resp.Model,
+			"duration_ms", time.Since(startedAt).Milliseconds(),
+			"input_tokens", resp.Usage.InputTokens,
+			"output_tokens", resp.Usage.OutputTokens,
+			"cache_write_tokens", resp.Usage.CacheWriteTokens,
+			"cache_read_tokens", resp.Usage.CacheReadTokens,
+			"json_valid", parseErr == nil,
+		)
+		logger.DebugContext(ctx, "Rule generation LLM response",
+			"step", 2, "attempt", 2, "response", rawAST)
+		if parseErr != nil {
+			logger.WarnContext(ctx, "Generated rule JSON could not be decoded",
+				"step", 2, "attempt", 2, "attempts_remaining", 0, "error", parseErr)
+			return dto.GenerateRuleResponse{}, errors.Wrap(parseErr, "failed to parse LLM response as JSON")
+		}
 	}
 
 	ruleAst, err := dto.AdaptASTNode(ruleAstDto)
