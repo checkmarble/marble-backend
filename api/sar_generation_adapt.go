@@ -47,7 +47,7 @@ func adaptSarDeclarationDto(st sargen.DeclarationState) dto.SarDeclarationDto {
 func adaptSarCandidateDto(c sargen.Candidate) dto.SarCandidateDto {
 	return dto.SarCandidateDto{
 		Table: c.Ref.Table, ObjectId: c.Ref.ObjectID, Reason: c.Reason, Summary: c.Summary, Selected: c.Selected,
-		AutoAdded: c.AutoAdded, ReachedFrom: dto.AdaptSarCandidateReachedFromDto(c.ReachedFrom),
+		AutoAdded: c.AutoAdded, ContextOnly: c.ContextOnly, ReachedFrom: dto.AdaptSarReachedFromDto(c.ReachedFrom),
 		Links: pure_utils.Map(c.Links, func(l sargen.LinkOption) dto.SarLinkOptionDto {
 			return dto.SarLinkOptionDto{Name: l.Name, Kind: l.Kind, TargetTable: l.TargetTable}
 		}),

@@ -28,13 +28,20 @@ func TestSelectionAndCandidateDtosExposeAutoAddedAndPath(t *testing.T) {
 	assert.Equal(t, map[string]any{"table": "transactions", "object_id": "t1", "link": "account"}, got["reached_from"])
 
 	cand := adaptSarCandidateDto(sargen.Candidate{
-		Ref: core.ObjectRef{Table: "accounts", ObjectID: "a1"}, Selected: true, AutoAdded: true, ReachedFrom: rf,
+		Ref: core.ObjectRef{Table: "accounts", ObjectID: "a1"}, Selected: true, AutoAdded: true, ContextOnly: true, ReachedFrom: rf,
 	})
 	assert.True(t, cand.AutoAdded)
+	assert.True(t, cand.ContextOnly)
+	rawCand, err := json.Marshal(cand)
+	require.NoError(t, err)
+	var gotCand map[string]any
+	require.NoError(t, json.Unmarshal(rawCand, &gotCand))
+	assert.Equal(t, true, gotCand["context_only"])
 	require.NotNil(t, cand.ReachedFrom)
 	assert.Equal(t, "t1", cand.ReachedFrom.ObjectId)
 
 	plain := adaptSarCandidateDto(sargen.Candidate{Ref: core.ObjectRef{Table: "accounts", ObjectID: "a2"}})
 	assert.False(t, plain.AutoAdded)
+	assert.False(t, plain.ContextOnly)
 	assert.Nil(t, plain.ReachedFrom)
 }
