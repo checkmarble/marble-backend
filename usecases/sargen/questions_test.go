@@ -350,3 +350,86 @@ func TestChooseQuestionOption_WithoutSourceAppliesAsAnalyst(t *testing.T) {
 	assert.Empty(t, v.Sources)
 	assert.Equal(t, models.SarQuestionStatusResolved, f.Gen.Questions[q.Id].Status)
 }
+
+// ---- Options that add a list item ----
+
+const genPenalPath = core.Path("context.natureSoupcon.natureSoupconPenale[+a]")
+
+// genAddOptions is the « add / do not add » pair of a question on a new list item.
+func genAddOptions(path core.Path, code string) []core.QuestionOption {
+	return []core.QuestionOption{
+		{Label: "Oui, déclarer", Fills: []core.Fill{{Path: path, Value: code, Confidence: core.ConfidenceHigh}}},
+		{Label: "Non, ne pas déclarer"},
+	}
+}
+
+func TestChooseQuestionOption_AddOptionCreatesItem(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	// The penal nature is required by the legal framework CL02.
+	_, err := uc.UpdateFields(f.Ctx, declId, f.Repo.Declarations[declId].Version,
+		[]core.Fill{{Path: "context.natureSoupcon.cadreLegal[+c]", Value: "CL02"}})
+	require.NoError(t, err)
+	q := f.SeedQuestion(t, declId, []core.Path{genPenalPath}, "Faut-il déclarer l'escroquerie ?",
+		genAddOptions(genPenalPath, "NSP07"))
+	version := f.Repo.Declarations[declId].Version
+
+	st, err := uc.ChooseQuestionOption(f.Ctx, q.Id, version, 0)
+	require.NoError(t, err)
+
+	keys := st.Doc.Items["context.natureSoupcon.natureSoupconPenale"]
+	require.Len(t, keys, 1, "one item must be created")
+	p := core.Path("context.natureSoupcon.natureSoupconPenale[" + keys[0] + "]")
+	v := st.Doc.Values[p]
+	assert.Equal(t, "NSP07", v.Value)
+	assert.Equal(t, core.OriginAnalyst, v.Origin)
+	assert.True(t, v.Reviewed)
+	assert.Nil(t, v.TaskID)
+	assert.Equal(t, version+1, st.Declaration.Version)
+	for _, is := range st.Issues {
+		assert.NotContains(t, string(is.Path), "natureSoupconPenale", "the created item must be valid")
+	}
+	assert.Equal(t, models.SarQuestionStatusResolved, f.Gen.Questions[q.Id].Status)
+
+	_, err = uc.ChooseQuestionOption(f.Ctx, q.Id, st.Declaration.Version, 0)
+	require.ErrorIs(t, err, models.ConflictError, "a closed question cannot be chosen twice")
+}
+
+func TestChooseQuestionOption_DeclineOptionClosesWithoutWriting(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	q := f.SeedQuestion(t, declId, []core.Path{genPenalPath}, "Faut-il déclarer l'escroquerie ?",
+		genAddOptions(genPenalPath, "NSP07"))
+	version := f.Repo.Declarations[declId].Version
+	docBefore := append([]byte(nil), f.Repo.Declarations[declId].Document...)
+
+	st, err := uc.ChooseQuestionOption(f.Ctx, q.Id, version, 1)
+	require.NoError(t, err)
+
+	assert.Equal(t, models.SarQuestionStatusResolved, f.Gen.Questions[q.Id].Status, "answered, not dismissed")
+	assert.True(t, bytes.Equal(docBefore, f.Repo.Declarations[declId].Document), "nothing written")
+	assert.Equal(t, version, f.Repo.Declarations[declId].Version, "the version is not bumped")
+	assert.Equal(t, version, st.Declaration.Version)
+	assert.Empty(t, st.Doc.Items["context.natureSoupcon.natureSoupconPenale"])
+}
+
+func TestChooseQuestionOption_AddOptionBeyondMaxItemsRefused(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	var fills []core.Fill
+	for i, k := range []string{"a", "b", "c", "d", "e"} {
+		fills = append(fills, core.Fill{Path: core.Path("context.natureSoupcon.cadreLegal[+" + k + "]"),
+			Value: []string{"CL01", "CL02", "CL03", "CL04", "CL05"}[i]})
+	}
+	_, err := uc.UpdateFields(f.Ctx, declId, f.Repo.Declarations[declId].Version, fills)
+	require.NoError(t, err)
+
+	path := core.Path("context.natureSoupcon.cadreLegal[+z]")
+	q := f.SeedQuestion(t, declId, []core.Path{path}, "Ajouter un cadre légal ?", genAddOptions(path, "CNV1"))
+	docBefore := append([]byte(nil), f.Repo.Declarations[declId].Document...)
+	version := f.Repo.Declarations[declId].Version
+
+	_, err = uc.ChooseQuestionOption(f.Ctx, q.Id, version, 0)
+	require.ErrorIs(t, err, models.BadParameterError)
+	assert.Contains(t, err.Error(), "nombre maximal d'éléments atteint")
+	assert.True(t, bytes.Equal(docBefore, f.Repo.Declarations[declId].Document), "nothing applied")
+	assert.Equal(t, version, f.Repo.Declarations[declId].Version)
+	assert.Equal(t, models.SarQuestionStatusOpen, f.Gen.Questions[q.Id].Status)
+}
