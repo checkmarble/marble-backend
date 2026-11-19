@@ -882,7 +882,7 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 			for _, p := range d.Paths {
 				rp := res.Rewrite(p)
 				switch {
-				case rp.HasProvisionalKey() && !(newItemPathKnown(r.format.Spec(), rp) && core.PathAllowed(rp, allowed)):
+				case rp.HasProvisionalKey() && !newItemPathKnown(r.format.Spec(), rp):
 					result.Rejected = append(result.Rejected, rejectedView{
 						Path: rp, Code: CodeUnresolvedPath, Message: "question: path to an element that was not created"})
 				case !core.PathAllowed(rp, allowed):
@@ -924,9 +924,12 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 					createsItem = createsItem || f.Path.HasProvisionalKey()
 					op.Fills = append(op.Fills, f)
 				}
+				if len(d.Options[i].Fills) > 0 && len(op.Fills) == 0 {
+					continue // it came with values that were all rejected: never a decline
+				}
 				opts = append(opts, op)
 			}
-			// An option that writes nothing cannot be chosen, unless it declines
+			// An option that arrived with no fill at all cannot be chosen, unless it declines
 			// the addition of a new list item proposed by a sibling option.
 			if !createsItem {
 				opts = slices.DeleteFunc(opts, func(op core.QuestionOption) bool { return len(op.Fills) == 0 })
@@ -1237,6 +1240,9 @@ func (UnavailableRunner) Run(context.Context, core.ToolContext, models.SarGenera
 // with a provisional key is a repeatable node) and a known node.
 func newItemPathKnown(spec *core.Spec, p core.Path) bool {
 	if spec == nil {
+		return false
+	}
+	if _, err := core.ParsePath(string(p)); err != nil {
 		return false
 	}
 	segs := strings.Split(string(p), ".")
