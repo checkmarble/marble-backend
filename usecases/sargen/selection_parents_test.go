@@ -400,3 +400,33 @@ func TestAutoParents_ReadsAreBounded(t *testing.T) {
 	require.NoError(t, err)
 	assert.LessOrEqual(t, f.Ingested.Reads-before, maxParentReads)
 }
+
+// A parent reached by several analyst rows through an unselected intermediate
+// stays while one of them remains.
+func TestAutoParents_SharedParentStaysWhileOneAnalystRowReachesIt(t *testing.T) {
+	uc, f, declId := selSetup(t)
+	parentsModel(f)
+	acc := f.DataModel.Model.Tables["accounts"]
+	acc.SemanticType = models.SemanticTypeUnset // never selected: only a hop
+	f.DataModel.Model.Tables["accounts"] = acc
+	putChain(f)
+	addTrigger(f, "t1", "a1")
+	addTrigger(f, "t2", "a1")
+
+	st, err := uc.UpdateSelection(f.Ctx, declId, 1, []SelectionAdd{{Ref: selRef("transactions", "t1")}}, nil)
+	require.NoError(t, err)
+	st, err = uc.UpdateSelection(f.Ctx, declId, st.Declaration.Version, []SelectionAdd{{Ref: selRef("transactions", "t2")}}, nil)
+	require.NoError(t, err)
+	require.Contains(t, selectedTables(f), "persons/p1")
+
+	st, err = uc.UpdateSelection(f.Ctx, declId, st.Declaration.Version, nil, []core.ObjectRef{selRef("transactions", "t1")})
+	require.NoError(t, err)
+	got := selectedTables(f)
+	assert.Contains(t, got, "persons/p1", "t2 still leads to it")
+	assert.Contains(t, got, "companies/c1")
+
+	_, err = uc.UpdateSelection(f.Ctx, declId, st.Declaration.Version, nil, []core.ObjectRef{selRef("transactions", "t2")})
+	require.NoError(t, err)
+	assert.Empty(t, f.Selection.Rows)
+	assert.Empty(t, f.Selection.Exclusions)
+}
