@@ -1,7 +1,7 @@
 package sargen
 
 import (
-	"strings"
+	"errors"
 	"testing"
 	"time"
 
@@ -55,7 +55,14 @@ func TestSettingsReadiness_CompleteMatchesStartGeneration(t *testing.T) {
 			}
 
 			_, err = uc.StartGeneration(f.Ctx, declId)
-			refusedForSettings := err != nil && strings.Contains(err.Error(), "réglage de l'organisation incomplet")
+			refusedForSettings := false
+			var ie *IssuesError
+			if errors.As(err, &ie) {
+				for _, i := range ie.SarIssues() {
+					refusedForSettings = refusedForSettings ||
+						i.Code == CodePreconditionSettingMissing || i.Code == CodePreconditionSettingInvalid
+				}
+			}
 			assert.Equal(t, tc.complete, !refusedForSettings, "complete <=> StartGeneration not refused for settings (err: %v)", err)
 		})
 	}

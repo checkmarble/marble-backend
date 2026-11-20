@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases/sargen"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
 )
 
@@ -60,10 +61,11 @@ func TestSarInputs_OptionIndexZeroAccepted(t *testing.T) {
 }
 
 func TestHandlePutSettings_ValidationRefusedListsIssues(t *testing.T) {
-	f := &fakeSarGenerationUsecase{Issues: []core.Issue{{
+	refused := []core.Issue{{
 		Path: "organisme.numIdPro", Code: "pattern", Message: "format invalide", Severity: core.SeverityBlocking,
-	}}}
-	f.Fail("PutOrgSettings", models.BadParameterError)
+	}}
+	f := &fakeSarGenerationUsecase{Issues: refused}
+	f.Fail("PutOrgSettings", sargen.NewIssuesErrorWithMessage(models.SarCodeInvalidSettings, "réglages invalides", refused))
 	w := doSarRequest(newSarTestRouter(t, f), http.MethodPut, "/sar-format-settings/tracfin",
 		map[string]any{"values": map[string]string{"organisme.numIdPro": "x"}})
 

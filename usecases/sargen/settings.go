@@ -2,11 +2,11 @@ package sargen
 
 import (
 	"context"
+	"maps"
 	"slices"
 	"strings"
 
 	"github.com/Masterminds/semver"
-	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
@@ -35,7 +35,7 @@ func settingsFormat(family string) (core.Format, error) {
 		}
 	}
 	if best == nil {
-		return nil, errors.Wrapf(models.BadParameterError, "famille de format inconnue : %s", family)
+		return nil, models.NewSarErrorf(models.BadParameterError, models.SarCodeUnknownFormat, "famille de format inconnue : %s", family)
 	}
 	return best, nil
 }
@@ -133,18 +133,25 @@ func (uc *Usecase) PutOrgSettings(ctx context.Context, family string, values map
 	if err != nil {
 		return models.SarOrgFormatSettings{}, nil, err
 	}
-	for p := range values {
+	var notSettings []core.Issue
+	for _, p := range slices.Sorted(maps.Keys(values)) {
 		n := spec.NodeAt(core.Path(p).Template())
 		if n == nil || n.Kind != core.NodeField || n.EffectiveNature() != core.NatureSetting {
-			return models.SarOrgFormatSettings{}, nil, errors.Wrapf(models.BadParameterError,
-				"%s n'est pas un réglage de l'organisation", p)
+			notSettings = append(notSettings, core.Issue{
+				Path: core.Path(p), Code: "not_a_setting", Severity: core.SeverityBlocking,
+				Message: "ce champ n'est pas un réglage de l'organisation",
+			})
 		}
+	}
+	if len(notSettings) > 0 {
+		return models.SarOrgFormatSettings{}, notSettings, NewIssuesErrorWithMessage(models.SarCodeInvalidSettings,
+			"réglages invalides", notSettings)
 	}
 	issues := settingIssues(spec, values)
 	for i := range issues {
 		if issues[i].Blocks() {
-			return models.SarOrgFormatSettings{}, issues, errors.Wrapf(models.BadParameterError,
-				"valeur invalide pour %s : %s", issues[i].Path, issues[i].Message)
+			return models.SarOrgFormatSettings{}, issues, NewIssuesErrorWithMessage(models.SarCodeInvalidSettings,
+				"réglages invalides", issues)
 		}
 	}
 	if values == nil {

@@ -138,6 +138,7 @@ func TestHandleUpdateFields_OnlyPathAndValueReachUsecase(t *testing.T) {
 	assert.Equal(t, core.Path("personnes.pp[pp-1].nom"), fills[0].Path)
 	assert.Equal(t, "DUPONT", fills[0].Value)
 	assert.Contains(t, []core.Origin{"", core.OriginManual}, fills[0].Origin, "origin must not come from the client")
+	assert.False(t, fills[0].Reviewed, "reviewed must not come from the client: the core stores a manual value as reviewed")
 	assert.Empty(t, fills[0].Sources, "sources must not come from the client")
 	assert.Empty(t, fills[0].Justification)
 	assert.Empty(t, fills[0].RuleIDs)

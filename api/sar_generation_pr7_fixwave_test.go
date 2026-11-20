@@ -140,9 +140,10 @@ func TestHandlePutSarOrgSettings_ExposesMissingAndComplete(t *testing.T) {
 // BadParameterError exposing its issues.
 type pr7IssuesErr struct{ issues []core.Issue }
 
-func (e pr7IssuesErr) Error() string           { return "le champ est trop long" }
-func (e pr7IssuesErr) Unwrap() error           { return models.BadParameterError }
-func (e pr7IssuesErr) SarIssues() []core.Issue { return e.issues }
+func (e pr7IssuesErr) Error() string                { return "le champ est trop long" }
+func (e pr7IssuesErr) Unwrap() error                { return models.BadParameterError }
+func (e pr7IssuesErr) SarIssues() []core.Issue      { return e.issues }
+func (e pr7IssuesErr) SarCode() models.SarErrorCode { return models.SarCodeInvalidField }
 
 // PR 7 I2 (api item 1): a refused write is a 400 with details.issues, the same
 // shape as PUT /sar-format-settings, and a clean French message.
@@ -266,7 +267,7 @@ func TestHandleGetSarDeclaration_GenerationExposed(t *testing.T) {
 func TestHandleRefusedWrites_RealIssuesError(t *testing.T) {
 	id := uuid.New()
 	f := &fakeSarGenerationUsecase{}
-	f.Fail("UpdateFields", errors.Wrap(sargen.NewIssuesError([]core.Issue{{
+	f.Fail("UpdateFields", errors.Wrap(sargen.NewIssuesError(models.SarCodeInvalidField, []core.Issue{{
 		Path: "declarant.coordonnees.nom", Code: "max_length", Severity: core.SeverityBlocking, Message: "trop long",
 	}}), "Error executing transaction"))
 	r := newSarTestRouter(t, f)
@@ -299,7 +300,7 @@ func TestHandleAddSarItem_RefusalWithIssues(t *testing.T) {
 func TestHandleExport_RefusalMessageLocked(t *testing.T) {
 	id := uuid.New()
 	f := &fakeSarGenerationUsecase{}
-	f.Fail("Export", errors.Wrap(sargen.NewIssuesErrorWithMessage(
+	f.Fail("Export", errors.Wrap(sargen.NewIssuesErrorWithMessage(models.SarCodeExportBlocked,
 		"l'export est impossible : des erreurs bloquantes subsistent",
 		[]core.Issue{{Path: "a.b", Code: "c", Severity: core.SeverityBlocking, Message: "m"}}),
 		"Error executing transaction"))
