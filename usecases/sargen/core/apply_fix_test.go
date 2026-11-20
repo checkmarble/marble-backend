@@ -248,7 +248,7 @@ func TestApplyFills_AnalystRetypeSameValueConfirmsAndKeepsProvenance(t *testing.
 		got := doc.Values[path]
 		assert.Equal(t, "Martin", got.Value)
 		assert.Equal(t, core.OriginManual, got.Origin)
-		assert.False(t, got.Reviewed)
+		assert.True(t, got.Reviewed, "a manual value is stored reviewed")
 		assert.Empty(t, got.Sources)
 	})
 }

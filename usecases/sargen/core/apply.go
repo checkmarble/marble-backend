@@ -46,7 +46,8 @@ type Fill struct {
 	Confidence    Confidence
 	Computation   *Computation
 	TaskID        *uuid.UUID
-	// Reviewed is stored as is (analyst edits may be reviewed at once).
+	// Reviewed is stored as is, except that a non-empty value with an analyst
+	// origin (manual or analyst choice) is always stored reviewed.
 	Reviewed bool
 }
 
@@ -84,7 +85,14 @@ type Conflict struct {
 
 type ApplyResult struct {
 	// Applied lists the real paths written or cleared, in input order.
-	Applied   []Path
+	Applied []Path
+	// Refreshed lists the paths whose stored computed value was kept as is but
+	// whose computation (the inputs it cites) was updated, because a recompute
+	// gave the same value from different inputs. A refresh is not an applied
+	// write (no todo, question or conflict follows from it) but it modifies the
+	// document, so a caller that persists the document must treat it as a
+	// change.
+	Refreshed []Path
 	Rejected  []Rejected
 	Conflicts []Conflict
 	// Resolved maps each provisional item prefix as written in the fills
@@ -205,6 +213,9 @@ func ApplyFills(spec *Spec, doc *Document, fills []Fill, opts ApplyOptions) Appl
 					f.TaskID = before.TaskID
 					f.Reviewed = true
 				case before.Value == f.Value:
+					if refreshComputation(doc, real, before, f) {
+						res.Refreshed = append(res.Refreshed, real)
+					}
 					continue
 				case protected(before, f, opts.Overwrite):
 					res.Conflicts = append(res.Conflicts, Conflict{Path: real, Before: before, After: f})
@@ -224,6 +235,26 @@ func ApplyFills(spec *Spec, doc *Document, fills []Fill, opts ApplyOptions) Appl
 		}
 	}
 	return res
+}
+
+// refreshComputation keeps the stored computed value but replaces its
+// computation when a recompute gives the same value from other inputs, so the
+// provenance never cites stale inputs. Value, origin, reviewed flag and every
+// other provenance field are untouched; values of other origins are never
+// concerned. It reports whether the stored computation changed.
+func refreshComputation(doc *Document, p Path, before Value, f Fill) bool {
+	if f.Origin != OriginComputed || before.Origin != OriginComputed || f.Computation == nil {
+		return false
+	}
+	if before.Computation != nil && before.Computation.Name == f.Computation.Name &&
+		slices.Equal(before.Computation.Inputs, f.Computation.Inputs) {
+		return false
+	}
+	c := *f.Computation
+	c.Inputs = slices.Clone(c.Inputs)
+	before.Computation = &c
+	doc.Values[p] = before
+	return true
 }
 
 func isAnalystOrigin(o Origin) bool { return o == OriginManual || o == OriginAnalyst }
@@ -257,8 +288,9 @@ func write(doc *Document, p Path, f Fill) {
 		RuleIDs:       slices.Clone(f.RuleIDs),
 		Justification: f.Justification,
 		Confidence:    f.Confidence,
-		Reviewed:      f.Reviewed,
-		TaskID:        f.TaskID,
+		// A value typed by the analyst is a reviewed value.
+		Reviewed: f.Reviewed || isAnalystOrigin(f.Origin),
+		TaskID:   f.TaskID,
 	}
 	if f.Computation != nil {
 		c := *f.Computation
