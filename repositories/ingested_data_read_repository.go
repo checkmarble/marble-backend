@@ -69,6 +69,14 @@ type IngestedDataReadRepository interface {
 		uniqueFieldName string,
 		metadataFields ...string,
 	) ([]models.DataModelObject, error)
+	QueryIngestedObjectsByUniqueFieldValues(
+		ctx context.Context,
+		exec Executor,
+		table models.Table,
+		uniqueFieldName string,
+		uniqueFieldValues []string,
+		metadataFields ...string,
+	) ([]models.DataModelObject, error)
 	QueryAggregatedValue(
 		ctx context.Context,
 		exec Executor,
@@ -562,6 +570,58 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectByUniqueField(
 			Operator:   ast.FUNC_EQUAL,
 			RightValue: uniqueFieldValue,
 		}}...,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	ingestedObjects := make([]models.DataModelObject, len(objectsAsMap))
+	for i, object := range objectsAsMap {
+		ingestedObject := models.DataModelObject{Data: map[string]any{}, Metadata: map[string]any{}}
+		for fieldName, fieldValue := range object {
+			if slices.Contains(columnNames, fieldName) {
+				ingestedObject.Data[fieldName] = fieldValue
+			} else {
+				ingestedObject.Metadata[fieldName] = fieldValue
+			}
+		}
+		ingestedObjects[i] = ingestedObject
+	}
+
+	return ingestedObjects, nil
+}
+
+// Same as QueryIngestedObjectByUniqueField, for several values at once: reads in a single query the objects
+// matching any of the values, e.g. the parent objects of a whole page of child objects.
+func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectsByUniqueFieldValues(
+	ctx context.Context,
+	exec Executor,
+	table models.Table,
+	uniqueFieldName string,
+	uniqueFieldValues []string,
+	metadataFields ...string,
+) ([]models.DataModelObject, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+	if len(uniqueFieldValues) == 0 {
+		return []models.DataModelObject{}, nil
+	}
+
+	columnNames := models.ColumnNames(table)
+
+	qualifiedTableName := pgIdentifierWithSchema(exec, table.Name)
+	objectsAsMap, err := queryWithDynamicColumnList(
+		ctx,
+		exec,
+		qualifiedTableName,
+		append(columnNames, metadataFields...),
+		false,
+		models.Filter{
+			LeftSql:    fmt.Sprintf("%s.%s", qualifiedTableName, uniqueFieldName),
+			Operator:   ast.FUNC_IS_IN_LIST,
+			RightValue: uniqueFieldValues,
+		},
 	)
 	if err != nil {
 		return nil, err

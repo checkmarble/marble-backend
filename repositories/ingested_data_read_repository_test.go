@@ -9,7 +9,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/pashagolub/pgxmock/v5"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -674,4 +676,51 @@ func TestListIngestedObjectsQueryRejectsInvalidFilters(t *testing.T) {
 			assert.ErrorContains(t, err, tt.errContains)
 		})
 	}
+}
+
+func TestQueryIngestedObjectsByUniqueFieldValues(t *testing.T) {
+	table := models.Table{
+		Name: "beneficiaries",
+		Fields: map[string]models.Field{
+			"object_id": {Name: "object_id", DataType: models.String},
+			"name":      {Name: "name", DataType: models.String},
+		},
+	}
+	validFrom := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	t.Run("reads all the values in one query", func(t *testing.T) {
+		exec := newGraphQueryExecutor(t)
+		exec.pool.ExpectQuery(".*").
+			WithArgs("Infinity", []string{"ben_1", "ben_2"}).
+			WillReturnRows(pgxmock.NewRows([]string{"name", "object_id", "valid_from"}).
+				AddRow("Alice", "ben_1", validFrom))
+
+		objects, err := (&IngestedDataReadRepositoryImpl{}).QueryIngestedObjectsByUniqueFieldValues(
+			context.Background(), exec, table, "object_id", []string{"ben_1", "ben_2"}, "valid_from")
+		require.NoError(t, err)
+		require.NoError(t, exec.pool.ExpectationsWereMet())
+
+		require.Len(t, exec.queries, 1)
+		expected := `
+		SELECT name, object_id, valid_from
+		FROM "org-test"."beneficiaries"
+		WHERE "org-test"."beneficiaries".valid_until = $1
+		AND "org-test"."beneficiaries".object_id = ANY($2)
+		`
+		assert.Equal(t, stripQuery(expected), stripQuery(exec.queries[0]))
+		assert.Equal(t, []models.DataModelObject{{
+			Data:     map[string]any{"name": "Alice", "object_id": "ben_1"},
+			Metadata: map[string]any{"valid_from": validFrom},
+		}}, objects)
+	})
+
+	t.Run("no value makes no query", func(t *testing.T) {
+		exec := newGraphQueryExecutor(t)
+
+		objects, err := (&IngestedDataReadRepositoryImpl{}).QueryIngestedObjectsByUniqueFieldValues(
+			context.Background(), exec, table, "object_id", nil, "valid_from")
+		require.NoError(t, err)
+		assert.Empty(t, objects)
+		assert.Empty(t, exec.queries)
+	})
 }

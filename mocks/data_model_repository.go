@@ -193,3 +193,10 @@ func (d *DataModelRepository) GetEntityAnnotations(ctx context.Context, exec rep
 	args := d.Called(ctx, exec, req)
 	return args.Get(0).([]models.EntityAnnotation), args.Error(1)
 }
+
+func (d *DataModelRepository) GetEntityAnnotationsForObjects(ctx context.Context, exec repositories.Executor,
+	req models.EntityAnnotationRequestForObjects,
+) (map[string][]models.EntityAnnotation, error) {
+	args := d.Called(ctx, exec, req)
+	return args.Get(0).(map[string][]models.EntityAnnotation), args.Error(1)
+}

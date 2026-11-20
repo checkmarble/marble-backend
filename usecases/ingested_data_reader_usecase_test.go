@@ -99,6 +99,205 @@ func TestReadIngestedClientObjectsFilters(t *testing.T) {
 	})
 }
 
+// A page reads the annotations and each kind of related object in one query for the whole page, and returns the
+// same objects as when they were read object by object
+func TestReadIngestedClientObjectsReadsAPageInBatch(t *testing.T) {
+	ctx := context.Background()
+	orgId := uuid.New()
+	transactions := models.Table{
+		Name: "transactions",
+		Fields: map[string]models.Field{
+			"object_id":      {Name: "object_id", DataType: models.String},
+			"account_id":     {Name: "account_id", DataType: models.String},
+			"beneficiary_id": {Name: "beneficiary_id", DataType: models.String},
+			"company_id":     {Name: "company_id", DataType: models.String},
+			"created_at":     {Name: "created_at", DataType: models.Timestamp},
+		},
+		LinksToSingle: map[string]models.LinkToSingle{
+			"beneficiary": {
+				Name: "beneficiary", ParentTableName: "beneficiaries",
+				ParentFieldName: "object_id", ChildFieldName: "beneficiary_id",
+			},
+			// companies is a parent of the source table: its objects are not read
+			"company": {
+				Name: "company", ParentTableName: "companies",
+				ParentFieldName: "object_id", ChildFieldName: "company_id",
+			},
+		},
+	}
+	beneficiaries := models.Table{
+		Name: "beneficiaries",
+		Fields: map[string]models.Field{
+			"object_id": {Name: "object_id", DataType: models.String},
+			"name":      {Name: "name", DataType: models.String},
+		},
+	}
+	dataModel := dataModelUsecaseStub{Tables: map[string]models.Table{
+		"transactions":  transactions,
+		"beneficiaries": beneficiaries,
+		"companies":     {Name: "companies"},
+		"accounts": {
+			Name: "accounts",
+			LinksToSingle: map[string]models.LinkToSingle{
+				"company": {
+					Name: "company", ParentTableName: "companies",
+					ParentFieldName: "object_id", ChildFieldName: "company_id",
+				},
+			},
+			NavigationOptions: []models.NavigationOption{{
+				TargetTableName: "transactions", FilterFieldName: "account_id", OrderingFieldName: "created_at",
+			}},
+		},
+	}}
+	input := func(limit int) models.ClientDataListRequestBody {
+		return models.ClientDataListRequestBody{
+			ExplorationOptions: models.ExplorationOptions{
+				SourceTableName:   "accounts",
+				FilterFieldName:   "account_id",
+				FilterFieldValue:  models.NewStringOrNumberFromString("acc_1"),
+				OrderingFieldName: "created_at",
+			},
+			Limit: limit,
+		}
+	}
+	validFrom := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	transaction := func(objectId string, beneficiaryId any) models.DataModelObject {
+		return models.DataModelObject{
+			Data: map[string]any{
+				"object_id": objectId, "account_id": "acc_1", "beneficiary_id": beneficiaryId, "company_id": "comp_1",
+			},
+			Metadata: map[string]any{"valid_from": validFrom},
+		}
+	}
+	beneficiary := func(objectId, name string) models.DataModelObject {
+		return models.DataModelObject{
+			Data:     map[string]any{"object_id": objectId, "name": name},
+			Metadata: map[string]any{"valid_from": validFrom},
+		}
+	}
+	setup := func(rawObjects []models.DataModelObject, limit int) (
+		IngestedDataReaderUsecase, *mocks.IngestedDataReader, *mocks.DataModelRepository, *mocks.ExecutorFactory,
+	) {
+		exec := new(mocks.Executor)
+		executorFactory := new(mocks.ExecutorFactory)
+		clientDbRepository := new(mocks.IngestedDataReader)
+		repository := new(mocks.DataModelRepository)
+
+		executorFactory.On("NewClientDbExecutor", ctx, orgId).Return(exec, nil).Once()
+		executorFactory.On("NewExecutor").Return(exec).Once()
+		clientDbRepository.On("GatherFieldStatistics", ctx, exec, transactions, orgId).
+			Return([]models.FieldStatistics{}, nil)
+		clientDbRepository.On("ListIngestedObjects", ctx, exec, transactions, mock.Anything,
+			(*string)(nil), limit+1, []string(nil)).
+			Return(rawObjects, nil)
+
+		return NewIngestedDataReaderUsecase(clientDbRepository, repository, executorFactory, dataModel),
+			clientDbRepository, repository, executorFactory
+	}
+
+	t.Run("page with shared, missing and invalid link values", func(t *testing.T) {
+		usecase, clientDbRepository, repository, executorFactory := setup([]models.DataModelObject{
+			transaction("tx_1", "ben_1"),
+			transaction("tx_2", "ben_2"),
+			transaction("tx_3", "ben_1"),
+			transaction("tx_4", "ben_unknown"),
+			transaction("tx_5", 12.0),
+			transaction("tx_6", nil),
+			// Beyond the limit: only used to know that there is a next page
+			transaction("tx_7", "ben_3"),
+		}, 6)
+
+		comment := models.EntityAnnotation{Id: "a_1", ObjectId: "tx_1", AnnotationType: models.EntityAnnotationComment}
+		tag := models.EntityAnnotation{Id: "a_2", ObjectId: "tx_1", AnnotationType: models.EntityAnnotationTag}
+		file := models.EntityAnnotation{Id: "a_3", ObjectId: "tx_5", AnnotationType: models.EntityAnnotationFile}
+		repository.On("GetEntityAnnotationsForObjects", ctx, mock.Anything, models.EntityAnnotationRequestForObjects{
+			OrgId:      orgId,
+			ObjectType: "transactions",
+			ObjectIds:  []string{"tx_1", "tx_2", "tx_3", "tx_4", "tx_5", "tx_6"},
+		}).Return(map[string][]models.EntityAnnotation{"tx_1": {comment, tag}, "tx_5": {file}}, nil).Once()
+		clientDbRepository.On("QueryIngestedObjectsByUniqueFieldValues", ctx, mock.Anything, beneficiaries,
+			"object_id", []string{"ben_1", "ben_2", "ben_unknown"}, []string{"valid_from"}).
+			Return([]models.DataModelObject{
+				beneficiary("ben_2", "Bob"),
+				beneficiary("ben_1", "Alice"),
+				// Only the first object found for a value is kept
+				beneficiary("ben_1", "Alice again"),
+			}, nil).Once()
+
+		objects, _, pagination, err := usecase.ReadIngestedClientObjects(ctx, orgId, "transactions", input(6))
+		assert.NoError(t, err)
+		assert.True(t, pagination.HasNextPage)
+
+		clientObject := func(object models.DataModelObject, objectType string) models.ClientObjectDetail {
+			return models.ClientObjectDetail{
+				Data:     object.Data,
+				Metadata: models.ClientObjectMetadata{ValidFrom: &validFrom, ObjectType: objectType},
+			}
+		}
+		withBeneficiary := func(object models.ClientObjectDetail, id, name string) models.ClientObjectDetail {
+			object.RelatedObjects = []models.RelatedObject{{
+				LinkName: "beneficiary",
+				Detail:   clientObject(beneficiary(id, name), "beneficiaries"),
+			}}
+			return object
+		}
+		tx1 := withBeneficiary(clientObject(transaction("tx_1", "ben_1"), "transactions"), "ben_1", "Alice")
+		tx1.Annotations = models.GroupedEntityAnnotations{
+			Comments: []models.EntityAnnotation{comment},
+			Tags:     []models.EntityAnnotation{tag},
+		}
+		tx5 := clientObject(transaction("tx_5", 12.0), "transactions")
+		tx5.Annotations = models.GroupedEntityAnnotations{Files: []models.EntityAnnotation{file}}
+		assert.Equal(t, []models.ClientObjectDetail{
+			tx1,
+			withBeneficiary(clientObject(transaction("tx_2", "ben_2"), "transactions"), "ben_2", "Bob"),
+			withBeneficiary(clientObject(transaction("tx_3", "ben_1"), "transactions"), "ben_1", "Alice"),
+			clientObject(transaction("tx_4", "ben_unknown"), "transactions"),
+			tx5,
+			clientObject(transaction("tx_6", nil), "transactions"),
+		}, objects)
+
+		clientDbRepository.AssertExpectations(t)
+		repository.AssertExpectations(t)
+		executorFactory.AssertExpectations(t)
+	})
+
+	// The size of the pages read by the AI case review
+	t.Run("page of 500 objects", func(t *testing.T) {
+		rawObjects := make([]models.DataModelObject, 500)
+		for i := range rawObjects {
+			rawObjects[i] = transaction(fmt.Sprintf("tx_%d", i), fmt.Sprintf("ben_%d", i%50))
+		}
+		usecase, clientDbRepository, repository, executorFactory := setup(rawObjects, 500)
+
+		repository.On("GetEntityAnnotationsForObjects", ctx, mock.Anything,
+			mock.MatchedBy(func(req models.EntityAnnotationRequestForObjects) bool {
+				return len(req.ObjectIds) == 500
+			})).
+			Return(map[string][]models.EntityAnnotation{}, nil).Once()
+		clientDbRepository.On("QueryIngestedObjectsByUniqueFieldValues", ctx, mock.Anything, beneficiaries,
+			"object_id", mock.MatchedBy(func(values []string) bool { return len(values) == 50 }),
+			[]string{"valid_from"}).
+			Return([]models.DataModelObject{beneficiary("ben_7", "Alice")}, nil).Once()
+
+		objects, _, pagination, err := usecase.ReadIngestedClientObjects(ctx, orgId, "transactions", input(500))
+		assert.NoError(t, err)
+		assert.False(t, pagination.HasNextPage)
+		assert.Len(t, objects, 500)
+		for i, object := range objects {
+			if i%50 == 7 {
+				assert.Len(t, object.RelatedObjects, 1)
+			} else {
+				assert.Empty(t, object.RelatedObjects)
+			}
+		}
+
+		clientDbRepository.AssertExpectations(t)
+		repository.AssertExpectations(t)
+		executorFactory.AssertExpectations(t)
+	})
+}
+
 func TestValidateExplorationFilters(t *testing.T) {
 	table := models.Table{
 		Name: "transactions",
