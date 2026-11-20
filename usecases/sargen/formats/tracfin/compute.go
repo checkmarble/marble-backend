@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"regexp"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -93,8 +94,9 @@ type opGroup struct {
 // transactions of unknown direction count in neither, and when none has a known
 // direction the total is the sum of all of them (see stake).
 //
-// A line whose group attributes change gets a NEW path (the old line is removed):
-// questions that cite the old line path become stale.
+// A line keeps its path while it stands for a group (see matchLines), also when
+// the group attributes change but its transactions carry on; a new group gets a
+// fresh key, never one given before in the document (core.Document.AddItem).
 func (f *format) Compute(doc *core.Document) core.ComputeResult {
 	var res core.ComputeResult
 	groups, order, minDate, maxDate, st, refFills := groupTransactions(f.spec, doc)
@@ -149,22 +151,13 @@ func (f *format) Compute(doc *core.Document) core.ComputeResult {
 		}
 	}
 
-	// Match the existing lines with the groups.
-	existing := map[string]core.Path{}
-	var stale []core.Path
-	for _, key := range doc.Items[operationsContainer] {
-		line := core.Path(string(operationsContainer) + "[" + key + "]")
-		gk := lineKey(func(name string) string { return doc.Values[line.Child(name)].Value })
-		if _, taken := existing[gk]; taken || groups[gk] == nil {
-			stale = append(stale, line)
-			continue
-		}
-		existing[gk] = line
-	}
+	// Match the existing lines with the groups: a line keeps its key (its path)
+	// for as long as it stands for a group.
+	matched, stale := matchLines(doc, groups, order)
 	provisional := 0
 	for _, k := range order {
 		g := groups[k]
-		line, ok := existing[k]
+		line, ok := matched[k]
 		if !ok {
 			provisional++
 			line = core.Path(fmt.Sprintf("%s[+l%d]", operationsContainer, provisional))
@@ -172,6 +165,10 @@ func (f *format) Compute(doc *core.Document) core.ComputeResult {
 		for _, name := range lineAttributes {
 			if v := g.attrs[name]; v != "" {
 				put(line.Child(name), v, txAmounts(g.txs))
+			} else if cur, has := doc.Values[line.Child(name)]; has && ok && cur.Origin == core.OriginComputed {
+				// The line follows its group to attributes that no longer have
+				// this one: the stale computed value goes away.
+				res.RemoveItems = append(res.RemoveItems, line.Child(name))
 			}
 		}
 		put(line.Child(lineAmount), formatDecimal(g.sum, g.maxFrac), txAmounts(g.txs))
@@ -179,6 +176,74 @@ func (f *format) Compute(doc *core.Document) core.ComputeResult {
 	}
 	res.RemoveItems = append(res.RemoveItems, stale...)
 	return res
+}
+
+// matchLines pairs the existing operation lines with the groups of the usable
+// transactions, so that a line keeps its key as long as it stands for a group.
+// A line is identified, in this order, by:
+//  1. its stored line attributes: the line whose attributes are the group key;
+//  2. the transactions it summarises (the inputs of its nombreOperations): a
+//     group that took over transactions of a line whose attributes no longer
+//     match (a person removed, a transaction edited, a regrouping) is that line.
+//     The best overlap wins, one line per group, in line then group order.
+//
+// The stored attributes are only a hint: a value the analyst typed on a line
+// attribute stays on its line, which is found again by its transactions. A line
+// matched by nothing is stale; a group matched by nothing gets a new key (the
+// document counter never gives a removed key again).
+func matchLines(doc *core.Document, groups map[string]*opGroup, order []string) (matched map[string]core.Path, stale []core.Path) {
+	matched = map[string]core.Path{}
+	taken := map[core.Path]bool{}
+	var lines []core.Path
+	for _, key := range doc.Items[operationsContainer] {
+		line := core.Path(string(operationsContainer) + "[" + key + "]")
+		lines = append(lines, line)
+		gk := lineKey(func(name string) string { return doc.Values[line.Child(name)].Value })
+		if _, dup := matched[gk]; !dup && groups[gk] != nil {
+			matched[gk] = line
+			taken[line] = true
+		}
+	}
+	type pair struct{ line, group, overlap int }
+	var pairs []pair
+	for li, line := range lines {
+		if taken[line] {
+			continue
+		}
+		var inputs []core.Path
+		if c := doc.Values[line.Child(lineCount)].Computation; c != nil {
+			inputs = c.Inputs
+		}
+		for gi, k := range order {
+			if _, done := matched[k]; done {
+				continue
+			}
+			n := 0
+			for _, tx := range groups[k].txs {
+				if slices.Contains(inputs, tx) {
+					n++
+				}
+			}
+			if n > 0 {
+				pairs = append(pairs, pair{li, gi, n})
+			}
+		}
+	}
+	sort.SliceStable(pairs, func(a, b int) bool { return pairs[a].overlap > pairs[b].overlap })
+	for _, p := range pairs {
+		k := order[p.group]
+		if _, done := matched[k]; done || taken[lines[p.line]] {
+			continue
+		}
+		matched[k] = lines[p.line]
+		taken[lines[p.line]] = true
+	}
+	for _, line := range lines {
+		if !taken[line] {
+			stale = append(stale, line)
+		}
+	}
+	return matched, stale
 }
 
 // txStatus tells whether Compute counts a working transaction, and if not why.

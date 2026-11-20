@@ -368,3 +368,106 @@ func TestCompute_RegroupRefreshesProvenanceOfUnchangedAttributes(t *testing.T) {
 	assert.Equal(t, "OT10", compLineValue(doc, line, "typeOperation"))
 	assert.Equal(t, core.OriginComputed, doc.Values[line.Child("typeOperation")].Origin)
 }
+
+// lineKeys returns the item keys of the operation lines, in order.
+func lineKeys(doc *core.Document) []string { return doc.Items["operations.operation"] }
+
+func TestCompute_RegroupKeepsTheKeysOfTheSurvivingLines(t *testing.T) {
+	f := compFormat(t)
+	doc := core.NewDocument()
+	a1 := addCompTx(doc, compBase("100", "2026-03-01"))
+	a2 := compBase("10", "2026-03-02")
+	a2.typeOperation = "OT11"
+	b := addCompTx(doc, a2)
+	c := compBase("5", "2026-03-03")
+	c.typeOperation = "OT06"
+	cTx := addCompTx(doc, c)
+	_, _ = core.ComputeInto(f, doc)
+	require.Equal(t, []string{"operation-1", "operation-2", "operation-3"}, lineKeys(doc))
+	lineA := compFindLine(t, doc, "typeOperation", "OT10")
+	lineC := compFindLine(t, doc, "typeOperation", "OT06")
+
+	// The group of the middle line disappears.
+	doc.RemoveItem(b)
+	_, _ = core.ComputeInto(f, doc)
+	assert.Equal(t, []string{"operation-1", "operation-3"}, lineKeys(doc))
+	assert.Equal(t, lineA, compFindLine(t, doc, "typeOperation", "OT10"))
+	assert.Equal(t, lineC, compFindLine(t, doc, "typeOperation", "OT06"))
+	assert.Equal(t, []core.Path{cTx.Child("montant")}, doc.Values[lineC.Child("montantTotal")].Computation.Inputs)
+	_ = a1
+}
+
+func TestCompute_ANewGroupNeverTakesTheKeyOfARemovedLine(t *testing.T) {
+	f := compFormat(t)
+	doc := core.NewDocument()
+	addCompTx(doc, compBase("100", "2026-03-01"))
+	b := compBase("10", "2026-03-02")
+	b.typeOperation = "OT11"
+	bTx := addCompTx(doc, b)
+	_, _ = core.ComputeInto(f, doc)
+	removed := compFindLine(t, doc, "typeOperation", "OT11")
+
+	doc.RemoveItem(bTx)
+	_, _ = core.ComputeInto(f, doc)
+	require.Equal(t, []string{"operation-1"}, lineKeys(doc))
+
+	n := compBase("7", "2026-03-04")
+	n.emetteurLibre = "Nadia"
+	addCompTx(doc, n)
+	_, _ = core.ComputeInto(f, doc)
+	fresh := compFindLine(t, doc, "emetteurTypeEmetteur", "Nadia")
+	assert.NotEqual(t, removed, fresh, "a removed key is never given again")
+	assert.Equal(t, core.Path("operations.operation[operation-3]"), fresh)
+}
+
+// A line whose attributes change while its transactions carry on keeps its key:
+// a transaction edited, or a person removed, no longer renames the surviving
+// lines. Attributes the new group no longer has go away.
+func TestCompute_ALineFollowsItsTransactionsWhenItsAttributesChange(t *testing.T) {
+	f := compFormat(t)
+	doc := core.NewDocument()
+	addCompTx(doc, compBase("100", "2026-03-01"))
+	b := compBase("10", "2026-03-02")
+	b.emetteurLibre = "Jean Dupont"
+	bTx := addCompTx(doc, b)
+	_, _ = core.ComputeInto(f, doc)
+	lineB := compFindLine(t, doc, "emetteurTypeEmetteur", "Jean Dupont")
+
+	// The free-text emitter is dropped and the type changes: another group.
+	doc.Values[bTx.Child("emetteurLibre")] = core.Value{Value: "", Origin: core.OriginManual}
+	doc.Values[bTx.Child("typeOperation")] = core.Value{Value: "OT06", Origin: core.OriginManual}
+	_, _ = core.ComputeInto(f, doc)
+
+	require.Equal(t, []string{"operation-1", "operation-2"}, lineKeys(doc))
+	assert.Equal(t, lineB, compFindLine(t, doc, "typeOperation", "OT06"))
+	_, has := doc.Values[lineB.Child("emetteurTypeEmetteur")]
+	assert.False(t, has, "the attribute the group no longer has is removed")
+}
+
+// A value the analyst typed on a line attribute stays on its line: the line is
+// recognised by its transactions, not by its attributes.
+func TestCompute_AnAnalystValueOnALineAttributeFollowsTheLine(t *testing.T) {
+	f := compFormat(t)
+	doc := core.NewDocument()
+	addCompTx(doc, compBase("100", "2026-03-01"))
+	b := compBase("10", "2026-03-02")
+	b.typeOperation = "OT11"
+	bTx := addCompTx(doc, b)
+	_, _ = core.ComputeInto(f, doc)
+	lineB := compFindLine(t, doc, "typeOperation", "OT11")
+	doc.Values[lineB.Child("paysArriveeFonds")] = core.Value{Value: "IT", Origin: core.OriginAnalyst}
+
+	// Another line is added before it in group order: positions change, not identity.
+	z := compBase("1", "2026-03-05")
+	z.emetteurLibre = "Zoe"
+	addCompTx(doc, z)
+	doc.Values[bTx.Child("montant")] = core.Value{Value: "11", Origin: core.OriginManual}
+	_, _ = core.ComputeInto(f, doc)
+	_, _ = core.ComputeInto(f, doc)
+
+	assert.Equal(t, "IT", doc.Values[lineB.Child("paysArriveeFonds")].Value)
+	assert.Equal(t, core.OriginAnalyst, doc.Values[lineB.Child("paysArriveeFonds")].Origin)
+	assert.Equal(t, "OT11", compLineValue(doc, lineB, "typeOperation"))
+	assert.Equal(t, []string{"operation-1", "operation-2", "operation-3"}, lineKeys(doc))
+	assert.Equal(t, "11", compLineValue(doc, lineB, "montantTotal"))
+}
