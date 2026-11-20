@@ -71,6 +71,7 @@ var tenantOIDCRoutes = []struct {
 	{method: "GET", path: "/tenants/:tenant_id/oidc-configuration"},
 	{method: "PUT", path: "/tenants/:tenant_id/oidc-configuration"},
 	{method: "DELETE", path: "/tenants/:tenant_id/oidc-configuration"},
+	{method: "PATCH", path: "/tenants/:tenant_id/domains/:domain_id"},
 	{method: "GET", path: "/tenants/:tenant_id/domains"},
 	{method: "POST", path: "/tenants/:tenant_id/domains"},
 	{method: "DELETE", path: "/tenants/:tenant_id/domains/:domain_id"},

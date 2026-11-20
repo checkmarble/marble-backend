@@ -310,6 +310,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		router.DELETE("/tenants/:tenant_id/oidc-configuration", tom, handleDeleteTenantOIDCConfiguration(uc))
 		router.GET("/tenants/:tenant_id/domains", tom, handleListTenantDomains(uc))
 		router.POST("/tenants/:tenant_id/domains", tom, handlePostTenantDomain(uc))
+		router.PATCH("/tenants/:tenant_id/domains/:domain_id", tom, handlePatchTenantDomain(uc))
 		router.DELETE("/tenants/:tenant_id/domains/:domain_id", tom, handleDeleteTenantDomain(uc))
 	}
 	router.PUT("/tenants/:tenant_id/users/:user_id/grants", tom, handlePutOrganizationGrant(uc))
