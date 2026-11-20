@@ -10,6 +10,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
+	"github.com/checkmarble/marble-backend/usecases/sargen/formats"
 )
 
 // A question whose option removes an item (a context person kept for its direct
@@ -153,6 +154,31 @@ func TestExport_RefusedWhileABlockingQuestionIsOpen(t *testing.T) {
 	require.NoError(t, f.Gen.CloseSarQuestions(f.Ctx, nil, []uuid.UUID{q.Id}, models.SarQuestionStatusResolved))
 	_, err = uc.Export(f.Ctx, d.Id, d.Version)
 	require.NoError(t, err)
+}
+
+// A question on a mandatory node that is not stored blocking is only a warning
+// and does not refuse the export; the todo severity matches what the export does.
+func TestTodo_QuestionOnMandatoryNodeWithoutBlockingSeverityIsAWarning(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	d := seedValidDeclaration(t, uc, f)
+	format, ok := formats.Get(core.FormatKey{Family: tracfinFamily, Country: "FR", Version: "1.4.0"})
+	require.True(t, ok)
+	spec := format.Spec()
+	// organisme.libelle is mandatory in the format.
+	n := spec.NodeAt("organisme.libelle")
+	require.NotNil(t, n)
+	require.GreaterOrEqual(t, n.Min, 1, "mandatory node")
+	q := f.SeedQuestion(t, d.Id, []core.Path{"organisme.libelle"}, "Libellé ?", nil)
+	require.Empty(t, q.Severity)
+
+	st, err := uc.GetDeclaration(f.Ctx, d.Id)
+	require.NoError(t, err)
+	item, ok := findTodo(st.Todo, todoRefIs(TodoQuestion, q.Id))
+	require.True(t, ok)
+	assert.Equal(t, TodoWarning, item.Severity)
+
+	_, err = uc.Export(f.Ctx, d.Id, d.Version)
+	require.NoError(t, err, "an open non-blocking question does not refuse the export")
 }
 
 // An item removed by hand leaves nothing to answer: its questions are dismissed.

@@ -51,8 +51,8 @@ func buildTodoBase(issues []core.Issue, doc *core.Document) []TodoItem {
 
 // buildTodo returns one TodoIssue entry per issue, one TodoLowConfidence entry per unreviewed
 // low-confidence value, plus, from the open questions and the
-// spec: one TodoQuestion per open question (blocking when one of its paths is
-// required, i.e. Min >= 1 in the spec, else warning), one TodoReviewFinding
+// spec: one TodoQuestion per open question (blocking exactly when the export refuses
+// because of it, i.e. it is stored with the blocking severity, else warning), one TodoReviewFinding
 // (review) per open review finding, and one review entry « valeur calculée à
 // confirmer » per NatureComputed field outside a repeatable item that has a
 // value which is not Reviewed.
@@ -71,18 +71,6 @@ func buildTodo(spec *core.Spec, confirm []core.Path, issues []core.Issue, doc *c
 			sev := TodoWarning
 			if q.Severity == models.SarQuestionSeverityBlocking {
 				sev = TodoBlocking
-			}
-			for _, p := range paths {
-				if sev == TodoBlocking {
-					break
-				}
-				if spec == nil {
-					break
-				}
-				if n := spec.NodeAt(p.Template()); n != nil && n.Min >= 1 {
-					sev = TodoBlocking
-					break
-				}
 			}
 			todo = append(todo, TodoItem{Kind: TodoQuestion, Severity: sev, Paths: paths, Message: q.Text, RefId: &id})
 		}
