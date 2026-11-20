@@ -126,8 +126,8 @@ type codeCandidate struct {
 	mapped bool
 }
 
-// candidates looks, in the source objects of the item that holds path (the
-// nearest ancestor item with sources), for the columns whose semantic type
+// candidates looks, in the own objects of the item that holds path (the nearest
+// ancestor item with sources, see ownObjects), for the columns whose semantic type
 // feeds the code list (core.CodeSourceMapper). A format without the capability,
 // a column whose semantic type the data model does not give, or an item without
 // source object yields none: the question then is today's one.
@@ -146,6 +146,7 @@ func (e missingCodeEnv) candidates(doc *core.Document, path core.Path, codeList 
 		refs = doc.ItemSources[items[i]]
 	}
 	sc := newScope(e.selection)
+	refs = ownObjects(sc, e.dataModel, refs)
 	var out []codeCandidate
 	for _, ref := range refs {
 		obj, ok := sc.get(ref.Table, ref.ObjectID)
@@ -164,6 +165,46 @@ func (e missingCodeEnv) candidates(doc *core.Document, path core.Path, codeList 
 			c := codeCandidate{ref: ref, field: field, raw: raw}
 			c.code, c.mapped = mapper.CodeFromValue(codeList, sem, raw)
 			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// ownObjects keeps, among the sources of an item, the objects the item stands
+// for. The first source is the anchor, the data row the item was created from
+// (the transaction row of a transaction item, the row of a person item). Every
+// source that is the parent of a link held by the anchor is dropped: it was
+// reached through that link (the account of a transaction, the holder of an
+// account) and describes another thing than the item, whose values must not be
+// offered for the item. The other sources (further rows of the same person)
+// are kept. Without a known anchor nothing is dropped.
+func ownObjects(sc scope, dm models.DataModel, refs []core.ObjectRef) []core.ObjectRef {
+	if len(refs) < 2 {
+		return refs
+	}
+	anchor, ok := sc.get(refs[0].Table, refs[0].ObjectID)
+	if !ok {
+		return refs
+	}
+	var parents []core.ObjectRef
+	for _, table := range dm.Tables {
+		for _, link := range table.LinksToSingle {
+			if link.ChildTableName != anchor.TableName {
+				continue
+			}
+			value, has := valueString(anchor.Snapshot[link.ChildFieldName])
+			if !has {
+				continue
+			}
+			if parent, found := findByField(sc, link.ParentTableName, link.ParentFieldName, value); found {
+				parents = append(parents, core.ObjectRef{Table: parent.TableName, ObjectID: parent.ObjectId})
+			}
+		}
+	}
+	out := []core.ObjectRef{refs[0]}
+	for _, r := range refs[1:] {
+		if !slices.Contains(parents, r) {
+			out = append(out, r)
 		}
 	}
 	return out
