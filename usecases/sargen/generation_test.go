@@ -218,7 +218,7 @@ func TestStartGeneration_RefusedWhenOrgSettingsIncomplete(t *testing.T) {
 
 	_, err := uc.StartGeneration(f.Ctx, declId)
 	require.ErrorIs(t, err, models.BadParameterError)
-	require.ErrorContains(t, err, "declarant.coordonnees.tel")
+	require.Contains(t, errorAndIssuePaths(err), "declarant.coordonnees.tel")
 	assert.Empty(t, f.JobsOf(declId), "no job must be created")
 	assert.Zero(t, f.Gen.JobCreates)
 	assert.Empty(t, f.Enqueuer.Calls, "nothing must be enqueued")
@@ -515,7 +515,7 @@ func TestStartGeneration_InvalidRequiredSettingListed(t *testing.T) {
 
 	_, err := uc.StartGeneration(f.Ctx, declId)
 	require.ErrorIs(t, err, models.BadParameterError)
-	require.ErrorContains(t, err, "organisme.adresse.pays")
+	require.Contains(t, errorAndIssuePaths(err), "organisme.adresse.pays")
 	assert.Zero(t, f.Gen.JobCreates)
 }
 

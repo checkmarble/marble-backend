@@ -565,9 +565,15 @@ type IssuesError struct {
 	issues []core.Issue
 	// prefix, when set, introduces the message (e.g. why the operation is refused).
 	prefix string
+	// message, when set, is the whole message (the issues are then only in
+	// details.issues, with their technical paths).
+	message string
 }
 
 func (e *IssuesError) Error() string {
+	if e.message != "" {
+		return e.message
+	}
 	if e.prefix != "" {
 		return e.prefix + " : " + e.issuesText()
 	}

@@ -49,3 +49,29 @@ func TestStartGeneration_InvalidSettingIsAnIssueOnItsPath(t *testing.T) {
 	assert.Equal(t, core.Path("organisme.adresse.pays"), ie.SarIssues()[0].Path)
 	assert.Equal(t, CodePreconditionSettingInvalid, ie.SarIssues()[0].Code)
 }
+
+func TestStartGeneration_PreconditionMessageHasNoTechnicalPath(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	declId := createFresh(t, uc, f).Declaration.Id
+
+	_, err := uc.StartGeneration(f.Ctx, declId)
+
+	var ie *IssuesError
+	require.True(t, errors.As(err, &ie), "%v", err)
+	assert.Regexp(t, `^la génération est impossible : l'analyse est vide ; la sélection est vide ; \d+ réglages manquants ou invalides$`, ie.Error())
+	assert.NotContains(t, ie.Error(), "organisme")
+	assert.Contains(t, ie.SarIssues()[len(ie.SarIssues())-1].Path, "organisme")
+}
+
+// errorAndIssuePaths is the message of err plus the paths of its issues (the
+// message itself carries no technical path).
+func errorAndIssuePaths(err error) string {
+	out := err.Error()
+	var ie *IssuesError
+	if errors.As(err, &ie) {
+		for _, i := range ie.SarIssues() {
+			out += " " + string(i.Path)
+		}
+	}
+	return out
+}

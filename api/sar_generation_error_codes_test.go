@@ -146,3 +146,55 @@ func TestSarErrorCodes_GenerationPreconditions(t *testing.T) {
 		})
 	}
 }
+
+// Bare sentinels coming from the layers below the usecase (repository, case
+// security) get a code and a generic French message, never the Go chain.
+func TestSarErrorCodes_BareSentinelsFromLowerLayers(t *testing.T) {
+	id := uuid.NewString()
+	for _, tc := range []struct {
+		name   string
+		err    error
+		status int
+		code   string
+		msg    string
+	}{
+		{"repository not found",
+			errors.Wrap(models.NotFoundError, "found no object of type models.SarDeclaration"),
+			http.StatusNotFound, "sar_not_found", "élément introuvable"},
+		{"case access forbidden",
+			errors.Wrap(models.ForbiddenError, "User does not have access to case's inbox"),
+			http.StatusForbidden, "sar_forbidden", "accès refusé"},
+		{"bare conflict inside a transaction",
+			errors.Wrap(models.ConflictError, "Error executing transaction"),
+			http.StatusConflict, "sar_conflict", "conflit avec l'état actuel de la déclaration"},
+		{"bare bad parameter",
+			errors.Wrap(models.BadParameterError, "some go detail"),
+			http.StatusBadRequest, "sar_invalid_request", "requête invalide"},
+		{"unprocessable",
+			errors.Wrap(models.UnprocessableEntityError, "some go detail"),
+			http.StatusUnprocessableEntity, "sar_unprocessable", "requête impossible à traiter"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := &fakeSarGenerationUsecase{}
+			f.Fail("GetDeclaration", tc.err)
+			w := doSarRequest(newSarTestRouter(t, f), http.MethodGet, "/sar-declarations/"+id, nil)
+
+			require.Equal(t, tc.status, w.Code, w.Body.String())
+			body := sarHTTPDecode(t, w)
+			assert.Equal(t, tc.code, body["error_code"])
+			assert.Equal(t, tc.msg, body["message"])
+		})
+	}
+}
+
+// A SarError of a kind mapped to no status is a 500 with a code and no detail.
+func TestSarErrorCodes_UnmappedKindIsInternal(t *testing.T) {
+	f := &fakeSarGenerationUsecase{}
+	f.Fail("GetDeclaration", models.NewSarError(errors.New("secret go detail"), models.SarCodeInvalidRequest, "msg"))
+	w := doSarRequest(newSarTestRouter(t, f), http.MethodGet, "/sar-declarations/"+uuid.NewString(), nil)
+
+	require.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+	body := sarHTTPDecode(t, w)
+	assert.Equal(t, "sar_internal", body["error_code"])
+	assert.NotContains(t, w.Body.String(), "secret")
+}
