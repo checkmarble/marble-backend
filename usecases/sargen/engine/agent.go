@@ -552,7 +552,7 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 					for _, m := range corr {
 						a.tr.add(TraceEntry{Type: TraceCheckError, Text: m})
 					}
-					out.Questions = append(out.Questions, a.unverifiableFromErrors(corr)...)
+					out.Questions = append(out.Questions, a.unverifiableFromErrors(a.hardErrors(corr))...)
 					return a.limitOutputFrom(graceReason, mergeOutputs(a.kept, out)), nil
 				}
 			}
@@ -720,6 +720,18 @@ func (a *agentRun) finish(out core.TaskOutput, remaining []string) core.TaskOutp
 		}
 	}
 	return a.render(out)
+}
+
+// hardErrors drops the errors of warning-level format rules: a fill that stays
+// invalid only on those is dropped without a question.
+func (a *agentRun) hardErrors(errs []string) []string {
+	var hard []string
+	for _, e := range errs {
+		if !a.soft[e] {
+			hard = append(hard, e)
+		}
+	}
+	return hard
 }
 
 // unverifiableFromErrors turns the form errors left after the last correction

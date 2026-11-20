@@ -211,7 +211,18 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 			}
 		}
 	}
-	ruleIssues := c.newRuleIssues(clone, good, rejectedIdx)
+	withoutFill := func(skip int) *core.Document {
+		d := c.tc.Doc.Clone()
+		rest := make([]core.Fill, 0, len(fills))
+		for i, f := range fills {
+			if i != skip {
+				rest = append(rest, f)
+			}
+		}
+		core.ApplyFills(c.tc.Format.Spec(), d, rest, c.applyOptions(d))
+		return d
+	}
+	ruleIssues := c.newRuleIssues(clone, good, rejectedIdx, withoutFill)
 	for i, g := range good {
 		issue, bad := rejectedIdx[i]
 		if !bad {
@@ -274,11 +285,13 @@ func (c *checker) issuesBefore() map[ruleKey]bool {
 // `required` issue, an issue already in the document and an issue elsewhere are
 // not the fills' doing and are ignored: the fill that triggers a rule is sent
 // back to the model with the message of the rule.
-func (c *checker) newRuleIssues(after *core.Document, good []pendingFill, rejected map[int]core.Issue) map[core.Path]core.Issue {
-	var written []core.Path
-	for i, g := range good {
+func (c *checker) newRuleIssues(after *core.Document, good []pendingFill, rejected map[int]core.Issue,
+	without func(goodIdx int) *core.Document,
+) map[core.Path]core.Issue {
+	var written []int
+	for i := range good {
 		if _, bad := rejected[i]; !bad {
-			written = append(written, g.fill.Path)
+			written = append(written, i)
 		}
 	}
 	if len(written) == 0 {
@@ -292,16 +305,46 @@ func (c *checker) newRuleIssues(after *core.Document, good []pendingFill, reject
 		}
 	}
 	var out map[core.Path]core.Issue
-	for _, w := range written {
-		for _, is := range fresh {
-			if is.Path == w || strings.HasPrefix(string(w), string(is.Path)+".") || strings.HasPrefix(string(w), string(is.Path)+"[") {
-				if out == nil {
-					out = map[core.Path]core.Issue{}
-				}
-				if _, dup := out[w]; !dup {
-					out[w] = is
+	blame := func(p core.Path, is core.Issue) {
+		if out == nil {
+			out = map[core.Path]core.Issue{}
+		}
+		if _, dup := out[p]; !dup {
+			out[p] = is
+		}
+	}
+	for _, is := range fresh {
+		var under []int
+		for _, i := range written {
+			w := good[i].fill.Path
+			switch {
+			case is.Path == w:
+				blame(w, is)
+			case strings.HasPrefix(string(w), string(is.Path)+".") || strings.HasPrefix(string(w), string(is.Path)+"["):
+				under = append(under, i)
+			}
+		}
+		// An issue raised on an ancestor is blamed on the fills whose removal
+		// makes it disappear; when none does alone (it takes several fills
+		// together), on all the fills under the ancestor.
+		var culprits []int
+		for _, i := range under {
+			stays := false
+			for _, other := range c.tc.Format.Validate(without(i)) {
+				if other.Code == is.Code && other.Path == is.Path {
+					stays = true
+					break
 				}
 			}
+			if !stays {
+				culprits = append(culprits, i)
+			}
+		}
+		if len(culprits) == 0 {
+			culprits = under
+		}
+		for _, i := range culprits {
+			blame(good[i].fill.Path, is)
 		}
 	}
 	return out

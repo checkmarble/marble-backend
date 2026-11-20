@@ -66,7 +66,7 @@ func TestCheckFills_ExistingRuleIssueDoesNotBlockTheFills(t *testing.T) {
 // task's other fills.
 func TestCheckFills_RuleIssueOnAnotherPathIsIgnored(t *testing.T) {
 	c := e2Checker(t, "SIREN", true)
-	other := `{"path":"personnes.pm[pm-1].activiteCoordonnee.denomination","value":"Dupont","source":{"field":"last_name","raw_value":"Dupont"}}`
+	other := `{"path":"personnes.pm[pm-1].activiteCoordonnee.enseigneSigle","value":"Dupont","source":{"field":"last_name","raw_value":"Dupont"}}`
 	res := c.checkFills(json.RawMessage(`{"fills":[` + other + `]}`))
 	for _, m := range res.Corrections {
 		assert.NotContains(t, m, e2Enseigne)
@@ -121,4 +121,48 @@ func TestAgent_WarningRuleAfterTheCorrectionBudgetDropsTheFillSilently(t *testin
 	for _, q := range out.Questions {
 		assert.NotContains(t, q.Text, "valeur non vérifiable")
 	}
+}
+
+// A scope-level issue is blamed on the fill that causes it, not on the sibling
+// fills under the same scope.
+func TestCheckFills_ScopeLevelRuleBlamesOnlyTheCulpritFill(t *testing.T) {
+	tc := agentToolContext(t)
+	scope := "personnes.pp[pp-1].etatCivil"
+	tc.Doc.Values[core.Path(scope+".dateNaissance")] = core.Value{Value: "1980-04-01", Origin: core.OriginLLM}
+	c := newChecker(tc, agentSpec("fill", agentPersonPath), tc.TaskId, []core.Path{agentPersonPath})
+	estimation := `{"path":"` + scope + `.dateNaissanceEstimation","value":"1980","source":{"field":"birth_date","raw_value":"1980-04-01"}}`
+	res := c.checkFills(json.RawMessage(`{"fills":[` + estimation + `,` + agNomFillValid + `]}`))
+	require.Len(t, res.Corrections, 1, "%v", res.Corrections)
+	assert.Contains(t, res.Corrections[0], "dateNaissanceEstimation")
+	require.Len(t, res.Fills, 1)
+	assert.Equal(t, core.Path(agNomPath), res.Fills[0].Path)
+}
+
+// A group rule that two fills trigger together (each alone leaves the group
+// present) is blamed on both.
+func TestCheckFills_GroupRuleBlamesAllFillsWhenNoneIsAloneToBlame(t *testing.T) {
+	c := e2Checker(t, "RN6", false)
+	g := "personnes.pm[pm-1].activiteCoordonnee.autreAdresse."
+	f1 := `{"path":"` + g + `ville","value":"Dupont","source":{"field":"last_name","raw_value":"Dupont"}}`
+	f2 := `{"path":"` + g + `nomVoie","value":"Dupont","source":{"field":"last_name","raw_value":"Dupont"}}`
+	res := c.checkFills(json.RawMessage(`{"fills":[` + f1 + `,` + f2 + `]}`))
+	assert.Empty(t, res.Fills)
+	assert.Len(t, res.Corrections, 2, "%v", res.Corrections)
+}
+
+// A group rule with a single fill under the group blames that fill, and the
+// sibling fill elsewhere in the item is kept.
+func TestCheckFills_GroupRuleKeepsTheSiblingOutsideTheGroup(t *testing.T) {
+	c := e2Checker(t, "RN6", false)
+	city := `{"path":"personnes.pm[pm-1].activiteCoordonnee.autreAdresse.ville","value":"Dupont","source":{"field":"last_name","raw_value":"Dupont"}}`
+	denom := `{"path":"personnes.pm[pm-1].activiteCoordonnee.enseigneSigle","value":"Dupont","source":{"field":"last_name","raw_value":"Dupont"}}`
+	res := c.checkFills(json.RawMessage(`{"fills":[` + city + `,` + denom + `]}`))
+	require.Len(t, res.Corrections, 1, "%v", res.Corrections)
+	assert.Contains(t, res.Corrections[0], "autreAdresse.ville")
+	require.Len(t, res.Fills, 1)
+}
+
+func TestHardErrors_DropsWarningLevelErrors(t *testing.T) {
+	a := &agentRun{soft: map[string]bool{"fills[0] p : w": true}}
+	assert.Equal(t, []string{"fills[1] q : b"}, a.hardErrors([]string{"fills[0] p : w", "fills[1] q : b"}))
 }
