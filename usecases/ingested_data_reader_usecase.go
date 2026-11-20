@@ -584,8 +584,9 @@ type explorationFilterRule struct {
 
 var explorationFilterRules = map[models.ExplorationFilterOperator]explorationFilterRule{
 	models.ExplorationFilterContains: {[]models.DataType{models.String, models.IpAddress}, 1},
+	// On a Bool field, NULL values match neither true nor false
 	models.ExplorationFilterIn: {
-		[]models.DataType{models.String, models.Int, models.Float},
+		[]models.DataType{models.String, models.Int, models.Float, models.Bool},
 		explorationMaxFilterInValues,
 	},
 	models.ExplorationFilterGreaterOrEqual: {[]models.DataType{models.Int, models.Float, models.Timestamp}, 1},
@@ -723,6 +724,12 @@ func coerceExplorationFilterValue(
 			return nil, errors.New("value out of range")
 		}
 		return int64(num), nil
+	case models.Bool:
+		// Only the spelling of the JSON literals, unlike strconv.ParseBool which also takes "1", "t", "TRUE"...
+		if str != "true" && str != "false" {
+			return nil, errors.New(`value must be "true" or "false"`)
+		}
+		return str == "true", nil
 	}
 	return nil, errors.New("unsupported field type")
 }

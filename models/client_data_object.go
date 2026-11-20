@@ -116,7 +116,7 @@ type ExplorationFilter struct {
 	FieldName string
 	Operator  ExplorationFilterOperator
 	// As received from the API, values are string or float64. Once validated by the usecase, they are typed
-	// according to the field data type: string, int64, float64 or time.Time.
+	// according to the field data type: string, int64, float64, bool or time.Time.
 	Values []any
 }
 

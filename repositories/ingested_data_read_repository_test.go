@@ -474,6 +474,7 @@ func listIngestedObjectsTestTable() models.Table {
 			"ip":         {Name: "ip", DataType: models.IpAddress},
 			"amount":     {Name: "amount", DataType: models.Float},
 			"count":      {Name: "count", DataType: models.Int},
+			"is_fraud":   {Name: "is_fraud", DataType: models.Bool},
 		},
 	}
 }
@@ -536,6 +537,15 @@ func TestListIngestedObjectsQueryWithFilters(t *testing.T) {
 			},
 			expected: `"test_schema"."transactions"."count" IN ($3)`,
 			args:     []any{int64(1)},
+		},
+		{
+			name: "in on bools",
+			filter: models.ExplorationFilter{
+				FieldName: "is_fraud",
+				Operator:  models.ExplorationFilterIn, Values: []any{true},
+			},
+			expected: `"test_schema"."transactions"."is_fraud" IN ($3)`,
+			args:     []any{true},
 		},
 		{
 			name: "contains",
