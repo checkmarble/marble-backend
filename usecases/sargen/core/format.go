@@ -96,21 +96,23 @@ func (sc StructuredContext) CanCarryEntity(ref ObjectRef) bool {
 
 // ChoiceBehind follows the reached-from chain of a context-only object upward,
 // through context-only objects, and returns the first object that is not context
-// only (the analyst's choice, or an auto-added direct candidate, that led to it).
-// ok is false when ref is not context only, when the chain stops on an object
-// that is not selected, or when it loops.
-func (sc StructuredContext) ChoiceBehind(ref ObjectRef) (choice ObjectRef, ok bool) {
+// only (the analyst's choice, or an auto-added direct candidate, that led to it)
+// and the length of the chain: 1 when ref was reached directly from it (a parent
+// of the choice), 2 for a parent of a parent. ok is false when ref is not context
+// only, when the chain stops on an object that is not selected, or when it loops.
+func (sc StructuredContext) ChoiceBehind(ref ObjectRef) (choice ObjectRef, depth int, ok bool) {
 	if !sc.IsContextOnly(ref) {
-		return ObjectRef{}, false
+		return ObjectRef{}, 0, false
 	}
 	seen := map[ObjectRef]bool{ref: true}
 	for cur := ref; ; {
 		next, known := sc.ReachedFrom[cur]
 		if !known || seen[next] {
-			return ObjectRef{}, false
+			return ObjectRef{}, 0, false
 		}
+		depth++
 		if !sc.IsContextOnly(next) {
-			return next, slices.Contains(sc.Selection, next)
+			return next, depth, slices.Contains(sc.Selection, next)
 		}
 		seen[next] = true
 		cur = next

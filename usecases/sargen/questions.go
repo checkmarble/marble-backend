@@ -238,9 +238,19 @@ func (uc *Usecase) chooseRemoval(ctx context.Context, q Question, opt core.Quest
 				return errOptionAlreadyApplied
 			}
 			spec := format.Spec()
-			var fills []core.Fill
+			var rewrite core.RemovalRewrite
 			if rw, ok := format.(core.ItemRemovalRewriter); ok {
-				fills = rw.RewriteBeforeRemoval(doc, item)
+				rewrite = rw.RewriteBeforeRemoval(doc, item)
+			}
+			fills := rewrite.Fills
+			for _, p := range rewrite.Clear {
+				if node := spec.NodeAt(p.Template()); node != nil {
+					switch node.EffectiveNature() {
+					case core.NatureSetting, core.NatureComputed:
+						return errors.Newf("rewrite of %s: a setting or a computed field is never cleared by an option", p)
+					}
+				}
+				delete(doc.Values, p)
 			}
 			for i, f := range fills {
 				if node := spec.NodeAt(f.Path.Template()); node != nil {

@@ -206,12 +206,16 @@ func TestContextPerson_DecliningRewritesTheTransactionsAndRemovesThePerson(t *te
 
 	rw, ok := f.(core.ItemRemovalRewriter)
 	require.True(t, ok)
-	fills := rw.RewriteBeforeRemoval(doc, person)
+	rewrite := rw.RewriteBeforeRemoval(doc, person)
+	fills := rewrite.Fills
 	for i := range fills {
 		fills[i].Origin = core.OriginAnalyst
 	}
 	res := core.ApplyFills(f.Spec(), doc, fills, core.ApplyOptions{Overwrite: core.OverwriteAll})
 	require.Empty(t, res.Rejected)
+	for _, p := range rewrite.Clear {
+		delete(doc.Values, p)
+	}
 	doc.RemoveItem(person)
 	compApply(t, f, doc, f.Compute(doc))
 
@@ -222,7 +226,8 @@ func TestContextPerson_DecliningRewritesTheTransactionsAndRemovesThePerson(t *te
 		assert.Equal(t, "FR1420041010050500013M02606", doc.Values[tx.Child("refEmission")].Value, "the IBAN as text")
 		assert.Equal(t, "Fournisseur PT", doc.Values[tx.Child("beneficiaireLibre")].Value)
 	}
-	assert.Empty(t, doc.Values[dirigeant.Child("idPersonne")].Value, "any other reference is cleared")
+	_, tombstone := doc.Values[dirigeant.Child("idPersonne")]
+	assert.False(t, tombstone, "any other reference is deleted, no analyst tombstone is left")
 	assert.Empty(t, doc.Items["personnes.pp"])
 	line := compLines(doc)
 	require.Len(t, line, 1, "the operation lines are recomputed")
@@ -248,9 +253,86 @@ func TestContextPerson_FreeTextNameOfACompanyAndOfAnUnfilledPerson(t *testing.T)
 	doc.Values[tx.Child("emetteurPersonne")] = core.Value{Value: string(pm), Origin: core.OriginLLM}
 	doc.Values[tx.Child("beneficiairePersonne")] = core.Value{Value: string(pp), Origin: core.OriginLLM}
 
-	fillsPM := rw.RewriteBeforeRemoval(doc, pm)
+	fillsPM := rw.RewriteBeforeRemoval(doc, pm).Fills
 	assert.Contains(t, fillsPM, core.Fill{Path: tx.Child("emetteurLibre"), Value: "Acme SAS"})
-	fillsPP := rw.RewriteBeforeRemoval(doc, pp)
+	fillsPP := rw.RewriteBeforeRemoval(doc, pp).Fills
 	assert.Contains(t, fillsPP, core.Fill{Path: tx.Child("beneficiaireLibre"), Value: "persons/p-A"})
 	assert.Contains(t, fillsPP, core.Fill{Path: tx.Child("beneficiairePersonne"), Value: ""})
+}
+
+// The references that cannot be written as text, and the other references, are
+// deleted, not written as empty analyst values.
+func TestContextPerson_ClearsAreDeletionsNotTombstones(t *testing.T) {
+	f := planFormat(t)
+	rw := f.(core.ItemRemovalRewriter)
+	doc := core.NewDocument()
+	pp := doc.AddItem("personnes.pp", "pp")
+	cash := doc.AddItem(pp.Child("referencesFinancieres").Child("referenceFinanciereEspeces"), "referenceFinanciereEspeces")
+	tx := doc.AddItem("work.transactions", "transactions")
+	doc.Values[tx.Child("emetteurPersonne")] = core.Value{Value: string(pp), Origin: core.OriginLLM}
+	doc.Values[tx.Child("refEmission")] = core.Value{Value: string(cash), Origin: core.OriginLLM}
+	pm := doc.AddItem("personnes.pm", "pm")
+	dirigeant := doc.AddItem(pm.Child("dirigeant"), "dirigeant")
+	doc.Values[dirigeant.Child("idPersonne")] = core.Value{Value: string(pp), Origin: core.OriginLLM}
+
+	got := rw.RewriteBeforeRemoval(doc, pp)
+
+	assert.ElementsMatch(t, []core.Path{tx.Child("refEmission"), dirigeant.Child("idPersonne")}, got.Clear)
+	for _, fl := range got.Fills {
+		assert.NotEqual(t, tx.Child("refEmission"), fl.Path)
+		assert.NotEqual(t, dirigeant.Child("idPersonne"), fl.Path)
+	}
+	assert.Contains(t, got.Fills, core.Fill{Path: tx.Child("emetteurPersonne"), Value: ""}, "the emitter is replaced, with the analyst origin")
+}
+
+// Only a chain of at most two auto-added rows makes a person directly involved.
+func TestContextPerson_ChainDeeperThanTwoIsNotKept(t *testing.T) {
+	tx, a, b, c := obj("transactions", "t-1"), obj("accounts", "a-1"), obj("accounts", "a-2"), obj("persons", "p-deep")
+	sc := core.StructuredContext{
+		Selection:   []core.ObjectRef{tx, a, b, c},
+		ContextOnly: map[core.ObjectRef]bool{a: true, b: true, c: true},
+		ReachedFrom: map[core.ObjectRef]core.ObjectRef{a: tx, b: a, c: b},
+	}
+	raw := `{"persons":[{"kind":"pp","objects":[{"table":"persons","object_id":"p-deep"}]}],"financial_refs":[],
+	 "transactions":[{"object":{"table":"transactions","object_id":"t-1"}}]}`
+	doc, qs := placeAndAsk(t, raw, sc)
+
+	assert.Empty(t, doc.Items["personnes.pp"], "a parent of a parent of a parent is background")
+	require.Len(t, qs, 1)
+	assert.Contains(t, qs[0].Text, "personne non déclarée")
+	assert.False(t, qs[0].Blocking)
+}
+
+// The cap keeps the nearest persons first, then the lowest object id, whatever
+// order the model listed them in.
+func TestContextPerson_CapKeepsTheNearestThenByObjectID(t *testing.T) {
+	tx, acc := obj("transactions", "t-1"), obj("accounts", "a-1")
+	sc := core.StructuredContext{
+		Selection:   []core.ObjectRef{tx, acc},
+		ContextOnly: map[core.ObjectRef]bool{acc: true},
+		ReachedFrom: map[core.ObjectRef]core.ObjectRef{acc: tx},
+	}
+	var persons []string
+	// Listed far-first and in descending id order: 4 deep ones (depth 2) then 4 near ones (depth 1).
+	for i, depth := range []int{2, 2, 2, 2, 1, 1, 1, 1} {
+		o := obj("persons", fmt.Sprintf("p-%d", 8-i))
+		sc.Selection = append(sc.Selection, o)
+		sc.ContextOnly[o] = true
+		if depth == 1 {
+			sc.ReachedFrom[o] = tx
+		} else {
+			sc.ReachedFrom[o] = acc
+		}
+		persons = append(persons, fmt.Sprintf(`{"kind":"pp","objects":[{"table":"persons","object_id":"p-%d"}]}`, 8-i))
+	}
+	raw := `{"persons":[` + strings.Join(persons, ",") + `],"financial_refs":[],
+	 "transactions":[{"object":{"table":"transactions","object_id":"t-1"}}]}`
+	doc, _ := placeAndAsk(t, raw, sc)
+
+	var kept []string
+	for _, k := range doc.Items["personnes.pp"] {
+		kept = append(kept, doc.ItemSources[core.Path("personnes.pp["+k+"]")][0].ObjectID)
+	}
+	// Depth 1: p-4..p-1 (p-1 lowest id first), then the lowest id of depth 2: p-5.
+	assert.ElementsMatch(t, []string{"p-1", "p-2", "p-3", "p-4", "p-5"}, kept)
 }

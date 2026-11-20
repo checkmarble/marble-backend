@@ -35,16 +35,21 @@ var referenceIdentityFields = []string{
 //
 // The fills are computed from the document as it is now, never at question
 // time: the transactions are filled after the placement.
-func (f *format) RewriteBeforeRemoval(doc *core.Document, item core.Path) []core.Fill {
+func (f *format) RewriteBeforeRemoval(doc *core.Document, item core.Path) core.RemovalRewrite {
 	if !strings.HasPrefix(string(item), "personnes.") {
-		return nil
+		return core.RemovalRewrite{}
 	}
 	name := f.personName(doc, item)
-	var fills []core.Fill
+	var rw core.RemovalRewrite
 	handled := map[core.Path]bool{}
 	put := func(p core.Path, v string) {
 		handled[p] = true
-		fills = append(fills, core.Fill{Path: p, Value: v})
+		rw.Fills = append(rw.Fills, core.Fill{Path: p, Value: v})
+	}
+	// drop deletes a value: nothing is stored at the path afterwards.
+	drop := func(p core.Path) {
+		handled[p] = true
+		rw.Clear = append(rw.Clear, p)
 	}
 	pointsAtItem := func(v string) bool { return v != "" && core.Path(v).HasPrefix(item) }
 
@@ -55,16 +60,21 @@ func (f *format) RewriteBeforeRemoval(doc *core.Document, item core.Path) []core
 			{"beneficiairePersonne", "beneficiaireLibre", "refReception"},
 		} {
 			if pointsAtItem(doc.Values[tx.Child(side.person)].Value) {
+				// The emitter / beneficiary is replaced by its free-text form.
 				put(tx.Child(side.person), "")
 				put(tx.Child(side.free), truncate(name))
 			}
 			if ref := doc.Values[tx.Child(side.ref)].Value; pointsAtItem(ref) {
-				put(tx.Child(side.ref), truncate(f.referenceText(doc, core.Path(ref))))
+				if text := truncate(f.referenceText(doc, core.Path(ref))); text != "" {
+					put(tx.Child(side.ref), text)
+				} else {
+					drop(tx.Child(side.ref)) // nothing to write as text: no analyst tombstone
+				}
 			}
 		}
 	}
 
-	// Every other reference to the person is cleared (never inside the item, which
+	// Every other reference to the person is deleted (never inside the item, which
 	// goes away with it, nor a computed field, recomputed after the removal).
 	var others []core.Path
 	for p, v := range doc.Values {
@@ -78,9 +88,9 @@ func (f *format) RewriteBeforeRemoval(doc *core.Document, item core.Path) []core
 	}
 	sort.Slice(others, func(a, b int) bool { return others[a] < others[b] })
 	for _, p := range others {
-		put(p, "")
+		drop(p)
 	}
-	return fills
+	return rw
 }
 
 func truncate(s string) string {

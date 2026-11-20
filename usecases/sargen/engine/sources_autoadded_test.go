@@ -59,7 +59,7 @@ func TestStructuredContextCarriesTheReachedFromChain(t *testing.T) {
 
 	sc := StructuredContextFor([]models.SarSelectedObject{txn, acc, holder}, toolsDataModel())
 
-	choice, ok := sc.ChoiceBehind(core.ObjectRef{Table: "persons", ObjectID: "p-1"})
+	choice, _, ok := sc.ChoiceBehind(core.ObjectRef{Table: "persons", ObjectID: "p-1"})
 	assert.True(t, ok)
 	assert.Equal(t, core.ObjectRef{Table: "transactions", ObjectID: "txn-1"}, choice)
 	_, known := sc.ReachedFrom[core.ObjectRef{Table: "transactions", ObjectID: "txn-1"}]

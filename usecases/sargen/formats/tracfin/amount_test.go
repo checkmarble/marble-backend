@@ -182,3 +182,49 @@ func TestAmount_NoCountableTransactionRemovesTheComputedTotals(t *testing.T) {
 	_, ok := doc.Values["work.montantDebits"]
 	assert.False(t, ok)
 }
+
+// The unknown country the model wrote yields to the IBAN of a declared emitter,
+// but never when reviewed, typed by the analyst or manual.
+func TestCompute_UnknownCountryOfTheModelYieldsToTheIBAN(t *testing.T) {
+	build := func(origin core.Origin, reviewed bool, value string) (*core.Document, core.Path, core.Format) {
+		doc := core.NewDocument()
+		person := doc.AddItem("personnes.pp", "pp")
+		iban := doc.AddItem(person.Child("referencesFinancieres").Child("referenceFinanciereIban"), "referenceFinanciereIban")
+		doc.Values[iban.Child("iban")] = core.Value{Value: "FR1420041010050500013M02606", Origin: core.OriginLLM}
+		doc.ItemSources[iban] = []core.ObjectRef{{Table: "accounts", ObjectID: "a-1"}}
+		tx := stakeTx(doc, "100", "debit")
+		doc.ItemSources[tx] = []core.ObjectRef{{Table: "accounts", ObjectID: "a-1"}}
+		doc.Values[tx.Child("emetteurPersonne")] = core.Value{Value: string(person), Origin: core.OriginLLM}
+		doc.Values[tx.Child("paysOrigine")] = core.Value{Value: value, Origin: origin, Reviewed: reviewed}
+		return doc, tx, computeStake(t, doc)
+	}
+
+	doc, tx, _ := build(core.OriginLLM, false, "XX")
+	assert.Equal(t, "FR", doc.Values[tx.Child("paysOrigine")].Value)
+	assert.Equal(t, core.OriginComputed, doc.Values[tx.Child("paysOrigine")].Origin)
+
+	for name, c := range map[string]struct {
+		origin   core.Origin
+		reviewed bool
+	}{"reviewed": {core.OriginLLM, true}, "analyst": {core.OriginAnalyst, false}, "manual": {core.OriginManual, false}} {
+		doc, tx, _ := build(c.origin, c.reviewed, "XX")
+		assert.Equal(t, "XX", doc.Values[tx.Child("paysOrigine")].Value, name)
+	}
+	// Another country the model wrote is not touched either.
+	doc, tx, _ = build(core.OriginLLM, false, "DE")
+	assert.Equal(t, "DE", doc.Values[tx.Child("paysOrigine")].Value)
+}
+
+func TestAmount_TotalProvenanceCitesTheJudgedDirection(t *testing.T) {
+	doc := core.NewDocument()
+	stakeTx(doc, "100", "debit")
+	stakeTx(doc, "30", "credit")
+	doc.Values["work.sensMontantTotal"] = core.Value{Value: "credit", Origin: core.OriginLLM}
+	computeStake(t, doc)
+	assert.Contains(t, doc.Values["operations.montantTotal"].Computation.Inputs, core.Path("work.sensMontantTotal"))
+
+	doc2 := core.NewDocument()
+	stakeTx(doc2, "100", "debit")
+	computeStake(t, doc2)
+	assert.NotContains(t, doc2.Values["operations.montantTotal"].Computation.Inputs, core.Path("work.sensMontantTotal"))
+}
