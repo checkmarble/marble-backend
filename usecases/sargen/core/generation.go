@@ -86,14 +86,21 @@ type QuestionDraft struct {
 
 // ItemRemovalRewriter is an optional capability of a Format: when a question
 // option removes an item (QuestionOption.RemoveItem), RewriteBeforeRemoval
-// returns, from the document as it is when the option is chosen, the fills that
-// keep the rest of the document consistent once the item is gone (e.g. a
-// reference to the item replaced by free text; an empty value clears a field).
-// The fills are applied with the analyst origin, over any existing value, then
-// the item is removed. They may write outside the paths of the question; they
-// never write a setting or a computed field.
+// returns, from the document as it is when the option is chosen, what keeps the
+// rest of the document consistent once the item is gone. The fills (a reference
+// to the item replaced by free text, for example) are applied with the analyst
+// origin, over any existing value; the Clear paths are deleted (no value is
+// stored there, so nothing later is blocked from filling them). They may write
+// outside the paths of the question; they never write a setting or a computed
+// field.
 type ItemRemovalRewriter interface {
-	RewriteBeforeRemoval(doc *Document, item Path) []Fill
+	RewriteBeforeRemoval(doc *Document, item Path) RemovalRewrite
+}
+
+// RemovalRewrite is the result of ItemRemovalRewriter.
+type RemovalRewrite struct {
+	Fills []Fill
+	Clear []Path
 }
 
 type ReviewFinding struct {
