@@ -83,6 +83,12 @@ func (uc *Usecase) DismissQuestion(ctx context.Context, questionId uuid.UUID) er
 		if cur.Status != models.SarQuestionStatusOpen {
 			return models.NewSarError(models.ConflictError, models.SarCodeQuestionClosed, "cette question est déjà fermée")
 		}
+		if cur.Severity == models.SarQuestionSeverityBlocking {
+			// A blocking question keeps the export closed until it is answered: it is
+			// never ignored, one of its options must be chosen.
+			return models.NewSarError(models.ConflictError, models.SarCodeQuestionBlocking,
+				"cette question doit être tranchée par une de ses options")
+		}
 		return uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{questionId}, models.SarQuestionStatusDismissed)
 	})
 }
@@ -234,10 +240,20 @@ func (uc *Usecase) chooseRemoval(ctx context.Context, q Question, opt core.Quest
 	}
 	st, err := uc.mutateWithPost(ctx, q.DeclarationId, version,
 		func(format core.Format, doc *core.Document, _, _ *string) error {
+			spec := format.Spec()
+			// Same checks as the removal of an item by hand: a list item, not of a
+			// container the backend computes.
+			n := spec.NodeAt(item.Template())
+			if !strings.HasSuffix(string(item), "]") || n == nil || !n.IsRepeatable() {
+				return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest, "%s n'est pas un élément de liste", item)
+			}
+			if onlyComputed(n) {
+				return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest,
+					"%s est calculée : les éléments ne se retirent pas à la main", item)
+			}
 			if !itemExists(doc, item) {
 				return errOptionAlreadyApplied
 			}
-			spec := format.Spec()
 			var rewrite core.RemovalRewrite
 			if rw, ok := format.(core.ItemRemovalRewriter); ok {
 				rewrite = rw.RewriteBeforeRemoval(doc, item)

@@ -236,6 +236,10 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 		}
 		if len(newRows) > 0 {
 			if err := uc.selectionRepo.AddSarSelection(ctx, tx, newRows); err != nil {
+				if errors.Is(err, models.ConflictError) {
+					return models.NewSarError(models.ConflictError, models.SarCodeAlreadySelected,
+						"objet déjà sélectionné pour cette déclaration")
+				}
 				return err
 			}
 		}
