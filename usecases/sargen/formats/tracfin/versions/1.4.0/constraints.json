@@ -100,6 +100,16 @@
  ],
  "unknown_codes": [
  {
+   "list": "liste_ref_pays.csv",
+   "code": "XX",
+   "source": "inputs/referentiels/pays.csv : la ligne XX;Inconnu du référentiel officiel des pays (liste_ref_pays.csv) ; décision de conception : XX est le pays à prendre quand les données ne disent rien, plutôt que de laisser le champ vide et de bloquer l'export ; un vrai code pays reste soumis aux règles habituelles de preuve"
+  },
+ {
+   "list": "liste_ref_dromcom.csv+liste_ref_pays.csv",
+   "code": "XX",
+   "source": "inputs/referentiels/pays.csv : la ligne XX;Inconnu du référentiel officiel des pays, reprise dans la liste union DROM-COM + pays (t_pays_dromcom) ; décision de conception : XX est le pays à prendre quand les données ne disent rien ; un vrai code pays reste soumis aux règles habituelles de preuve"
+  },
+ {
    "list": "t_choix_oui_non_nesaispas",
    "code": "Je ne sais pas",
    "strict_codes": ["Non"],
@@ -606,6 +616,21 @@
    "source": "Plan Task 2 ; analysis.md §5 : correspondant, réglage de l'organisation"
   },
   {
+   "template": "work.montantCredits",
+   "nature": "computed",
+   "source": "Fiche de cadrage TRACFIN « Le montant en jeu » (juin 2025) : les crédits et les débits ne s'additionnent pas ; le backend calcule chaque total à part (champ de travail, jamais exporté)"
+  },
+  {
+   "template": "work.montantDebits",
+   "nature": "computed",
+   "source": "Fiche de cadrage TRACFIN « Le montant en jeu » (juin 2025) : les crédits et les débits ne s'additionnent pas ; le backend calcule chaque total à part (champ de travail, jamais exporté)"
+  },
+  {
+   "template": "work.sensMontantTotal",
+   "nature": "judgment",
+   "source": "Fiche de cadrage TRACFIN « Le montant en jeu » (juin 2025) : le déclarant retient le sens le plus significatif pour la typologie ; choix fait à l'étape de jugement"
+  },
+  {
    "template": "analyse",
    "nature": "analyst",
    "source": "Plan Task 2 ; analysis.md §9 : narratif rédigé par l'analyste"
@@ -795,7 +820,33 @@
   "root": {
    "name": "work",
    "label": "Travail (non exporté)",
-   "description": "Données de travail qui ne figurent pas dans le XML : le backend en déduit les lignes de operations."
+   "description": "Données de travail qui ne figurent pas dans le XML : le backend en déduit les lignes de operations.",
+   "fields": [
+    {
+     "name": "montantCredits",
+     "type": "decimal",
+     "min": 0,
+     "max_length": 15,
+     "label": "Total des crédits",
+     "description": "Total des transactions comptées de sens crédit (calculé). Il ne s'ajoute jamais au total des débits."
+    },
+    {
+     "name": "montantDebits",
+     "type": "decimal",
+     "min": 0,
+     "max_length": 15,
+     "label": "Total des débits",
+     "description": "Total des transactions comptées de sens débit (calculé). Il ne s'ajoute jamais au total des crédits."
+    },
+    {
+     "name": "sensMontantTotal",
+     "type": "code",
+     "min": 0,
+     "code_list": "sens_transaction",
+     "label": "Sens du montant en jeu",
+     "description": "Sens des flux suspects retenu pour le montant total de la déclaration (étape de jugement). Vide : le backend retient le sens dont le total est le plus élevé."
+    }
+   ]
   },
   "items": {
    "name": "transactions",

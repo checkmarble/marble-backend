@@ -229,9 +229,39 @@ func TestSpec_UnknownCodes(t *testing.T) {
 			}
 			continue
 		}
+		if name == "liste_ref_pays.csv" || name == "liste_ref_dromcom.csv+liste_ref_pays.csv" {
+			// "Inconnu" (XX) is a real line of pays.csv; a real country code keeps the
+			// usual proof rules (no strict code).
+			assert.Equal(t, "XX", list.UnknownCode, name)
+			assert.Empty(t, list.StrictCodes, name)
+			continue
+		}
 		assert.Equal(t, "Je ne sais pas", list.UnknownCode, name)
 		assert.Equal(t, []string{"Non"}, list.StrictCodes, name)
 	}
-	assert.Equal(t, map[string]bool{"t_choix_oui_non_nesaispas": true, "t_registre": true, "liste_ref_sexe.csv": true}, declared)
+	assert.Equal(t, map[string]bool{
+		"t_choix_oui_non_nesaispas": true, "t_registre": true, "liste_ref_sexe.csv": true,
+		"liste_ref_pays.csv": true, "liste_ref_dromcom.csv+liste_ref_pays.csv": true,
+	}, declared)
 	assert.Empty(t, s.CodeLists["t_implication"].UnknownCode)
+}
+
+// The amount at stake is built from separate working totals; the judgment step
+// picks the direction. None of the three working fields is exported.
+func TestSpec_AmountAtStakeWorkFields(t *testing.T) {
+	s, ok := tracfin.Spec(tracfin.CurrentVersion)
+	require.True(t, ok)
+
+	for _, tmpl := range []string{"work.montantCredits", "work.montantDebits"} {
+		n := s.NodeAt(tmpl)
+		require.NotNil(t, n, tmpl)
+		assert.False(t, n.Export, tmpl)
+		assert.Equal(t, core.NatureComputed, n.EffectiveNature(), tmpl)
+		assert.Equal(t, core.TypeDecimal, n.Type, tmpl)
+	}
+	n := s.NodeAt("work.sensMontantTotal")
+	require.NotNil(t, n)
+	assert.False(t, n.Export)
+	assert.Equal(t, core.NatureJudgment, n.EffectiveNature())
+	assert.Equal(t, "sens_transaction", n.CodeList)
 }

@@ -179,3 +179,16 @@ func TestNew_ReturnsTheSharedInstance(t *testing.T) {
 	_, ok = tracfin.New("0.0.1")
 	assert.False(t, ok)
 }
+
+// "Inconnu" (XX) is a published line of the country list: the validator accepts
+// it on the country nodes, and the country lists declare it as their unknown code.
+func TestUnknownCountryIsAcceptedAndDeclared(t *testing.T) {
+	spec := currentSpec(t)
+	for _, name := range []string{"liste_ref_pays.csv", "liste_ref_dromcom.csv+liste_ref_pays.csv"} {
+		list := spec.CodeLists[name]
+		assert.Equal(t, "XX", list.UnknownCode, name)
+		assert.True(t, slices.ContainsFunc(list.Codes, func(c core.Code) bool { return c.Value == "XX" && c.Label == "Inconnu" }), name)
+	}
+	assert.Nil(t, core.ValidateValue(spec, "work.transactions[k-1].paysOrigine", "XX"))
+	assert.Nil(t, core.ValidateValue(spec, "organisme.adresse.pays", "XX"))
+}

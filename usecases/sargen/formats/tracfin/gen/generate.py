@@ -802,6 +802,31 @@ def under(template, prefix):
     return template == prefix or template.startswith(prefix + ".")
 
 
+def working_field(gen, parent_template, field):
+    """Build one working (non exported) field node under parent_template."""
+    ftemplate = join_template(parent_template, field["name"])
+    node = base_node(field["name"], ftemplate, "field", field.get("min", 0), field.get("max", 1))
+    node["export"] = False
+    node["type"] = field["type"]
+    if field["type"] not in FIELD_TYPES and field["type"] != "ref":
+        fail("%s: unknown type %r" % (ftemplate, field["type"]))
+    for key in ("max_length", "min_length", "pattern", "code_list", "ref_targets", "label", "description"):
+        if key in field:
+            node[key] = field[key]
+    if "pattern" in node:
+        check_regex(node["pattern"], ftemplate)
+    if node["type"] == "code":
+        list_name = node.get("code_list")
+        if list_name is None:
+            fail("%s: code field without code_list" % ftemplate)
+        if list_name not in gen.code_lists:
+            if "+" in list_name:
+                gen.merged_list(list_name.split("+"))
+            else:
+                fail("%s: unknown code list %s" % (ftemplate, list_name))
+    return node
+
+
 def add_working_nodes(gen, root):
     spec = gen.constraints["working_nodes"]
     require_source(spec, "working_nodes")
@@ -816,30 +841,9 @@ def add_working_nodes(gen, root):
     tx["export"] = False
     tx["label"] = items["label"]
     tx["description"] = items["description"]
-    tx["children"] = []
-    for field in items["fields"]:
-        ftemplate = join_template(template, field["name"])
-        node = base_node(field["name"], ftemplate, "field", field.get("min", 0), field.get("max", 1))
-        node["export"] = False
-        node["type"] = field["type"]
-        if field["type"] not in FIELD_TYPES and field["type"] != "ref":
-            fail("%s: unknown type %r" % (ftemplate, field["type"]))
-        for key in ("max_length", "min_length", "pattern", "code_list", "ref_targets", "label", "description"):
-            if key in field:
-                node[key] = field[key]
-        if "pattern" in node:
-            check_regex(node["pattern"], ftemplate)
-        if node["type"] == "code":
-            list_name = node.get("code_list")
-            if list_name is None:
-                fail("%s: code field without code_list" % ftemplate)
-            if list_name not in gen.code_lists:
-                if "+" in list_name:
-                    gen.merged_list(list_name.split("+"))
-                else:
-                    fail("%s: unknown code list %s" % (ftemplate, list_name))
-        tx["children"].append(node)
-    work["children"] = [tx]
+    tx["children"] = [working_field(gen, template, field) for field in items["fields"]]
+    # Fields directly under `work` (computed totals, judgment choices), before the items.
+    work["children"] = [working_field(gen, work["template"], field) for field in wroot.get("fields", [])] + [tx]
     root["children"].append(work)
 
 

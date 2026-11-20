@@ -1934,7 +1934,8 @@
     }
    ],
    "name": "liste_ref_dromcom.csv+liste_ref_pays.csv",
-   "source": "union de liste_ref_dromcom.csv, liste_ref_pays.csv"
+   "source": "union de liste_ref_dromcom.csv, liste_ref_pays.csv",
+   "unknown_code": "XX"
   },
   "liste_ref_fonction_dirigeant.csv": {
    "codes": [
@@ -3180,7 +3181,8 @@
     }
    ],
    "name": "liste_ref_pays.csv",
-   "source": "inputs/referentiels/pays.csv ; financier-v1.4.0.xsd:476-490 (t_pays) ; analysis.md §13 (pays.csv, 240 codes) ; excluded codes: 1"
+   "source": "inputs/referentiels/pays.csv ; financier-v1.4.0.xsd:476-490 (t_pays) ; analysis.md §13 (pays.csv, 240 codes) ; excluded codes: 1",
+   "unknown_code": "XX"
   },
   "liste_ref_piece_jointe.csv": {
    "codes": [
@@ -10606,6 +10608,45 @@
    },
    {
     "children": [
+     {
+      "description": "Total des transactions comptées de sens crédit (calculé). Il ne s'ajoute jamais au total des débits.",
+      "export": false,
+      "kind": "field",
+      "label": "Total des crédits",
+      "max": 1,
+      "max_length": 15,
+      "min": 0,
+      "name": "montantCredits",
+      "nature": "computed",
+      "template": "work.montantCredits",
+      "type": "decimal"
+     },
+     {
+      "description": "Total des transactions comptées de sens débit (calculé). Il ne s'ajoute jamais au total des crédits.",
+      "export": false,
+      "kind": "field",
+      "label": "Total des débits",
+      "max": 1,
+      "max_length": 15,
+      "min": 0,
+      "name": "montantDebits",
+      "nature": "computed",
+      "template": "work.montantDebits",
+      "type": "decimal"
+     },
+     {
+      "code_list": "sens_transaction",
+      "description": "Sens des flux suspects retenu pour le montant total de la déclaration (étape de jugement). Vide : le backend retient le sens dont le total est le plus élevé.",
+      "export": false,
+      "kind": "field",
+      "label": "Sens du montant en jeu",
+      "max": 1,
+      "min": 0,
+      "name": "sensMontantTotal",
+      "nature": "judgment",
+      "template": "work.sensMontantTotal",
+      "type": "code"
+     },
      {
       "children": [
        {
