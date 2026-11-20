@@ -121,6 +121,13 @@ func neverSendBack(code string) bool {
 	return code == core.CodeRequired || code == core.CodeTooFewItems
 }
 
+// pendingFill is a fill of an answer that passed the form checks, with its
+// position in the answer.
+type pendingFill struct {
+	idx  int
+	fill core.Fill
+}
+
 // checkFills controls a final answer of a fill task.
 func (c *checker) checkFills(final json.RawMessage) checkResult {
 	var res checkResult
@@ -130,17 +137,13 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 		return res
 	}
 
-	type pending struct {
-		idx  int
-		fill core.Fill
-	}
 	// Last wins when a path appears several times in one answer.
 	last := map[core.Path]int{}
 	for i, w := range out.Fills {
 		last[core.Path(w.Path)] = i
 	}
 	var (
-		good          []pending
+		good          []pendingFill
 		unprovenFills []core.Fill
 	)
 	for i, w := range out.Fills {
@@ -174,12 +177,12 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 			res.Notes = append(res.Notes, fmt.Sprintf("fills[%d] %s : strict code without a strict proof, turned into a question", i, path))
 			continue
 		}
-		good = append(good, pending{i, f})
+		good = append(good, pendingFill{i, f})
 	}
 
 	// References to items created in the same answer ([+a]) are applied after
 	// the other values, so that the item exists when they are checked.
-	slices.SortStableFunc(good, func(x, y pending) int {
+	slices.SortStableFunc(good, func(x, y pendingFill) int {
 		return boolToInt(c.isRefFill(x.fill)) - boolToInt(c.isRefFill(y.fill))
 	})
 
@@ -202,9 +205,14 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 			}
 		}
 	}
+	ruleIssues := c.newRuleIssues(clone, good, rejectedIdx)
 	for i, g := range good {
 		issue, bad := rejectedIdx[i]
 		if !bad {
+			if rule, hit := ruleIssues[g.fill.Path]; hit {
+				res.Corrections = append(res.Corrections, fmt.Sprintf("fills[%d] %s : %s", g.idx, g.fill.Path, rule.Message))
+				continue
+			}
 			res.Fills = append(res.Fills, g.fill)
 			continue
 		}
@@ -224,6 +232,46 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 	}
 	c.checkQuestions(&res, out.Questions, clone)
 	return res
+}
+
+// newRuleIssues returns, by path, the format rule issues (code `rule:*`, a
+// warning as well as a blocking one) that the candidate fills cause: present
+// when the document is validated with the fills applied (after), absent from the
+// document before them, and on a path one of the accepted fills writes. A
+// `required` issue, an issue already in the document and an issue on a path the
+// task does not write are not the fills' doing and are ignored: the fill that
+// triggers a rule is sent back to the model with the message of the rule.
+func (c *checker) newRuleIssues(after *core.Document, good []pendingFill, rejected map[int]core.Issue) map[core.Path]core.Issue {
+	written := map[core.Path]bool{}
+	for i, g := range good {
+		if _, bad := rejected[i]; !bad {
+			written[g.fill.Path] = true
+		}
+	}
+	if len(written) == 0 {
+		return nil
+	}
+	type key struct {
+		code string
+		path core.Path
+	}
+	before := map[key]bool{}
+	for _, is := range c.tc.Format.Validate(c.tc.Doc) {
+		before[key{is.Code, is.Path}] = true
+	}
+	var out map[core.Path]core.Issue
+	for _, is := range c.tc.Format.Validate(after) {
+		if !strings.HasPrefix(is.Code, "rule:") || !written[is.Path] || before[key{is.Code, is.Path}] {
+			continue
+		}
+		if out == nil {
+			out = map[core.Path]core.Issue{}
+		}
+		if _, dup := out[is.Path]; !dup {
+			out[is.Path] = is
+		}
+	}
+	return out
 }
 
 func boolToInt(b bool) int {
