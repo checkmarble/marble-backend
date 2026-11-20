@@ -164,7 +164,13 @@ func TestValidateExplorationFilters(t *testing.T) {
 		{"in on Float with string", "amount", in, []any{"1.5"}, nil},
 		{"in on IpAddress", "ip", in, []any{"1.1.1.1"}, nil},
 		{"in on Timestamp", "created_at", in, []any{"2026-01-01T00:00:00Z"}, nil},
-		{"in on Bool", "is_fraud", in, []any{"true"}, nil},
+		{"in on Bool with true", "is_fraud", in, []any{"true"}, []any{true}},
+		{"in on Bool with false", "is_fraud", in, []any{"false"}, []any{false}},
+		{"in on Bool with both", "is_fraud", in, []any{"true", "false"}, []any{true, false}},
+		{"in on Bool with another string", "is_fraud", in, []any{"yes"}, nil},
+		{"in on Bool with upper case", "is_fraud", in, []any{"TRUE"}, nil},
+		{"in on Bool with number", "is_fraud", in, []any{1.0}, nil},
+		{"in on Bool with empty string", "is_fraud", in, []any{""}, nil},
 		{"in on Coords", "location", in, []any{"1"}, nil},
 
 		// comparisons
@@ -206,6 +212,7 @@ func TestValidateExplorationFilters(t *testing.T) {
 		{">= with two values", "amount", gte, []any{1.0, 2.0}, nil},
 		{">= on String", "label", gte, []any{"a"}, nil},
 		{"<= on IpAddress", "ip", lte, []any{"1.1.1.1"}, nil},
+		{">= on Bool", "is_fraud", gte, []any{"true"}, nil},
 		{"< on Bool", "is_fraud", lt, []any{1.0}, nil},
 		{"< on Coords", "location", lt, []any{1.0}, nil},
 		{"< on unknown type", "unknown", lt, []any{1.0}, nil},
