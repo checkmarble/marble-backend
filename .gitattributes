@@ -1,0 +1,2 @@
+# Pinned TRACFIN inputs: bytes must stay exactly as published (sha256 in manifest.json).
+usecases/sargen/formats/tracfin/versions/**/inputs/** -text
