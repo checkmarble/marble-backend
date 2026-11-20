@@ -433,7 +433,9 @@ func computeAfterCorrectionSpec(wave int) core.TaskSpec {
 }
 
 func (f *format) judgmentSpec(st core.PlanState) core.TaskSpec {
-	allowed := []core.Path{"context.natureSoupcon", "context.information"}
+	// work.sensMontantTotal: the direction (debit or credit) the amount at stake is
+	// counted in; the backend adds up each direction and keeps this one.
+	allowed := []core.Path{"context.natureSoupcon", "context.information", workChosenDirection}
 	for _, kind := range personKinds {
 		container := core.Path("personnes." + kind)
 		for _, key := range st.Doc.Items[container] {

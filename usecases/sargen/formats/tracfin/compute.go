@@ -17,6 +17,12 @@ const (
 	operationsPeriodStart core.Path = "operations.dateDebut"
 	operationsPeriodEnd   core.Path = "operations.dateFin"
 	operationsTotal       core.Path = "operations.montantTotal"
+	workCredits           core.Path = "work.montantCredits"
+	workDebits            core.Path = "work.montantDebits"
+	workChosenDirection   core.Path = "work.sensMontantTotal"
+
+	directionDebit  = "debit"
+	directionCredit = "credit"
 
 	computationOperations = "operations_from_transactions"
 	maxOperationLines     = 30
@@ -76,11 +82,22 @@ type opGroup struct {
 // recomputed while it stays computed, and never replaces a value written by the
 // analyst or the model, nor a field the analyst cleared by hand.
 //
+// Direction and amount at stake (TRACFIN focus sheet « Le montant en jeu »):
+// debits and credits are never added together. The direction of a transaction is
+// its sens; when empty (or computed) it is derived: debit when the emitter is a
+// declared person and the beneficiary is not, credit in the opposite case,
+// unknown otherwise. The totals of the countable credits and of the countable
+// debits go to work.montantCredits and work.montantDebits (computed, not
+// exported). operations.montantTotal is the total of the direction chosen at the
+// judgment step (work.sensMontantTotal), else the larger of the two; the
+// transactions of unknown direction count in neither, and when none has a known
+// direction the total is the sum of all of them (see stake).
+//
 // A line whose group attributes change gets a NEW path (the old line is removed):
 // questions that cite the old line path become stale.
 func (f *format) Compute(doc *core.Document) core.ComputeResult {
 	var res core.ComputeResult
-	groups, order, minDate, maxDate, total, totalFrac, refFills := groupTransactions(f.spec, doc)
+	groups, order, minDate, maxDate, st, refFills := groupTransactions(f.spec, doc)
 	res.Fills = append(res.Fills, refFills...)
 
 	if len(groups) == 0 {
@@ -91,10 +108,6 @@ func (f *format) Compute(doc *core.Document) core.ComputeResult {
 
 	comp := func(inputs []core.Path) *core.Computation {
 		return &core.Computation{Name: computationOperations, Inputs: inputs}
-	}
-	var allInputs []core.Path
-	for _, k := range order {
-		allInputs = append(allInputs, groups[k].txs...)
 	}
 	put := func(p core.Path, v string, inputs []core.Path) {
 		res.Fills = append(res.Fills, core.Fill{Path: p, Value: v, Origin: core.OriginComputed, Computation: comp(inputs)})
@@ -117,7 +130,20 @@ func (f *format) Compute(doc *core.Document) core.ComputeResult {
 			}
 		}
 	}
-	put(operationsTotal, formatDecimal(total, totalFrac), txAmounts(allInputs))
+	total, totalFrac, totalTxs, _ := st.total(chosenDirection(doc))
+	put(operationsTotal, formatDecimal(total, totalFrac), txAmounts(totalTxs))
+	// The two direction totals: written while a transaction has that direction,
+	// a stale computed one goes away.
+	for _, d := range []struct {
+		path core.Path
+		side *directionTotal
+	}{{workCredits, &st.credits}, {workDebits, &st.debits}} {
+		if len(d.side.txs) > 0 {
+			put(d.path, formatDecimal(d.side.sum, d.side.frac), txAmounts(d.side.txs))
+		} else if v, ok := doc.Values[d.path]; ok && v.Origin == core.OriginComputed {
+			res.RemoveItems = append(res.RemoveItems, d.path)
+		}
+	}
 
 	// Match the existing lines with the groups.
 	existing := map[string]core.Path{}
@@ -183,20 +209,117 @@ func countableTransaction(val func(name string) string) (amount *big.Rat, frac i
 	return amount, frac, txCountable
 }
 
+// directionTotal is the sum of the countable transactions of one direction.
+type directionTotal struct {
+	sum  *big.Rat
+	frac int
+	txs  []core.Path
+}
+
+func (d *directionTotal) add(tx core.Path, amount *big.Rat, frac int) {
+	if d.sum == nil {
+		d.sum = new(big.Rat)
+	}
+	d.sum.Add(d.sum, amount)
+	d.frac = max(d.frac, frac)
+	d.txs = append(d.txs, tx)
+}
+
+func (d *directionTotal) value() *big.Rat {
+	if d.sum == nil {
+		return new(big.Rat)
+	}
+	return d.sum
+}
+
+// stake is what the countable transactions add up to, by direction.
+type stake struct {
+	credits, debits, all directionTotal
+	// unknown is the number of countable transactions whose direction is not known.
+	unknown int
+}
+
+func (s *stake) add(tx core.Path, amount *big.Rat, frac int, direction string) {
+	s.all.add(tx, amount, frac)
+	switch direction {
+	case directionCredit:
+		s.credits.add(tx, amount, frac)
+	case directionDebit:
+		s.debits.add(tx, amount, frac)
+	default:
+		s.unknown++
+	}
+}
+
+// Why a direction was kept for the amount at stake.
+const (
+	basisJudgment = "judgment"
+	basisLarger   = "larger"
+	basisAll      = "all"
+)
+
+// total is the amount at stake: the total of the chosen direction when it has
+// transactions, else the larger of the two (credits on a tie), else, when no
+// transaction has a known direction, the sum of all of them. It returns the
+// total, its fraction digits, the transactions it counts and why that
+// direction was kept.
+func (s *stake) total(chosen string) (total *big.Rat, frac int, txs []core.Path, basis string) {
+	side := func(d *directionTotal) (*big.Rat, int, []core.Path) { return d.value(), d.frac, d.txs }
+	switch {
+	case len(s.credits.txs) == 0 && len(s.debits.txs) == 0:
+		total, frac, txs = side(&s.all)
+		return total, frac, txs, basisAll
+	case chosen == directionCredit && len(s.credits.txs) > 0:
+		total, frac, txs = side(&s.credits)
+		return total, frac, txs, basisJudgment
+	case chosen == directionDebit && len(s.debits.txs) > 0:
+		total, frac, txs = side(&s.debits)
+		return total, frac, txs, basisJudgment
+	case s.credits.value().Cmp(s.debits.value()) >= 0:
+		total, frac, txs = side(&s.credits)
+	default:
+		total, frac, txs = side(&s.debits)
+	}
+	return total, frac, txs, basisLarger
+}
+
+// chosenDirection is the direction the judgment step (or the analyst) chose for
+// the amount at stake; empty when none or not a direction.
+func chosenDirection(doc *core.Document) string {
+	switch d := strings.TrimSpace(doc.Values[workChosenDirection].Value); d {
+	case directionCredit, directionDebit:
+		return d
+	}
+	return ""
+}
+
+// transactionDirection derives the direction of a transaction from who is a
+// declared person: debit when only the emitter is, credit when only the
+// beneficiary is, unknown otherwise.
+func transactionDirection(emitterPerson, beneficiaryPerson string) string {
+	switch {
+	case emitterPerson != "" && beneficiaryPerson == "":
+		return directionDebit
+	case beneficiaryPerson != "" && emitterPerson == "":
+		return directionCredit
+	}
+	return ""
+}
+
 // groupTransactions builds the groups of the usable transactions, in order of
-// first appearance, with the period, the total and the derived references.
+// first appearance, with the period, the totals by direction and the derived
+// references and directions.
 func groupTransactions(spec *core.Spec, doc *core.Document) (groups map[string]*opGroup, order []string, minDate, maxDate string,
-	total *big.Rat, totalFrac int, refFills []core.Fill,
+	st stake, refFills []core.Fill,
 ) {
 	groups = map[string]*opGroup{}
-	total = new(big.Rat)
 	for _, k := range doc.Items[transactionsContainer] {
 		tx := core.Path(string(transactionsContainer) + "[" + k + "]")
 		val := func(name string) string { return strings.TrimSpace(doc.Values[tx.Child(name)].Value) }
 		// derived returns the value a derivable field has once derivation ran, and
 		// the fill to write: derivation applies when the field is empty (and not
 		// cleared by hand) or holds a computed value.
-		derived := func(name, derivation string) string {
+		derived := func(name, derivation string, inputs ...core.Path) string {
 			cur := doc.Values[tx.Child(name)]
 			if cur.Value != "" && cur.Origin != core.OriginComputed {
 				return strings.TrimSpace(cur.Value)
@@ -206,7 +329,7 @@ func groupTransactions(spec *core.Spec, doc *core.Document) (groups map[string]*
 			}
 			if derivation != cur.Value {
 				refFills = append(refFills, core.Fill{Path: tx.Child(name), Value: derivation,
-					Origin: core.OriginComputed, Computation: &core.Computation{Name: computationOperations}})
+					Origin: core.OriginComputed, Computation: &core.Computation{Name: computationOperations, Inputs: inputs}})
 			}
 			return derivation
 		}
@@ -220,6 +343,8 @@ func groupTransactions(spec *core.Spec, doc *core.Document) (groups map[string]*
 		refTo := derived("refReception", string(derivedFinancialRef(doc, tx, val("beneficiairePersonne"))))
 		countryFrom := derived("paysOrigine", ibanCountry(spec, doc, refFrom))
 		countryTo := derived("paysArrivee", ibanCountry(spec, doc, refTo))
+		direction := derived("sens", transactionDirection(val("emetteurPersonne"), val("beneficiairePersonne")),
+			tx.Child("emetteurPersonne"), tx.Child("beneficiairePersonne"))
 		attrs := map[string]string{
 			lineType: val("typeOperation"), lineOtherType: val("autretypeOperation"),
 			lineEmitter: emitter, lineRefFrom: refFrom,
@@ -237,8 +362,7 @@ func groupTransactions(spec *core.Spec, doc *core.Document) (groups map[string]*
 		g.sum.Add(g.sum, amount)
 		g.count++
 		g.maxFrac = max(g.maxFrac, frac)
-		total.Add(total, amount)
-		totalFrac = max(totalFrac, frac)
+		st.add(tx, amount, frac, direction)
 		if d := val("date"); validDate(d) {
 			if minDate == "" || d < minDate {
 				minDate = d
@@ -248,14 +372,14 @@ func groupTransactions(spec *core.Spec, doc *core.Document) (groups map[string]*
 			}
 		}
 	}
-	return groups, order, minDate, maxDate, total, totalFrac, refFills
+	return groups, order, minDate, maxDate, st, refFills
 }
 
 // removeComputedOperations lists the computed operations values and lines to
 // remove when no transaction is usable. Values the analyst wrote stay.
 func removeComputedOperations(doc *core.Document) []core.Path {
 	var out []core.Path
-	for _, p := range []core.Path{operationsPeriodStart, operationsPeriodEnd, operationsTotal} {
+	for _, p := range []core.Path{operationsPeriodStart, operationsPeriodEnd, operationsTotal, workCredits, workDebits} {
 		if v, ok := doc.Values[p]; ok && v.Origin == core.OriginComputed {
 			out = append(out, p)
 		}
@@ -406,4 +530,47 @@ func tooManyOperationsIssue(issues []core.Issue, doc *core.Document) {
 // the operations is "à l'appréciation du déclarant" (core.ConfirmComputer).
 func (f *format) ConfirmComputed() []core.Path {
 	return []core.Path{operationsTotal}
+}
+
+// ComputedNote is the message that goes with a computed value the analyst is
+// asked to confirm. For the total of the operations it gives the total of the
+// credits, the total of the debits, the direction kept and why, and the number
+// of transactions without a direction (they count in neither total).
+func (f *format) ComputedNote(doc *core.Document, p core.Path) string {
+	if p != operationsTotal || doc == nil {
+		return ""
+	}
+	var st stake
+	for _, k := range doc.Items[transactionsContainer] {
+		tx := core.Path(string(transactionsContainer) + "[" + k + "]")
+		val := func(name string) string { return strings.TrimSpace(doc.Values[tx.Child(name)].Value) }
+		amount, frac, status := countableTransaction(val)
+		if status != txCountable {
+			continue
+		}
+		st.add(tx, amount, frac, val("sens"))
+	}
+	chosen := chosenDirection(doc)
+	_, _, _, basis := st.total(chosen)
+	money := func(d *directionTotal) string { return formatDecimal(d.value(), d.frac) + " EUR" }
+	label := map[string]string{directionCredit: "crédit", directionDebit: "débit"}
+	msg := fmt.Sprintf("valeur calculée à confirmer : le montant total. Crédits : %s ; débits : %s", money(&st.credits), money(&st.debits))
+	switch basis {
+	case basisAll:
+		msg += ". Aucune transaction n'a de sens connu : le total additionne toutes les transactions comptées, crédits et débits confondus ; " +
+			"renseignez le sens des transactions pour ne retenir qu'un sens"
+	case basisJudgment:
+		msg += ". Sens retenu : " + label[chosen] + " (choisi à l'étape de jugement)"
+	default:
+		reason := "le plus élevé, faute de choix"
+		if chosen != "" {
+			reason = "le plus élevé : aucune transaction dans le sens choisi à l'étape de jugement"
+		}
+		kept := directionCredit
+		if st.credits.value().Cmp(st.debits.value()) < 0 {
+			kept = directionDebit
+		}
+		msg += ". Sens retenu : " + label[kept] + " (" + reason + ")"
+	}
+	return msg + fmt.Sprintf(". Transactions sans sens : %d (comptées dans aucun total).", st.unknown)
 }

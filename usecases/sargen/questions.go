@@ -120,10 +120,14 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 		return DeclarationState{}, errors.Wrap(models.BadParameterError, "option inconnue")
 	}
 	opt := q.Options[optionIndex]
+	if opt.RemoveItem != "" {
+		return uc.chooseRemoval(ctx, q, opt, version)
+	}
 	if len(opt.Fills) == 0 {
-		if questionCreatesItem(q) {
-			// « Do not add »: the option declines the addition proposed by a
-			// sibling option. It closes the question and writes nothing.
+		if questionCreatesItem(q) || questionRemovesItem(q) {
+			// « Do not add » / « keep »: the option declines the addition proposed by
+			// a sibling option, or keeps the item a sibling option removes. It
+			// closes the question and writes nothing.
 			return uc.declineQuestion(ctx, q, version)
 		}
 		return DeclarationState{}, errors.Wrap(models.BadParameterError, "cette option ne propose aucune valeur")
@@ -213,6 +217,105 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 		return uc.declineQuestion(ctx, q, version)
 	}
 	return st, err
+}
+
+// chooseRemoval applies an option that removes an item of the question. In one
+// write: the fills the format gives for the item about to be removed
+// (core.ItemRemovalRewriter, computed now from the current document), applied
+// with the analyst origin over any value, then the item removed with everything
+// below it, then the computed values recomputed. The question is closed as
+// resolved, and so are the other open questions about the removed item. An
+// item that is already gone only closes the question. A stale version is a
+// conflict like any write.
+func (uc *Usecase) chooseRemoval(ctx context.Context, q Question, opt core.QuestionOption, version int) (DeclarationState, error) {
+	item := opt.RemoveItem
+	if !core.PathAllowed(item, q.Paths) {
+		return DeclarationState{}, errors.Wrap(models.BadParameterError, "l'élément à retirer ne fait pas partie des champs de la question")
+	}
+	st, err := uc.mutateWithPost(ctx, q.DeclarationId, version,
+		func(format core.Format, doc *core.Document, _, _ *string) error {
+			if !itemExists(doc, item) {
+				return errOptionAlreadyApplied
+			}
+			spec := format.Spec()
+			var fills []core.Fill
+			if rw, ok := format.(core.ItemRemovalRewriter); ok {
+				fills = rw.RewriteBeforeRemoval(doc, item)
+			}
+			for i, f := range fills {
+				if node := spec.NodeAt(f.Path.Template()); node != nil {
+					switch node.EffectiveNature() {
+					case core.NatureSetting, core.NatureComputed:
+						return errors.Newf("rewrite of %s: a setting or a computed field is never written by an option", f.Path)
+					}
+				}
+				f.Origin, f.TaskID = core.OriginAnalyst, nil
+				fills[i] = f
+			}
+			res := core.ApplyFills(spec, doc, fills, core.ApplyOptions{Overwrite: core.OverwriteAll})
+			var issues []core.Issue
+			for _, r := range res.Rejected {
+				issues = append(issues, r.Issue)
+			}
+			if len(issues) > 0 {
+				return issuesToError(issues)
+			}
+			var paths []core.Path
+			for _, f := range fills {
+				if f.Value != "" {
+					paths = append(paths, f.Path)
+				}
+			}
+			if issues := core.MarkReviewed(spec, doc, paths); len(issues) > 0 {
+				return issuesToError(issues)
+			}
+			doc.RemoveItem(item)
+			uc.recompute(ctx, format, doc)
+			return nil
+		},
+		func(tx repositories.Transaction, doc *core.Document) error {
+			cur, err := uc.generation.GetSarQuestion(ctx, tx, q.Id)
+			if err != nil {
+				return err
+			}
+			if cur.Status != models.SarQuestionStatusOpen {
+				return errors.Wrap(models.ConflictError, "cette question est déjà fermée")
+			}
+			if err := uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{q.Id}, models.SarQuestionStatusResolved); err != nil {
+				return err
+			}
+			return uc.dismissQuestionsOfItem(ctx, tx, q.DeclarationId, item)
+		})
+	if errors.Is(err, errOptionAlreadyApplied) {
+		return uc.declineQuestion(ctx, q, version)
+	}
+	return st, err
+}
+
+// dismissQuestionsOfItem closes (dismissed) the open questions that have a path
+// in the removed item: there is nothing left to answer.
+func (uc *Usecase) dismissQuestionsOfItem(ctx context.Context, tx repositories.Transaction,
+	declarationId uuid.UUID, item core.Path,
+) error {
+	open, err := uc.generation.ListSarQuestions(ctx, tx, declarationId, models.SarQuestionStatusOpen)
+	if err != nil {
+		return err
+	}
+	var ids []uuid.UUID
+	for _, oq := range open {
+		if oq.Kind != models.SarQuestionKindQuestion {
+			continue
+		}
+		if slices.ContainsFunc(oq.Paths, func(p string) bool { return core.Path(p).HasPrefix(item) }) {
+			ids = append(ids, oq.Id)
+		}
+	}
+	return uc.generation.CloseSarQuestions(ctx, tx, ids, models.SarQuestionStatusDismissed)
+}
+
+// questionRemovesItem reports whether an option of q removes an item.
+func questionRemovesItem(q Question) bool {
+	return slices.ContainsFunc(q.Options, func(o core.QuestionOption) bool { return o.RemoveItem != "" })
 }
 
 // errOptionAlreadyApplied tells that the chosen option would add an item the

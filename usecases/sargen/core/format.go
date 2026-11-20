@@ -3,6 +3,7 @@ package core
 import (
 	"encoding/json"
 	"io"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
 )
@@ -72,6 +73,10 @@ type StructuredContext struct {
 	// object, but a format must not declare an entity from one alone (it asks
 	// the analyst instead). Nil: none.
 	ContextOnly map[ObjectRef]bool
+	// ReachedFrom is, for each auto-added selected object, the selected object it
+	// was reached from when it was added (display information of the selection
+	// rows). Nil: not known.
+	ReachedFrom map[ObjectRef]ObjectRef
 	// Semantics is the semantic type of the data-model table of each selected
 	// object (models.SemanticType values; empty or absent: unknown).
 	Semantics map[ObjectRef]models.SemanticType
@@ -87,6 +92,29 @@ func (sc StructuredContext) CanCarryEntity(ref ObjectRef) bool {
 		return true
 	}
 	return false
+}
+
+// ChoiceBehind follows the reached-from chain of a context-only object upward,
+// through context-only objects, and returns the first object that is not context
+// only (the analyst's choice, or an auto-added direct candidate, that led to it).
+// ok is false when ref is not context only, when the chain stops on an object
+// that is not selected, or when it loops.
+func (sc StructuredContext) ChoiceBehind(ref ObjectRef) (choice ObjectRef, ok bool) {
+	if !sc.IsContextOnly(ref) {
+		return ObjectRef{}, false
+	}
+	seen := map[ObjectRef]bool{ref: true}
+	for cur := ref; ; {
+		next, known := sc.ReachedFrom[cur]
+		if !known || seen[next] {
+			return ObjectRef{}, false
+		}
+		if !sc.IsContextOnly(next) {
+			return next, slices.Contains(sc.Selection, next)
+		}
+		seen[next] = true
+		cur = next
+	}
 }
 
 // IsContextOnly tells whether ref is a selected object that is context only.

@@ -69,7 +69,13 @@ func buildTodo(spec *core.Spec, confirm []core.Path, issues []core.Issue, doc *c
 			todo = append(todo, TodoItem{Kind: TodoReviewFinding, Severity: TodoReview, Paths: paths, Message: q.Text, RefId: &id})
 		default:
 			sev := TodoWarning
+			if q.Severity == models.SarQuestionSeverityBlocking {
+				sev = TodoBlocking
+			}
 			for _, p := range paths {
+				if sev == TodoBlocking {
+					break
+				}
 				if spec == nil {
 					break
 				}
@@ -102,6 +108,31 @@ func buildTodo(spec *core.Spec, confirm []core.Path, issues []core.Issue, doc *c
 	}
 	rank := map[TodoSeverity]int{TodoBlocking: 0, TodoReview: 1, TodoWarning: 2}
 	sort.SliceStable(todo, func(a, b int) bool { return rank[todo[a].Severity] < rank[todo[b].Severity] })
+	return todo
+}
+
+// computedNoter is an optional capability of a Format: the analyst message that
+// goes with a computed value to confirm, in place of the generic one (e.g. what a
+// total is made of). Empty: keep the generic message.
+type computedNoter interface {
+	ComputedNote(doc *core.Document, p core.Path) string
+}
+
+// withComputedNotes replaces the generic message of the « valeur calculée à
+// confirmer » items by the note of the format, when it has one.
+func withComputedNotes(todo []TodoItem, f core.Format, doc *core.Document) []TodoItem {
+	noter, ok := f.(computedNoter)
+	if !ok {
+		return todo
+	}
+	for i, t := range todo {
+		if t.Code != TodoCodeComputedToConfirm || len(t.Paths) == 0 {
+			continue
+		}
+		if note := noter.ComputedNote(doc, core.Path(t.Paths[0].Template())); note != "" {
+			todo[i].Message = note
+		}
+	}
 	return todo
 }
 

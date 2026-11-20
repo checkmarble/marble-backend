@@ -89,7 +89,23 @@ func placementSchema(refKinds []string) jsonschema.Schema {
 type placementLeftOut struct {
 	persons      [][]core.ObjectRef
 	transactions []core.ObjectRef
+	// contextPersons are the persons made only of context-only objects that the
+	// declaration keeps anyway because they are directly involved in a declared
+	// operation (see directlyInvolved). They are in the output persons like any
+	// declared person; the analyst is asked to confirm each of them.
+	contextPersons []contextPerson
 }
+
+// contextPerson is a kept person that rests only on objects the server added on
+// its own.
+type contextPerson struct {
+	kind    string
+	objects []core.ObjectRef
+}
+
+// maxContextPersons caps the persons kept for their direct involvement in a
+// declared operation: past it, the others keep the plain question.
+const maxContextPersons = 5
 
 // parsePlacement decodes and checks a placement output. References without a
 // valid declared owner are returned apart (dropped, reported as a question); any
@@ -107,6 +123,15 @@ type placementLeftOut struct {
 //     of them is also a reference object. The others are returned in left, the
 //     references they owned lose them as an owner and the remaining persons are
 //     renumbered;
+//   - a person made only of context-only objects is still kept, at most
+//     maxContextPersons per output (in output order), when it is directly
+//     involved in a declared operation: one of its objects was added through a
+//     chain of auto-added rows that starts at an object chosen by the analyst
+//     and carried by a declared item (a declared person, a transaction or a
+//     financial reference of the output). Such a person is the holder of the
+//     account of a declared transaction, or the director of a declared
+//     company, and TRACFIN expects it declared. The analyst is asked to confirm
+//     it (StructuredQuestions);
 //   - a transaction made only of a context object is not created (left);
 //   - a financial reference made only of context objects is kept only when the
 //     data links one of them to an object of one of its owners; otherwise it is
@@ -149,6 +174,7 @@ func (f *format) parsePlacement(raw json.RawMessage, sc core.StructuredContext) 
 	asked := len(out.Persons)
 	newIndex := make([]int, asked)
 	keptPersons := out.Persons[:0:0]
+	carriedPerson := make([]bool, asked)
 	for i, p := range out.Persons {
 		// The reference-object and table-semantic restrictions only apply to a
 		// person that mixes in context-only objects (the case they guard
@@ -158,10 +184,18 @@ func (f *format) parsePlacement(raw json.RawMessage, sc core.StructuredContext) 
 		carried := slices.ContainsFunc(p.Objects, func(o core.ObjectRef) bool {
 			return !sc.IsContextOnly(o) && (!mixed || (!usedAsReference[o] && sc.CanCarryEntity(o)))
 		})
-		if !carried {
-			newIndex[i] = -1
-			left.persons = append(left.persons, slices.Clone(p.Objects))
-			continue
+		carriedPerson[i] = carried
+	}
+	declared := declaredObjects(out, carriedPerson, sc)
+	for i, p := range out.Persons {
+		if !carriedPerson[i] {
+			if len(left.contextPersons) < maxContextPersons && directlyInvolved(p.Objects, usedAsReference, declared, sc) {
+				left.contextPersons = append(left.contextPersons, contextPerson{kind: p.Kind, objects: slices.Clone(p.Objects)})
+			} else {
+				newIndex[i] = -1
+				left.persons = append(left.persons, slices.Clone(p.Objects))
+				continue
+			}
 		}
 		newIndex[i] = len(keptPersons)
 		keptPersons = append(keptPersons, p)
@@ -215,6 +249,49 @@ func (f *format) parsePlacement(raw json.RawMessage, sc core.StructuredContext) 
 	}
 	out.Transactions = txs
 	return out, dropped, left, nil
+}
+
+// declaredObjects returns the objects carried by the items the output declares
+// on the analyst's choice: the objects of the persons that rest on an analyst
+// object, the transaction objects that are not context only, and the objects of
+// the financial references that are not context only.
+func declaredObjects(out placementOutput, carriedPerson []bool, sc core.StructuredContext) map[core.ObjectRef]bool {
+	declared := map[core.ObjectRef]bool{}
+	for i, p := range out.Persons {
+		if carriedPerson[i] {
+			for _, o := range p.Objects {
+				declared[o] = true
+			}
+		}
+	}
+	for _, t := range out.Transactions {
+		if !sc.IsContextOnly(t.Object) {
+			declared[t.Object] = true
+		}
+	}
+	for _, r := range out.FinancialRefs {
+		for _, o := range r.Objects {
+			if !sc.IsContextOnly(o) {
+				declared[o] = true
+			}
+		}
+	}
+	return declared
+}
+
+// directlyInvolved tells whether a person made only of context-only objects is
+// directly involved in a declared operation: one of its objects, that can carry
+// an entity (person-, company- or partner-like table, or unknown; not an object
+// the output uses as a financial reference), was reached through auto-added rows
+// from an object chosen by the analyst that a declared item carries.
+func directlyInvolved(objs []core.ObjectRef, usedAsReference, declared map[core.ObjectRef]bool, sc core.StructuredContext) bool {
+	return slices.ContainsFunc(objs, func(o core.ObjectRef) bool {
+		if usedAsReference[o] || !sc.CanCarryEntity(o) {
+			return false
+		}
+		choice, ok := sc.ChoiceBehind(o)
+		return ok && declared[choice]
+	})
 }
 
 // referenceAttached tells whether a financial reference may be declared: one of
@@ -291,7 +368,47 @@ func (f *format) StructuredQuestions(kind string, raw json.RawMessage, applied *
 			out = append(out, core.QuestionDraft{Text: fmt.Sprintf("référence financière : %d titulaire(s) non déclaré(s) ignoré(s) : %s", d.lostOwners, list)})
 		}
 	}
+	out = append(out, f.contextPersonQuestions(left.contextPersons, applied, names)...)
 	out = append(out, f.mixedUseQuestions(raw, applied)...)
+	return out
+}
+
+// contextPersonQuestions asks the analyst to confirm each person kept only for
+// its direct involvement. The question is blocking (the export is refused until
+// it is answered) and has two options: declare the person (nothing is written,
+// the question is answered) or do not declare it, which replaces the references
+// to the person in the transactions by free text and removes the person (see
+// RewriteBeforeRemoval).
+func (f *format) contextPersonQuestions(persons []contextPerson, applied *core.Document, names func([]core.ObjectRef) string) []core.QuestionDraft {
+	if applied == nil {
+		return nil
+	}
+	var out []core.QuestionDraft
+	for _, p := range persons {
+		container := core.Path("personnes." + p.kind)
+		item := core.Path("")
+		for _, k := range applied.Items[container] {
+			cand := core.Path(string(container) + "[" + k + "]")
+			if sameObjects(applied.ItemSources[cand], p.objects) {
+				item = cand
+				break
+			}
+		}
+		if item == "" {
+			continue
+		}
+		who := names(p.objects)
+		out = append(out, core.QuestionDraft{
+			Paths:    []core.Path{item},
+			Blocking: true,
+			Text: who + " a été ajouté automatiquement comme titulaire ou dirigeant lié aux opérations déclarées. " +
+				"TRACFIN attend que toute personne directement impliquée soit déclarée.",
+			Options: []core.QuestionOption{
+				{Label: "Déclarer " + who + " comme personne impliquée"},
+				{Label: "Ne pas déclarer", RemoveItem: item},
+			},
+		})
+	}
 	return out
 }
 

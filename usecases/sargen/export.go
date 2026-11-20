@@ -19,6 +19,9 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+// CodeQuestionOpen is the issue code of a blocking question still open at export.
+const CodeQuestionOpen = "question_open"
+
 type outstandingItem struct {
 	Kind     TodoKind     `json:"kind"`
 	Code     string       `json:"code,omitempty"`
@@ -72,6 +75,21 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 				blocking = append(blocking, i)
 			}
 		}
+		// A question the format marked blocking keeps the export closed until it is
+		// answered: it is reported like a blocking issue, on its first path.
+		open, err := uc.generation.ListSarQuestions(ctx, tx, id, models.SarQuestionStatusOpen)
+		if err != nil {
+			return err
+		}
+		for _, q := range open {
+			if q.Kind == models.SarQuestionKindQuestion && q.Severity == models.SarQuestionSeverityBlocking {
+				path := core.Path("")
+				if len(q.Paths) > 0 {
+					path = core.Path(q.Paths[0])
+				}
+				blocking = append(blocking, core.Issue{Path: path, Code: CodeQuestionOpen, Severity: core.SeverityBlocking, Message: q.Text})
+			}
+		}
 		if len(blocking) > 0 {
 			return errors.Wrap(issuesToError(blocking), "l'export est impossible : des erreurs bloquantes subsistent")
 		}
@@ -85,11 +103,7 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 		// Unreviewed low-confidence values, open questions, open review findings
 		// and computed values to confirm (the blocking issues are refused above,
 		// the warnings are recorded just before).
-		open, err := uc.generation.ListSarQuestions(ctx, tx, id, models.SarQuestionStatusOpen)
-		if err != nil {
-			return err
-		}
-		for _, t := range buildTodo(format.Spec(), confirmComputedOf(format), nil, doc, open) {
+		for _, t := range withComputedNotes(buildTodo(format.Spec(), confirmComputedOf(format), nil, doc, open), format, doc) {
 			outstanding = append(outstanding, outstandingItem{
 				Kind: t.Kind, Code: t.Code, Severity: t.Severity, Paths: t.Paths, Message: t.Message,
 			})

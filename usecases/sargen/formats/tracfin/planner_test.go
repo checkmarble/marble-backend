@@ -315,6 +315,8 @@ func TestPlan_JudgmentAfterFills(t *testing.T) {
 	assert.True(t, planAllows(j[0], "personnes.pp[pp-1].implication"))
 	assert.True(t, planAllows(j[0], "personnes.pp[pp-1].natureRelation"))
 	assert.True(t, planAllows(j[0], "personnes.pp[pp-1].elementsRelation"))
+	assert.True(t, planAllows(j[0], "work.sensMontantTotal"), "the judgment picks the direction of the amount at stake")
+	assert.False(t, planAllows(j[0], "work.montantCredits"), "the totals are computed")
 	assert.False(t, planAllows(j[0], "context.general.refInterne"), "general context comes from defaults and the analyst")
 	assert.False(t, planAllows(j[0], "personnes.pp[pp-1].etatCivil.nomNaissance"))
 }
