@@ -34,6 +34,14 @@ type ingestedDataReaderClientDbRepository interface {
 		uniqueFieldName string,
 		metadataFields ...string,
 	) ([]models.DataModelObject, error)
+	QueryIngestedObjectsByUniqueFieldValues(
+		ctx context.Context,
+		exec repositories.Executor,
+		table models.Table,
+		uniqueFieldName string,
+		uniqueFieldValues []string,
+		metadataFields ...string,
+	) ([]models.DataModelObject, error)
 	GatherFieldStatistics(ctx context.Context, exec repositories.Executor, table models.Table,
 		orgId uuid.UUID) ([]models.FieldStatistics, error)
 }
@@ -52,6 +60,11 @@ type ingestedDataReaderRepository interface {
 		exec repositories.Executor,
 		req models.EntityAnnotationRequest,
 	) ([]models.EntityAnnotation, error)
+	GetEntityAnnotationsForObjects(
+		ctx context.Context,
+		exec repositories.Executor,
+		req models.EntityAnnotationRequestForObjects,
+	) (map[string][]models.EntityAnnotation, error)
 }
 
 type ingestedDataReaderDataModelUsecase interface {
@@ -120,14 +133,18 @@ func (usecase IngestedDataReaderUsecase) GetIngestedObject(
 
 	clientObjects := make([]models.ClientObjectDetail, len(objects))
 	for i, object := range objects {
-		validFrom, _ := object.Metadata["valid_from"].(time.Time)
-		clientObject := models.ClientObjectDetail{
-			Data:     object.Data,
-			Metadata: models.ClientObjectMetadata{ValidFrom: &validFrom, ObjectType: objectType},
-		}
-		clientObjects[i] = clientObject
+		clientObjects[i] = toClientObjectDetail(object, objectType)
 	}
 	return clientObjects, nil
+}
+
+// toClientObjectDetail expects the object to be read with the "valid_from" metadata field.
+func toClientObjectDetail(object models.DataModelObject, objectType string) models.ClientObjectDetail {
+	validFrom, _ := object.Metadata["valid_from"].(time.Time)
+	return models.ClientObjectDetail{
+		Data:     object.Data,
+		Metadata: models.ClientObjectMetadata{ValidFrom: &validFrom, ObjectType: objectType},
+	}
 }
 
 func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
@@ -321,16 +338,22 @@ func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
 	pivotObject.PivotObjectData.Annotations = models.GroupAnnotationsByType(annotations)
 
 	// Enriches the pivot object with one level of related objects (fiend objects that are linked to the pivot object, without further recursion)
-	pivotObject.PivotObjectData, err = usecase.enrichClientDataObjectWithRelatedObjectsData(
+	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
+	if err != nil {
+		return models.PivotObject{}, err
+	}
+	pivotObjectData := []models.ClientObjectDetail{pivotObject.PivotObjectData}
+	err = usecase.enrichClientDataObjectsWithRelatedObjectsData(
 		ctx,
-		organizationId,
+		db,
 		dataModel.Tables[pivotObject.PivotObjectName],
 		dataModel,
-		pivotObject.PivotObjectData,
+		pivotObjectData,
 	)
 	if err != nil {
 		return models.PivotObject{}, err
 	}
+	pivotObject.PivotObjectData = pivotObjectData[0]
 
 	return pivotObject, nil
 }
@@ -454,39 +477,39 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 		NextCursorId: nextCursor,
 	}
 
-	for _, object := range rawObjects {
-		validFrom, _ := object.Metadata["valid_from"].(time.Time)
-		clientObject := models.ClientObjectDetail{
-			Data:     object.Data,
-			Metadata: models.ClientObjectMetadata{ValidFrom: &validFrom, ObjectType: objectType},
-		}
+	objectIds := make([]string, len(rawObjects))
+	objects = make([]models.ClientObjectDetail, len(rawObjects))
+	for i, object := range rawObjects {
+		objects[i] = toClientObjectDetail(object, objectType)
+		objectIds[i] = object.Data["object_id"].(string)
+	}
 
-		var annotations []models.EntityAnnotation
-		annotations, err = usecase.repository.GetEntityAnnotations(
-			ctx,
-			usecase.executorFactory.NewExecutor(),
-			models.EntityAnnotationRequest{
-				OrgId:      orgId,
-				ObjectType: objectType,
-				ObjectId:   object.Data["object_id"].(string),
-			})
-		if err != nil {
-			return
-		}
-		clientObject.Annotations = models.GroupAnnotationsByType(annotations)
+	// Annotations and related objects are read for the whole page at once, not object by object.
+	annotations, err := usecase.repository.GetEntityAnnotationsForObjects(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		models.EntityAnnotationRequestForObjects{
+			OrgId:      orgId,
+			ObjectType: objectType,
+			ObjectIds:  objectIds,
+		})
+	if err != nil {
+		return
+	}
+	for i := range objects {
+		objects[i].Annotations = models.GroupAnnotationsByType(annotations[objectIds[i]])
+	}
 
-		clientObject, err = usecase.enrichClientDataObjectWithRelatedObjectsData(
-			ctx,
-			orgId,
-			targetTable,
-			dataModel,
-			clientObject,
-			allParentTables(dataModel, sourceTable.Name)...,
-		)
-		if err != nil {
-			return
-		}
-		objects = append(objects, clientObject)
+	err = usecase.enrichClientDataObjectsWithRelatedObjectsData(
+		ctx,
+		db,
+		targetTable,
+		dataModel,
+		objects,
+		allParentTables(dataModel, sourceTable.Name)...,
+	)
+	if err != nil {
+		return
 	}
 
 	return objects, fieldStats, pagination, nil
@@ -515,60 +538,86 @@ func allParentTables(dataModel models.DataModel, tableName string) []string {
 	return result
 }
 
-// Enriches a client data object with one level (no further recursion) of related objects, following links pointing from that object.
-// Optionally takes a list of tables to which NOT to go, so that in a context where we are e.g. listing transactions from an account,
-// we may return data on a transaction.beneficiary but don't lose time reading data on transaction.account (which is presumably already in the context)
-func (usecase IngestedDataReaderUsecase) enrichClientDataObjectWithRelatedObjectsData(
+// Enriches client data objects of the same table, in place, with one level (no further recursion) of related objects,
+// following links pointing from them: each parent table is read once for all the objects. Optionally takes a list of
+// tables to which NOT to go, so that in a context where we are e.g. listing transactions from an account, we may return
+// data on a transaction.beneficiary but don't lose time reading data on transaction.account (which is presumably
+// already in the context).
+func (usecase IngestedDataReaderUsecase) enrichClientDataObjectsWithRelatedObjectsData(
 	ctx context.Context,
-	organizationId uuid.UUID,
+	db repositories.Executor,
 	baseObjectTable models.Table,
 	dataModel models.DataModel,
-	baseObject models.ClientObjectDetail,
+	baseObjects []models.ClientObjectDetail,
 	parentObjectsToIgnore ...string,
-) (models.ClientObjectDetail, error) {
+) error {
 	for _, link := range baseObjectTable.LinksToSingle {
 		if slices.Contains(parentObjectsToIgnore, link.ParentTableName) {
 			continue
 		}
 
-		relatedObjectUniqueField := link.ParentFieldName
-		relatedObjectObjectType := link.ParentTableName
-		linkValue, ok := baseObject.Data[link.ChildFieldName]
-		if !ok {
+		// Links using "number" type fields are not followed: it's not something we really try to encourage, and the
+		// possibility may go away completely if we deprecate "unique" fields on tables.
+		linkValues := make([]string, 0, len(baseObjects))
+		for _, baseObject := range baseObjects {
+			if linkValue, ok := baseObject.Data[link.ChildFieldName].(string); ok {
+				linkValues = append(linkValues, linkValue)
+			}
+		}
+		slices.Sort(linkValues)
+		linkValues = slices.Compact(linkValues)
+		if len(linkValues) == 0 {
 			continue
 		}
-		// Will not work with links that are using "number" type fields. I accept this for now, it's not something we really try to encourage anyway
-		// and the possibility may just go away completely if we deprecate "unique" fields on tables.
-		linkValueStr, ok := linkValue.(string)
+
+		relatedObjectTable, ok := dataModel.Tables[link.ParentTableName]
 		if !ok {
-			continue
+			return errors.Wrapf(models.NotFoundError,
+				"Table '%s' of link %s not found in enrichClientDataObjectsWithRelatedObjectsData",
+				link.ParentTableName, link.Name)
 		}
-		relatedObjectDataSlice, err := usecase.GetIngestedObject(
+		relatedObjects, err := usecase.clientDbRepository.QueryIngestedObjectsByUniqueFieldValues(
 			ctx,
-			organizationId,
-			&dataModel,
-			relatedObjectObjectType,
-			linkValueStr,
-			relatedObjectUniqueField)
+			db,
+			relatedObjectTable,
+			link.ParentFieldName,
+			linkValues,
+			"valid_from",
+		)
 		if err != nil {
-			return models.ClientObjectDetail{}, errors.Wrapf(err,
-				"failed to read related object data of type %s through link %s for object %s: %s",
-				relatedObjectObjectType, link.Name, baseObjectTable.Name, relatedObjectUniqueField)
+			return errors.Wrapf(err,
+				"failed to read related object data of type %s through link %s for objects %s: %s",
+				link.ParentTableName, link.Name, baseObjectTable.Name, link.ParentFieldName)
 		}
-		if len(relatedObjectDataSlice) == 0 {
-			continue
+
+		// The first related object found for a value is the one kept
+		relatedObjectsByValue := make(map[string]models.ClientObjectDetail, len(relatedObjects))
+		for _, relatedObject := range relatedObjects {
+			value, ok := relatedObject.Data[link.ParentFieldName].(string)
+			if !ok {
+				continue
+			}
+			if _, found := relatedObjectsByValue[value]; !found {
+				relatedObjectsByValue[value] = toClientObjectDetail(relatedObject, link.ParentTableName)
+			}
 		}
-		relatedObjectData := relatedObjectDataSlice[0]
-		baseObject.RelatedObjects = append(
-			baseObject.RelatedObjects, models.RelatedObject{
+
+		for i, baseObject := range baseObjects {
+			linkValue, ok := baseObject.Data[link.ChildFieldName].(string)
+			if !ok {
+				continue
+			}
+			relatedObject, ok := relatedObjectsByValue[linkValue]
+			if !ok {
+				continue
+			}
+			baseObjects[i].RelatedObjects = append(baseObjects[i].RelatedObjects, models.RelatedObject{
 				LinkName: link.Name,
-				Detail: models.ClientObjectDetail{
-					Data:     relatedObjectData.Data,
-					Metadata: relatedObjectData.Metadata,
-				},
+				Detail:   relatedObject,
 			})
+		}
 	}
-	return baseObject, nil
+	return nil
 }
 
 const (
@@ -584,8 +633,9 @@ type explorationFilterRule struct {
 
 var explorationFilterRules = map[models.ExplorationFilterOperator]explorationFilterRule{
 	models.ExplorationFilterContains: {[]models.DataType{models.String, models.IpAddress}, 1},
+	// On a Bool field, NULL values match neither true nor false
 	models.ExplorationFilterIn: {
-		[]models.DataType{models.String, models.Int, models.Float},
+		[]models.DataType{models.String, models.Int, models.Float, models.Bool},
 		explorationMaxFilterInValues,
 	},
 	models.ExplorationFilterGreaterOrEqual: {[]models.DataType{models.Int, models.Float, models.Timestamp}, 1},
@@ -723,6 +773,12 @@ func coerceExplorationFilterValue(
 			return nil, errors.New("value out of range")
 		}
 		return int64(num), nil
+	case models.Bool:
+		// Only the spelling of the JSON literals, unlike strconv.ParseBool which also takes "1", "t", "TRUE"...
+		if str != "true" && str != "false" {
+			return nil, errors.New(`value must be "true" or "false"`)
+		}
+		return str == "true", nil
 	}
 	return nil, errors.New("unsupported field type")
 }

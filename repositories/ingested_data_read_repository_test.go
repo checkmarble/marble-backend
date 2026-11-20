@@ -9,7 +9,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/pashagolub/pgxmock/v5"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -474,6 +476,10 @@ func listIngestedObjectsTestTable() models.Table {
 			"ip":         {Name: "ip", DataType: models.IpAddress},
 			"amount":     {Name: "amount", DataType: models.Float},
 			"count":      {Name: "count", DataType: models.Int},
+			"is_fraud":   {Name: "is_fraud", DataType: models.Bool},
+			"iban":       {Name: "iban", DataType: models.String, SemanticType: models.FieldSemanticTypeIban},
+			"phone":      {Name: "phone", DataType: models.String, SemanticType: models.FieldSemanticTypePhoneNumber},
+			"email":      {Name: "email", DataType: models.String, SemanticType: models.FieldSemanticTypeEmail},
 		},
 	}
 }
@@ -538,6 +544,15 @@ func TestListIngestedObjectsQueryWithFilters(t *testing.T) {
 			args:     []any{int64(1)},
 		},
 		{
+			name: "in on bools",
+			filter: models.ExplorationFilter{
+				FieldName: "is_fraud",
+				Operator:  models.ExplorationFilterIn, Values: []any{true},
+			},
+			expected: `"test_schema"."transactions"."is_fraud" IN ($3)`,
+			args:     []any{true},
+		},
+		{
 			name: "contains",
 			filter: models.ExplorationFilter{
 				FieldName: "label",
@@ -563,6 +578,33 @@ func TestListIngestedObjectsQueryWithFilters(t *testing.T) {
 			},
 			expected: `host("test_schema"."transactions"."ip") ILIKE $3`,
 			args:     []any{"%192.168.%"},
+		},
+		{
+			name: "contains on IBAN ignores separators on both sides",
+			filter: models.ExplorationFilter{
+				FieldName: "iban",
+				Operator:  models.ExplorationFilterContains, Values: []any{`FR76 3000.0001-(2)%`},
+			},
+			expected: `regexp_replace("test_schema"."transactions"."iban", '[\t\n\v\f\r .()-]', '', 'g') ILIKE regexp_replace($3::text, '[\t\n\v\f\r .()-]', '', 'g')`,
+			args:     []any{`%FR76 3000.0001-(2)\%%`},
+		},
+		{
+			name: "contains on phone number ignores separators on both sides",
+			filter: models.ExplorationFilter{
+				FieldName: "phone",
+				Operator:  models.ExplorationFilterContains, Values: []any{"+33 6 12"},
+			},
+			expected: `regexp_replace("test_schema"."transactions"."phone", '[\t\n\v\f\r .()-]', '', 'g') ILIKE regexp_replace($3::text, '[\t\n\v\f\r .()-]', '', 'g')`,
+			args:     []any{"%+33 6 12%"},
+		},
+		{
+			name: "contains on a String field of another semantic type keeps separators",
+			filter: models.ExplorationFilter{
+				FieldName: "email",
+				Operator:  models.ExplorationFilterContains, Values: []any{"jean-dupont.fr"},
+			},
+			expected: `"test_schema"."transactions"."email" ILIKE $3`,
+			args:     []any{"%jean-dupont.fr%"},
 		},
 		{
 			name: "greater or equal",
@@ -674,4 +716,51 @@ func TestListIngestedObjectsQueryRejectsInvalidFilters(t *testing.T) {
 			assert.ErrorContains(t, err, tt.errContains)
 		})
 	}
+}
+
+func TestQueryIngestedObjectsByUniqueFieldValues(t *testing.T) {
+	table := models.Table{
+		Name: "beneficiaries",
+		Fields: map[string]models.Field{
+			"object_id": {Name: "object_id", DataType: models.String},
+			"name":      {Name: "name", DataType: models.String},
+		},
+	}
+	validFrom := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	t.Run("reads all the values in one query", func(t *testing.T) {
+		exec := newGraphQueryExecutor(t)
+		exec.pool.ExpectQuery(".*").
+			WithArgs("Infinity", []string{"ben_1", "ben_2"}).
+			WillReturnRows(pgxmock.NewRows([]string{"name", "object_id", "valid_from"}).
+				AddRow("Alice", "ben_1", validFrom))
+
+		objects, err := (&IngestedDataReadRepositoryImpl{}).QueryIngestedObjectsByUniqueFieldValues(
+			context.Background(), exec, table, "object_id", []string{"ben_1", "ben_2"}, "valid_from")
+		require.NoError(t, err)
+		require.NoError(t, exec.pool.ExpectationsWereMet())
+
+		require.Len(t, exec.queries, 1)
+		expected := `
+		SELECT name, object_id, valid_from
+		FROM "org-test"."beneficiaries"
+		WHERE "org-test"."beneficiaries".valid_until = $1
+		AND "org-test"."beneficiaries".object_id = ANY($2)
+		`
+		assert.Equal(t, stripQuery(expected), stripQuery(exec.queries[0]))
+		assert.Equal(t, []models.DataModelObject{{
+			Data:     map[string]any{"name": "Alice", "object_id": "ben_1"},
+			Metadata: map[string]any{"valid_from": validFrom},
+		}}, objects)
+	})
+
+	t.Run("no value makes no query", func(t *testing.T) {
+		exec := newGraphQueryExecutor(t)
+
+		objects, err := (&IngestedDataReadRepositoryImpl{}).QueryIngestedObjectsByUniqueFieldValues(
+			context.Background(), exec, table, "object_id", nil, "valid_from")
+		require.NoError(t, err)
+		assert.Empty(t, objects)
+		assert.Empty(t, exec.queries)
+	})
 }

@@ -69,6 +69,14 @@ type IngestedDataReadRepository interface {
 		uniqueFieldName string,
 		metadataFields ...string,
 	) ([]models.DataModelObject, error)
+	QueryIngestedObjectsByUniqueFieldValues(
+		ctx context.Context,
+		exec Executor,
+		table models.Table,
+		uniqueFieldName string,
+		uniqueFieldValues []string,
+		metadataFields ...string,
+	) ([]models.DataModelObject, error)
 	QueryAggregatedValue(
 		ctx context.Context,
 		exec Executor,
@@ -125,47 +133,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectsByIds(
 	objectIds []string,
 	metadataFields ...string,
 ) ([]models.DataModelObject, error) {
-	if err := validateClientDbExecutor(exec); err != nil {
-		return nil, err
-	}
-	if len(objectIds) == 0 {
-		return []models.DataModelObject{}, nil
-	}
-
-	columnNames := models.ColumnNames(table)
-	if !slices.Contains(columnNames, "object_id") {
-		columnNames = append(columnNames, "object_id")
-	}
-	qualifiedTableName := pgIdentifierWithSchema(exec, table.Name)
-	objectsAsMap, err := queryWithDynamicColumnList(
-		ctx,
-		exec,
-		qualifiedTableName,
-		append(columnNames, metadataFields...),
-		false,
-		models.Filter{
-			LeftSql:    fmt.Sprintf("%s.object_id", qualifiedTableName),
-			Operator:   ast.FUNC_IS_IN_LIST,
-			RightValue: objectIds,
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	ingestedObjects := make([]models.DataModelObject, len(objectsAsMap))
-	for i, object := range objectsAsMap {
-		ingestedObject := models.DataModelObject{Data: map[string]any{}, Metadata: map[string]any{}}
-		for fieldName, fieldValue := range object {
-			if slices.Contains(columnNames, fieldName) {
-				ingestedObject.Data[fieldName] = fieldValue
-			} else {
-				ingestedObject.Metadata[fieldName] = fieldValue
-			}
-		}
-		ingestedObjects[i] = ingestedObject
-	}
-	return ingestedObjects, nil
+	return repo.QueryIngestedObjectsByUniqueFieldValues(ctx, exec, table, "object_id", objectIds, metadataFields...)
 }
 
 type IngestedDataReadRepositoryImpl struct{}
@@ -583,6 +551,60 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectByUniqueField(
 	return ingestedObjects, nil
 }
 
+// Same as QueryIngestedObjectByUniqueField, for several values at once: reads in a single query the objects
+// matching any of the values, e.g. the parent objects of a whole page of child objects.
+func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObjectsByUniqueFieldValues(
+	ctx context.Context,
+	exec Executor,
+	table models.Table,
+	uniqueFieldName string,
+	uniqueFieldValues []string,
+	metadataFields ...string,
+) ([]models.DataModelObject, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+	if len(uniqueFieldValues) == 0 {
+		return []models.DataModelObject{}, nil
+	}
+
+	columnNames := models.ColumnNames(table)
+	if !slices.Contains(columnNames, uniqueFieldName) {
+		columnNames = append(columnNames, uniqueFieldName)
+	}
+	qualifiedTableName := pgIdentifierWithSchema(exec, table.Name)
+	objectsAsMap, err := queryWithDynamicColumnList(
+		ctx,
+		exec,
+		qualifiedTableName,
+		append(columnNames, metadataFields...),
+		false,
+		models.Filter{
+			LeftSql:    fmt.Sprintf("%s.%s", qualifiedTableName, uniqueFieldName),
+			Operator:   ast.FUNC_IS_IN_LIST,
+			RightValue: uniqueFieldValues,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	ingestedObjects := make([]models.DataModelObject, len(objectsAsMap))
+	for i, object := range objectsAsMap {
+		ingestedObject := models.DataModelObject{Data: map[string]any{}, Metadata: map[string]any{}}
+		for fieldName, fieldValue := range object {
+			if slices.Contains(columnNames, fieldName) {
+				ingestedObject.Data[fieldName] = fieldValue
+			} else {
+				ingestedObject.Metadata[fieldName] = fieldValue
+			}
+		}
+		ingestedObjects[i] = ingestedObject
+	}
+
+	return ingestedObjects, nil
+}
+
 func queryWithDynamicColumnList(
 	ctx context.Context,
 	exec Executor,
@@ -844,6 +866,12 @@ func addConditionForOperator(query squirrel.SelectBuilder, fieldName string, fie
 // likeEscaper escapes the LIKE wildcards and the default LIKE escape character (backslash)
 var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
+// searchSeparators are ignored by a "contains" filter on IBAN and phone number fields: the frontend displays IBANs in
+// groups of 4 ("FR76 3000 6000 ...") and phone numbers in international format ("+33 6 12 34 56 78"), while the stored
+// value usually has no separators, and a value copied from the screen must still match. '+' is meaningful in a phone
+// number, so it is kept.
+const searchSeparators = `[\t\n\v\f\r .()-]`
+
 // createQueryListIngestedObjects builds the page query of ListIngestedObjects. cursorValues is either nil (first page)
 // or the (ordering field value, object_id) of the cursor object. params.Filters must have been validated and typed
 // by the caller: values are only ever passed as bound parameters.
@@ -900,12 +928,20 @@ func createQueryListIngestedObjects(
 				return squirrel.SelectBuilder{}, errors.Newf(
 					"invalid value for contains filter on field %s in ListIngestedObjects", f.FieldName)
 			}
-			searchedText := qualifiedFieldName
-			if field.DataType == models.IpAddress {
+			pattern := "%" + likeEscaper.Replace(value) + "%"
+			switch {
+			case field.DataType == models.IpAddress:
 				// The text of an inet includes its netmask ("10.0.0.1/32"): only search in the address
-				searchedText = fmt.Sprintf("host(%s)", qualifiedFieldName)
+				q = q.Where(squirrel.ILike{fmt.Sprintf("host(%s)", qualifiedFieldName): pattern})
+			case field.SemanticType == models.FieldSemanticTypeIban || field.SemanticType == models.FieldSemanticTypePhoneNumber:
+				// Postgres strips both sides, so they lose exactly the same characters (the LIKE wildcards and escapes
+				// are not separators). A value made only of separators matches every non null value: the frontend
+				// sends the filter as it is typed, and a value started with "(" must not fail the request.
+				q = q.Where(fmt.Sprintf("regexp_replace(%[1]s, '%[2]s', '', 'g') ILIKE regexp_replace(?::text, '%[2]s', '', 'g')",
+					qualifiedFieldName, searchSeparators), pattern)
+			default:
+				q = q.Where(squirrel.ILike{qualifiedFieldName: pattern})
 			}
-			q = q.Where(squirrel.ILike{searchedText: "%" + likeEscaper.Replace(value) + "%"})
 		case models.ExplorationFilterIn:
 			q, err = addConditionForOperator(q, qualifiedFieldName, field.DataType, ast.FILTER_IS_IN_LIST, f.Values)
 		case models.ExplorationFilterGreaterOrEqual:
