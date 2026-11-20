@@ -89,6 +89,7 @@ func adaptSarQuestionDto(q sargen.Question) dto.SarQuestionDto {
 		Options: pure_utils.Map(q.Options, func(o core.QuestionOption) dto.SarQuestionOptionDto {
 			return dto.SarQuestionOptionDto{
 				Label: o.Label, RemoveItem: string(o.RemoveItem),
+				Clear: pure_utils.Map(o.Clear, func(p core.Path) string { return string(p) }),
 				Fills: pure_utils.Map(o.Fills, func(f core.Fill) dto.SarQuestionOptionFillDto {
 					return dto.SarQuestionOptionFillDto{Path: string(f.Path), Value: f.Value}
 				}),

@@ -129,11 +129,11 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 	if opt.RemoveItem != "" {
 		return uc.chooseRemoval(ctx, q, opt, version)
 	}
-	if len(opt.Fills) == 0 {
-		if questionCreatesItem(q) || questionRemovesItem(q) {
-			// « Do not add » / « keep »: the option declines the addition proposed by
-			// a sibling option, or keeps the item a sibling option removes. It
-			// closes the question and writes nothing.
+	if len(opt.Fills) == 0 && len(opt.Clear) == 0 {
+		if questionCreatesItem(q) || questionRemovesItem(q) || questionWrites(q) {
+			// « Do not add » / « keep » / « leave as it is »: the option declines
+			// what a sibling option proposes (a new list item, the removal of an
+			// item, values or clears). It closes the question and writes nothing.
 			return uc.declineQuestion(ctx, q, version)
 		}
 		return DeclarationState{}, models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest, "cette option ne propose aucune valeur")
@@ -152,6 +152,21 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 			// are restricted to the question's own paths, and the choice may
 			// replace a manual value (OverwriteAll). Settings and computed
 			// fields are never writable through an option.
+			for _, p := range opt.Clear {
+				if node := spec.NodeAt(p.Template()); node != nil {
+					switch node.EffectiveNature() {
+					case core.NatureSetting, core.NatureComputed:
+						return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest,
+							"le champ %s est un réglage ou un champ calculé : il ne peut pas être vidé par une option", p)
+					}
+				}
+				if !core.PathAllowed(p, q.Paths) {
+					return issuesToError([]core.Issue{{
+						Path: p, Code: core.CodeOutOfScope, Severity: core.SeverityBlocking,
+						Message: "chemin hors des champs de la question",
+					}})
+				}
+			}
 			fills := make([]core.Fill, len(opt.Fills))
 			for i, f := range opt.Fills {
 				if node := spec.NodeAt(f.Path.Template()); node != nil {
@@ -173,8 +188,13 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 				f.Origin, f.TaskID = core.OriginAnalyst, nil
 				fills[i] = f
 			}
-			if optionAlreadyPresent(doc, fills) {
+			if len(opt.Clear) == 0 && optionAlreadyPresent(doc, fills) {
 				return errOptionAlreadyApplied
+			}
+			// The cleared values are deleted first (no value is left stored there),
+			// then the fills are written.
+			for _, p := range opt.Clear {
+				delete(doc.Values, p)
 			}
 			res := core.ApplyFills(spec, doc, fills, core.ApplyOptions{
 				// A provisional item segment is cut to its container so that the
@@ -263,7 +283,13 @@ func (uc *Usecase) AnswerQuestion(ctx context.Context, questionId uuid.UUID, ver
 				return models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest,
 					"cette question se tranche par une de ses options")
 			}
-			switch n.EffectiveNature() {
+			nature := n.EffectiveNature()
+			if nature == core.NatureComputed && confirmable(format, target) {
+				// A computed value the analyst confirms (the total of the operations)
+				// may be given by hand when the backend cannot determine it.
+				nature = core.NatureCopied
+			}
+			switch nature {
 			case core.NatureSetting, core.NatureComputed, core.NatureAnalyst:
 				return models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest,
 					"ce champ est un réglage, un champ calculé ou un texte d'analyse : il ne se renseigne pas en répondant à une question")
@@ -504,6 +530,14 @@ func optionAlreadyPresent(doc *core.Document, fills []core.Fill) bool {
 	return true
 }
 
+// questionWrites reports whether an option of q writes something (values or
+// clears), so that an option that writes nothing is a choice to leave as it is.
+func questionWrites(q Question) bool {
+	return slices.ContainsFunc(q.Options, func(o core.QuestionOption) bool {
+		return len(o.Fills) > 0 || len(o.Clear) > 0
+	})
+}
+
 // questionCreatesItem reports whether an option of q fills a path holding a
 // provisional key, i.e. choosing it creates a new list item.
 func questionCreatesItem(q Question) bool {
@@ -600,4 +634,11 @@ func questionFromModel(q models.SarQuestion) (Question, error) {
 		}
 	}
 	return out, nil
+}
+
+// confirmable tells whether the format lists the path among the computed values
+// the analyst confirms or gives by hand (core.ConfirmComputer).
+func confirmable(format core.Format, p core.Path) bool {
+	cc, ok := format.(core.ConfirmComputer)
+	return ok && slices.Contains(cc.ConfirmComputed(), core.Path(p.Template()))
 }

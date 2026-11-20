@@ -82,7 +82,7 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 			return err
 		}
 		for _, q := range open {
-			if q.Kind == models.SarQuestionKindQuestion && q.Severity == models.SarQuestionSeverityBlocking {
+			if q.Severity == models.SarQuestionSeverityBlocking { // a finding that replaced a blocking question stays blocking
 				path := core.Path("")
 				if len(q.Paths) > 0 {
 					path = core.Path(q.Paths[0])

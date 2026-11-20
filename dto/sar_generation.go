@@ -462,13 +462,17 @@ type SarQuestionOptionDto struct {
 	// declaration (« Ne pas déclarer » a person kept for its direct involvement).
 	// Optional: a front that only shows the labels and posts choose keeps working.
 	RemoveItem string `json:"remove_item,omitempty"`
+	// Clear lists the fields whose value choosing the option deletes, before the
+	// fills are written (a free-text name replaced by a link to a declared person).
+	// Optional, like RemoveItem.
+	Clear []string `json:"clear,omitempty"`
 }
 
 type SarQuestionDto struct {
 	Id            uuid.UUID `json:"id"`
 	DeclarationId uuid.UUID `json:"declaration_id"`
 	Kind          string    `json:"kind"`   // question | review_finding
-	Status        string    `json:"status"` // open | resolved | dismissed
+	Status        string    `json:"status"` // open | resolved | dismissed | replaced (a review finding replaced it)
 	// Severity: "important" | "mineur" for a review finding; "blocking" for a
 	// question that must be answered before the export (omitted otherwise).
 	Severity  string                 `json:"severity,omitempty"`
