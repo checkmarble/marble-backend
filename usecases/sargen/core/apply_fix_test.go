@@ -306,3 +306,15 @@ func TestApplyFills_MaxItemsOnProvisionalCreation(t *testing.T) {
 	assert.Equal(t, []string{core.CodeTooManyItems}, rejectedCodes(res))
 	assert.Len(t, doc.Items[core.Path(prenoms)], 5)
 }
+
+func TestPathAllowed(t *testing.T) {
+	pre := []core.Path{"personnes.pp[pp-1]", "operations.montantTotal", "organisme"}
+	assert.True(t, core.PathAllowed(pp1Name, pre))
+	assert.True(t, core.PathAllowed("organisme.libelle", pre))
+	assert.True(t, core.PathAllowed("operations.montantTotal", pre))
+	assert.False(t, core.PathAllowed("personnes.pp[pp-2].etatCivil.nomNaissance", pre))
+	assert.False(t, core.PathAllowed("organismeX.libelle", pre))
+	assert.True(t, core.PathAllowed("personnes.pp[pp-1]", []core.Path{"personnes.pp"}), "a container prefix allows its items")
+	assert.False(t, core.PathAllowed(pp1Name, nil), "no prefix allows nothing")
+	assert.False(t, core.PathAllowed(pp1Name, []core.Path{""}))
+}
