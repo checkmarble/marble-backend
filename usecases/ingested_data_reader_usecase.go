@@ -34,6 +34,14 @@ type ingestedDataReaderClientDbRepository interface {
 		uniqueFieldName string,
 		metadataFields ...string,
 	) ([]models.DataModelObject, error)
+	QueryIngestedObjectsByUniqueFieldValues(
+		ctx context.Context,
+		exec repositories.Executor,
+		table models.Table,
+		uniqueFieldName string,
+		uniqueFieldValues []string,
+		metadataFields ...string,
+	) ([]models.DataModelObject, error)
 	GatherFieldStatistics(ctx context.Context, exec repositories.Executor, table models.Table,
 		orgId uuid.UUID) ([]models.FieldStatistics, error)
 }
@@ -52,6 +60,11 @@ type ingestedDataReaderRepository interface {
 		exec repositories.Executor,
 		req models.EntityAnnotationRequest,
 	) ([]models.EntityAnnotation, error)
+	GetEntityAnnotationsForObjects(
+		ctx context.Context,
+		exec repositories.Executor,
+		req models.EntityAnnotationRequestForObjects,
+	) (map[string][]models.EntityAnnotation, error)
 }
 
 type ingestedDataReaderDataModelUsecase interface {
@@ -454,39 +467,44 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 		NextCursorId: nextCursor,
 	}
 
-	for _, object := range rawObjects {
+	objectIds := make([]string, len(rawObjects))
+	objects = make([]models.ClientObjectDetail, len(rawObjects))
+	for i, object := range rawObjects {
 		validFrom, _ := object.Metadata["valid_from"].(time.Time)
-		clientObject := models.ClientObjectDetail{
+		objects[i] = models.ClientObjectDetail{
 			Data:     object.Data,
 			Metadata: models.ClientObjectMetadata{ValidFrom: &validFrom, ObjectType: objectType},
 		}
+		objectIds[i] = object.Data["object_id"].(string)
+	}
 
-		var annotations []models.EntityAnnotation
-		annotations, err = usecase.repository.GetEntityAnnotations(
-			ctx,
-			usecase.executorFactory.NewExecutor(),
-			models.EntityAnnotationRequest{
-				OrgId:      orgId,
-				ObjectType: objectType,
-				ObjectId:   object.Data["object_id"].(string),
-			})
-		if err != nil {
-			return
-		}
-		clientObject.Annotations = models.GroupAnnotationsByType(annotations)
+	// The annotations and the related objects are read for the whole page at once: reading them object by object
+	// made hundreds of sequential queries for a single page.
+	annotations, err := usecase.repository.GetEntityAnnotationsForObjects(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		models.EntityAnnotationRequestForObjects{
+			OrgId:      orgId,
+			ObjectType: objectType,
+			ObjectIds:  objectIds,
+		})
+	if err != nil {
+		return
+	}
+	for i := range objects {
+		objects[i].Annotations = models.GroupAnnotationsByType(annotations[objectIds[i]])
+	}
 
-		clientObject, err = usecase.enrichClientDataObjectWithRelatedObjectsData(
-			ctx,
-			orgId,
-			targetTable,
-			dataModel,
-			clientObject,
-			allParentTables(dataModel, sourceTable.Name)...,
-		)
-		if err != nil {
-			return
-		}
-		objects = append(objects, clientObject)
+	err = usecase.enrichClientDataObjectsWithRelatedObjectsData(
+		ctx,
+		db,
+		targetTable,
+		dataModel,
+		objects,
+		allParentTables(dataModel, sourceTable.Name)...,
+	)
+	if err != nil {
+		return
 	}
 
 	return objects, fieldStats, pagination, nil
@@ -569,6 +587,86 @@ func (usecase IngestedDataReaderUsecase) enrichClientDataObjectWithRelatedObject
 			})
 	}
 	return baseObject, nil
+}
+
+// Same as enrichClientDataObjectWithRelatedObjectsData, for a list of objects of the same table, in place: each parent
+// table is read once for all the objects, instead of once per object.
+func (usecase IngestedDataReaderUsecase) enrichClientDataObjectsWithRelatedObjectsData(
+	ctx context.Context,
+	db repositories.Executor,
+	baseObjectTable models.Table,
+	dataModel models.DataModel,
+	baseObjects []models.ClientObjectDetail,
+	parentObjectsToIgnore ...string,
+) error {
+	for _, link := range baseObjectTable.LinksToSingle {
+		if slices.Contains(parentObjectsToIgnore, link.ParentTableName) {
+			continue
+		}
+
+		// Links using "number" type fields are not followed, see enrichClientDataObjectWithRelatedObjectsData
+		linkValues := make([]string, 0, len(baseObjects))
+		for _, baseObject := range baseObjects {
+			if linkValue, ok := baseObject.Data[link.ChildFieldName].(string); ok {
+				linkValues = append(linkValues, linkValue)
+			}
+		}
+		slices.Sort(linkValues)
+		linkValues = slices.Compact(linkValues)
+		if len(linkValues) == 0 {
+			continue
+		}
+
+		relatedObjectTable, ok := dataModel.Tables[link.ParentTableName]
+		if !ok {
+			return errors.Wrapf(models.NotFoundError,
+				"Table '%s' of link %s not found in enrichClientDataObjectsWithRelatedObjectsData",
+				link.ParentTableName, link.Name)
+		}
+		relatedObjects, err := usecase.clientDbRepository.QueryIngestedObjectsByUniqueFieldValues(
+			ctx,
+			db,
+			relatedObjectTable,
+			link.ParentFieldName,
+			linkValues,
+			"valid_from",
+		)
+		if err != nil {
+			return errors.Wrapf(err,
+				"failed to read related object data of type %s through link %s for objects %s: %s",
+				link.ParentTableName, link.Name, baseObjectTable.Name, link.ParentFieldName)
+		}
+
+		// As for a single object, the first related object found for a value is the one kept
+		relatedObjectsByValue := make(map[string]models.ClientObjectDetail, len(relatedObjects))
+		for _, relatedObject := range relatedObjects {
+			value, ok := relatedObject.Data[link.ParentFieldName].(string)
+			if _, found := relatedObjectsByValue[value]; !ok || found {
+				continue
+			}
+			validFrom, _ := relatedObject.Metadata["valid_from"].(time.Time)
+			relatedObjectsByValue[value] = models.ClientObjectDetail{
+				Data:     relatedObject.Data,
+				Metadata: models.ClientObjectMetadata{ValidFrom: &validFrom, ObjectType: link.ParentTableName},
+			}
+		}
+
+		for i, baseObject := range baseObjects {
+			linkValue, ok := baseObject.Data[link.ChildFieldName].(string)
+			if !ok {
+				continue
+			}
+			relatedObject, ok := relatedObjectsByValue[linkValue]
+			if !ok {
+				continue
+			}
+			baseObjects[i].RelatedObjects = append(baseObjects[i].RelatedObjects, models.RelatedObject{
+				LinkName: link.Name,
+				Detail:   relatedObject,
+			})
+		}
+	}
+	return nil
 }
 
 const (

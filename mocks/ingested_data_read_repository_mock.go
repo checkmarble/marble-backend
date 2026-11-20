@@ -65,6 +65,14 @@ func (m *IngestedDataReader) QueryIngestedObjectByUniqueField(ctx context.Contex
 	return args.Get(0).([]models.DataModelObject), args.Error(1)
 }
 
+func (m *IngestedDataReader) QueryIngestedObjectsByUniqueFieldValues(ctx context.Context,
+	exec repositories.Executor, table models.Table, uniqueFieldName string, uniqueFieldValues []string,
+	metadataFields ...string,
+) ([]models.DataModelObject, error) {
+	args := m.Called(ctx, exec, table, uniqueFieldName, uniqueFieldValues, metadataFields)
+	return args.Get(0).([]models.DataModelObject), args.Error(1)
+}
+
 func (m *IngestedDataReader) QueryAggregatedValue(ctx context.Context, exec repositories.Executor,
 	tableName string, fieldName string, fieldType models.DataType, aggregator ast.Aggregator,
 	filters []models.FilterWithType, options map[string]any,
