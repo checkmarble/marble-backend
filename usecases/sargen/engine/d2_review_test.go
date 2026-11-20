@@ -125,6 +125,17 @@ func TestReviewPrompt_CarriesIssuesAndOpenQuestionsInDataBlocks(t *testing.T) {
 	assert.Contains(t, out, `source="export_issues"`)
 }
 
+func TestReviewPrompt_ExportIssuesCarryTheirSeverity(t *testing.T) {
+	_, tc, _ := reviewChecker(t)
+	tc.Issues = []core.Issue{
+		{Path: nomPP1, Code: "rule:x", Message: "avertissement", Severity: core.SeverityWarning},
+		{Path: nomPP1, Code: core.CodeRequired, Message: "bloquant", Severity: core.SeverityBlocking},
+	}
+	out := (&agentRunner{}).prompt("REVIEW PROMPT", tc, core.TaskSpec{Kind: core.TaskKindReview}, nil, modeReview)
+	assert.Contains(t, out, `"severity":"warning"`)
+	assert.Contains(t, out, `"severity":"blocking"`)
+}
+
 // ---- orchestrator: storage, contest, dedup ----
 
 func reviewJob(t *testing.T, f *fakes) {

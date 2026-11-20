@@ -457,6 +457,8 @@ type agentRun struct {
 	// limited: the run ended on a bound (limitReason says which).
 	limited     bool
 	limitReason string
+	// soft are the correction messages of warning-level format rules.
+	soft map[string]bool
 }
 
 func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
@@ -686,6 +688,10 @@ func (a *agentRun) control(final json.RawMessage) (core.TaskOutput, []string) {
 		for _, n := range res.Notes {
 			a.tr.add(TraceEntry{Type: TraceCheckError, Text: n})
 		}
+		if a.soft == nil {
+			a.soft = map[string]bool{}
+		}
+		maps.Copy(a.soft, res.Soft)
 		return core.TaskOutput{Fills: res.Fills, Questions: res.Questions}, res.Corrections
 	}
 }
@@ -704,7 +710,13 @@ func (a *agentRun) finish(out core.TaskOutput, remaining []string) core.TaskOutp
 					return a.limitOutput("réponse non conforme au schéma après corrections")
 				}
 			}
-			out.Questions = append(out.Questions, a.unverifiableFromErrors(remaining)...)
+			var hard []string
+			for _, e := range remaining {
+				if !a.soft[e] {
+					hard = append(hard, e)
+				}
+			}
+			out.Questions = append(out.Questions, a.unverifiableFromErrors(hard)...)
 		}
 	}
 	return a.render(out)
@@ -944,10 +956,12 @@ func reviewContext(tc core.ToolContext) string {
 		Path    core.Path `json:"path"`
 		Code    string    `json:"code"`
 		Message string    `json:"message"`
+		// Severity is "blocking" or "warning" (the severity of the export issue).
+		Severity core.Severity `json:"severity"`
 	}
 	issues := make([]issueView, 0, len(tc.Issues))
 	for _, i := range tc.Issues {
-		issues = append(issues, issueView{Path: i.Path, Code: i.Code, Message: i.Message})
+		issues = append(issues, issueView{Path: i.Path, Code: i.Code, Message: i.Message, Severity: i.Severity})
 	}
 	questions := tc.OpenQuestions
 	if questions == nil {

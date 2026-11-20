@@ -80,10 +80,37 @@ func TestDryRun_ReportsTheRuleIssue(t *testing.T) {
 	assert.Contains(t, out, `"accepted":0`)
 }
 
-// Once the correction budget is spent, the fill that still triggers the rule is
-// not applied and becomes a « valeur non vérifiable » question, like any fill
-// that stays invalid.
-func TestAgent_RuleIssueAfterTheCorrectionBudgetBecomesAQuestion(t *testing.T) {
+// A rule raised on a group (the other address is forbidden outside SIREN) is
+// matched to the fill written under that group.
+func TestCheckFills_GroupRuleIssueGoesBackForTheFillUnderTheGroup(t *testing.T) {
+	c := e2Checker(t, "RN6", false)
+	city := "personnes.pm[pm-1].activiteCoordonnee.autreAdresse.ville"
+	fill := `{"path":"` + city + `","value":"Dupont","source":{"field":"last_name","raw_value":"Dupont"}}`
+	res := c.checkFills(json.RawMessage(`{"fills":[` + fill + `]}`))
+	assert.Empty(t, res.Fills)
+	require.Len(t, res.Corrections, 1, "%v", res.Corrections)
+	assert.Contains(t, res.Corrections[0], "fills[0] "+city)
+	assert.Contains(t, res.Corrections[0], "SIREN")
+}
+
+// A scope-level exclusivity rule (birth date and estimated date: one or the
+// other) is matched to the fill written under the scope.
+func TestCheckFills_ScopeLevelRuleGoesBackForTheFill(t *testing.T) {
+	tc := agentToolContext(t)
+	scope := "personnes.pp[pp-1].etatCivil"
+	tc.Doc.Values[core.Path(scope+".dateNaissance")] = core.Value{Value: "1980-04-01", Origin: core.OriginLLM}
+	spec := agentSpec("fill", agentPersonPath)
+	c := newChecker(tc, spec, tc.TaskId, []core.Path{agentPersonPath})
+	fill := `{"path":"` + scope + `.dateNaissanceEstimation","value":"1980","source":{"field":"birth_date","raw_value":"1980-04-01"}}`
+	res := c.checkFills(json.RawMessage(`{"fills":[` + fill + `]}`))
+	assert.Empty(t, res.Fills, "%v", res.Corrections)
+	require.Len(t, res.Corrections, 1)
+	assert.Contains(t, res.Corrections[0], "l'une ou l'autre")
+}
+
+// Once the correction budget is spent on a warning-level rule, the fill is
+// dropped silently: no question.
+func TestAgent_WarningRuleAfterTheCorrectionBudgetDropsTheFillSilently(t *testing.T) {
 	c := e2Checker(t, "SIREN", false)
 	final := agFinal(e2FillJSON)
 	llm := newScriptedLLM(FinalStep(final), FinalStep(final))
@@ -91,7 +118,7 @@ func TestAgent_RuleIssueAfterTheCorrectionBudgetBecomesAQuestion(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 2, llm.Calls(), "one correction turn")
 	assert.Empty(t, out.Fills)
-	require.Len(t, out.Questions, 1)
-	assert.Equal(t, []core.Path{e2Enseigne}, out.Questions[0].Paths)
-	assert.Contains(t, out.Questions[0].Text, "valeur non vérifiable")
+	for _, q := range out.Questions {
+		assert.NotContains(t, q.Text, "valeur non vérifiable")
+	}
 }

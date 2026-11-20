@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	_ "time/tzdata" // Paris day of timestamps, whatever the host's zoneinfo
 	"unicode"
@@ -94,6 +95,9 @@ type checker struct {
 	// ruleIDs are the memory rules the LLM may cite; any other rule_id is
 	// dropped.
 	ruleIDs map[string]bool
+	// before holds the issues of the document before the task's fills.
+	before     map[ruleKey]bool
+	beforeOnce sync.Once
 }
 
 func newChecker(tc core.ToolContext, spec core.TaskSpec, taskID uuid.UUID, allowed []core.Path) *checker {
@@ -110,6 +114,10 @@ type checkResult struct {
 	Questions []core.QuestionDraft
 	// Corrections are the form errors to send back to the LLM.
 	Corrections []string
+	// Soft are the corrections that stem from a warning-level format rule: when
+	// the correction budget runs out on them, the fill is dropped silently
+	// instead of becoming a question.
+	Soft map[string]bool
 	// Notes are control remarks kept in the trace only.
 	Notes []string
 }
@@ -210,7 +218,14 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 		issue, bad := rejectedIdx[i]
 		if !bad {
 			if rule, hit := ruleIssues[g.fill.Path]; hit {
-				res.Corrections = append(res.Corrections, fmt.Sprintf("fills[%d] %s : %s", g.idx, g.fill.Path, rule.Message))
+				msg := fmt.Sprintf("fills[%d] %s : %s", g.idx, g.fill.Path, rule.Message)
+				res.Corrections = append(res.Corrections, msg)
+				if rule.Severity != core.SeverityBlocking {
+					if res.Soft == nil {
+						res.Soft = map[string]bool{}
+					}
+					res.Soft[msg] = true
+				}
 				continue
 			}
 			res.Fills = append(res.Fills, g.fill)
@@ -234,41 +249,61 @@ func (c *checker) checkFills(final json.RawMessage) checkResult {
 	return res
 }
 
-// newRuleIssues returns, by path, the format rule issues (code `rule:*`, a
-// warning as well as a blocking one) that the candidate fills cause: present
+// ruleKey identifies a validation issue of the document before the fills.
+type ruleKey struct {
+	code string
+	path core.Path
+}
+
+// issuesBefore are the issues of the document the task starts from, computed
+// once per checker (the document of a checker never changes).
+func (c *checker) issuesBefore() map[ruleKey]bool {
+	c.beforeOnce.Do(func() {
+		c.before = map[ruleKey]bool{}
+		for _, is := range c.tc.Format.Validate(c.tc.Doc) {
+			c.before[ruleKey{is.Code, is.Path}] = true
+		}
+	})
+	return c.before
+}
+
+// newRuleIssues returns, by written path, the format rule issue (code `rule:*`,
+// a warning as well as a blocking one) that the candidate fills cause: present
 // when the document is validated with the fills applied (after), absent from the
-// document before them, and on a path one of the accepted fills writes. A
-// `required` issue, an issue already in the document and an issue on a path the
-// task does not write are not the fills' doing and are ignored: the fill that
-// triggers a rule is sent back to the model with the message of the rule.
+// document before them, and whose path is a path one of the accepted fills
+// writes or an ancestor of it (a rule on a group or on the scope of an
+// exclusivity rule is raised on the group or the scope, not on the leaf). A
+// `required` issue, an issue already in the document and an issue elsewhere are
+// not the fills' doing and are ignored: the fill that triggers a rule is sent
+// back to the model with the message of the rule.
 func (c *checker) newRuleIssues(after *core.Document, good []pendingFill, rejected map[int]core.Issue) map[core.Path]core.Issue {
-	written := map[core.Path]bool{}
+	var written []core.Path
 	for i, g := range good {
 		if _, bad := rejected[i]; !bad {
-			written[g.fill.Path] = true
+			written = append(written, g.fill.Path)
 		}
 	}
 	if len(written) == 0 {
 		return nil
 	}
-	type key struct {
-		code string
-		path core.Path
-	}
-	before := map[key]bool{}
-	for _, is := range c.tc.Format.Validate(c.tc.Doc) {
-		before[key{is.Code, is.Path}] = true
+	before := c.issuesBefore()
+	var fresh []core.Issue
+	for _, is := range c.tc.Format.Validate(after) {
+		if strings.HasPrefix(is.Code, "rule:") && !before[ruleKey{is.Code, is.Path}] {
+			fresh = append(fresh, is)
+		}
 	}
 	var out map[core.Path]core.Issue
-	for _, is := range c.tc.Format.Validate(after) {
-		if !strings.HasPrefix(is.Code, "rule:") || !written[is.Path] || before[key{is.Code, is.Path}] {
-			continue
-		}
-		if out == nil {
-			out = map[core.Path]core.Issue{}
-		}
-		if _, dup := out[is.Path]; !dup {
-			out[is.Path] = is
+	for _, w := range written {
+		for _, is := range fresh {
+			if is.Path == w || strings.HasPrefix(string(w), string(is.Path)+".") || strings.HasPrefix(string(w), string(is.Path)+"[") {
+				if out == nil {
+					out = map[core.Path]core.Issue{}
+				}
+				if _, dup := out[w]; !dup {
+					out[w] = is
+				}
+			}
 		}
 	}
 	return out
