@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
@@ -17,11 +18,13 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/sargen"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
 	"github.com/checkmarble/marble-backend/usecases/sargen/formats"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
-// HTTP handlers of the SAR declarations. Rulings: the request DTO maps only path+value to core.Fill; errors go through
-// presentError, or presentSarError for writes that can be refused with issues
-// (Conflict 409, BadParameter 400, Forbidden 403, NotFound 404, invalid UUID 400); the usecase comes from newSarGenerationUsecase(c, uc).
+// HTTP handlers of the SAR declarations. Rulings: the request DTO maps only path+value to core.Fill; every error goes
+// through presentSarError, which writes a stable error_code and a clean French message (and details.issues when the
+// refusal carries issues): Conflict 409, BadParameter 400, Forbidden 403, NotFound 404, invalid UUID 400; the usecase
+// comes from newSarGenerationUsecase(c, uc).
 
 const (
 	sarNavigateDefaultLimit = 100
@@ -32,8 +35,8 @@ const (
 func sarUuidParam(c *gin.Context, name string) (uuid.UUID, bool) {
 	id, err := uuid.Parse(c.Param(name))
 	if err != nil {
-		presentError(c.Request.Context(), c,
-			errors.Wrapf(models.BadParameterError, "identifiant invalide pour %s", name))
+		presentSarError(c,
+			models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest, "identifiant invalide pour %s", name))
 		return uuid.Nil, false
 	}
 	return id, true
@@ -46,10 +49,13 @@ func sarBindJSON(c *gin.Context, into any) bool {
 		return true
 	}
 	var verr validator.ValidationErrors
-	if !errors.As(err, &verr) {
-		err = errors.Wrap(models.BadParameterError, "corps de requête invalide : "+err.Error())
+	msg := "corps de requête invalide"
+	if errors.As(err, &verr) {
+		msg += " : champ invalide ou manquant (" + strings.Join(pure_utils.Map(verr, func(fe validator.FieldError) string {
+			return fe.Field()
+		}), ", ") + ")"
 	}
-	presentError(c.Request.Context(), c, err)
+	presentSarError(c, models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest, msg))
 	return false
 }
 
@@ -57,21 +63,50 @@ func sarBindJSON(c *gin.Context, into any) bool {
 type sarIssuesCarrier interface {
 	error
 	SarIssues() []core.Issue
+	SarCode() models.SarErrorCode
 }
 
-// presentSarError is presentError, except that a refusal carrying issues is a
-// 400 with details.issues (same shape as PUT /sar-format-settings) and the clean
-// message of the refusal.
+// presentSarError is presentError for the SAR generation endpoints. A refusal
+// carrying issues is a 400 with details.issues (same shape for every endpoint);
+// any other SarError is written with its own status (from the sentinel it
+// wraps), its stable error_code and its clean French message, never with
+// wrapper text of the layers it crossed (transaction, sentinel). Other errors
+// fall back to presentError, so unexpected failures stay a 500.
 func presentSarError(c *gin.Context, err error) bool {
+	if err == nil {
+		return false
+	}
+	ctx := c.Request.Context()
 	var carrier sarIssuesCarrier
-	if err != nil && errors.Is(err, models.BadParameterError) && errors.As(err, &carrier) {
+	if errors.Is(err, models.BadParameterError) && errors.As(err, &carrier) {
+		utils.LoggerFromContext(ctx).InfoContext(ctx, "SAR generation refusal", "code", carrier.SarCode(), "error", carrier.Error())
 		c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
-			Message: carrier.Error(),
-			Details: dto.SarIssuesDetails{Issues: pure_utils.Map(carrier.SarIssues(), dto.AdaptSarIssueDto)},
+			Message:   carrier.Error(),
+			ErrorCode: dto.ErrorCode(carrier.SarCode()),
+			Details:   dto.SarIssuesDetails{Issues: pure_utils.Map(carrier.SarIssues(), dto.AdaptSarIssueDto)},
 		})
 		return true
 	}
-	return presentError(c.Request.Context(), c, err)
+	var sarErr *models.SarError
+	if errors.As(err, &sarErr) {
+		status := 0
+		switch {
+		case errors.Is(sarErr, models.BadParameterError):
+			status = http.StatusBadRequest
+		case errors.Is(sarErr, models.ForbiddenError):
+			status = http.StatusForbidden
+		case errors.Is(sarErr, models.NotFoundError):
+			status = http.StatusNotFound
+		case errors.Is(sarErr, models.ConflictError):
+			status = http.StatusConflict
+		}
+		if status != 0 {
+			utils.LoggerFromContext(ctx).InfoContext(ctx, "SAR generation refusal", "code", sarErr.Code, "error", sarErr.Error())
+			c.JSON(status, dto.APIErrorResponse{Message: sarErr.Message, ErrorCode: dto.ErrorCode(sarErr.Code)})
+			return true
+		}
+	}
+	return presentError(ctx, c, err)
 }
 
 func sarState(c *gin.Context, code int, st sargen.DeclarationState, err error) {
@@ -96,7 +131,7 @@ func handleGetSarFormatSpec(_ usecases.Usecases) gin.HandlerFunc {
 			f, ok = formats.Get(key)
 		}
 		if !ok {
-			presentError(c.Request.Context(), c, errors.Wrap(models.NotFoundError, "format inconnu"))
+			presentSarError(c, models.NewSarError(models.NotFoundError, models.SarCodeUnknownFormat, "format inconnu"))
 			return
 		}
 		c.JSON(http.StatusOK, dto.AdaptSarSpecDto(f))
@@ -106,11 +141,11 @@ func handleGetSarFormatSpec(_ usecases.Usecases) gin.HandlerFunc {
 func handleGetSarOrgSettings(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		s, issues, err := newSarGenerationUsecase(c, uc).GetOrgSettings(c.Request.Context(), c.Param("family"))
-		if presentError(c.Request.Context(), c, err) {
+		if presentSarError(c, err) {
 			return
 		}
 		ready, err := newSarGenerationUsecase(c, uc).SettingsReadiness(c.Request.Context(), c.Param("family"), s.Values)
-		if presentError(c.Request.Context(), c, err) {
+		if presentSarError(c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, adaptSarOrgSettingsDto(s, issues, ready))
@@ -124,18 +159,11 @@ func handlePutSarOrgSettings(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 		s, issues, err := newSarGenerationUsecase(c, uc).PutOrgSettings(c.Request.Context(), c.Param("family"), in.Values)
-		if err != nil && len(issues) > 0 && errors.Is(err, models.BadParameterError) {
-			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
-				Message: err.Error(),
-				Details: dto.SarIssuesDetails{Issues: pure_utils.Map(issues, dto.AdaptSarIssueDto)},
-			})
-			return
-		}
-		if presentError(c.Request.Context(), c, err) {
+		if presentSarError(c, err) {
 			return
 		}
 		ready, err := newSarGenerationUsecase(c, uc).SettingsReadiness(c.Request.Context(), c.Param("family"), s.Values)
-		if presentError(c.Request.Context(), c, err) {
+		if presentSarError(c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, adaptSarOrgSettingsDto(s, issues, ready))
@@ -164,7 +192,7 @@ func handleListSarDeclarations(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 		ds, err := newSarGenerationUsecase(c, uc).ListDeclarations(c.Request.Context(), caseId)
-		if presentError(c.Request.Context(), c, err) {
+		if presentSarError(c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, pure_utils.Map(ds, dto.AdaptSarDeclarationSummaryDto))
@@ -270,7 +298,7 @@ func handleListSarExports(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 		es, err := newSarGenerationUsecase(c, uc).ListExports(c.Request.Context(), id)
-		if presentError(c.Request.Context(), c, err) {
+		if presentSarError(c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, pure_utils.Map(es, dto.AdaptSarExportDto))
@@ -288,7 +316,7 @@ func handleDownloadSarExport(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 		blob, err := newSarGenerationUsecase(c, uc).DownloadExport(c.Request.Context(), id, exportId)
-		if presentError(c.Request.Context(), c, err) {
+		if presentSarError(c, err) {
 			return
 		}
 		defer blob.ReadCloser.Close()
@@ -323,7 +351,7 @@ func handleListSarCandidates(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 		cs, err := newSarGenerationUsecase(c, uc).ListCandidates(c.Request.Context(), id)
-		if presentError(c.Request.Context(), c, err) {
+		if presentSarError(c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, pure_utils.Map(cs, adaptSarCandidateDto))
@@ -338,15 +366,15 @@ func handleNavigateSar(uc usecases.Usecases) gin.HandlerFunc {
 		}
 		table, objectId, link := c.Query("table"), c.Query("object_id"), c.Query("link")
 		if table == "" || objectId == "" || link == "" {
-			presentError(c.Request.Context(), c,
-				errors.Wrap(models.BadParameterError, "table, object_id et link sont requis"))
+			presentSarError(c,
+				models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest, "table, object_id et link sont requis"))
 			return
 		}
 		limit := sarNavigateDefaultLimit
 		if raw := c.Query("limit"); raw != "" {
 			n, err := strconv.Atoi(raw)
 			if err != nil || n < 1 {
-				presentError(c.Request.Context(), c, errors.Wrap(models.BadParameterError, "limit invalide"))
+				presentSarError(c, models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest, "limit invalide"))
 				return
 			}
 			limit = min(n, sarNavigateMaxLimit)
@@ -357,7 +385,7 @@ func handleNavigateSar(uc usecases.Usecases) gin.HandlerFunc {
 		}
 		objs, next, err := newSarGenerationUsecase(c, uc).Navigate(c.Request.Context(), id,
 			core.ObjectRef{Table: table, ObjectID: objectId}, link, cursor, limit)
-		if presentError(c.Request.Context(), c, err) {
+		if presentSarError(c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, adaptSarNavigateResponse(objs, next))
@@ -371,7 +399,7 @@ func handleGetSarSelection(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 		objs, err := newSarGenerationUsecase(c, uc).GetSelection(c.Request.Context(), id)
-		if presentError(c.Request.Context(), c, err) {
+		if presentSarError(c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, pure_utils.Map(objs, dto.AdaptSarSelectedObjectDto))
@@ -395,7 +423,7 @@ func handleUpdateSarSelection(uc usecases.Usecases) gin.HandlerFunc {
 }
 
 func sarJob(c *gin.Context, j models.SarGenerationJob, err error) {
-	if presentError(c.Request.Context(), c, err) {
+	if presentSarError(c, err) {
 		return
 	}
 	c.JSON(http.StatusAccepted, dto.AdaptSarJobDto(j))
@@ -419,7 +447,7 @@ func handleGetSarJob(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 		s, err := newSarGenerationUsecase(c, uc).GetJob(c.Request.Context(), id)
-		if presentError(c.Request.Context(), c, err) {
+		if presentSarError(c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, adaptSarJobStateDto(s))
@@ -455,7 +483,7 @@ func handleListSarQuestions(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 		qs, err := newSarGenerationUsecase(c, uc).ListQuestions(c.Request.Context(), id)
-		if presentError(c.Request.Context(), c, err) {
+		if presentSarError(c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, pure_utils.Map(qs, adaptSarQuestionDto))
@@ -492,7 +520,7 @@ func handleDismissSarQuestion(uc usecases.Usecases) gin.HandlerFunc {
 			return
 		}
 		err := newSarGenerationUsecase(c, uc).DismissQuestion(c.Request.Context(), id)
-		if presentError(c.Request.Context(), c, err) {
+		if presentSarError(c, err) {
 			return
 		}
 		c.Status(http.StatusNoContent)

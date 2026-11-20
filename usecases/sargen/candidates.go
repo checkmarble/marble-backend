@@ -364,17 +364,17 @@ func filterValue(dataType models.DataType, v any) (models.StringOrNumber, error)
 		case string:
 			f, err := strconv.ParseFloat(x, 64)
 			if err != nil {
-				return models.StringOrNumber{}, errors.Wrapf(models.BadParameterError,
+				return models.StringOrNumber{}, models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest,
 					"la valeur %q n'est pas un nombre", x)
 			}
 			return models.StringOrNumber{FloatValue: &f}, nil
 		}
-		return models.StringOrNumber{}, errors.Wrapf(models.BadParameterError,
+		return models.StringOrNumber{}, models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest,
 			"la valeur %v n'est pas un nombre", v)
 	default:
 		s, ok := valueString(v)
 		if !ok {
-			return models.StringOrNumber{}, errors.Wrap(models.BadParameterError, "valeur de filtre vide")
+			return models.StringOrNumber{}, models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest, "valeur de filtre vide")
 		}
 		return models.StringOrNumber{StringValue: &s}, nil
 	}
@@ -396,12 +396,12 @@ func (uc *Usecase) Navigate(ctx context.Context, id uuid.UUID, from core.ObjectR
 	}
 	fromData, ok := c.dataOf(from)
 	if !ok {
-		return nil, nil, errors.Wrapf(models.ForbiddenError,
+		return nil, nil, models.NewSarErrorf(models.ForbiddenError, models.SarCodeForbidden,
 			"l'objet %s/%s n'est ni un candidat ni sélectionné", from.Table, from.ObjectID)
 	}
 	l, ok := findLink(c.dataModel, from.Table, link)
 	if !ok {
-		return nil, nil, errors.Wrapf(models.BadParameterError, "lien inconnu : %q", link)
+		return nil, nil, models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest, "lien inconnu : %q", link)
 	}
 
 	if l.single != nil {
@@ -435,7 +435,7 @@ func (uc *Usecase) Navigate(ctx context.Context, id uuid.UUID, from core.ObjectR
 	}
 	targetField, ok := c.dataModel.Tables[l.nav.TargetTableName].Fields[l.nav.FilterFieldName]
 	if !ok {
-		return nil, nil, errors.Wrapf(models.NotFoundError, "champ de filtre introuvable : %s.%s",
+		return nil, nil, models.NewSarErrorf(models.NotFoundError, models.SarCodeNotFound, "champ de filtre introuvable : %s.%s",
 			l.nav.TargetTableName, l.nav.FilterFieldName)
 	}
 	filter, err := filterValue(targetField.DataType, sourceValue)

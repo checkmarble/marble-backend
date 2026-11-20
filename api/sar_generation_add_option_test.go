@@ -93,7 +93,7 @@ func TestHandleChooseOption_DecliningOptionKeepsTheVersion(t *testing.T) {
 func TestHandleChooseOption_RefusedAddOptionIsAFrench400(t *testing.T) {
 	qid := uuid.New()
 	f := &fakeSarGenerationUsecase{}
-	f.Fail("ChooseQuestionOption", sargen.NewIssuesError([]core.Issue{{
+	f.Fail("ChooseQuestionOption", sargen.NewIssuesError(models.SarCodeInvalidField, []core.Issue{{
 		Path: "context.natureSoupcon.cadreLegal[+z]", Code: core.CodeTooManyItems,
 		Message: "nombre maximal d'éléments atteint",
 	}}))

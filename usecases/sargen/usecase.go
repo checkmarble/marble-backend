@@ -222,7 +222,7 @@ type DeclarationState struct {
 func credsOrg(ctx context.Context) (uuid.UUID, error) {
 	creds, ok := utils.CredentialsFromCtx(ctx)
 	if !ok || creds.OrganizationId == uuid.Nil {
-		return uuid.Nil, errors.Wrap(models.ForbiddenError, "aucune organisation dans les droits de l'appelant")
+		return uuid.Nil, models.NewSarError(models.ForbiddenError, models.SarCodeForbidden, "aucune organisation dans les droits de l'appelant")
 	}
 	return creds.OrganizationId, nil
 }
@@ -247,7 +247,7 @@ func (uc *Usecase) checkCaseAccess(ctx context.Context, exec repositories.Execut
 		return err
 	}
 	if c.OrganizationId != orgId {
-		return errors.Wrap(models.ForbiddenError, "ce dossier n'appartient pas à votre organisation")
+		return models.NewSarError(models.ForbiddenError, models.SarCodeForbidden, "ce dossier n'appartient pas à votre organisation")
 	}
 	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, c.OrganizationId, false)
 	if err != nil {
@@ -268,7 +268,7 @@ func (uc *Usecase) checkDeclarationAccess(ctx context.Context, exec repositories
 		return err
 	}
 	if d.OrganizationId != orgId {
-		return errors.Wrap(models.ForbiddenError, "cette déclaration n'appartient pas à votre organisation")
+		return models.NewSarError(models.ForbiddenError, models.SarCodeForbidden, "cette déclaration n'appartient pas à votre organisation")
 	}
 	return uc.checkCaseAccess(ctx, exec, orgId, d.CaseId)
 }
@@ -367,19 +367,19 @@ func (uc *Usecase) CreateDeclaration(ctx context.Context, caseId uuid.UUID, form
 	}
 	key, err := core.ParseFormatKey(formatKey)
 	if err != nil {
-		return DeclarationState{}, errors.Wrap(models.BadParameterError, err.Error())
+		return DeclarationState{}, models.NewSarError(models.BadParameterError, models.SarCodeUnknownFormat, err.Error())
 	}
 	format, ok := uc.formatGetter(key)
 	if !ok {
-		return DeclarationState{}, errors.Wrapf(models.BadParameterError, "format inconnu : %s", formatKey)
+		return DeclarationState{}, models.NewSarErrorf(models.BadParameterError, models.SarCodeUnknownFormat, "format inconnu : %s", formatKey)
 	}
 	if format.Status() != core.VersionActive {
-		return DeclarationState{}, errors.Wrap(models.BadParameterError,
+		return DeclarationState{}, models.NewSarError(models.BadParameterError, models.SarCodeFormatRetired,
 			"cette version du format n'accepte plus de nouvelle déclaration")
 	}
 	spec := format.Spec()
 	if !slices.Contains(spec.ReportTypes, reportType) {
-		return DeclarationState{}, errors.Wrapf(models.BadParameterError, "type de déclaration inconnu : %s", reportType)
+		return DeclarationState{}, models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest, "type de déclaration inconnu : %s", reportType)
 	}
 
 	doc := core.NewDocument()
@@ -557,9 +557,11 @@ func (uc *Usecase) mutateWithPost(ctx context.Context, id uuid.UUID, version int
 }
 
 // IssuesError is a BadParameterError that carries the structured issues of a
-// refused write, so the API can return them as details.issues. Its message is
-// the clean French text the analyst reads (no code, no sentinel suffix).
+// refused write and the stable code of the refusal, so the API can return them
+// as error_code and details.issues. Its message is the clean French text the
+// analyst reads (no code, no sentinel suffix).
 type IssuesError struct {
+	code   models.SarErrorCode
 	issues []core.Issue
 	// prefix, when set, introduces the message (e.g. why the operation is refused).
 	prefix string
@@ -585,17 +587,24 @@ func (e *IssuesError) Unwrap() error { return models.BadParameterError }
 // SarIssues returns the issues of the refused write.
 func (e *IssuesError) SarIssues() []core.Issue { return e.issues }
 
-// NewIssuesError builds the refusal of a write rejected with issues.
-func NewIssuesError(issues []core.Issue) *IssuesError { return &IssuesError{issues: issues} }
+// SarCode returns the stable code of the refusal.
+func (e *IssuesError) SarCode() models.SarErrorCode { return e.code }
+
+// NewIssuesError builds the refusal, with the given code, of a write rejected
+// with issues.
+func NewIssuesError(code models.SarErrorCode, issues []core.Issue) *IssuesError {
+	return &IssuesError{code: code, issues: issues}
+}
 
 // NewIssuesErrorWithMessage is NewIssuesError with a French sentence introducing
 // the issues in the message.
-func NewIssuesErrorWithMessage(prefix string, issues []core.Issue) *IssuesError {
-	return &IssuesError{issues: issues, prefix: prefix}
+func NewIssuesErrorWithMessage(code models.SarErrorCode, prefix string, issues []core.Issue) *IssuesError {
+	return &IssuesError{code: code, issues: issues, prefix: prefix}
 }
 
+// issuesToError is the refusal of a write to a field of the document.
 func issuesToError(issues []core.Issue) error {
-	return NewIssuesError(issues)
+	return NewIssuesError(models.SarCodeInvalidField, issues)
 }
 
 // UpdateFields applies fills with OriginManual and OverwriteAll, all-or-nothing.
@@ -658,19 +667,19 @@ func (uc *Usecase) AddItem(ctx context.Context, id uuid.UUID, version int, conta
 	st, err := uc.mutate(ctx, id, version, func(format core.Format, doc *core.Document) error {
 		n := format.Spec().NodeAt(container.Template() + "[]")
 		if n == nil || !n.IsRepeatable() {
-			return errors.Wrapf(models.BadParameterError, "%s n'est pas une liste", container)
+			return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest, "%s n'est pas une liste", container)
 		}
 		if onlyComputed(n) {
-			return errors.Wrapf(models.BadParameterError,
+			return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest,
 				"%s est calculée : les éléments ne s'ajoutent pas à la main", container)
 		}
 		for _, anc := range keyedAncestors(container) {
 			if !itemExists(doc, anc) {
-				return errors.Wrapf(models.BadParameterError, "l'élément parent %s n'existe pas", anc)
+				return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest, "l'élément parent %s n'existe pas", anc)
 			}
 		}
 		if n.Max > 0 && len(doc.Items[container]) >= n.Max {
-			return errors.Wrapf(models.BadParameterError, "nombre maximal d'éléments atteint pour %s", container)
+			return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest, "nombre maximal d'éléments atteint pour %s", container)
 		}
 		prefix := n.Name
 		if prefix == "" {
@@ -689,18 +698,18 @@ func (uc *Usecase) AddItem(ctx context.Context, id uuid.UUID, version int, conta
 func (uc *Usecase) RemoveItem(ctx context.Context, id uuid.UUID, version int, item core.Path) (DeclarationState, error) {
 	return uc.mutateWithPost(ctx, id, version, func(format core.Format, doc *core.Document, _, _ *string) error {
 		if !strings.HasSuffix(string(item), "]") {
-			return errors.Wrapf(models.BadParameterError, "%s n'est pas un élément de liste", item)
+			return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest, "%s n'est pas un élément de liste", item)
 		}
 		n := format.Spec().NodeAt(item.Template())
 		if n == nil || !n.IsRepeatable() {
-			return errors.Wrapf(models.BadParameterError, "%s n'est pas un élément de liste", item)
+			return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest, "%s n'est pas un élément de liste", item)
 		}
 		if onlyComputed(n) {
-			return errors.Wrapf(models.BadParameterError,
+			return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest,
 				"%s est calculée : les éléments ne se retirent pas à la main", item)
 		}
 		if !itemExists(doc, item) {
-			return errors.Wrapf(models.NotFoundError, "l'élément %s n'existe pas", item)
+			return models.NewSarErrorf(models.NotFoundError, models.SarCodeNotFound, "l'élément %s n'existe pas", item)
 		}
 		doc.RemoveItem(item)
 		uc.recompute(ctx, format, doc)

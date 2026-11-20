@@ -71,7 +71,7 @@ func (uc *Usecase) UpdateSelection(ctx context.Context, id uuid.UUID, version in
 	uniqueAdd := make([]SelectionAdd, 0, len(add))
 	for _, a := range add {
 		if removed[a.Ref] {
-			return DeclarationState{}, errors.Wrapf(models.BadParameterError,
+			return DeclarationState{}, models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest,
 				"l'objet %s/%s ne peut pas être ajouté et retiré en même temps", a.Ref.Table, a.Ref.ObjectID)
 		}
 		if seenAdd[a.Ref] {
@@ -307,18 +307,18 @@ func (uc *Usecase) snapshotFor(ctx context.Context, orgId uuid.UUID, c selection
 	}
 
 	if a.ReachedFrom == nil {
-		return row, errors.Wrapf(models.ForbiddenError,
+		return row, models.NewSarErrorf(models.ForbiddenError, models.SarCodeForbidden,
 			"l'objet %s/%s n'est ni un candidat ni atteignable depuis un objet sélectionné", a.Ref.Table, a.Ref.ObjectID)
 	}
 	from := core.ObjectRef{Table: a.ReachedFrom.TableName, ObjectID: a.ReachedFrom.ObjectId}
 	fromData, ok := c.dataOf(from)
 	if !ok {
-		return row, errors.Wrapf(models.ForbiddenError,
+		return row, models.NewSarErrorf(models.ForbiddenError, models.SarCodeForbidden,
 			"l'objet source %s/%s n'est ni un candidat ni sélectionné", from.Table, from.ObjectID)
 	}
 	link, ok := findLink(c.dataModel, from.Table, a.ReachedFrom.Link)
 	if !ok || link.TargetTable != a.Ref.Table {
-		return row, errors.Wrapf(models.ForbiddenError,
+		return row, models.NewSarErrorf(models.ForbiddenError, models.SarCodeForbidden,
 			"le lien %q ne mène pas de %s à %s", a.ReachedFrom.Link, from.Table, a.Ref.Table)
 	}
 	obj, err := uc.readIngested(ctx, orgId, c.dataModel, a.Ref)
@@ -326,7 +326,7 @@ func (uc *Usecase) snapshotFor(ctx context.Context, orgId uuid.UUID, c selection
 		return row, err
 	}
 	if !link.reaches(fromData, obj.Data) {
-		return row, errors.Wrapf(models.ForbiddenError,
+		return row, models.NewSarErrorf(models.ForbiddenError, models.SarCodeForbidden,
 			"l'objet %s/%s n'est pas atteignable par le lien %q", a.Ref.Table, a.Ref.ObjectID, a.ReachedFrom.Link)
 	}
 	row.Snapshot, row.Origin = utcTimes(obj.Data), ingestedOrigin(obj)
@@ -391,7 +391,7 @@ func (uc *Usecase) readIngested(ctx context.Context, orgId uuid.UUID, dm models.
 		return models.ClientObjectDetail{}, err
 	}
 	if len(objs) == 0 {
-		return models.ClientObjectDetail{}, errors.Wrapf(models.NotFoundError,
+		return models.ClientObjectDetail{}, models.NewSarErrorf(models.NotFoundError, models.SarCodeNotFound,
 			"objet introuvable : %s/%s", ref.Table, ref.ObjectID)
 	}
 	return objs[len(objs)-1], nil

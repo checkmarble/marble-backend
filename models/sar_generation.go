@@ -3,13 +3,13 @@ package models
 import (
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
 // ErrSarJobAlreadyActive is returned when a generation job is already pending
 // or running for the declaration.
-var ErrSarJobAlreadyActive = errors.Wrap(ConflictError, "une génération est déjà en cours pour cette déclaration")
+var ErrSarJobAlreadyActive = NewSarError(ConflictError, SarCodeGenerationInProgress,
+	"une génération est déjà en cours pour cette déclaration")
 
 type SarJobKind string
 

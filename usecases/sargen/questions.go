@@ -81,7 +81,7 @@ func (uc *Usecase) DismissQuestion(ctx context.Context, questionId uuid.UUID) er
 			return err
 		}
 		if cur.Status != models.SarQuestionStatusOpen {
-			return errors.Wrap(models.ConflictError, "cette question est déjà fermée")
+			return models.NewSarError(models.ConflictError, models.SarCodeQuestionClosed, "cette question est déjà fermée")
 		}
 		return uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{questionId}, models.SarQuestionStatusDismissed)
 	})
@@ -114,10 +114,10 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 		return DeclarationState{}, err
 	}
 	if q.Status != models.SarQuestionStatusOpen {
-		return DeclarationState{}, errors.Wrap(models.ConflictError, "cette question est déjà fermée")
+		return DeclarationState{}, models.NewSarError(models.ConflictError, models.SarCodeQuestionClosed, "cette question est déjà fermée")
 	}
 	if optionIndex < 0 || optionIndex >= len(q.Options) {
-		return DeclarationState{}, errors.Wrap(models.BadParameterError, "option inconnue")
+		return DeclarationState{}, models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest, "option inconnue")
 	}
 	opt := q.Options[optionIndex]
 	if opt.RemoveItem != "" {
@@ -130,11 +130,11 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 			// closes the question and writes nothing.
 			return uc.declineQuestion(ctx, q, version)
 		}
-		return DeclarationState{}, errors.Wrap(models.BadParameterError, "cette option ne propose aucune valeur")
+		return DeclarationState{}, models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest, "cette option ne propose aucune valeur")
 	}
 	if len(q.Paths) == 0 {
 		// No paths means no restriction in ApplyFills: refuse rather than write anywhere.
-		return DeclarationState{}, errors.Wrap(models.BadParameterError,
+		return DeclarationState{}, models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest,
 			"cette question ne désigne aucun champ : ses options ne peuvent rien écrire")
 	}
 	var written []core.Path
@@ -151,7 +151,7 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 				if node := spec.NodeAt(f.Path.Template()); node != nil {
 					switch node.EffectiveNature() {
 					case core.NatureSetting, core.NatureComputed:
-						return errors.Wrapf(models.BadParameterError,
+						return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest,
 							"le champ %s est un réglage ou un champ calculé : il ne peut pas être renseigné par une option", f.Path)
 					}
 				}
@@ -203,7 +203,7 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 				return err
 			}
 			if cur.Status != models.SarQuestionStatusOpen {
-				return errors.Wrap(models.ConflictError, "cette question est déjà fermée")
+				return models.NewSarError(models.ConflictError, models.SarCodeQuestionClosed, "cette question est déjà fermée")
 			}
 			if err := uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{questionId}, models.SarQuestionStatusResolved); err != nil {
 				return err
@@ -444,7 +444,7 @@ func (uc *Usecase) declineQuestion(ctx context.Context, q Question, version int)
 			return err
 		}
 		if cur.Status != models.SarQuestionStatusOpen {
-			return errors.Wrap(models.ConflictError, "cette question est déjà fermée")
+			return models.NewSarError(models.ConflictError, models.SarCodeQuestionClosed, "cette question est déjà fermée")
 		}
 		saved = d
 		return uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{q.Id}, models.SarQuestionStatusResolved)
