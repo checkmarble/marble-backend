@@ -24,6 +24,7 @@ type InboxUsecaseTestSuite struct {
 	executorFactory    *mocks.ExecutorFactory
 	inboxRepository    *mocks.InboxRepository
 	userRepository     *mocks.UserRepository
+	grantRepository    *mocks.GrantRepository
 	credentials        models.Credentials
 	adminCredentials   models.Credentials
 
@@ -44,6 +45,7 @@ func (suite *InboxUsecaseTestSuite) SetupTest() {
 	suite.enforceSecurity = new(mocks.EnforceSecurity)
 	suite.inboxRepository = new(mocks.InboxRepository)
 	suite.userRepository = new(mocks.UserRepository)
+	suite.grantRepository = new(mocks.GrantRepository)
 	suite.exec = new(mocks.Executor)
 	suite.transaction = new(mocks.Transaction)
 	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
@@ -106,6 +108,7 @@ func (suite *InboxUsecaseTestSuite) makeUsecase() *InboxUsecase {
 			TransactionFactory:  suite.transactionFactory,
 			ExecutorFactory:     suite.executorFactory,
 			UserRepository:      suite.userRepository,
+			GrantRepository:     suite.grantRepository,
 		},
 	}
 }
@@ -125,6 +128,7 @@ func (suite *InboxUsecaseTestSuite) makeUsecaseAdmin() *InboxUsecase {
 			TransactionFactory:  suite.transactionFactory,
 			ExecutorFactory:     suite.executorFactory,
 			UserRepository:      suite.userRepository,
+			GrantRepository:     suite.grantRepository,
 		},
 	}
 }
@@ -134,6 +138,7 @@ func (suite *InboxUsecaseTestSuite) AssertExpectations() {
 	suite.enforceSecurity.AssertExpectations(t)
 	suite.inboxRepository.AssertExpectations(t)
 	suite.userRepository.AssertExpectations(t)
+	suite.grantRepository.AssertExpectations(t)
 	suite.exec.AssertExpectations(t)
 	suite.transaction.AssertExpectations(t)
 }
@@ -266,13 +271,14 @@ func (suite *InboxUsecaseTestSuite) Test_CreateInboxUser_nominal_non_admin() {
 	}
 
 	targetUser := models.User{
-		OrganizationId: suite.organizationId,
+		OrganizationId: uuid.New(),
 		UserId:         models.UserId(suite.nonAdminUserId),
 	}
 	targetInbox := models.Inbox{OrganizationId: suite.organizationId, Id: suite.parsedInboxId}
+	targetGrants := []models.Grant{{OrganizationId: suite.organizationId}}
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.enforceSecurity.On("CreateInboxUser", input,
-		mock.AnythingOfType("[]models.InboxUser"), targetInbox, targetUser).Return(nil)
+		mock.AnythingOfType("[]models.InboxUser"), targetInbox, targetGrants).Return(nil)
 	suite.inboxRepository.On("ListInboxUsers", suite.ctx, suite.transaction, models.InboxUserFilterInput{
 		UserId: models.UserId(suite.nonAdminUserId),
 	}).Return([]models.InboxUser{inboxUser}, nil)
@@ -284,6 +290,8 @@ func (suite *InboxUsecaseTestSuite) Test_CreateInboxUser_nominal_non_admin() {
 		mock.AnythingOfType("uuid.UUID")).Return(inboxUser, nil)
 	suite.userRepository.On("UserById", suite.ctx, suite.transaction, suite.nonAdminUserId).Return(
 		targetUser, nil)
+	suite.grantRepository.On("ListOrganizationGrantsByUser", suite.ctx, suite.transaction, []string{suite.nonAdminUserId}).
+		Return(map[string][]models.Grant{suite.nonAdminUserId: targetGrants}, nil)
 
 	newInboxUser, err := suite.makeUsecase().CreateInboxUser(suite.ctx, input)
 
@@ -291,6 +299,27 @@ func (suite *InboxUsecaseTestSuite) Test_CreateInboxUser_nominal_non_admin() {
 	assert.NoError(t, err)
 	assert.Equal(t, newInboxUser, inboxUser)
 
+	suite.AssertExpectations()
+}
+
+func (suite *InboxUsecaseTestSuite) Test_CreateInboxUser_requires_active_organization_grant() {
+	input := models.CreateInboxUserInput{InboxId: suite.parsedInboxId, UserId: suite.parsedNonAdminUserId}
+	targetUser := models.User{UserId: models.UserId(suite.nonAdminUserId), OrganizationId: suite.organizationId}
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
+	suite.inboxRepository.On("ListInboxUsers", suite.ctx, suite.transaction, models.InboxUserFilterInput{
+		UserId: models.UserId(suite.nonAdminUserId),
+	}).Return([]models.InboxUser{}, nil)
+	suite.userRepository.On("UserById", suite.ctx, suite.transaction, suite.nonAdminUserId).Return(targetUser, nil)
+	suite.inboxRepository.On("GetInboxById", suite.ctx, suite.transaction, suite.parsedInboxId).Return(suite.inbox, nil)
+	targetGrants := []models.Grant{{OrganizationId: uuid.New()}}
+	suite.enforceSecurity.On("CreateInboxUser", input, []models.InboxUser{}, suite.inbox, targetGrants).Return(models.ForbiddenError)
+	suite.grantRepository.On("ListOrganizationGrantsByUser", suite.ctx, suite.transaction, []string{suite.nonAdminUserId}).
+		Return(map[string][]models.Grant{suite.nonAdminUserId: targetGrants}, nil)
+
+	_, err := suite.makeUsecase().CreateInboxUser(suite.ctx, input)
+
+	assert.ErrorIs(suite.T(), err, models.ForbiddenError)
+	suite.inboxRepository.AssertNotCalled(suite.T(), "CreateInboxUser", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	suite.AssertExpectations()
 }
 

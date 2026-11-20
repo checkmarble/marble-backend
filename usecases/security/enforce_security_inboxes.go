@@ -1,6 +1,8 @@
 package security
 
 import (
+	"slices"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -68,12 +70,14 @@ func (e EnforceSecurityInboxes) ReadInboxUser(inboxUser models.InboxUser, actorI
 }
 
 func (e EnforceSecurityInboxes) CreateInboxUser(
-	i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser, targetInbox models.Inbox, targetUser models.User,
+	i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser, targetInbox models.Inbox, targetGrants []models.Grant,
 ) error {
-	organizationId := e.Credentials.OrganizationId
-	if targetUser.OrganizationId != organizationId {
+	if !slices.ContainsFunc(targetGrants, func(grant models.Grant) bool {
+		return grant.OrganizationId == targetInbox.OrganizationId
+	}) {
 		return errors.Wrap(models.ForbiddenError, "Target user does not belong to the right organization")
 	}
+	organizationId := e.Credentials.OrganizationId
 	if targetInbox.OrganizationId != organizationId {
 		return errors.Wrap(models.ForbiddenError, "Target inbox does not belong to the right organization")
 	}

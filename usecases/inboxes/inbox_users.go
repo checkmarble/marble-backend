@@ -27,7 +27,7 @@ type InboxUserRepository interface {
 type EnforceSecurityInboxUsers interface {
 	ReadInboxUser(inboxUser models.InboxUser, actorInboxUsers []models.InboxUser) error
 	CreateInboxUser(i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser,
-		targetInbox models.Inbox, targetUser models.User) error
+		targetInbox models.Inbox, targetGrants []models.Grant) error
 	UpdateInboxUser(inboxUser models.InboxUser, actorInboxUsers []models.InboxUser) error
 }
 
@@ -37,6 +37,7 @@ type InboxUsers struct {
 	EnforceSecurity     EnforceSecurityInboxUsers
 	InboxUserRepository InboxUserRepository
 	UserRepository      repositories.UserRepository
+	GrantRepository     repositories.GrantRepository
 	Credentials         models.Credentials
 	Cache               *repositories.RedisClient
 }
@@ -112,7 +113,7 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 				return models.InboxUser{}, err
 			}
 
-			targetUser, err := usecase.UserRepository.UserById(ctx, tx, input.UserId.String())
+			_, err = usecase.UserRepository.UserById(ctx, tx, input.UserId.String())
 			if err != nil {
 				return models.InboxUser{}, err
 			}
@@ -121,8 +122,12 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 				return models.InboxUser{}, err
 			}
 
-			err = usecase.EnforceSecurity.CreateInboxUser(input, thisUsersInboxes, targetInbox, targetUser)
+			grants, err := usecase.GrantRepository.ListOrganizationGrantsByUser(ctx, tx, []string{input.UserId.String()})
 			if err != nil {
+				return models.InboxUser{}, err
+			}
+
+			if err := usecase.EnforceSecurity.CreateInboxUser(input, thisUsersInboxes, targetInbox, grants[input.UserId.String()]); err != nil {
 				return models.InboxUser{}, err
 			}
 
