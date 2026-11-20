@@ -67,12 +67,33 @@ type QuestionOption struct {
 	// Fills are ready-to-apply values (with their sources); empty when the
 	// option is only a label.
 	Fills []Fill `json:"fills"`
+	// RemoveItem is an item (within the paths of the question) that choosing the
+	// option removes. Before the removal, the format may rewrite what refers to
+	// the item (ItemRemovalRewriter): those fills are computed when the option is
+	// chosen, never stored, because the document changes after the question is
+	// asked. Optional: an option without it only writes its Fills.
+	RemoveItem Path `json:"remove_item,omitempty"`
 }
 
 type QuestionDraft struct {
 	Paths   []Path           `json:"paths"`
 	Text    string           `json:"text"`
 	Options []QuestionOption `json:"options"`
+	// Blocking: the declaration cannot be exported until the question is
+	// answered (or closed).
+	Blocking bool `json:"blocking,omitempty"`
+}
+
+// ItemRemovalRewriter is an optional capability of a Format: when a question
+// option removes an item (QuestionOption.RemoveItem), RewriteBeforeRemoval
+// returns, from the document as it is when the option is chosen, the fills that
+// keep the rest of the document consistent once the item is gone (e.g. a
+// reference to the item replaced by free text; an empty value clears a field).
+// The fills are applied with the analyst origin, over any existing value, then
+// the item is removed. They may write outside the paths of the question; they
+// never write a setting or a computed field.
+type ItemRemovalRewriter interface {
+	RewriteBeforeRemoval(doc *Document, item Path) []Fill
 }
 
 type ReviewFinding struct {
