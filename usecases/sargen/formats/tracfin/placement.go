@@ -104,7 +104,8 @@ type contextPerson struct {
 }
 
 // maxContextPersons caps the persons kept for their direct involvement in a
-// declared operation: past it, the others keep the plain question.
+// declared operation (nearest chain first, then by object id): past it, the
+// others keep the plain question.
 const maxContextPersons = 5
 
 // parsePlacement decodes and checks a placement output. References without a
@@ -126,8 +127,9 @@ const maxContextPersons = 5
 //   - a person made only of context-only objects is still kept, at most
 //     maxContextPersons per output (in output order), when it is directly
 //     involved in a declared operation: one of its objects was added through a
-//     chain of auto-added rows that starts at an object chosen by the analyst
-//     and carried by a declared item (a declared person, a transaction or a
+//     chain of at most two auto-added rows that starts at an object chosen by
+//     the analyst and carried by a declared item; the nearest come first, then
+//     by object id (a declared person, a transaction or a
 //     financial reference of the output). Such a person is the holder of the
 //     account of a declared transaction, or the director of a declared
 //     company, and TRACFIN expects it declared. The analyst is asked to confirm
@@ -187,9 +189,34 @@ func (f *format) parsePlacement(raw json.RawMessage, sc core.StructuredContext) 
 		carriedPerson[i] = carried
 	}
 	declared := declaredObjects(out, carriedPerson, sc)
+	// Persons made only of context objects that are directly involved, nearest
+	// first (chain depth), then by the table and id of their first object, so that
+	// the cap never depends on the order the model listed them in.
+	type candidate struct {
+		index, depth int
+	}
+	var candidates []candidate
+	for i, p := range out.Persons {
+		if carriedPerson[i] {
+			continue
+		}
+		if depth, ok := involvementDepth(p.Objects, usedAsReference, declared, sc); ok {
+			candidates = append(candidates, candidate{index: i, depth: depth})
+		}
+	}
+	slices.SortStableFunc(candidates, func(a, b candidate) int {
+		if a.depth != b.depth {
+			return a.depth - b.depth
+		}
+		return compareObjectRefs(out.Persons[a.index].Objects[0], out.Persons[b.index].Objects[0])
+	})
+	involved := map[int]bool{}
+	for _, c := range candidates[:min(len(candidates), maxContextPersons)] {
+		involved[c.index] = true
+	}
 	for i, p := range out.Persons {
 		if !carriedPerson[i] {
-			if len(left.contextPersons) < maxContextPersons && directlyInvolved(p.Objects, usedAsReference, declared, sc) {
+			if involved[i] {
 				left.contextPersons = append(left.contextPersons, contextPerson{kind: p.Kind, objects: slices.Clone(p.Objects)})
 			} else {
 				newIndex[i] = -1
@@ -279,19 +306,30 @@ func declaredObjects(out placementOutput, carriedPerson []bool, sc core.Structur
 	return declared
 }
 
-// directlyInvolved tells whether a person made only of context-only objects is
-// directly involved in a declared operation: one of its objects, that can carry
-// an entity (person-, company- or partner-like table, or unknown; not an object
-// the output uses as a financial reference), was reached through auto-added rows
-// from an object chosen by the analyst that a declared item carries.
-func directlyInvolved(objs []core.ObjectRef, usedAsReference, declared map[core.ObjectRef]bool, sc core.StructuredContext) bool {
-	return slices.ContainsFunc(objs, func(o core.ObjectRef) bool {
+// maxInvolvementDepth is the longest reached-from chain that still makes a
+// person directly involved: 1 is a parent of the declared object (a director of
+// a declared company), 2 a parent of a parent (the holder of the account of a
+// declared transaction). Further away it is background.
+const maxInvolvementDepth = 2
+
+// involvementDepth tells whether a person made only of context-only objects is
+// directly involved in a declared operation, and how close: one of its objects,
+// that can carry an entity (person-, company- or partner-like table, or unknown;
+// not an object the output uses as a financial reference), was reached through
+// at most maxInvolvementDepth auto-added rows from an object chosen by the
+// analyst that a declared item carries. The nearest object gives the depth.
+func involvementDepth(objs []core.ObjectRef, usedAsReference, declared map[core.ObjectRef]bool, sc core.StructuredContext) (int, bool) {
+	best := 0
+	for _, o := range objs {
 		if usedAsReference[o] || !sc.CanCarryEntity(o) {
-			return false
+			continue
 		}
-		choice, ok := sc.ChoiceBehind(o)
-		return ok && declared[choice]
-	})
+		choice, depth, ok := sc.ChoiceBehind(o)
+		if ok && depth <= maxInvolvementDepth && declared[choice] && (best == 0 || depth < best) {
+			best = depth
+		}
+	}
+	return best, best > 0
 }
 
 // referenceAttached tells whether a financial reference may be declared: one of
@@ -598,4 +636,12 @@ func checkObjects(objs []core.ObjectRef) error {
 		}
 	}
 	return nil
+}
+
+// compareObjectRefs orders objects by table, then identifier.
+func compareObjectRefs(a, b core.ObjectRef) int {
+	if c := strings.Compare(a.Table, b.Table); c != 0 {
+		return c
+	}
+	return strings.Compare(a.ObjectID, b.ObjectID)
 }

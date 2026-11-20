@@ -130,8 +130,12 @@ func (f *format) Compute(doc *core.Document) core.ComputeResult {
 			}
 		}
 	}
-	total, totalFrac, totalTxs, _ := st.total(chosenDirection(doc))
-	put(operationsTotal, formatDecimal(total, totalFrac), txAmounts(totalTxs))
+	total, totalFrac, totalTxs, basis := st.total(chosenDirection(doc))
+	totalInputs := txAmounts(totalTxs)
+	if basis == basisJudgment {
+		totalInputs = append(totalInputs, workChosenDirection)
+	}
+	put(operationsTotal, formatDecimal(total, totalFrac), totalInputs)
 	// The two direction totals: written while a transaction has that direction,
 	// a stale computed one goes away.
 	for _, d := range []struct {
@@ -313,6 +317,10 @@ func groupTransactions(spec *core.Spec, doc *core.Document) (groups map[string]*
 	st stake, refFills []core.Fill,
 ) {
 	groups = map[string]*opGroup{}
+	unknownCountry := ""
+	if node := spec.NodeAt("work.transactions[].paysOrigine"); node != nil {
+		unknownCountry = spec.CodeLists[node.CodeList].UnknownCode
+	}
 	for _, k := range doc.Items[transactionsContainer] {
 		tx := core.Path(string(transactionsContainer) + "[" + k + "]")
 		val := func(name string) string { return strings.TrimSpace(doc.Values[tx.Child(name)].Value) }
@@ -321,6 +329,13 @@ func groupTransactions(spec *core.Spec, doc *core.Document) (groups map[string]*
 		// cleared by hand) or holds a computed value.
 		derived := func(name, derivation string, inputs ...core.Path) string {
 			cur := doc.Values[tx.Child(name)]
+			// The unknown country the model wrote when the transaction row says
+			// nothing yields to a derivation from the IBAN, as long as nobody
+			// reviewed or typed it.
+			if derivation != "" && unknownCountry != "" && cur.Value == unknownCountry &&
+				(name == "paysOrigine" || name == "paysArrivee") && cur.Origin == core.OriginLLM && !cur.Reviewed {
+				cur = core.Value{}
+			}
 			if cur.Value != "" && cur.Origin != core.OriginComputed {
 				return strings.TrimSpace(cur.Value)
 			}
