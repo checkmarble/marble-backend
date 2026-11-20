@@ -570,7 +570,7 @@ func (repo *MarbleDbRepository) GetSarQuestion(
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptSarQuestion)
 }
 
-// CloseSarQuestions sets the status (resolved or dismissed) and closed_at.
+// CloseSarQuestions sets the status (resolved, dismissed or replaced) and closed_at.
 func (repo *MarbleDbRepository) CloseSarQuestions(
 	ctx context.Context, exec Executor, ids []uuid.UUID, status string,
 ) error {

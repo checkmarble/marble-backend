@@ -72,6 +72,9 @@ const (
 	SarQuestionStatusOpen      = "open"
 	SarQuestionStatusResolved  = "resolved"
 	SarQuestionStatusDismissed = "dismissed"
+	// SarQuestionStatusReplaced is a question the final review replaced by a
+	// finding (its data answer it): closed, never shown as open.
+	SarQuestionStatusReplaced = "replaced"
 )
 
 type SarQuestion struct {

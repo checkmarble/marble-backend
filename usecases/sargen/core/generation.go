@@ -73,6 +73,11 @@ type QuestionOption struct {
 	// chosen, never stored, because the document changes after the question is
 	// asked. Optional: an option without it only writes its Fills.
 	RemoveItem Path `json:"remove_item,omitempty"`
+	// Clear are paths (within the paths of the question) whose value choosing the
+	// option deletes, before its Fills are written (a free-text name replaced by a
+	// link to a declared person, for example). Settings and computed fields are
+	// never cleared. Optional.
+	Clear []Path `json:"clear,omitempty"`
 }
 
 type QuestionDraft struct {
@@ -103,11 +108,40 @@ type RemovalRewrite struct {
 	Clear []Path
 }
 
+// DocumentQuestioner is an optional capability of a Format: questions the
+// backend raises from the document alone, before the final review (a match to
+// confirm, a choice the data do not make). The engine calls it at that point of
+// a job, drops the drafts whose paths already have a question (open or closed)
+// and stores the others. It never writes the document. Option fills are checked
+// by the engine like the fills of a task.
+type DocumentQuestioner interface {
+	DocumentQuestions(doc *Document) []QuestionDraft
+}
+
+// CodeSourceMapper is an optional capability of a Format: for a code list, the
+// semantic types of the data-model columns whose value can feed it, and how a
+// raw value of such a column is read as a code. The engine uses it to look for
+// a value in the selected data before offering the unknown code.
+type CodeSourceMapper interface {
+	// CodeListSemantics returns the semantic types that feed the code list.
+	CodeListSemantics(codeList string) []models.FieldSemanticType
+	// CodeFromValue reads the raw value of a column of the given semantic type as
+	// a code of the list; ok is false when it maps to no code.
+	CodeFromValue(codeList string, semantic models.FieldSemanticType, raw string) (code string, ok bool)
+}
+
 type ReviewFinding struct {
 	Paths []Path `json:"paths"`
 	// Severity is "important" or "mineur".
 	Severity string `json:"severity"`
 	Message  string `json:"message"`
+	// Options are proposals the analyst chooses with one click (already checked
+	// like the fills of a task); empty for a finding that only reports.
+	Options []QuestionOption `json:"options,omitempty"`
+	// ContestsQuestionID is the open question of the declaration this finding
+	// replaces (its data answer it): the question is closed as replaced and the
+	// finding keeps its severity when it is blocking.
+	ContestsQuestionID *uuid.UUID `json:"contests_question_id,omitempty"`
 }
 
 // TaskOutput is the result of a task run. The orchestrator never trusts it:
