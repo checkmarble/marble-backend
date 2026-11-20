@@ -9,8 +9,28 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/checkmarble/marble-backend/usecases/ai_agent"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
 )
+
+// Claude on Vertex falls back to a 4096-token cap when the request has none;
+// Gemini must be left as it was.
+func TestBuildTurnRequest_MaxTokensOnlyForClaude(t *testing.T) {
+	req := AgentRequest{RunID: "run", Tier: core.TierLight, Instruction: "consigne", Prompt: "prompt"}
+
+	for _, model := range []string{"claude-sonnet-5", "claude-opus-5-5"} {
+		provider := ai_agent.ProviderForModel(model)
+		r, err := buildTurnRequest(&llmRun{}, req, provider, model)
+		require.NoError(t, err)
+		require.NotNil(t, r.MaxTokens, model)
+		assert.Equal(t, anthropicMaxTokens, *r.MaxTokens, model)
+	}
+
+	model := "gemini-4-hydrogen"
+	r, err := buildTurnRequest(&llmRun{}, req, ai_agent.ProviderForModel(model), model)
+	require.NoError(t, err)
+	assert.Nil(t, r.MaxTokens)
+}
 
 // The real adapter needs a provider; what can be checked offline is the
 // request built for the first turn of a run.

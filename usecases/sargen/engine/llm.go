@@ -243,6 +243,20 @@ func isNoContent(err error) bool {
 	return strings.Contains(err.Error(), noContentMessage)
 }
 
+const (
+	// anthropicProvider is the llmberjack provider name ai_agent.ProviderForModel
+	// gives to the claude-* models (served by Vertex AI).
+	anthropicProvider = "anthropic"
+
+	// anthropicMaxTokens is the output cap sent to Claude. Without one, the
+	// llmberjack Anthropic provider falls back to 4096 tokens on Vertex AI, and
+	// the thinking tokens count inside that cap: large JSON answers get cut. It
+	// stays under the ~21,333 tokens above which the Anthropic SDK refuses a
+	// non-streaming request (CalculateNonStreamingTimeout), and llmberjack does
+	// not stream. Gemini gets no cap.
+	anthropicMaxTokens = 20000
+)
+
 // buildTurnRequest builds the llmberjack request of the next turn of a run. On
 // the first turn it opens the thread (instruction, prompt, tools); afterwards it
 // continues from the previous candidate: tool results of History (consumed
@@ -256,6 +270,9 @@ func buildTurnRequest(st *llmRun, req AgentRequest, provider, model string) (llm
 		WithSchemaDescription("sar_generation_output", "").
 		OverrideResponseSchema(req.OutputSchema).
 		WithThinkingLevel(thinkingLevel(req.Tier))
+	if provider == anthropicProvider {
+		r = r.WithMaxTokens(anthropicMaxTokens)
+	}
 
 	results := map[string][]string{} // tool name -> results in call order
 	var corrections []string
