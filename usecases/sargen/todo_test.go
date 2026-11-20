@@ -123,8 +123,8 @@ func TestTodo_TotalToConfirmCarriesTheAmountNote(t *testing.T) {
 	require.NoError(t, err)
 	item, ok := findTodo(st.Todo, func(i TodoItem) bool { return i.Code == TodoCodeComputedToConfirm })
 	require.True(t, ok)
-	assert.Contains(t, item.Message, "Crédits : 30 EUR")
-	assert.Contains(t, item.Message, "débits : 100 EUR")
+	assert.Contains(t, item.Message, "Crédits : 30,00\u00a0€")
+	assert.Contains(t, item.Message, "débits : 100,00\u00a0€")
 	assert.Contains(t, item.Message, "Transactions sans sens : 1")
 	assert.Equal(t, "100", st.Doc.Values["operations.montantTotal"].Value)
 }

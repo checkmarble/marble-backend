@@ -170,8 +170,8 @@ func TestAmount_UnknownDirectionsAreExcludedAndCountedInTheNote(t *testing.T) {
 	assert.Equal(t, "100", doc.Values["operations.montantTotal"].Value)
 	note := f.(amountNoter).ComputedNote(doc, "operations.montantTotal")
 	assert.Contains(t, note, "valeur calculée à confirmer")
-	assert.Contains(t, note, "Crédits : 40 EUR")
-	assert.Contains(t, note, "débits : 100 EUR")
+	assert.Contains(t, note, "Crédits : 40,00\u00a0€")
+	assert.Contains(t, note, "débits : 100,00\u00a0€")
 	assert.Contains(t, note, "Sens retenu : débit (choisi à l'étape de jugement)")
 	assert.Contains(t, note, "Transactions sans sens : 2")
 }
@@ -292,4 +292,18 @@ func TestAmount_FrenchLabelsForLargeAmounts(t *testing.T) {
 	require.Len(t, qs, 1)
 	assert.Equal(t, "Crédits : 116\u202f800,00\u00a0€ (1 transaction)", qs[0].Options[0].Label)
 	assert.Equal(t, "Débits : 1\u202f234\u202f567,80\u00a0€ (1 transaction)", qs[0].Options[1].Label)
+}
+
+// Every amount of the note is written the French way, as in the labels of the
+// amount question.
+func TestAmount_NoteWritesTheAmountsTheFrenchWay(t *testing.T) {
+	doc := core.NewDocument()
+	stakeTx(doc, "671364.89", "debit")
+	stakeTx(doc, "1250", "credit")
+	doc.Values["work.sensMontantTotal"] = core.Value{Value: "debit", Origin: core.OriginAnalyst}
+	f := computeStake(t, doc)
+	note := f.(amountNoter).ComputedNote(doc, "operations.montantTotal")
+	assert.Contains(t, note, "Crédits : 1\u202f250,00\u00a0€")
+	assert.Contains(t, note, "débits : 671\u202f364,89\u00a0€")
+	assert.NotContains(t, note, "EUR")
 }

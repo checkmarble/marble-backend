@@ -652,7 +652,7 @@ func (f *format) ComputedNote(doc *core.Document, p core.Path) string {
 	}
 	chosen := chosenDirection(doc)
 	_, _, _, basis := st.total(chosen)
-	money := func(d *directionTotal) string { return formatDecimal(d.value(), d.frac) + " EUR" }
+	money := func(d *directionTotal) string { return frenchMoney(d.value(), d.frac) }
 	label := map[string]string{directionCredit: "crédit", directionDebit: "débit"}
 	msg := fmt.Sprintf("valeur calculée à confirmer : le montant total. Crédits : %s ; débits : %s", money(&st.credits), money(&st.debits))
 	switch basis {
