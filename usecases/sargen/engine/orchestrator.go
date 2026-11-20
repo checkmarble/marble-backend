@@ -904,6 +904,20 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 			createsItem := false
 			for i, op := range d.Options {
 				op.Fills = nil
+				if op.RemoveItem != "" {
+					// The item the option removes must be one of the question's
+					// own paths and exist in the document the output produced.
+					op.RemoveItem = res.Rewrite(op.RemoveItem)
+					if !core.PathAllowed(op.RemoveItem, kept) || !documentHasItem(doc, op.RemoveItem) {
+						result.Rejected = append(result.Rejected, rejectedView{
+							Path: op.RemoveItem, Code: core.CodeOutOfScope,
+							Message: "question option: the item to remove is outside the paths of the question"})
+						continue
+					}
+					// A removing option comes with its own « keep » sibling, which
+					// has no fill: it must survive the filter below.
+					createsItem = true
+				}
 				for _, f := range d.Options[i].Fills {
 					f.Path = res.Rewrite(f.Path)
 					if (f.Path.HasProvisionalKey() && !newItemPathKnown(r.format.Spec(), f.Path)) ||
@@ -940,9 +954,13 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 					return false, errors.Wrap(err, "cannot encode question options")
 				}
 			}
+			severity := ""
+			if d.Blocking {
+				severity = models.SarQuestionSeverityBlocking
+			}
 			qs = append(qs, models.SarQuestion{
 				Id: uuid.New(), DeclarationId: r.declId, TaskId: &taskId,
-				Kind: models.SarQuestionKindQuestion, Paths: paths, Text: d.Text,
+				Kind: models.SarQuestionKindQuestion, Severity: severity, Paths: paths, Text: d.Text,
 				Options: rawOpts, Status: models.SarQuestionStatusOpen,
 			})
 		}
@@ -1122,6 +1140,17 @@ func (r *jobRun) finish(ctx context.Context, computePlanned bool) error {
 						"job_id", r.job.Id, "rejected", len(res.Rejected), "conflicts", len(res.Conflicts),
 						"first_rejected", firstRejected(res))
 				}
+				// Required coded fields the generation left empty get a question
+				// that offers the unknown code of their list.
+				open, err := o.generation.ListSarQuestions(ctx, tx, r.declId, models.SarQuestionStatusOpen)
+				if err != nil {
+					return errors.Wrap(err, "cannot list questions")
+				}
+				if qs := missingCodeQuestions(r.format, doc, r.declId, open); len(qs) > 0 {
+					if err := o.generation.CreateSarQuestions(ctx, tx, qs); err != nil {
+						return errors.Wrap(err, "cannot create questions")
+					}
+				}
 				if !changed {
 					return nil
 				}
@@ -1158,6 +1187,26 @@ func firstRejected(res core.ApplyResult) string {
 		return string(res.Rejected[0].Fill.Path) + ": " + res.Rejected[0].Issue.Message
 	}
 	return ""
+}
+
+// documentHasItem tells whether the keyed item path `a.b[k]` is listed in doc.
+func documentHasItem(doc *core.Document, item core.Path) bool {
+	str := string(item)
+	i := strings.LastIndex(str, "[")
+	if i < 0 || !strings.HasSuffix(str, "]") {
+		return false
+	}
+	name, key := str[:i], str[i+1:len(str)-1]
+	if j := strings.LastIndex(name, "."); j >= 0 {
+		name = name[j+1:]
+	}
+	return slices.Contains(doc.Items[item.Parent().Child(name)], key)
+}
+
+// marshalOptions encodes the options of a stored question.
+func marshalOptions(opts []core.QuestionOption) ([]byte, error) {
+	raw, err := json.Marshal(opts)
+	return raw, errors.Wrap(err, "cannot encode question options")
 }
 
 // questionKey identifies a question by its (order-independent) paths and text.
