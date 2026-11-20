@@ -901,7 +901,7 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 			}
 			seen[k] = true
 			opts := make([]core.QuestionOption, 0, len(d.Options))
-			createsItem := false
+			createsItem, removalRejected := false, false
 			for i, op := range d.Options {
 				op.Fills = nil
 				if op.RemoveItem != "" {
@@ -912,6 +912,7 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 						result.Rejected = append(result.Rejected, rejectedView{
 							Path: op.RemoveItem, Code: core.CodeOutOfScope,
 							Message: "question option: the item to remove is outside the paths of the question"})
+						removalRejected = true
 						continue
 					}
 					// A removing option comes with its own « keep » sibling, which
@@ -942,6 +943,12 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 					continue // it came with values that were all rejected: never a decline
 				}
 				opts = append(opts, op)
+			}
+			if removalRejected {
+				// Never a question whose removing option was refused: its keep
+				// sibling would be dropped and a blocking question left without
+				// any option.
+				continue
 			}
 			// An option that arrived with no fill at all cannot be chosen, unless it declines
 			// the addition of a new list item proposed by a sibling option.

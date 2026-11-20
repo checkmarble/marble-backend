@@ -127,23 +127,21 @@ func TestRunJob_RemoveOptionKeptWithItsKeepSiblingAndBlockingSeverity(t *testing
 	assert.Equal(t, core.Path(tgtPP1), opts[1].RemoveItem)
 }
 
-func TestRunJob_RemoveOptionOutsideTheQuestionOrOnAMissingItemIsDropped(t *testing.T) {
-	o, f := newTestOrchestrator(t)
-	seedDocument(t, f, withTwoPersons)
-	f.Format.Waves = [][]core.TaskSpec{{Spec("a", tgtPP1)}}
-	f.Runner.On("a", tgtPP1, Step{Out: core.TaskOutput{Questions: []core.QuestionDraft{{
-		Paths: []core.Path{tgtPP1}, Text: "Déclarer ?",
-		Options: []core.QuestionOption{
-			{Label: "Retirer l'autre", RemoveItem: tgtPP2},                  // not a path of the question
-			{Label: "Retirer un fantôme", RemoveItem: "personnes.pp[pp-9]"}, // does not exist
-			{Label: "Remplir", Fills: []core.Fill{{Path: pathImplPP1, Value: "v"}}},
-		},
-	}}}})
-	require.NoError(t, o.RunJob(context.Background(), f.JobId))
+// A question whose removing option is refused is dropped as a whole: no blocking
+// question is ever left without its options.
+func TestRunJob_QuestionWithARefusedRemovalOptionIsDropped(t *testing.T) {
+	for name, remove := range map[string]core.Path{"not a path of the question": tgtPP2, "missing item": "personnes.pp[pp-9]"} {
+		t.Run(name, func(t *testing.T) {
+			o, f := newTestOrchestrator(t)
+			seedDocument(t, f, withTwoPersons)
+			f.Format.Waves = [][]core.TaskSpec{{Spec("a", tgtPP1)}}
+			f.Runner.On("a", tgtPP1, Step{Out: core.TaskOutput{Questions: []core.QuestionDraft{{
+				Paths: []core.Path{tgtPP1}, Text: "Déclarer ?", Blocking: true,
+				Options: []core.QuestionOption{{Label: "Déclarer"}, {Label: "Ne pas déclarer", RemoveItem: remove}},
+			}}}})
+			require.NoError(t, o.RunJob(context.Background(), f.JobId))
 
-	_, opts, ok := questionOn(t, f, tgtPP1)
-	require.True(t, ok)
-	for _, o := range opts {
-		assert.Empty(t, o.RemoveItem)
+			assert.Empty(t, questionsOf(t, f, ""), "no question at all")
+		})
 	}
 }
