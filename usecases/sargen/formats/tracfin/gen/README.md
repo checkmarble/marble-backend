@@ -79,6 +79,6 @@ Three differences between the test copy of the XSD (`testdata/financier-v1.4.0-t
 
 ## Notes
 
-- The `analysis.md` citations and the `docs/sar-formats` sheets in the `source` fields are unpublished internal notes not in this repository; the `financier-v1.4.0.xsd:N` line numbers, on the other hand, refer to the XSD committed in `versions/1.4.0/inputs/`.
+- The `source` fields cite only the files committed in `versions/1.4.0/inputs/` (`financier-v1.4.0.xsd:N` line numbers, CSV code lists), TRACFIN publications that are not stored here (`GuideUtilisateurs.pdf`, the `FicheFocus-*.pdf` sheets, the « Le montant en jeu » framing sheet), or a « Décision de conception » explained in the field itself.
 - `.gitattributes` marks `versions/**/inputs/**` as `-text`: the bytes (CRLF line endings included) must stay the published ones, their digests are in `manifest.json`. Never renormalize these files.
 - A `hand_rules` code must have its implementation in `HandRuleIDs()` (`validate.go`); a test compares the two lists.

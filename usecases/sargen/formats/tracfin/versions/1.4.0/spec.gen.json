@@ -68,7 +68,7 @@
     }
    ],
    "name": "liste_ref_PPE_fonction_relation.csv",
-   "source": "inputs/referentiels/fonctionsppe.csv ; financier-v1.4.0.xsd:634-645 (t_refPPE) ; analysis.md §13 (fonctionsppe.csv, 16 codes)"
+   "source": "inputs/referentiels/fonctionsppe.csv ; financier-v1.4.0.xsd:634-645 (t_refPPE) ; 16 codes"
   },
   "liste_ref_cadre_legal.csv": {
    "codes": [
@@ -94,7 +94,7 @@
     }
    ],
    "name": "liste_ref_cadre_legal.csv",
-   "source": "inputs/referentiels/naturessoupcons.csv ; financier-v1.4.0.xsd:505-515 (t_cadreLegal) ; analysis.md §10 (CL01-CL05)"
+   "source": "inputs/referentiels/naturessoupcons.csv ; financier-v1.4.0.xsd:505-515 (t_cadreLegal, CL01-CL05)"
   },
   "liste_ref_complement_voie.csv": {
    "codes": [
@@ -850,7 +850,7 @@
     }
    ],
    "name": "liste_ref_devises.csv",
-   "source": "inputs/referentiels/devises.csv ; analysis.md §13 (devises.csv, 182 codes, non liée par le XSD) ; utilisée par work.transactions[].devise"
+   "source": "inputs/referentiels/devises.csv ; 182 codes ; liste publiée par TRACFIN mais liée à aucun type du XSD ; utilisée par work.transactions[].devise"
   },
   "liste_ref_dromcom.csv": {
    "codes": [
@@ -916,7 +916,7 @@
     }
    ],
    "name": "liste_ref_dromcom.csv",
-   "source": "inputs/referentiels/dromcom.csv ; financier-v1.4.0.xsd:491-504 (t_pays_dromcom) ; analysis.md §6 (adresses : pour les flux, DROM-COM)"
+   "source": "inputs/referentiels/dromcom.csv ; financier-v1.4.0.xsd:491-504 (t_pays_dromcom : DROM-COM et pays)"
   },
   "liste_ref_dromcom.csv+liste_ref_pays.csv": {
    "codes": [
@@ -2145,7 +2145,7 @@
     }
    ],
    "name": "liste_ref_nature_fraude_fiscale.csv",
-   "source": "inputs/referentiels/violationstypefiscal.csv ; financier-v1.4.0.xsd:610-621 (t_natureFraudeFiscale, NFF) ; analysis.md §10"
+   "source": "inputs/referentiels/violationstypefiscal.csv ; financier-v1.4.0.xsd:610-621 (t_natureFraudeFiscale, NFF)"
   },
   "liste_ref_nature_soupcon_penale.csv": {
    "codes": [
@@ -2219,7 +2219,7 @@
     }
    ],
    "name": "liste_ref_nature_soupcon_penale.csv",
-   "source": "inputs/referentiels/violationspenaltype.csv ; financier-v1.4.0.xsd:598-609 (t_natureSoupconPenale, NSP) ; analysis.md §10"
+   "source": "inputs/referentiels/violationspenaltype.csv ; financier-v1.4.0.xsd:598-609 (t_natureSoupconPenale, NSP)"
   },
   "liste_ref_pays.csv": {
    "codes": [
@@ -3181,7 +3181,7 @@
     }
    ],
    "name": "liste_ref_pays.csv",
-   "source": "inputs/referentiels/pays.csv ; financier-v1.4.0.xsd:476-490 (t_pays) ; analysis.md §13 (pays.csv, 240 codes) ; excluded codes: 1",
+   "source": "inputs/referentiels/pays.csv ; financier-v1.4.0.xsd:476-490 (t_pays) ; 240 codes ; excluded codes: 1",
    "unknown_code": "XX"
   },
   "liste_ref_piece_jointe.csv": {
@@ -3446,7 +3446,7 @@
     }
    ],
    "name": "liste_ref_professions.csv",
-   "source": "inputs/referentiels/professions.csv ; financier-v1.4.0.xsd:384-394 (t_organisme_profession) ; analysis.md §5 (45 codes)"
+   "source": "inputs/referentiels/professions.csv ; financier-v1.4.0.xsd:384-394 (t_organisme_profession) ; 45 codes"
   },
   "liste_ref_relations.csv": {
    "codes": [
@@ -3680,7 +3680,7 @@
     }
    ],
    "name": "liste_ref_relations.csv",
-   "source": "inputs/referentiels/relationsentrepersonnes.csv ; financier-v1.4.0.xsd:395-418, 647-671 (t_categorieRelation, t_sousCategorieRelation) ; analysis.md §6 (57 codes TLP)"
+   "source": "inputs/referentiels/relationsentrepersonnes.csv ; financier-v1.4.0.xsd:395-418, 647-671 (t_categorieRelation, t_sousCategorieRelation) ; 57 codes TLP"
   },
   "liste_ref_sexe.csv": {
    "codes": [
@@ -3752,7 +3752,7 @@
   },
   "liste_ref_type_equipement.csv": {
    "name": "liste_ref_type_equipement.csv",
-   "source": "financier-v1.4.0.xsd:587-597 (t_typeEquipement) ; analysis.md §13 : liste non publiée par TRACFIN (aucune des 22 listes ne la contient). Toute valeur est acceptée avec un avertissement.",
+   "source": "financier-v1.4.0.xsd:587-597 (t_typeEquipement) : liste non publiée par TRACFIN (aucune des 22 listes de inputs/referentiels ne la contient). Toute valeur est acceptée avec un avertissement.",
    "unavailable": true
   },
   "liste_ref_type_operations.csv": {
@@ -3807,7 +3807,7 @@
     }
    ],
    "name": "liste_ref_type_operations.csv",
-   "source": "inputs/referentiels/typesoperations.csv ; financier-v1.4.0.xsd:310-321 (t_typeOperation, OT01-OT26) ; analysis.md §8"
+   "source": "inputs/referentiels/typesoperations.csv ; financier-v1.4.0.xsd:310-321 (t_typeOperation, OT01-OT26)"
   },
   "liste_ref_type_voie.csv": {
    "codes": [
@@ -4019,7 +4019,7 @@
     }
    ],
    "name": "liste_ref_typemime.csv",
-   "source": "financier-v1.4.0.xsd:672-683 (t_typemime) ; analysis.md §11 et « Points à clarifier » n°2 : liste officielle indisponible, seul application/pdf est retenu"
+   "source": "financier-v1.4.0.xsd:672-683 (t_typemime) : TRACFIN ne publie pas la liste des types MIME (question ouverte auprès de TRACFIN), seul application/pdf est retenu"
   },
   "sens_transaction": {
    "codes": [
@@ -10939,7 +10939,7 @@
    "id": "nsp_requise_si_cl02",
    "kind": "required_if",
    "scope": "context.natureSoupcon",
-   "source": "financier-v1.4.0.xsd:1693-1699 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1693-1699",
    "then": [
     "context.natureSoupcon.natureSoupconPenale[]"
    ],
@@ -10956,7 +10956,7 @@
    "id": "nsp_interdite_hors_cl02",
    "kind": "forbidden_if",
    "scope": "context.natureSoupcon",
-   "source": "financier-v1.4.0.xsd:1693-1699 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1693-1699",
    "then": [
     "context.natureSoupcon.natureSoupconPenale[]"
    ],
@@ -10973,7 +10973,7 @@
    "id": "nff_requise_si_cl03",
    "kind": "required_if",
    "scope": "context.natureSoupcon",
-   "source": "financier-v1.4.0.xsd:1707-1713 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1707-1713",
    "then": [
     "context.natureSoupcon.natureFraudeFiscale[]"
    ],
@@ -10990,7 +10990,7 @@
    "id": "nff_interdite_hors_cl03",
    "kind": "forbidden_if",
    "scope": "context.natureSoupcon",
-   "source": "financier-v1.4.0.xsd:1707-1713 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1707-1713",
    "then": [
     "context.natureSoupcon.natureFraudeFiscale[]"
    ],
@@ -11007,7 +11007,7 @@
    "id": "autre_nsp_requise_si_nsp15",
    "kind": "required_if",
    "scope": "context.natureSoupcon",
-   "source": "financier-v1.4.0.xsd:1700-1706 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1700-1706",
    "then": [
     "context.natureSoupcon.autreNatureSoupconPenale"
    ],
@@ -11024,7 +11024,7 @@
    "id": "autre_nsp_interdite_hors_nsp15",
    "kind": "forbidden_if",
    "scope": "context.natureSoupcon",
-   "source": "financier-v1.4.0.xsd:1700-1706 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1700-1706",
    "then": [
     "context.natureSoupcon.autreNatureSoupconPenale"
    ],
@@ -11041,7 +11041,7 @@
    "id": "autre_nff_requise_si_nff10",
    "kind": "required_if",
    "scope": "context.natureSoupcon",
-   "source": "financier-v1.4.0.xsd:1714-1720 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1714-1720",
    "then": [
     "context.natureSoupcon.autreNatureFraudeFiscale"
    ],
@@ -11058,7 +11058,7 @@
    "id": "autre_nff_interdite_hors_nff10",
    "kind": "forbidden_if",
    "scope": "context.natureSoupcon",
-   "source": "financier-v1.4.0.xsd:1714-1720 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1714-1720",
    "then": [
     "context.natureSoupcon.autreNatureFraudeFiscale"
    ],
@@ -11075,7 +11075,7 @@
    "id": "banque_gestion_fortune_requise",
    "kind": "required_if",
    "scope": "context.information",
-   "source": "financier-v1.4.0.xsd:1744-1750 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1744-1750",
    "then": [
     "context.information.gestionFortuneBanquePrivee"
    ],
@@ -11092,7 +11092,7 @@
    "id": "banque_correspondance_requise",
    "kind": "required_if",
    "scope": "context.information",
-   "source": "financier-v1.4.0.xsd:1751-1757 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1751-1757",
    "then": [
     "context.information.correspondanceBancaire"
    ],
@@ -11109,7 +11109,7 @@
    "id": "nom_usage_requis_sans_nom_naissance@personnes.pp.etatCivil",
    "kind": "required_if",
    "scope": "personnes.pp[].etatCivil",
-   "source": "financier-v1.4.0.xsd:851-857, 888-894 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:851-857, 888-894",
    "then": [
     "personnes.pp[].etatCivil.nomDusage"
    ],
@@ -11123,7 +11123,7 @@
    "id": "nom_usage_requis_sans_nom_naissance@personnes.pp.etatCivil.autreIdentite",
    "kind": "required_if",
    "scope": "personnes.pp[].etatCivil.autreIdentite[]",
-   "source": "financier-v1.4.0.xsd:851-857, 888-894 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:851-857, 888-894",
    "then": [
     "personnes.pp[].etatCivil.autreIdentite[].nomDusage"
    ],
@@ -11137,7 +11137,7 @@
    "id": "alias_requis_sans_prenom@personnes.pp.etatCivil",
    "kind": "required_if",
    "scope": "personnes.pp[].etatCivil",
-   "source": "financier-v1.4.0.xsd:859-865, 896-902 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:859-865, 896-902",
    "then": [
     "personnes.pp[].etatCivil.alias[]"
    ],
@@ -11151,7 +11151,7 @@
    "id": "alias_requis_sans_prenom@personnes.pp.etatCivil.autreIdentite",
    "kind": "required_if",
    "scope": "personnes.pp[].etatCivil.autreIdentite[]",
-   "source": "financier-v1.4.0.xsd:859-865, 896-902 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:859-865, 896-902",
    "then": [
     "personnes.pp[].etatCivil.autreIdentite[].alias[]"
    ],
@@ -11169,7 +11169,7 @@
    "id": "naissance_precise_ou_estimee@personnes.pp.etatCivil",
    "kind": "at_most_one",
    "scope": "personnes.pp[].etatCivil",
-   "source": "financier-v1.4.0.xsd:868-874, 905-911, 1358-1364 ; analysis.md §13"
+   "source": "financier-v1.4.0.xsd:868-874, 905-911, 1358-1364"
   },
   {
    "among": [
@@ -11180,7 +11180,7 @@
    "id": "naissance_precise_ou_estimee@personnes.pp.etatCivil.autreIdentite",
    "kind": "at_most_one",
    "scope": "personnes.pp[].etatCivil.autreIdentite[]",
-   "source": "financier-v1.4.0.xsd:868-874, 905-911, 1358-1364 ; analysis.md §13"
+   "source": "financier-v1.4.0.xsd:868-874, 905-911, 1358-1364"
   },
   {
    "among": [
@@ -11191,14 +11191,14 @@
    "id": "naissance_precise_ou_estimee@personnes.pm.dirigeant.autreBeneficiaireEffectif",
    "kind": "at_most_one",
    "scope": "personnes.pm[].dirigeant[].autreBeneficiaireEffectif",
-   "source": "financier-v1.4.0.xsd:868-874, 905-911, 1358-1364 ; analysis.md §13"
+   "source": "financier-v1.4.0.xsd:868-874, 905-911, 1358-1364"
   },
   {
    "description": "La fonction doit être précisée quand la fonction du dirigeant est « autre » (MF14).",
    "id": "dirigeant_autre_fonction_si_mf14",
    "kind": "required_if",
    "scope": "personnes.pm[].dirigeant[]",
-   "source": "financier-v1.4.0.xsd:1391-1398 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1391-1398",
    "then": [
     "personnes.pm[].dirigeant[].autreFonctionDirigeant"
    ],
@@ -11220,7 +11220,7 @@
    "id": "dirigeant_identite_exclusive",
    "kind": "at_most_one",
    "scope": "personnes.pm[].dirigeant[]",
-   "source": "financier-v1.4.0.xsd:1399-1423 ; analysis.md §13"
+   "source": "financier-v1.4.0.xsd:1399-1423"
   },
   {
    "among": [
@@ -11231,7 +11231,7 @@
    "id": "dirigeant_beneficiaire_exclusif",
    "kind": "at_most_one",
    "scope": "personnes.pm[].dirigeant[]",
-   "source": "financier-v1.4.0.xsd:1425-1440 ; analysis.md §13"
+   "source": "financier-v1.4.0.xsd:1425-1440"
   },
   {
    "among": [
@@ -11242,7 +11242,7 @@
    "id": "dirigeant_beneficiaire_requis_si_non",
    "kind": "exactly_one",
    "scope": "personnes.pm[].dirigeant[]",
-   "source": "financier-v1.4.0.xsd:1425-1440 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1425-1440",
    "when": {
     "op": "eq",
     "path": "personnes.pm[].dirigeant[].beneficiaireEffectif",
@@ -11256,7 +11256,7 @@
    "id": "registre_denomination_requise@personnes.pp.activite",
    "kind": "required_if",
    "scope": "personnes.pp[].activite",
-   "source": "financier-v1.4.0.xsd:986-992, 1271-1277 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:986-992, 1271-1277",
    "then": [
     "personnes.pp[].activite.denominationSociale"
    ],
@@ -11281,7 +11281,7 @@
    "id": "registre_denomination_requise@personnes.pm.activiteCoordonnee",
    "kind": "required_if",
    "scope": "personnes.pm[].activiteCoordonnee",
-   "source": "financier-v1.4.0.xsd:986-992, 1271-1277 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:986-992, 1271-1277",
    "then": [
     "personnes.pm[].activiteCoordonnee.denominationSociale"
    ],
@@ -11306,7 +11306,7 @@
    "id": "registre_denomination_requise@personnes.pm.dirigeant.autreDirigeantM",
    "kind": "required_if",
    "scope": "personnes.pm[].dirigeant[].autreDirigeantM",
-   "source": "financier-v1.4.0.xsd:986-992, 1271-1277 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:986-992, 1271-1277",
    "then": [
     "personnes.pm[].dirigeant[].autreDirigeantM.denominationSociale"
    ],
@@ -11331,7 +11331,7 @@
    "id": "registre_secteur_requis_siren@personnes.pp.activite",
    "kind": "required_if",
    "scope": "personnes.pp[].activite",
-   "source": "financier-v1.4.0.xsd:993-999, 1278-1284 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:993-999, 1278-1284",
    "then": [
     "personnes.pp[].activite.secteurActivite"
    ],
@@ -11348,7 +11348,7 @@
    "id": "registre_secteur_requis_siren@personnes.pm.activiteCoordonnee",
    "kind": "required_if",
    "scope": "personnes.pm[].activiteCoordonnee",
-   "source": "financier-v1.4.0.xsd:993-999, 1278-1284 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:993-999, 1278-1284",
    "then": [
     "personnes.pm[].activiteCoordonnee.secteurActivite"
    ],
@@ -11365,7 +11365,7 @@
    "id": "registre_secteur_requis_siren@personnes.pm.dirigeant.autreDirigeantM",
    "kind": "required_if",
    "scope": "personnes.pm[].dirigeant[].autreDirigeantM",
-   "source": "financier-v1.4.0.xsd:993-999, 1278-1284 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:993-999, 1278-1284",
    "then": [
     "personnes.pm[].dirigeant[].autreDirigeantM.secteurActivite"
    ],
@@ -11382,7 +11382,7 @@
    "id": "registre_autre_requis_rn6_rn7@personnes.pp.activite",
    "kind": "required_if",
    "scope": "personnes.pp[].activite",
-   "source": "financier-v1.4.0.xsd:1021-1034, 1320-1333 ; analysis.md §13 (incohérence RE07/RE08 vs RN6/RN7 : on suit les codes de t_registre)",
+   "source": "financier-v1.4.0.xsd:1021-1034, 1320-1333 (la documentation cite RE07/RE08 alors que t_registre définit RN6/RN7 : on suit les codes de t_registre)",
    "then": [
     "personnes.pp[].activite.nomAutreTypeRegistre",
     "personnes.pp[].activite.paysAutreTypeRegistre"
@@ -11401,7 +11401,7 @@
    "id": "registre_autre_requis_rn6_rn7@personnes.pm.activiteCoordonnee",
    "kind": "required_if",
    "scope": "personnes.pm[].activiteCoordonnee",
-   "source": "financier-v1.4.0.xsd:1021-1034, 1320-1333 ; analysis.md §13 (incohérence RE07/RE08 vs RN6/RN7 : on suit les codes de t_registre)",
+   "source": "financier-v1.4.0.xsd:1021-1034, 1320-1333 (la documentation cite RE07/RE08 alors que t_registre définit RN6/RN7 : on suit les codes de t_registre)",
    "then": [
     "personnes.pm[].activiteCoordonnee.nomAutreTypeRegistre",
     "personnes.pm[].activiteCoordonnee.paysAutreTypeRegistre"
@@ -11420,7 +11420,7 @@
    "id": "registre_autre_requis_rn6_rn7@personnes.pm.dirigeant.autreDirigeantM",
    "kind": "required_if",
    "scope": "personnes.pm[].dirigeant[].autreDirigeantM",
-   "source": "financier-v1.4.0.xsd:1021-1034, 1320-1333 ; analysis.md §13 (incohérence RE07/RE08 vs RN6/RN7 : on suit les codes de t_registre)",
+   "source": "financier-v1.4.0.xsd:1021-1034, 1320-1333 (la documentation cite RE07/RE08 alors que t_registre définit RN6/RN7 : on suit les codes de t_registre)",
    "then": [
     "personnes.pm[].dirigeant[].autreDirigeantM.nomAutreTypeRegistre",
     "personnes.pm[].dirigeant[].autreDirigeantM.paysAutreTypeRegistre"
@@ -11440,7 +11440,7 @@
    "kind": "forbidden_if",
    "scope": "personnes.pp[].activite",
    "severity": "warning",
-   "source": "financier-v1.4.0.xsd:1000-1013, 1292-1305 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1000-1013, 1292-1305",
    "then": [
     "personnes.pp[].activite.formeJuridique",
     "personnes.pp[].activite.activitePrincipale"
@@ -11459,7 +11459,7 @@
    "kind": "forbidden_if",
    "scope": "personnes.pm[].activiteCoordonnee",
    "severity": "warning",
-   "source": "financier-v1.4.0.xsd:1000-1013, 1292-1305 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1000-1013, 1292-1305",
    "then": [
     "personnes.pm[].activiteCoordonnee.formeJuridique",
     "personnes.pm[].activiteCoordonnee.activitePrincipale"
@@ -11478,7 +11478,7 @@
    "kind": "forbidden_if",
    "scope": "personnes.pm[].dirigeant[].autreDirigeantM",
    "severity": "warning",
-   "source": "financier-v1.4.0.xsd:1000-1013, 1292-1305 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1000-1013, 1292-1305",
    "then": [
     "personnes.pm[].dirigeant[].autreDirigeantM.formeJuridique",
     "personnes.pm[].dirigeant[].autreDirigeantM.activitePrincipale"
@@ -11497,7 +11497,7 @@
    "kind": "forbidden_if",
    "scope": "personnes.pp[].activite",
    "severity": "warning",
-   "source": "financier-v1.4.0.xsd:1035-1041, 1313-1319 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1035-1041, 1313-1319",
    "then": [
     "personnes.pp[].activite.autreAdresse"
    ],
@@ -11515,7 +11515,7 @@
    "kind": "forbidden_if",
    "scope": "personnes.pm[].activiteCoordonnee",
    "severity": "warning",
-   "source": "financier-v1.4.0.xsd:1035-1041, 1313-1319 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1035-1041, 1313-1319",
    "then": [
     "personnes.pm[].activiteCoordonnee.autreAdresse"
    ],
@@ -11533,7 +11533,7 @@
    "kind": "forbidden_if",
    "scope": "personnes.pm[].dirigeant[].autreDirigeantM",
    "severity": "warning",
-   "source": "financier-v1.4.0.xsd:1035-1041, 1313-1319 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1035-1041, 1313-1319",
    "then": [
     "personnes.pm[].dirigeant[].autreDirigeantM.autreAdresse"
    ],
@@ -11551,7 +11551,7 @@
    "kind": "forbidden_if",
    "scope": "personnes.pm[].activiteCoordonnee",
    "severity": "warning",
-   "source": "financier-v1.4.0.xsd:1285-1291 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1285-1291",
    "then": [
     "personnes.pm[].activiteCoordonnee.enseigneSigle"
    ],
@@ -11569,7 +11569,7 @@
    "kind": "forbidden_if",
    "scope": "personnes.pm[].dirigeant[].autreDirigeantM",
    "severity": "warning",
-   "source": "financier-v1.4.0.xsd:1285-1291 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1285-1291",
    "then": [
     "personnes.pm[].dirigeant[].autreDirigeantM.enseigneSigle"
    ],
@@ -11586,7 +11586,7 @@
    "id": "registre_adresse_requise_pm@personnes.pm.activiteCoordonnee",
    "kind": "required_if",
    "scope": "personnes.pm[].activiteCoordonnee",
-   "source": "financier-v1.4.0.xsd:1306-1312 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1306-1312",
    "then": [
     "personnes.pm[].activiteCoordonnee.adresse"
    ],
@@ -11611,7 +11611,7 @@
    "id": "registre_adresse_requise_pm@personnes.pm.dirigeant.autreDirigeantM",
    "kind": "required_if",
    "scope": "personnes.pm[].dirigeant[].autreDirigeantM",
-   "source": "financier-v1.4.0.xsd:1306-1312 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1306-1312",
    "then": [
     "personnes.pm[].dirigeant[].autreDirigeantM.adresse"
    ],
@@ -11637,7 +11637,7 @@
    "kind": "forbidden_if",
    "scope": "personnes.pp[].activite",
    "severity": "warning",
-   "source": "financier-v1.4.0.xsd:1014-1020 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1014-1020",
    "then": [
     "personnes.pp[].activite.adresse"
    ],
@@ -11663,7 +11663,7 @@
    "kind": "forbidden_if",
    "scope": "personnes.pp[].notorieteDefavorable",
    "severity": "warning",
-   "source": "financier-v1.4.0.xsd:1219-1225 (le texte dit « true » alors que le type est Oui/Non/Je ne sais pas : « Oui » est retenu) ; analysis.md §13 et « Points à clarifier » n°4",
+   "source": "financier-v1.4.0.xsd:1219-1225 (le texte dit « true » alors que le type est Oui/Non/Je ne sais pas : « Oui » est retenu, question ouverte auprès de TRACFIN)",
    "then": [
     "personnes.pp[].notorieteDefavorable.listesSanctions"
    ],
@@ -11681,7 +11681,7 @@
    "kind": "forbidden_if",
    "scope": "personnes.pm[].notorieteDefavorable",
    "severity": "warning",
-   "source": "financier-v1.4.0.xsd:1219-1225 (le texte dit « true » alors que le type est Oui/Non/Je ne sais pas : « Oui » est retenu) ; analysis.md §13 et « Points à clarifier » n°4",
+   "source": "financier-v1.4.0.xsd:1219-1225 (le texte dit « true » alors que le type est Oui/Non/Je ne sais pas : « Oui » est retenu, question ouverte auprès de TRACFIN)",
    "then": [
     "personnes.pm[].notorieteDefavorable.listesSanctions"
    ],
@@ -11698,7 +11698,7 @@
    "id": "operation_autre_type_requis_ot11",
    "kind": "required_if",
    "scope": "operations.operation[]",
-   "source": "financier-v1.4.0.xsd:1536-1542 ; analysis.md §13",
+   "source": "financier-v1.4.0.xsd:1536-1542",
    "then": [
     "operations.operation[].autretypeOperation"
    ],
@@ -11732,7 +11732,7 @@
    "id": "operation_emetteur_requis_sauf_ot07",
    "kind": "required_if",
    "scope": "operations.operation[]",
-   "source": "financier-v1.4.0.xsd:1543-1565 ; analysis.md §8 et §13",
+   "source": "financier-v1.4.0.xsd:1543-1565",
    "then": [
     "operations.operation[].emetteurTypeEmetteur",
     "operations.operation[].paysOrigineFonds",
@@ -11751,7 +11751,7 @@
    "id": "operation_beneficiaire_requis_sauf_ot06",
    "kind": "required_if",
    "scope": "operations.operation[]",
-   "source": "financier-v1.4.0.xsd:1566-1588 ; analysis.md §8 et §13",
+   "source": "financier-v1.4.0.xsd:1566-1588",
    "then": [
     "operations.operation[].beneficiaireTypeBeneficiaire",
     "operations.operation[].paysArriveeFonds",
@@ -11792,7 +11792,7 @@
    "id": "transaction_emetteur_exclusif",
    "kind": "at_most_one",
    "scope": "work.transactions[]",
-   "source": "financier-v1.4.0.xsd:1543-1550 (id d'une personne déjà déclarée ou champ libre) ; plan Task 2 (working_nodes)"
+   "source": "financier-v1.4.0.xsd:1543-1550 (id d'une personne déjà déclarée ou champ libre), appliqué aux nœuds de travail (working_nodes)"
   },
   {
    "among": [
@@ -11803,7 +11803,7 @@
    "id": "transaction_beneficiaire_requis_sauf_ot06",
    "kind": "exactly_one",
    "scope": "work.transactions[]",
-   "source": "financier-v1.4.0.xsd:1566-1573 (id d'une personne déjà déclarée ou champ libre) ; plan Task 2 (working_nodes)",
+   "source": "financier-v1.4.0.xsd:1566-1573 (id d'une personne déjà déclarée ou champ libre), appliqué aux nœuds de travail (working_nodes)",
    "when": {
     "op": "not_in",
     "path": "work.transactions[].typeOperation",
@@ -11821,7 +11821,7 @@
    "id": "transaction_beneficiaire_exclusif",
    "kind": "at_most_one",
    "scope": "work.transactions[]",
-   "source": "financier-v1.4.0.xsd:1566-1573 (id d'une personne déjà déclarée ou champ libre) ; plan Task 2 (working_nodes)"
+   "source": "financier-v1.4.0.xsd:1566-1573 (id d'une personne déjà déclarée ou champ libre), appliqué aux nœuds de travail (working_nodes)"
   }
  ]
 }
