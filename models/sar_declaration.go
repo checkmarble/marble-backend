@@ -28,6 +28,8 @@ const (
 	SarCodeInvalidRequest          SarErrorCode = "sar_invalid_request"
 	SarCodeConflict                SarErrorCode = "sar_conflict"
 	SarCodeQuestionClosed          SarErrorCode = "sar_question_closed"
+	SarCodeQuestionBlocking        SarErrorCode = "sar_question_not_dismissable"
+	SarCodeAlreadySelected         SarErrorCode = "sar_already_selected"
 	SarCodeGenerationNotRelaunched SarErrorCode = "sar_generation_not_relaunchable"
 	SarCodeUnauthorized            SarErrorCode = "sar_unauthorized"
 	SarCodeUnprocessable           SarErrorCode = "sar_unprocessable"
