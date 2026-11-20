@@ -213,10 +213,7 @@ func Test_CreateInboxUser(t *testing.T) {
 					UserId:  createInputTargetUserId,
 				}, nil, models.Inbox{
 					Id: adminTestInboxId, OrganizationId: orgId,
-				}, models.User{
-					UserId:         models.UserId(userIdString),
-					OrganizationId: orgId,
-				},
+				}, []models.Grant{{OrganizationId: orgId}},
 			)
 			if err != nil {
 				t.Errorf("Expected no error, got %v", err)
@@ -232,10 +229,7 @@ func Test_CreateInboxUser(t *testing.T) {
 					UserId:  userIdParsed,
 				}, nil, models.Inbox{
 					Id: adminTestInboxId, OrganizationId: anotherOrgId,
-				}, models.User{
-					UserId:         models.UserId(userIdString),
-					OrganizationId: orgId,
-				},
+				}, []models.Grant{{OrganizationId: anotherOrgId}},
 			)
 			if err == nil {
 				t.Errorf("Expected an error, got %v", err)
@@ -245,7 +239,6 @@ func Test_CreateInboxUser(t *testing.T) {
 
 	t.Run("non admin", func(t *testing.T) {
 		organizationId_nonadmin := "orgId"
-		anotherOrganizationId_nonadmin := "anotherOrgId"
 		actorIdentity_nonadmin := models.Identity{
 			UserId: models.UserId("00000000-0000-0000-0000-000000000000"),
 		}
@@ -278,10 +271,7 @@ func Test_CreateInboxUser(t *testing.T) {
 					Role:    models.InboxUserRoleAdmin, UserId: actorMemberUserId,
 				}}, // Actor is admin of targetInboxId
 				models.Inbox{Id: targetInboxId, OrganizationId: orgIdNonAdmin},
-				models.User{
-					UserId:         models.UserId(createInputTargetUserId.String()),
-					OrganizationId: utils.TextToUUID(organizationId_nonadmin),
-				},
+				[]models.Grant{{OrganizationId: orgIdNonAdmin}},
 			)
 			if err != nil {
 				t.Errorf("Expected no error, got %v", err)
@@ -301,10 +291,7 @@ func Test_CreateInboxUser(t *testing.T) {
 					Role:    models.InboxUserRoleAdmin, UserId: actorMemberUserId,
 				}}, // Actor is admin of a *different* inbox
 				models.Inbox{Id: targetInboxId, OrganizationId: orgIdNonAdmin},
-				models.User{
-					UserId:         models.UserId(createInputTargetUserId.String()),
-					OrganizationId: utils.TextToUUID(organizationId_nonadmin),
-				},
+				[]models.Grant{{OrganizationId: orgIdNonAdmin}},
 			)
 			if err == nil {
 				t.Errorf("Expected an error, got %v", err)
@@ -324,17 +311,14 @@ func Test_CreateInboxUser(t *testing.T) {
 					Role:    models.InboxUserRoleMember, UserId: actorMemberUserId,
 				}}, // Actor is only a member, not admin
 				models.Inbox{Id: targetInboxId, OrganizationId: orgIdNonAdmin},
-				models.User{
-					UserId:         models.UserId(createInputTargetUserId.String()),
-					OrganizationId: utils.TextToUUID(organizationId_nonadmin),
-				},
+				[]models.Grant{{OrganizationId: orgIdNonAdmin}},
 			)
 			if err == nil {
 				t.Errorf("Expected an error, got %v", err)
 			}
 		})
 
-		t.Run("Should not be able to create an inbox user if the target user does not belong to the right org", func(t *testing.T) {
+		t.Run("Target user without a grant on the inbox organization is rejected", func(t *testing.T) {
 			actorMemberUserId := uuid.MustParse("00000000-0000-0000-0000-000000000000")
 			createInputTargetUserId := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 			err := sec.CreateInboxUser(
@@ -344,13 +328,22 @@ func Test_CreateInboxUser(t *testing.T) {
 					Role:    models.InboxUserRoleAdmin, UserId: actorMemberUserId,
 				}}, // Actor is admin of the target inbox
 				models.Inbox{Id: targetInboxId, OrganizationId: orgIdNonAdmin},
-				models.User{
-					UserId:         models.UserId(createInputTargetUserId.String()),
-					OrganizationId: utils.TextToUUID(anotherOrganizationId_nonadmin),
-				}, // Target user in different org
+				[]models.Grant{{OrganizationId: utils.TextToUUID("anotherOrgId")}},
 			)
 			if err == nil {
-				t.Errorf("Expected an error, got %v", err)
+				t.Errorf("Expected an error, got nil")
+			}
+		})
+
+		t.Run("Target user without any grant is rejected", func(t *testing.T) {
+			err := sec.CreateInboxUser(
+				models.CreateInboxUserInput{InboxId: targetInboxId},
+				[]models.InboxUser{{InboxId: targetInboxId, Role: models.InboxUserRoleAdmin}},
+				models.Inbox{Id: targetInboxId, OrganizationId: orgIdNonAdmin},
+				nil,
+			)
+			if err == nil {
+				t.Error("Expected an error, got nil")
 			}
 		})
 	})

@@ -580,6 +580,7 @@ func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {
 			TransactionFactory:  usecases.NewTransactionFactory(),
 			ExecutorFactory:     executorFactory,
 			UserRepository:      usecases.Repositories.MarbleDbRepository,
+			GrantRepository:     usecases.Repositories.MarbleDbRepository,
 			Cache:               usecases.Repositories.RedisClient,
 		},
 	}

@@ -139,9 +139,9 @@ func (e *EnforceSecurity) ReadInboxUser(inboxUser models.InboxUser, actorInboxUs
 }
 
 func (e *EnforceSecurity) CreateInboxUser(i models.CreateInboxUserInput,
-	actorInboxUsers []models.InboxUser, targetInbox models.Inbox, targetUser models.User,
+	actorInboxUsers []models.InboxUser, targetInbox models.Inbox, targetGrants []models.Grant,
 ) error {
-	args := e.Called(i, actorInboxUsers, targetInbox, targetUser)
+	args := e.Called(i, actorInboxUsers, targetInbox, targetGrants)
 	return args.Error(0)
 }
 
