@@ -502,7 +502,7 @@ func TestUpdateFields_ManualEditKeepsOnlyPathAndValue(t *testing.T) {
 	v := st.Doc.Values["declarant.coordonnees.nom"]
 	require.Equal(t, "Durand", v.Value)
 	require.Equal(t, core.OriginManual, v.Origin)
-	require.False(t, v.Reviewed)
+	require.True(t, v.Reviewed, "a manual value is stored reviewed")
 	require.Empty(t, v.Sources)
 	require.Empty(t, v.RuleIDs)
 	require.Empty(t, v.Justification)
