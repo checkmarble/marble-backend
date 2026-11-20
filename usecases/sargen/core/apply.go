@@ -532,7 +532,9 @@ func checkFillValue(spec *Spec, f Fill) *Issue {
 // ComputeInto derives the format's computed fields into doc: the removals
 // first, then the fills as OriginComputed with OverwriteNonManual (a value the
 // analyst wrote or reviewed is kept) and SkipMaxItems (an excess surfaces as
-// the validator's blocking issue). changed tells whether doc was modified. It is
+// the validator's blocking issue). changed tells whether doc was modified, which
+// includes a refreshed computation (same value, new inputs): it is persisted,
+// so the declaration version bumps. It is
 // the single way computed values are written: after a generation task, at the
 // end of a job and after a manual edit.
 func ComputeInto(f Format, doc *Document) (res ApplyResult, changed bool) {
@@ -546,5 +548,5 @@ func ComputeInto(f Format, doc *Document) (res ApplyResult, changed bool) {
 		fills[i] = fl
 	}
 	res = ApplyFills(f.Spec(), doc, fills, ApplyOptions{Overwrite: OverwriteNonManual, SkipMaxItems: true})
-	return res, len(c.RemoveItems) > 0 || len(res.Applied) > 0
+	return res, len(c.RemoveItems) > 0 || len(res.Applied) > 0 || len(res.Refreshed) > 0
 }
