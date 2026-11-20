@@ -170,44 +170,51 @@ func (e missingCodeEnv) candidates(doc *core.Document, path core.Path, codeList 
 	return out
 }
 
-// ownObjects keeps, among the sources of an item, the objects the item stands
-// for. The first source is the anchor, the data row the item was created from
-// (the transaction row of a transaction item, the row of a person item). Every
-// source that is the parent of a link held by the anchor is dropped: it was
-// reached through that link (the account of a transaction, the holder of an
-// account) and describes another thing than the item, whose values must not be
-// offered for the item. The other sources (further rows of the same person)
-// are kept. Without a known anchor nothing is dropped.
+// ownObjects returns the object an item stands for among its sources: the one
+// source that is not the parent, through a data-model link, of any other source
+// of the item (the transaction row, whose account is its parent; the customer
+// row, whose address is its parent). It does not depend on the order of the
+// sources. When no source or several sources qualify, the item has no
+// identifiable own object and nothing is returned: the question then offers the
+// unknown code rather than a value from another object.
 func ownObjects(sc scope, dm models.DataModel, refs []core.ObjectRef) []core.ObjectRef {
 	if len(refs) < 2 {
 		return refs
 	}
-	anchor, ok := sc.get(refs[0].Table, refs[0].ObjectID)
-	if !ok {
-		return refs
-	}
-	var parents []core.ObjectRef
-	for _, table := range dm.Tables {
-		for _, link := range table.LinksToSingle {
-			if link.ChildTableName != anchor.TableName {
-				continue
-			}
-			value, has := valueString(anchor.Snapshot[link.ChildFieldName])
-			if !has {
-				continue
-			}
-			if parent, found := findByField(sc, link.ParentTableName, link.ParentFieldName, value); found {
-				parents = append(parents, core.ObjectRef{Table: parent.TableName, ObjectID: parent.ObjectId})
+	isParent := map[core.ObjectRef]bool{}
+	for _, r := range refs {
+		child, ok := sc.get(r.Table, r.ObjectID)
+		if !ok {
+			continue
+		}
+		for _, table := range dm.Tables {
+			for _, link := range table.LinksToSingle {
+				if link.ChildTableName != child.TableName {
+					continue
+				}
+				value, has := valueString(child.Snapshot[link.ChildFieldName])
+				if !has {
+					continue
+				}
+				if parent, found := findByField(sc, link.ParentTableName, link.ParentFieldName, value); found {
+					pr := core.ObjectRef{Table: parent.TableName, ObjectID: parent.ObjectId}
+					if pr != r && slices.Contains(refs, pr) {
+						isParent[pr] = true
+					}
+				}
 			}
 		}
 	}
-	out := []core.ObjectRef{refs[0]}
-	for _, r := range refs[1:] {
-		if !slices.Contains(parents, r) {
-			out = append(out, r)
+	var own []core.ObjectRef
+	for _, r := range refs {
+		if !isParent[r] && !slices.Contains(own, r) {
+			own = append(own, r)
 		}
 	}
-	return out
+	if len(own) != 1 {
+		return nil
+	}
+	return own
 }
 
 // candidateOptions builds one option per distinct code the candidates map to

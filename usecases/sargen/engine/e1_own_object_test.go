@@ -98,3 +98,38 @@ func TestMissingCode_OnlyLinkedObjectHasAValueKeepsTheUnknownOption(t *testing.T
 	require.Len(t, opts, 1)
 	assert.Equal(t, "Inconnu", opts[0].Label)
 }
+
+// The own object does not depend on the order of the sources: the source that is
+// not the parent of another source of the item.
+func TestMissingCode_OwnObjectDoesNotDependOnSourceOrder(t *testing.T) {
+	for name, order := range map[string][]core.ObjectRef{
+		"company first": {{Table: "companies", ObjectID: "c1"}, {Table: "accounts", ObjectID: "a1"}},
+		"account first": {{Table: "accounts", ObjectID: "a1"}, {Table: "companies", ObjectID: "c1"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			o, f := ownObjectFixture(t, map[string]any{"country": "HK"}, true)
+			seedDocument(t, f, func(d *core.Document) {
+				withForeignRegister("")(d)
+				d.ItemSources["personnes.pm[pm-1]"] = order
+			})
+			require.NoError(t, o.RunJob(context.Background(), f.JobId))
+			_, opts, ok := questionOn(t, f, pmRegistrePay)
+			require.True(t, ok)
+			require.Len(t, opts, 1)
+			assert.Equal(t, "HK", opts[0].Fills[0].Value)
+		})
+	}
+}
+
+// Several sources that are not parents of one another, or a cycle: no own
+// object, no candidate.
+func TestOwnObjects_AmbiguousGivesNone(t *testing.T) {
+	sc := newScope([]models.SarSelectedObject{
+		agentSelection("a", "1", map[string]any{"object_id": "1"}),
+		agentSelection("b", "2", map[string]any{"object_id": "2"}),
+	})
+	got := ownObjects(sc, models.DataModel{}, []core.ObjectRef{{Table: "a", ObjectID: "1"}, {Table: "b", ObjectID: "2"}})
+	assert.Empty(t, got)
+	one := []core.ObjectRef{{Table: "a", ObjectID: "1"}}
+	assert.Equal(t, one, ownObjects(sc, models.DataModel{}, one))
+}
