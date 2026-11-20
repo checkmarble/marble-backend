@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -676,6 +678,127 @@ func TestListIngestedObjectsQueryRejectsInvalidFilters(t *testing.T) {
 			assert.ErrorContains(t, err, tt.errContains)
 		})
 	}
+}
+
+func TestListIngestedObjectsQueryContainsIgnoresSeparators(t *testing.T) {
+	table := models.Table{
+		Name: "transactions",
+		Fields: map[string]models.Field{
+			"iban":  {Name: "iban", DataType: models.String, SemanticType: models.FieldSemanticTypeIban},
+			"phone": {Name: "phone", DataType: models.String, SemanticType: models.FieldSemanticTypePhoneNumber},
+			"label": {Name: "label", DataType: models.String},
+			"email": {Name: "email", DataType: models.String, SemanticType: models.FieldSemanticTypeEmail},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		filter   models.ExplorationFilter
+		expected string
+		args     []any
+	}{
+		{
+			name: "contains on IBAN",
+			filter: models.ExplorationFilter{
+				FieldName: "iban",
+				Operator:  models.ExplorationFilterContains, Values: []any{"FR76 3000\t6000.0001-(2)"},
+			},
+			expected: `regexp_replace("test_schema"."transactions"."iban", '[\t\n\v\f\r .()-]', '', 'g') ILIKE $3`,
+			args:     []any{"%FR763000600000012%"},
+		},
+		{
+			name: "contains on phone number keeps the +",
+			filter: models.ExplorationFilter{
+				FieldName: "phone",
+				Operator:  models.ExplorationFilterContains, Values: []any{"+33 6 12 34 56 78"},
+			},
+			expected: `regexp_replace("test_schema"."transactions"."phone", '[\t\n\v\f\r .()-]', '', 'g') ILIKE $3`,
+			args:     []any{"%+33612345678%"},
+		},
+		{
+			name: "contains on IBAN escapes LIKE wildcards after removing separators",
+			filter: models.ExplorationFilter{
+				FieldName: "iban",
+				Operator:  models.ExplorationFilterContains, Values: []any{`FR 7%_\`},
+			},
+			expected: `regexp_replace("test_schema"."transactions"."iban", '[\t\n\v\f\r .()-]', '', 'g') ILIKE $3`,
+			args:     []any{`%FR7\%\_\\%`},
+		},
+		{
+			name: "contains on IBAN with only separators matches every non null value",
+			filter: models.ExplorationFilter{
+				FieldName: "iban",
+				Operator:  models.ExplorationFilterContains, Values: []any{" - "},
+			},
+			expected: `regexp_replace("test_schema"."transactions"."iban", '[\t\n\v\f\r .()-]', '', 'g') ILIKE $3`,
+			args:     []any{"%%"},
+		},
+		{
+			name: "contains on other String fields keeps separators",
+			filter: models.ExplorationFilter{
+				FieldName: "label",
+				Operator:  models.ExplorationFilterContains, Values: []any{"+33 6 12"},
+			},
+			expected: `"test_schema"."transactions"."label" ILIKE $3`,
+			args:     []any{"%+33 6 12%"},
+		},
+		{
+			name: "contains on a String field of another semantic type keeps separators",
+			filter: models.ExplorationFilter{
+				FieldName: "email",
+				Operator:  models.ExplorationFilterContains, Values: []any{"jean-dupont.fr"},
+			},
+			expected: `"test_schema"."transactions"."email" ILIKE $3`,
+			args:     []any{"%jean-dupont.fr%"},
+		},
+		{
+			name: "in on IBAN keeps separators",
+			filter: models.ExplorationFilter{
+				FieldName: "iban",
+				Operator:  models.ExplorationFilterIn, Values: []any{"FR76 3000"},
+			},
+			expected: `"test_schema"."transactions"."iban" IN ($3)`,
+			args:     []any{"FR76 3000"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			query, err := createQueryListIngestedObjects(TransactionTest{}, table,
+				listIngestedObjectsTestParams(tt.filter), []string{"object_id"}, nil, 10)
+			assert.NoError(t, err)
+			sql, args, err := query.ToSql()
+			assert.NoError(t, err)
+			assert.Equal(t, append([]any{"acc_1", "Infinity"}, tt.args...), args)
+			expected := `
+			SELECT object_id
+			FROM "test_schema"."transactions"
+			WHERE "test_schema"."transactions"."account_id" = $1
+			AND "test_schema"."transactions".valid_until = $2
+			AND ` + tt.expected + `
+			ORDER BY "test_schema"."transactions"."created_at" DESC, object_id DESC
+			LIMIT 10
+			`
+			assert.Equal(t, stripQuery(expected), stripQuery(sql))
+		})
+	}
+}
+
+// searchSeparators strips the searched value in Go and the column in postgres: both must remove exactly the same
+// characters. The expected list is the one postgres removes, from:
+//
+//	select string_agg(i::text, ',' order by i) from generate_series(1, 1114111) i
+//	where i not between 55296 and 57343 and regexp_replace(chr(i), '[\t\n\v\f\r .()-]', '', 'g') = ''
+//
+// which returns 9,10,11,12,13,32,40,41,45,46. Changing the pattern means running it again.
+func TestSearchSeparatorsMatchPostgres(t *testing.T) {
+	var stripped []rune
+	for r := rune(1); r <= unicode.MaxRune; r++ {
+		if utf8.ValidRune(r) && searchSeparatorsRegexp.MatchString(string(r)) {
+			stripped = append(stripped, r)
+		}
+	}
+	assert.Equal(t, []rune{9, 10, 11, 12, 13, 32, 40, 41, 45, 46}, stripped)
 }
 
 func TestQueryIngestedObjectsByUniqueFieldValues(t *testing.T) {

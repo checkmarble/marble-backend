@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -904,6 +905,16 @@ func addConditionForOperator(query squirrel.SelectBuilder, fieldName string, fie
 // likeEscaper escapes the LIKE wildcards and the default LIKE escape character (backslash)
 var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
+// searchSeparators matches the separators a "contains" filter ignores on IBAN and phone number fields: the frontend
+// displays IBANs in groups of 4 ("FR76 3000 6000 ...") and phone numbers in international format ("+33 6 12 34 56 78"),
+// while the stored value usually has no separators, and a value copied from the screen must still match. '+' is not a
+// separator: it is meaningful in a phone number.
+// The same pattern strips the column in postgres (regexp_replace) and the searched value in Go: it means the same in
+// both, ASCII whitespace, '.', '(', ')' and '-', so that both sides lose exactly the same characters.
+const searchSeparators = `[\t\n\v\f\r .()-]`
+
+var searchSeparatorsRegexp = regexp.MustCompile(searchSeparators)
+
 // createQueryListIngestedObjects builds the page query of ListIngestedObjects. cursorValues is either nil (first page)
 // or the (ordering field value, object_id) of the cursor object. params.Filters must have been validated and typed
 // by the caller: values are only ever passed as bound parameters.
@@ -964,6 +975,12 @@ func createQueryListIngestedObjects(
 			if field.DataType == models.IpAddress {
 				// The text of an inet includes its netmask ("10.0.0.1/32"): only search in the address
 				searchedText = fmt.Sprintf("host(%s)", qualifiedFieldName)
+			} else if field.DataType == models.String && (field.SemanticType == models.FieldSemanticTypeIban ||
+				field.SemanticType == models.FieldSemanticTypePhoneNumber) {
+				// A value made only of separators is stripped to "" and then matches every non null value: the
+				// frontend sends the filter as it is typed, and a value started with "(" must not fail the request.
+				searchedText = fmt.Sprintf("regexp_replace(%s, '%s', '', 'g')", qualifiedFieldName, searchSeparators)
+				value = searchSeparatorsRegexp.ReplaceAllString(value, "")
 			}
 			q = q.Where(squirrel.ILike{searchedText: "%" + likeEscaper.Replace(value) + "%"})
 		case models.ExplorationFilterIn:
