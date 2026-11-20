@@ -113,7 +113,8 @@ func (f *format) operationPreview(doc *core.Document, args json.RawMessage) stri
 			rejected = append(rejected, string(r.Fill.Path)+" : "+r.Issue.Message)
 		}
 	}
-	groups, order, minDate, maxDate, total, totalFrac, _ := groupTransactions(f.spec, doc)
+	groups, order, minDate, maxDate, st, _ := groupTransactions(f.spec, doc)
+	total, totalFrac, _, basis := st.total(chosenDirection(doc))
 	type line struct {
 		Attributes   map[string]string `json:"attributes"`
 		Transactions []core.Path       `json:"transactions"`
@@ -142,6 +143,12 @@ func (f *format) operationPreview(doc *core.Document, args json.RawMessage) stri
 	if len(order) > 0 {
 		out["period_start"], out["period_end"] = minDate, maxDate
 		out["total_amount"] = formatDecimal(total, totalFrac)
+		// Debits and credits are never added together: the total is that of one
+		// direction (the judgment step's choice, else the larger).
+		out["total_amount_basis"] = basis
+		out["total_credits"] = formatDecimal(st.credits.value(), st.credits.frac)
+		out["total_debits"] = formatDecimal(st.debits.value(), st.debits.frac)
+		out["transactions_without_direction"] = st.unknown
 	}
 	if len(order) > maxOperationLines {
 		out["warning"] = fmt.Sprintf("more than %d lines (%d): group operations by changing the line attributes of the transactions; only the first %d are listed", maxOperationLines, len(order), maxOperationLines)

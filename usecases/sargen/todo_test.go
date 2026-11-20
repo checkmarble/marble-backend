@@ -98,3 +98,30 @@ func TestBuildTodo_MissingLineFieldListsTheLinesSourceTransactions(t *testing.T)
 	assert.Contains(t, todo[0].Paths, core.Path("work.transactions[transactions-1]"))
 	assert.Contains(t, todo[0].Message, "corrigez les transactions sources")
 }
+
+// The confirm-to-check item of the total carries the format's note: credits,
+// debits, the direction kept and the transactions without a direction.
+func TestTodo_TotalToConfirmCarriesTheAmountNote(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	genEditDoc(t, f, declId, func(doc *core.Document) {
+		for _, tx := range []struct{ montant, sens string }{{"100", "debit"}, {"30", "credit"}, {"7", ""}} {
+			item := doc.AddItem("work.transactions", "transactions")
+			for name, v := range map[string]string{"montant": tx.montant, "sens": tx.sens, "devise": "EUR", "date": "2026-03-01", "typeOperation": "OT10"} {
+				if v != "" {
+					doc.Values[item.Child(name)] = core.Value{Value: v, Origin: core.OriginManual}
+				}
+			}
+		}
+	})
+	_, err := uc.UpdateFields(f.Ctx, declId, f.Repo.Declarations[declId].Version, []core.Fill{{Path: "work.transactions[transactions-1].paysOrigine", Value: "FR"}})
+	require.NoError(t, err)
+
+	st, err := uc.GetDeclaration(f.Ctx, declId)
+	require.NoError(t, err)
+	item, ok := findTodo(st.Todo, func(i TodoItem) bool { return i.Code == TodoCodeComputedToConfirm })
+	require.True(t, ok)
+	assert.Contains(t, item.Message, "Crédits : 30 EUR")
+	assert.Contains(t, item.Message, "débits : 100 EUR")
+	assert.Contains(t, item.Message, "Transactions sans sens : 1")
+	assert.Equal(t, "100", st.Doc.Values["operations.montantTotal"].Value)
+}

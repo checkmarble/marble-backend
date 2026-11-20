@@ -311,7 +311,7 @@ func (uc *Usecase) buildState(ctx context.Context, exec repositories.Executor, d
 		Format:       format,
 		Doc:          doc,
 		Issues:       issues,
-		Todo:         buildTodo(format.Spec(), confirmComputedOf(format), issues, doc, open),
+		Todo:         withComputedNotes(buildTodo(format.Spec(), confirmComputedOf(format), issues, doc, open), format, doc),
 		ExportsCount: count,
 		LastExportAt: last,
 	}, nil
@@ -611,7 +611,7 @@ func (uc *Usecase) AddItem(ctx context.Context, id uuid.UUID, version int, conta
 }
 
 func (uc *Usecase) RemoveItem(ctx context.Context, id uuid.UUID, version int, item core.Path) (DeclarationState, error) {
-	return uc.mutate(ctx, id, version, func(format core.Format, doc *core.Document) error {
+	return uc.mutateWithPost(ctx, id, version, func(format core.Format, doc *core.Document, _, _ *string) error {
 		if !strings.HasSuffix(string(item), "]") {
 			return errors.Wrapf(models.BadParameterError, "%s n'est pas un élément de liste", item)
 		}
@@ -629,6 +629,9 @@ func (uc *Usecase) RemoveItem(ctx context.Context, id uuid.UUID, version int, it
 		doc.RemoveItem(item)
 		uc.recompute(ctx, format, doc)
 		return nil
+	}, func(tx repositories.Transaction, _ *core.Document) error {
+		// An item removed by hand leaves nothing to answer about it.
+		return uc.dismissQuestionsOfItem(ctx, tx, id, item)
 	})
 }
 
