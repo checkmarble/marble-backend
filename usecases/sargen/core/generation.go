@@ -183,7 +183,12 @@ type ToolContext struct {
 	// them and may contest a question.
 	Issues        []Issue
 	OpenQuestions []QuestionView
-	Rules         []MemoryRuleView
+	// OpenQuestionsOmitted counts the open questions left out of OpenQuestions
+	// (the list is bounded). OpenFindings are the open blocking findings of an
+	// earlier review: a review never closes them and must not repeat them.
+	OpenQuestionsOmitted int
+	OpenFindings         []QuestionView
+	Rules                []MemoryRuleView
 }
 
 // QuestionView is an open question as the review task sees it.

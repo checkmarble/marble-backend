@@ -651,13 +651,27 @@ func (c *checker) checkReview(final json.RawMessage) ([]core.ReviewFinding, []st
 			}
 			f.Paths = append(f.Paths, core.Path(p))
 		}
+		var contested *core.QuestionView
 		if w.ContestsQuestionID != nil && strings.TrimSpace(string(*w.ContestsQuestionID)) != "" {
 			id, err := uuid.Parse(strings.TrimSpace(string(*w.ContestsQuestionID)))
-			if err != nil || !c.isOpenQuestion(id) {
+			if err != nil {
+				contested = nil
+			} else {
+				contested = c.openQuestion(id)
+			}
+			if contested == nil {
 				errs = append(errs, fmt.Sprintf("findings[%d] : contests_question_id is not an open question of this declaration (use an id from the open questions list, or null)", i))
 				bad = true
 			} else {
-				f.ContestsQuestionID = &id
+				f.ContestsQuestionID = &contested.Id
+				// The finding replaces the question: whoever answers it must be able to
+				// do what the question allowed, so its paths cover the question's.
+				for _, qp := range contested.Paths {
+					if !slices.Contains(f.Paths, qp) {
+						errs = append(errs, fmt.Sprintf("findings[%d] : a finding that contests a question must include every path of that question in paths (missing %s)", i, qp))
+						bad = true
+					}
+				}
 			}
 		}
 		if len(w.Options) > 0 && len(f.Paths) == 0 && !bad {
@@ -676,6 +690,12 @@ func (c *checker) checkReview(final json.RawMessage) ([]core.ReviewFinding, []st
 			}
 			f.Options = append(f.Options, opt)
 		}
+		// A finding that replaces a question can be blocking: it must be answerable,
+		// through an option or through a plain field the analyst can type into.
+		if !bad && contested != nil && len(f.Options) == 0 && !slices.ContainsFunc(f.Paths, c.answerable) {
+			errs = append(errs, fmt.Sprintf("findings[%d] : a finding that contests a question needs at least one option, or at least one path to a plain field the analyst can answer (an element or a group cannot be answered)", i))
+			bad = true
+		}
 		if !bad {
 			findings = append(findings, f)
 		}
@@ -683,12 +703,43 @@ func (c *checker) checkReview(final json.RawMessage) ([]core.ReviewFinding, []st
 	return findings, errs
 }
 
-// isOpenQuestion tells whether id is an open question (not a finding) of the
-// declaration, as given to the review task.
-func (c *checker) isOpenQuestion(id uuid.UUID) bool {
-	return slices.ContainsFunc(c.tc.OpenQuestions, func(q core.QuestionView) bool {
-		return q.Id == id && q.Kind == models.SarQuestionKindQuestion
-	})
+// openQuestion returns the open question (not a finding) with this id, as given
+// to the review task.
+func (c *checker) openQuestion(id uuid.UUID) *core.QuestionView {
+	for i := range c.tc.OpenQuestions {
+		if q := &c.tc.OpenQuestions[i]; q.Id == id && q.Kind == models.SarQuestionKindQuestion {
+			return q
+		}
+	}
+	return nil
+}
+
+// answerable tells whether a free answer can be written at the path: a plain
+// field (not a list item or a group), not a setting nor an analyst text, and a
+// computed one only when the format lets the analyst confirm it by hand. It is
+// the rule of the answer endpoint.
+func (c *checker) answerable(p core.Path) bool {
+	return fieldAnswerable(c.tc.Format, p)
+}
+
+// confirmComputer is the optional capability of a format that lists the computed
+// values the analyst may give by hand (core.ConfirmComputer where it is defined).
+type confirmComputer interface{ ConfirmComputed() []core.Path }
+
+// fieldAnswerable is the rule of a free answer for a format.
+func fieldAnswerable(format core.Format, p core.Path) bool {
+	n := format.Spec().NodeAt(p.Template())
+	if n == nil || n.Kind != core.NodeField || n.IsRepeatable() {
+		return false
+	}
+	switch n.EffectiveNature() {
+	case core.NatureCopied, core.NatureJudgment:
+		return true
+	case core.NatureComputed:
+		cc, ok := format.(confirmComputer)
+		return ok && slices.Contains(cc.ConfirmComputed(), core.Path(p.Template()))
+	}
+	return false
 }
 
 // reviewOption controls an option of a review finding: its fills pass the checks

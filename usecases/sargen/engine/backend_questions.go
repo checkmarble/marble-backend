@@ -25,14 +25,19 @@ func (r *jobRun) backendQuestions(ctx context.Context, tx repositories.Transacti
 		return nil, errors.Wrap(err, "cannot list questions")
 	}
 	asked := map[string]bool{}
-	var open []models.SarQuestion
+	// skip: every path that already has a question (any status, a replaced one
+	// included) or an open finding, for the questions about single fields.
+	skip := map[string]bool{}
 	for _, q := range all {
-		if q.Kind != models.SarQuestionKindQuestion {
+		switch {
+		case q.Kind == models.SarQuestionKindQuestion:
+			asked[pathsKey(q.Paths)] = true
+		case q.Kind == models.SarQuestionKindReviewFinding && q.Status == models.SarQuestionStatusOpen:
+		default:
 			continue
 		}
-		asked[pathsKey(q.Paths)] = true
-		if q.Status == models.SarQuestionStatusOpen {
-			open = append(open, q)
+		for _, p := range q.Paths {
+			skip[p] = true
 		}
 	}
 	var out []models.SarQuestion
@@ -51,11 +56,13 @@ func (r *jobRun) backendQuestions(ctx context.Context, tx repositories.Transacti
 			}
 			asked[pathsKey(paths)] = true
 			out = append(out, q)
-			open = append(open, q)
+			for _, p := range paths {
+				skip[p] = true
+			}
 		}
 	}
 	env := missingCodeEnv{format: r.format, selection: r.selection, dataModel: r.dataModel}
-	out = append(out, missingCodeQuestions(env, doc, r.declId, open)...)
+	out = append(out, missingCodeQuestions(env, doc, r.declId, skip)...)
 	return out, nil
 }
 
@@ -91,6 +98,10 @@ func (r *jobRun) questionFromDraft(doc *core.Document, d core.QuestionDraft, pat
 	}
 	if !wrote {
 		opts = nil // only « leave as it is » options: nothing to choose
+	}
+	if d.Blocking && len(opts) == 0 && !slices.ContainsFunc(d.Paths, func(p core.Path) bool { return fieldAnswerable(r.format, p) }) {
+		// A blocking question nobody can answer would close the export for good.
+		return models.SarQuestion{}, false
 	}
 	q := models.SarQuestion{
 		Id: uuid.New(), DeclarationId: r.declId, Kind: models.SarQuestionKindQuestion,

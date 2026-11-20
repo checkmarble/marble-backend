@@ -31,17 +31,14 @@ const maxMissingCodeQuestions = 30
 // unproven-code question, a question of the model) is not asked twice. The
 // severity follows the field, as for any other question: blocking when the
 // field is mandatory in the format, else a warning (see buildTodo).
-func missingCodeQuestions(env missingCodeEnv, doc *core.Document, declarationId uuid.UUID, open []models.SarQuestion) []models.SarQuestion {
+func missingCodeQuestions(env missingCodeEnv, doc *core.Document, declarationId uuid.UUID, skip map[string]bool) []models.SarQuestion {
 	format := env.format
 	spec := format.Spec()
-	asked := map[string]bool{}
-	for _, q := range open {
-		if q.Kind != models.SarQuestionKindQuestion {
-			continue
-		}
-		for _, p := range q.Paths {
-			asked[p] = true
-		}
+	// skip holds the paths that already have a question (open or closed, a
+	// replaced one included) or an open finding: never asked twice.
+	asked := maps.Clone(skip)
+	if asked == nil {
+		asked = map[string]bool{}
 	}
 	var out []models.SarQuestion
 	for _, issue := range format.Validate(doc) {

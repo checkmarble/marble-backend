@@ -953,6 +953,10 @@ func reviewContext(tc core.ToolContext) string {
 	if questions == nil {
 		questions = []core.QuestionView{}
 	}
+	findings := tc.OpenFindings
+	if findings == nil {
+		findings = []core.QuestionView{}
+	}
 	var b strings.Builder
 	if raw, err := json.Marshal(issues); err == nil {
 		b.WriteString("\n\n## Export validation issues\n")
@@ -961,6 +965,16 @@ func reviewContext(tc core.ToolContext) string {
 	if raw, err := json.Marshal(questions); err == nil {
 		b.WriteString("\n\n## Open questions\n")
 		b.WriteString(UntrustedBlock("open_questions", string(raw)))
+	}
+	if tc.OpenQuestionsOmitted > 0 {
+		fmt.Fprintf(&b, "\nNote: %d more open questions are not listed; do not repeat any open question.", tc.OpenQuestionsOmitted)
+	}
+	if len(findings) > 0 {
+		if raw, err := json.Marshal(findings); err == nil {
+			b.WriteString("\n\n## Open blocking findings of an earlier review\n")
+			b.WriteString("These stay open whatever you answer: do not repeat them.\n")
+			b.WriteString(UntrustedBlock("open_findings", string(raw)))
+		}
 	}
 	return b.String()
 }

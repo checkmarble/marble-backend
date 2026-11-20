@@ -715,7 +715,21 @@ func (r *jobRun) runTask(ctx context.Context, rt readyTask) (claimed bool, err e
 			if len(tc.Issues) > maxReviewIssues {
 				tc.Issues = tc.Issues[:maxReviewIssues]
 			}
-			tc.OpenQuestions = questionViews(open)
+			var questions, blocking []models.SarQuestion
+			for _, q := range open {
+				switch {
+				case q.Kind == models.SarQuestionKindQuestion:
+					questions = append(questions, q)
+				case q.Severity == models.SarQuestionSeverityBlocking:
+					blocking = append(blocking, q)
+				}
+			}
+			if len(questions) > maxReviewQuestions {
+				tc.OpenQuestionsOmitted = len(questions) - maxReviewQuestions
+				questions = questions[:maxReviewQuestions]
+			}
+			tc.OpenQuestions = questionViews(questions)
+			tc.OpenFindings = questionViews(blocking)
 		}
 		task := rt.task
 		task.Attempts = attempt
@@ -1000,14 +1014,21 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 		if err != nil {
 			return false, errors.Wrap(err, "cannot list questions")
 		}
-		// The findings of an earlier review are replaced by this one. What is left
-		// open are the questions: a finding never repeats them, unless it contests
-		// one (its data answer it), which closes the question as replaced.
+		// The findings of an earlier review are replaced by this one, except the
+		// blocking ones (they stand for a question the review replaced: closing them
+		// would leave the export blocked or, worse, without any question). What is
+		// left open are the questions and those findings: a finding never repeats
+		// them, unless it contests a question (its data answer it), which closes the
+		// question as replaced.
 		openQuestions := map[uuid.UUID]models.SarQuestion{}
 		for _, q := range open {
 			switch q.Kind {
 			case models.SarQuestionKindReviewFinding:
-				closeQs = append(closeQs, q.Id)
+				if q.Severity == models.SarQuestionSeverityBlocking {
+					openQuestions[q.Id] = q
+				} else {
+					closeQs = append(closeQs, q.Id)
+				}
 			case models.SarQuestionKindQuestion:
 				openQuestions[q.Id] = q
 			}
@@ -1381,6 +1402,9 @@ func newItemPathKnown(spec *core.Spec, p core.Path) bool {
 
 // maxReviewIssues bounds the export issues given to the review task.
 const maxReviewIssues = 200
+
+// maxReviewQuestions bounds the open questions given to the review task.
+const maxReviewQuestions = 100
 
 // coveredByQuestion tells whether every path of a finding is inside the paths of
 // one of the open questions (a finding without path is covered by none).
