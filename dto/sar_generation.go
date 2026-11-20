@@ -450,19 +450,25 @@ type SarQuestionOptionFillDto struct {
 type SarQuestionOptionDto struct {
 	Label string                     `json:"label"`
 	Fills []SarQuestionOptionFillDto `json:"fills"`
+	// RemoveItem is set when choosing the option removes this item of the
+	// declaration (« Ne pas déclarer » a person kept for its direct involvement).
+	// Optional: a front that only shows the labels and posts choose keeps working.
+	RemoveItem string `json:"remove_item,omitempty"`
 }
 
 type SarQuestionDto struct {
-	Id            uuid.UUID              `json:"id"`
-	DeclarationId uuid.UUID              `json:"declaration_id"`
-	Kind          string                 `json:"kind"`   // question | review_finding
-	Status        string                 `json:"status"` // open | resolved | dismissed
-	Severity      string                 `json:"severity,omitempty"`
-	Paths         []string               `json:"paths"`
-	Text          string                 `json:"text"`
-	Options       []SarQuestionOptionDto `json:"options"`
-	CreatedAt     time.Time              `json:"created_at"`
-	ClosedAt      *time.Time             `json:"closed_at"`
+	Id            uuid.UUID `json:"id"`
+	DeclarationId uuid.UUID `json:"declaration_id"`
+	Kind          string    `json:"kind"`   // question | review_finding
+	Status        string    `json:"status"` // open | resolved | dismissed
+	// Severity: "important" | "mineur" for a review finding; "blocking" for a
+	// question that must be answered before the export (omitted otherwise).
+	Severity  string                 `json:"severity,omitempty"`
+	Paths     []string               `json:"paths"`
+	Text      string                 `json:"text"`
+	Options   []SarQuestionOptionDto `json:"options"`
+	CreatedAt time.Time              `json:"created_at"`
+	ClosedAt  *time.Time             `json:"closed_at"`
 }
 
 // SarIssuesDetails is the details of a 400 that refuses values: the issues

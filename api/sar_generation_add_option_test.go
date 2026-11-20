@@ -125,3 +125,33 @@ func TestHandleListQuestions_MultiFillAddOption(t *testing.T) {
 	require.Len(t, fills, 2, "both fills of the add option share the provisional item")
 	assert.Equal(t, string(addr)+".ville", fills[1].(map[string]any)["path"])
 }
+
+// A blocking question with an option that removes an item: severity and
+// remove_item are exposed, and are absent on questions that do not use them (a
+// front that only shows labels and posts choose keeps working).
+func TestHandleListQuestions_RemovalOptionAndBlockingSeverity(t *testing.T) {
+	declId := uuid.New()
+	person := core.Path("personnes.pp[pp-1]")
+	blocking := sargen.Question{
+		Id: uuid.New(), DeclarationId: declId, Kind: models.SarQuestionKindQuestion, Severity: models.SarQuestionSeverityBlocking,
+		Status: models.SarQuestionStatusOpen, Paths: []core.Path{person}, Text: "persons/p-A a été ajouté automatiquement",
+		Options: []core.QuestionOption{{Label: "Déclarer persons/p-A comme personne impliquée"}, {Label: "Ne pas déclarer", RemoveItem: person}},
+	}
+	f := &fakeSarGenerationUsecase{Questions: []sargen.Question{blocking, sarAddQuestion(declId)}}
+	r := newSarTestRouter(t, f)
+
+	w := doSarRequest(r, http.MethodGet, "/sar-declarations/"+declId.String()+"/questions", nil)
+
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var qs []map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &qs))
+	require.Len(t, qs, 2)
+	assert.Equal(t, "blocking", qs[0]["severity"])
+	opts := qs[0]["options"].([]any)
+	keep, remove := opts[0].(map[string]any), opts[1].(map[string]any)
+	assert.NotContains(t, keep, "remove_item")
+	assert.Equal(t, []any{}, keep["fills"])
+	assert.Equal(t, string(person), remove["remove_item"])
+	assert.NotContains(t, qs[1], "severity")
+	assert.NotContains(t, qs[1]["options"].([]any)[0], "remove_item")
+}
