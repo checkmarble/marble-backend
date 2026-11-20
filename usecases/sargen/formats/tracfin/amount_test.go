@@ -39,8 +39,9 @@ func TestAmount_DebitsAndCreditsAreNotSummed(t *testing.T) {
 	assert.Equal(t, "100", doc.Values["work.montantDebits"].Value)
 	assert.Equal(t, "50", doc.Values["work.montantCredits"].Value)
 	assert.Equal(t, core.OriginComputed, doc.Values["work.montantCredits"].Origin)
-	// No chosen direction: the larger total, never 150.
-	assert.Equal(t, "100", doc.Values["operations.montantTotal"].Value)
+	// Both directions, no chosen one: no default, never 150, the analyst is asked.
+	_, has := doc.Values["operations.montantTotal"]
+	assert.False(t, has, "the total is left empty")
 }
 
 func TestAmount_TheJudgedDirectionWins(t *testing.T) {
@@ -54,20 +55,66 @@ func TestAmount_TheJudgedDirectionWins(t *testing.T) {
 	assert.Equal(t, "100", doc.Values["work.montantDebits"].Value, "both totals are still computed")
 }
 
-func TestAmount_TheLargerTotalIsKeptWithoutAJudgedDirection(t *testing.T) {
+func TestAmount_OnlyOneDirectionNeedsNoQuestion(t *testing.T) {
 	doc := core.NewDocument()
 	stakeTx(doc, "10", "debit")
-	stakeTx(doc, "70", "credit")
-	computeStake(t, doc)
-	assert.Equal(t, "70", doc.Values["operations.montantTotal"].Value)
+	stakeTx(doc, "70", "debit")
+	f := computeStake(t, doc)
+	assert.Equal(t, "80", doc.Values["operations.montantTotal"].Value)
+	assert.Empty(t, f.(core.DocumentQuestioner).DocumentQuestions(doc), "it follows from the data")
 
-	// A chosen direction with no transaction falls back to the larger total.
-	doc2 := core.NewDocument()
-	stakeTx(doc2, "10", "debit")
-	stakeTx(doc2, "70", "debit")
-	doc2.Values["work.sensMontantTotal"] = core.Value{Value: "credit", Origin: core.OriginLLM}
-	computeStake(t, doc2)
-	assert.Equal(t, "80", doc2.Values["operations.montantTotal"].Value)
+	// A chosen direction with no transaction changes nothing: the only direction wins.
+	doc.Values["work.sensMontantTotal"] = core.Value{Value: "credit", Origin: core.OriginLLM}
+	computeStake(t, doc)
+	assert.Equal(t, "80", doc.Values["operations.montantTotal"].Value)
+	note := f.(amountNoter).ComputedNote(doc, "operations.montantTotal")
+	assert.Contains(t, note, "Sens retenu : débit (seul sens des transactions comptées)")
+}
+
+func TestAmount_BothDirectionsWithoutAChoiceAsksABlockingQuestion(t *testing.T) {
+	doc := core.NewDocument()
+	stakeTx(doc, "1000.5", "debit")
+	stakeTx(doc, "30", "credit")
+	stakeTx(doc, "20", "credit")
+	f := computeStake(t, doc)
+	_, has := doc.Values["operations.montantTotal"]
+	require.False(t, has)
+
+	qs := f.(core.DocumentQuestioner).DocumentQuestions(doc)
+	require.Len(t, qs, 1)
+	assert.True(t, qs[0].Blocking)
+	assert.Equal(t, []core.Path{"work.sensMontantTotal"}, qs[0].Paths)
+	require.Len(t, qs[0].Options, 2)
+	assert.Equal(t, "Crédits : 50 € (2 transactions)", qs[0].Options[0].Label)
+	assert.Equal(t, "Débits : 1000.5 € (1 transaction)", qs[0].Options[1].Label)
+	assert.Equal(t, "credit", qs[0].Options[0].Fills[0].Value)
+	assert.Equal(t, "debit", qs[0].Options[1].Fills[0].Value)
+
+	// Choosing an option (the analyst's write) recomputes the total.
+	choice := qs[0].Options[1].Fills[0]
+	doc.Values[choice.Path] = core.Value{Value: choice.Value, Origin: core.OriginAnalyst}
+	computeStake(t, doc)
+	assert.Equal(t, "1000.5", doc.Values["operations.montantTotal"].Value)
+	assert.Empty(t, f.(core.DocumentQuestioner).DocumentQuestions(doc), "answered: nothing to ask")
+	note := f.(amountNoter).ComputedNote(doc, "operations.montantTotal")
+	assert.Contains(t, note, "Sens retenu : débit (choisi par l'analyste)")
+}
+
+func TestAmount_AStaleComputedTotalGoesAwayWhenTheDirectionIsNotDetermined(t *testing.T) {
+	doc := core.NewDocument()
+	stakeTx(doc, "100", "debit")
+	f := computeStake(t, doc)
+	require.Equal(t, "100", doc.Values["operations.montantTotal"].Value)
+	stakeTx(doc, "30", "credit")
+	compApply(t, f, doc, f.Compute(doc))
+	_, has := doc.Values["operations.montantTotal"]
+	assert.False(t, has)
+
+	// A total the analyst typed stays, and nothing is asked.
+	doc.Values["operations.montantTotal"] = core.Value{Value: "999", Origin: core.OriginManual}
+	compApply(t, f, doc, f.Compute(doc))
+	assert.Equal(t, "999", doc.Values["operations.montantTotal"].Value)
+	assert.Empty(t, f.(core.DocumentQuestioner).DocumentQuestions(doc))
 }
 
 func TestAmount_DirectionIsDerivedFromDeclaredPersons(t *testing.T) {
@@ -98,6 +145,10 @@ func TestAmount_DirectionIsDerivedFromDeclaredPersons(t *testing.T) {
 	assert.Empty(t, doc.Values[neither.Child("sens")].Value, "no declared person: unknown")
 	assert.Equal(t, "10", doc.Values["work.montantDebits"].Value)
 	assert.Equal(t, "20", doc.Values["work.montantCredits"].Value)
+	_, has := doc.Values["operations.montantTotal"]
+	assert.False(t, has, "both directions and no choice: the total is not defaulted")
+	doc.Values["work.sensMontantTotal"] = core.Value{Value: "credit", Origin: core.OriginAnalyst}
+	computeStake(t, doc)
 	assert.Equal(t, "20", doc.Values["operations.montantTotal"].Value, "the unknown directions count in neither total")
 
 	// The derived direction follows the document while it stays computed.
@@ -114,32 +165,35 @@ func TestAmount_UnknownDirectionsAreExcludedAndCountedInTheNote(t *testing.T) {
 	stakeTx(doc, "600", "")
 	f := computeStake(t, doc)
 
+	doc.Values["work.sensMontantTotal"] = core.Value{Value: "debit", Origin: core.OriginLLM}
+	computeStake(t, doc)
 	assert.Equal(t, "100", doc.Values["operations.montantTotal"].Value)
 	note := f.(amountNoter).ComputedNote(doc, "operations.montantTotal")
 	assert.Contains(t, note, "valeur calculée à confirmer")
 	assert.Contains(t, note, "Crédits : 40 EUR")
 	assert.Contains(t, note, "débits : 100 EUR")
-	assert.Contains(t, note, "Sens retenu : débit (le plus élevé, faute de choix)")
+	assert.Contains(t, note, "Sens retenu : débit (choisi à l'étape de jugement)")
 	assert.Contains(t, note, "Transactions sans sens : 2")
-
-	doc.Values["work.sensMontantTotal"] = core.Value{Value: "credit", Origin: core.OriginLLM}
-	computeStake(t, doc)
-	note = f.(amountNoter).ComputedNote(doc, "operations.montantTotal")
-	assert.Contains(t, note, "Sens retenu : crédit (choisi à l'étape de jugement)")
 }
 
-func TestAmount_AllDirectionsUnknownKeepsTheSumWithANote(t *testing.T) {
+func TestAmount_NoKnownDirectionLeavesTheTotalEmptyAndAsksWithoutOption(t *testing.T) {
 	doc := core.NewDocument()
 	stakeTx(doc, "100", "")
 	stakeTx(doc, "40", "")
 	f := computeStake(t, doc)
 
-	assert.Equal(t, "140", doc.Values["operations.montantTotal"].Value)
+	_, has := doc.Values["operations.montantTotal"]
+	assert.False(t, has, "the old sum of debits and credits is gone")
 	_, hasCredits := doc.Values["work.montantCredits"]
 	_, hasDebits := doc.Values["work.montantDebits"]
 	assert.False(t, hasCredits || hasDebits, "no direction total without a known direction")
+	qs := f.(core.DocumentQuestioner).DocumentQuestions(doc)
+	require.Len(t, qs, 1)
+	assert.True(t, qs[0].Blocking)
+	assert.Equal(t, []core.Path{"operations.montantTotal"}, qs[0].Paths)
+	assert.Empty(t, qs[0].Options)
 	note := f.(amountNoter).ComputedNote(doc, "operations.montantTotal")
-	assert.Contains(t, note, "Aucune transaction n'a de sens connu")
+	assert.Contains(t, note, "n'est pas déterminé")
 	assert.Contains(t, note, "Transactions sans sens : 2")
 }
 

@@ -89,10 +89,12 @@ type opGroup struct {
 // declared person and the beneficiary is not, credit in the opposite case,
 // unknown otherwise. The totals of the countable credits and of the countable
 // debits go to work.montantCredits and work.montantDebits (computed, not
-// exported). operations.montantTotal is the total of the direction chosen at the
-// judgment step (work.sensMontantTotal), else the larger of the two; the
-// transactions of unknown direction count in neither, and when none has a known
-// direction the total is the sum of all of them (see stake).
+// exported). operations.montantTotal is the total of the only direction that has
+// transactions, else of the direction chosen at the judgment step or by the
+// analyst (work.sensMontantTotal); with both directions and no choice, or no
+// known direction, it is left empty and the analyst is asked (see
+// DocumentQuestions). The transactions of unknown direction count in neither
+// total (see stake).
 //
 // A line keeps its path while it stands for a group (see matchLines), also when
 // the group attributes change but its transactions carry on; a new group gets a
@@ -133,11 +135,18 @@ func (f *format) Compute(doc *core.Document) core.ComputeResult {
 		}
 	}
 	total, totalFrac, totalTxs, basis := st.total(chosenDirection(doc))
-	totalInputs := txAmounts(totalTxs)
-	if basis == basisJudgment {
-		totalInputs = append(totalInputs, workChosenDirection)
+	if total != nil {
+		totalInputs := txAmounts(totalTxs)
+		if basis == basisJudgment {
+			totalInputs = append(totalInputs, workChosenDirection)
+		}
+		put(operationsTotal, formatDecimal(total, totalFrac), totalInputs)
+	} else if v, ok := doc.Values[operationsTotal]; ok && v.Origin == core.OriginComputed {
+		// The direction is not determined (any more): a stale computed total goes
+		// away, the analyst is asked (see DocumentQuestions). A total the analyst
+		// typed stays.
+		res.RemoveItems = append(res.RemoveItems, operationsTotal)
 	}
-	put(operationsTotal, formatDecimal(total, totalFrac), totalInputs)
 	// The two direction totals: written while a transaction has that direction,
 	// a stale computed one goes away.
 	for _, d := range []struct {
@@ -322,34 +331,45 @@ func (s *stake) add(tx core.Path, amount *big.Rat, frac int, direction string) {
 
 // Why a direction was kept for the amount at stake.
 const (
+	// basisJudgment: both directions have transactions and the judgment step (or
+	// the analyst) chose one.
 	basisJudgment = "judgment"
-	basisLarger   = "larger"
-	basisAll      = "all"
+	// basisSingle: only one direction has transactions: its total follows from
+	// the data, no judgment is needed.
+	basisSingle = "single"
+	// basisAsk: both directions have transactions and none was chosen, or no
+	// transaction has a known direction: the total is left empty and the analyst
+	// is asked (the backend never defaults to a direction).
+	basisAsk = "ask"
 )
 
-// total is the amount at stake: the total of the chosen direction when it has
-// transactions, else the larger of the two (credits on a tie), else, when no
-// transaction has a known direction, the sum of all of them. It returns the
-// total, its fraction digits, the transactions it counts and why that
-// direction was kept.
+// total is the amount at stake. Debits and credits are never added together,
+// and no direction is picked on the analyst's behalf:
+//   - only one direction has transactions: the total of that direction;
+//   - both have some: the total of the chosen direction, or none (nil) when none
+//     was chosen;
+//   - none has a known direction: none (nil).
+//
+// It returns the total (nil when it is not determined), its fraction digits, the
+// transactions it counts and why that direction was kept.
 func (s *stake) total(chosen string) (total *big.Rat, frac int, txs []core.Path, basis string) {
 	side := func(d *directionTotal) (*big.Rat, int, []core.Path) { return d.value(), d.frac, d.txs }
+	hasCredits, hasDebits := len(s.credits.txs) > 0, len(s.debits.txs) > 0
 	switch {
-	case len(s.credits.txs) == 0 && len(s.debits.txs) == 0:
-		total, frac, txs = side(&s.all)
-		return total, frac, txs, basisAll
-	case chosen == directionCredit && len(s.credits.txs) > 0:
+	case hasCredits && !hasDebits:
+		total, frac, txs = side(&s.credits)
+		return total, frac, txs, basisSingle
+	case hasDebits && !hasCredits:
+		total, frac, txs = side(&s.debits)
+		return total, frac, txs, basisSingle
+	case hasCredits && hasDebits && chosen == directionCredit:
 		total, frac, txs = side(&s.credits)
 		return total, frac, txs, basisJudgment
-	case chosen == directionDebit && len(s.debits.txs) > 0:
+	case hasCredits && hasDebits && chosen == directionDebit:
 		total, frac, txs = side(&s.debits)
 		return total, frac, txs, basisJudgment
-	case s.credits.value().Cmp(s.debits.value()) >= 0:
-		total, frac, txs = side(&s.credits)
-	default:
-		total, frac, txs = side(&s.debits)
 	}
-	return total, frac, txs, basisLarger
+	return nil, 0, nil, basisAsk
 }
 
 // chosenDirection is the direction the judgment step (or the analyst) chose for
@@ -636,21 +656,20 @@ func (f *format) ComputedNote(doc *core.Document, p core.Path) string {
 	label := map[string]string{directionCredit: "crédit", directionDebit: "débit"}
 	msg := fmt.Sprintf("valeur calculée à confirmer : le montant total. Crédits : %s ; débits : %s", money(&st.credits), money(&st.debits))
 	switch basis {
-	case basisAll:
-		msg += ". Aucune transaction n'a de sens connu : le total additionne toutes les transactions comptées, crédits et débits confondus ; " +
-			"renseignez le sens des transactions pour ne retenir qu'un sens"
-	case basisJudgment:
-		msg += ". Sens retenu : " + label[chosen] + " (choisi à l'étape de jugement)"
-	default:
-		reason := "le plus élevé, faute de choix"
-		if chosen != "" {
-			reason = "le plus élevé : aucune transaction dans le sens choisi à l'étape de jugement"
-		}
+	case basisSingle:
 		kept := directionCredit
-		if st.credits.value().Cmp(st.debits.value()) < 0 {
+		if len(st.credits.txs) == 0 {
 			kept = directionDebit
 		}
-		msg += ". Sens retenu : " + label[kept] + " (" + reason + ")"
+		msg += ". Sens retenu : " + label[kept] + " (seul sens des transactions comptées)"
+	case basisJudgment:
+		who := "choisi à l'étape de jugement"
+		if v := doc.Values[workChosenDirection]; v.Origin == core.OriginAnalyst || v.Origin == core.OriginManual {
+			who = "choisi par l'analyste"
+		}
+		msg += ". Sens retenu : " + label[chosen] + " (" + who + ")"
+	default:
+		msg += ". Le sens du montant total n'est pas déterminé : choisissez-le (crédits ou débits), ou indiquez le montant"
 	}
 	return msg + fmt.Sprintf(". Transactions sans sens : %d (comptées dans aucun total).", st.unknown)
 }

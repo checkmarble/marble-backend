@@ -130,7 +130,8 @@ func TestTools_OperationPreviewWithCandidateFillsAndBounds(t *testing.T) {
 	require.NoError(t, err)
 	out := call(string(args))
 	assert.EqualValues(t, 1, out["line_count"])
-	assert.Equal(t, "12.5", out["total_amount"])
+	assert.Nil(t, out["total_amount"], "no known direction: the total is not determined, the analyst is asked")
+	assert.Equal(t, "ask", out["total_amount_basis"])
 	assert.NotEmpty(t, out["rejected_fills"])
 	assert.Empty(t, doc.Values, "the preview works on a copy")
 

@@ -142,9 +142,12 @@ func (f *format) operationPreview(doc *core.Document, args json.RawMessage) stri
 	out := map[string]any{"lines": lines, "line_count": len(order), "max_lines": maxOperationLines}
 	if len(order) > 0 {
 		out["period_start"], out["period_end"] = minDate, maxDate
-		out["total_amount"] = formatDecimal(total, totalFrac)
+		if total != nil {
+			out["total_amount"] = formatDecimal(total, totalFrac)
+		}
 		// Debits and credits are never added together: the total is that of one
-		// direction (the judgment step's choice, else the larger).
+		// direction (the only one with transactions, or the chosen one); "ask"
+		// means it is not determined and the analyst is asked.
 		out["total_amount_basis"] = basis
 		out["total_credits"] = formatDecimal(st.credits.value(), st.credits.frac)
 		out["total_debits"] = formatDecimal(st.debits.value(), st.debits.frac)

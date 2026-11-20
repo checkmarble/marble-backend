@@ -113,7 +113,10 @@ func TestTodo_TotalToConfirmCarriesTheAmountNote(t *testing.T) {
 			}
 		}
 	})
-	_, err := uc.UpdateFields(f.Ctx, declId, f.Repo.Declarations[declId].Version, []core.Fill{{Path: "work.transactions[transactions-1].paysOrigine", Value: "FR"}})
+	_, err := uc.UpdateFields(f.Ctx, declId, f.Repo.Declarations[declId].Version, []core.Fill{
+		{Path: "work.transactions[transactions-1].paysOrigine", Value: "FR"},
+		{Path: "work.sensMontantTotal", Value: "debit"}, // both directions: the analyst chooses, no default
+	})
 	require.NoError(t, err)
 
 	st, err := uc.GetDeclaration(f.Ctx, declId)
