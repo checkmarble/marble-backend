@@ -479,6 +479,7 @@ func (usecases *UsecasesWithCreds) NewBatchExecutionCoordinator() *worker_jobs.B
 		usecases.NewScenarioEvaluator(),
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Repositories.TaskQueueRepository,
+		usecases.batchExecutionConcurrency,
 	)
 	return &c
 }
