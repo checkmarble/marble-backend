@@ -133,14 +133,18 @@ func (usecase IngestedDataReaderUsecase) GetIngestedObject(
 
 	clientObjects := make([]models.ClientObjectDetail, len(objects))
 	for i, object := range objects {
-		validFrom, _ := object.Metadata["valid_from"].(time.Time)
-		clientObject := models.ClientObjectDetail{
-			Data:     object.Data,
-			Metadata: models.ClientObjectMetadata{ValidFrom: &validFrom, ObjectType: objectType},
-		}
-		clientObjects[i] = clientObject
+		clientObjects[i] = toClientObjectDetail(object, objectType)
 	}
 	return clientObjects, nil
+}
+
+// toClientObjectDetail expects the object to be read with the "valid_from" metadata field.
+func toClientObjectDetail(object models.DataModelObject, objectType string) models.ClientObjectDetail {
+	validFrom, _ := object.Metadata["valid_from"].(time.Time)
+	return models.ClientObjectDetail{
+		Data:     object.Data,
+		Metadata: models.ClientObjectMetadata{ValidFrom: &validFrom, ObjectType: objectType},
+	}
 }
 
 func (usecase IngestedDataReaderUsecase) ReadPivotObjectsFromValues(
@@ -334,16 +338,22 @@ func (usecase IngestedDataReaderUsecase) enrichPivotObjectWithData(
 	pivotObject.PivotObjectData.Annotations = models.GroupAnnotationsByType(annotations)
 
 	// Enriches the pivot object with one level of related objects (fiend objects that are linked to the pivot object, without further recursion)
-	pivotObject.PivotObjectData, err = usecase.enrichClientDataObjectWithRelatedObjectsData(
+	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
+	if err != nil {
+		return models.PivotObject{}, err
+	}
+	pivotObjectData := []models.ClientObjectDetail{pivotObject.PivotObjectData}
+	err = usecase.enrichClientDataObjectsWithRelatedObjectsData(
 		ctx,
-		organizationId,
+		db,
 		dataModel.Tables[pivotObject.PivotObjectName],
 		dataModel,
-		pivotObject.PivotObjectData,
+		pivotObjectData,
 	)
 	if err != nil {
 		return models.PivotObject{}, err
 	}
+	pivotObject.PivotObjectData = pivotObjectData[0]
 
 	return pivotObject, nil
 }
@@ -470,16 +480,11 @@ func (usecase IngestedDataReaderUsecase) ReadIngestedClientObjects(
 	objectIds := make([]string, len(rawObjects))
 	objects = make([]models.ClientObjectDetail, len(rawObjects))
 	for i, object := range rawObjects {
-		validFrom, _ := object.Metadata["valid_from"].(time.Time)
-		objects[i] = models.ClientObjectDetail{
-			Data:     object.Data,
-			Metadata: models.ClientObjectMetadata{ValidFrom: &validFrom, ObjectType: objectType},
-		}
+		objects[i] = toClientObjectDetail(object, objectType)
 		objectIds[i] = object.Data["object_id"].(string)
 	}
 
-	// The annotations and the related objects are read for the whole page at once: reading them object by object
-	// made hundreds of sequential queries for a single page.
+	// Annotations and related objects are read for the whole page at once, not object by object.
 	annotations, err := usecase.repository.GetEntityAnnotationsForObjects(
 		ctx,
 		usecase.executorFactory.NewExecutor(),
@@ -533,64 +538,11 @@ func allParentTables(dataModel models.DataModel, tableName string) []string {
 	return result
 }
 
-// Enriches a client data object with one level (no further recursion) of related objects, following links pointing from that object.
-// Optionally takes a list of tables to which NOT to go, so that in a context where we are e.g. listing transactions from an account,
-// we may return data on a transaction.beneficiary but don't lose time reading data on transaction.account (which is presumably already in the context)
-func (usecase IngestedDataReaderUsecase) enrichClientDataObjectWithRelatedObjectsData(
-	ctx context.Context,
-	organizationId uuid.UUID,
-	baseObjectTable models.Table,
-	dataModel models.DataModel,
-	baseObject models.ClientObjectDetail,
-	parentObjectsToIgnore ...string,
-) (models.ClientObjectDetail, error) {
-	for _, link := range baseObjectTable.LinksToSingle {
-		if slices.Contains(parentObjectsToIgnore, link.ParentTableName) {
-			continue
-		}
-
-		relatedObjectUniqueField := link.ParentFieldName
-		relatedObjectObjectType := link.ParentTableName
-		linkValue, ok := baseObject.Data[link.ChildFieldName]
-		if !ok {
-			continue
-		}
-		// Will not work with links that are using "number" type fields. I accept this for now, it's not something we really try to encourage anyway
-		// and the possibility may just go away completely if we deprecate "unique" fields on tables.
-		linkValueStr, ok := linkValue.(string)
-		if !ok {
-			continue
-		}
-		relatedObjectDataSlice, err := usecase.GetIngestedObject(
-			ctx,
-			organizationId,
-			&dataModel,
-			relatedObjectObjectType,
-			linkValueStr,
-			relatedObjectUniqueField)
-		if err != nil {
-			return models.ClientObjectDetail{}, errors.Wrapf(err,
-				"failed to read related object data of type %s through link %s for object %s: %s",
-				relatedObjectObjectType, link.Name, baseObjectTable.Name, relatedObjectUniqueField)
-		}
-		if len(relatedObjectDataSlice) == 0 {
-			continue
-		}
-		relatedObjectData := relatedObjectDataSlice[0]
-		baseObject.RelatedObjects = append(
-			baseObject.RelatedObjects, models.RelatedObject{
-				LinkName: link.Name,
-				Detail: models.ClientObjectDetail{
-					Data:     relatedObjectData.Data,
-					Metadata: relatedObjectData.Metadata,
-				},
-			})
-	}
-	return baseObject, nil
-}
-
-// Same as enrichClientDataObjectWithRelatedObjectsData, for a list of objects of the same table, in place: each parent
-// table is read once for all the objects, instead of once per object.
+// Enriches client data objects of the same table, in place, with one level (no further recursion) of related objects,
+// following links pointing from them: each parent table is read once for all the objects. Optionally takes a list of
+// tables to which NOT to go, so that in a context where we are e.g. listing transactions from an account, we may return
+// data on a transaction.beneficiary but don't lose time reading data on transaction.account (which is presumably
+// already in the context).
 func (usecase IngestedDataReaderUsecase) enrichClientDataObjectsWithRelatedObjectsData(
 	ctx context.Context,
 	db repositories.Executor,
@@ -604,7 +556,8 @@ func (usecase IngestedDataReaderUsecase) enrichClientDataObjectsWithRelatedObjec
 			continue
 		}
 
-		// Links using "number" type fields are not followed, see enrichClientDataObjectWithRelatedObjectsData
+		// Links using "number" type fields are not followed: it's not something we really try to encourage, and the
+		// possibility may go away completely if we deprecate "unique" fields on tables.
 		linkValues := make([]string, 0, len(baseObjects))
 		for _, baseObject := range baseObjects {
 			if linkValue, ok := baseObject.Data[link.ChildFieldName].(string); ok {
@@ -637,17 +590,15 @@ func (usecase IngestedDataReaderUsecase) enrichClientDataObjectsWithRelatedObjec
 				link.ParentTableName, link.Name, baseObjectTable.Name, link.ParentFieldName)
 		}
 
-		// As for a single object, the first related object found for a value is the one kept
+		// The first related object found for a value is the one kept
 		relatedObjectsByValue := make(map[string]models.ClientObjectDetail, len(relatedObjects))
 		for _, relatedObject := range relatedObjects {
 			value, ok := relatedObject.Data[link.ParentFieldName].(string)
-			if _, found := relatedObjectsByValue[value]; !ok || found {
+			if !ok {
 				continue
 			}
-			validFrom, _ := relatedObject.Metadata["valid_from"].(time.Time)
-			relatedObjectsByValue[value] = models.ClientObjectDetail{
-				Data:     relatedObject.Data,
-				Metadata: models.ClientObjectMetadata{ValidFrom: &validFrom, ObjectType: link.ParentTableName},
+			if _, found := relatedObjectsByValue[value]; !found {
+				relatedObjectsByValue[value] = toClientObjectDetail(relatedObject, link.ParentTableName)
 			}
 		}
 
