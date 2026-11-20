@@ -466,6 +466,11 @@ func (c *checker) optionFills(ws []wireFill, questionPaths []core.Path, doc *cor
 		f.Origin, f.TaskID = core.OriginAnalyst, nil
 		fills = append(fills, f)
 	}
+	// Like direct fills: values referencing an item created by the same option
+	// are applied after the others.
+	slices.SortStableFunc(fills, func(x, y core.Fill) int {
+		return boolToInt(c.isRefFill(x)) - boolToInt(c.isRefFill(y))
+	})
 	clone := doc.Clone()
 	opts := c.applyOptions(clone)
 	opts.Overwrite = core.OverwriteAll
@@ -893,13 +898,32 @@ func (c *checker) checkStructured(final json.RawMessage) (err error) {
 		}
 	}()
 	clone := c.tc.Doc.Clone()
-	if err := c.tc.Format.ApplyStructured(c.spec.Kind, clone, final); err != nil {
+	sc := StructuredContextFor(c.tc.Selection, c.tc.DataModel)
+	sc.AnalystText = c.tc.AnalystText
+	if err := c.tc.Format.ApplyStructured(c.spec.Kind, clone, final, sc); err != nil {
 		return err
 	}
 	if bad := sourcesOutsideSelection(c.tc.Doc, clone, c.sc); len(bad) > 0 {
 		return errors.New(outsideSelectionMessage(bad))
 	}
 	return nil
+}
+
+// cleanStructured keeps the valid parts of an accepted structured output, for a
+// format that supports it (see core.StructuredCleaner); dropped says what was
+// left out.
+func (c *checker) cleanStructured(final json.RawMessage) (json.RawMessage, []string) {
+	cleaner, ok := c.tc.Format.(core.StructuredCleaner)
+	if !ok {
+		return final, nil
+	}
+	sc := StructuredContextFor(c.tc.Selection, c.tc.DataModel)
+	sc.AnalystText = c.tc.AnalystText
+	cleaned, dropped, err := cleaner.CleanStructured(c.spec.Kind, final, sc)
+	if err != nil {
+		return final, nil // already checked by checkStructured
+	}
+	return cleaned, dropped
 }
 
 // relationError checks that the value of a copied fill derives from the raw

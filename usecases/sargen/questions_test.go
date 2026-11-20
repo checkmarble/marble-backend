@@ -195,6 +195,8 @@ func TestBuildTodo_QuestionsFindingsAndComputedToConfirm(t *testing.T) {
 		doc.Values["operations.montantTotal"] = core.Value{Value: "12500.00", Origin: core.OriginComputed}
 	})
 	blockingQ := f.SeedQuestion(t, declId, []core.Path{"organisme.libelle"}, "Quel est le libellé ?", nil)
+	blockingQ.Severity = models.SarQuestionSeverityBlocking
+	f.Gen.Questions[blockingQ.Id] = blockingQ
 	warningQ := f.SeedQuestion(t, declId, []core.Path{"organisme.adresse.numero"}, "Numéro de voie ?", nil)
 	finding := f.SeedReviewFinding(t, declId, []core.Path{"operations.montantTotal"}, "important", "Montant à vérifier")
 
@@ -203,11 +205,11 @@ func TestBuildTodo_QuestionsFindingsAndComputedToConfirm(t *testing.T) {
 
 	item, ok := findTodo(st.Todo, todoRefIs(TodoQuestion, blockingQ.Id))
 	require.True(t, ok, "an open question must appear in the todo")
-	assert.Equal(t, TodoBlocking, item.Severity, "a question on a required path blocks the export")
+	assert.Equal(t, TodoBlocking, item.Severity, "a question stored blocking blocks the export")
 
 	item, ok = findTodo(st.Todo, todoRefIs(TodoQuestion, warningQ.Id))
 	require.True(t, ok)
-	assert.Equal(t, TodoWarning, item.Severity, "a question on an optional path is a warning")
+	assert.Equal(t, TodoWarning, item.Severity, "a question that is not stored blocking is a warning")
 
 	item, ok = findTodo(st.Todo, todoRefIs(TodoReviewFinding, finding.Id))
 	require.True(t, ok, "an open review finding must appear in the todo")

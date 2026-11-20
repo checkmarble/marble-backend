@@ -5,6 +5,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
 	"github.com/cockroachdb/errors"
 )
@@ -66,18 +67,19 @@ func New(version string) (core.Format, bool) {
 	return entry.f, true
 }
 
-func (f *format) Key() core.FormatKey                      { return f.key }
-func (f *format) Status() core.VersionStatus               { return f.status }
-func (f *format) Spec() *core.Spec                         { return f.spec }
+func (f *format) Key() core.FormatKey        { return f.key }
+func (f *format) Status() core.VersionStatus { return f.status }
+func (f *format) Spec() *core.Spec           { return f.spec }
+
+// InstructionsPromptPath is the prompt of the TRACFIN conventions shared by every
+// step (the engine prepends it to each step prompt).
+func (f *format) InstructionsPromptPath() string {
+	return models.SarGenerationTracfinFormatPromptPath
+}
+
 func (f *format) Validate(doc *core.Document) []core.Issue { return Validate(f.spec, doc) }
 
-// Plan, ApplyStructured, Compute and Tools are filled in by later tasks.
-func (f *format) Plan(core.PlanState) []core.TaskSpec { return nil }
-func (f *format) ApplyStructured(string, *core.Document, json.RawMessage) error {
-	return nil
-}
-func (f *format) Compute(*core.Document) core.ComputeResult   { return core.ComputeResult{} }
-func (f *format) Tools(core.ToolContext) map[string]core.Tool { return nil }
+// Plan, ApplyStructured, Compute and Tools: see planner.go, placement.go, compute.go and tools.go.
 
 // RequiredSettings lists the organization settings needed to generate a
 // declaration: the declarant contact is optional in the XSD but always needed

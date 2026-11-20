@@ -260,7 +260,10 @@ func hasUsableOutput(out core.TaskOutput) bool {
 func (r *agentRunner) tools(tc core.ToolContext, spec core.TaskSpec) []core.Tool {
 	all := CommonTools(tc)
 	if tc.Format != nil {
-		maps.Copy(all, tc.Format.Tools(tc))
+		for name, t := range tc.Format.Tools(tc) {
+			t.Call = guarded(t.Call) // a format tool never panics the run either
+			all[name] = t
+		}
 	}
 	var out []core.Tool
 	for _, name := range slices.Sorted(maps.Keys(all)) {
@@ -315,6 +318,10 @@ func (r *agentRunner) prompt(text string, tc core.ToolContext, spec core.TaskSpe
 			b.WriteString(contextOnlyLegend + "\n")
 		}
 		b.WriteString(UntrustedBlock("selected_objects", strings.Join(lines, "\n")+inline))
+	}
+	if spec.NeedsCaseContext && tc.CaseContext != "" {
+		b.WriteString("\n\n## Case context\n")
+		b.WriteString(UntrustedBlock("case_context", tc.CaseContext))
 	}
 	if len(spec.Payload) > 0 {
 		if raw, err := json.Marshal(spec.Payload); err == nil {
@@ -463,6 +470,17 @@ type agentRun struct {
 
 func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 	lim := a.r.limits.forTier(a.spec.Tier)
+	l := a.spec.Limits
+	lim.MaxToolCalls = max(lim.MaxToolCalls, l.MaxToolCalls)
+	lim.MaxTurns = max(lim.MaxTurns, l.MaxTurns)
+	lim.Timeout = max(lim.Timeout, time.Duration(l.TimeoutSeconds)*time.Second)
+	// A task that fails the job on a limit must end on that limit before the
+	// job does: at most half of what the job context still allows. Any other
+	// task keeps its own budget: if the job context expires first, it fails
+	// technically, River retries and the resume redoes the task.
+	if dl, ok := parent.Deadline(); ok && a.spec.FailJobOnLimit {
+		lim.Timeout = min(lim.Timeout, time.Until(dl)/2)
+	}
 	// The task budget is a deadline checked before each turn; the calls are
 	// bounded by their own timeout, drawn from the parent context, so that a
 	// silent provider is a technical error and not a finished task.
@@ -496,6 +514,13 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 				reason = "durée maximale atteinte"
 			}
 			if graceUsed {
+				return a.limitOutput(reason), nil
+			}
+			if a.spec.FailJobOnLimit && turns > 0 && time.Until(deadline) < lastCall {
+				// A task clamped to end before the job does: a grace call that is
+				// expected to outlast its clamped deadline could run into the job
+				// deadline (a technical failure and a retry): the limit output
+				// right away.
 				return a.limitOutput(reason), nil
 			}
 			graceUsed, graceReason = true, reason
@@ -682,7 +707,11 @@ func (a *agentRun) control(final json.RawMessage) (core.TaskOutput, []string) {
 		if err := a.chk.checkStructured(final); err != nil {
 			return core.TaskOutput{}, []string{"structured output refused: " + err.Error()}
 		}
-		return core.TaskOutput{Structured: final}, nil
+		cleaned, dropped := a.chk.cleanStructured(final)
+		for _, d := range dropped {
+			a.tr.add(TraceEntry{Type: TraceCheckError, Text: d})
+		}
+		return core.TaskOutput{Structured: cleaned}, nil
 	default:
 		res := a.chk.checkFills(final)
 		for _, n := range res.Notes {
@@ -700,6 +729,9 @@ func (a *agentRun) control(final json.RawMessage) (core.TaskOutput, []string) {
 // is kept; what failed is dropped, except fills (already turned into
 // questions) and a structured output (questions on the unfilled paths).
 func (a *agentRun) finish(out core.TaskOutput, remaining []string) core.TaskOutput {
+	// The model's own questions and findings are bounded before the engine adds
+	// its own (limit, unverifiable value), which the bound must not cut.
+	out = capOutput(out)
 	if len(remaining) > 0 {
 		switch a.mode {
 		case modeStructured:
@@ -716,7 +748,11 @@ func (a *agentRun) finish(out core.TaskOutput, remaining []string) core.TaskOutp
 					hard = append(hard, e)
 				}
 			}
-			out.Questions = append(out.Questions, a.unverifiableFromErrors(hard)...)
+			unverifiable := a.unverifiableFromErrors(hard)
+			if len(unverifiable) > maxOutputItems {
+				unverifiable = unverifiable[:maxOutputItems]
+			}
+			out.Questions = append(slices.Clone(out.Questions), unverifiable...)
 		}
 	}
 	return a.render(out)
@@ -788,7 +824,10 @@ func (a *agentRun) limitOutput(reason string) core.TaskOutput {
 func (a *agentRun) limitOutputFrom(reason string, out core.TaskOutput) core.TaskOutput {
 	a.tr.add(TraceEntry{Type: TraceCheckError, Text: "limite : " + reason})
 	a.limited, a.limitReason = true, reason
-	if a.mode != modeReview {
+	out = capOutput(out)
+	// A step without target writes nothing (e.g. a reading aid): nothing to
+	// complete for the analyst.
+	if a.mode != modeReview && !(a.mode == modeStructured && a.spec.TargetPath == "") {
 		filled := map[core.Path]bool{}
 		for _, f := range out.Fills {
 			filled[f.Path] = true
@@ -857,7 +896,7 @@ func (a *agentRun) requiredUnfilledPaths() []core.Path {
 // render bounds the output (capOutput), strips NUL characters from all of it and
 // attaches the trace.
 func (a *agentRun) render(out core.TaskOutput) core.TaskOutput {
-	out = capOutput(out)
+	out = capTexts(out)
 	for i := range out.Fills {
 		f := &out.Fills[i]
 		f.Value, f.Justification = clean(f.Value), clean(f.Justification)
@@ -909,8 +948,8 @@ func capText(s string) string {
 	return s
 }
 
-// capOutput bounds the number of questions, findings and options (20 each) and
-// the length of their texts (500 characters).
+// capOutput bounds the number of questions and findings (20 each) of what the
+// model produced; capTexts then bounds the options and the length of the texts.
 func capOutput(out core.TaskOutput) core.TaskOutput {
 	if len(out.Questions) > maxOutputItems {
 		out.Questions = out.Questions[:maxOutputItems]
@@ -918,6 +957,13 @@ func capOutput(out core.TaskOutput) core.TaskOutput {
 	if len(out.Findings) > maxOutputItems {
 		out.Findings = out.Findings[:maxOutputItems]
 	}
+	return out
+}
+
+// capTexts bounds the options per question (20) and the length of the texts
+// (500 characters) of questions, options and findings; the number of questions
+// is bounded by capOutput before the engine adds its own.
+func capTexts(out core.TaskOutput) core.TaskOutput {
 	qs := slices.Clone(out.Questions)
 	for i := range qs {
 		qs[i].Text = capText(qs[i].Text)

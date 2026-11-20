@@ -192,6 +192,15 @@ func ApplyFills(spec *Spec, doc *Document, fills []Fill, opts ApplyOptions) Appl
 		}
 		if len(pend) == 0 {
 			before, exists := doc.Values[real]
+			if isTombstone(before) && exists && !isAnalystOrigin(f.Origin) && f.Value != "" && opts.Overwrite != OverwriteAll {
+				// The analyst cleared this field by hand: no computation and no
+				// model output brings the value back (a model's attempt is a
+				// conflict the analyst sees; a computation stays silent).
+				if f.Origin != OriginComputed {
+					res.Conflicts = append(res.Conflicts, Conflict{Path: real, Before: before, After: f})
+				}
+				continue
+			}
 			if exists && before.Value == "" {
 				exists = false
 			}
@@ -276,8 +285,17 @@ func protected(v Value, f Fill, policy OverwritePolicy) bool {
 	}
 }
 
+// isTombstone reports a manual clear: an empty value written by the analyst,
+// kept so that nothing recomputes or refills the field. A tombstone counts as
+// absent everywhere a value is read.
+func isTombstone(v Value) bool { return v.Value == "" && isAnalystOrigin(v.Origin) }
+
 func write(doc *Document, p Path, f Fill) {
 	if f.Value == "" {
+		if isAnalystOrigin(f.Origin) {
+			doc.Values[p] = Value{Origin: f.Origin, Reviewed: f.Reviewed}
+			return
+		}
 		delete(doc.Values, p)
 		return
 	}
@@ -509,4 +527,26 @@ func checkFillValue(spec *Spec, f Fill) *Issue {
 		return issue
 	}
 	return nil
+}
+
+// ComputeInto derives the format's computed fields into doc: the removals
+// first, then the fills as OriginComputed with OverwriteNonManual (a value the
+// analyst wrote or reviewed is kept) and SkipMaxItems (an excess surfaces as
+// the validator's blocking issue). changed tells whether doc was modified, which
+// includes a refreshed computation (same value, new inputs): it is persisted,
+// so the declaration version bumps. It is
+// the single way computed values are written: after a generation task, at the
+// end of a job and after a manual edit.
+func ComputeInto(f Format, doc *Document) (res ApplyResult, changed bool) {
+	c := f.Compute(doc)
+	for _, p := range c.RemoveItems {
+		doc.RemoveItem(p)
+	}
+	fills := make([]Fill, len(c.Fills))
+	for i, fl := range c.Fills {
+		fl.Origin, fl.TaskID = OriginComputed, nil
+		fills[i] = fl
+	}
+	res = ApplyFills(f.Spec(), doc, fills, ApplyOptions{Overwrite: OverwriteNonManual, SkipMaxItems: true})
+	return res, len(c.RemoveItems) > 0 || len(res.Applied) > 0 || len(res.Refreshed) > 0
 }
