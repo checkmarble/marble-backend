@@ -46,11 +46,14 @@ const fillsSchemaJSON = `{"type":"object","additionalProperties":false,"required
 
 const reviewSchemaJSON = `{"type":"object","additionalProperties":false,"required":["findings"],
  "properties":{"findings":{"type":"array","items":{"type":"object","additionalProperties":false,
-  "required":["paths","severity","message"],
+  "required":["paths","severity","message","options","contests_question_id"],
   "properties":{
    "paths":{"type":"array","items":{"type":"string"}},
    "severity":{"type":"string","enum":["important","mineur"]},
-   "message":{"type":"string"}}}}}}`
+   "message":{"type":"string"},
+   "options":{"anyOf":[{"type":"array","items":{"type":"object","additionalProperties":false,"required":["label","fills"],
+    "properties":{"label":{"type":"string"},"fills":{"type":"array","items":` + optionFillSchemaJSON + `}}}},{"type":"null"}]},
+   "contests_question_id":{"anyOf":[{"type":"string"},{"type":"null"}]}}}}}}`
 
 func mustSchema(s string) jsonschema.Schema {
 	var sc jsonschema.Schema
@@ -81,8 +84,10 @@ func mustSchema(s string) jsonschema.Schema {
 func FillsOutputSchema() jsonschema.Schema { return mustSchema(fillsSchemaJSON) }
 
 // ReviewOutputSchema is the final answer of a review task:
-// {findings: [{paths, severity: "important"|"mineur", message}]} (all
-// properties required, strict-compatible).
+// {findings: [{paths, severity: "important"|"mineur", message,
+// options: [{label, fills: [{path, value, source, ...}]}] | null,
+// contests_question_id: string | null}]} (all properties required,
+// strict-compatible).
 func ReviewOutputSchema() jsonschema.Schema { return mustSchema(reviewSchemaJSON) }
 
 // validateParamsJSON is the parameter schema of the validate tool: the fills of

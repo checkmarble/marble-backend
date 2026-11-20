@@ -40,6 +40,8 @@ type fakeRunner struct {
 	calls  map[string]int
 	// Calls lists the runs in order (kind|target).
 	Calls []string
+	// TCs are the tool contexts of the runs, in order.
+	TCs []core.ToolContext
 }
 
 func newFakeRunner() *fakeRunner {
@@ -62,13 +64,14 @@ func (r *fakeRunner) Count(kind, target string) int {
 	return r.calls[key(kind, target)]
 }
 
-func (r *fakeRunner) Run(_ context.Context, _ core.ToolContext, task models.SarGenerationTask, _ core.TaskSpec) (core.TaskOutput, error) {
+func (r *fakeRunner) Run(_ context.Context, tc core.ToolContext, task models.SarGenerationTask, _ core.TaskSpec) (core.TaskOutput, error) {
 	k := key(task.Kind, task.TargetPath)
 	r.mu.Lock()
 	steps := r.script[k]
 	n := r.calls[k]
 	r.calls[k]++
 	r.Calls = append(r.Calls, k)
+	r.TCs = append(r.TCs, tc)
 	r.mu.Unlock()
 	if len(steps) == 0 {
 		return core.TaskOutput{}, nil
@@ -97,9 +100,32 @@ type fakeFormat struct {
 	StructuredFn func(kind string, doc *core.Document, out json.RawMessage) error
 	// InstructionsPath is the format instructions prompt (none when empty).
 	InstructionsPath string
+	DocQuestionsFn   func(doc *core.Document) []core.QuestionDraft
+	CodeSemantics    map[string][]models.FieldSemanticType
+	CodeFromValueFn  func(raw string) (string, bool)
 }
 
 func (f *fakeFormat) InstructionsPromptPath() string { return f.InstructionsPath }
+
+// DocumentQuestions scripts core.DocumentQuestioner.
+func (f *fakeFormat) DocumentQuestions(doc *core.Document) []core.QuestionDraft {
+	if f.DocQuestionsFn == nil {
+		return nil
+	}
+	return f.DocQuestionsFn(doc)
+}
+
+// CodeListSemantics and CodeFromValue script core.CodeSourceMapper.
+func (f *fakeFormat) CodeListSemantics(list string) []models.FieldSemanticType {
+	return f.CodeSemantics[list]
+}
+
+func (f *fakeFormat) CodeFromValue(_ string, _ models.FieldSemanticType, raw string) (string, bool) {
+	if f.CodeFromValueFn == nil {
+		return "", false
+	}
+	return f.CodeFromValueFn(raw)
+}
 
 func (f *fakeFormat) Plan(st core.PlanState) []core.TaskSpec {
 	if f.OnPlan != nil {

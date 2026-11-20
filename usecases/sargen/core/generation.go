@@ -178,7 +178,22 @@ type ToolContext struct {
 	Doc       *Document
 	Selection []models.SarSelectedObject
 	DataModel models.DataModel
-	Rules     []MemoryRuleView
+	// Issues are the export validation issues of the document, and OpenQuestions
+	// the questions still open: given to the review task, which must not repeat
+	// them and may contest a question.
+	Issues        []Issue
+	OpenQuestions []QuestionView
+	Rules         []MemoryRuleView
+}
+
+// QuestionView is an open question as the review task sees it.
+type QuestionView struct {
+	Id           uuid.UUID `json:"id"`
+	Kind         string    `json:"kind"`
+	Severity     string    `json:"severity,omitempty"`
+	Paths        []Path    `json:"paths"`
+	Text         string    `json:"text"`
+	OptionLabels []string  `json:"option_labels"`
 }
 
 // Tool is one LLM tool. Call never returns a Go error: any error is a JSON

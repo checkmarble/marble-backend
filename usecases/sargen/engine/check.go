@@ -78,6 +78,10 @@ type wireFinding struct {
 	Paths    []flexString `json:"paths"`
 	Severity flexString   `json:"severity"`
 	Message  flexString   `json:"message"`
+	// Options are proposals with fills; ContestsQuestionID is the open question
+	// this finding replaces. Both optional.
+	Options            []wireOption `json:"options"`
+	ContestsQuestionID *flexString  `json:"contests_question_id"` //nolint:tagliatelle
 }
 
 // checker applies the output control to the final answers of one task run.
@@ -647,11 +651,85 @@ func (c *checker) checkReview(final json.RawMessage) ([]core.ReviewFinding, []st
 			}
 			f.Paths = append(f.Paths, core.Path(p))
 		}
+		if w.ContestsQuestionID != nil && strings.TrimSpace(string(*w.ContestsQuestionID)) != "" {
+			id, err := uuid.Parse(strings.TrimSpace(string(*w.ContestsQuestionID)))
+			if err != nil || !c.isOpenQuestion(id) {
+				errs = append(errs, fmt.Sprintf("findings[%d] : contests_question_id is not an open question of this declaration (use an id from the open questions list, or null)", i))
+				bad = true
+			} else {
+				f.ContestsQuestionID = &id
+			}
+		}
+		if len(w.Options) > 0 && len(f.Paths) == 0 && !bad {
+			errs = append(errs, fmt.Sprintf("findings[%d] : options need the paths of the fields they fill", i))
+			bad = true
+		}
+		for oi, wo := range w.Options {
+			if bad {
+				break
+			}
+			opt, msg := c.reviewOption(wo, f.Paths)
+			if msg != "" {
+				errs = append(errs, fmt.Sprintf("findings[%d].options[%d] : %s", i, oi, msg))
+				bad = true
+				break
+			}
+			f.Options = append(f.Options, opt)
+		}
 		if !bad {
 			findings = append(findings, f)
 		}
 	}
 	return findings, errs
+}
+
+// isOpenQuestion tells whether id is an open question (not a finding) of the
+// declaration, as given to the review task.
+func (c *checker) isOpenQuestion(id uuid.UUID) bool {
+	return slices.ContainsFunc(c.tc.OpenQuestions, func(q core.QuestionView) bool {
+		return q.Id == id && q.Kind == models.SarQuestionKindQuestion
+	})
+}
+
+// reviewOption controls an option of a review finding: its fills pass the checks
+// of the fills of a task (value format, source proof, paths of the finding),
+// only on fields of copied or judgment nature, and never over a value written or
+// reviewed by the analyst. An option that writes nothing is refused.
+func (c *checker) reviewOption(wo wireOption, paths []core.Path) (core.QuestionOption, string) {
+	label := strings.TrimSpace(string(wo.Label))
+	if label == "" {
+		return core.QuestionOption{}, "empty label"
+	}
+	if len(wo.Fills) == 0 {
+		return core.QuestionOption{}, "an option must carry fills (a finding without options is fine, an option that writes nothing is not)"
+	}
+	for _, w := range wo.Fills {
+		path := core.Path(w.Path)
+		if _, err := core.ParsePath(string(path)); err != nil {
+			return core.QuestionOption{}, "invalid path: " + err.Error()
+		}
+		if !core.PathAllowed(path, paths) {
+			return core.QuestionOption{}, fmt.Sprintf("%s is outside the paths of the finding", path)
+		}
+		node := c.tc.Format.Spec().NodeAt(path.Template())
+		if node == nil || node.Kind != core.NodeField {
+			return core.QuestionOption{}, fmt.Sprintf("%s is not a field", path)
+		}
+		if n := node.EffectiveNature(); n != core.NatureCopied && n != core.NatureJudgment {
+			return core.QuestionOption{}, fmt.Sprintf("%s is a setting, computed or analyst field: it is never proposed", path)
+		}
+		if cur, ok := c.tc.Doc.Values[path]; ok && (cur.Origin == core.OriginManual || cur.Origin == core.OriginAnalyst || cur.Reviewed) {
+			return core.QuestionOption{}, fmt.Sprintf("%s holds a value written or reviewed by the analyst: it is never replaced", path)
+		}
+	}
+	// The same controls as the options of a question, within the finding's paths.
+	cc := *c
+	cc.allowed = paths
+	fills, msg := cc.optionFills(wo.Fills, paths, c.tc.Doc)
+	if msg != "" {
+		return core.QuestionOption{}, msg
+	}
+	return core.QuestionOption{Label: label, Fills: fills}, ""
 }
 
 // checkStructured dry-runs a structured output on a copy of the document.

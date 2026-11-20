@@ -315,6 +315,8 @@ type jobRun struct {
 	// rateLimited tells that the job row holds a rate-limit streak to clear
 	// when a task succeeds.
 	rateLimited atomic.Bool
+	// askedBackend: the backend questions were asked in this run.
+	askedBackend bool
 }
 
 func (r *jobRun) loop(ctx context.Context) error {
@@ -425,6 +427,14 @@ func (r *jobRun) loop(ctx context.Context) error {
 			return r.finish(ctx, slices.ContainsFunc(tasks, func(t models.SarGenerationTask) bool {
 				return t.Kind == core.TaskKindCompute
 			}))
+		}
+
+		// The backend questions must exist before the final review reads them.
+		if !r.askedBackend && slices.ContainsFunc(ready, func(rt readyTask) bool { return rt.spec.Kind == core.TaskKindReview }) {
+			if err := r.askBackendQuestions(ctx); err != nil {
+				return errors.Wrap(err, "backend questions failed")
+			}
+			r.askedBackend = true
 		}
 
 		progress, err := r.runWave(ctx, ready)
@@ -696,6 +706,17 @@ func (r *jobRun) runTask(ctx context.Context, rt readyTask) (claimed bool, err e
 			OrgId: r.orgId, DeclarationId: r.declId, TaskId: rt.task.Id, Format: r.format,
 			Doc: doc.Clone(), Selection: r.selection, DataModel: r.dataModel,
 		}
+		if rt.spec.Kind == core.TaskKindReview {
+			open, err := o.generation.ListSarQuestions(ctx, exec, r.declId, models.SarQuestionStatusOpen)
+			if err != nil {
+				return true, fail(err, nil)
+			}
+			tc.Issues = r.format.Validate(doc)
+			if len(tc.Issues) > maxReviewIssues {
+				tc.Issues = tc.Issues[:maxReviewIssues]
+			}
+			tc.OpenQuestions = questionViews(open)
+		}
 		task := rt.task
 		task.Attempts = attempt
 		var runErr error
@@ -813,6 +834,8 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 		result  taskResult
 		qs      []models.SarQuestion
 		closeQs []uuid.UUID
+		// replacedQs are the questions the review's findings replace.
+		replacedQs []uuid.UUID
 	)
 
 	var structuredRejected []rejectedView
@@ -977,20 +1000,50 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 		if err != nil {
 			return false, errors.Wrap(err, "cannot list questions")
 		}
+		// The findings of an earlier review are replaced by this one. What is left
+		// open are the questions: a finding never repeats them, unless it contests
+		// one (its data answer it), which closes the question as replaced.
+		openQuestions := map[uuid.UUID]models.SarQuestion{}
 		for _, q := range open {
-			if q.Kind == models.SarQuestionKindReviewFinding {
+			switch q.Kind {
+			case models.SarQuestionKindReviewFinding:
 				closeQs = append(closeQs, q.Id)
+			case models.SarQuestionKindQuestion:
+				openQuestions[q.Id] = q
 			}
 		}
 		for _, fd := range out.Findings {
+			severity, contested := fd.Severity, false
+			if fd.ContestsQuestionID != nil {
+				// A question closed since the review started cannot be contested any
+				// more: the finding then stands for itself (and is dropped when an
+				// open question covers it).
+				if cq, ok := openQuestions[*fd.ContestsQuestionID]; ok {
+					if cq.Severity == models.SarQuestionSeverityBlocking {
+						severity = models.SarQuestionSeverityBlocking
+					}
+					replacedQs = append(replacedQs, cq.Id)
+					delete(openQuestions, cq.Id)
+					contested = true
+				}
+			}
+			if !contested && coveredByQuestion(fd.Paths, openQuestions) {
+				continue
+			}
 			paths := make([]string, len(fd.Paths))
 			for i, p := range fd.Paths {
 				paths[i] = string(p)
 			}
+			var rawOpts []byte
+			if len(fd.Options) > 0 {
+				if rawOpts, err = marshalOptions(fd.Options); err != nil {
+					return false, err
+				}
+			}
 			qs = append(qs, models.SarQuestion{
 				Id: uuid.New(), DeclarationId: r.declId, TaskId: &taskId,
-				Kind: models.SarQuestionKindReviewFinding, Severity: fd.Severity,
-				Paths: paths, Text: fd.Message, Status: models.SarQuestionStatusOpen,
+				Kind: models.SarQuestionKindReviewFinding, Severity: severity,
+				Paths: paths, Text: fd.Message, Options: rawOpts, Status: models.SarQuestionStatusOpen,
 			})
 		}
 		result.Findings = len(qs)
@@ -1015,6 +1068,9 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 	}
 	if err := o.generation.CloseSarQuestions(ctx, tx, closeQs, models.SarQuestionStatusDismissed); err != nil {
 		return false, errors.Wrap(err, "cannot close findings")
+	}
+	if err := o.generation.CloseSarQuestions(ctx, tx, replacedQs, models.SarQuestionStatusReplaced); err != nil {
+		return false, errors.Wrap(err, "cannot close replaced questions")
 	}
 	if err := o.generation.CreateSarQuestions(ctx, tx, qs); err != nil {
 		return false, errors.Wrap(err, "cannot create questions")
@@ -1147,13 +1203,14 @@ func (r *jobRun) finish(ctx context.Context, computePlanned bool) error {
 						"job_id", r.job.Id, "rejected", len(res.Rejected), "conflicts", len(res.Conflicts),
 						"first_rejected", firstRejected(res))
 				}
-				// Required coded fields the generation left empty get a question
-				// that offers the unknown code of their list.
-				open, err := o.generation.ListSarQuestions(ctx, tx, r.declId, models.SarQuestionStatusOpen)
+				// The backend questions (the format's and the required coded fields left
+				// empty) are asked before the review; this pass only adds what is still
+				// missing (never twice the same paths).
+				qs, err := r.backendQuestions(ctx, tx, doc)
 				if err != nil {
-					return errors.Wrap(err, "cannot list questions")
+					return err
 				}
-				if qs := missingCodeQuestions(r.format, doc, r.declId, open); len(qs) > 0 {
+				if len(qs) > 0 {
 					if err := o.generation.CreateSarQuestions(ctx, tx, qs); err != nil {
 						return errors.Wrap(err, "cannot create questions")
 					}
@@ -1320,4 +1377,51 @@ func newItemPathKnown(spec *core.Spec, p core.Path) bool {
 	}
 	n := spec.NodeAt(strings.Join(tmpl, "."))
 	return n != nil && n.Template != ""
+}
+
+// maxReviewIssues bounds the export issues given to the review task.
+const maxReviewIssues = 200
+
+// coveredByQuestion tells whether every path of a finding is inside the paths of
+// one of the open questions (a finding without path is covered by none).
+func coveredByQuestion(paths []core.Path, open map[uuid.UUID]models.SarQuestion) bool {
+	if len(paths) == 0 {
+		return false
+	}
+	for _, p := range paths {
+		covered := false
+		for _, q := range open {
+			qp := make([]core.Path, len(q.Paths))
+			for i, s := range q.Paths {
+				qp[i] = core.Path(s)
+			}
+			if core.PathAllowed(p, qp) {
+				covered = true
+				break
+			}
+		}
+		if !covered {
+			return false
+		}
+	}
+	return true
+}
+
+// questionViews are the open questions as the review task reads them.
+func questionViews(open []models.SarQuestion) []core.QuestionView {
+	out := make([]core.QuestionView, 0, len(open))
+	for _, q := range open {
+		v := core.QuestionView{Id: q.Id, Kind: q.Kind, Severity: q.Severity, Text: q.Text, OptionLabels: []string{}}
+		for _, p := range q.Paths {
+			v.Paths = append(v.Paths, core.Path(p))
+		}
+		var opts []core.QuestionOption
+		if len(q.Options) > 0 && json.Unmarshal(q.Options, &opts) == nil {
+			for _, o := range opts {
+				v.OptionLabels = append(v.OptionLabels, o.Label)
+			}
+		}
+		out = append(out, v)
+	}
+	return out
 }

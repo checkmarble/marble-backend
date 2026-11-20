@@ -295,6 +295,9 @@ func (r *agentRunner) prompt(text string, tc core.ToolContext, spec core.TaskSpe
 		b.WriteString("\n\n")
 	}
 	b.WriteString(text)
+	if mode == modeReview {
+		b.WriteString(reviewContext(tc))
+	}
 	if mode == modeFills {
 		if d := DescribeSubtree(tc.Format.Spec(), tc.Doc, allowed); d != "" {
 			b.WriteString("\n\n## Part to fill\n")
@@ -851,7 +854,15 @@ func (a *agentRun) render(out core.TaskOutput) core.TaskOutput {
 		}
 	}
 	for i := range out.Findings {
-		out.Findings[i].Message = clean(out.Findings[i].Message)
+		fd := &out.Findings[i]
+		fd.Message = clean(fd.Message)
+		for j := range fd.Options {
+			fd.Options[j].Label = clean(fd.Options[j].Label)
+			for k := range fd.Options[j].Fills {
+				fd.Options[j].Fills[k].Value = clean(fd.Options[j].Fills[k].Value)
+				fd.Options[j].Fills[k].Justification = clean(fd.Options[j].Fills[k].Justification)
+			}
+		}
 	}
 	if len(out.Structured) > 0 {
 		out.Structured = cleanJSON(out.Structured)
@@ -899,6 +910,14 @@ func capOutput(out core.TaskOutput) core.TaskOutput {
 	fs := slices.Clone(out.Findings)
 	for i := range fs {
 		fs[i].Message = capText(fs[i].Message)
+		if len(fs[i].Options) > maxOutputItems {
+			fs[i].Options = fs[i].Options[:maxOutputItems]
+		}
+		opts := slices.Clone(fs[i].Options)
+		for j := range opts {
+			opts[j].Label = capText(opts[j].Label)
+		}
+		fs[i].Options = opts
 	}
 	out.Findings = fs
 	return out
@@ -913,5 +932,35 @@ func correctionText(errs []string) string {
 		b.WriteString("\n")
 	}
 	b.WriteString("Reminder: a source is written {field, raw_value} (with table and object_id if the element has several source objects); raw_value is the exact value of the field in the object read with read_object. If you cannot establish a value, ask a question instead of filling it.")
+	return b.String()
+}
+
+// reviewContext is what the review task reads beyond the data: the export
+// validation issues and the questions still open, so that it neither repeats
+// them nor misses what they leave out. Both are written inside data blocks: the
+// texts of questions come from a model and the client data.
+func reviewContext(tc core.ToolContext) string {
+	type issueView struct {
+		Path    core.Path `json:"path"`
+		Code    string    `json:"code"`
+		Message string    `json:"message"`
+	}
+	issues := make([]issueView, 0, len(tc.Issues))
+	for _, i := range tc.Issues {
+		issues = append(issues, issueView{Path: i.Path, Code: i.Code, Message: i.Message})
+	}
+	questions := tc.OpenQuestions
+	if questions == nil {
+		questions = []core.QuestionView{}
+	}
+	var b strings.Builder
+	if raw, err := json.Marshal(issues); err == nil {
+		b.WriteString("\n\n## Export validation issues\n")
+		b.WriteString(UntrustedBlock("export_issues", string(raw)))
+	}
+	if raw, err := json.Marshal(questions); err == nil {
+		b.WriteString("\n\n## Open questions\n")
+		b.WriteString(UntrustedBlock("open_questions", string(raw)))
+	}
 	return b.String()
 }
