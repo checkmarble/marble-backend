@@ -85,8 +85,8 @@ func TestAmount_BothDirectionsWithoutAChoiceAsksABlockingQuestion(t *testing.T) 
 	assert.True(t, qs[0].Blocking)
 	assert.Equal(t, []core.Path{"work.sensMontantTotal"}, qs[0].Paths)
 	require.Len(t, qs[0].Options, 2)
-	assert.Equal(t, "Crédits : 50 € (2 transactions)", qs[0].Options[0].Label)
-	assert.Equal(t, "Débits : 1000.5 € (1 transaction)", qs[0].Options[1].Label)
+	assert.Equal(t, "Crédits : 50,00\u00a0€ (2 transactions)", qs[0].Options[0].Label)
+	assert.Equal(t, "Débits : 1\u202f000,50\u00a0€ (1 transaction)", qs[0].Options[1].Label)
 	assert.Equal(t, "credit", qs[0].Options[0].Fills[0].Value)
 	assert.Equal(t, "debit", qs[0].Options[1].Fills[0].Value)
 
@@ -281,4 +281,15 @@ func TestAmount_TotalProvenanceCitesTheJudgedDirection(t *testing.T) {
 	stakeTx(doc2, "100", "debit")
 	computeStake(t, doc2)
 	assert.NotContains(t, doc2.Values["operations.montantTotal"].Computation.Inputs, core.Path("work.sensMontantTotal"))
+}
+
+func TestAmount_FrenchLabelsForLargeAmounts(t *testing.T) {
+	doc := core.NewDocument()
+	stakeTx(doc, "116800", "credit")
+	stakeTx(doc, "1234567.8", "debit")
+	f := computeStake(t, doc)
+	qs := f.(core.DocumentQuestioner).DocumentQuestions(doc)
+	require.Len(t, qs, 1)
+	assert.Equal(t, "Crédits : 116\u202f800,00\u00a0€ (1 transaction)", qs[0].Options[0].Label)
+	assert.Equal(t, "Débits : 1\u202f234\u202f567,80\u00a0€ (1 transaction)", qs[0].Options[1].Label)
 }

@@ -2,6 +2,7 @@ package tracfin
 
 import (
 	"fmt"
+	"math/big"
 	"sort"
 	"strings"
 	"unicode"
@@ -71,7 +72,7 @@ func amountQuestions(doc *core.Document) []core.QuestionDraft {
 	}
 	option := func(label string, d *directionTotal, direction string) core.QuestionOption {
 		return core.QuestionOption{
-			Label: fmt.Sprintf("%s : %s € (%d %s)", label, formatDecimal(d.value(), d.frac), len(d.txs), plural(len(d.txs), "transaction", "transactions")),
+			Label: fmt.Sprintf("%s : %s (%d %s)", label, frenchMoney(d.value(), d.frac), len(d.txs), plural(len(d.txs), "transaction", "transactions")),
 			Fills: []core.Fill{{Path: workChosenDirection, Value: direction, Origin: core.OriginAnalyst}},
 		}
 	}
@@ -83,6 +84,28 @@ func amountQuestions(doc *core.Document) []core.QuestionDraft {
 			option("Débits", &st.debits, directionDebit),
 		},
 	}}
+}
+
+// frenchMoney writes an amount the French way: thousands separated by a narrow
+// no-break space, a comma decimal, two decimals at least, then the euro sign
+// (« 116 800,00 € »).
+func frenchMoney(r *big.Rat, frac int) string {
+	s := r.FloatString(max(frac, 2))
+	neg := strings.HasPrefix(s, "-")
+	s = strings.TrimPrefix(s, "-")
+	whole, dec, _ := strings.Cut(s, ".")
+	var b strings.Builder
+	for i, c := range whole {
+		if i > 0 && (len(whole)-i)%3 == 0 {
+			b.WriteString("\u202f")
+		}
+		b.WriteRune(c)
+	}
+	out := b.String() + "," + dec + "\u00a0€"
+	if neg {
+		out = "-" + out
+	}
+	return out
 }
 
 func plural(n int, one, many string) string {
