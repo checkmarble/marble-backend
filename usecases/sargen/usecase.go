@@ -714,7 +714,9 @@ func (uc *Usecase) AddItem(ctx context.Context, id uuid.UUID, version int, conta
 }
 
 func (uc *Usecase) RemoveItem(ctx context.Context, id uuid.UUID, version int, item core.Path) (DeclarationState, error) {
+	var removalFormat core.Format
 	return uc.mutateWithPost(ctx, id, version, func(format core.Format, doc *core.Document, _, _ *string) error {
+		removalFormat = format
 		if !strings.HasSuffix(string(item), "]") {
 			return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest, "%s n'est pas un élément de liste", item)
 		}
@@ -734,7 +736,7 @@ func (uc *Usecase) RemoveItem(ctx context.Context, id uuid.UUID, version int, it
 		return nil
 	}, func(tx repositories.Transaction, _ *core.Document) error {
 		// An item removed by hand leaves nothing to answer about it.
-		return uc.dismissQuestionsOfItem(ctx, tx, id, item)
+		return uc.dismissQuestionsOfItem(ctx, tx, removalFormat, id, item)
 	})
 }
 

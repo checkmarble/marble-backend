@@ -75,6 +75,7 @@ type SarGenerationRepository interface {
 	ListSarQuestions(ctx context.Context, exec repositories.Executor, declarationId uuid.UUID, status string) ([]models.SarQuestion, error)
 	GetSarQuestion(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.SarQuestion, error)
 	CloseSarQuestions(ctx context.Context, exec repositories.Executor, ids []uuid.UUID, status string) error
+	CreateSarQuestions(ctx context.Context, exec repositories.Executor, qs []models.SarQuestion) error
 }
 
 // GenerationEnqueuer is satisfied by repositories.TaskQueueRepository: it

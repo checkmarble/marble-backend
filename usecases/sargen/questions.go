@@ -283,14 +283,7 @@ func (uc *Usecase) AnswerQuestion(ctx context.Context, questionId uuid.UUID, ver
 				return models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest,
 					"cette question se tranche par une de ses options")
 			}
-			nature := n.EffectiveNature()
-			if nature == core.NatureComputed && confirmable(format, target) {
-				// A computed value the analyst confirms (the total of the operations)
-				// may be given by hand when the backend cannot determine it.
-				nature = core.NatureCopied
-			}
-			switch nature {
-			case core.NatureSetting, core.NatureComputed, core.NatureAnalyst:
+			if !core.FieldAnswerable(format, target) {
 				return models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest,
 					"ce champ est un réglage, un champ calculé ou un texte d'analyse : il ne se renseigne pas en répondant à une question")
 			}
@@ -347,8 +340,10 @@ func (uc *Usecase) chooseRemoval(ctx context.Context, q Question, opt core.Quest
 	if !core.PathAllowed(item, q.Paths) {
 		return DeclarationState{}, models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest, "l'élément à retirer ne fait pas partie des champs de la question")
 	}
+	var removalFormat core.Format
 	st, err := uc.mutateWithPost(ctx, q.DeclarationId, version,
 		func(format core.Format, doc *core.Document, _, _ *string) error {
+			removalFormat = format
 			spec := format.Spec()
 			// Same checks as the removal of an item by hand: a list item, not of a
 			// container the backend computes.
@@ -419,7 +414,7 @@ func (uc *Usecase) chooseRemoval(ctx context.Context, q Question, opt core.Quest
 			if err := uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{q.Id}, models.SarQuestionStatusResolved); err != nil {
 				return err
 			}
-			return uc.dismissQuestionsOfItem(ctx, tx, q.DeclarationId, item)
+			return uc.dismissQuestionsOfItem(ctx, tx, removalFormat, q.DeclarationId, item)
 		})
 	if errors.Is(err, errOptionAlreadyApplied) {
 		return uc.declineQuestion(ctx, q, version)
@@ -427,25 +422,109 @@ func (uc *Usecase) chooseRemoval(ctx context.Context, q Question, opt core.Quest
 	return st, err
 }
 
-// dismissQuestionsOfItem closes (dismissed) the open questions that have a path
-// in the removed item: there is nothing left to answer.
+// dismissQuestionsOfItem settles the open questions and findings (every kind,
+// blocking ones included) that have a path inside the removed item. One whose
+// paths are all inside it has nothing left to answer: it is closed (dismissed).
+// One with only some of its paths inside keeps the others: the old row is closed
+// (replaced) and a new open one carries the paths that are left and the options
+// that still write something there; if what is left cannot be answered (no
+// option, no path a free answer can write), it is closed (dismissed) as well.
 func (uc *Usecase) dismissQuestionsOfItem(ctx context.Context, tx repositories.Transaction,
-	declarationId uuid.UUID, item core.Path,
+	format core.Format, declarationId uuid.UUID, item core.Path,
 ) error {
 	open, err := uc.generation.ListSarQuestions(ctx, tx, declarationId, models.SarQuestionStatusOpen)
 	if err != nil {
 		return err
 	}
-	var ids []uuid.UUID
+	var dismissed, replaced []uuid.UUID
+	var rewritten []models.SarQuestion
 	for _, oq := range open {
-		if oq.Kind != models.SarQuestionKindQuestion {
+		var kept []string
+		inside := false
+		for _, p := range oq.Paths {
+			if core.Path(p).HasPrefix(item) {
+				inside = true
+			} else {
+				kept = append(kept, p)
+			}
+		}
+		if !inside {
 			continue
 		}
-		if slices.ContainsFunc(oq.Paths, func(p string) bool { return core.Path(p).HasPrefix(item) }) {
-			ids = append(ids, oq.Id)
+		if len(kept) == 0 {
+			dismissed = append(dismissed, oq.Id)
+			continue
 		}
+		q, err := questionFromModel(oq)
+		if err != nil {
+			return err
+		}
+		var keptPaths []core.Path
+		for _, p := range kept {
+			keptPaths = append(keptPaths, core.Path(p))
+		}
+		opts := optionsWithoutItem(q.Options, item)
+		if len(opts) == 0 && !slices.ContainsFunc(keptPaths, func(p core.Path) bool { return core.FieldAnswerable(format, p) }) {
+			dismissed = append(dismissed, oq.Id)
+			continue
+		}
+		nq := oq
+		nq.Id, nq.Paths, nq.Options, nq.Status, nq.ClosedAt = uuid.New(), kept, nil, models.SarQuestionStatusOpen, nil
+		if len(opts) > 0 {
+			if nq.Options, err = json.Marshal(opts); err != nil {
+				return errors.Wrap(err, "cannot encode question options")
+			}
+		}
+		replaced = append(replaced, oq.Id)
+		rewritten = append(rewritten, nq)
 	}
-	return uc.generation.CloseSarQuestions(ctx, tx, ids, models.SarQuestionStatusDismissed)
+	if err := uc.generation.CloseSarQuestions(ctx, tx, dismissed, models.SarQuestionStatusDismissed); err != nil {
+		return err
+	}
+	if err := uc.generation.CloseSarQuestions(ctx, tx, replaced, models.SarQuestionStatusReplaced); err != nil {
+		return err
+	}
+	if len(rewritten) == 0 {
+		return nil
+	}
+	return uc.generation.CreateSarQuestions(ctx, tx, rewritten)
+}
+
+// optionsWithoutItem prunes the options of a question once an item is gone: the
+// fills and clears inside the item are dropped, an option that wrote only there
+// (or removed that item) disappears, and the options that write nothing (leave
+// as it is) stay only when a writing option stays.
+func optionsWithoutItem(opts []core.QuestionOption, item core.Path) []core.QuestionOption {
+	var out []core.QuestionOption
+	writes := false
+	for _, o := range opts {
+		wrote := len(o.Fills) > 0 || len(o.Clear) > 0 || o.RemoveItem != ""
+		if o.RemoveItem != "" && o.RemoveItem.HasPrefix(item) {
+			continue
+		}
+		var fills []core.Fill
+		for _, f := range o.Fills {
+			if !f.Path.HasPrefix(item) {
+				fills = append(fills, f)
+			}
+		}
+		var clear []core.Path
+		for _, p := range o.Clear {
+			if !p.HasPrefix(item) {
+				clear = append(clear, p)
+			}
+		}
+		if wrote && len(fills) == 0 && len(clear) == 0 && o.RemoveItem == "" {
+			continue
+		}
+		o.Fills, o.Clear = fills, clear
+		out = append(out, o)
+		writes = writes || wrote
+	}
+	if !writes {
+		return nil
+	}
+	return out
 }
 
 // questionRemovesItem reports whether an option of q removes an item.
@@ -639,11 +718,4 @@ func questionFromModel(q models.SarQuestion) (Question, error) {
 		}
 	}
 	return out, nil
-}
-
-// confirmable tells whether the format lists the path among the computed values
-// the analyst confirms or gives by hand (core.ConfirmComputer).
-func confirmable(format core.Format, p core.Path) bool {
-	cc, ok := format.(core.ConfirmComputer)
-	return ok && slices.Contains(cc.ConfirmComputed(), core.Path(p.Template()))
 }
