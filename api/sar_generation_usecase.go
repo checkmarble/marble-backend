@@ -39,6 +39,7 @@ type sarGenerationUsecase interface {
 	StartReview(ctx context.Context, id uuid.UUID) (models.SarGenerationJob, error)
 	ListQuestions(ctx context.Context, declarationId uuid.UUID) ([]sargen.Question, error)
 	DismissQuestion(ctx context.Context, questionId uuid.UUID) error
+	AnswerQuestion(ctx context.Context, questionId uuid.UUID, version int, value string, path core.Path) (sargen.DeclarationState, error)
 	ChooseQuestionOption(ctx context.Context, questionId uuid.UUID, version int, optionIndex int) (sargen.DeclarationState, error)
 }
 

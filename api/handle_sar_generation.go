@@ -548,6 +548,25 @@ func handleChooseSarQuestionOption(uc usecases.Usecases) gin.HandlerFunc {
 	}
 }
 
+// handleAnswerSarQuestion answers a question with a free value, for a field of
+// the question (path, optional when the question has a single one). The value is
+// written like a manual PATCH: a refused value is a 400 sar_invalid_field with
+// details.issues, a stale version a 409. Always bumps the version on success.
+func handleAnswerSarQuestion(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, ok := sarUuidParam(c, "question_id")
+		if !ok {
+			return
+		}
+		var in dto.SarAnswerQuestionInput
+		if !sarBindJSON(c, &in) {
+			return
+		}
+		st, err := newSarGenerationUsecase(c, uc).AnswerQuestion(c.Request.Context(), id, in.Version, in.Value, core.Path(in.Path))
+		sarState(c, http.StatusOK, st, err)
+	}
+}
+
 func handleDismissSarQuestion(uc usecases.Usecases) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, ok := sarUuidParam(c, "question_id")

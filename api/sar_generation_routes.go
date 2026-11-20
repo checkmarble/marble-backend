@@ -34,5 +34,6 @@ func addSarGenerationRoutes(router gin.IRoutes, tom gin.HandlerFunc, uc usecases
 	router.POST("/sar-declarations/:id/review-check", tom, handleStartSarReview(uc))
 	router.GET("/sar-declarations/:id/questions", tom, handleListSarQuestions(uc))
 	router.POST("/sar-questions/:question_id/choose", tom, handleChooseSarQuestionOption(uc))
+	router.POST("/sar-questions/:question_id/answer", tom, handleAnswerSarQuestion(uc))
 	router.POST("/sar-questions/:question_id/dismiss", tom, handleDismissSarQuestion(uc))
 }

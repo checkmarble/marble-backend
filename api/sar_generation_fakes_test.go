@@ -235,6 +235,13 @@ func (f *fakeSarGenerationUsecase) DismissQuestion(_ context.Context, questionId
 	return f.rec("DismissQuestion", questionId)
 }
 
+func (f *fakeSarGenerationUsecase) AnswerQuestion(_ context.Context, questionId uuid.UUID, version int, value string, path core.Path) (sargen.DeclarationState, error) {
+	if err := f.rec("AnswerQuestion", questionId, version, value, path); err != nil {
+		return sargen.DeclarationState{}, err
+	}
+	return f.State, nil
+}
+
 func (f *fakeSarGenerationUsecase) ChooseQuestionOption(_ context.Context, questionId uuid.UUID, version int, optionIndex int) (sargen.DeclarationState, error) {
 	if err := f.rec("ChooseQuestionOption", questionId, version, optionIndex); err != nil {
 		return sargen.DeclarationState{}, err

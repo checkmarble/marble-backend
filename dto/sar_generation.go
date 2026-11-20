@@ -292,6 +292,14 @@ type SarChooseOptionInput struct {
 	OptionIndex *int `json:"option_index" binding:"required,min=0"`
 }
 
+// SarAnswerQuestionInput is the free answer to a question: a value for one of
+// the question's fields. Path may be omitted when the question has one path.
+type SarAnswerQuestionInput struct {
+	Version int    `json:"version" binding:"required,min=1"`
+	Value   string `json:"value" binding:"required,max=10000"`
+	Path    string `json:"path"`
+}
+
 // ---- exports ----
 
 type SarExportDto struct {
