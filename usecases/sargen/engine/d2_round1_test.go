@@ -171,3 +171,23 @@ func TestBackendQuestions_BlockingQuestionNobodyCanAnswerIsNotCreated(t *testing
 	}
 	assert.Equal(t, []string{"bloquant avec un champ"}, texts)
 }
+
+// The checker and the answer endpoint share one rule (core.FieldAnswerable).
+func TestChecker_AnswerableIsTheSharedRule(t *testing.T) {
+	c, _, _ := reviewChecker(t)
+	for p, want := range map[core.Path]bool{
+		nomPP1:                            true,
+		"context.information.activiteLPS": true,
+		"organisme.libelle":               false, // setting
+		"analyse":                         false, // analyst text
+		itemPP1:                           false, // element
+		"personnes.pp":                    false, // container
+		"organisme":                       false, // group
+		"nope.nothing":                    false, // unknown
+	} {
+		assert.Equal(t, want, c.answerable(p), string(p))
+		assert.Equal(t, core.FieldAnswerable(c.tc.Format, p), c.answerable(p), string(p))
+	}
+	// A computed field: whatever the format says, both agree.
+	assert.Equal(t, core.FieldAnswerable(c.tc.Format, "operations.montantTotal"), c.answerable("operations.montantTotal"))
+}

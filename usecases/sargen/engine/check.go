@@ -714,32 +714,10 @@ func (c *checker) openQuestion(id uuid.UUID) *core.QuestionView {
 	return nil
 }
 
-// answerable tells whether a free answer can be written at the path: a plain
-// field (not a list item or a group), not a setting nor an analyst text, and a
-// computed one only when the format lets the analyst confirm it by hand. It is
-// the rule of the answer endpoint.
+// answerable tells whether a free answer can be written at the path (the rule
+// of the answer endpoint, core.FieldAnswerable).
 func (c *checker) answerable(p core.Path) bool {
-	return fieldAnswerable(c.tc.Format, p)
-}
-
-// confirmComputer is the optional capability of a format that lists the computed
-// values the analyst may give by hand (core.ConfirmComputer where it is defined).
-type confirmComputer interface{ ConfirmComputed() []core.Path }
-
-// fieldAnswerable is the rule of a free answer for a format.
-func fieldAnswerable(format core.Format, p core.Path) bool {
-	n := format.Spec().NodeAt(p.Template())
-	if n == nil || n.Kind != core.NodeField || n.IsRepeatable() {
-		return false
-	}
-	switch n.EffectiveNature() {
-	case core.NatureCopied, core.NatureJudgment:
-		return true
-	case core.NatureComputed:
-		cc, ok := format.(confirmComputer)
-		return ok && slices.Contains(cc.ConfirmComputed(), core.Path(p.Template()))
-	}
-	return false
+	return core.FieldAnswerable(c.tc.Format, p)
 }
 
 // reviewOption controls an option of a review finding: its fills pass the checks

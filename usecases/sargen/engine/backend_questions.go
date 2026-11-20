@@ -99,7 +99,7 @@ func (r *jobRun) questionFromDraft(doc *core.Document, d core.QuestionDraft, pat
 	if !wrote {
 		opts = nil // only « leave as it is » options: nothing to choose
 	}
-	if d.Blocking && len(opts) == 0 && !slices.ContainsFunc(d.Paths, func(p core.Path) bool { return fieldAnswerable(r.format, p) }) {
+	if d.Blocking && len(opts) == 0 && !slices.ContainsFunc(d.Paths, func(p core.Path) bool { return core.FieldAnswerable(r.format, p) }) {
 		// A blocking question nobody can answer would close the export for good.
 		return models.SarQuestion{}, false
 	}
