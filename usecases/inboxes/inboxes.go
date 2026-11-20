@@ -23,7 +23,7 @@ type EnforceSecurityInboxes interface {
 	CreateInbox(organizationId uuid.UUID) error
 	ReadInboxUser(inboxUser models.InboxUser, actorInboxUsers []models.InboxUser) error
 	CreateInboxUser(i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser,
-		targetInbox models.Inbox, targetUser models.User) error
+		targetInbox models.Inbox, targetGrants []models.Grant) error
 }
 
 type InboxReader struct {
