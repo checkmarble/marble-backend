@@ -288,6 +288,12 @@ const contextOnlyLegend = "Objects marked \"" + contextOnlyMarker + "\" below we
 
 func (r *agentRunner) prompt(text string, tc core.ToolContext, spec core.TaskSpec, allowed []core.Path, mode outputMode) string {
 	var b strings.Builder
+	// The data model comes first, the same for every task of a job: the
+	// provider can reuse its cache of this prefix.
+	if dm := DataModelSection(tc.Selection, tc.DataModel); dm != "" {
+		b.WriteString(dm)
+		b.WriteString("\n\n")
+	}
 	b.WriteString(text)
 	if mode == modeFills {
 		if d := DescribeSubtree(tc.Format.Spec(), tc.Doc, allowed); d != "" {

@@ -453,9 +453,15 @@ func describeTable(dm models.DataModel, args json.RawMessage) string {
 	fields := make([]map[string]any, 0, len(fieldNames))
 	for _, n := range fieldNames {
 		f := table.Fields[n]
-		d := map[string]any{"name": n, "type": f.DataType.String()}
+		d := map[string]any{"name": n, "type": f.DataType.String(), "nullable": f.Nullable}
+		if f.SemanticType != models.FieldSemanticTypeUnset {
+			d["semantic_type"] = string(f.SemanticType)
+		}
 		if f.Description != "" {
 			d["description"] = f.Description
+		}
+		if m := metadataValue(f.Metadata); m != nil {
+			d["metadata"] = m
 		}
 		if f.IsEnum && len(f.Values) > 0 {
 			d["enum_values"] = f.Values
