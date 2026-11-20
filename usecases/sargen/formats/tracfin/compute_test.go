@@ -330,3 +330,41 @@ func TestCompute_AutreTypeOperationCopiedToLine(t *testing.T) {
 	assert.Equal(t, "Troc de bitcoins", compLineValue(doc, line, "autretypeOperation"))
 	assert.True(t, strings.TrimSpace(compLineValue(doc, line, "autretypeOperation")) != "")
 }
+
+// A line whose group gains a transaction keeps its path and its typeOperation
+// value, but every attribute of the line must cite the new transactions, not
+// only those whose value changed.
+func TestCompute_RegroupRefreshesProvenanceOfUnchangedAttributes(t *testing.T) {
+	f := compFormat(t)
+	doc := core.NewDocument()
+	t1 := addCompTx(doc, compBase("100", "2026-03-01"))
+	t2 := addCompTx(doc, compBase("200", "2026-03-02"))
+
+	_, changed := core.ComputeInto(f, doc)
+	require.True(t, changed)
+	line := compFindLine(t, doc, "typeOperation", "OT10")
+	assert.ElementsMatch(t, []core.Path{t1.Child("montant"), t2.Child("montant")},
+		doc.Values[line.Child("typeOperation")].Computation.Inputs)
+
+	// Nothing moved: nothing is written, the version must not bump.
+	_, changed = core.ComputeInto(f, doc)
+	assert.False(t, changed)
+
+	t3 := addCompTx(doc, compBase("50", "2026-03-03"))
+	res, changed := core.ComputeInto(f, doc)
+	require.True(t, changed)
+	assert.NotEmpty(t, res.Refreshed, "typeOperation and the countries keep their value but get new inputs")
+
+	require.Equal(t, []core.Path{line}, compLines(doc), "the line keeps its path")
+	wantInputs := []core.Path{t1.Child("montant"), t2.Child("montant"), t3.Child("montant")}
+	for _, field := range []string{"typeOperation", "paysOrigineFonds", "paysArriveeFonds", "montantTotal"} {
+		v := doc.Values[line.Child(field)]
+		require.NotNil(t, v.Computation, field)
+		assert.ElementsMatch(t, wantInputs, v.Computation.Inputs, "%s cites the whole new group", field)
+	}
+	count := doc.Values[line.Child("nombreOperations")]
+	require.NotNil(t, count.Computation)
+	assert.ElementsMatch(t, []core.Path{t1, t2, t3}, count.Computation.Inputs)
+	assert.Equal(t, "OT10", compLineValue(doc, line, "typeOperation"))
+	assert.Equal(t, core.OriginComputed, doc.Values[line.Child("typeOperation")].Origin)
+}
