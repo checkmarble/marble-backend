@@ -493,3 +493,39 @@ func TestSarGenerationJob_AttemptAndLightTaskListing(t *testing.T) {
 	require.Empty(t, light[0].Trace)
 	require.NotNil(t, light[0].FinishedAt)
 }
+
+func TestSarGenerationJob_RateLimitStreak(t *testing.T) {
+	ctx := t.Context()
+	repo, _, job := sarGenTestSetup(t)
+	exec := testUsecases.NewExecutorFactory().NewExecutor()
+
+	elapsed, err := repo.MarkSarGenerationJobRateLimited(ctx, exec, job.Id)
+	require.NoError(t, err)
+	require.Less(t, elapsed, time.Minute, "the first rate limit starts the streak")
+	stored, err := repo.GetSarGenerationJob(ctx, exec, job.Id)
+	require.NoError(t, err)
+	require.NotNil(t, stored.RateLimitedSince)
+
+	// The streak keeps its start (database clock).
+	_, err = pgPool.Exec(ctx, "UPDATE sar_generation_jobs SET rate_limited_since = now() - interval '3 hours' WHERE id = $1", job.Id)
+	require.NoError(t, err)
+	elapsed, err = repo.MarkSarGenerationJobRateLimited(ctx, exec, job.Id)
+	require.NoError(t, err)
+	require.Greater(t, elapsed, 2*time.Hour+50*time.Minute)
+
+	require.NoError(t, repo.ClearSarGenerationJobRateLimited(ctx, exec, job.Id))
+	stored, err = repo.GetSarGenerationJob(ctx, exec, job.Id)
+	require.NoError(t, err)
+	require.Nil(t, stored.RateLimitedSince)
+
+	// A resume also starts a fresh streak.
+	_, err = repo.MarkSarGenerationJobRateLimited(ctx, exec, job.Id)
+	require.NoError(t, err)
+	mustSetJobStatus(t, repo, exec, job.Id, models.SarJobStatusFailed, "x")
+	ok, err := repo.ResumeSarGenerationJob(ctx, exec, job.Id, time.Hour)
+	require.NoError(t, err)
+	require.True(t, ok)
+	stored, err = repo.GetSarGenerationJob(ctx, exec, job.Id)
+	require.NoError(t, err)
+	require.Nil(t, stored.RateLimitedSince)
+}

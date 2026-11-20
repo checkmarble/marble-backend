@@ -4,6 +4,7 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -12,6 +13,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -29,6 +31,9 @@ const (
 	DefaultTimeout = 30 * time.Minute
 	// RateLimitSnooze is how long the worker snoozes on models.LLMRateLimitedError.
 	RateLimitSnooze = 30 * time.Second
+	// RateLimitMaxDuration is how long a job may keep hitting the provider's
+	// rate limit before it fails.
+	RateLimitMaxDuration = 2 * time.Hour
 )
 
 // RunningElsewhereSnooze is how long the worker snoozes when the only
@@ -39,6 +44,23 @@ const RunningElsewhereSnooze = 2 * time.Minute
 // (task failure, final job status): they must survive a cancelled context.
 const finalWriteTimeout = 10 * time.Second
 
+// The failure message of a task that hit a limit: the reason comes before the
+// advice (a relaunch without a change meets the same limit: the budget only
+// depends on the size of the selection).
+const (
+	limitMessagePrefix = "une étape essentielle de la génération n'a pas abouti (limite atteinte"
+	limitMessageAdvice = ". Réduisez la sélection ou relancez la génération."
+)
+
+// limitReachedMessage is the analyst-facing message of ErrTaskLimitReached for
+// a limit reason (French, may be empty).
+func limitReachedMessage(reason string) string {
+	if reason == "" {
+		return ErrTaskLimitReached.Error()
+	}
+	return limitMessagePrefix + " : " + reason + ")" + limitMessageAdvice
+}
+
 var (
 	// ErrTasksRunningElsewhere: nothing is claimable because the unfinished
 	// tasks run under another worker (or a stale one not yet reclaimable).
@@ -46,6 +68,11 @@ var (
 	// ErrPromptMissing: a prompt file is missing; the job is marked failed and
 	// retrying is pointless (the worker cancels the River job).
 	ErrPromptMissing = errors.New("prompt manquant")
+
+	// ErrTaskLimitReached: a task flagged FailJobOnLimit ended on a limit with
+	// no usable output; the job is marked failed (resumable) and the River job
+	// cancelled, as a retry would meet the same limit.
+	ErrTaskLimitReached = errors.New(limitMessagePrefix + ")" + limitMessageAdvice)
 	// ErrJobGone: the job or its declaration no longer exists; retrying is
 	// pointless (the worker cancels the River job).
 	ErrJobGone = errors.New("génération ou déclaration introuvable")
@@ -53,6 +80,9 @@ var (
 	// running; its output was discarded, the task released and this run must
 	// stop (the worker cancels the River job; a resume starts a new run).
 	ErrJobNotRunning = errors.New("génération arrêtée")
+	// ErrRateLimitedTooLong: the provider rate-limited the job for more than
+	// RateLimitMaxDuration; the job is marked failed and the River job cancelled.
+	ErrRateLimitedTooLong = errors.New("limite de débit du fournisseur LLM dépassée trop longtemps")
 )
 
 // detached returns a context that survives the cancellation of ctx.
@@ -98,6 +128,11 @@ type GenerationRepository interface {
 	SetSarGenerationJobStatus(ctx context.Context, exec repositories.Executor, id uuid.UUID,
 		status models.SarJobStatus, errMsg string) (bool, error)
 	TouchSarGenerationJob(ctx context.Context, exec repositories.Executor, id uuid.UUID) error
+	// MarkSarGenerationJobRateLimited records a provider rate limit and returns
+	// how long the current streak lasts (the first one starts it).
+	MarkSarGenerationJobRateLimited(ctx context.Context, exec repositories.Executor, id uuid.UUID) (time.Duration, error)
+	// ClearSarGenerationJobRateLimited ends the streak (a task succeeded).
+	ClearSarGenerationJobRateLimited(ctx context.Context, exec repositories.Executor, id uuid.UUID) error
 	CreateSarGenerationTasks(ctx context.Context, exec repositories.Executor, tasks []models.SarGenerationTask) error
 	ListSarGenerationTasks(ctx context.Context, exec repositories.Executor, jobId uuid.UUID) ([]models.SarGenerationTask, error)
 	// DeleteSarGenerationUnfinishedTasks deletes the given not-done tasks of the job
@@ -254,6 +289,7 @@ func (o *Orchestrator) RunJob(ctx context.Context, jobId uuid.UUID) error {
 		o: o, job: job, declId: decl.Id, orgId: decl.OrganizationId, format: format,
 		selection: selection, dataModel: dataModel,
 	}
+	run.rateLimited.Store(job.RateLimitedSince != nil)
 	return run.loop(ctx)
 }
 
@@ -276,6 +312,11 @@ type jobRun struct {
 	// applyMu serializes document writes inside this process; across
 	// processes the FOR UPDATE lock does.
 	applyMu sync.Mutex
+	// rateLimited tells that the job row holds a rate-limit streak to clear
+	// when a task succeeds.
+	rateLimited atomic.Bool
+	// askedBackend: the backend questions were asked in this run.
+	askedBackend bool
 }
 
 func (r *jobRun) loop(ctx context.Context) error {
@@ -388,14 +429,62 @@ func (r *jobRun) loop(ctx context.Context) error {
 			}))
 		}
 
+		// The backend questions must exist before the final review reads them.
+		if !r.askedBackend && slices.ContainsFunc(ready, func(rt readyTask) bool { return rt.spec.Kind == core.TaskKindReview }) {
+			if err := r.askBackendQuestions(ctx); err != nil {
+				return errors.Wrap(err, "backend questions failed")
+			}
+			r.askedBackend = true
+		}
+
 		progress, err := r.runWave(ctx, ready)
 		if err != nil {
-			return err
+			return r.handleWaveError(ctx, err)
 		}
 		if !progress {
 			return ErrTasksRunningElsewhere
 		}
 	}
+}
+
+// handleWaveError turns the error of a wave into the job's outcome. Errors a
+// retry cannot fix (model not configured) and a rate limit lasting longer than
+// RateLimitMaxDuration mark the job failed, in French, and are returned marked
+// so that the worker cancels the River job; any other error is returned
+// unchanged (River retries, a rate limit snoozes).
+func (r *jobRun) handleWaveError(ctx context.Context, err error) error {
+	exec := r.o.executorFactory.NewExecutor()
+	dctx, cancel := detached(ctx)
+	defer cancel()
+	fail := func(msg string, marked error) error {
+		if _, serr := r.o.generation.SetSarGenerationJobStatus(dctx, exec, r.job.Id, models.SarJobStatusFailed, msg); serr != nil {
+			return errors.Wrap(err, "cannot fail job: "+serr.Error())
+		}
+		return marked
+	}
+	switch {
+	case errors.Is(err, ErrLLMUnavailable):
+		return fail("génération impossible : "+errors.UnwrapAll(err).Error(), err)
+	case errors.Is(err, ErrTaskLimitReached):
+		msg := ErrTaskLimitReached.Error()
+		// The agent error carries the limit reason, in French (limitReachedMessage).
+		if cause := errors.UnwrapAll(err).Error(); strings.HasPrefix(cause, limitMessagePrefix) {
+			msg = cause
+		}
+		return fail(msg, err)
+	case errors.Is(err, models.LLMRateLimitedError):
+		r.rateLimited.Store(true)
+		elapsed, merr := r.o.generation.MarkSarGenerationJobRateLimited(dctx, exec, r.job.Id)
+		if merr != nil {
+			utils.LoggerFromContext(ctx).WarnContext(ctx, "sar generation: cannot record rate limit",
+				"job_id", r.job.Id, "error", merr.Error())
+			return err
+		}
+		if elapsed > RateLimitMaxDuration {
+			return fail(ErrRateLimitedTooLong.Error(), errors.Mark(errors.Wrap(err, ErrRateLimitedTooLong.Error()), ErrRateLimitedTooLong))
+		}
+	}
+	return err
 }
 
 // reviewSpecsOnly drops, with a warning, the non-review specs planned for a
@@ -413,19 +502,41 @@ func (r *jobRun) reviewSpecsOnly(ctx context.Context, specs []core.TaskSpec) []c
 	return kept
 }
 
-// checkPrompt fails the job when the prompt of a spec does not exist.
+// checkPrompt fails the job when the prompt of a spec, or the instructions of
+// the format, does not exist.
 func (r *jobRun) checkPrompt(ctx context.Context, s core.TaskSpec) error {
-	if s.PromptPath == "" || r.o.prompts.Exists(s.PromptPath) {
+	missing := ""
+	switch {
+	case s.PromptPath != "" && !r.o.prompts.Exists(s.PromptPath):
+		missing = s.PromptPath
+	default:
+		// The format's own instructions are prepended to every step prompt.
+		if fi, ok := r.format.(FormatInstructions); ok {
+			if p := fi.InstructionsPromptPath(); p != "" && !r.o.prompts.Exists(p) {
+				missing = p
+			}
+		}
+	}
+	if missing == "" {
 		return nil
 	}
-	msg := "prompt manquant : " + s.PromptPath
+	msg := "prompt manquant : " + missing
+	if err := r.failJob(ctx, msg); err != nil {
+		return err
+	}
+	return errors.Mark(errors.New(msg), ErrPromptMissing)
+}
+
+// failJob sets the job failed with msg, on a context that survives the
+// cancellation of ctx.
+func (r *jobRun) failJob(ctx context.Context, msg string) error {
 	dctx, cancel := detached(ctx)
 	defer cancel()
 	if _, err := r.o.generation.SetSarGenerationJobStatus(dctx, r.o.executorFactory.NewExecutor(),
 		r.job.Id, models.SarJobStatusFailed, msg); err != nil {
 		return errors.Wrap(err, "cannot fail job")
 	}
-	return errors.Mark(errors.New(msg), ErrPromptMissing)
+	return nil
 }
 
 // readyTasks returns the not-done tasks whose dependencies (their spec's
@@ -472,13 +583,15 @@ type readyTask struct {
 // returned once every in-flight task has finished.
 func (r *jobRun) runWave(ctx context.Context, ready []readyTask) (bool, error) {
 	var (
-		wg       sync.WaitGroup
-		mu       sync.Mutex
-		claimed  bool
-		firstErr error
-		rateErr  error
-		sem      = make(chan struct{}, r.o.parallelism)
-		failed   bool
+		wg        sync.WaitGroup
+		mu        sync.Mutex
+		claimed   bool
+		firstErr  error
+		rateErr   error
+		limitErr  error
+		promptErr error
+		sem       = make(chan struct{}, r.o.parallelism)
+		failed    bool
 	)
 	for _, rt := range ready {
 		mu.Lock()
@@ -505,6 +618,12 @@ func (r *jobRun) runWave(ctx context.Context, ready []readyTask) (bool, error) {
 			claimed = claimed || ok
 			if err != nil {
 				failed = true
+				if errors.Is(err, ErrTaskLimitReached) && limitErr == nil {
+					limitErr = err
+				}
+				if errors.Is(err, ErrPromptMissing) && promptErr == nil {
+					promptErr = err
+				}
 				if errors.Is(err, models.LLMRateLimitedError) && rateErr == nil {
 					rateErr = err
 				}
@@ -515,6 +634,15 @@ func (r *jobRun) runWave(ctx context.Context, ready []readyTask) (bool, error) {
 		}(rt)
 	}
 	wg.Wait()
+	// A missing prompt ends the job for good: it wins over everything else (no
+	// retry, no snooze). A limit failure of an essential task ends the job too:
+	// it wins over a rate limit (snooze) and over the first error (retry).
+	if promptErr != nil {
+		return claimed, promptErr
+	}
+	if limitErr != nil {
+		return claimed, limitErr
+	}
 	if rateErr != nil {
 		return claimed, rateErr
 	}
@@ -578,12 +706,46 @@ func (r *jobRun) runTask(ctx context.Context, rt readyTask) (claimed bool, err e
 			OrgId: r.orgId, DeclarationId: r.declId, TaskId: rt.task.Id, Format: r.format,
 			Doc: doc.Clone(), Selection: r.selection, DataModel: r.dataModel,
 		}
+		if rt.spec.Kind == core.TaskKindReview {
+			open, err := o.generation.ListSarQuestions(ctx, exec, r.declId, models.SarQuestionStatusOpen)
+			if err != nil {
+				return true, fail(err, nil)
+			}
+			tc.Issues = r.format.Validate(doc)
+			if len(tc.Issues) > maxReviewIssues {
+				tc.Issues = tc.Issues[:maxReviewIssues]
+			}
+			var questions, blocking []models.SarQuestion
+			for _, q := range open {
+				switch {
+				case q.Kind == models.SarQuestionKindQuestion:
+					questions = append(questions, q)
+				case q.Severity == models.SarQuestionSeverityBlocking:
+					blocking = append(blocking, q)
+				}
+			}
+			if len(questions) > maxReviewQuestions {
+				tc.OpenQuestionsOmitted = len(questions) - maxReviewQuestions
+				questions = questions[:maxReviewQuestions]
+			}
+			tc.OpenQuestions = questionViews(questions)
+			tc.OpenFindings = questionViews(blocking)
+		}
 		task := rt.task
 		task.Attempts = attempt
 		var runErr error
 		out, runErr = o.runner.Run(ctx, tc, task, rt.spec)
 		if runErr != nil {
-			return true, fail(runErr, out.Trace)
+			failed := fail(runErr, out.Trace)
+			if errors.Is(runErr, ErrPromptMissing) {
+				// A prompt that disappeared after the plan (checked before the
+				// tasks start): same outcome as the check, the job is failed and
+				// the worker does not retry.
+				if jerr := r.failJob(ctx, runErr.Error()); jerr != nil {
+					return true, errors.Wrap(failed, jerr.Error())
+				}
+			}
+			return true, failed
 		}
 	}
 
@@ -597,6 +759,13 @@ func (r *jobRun) runTask(ctx context.Context, rt readyTask) (claimed bool, err e
 	}
 	if superseded {
 		return true, nil
+	}
+	// A task went through: the provider is not blocking the job any more.
+	if r.rateLimited.CompareAndSwap(true, false) {
+		if err := o.generation.ClearSarGenerationJobRateLimited(ctx, exec, r.job.Id); err != nil {
+			utils.LoggerFromContext(ctx).WarnContext(ctx, "sar generation: cannot clear rate limit",
+				"job_id", r.job.Id, "error", err.Error())
+		}
 	}
 	// Heartbeat: a live job is told apart from a dead one by updated_at.
 	// The output is applied: a failed heartbeat must not fail the task.
@@ -679,14 +848,39 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 		result  taskResult
 		qs      []models.SarQuestion
 		closeQs []uuid.UUID
+		// replacedQs are the questions the review's findings replace.
+		replacedQs []uuid.UUID
 	)
 
+	var structuredRejected []rejectedView
 	if !isReview {
 		if len(out.Structured) > 0 {
-			if err := r.format.ApplyStructured(rt.spec.Kind, doc, out.Structured); err != nil {
+			// Applied to a copy first: a structured output citing objects outside
+			// the frozen selection is rejected as a whole, nothing of it applied.
+			cand := doc.Clone()
+			if err := r.format.ApplyStructured(rt.spec.Kind, cand, out.Structured); err != nil {
 				return false, errors.Wrap(err, "invalid structured output")
 			}
-			changed = true
+			if bad := sourcesOutsideSelection(doc, cand, newScope(r.selection)); len(bad) > 0 {
+				structuredRejected = append(structuredRejected, rejectedView{
+					Path: rt.spec.TargetPath, Code: core.CodeSourceOutOfScope,
+					Message: "structured output rejected: " + outsideSelectionMessage(bad)})
+			} else {
+				// A structured output that leaves the document identical (a
+				// note kept in the task output only) writes nothing and bumps
+				// no version.
+				before, err := json.Marshal(doc)
+				if err != nil {
+					return false, errors.Wrap(err, "cannot encode document")
+				}
+				after, err := json.Marshal(cand)
+				if err != nil {
+					return false, errors.Wrap(err, "cannot encode document")
+				}
+				if !bytes.Equal(before, after) {
+					doc, changed = cand, true
+				}
+			}
 		}
 		fills := make([]core.Fill, len(out.Fills))
 		for i, f := range out.Fills {
@@ -697,11 +891,15 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 		if len(allowed) == 0 {
 			allowed = []core.Path{rt.spec.TargetPath}
 		}
+		// Built once: it reads the document at call time, which follows the fills.
+		allowedSources := AllowedSources(doc, r.selection, r.dataModel, rt.spec.Inputs)
 		res = core.ApplyFills(r.format.Spec(), doc, fills, core.ApplyOptions{
 			AllowedPrefixes: allowed, Overwrite: core.OverwriteNonManual,
+			AllowedSources: allowedSources,
 		})
 		changed = changed || len(res.Applied) > 0
 		result = resultFromApply(res)
+		result.Rejected = append(result.Rejected, structuredRejected...)
 
 		existing, err := o.generation.ListSarQuestions(ctx, tx, r.declId, "")
 		if err != nil {
@@ -721,13 +919,15 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 			for _, p := range d.Paths {
 				rp := res.Rewrite(p)
 				switch {
-				case rp.HasProvisionalKey():
+				case rp.HasProvisionalKey() && !newItemPathKnown(r.format.Spec(), rp):
 					result.Rejected = append(result.Rejected, rejectedView{
-						Path: rp, Code: CodeUnresolvedPath, Message: "question : chemin vers un élément non créé"})
+						Path: rp, Code: CodeUnresolvedPath, Message: "question: path to an element that was not created"})
 				case !core.PathAllowed(rp, allowed):
 					result.Rejected = append(result.Rejected, rejectedView{
-						Path: rp, Code: core.CodeOutOfScope, Message: "question : chemin hors de la partie confiée à cette tâche"})
+						Path: rp, Code: core.CodeOutOfScope, Message: "question: path outside the part assigned to this task"})
 				default:
+					// A path still holding a provisional key designates an item
+					// the analyst creates by choosing an option: kept as is.
 					kept = append(kept, rp)
 					paths = append(paths, string(rp))
 				}
@@ -737,22 +937,60 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 				continue
 			}
 			seen[k] = true
-			opts := make([]core.QuestionOption, len(d.Options))
+			opts := make([]core.QuestionOption, 0, len(d.Options))
+			createsItem, removalRejected := false, false
 			for i, op := range d.Options {
 				op.Fills = nil
+				if op.RemoveItem != "" {
+					// The item the option removes must be one of the question's
+					// own paths and exist in the document the output produced.
+					op.RemoveItem = res.Rewrite(op.RemoveItem)
+					if !core.PathAllowed(op.RemoveItem, kept) || !documentHasItem(doc, op.RemoveItem) {
+						result.Rejected = append(result.Rejected, rejectedView{
+							Path: op.RemoveItem, Code: core.CodeOutOfScope,
+							Message: "question option: the item to remove is outside the paths of the question"})
+						removalRejected = true
+						continue
+					}
+					// A removing option comes with its own « keep » sibling, which
+					// has no fill: it must survive the filter below.
+					createsItem = true
+				}
 				for _, f := range d.Options[i].Fills {
 					f.Path = res.Rewrite(f.Path)
-					if f.Path.HasProvisionalKey() || !core.PathAllowed(f.Path, kept) {
+					if (f.Path.HasProvisionalKey() && !newItemPathKnown(r.format.Spec(), f.Path)) ||
+						!core.PathAllowed(f.Path, kept) {
 						result.Rejected = append(result.Rejected, rejectedView{
 							Path: f.Path, Code: core.CodeOutOfScope,
-							Message: "option de question : valeur hors des champs de la question"})
+							Message: "question option: value outside the fields of the question"})
+						continue
+					}
+					if !sourcesAllowed(f, allowedSources(f.Path)) {
+						result.Rejected = append(result.Rejected, rejectedView{
+							Path: f.Path, Code: core.CodeSourceOutOfScope,
+							Message: "question option: source outside the scope allowed for this field"})
 						continue
 					}
 					// Like the task's own fills: the model never picks the origin.
 					f.Origin, f.TaskID = core.OriginLLM, &taskId
+					createsItem = createsItem || f.Path.HasProvisionalKey()
 					op.Fills = append(op.Fills, f)
 				}
-				opts[i] = op
+				if len(d.Options[i].Fills) > 0 && len(op.Fills) == 0 {
+					continue // it came with values that were all rejected: never a decline
+				}
+				opts = append(opts, op)
+			}
+			if removalRejected {
+				// Never a question whose removing option was refused: its keep
+				// sibling would be dropped and a blocking question left without
+				// any option.
+				continue
+			}
+			// An option that arrived with no fill at all cannot be chosen, unless it declines
+			// the addition of a new list item proposed by a sibling option.
+			if !createsItem {
+				opts = slices.DeleteFunc(opts, func(op core.QuestionOption) bool { return len(op.Fills) == 0 })
 			}
 			var rawOpts []byte
 			if len(opts) > 0 {
@@ -760,9 +998,13 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 					return false, errors.Wrap(err, "cannot encode question options")
 				}
 			}
+			severity := ""
+			if d.Blocking {
+				severity = models.SarQuestionSeverityBlocking
+			}
 			qs = append(qs, models.SarQuestion{
 				Id: uuid.New(), DeclarationId: r.declId, TaskId: &taskId,
-				Kind: models.SarQuestionKindQuestion, Paths: paths, Text: d.Text,
+				Kind: models.SarQuestionKindQuestion, Severity: severity, Paths: paths, Text: d.Text,
 				Options: rawOpts, Status: models.SarQuestionStatusOpen,
 			})
 		}
@@ -772,20 +1014,57 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 		if err != nil {
 			return false, errors.Wrap(err, "cannot list questions")
 		}
+		// The findings of an earlier review are replaced by this one, except the
+		// blocking ones (they stand for a question the review replaced: closing them
+		// would leave the export blocked or, worse, without any question). What is
+		// left open are the questions and those findings: a finding never repeats
+		// them, unless it contests a question (its data answer it), which closes the
+		// question as replaced.
+		openQuestions := map[uuid.UUID]models.SarQuestion{}
 		for _, q := range open {
-			if q.Kind == models.SarQuestionKindReviewFinding {
-				closeQs = append(closeQs, q.Id)
+			switch q.Kind {
+			case models.SarQuestionKindReviewFinding:
+				if q.Severity == models.SarQuestionSeverityBlocking {
+					openQuestions[q.Id] = q
+				} else {
+					closeQs = append(closeQs, q.Id)
+				}
+			case models.SarQuestionKindQuestion:
+				openQuestions[q.Id] = q
 			}
 		}
 		for _, fd := range out.Findings {
+			severity, contested := fd.Severity, false
+			if fd.ContestsQuestionID != nil {
+				// A question closed since the review started cannot be contested any
+				// more: the finding then stands for itself (and is dropped when an
+				// open question covers it).
+				if cq, ok := openQuestions[*fd.ContestsQuestionID]; ok {
+					if cq.Severity == models.SarQuestionSeverityBlocking {
+						severity = models.SarQuestionSeverityBlocking
+					}
+					replacedQs = append(replacedQs, cq.Id)
+					delete(openQuestions, cq.Id)
+					contested = true
+				}
+			}
+			if !contested && coveredByQuestion(fd.Paths, openQuestions) {
+				continue
+			}
 			paths := make([]string, len(fd.Paths))
 			for i, p := range fd.Paths {
 				paths[i] = string(p)
 			}
+			var rawOpts []byte
+			if len(fd.Options) > 0 {
+				if rawOpts, err = marshalOptions(fd.Options); err != nil {
+					return false, err
+				}
+			}
 			qs = append(qs, models.SarQuestion{
 				Id: uuid.New(), DeclarationId: r.declId, TaskId: &taskId,
-				Kind: models.SarQuestionKindReviewFinding, Severity: fd.Severity,
-				Paths: paths, Text: fd.Message, Status: models.SarQuestionStatusOpen,
+				Kind: models.SarQuestionKindReviewFinding, Severity: severity,
+				Paths: paths, Text: fd.Message, Options: rawOpts, Status: models.SarQuestionStatusOpen,
 			})
 		}
 		result.Findings = len(qs)
@@ -810,6 +1089,9 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 	}
 	if err := o.generation.CloseSarQuestions(ctx, tx, closeQs, models.SarQuestionStatusDismissed); err != nil {
 		return false, errors.Wrap(err, "cannot close findings")
+	}
+	if err := o.generation.CloseSarQuestions(ctx, tx, replacedQs, models.SarQuestionStatusReplaced); err != nil {
+		return false, errors.Wrap(err, "cannot close replaced questions")
 	}
 	if err := o.generation.CreateSarQuestions(ctx, tx, qs); err != nil {
 		return false, errors.Wrap(err, "cannot create questions")
@@ -842,6 +1124,16 @@ func (r *jobRun) saveDocument(ctx context.Context, exec repositories.Executor, d
 		return errors.Wrap(err, "cannot save document")
 	}
 	return nil
+}
+
+// sourcesAllowed tells whether every source of f is among the allowed objects.
+func sourcesAllowed(f core.Fill, allowed []core.ObjectRef) bool {
+	for _, s := range f.Sources {
+		if !slices.Contains(allowed, s.Object) {
+			return false
+		}
+	}
+	return true
 }
 
 // computeInto derives the computed fields into doc (RemoveItems first, then
@@ -932,6 +1224,18 @@ func (r *jobRun) finish(ctx context.Context, computePlanned bool) error {
 						"job_id", r.job.Id, "rejected", len(res.Rejected), "conflicts", len(res.Conflicts),
 						"first_rejected", firstRejected(res))
 				}
+				// The backend questions (the format's and the required coded fields left
+				// empty) are asked before the review; this pass only adds what is still
+				// missing (never twice the same paths).
+				qs, err := r.backendQuestions(ctx, tx, doc)
+				if err != nil {
+					return err
+				}
+				if len(qs) > 0 {
+					if err := o.generation.CreateSarQuestions(ctx, tx, qs); err != nil {
+						return errors.Wrap(err, "cannot create questions")
+					}
+				}
 				if !changed {
 					return nil
 				}
@@ -968,6 +1272,26 @@ func firstRejected(res core.ApplyResult) string {
 		return string(res.Rejected[0].Fill.Path) + ": " + res.Rejected[0].Issue.Message
 	}
 	return ""
+}
+
+// documentHasItem tells whether the keyed item path `a.b[k]` is listed in doc.
+func documentHasItem(doc *core.Document, item core.Path) bool {
+	str := string(item)
+	i := strings.LastIndex(str, "[")
+	if i < 0 || !strings.HasSuffix(str, "]") {
+		return false
+	}
+	name, key := str[:i], str[i+1:len(str)-1]
+	if j := strings.LastIndex(name, "."); j >= 0 {
+		name = name[j+1:]
+	}
+	return slices.Contains(doc.Items[item.Parent().Child(name)], key)
+}
+
+// marshalOptions encodes the options of a stored question.
+func marshalOptions(opts []core.QuestionOption) ([]byte, error) {
+	raw, err := json.Marshal(opts)
+	return raw, errors.Wrap(err, "cannot encode question options")
 }
 
 // questionKey identifies a question by its (order-independent) paths and text.
@@ -1043,4 +1367,85 @@ type UnavailableRunner struct{}
 
 func (UnavailableRunner) Run(context.Context, core.ToolContext, models.SarGenerationTask, core.TaskSpec) (core.TaskOutput, error) {
 	return core.TaskOutput{}, errors.New("agent de génération non disponible")
+}
+
+// newItemPathKnown tells whether p, a path holding provisional keys, designates
+// a new item of repeatable containers that exist in the spec (every segment
+// with a provisional key is a repeatable node) and a known node.
+func newItemPathKnown(spec *core.Spec, p core.Path) bool {
+	if spec == nil {
+		return false
+	}
+	if _, err := core.ParsePath(string(p)); err != nil {
+		return false
+	}
+	segs := strings.Split(string(p), ".")
+	tmpl := make([]string, 0, len(segs))
+	for _, seg := range segs {
+		name, key := seg, ""
+		if j := strings.Index(seg, "["); j >= 0 {
+			name, key = seg[:j], seg[j+1:len(seg)-1]
+			tmpl = append(tmpl, name+"[]")
+		} else {
+			tmpl = append(tmpl, name)
+		}
+		if strings.HasPrefix(key, "+") {
+			n := spec.NodeAt(strings.Join(tmpl, "."))
+			if n == nil || !n.IsRepeatable() {
+				return false
+			}
+		}
+	}
+	n := spec.NodeAt(strings.Join(tmpl, "."))
+	return n != nil && n.Template != ""
+}
+
+// maxReviewIssues bounds the export issues given to the review task.
+const maxReviewIssues = 200
+
+// maxReviewQuestions bounds the open questions given to the review task.
+const maxReviewQuestions = 100
+
+// coveredByQuestion tells whether every path of a finding is inside the paths of
+// one of the open questions (a finding without path is covered by none).
+func coveredByQuestion(paths []core.Path, open map[uuid.UUID]models.SarQuestion) bool {
+	if len(paths) == 0 {
+		return false
+	}
+	for _, p := range paths {
+		covered := false
+		for _, q := range open {
+			qp := make([]core.Path, len(q.Paths))
+			for i, s := range q.Paths {
+				qp[i] = core.Path(s)
+			}
+			if core.PathAllowed(p, qp) {
+				covered = true
+				break
+			}
+		}
+		if !covered {
+			return false
+		}
+	}
+	return true
+}
+
+// questionViews are the open questions as the review task reads them.
+func questionViews(open []models.SarQuestion) []core.QuestionView {
+	out := make([]core.QuestionView, 0, len(open))
+	for _, q := range open {
+		v := core.QuestionView{Id: q.Id, Kind: q.Kind, Severity: q.Severity, Text: q.Text, OptionLabels: []string{}}
+		for _, p := range q.Paths {
+			v.Paths = append(v.Paths, core.Path(p))
+		}
+		var opts []core.QuestionOption
+		if len(q.Options) > 0 && json.Unmarshal(q.Options, &opts) == nil {
+			for _, o := range opts {
+				v.OptionLabels = append(v.OptionLabels, o.Label)
+			}
+		}
+		out = append(out, v)
+	}
+	return out
 }

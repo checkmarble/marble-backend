@@ -471,7 +471,8 @@ func checkNature(spec *Spec, f Fill) *Issue {
 	case NatureSetting, NatureComputed, NatureAnalyst:
 		return blocking(f.Path, CodeNotWritableByLLM, "ce champ ne peut pas être rempli par l'IA")
 	case NatureCopied:
-		if len(f.Sources) == 0 {
+		// The unknown code of a list says the data are silent: nothing to cite.
+		if len(f.Sources) == 0 && !isUnknownCode(spec, node, f.Value) {
 			return blocking(f.Path, CodeMissingSource, "une valeur recopiée doit citer au moins une source")
 		}
 	case NatureJudgment:
@@ -480,6 +481,14 @@ func checkNature(spec *Spec, f Fill) *Issue {
 		}
 	}
 	return nil
+}
+
+// isUnknownCode tells whether value is the unknown code of the node's code list.
+func isUnknownCode(spec *Spec, node *Node, value string) bool {
+	if node == nil || node.CodeList == "" || value == "" {
+		return false
+	}
+	return spec.CodeLists[node.CodeList].UnknownCode == value
 }
 
 func checkSources(f Fill, target Path, opts ApplyOptions) *Issue {

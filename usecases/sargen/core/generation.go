@@ -48,6 +48,11 @@ type TaskSpec struct {
 	// OutputSchema nil = the standard fills schema.
 	OutputSchema *jsonschema.Schema `json:"output_schema,omitempty"`
 	Payload      map[string]any     `json:"payload"`
+	// FailJobOnLimit: a task ending on a limit (turns, tool calls, time) with
+	// no usable output (no fill, finding nor structured output; questions do
+	// not count) fails the job instead of being done empty. For a task the
+	// whole generation depends on.
+	FailJobOnLimit bool `json:"fail_job_on_limit,omitempty"`
 }
 
 // PlanState is what Format.Plan sees; it is called again after each wave of
@@ -173,7 +178,27 @@ type ToolContext struct {
 	Doc       *Document
 	Selection []models.SarSelectedObject
 	DataModel models.DataModel
-	Rules     []MemoryRuleView
+	// Issues are the export validation issues of the document, and OpenQuestions
+	// the questions still open: given to the review task, which must not repeat
+	// them and may contest a question.
+	Issues        []Issue
+	OpenQuestions []QuestionView
+	// OpenQuestionsOmitted counts the open questions left out of OpenQuestions
+	// (the list is bounded). OpenFindings are the open blocking findings of an
+	// earlier review: a review never closes them and must not repeat them.
+	OpenQuestionsOmitted int
+	OpenFindings         []QuestionView
+	Rules                []MemoryRuleView
+}
+
+// QuestionView is an open question as the review task sees it.
+type QuestionView struct {
+	Id           uuid.UUID `json:"id"`
+	Kind         string    `json:"kind"`
+	Severity     string    `json:"severity,omitempty"`
+	Paths        []Path    `json:"paths"`
+	Text         string    `json:"text"`
+	OptionLabels []string  `json:"option_labels"`
 }
 
 // Tool is one LLM tool. Call never returns a Go error: any error is a JSON
