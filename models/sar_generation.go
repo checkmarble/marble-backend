@@ -65,6 +65,10 @@ const (
 	SarQuestionKindQuestion      = "question"
 	SarQuestionKindReviewFinding = "review_finding"
 
+	// SarQuestionSeverityBlocking is the Severity of a question that must be
+	// answered before the declaration can be exported.
+	SarQuestionSeverityBlocking = "blocking"
+
 	SarQuestionStatusOpen      = "open"
 	SarQuestionStatusResolved  = "resolved"
 	SarQuestionStatusDismissed = "dismissed"
