@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 	_ "time/tzdata" // Paris day of timestamps, whatever the host's zoneinfo
 	"unicode"
@@ -96,8 +95,7 @@ type checker struct {
 	// dropped.
 	ruleIDs map[string]bool
 	// before holds the issues of the document before the task's fills.
-	before     map[ruleKey]bool
-	beforeOnce sync.Once
+	before map[ruleKey]bool
 }
 
 func newChecker(tc core.ToolContext, spec core.TaskSpec, taskID uuid.UUID, allowed []core.Path) *checker {
@@ -258,12 +256,12 @@ type ruleKey struct {
 // issuesBefore are the issues of the document the task starts from, computed
 // once per checker (the document of a checker never changes).
 func (c *checker) issuesBefore() map[ruleKey]bool {
-	c.beforeOnce.Do(func() {
+	if c.before == nil {
 		c.before = map[ruleKey]bool{}
 		for _, is := range c.tc.Format.Validate(c.tc.Doc) {
 			c.before[ruleKey{is.Code, is.Path}] = true
 		}
-	})
+	}
 	return c.before
 }
 
