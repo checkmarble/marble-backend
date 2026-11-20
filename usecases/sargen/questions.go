@@ -600,11 +600,16 @@ func (uc *Usecase) resolveAnsweredQuestions(ctx context.Context, tx repositories
 	}
 	var ids []uuid.UUID
 	for _, q := range open {
-		if q.Kind != models.SarQuestionKindQuestion || len(q.Paths) == 0 {
+		blockingFinding := q.Kind == models.SarQuestionKindReviewFinding && q.Severity == models.SarQuestionSeverityBlocking
+		if (q.Kind != models.SarQuestionKindQuestion && !blockingFinding) || len(q.Paths) == 0 {
 			continue
 		}
-		touched, all := false, true
+		touched, all, fields := false, true, 0
 		for _, p := range q.Paths {
+			if blockingFinding && strings.HasSuffix(p, "]") {
+				continue // a finding that replaced a blocking question is answered by its fields
+			}
+			fields++
 			if v, ok := doc.Values[core.Path(p)]; !ok || v.Value == "" {
 				all = false
 			}
@@ -612,7 +617,7 @@ func (uc *Usecase) resolveAnsweredQuestions(ctx context.Context, tx repositories
 				touched = true
 			}
 		}
-		if touched && all {
+		if fields > 0 && touched && all {
 			ids = append(ids, q.Id)
 		}
 	}
