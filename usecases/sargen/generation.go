@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -18,17 +19,29 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+// Paths and issue codes of the generation preconditions. The paths are not
+// document paths: the front maps analysis and selection to its own areas; a
+// setting issue carries the settings path itself.
+const (
+	PreconditionAnalysisPath       core.Path = "analysis"
+	PreconditionSelectionPath      core.Path = "selection"
+	CodePreconditionAnalysisEmpty            = "analysis_empty"
+	CodePreconditionSelectionEmpty           = "selection_empty"
+	CodePreconditionSettingMissing           = "setting_missing"
+	CodePreconditionSettingInvalid           = "setting_invalid"
+)
+
 var (
 	// ErrGenerationInProgress (409) is returned by every write on a declaration
 	// while one of its jobs is pending or running.
-	ErrGenerationInProgress = errors.Wrap(models.ConflictError, "une génération est en cours")
+	ErrGenerationInProgress = models.NewSarError(models.ConflictError, models.SarCodeGenerationInProgress, "une génération est en cours")
 	// ErrSelectionFrozen (409) is returned by UpdateSelection once a generate
 	// job is done, or has written to the document, for the declaration.
-	ErrSelectionFrozen = errors.Wrap(models.ConflictError,
+	ErrSelectionFrozen = models.NewSarError(models.ConflictError, models.SarCodeSelectionFrozen,
 		"la sélection ne peut plus changer après la génération ; créez une nouvelle déclaration")
 	// ErrAlreadyGenerated (409) is returned by StartGeneration when a generate
 	// job is already done (no regeneration in V1).
-	ErrAlreadyGenerated = errors.Wrap(models.ConflictError,
+	ErrAlreadyGenerated = models.NewSarError(models.ConflictError, models.SarCodeAlreadyGenerated,
 		"cette déclaration a déjà été générée ; la regénération n'est pas disponible")
 )
 
@@ -62,6 +75,7 @@ type SarGenerationRepository interface {
 	ListSarQuestions(ctx context.Context, exec repositories.Executor, declarationId uuid.UUID, status string) ([]models.SarQuestion, error)
 	GetSarQuestion(ctx context.Context, exec repositories.Executor, id uuid.UUID) (models.SarQuestion, error)
 	CloseSarQuestions(ctx context.Context, exec repositories.Executor, ids []uuid.UUID, status string) error
+	CreateSarQuestions(ctx context.Context, exec repositories.Executor, qs []models.SarQuestion) error
 }
 
 // GenerationEnqueuer is satisfied by repositories.TaskQueueRepository: it
@@ -81,6 +95,9 @@ type AiAccessChecker interface {
 // the organization feature access CaseAiAssist (license / entitlement).
 type caseReviewAiAccess interface {
 	HasAiCaseReviewEnabled(ctx context.Context, orgId uuid.UUID) (bool, error)
+	// CheckSarGenerationConfigured refuses (BadParameterError, French) when the
+	// server AI configuration or the prompts cannot run a generation.
+	CheckSarGenerationConfigured() error
 }
 
 // AiAccessFromCaseReview adapts the case review access check to AiAccessChecker.
@@ -94,9 +111,9 @@ func (a aiAccessAdapter) CheckAiAccess(ctx context.Context, orgId uuid.UUID) err
 		return errors.Wrap(err, "cannot check AI access")
 	}
 	if !ok {
-		return errors.Wrap(models.ForbiddenError, "la génération par IA n'est pas disponible pour votre organisation")
+		return models.NewSarError(models.ForbiddenError, models.SarCodeAiUnavailable, "la génération par IA n'est pas disponible pour votre organisation")
 	}
-	return nil
+	return a.r.CheckSarGenerationConfigured()
 }
 
 // TaskSummary is the analyst view of a generation task (no input, output or
@@ -238,15 +255,24 @@ func (uc *Usecase) StartGeneration(ctx context.Context, id uuid.UUID) (models.Sa
 func (uc *Usecase) checkGenerationPreconditions(ctx context.Context, tx repositories.Transaction,
 	locked models.SarDeclaration,
 ) (core.Format, *core.Spec, map[string]string, error) {
+	// Every failed precondition is reported at once, as issues the front maps
+	// (analysis, selection, one per missing or invalid setting path).
+	var issues []core.Issue
 	if strings.TrimSpace(locked.Analysis) == "" {
-		return nil, nil, nil, errors.Wrap(models.BadParameterError, "l'analyse est vide : renseignez-la avant de générer")
+		issues = append(issues, core.Issue{
+			Path: PreconditionAnalysisPath, Code: CodePreconditionAnalysisEmpty, Severity: core.SeverityBlocking,
+			Message: "l'analyse est vide : renseignez-la avant de générer",
+		})
 	}
 	selection, err := uc.selectionRepo.ListSarSelection(ctx, tx, locked.Id)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	if len(selection) == 0 {
-		return nil, nil, nil, errors.Wrap(models.BadParameterError, "la sélection est vide : sélectionnez des objets avant de générer")
+		issues = append(issues, core.Issue{
+			Path: PreconditionSelectionPath, Code: CodePreconditionSelectionEmpty, Severity: core.SeverityBlocking,
+			Message: "la sélection est vide : sélectionnez des objets avant de générer",
+		})
 	}
 	format, err := uc.formatOf(locked)
 	if err != nil {
@@ -261,19 +287,23 @@ func (uc *Usecase) checkGenerationPreconditions(ctx context.Context, tx reposito
 	if settings != nil {
 		values = settings.Values
 	}
-	var bad []string
-	for _, p := range requiredSettingPaths(format, values) {
-		v, ok := values[string(p)]
-		if !ok || strings.TrimSpace(v) == "" {
-			bad = append(bad, string(p)+" (manquant)")
-			continue
-		}
-		if issue := core.ValidateValue(spec, p, v); issue != nil && issue.Blocks() {
-			bad = append(bad, string(p)+" (invalide)")
-		}
+	ready := settingsReadiness(format, values)
+	for _, p := range ready.Missing {
+		issues = append(issues, core.Issue{
+			Path: p, Code: CodePreconditionSettingMissing, Severity: core.SeverityBlocking,
+			Message: "réglage de l'organisation manquant",
+		})
 	}
-	if len(bad) > 0 {
-		return nil, nil, nil, errors.Wrapf(models.BadParameterError, "réglage de l'organisation incomplet : %s", strings.Join(bad, ", "))
+	for _, p := range ready.Invalid {
+		issues = append(issues, core.Issue{
+			Path: p, Code: CodePreconditionSettingInvalid, Severity: core.SeverityBlocking,
+			Message: "réglage de l'organisation invalide",
+		})
+	}
+	if len(issues) > 0 {
+		return nil, nil, nil, &IssuesError{
+			code: models.SarCodeGenerationPrecondition, issues: issues, message: preconditionMessage(issues),
+		}
 	}
 	return format, spec, values, nil
 }
@@ -350,6 +380,27 @@ func (uc *Usecase) hasGeneratedTask(ctx context.Context, exec repositories.Execu
 		}
 	}
 	return false, nil
+}
+
+// refuseIfSelectionFrozen is the read-only, lock-free pre-check of the selection
+// freeze: it only refuses what is already certain (a done generate job, or one
+// that wrote to the document). The authoritative check stays in the transaction.
+func (uc *Usecase) refuseIfSelectionFrozen(ctx context.Context, exec repositories.Executor, id uuid.UUID) error {
+	jobs, err := uc.generation.ListSarGenerationJobs(ctx, exec, id)
+	if err != nil {
+		return err
+	}
+	if hasDoneGenerate(jobs) {
+		return ErrSelectionFrozen
+	}
+	generated, err := uc.hasGeneratedTask(ctx, exec, jobs)
+	if err != nil {
+		return err
+	}
+	if generated {
+		return ErrSelectionFrozen
+	}
+	return nil
 }
 
 func hasDoneGenerate(jobs []models.SarGenerationJob) bool {
@@ -442,7 +493,7 @@ func (uc *Usecase) ResumeJob(ctx context.Context, jobId uuid.UUID) (models.SarGe
 			return err
 		}
 		if cur.Status != models.SarJobStatusFailed && !uc.isStale(cur) {
-			return errors.Wrap(models.ConflictError, "cette génération ne peut pas être relancée")
+			return models.NewSarError(models.ConflictError, models.SarCodeGenerationNotRelaunched, "cette génération ne peut pas être relancée")
 		}
 		if cur.Kind == models.SarJobKindGenerate {
 			jobs, err := uc.generation.ListSarGenerationJobs(ctx, tx, d.Id)
@@ -483,7 +534,7 @@ func (uc *Usecase) resumeLocked(ctx context.Context, tx repositories.Transaction
 		return models.SarGenerationJob{}, err
 	}
 	if !ok {
-		return models.SarGenerationJob{}, errors.Wrap(models.ConflictError, "cette génération ne peut pas être relancée")
+		return models.SarGenerationJob{}, models.NewSarError(models.ConflictError, models.SarCodeGenerationNotRelaunched, "cette génération ne peut pas être relancée")
 	}
 	if err := uc.enqueuer.EnqueueSarGenerationTask(ctx, tx, locked.OrganizationId, jobId, locked.Id); err != nil {
 		return models.SarGenerationJob{}, errors.Wrap(err, "cannot enqueue generation job")
@@ -522,7 +573,7 @@ func (uc *Usecase) StartReview(ctx context.Context, id uuid.UUID) (models.SarGen
 			return models.ErrSarJobAlreadyActive
 		}
 		if !hasDoneGenerate(jobs) {
-			return errors.Wrap(models.ConflictError, "aucune génération terminée : lancez d'abord la génération")
+			return models.NewSarError(models.ConflictError, models.SarCodeConflict, "aucune génération terminée : lancez d'abord la génération")
 		}
 		job, err = uc.createAndEnqueue(ctx, tx, locked, models.SarJobKindReview)
 		return err
@@ -602,4 +653,28 @@ func requiredSettingPaths(format core.Format, values map[string]string) []core.P
 	}
 	slices.Sort(out)
 	return out
+}
+
+// preconditionMessage is the analyst sentence of a refused generation: no
+// technical path, the issues carry them.
+func preconditionMessage(issues []core.Issue) string {
+	var parts []string
+	settings := 0
+	for _, i := range issues {
+		switch i.Code {
+		case CodePreconditionAnalysisEmpty:
+			parts = append(parts, "l'analyse est vide")
+		case CodePreconditionSelectionEmpty:
+			parts = append(parts, "la sélection est vide")
+		default:
+			settings++
+		}
+	}
+	switch {
+	case settings == 1:
+		parts = append(parts, "1 réglage manquant ou invalide")
+	case settings > 1:
+		parts = append(parts, fmt.Sprintf("%d réglages manquants ou invalides", settings))
+	}
+	return "la génération est impossible : " + strings.Join(parts, " ; ")
 }

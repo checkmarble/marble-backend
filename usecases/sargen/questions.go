@@ -81,7 +81,13 @@ func (uc *Usecase) DismissQuestion(ctx context.Context, questionId uuid.UUID) er
 			return err
 		}
 		if cur.Status != models.SarQuestionStatusOpen {
-			return errors.Wrap(models.ConflictError, "cette question est déjà fermée")
+			return models.NewSarError(models.ConflictError, models.SarCodeQuestionClosed, "cette question est déjà fermée")
+		}
+		if cur.Severity == models.SarQuestionSeverityBlocking {
+			// A blocking question keeps the export closed until it is answered: it is
+			// never ignored, one of its options must be chosen.
+			return models.NewSarError(models.ConflictError, models.SarCodeQuestionBlocking,
+				"cette question doit être tranchée par une de ses options")
 		}
 		return uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{questionId}, models.SarQuestionStatusDismissed)
 	})
@@ -114,27 +120,27 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 		return DeclarationState{}, err
 	}
 	if q.Status != models.SarQuestionStatusOpen {
-		return DeclarationState{}, errors.Wrap(models.ConflictError, "cette question est déjà fermée")
+		return DeclarationState{}, models.NewSarError(models.ConflictError, models.SarCodeQuestionClosed, "cette question est déjà fermée")
 	}
 	if optionIndex < 0 || optionIndex >= len(q.Options) {
-		return DeclarationState{}, errors.Wrap(models.BadParameterError, "option inconnue")
+		return DeclarationState{}, models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest, "option inconnue")
 	}
 	opt := q.Options[optionIndex]
 	if opt.RemoveItem != "" {
 		return uc.chooseRemoval(ctx, q, opt, version)
 	}
-	if len(opt.Fills) == 0 {
-		if questionCreatesItem(q) || questionRemovesItem(q) {
-			// « Do not add » / « keep »: the option declines the addition proposed by
-			// a sibling option, or keeps the item a sibling option removes. It
-			// closes the question and writes nothing.
+	if len(opt.Fills) == 0 && len(opt.Clear) == 0 {
+		if questionCreatesItem(q) || questionRemovesItem(q) || questionWrites(q) {
+			// « Do not add » / « keep » / « leave as it is »: the option declines
+			// what a sibling option proposes (a new list item, the removal of an
+			// item, values or clears). It closes the question and writes nothing.
 			return uc.declineQuestion(ctx, q, version)
 		}
-		return DeclarationState{}, errors.Wrap(models.BadParameterError, "cette option ne propose aucune valeur")
+		return DeclarationState{}, models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest, "cette option ne propose aucune valeur")
 	}
 	if len(q.Paths) == 0 {
 		// No paths means no restriction in ApplyFills: refuse rather than write anywhere.
-		return DeclarationState{}, errors.Wrap(models.BadParameterError,
+		return DeclarationState{}, models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest,
 			"cette question ne désigne aucun champ : ses options ne peuvent rien écrire")
 	}
 	var written []core.Path
@@ -146,12 +152,27 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 			// are restricted to the question's own paths, and the choice may
 			// replace a manual value (OverwriteAll). Settings and computed
 			// fields are never writable through an option.
+			for _, p := range opt.Clear {
+				if node := spec.NodeAt(p.Template()); node != nil {
+					switch node.EffectiveNature() {
+					case core.NatureSetting, core.NatureComputed:
+						return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest,
+							"le champ %s est un réglage ou un champ calculé : il ne peut pas être vidé par une option", p)
+					}
+				}
+				if !core.PathAllowed(p, q.Paths) {
+					return issuesToError([]core.Issue{{
+						Path: p, Code: core.CodeOutOfScope, Severity: core.SeverityBlocking,
+						Message: "chemin hors des champs de la question",
+					}})
+				}
+			}
 			fills := make([]core.Fill, len(opt.Fills))
 			for i, f := range opt.Fills {
 				if node := spec.NodeAt(f.Path.Template()); node != nil {
 					switch node.EffectiveNature() {
 					case core.NatureSetting, core.NatureComputed:
-						return errors.Wrapf(models.BadParameterError,
+						return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest,
 							"le champ %s est un réglage ou un champ calculé : il ne peut pas être renseigné par une option", f.Path)
 					}
 				}
@@ -167,8 +188,13 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 				f.Origin, f.TaskID = core.OriginAnalyst, nil
 				fills[i] = f
 			}
-			if optionAlreadyPresent(doc, fills) {
+			if len(opt.Clear) == 0 && optionAlreadyPresent(doc, fills) {
 				return errOptionAlreadyApplied
+			}
+			// The cleared values are deleted first (no value is left stored there),
+			// then the fills are written.
+			for _, p := range opt.Clear {
+				delete(doc.Values, p)
 			}
 			res := core.ApplyFills(spec, doc, fills, core.ApplyOptions{
 				// A provisional item segment is cut to its container so that the
@@ -203,7 +229,7 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 				return err
 			}
 			if cur.Status != models.SarQuestionStatusOpen {
-				return errors.Wrap(models.ConflictError, "cette question est déjà fermée")
+				return models.NewSarError(models.ConflictError, models.SarCodeQuestionClosed, "cette question est déjà fermée")
 			}
 			if err := uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{questionId}, models.SarQuestionStatusResolved); err != nil {
 				return err
@@ -219,6 +245,88 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 	return st, err
 }
 
+// AnswerQuestion answers an open question with a free value, for the questions
+// that have no option (or none that fits). The value is written exactly like a
+// manual edit (origin manual, reviewed, same validation: a refused value is an
+// sar_invalid_field with its issues). path must be one of the question's
+// paths; it may be empty when the question has a single path. The target must
+// be a plain field the analyst may edit: not a list item or a group, not a
+// setting, not a computed field, not an analyst text. The question is closed
+// (resolved), and so are the other open questions whose paths are now all
+// filled. Checks: question open, declaration version
+// (models.ErrSarVersionConflict), no active job. Blocking questions and review
+// findings can be answered. Returns the new declaration state.
+func (uc *Usecase) AnswerQuestion(ctx context.Context, questionId uuid.UUID, version int, value string, path core.Path) (DeclarationState, error) {
+	exec := uc.executorFactory.NewExecutor()
+	row, err := uc.generation.GetSarQuestion(ctx, exec, questionId)
+	if err != nil {
+		return DeclarationState{}, err
+	}
+	if _, err := uc.loadDeclaration(ctx, exec, row.DeclarationId); err != nil {
+		return DeclarationState{}, err
+	}
+	q, err := questionFromModel(row)
+	if err != nil {
+		return DeclarationState{}, err
+	}
+	if q.Status != models.SarQuestionStatusOpen {
+		return DeclarationState{}, models.NewSarError(models.ConflictError, models.SarCodeQuestionClosed, "cette question est déjà fermée")
+	}
+	target, err := answerTarget(q, path)
+	if err != nil {
+		return DeclarationState{}, err
+	}
+	return uc.mutateWithPost(ctx, q.DeclarationId, version,
+		func(format core.Format, doc *core.Document, _, _ *string) error {
+			n := format.Spec().NodeAt(target.Template())
+			if n == nil || n.Kind != core.NodeField || n.IsRepeatable() {
+				return models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest,
+					"cette question se tranche par une de ses options")
+			}
+			if !core.FieldAnswerable(format, target) {
+				return models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest,
+					"ce champ est un réglage, un champ calculé ou un texte d'analyse : il ne se renseigne pas en répondant à une question")
+			}
+			_, err := uc.applyManualFills(ctx, format, doc, []core.Fill{{Path: target, Value: value}})
+			return err
+		},
+		func(tx repositories.Transaction, doc *core.Document) error {
+			cur, err := uc.generation.GetSarQuestion(ctx, tx, questionId)
+			if err != nil {
+				return err
+			}
+			if cur.Status != models.SarQuestionStatusOpen {
+				return models.NewSarError(models.ConflictError, models.SarCodeQuestionClosed, "cette question est déjà fermée")
+			}
+			if err := uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{questionId}, models.SarQuestionStatusResolved); err != nil {
+				return err
+			}
+			return uc.resolveAnsweredQuestions(ctx, tx, q.DeclarationId, doc, []core.Path{target})
+		})
+}
+
+// answerTarget picks the field a free answer writes: path when given (it must
+// be one of the question's paths), the only path of the question otherwise.
+func answerTarget(q Question, path core.Path) (core.Path, error) {
+	if path == "" {
+		switch len(q.Paths) {
+		case 1:
+			return q.Paths[0], nil
+		case 0:
+			return "", models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest,
+				"cette question ne désigne aucun champ : elle ne peut pas recevoir de réponse libre")
+		default:
+			return "", models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest,
+				"cette question porte sur plusieurs champs : indiquez celui auquel répondre")
+		}
+	}
+	if !slices.Contains(q.Paths, path) {
+		return "", models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest,
+			"ce champ ne fait pas partie des champs de la question")
+	}
+	return path, nil
+}
+
 // chooseRemoval applies an option that removes an item of the question. In one
 // write: the fills the format gives for the item about to be removed
 // (core.ItemRemovalRewriter, computed now from the current document), applied
@@ -230,14 +338,26 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 func (uc *Usecase) chooseRemoval(ctx context.Context, q Question, opt core.QuestionOption, version int) (DeclarationState, error) {
 	item := opt.RemoveItem
 	if !core.PathAllowed(item, q.Paths) {
-		return DeclarationState{}, errors.Wrap(models.BadParameterError, "l'élément à retirer ne fait pas partie des champs de la question")
+		return DeclarationState{}, models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest, "l'élément à retirer ne fait pas partie des champs de la question")
 	}
+	var removalFormat core.Format
 	st, err := uc.mutateWithPost(ctx, q.DeclarationId, version,
 		func(format core.Format, doc *core.Document, _, _ *string) error {
+			removalFormat = format
+			spec := format.Spec()
+			// Same checks as the removal of an item by hand: a list item, not of a
+			// container the backend computes.
+			n := spec.NodeAt(item.Template())
+			if !strings.HasSuffix(string(item), "]") || n == nil || !n.IsRepeatable() {
+				return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest, "%s n'est pas un élément de liste", item)
+			}
+			if onlyComputed(n) {
+				return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest,
+					"%s est calculée : les éléments ne se retirent pas à la main", item)
+			}
 			if !itemExists(doc, item) {
 				return errOptionAlreadyApplied
 			}
-			spec := format.Spec()
 			var rewrite core.RemovalRewrite
 			if rw, ok := format.(core.ItemRemovalRewriter); ok {
 				rewrite = rw.RewriteBeforeRemoval(doc, item)
@@ -289,12 +409,12 @@ func (uc *Usecase) chooseRemoval(ctx context.Context, q Question, opt core.Quest
 				return err
 			}
 			if cur.Status != models.SarQuestionStatusOpen {
-				return errors.Wrap(models.ConflictError, "cette question est déjà fermée")
+				return models.NewSarError(models.ConflictError, models.SarCodeQuestionClosed, "cette question est déjà fermée")
 			}
 			if err := uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{q.Id}, models.SarQuestionStatusResolved); err != nil {
 				return err
 			}
-			return uc.dismissQuestionsOfItem(ctx, tx, q.DeclarationId, item)
+			return uc.dismissQuestionsOfItem(ctx, tx, removalFormat, q.DeclarationId, item)
 		})
 	if errors.Is(err, errOptionAlreadyApplied) {
 		return uc.declineQuestion(ctx, q, version)
@@ -302,25 +422,109 @@ func (uc *Usecase) chooseRemoval(ctx context.Context, q Question, opt core.Quest
 	return st, err
 }
 
-// dismissQuestionsOfItem closes (dismissed) the open questions that have a path
-// in the removed item: there is nothing left to answer.
+// dismissQuestionsOfItem settles the open questions and findings (every kind,
+// blocking ones included) that have a path inside the removed item. One whose
+// paths are all inside it has nothing left to answer: it is closed (dismissed).
+// One with only some of its paths inside keeps the others: the old row is closed
+// (replaced) and a new open one carries the paths that are left and the options
+// that still write something there; if what is left cannot be answered (no
+// option, no path a free answer can write), it is closed (dismissed) as well.
 func (uc *Usecase) dismissQuestionsOfItem(ctx context.Context, tx repositories.Transaction,
-	declarationId uuid.UUID, item core.Path,
+	format core.Format, declarationId uuid.UUID, item core.Path,
 ) error {
 	open, err := uc.generation.ListSarQuestions(ctx, tx, declarationId, models.SarQuestionStatusOpen)
 	if err != nil {
 		return err
 	}
-	var ids []uuid.UUID
+	var dismissed, replaced []uuid.UUID
+	var rewritten []models.SarQuestion
 	for _, oq := range open {
-		if oq.Kind != models.SarQuestionKindQuestion {
+		var kept []string
+		inside := false
+		for _, p := range oq.Paths {
+			if core.Path(p).HasPrefix(item) {
+				inside = true
+			} else {
+				kept = append(kept, p)
+			}
+		}
+		if !inside {
 			continue
 		}
-		if slices.ContainsFunc(oq.Paths, func(p string) bool { return core.Path(p).HasPrefix(item) }) {
-			ids = append(ids, oq.Id)
+		if len(kept) == 0 {
+			dismissed = append(dismissed, oq.Id)
+			continue
 		}
+		q, err := questionFromModel(oq)
+		if err != nil {
+			return err
+		}
+		var keptPaths []core.Path
+		for _, p := range kept {
+			keptPaths = append(keptPaths, core.Path(p))
+		}
+		opts := optionsWithoutItem(q.Options, item)
+		if len(opts) == 0 && !slices.ContainsFunc(keptPaths, func(p core.Path) bool { return core.FieldAnswerable(format, p) }) {
+			dismissed = append(dismissed, oq.Id)
+			continue
+		}
+		nq := oq
+		nq.Id, nq.Paths, nq.Options, nq.Status, nq.ClosedAt = uuid.New(), kept, nil, models.SarQuestionStatusOpen, nil
+		if len(opts) > 0 {
+			if nq.Options, err = json.Marshal(opts); err != nil {
+				return errors.Wrap(err, "cannot encode question options")
+			}
+		}
+		replaced = append(replaced, oq.Id)
+		rewritten = append(rewritten, nq)
 	}
-	return uc.generation.CloseSarQuestions(ctx, tx, ids, models.SarQuestionStatusDismissed)
+	if err := uc.generation.CloseSarQuestions(ctx, tx, dismissed, models.SarQuestionStatusDismissed); err != nil {
+		return err
+	}
+	if err := uc.generation.CloseSarQuestions(ctx, tx, replaced, models.SarQuestionStatusReplaced); err != nil {
+		return err
+	}
+	if len(rewritten) == 0 {
+		return nil
+	}
+	return uc.generation.CreateSarQuestions(ctx, tx, rewritten)
+}
+
+// optionsWithoutItem prunes the options of a question once an item is gone: the
+// fills and clears inside the item are dropped, an option that wrote only there
+// (or removed that item) disappears, and the options that write nothing (leave
+// as it is) stay only when a writing option stays.
+func optionsWithoutItem(opts []core.QuestionOption, item core.Path) []core.QuestionOption {
+	var out []core.QuestionOption
+	writes := false
+	for _, o := range opts {
+		wrote := len(o.Fills) > 0 || len(o.Clear) > 0 || o.RemoveItem != ""
+		if o.RemoveItem != "" && o.RemoveItem.HasPrefix(item) {
+			continue
+		}
+		var fills []core.Fill
+		for _, f := range o.Fills {
+			if !f.Path.HasPrefix(item) {
+				fills = append(fills, f)
+			}
+		}
+		var clear []core.Path
+		for _, p := range o.Clear {
+			if !p.HasPrefix(item) {
+				clear = append(clear, p)
+			}
+		}
+		if wrote && len(fills) == 0 && len(clear) == 0 && o.RemoveItem == "" {
+			continue
+		}
+		o.Fills, o.Clear = fills, clear
+		out = append(out, o)
+		writes = writes || wrote
+	}
+	if !writes {
+		return nil
+	}
+	return out
 }
 
 // questionRemovesItem reports whether an option of q removes an item.
@@ -405,6 +609,14 @@ func optionAlreadyPresent(doc *core.Document, fills []core.Fill) bool {
 	return true
 }
 
+// questionWrites reports whether an option of q writes something (values or
+// clears), so that an option that writes nothing is a choice to leave as it is.
+func questionWrites(q Question) bool {
+	return slices.ContainsFunc(q.Options, func(o core.QuestionOption) bool {
+		return len(o.Fills) > 0 || len(o.Clear) > 0
+	})
+}
+
 // questionCreatesItem reports whether an option of q fills a path holding a
 // provisional key, i.e. choosing it creates a new list item.
 func questionCreatesItem(q Question) bool {
@@ -444,7 +656,7 @@ func (uc *Usecase) declineQuestion(ctx context.Context, q Question, version int)
 			return err
 		}
 		if cur.Status != models.SarQuestionStatusOpen {
-			return errors.Wrap(models.ConflictError, "cette question est déjà fermée")
+			return models.NewSarError(models.ConflictError, models.SarCodeQuestionClosed, "cette question est déjà fermée")
 		}
 		saved = d
 		return uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{q.Id}, models.SarQuestionStatusResolved)
@@ -467,11 +679,16 @@ func (uc *Usecase) resolveAnsweredQuestions(ctx context.Context, tx repositories
 	}
 	var ids []uuid.UUID
 	for _, q := range open {
-		if q.Kind != models.SarQuestionKindQuestion || len(q.Paths) == 0 {
+		blockingFinding := q.Kind == models.SarQuestionKindReviewFinding && q.Severity == models.SarQuestionSeverityBlocking
+		if (q.Kind != models.SarQuestionKindQuestion && !blockingFinding) || len(q.Paths) == 0 {
 			continue
 		}
-		touched, all := false, true
+		touched, all, fields := false, true, 0
 		for _, p := range q.Paths {
+			if blockingFinding && strings.HasSuffix(p, "]") {
+				continue // a finding that replaced a blocking question is answered by its fields
+			}
+			fields++
 			if v, ok := doc.Values[core.Path(p)]; !ok || v.Value == "" {
 				all = false
 			}
@@ -479,7 +696,7 @@ func (uc *Usecase) resolveAnsweredQuestions(ctx context.Context, tx repositories
 				touched = true
 			}
 		}
-		if touched && all {
+		if fields > 0 && touched && all {
 			ids = append(ids, q.Id)
 		}
 	}

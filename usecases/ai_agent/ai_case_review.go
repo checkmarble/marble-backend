@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"slices"
 	"strings"
 	"text/template"
 
 	"github.com/checkmarble/llmberjack"
 	"github.com/checkmarble/marble-backend/dto/agent_dto"
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -1311,6 +1313,34 @@ func (uc *AiAgentUsecase) HasAiCaseReviewEnabled(ctx context.Context, orgId uuid
 		return false, err
 	}
 	return featureAccess.CaseAiAssist.IsAllowed(), nil
+}
+
+// CheckSarGenerationConfigured refuses (BadParameterError, French) when the AI
+// configuration cannot run a SAR generation: no usable provider, or no model
+// resolved for one of the two tiers. It reads the server configuration only.
+func (uc *AiAgentUsecase) CheckSarGenerationConfigured() error {
+	switch uc.config.MainAgentProviderType {
+	case infra.AIAgentProviderTypeOpenAI, infra.AIAgentProviderTypeAIStudio:
+	default:
+		return errors.Wrap(models.BadParameterError, "l'IA n'est pas configurée sur ce serveur : aucun fournisseur de modèle")
+	}
+	if uc.aiAgentModelConfig == nil ||
+		uc.aiAgentModelConfig.GetModel(models.AiFeatureSarGeneration, models.AiModelTierLight) == "" ||
+		uc.aiAgentModelConfig.GetModel(models.AiFeatureSarGeneration, models.AiModelTierHeavy) == "" {
+		return errors.Wrap(models.BadParameterError, "l'IA n'est pas configurée sur ce serveur : aucun modèle pour la génération de déclarations")
+	}
+	for _, name := range models.AiAgentOptionalFiles {
+		if !strings.HasPrefix(name, "sar_generation/") {
+			continue
+		}
+		if uc.promptsFS == nil {
+			return errors.Wrap(models.BadParameterError, "prompts de génération de déclaration absents")
+		}
+		if _, err := fs.Stat(uc.promptsFS, name); err != nil {
+			return errors.Wrap(models.BadParameterError, "prompts de génération de déclaration absents")
+		}
+	}
+	return nil
 }
 
 var templateFuncMap = template.FuncMap{

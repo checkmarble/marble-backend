@@ -61,7 +61,7 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 			return err
 		}
 		if format.Status() == core.VersionRetired {
-			return errors.Wrap(models.BadParameterError,
+			return models.NewSarError(models.BadParameterError, models.SarCodeFormatRetired,
 				"cette version du format n'est plus acceptée : l'export est impossible")
 		}
 		doc, err := decodeDocument(d.Document)
@@ -82,7 +82,7 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 			return err
 		}
 		for _, q := range open {
-			if q.Kind == models.SarQuestionKindQuestion && q.Severity == models.SarQuestionSeverityBlocking {
+			if q.Severity == models.SarQuestionSeverityBlocking { // a finding that replaced a blocking question stays blocking
 				path := core.Path("")
 				if len(q.Paths) > 0 {
 					path = core.Path(q.Paths[0])
@@ -91,7 +91,7 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 			}
 		}
 		if len(blocking) > 0 {
-			return errors.Wrap(issuesToError(blocking), "l'export est impossible : des erreurs bloquantes subsistent")
+			return NewIssuesErrorWithMessage(models.SarCodeExportBlocked, "l'export est impossible : des erreurs bloquantes subsistent", blocking)
 		}
 
 		var outstanding []outstandingItem
@@ -179,7 +179,7 @@ func (uc *Usecase) DownloadExport(ctx context.Context, declarationId, exportId u
 		return models.Blob{}, err
 	}
 	if e.DeclarationId != declarationId {
-		return models.Blob{}, errors.Wrap(models.NotFoundError, "export introuvable pour cette déclaration")
+		return models.Blob{}, models.NewSarError(models.NotFoundError, models.SarCodeNotFound, "export introuvable pour cette déclaration")
 	}
 	return uc.blobRepository.GetBlob(ctx, e.BucketName, e.FileReference)
 }

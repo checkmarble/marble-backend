@@ -243,7 +243,11 @@ func TestUpdateFields_ComputedLineFieldRejected(t *testing.T) {
 		{Path: "operations.operation[op-1].montantTotal", Value: "100.00"},
 	})
 	require.ErrorIs(t, err, models.BadParameterError)
-	require.ErrorContains(t, err, "computed_line")
+	// The code lives in the structured issue, not in the French message (PR 7 P3).
+	var carrier interface{ SarIssues() []core.Issue }
+	require.True(t, errors.As(err, &carrier))
+	require.Len(t, carrier.SarIssues(), 1)
+	require.Equal(t, "computed_line", carrier.SarIssues()[0].Code)
 }
 
 func TestUpdateFields_NonLineComputedFieldAllowed(t *testing.T) {
@@ -263,6 +267,17 @@ func TestExport_RefusedWithBlockingIssues(t *testing.T) {
 
 	_, err := uc.Export(f.Ctx, st.Declaration.Id, st.Declaration.Version)
 	require.ErrorIs(t, err, models.BadParameterError)
+	var carrier interface{ SarIssues() []core.Issue }
+	require.True(t, errors.As(err, &carrier), "the refusal must expose its structured issues")
+	require.NotEmpty(t, carrier.SarIssues())
+	for _, is := range carrier.SarIssues() {
+		require.True(t, is.Blocks())
+		require.NotEmpty(t, is.Path)
+		require.NotEmpty(t, is.Code)
+		require.NotEmpty(t, is.Message)
+	}
+	require.True(t, strings.HasPrefix(err.Error(), "l'export est impossible : des erreurs bloquantes subsistent : "), err.Error())
+	require.NotContains(t, err.Error(), "Error executing transaction")
 	require.Empty(t, f.Blobs.Keys(), "nothing may be written to the bucket")
 	require.Empty(t, f.Repo.Exports)
 }
@@ -585,4 +600,29 @@ func TestExport_BlobDeletedWhenExportRowCannotBeCreated(t *testing.T) {
 	require.Error(t, err)
 	require.Empty(t, f.Blobs.Keys(), "the orphan blob must be deleted")
 	require.Empty(t, f.Repo.Exports)
+}
+
+func TestUpdateFields_ExposesResolvedProvisionalKeys(t *testing.T) {
+	uc, f := newTestUsecase(t)
+	d := seedValidDeclaration(t, uc, f)
+
+	item, st, err := uc.AddItem(f.Ctx, d.Id, d.Version, "personnes.pp")
+	require.NoError(t, err)
+	prenom := core.Path(string(item) + ".etatCivil.prenom")
+
+	st, err = uc.UpdateFields(f.Ctx, d.Id, st.Declaration.Version, []core.Fill{
+		{Path: core.Path(string(prenom) + "[+a]"), Value: "Jean"},
+	})
+	require.NoError(t, err)
+	real, ok := st.Resolved[core.Path(string(prenom)+"[+a]")]
+	require.True(t, ok, "resolved: %v", st.Resolved)
+	require.NotContains(t, string(real), "+")
+	require.Equal(t, "Jean", st.Doc.Values[real].Value)
+
+	// A batch without provisional keys resolves nothing.
+	st, err = uc.UpdateFields(f.Ctx, d.Id, st.Declaration.Version, []core.Fill{
+		{Path: "declarant.coordonnees.prenom", Value: "Paul"},
+	})
+	require.NoError(t, err)
+	require.Empty(t, st.Resolved)
 }

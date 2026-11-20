@@ -575,3 +575,37 @@ func TestAutoParents_CapIsNeverExceededByShallowerNewParents(t *testing.T) {
 	assert.NotContains(t, selectedTables(f), "accounts/a99")
 	assert.Contains(t, selectedTables(f), "accounts/a24", "existing auto rows are kept")
 }
+
+func TestAutoParents_FrozenSelectionRefusesBeforeAnyTraversalRead(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	f.SeedDoneGeneration(t, declId)
+	parentsModel(f)
+	putChain(f)
+	addTrigger(f, "t9", "a1")
+	version := f.Repo.Declarations[declId].Version
+	rows := len(f.Selection.Rows)
+	before := f.Ingested.Reads
+
+	_, err := uc.UpdateSelection(f.Ctx, declId, version, []SelectionAdd{{Ref: selRef("transactions", "t9")}}, nil)
+	require.ErrorIs(t, err, ErrSelectionFrozen)
+	assert.Equal(t, before, f.Ingested.Reads, "no parent was read for a frozen selection")
+	assert.Len(t, f.Selection.Rows, rows)
+}
+
+// The freeze check comes before the reads of the explicit additions too.
+func TestUpdateSelection_FrozenSelectionRefusesBeforeReadingTheAdditions(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	f.SeedDoneGeneration(t, declId)
+	parentsModel(f)
+	putChain(f)
+	addTrigger(f, "t9", "a1")
+	version := f.Repo.Declarations[declId].Version
+	before := f.Ingested.Reads
+
+	_, err := uc.UpdateSelection(f.Ctx, declId, version, []SelectionAdd{{
+		Ref:         selRef("accounts", "a1"),
+		ReachedFrom: &models.SarReachedFrom{TableName: "transactions", ObjectId: "t9", Link: "accounts"},
+	}}, nil)
+	require.ErrorIs(t, err, ErrSelectionFrozen)
+	assert.Equal(t, before, f.Ingested.Reads, "the explicit addition was not read")
+}

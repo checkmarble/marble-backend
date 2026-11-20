@@ -66,7 +66,11 @@ func buildTodo(spec *core.Spec, confirm []core.Path, issues []core.Issue, doc *c
 		}
 		switch q.Kind {
 		case models.SarQuestionKindReviewFinding:
-			todo = append(todo, TodoItem{Kind: TodoReviewFinding, Severity: TodoReview, Paths: paths, Message: q.Text, RefId: &id})
+			sev := TodoReview
+			if q.Severity == models.SarQuestionSeverityBlocking {
+				sev = TodoBlocking // it replaced a blocking question
+			}
+			todo = append(todo, TodoItem{Kind: TodoReviewFinding, Severity: sev, Paths: paths, Message: q.Text, RefId: &id})
 		default:
 			sev := TodoWarning
 			if q.Severity == models.SarQuestionSeverityBlocking {
