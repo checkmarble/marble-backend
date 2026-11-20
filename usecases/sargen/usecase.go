@@ -622,42 +622,9 @@ func (uc *Usecase) UpdateFields(ctx context.Context, id uuid.UUID, version int, 
 	}
 	var resolved map[core.Path]core.Path
 	st, err := uc.mutateWithPost(ctx, id, version, func(format core.Format, doc *core.Document, _, _ *string) error {
-		spec := format.Spec()
-		var issues []core.Issue
-		prepared := make([]core.Fill, 0, len(fills))
-		for _, in := range fills {
-			// A manual edit carries only a path and a value: caller-supplied
-			// metadata (reviewed, confidence, sources, task) is dropped.
-			f := core.Fill{Path: in.Path, Value: in.Value, Origin: core.OriginManual}
-			n := spec.NodeAt(f.Path.Template())
-			if n != nil && n.EffectiveNature() == core.NatureAnalyst {
-				issues = append(issues, core.Issue{
-					Path: f.Path, Code: "analyst_field", Severity: core.SeverityBlocking,
-					Message: "champ d'analyse : utilisez la mise à jour de l'analyse",
-				})
-				continue
-			}
-			if n != nil && n.EffectiveNature() == core.NatureComputed &&
-				strings.Contains(f.Path.Template(), "[]") {
-				issues = append(issues, core.Issue{
-					Path: f.Path, Code: "computed_line", Severity: core.SeverityBlocking,
-					Message: "champ calculé : modifiez la transaction correspondante",
-				})
-				continue
-			}
-			prepared = append(prepared, f)
-		}
-		res := core.ApplyFills(spec, doc, prepared, core.ApplyOptions{Overwrite: core.OverwriteAll})
-		resolved = res.Resolved
-		for _, r := range res.Rejected {
-			issues = append(issues, r.Issue)
-		}
-		if len(issues) > 0 {
-			return issuesToError(issues)
-		}
-		// Computed values follow the edit, in the same write.
-		uc.recompute(ctx, format, doc)
-		return nil
+		var err error
+		resolved, err = uc.applyManualFills(ctx, format, doc, fills)
+		return err
 	}, func(tx repositories.Transaction, doc *core.Document) error {
 		return uc.resolveAnsweredQuestions(ctx, tx, id, doc, filled)
 	})
@@ -666,6 +633,51 @@ func (uc *Usecase) UpdateFields(ctx context.Context, id uuid.UUID, version int, 
 	}
 	st.Resolved = resolved
 	return st, nil
+}
+
+// applyManualFills is the write path of a manual edit, shared by the PATCH of
+// fields and the free answer to a question: the fills keep only a path and a
+// value, take OriginManual, and overwrite any stored value. Analyst-text
+// fields and computed lines of a list item are refused. All-or-nothing:
+// any issue returns an IssuesError and the document is to be discarded. The
+// computed values are recomputed on success. It returns the provisional keys
+// resolved to real item paths.
+func (uc *Usecase) applyManualFills(ctx context.Context, format core.Format, doc *core.Document, fills []core.Fill) (map[core.Path]core.Path, error) {
+	spec := format.Spec()
+	var issues []core.Issue
+	prepared := make([]core.Fill, 0, len(fills))
+	for _, in := range fills {
+		// A manual edit carries only a path and a value: caller-supplied
+		// metadata (reviewed, confidence, sources, task) is dropped.
+		f := core.Fill{Path: in.Path, Value: in.Value, Origin: core.OriginManual}
+		n := spec.NodeAt(f.Path.Template())
+		if n != nil && n.EffectiveNature() == core.NatureAnalyst {
+			issues = append(issues, core.Issue{
+				Path: f.Path, Code: "analyst_field", Severity: core.SeverityBlocking,
+				Message: "champ d'analyse : utilisez la mise à jour de l'analyse",
+			})
+			continue
+		}
+		if n != nil && n.EffectiveNature() == core.NatureComputed &&
+			strings.Contains(f.Path.Template(), "[]") {
+			issues = append(issues, core.Issue{
+				Path: f.Path, Code: "computed_line", Severity: core.SeverityBlocking,
+				Message: "champ calculé : modifiez la transaction correspondante",
+			})
+			continue
+		}
+		prepared = append(prepared, f)
+	}
+	res := core.ApplyFills(spec, doc, prepared, core.ApplyOptions{Overwrite: core.OverwriteAll})
+	for _, r := range res.Rejected {
+		issues = append(issues, r.Issue)
+	}
+	if len(issues) > 0 {
+		return nil, issuesToError(issues)
+	}
+	// Computed values follow the edit, in the same write.
+	uc.recompute(ctx, format, doc)
+	return res.Resolved, nil
 }
 
 func (uc *Usecase) AddItem(ctx context.Context, id uuid.UUID, version int, container core.Path) (core.Path, DeclarationState, error) {

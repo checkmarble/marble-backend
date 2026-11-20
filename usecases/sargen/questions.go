@@ -225,6 +225,89 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 	return st, err
 }
 
+// AnswerQuestion answers an open question with a free value, for the questions
+// that have no option (or none that fits). The value is written exactly like a
+// manual edit (origin manual, reviewed, same validation: a refused value is an
+// sar_invalid_field with its issues). path must be one of the question's
+// paths; it may be empty when the question has a single path. The target must
+// be a plain field the analyst may edit: not a list item or a group, not a
+// setting, not a computed field, not an analyst text. The question is closed
+// (resolved), and so are the other open questions whose paths are now all
+// filled. Checks: question open, declaration version
+// (models.ErrSarVersionConflict), no active job. Blocking questions and review
+// findings can be answered. Returns the new declaration state.
+func (uc *Usecase) AnswerQuestion(ctx context.Context, questionId uuid.UUID, version int, value string, path core.Path) (DeclarationState, error) {
+	exec := uc.executorFactory.NewExecutor()
+	row, err := uc.generation.GetSarQuestion(ctx, exec, questionId)
+	if err != nil {
+		return DeclarationState{}, err
+	}
+	if _, err := uc.loadDeclaration(ctx, exec, row.DeclarationId); err != nil {
+		return DeclarationState{}, err
+	}
+	q, err := questionFromModel(row)
+	if err != nil {
+		return DeclarationState{}, err
+	}
+	if q.Status != models.SarQuestionStatusOpen {
+		return DeclarationState{}, models.NewSarError(models.ConflictError, models.SarCodeQuestionClosed, "cette question est déjà fermée")
+	}
+	target, err := answerTarget(q, path)
+	if err != nil {
+		return DeclarationState{}, err
+	}
+	return uc.mutateWithPost(ctx, q.DeclarationId, version,
+		func(format core.Format, doc *core.Document, _, _ *string) error {
+			n := format.Spec().NodeAt(target.Template())
+			if n == nil || n.Kind != core.NodeField || n.IsRepeatable() {
+				return models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest,
+					"cette question se tranche par une de ses options")
+			}
+			switch n.EffectiveNature() {
+			case core.NatureSetting, core.NatureComputed, core.NatureAnalyst:
+				return models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest,
+					"ce champ est un réglage, un champ calculé ou un texte d'analyse : il ne se renseigne pas en répondant à une question")
+			}
+			_, err := uc.applyManualFills(ctx, format, doc, []core.Fill{{Path: target, Value: value}})
+			return err
+		},
+		func(tx repositories.Transaction, doc *core.Document) error {
+			cur, err := uc.generation.GetSarQuestion(ctx, tx, questionId)
+			if err != nil {
+				return err
+			}
+			if cur.Status != models.SarQuestionStatusOpen {
+				return models.NewSarError(models.ConflictError, models.SarCodeQuestionClosed, "cette question est déjà fermée")
+			}
+			if err := uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{questionId}, models.SarQuestionStatusResolved); err != nil {
+				return err
+			}
+			return uc.resolveAnsweredQuestions(ctx, tx, q.DeclarationId, doc, []core.Path{target})
+		})
+}
+
+// answerTarget picks the field a free answer writes: path when given (it must
+// be one of the question's paths), the only path of the question otherwise.
+func answerTarget(q Question, path core.Path) (core.Path, error) {
+	if path == "" {
+		switch len(q.Paths) {
+		case 1:
+			return q.Paths[0], nil
+		case 0:
+			return "", models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest,
+				"cette question ne désigne aucun champ : elle ne peut pas recevoir de réponse libre")
+		default:
+			return "", models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest,
+				"cette question porte sur plusieurs champs : indiquez celui auquel répondre")
+		}
+	}
+	if !slices.Contains(q.Paths, path) {
+		return "", models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest,
+			"ce champ ne fait pas partie des champs de la question")
+	}
+	return path, nil
+}
+
 // chooseRemoval applies an option that removes an item of the question. In one
 // write: the fills the format gives for the item about to be removed
 // (core.ItemRemovalRewriter, computed now from the current document), applied
