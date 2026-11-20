@@ -230,7 +230,7 @@ func (uc *Usecase) ChooseQuestionOption(ctx context.Context, questionId uuid.UUI
 func (uc *Usecase) chooseRemoval(ctx context.Context, q Question, opt core.QuestionOption, version int) (DeclarationState, error) {
 	item := opt.RemoveItem
 	if !core.PathAllowed(item, q.Paths) {
-		return DeclarationState{}, errors.Wrap(models.BadParameterError, "l'élément à retirer ne fait pas partie des champs de la question")
+		return DeclarationState{}, models.NewSarError(models.BadParameterError, models.SarCodeInvalidRequest, "l'élément à retirer ne fait pas partie des champs de la question")
 	}
 	st, err := uc.mutateWithPost(ctx, q.DeclarationId, version,
 		func(format core.Format, doc *core.Document, _, _ *string) error {
@@ -289,7 +289,7 @@ func (uc *Usecase) chooseRemoval(ctx context.Context, q Question, opt core.Quest
 				return err
 			}
 			if cur.Status != models.SarQuestionStatusOpen {
-				return errors.Wrap(models.ConflictError, "cette question est déjà fermée")
+				return models.NewSarError(models.ConflictError, models.SarCodeQuestionClosed, "cette question est déjà fermée")
 			}
 			if err := uc.generation.CloseSarQuestions(ctx, tx, []uuid.UUID{q.Id}, models.SarQuestionStatusResolved); err != nil {
 				return err

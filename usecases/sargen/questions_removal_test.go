@@ -146,8 +146,18 @@ func TestExport_RefusedWhileABlockingQuestionIsOpen(t *testing.T) {
 
 	_, err = uc.Export(f.Ctx, d.Id, d.Version)
 	require.ErrorIs(t, err, models.BadParameterError)
-	assert.Contains(t, err.Error(), CodeQuestionOpen, "the refusal names the open question")
-	assert.Contains(t, err.Error(), "Déclarer la personne ?")
+	var ie *IssuesError
+	require.ErrorAs(t, err, &ie)
+	assert.Equal(t, models.SarCodeExportBlocked, ie.SarCode())
+	var found bool
+	for _, is := range ie.SarIssues() {
+		if is.Code == CodeQuestionOpen {
+			found = true
+			assert.Equal(t, core.Path("personnes.pp[pp-1]"), is.Path)
+			assert.Equal(t, "Déclarer la personne ?", is.Message)
+		}
+	}
+	assert.True(t, found, "the open question is listed as a blocking issue")
 	require.Empty(t, f.Blobs.Keys())
 
 	// Answered (the person is declared): the export goes through.
