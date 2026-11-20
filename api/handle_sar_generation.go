@@ -89,24 +89,59 @@ func presentSarError(c *gin.Context, err error) bool {
 	}
 	var sarErr *models.SarError
 	if errors.As(err, &sarErr) {
-		status := 0
-		switch {
-		case errors.Is(sarErr, models.BadParameterError):
-			status = http.StatusBadRequest
-		case errors.Is(sarErr, models.ForbiddenError):
-			status = http.StatusForbidden
-		case errors.Is(sarErr, models.NotFoundError):
-			status = http.StatusNotFound
-		case errors.Is(sarErr, models.ConflictError):
-			status = http.StatusConflict
+		if status, ok := sarStatusOf(sarErr); ok {
+			sarRefusal(c, status, sarErr.Code, sarErr.Message, err)
+			return true
 		}
-		if status != 0 {
-			utils.LoggerFromContext(ctx).InfoContext(ctx, "SAR generation refusal", "code", sarErr.Code, "error", sarErr.Error())
-			c.JSON(status, dto.APIErrorResponse{Message: sarErr.Message, ErrorCode: dto.ErrorCode(sarErr.Code)})
+		// A kind that maps to no status: never leak the detail.
+		utils.LoggerFromContext(ctx).ErrorContext(ctx, "SAR generation error of an unmapped kind", "error", err.Error())
+		sarRefusal(c, http.StatusInternalServerError, models.SarCodeInternal,
+			"une erreur inattendue est survenue ; réessayez ou contactez le support", err)
+		return true
+	}
+	// Bare sentinels coming from the layers below (repositories, case security):
+	// same status as presentError, but a code and a generic French message, never
+	// the wrapped Go chain.
+	for _, b := range []struct {
+		kind    error
+		status  int
+		code    models.SarErrorCode
+		message string
+	}{
+		{models.BadParameterError, http.StatusBadRequest, models.SarCodeInvalidRequest, "requête invalide"},
+		{models.UnprocessableEntityError, http.StatusUnprocessableEntity, models.SarCodeUnprocessable, "requête impossible à traiter"},
+		{models.UnAuthorizedError, http.StatusUnauthorized, models.SarCodeUnauthorized, "authentification requise"},
+		{models.ForbiddenError, http.StatusForbidden, models.SarCodeForbidden, "accès refusé"},
+		{models.MissingLicenseEntitlementError, http.StatusForbidden, models.SarCodeForbidden, "accès refusé"},
+		{models.NotFoundError, http.StatusNotFound, models.SarCodeNotFound, "élément introuvable"},
+		{models.ConflictError, http.StatusConflict, models.SarCodeConflict, "conflit avec l'état actuel de la déclaration"},
+	} {
+		if errors.Is(err, b.kind) {
+			sarRefusal(c, b.status, b.code, b.message, err)
 			return true
 		}
 	}
 	return presentError(ctx, c, err)
+}
+
+func sarStatusOf(e *models.SarError) (int, bool) {
+	switch {
+	case errors.Is(e, models.BadParameterError):
+		return http.StatusBadRequest, true
+	case errors.Is(e, models.ForbiddenError):
+		return http.StatusForbidden, true
+	case errors.Is(e, models.NotFoundError):
+		return http.StatusNotFound, true
+	case errors.Is(e, models.ConflictError):
+		return http.StatusConflict, true
+	}
+	return 0, false
+}
+
+func sarRefusal(c *gin.Context, status int, code models.SarErrorCode, message string, cause error) {
+	ctx := c.Request.Context()
+	utils.LoggerFromContext(ctx).InfoContext(ctx, "SAR generation refusal", "code", code, "error", cause.Error())
+	c.JSON(status, dto.APIErrorResponse{Message: message, ErrorCode: dto.ErrorCode(code)})
 }
 
 func sarState(c *gin.Context, code int, st sargen.DeclarationState, err error) {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -299,8 +300,9 @@ func (uc *Usecase) checkGenerationPreconditions(ctx context.Context, tx reposito
 		})
 	}
 	if len(issues) > 0 {
-		return nil, nil, nil, NewIssuesErrorWithMessage(models.SarCodeGenerationPrecondition,
-			"la génération est impossible", issues)
+		return nil, nil, nil, &IssuesError{
+			code: models.SarCodeGenerationPrecondition, issues: issues, message: preconditionMessage(issues),
+		}
 	}
 	return format, spec, values, nil
 }
@@ -650,4 +652,28 @@ func requiredSettingPaths(format core.Format, values map[string]string) []core.P
 	}
 	slices.Sort(out)
 	return out
+}
+
+// preconditionMessage is the analyst sentence of a refused generation: no
+// technical path, the issues carry them.
+func preconditionMessage(issues []core.Issue) string {
+	var parts []string
+	settings := 0
+	for _, i := range issues {
+		switch i.Code {
+		case CodePreconditionAnalysisEmpty:
+			parts = append(parts, "l'analyse est vide")
+		case CodePreconditionSelectionEmpty:
+			parts = append(parts, "la sélection est vide")
+		default:
+			settings++
+		}
+	}
+	switch {
+	case settings == 1:
+		parts = append(parts, "1 réglage manquant ou invalide")
+	case settings > 1:
+		parts = append(parts, fmt.Sprintf("%d réglages manquants ou invalides", settings))
+	}
+	return "la génération est impossible : " + strings.Join(parts, " ; ")
 }

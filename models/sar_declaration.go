@@ -29,6 +29,9 @@ const (
 	SarCodeConflict                SarErrorCode = "sar_conflict"
 	SarCodeQuestionClosed          SarErrorCode = "sar_question_closed"
 	SarCodeGenerationNotRelaunched SarErrorCode = "sar_generation_not_relaunchable"
+	SarCodeUnauthorized            SarErrorCode = "sar_unauthorized"
+	SarCodeUnprocessable           SarErrorCode = "sar_unprocessable"
+	SarCodeInternal                SarErrorCode = "sar_internal"
 )
 
 // SarError is a refusal of a SAR generation operation: a stable Code and a
