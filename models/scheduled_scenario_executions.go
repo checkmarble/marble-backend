@@ -240,10 +240,15 @@ func (f Filter) ToSql() (sql string, args []any) {
 			sql = fmt.Sprintf("%s %s %s", left,
 				attrs.AstName, right)
 		}
-	} else if ast.IsStringComparison(f.Operator) {
+	} else if f.Operator == ast.FUNC_STRING_CONTAINS {
 		sql = fmt.Sprintf("%s ILIKE CONCAT('%%',%s::text,'%%')", left, right)
-	} else if ast.IsInListComparison(f.Operator) {
+	} else if f.Operator == ast.FUNC_STRING_NOT_CONTAIN {
+		// NOT ILIKE would read % and _ in the value as wildcards and skip objects the trigger accepts.
+		sql = fmt.Sprintf("strpos(lower(%s), lower(%s::text)) = 0", left, right)
+	} else if f.Operator == ast.FUNC_IS_IN_LIST {
 		sql = fmt.Sprintf("%s = ANY(%s)", left, right)
+	} else if f.Operator == ast.FUNC_IS_NOT_IN_LIST {
+		sql = fmt.Sprintf("NOT (%s = ANY(%s))", left, right)
 	} else if f.Operator == ast.FUNC_IS_EMPTY {
 		sql = fmt.Sprintf("(%s IS NULL OR %s = '')", left, left)
 	} else if f.Operator == ast.FUNC_IS_NOT_EMPTY {
