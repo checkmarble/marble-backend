@@ -439,20 +439,6 @@ func IsMathOperation(f Function) bool {
 	}, f)
 }
 
-func IsStringComparison(f Function) bool {
-	return slices.Contains([]Function{
-		FUNC_STRING_CONTAINS,
-		FUNC_STRING_NOT_CONTAIN,
-	}, f)
-}
-
-func IsInListComparison(f Function) bool {
-	return slices.Contains([]Function{
-		FUNC_IS_IN_LIST,
-		FUNC_IS_NOT_IN_LIST,
-	}, f)
-}
-
 func NewNodeCustomListAccess(customListId string) Node {
 	return Node{Function: FUNC_CUSTOM_LIST_ACCESS}.
 		AddNamedChild("customListId", NewNodeConstant(customListId))

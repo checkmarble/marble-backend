@@ -47,6 +47,26 @@ func TestFilterToSql(t *testing.T) {
 			args:     []any{"COMMIT", "mit"},
 		},
 		{
+			name: "string not in list filter",
+			filter: Filter{
+				LeftValue:  "blabla",
+				Operator:   ast.FUNC_IS_NOT_IN_LIST,
+				RightValue: []string{"bla", "and bla"},
+			},
+			expected: "NOT (? = ANY(?))",
+			args:     []any{"blabla", []string{"bla", "and bla"}},
+		},
+		{
+			name: "string does not contain filter",
+			filter: Filter{
+				LeftValue:  "COMMIT",
+				Operator:   ast.FUNC_STRING_NOT_CONTAIN,
+				RightValue: "mit",
+			},
+			expected: "strpos(lower(?), lower(?::text)) = 0",
+			args:     []any{"COMMIT", "mit"},
+		},
+		{
 			name: "string in list",
 			filter: Filter{
 				LeftValue:  "blabla",
