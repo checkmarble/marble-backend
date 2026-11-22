@@ -67,7 +67,7 @@ func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
 		assert.Equal(t, args[1], "Infinity")
 	}
 	expected := `
-	SELECT table_1.int_var
+	SELECT table_1."int_var"
 	FROM "test_schema"."second" AS table_1
 	WHERE table_1.id = $1
 	AND table_1.valid_until = $2
@@ -101,7 +101,7 @@ func TestIngestedDataGetDbFieldWithJoin(t *testing.T) {
 		assert.Equal(t, args[2], "Infinity")
 	}
 	expected := `
-	SELECT table_2.int_var
+	SELECT table_2."int_var"
 	FROM "test_schema"."second" AS table_1
 	JOIN "test_schema"."third" AS table_2 ON table_1.id = table_2.id
 	WHERE table_1.id = $1

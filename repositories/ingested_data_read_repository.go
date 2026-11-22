@@ -243,7 +243,7 @@ func createQueryDbForField(exec Executor, readParams models.DbFieldReadParams) (
 
 	// setup the end table we read the field from, the beginning table we join from, and relevant filters on the latter
 	query := NewQueryBuilder().
-		Select(fmt.Sprintf("%s.%s", lastTableAlias, readParams.FieldName)).
+		Select(fmt.Sprintf("%s.%s", lastTableAlias, pgx.Identifier.Sanitize([]string{readParams.FieldName}))).
 		From(fmt.Sprintf("%s AS %s", firstTableName, firstTableAlias)).
 		Where(squirrel.Eq{fmt.Sprintf("%s.%s", firstTableAlias, link.ParentFieldName): firstTableLinkValue}).
 		Where(rowIsValid(firstTableAlias))
