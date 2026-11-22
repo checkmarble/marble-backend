@@ -420,10 +420,17 @@ func (uc CustomerAggregateUsecase) checkAggregateFunction(expr ast.Node, navOpti
 	}
 
 	for _, filter := range filters.Children {
+		matched := false
+
 		for idx, req := range customerAggregateRequiredFilters {
 			if filter.Hash() == req.Hash() {
 				mask[idx] = true
+				matched = true
 			}
+		}
+
+		if !matched {
+			return errors.Wrap(models.BadParameterError, "aggregator has an unexpected filter")
 		}
 	}
 
