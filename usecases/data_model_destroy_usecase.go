@@ -302,6 +302,14 @@ func (uc DataModelDestroyUsecase) DeletePivot(ctx context.Context, dryRun bool, 
 		return models.DataModelDeleteFieldReport{}, err
 	}
 
+	pivot, err := uc.dataModelRepository.GetPivot(ctx, exec, pivotId)
+	if err != nil {
+		return models.DataModelDeleteFieldReport{}, err
+	}
+	if pivot.OrganizationId != orgId {
+		return models.DataModelDeleteFieldReport{}, errors.Wrap(models.NotFoundError, "pivot not found")
+	}
+
 	if dryRun {
 		return models.NewDataModelDeleteFieldReport(), nil
 	}
@@ -658,6 +666,9 @@ func (uc DataModelDestroyUsecase) canDeleteLink(
 	links, err := uc.dataModelRepository.GetLinks(ctx, exec, orgId)
 	if err != nil {
 		return false, models.DataModelDeleteFieldReport{}, err
+	}
+	if !slices.ContainsFunc(links, func(link models.LinkToSingle) bool { return link.Id == linkId }) {
+		return false, models.DataModelDeleteFieldReport{}, errors.Wrap(models.NotFoundError, "link not found")
 	}
 
 	analyticsSettings, err := uc.analyticsSettingsRepository.GetAnalyticsSettings(ctx, exec, orgId)
