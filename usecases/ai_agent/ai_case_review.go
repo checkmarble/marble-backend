@@ -252,9 +252,27 @@ func (uc *AiAgentUsecase) ListCaseReviews(ctx context.Context, caseId uuid.UUID,
 	}, nil
 }
 
-func (uc *AiAgentUsecase) GetCaseReviewById(ctx context.Context, caseId string, reviewId uuid.UUID) (agent_dto.AiCaseReviewOutputDto, error) {
-	_, err := uc.getCaseWithPermissions(ctx, caseId)
+func (uc *AiAgentUsecase) ensureCaseReviewBelongsToCase(ctx context.Context, c models.Case, reviewId uuid.UUID) error {
+	exec := uc.executorFactory.NewExecutor()
+	review, err := uc.repository.GetCaseReviewById(ctx, exec, reviewId)
 	if err != nil {
+		return errors.Wrap(err, "could not get case review by id")
+	}
+
+	if review.CaseId.String() != c.Id {
+		return errors.Wrap(models.NotFoundError, "case review does not belong to case")
+	}
+
+	return nil
+}
+
+func (uc *AiAgentUsecase) GetCaseReviewById(ctx context.Context, caseId string, reviewId uuid.UUID) (agent_dto.AiCaseReviewOutputDto, error) {
+	c, err := uc.getCaseWithPermissions(ctx, caseId)
+	if err != nil {
+		return agent_dto.AiCaseReviewOutputDto{}, err
+	}
+
+	if err := uc.ensureCaseReviewBelongsToCase(ctx, c, reviewId); err != nil {
 		return agent_dto.AiCaseReviewOutputDto{}, err
 	}
 
@@ -1288,8 +1306,12 @@ func (uc *AiAgentUsecase) UpdateAiCaseReviewFeedback(
 ) (agent_dto.AiCaseReviewOutputDto, error) {
 	exec := uc.executorFactory.NewExecutor()
 
-	_, err := uc.getCaseWithPermissions(ctx, caseId)
+	c, err := uc.getCaseWithPermissions(ctx, caseId)
 	if err != nil {
+		return agent_dto.AiCaseReviewOutputDto{}, err
+	}
+
+	if err := uc.ensureCaseReviewBelongsToCase(ctx, c, reviewId); err != nil {
 		return agent_dto.AiCaseReviewOutputDto{}, err
 	}
 
