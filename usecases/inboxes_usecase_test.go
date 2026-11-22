@@ -260,6 +260,31 @@ func (suite *InboxUsecaseTestSuite) Test_ListInboxUsers_nominal() {
 	suite.AssertExpectations()
 }
 
+func (suite *InboxUsecaseTestSuite) Test_ListAllInboxUsers_admin_scoped_to_organization() {
+	inboxUser := models.InboxUser{
+		InboxId: suite.parsedInboxId,
+		UserId:  suite.parsedNonAdminUserId,
+	}
+	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
+	suite.inboxRepository.On("ListInboxUsers", suite.ctx, suite.transaction, models.InboxUserFilterInput{
+		OrganizationId: suite.organizationId,
+	}).Return([]models.InboxUser{inboxUser}, nil)
+
+	usecase := inboxes.InboxUsers{
+		InboxUserRepository: suite.inboxRepository,
+		Credentials:         suite.adminCredentials,
+		ExecutorFactory:     suite.executorFactory,
+	}
+
+	result, err := usecase.ListAllInboxUsers(suite.ctx)
+
+	t := suite.T()
+	assert.NoError(t, err)
+	assert.Equal(t, []models.InboxUser{inboxUser}, result)
+
+	suite.AssertExpectations()
+}
+
 func (suite *InboxUsecaseTestSuite) Test_CreateInboxUser_nominal_non_admin() {
 	inboxUser := models.InboxUser{
 		InboxId: suite.parsedInboxId,
