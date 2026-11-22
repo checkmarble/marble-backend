@@ -32,6 +32,7 @@ const (
 )
 
 type InboxUserFilterInput struct {
-	InboxId uuid.UUID
-	UserId  UserId
+	OrganizationId uuid.UUID
+	InboxId        uuid.UUID
+	UserId         UserId
 }

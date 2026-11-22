@@ -96,8 +96,14 @@ func (usecase *InboxUsers) ListAllInboxUsers(ctx context.Context) ([]models.Inbo
 		return []models.InboxUser{}, errors.New("only admins can list all inbox users")
 	}
 
+	filters := models.InboxUserFilterInput{}
+
+	if !usecase.Credentials.HasRole(models.MARBLE_ADMIN) {
+		filters.OrganizationId = usecase.Credentials.OrganizationId
+	}
+
 	return usecase.InboxUserRepository.ListInboxUsers(ctx,
-		usecase.ExecutorFactory.NewExecutor(), models.InboxUserFilterInput{})
+		usecase.ExecutorFactory.NewExecutor(), filters)
 }
 
 func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.CreateInboxUserInput) (models.InboxUser, error) {

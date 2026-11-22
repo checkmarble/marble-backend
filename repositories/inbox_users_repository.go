@@ -41,6 +41,9 @@ func (repo *MarbleDbRepository) ListInboxUsers(ctx context.Context, exec Executo
 
 	query := selectInboxUsers()
 
+	if filters.OrganizationId != uuid.Nil {
+		query = query.Where(squirrel.Eq{"i.organization_id": filters.OrganizationId})
+	}
 	if filters.InboxId != uuid.Nil {
 		query = query.Where(squirrel.Eq{"u.inbox_id": filters.InboxId})
 	}
