@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -36,7 +37,10 @@ type auditCommands struct {
 	args  []any
 }
 
-var sqlUpdateVerbs = []string{"insert", "update", "delete"}
+// Match whole words, not column names such as updated_at and deleted_at.
+// Scan the entire statement to retain audit setup for writes inside CTEs.
+// This is deliberately conservative: keywords in comments or literals may also match.
+var sqlUpdateVerbs = regexp.MustCompile(`(?i)\b(insert|update|delete)\b`)
 
 type skipAuditSetupKey struct{}
 
@@ -52,17 +56,8 @@ func injectDbSessionConfig(ctx context.Context, exec executor, query string) (pg
 		return pgconn.NewCommandTag(""), nil
 	}
 
-	if query != "" {
-		exitEarly := true
-		for _, v := range sqlUpdateVerbs {
-			if strings.Contains(strings.ToLower(query), v) {
-				exitEarly = false
-				break
-			}
-		}
-		if exitEarly {
-			return pgconn.NewCommandTag(""), nil
-		}
+	if query != "" && !sqlUpdateVerbs.MatchString(query) {
+		return pgconn.NewCommandTag(""), nil
 	}
 
 	cmds := []auditCommands{
