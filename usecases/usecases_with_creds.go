@@ -1057,7 +1057,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningEnsureDeltaTrackWorker(
 	)
 }
 
-func (usecases *UsecasesWithCreds) NewContinuousScreeningApplyDeltaFileWorker() *continuous_screening.ApplyDeltaFileWorker {
+func (usecases *UsecasesWithCreds) NewContinuousScreeningApplyDeltaFileWorker(rates continuous_screening.DeltaSearchRates) *continuous_screening.ApplyDeltaFileWorker {
 	return continuous_screening.NewApplyDeltaFileWorker(
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
@@ -1069,6 +1069,7 @@ func (usecases *UsecasesWithCreds) NewContinuousScreeningApplyDeltaFileWorker() 
 		usecases.continuousScreeningBucketUrl,
 		usecases.NewContinuousScreeningUsecase(),
 		usecases.NewOffloadedReader(),
+		rates,
 	)
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -50,6 +51,10 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	if err != nil {
 		return err
 	}
+	deltaSearchRates, err := loadDeltaSearchRates()
+	if err != nil {
+		return err
+	}
 	pgConfig := infra.PgConfig{
 		ConnectionString:   utils.GetEnv("PG_CONNECTION_STRING", ""),
 		Database:           utils.GetEnv("PG_DATABASE", "marble"),
@@ -79,6 +84,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	}
 
 	workerConfig := WorkerConfig{
+		deltaSearchRates:             deltaSearchRates,
 		queueWorkers:                 queueWorkers,
 		appName:                      "marble-backend-worker",
 		env:                          utils.GetEnv("ENV", "production"),
@@ -418,7 +424,7 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	river.AddWorker(workers, adminUc.NewContinuousScreeningDoScreeningWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningRegisterObjectWorker())
 	river.AddWorker(workers, adminUc.NewContinuousScreeningEnsureDeltaTrackWorker())
-	river.AddWorker(workers, adminUc.NewContinuousScreeningApplyDeltaFileWorker())
+	river.AddWorker(workers, adminUc.NewContinuousScreeningApplyDeltaFileWorker(workerConfig.deltaSearchRates))
 	river.AddWorker(workers, adminUc.NewContinuousScreeningScanDatasetUpdatesWorker())
 	river.AddWorker(workers, adminUc.NewCsvIngestionWorker())
 	river.AddWorker(workers, adminUc.NewAsyncUploadWorker())
@@ -512,6 +518,31 @@ func loadBatchExecutionConcurrency() (map[models.OrganizationEnvironment]int, er
 		config[setting.environment] = count
 	}
 	return config, nil
+}
+
+func loadDeltaSearchRates() (continuous_screening.DeltaSearchRates, error) {
+	rates := continuous_screening.DeltaSearchRates{}
+	settings := []struct {
+		name         string
+		defaultValue float64
+		value        *float64
+	}{
+		{"CONTINUOUS_SCREENING_DELTA_PRODUCTION_RATE", 20, &rates.Production},
+		{"CONTINUOUS_SCREENING_DELTA_NON_PRODUCTION_RATE", 5, &rates.NonProduction},
+	}
+	for _, setting := range settings {
+		raw, ok := os.LookupEnv(setting.name)
+		if !ok {
+			*setting.value = setting.defaultValue
+		} else {
+			value, err := strconv.ParseFloat(raw, 64)
+			if err != nil || value <= 0 || math.IsNaN(value) || math.IsInf(value, 0) {
+				return rates, errors.Errorf("%s must be a finite positive number, got %q", setting.name, raw)
+			}
+			*setting.value = value
+		}
+	}
+	return rates, nil
 }
 
 func loadOrganizationQueueWorkers() (usecases.OrganizationQueueWorkers, error) {
@@ -729,7 +760,7 @@ func singleJobRun(ctx context.Context, uc usecases.UsecasesWithCreds, apiVersion
 		return uc.NewContinuousScreeningScanDatasetUpdatesWorker().Work(ctx,
 			singleJobCreate[models.ContinuousScreeningScanDatasetUpdatesArgs](ctx, jobArgs))
 	case "continuous_screening_apply_delta_file":
-		return uc.NewContinuousScreeningApplyDeltaFileWorker().Work(ctx,
+		return uc.NewContinuousScreeningApplyDeltaFileWorker(workerConfig.deltaSearchRates).Work(ctx,
 			singleJobCreate[models.ContinuousScreeningApplyDeltaFileArgs](ctx, jobArgs))
 	case "continuous_screening_match_enrichment":
 		return uc.NewContinuousScreeningMatchEnrichmentWorker().Work(ctx,

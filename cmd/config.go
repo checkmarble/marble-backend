@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/continuous_screening"
 )
 
 type CompiledConfig struct {
@@ -37,6 +38,7 @@ func (config ServerConfig) Validate() error {
 }
 
 type WorkerConfig struct {
+	deltaSearchRates             continuous_screening.DeltaSearchRates
 	queueWorkers                 usecases.OrganizationQueueWorkers
 	appName                      string
 	env                          string

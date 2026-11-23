@@ -140,6 +140,7 @@ type ApplyDeltaFileWorker struct {
 	taskQueueRepo      applyDeltaFileWorkerTaskQueueRepository
 	blobRepository     repositories.BlobRepository
 	screeningProvider  applyDeltaFileWorkerScreeningProvider
+	searchLimiters     deltaSearchLimiters
 	usecase            applyDeltaFileWorkerUsecase
 	offloadedReader    repositories.OffloadedReadWriter
 	bucketUrl          string
@@ -156,6 +157,7 @@ func NewApplyDeltaFileWorker(
 	bucketUrl string,
 	usecase applyDeltaFileWorkerUsecase,
 	offloadedReader repositories.OffloadedReadWriter,
+	searchRates DeltaSearchRates,
 ) *ApplyDeltaFileWorker {
 	return &ApplyDeltaFileWorker{
 		executorFactory:    executorFactory,
@@ -165,6 +167,7 @@ func NewApplyDeltaFileWorker(
 		taskQueueRepo:      taskQueueRepo,
 		blobRepository:     blobRepository,
 		screeningProvider:  screeningProvider,
+		searchLimiters:     newDeltaSearchLimiters(searchRates),
 		bucketUrl:          bucketUrl,
 		usecase:            usecase,
 		offloadedReader:    offloadedReader,
@@ -232,6 +235,15 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 	if updateJob.Status == models.ContinuousScreeningUpdateJobStatusCompleted {
 		logger.DebugContext(ctx, "Continuous screening update job already completed, skip processing")
 		return nil
+	}
+
+	org, err := w.repository.GetOrganizationById(ctx, exec, job.Args.OrgId)
+	if err != nil {
+		return errors.Wrap(err, "failed to retrieve organization for delta screening rate limit")
+	}
+	screeningProvider := rateLimitedDeltaSearch{
+		provider: w.screeningProvider,
+		limiter:  w.searchLimiters.getLimiterForOrgEnv(org.Environment),
 	}
 
 	// If the job is not processing, set it to processing (used by observability)
@@ -383,7 +395,7 @@ func (w *ApplyDeltaFileWorker) Work(ctx context.Context, job *river.Job[models.C
 		err = retry.Do(
 			func() error {
 				// Searches in this direction should use the Open Sanctions schema (no complex topics filters).
-				screeningResponse, err = w.screeningProvider.Search(iterCtx, models.ScreeningProviderOpenSanctions, query)
+				screeningResponse, err = screeningProvider.Search(iterCtx, models.ScreeningProviderOpenSanctions, query)
 				return err
 			},
 			retry.Attempts(3),
