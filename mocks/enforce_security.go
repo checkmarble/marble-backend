@@ -160,13 +160,9 @@ func (e *EnforceSecurity) ReadApiKey(apiKey models.ApiKey) error {
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) CreateApiKey(organizationId uuid.UUID, role models.Role) error {
-	args := e.Called(organizationId, role)
+func (e *EnforceSecurity) CreateApiKey(organizationId uuid.UUID) error {
+	args := e.Called(organizationId)
 	return args.Error(0)
-}
-
-func (e *EnforceSecurity) CheckApiKeyTenant(tenantID uuid.UUID) error {
-	return e.Called(tenantID).Error(0)
 }
 
 func (e *EnforceSecurity) DeleteApiKey(apiKey models.ApiKey) error {

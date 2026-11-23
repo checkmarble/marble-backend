@@ -21,7 +21,6 @@ const (
 	ANALYST
 	SYSTEM // internal principal used by background workers
 	TENANT_ADMIN
-	OIDC_CONFIG_EDITOR
 )
 
 func GetValidUserRoles() []Role {
@@ -67,8 +66,6 @@ func (r Role) String() string {
 		return "SYSTEM"
 	case TENANT_ADMIN:
 		return "TENANT_ADMIN"
-	case OIDC_CONFIG_EDITOR:
-		return "OIDC_CONFIG_EDITOR"
 	default:
 		return "UNKNOWN_ROLE"
 	}
@@ -104,8 +101,6 @@ func RoleFromString(s string) Role {
 		return MARBLE_ADMIN
 	case "TENANT_ADMIN":
 		return TENANT_ADMIN
-	case "OIDC_CONFIG_EDITOR":
-		return OIDC_CONFIG_EDITOR
 	}
 	return NO_ROLE
 }
