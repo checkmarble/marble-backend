@@ -245,6 +245,12 @@ func (repo *MarbleDbRepository) GetStaleScoreBatch(
 		return nil, err
 	}
 
+	// Query Insights ranked this stale-score lookup fourth by total execution time over Nov 17–24, 2026.
+	// 
+	// The worker re-queries after each batch to advance, and overrides can become stale
+	// without a write. Cached IDs could repeat a batch or hide newly eligible work.
+	// Inspect the plan for both stale predicates and the ORDER BY/LIMIT before testing
+	// source-specific partial indexes or splitting the predicates into separate scans.
 	query := NewQueryBuilder().
 		Select("record_id").
 		From(dbmodels.TABLE_SCORING_SCORES).

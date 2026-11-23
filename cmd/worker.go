@@ -338,6 +338,16 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	cronMonitorMiddleware := jobs.NewCronMonitorMiddleware(demoOrgsFetcher)
 	cronMonitorMiddleware.StartDemoOrgsRefresh(ctx, 1*time.Minute)
 
+	// Query Insights ranked River's job dequeue third by total execution time over Nov 17–24, 2026.
+	//
+    // This comment is therefore a pointer to the source of the load.
+	// We can still influence the load indirectly. For example, through River’s polling interval, queue configuration,
+	// database indexes.
+	//
+	// After doing a River’s v0.51.0…v0.51.2 comparison (https://github.com/riverqueue/river/compare/v0.51.0...v0.51.2):
+	// There are runtime changes in that range, including queue-settings polling and a startup/shutdown fix, so I can’t rule out
+	// an indirect effect on load without examining or measuring them.
+	// But there’s no evidence here that upgrading would make the dequeue query itself cheaper.
 	riverClient, err = river.NewClient(
 		riverpgxv5.New(pool), &river.Config{
 			FetchPollInterval: utils.GetEnvDuration("RIVER_FETCH_POLL_INTERVAL", 1*time.Second),

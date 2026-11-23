@@ -1501,6 +1501,12 @@ func (repo *MarbleDbRepository) GetLatestContinuousScreeningDeltaTrack(
 		return nil, err
 	}
 
+	// Query Insights ranked this latest-track lookup fifth by total execution time over Nov 17–24, 2026.
+	// 
+	// The repair transaction uses this result to decide whether to recreate a track.
+	// A stale miss can cause an unnecessary insert; a stale hit can suppress a repair.
+	// Keep PostgreSQL authoritative and check whether the plan uses a composite index on
+	// (org_id, object_type, object_id, created_at) to satisfy ORDER BY/LIMIT without sorting.
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectContinuousScreeningDeltaTrackColumn...).
 		From(dbmodels.TABLE_CONTINUOUS_SCREENING_DELTA_TRACKS).
