@@ -18,11 +18,6 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func enableGraphExploration(t *testing.T) {
-	t.Helper()
-	t.Setenv("ENABLE_GRAPH_EXPLORATION", "all")
-}
-
 // TestGraphIncrementalMatchesAFullBuild is the test that justifies maintaining the adjacency table
 // from the ingestion path at all.
 //
@@ -33,8 +28,6 @@ func enableGraphExploration(t *testing.T) {
 // casts, and whether `t."opened_at"::text` and `(t."opened_at" at time zone 'utc')::text` differ is a
 // question only Postgres can answer.
 func TestGraphIncrementalMatchesAFullBuild(t *testing.T) {
-	enableGraphExploration(t)
-
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	ctx = utils.StoreSegmentClientInContext(ctx, analytics.New("dummy key"))
 
@@ -83,8 +76,6 @@ func TestGraphIncrementalMatchesAFullBuild(t *testing.T) {
 }
 
 func TestGraphIncrementalRetractsAndUpdates(t *testing.T) {
-	enableGraphExploration(t)
-
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	ctx = utils.StoreSegmentClientInContext(ctx, analytics.New("dummy key"))
 
@@ -132,8 +123,6 @@ func TestGraphIncrementalRetractsAndUpdates(t *testing.T) {
 // nullable field is ingested as NULL, and the row the previous version left in the adjacency table
 // has nothing to overwrite it.
 func TestGraphIncrementalRetractsAnOmittedField(t *testing.T) {
-	enableGraphExploration(t)
-
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	ctx = utils.StoreSegmentClientInContext(ctx, analytics.New("dummy key"))
 
@@ -171,8 +160,6 @@ func TestGraphIncrementalRetractsAnOmittedField(t *testing.T) {
 // build would silently discard a day's worth of incremental freshness. The other tests here ingest
 // before the build, where the bulk pass picks everything up and the reconcile has nothing to do.
 func TestGraphReconcileCarriesRowsIngestedMidBuild(t *testing.T) {
-	enableGraphExploration(t)
-
 	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 	ctx = utils.StoreSegmentClientInContext(ctx, analytics.New("dummy key"))
 
