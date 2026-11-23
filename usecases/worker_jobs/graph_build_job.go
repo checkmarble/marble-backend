@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 
-	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -32,14 +31,14 @@ func NewGraphBuildPeriodicJob(orgId uuid.UUID, interval time.Duration) *river.Pe
 		river.PeriodicInterval(interval),
 		func() (river.JobArgs, *river.InsertOpts) {
 			return models.GraphBuildArgs{
-					OrgId: orgId,
-				}, &river.InsertOpts{
-					Queue: orgId.String(),
-					UniqueOpts: river.UniqueOpts{
-						ByQueue:  true,
-						ByPeriod: interval,
-					},
-				}
+				OrgId: orgId,
+			}, &river.InsertOpts{
+				Queue: orgId.String(),
+				UniqueOpts: river.UniqueOpts{
+					ByQueue:  true,
+					ByPeriod: interval,
+				},
+			}
 		},
 	)
 }
@@ -242,10 +241,6 @@ func (w *GraphBuildWorker) Timeout(job *river.Job[models.GraphBuildArgs]) time.D
 
 func (w *GraphBuildWorker) Work(ctx context.Context, job *river.Job[models.GraphBuildArgs]) error {
 	logger := utils.LoggerFromContext(ctx)
-
-	if !infra.HasFeatureFlag(infra.GRAPH_EXPLORATION_FEATURE_FLAG, job.Args.OrgId) {
-		return nil
-	}
 
 	// Prevent herd effect
 	if err := AddStrideDelay(job, w.interval); err != nil {
