@@ -23,8 +23,7 @@ type ClientObjectDetail struct {
 // ⚠️ this function is used recursively due to ClientObjectDetail.RelatedObjects. Handle with care.
 func AdaptClientObjectDetailDto(c models.ClientObjectDetail) (ClientObjectDetail, error) {
 	var relatedObjects []RelatedObject
-	// This check is important to avoid infinite recursion
-	if len(relatedObjects) > 0 {
+	if len(c.RelatedObjects) > 0 {
 		var err error
 		relatedObjects, err = pure_utils.MapErr(c.RelatedObjects, AdaptRelatedObjectDto)
 		if err != nil {

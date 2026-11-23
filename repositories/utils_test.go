@@ -41,7 +41,7 @@ func TestInjectDbSessionConfig_TextEncoding(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.WithValue(context.Background(), utils.ContextKeyCredentials, tc.creds)
-			_, err := injectDbSessionConfig(ctx, textEncodingExecutor{}, "SELECT updated_at FROM continuous_screening_configs")
+			_, err := injectDbSessionConfig(ctx, textEncodingExecutor{}, "UPDATE continuous_screening_configs SET updated_at = now()")
 			require.NoError(t, err)
 		})
 	}
@@ -58,7 +58,15 @@ func (e *recordingExecutor) Exec(ctx context.Context, sql string, arguments ...a
 
 func TestInjectDbSessionConfig(t *testing.T) {
 	t.Run("sets audit configuration on writes and transactions", func(t *testing.T) {
-		for _, query := range []string{"UPDATE decisions SET review_status = 'ok'", ""} {
+		for _, query := range []string{
+			"UPDATE decisions SET review_status = 'ok'",
+			"insert into decisions (id) values ($1)",
+			"DeLeTe FROM entity_annotations WHERE id = $1",
+			"WITH removed AS (DELETE FROM entity_annotations RETURNING *) SELECT * FROM removed",
+			"WITH selected AS (SELECT id FROM decisions) UPDATE decisions SET review_status = 'ok'",
+			"SELECT 1; DELETE FROM entity_annotations",
+			"",
+		} {
 			exec := &recordingExecutor{}
 
 			_, err := injectDbSessionConfig(context.Background(), exec, query)
@@ -66,6 +74,20 @@ func TestInjectDbSessionConfig(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, exec.queries, 1)
 			assert.True(t, strings.HasPrefix(exec.queries[0], "SELECT set_config("))
+		}
+	})
+
+	t.Run("skips audit configuration on reads with write-like identifiers", func(t *testing.T) {
+		for _, query := range []string{
+			"SELECT updated_at, deleted_at, inserted_at FROM entity_annotations WHERE deleted_at IS NULL",
+			"SELECT id, deleted_at FROM organizations WHERE id = $1",
+			"SELECT updated_at FROM accounts",
+			"WITH selected AS (SELECT updated_at FROM accounts) SELECT * FROM selected",
+		} {
+			exec := &recordingExecutor{}
+			_, err := injectDbSessionConfig(context.Background(), exec, query)
+			assert.NoError(t, err)
+			assert.Empty(t, exec.queries, query)
 		}
 	})
 
