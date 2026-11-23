@@ -25,14 +25,27 @@ type ApiKeyRepository interface {
 
 type EnforceSecurityApiKey interface {
 	ReadApiKey(apiKey models.ApiKey) error
-	CreateApiKey(organizationId uuid.UUID) error
+	CreateApiKey(organizationId uuid.UUID, role models.Role) error
 	DeleteApiKey(apiKey models.ApiKey) error
+	CheckApiKeyTenant(tenantID uuid.UUID) error
+}
+
+type apiKeyGrantRepository interface {
+	CreateApiKeyGrant(context.Context, repositories.Transaction, string, models.Grant) error
+	RevokeApiKeyGrants(context.Context, repositories.Transaction, string) error
+}
+
+type apiKeyOrganizationRepository interface {
+	LockOrganizationTenant(context.Context, repositories.Transaction, uuid.UUID) (uuid.UUID, error)
 }
 
 type ApiKeyUseCase struct {
-	executorFactory  executor_factory.ExecutorFactory
-	enforceSecurity  EnforceSecurityApiKey
-	apiKeyRepository ApiKeyRepository
+	executorFactory        executor_factory.ExecutorFactory
+	transactionFactory     executor_factory.TransactionFactory
+	enforceSecurity        EnforceSecurityApiKey
+	apiKeyRepository       ApiKeyRepository
+	grantRepository        apiKeyGrantRepository
+	organizationRepository apiKeyOrganizationRepository
 }
 
 func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context, organizationId uuid.UUID) ([]models.ApiKey, error) {
@@ -62,22 +75,33 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 		Role:           input.Role,
 	}
 
-	if err := usecase.enforceSecurity.CreateApiKey(input.OrganizationId); err != nil {
+	if err := usecase.enforceSecurity.CreateApiKey(input.OrganizationId, input.Role); err != nil {
 		return models.CreatedApiKey{}, err
 	}
-
-	if input.Role != models.API_CLIENT {
+	if input.Role != models.API_CLIENT && input.Role != models.OIDC_CONFIG_EDITOR {
 		return models.CreatedApiKey{}, errors.Wrap(
 			models.BadParameterError,
 			fmt.Sprintf("role %s is not supported", input.Role),
 		)
 	}
 
-	err := usecase.apiKeyRepository.CreateApiKey(
-		ctx,
-		usecase.executorFactory.NewExecutor(),
-		apiKey,
-	)
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		grant := models.Grant{Role: input.Role, OrganizationId: input.OrganizationId}
+		if input.Role == models.OIDC_CONFIG_EDITOR {
+			tenantID, err := usecase.organizationRepository.LockOrganizationTenant(ctx, tx, input.OrganizationId)
+			if err != nil {
+				return err
+			}
+			if err := usecase.enforceSecurity.CheckApiKeyTenant(tenantID); err != nil {
+				return err
+			}
+			grant.OrganizationId, grant.TenantId = uuid.Nil, tenantID
+		}
+		if err := usecase.apiKeyRepository.CreateApiKey(ctx, tx, apiKey); err != nil {
+			return err
+		}
+		return usecase.grantRepository.CreateApiKeyGrant(ctx, tx, apiKey.Id, grant)
+	})
 	if err != nil {
 		return models.CreatedApiKey{}, err
 	}
@@ -112,7 +136,12 @@ func (usecase *ApiKeyUseCase) DeleteApiKey(ctx context.Context, apiKeyId string)
 		return err
 	}
 
-	err = usecase.apiKeyRepository.SoftDeleteApiKey(ctx, exec, apiKey.Id)
+	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		if err := usecase.apiKeyRepository.SoftDeleteApiKey(ctx, tx, apiKey.Id); err != nil {
+			return err
+		}
+		return usecase.grantRepository.RevokeApiKeyGrants(ctx, tx, apiKey.Id)
+	})
 	if err != nil {
 		return err
 	}

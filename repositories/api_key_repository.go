@@ -5,7 +5,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/google/uuid"
 )
@@ -67,7 +66,7 @@ func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor,
 		return err
 	}
 
-	err := ExecBuilder(
+	return ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().
@@ -89,15 +88,6 @@ func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor,
 				apiKey.Role,
 			),
 	)
-	if err != nil {
-		return err
-	}
-
-	return ExecBuilder(ctx, exec, NewQueryBuilder().
-		Insert(dbmodels.TABLE_GRANTS).
-		Columns("id", "principal_type", "principal_id", "principal_authority", "organization_id", "role").
-		Values(pure_utils.NewId(), "api_key", apiKey.Id, "marble", apiKey.OrganizationId, apiKey.Role.String()).
-		Suffix("ON CONFLICT DO NOTHING"))
 }
 
 func (repo *MarbleDbRepository) SoftDeleteApiKey(ctx context.Context, exec Executor, apiKeyId string) error {
@@ -105,26 +95,12 @@ func (repo *MarbleDbRepository) SoftDeleteApiKey(ctx context.Context, exec Execu
 		return err
 	}
 
-	err := ExecBuilder(
+	return ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().
 			Update(dbmodels.TABLE_APIKEYS).
 			Where(squirrel.Eq{"id": apiKeyId}).
 			Set("deleted_at", squirrel.Expr("NOW()")),
-	)
-	if err != nil {
-		return err
-	}
-	// TODO(MAR-2251): remove api_keys.role once legacy JWTs have expired.
-	return ExecBuilder(ctx, exec,
-		NewQueryBuilder().
-			Update(dbmodels.TABLE_GRANTS).
-			Set("revoked_at", squirrel.Expr("NOW()")).
-			Where(squirrel.Eq{
-				"principal_type": "api_key",
-				"principal_id":   apiKeyId,
-				"revoked_at":     nil,
-			}),
 	)
 }

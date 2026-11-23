@@ -14,6 +14,11 @@ type OrganizationRepository struct {
 	mock.Mock
 }
 
+func (m *OrganizationRepository) LockOrganizationTenant(ctx context.Context, tx repositories.Transaction, id uuid.UUID) (uuid.UUID, error) {
+	args := m.Called(ctx, tx, id)
+	return args.Get(0).(uuid.UUID), args.Error(1)
+}
+
 func (m *OrganizationRepository) ReassignOrganizationsToTenant(ctx context.Context, exec repositories.Executor, targetId uuid.UUID, sourceIds []uuid.UUID) error {
 	args := m.Called(ctx, exec, targetId, sourceIds)
 	return args.Error(0)
