@@ -143,6 +143,37 @@ type ContinuousScreeningWithMatches struct {
 	Matches []ContinuousScreeningMatch
 }
 
+func AttachMatchComments(screenings []ContinuousScreeningWithMatches, list func(matchIds []uuid.UUID) ([]ScreeningMatchComment, error)) error {
+	matches := make(map[string]*ContinuousScreeningMatch)
+	matchIds := make([]uuid.UUID, 0)
+
+	for i := range screenings {
+		for j := range screenings[i].Matches {
+			match := &screenings[i].Matches[j]
+
+			matches[match.Id.String()] = match
+			matchIds = append(matchIds, match.Id)
+		}
+	}
+
+	if len(matchIds) == 0 {
+		return nil
+	}
+
+	comments, err := list(matchIds)
+	if err != nil {
+		return err
+	}
+
+	for _, comment := range comments {
+		if match, ok := matches[comment.MatchId]; ok {
+			match.Comments = append(match.Comments, comment)
+		}
+	}
+
+	return nil
+}
+
 const ContinuousScreeningSortingCreatedAt SortingField = SortingFieldCreatedAt
 
 // Used as a prefix for the screening indexer endpoints and for the URL building functions

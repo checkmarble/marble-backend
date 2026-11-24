@@ -61,6 +61,9 @@ func (suite *ScreeningTestSuite) SetupTest() {
 	suite.matchId = pure_utils.NewId()
 	suite.screeningId = pure_utils.NewId()
 	suite.userId = models.UserId("12345678-1234-1234-1234-123456789012")
+
+	suite.repository.On("ListContinuousScreeningMatchCommentsByMatchIds", mock.Anything, mock.Anything,
+		mock.Anything).Return([]models.ScreeningMatchComment{}, nil).Maybe()
 }
 
 func (suite *ScreeningTestSuite) makeUsecase() *ContinuousScreeningUsecase {
@@ -2489,4 +2492,145 @@ func (suite *ScreeningTestSuite) TestUpdateContinuousScreeningMatchStatus_WithCo
 	suite.Equal(comment, result.Comments[0].Comment)
 	suite.Equal(suite.userId, result.Comments[0].CommenterId)
 	suite.AssertExpectations()
+}
+
+func (suite *ScreeningTestSuite) setupAddMatchComment(inboxId uuid.UUID) {
+	suite.enforceSecurity.On("UserId").Return(utils.Ptr(string(suite.userId)))
+	match := models.ContinuousScreeningMatch{
+		Id:                    suite.matchId,
+		ContinuousScreeningId: suite.screeningId,
+		Status:                models.ScreeningMatchStatusPending,
+	}
+	screening := models.ContinuousScreeningWithMatches{
+		ContinuousScreening: models.ContinuousScreening{
+			Id:     suite.screeningId,
+			OrgId:  suite.orgId,
+			Status: models.ScreeningStatusInReview,
+			CaseId: &suite.caseId,
+		},
+		Matches: []models.ContinuousScreeningMatch{match},
+	}
+
+	suite.repository.On("LockContinuousScreeningByMatchId", mock.Anything, mock.Anything,
+		suite.matchId).Return(nil)
+	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything, suite.matchId).Return(match, nil)
+	suite.repository.On("GetContinuousScreeningWithMatchesById", mock.Anything, mock.Anything,
+		suite.screeningId).Return(screening, nil)
+	suite.repository.On("GetCaseById", mock.Anything, mock.Anything, suite.caseId.String()).
+		Return(models.Case{Id: suite.caseId.String(), InboxId: inboxId}, nil)
+	suite.enforceSecurity.On("WriteContinuousScreeningHit", suite.orgId).Return(nil)
+	suite.repository.On("ListInboxes", mock.Anything, mock.Anything, suite.orgId, false).Return([]models.Inbox{}, nil)
+	suite.enforceSecurity.On("ReadOrUpdateCase", mock.Anything, mock.Anything).Return(nil)
+}
+
+func (suite *ScreeningTestSuite) TestAddMatchComment_TentativeReview() {
+	inboxId := uuid.New()
+	suite.setupAddMatchComment(inboxId)
+
+	suite.repository.On("SetContinuousScreeningMatchTentativeReview", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(c models.ScreeningMatchComment) bool {
+			return c.MatchId == suite.matchId.String() && c.CommenterId == suite.userId && c.TentativeReview != nil &&
+				c.TentativeReview.InboxId == inboxId
+		})).Return(models.ScreeningMatchComment{
+		Id:              "comment-id",
+		MatchId:         suite.matchId.String(),
+		CommenterId:     suite.userId,
+		Comment:         "suspicious",
+		TentativeReview: &models.ScreeningMatchTentativeReview{Status: "confirmed_hit", InboxId: inboxId},
+	}, nil)
+	suite.repository.On("CreateCaseEvent", mock.Anything, mock.Anything, mock.MatchedBy(func(
+		attrs models.CreateCaseEventAttributes,
+	) bool {
+		return attrs.EventType == models.ScreeningMatchCommented &&
+			*attrs.UserId == string(suite.userId) &&
+			attrs.CaseId == suite.caseId.String() &&
+			attrs.OrgId == suite.orgId &&
+			*attrs.ResourceType == models.ContinuousScreeningMatchResourceType &&
+			*attrs.ResourceId == suite.matchId.String() &&
+			*attrs.NewValue == "confirmed_hit"
+	})).Return(models.CaseEvent{}, nil)
+
+	_, err := suite.makeUsecase().AddMatchComment(suite.ctx, suite.matchId, models.ScreeningMatchComment{
+		CommenterId:     suite.userId,
+		Comment:         "suspicious",
+		TentativeReview: &models.ScreeningMatchTentativeReview{Status: "confirmed_hit"},
+	})
+
+	suite.NoError(err)
+	suite.AssertExpectations()
+}
+
+func (suite *ScreeningTestSuite) TestAddMatchComment_TentativeReviewOnReviewedMatch() {
+	suite.setupAddMatchComment(uuid.New())
+	suite.repository.ExpectedCalls = filterCalls(suite.repository.ExpectedCalls, "GetContinuousScreeningMatch")
+	suite.repository.On("GetContinuousScreeningMatch", mock.Anything, mock.Anything, suite.matchId).Return(
+		models.ContinuousScreeningMatch{
+			Id: suite.matchId, ContinuousScreeningId: suite.screeningId, Status: models.ScreeningMatchStatusNoHit,
+		}, nil)
+
+	_, err := suite.makeUsecase().AddMatchComment(suite.ctx, suite.matchId, models.ScreeningMatchComment{
+		Comment:         "x",
+		TentativeReview: &models.ScreeningMatchTentativeReview{Status: "no_hit"},
+	})
+
+	suite.ErrorIs(err, models.UnprocessableEntityError)
+	suite.repository.AssertNotCalled(suite.T(), "SetContinuousScreeningMatchTentativeReview",
+		mock.Anything, mock.Anything, mock.Anything)
+}
+
+func filterCalls(calls []*mock.Call, method string) []*mock.Call {
+	kept := make([]*mock.Call, 0, len(calls))
+
+	for _, call := range calls {
+		if call.Method != method {
+			kept = append(kept, call)
+		}
+	}
+
+	return kept
+}
+
+func (suite *ScreeningTestSuite) TestAddMatchComment_PlainCommentWritesNoEvent() {
+	suite.setupAddMatchComment(uuid.New())
+
+	suite.repository.On("AddContinuousScreeningMatchComment", mock.Anything, mock.Anything,
+		mock.Anything).Return(models.ScreeningMatchComment{Id: "comment-id"}, nil)
+
+	_, err := suite.makeUsecase().AddMatchComment(suite.ctx, suite.matchId, models.ScreeningMatchComment{
+		CommenterId: suite.userId,
+		Comment:     "just a note",
+	})
+
+	suite.NoError(err)
+	suite.repository.AssertNotCalled(suite.T(), "SetContinuousScreeningMatchTentativeReview",
+		mock.Anything, mock.Anything, mock.Anything)
+	suite.repository.AssertNotCalled(suite.T(), "CreateCaseEvent", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func (suite *ScreeningTestSuite) TestAddMatchComment_InvalidStatus() {
+	suite.enforceSecurity.On("UserId").Return(utils.Ptr(string(suite.userId))).Maybe()
+
+	_, err := suite.makeUsecase().AddMatchComment(suite.ctx, suite.matchId, models.ScreeningMatchComment{
+		CommenterId:     suite.userId,
+		Comment:         "x",
+		TentativeReview: &models.ScreeningMatchTentativeReview{Status: "pending"},
+	})
+
+	suite.ErrorIs(err, models.BadParameterError)
+}
+
+func (suite *ScreeningTestSuite) TestAddMatchComment_Forbidden() {
+	suite.setupAddMatchComment(uuid.New())
+	suite.enforceSecurity.ExpectedCalls = nil
+	suite.enforceSecurity.On("UserId").Return(utils.Ptr(string(suite.userId)))
+	suite.enforceSecurity.On("WriteContinuousScreeningHit", suite.orgId).Return(models.ForbiddenError)
+
+	_, err := suite.makeUsecase().AddMatchComment(suite.ctx, suite.matchId, models.ScreeningMatchComment{
+		CommenterId: suite.userId,
+		Comment:     "x",
+	})
+
+	suite.ErrorIs(err, models.ForbiddenError)
+	suite.repository.AssertNotCalled(suite.T(), "AddContinuousScreeningMatchComment",
+		mock.Anything, mock.Anything, mock.Anything)
 }

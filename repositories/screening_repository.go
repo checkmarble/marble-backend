@@ -342,11 +342,47 @@ func (*MarbleDbRepository) AddScreeningMatchComment(ctx context.Context,
 
 	sql := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SCREENING_MATCH_COMMENTS).
-		Columns("id", "screening_match_id", "commented_by", "comment").
-		Values(pure_utils.NewId(), comment.MatchId, comment.CommenterId, comment.Comment).
+		Columns("id", "screening_match_id", "commented_by", "comment", "tentative_review").
+		Values(pure_utils.NewId(), comment.MatchId, comment.CommenterId, comment.Comment, comment.TentativeReview).
 		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScreeningMatchCommentsColumn, ",")))
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningMatchComment)
+}
+
+// GetScreeningMatchForUpdate locks the match until the transaction ends. It takes FOR NO KEY UPDATE, the
+// lock a plain UPDATE takes, so it serializes with reviews of the match without blocking inserts of rows
+// referencing it.
+func (*MarbleDbRepository) GetScreeningMatchForUpdate(ctx context.Context, exec Executor, matchId string) (models.ScreeningMatch, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ScreeningMatch{}, err
+	}
+
+	sql := NewQueryBuilder().
+		Select(dbmodels.SelectScreeningMatchesColumn...).
+		From(dbmodels.TABLE_SCREENING_MATCHES).
+		Where(squirrel.Eq{"id": matchId}).
+		Suffix("FOR NO KEY UPDATE")
+
+	return SqlToModel(ctx, exec, sql, dbmodels.AdaptScreeningMatch)
+}
+
+func (repo *MarbleDbRepository) SetScreeningMatchTentativeReview(ctx context.Context, exec Executor, comment models.ScreeningMatchComment) (models.ScreeningMatchComment, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ScreeningMatchComment{}, err
+	}
+
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_SCREENING_MATCH_COMMENTS).
+		Set("superseded_at", squirrel.Expr("now()")).
+		Where("screening_match_id = ?", comment.MatchId).
+		Where("tentative_review is not null").
+		Where("superseded_at is null")
+
+	if err := ExecBuilder(ctx, exec, sql); err != nil {
+		return models.ScreeningMatchComment{}, err
+	}
+
+	return repo.AddScreeningMatchComment(ctx, exec, comment)
 }
 
 func (repo *MarbleDbRepository) CreateScreeningFile(ctx context.Context, exec Executor,

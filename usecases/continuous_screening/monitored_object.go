@@ -353,6 +353,10 @@ func (uc *ContinuousScreeningUsecase) ListContinuousScreeningsForOrg(
 		return nil, err
 	}
 
+	if err := uc.loadMatchComments(ctx, monitorings); err != nil {
+		return nil, err
+	}
+
 	return monitorings, nil
 }
 

@@ -516,6 +516,11 @@ func (m *ContinuousScreeningRepository) AddContinuousScreeningMatchComment(
 	return args.Get(0).(models.ScreeningMatchComment), args.Error(1)
 }
 
+func (m *ContinuousScreeningRepository) SetContinuousScreeningMatchTentativeReview(ctx context.Context, exec repositories.Executor, comment models.ScreeningMatchComment) (models.ScreeningMatchComment, error) {
+	args := m.Called(ctx, exec, comment)
+	return args.Get(0).(models.ScreeningMatchComment), args.Error(1)
+}
+
 func (m *ContinuousScreeningRepository) ListContinuousScreeningMatchCommentsByMatchIds(
 	ctx context.Context,
 	exec repositories.Executor,

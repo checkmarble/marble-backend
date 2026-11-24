@@ -132,6 +132,8 @@ type ScreeningMatchDto struct {
 	Payload    json.RawMessage            `json:"payload"`
 	Enriched   bool                       `json:"enriched"`
 	Comments   []ScreeningMatchCommentDto `json:"comments"`
+
+	TentativeReview *ScreeningMatchTentativeReviewCommentDto `json:"tentative_review"`
 }
 
 func AdaptScreeningMatchDto(m models.ScreeningMatch) ScreeningMatchDto {
@@ -145,8 +147,9 @@ func AdaptScreeningMatchDto(m models.ScreeningMatch) ScreeningMatchDto {
 		Datasets:   make([]string, 0),
 		Payload:    m.Payload,
 		Enriched:   m.Enriched,
-		Comments:   pure_utils.Map(m.Comments, AdaptScreeningMatchCommentDto),
 	}
+
+	match.Comments, match.TentativeReview = adaptScreeningMatchComments(m.Comments)
 
 	return match
 }
@@ -183,20 +186,66 @@ func AdaptScreeningMatchUpdateInputDto(matchId string, reviewerId models.UserId,
 	return update, nil
 }
 
-type ScreeningMatchCommentDto struct {
+type ScreeningMatchTentativeReviewDto struct {
+	Status       string     `json:"status"`
+	InboxId      string     `json:"inbox_id,omitempty"`
+	SupersededAt *time.Time `json:"superseded_at,omitempty"`
+}
+
+type ScreeningMatchTentativeReviewCommentDto struct {
 	Id        string    `json:"id"`
 	AuthorId  string    `json:"author_id"`
 	Comment   string    `json:"comment"`
+	Status    string    `json:"status"`
+	InboxId   string    `json:"inbox_id"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func AdaptScreeningMatchCommentInputDto(matchId string, commenterId models.UserId,
-	m ScreeningMatchCommentDto,
-) (models.ScreeningMatchComment, error) {
+func adaptScreeningMatchComments(comments []models.ScreeningMatchComment) ([]ScreeningMatchCommentDto, *ScreeningMatchTentativeReviewCommentDto) {
+	regular := make([]ScreeningMatchCommentDto, 0, len(comments))
+
+	var review *ScreeningMatchTentativeReviewCommentDto
+
+	for _, c := range comments {
+		if c.TentativeReview == nil || c.TentativeReview.SupersededAt != nil {
+			regular = append(regular, AdaptScreeningMatchCommentDto(c))
+
+			continue
+		}
+
+		review = &ScreeningMatchTentativeReviewCommentDto{
+			Id:        c.Id,
+			AuthorId:  string(c.CommenterId),
+			Comment:   c.Comment,
+			Status:    c.TentativeReview.Status,
+			InboxId:   c.TentativeReview.InboxId.String(),
+			CreatedAt: c.CreatedAt,
+		}
+	}
+
+	return regular, review
+}
+
+type ScreeningMatchCommentDto struct {
+	Id              string                            `json:"id"`
+	AuthorId        string                            `json:"author_id"`
+	Comment         string                            `json:"comment"`
+	TentativeReview *ScreeningMatchTentativeReviewDto `json:"tentative_review,omitempty"`
+	CreatedAt       time.Time                         `json:"created_at"`
+}
+
+func AdaptScreeningMatchCommentInputDto(matchId string, m ScreeningMatchCommentDto) (models.ScreeningMatchComment, error) {
+	if strings.TrimSpace(m.Comment) == "" {
+		return models.ScreeningMatchComment{}, errors.Wrap(models.BadParameterError, "a comment cannot be empty")
+	}
+
 	match := models.ScreeningMatchComment{
-		MatchId:     matchId,
-		CommenterId: commenterId,
-		Comment:     m.Comment,
+		MatchId: matchId,
+		Comment: m.Comment,
+	}
+
+	if m.TentativeReview != nil {
+		match.TentativeReview = &models.ScreeningMatchTentativeReview{Status: m.TentativeReview.Status}
 	}
 
 	return match, nil
@@ -208,6 +257,14 @@ func AdaptScreeningMatchCommentDto(m models.ScreeningMatchComment) ScreeningMatc
 		AuthorId:  string(m.CommenterId),
 		Comment:   m.Comment,
 		CreatedAt: m.CreatedAt,
+	}
+
+	if m.TentativeReview != nil {
+		match.TentativeReview = &ScreeningMatchTentativeReviewDto{
+			Status:       m.TentativeReview.Status,
+			InboxId:      m.TentativeReview.InboxId.String(),
+			SupersededAt: m.TentativeReview.SupersededAt,
+		}
 	}
 
 	return match

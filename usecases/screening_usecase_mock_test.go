@@ -20,6 +20,16 @@ func (screeningEnforcerMock) ReadOrUpdateCase(models.CaseMetadata, []uuid.UUID) 
 	return nil
 }
 
+type screeningUserEnforcerMock struct {
+	ScreeningEnforceSecurity
+
+	userId string
+}
+
+func (m screeningUserEnforcerMock) UserId() *string {
+	return &m.userId
+}
+
 type ScreeningCaseUsecaseMock struct {
 	mock.Mock
 }

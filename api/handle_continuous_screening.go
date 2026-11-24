@@ -588,3 +588,36 @@ func serveContinuousScreeningFileResult(c *gin.Context, result models.Continuous
 	}
 	c.Redirect(http.StatusFound, result.RedirectURL)
 }
+
+func handleCreateContinuousScreeningMatchComment(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		matchId, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "invalid match id"))
+			return
+		}
+
+		var payload dto.ScreeningMatchCommentDto
+
+		if err := c.ShouldBindJSON(&payload); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		comment, err := dto.AdaptScreeningMatchCommentInputDto(matchId.String(), payload)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewContinuousScreeningUsecase()
+
+		created, err := usecase.AddMatchComment(ctx, matchId, comment)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusCreated, dto.AdaptScreeningMatchCommentDto(created))
+	}
+}

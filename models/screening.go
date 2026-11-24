@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -263,11 +264,51 @@ type ScreeningRefineRequest struct {
 }
 
 type ScreeningMatchComment struct {
-	Id          string
-	MatchId     string
-	CommenterId UserId
-	Comment     string
-	CreatedAt   time.Time
+	Id              string
+	MatchId         string
+	CommenterId     UserId
+	Comment         string
+	TentativeReview *ScreeningMatchTentativeReview
+	CreatedAt       time.Time
+}
+
+func (c ScreeningMatchComment) ToCaseEvent(resourceType CaseEventResourceType, orgId uuid.UUID, caseId string) CreateCaseEventAttributes {
+	userId := string(c.CommenterId)
+
+	attrs := CreateCaseEventAttributes{
+		OrgId:          orgId,
+		CaseId:         caseId,
+		UserId:         &userId,
+		EventType:      ScreeningMatchCommented,
+		ResourceType:   &resourceType,
+		ResourceId:     &c.MatchId,
+		AdditionalNote: &c.Comment,
+	}
+
+	if c.TentativeReview != nil {
+		attrs.NewValue = &c.TentativeReview.Status
+	}
+
+	return attrs
+}
+
+// ScreeningMatchTentativeReview is a non-binding review of a match, attached to a comment. It does
+// not change the status of the match. A match has at most one active tentative review.
+type ScreeningMatchTentativeReview struct {
+	Status  string    `json:"status"`
+	InboxId uuid.UUID `json:"inbox_id"`
+
+	// Set when a newer tentative review replaced this one; never persisted in the JSON document.
+	SupersededAt *time.Time `json:"-"`
+}
+
+func (r ScreeningMatchTentativeReview) Validate() error {
+	if status := ScreeningMatchStatusFrom(r.Status); status != ScreeningMatchStatusConfirmedHit &&
+		status != ScreeningMatchStatusNoHit {
+		return errors.Wrap(BadParameterError, "tentative review status must be one of confirmed_hit or no_hit")
+	}
+
+	return nil
 }
 
 type ScreeningFile struct {

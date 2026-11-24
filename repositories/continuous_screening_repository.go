@@ -689,11 +689,34 @@ func (repo *MarbleDbRepository) AddContinuousScreeningMatchComment(
 
 	query := NewQueryBuilder().
 		Insert(dbmodels.TABLE_SCREENING_MATCH_COMMENTS).
-		Columns("id", "continuous_screening_match_id", "commented_by", "comment").
-		Values(pure_utils.NewId(), comment.MatchId, comment.CommenterId, comment.Comment).
+		Columns("id", "continuous_screening_match_id", "commented_by", "comment", "tentative_review").
+		Values(pure_utils.NewId(), comment.MatchId, comment.CommenterId, comment.Comment, comment.TentativeReview).
 		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScreeningMatchCommentsColumn, ",")))
 
 	return SqlToModel(ctx, exec, query, dbmodels.AdaptScreeningMatchComment)
+}
+
+func (repo *MarbleDbRepository) SetContinuousScreeningMatchTentativeReview(
+	ctx context.Context,
+	exec Executor,
+	comment models.ScreeningMatchComment,
+) (models.ScreeningMatchComment, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ScreeningMatchComment{}, err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_SCREENING_MATCH_COMMENTS).
+		Set("superseded_at", squirrel.Expr("now()")).
+		Where("continuous_screening_match_id = ?", comment.MatchId).
+		Where("tentative_review is not null").
+		Where("superseded_at is null")
+
+	if err := ExecBuilder(ctx, exec, query); err != nil {
+		return models.ScreeningMatchComment{}, err
+	}
+
+	return repo.AddContinuousScreeningMatchComment(ctx, exec, comment)
 }
 
 func (repo *MarbleDbRepository) UpdateContinuousScreeningStatus(
