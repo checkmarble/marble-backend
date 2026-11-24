@@ -215,7 +215,7 @@ func TestMain(m *testing.M) {
 		},
 		TenantOIDCRegistry: infra.NewTenantOIDCRegistry(func(context.Context, uuid.UUID) (models.TenantOIDCConfiguration, error) {
 			return models.TenantOIDCConfiguration{}, models.NotFoundError
-		}, "", false),
+		}, "", false, nil),
 	}
 	testUsecases = usecases.NewUsecases(
 		repos,

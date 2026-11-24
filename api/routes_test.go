@@ -18,7 +18,7 @@ import (
 func TestAddRoutes_AuthDiscoveryRequiresTenantOIDCRegistry(t *testing.T) {
 	registry := infra.NewTenantOIDCRegistry(func(context.Context, uuid.UUID) (models.TenantOIDCConfiguration, error) {
 		return models.TenantOIDCConfiguration{}, nil
-	}, "https://app.example.test/oidc/callback", false)
+	}, "https://app.example.test/oidc/callback", false, nil)
 
 	tests := []struct {
 		name             string

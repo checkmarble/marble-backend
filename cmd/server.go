@@ -386,14 +386,19 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		apiConfig.OidcConfig = oidcProvider
 	}
 
+	outboundWhitelist := outboundIPWhitelist(logger)
+
 	if tenantOIDCEnabled {
+		if apiConfig.Env != "development" {
+			warnIfOutboundProxy(logger)
+		}
 		apiConfig.TenantOIDCRegistry = infra.NewTenantOIDCRegistry(func(ctx context.Context, tenantId uuid.UUID) (models.TenantOIDCConfiguration, error) {
 			exec, err := repositories.ExecutorGetter.GetExecutor(ctx, models.DATABASE_SCHEMA_TYPE_MARBLE, nil)
 			if err != nil {
 				return models.TenantOIDCConfiguration{}, err
 			}
 			return repositories.MarbleDbRepository.GetTenantOIDCConfigurationForAuthentication(ctx, exec, tenantId)
-		}, fmt.Sprintf("%s/oidc/callback", marbleAppUrl), apiConfig.Env == "development")
+		}, fmt.Sprintf("%s/oidc/callback", marbleAppUrl), apiConfig.Env == "development", infra.ParseCIDRList(outboundWhitelist))
 	}
 
 	deps, err := api.InitDependencies(ctx, apiConfig, authPool, marbleJwtSigningKey)
@@ -422,7 +427,7 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 		usecases.WithAnalyticsEnabled(analyticsConfig.Enabled),
 		usecases.WithAllowInsecureWebhookURLs(utils.GetEnv("ENV", "production") == "development"),
 		usecases.WithAllowInsecureTenantOIDC(apiConfig.Env == "development"),
-		usecases.WithWebhookIPWhitelist(os.Getenv("WEBHOOK_IP_WHITELIST")),
+		usecases.WithWebhookIPWhitelist(outboundWhitelist),
 		usecases.WithOpensanctions(openSanctionsConfig.IsSet()),
 		usecases.WithNameRecognition(openSanctionsConfig.IsNameRecognitionSet()),
 		usecases.WithFirebaseAdmin(apiConfig.TokenProviders.Has(auth.TokenProviderFirebase), deps.FirebaseAdmin),
