@@ -32,13 +32,14 @@ func TestTenantOIDCRegistryReloadsTenantPolicyButCachesProvider(t *testing.T) {
 		require.Equal(t, tenantId, gotTenantId)
 		loads.Add(1)
 		return models.TenantOIDCConfiguration{TenantId: tenantId, Issuer: server.URL, ClientId: "client", ClientSecret: "secret", AllowedDomains: []string{"@example.test"}, SsoEnabled: true}, nil
-	}, "https://app.example.test/oidc/callback", true)
+	}, "https://app.example.test/oidc/callback", true, nil)
 
 	first, err := registry.Get(t.Context(), tenantId)
 	require.NoError(t, err)
 	second, err := registry.Get(t.Context(), tenantId)
 	require.NoError(t, err)
 	require.Equal(t, first.ClientId, second.ClientId)
+	require.Same(t, registry.(*tenantOIDCRegistry).client, first.HTTPClient)
 	require.EqualValues(t, 2, loads.Load())
 	require.EqualValues(t, 1, discoveries.Load())
 }
@@ -49,7 +50,7 @@ func TestTenantOIDCRegistryDoesNotCacheFailure(t *testing.T) {
 	registry := NewTenantOIDCRegistry(func(_ context.Context, _ uuid.UUID) (models.TenantOIDCConfiguration, error) {
 		loads.Add(1)
 		return models.TenantOIDCConfiguration{}, errors.New("unavailable")
-	}, "https://app.example.test/oidc/callback", true)
+	}, "https://app.example.test/oidc/callback", true, nil)
 
 	_, err := registry.Get(t.Context(), tenantId)
 	require.Error(t, err)
@@ -62,7 +63,7 @@ func TestTenantOIDCRegistryRejectsTenantWithoutApprovedDomain(t *testing.T) {
 	tenantID := uuid.New()
 	registry := NewTenantOIDCRegistry(func(_ context.Context, _ uuid.UUID) (models.TenantOIDCConfiguration, error) {
 		return models.TenantOIDCConfiguration{TenantId: tenantID, Issuer: "https://id.example.test", SsoEnabled: true}, nil
-	}, "https://app.example.test/oidc/callback", false)
+	}, "https://app.example.test/oidc/callback", false, nil)
 
 	_, err := registry.Get(t.Context(), tenantID)
 
@@ -83,7 +84,7 @@ func TestTenantOIDCRegistryReadsTheCurrentTenantPolicy(t *testing.T) {
 			TenantId: tenantID, Issuer: server.URL, ClientId: "client", ClientSecret: "secret",
 			AllowedDomains: []string{"@example.test"}, SsoEnabled: enabled.Load(),
 		}, nil
-	}, "https://app.example.test/oidc/callback", true)
+	}, "https://app.example.test/oidc/callback", true, nil)
 
 	_, err := registry.Get(t.Context(), tenantID)
 	require.NoError(t, err)
@@ -119,7 +120,7 @@ func TestTenantOIDCRegistryRejectsInsecureEndpointsAndRedirects(t *testing.T) {
 			defer server.Close()
 			registry := NewTenantOIDCRegistry(func(context.Context, uuid.UUID) (models.TenantOIDCConfiguration, error) {
 				return models.TenantOIDCConfiguration{Issuer: server.URL, ClientId: "client", SsoEnabled: true, AllowedDomains: []string{"@example.test"}}, nil
-			}, "https://app.example.test/callback", false).(*tenantOIDCRegistry)
+			}, "https://app.example.test/callback", false, nil).(*tenantOIDCRegistry)
 			registry.client.Transport = server.Client().Transport
 			_, err := registry.Get(t.Context(), uuid.New())
 			require.Error(t, err)
@@ -143,7 +144,7 @@ func TestTenantOIDCClientRejectsTokenRedirectToHTTP(t *testing.T) {
 		http.Redirect(w, r, insecure.URL, http.StatusTemporaryRedirect)
 	}))
 	defer server.Close()
-	registry := NewTenantOIDCRegistry(nil, "", false).(*tenantOIDCRegistry)
+	registry := NewTenantOIDCRegistry(nil, "", false, nil).(*tenantOIDCRegistry)
 	registry.client.Transport = server.Client().Transport
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, server.URL, nil)
 	require.NoError(t, err)
@@ -172,7 +173,7 @@ func TestTenantOIDCRegistryValidatesUserInfoEndpoint(t *testing.T) {
 			defer server.Close()
 			registry := NewTenantOIDCRegistry(func(context.Context, uuid.UUID) (models.TenantOIDCConfiguration, error) {
 				return models.TenantOIDCConfiguration{Issuer: server.URL, ClientId: "client", SsoEnabled: true, AllowedDomains: []string{"@example.test"}}, nil
-			}, "https://app.example.test/callback", tt.allowHTTP).(*tenantOIDCRegistry)
+			}, "https://app.example.test/callback", tt.allowHTTP, nil).(*tenantOIDCRegistry)
 			registry.client.Transport = server.Client().Transport
 			_, err := registry.Get(t.Context(), uuid.New())
 			if tt.wantError {
@@ -192,12 +193,25 @@ func TestTenantOIDCClientRejectsUserInfoRedirectToHTTP(t *testing.T) {
 		http.Redirect(w, r, insecure.URL, http.StatusFound)
 	}))
 	defer server.Close()
-	registry := NewTenantOIDCRegistry(nil, "", false).(*tenantOIDCRegistry)
+	registry := NewTenantOIDCRegistry(nil, "", false, nil).(*tenantOIDCRegistry)
 	registry.client.Transport = server.Client().Transport
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer access-token")
 	_, err = registry.client.Do(req)
 	require.Error(t, err)
+	require.Zero(t, reached.Load())
+}
+
+func TestTenantOIDCRegistryRejectsReservedIssuerIP(t *testing.T) {
+	var reached atomic.Int32
+	server := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { reached.Add(1) }))
+	defer server.Close()
+	load := func(context.Context, uuid.UUID) (models.TenantOIDCConfiguration, error) {
+		return models.TenantOIDCConfiguration{Issuer: server.URL, ClientId: "client", SsoEnabled: true, AllowedDomains: []string{"@example.test"}}, nil
+	}
+
+	_, err := NewTenantOIDCRegistry(load, "https://app.example.test/callback", false, nil).Get(t.Context(), uuid.New())
+	require.ErrorIs(t, err, ErrReservedIP)
 	require.Zero(t, reached.Load())
 }

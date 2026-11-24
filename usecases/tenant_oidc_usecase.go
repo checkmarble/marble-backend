@@ -58,14 +58,14 @@ func NewTenantOIDCUsecase(
 }
 
 func (usecase TenantOIDCUsecase) GetConfiguration(ctx context.Context, tenantId uuid.UUID) (models.TenantOIDCConfiguration, error) {
-	if err := usecase.enforceSecurity.UpdateTenant(tenantId); err != nil {
+	if err := usecase.enforceSecurity.UpdateTenantOIDC(tenantId); err != nil {
 		return models.TenantOIDCConfiguration{}, err
 	}
 	return usecase.repository.GetTenantOIDCConfiguration(ctx, usecase.executorFactory.NewExecutor(), tenantId)
 }
 
 func (usecase TenantOIDCUsecase) SaveConfiguration(ctx context.Context, tenantId uuid.UUID, input TenantOIDCConfigurationInput) error {
-	if err := usecase.enforceSecurity.UpdateTenant(tenantId); err != nil {
+	if err := usecase.enforceSecurity.UpdateTenantOIDC(tenantId); err != nil {
 		return err
 	}
 	if !usecase.ssoEnabled {
@@ -116,7 +116,7 @@ func tenantOIDCScopes(scopes []string) []string {
 }
 
 func (usecase TenantOIDCUsecase) DeleteConfiguration(ctx context.Context, tenantId uuid.UUID) error {
-	if err := usecase.enforceSecurity.UpdateTenant(tenantId); err != nil {
+	if err := usecase.enforceSecurity.UpdateTenantOIDC(tenantId); err != nil {
 		return err
 	}
 	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
@@ -128,22 +128,30 @@ func (usecase TenantOIDCUsecase) DeleteConfiguration(ctx context.Context, tenant
 }
 
 func (usecase TenantOIDCUsecase) ListDomains(ctx context.Context, tenantId uuid.UUID) ([]models.TenantDomain, error) {
-	if err := usecase.enforceSecurity.UpdateTenant(tenantId); err != nil {
+	if err := usecase.enforceSecurity.UpdateTenantOIDC(tenantId); err != nil {
 		return nil, err
 	}
 	return usecase.repository.ListTenantDomains(ctx, usecase.executorFactory.NewExecutor(), tenantId)
 }
 
-func (usecase TenantOIDCUsecase) AddDomain(ctx context.Context, tenantId uuid.UUID, domain string) (models.TenantDomain, error) {
-	if err := usecase.enforceSecurity.UpdateTenant(tenantId); err != nil {
+func (usecase TenantOIDCUsecase) AddDomain(ctx context.Context, tenantId uuid.UUID, domain string, verified bool) (models.TenantDomain, error) {
+	if err := usecase.enforceSecurity.UpdateTenantOIDC(tenantId); err != nil {
 		return models.TenantDomain{}, err
+	}
+	if verified {
+		if err := usecase.enforceSecurity.VerifyTenantDomain(tenantId); err != nil {
+			return models.TenantDomain{}, err
+		}
 	}
 	domain, err := normalizeTenantDomain(domain)
 	if err != nil {
 		return models.TenantDomain{}, err
 	}
 	now := time.Now()
-	entry := models.TenantDomain{Id: pure_utils.NewId(), TenantId: tenantId, Domain: domain, VerifiedAt: now, CreatedAt: now}
+	entry := models.TenantDomain{Id: pure_utils.NewId(), TenantId: tenantId, Domain: domain, CreatedAt: now}
+	if verified {
+		entry.VerifiedAt = &now
+	}
 	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := usecase.tenantRepository.LockAndValidateUpdate(ctx, tx, tenantId); err != nil {
 			return err
@@ -151,6 +159,18 @@ func (usecase TenantOIDCUsecase) AddDomain(ctx context.Context, tenantId uuid.UU
 		return usecase.repository.CreateTenantDomain(ctx, tx, entry)
 	})
 	return entry, err
+}
+
+func (usecase TenantOIDCUsecase) SetDomainVerified(ctx context.Context, tenantId, domainId uuid.UUID, verified bool) error {
+	if err := usecase.enforceSecurity.VerifyTenantDomain(tenantId); err != nil {
+		return err
+	}
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		if err := usecase.tenantRepository.LockAndValidateUpdate(ctx, tx, tenantId); err != nil {
+			return err
+		}
+		return usecase.repository.SetTenantDomainVerified(ctx, tx, tenantId, domainId, verified)
+	})
 }
 
 func (usecase TenantOIDCUsecase) DeleteDomain(ctx context.Context, tenantId, domainId uuid.UUID) error {

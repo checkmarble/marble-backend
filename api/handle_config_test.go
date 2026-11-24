@@ -14,7 +14,7 @@ import (
 func TestConfigAuthProviders(t *testing.T) {
 	registry := infra.NewTenantOIDCRegistry(func(context.Context, uuid.UUID) (models.TenantOIDCConfiguration, error) {
 		return models.TenantOIDCConfiguration{}, nil
-	}, "http://localhost/oidc/callback", true)
+	}, "http://localhost/oidc/callback", true, nil)
 
 	tests := []struct {
 		name   string

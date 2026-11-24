@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -58,7 +59,7 @@ type WebhookDeliveryConfig struct {
 
 // NewWebhookDeliveryService creates a new webhook delivery service.
 func NewWebhookDeliveryService(config WebhookDeliveryConfig) *WebhookDeliveryService {
-	whitelist := ParseCIDRList(config.IPWhitelist)
+	whitelist := infra.ParseCIDRList(config.IPWhitelist)
 
 	return &WebhookDeliveryService{
 		httpClient: &http.Client{

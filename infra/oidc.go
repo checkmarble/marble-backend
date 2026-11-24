@@ -3,6 +3,7 @@ package infra
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -44,23 +45,28 @@ type tenantOIDCRegistry struct {
 	redirectURI string
 	providers   *expirable.LRU[string, *oidc.Provider]
 	loadGroup   singleflight.Group
-	allowHTTP   bool
+	development bool
 	client      *http.Client
 }
 
 const tenantOIDCProviderTimeout = 5 * time.Second
 
-func NewTenantOIDCRegistry(load TenantOIDCConfigurationLoader, redirectURI string, allowHTTP bool) TenantOIDCRegistry {
+func NewTenantOIDCRegistry(load TenantOIDCConfigurationLoader, redirectURI string, development bool, ipWhitelist []*net.IPNet) TenantOIDCRegistry {
+	// In development, local identity providers must stay reachable.
+	var transport http.RoundTripper
+	if !development {
+		transport = NewGuardedTransport(ipWhitelist)
+	}
 	return &tenantOIDCRegistry{
 		load:        load,
 		redirectURI: redirectURI,
 		providers:   expirable.NewLRU[string, *oidc.Provider](128, nil, 5*time.Minute),
-		allowHTTP:   allowHTTP,
-		client: &http.Client{Timeout: tenantOIDCProviderTimeout, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		development: development,
+		client: &http.Client{Timeout: tenantOIDCProviderTimeout, Transport: transport, CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 10 {
 				return errors.New("too many OIDC redirects")
 			}
-			return ValidateTenantOIDCURL(req.URL.String(), allowHTTP)
+			return ValidateTenantOIDCURL(req.URL.String(), development)
 		}},
 	}
 }
@@ -101,7 +107,7 @@ func (registry *tenantOIDCRegistry) Get(ctx context.Context, tenantId uuid.UUID)
 }
 
 func (registry *tenantOIDCRegistry) provider(ctx context.Context, issuer string) (*oidc.Provider, error) {
-	if err := ValidateTenantOIDCURL(issuer, registry.allowHTTP); err != nil {
+	if err := ValidateTenantOIDCURL(issuer, registry.development); err != nil {
 		return nil, err
 	}
 	if provider, ok := registry.providers.Get(issuer); ok {
@@ -127,12 +133,12 @@ func (registry *tenantOIDCRegistry) provider(ctx context.Context, issuer string)
 			return nil, err
 		}
 		for _, endpoint := range []string{endpoints.AuthorizationEndpoint, endpoints.TokenEndpoint, endpoints.JwksUri} {
-			if err := ValidateTenantOIDCURL(endpoint, registry.allowHTTP); err != nil {
+			if err := ValidateTenantOIDCURL(endpoint, registry.development); err != nil {
 				return nil, err
 			}
 		}
 		if endpoint := provider.UserInfoEndpoint(); endpoint != "" {
-			if err := ValidateTenantOIDCURL(endpoint, registry.allowHTTP); err != nil {
+			if err := ValidateTenantOIDCURL(endpoint, registry.development); err != nil {
 				return nil, err
 			}
 		}
