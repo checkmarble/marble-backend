@@ -46,6 +46,8 @@ The front end translates from `code` + `params`. Rule issues (`rule:<id>`) are t
 | `montant_hors_euro` | blocking | a working transaction has a currency other than EUR | `currency` |
 | `rule:cadre_legal_principal` | blocking | the legal framework has none of CL01, CL02, CL03 | `codes` = `CL01,CL02,CL03` |
 | `rule:personnes_au_moins_une` | blocking | the persons section holds no person | none |
+| `transaction_non_comptee` | blocking | a working transaction is left out of the operations: its currency or amount is missing | `missing` = `currency` or `amount` |
+| `too_many_items` on `operations.operation` | blocking | more operation lines than the 30 of the XSD; the message says to group transactions by changing their line attributes | `max`, `present` |
 | `rule:references_financieres_max_20` | blocking | more than 20 financial references on one person | `max`, `present` |
 | `rule:dirigeant_beneficiaire_distinct` | blocking | a director declared as not the beneficial owner is referenced as the beneficial owner | `value` (the referenced person path) |
 | `rule:lien_autre_personne_distincte` | blocking | a link to an already declared person targets the person holding it | `value` (the person path) |

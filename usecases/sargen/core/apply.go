@@ -201,13 +201,25 @@ func ApplyFills(spec *Spec, doc *Document, fills []Fill, opts ApplyOptions) Appl
 		}
 		if len(pend) == 0 {
 			before, exists := doc.Values[real]
+			computedField := spec.NodeAt(f.Path.Template()).EffectiveNature() == NatureComputed
+			if isTombstone(before) && exists && f.Origin != OriginManual && f.Value != "" && opts.Overwrite != OverwriteAll &&
+				!(computedField && f.Origin == OriginComputed && !keepsCorrection(before, f)) {
+				// The analyst cleared this field by hand: no model output brings
+				// the value back (a model's attempt is a conflict the analyst
+				// sees). A computed field cleared by hand stays empty while the
+				// computation gives the value it gave at clearing time, and
+				// follows the computation again when the result changes.
+				if f.Origin != OriginComputed {
+					res.Conflicts = append(res.Conflicts, Conflict{Path: real, Before: before, After: f})
+				}
+				continue
+			}
 			if exists && before.Value == "" {
 				exists = false
 			}
 			if !exists && f.Value == "" {
 				continue
 			}
-			computedField := spec.NodeAt(f.Path.Template()).EffectiveNature() == NatureComputed
 			if exists {
 				switch {
 				case before.Value == f.Value:
@@ -323,8 +335,17 @@ func correctedComputation(before Value) *Computation {
 	return &c
 }
 
+// isTombstone reports a manual clear: an empty value written by the analyst,
+// kept so that nothing recomputes or refills the field. A tombstone counts as
+// absent everywhere a value is read.
+func isTombstone(v Value) bool { return v.Value == "" && v.Origin == OriginManual }
+
 func write(doc *Document, p Path, f Fill) {
 	if f.Value == "" {
+		if f.Origin == OriginManual {
+			doc.Values[p] = Value{Origin: f.Origin, Reviewed: f.Reviewed, Computation: cloneComputation(f.Computation)}
+			return
+		}
 		delete(doc.Values, p)
 		return
 	}
@@ -338,12 +359,17 @@ func write(doc *Document, p Path, f Fill) {
 		Reviewed:      f.Reviewed,
 		TaskID:        f.TaskID,
 	}
-	if f.Computation != nil {
-		c := *f.Computation
-		c.Inputs = slices.Clone(c.Inputs)
-		v.Computation = &c
-	}
+	v.Computation = cloneComputation(f.Computation)
 	doc.Values[p] = v
+}
+
+func cloneComputation(c *Computation) *Computation {
+	if c == nil {
+		return nil
+	}
+	out := *c
+	out.Inputs = slices.Clone(c.Inputs)
+	return &out
 }
 
 // PathAllowed reports whether p lies within one of the prefixes (by segments,
@@ -567,4 +593,26 @@ func checkFillValue(spec *Spec, f Fill) *Issue {
 		return issue
 	}
 	return nil
+}
+
+// ComputeInto derives the format's computed fields into doc: the removals
+// first, then the fills as OriginComputed with OverwriteNonManual (a value the
+// analyst wrote or reviewed is kept) and SkipMaxItems (an excess surfaces as
+// the validator's blocking issue). changed tells whether doc was modified, which
+// includes a refreshed computation (same value, new inputs): it is persisted,
+// so the declaration version bumps. It is
+// the single way computed values are written: after a generation task, at the
+// end of a job and after a manual edit.
+func ComputeInto(f Format, doc *Document) (res ApplyResult, changed bool) {
+	c := f.Compute(doc)
+	for _, p := range c.RemoveItems {
+		doc.RemoveItem(p)
+	}
+	fills := make([]Fill, len(c.Fills))
+	for i, fl := range c.Fills {
+		fl.Origin, fl.TaskID = OriginComputed, nil
+		fills[i] = fl
+	}
+	res = ApplyFills(f.Spec(), doc, fills, ApplyOptions{Overwrite: OverwriteNonManual, SkipMaxItems: true})
+	return res, len(c.RemoveItems) > 0 || len(res.Applied) > 0 || len(res.Refreshed) > 0
 }

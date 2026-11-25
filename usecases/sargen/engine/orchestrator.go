@@ -170,8 +170,10 @@ type Deps struct {
 	Selection          SelectionRepository
 	Generation         GenerationRepository
 	DataModels         DataModelReader
-	Runner             TaskRunner
-	Prompts            PromptSource
+	// CaseContext is optional: without it no task receives a case context.
+	CaseContext CaseContextReader
+	Runner      TaskRunner
+	Prompts     PromptSource
 	// FormatGetter resolves a format key; defaults to formats.Get in the
 	// constructor wiring (usecases_with_creds.go), injected in tests.
 	FormatGetter func(core.FormatKey) (core.Format, bool)
@@ -192,6 +194,7 @@ type Orchestrator struct {
 	selection          SelectionRepository
 	generation         GenerationRepository
 	dataModels         DataModelReader
+	caseContext        CaseContextReader
 	runner             TaskRunner
 	prompts            PromptSource
 	formatGetter       func(core.FormatKey) (core.Format, bool)
@@ -207,6 +210,7 @@ func NewOrchestrator(d Deps) *Orchestrator {
 		selection:          d.Selection,
 		generation:         d.Generation,
 		dataModels:         d.DataModels,
+		caseContext:        d.CaseContext,
 		runner:             d.Runner,
 		prompts:            d.Prompts,
 		formatGetter:       d.FormatGetter,
@@ -236,8 +240,8 @@ func NewOrchestrator(d Deps) *Orchestrator {
 // task's allowed prefixes (and resolved); option fills only within the kept
 // paths. A task of kind core.TaskKindCompute runs without the runner: Compute
 // (Origin=OriginComputed, OverwriteNonManual, SkipMaxItems, RemoveItems first)
-// is applied in one transaction. When the plan never contained such a task,
-// the same Compute runs once at the end of a generation job. Review tasks
+// is applied in one transaction. The same Compute also always runs at the end
+// of a generation job (idempotent: it recomputes what later tasks changed). Review tasks
 // write nothing and replace the open review_finding questions with their
 // Findings; a review job only runs review specs. If Complete/Fail report false (superseded),
 // the result is discarded and nothing is applied. Before launching the tasks
@@ -286,7 +290,7 @@ func (o *Orchestrator) RunJob(ctx context.Context, jobId uuid.UUID) error {
 		return errors.Wrap(err, "cannot read data model")
 	}
 	run := &jobRun{
-		o: o, job: job, declId: decl.Id, orgId: decl.OrganizationId, format: format,
+		o: o, job: job, declId: decl.Id, caseId: decl.CaseId, orgId: decl.OrganizationId, format: format,
 		selection: selection, dataModel: dataModel,
 	}
 	run.rateLimited.Store(job.RateLimitedSince != nil)
@@ -309,6 +313,11 @@ type jobRun struct {
 	format    core.Format
 	selection []models.SarSelectedObject
 	dataModel models.DataModel
+	caseId    uuid.UUID
+	// caseCtx is the case context, built once per job on first need.
+	caseCtxMu   sync.Mutex
+	caseCtx     string
+	caseCtxDone bool
 	// applyMu serializes document writes inside this process; across
 	// processes the FOR UPDATE lock does.
 	applyMu sync.Mutex
@@ -317,6 +326,10 @@ type jobRun struct {
 	rateLimited atomic.Bool
 	// askedBackend: the backend questions were asked in this run.
 	askedBackend bool
+	// plannedLimits are the budgets of the current plan by input hash: a task
+	// created before they changed resumes with them (the limits are not part of
+	// the hash).
+	plannedLimits map[string]core.TaskLimits
 }
 
 func (r *jobRun) loop(ctx context.Context) error {
@@ -357,8 +370,11 @@ func (r *jobRun) loop(ctx context.Context) error {
 		// e.g. the analysis was edited between a failure and the resume) must never
 		// run: it would apply a stale output next to the current one.
 		planned := make(map[string]bool, len(specs))
+		r.plannedLimits = make(map[string]core.TaskLimits, len(specs))
 		for _, s := range specs {
-			planned[taskFromSpec(r.job.Id, s, r.selection).InputHash] = true
+			h := taskFromSpec(r.job.Id, s, r.selection).InputHash
+			planned[h] = true
+			r.plannedLimits[h] = s.Limits
 		}
 		var stale []uuid.UUID
 		kept := tasks[:0:0]
@@ -424,9 +440,7 @@ func (r *jobRun) loop(ctx context.Context) error {
 			if len(fresh) > 0 {
 				continue
 			}
-			return r.finish(ctx, slices.ContainsFunc(tasks, func(t models.SarGenerationTask) bool {
-				return t.Kind == core.TaskKindCompute
-			}))
+			return r.finish(ctx)
 		}
 
 		// The backend questions must exist before the final review reads them.
@@ -568,6 +582,9 @@ func (r *jobRun) readyTasks(tasks []models.SarGenerationTask) (ready []readyTask
 			blocked++
 			continue
 		}
+		if lim, ok := r.plannedLimits[t.InputHash]; ok {
+			in.Spec.Limits = lim
+		}
 		ready = append(ready, readyTask{task: t, spec: in.Spec})
 	}
 	return ready, blocked, nil
@@ -705,6 +722,7 @@ func (r *jobRun) runTask(ctx context.Context, rt readyTask) (claimed bool, err e
 		tc := core.ToolContext{
 			OrgId: r.orgId, DeclarationId: r.declId, TaskId: rt.task.Id, Format: r.format,
 			Doc: doc.Clone(), Selection: r.selection, DataModel: r.dataModel,
+			AnalystText: analystText(decl),
 		}
 		if rt.spec.Kind == core.TaskKindReview {
 			open, err := o.generation.ListSarQuestions(ctx, exec, r.declId, models.SarQuestionStatusOpen)
@@ -730,6 +748,13 @@ func (r *jobRun) runTask(ctx context.Context, rt readyTask) (claimed bool, err e
 			}
 			tc.OpenQuestions = questionViews(questions)
 			tc.OpenFindings = questionViews(blocking)
+		}
+		if rt.spec.NeedsCaseContext {
+			cc, err := r.caseContextText(ctx)
+			if err != nil {
+				return true, fail(err, nil)
+			}
+			tc.CaseContext = cc
 		}
 		task := rt.task
 		task.Attempts = attempt
@@ -797,6 +822,9 @@ type taskResult struct {
 	// Wrote tells whether applying the task changed the document. The selection
 	// stays editable after a failed job whose done tasks all wrote nothing.
 	Wrote bool `json:"wrote"`
+	// Structured is the structured output of the task (e.g. the understanding
+	// note), kept so that the planner can hand it to the later steps.
+	Structured json.RawMessage `json:"structured,omitempty"`
 }
 
 // CodeUnresolvedPath marks a question path still holding a provisional key.
@@ -858,7 +886,9 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 			// Applied to a copy first: a structured output citing objects outside
 			// the frozen selection is rejected as a whole, nothing of it applied.
 			cand := doc.Clone()
-			if err := r.format.ApplyStructured(rt.spec.Kind, cand, out.Structured); err != nil {
+			sctx := StructuredContextFor(r.selection, r.dataModel)
+			sctx.AnalystText = analystText(decl)
+			if err := r.format.ApplyStructured(rt.spec.Kind, cand, out.Structured, sctx); err != nil {
 				return false, errors.Wrap(err, "invalid structured output")
 			}
 			if bad := sourcesOutsideSelection(doc, cand, newScope(r.selection)); len(bad) > 0 {
@@ -880,6 +910,9 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 				if !bytes.Equal(before, after) {
 					doc, changed = cand, true
 				}
+				if sq, ok := r.format.(core.StructuredQuestioner); ok {
+					out.Questions = append(slices.Clone(out.Questions), sq.StructuredQuestions(rt.spec.Kind, out.Structured, cand, sctx)...)
+				}
 			}
 		}
 		fills := make([]core.Fill, len(out.Fills))
@@ -900,6 +933,9 @@ func (r *jobRun) applyOutput(ctx context.Context, tx repositories.Transaction, r
 		changed = changed || len(res.Applied) > 0
 		result = resultFromApply(res)
 		result.Rejected = append(result.Rejected, structuredRejected...)
+		if len(out.Structured) > 0 && len(structuredRejected) == 0 {
+			result.Structured = out.Structured
+		}
 
 		existing, err := o.generation.ListSarQuestions(ctx, tx, r.declId, "")
 		if err != nil {
@@ -1144,19 +1180,7 @@ func sourcesAllowed(f core.Fill, allowed []core.ObjectRef) bool {
 // the fills as OriginComputed, OverwriteNonManual, SkipMaxItems). changed
 // tells whether the document was modified.
 func (r *jobRun) computeInto(doc *core.Document) (res core.ApplyResult, changed bool) {
-	c := r.format.Compute(doc)
-	for _, p := range c.RemoveItems {
-		doc.RemoveItem(p)
-	}
-	fills := make([]core.Fill, len(c.Fills))
-	for i, f := range c.Fills {
-		f.Origin, f.TaskID = core.OriginComputed, nil
-		fills[i] = f
-	}
-	res = core.ApplyFills(r.format.Spec(), doc, fills, core.ApplyOptions{
-		Overwrite: core.OverwriteNonManual, SkipMaxItems: true,
-	})
-	return res, len(c.RemoveItems) > 0 || len(res.Applied) > 0
+	return core.ComputeInto(r.format, doc)
 }
 
 // applyCompute runs a compute task in tx (no runner): the declaration is read
@@ -1200,11 +1224,12 @@ func (r *jobRun) applyCompute(ctx context.Context, tx repositories.Transaction, 
 	return false, nil
 }
 
-// finish runs Compute once (generation jobs whose plan contained no compute
-// task; every fill task is done) and marks the job done.
-func (r *jobRun) finish(ctx context.Context, computePlanned bool) error {
+// finish runs Compute (generation jobs, always: it is idempotent, and it
+// recomputes what the tasks that ran after a planned compute task changed, e.g.
+// corrections) and marks the job done.
+func (r *jobRun) finish(ctx context.Context) error {
 	o := r.o
-	if r.job.Kind != models.SarJobKindReview && !computePlanned {
+	if r.job.Kind != models.SarJobKindReview {
 		err := func() error {
 			r.applyMu.Lock()
 			defer r.applyMu.Unlock()
@@ -1438,4 +1463,23 @@ func questionViews(open []models.SarQuestion) []core.QuestionView {
 		out = append(out, v)
 	}
 	return out
+}
+
+// caseContextText returns the case context of the job, read once with the
+// declaration's organization and case (never from a model output).
+func (r *jobRun) caseContextText(ctx context.Context) (string, error) {
+	if r.o.caseContext == nil {
+		return "", nil
+	}
+	r.caseCtxMu.Lock()
+	defer r.caseCtxMu.Unlock()
+	if r.caseCtxDone {
+		return r.caseCtx, nil
+	}
+	text, err := buildCaseContext(ctx, r.o.executorFactory.NewExecutor(), r.o.caseContext, r.orgId, r.caseId)
+	if err != nil {
+		return "", err // not cached: the next task tries again
+	}
+	r.caseCtx, r.caseCtxDone = text, true
+	return text, nil
 }

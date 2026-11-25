@@ -899,7 +899,7 @@
     {
      "name": "sens",
      "type": "code",
-     "min": 1,
+     "min": 0,
      "code_list": "sens_transaction",
      "label": "Sens",
      "description": "debit si l'argent sort du compte du client, credit s'il y entre."
@@ -1615,6 +1615,44 @@
    ],
    "description": "The beneficiary is either a declared person or free text: not both.",
    "source": "financier-v1.4.0.xsd:1566-1573 (id of an already declared person or free field), applied to the working nodes (working_nodes)"
+  },
+  {
+   "id": "transaction_origine_requise_sauf_ot07",
+   "kind": "required_if",
+   "scope": "work.transactions[]",
+   "then": [
+    "work.transactions[].refEmission",
+    "work.transactions[].paysOrigine"
+   ],
+   "when": {
+    "path": "work.transactions[].typeOperation",
+    "op": "not_in",
+    "values": [
+     "OT07"
+    ]
+   },
+   "severity": "warning",
+   "description": "The issuing financial reference and the country of origin of the funds are to be filled except for a cash deposit (OT07): the operation line requires them.",
+   "source": "financier-v1.4.0.xsd:1543-1587 (references and countries required on the operation line, computed from this working field); obligation of the working field: warning, the blocking obligation is the line's"
+  },
+  {
+   "id": "transaction_arrivee_requise_sauf_ot06",
+   "kind": "required_if",
+   "scope": "work.transactions[]",
+   "then": [
+    "work.transactions[].refReception",
+    "work.transactions[].paysArrivee"
+   ],
+   "when": {
+    "path": "work.transactions[].typeOperation",
+    "op": "not_in",
+    "values": [
+     "OT06"
+    ]
+   },
+   "severity": "warning",
+   "description": "The receiving financial reference and the country of arrival of the funds are to be filled except for a cash withdrawal (OT06): the operation line requires them.",
+   "source": "financier-v1.4.0.xsd:1543-1587 (references and countries required on the operation line, computed from this working field); obligation of the working field: warning, the blocking obligation is the line's"
   }
  ],
  "hand_rules": [
