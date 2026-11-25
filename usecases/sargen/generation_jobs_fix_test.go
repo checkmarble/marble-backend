@@ -185,7 +185,7 @@ func TestResumeJob_GenerateAppliesStartPreconditions(t *testing.T) {
 		t.Helper()
 		require.ErrorIs(t, err, models.BadParameterError)
 		if contains != "" {
-			require.ErrorContains(t, err, contains)
+			require.Contains(t, errorAndIssuePaths(err), contains)
 		}
 		assert.Equal(t, models.SarJobStatusFailed, f.Gen.Jobs[jobId].Status, "the job stays failed")
 		assert.Empty(t, f.Enqueuer.Calls, "nothing is enqueued")

@@ -31,7 +31,9 @@ func TestBuildTodo_OrdersAndIncludesUnreviewedLowConfidence(t *testing.T) {
 	require.Equal(t, TodoBlocking, todo[0].Severity, "blocking entries come first")
 	require.Equal(t, core.Path("e.block"), todo[0].Paths[0])
 
+	require.Equal(t, "test_block", todo[0].Code)
 	require.Equal(t, TodoLowConfidence, todo[1].Kind)
+	require.Equal(t, TodoCodeLowConfidence, todo[1].Code)
 	require.Equal(t, TodoReview, todo[1].Severity, "unreviewed low-confidence values are review entries")
 	require.Contains(t, todo[1].Paths, core.Path("a.lowUnreviewed"))
 
@@ -61,7 +63,7 @@ func TestBuildTodo_BlockingIssueOnComputedValueListsItsSources(t *testing.T) {
 	todo := buildTodo(nil, nil, issues, doc, nil)
 	require.Len(t, todo, 1)
 	assert.Equal(t, []core.Path{"operations.operation[operation-1].montantTotal", "work.transactions[transactions-1].montant"}, todo[0].Paths)
-	assert.Contains(t, todo[0].Message, "corrigez les transactions sources")
+	assert.Contains(t, todo[0].Message, "fix the source transactions")
 
 	// A warning, or a value that is not computed, is left as is.
 	warn := []core.Issue{{Path: issues[0].Path, Code: "x", Severity: core.SeverityWarning, Message: "m"}}
@@ -96,7 +98,7 @@ func TestBuildTodo_MissingLineFieldListsTheLinesSourceTransactions(t *testing.T)
 	todo := buildTodo(nil, nil, issues, doc, nil)
 	require.Len(t, todo, 1)
 	assert.Contains(t, todo[0].Paths, core.Path("work.transactions[transactions-1]"))
-	assert.Contains(t, todo[0].Message, "corrigez les transactions sources")
+	assert.Contains(t, todo[0].Message, "fix the source transactions")
 }
 
 // The confirm-to-check item of the total carries the format's note: credits,

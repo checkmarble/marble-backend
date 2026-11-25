@@ -2,10 +2,12 @@ package sargen
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -216,7 +218,7 @@ func TestStartGeneration_RefusedWhenOrgSettingsIncomplete(t *testing.T) {
 
 	_, err := uc.StartGeneration(f.Ctx, declId)
 	require.ErrorIs(t, err, models.BadParameterError)
-	require.ErrorContains(t, err, "declarant.coordonnees.tel")
+	require.Contains(t, errorAndIssuePaths(err), "declarant.coordonnees.tel")
 	assert.Empty(t, f.JobsOf(declId), "no job must be created")
 	assert.Zero(t, f.Gen.JobCreates)
 	assert.Empty(t, f.Enqueuer.Calls, "nothing must be enqueued")
@@ -513,6 +515,27 @@ func TestStartGeneration_InvalidRequiredSettingListed(t *testing.T) {
 
 	_, err := uc.StartGeneration(f.Ctx, declId)
 	require.ErrorIs(t, err, models.BadParameterError)
-	require.ErrorContains(t, err, "organisme.adresse.pays")
+	require.Contains(t, errorAndIssuePaths(err), "organisme.adresse.pays")
 	assert.Zero(t, f.Gen.JobCreates)
+}
+
+type fakeCaseReviewAccess struct {
+	enabled   bool
+	configErr error
+}
+
+func (a fakeCaseReviewAccess) HasAiCaseReviewEnabled(context.Context, uuid.UUID) (bool, error) {
+	return a.enabled, nil
+}
+func (a fakeCaseReviewAccess) CheckSarGenerationConfigured() error { return a.configErr }
+
+func TestAiAccessFromCaseReview_RefusesUnusableConfiguration(t *testing.T) {
+	cfgErr := errors.Wrap(models.BadParameterError, "l'IA n'est pas configurée")
+	err := AiAccessFromCaseReview(fakeCaseReviewAccess{enabled: true, configErr: cfgErr}).CheckAiAccess(context.Background(), uuid.New())
+	require.ErrorIs(t, err, models.BadParameterError)
+
+	err = AiAccessFromCaseReview(fakeCaseReviewAccess{enabled: false, configErr: cfgErr}).CheckAiAccess(context.Background(), uuid.New())
+	require.ErrorIs(t, err, models.ForbiddenError, "access is checked before configuration")
+
+	require.NoError(t, AiAccessFromCaseReview(fakeCaseReviewAccess{enabled: true}).CheckAiAccess(context.Background(), uuid.New()))
 }

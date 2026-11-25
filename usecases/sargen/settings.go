@@ -2,10 +2,11 @@ package sargen
 
 import (
 	"context"
+	"maps"
 	"slices"
+	"strings"
 
 	"github.com/Masterminds/semver"
-	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
@@ -15,6 +16,15 @@ import (
 // settingsSpec returns the spec used to validate the settings of a family: the
 // most recent active version of the family.
 func (uc *Usecase) settingsSpec(family string) (*core.Spec, error) {
+	best, err := settingsFormat(family)
+	if err != nil {
+		return nil, err
+	}
+	return best.Spec(), nil
+}
+
+// settingsFormat returns the most recent active format of a family.
+func settingsFormat(family string) (core.Format, error) {
 	var best core.Format
 	for _, f := range formats.List() {
 		if f.Key().Family != family || f.Status() != core.VersionActive {
@@ -25,9 +35,52 @@ func (uc *Usecase) settingsSpec(family string) (*core.Spec, error) {
 		}
 	}
 	if best == nil {
-		return nil, errors.Wrapf(models.BadParameterError, "famille de format inconnue : %s", family)
+		return nil, models.NewSarErrorf(models.BadParameterError, models.SarCodeUnknownFormat, "famille de format inconnue : %s", family)
 	}
-	return best.Spec(), nil
+	return best, nil
+}
+
+// SettingsReadiness is whether the stored organization settings let a
+// generation start: Missing are the required paths without a value, Invalid the
+// required paths whose value is blocked. Complete is true when both are empty.
+// It is the single rule of StartGeneration and of the settings API.
+type SettingsReadiness struct {
+	Missing  []core.Path
+	Invalid  []core.Path
+	Complete bool
+}
+
+func settingsReadiness(format core.Format, values map[string]string) SettingsReadiness {
+	r := SettingsReadiness{Missing: []core.Path{}, Invalid: []core.Path{}}
+	spec := format.Spec()
+	for _, p := range requiredSettingPaths(format, values) {
+		v := values[string(p)]
+		if strings.TrimSpace(v) == "" {
+			r.Missing = append(r.Missing, p)
+			continue
+		}
+		if issue := core.ValidateValue(spec, p, v); issue != nil && issue.Blocks() {
+			r.Invalid = append(r.Invalid, p)
+		}
+	}
+	r.Complete = len(r.Missing) == 0 && len(r.Invalid) == 0
+	return r
+}
+
+// ReadinessOfSettings evaluates values against the most recent active format of
+// the family. StartGeneration evaluates the declaration's own format: both agree
+// unless two active versions of the family require different settings.
+func ReadinessOfSettings(family string, values map[string]string) (SettingsReadiness, error) {
+	format, err := settingsFormat(family)
+	if err != nil {
+		return SettingsReadiness{}, err
+	}
+	return settingsReadiness(format, values), nil
+}
+
+// SettingsReadiness is ReadinessOfSettings as a usecase method (the API calls it).
+func (uc *Usecase) SettingsReadiness(_ context.Context, family string, values map[string]string) (SettingsReadiness, error) {
+	return ReadinessOfSettings(family, values)
 }
 
 func settingIssues(spec *core.Spec, values map[string]string) []core.Issue {
@@ -80,18 +133,25 @@ func (uc *Usecase) PutOrgSettings(ctx context.Context, family string, values map
 	if err != nil {
 		return models.SarOrgFormatSettings{}, nil, err
 	}
-	for p := range values {
+	var notSettings []core.Issue
+	for _, p := range slices.Sorted(maps.Keys(values)) {
 		n := spec.NodeAt(core.Path(p).Template())
 		if n == nil || n.Kind != core.NodeField || n.EffectiveNature() != core.NatureSetting {
-			return models.SarOrgFormatSettings{}, nil, errors.Wrapf(models.BadParameterError,
-				"%s n'est pas un réglage de l'organisation", p)
+			notSettings = append(notSettings, core.Issue{
+				Path: core.Path(p), Code: "not_a_setting", Severity: core.SeverityBlocking,
+				Message: "ce champ n'est pas un réglage de l'organisation",
+			})
 		}
+	}
+	if len(notSettings) > 0 {
+		return models.SarOrgFormatSettings{}, notSettings, NewIssuesErrorWithMessage(models.SarCodeInvalidSettings,
+			"réglages invalides", notSettings)
 	}
 	issues := settingIssues(spec, values)
 	for i := range issues {
 		if issues[i].Blocks() {
-			return models.SarOrgFormatSettings{}, issues, errors.Wrapf(models.BadParameterError,
-				"valeur invalide pour %s : %s", issues[i].Path, issues[i].Message)
+			return models.SarOrgFormatSettings{}, issues, NewIssuesErrorWithMessage(models.SarCodeInvalidSettings,
+				"réglages invalides", issues)
 		}
 	}
 	if values == nil {

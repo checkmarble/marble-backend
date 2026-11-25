@@ -22,12 +22,16 @@ import (
 // CodeQuestionOpen is the issue code of a blocking question still open at export.
 const CodeQuestionOpen = "question_open"
 
+// CodeFormatDeprecated is the Code of the outstanding item of a deprecated format version.
+const CodeFormatDeprecated = "format_deprecated"
+
 type outstandingItem struct {
-	Kind     TodoKind     `json:"kind"`
-	Code     string       `json:"code,omitempty"`
-	Severity TodoSeverity `json:"severity"`
-	Paths    []core.Path  `json:"paths"`
-	Message  string       `json:"message"`
+	Kind     TodoKind          `json:"kind"`
+	Code     string            `json:"code,omitempty"`
+	Severity TodoSeverity      `json:"severity"`
+	Paths    []core.Path       `json:"paths"`
+	Message  string            `json:"message"`
+	Params   map[string]string `json:"params,omitempty"`
 }
 
 // Export refuses (BadParameterError) when a blocking issue remains or the
@@ -61,7 +65,7 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 			return err
 		}
 		if format.Status() == core.VersionRetired {
-			return errors.Wrap(models.BadParameterError,
+			return models.NewSarError(models.BadParameterError, models.SarCodeFormatRetired,
 				"cette version du format n'est plus acceptée : l'export est impossible")
 		}
 		doc, err := decodeDocument(d.Document)
@@ -82,7 +86,7 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 			return err
 		}
 		for _, q := range open {
-			if q.Kind == models.SarQuestionKindQuestion && q.Severity == models.SarQuestionSeverityBlocking {
+			if q.Severity == models.SarQuestionSeverityBlocking { // a finding that replaced a blocking question stays blocking
 				path := core.Path("")
 				if len(q.Paths) > 0 {
 					path = core.Path(q.Paths[0])
@@ -91,13 +95,13 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 			}
 		}
 		if len(blocking) > 0 {
-			return errors.Wrap(issuesToError(blocking), "l'export est impossible : des erreurs bloquantes subsistent")
+			return NewIssuesErrorWithMessage(models.SarCodeExportBlocked, "l'export est impossible : des erreurs bloquantes subsistent", blocking)
 		}
 
 		var outstanding []outstandingItem
 		for _, i := range issues { // no blocking issue left: warnings only
 			outstanding = append(outstanding, outstandingItem{
-				Kind: TodoIssue, Code: i.Code, Severity: TodoWarning, Paths: []core.Path{i.Path}, Message: i.Message,
+				Kind: TodoIssue, Code: i.Code, Severity: TodoWarning, Paths: []core.Path{i.Path}, Message: i.Message, Params: i.Params,
 			})
 		}
 		// Unreviewed low-confidence values, open questions, open review findings
@@ -105,13 +109,13 @@ func (uc *Usecase) Export(ctx context.Context, id uuid.UUID, version int) (model
 		// the warnings are recorded just before).
 		for _, t := range withComputedNotes(buildTodo(format.Spec(), confirmComputedOf(format), nil, doc, open), format, doc) {
 			outstanding = append(outstanding, outstandingItem{
-				Kind: t.Kind, Code: t.Code, Severity: t.Severity, Paths: t.Paths, Message: t.Message,
+				Kind: t.Kind, Code: t.Code, Severity: t.Severity, Paths: t.Paths, Message: t.Message, Params: t.Params,
 			})
 		}
 		if format.Status() == core.VersionDeprecated {
 			outstanding = append(outstanding, outstandingItem{
-				Kind: TodoIssue, Severity: TodoWarning,
-				Message: "cette version du format est dépréciée : une version plus récente existe",
+				Kind: TodoIssue, Code: CodeFormatDeprecated, Severity: TodoWarning,
+				Message: "this format version is deprecated: a newer version exists",
 			})
 		}
 		rawOutstanding, err := json.Marshal(outstanding)
@@ -185,7 +189,7 @@ func (uc *Usecase) DownloadExport(ctx context.Context, declarationId, exportId u
 		return models.Blob{}, err
 	}
 	if e.DeclarationId != declarationId {
-		return models.Blob{}, errors.Wrap(models.NotFoundError, "export introuvable pour cette déclaration")
+		return models.Blob{}, models.NewSarError(models.NotFoundError, models.SarCodeNotFound, "export introuvable pour cette déclaration")
 	}
 	return uc.blobRepository.GetBlob(ctx, e.BucketName, e.FileReference)
 }

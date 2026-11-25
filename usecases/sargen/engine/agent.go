@@ -546,7 +546,7 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 		stepMs := lastCall.Milliseconds()
 		a.tr.setProvider(step.Provider, step.Model)
 		if err != nil {
-			a.tr.add(TraceEntry{Type: TraceCheckError, Text: "provider error: " + err.Error(), DurationMs: stepMs})
+			a.tr.add(TraceEntry{Type: TraceCheckError, Text: "erreur du fournisseur : " + err.Error(), DurationMs: stepMs})
 			if graceUsed && parent.Err() == nil &&
 				!errors.Is(err, models.LLMRateLimitedError) && !errors.Is(err, ErrLLMUnavailable) {
 				// The budget is spent and only an answer was asked: a failure of
@@ -556,7 +556,7 @@ func (a *agentRun) loop(parent context.Context) (core.TaskOutput, error) {
 				// is redone later with its whole budget.
 				return a.limitOutput(graceReason), nil
 			}
-			return core.TaskOutput{Trace: a.tr.render()}, errors.Wrap(err, "model call")
+			return core.TaskOutput{Trace: a.tr.render()}, errors.Mark(errors.Wrap(err, "model call"), ErrLLMCall)
 		}
 		usage := TraceEntry{InputTokens: step.Usage.InputTokens, OutputTokens: step.Usage.OutputTokens,
 			CachedInputTokens: step.Usage.CachedInputTokens, DurationMs: stepMs}

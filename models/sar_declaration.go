@@ -11,7 +11,30 @@ import (
 // operation. The analyst front maps it to its own handling.
 type SarErrorCode string
 
-const SarCodeVersionConflict SarErrorCode = "sar_version_conflict"
+const (
+	SarCodeInvalidSettings         SarErrorCode = "sar_invalid_settings"
+	SarCodeGenerationPrecondition  SarErrorCode = "sar_generation_preconditions"
+	SarCodeExportBlocked           SarErrorCode = "sar_export_blocked"
+	SarCodeVersionConflict         SarErrorCode = "sar_version_conflict"
+	SarCodeGenerationInProgress    SarErrorCode = "sar_generation_in_progress"
+	SarCodeAlreadyGenerated        SarErrorCode = "sar_already_generated"
+	SarCodeSelectionFrozen         SarErrorCode = "sar_selection_frozen"
+	SarCodeInvalidField            SarErrorCode = "sar_invalid_field"
+	SarCodeUnknownFormat           SarErrorCode = "sar_unknown_format"
+	SarCodeFormatRetired           SarErrorCode = "sar_format_retired"
+	SarCodeNotFound                SarErrorCode = "sar_not_found"
+	SarCodeForbidden               SarErrorCode = "sar_forbidden"
+	SarCodeAiUnavailable           SarErrorCode = "sar_ai_unavailable"
+	SarCodeInvalidRequest          SarErrorCode = "sar_invalid_request"
+	SarCodeConflict                SarErrorCode = "sar_conflict"
+	SarCodeQuestionClosed          SarErrorCode = "sar_question_closed"
+	SarCodeQuestionBlocking        SarErrorCode = "sar_question_not_dismissable"
+	SarCodeAlreadySelected         SarErrorCode = "sar_already_selected"
+	SarCodeGenerationNotRelaunched SarErrorCode = "sar_generation_not_relaunchable"
+	SarCodeUnauthorized            SarErrorCode = "sar_unauthorized"
+	SarCodeUnprocessable           SarErrorCode = "sar_unprocessable"
+	SarCodeInternal                SarErrorCode = "sar_internal"
+)
 
 // SarError is a refusal of a SAR generation operation: a stable Code and a
 // clean French Message the analyst reads as is. It wraps one of the generic
