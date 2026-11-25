@@ -3421,7 +3421,7 @@
      "value": "TPI49"
     },
     {
-     "label": "Prestataire de services sur actifs numériques",
+     "label": "Prestataire de services sur crypto-actifs",
      "value": "TPI54"
     },
     {
@@ -4214,7 +4214,7 @@
   },
   {
    "path": "inputs/referentiels/professions.csv",
-   "sha256": "ec7183b7fabeb91e0dc8bf39b7aff25da3303270df0d05f027c4b4fb7f2aa6e7"
+   "sha256": "242e03c16db533ff7714033032339ce7e93bfd6ba21f7eba6cf82379921f6045"
   },
   {
    "path": "inputs/referentiels/relationsentrepersonnes.csv",
