@@ -3,7 +3,10 @@ package sargen
 import (
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+
+	"github.com/checkmarble/marble-backend/models"
 
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
 )
@@ -19,7 +22,7 @@ func TestBuildTodo_OrdersAndIncludesUnreviewedLowConfidence(t *testing.T) {
 		{Path: "e.block", Code: "test_block", Message: "bloquant", Severity: core.SeverityBlocking},
 	}
 
-	todo := buildTodo(issues, doc)
+	todo := buildTodo(nil, issues, doc, nil)
 	require.Len(t, todo, 3, "two issues plus one unreviewed low-confidence value")
 
 	require.Equal(t, TodoIssue, todo[0].Kind)
@@ -33,4 +36,12 @@ func TestBuildTodo_OrdersAndIncludesUnreviewedLowConfidence(t *testing.T) {
 	require.Equal(t, TodoIssue, todo[2].Kind)
 	require.Equal(t, TodoWarning, todo[2].Severity, "warnings come last")
 	require.Equal(t, core.Path("d.warn"), todo[2].Paths[0])
+}
+
+// A question on a nil spec must not panic.
+func TestBuildTodo_NilSpecWithQuestion(t *testing.T) {
+	q := models.SarQuestion{Id: uuid.New(), Kind: models.SarQuestionKindQuestion, Paths: []string{"a.b"}, Text: "?"}
+	todo := buildTodo(nil, nil, nil, []models.SarQuestion{q})
+	require.Len(t, todo, 1)
+	require.Equal(t, TodoWarning, todo[0].Severity)
 }

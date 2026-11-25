@@ -1,6 +1,9 @@
 package core
 
-import "io"
+import (
+	"encoding/json"
+	"io"
+)
 
 // VersionStatus tells what can still be done with a format version.
 type VersionStatus string
@@ -32,4 +35,23 @@ type Format interface {
 	Spec() *Spec
 	Validate(doc *Document) []Issue
 	WriteXML(doc *Document, w io.Writer) error
+
+	// Plan returns the tasks to run next. The orchestrator calls it again after
+	// each wave of finished tasks until it returns nothing.
+	Plan(st PlanState) []TaskSpec
+	// ApplyStructured applies a non-fills task output (e.g. placement): creates
+	// the items with their sources.
+	ApplyStructured(kind string, doc *Document, out json.RawMessage) error
+	// Compute derives fields from the document (backend-computed values).
+	Compute(doc *Document) ComputeResult
+	// Tools returns the LLM tools available for a task.
+	Tools(tc ToolContext) map[string]Tool
+}
+
+// SettingsRequirer is an optional capability of a Format: the organization
+// setting paths that must be filled before a generation can start, beyond what
+// the spec's cardinalities already imply (e.g. an optional group the format
+// nonetheless always needs). Formats that do not implement it add nothing.
+type SettingsRequirer interface {
+	RequiredSettings() []Path
 }
