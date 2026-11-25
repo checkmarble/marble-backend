@@ -1,0 +1,1845 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:annotation>
+		<xs:documentation>
+			XSD des  déclarations de soupçons - Import unitaire - Module financier - Version 1.4.0 (2026/01/21)
+		</xs:documentation>
+	</xs:annotation>
+	<!--Types Simples-->
+	<xs:simpleType name="t_string_6">
+		<xs:annotation>
+			<xs:documentation>
+				Chaines de caractere de taille 6
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="6" />
+			<xs:minLength value="1" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_date">
+		<xs:annotation>
+			<xs:documentation>
+				Date
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:pattern value="\d{2}/\d{2}/\d{4}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_numeroIdentFiscal">
+		<xs:annotation>
+			<xs:documentation>
+				Numéro d’identification fiscale
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="t_string_50">
+			<xs:pattern value="([0-3])\d( ?)\d{2}( ?)\d{3}( ?)\d{3}( ?)\d{3}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_date_heure">
+		<xs:annotation>
+			<xs:documentation>
+				Date + heure
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:pattern value="\d{2}/\d{2}/\d{4} \d{2}:\d{2}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_heure">
+		<xs:annotation>
+			<xs:documentation>
+				Heure
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:pattern value="\d{2}:\d{2}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_contenu_fichier">
+		<xs:annotation>
+			<xs:documentation>
+				Contenu d'une pièce jointe encodé en base 64
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="130000000"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_idTracfin">
+		<xs:annotation>
+			<xs:documentation>
+				Identifiant TRACFIN d'un correspondant
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:positiveInteger">
+			<xs:totalDigits value="6" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_num_tel">
+		<xs:annotation>
+			<xs:documentation>
+				Type pour les champs contenant un numéro
+				de téléphone ou de fax.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="25" />
+			<xs:pattern value="^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*$" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_mail">
+		<xs:annotation>
+			<xs:documentation>
+				Type pour les champs contenant une adresse mail.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="200" />
+			<xs:pattern value="^[\w-\._]+@([\w-]+\.)+[\w-]{2,4}$"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_string_10">
+		<xs:annotation>
+			<xs:documentation>Chaines de caractere de taille 10</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="10"/>
+			<xs:minLength value="1" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_string_30">
+		<xs:annotation>
+			<xs:documentation>
+				Chaines de caractere de taille 30
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="30" />
+			<xs:minLength value="1" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_string_50">
+		<xs:annotation>
+			<xs:documentation>
+				Chaines de caractere de taille 50
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="50" />
+			<xs:minLength value="1" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_string_64">
+		<xs:annotation>
+			<xs:documentation>
+				Chaines de caractere de taille 64
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="64" />
+			<xs:minLength value="1" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_string_100">
+		<xs:annotation>
+			<xs:documentation>
+				Chaines de caractere de taille 100
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="100" />
+			<xs:minLength value="1" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_string_120">
+		<xs:annotation>
+			<xs:documentation>
+				Chaines de caractere de taille 120
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="120" />
+			<xs:minLength value="1" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_string_200">
+		<xs:annotation>
+			<xs:documentation>
+				Chaines de caractere de taille 200
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="200" />
+			<xs:minLength value="1" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_string_200_optional">
+		<xs:annotation>
+			<xs:documentation>
+				Chaines de caractere de taille 200
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="200" />
+			<xs:minLength value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_string_255">
+		<xs:annotation>
+			<xs:documentation>
+				Chaines de caractere de taille 255
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="255" />
+			<xs:minLength value="1" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_string_255_optional">
+		<xs:annotation>
+			<xs:documentation>
+				Chaines de caractere de taille 255
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="255" />
+			<xs:minLength value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_string_700">
+		<xs:annotation>
+			<xs:documentation>
+				Chaines de caractere de taille 700
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="700" />
+			<xs:minLength value="1" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_string_700_optional">
+		<xs:annotation>
+			<xs:documentation>
+				Chaines de caractere de taille 700
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="700" />
+			<xs:minLength value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_string_3000">
+		<xs:annotation>
+			<xs:documentation>
+				Chaines de caractere de taille 3000
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="3000" />
+			<xs:minLength value="1" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_string_23000">
+		<xs:annotation>
+			<xs:documentation>
+				Chaines de caractere de taille 23000
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="23000" />
+			<xs:minLength value="1" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_num_6">
+		<xs:annotation>
+			<xs:documentation>
+				Nombre sur digits 6.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:positiveInteger">
+			<xs:totalDigits value="6" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_num_19">
+		<xs:annotation>
+			<xs:documentation>
+				Nombre sur 19 digits max.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:positiveInteger">
+			<xs:totalDigits value="19" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_decimal_12">
+		<xs:annotation>
+			<xs:documentation>
+				Nombre sur digits 12.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:decimal">
+			<xs:totalDigits value="12" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_implication">
+		<xs:annotation>
+			<xs:documentation>
+				Implication de la personne: (Personne soupçonnée / Personne impliquée) ou Victime présumée
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="t_string_64">
+			<xs:enumeration value="Personne soupçonnée / Personne impliquée" />
+			<xs:enumeration value="Victime présumée" />
+			<xs:enumeration value="Je ne sais pas" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_natureRelation">
+		<xs:annotation>
+			<xs:documentation>
+				Nature de la relation du déclarant avec la personne soupçonnée: Relation d'affaire / Tentative d'entrée en relation ou prospect / Client occasionnel / Aucune
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="t_string_50">
+			<xs:enumeration value="Relation d'affaire" />
+			<xs:enumeration value="Tentative d'entrée en relation ou prospect" />
+			<xs:enumeration value="Client occasionnel" />
+			<xs:enumeration value="Aucune" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_typeOperation">
+		<xs:annotation>
+			<xs:documentation>
+				Type d'opération
+				Ref: liste_ref_type_operations.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:minLength value="1" />
+			<xs:maxLength value="100" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_choix_oui_non_nesaispas">
+		<xs:annotation>
+			<xs:documentation>
+				Liste de choix Oui / Non / Je ne sais pas
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="t_string_50">
+			<xs:enumeration value="Oui" />
+			<xs:enumeration value="Non" />
+			<xs:enumeration value="Je ne sais pas" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_iban">
+		<xs:annotation>
+			<xs:documentation>
+				International Bank Account Number (IBAN)
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="t_string_50">
+			<xs:pattern value="^[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{10,30}$"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_bic">
+		<xs:annotation>
+			<xs:documentation>Code BIC (SWIFT)</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="11"/>
+			<xs:minLength value="8" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_cib">
+		<xs:annotation>
+			<xs:documentation>Code CIB</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:integer">
+			<xs:pattern value="[0-9]{5}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_numCard">
+		<xs:annotation>
+			<xs:documentation>Numéro de carte bancaire</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:pattern value="^(?:4[0-9]{12}(?:[0-9]{3})?|[25][1-7][0-9]{14}|6(?:011|5[0-9][0-9])[0-9]{12}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|(?:2131|1800|35\d{3})\d{11})$"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_alphaNum">
+		<xs:annotation>
+			<xs:documentation>Caractères alphanumériques</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:pattern value="[a-zA-Z0-9 ]*"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_positiveDecimals_32">
+		<xs:restriction base="xs:decimal">
+			<xs:minExclusive value="0"/>
+			<xs:totalDigits value="32"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<!-- Types simples associes aux listes de reference -->
+	<xs:simpleType name="t_organisme_profession">
+		<xs:annotation>
+			<xs:documentation>
+				Code d'une profession.
+				Ref: liste_ref_professions.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="6" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_categorieRelation">
+		<xs:annotation>
+			<xs:documentation>
+				Code d'une des catégories de relation.
+				Ref: liste_ref_relations.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="6" />
+			<xs:minLength value="3" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_sousCategorieRelation">
+		<xs:annotation>
+			<xs:documentation>
+				Code d'une des sous-catégories de relation.
+				Ref: liste_ref_relations.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="6" />
+			<xs:minLength value="3" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_type_adresse">
+		<xs:annotation>
+			<xs:documentation>
+				Code d'un type d'adresse.
+				Ref: liste_ref_type_adresse.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="6" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_type_voie">
+		<xs:annotation>
+			<xs:documentation>
+				Code du type de voie dans une adresse.
+				Ref: liste_ref_type_voie.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="6" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_adresse_numero_voie_complement">
+		<xs:annotation>
+			<xs:documentation>
+				Code du complément de numéro de voie
+				Ref: liste_ref_complement_voie.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="6" />
+			<xs:enumeration value="CNV1"/>
+			<xs:enumeration value="CNV2"/>
+			<xs:enumeration value="CNV3"/>
+			<xs:enumeration value="CNV4"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="t_autoriteDelivrance">
+		<xs:simpleContent>
+			<xs:extension base="t_string_255_optional">
+				<xs:attribute name="newformat" type="xs:boolean" use="optional" />
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:simpleType name="t_paysType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="code"/>
+			<xs:enumeration value="other"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="t_paysName">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attribute name="type" type="t_paysType" use="optional" />
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="t_pays">
+		<xs:annotation>
+			<xs:documentation>
+				Code du pays (nationalité, etc.). L'attribut type="code" est optionnel pour indiquer un code dans la balise.
+				Pour mettre un autre pays, ajouter l'attribut type="other" et indiquer le pays dans la balise.
+				Ref: liste_ref_pays.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:simpleContent>
+			<xs:restriction base="t_paysName">
+				<xs:minLength value="2" />
+				<xs:maxLength value="200" />
+			</xs:restriction>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="t_pays_dromcom">
+		<xs:annotation>
+			<xs:documentation>
+				Code du pays (nationalité, etc.).
+				Ref: liste_ref_dromcom.csv et liste_ref_pays.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:simpleContent>
+			<xs:restriction base="t_paysName">
+				<xs:minLength value="2" />
+				<xs:maxLength value="200" />
+			</xs:restriction>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:simpleType name="t_cadreLegal">
+		<xs:annotation>
+			<xs:documentation>
+				Code du Cadre Légal
+				Ref: liste_ref_cadre_legal.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="6" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_pp_sexe">
+		<xs:annotation>
+			<xs:documentation>
+				Code des sexes pour une personne physique
+				Ref : liste_ref_sexe.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:minLength value="1" />
+			<xs:maxLength value="4" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_formeJuridique">
+		<xs:annotation>
+			<xs:documentation>
+				Code d'une Forme Juridique
+				Ref: liste_ref_forme_juridique.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="200" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_fonctionDirigeant">
+		<xs:annotation>
+			<xs:documentation>
+				Code de Fonction dirigeant
+				Ref:liste_ref_fonction_dirigeant.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="200" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_document">
+		<xs:annotation>
+			<xs:documentation>
+				Code du type de pièce jointe
+				Ref:liste_ref_piece_jointe.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="t_string_6">
+			<xs:maxLength value="6" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_registre">
+		<xs:annotation>
+			<xs:documentation>
+				Code du type de registre / Code de type RNx sauf pour le SIREN et les choix "Je ne sais pas" et "non"
+				RIDET (Registre INSEE Nouvelle Calédonie) -> [RN1]
+				COM -> [RN2]
+				RNA (Registre National des Associations)-> [RN3]
+				RNM (Répertoire National des métiers)-> [RN4]
+				LEI (Legal Entity Identifier)-> [RN5]
+				étranger-> [RN6]
+				autre-> [RN7]
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="SIREN" />
+			<xs:enumeration value="RN1" />
+			<xs:enumeration value="RN2" />
+			<xs:enumeration value="RN3" />
+			<xs:enumeration value="RN4" />
+			<xs:enumeration value="RN5" />
+			<xs:enumeration value="RN6" />
+			<xs:enumeration value="RN7" />
+			<xs:enumeration value="Je ne sais pas" />
+			<xs:enumeration value="Non" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_typeEquipement">
+		<xs:annotation>
+			<xs:documentation>
+				Code du type d'équipement fiancier
+				Ref:liste_ref_type_equipement.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="t_string_6">
+			<xs:maxLength value="6" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_natureSoupconPenale">
+		<xs:annotation>
+			<xs:documentation>
+				Nature du Soupçon d'Infraction Pénale
+				Ref:liste_ref_nature_soupcon_penale.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="6" />
+			<xs:minLength value="1" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="t_natureFraudeFiscale">
+		<xs:annotation>
+			<xs:documentation>
+				Nature du Soupçon de Fraude Fiscale
+				Ref:liste_ref_nature_fraude_fiscale.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="6" />
+			<xs:minLength value="1" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="t_refAAV">
+		<xs:sequence>
+			<xs:element type="xs:positiveInteger" name="reference" minOccurs="0" maxOccurs="30"/>
+			<xs:element type="t_autreRefAAV" name="autre" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_autreRefAAV">
+		<xs:sequence>
+			<xs:element type="t_string_50" name="reference" minOccurs="1"/>
+			<xs:element type="t_date" name="date" minOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="t_refPPE">
+		<xs:annotation>
+			<xs:documentation>
+				Code de la fonction et / ou relation d'une personne politiquement exposée
+				Ref: liste_ref_PPE_fonction_relation.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="6" />
+			<xs:minLength value="5" />
+		</xs:restriction>
+	</xs:simpleType>
+	<!-- Types Complexes -->
+	<xs:complexType name="t_typeRelation">
+		<xs:annotation>
+			<xs:documentation>
+				Information sur les relations entre personnes qui se compose d'une catégories/sous-catégories
+				ref : liste_ref_relations.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element type="t_categorieRelation" name="categorieRelation" minOccurs="1"/>
+			<xs:element type="t_sousCategorieRelation" name="sousCategorieRelation" minOccurs="0">
+			<xs:annotation>
+					<xs:documentation>
+						Si le champ n'est pas envoyé, il sera définit par la valeur par défaut de t_categorieRelation.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="sousCategorieRelationAutre" type="t_string_200" minOccurs="0" >
+				<xs:annotation>
+					<xs:documentation>
+						Champ à remplir optionnellement si la sousCategorieRelation est "autre"
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="t_typemime">
+		<xs:annotation>
+			<xs:documentation>
+				Type mime de la pièce jointe
+				Ref: liste_ref_typemime.csv
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="100" />
+			<xs:minLength value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="t_pieceIdentite">
+		<xs:annotation>
+			<xs:documentation>
+				Information sur la piece d'identité ajouté en pièce jointe
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element type="t_string_255" name="numPieceIdentite" minOccurs="1"/>
+			<xs:element type="t_autoriteDelivrance" name="autoriteDelivrance" minOccurs="0"/>
+			<xs:element type="t_pays" name="paysDelivrance" minOccurs="1"/>
+			<xs:element type="t_date" name="dateValidite" minOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_lienAutrePersonneDejaDeclaree">
+		<xs:annotation>
+			<xs:documentation>
+				Lien avec une personne déja déclarée.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="typeRelation" type="t_typeRelation" minOccurs="0" maxOccurs="10"/>
+			<xs:element name="precisionRelation" type="t_string_200" minOccurs="0"/>
+			<xs:element name="certitude" type="xs:boolean" minOccurs="0"/>
+			<xs:element name="idPersonne" type="t_num_6" minOccurs="1"/>
+			<xs:element name="precisions" type="t_string_200" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_lienAutrePp">
+		<xs:annotation>
+			<xs:documentation>
+				Lien avec une autre personne physique.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="typeRelation" type="t_typeRelation" minOccurs="0" maxOccurs="10"/>
+			<xs:element name="precisionRelation" type="t_string_200" minOccurs="0"/>
+			<xs:element name="certitude" type="xs:boolean" minOccurs="0"/>
+			<xs:element name="nom" type="t_string_200" minOccurs="1"/>
+			<xs:element name="prenom" type="t_string_200" minOccurs="1"/>
+			<xs:element name="dateNaissance" type="t_date" minOccurs="0"/>
+			<xs:element name="lieuNaissance" type="t_string_200" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_lienAutrePm">
+		<xs:annotation>
+			<xs:documentation>
+				Lien avec une autre personne morale.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="typeRelation" type="t_typeRelation" minOccurs="0" maxOccurs="10"/>
+			<xs:element name="precisionRelation" type="t_string_200" minOccurs="0"/>
+			<xs:element name="certitude" type="xs:boolean" minOccurs="0"/>
+			<xs:element name="denominationSociale" type="t_string_200" minOccurs="1"/>
+			<xs:element name="numIdentPro" type="t_string_200" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_adresse">
+		<xs:annotation>
+			<xs:documentation>
+				Donnée : Adresse
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element type="t_type_adresse" name="type" minOccurs="0"/>
+			<xs:element type="t_type_voie" name="typeVoie" minOccurs="0"/>
+			<xs:element type="t_num_6" name="numero" minOccurs="0"/>
+			<xs:element type="t_adresse_numero_voie_complement" name="complementNumero" minOccurs="0"/>
+			<xs:element type="t_string_200" name="nomVoie" />
+			<xs:element type="t_string_50" name="batiment" minOccurs="0"/>
+			<xs:element type="t_string_10" name="codePostal" />
+			<xs:element type="t_string_200" name="ville" />
+			<xs:element type="t_pays" name="pays" />
+			<xs:element type="t_num_tel" name="tel" />
+			<xs:element type="t_num_tel" name="fax" minOccurs="0" />
+			<xs:element type="t_mail" name="courriel" minOccurs="0" />
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_adresseAutreBeneficiaire">
+		<xs:annotation>
+			<xs:documentation>
+				Donnée : Adresse
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element type="t_type_voie" name="typeVoie" minOccurs="0"/>
+			<xs:element type="t_num_6" name="numero" minOccurs="0"/>
+			<xs:element type="t_adresse_numero_voie_complement" name="complementNumero" minOccurs="0"/>
+			<xs:element type="t_string_200" name="nomVoie" minOccurs="0" />
+			<xs:element type="t_string_50" name="batiment" minOccurs="0"/>
+			<xs:element type="t_string_10" name="codePostal" minOccurs="0"/>
+			<xs:element type="t_string_200" name="ville" minOccurs="0"/>
+			<xs:element type="t_pays" name="pays" minOccurs="0"/>
+			<xs:element type="t_num_tel" name="tel" minOccurs="0"/>
+			<xs:element type="t_mail" name="courriel" minOccurs="0" />
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_adresse_pp_pm">
+		<xs:annotation>
+			<xs:documentation>
+				Adresse d'une personne physique ou morale
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element type="t_pays" name="pays" minOccurs="0"/>
+			<xs:element type="t_num_6" name="numero" minOccurs="0"/>
+			<xs:element type="t_adresse_numero_voie_complement" name="complementNumero" minOccurs="0"/>
+			<xs:element type="t_type_voie" name="typeVoie" minOccurs="0"/>
+			<xs:element type="t_string_200" name="nomVoie" minOccurs="0"/>
+			<xs:element type="t_string_200" name="complement" minOccurs="0"/>
+			<xs:element type="t_string_10" name="codePostal" minOccurs="0"/>
+			<xs:element type="t_string_200" name="ville" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_autreAdresse_pp">
+		<xs:annotation>
+			<xs:documentation>
+				Autre adresse d'une personne physique
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element type="t_type_adresse" name="type" minOccurs="0"/>
+			<xs:element type="t_pays" name="pays" minOccurs="0"/>
+			<xs:element type="t_num_6" name="numero" minOccurs="0"/>
+			<xs:element type="t_adresse_numero_voie_complement" name="complementNumero" minOccurs="0"/>
+			<xs:element type="t_type_voie" name="typeVoie" minOccurs="0"/>
+			<xs:element type="t_string_200" name="nomVoie" minOccurs="0"/>
+			<xs:element type="t_string_200" name="complement" minOccurs="0"/>
+			<xs:element type="t_string_10" name="codePostal" minOccurs="0"/>
+			<xs:element type="t_string_200" name="ville" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_coordonnee">
+		<xs:annotation>
+			<xs:documentation>
+				Donnée : Coordonnee du déclarant
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element type="t_string_50" name="nom"/>
+			<xs:element type="t_string_50" name="prenom"/>
+			<xs:element type="t_num_tel" name="tel"/>
+			<xs:element type="t_mail" name="courriel"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_coordonneecontact">
+		<xs:annotation>
+			<xs:documentation>
+				Donnée : Coordonnee du contact
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element type="t_string_200" name="prenom" minOccurs="1"/>
+			<xs:element type="t_string_200" name="nom" minOccurs="1"/>
+			<xs:element type="t_num_tel" name="tel" minOccurs="1"/>
+			<xs:element type="t_num_tel" name="autrenumero" minOccurs="0" />
+			<xs:element type="t_mail" name="courriel" minOccurs="1" />
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_autreIdentite_pp">
+		<xs:annotation>
+			<xs:documentation>
+				Autre identité d'une personne physique
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element type="t_string_200" name="nomNaissance" minOccurs="0" />
+			<xs:element type="t_string_200" name="nomDusage" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Ce champ est obligatoire en l'absence du nom de naissance.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element type="t_string_200" name="prenom" minOccurs="0" maxOccurs="5"/>
+			<xs:element type="t_string_200" name="alias" minOccurs="0" maxOccurs="10">
+				<xs:annotation>
+					<xs:documentation>
+						Ce champ est obligatoire en l'absence du prénom.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element type="t_pp_sexe" name="sexe" minOccurs="0"/>
+			<xs:element type="t_date" name="dateNaissance" minOccurs="0"/>
+			<xs:element type="t_string_200" name="dateNaissanceEstimation" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Ce champ est peut être rempli en l'absence de date de naissance précise [dateNaissance].
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element type="t_string_200" name="lieuNaissance" minOccurs="0"/>
+			<xs:element type="t_pays" name="paysNaissance" minOccurs="0"/>
+			<xs:element type="t_pays" name="nationalite" minOccurs="0" maxOccurs="5"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_etatCivil_pp">
+		<xs:annotation>
+			<xs:documentation>
+				État civil d'une personne physique
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element type="t_string_200" name="nomNaissance" minOccurs="0" />
+			<xs:element type="t_string_200" name="nomDusage" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Ce champ est obligatoire en l'absence du nom de naissance.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element type="t_string_200" name="prenom" minOccurs="0" maxOccurs="5"/>
+			<xs:element type="t_string_200" name="alias" minOccurs="0" maxOccurs="10">
+				<xs:annotation>
+					<xs:documentation>
+						Ce champ est obligatoire en l'absence du prénom.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element type="t_pp_sexe" name="sexe" minOccurs="0"/>
+			<xs:element type="t_date" name="dateNaissance" minOccurs="0"/>
+			<xs:element type="t_string_200" name="dateNaissanceEstimation" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Ce champ est peut être rempli en l'absence de date de naissance précise [dateNaissance].
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element type="t_string_200" name="lieuNaissance" minOccurs="0"/>
+			<xs:element type="t_pays" name="paysNaissance" minOccurs="0"/>
+			<xs:element type="t_pays" name="nationalite" minOccurs="0" maxOccurs="5"/>
+			<xs:element type="t_num_6" name="idPieceJointe" minOccurs="0" maxOccurs="15"/>
+			<xs:element type="t_autreIdentite_pp" name="autreIdentite" minOccurs="0" maxOccurs="5"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_coordonnees_pp">
+		<xs:annotation>
+			<xs:documentation>
+				Coordonnées de la personne physique
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element type="t_adresse_pp_pm" name="adresse" minOccurs="0"/>
+			<xs:element type="t_autreAdresse_pp" name="autreAdresse" minOccurs="0" maxOccurs="2"/>
+			<xs:element type="t_num_tel" name="tel" minOccurs="0" maxOccurs="3"/>
+			<xs:element type="t_mail" name="courriel" minOccurs="0" />
+			<xs:element type="t_string_3000" name="urlSiteWeb" minOccurs="0" />
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_organisme">
+		<xs:annotation>
+			<xs:documentation>
+				Section : Organisme
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="profession" type="t_organisme_profession" />
+			<xs:element name="libelle" type="t_string_120" />
+			<xs:element name="numIdPro" type="t_string_64" />
+			<xs:element name="adresse" type="t_adresse" />
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_ppe">
+		<xs:annotation>
+			<xs:documentation>
+				Personne politiquement exposée
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="politiquementExpose" type="t_choix_oui_non_nesaispas" minOccurs="1" />
+			<xs:element name="function" type="t_refPPE" minOccurs="0" maxOccurs="20"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_activite_pp">
+		<xs:annotation>
+			<xs:documentation>
+				Activité de la personne physique
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="profession" type="t_string_200" minOccurs="0" />
+			<xs:element name="numeroIdentification" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Numéro SIREN / Type</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="t_string_200_optional">
+							<xs:attribute name="type" use="required">
+								<xs:annotation>
+									<xs:documentation>
+										<xs:documentation>Code du type de registre</xs:documentation>
+									</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="t_registre"/>
+								</xs:simpleType>
+							</xs:attribute>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="denominationSociale" type="t_string_200" minOccurs="0" >
+				<xs:annotation>
+					<xs:documentation>
+						Champ obligatoire seulement si le type de registre n'est pas "Je ne sais pas".
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="secteurActivite" type="t_string_50" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Champ obligatoire seulement si le type de registre est SIREN.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="formeJuridique" type="t_formeJuridique" minOccurs="0" >
+				<xs:annotation>
+					<xs:documentation>
+						Champ à remplir optionnellement si le type de registre n'est pas SIREN.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="activitePrincipale" type="t_string_200" minOccurs="0" >
+				<xs:annotation>
+					<xs:documentation>
+						Champ à remplir optionnellement si le type de registre n'est pas SIREN.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="adresse" type="t_adresse_pp_pm" minOccurs="0" >
+				<xs:annotation>
+					<xs:documentation>
+						Champ à remplir optionnellement si La personne physique dispose d'un numéro d'identification professionnelle
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="nomAutreTypeRegistre" type="t_string_200" minOccurs="0" >
+				<xs:annotation>
+					<xs:documentation>
+						Champ obligatoire seulement si le code du type de registre est "étranger" [RE07] ou "autre" [RE08].
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="paysAutreTypeRegistre" type="t_pays" minOccurs="0" >
+				<xs:annotation>
+					<xs:documentation>
+						Champ obligatoire seulement si le code du type de registre est "étranger" [RE07] ou "autre" [RE08].
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="autreAdresse" type="t_adresse_pp_pm" minOccurs="0" >
+				<xs:annotation>
+					<xs:documentation>
+						Champ à remplir optionnellement si le type de registre est SIREN.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_piece_complementaire">
+		<xs:annotation>
+			<xs:documentation>
+				Section : Documents joints
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="nom" type="t_string_120" minOccurs="0" />
+			<xs:element name="type" type="t_document" minOccurs="1"/>
+			<xs:element name="source" type="t_string_30" minOccurs="0" />
+			<xs:element name="date" type="t_date" minOccurs="1"/>
+			<xs:element name="libelle" type="t_string_30" minOccurs="1"/>
+			<xs:element name="type_mime" type="t_typemime" minOccurs="1" />
+			<xs:element name="infoPieceIdentite" type="t_pieceIdentite" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Obligatoire si type de document :
+						"Identifications client - Carte nationale d’identité";"TA2"
+						"Identifications client - Passeport";"TA3"
+						"Identifications client - Titre de séjour";"TA5"
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="contenu" type="t_contenu_fichier" minOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_referencesFinancieres">
+		<xs:annotation>
+			<xs:documentation>
+				Le nombre combiné de reference de tout type ne doit pas dépassé 20.
+				Nombre max du portail.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="referenceFinanciereIban" type="referenceFinanciereIban" minOccurs="0" maxOccurs="20"/>
+			<xs:element name="referenceFinanciereIdentifiantCompte" type="referenceFinanciereIdentifiantCompte" minOccurs="0"  maxOccurs="20"/>
+			<xs:element name="referenceFinanciereNumeroCarteBancaire" type="referenceFinanciereNumeroCarteBancaire" minOccurs="0"  maxOccurs="20"/>
+			<xs:element name="referenceFinanciereNumeroCartePrepayee" type="referenceFinanciereNumeroCartePrepayee" minOccurs="0"  maxOccurs="20"/>
+			<xs:element name="referenceFinanciereNumeroCheque" type="referenceFinanciereNumeroCheque" minOccurs="0"  maxOccurs="20"/>
+			<xs:element name="referenceFinanciereNumeroContrat" type="referenceFinanciereNumeroContrat" minOccurs="0"  maxOccurs="20"/>
+			<xs:element name="referenceFinanciereCryptoActif" type="referenceFinanciereCryptoActif" minOccurs="0"  maxOccurs="20"/>
+			<xs:element name="referenceFinanciereCagnotteEnLigne" type="referenceFinanciereCagnotteEnLigne" minOccurs="0"  maxOccurs="20"/>
+			<xs:element name="referenceFinancierePortefeuilleElectronique" type="referenceFinancierePortefeuilleElectronique" minOccurs="0"  maxOccurs="20"/>
+			<xs:element name="referenceFinanciereEspeces" type="referenceFinanciereEspeces" minOccurs="0"  maxOccurs="20"/>
+			<xs:element name="referenceFinanciereInconnue" type="referenceFinanciereInconnue" minOccurs="0"  maxOccurs="20"/>
+			<xs:element name="referenceFinanciereAutre" type="referenceFinanciereAutre" minOccurs="0"  maxOccurs="20"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="t_lien">
+		<xs:annotation>
+			<xs:documentation>Lien de la personne avec le support</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="t_string_50">
+			<xs:enumeration value="Titulaire" />
+			<xs:enumeration value="Co-titulaire" />
+			<xs:enumeration value="Mandataire" />
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="referenceFinanciereIban">
+		<xs:complexContent>
+			<xs:extension base="xs:anyType">
+				<xs:attribute name="id" type="t_num_6" use="required" />
+				<xs:attribute name="lien" type="t_lien" use="optional" />
+				<xs:attribute name="soldeRestant" type="xs:decimal" use="optional" />
+				<xs:attribute name="iban" type="t_iban" use="required" />
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="referenceFinanciereIdentifiantCompte">
+		<xs:complexContent>
+			<xs:extension base="xs:anyType">
+				<xs:attribute name="id" type="t_num_6" use="required" />
+				<xs:attribute name="lien" type="t_lien" use="optional" />
+				<xs:attribute name="soldeRestant" type="xs:decimal" use="optional" />
+				<xs:attribute name="bic" type="t_bic" use="required" />
+				<xs:attribute name="cib" type="t_cib" use="optional" />
+				<xs:attribute name="numeroCompte" type="xs:string" use="optional" />
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="referenceFinanciereNumeroCarteBancaire">
+		<xs:complexContent>
+			<xs:extension base="xs:anyType">
+				<xs:attribute name="id" type="t_num_6" use="required" />
+				<xs:attribute name="lien" type="t_lien" use="optional" />
+				<xs:attribute name="numeroCarteBancaire" type="t_numCard" use="required" />
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="referenceFinanciereNumeroCartePrepayee">
+		<xs:complexContent>
+			<xs:extension base="xs:anyType">
+				<xs:attribute name="id" type="t_num_6" use="required" />
+				<xs:attribute name="lien" type="t_lien" use="optional" />
+				<xs:attribute name="NumeroCartePrepayee" type="t_alphaNum" use="required" />
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="referenceFinanciereNumeroCheque">
+		<xs:complexContent>
+			<xs:extension base="xs:anyType">
+				<xs:attribute name="id" type="t_num_6" use="required" />
+				<xs:attribute name="lien" type="t_lien" use="optional" />
+				<xs:attribute name="NumeroCheque" type="t_string_200" use="required" />
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="referenceFinanciereNumeroContrat">
+		<xs:complexContent>
+			<xs:extension base="xs:anyType">
+				<xs:attribute name="id" type="t_num_6" use="required" />
+				<xs:attribute name="lien" type="t_lien" use="optional" />
+				<xs:attribute name="NumeroContrat" type="t_alphaNum" use="required" />
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="referenceFinanciereCryptoActif">
+		<xs:complexContent>
+			<xs:extension base="xs:anyType">
+				<xs:attribute name="id" type="t_num_6" use="required" />
+				<xs:attribute name="lien" type="t_lien" use="optional" />
+				<xs:attribute name="CryptoActif" type="t_alphaNum" use="optional" />
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="referenceFinanciereCagnotteEnLigne">
+		<xs:complexContent>
+			<xs:extension base="xs:anyType">
+				<xs:attribute name="id" type="t_num_6" use="required" />
+				<xs:attribute name="lien" type="t_lien" use="optional" />
+				<xs:attribute name="CagnotteEnLigne" type="t_string_3000" use="required" />
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="referenceFinancierePortefeuilleElectronique">
+		<xs:complexContent>
+			<xs:extension base="xs:anyType">
+				<xs:attribute name="id" type="t_num_6" use="required" />
+				<xs:attribute name="lien" type="t_lien" use="optional" />
+				<xs:attribute name="PortefeuilleElectronique" type="t_alphaNum" use="optional" />
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="referenceFinanciereEspeces">
+		<xs:complexContent>
+			<xs:extension base="xs:anyType">
+				<xs:attribute name="id" type="t_num_6" use="required" />
+				<xs:attribute name="lien" type="t_lien" use="optional" />
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="referenceFinanciereInconnue">
+		<xs:complexContent>
+			<xs:extension base="xs:anyType">
+				<xs:attribute name="id" type="t_num_6" use="required" />
+				<xs:attribute name="lien" type="t_lien" use="optional" />
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="referenceFinanciereAutre">
+		<xs:complexContent>
+			<xs:extension base="xs:anyType">
+				<xs:attribute name="id" type="t_num_6" use="required" />
+				<xs:attribute name="lien" type="t_lien" use="optional" />
+				<xs:attribute name="AutreType" type="t_string_200" use="required" />
+				<xs:attribute name="NumeroReference" type="t_string_200" use="required" />
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="t_notorieteDefavorable">
+		<xs:annotation>
+			<xs:documentation>Eléments de notoriété défavorables</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="presenceSanction" type="t_choix_oui_non_nesaispas" minOccurs="0"/>
+			<xs:element name="listesSanctions" type="t_string_700_optional" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						A renseigner seulement si presenceSanction est à true
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="precisionsSuspicion" minOccurs="0">
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="t_string_700_optional">
+							<xs:attribute name="ue" use="required">
+								<xs:simpleType>
+									<xs:restriction base="xs:boolean"/>
+								</xs:simpleType>
+							</xs:attribute>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="description" type="t_string_700" minOccurs="0"/>
+			<xs:element name="idPieceJointe" type="t_num_6" minOccurs="0" maxOccurs="15"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_activiteCoordonnee">
+		<xs:annotation>
+			<xs:documentation>
+				Personne morale - Activité coordonnées
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="numeroIdentification" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Numéro SIREN / Type</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="t_string_200_optional">
+							<xs:attribute name="type" use="required">
+								<xs:annotation>
+									<xs:documentation>
+										<xs:documentation>Code du type de registre</xs:documentation>
+									</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:restriction base="t_registre"/>
+								</xs:simpleType>
+							</xs:attribute>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="denominationSociale" type="t_string_200" minOccurs="0" >
+				<xs:annotation>
+					<xs:documentation>
+						Champ obligatoire seulement si le type de registre n'est pas "Je ne sais pas".
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="secteurActivite" type="t_string_50" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Champ obligatoire seulement si le type de registre est SIREN.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="enseigneSigle" type="t_string_200" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Champ à remplir optionnellement si le type de registre n'est pas SIREN.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="formeJuridique" type="t_formeJuridique" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Champ à remplir optionnellement si le type de registre n'est pas SIREN.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="activitePrincipale" type="t_string_50" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Champ à remplir optionnellement si le type de registre n'est pas SIREN.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="adresse" type="t_adresse_pp_pm" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Champ à remplir obligatoirement si La personne physique dispose d'un numéro d'identification professionnelle.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="autreAdresse" type="t_adresse_pp_pm" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Champ optionnel à ne remplir que dans le cas d'un numéro d'identification de type SIREN/T
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="nomAutreTypeRegistre" type="t_string_200" minOccurs="0" >
+				<xs:annotation>
+					<xs:documentation>
+						Champ obligatoire seulement si le code du type de registre est "étranger" [RE07] ou "autre" [RE08].
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="paysAutreTypeRegistre" type="t_pays" minOccurs="0" >
+				<xs:annotation>
+					<xs:documentation>
+						Champ obligatoire seulement si le code du type de registre est "étranger" [RE07] ou "autre" [RE08].
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="telephoneAvecIndicatif" type="t_num_tel" minOccurs="0" maxOccurs="3"/>
+			<xs:element name="courriel" type="t_mail" minOccurs="0"/>
+			<xs:element name="urlSiteWeb" type="t_string_3000" minOccurs="0"/>
+			<xs:element name="idPieceJointe" type="t_num_6" minOccurs="0" maxOccurs="15"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_autreBeneficiaireEffectif">
+		<xs:annotation>
+			<xs:documentation>
+				Autre bénéficiaire
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element type="t_string_50" name="nom" minOccurs="0"/>
+			<xs:element type="t_string_50" name="nomUsage" minOccurs="0"/>
+			<xs:element type="t_string_50" name="alias" minOccurs="0" maxOccurs="10"/>
+			<xs:element type="t_string_200" name="prenom" minOccurs="0" maxOccurs="5"/>
+			<xs:element type="t_pp_sexe" name="sexe" minOccurs="0"/>
+			<xs:element type="t_date" name="dateNaissance" minOccurs="0"/>
+			<xs:element type="t_string_200" name="lieuNaissance" minOccurs="0"/>
+			<xs:element type="t_pays" name="nationalite" minOccurs="0" maxOccurs="5"/>
+			<xs:element type="t_adresseAutreBeneficiaire" name="adresse" minOccurs="0"/>
+			<xs:element type="t_string_200" name="nature" minOccurs="0"/>
+			<xs:element type="t_date" name="dateEffectivite" minOccurs="0"/>
+			<xs:element type="t_string_200" name="dateNaissanceEstimation" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Ce champ est peut être rempli en l'absence de date de naissance précise [dateNaissance].
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_autreDirigeantP">
+		<xs:annotation>
+			<xs:documentation>
+				Autre Dirigeant Physique
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="nom" type="t_string_200" minOccurs="0"/>
+			<xs:element name="prenom" type="t_string_200" minOccurs="0"/>
+			<xs:element name="dateNaissance" type="t_date" minOccurs="0"/>
+			<xs:element name="lieuNaissance" type="t_string_200" minOccurs="0"/>
+			<xs:element name="paysNaissance" type="t_pays" minOccurs="0"/>
+			<xs:element name="idPieceJointe" type="t_num_6" minOccurs="0" maxOccurs="15"/>
+			<xs:element name="telephoneAvecIndicatif" type="t_num_tel" minOccurs="0" maxOccurs="3"/>
+			<xs:element name="mail" type="t_mail" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_dirigeant">
+		<xs:annotation>
+			<xs:documentation>
+				Dirigeant
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="fonctionDirigeant" type="t_fonctionDirigeant" minOccurs="0"/>
+			<xs:element name="autreFonctionDirigeant" type="t_string_200" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Si fonctionDirigeant est égale à [MF14] = autre, on précise quelle fonction
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="idPersonne" type="t_num_6" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Ce champ ne peut être présent qu'en l'absence des champs [autreDirigeantP] et [autreDirigeantM].
+						Ce champ permet de référencer une personne déjà présente dans la déclaration.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="autreDirigeantP" type="t_autreDirigeantP" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Ce champ ne peut être présent qu'en l'absence des champs [idPersonne] et [autreDirigeantM].
+						Ce champ permet de déclarer une personne non présente dans la déclaration.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="autreDirigeantM" type="t_activiteCoordonnee" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Ce champ ne peut être présent qu'en l'absence des champs [autreDirigeantP] et [idPersonne].
+						Ce champ permet de déclarer une personne non présente dans la déclaration.
+						Il est de même type que pour t_pm_fiche
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="beneficiaireEffectif" type="t_choix_oui_non_nesaispas" minOccurs="0"/>
+			<xs:element name="idBeneficiaireEffectif" type="xs:integer" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Ce champ est à remplir obligatoirement si le dirigeant n'est pas le bénéficiaire.
+						Ce champ permet de référencer une personne déjà présente dans la déclaration.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="autreBeneficiaireEffectif" type="t_autreBeneficiaireEffectif" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Ce champ est à remplir obligatoirement si le dirigeant n'est pas le bénéficiaire.
+						Ce champ permet de déclarer une personne non présente dans la déclaration.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_infosFinancieresFiscales">
+		<xs:annotation>
+			<xs:documentation>
+				Informations Financières Fiscales
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="idPieceJointe" type="t_num_6" minOccurs="1" maxOccurs="15"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_pp_fiche">
+		<xs:annotation>
+			<xs:documentation>
+				Fiche pour une personne physique
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="id" type="t_num_6" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						Identificateur unique d'une personne dans la déclaration
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="implication" type="t_implication" minOccurs="1"/>
+			<xs:element name="natureRelation" type="t_natureRelation" minOccurs="0"/>
+			<xs:element name="elementsRelation" type="t_string_700" minOccurs="0"/>
+			<xs:element name="etatCivil" type="t_etatCivil_pp" minOccurs="1"/>
+			<xs:element name="coordonnees" type="t_coordonnees_pp" minOccurs="0"/>
+			<xs:element name="ppe" type="t_ppe" minOccurs="0"/>
+			<xs:element name="activite" type="t_activite_pp" minOccurs="0"/>
+			<xs:element name="referencesFinancieres" type="t_referencesFinancieres" minOccurs="0"/>
+			<xs:element name="numeroIdentFiscal" type="t_numeroIdentFiscal" minOccurs="0"/>
+			<xs:element name="notorieteDefavorable" type="t_notorieteDefavorable" minOccurs="0"/>
+			<xs:element name="description" type="t_string_700" minOccurs="0"/>
+			<xs:element name="donneesConnexion" type="xs:boolean" minOccurs="0"/>
+			<xs:element name="idPieceJointeDonneesConnexion" type="t_num_6" minOccurs="0" maxOccurs="15"/>
+			<xs:element name="lienAutrePersonneDejaDeclaree" type="t_lienAutrePersonneDejaDeclaree" minOccurs="0" maxOccurs="10"/>
+			<xs:element name="lienAutrePp" type="t_lienAutrePp" minOccurs="0" maxOccurs="10"/>
+			<xs:element name="lienAutrePm" type="t_lienAutrePm" minOccurs="0" maxOccurs="10"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_pm_fiche">
+		<xs:annotation>
+			<xs:documentation>
+				Fiche pour une personne morale
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="id" type="t_num_6" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						Identificateur unique d'une personne dans la déclaration
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="implication" type="t_implication" minOccurs="1"/>
+			<xs:element name="natureRelation" type="t_natureRelation" minOccurs="0"/>
+			<xs:element name="elementsRelation" type="t_string_700" minOccurs="0"/>
+			<xs:element name="activiteCoordonnee" type="t_activiteCoordonnee" minOccurs="1"/>
+			<xs:element name="dirigeant" type="t_dirigeant" minOccurs="0" maxOccurs="3"/>
+			<xs:element name="referencesFinancieres" type="t_referencesFinancieres" minOccurs="0"/>
+			<xs:element name="infosFinancieresFiscales" type="t_infosFinancieresFiscales" minOccurs="0" maxOccurs="20"/>
+			<xs:element name="notorieteDefavorable" type="t_notorieteDefavorable" minOccurs="0"/>
+			<xs:element name="lienAutrePersonneDejaDeclaree" type="t_lienAutrePersonneDejaDeclaree" minOccurs="0" maxOccurs="10"/>
+			<xs:element name="lienAutrePp" type="t_lienAutrePp" minOccurs="0" maxOccurs="10"/>
+			<xs:element name="lienAutrePm" type="t_lienAutrePm" minOccurs="0" maxOccurs="10"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_pnc">
+		<xs:annotation>
+			<xs:documentation>
+				Fiche pour une personne inconnue
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="id" type="t_num_6" />
+			<xs:element name="implication" type="t_implication" minOccurs="0"/>
+			<xs:element name="elementsIdentification" type="t_string_700" minOccurs="0"/>
+			<xs:element name="referencesFinancieres" type="t_referencesFinancieres" minOccurs="0" />
+			<xs:element name="lienAutrePersonneDejaDeclaree" type="t_lienAutrePersonneDejaDeclaree" minOccurs="0" maxOccurs="10"/>
+			<xs:element name="lienAutrePp" type="t_lienAutrePp" minOccurs="0" maxOccurs="10"/>
+			<xs:element name="lienAutrePm" type="t_lienAutrePm" minOccurs="0" maxOccurs="10"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_operation">
+		<xs:annotation>
+			<xs:documentation>
+				Opération
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="typeOperation" type="t_typeOperation" minOccurs="0"/>
+			<xs:element name="autretypeOperation" type="t_string_200" minOccurs="0" >
+				<xs:annotation>
+					<xs:documentation>
+						Ce champ doit être rempli si le type d'opération est "Autre".
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="emetteurTypeEmetteur" type="t_string_200" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Emmetteur: Id de la personne déjà déclarée ou champ libre
+						Ce champ est obligatoire sauf si le type d'opération est "Espèces - versement"
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="paysOrigineFonds" type="t_pays_dromcom" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Ce champ est obligatoire sauf si le type d'opération est "Espèces - versement"
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="refFinanciereEmission" type="t_string_200" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Référence financière: Id de de l'équipement financier de l'émetteur déjà déclaré ou champ libre
+						Ce champ est obligatoire sauf si le type d'opération est "Espèces - versement"
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="beneficiaireTypeBeneficiaire" type="t_string_200" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Bénéficiaire: Id de la personne déjà déclarée ou champ libre
+						Ce champ est obligatoire sauf si le type d'opération est "Espèces - retrait"
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="paysArriveeFonds" type="t_pays_dromcom" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Ce champ est obligatoire sauf si le type d'opération est "Espèces - retrait"
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="refFinanciereReception" type="t_string_200" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Référence financière: Id de de l'équipement financier du bénéficiaire déjà déclarée ou champ libre
+						Ce champ est obligatoire sauf si le type d'opération est "Espèces - retrait"
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="montantTotal" type="t_decimal_12" minOccurs="1"/>
+			<xs:element name="nombreOperations" type="t_num_6" minOccurs="0"/>
+			<xs:element name="commentaires" type="t_string_700" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_operationtdf">
+		<xs:annotation>
+			<xs:documentation>
+				Opération TDF : identifiant de la pièces jointes du tableau des opérations suspectes qui est
+				maintenant une pièces jointe spécifique en format CSV ("Document Operation TDF";"TA17")
+				elle est obligatoire si soupconElementsNonFinanciers = 0 (false)
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="dateDebut" type="t_date" minOccurs="1" />
+			<xs:element name="dateFin" type="t_date" minOccurs="1" />
+			<xs:element name="soupconElementsNonFinanciers" type="xs:boolean" minOccurs="1"/>
+			<xs:element name="operationSuspectCSV" type="t_num_6" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_operationEnCours">
+		<xs:annotation>
+			<xs:documentation>
+				Opération en cours
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="identEmetteur" type="t_string_200" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Emmetteur: Id de la personne déjà déclarée
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="refFinanciere" type="t_string_200" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Référence financière: Id de de l'équipement financier de l'émetteur déjà déclaré
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="typeOperation" type="t_typeOperation" minOccurs="0"/>
+			<xs:element name="autretypeOperation" type="t_string_200" minOccurs="0" >
+				<xs:annotation>
+					<xs:documentation>
+						Ce champ doit être rempli si le type d'opération est "Autre".
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="montantEuro" type="t_decimal_12" minOccurs="1"/>
+			<xs:element name="dateLimiteExecution" type="t_date" minOccurs="1"/>
+			<xs:element name="heureLimiteExecution" type="t_heure" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_operations">
+		<xs:annotation>
+			<xs:documentation>
+				Détails des Opérations
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="dateDebut" type="t_date" minOccurs="1" />
+			<xs:element name="dateFin" type="t_date" minOccurs="1" />
+			<xs:element name="soupconElementsNonFinanciers" type="xs:boolean" minOccurs="0"/>
+			<xs:element name="montantTotal" type="t_decimal_12" minOccurs="1"/>
+			<xs:element name="operation" type="t_operation" minOccurs="0" maxOccurs="30"/>
+			<xs:element name="operationEnCours" type="t_operationEnCours" minOccurs="0" maxOccurs="30"/>
+		</xs:sequence>
+	</xs:complexType>	
+	<xs:complexType name="t_operationstdf">
+		<xs:annotation>
+			<xs:documentation>
+				Détails des Opérations
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="operation" type="t_operationtdf" minOccurs="1"/>
+			<xs:element name="operationEnCours" type="t_operationEnCours" minOccurs="0" maxOccurs="30"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_context">
+		<xs:annotation>
+			<xs:documentation>
+				Etape 2 - Contexte et périmètre de la déclaration
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="natureSoupcon" type="t_natureSoupcon" minOccurs="1"/>
+			<xs:element name="general" type="t_general" minOccurs="1"/>
+			<xs:element name="information" type="t_information" minOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_natureSoupcon">
+		<xs:sequence>
+			<xs:element name="cadreLegal" type="t_cadreLegal" minOccurs="1" maxOccurs="5">
+				<xs:annotation>
+					<xs:documentation>
+						"Cadre légale principal" doit contenir au moins une des trois valeurs suivantes :
+						-  "Soupçon de financement du terrorisme (al I du L561-15)" [CL01]
+						-  "Soupçon d'infraction(s) pénale(s) (al I du L561-15)"[CL02]
+						-  "Soupçon de fraude(s) fiscale(s) (al II du L561-15)" [CL03]
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="natureSoupconPenale" type="t_natureSoupconPenale" minOccurs="0" maxOccurs="30">
+				<xs:annotation>
+					<xs:documentation>
+						- Champ présent et obligatoire uniquement si le "Cadre légale principal" = [CL02]
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="autreNatureSoupconPenale" type="t_string_200" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						-  Champ présent et obligatoire uniquement si la "Nature(s) du soupçon d'infraction pénale" contient [NSP15]
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="natureFraudeFiscale" type="t_natureFraudeFiscale" minOccurs="0" maxOccurs="30">
+				<xs:annotation>
+					<xs:documentation>
+						- Champ présent et obligatoire uniquement si le "Cadre légale principal" = [CL03]
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="autreNatureFraudeFiscale" type="t_string_200" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						- Champ présent et obligatoire uniquement si la "Nature(s) du soupçon de fraude fiscale" contient [NFF10]
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_general">
+		<xs:sequence>
+			<xs:element name="complement" type="t_num_19" minOccurs="0" >
+				<xs:annotation>
+					<xs:documentation>
+						- Champ présent et obligatoire uniquement dans le cas d'une déclaration complémentaire.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="refInterne" type="t_string_50" minOccurs="1"/>
+			<xs:element name="aav" type="t_refAAV" minOccurs="0" />
+			<xs:element name="estPrecisionSignalement" type="xs:boolean" minOccurs="1"/>
+			<xs:element name="precisionSignalement" type="t_string_700" minOccurs="0"/>
+			<xs:element name="estRequisitionJudiciaire" type="xs:boolean" minOccurs="1"/>
+			<xs:element name="serviceEmetteur" type="t_string_200" minOccurs="0"/>
+			<xs:element name="motifRequisition" type="t_string_200" minOccurs="0"/>
+			<xs:element name="numeroProcedure" type="t_string_50" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_information">
+		<xs:sequence>
+			<xs:element name="gestionFortuneBanquePrivee" type="xs:boolean" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Obligatoire uniquement pour les assujettis inscrits avec la profession "Banques, établissement de crédit".
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="correspondanceBancaire" type="xs:boolean" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Obligatoire uniquement pour les assujettis inscrits avec la profession "Banques, établissement de crédit".
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="lienTransportDeFond" type="xs:boolean" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Indique si la déclaration est en lien avec une activité de transmission de fonds.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="activiteLPS" type="xs:boolean" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_declarant">
+		<xs:annotation>
+			<xs:documentation>
+				Section : Declarant
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence id="t_declarant_choice">
+			<xs:element name="declarant_teleDS" type="xs:boolean" minOccurs="0" />
+			<xs:element name="numeroTeleDS" type="t_idTracfin" minOccurs="0" />
+			<xs:element name="coordonnees" type="t_coordonnee" minOccurs="0"/>
+			<xs:element name="fonction" type="t_string_50" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_contact">
+		<xs:annotation>
+			<xs:documentation>
+				Autre personne à contacter pour cette déclaration
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:sequence>
+				<xs:element name="coordonnees" type="t_coordonneecontact" minOccurs="1"/>
+			</xs:sequence>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_pieceJointe">
+		<xs:annotation>
+			<xs:documentation>
+				Section : Pièces Jointes
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="piece" minOccurs="1" maxOccurs="15">
+				<xs:complexType>
+					<xs:complexContent>
+						<xs:extension base="t_piece_complementaire">
+							<xs:attribute name="id" type="t_num_6" use="required"></xs:attribute>
+						</xs:extension>
+					</xs:complexContent>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_personnes">
+		<xs:annotation>
+			<xs:documentation>
+				Cette section doit contenir au moins une personne
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="pp" type="t_pp_fiche" minOccurs="0" maxOccurs="30"/>
+			<xs:element name="pm" type="t_pm_fiche" minOccurs="0" maxOccurs="30"/>
+			<xs:element name="pnc" type="t_pnc" minOccurs="0" maxOccurs="30"/>
+		</xs:sequence>
+	</xs:complexType>
+	<!-- Structure du document -->
+	<xs:element id="e_declaration" name="ds">
+		<xs:annotation>
+			<xs:documentation>
+				Racine de la declaration.
+				Une déclaration contient un unique noeud "ds".
+			</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="organisme" type="t_organisme" minOccurs="1"/>
+				<xs:element name="declarant" type="t_declarant" minOccurs="1"/>
+				<xs:element name="contact" type="t_contact" minOccurs="0" />
+				<xs:element name="context" type="t_context" minOccurs="1"/>
+				<xs:element name="analyse" type="t_string_23000" minOccurs="1"/>
+				<xs:element name="personnes" type="t_personnes" minOccurs="0"/>
+				<xs:element name="operations" type="t_operations" minOccurs="0"/>
+				<xs:element name="operationstdf" type="t_operationstdf" minOccurs="0" />
+				<xs:element name="pieceJointe" type="t_pieceJointe" minOccurs="0"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>

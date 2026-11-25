@@ -1,0 +1,1657 @@
+{
+ "report_types": [
+  "DS_INITIALE"
+ ],
+ "builtin_types": {
+  "source": "financier-v1.4.0.xsd: the xs:* types used by the schema",
+  "types": {
+   "xs:boolean": "boolean",
+   "xs:decimal": "decimal",
+   "xs:integer": "integer",
+   "xs:positiveInteger": "integer",
+   "xs:string": "string"
+  }
+ },
+ "type_map": {
+  "source": "financier-v1.4.0.xsd (simple types and complex types with simple content); typing decision taken once, here. A type missing from this table makes the generator fail.",
+  "types": {
+   "t_adresse_numero_voie_complement": "code",
+   "t_alphaNum": "string",
+   "t_autoriteDelivrance": "string",
+   "t_bic": "string",
+   "t_cadreLegal": "code",
+   "t_categorieRelation": "code",
+   "t_choix_oui_non_nesaispas": "code",
+   "t_cib": "string",
+   "t_contenu_fichier": "string",
+   "t_date": "date",
+   "t_date_heure": "string",
+   "t_decimal_12": "decimal",
+   "t_document": "code",
+   "t_fonctionDirigeant": "code",
+   "t_formeJuridique": "code",
+   "t_heure": "string",
+   "t_iban": "string",
+   "t_idTracfin": "integer",
+   "t_implication": "code",
+   "t_lien": "code",
+   "t_mail": "string",
+   "t_natureFraudeFiscale": "code",
+   "t_natureRelation": "code",
+   "t_natureSoupconPenale": "code",
+   "t_num_19": "integer",
+   "t_num_6": "integer",
+   "t_num_tel": "string",
+   "t_numCard": "string",
+   "t_numeroIdentFiscal": "string",
+   "t_organisme_profession": "code",
+   "t_pays": "code",
+   "t_pays_dromcom": "code",
+   "t_paysName": "string",
+   "t_paysType": "code",
+   "t_positiveDecimals_32": "decimal",
+   "t_pp_sexe": "code",
+   "t_refPPE": "code",
+   "t_registre": "code",
+   "t_sousCategorieRelation": "code",
+   "t_string_10": "string",
+   "t_string_100": "string",
+   "t_string_120": "string",
+   "t_string_200": "string",
+   "t_string_200_optional": "string",
+   "t_string_23000": "string",
+   "t_string_255": "string",
+   "t_string_255_optional": "string",
+   "t_string_30": "string",
+   "t_string_3000": "string",
+   "t_string_50": "string",
+   "t_string_6": "string",
+   "t_string_64": "string",
+   "t_string_700": "string",
+   "t_string_700_optional": "string",
+   "t_type_adresse": "code",
+   "t_type_voie": "code",
+   "t_typeEquipement": "code",
+   "t_typeOperation": "code",
+   "t_typemime": "code"
+  }
+ },
+ "ignored_facets": {
+  "source": "financier-v1.4.0.xsd:377-382 (t_positiveDecimals_32, not used by any retained element)",
+  "facets": [
+   "minExclusive"
+  ]
+ },
+ "dropped_attributes": [],
+ "code_or_text": [
+  {
+   "type": "t_paysName",
+   "attribute": "type",
+   "value": "other",
+   "source": "financier-v1.4.0.xsd:463-504: t_paysName is a string with an optional attribute type (t_paysType: code/other); t_pays and t_pays_dromcom restrict it (length 2..200). The XSD documentation says: « Pour mettre un autre pays, ajouter l'attribut type=\"other\" et indiquer le pays dans la balise ». A country is a code of its list or, failing that, free text written with type=\"other\"; free text is accepted with a warning (free_text_code)."
+  }
+ ],
+ "code_exclusions": [
+  {
+   "list": "liste_ref_pays.csv",
+   "codes": [
+    "1"
+   ],
+   "source": "pays.csv: code 1 (Autre) is shorter than the minimum length 2 of t_pays / t_pays_dromcom (financier-v1.4.0.xsd:476-504); a country missing from the list is written as free text instead (code_or_text t_paysName.type, type=\"other\"). Decision: code 1 excluded."
+  }
+ ],
+ "unknown_codes": [
+ {
+   "list": "liste_ref_pays.csv",
+   "code": "XX",
+   "source": "inputs/referentiels/pays.csv: the line XX;Inconnu of the official country referential (liste_ref_pays.csv); design decision: XX is the country to take when the data say nothing, rather than leaving the field empty and blocking the export; a real country code remains subject to the usual proof rules"
+  },
+ {
+   "list": "liste_ref_dromcom.csv+liste_ref_pays.csv",
+   "code": "XX",
+   "source": "inputs/referentiels/pays.csv: the line XX;Inconnu of the official country referential, carried into the DROM-COM + countries union list (t_pays_dromcom); design decision: XX is the country to take when the data say nothing; a real country code remains subject to the usual proof rules"
+  },
+ {
+   "list": "t_choix_oui_non_nesaispas",
+   "code": "Je ne sais pas",
+   "source": "financier-v1.4.0.xsd: enumeration of the type t_choix_oui_non_nesaispas; design decision: « Je ne sais pas » is the code to take when the data say nothing; the other codes remain subject to the usual proof rules"
+  },
+ {
+   "list": "liste_ref_sexe.csv",
+   "code": "SEX3",
+   "source": "financier-v1.4.0.xsd:516-527 (t_pp_sexe): design decision: SEX3 (Inconnu) is the code to take when the data say nothing; the other codes remain subject to the usual proof rules"
+  },
+ {
+   "list": "t_registre",
+   "code": "Je ne sais pas",
+   "source": "financier-v1.4.0.xsd: enumeration of the type t_registre; design decision: « Je ne sais pas » is the code to take when the data say nothing; the other codes remain subject to the usual proof rules"
+  }
+ ],
+ "other_codes": [
+  {
+   "list": "liste_ref_relations.csv",
+   "codes": ["TLP11", "TLP20", "TLP36", "TLP47", "TLP50", "TLP51", "TLP56"],
+   "source": "inputs/referentiels/relationsentrepersonnes.csv: the codes whose label is « Autre… » (TLP11, TLP20, TLP36, TLP47, TLP50, TLP51, TLP56), the only ones that admit the free precision sousCategorieRelationAutre (financier-v1.4.0.xsd:663-669)"
+  }
+ ],
+ "ignore_type_doc_patterns": {
+  "source": "The generic documentations of the length types (« Chaines de caractere de taille 50 ») teach nothing to the LLM or to the analyst.",
+  "patterns": [
+   "^t_string_\\d+(_optional)?$",
+   "^t_num_\\d+$",
+   "^t_decimal_\\d+$",
+   "^t_date$",
+   "^t_heure$",
+   "^t_date_heure$",
+   "^t_idTracfin$"
+  ]
+ },
+ "pattern_overrides": {
+  "t_num_tel": {
+   "strip_anchors": true,
+   "source": "financier-v1.4.0.xsd:80-102: pattern ^…$; in XSD regex ^ and $ are literal. Assumption: ERMES reads them as anchors (to be confirmed by an import on the ERMES demo)."
+  },
+  "t_mail": {
+   "strip_anchors": true,
+   "source": "financier-v1.4.0.xsd:80-102: pattern ^…$; in XSD regex ^ and $ are literal. Assumption: ERMES reads them as anchors (to be confirmed by an import on the ERMES demo)."
+  },
+  "t_iban": {
+   "strip_anchors": true,
+   "source": "financier-v1.4.0.xsd:80-102 and 334-368: pattern ^…$; in XSD regex ^ and $ are literal. Assumption: ERMES reads them as anchors (to be confirmed by an import on the ERMES demo); the validator anchors each pattern itself."
+  },
+  "t_numCard": {
+   "strip_anchors": true,
+   "source": "financier-v1.4.0.xsd:80-102 and 334-368: pattern ^…$; in XSD regex ^ and $ are literal. Assumption: ERMES reads them as anchors (to be confirmed by an import on the ERMES demo); the validator anchors each pattern itself."
+  }
+ },
+ "code_list_bindings": {
+  "liste_ref_PPE_fonction_relation.csv": {
+   "file": "inputs/referentiels/fonctionsppe.csv",
+   "code_column": "code",
+   "label_column": "label",
+   "source": "financier-v1.4.0.xsd:634-645 (t_refPPE); 16 codes"
+  },
+  "liste_ref_cadre_legal.csv": {
+   "file": "inputs/referentiels/naturessoupcons.csv",
+   "code_column": "code",
+   "label_column": "label",
+   "source": "financier-v1.4.0.xsd:505-515 (t_cadreLegal, CL01-CL05)"
+  },
+  "liste_ref_complement_voie.csv": {
+   "file": "inputs/referentiels/complementsvoies.csv",
+   "code_column": "code",
+   "label_column": "label",
+   "source": "financier-v1.4.0.xsd:441-455 (t_adresse_numero_voie_complement, CNV1-CNV4)"
+  },
+  "liste_ref_dromcom.csv": {
+   "file": "inputs/referentiels/dromcom.csv",
+   "code_column": "code",
+   "label_column": "label",
+   "source": "financier-v1.4.0.xsd:491-504 (t_pays_dromcom: DROM-COM and countries)"
+  },
+  "liste_ref_fonction_dirigeant.csv": {
+   "file": "inputs/referentiels/fonctionsdirigeants.csv",
+   "code_column": "code",
+   "label_column": "label",
+   "source": "financier-v1.4.0.xsd:539-549 (t_fonctionDirigeant, MF01-MF14)"
+  },
+  "liste_ref_forme_juridique.csv": {
+   "file": "inputs/referentiels/formeslegales.csv",
+   "code_column": "code",
+   "label_column": "label",
+   "source": "financier-v1.4.0.xsd:528-538 (t_formeJuridique, FJ1-FJ24)"
+  },
+  "liste_ref_nature_fraude_fiscale.csv": {
+   "file": "inputs/referentiels/violationstypefiscal.csv",
+   "code_column": "code",
+   "label_column": "label",
+   "source": "financier-v1.4.0.xsd:610-621 (t_natureFraudeFiscale, NFF)"
+  },
+  "liste_ref_nature_soupcon_penale.csv": {
+   "file": "inputs/referentiels/violationspenaltype.csv",
+   "code_column": "code",
+   "label_column": "label",
+   "source": "financier-v1.4.0.xsd:598-609 (t_natureSoupconPenale, NSP)"
+  },
+  "liste_ref_pays.csv": {
+   "file": "inputs/referentiels/pays.csv",
+   "code_column": "code",
+   "label_column": "label",
+   "source": "financier-v1.4.0.xsd:476-490 (t_pays); 240 codes"
+  },
+  "liste_ref_piece_jointe.csv": {
+   "file": "inputs/referentiels/typesdedocuments.csv",
+   "code_column": "code",
+   "label_column": "label",
+   "source": "financier-v1.4.0.xsd:550-560 (t_document, TA1-TA19); attachments are outside v1, list kept for the record"
+  },
+  "liste_ref_professions.csv": {
+   "file": "inputs/referentiels/professions.csv",
+   "code_column": "code",
+   "label_column": "label",
+   "source": "financier-v1.4.0.xsd:384-394 (t_organisme_profession); 45 codes"
+  },
+  "liste_ref_relations.csv": {
+   "file": "inputs/referentiels/relationsentrepersonnes.csv",
+   "code_column": "code",
+   "label_column": "label",
+   "source": "financier-v1.4.0.xsd:395-418, 647-671 (t_categorieRelation, t_sousCategorieRelation); 57 TLP codes"
+  },
+  "liste_ref_sexe.csv": {
+   "file": "inputs/referentiels/genres.csv",
+   "code_column": "code",
+   "label_column": "label",
+   "source": "financier-v1.4.0.xsd:516-527 (t_pp_sexe, SEX1-SEX3)"
+  },
+  "liste_ref_type_adresse.csv": {
+   "file": "inputs/referentiels/typesadresses.csv",
+   "code_column": "code",
+   "label_column": "label",
+   "source": "financier-v1.4.0.xsd:419-429 (t_type_adresse)"
+  },
+  "liste_ref_type_equipement.csv": {
+   "unavailable": true,
+   "source": "financier-v1.4.0.xsd:587-597 (t_typeEquipement): list not published by TRACFIN (none of the 22 lists of inputs/referentiels contains it). Any value is accepted with a warning."
+  },
+  "liste_ref_type_operations.csv": {
+   "file": "inputs/referentiels/typesoperations.csv",
+   "code_column": "code",
+   "label_column": "label",
+   "source": "financier-v1.4.0.xsd:310-321 (t_typeOperation, OT01-OT26)"
+  },
+  "liste_ref_type_voie.csv": {
+   "file": "inputs/referentiels/typesvoies.csv",
+   "code_column": "code",
+   "label_column": "label",
+   "source": "financier-v1.4.0.xsd:430-440 (t_type_voie, TVO)"
+  },
+  "liste_ref_typemime.csv": {
+   "inline": [
+    {
+     "value": "application/pdf",
+     "label": "PDF"
+    }
+   ],
+   "source": "financier-v1.4.0.xsd:672-683 (t_typemime): TRACFIN does not publish the list of MIME types (open question to TRACFIN), only application/pdf is kept"
+  },
+  "liste_ref_devises.csv": {
+   "file": "inputs/referentiels/devises.csv",
+   "code_column": "code",
+   "label_column": "label",
+   "extra": true,
+   "source": "182 codes; list published by TRACFIN but bound to no XSD type; used by work.transactions[].devise"
+  }
+ },
+ "inline_code_lists": {
+  "sens_transaction": {
+   "codes": [
+    {
+     "value": "debit",
+     "label": "Débit"
+    },
+    {
+     "value": "credit",
+     "label": "Crédit"
+    }
+   ],
+   "source": "Design decision: direction of the transaction seen from the customer (working node, never exported)"
+  }
+ },
+ "excluded": [
+  {
+   "template": "operations.operationEnCours[]",
+   "source": "Outside v1 (design decision: no pending operation); financier-v1.4.0.xsd:1655 minOccurs=0"
+  },
+  {
+   "template": "operationstdf",
+   "source": "Outside v1 (funds transfer module outside the Marble profile); financier-v1.4.0.xsd:1840 minOccurs=0"
+  },
+  {
+   "template": "pieceJointe",
+   "source": "Outside v1 (design decision: no attachments); financier-v1.4.0.xsd:1841 minOccurs=0"
+  },
+  {
+   "name": "idPieceJointe",
+   "source": "Reference to an attachment, outside v1; financier-v1.4.0.xsd:915, 1240, 1337, 1379 minOccurs=0"
+  },
+  {
+   "name": "idPieceJointeDonneesConnexion",
+   "source": "Reference to an attachment, outside v1; financier-v1.4.0.xsd:1479 minOccurs=0"
+  },
+  {
+   "name": "infosFinancieresFiscales",
+   "source": "Contains only references to attachments (financier-v1.4.0.xsd:1443-1452), outside v1; minOccurs=0 (XSD:1505)"
+  },
+  {
+   "template": "context.general.complement",
+   "source": "Outside v1: complementary declaration only (report_types = DS_INITIALE); financier-v1.4.0.xsd:1725-1731 minOccurs=0"
+  }
+ ],
+ "defaults": [
+  {
+   "template": "context.general.refInterne",
+   "value": "{case_id}",
+   "source": "financier-v1.4.0.xsd:1732 (mandatory, at most 50 characters); the {case_id} marker is replaced with the case identifier at creation"
+  },
+  {
+   "template": "context.general.estPrecisionSignalement",
+   "value": "false",
+   "source": "financier-v1.4.0.xsd:1734 (mandatory); the analyst changes it if answering a TRACFIN request"
+  },
+  {
+   "template": "context.general.estRequisitionJudiciaire",
+   "value": "false",
+   "source": "financier-v1.4.0.xsd:1736 (mandatory); the analyst changes it if answering a requisition"
+  }
+ ],
+ "export_ids": [
+  {
+   "template": "personnes.pp[].id",
+   "source": "financier-v1.4.0.xsd:1460 (local numeric id, at most 6 digits)"
+  },
+  {
+   "template": "personnes.pm[].id",
+   "source": "financier-v1.4.0.xsd:1492"
+  },
+  {
+   "template": "personnes.pnc[].id",
+   "source": "financier-v1.4.0.xsd:1519"
+  },
+  {
+   "template": "personnes.*[].referencesFinancieres.*[].id",
+   "source": "financier-v1.4.0.xsd:1102-1212 (id attribute of each financial reference)"
+  }
+ ],
+ "refs": [
+  {
+   "template": "personnes.pp[].lienAutrePersonneDejaDeclaree[].idPersonne",
+   "targets": [
+    "personnes.pp[]",
+    "personnes.pm[]",
+    "personnes.pnc[]"
+   ],
+   "source": "financier-v1.4.0.xsd:707 (person already declared)"
+  },
+  {
+   "template": "personnes.pm[].lienAutrePersonneDejaDeclaree[].idPersonne",
+   "targets": [
+    "personnes.pp[]",
+    "personnes.pm[]",
+    "personnes.pnc[]"
+   ],
+   "source": "financier-v1.4.0.xsd:707, 1507"
+  },
+  {
+   "template": "personnes.pnc[].lienAutrePersonneDejaDeclaree[].idPersonne",
+   "targets": [
+    "personnes.pp[]",
+    "personnes.pm[]",
+    "personnes.pnc[]"
+   ],
+   "source": "financier-v1.4.0.xsd:707, 1523"
+  },
+  {
+   "template": "personnes.pm[].dirigeant[].idPersonne",
+   "targets": [
+    "personnes.pp[]",
+    "personnes.pm[]",
+    "personnes.pnc[]"
+   ],
+   "source": "financier-v1.4.0.xsd:1399-1406 (person already present in the declaration)"
+  },
+  {
+   "template": "personnes.pm[].dirigeant[].idBeneficiaireEffectif",
+   "targets": [
+    "personnes.pp[]",
+    "personnes.pm[]",
+    "personnes.pnc[]"
+   ],
+   "source": "financier-v1.4.0.xsd:1425-1432 (person already present in the declaration)"
+  },
+  {
+   "template": "operations.operation[].emetteurTypeEmetteur",
+   "targets": [
+    "personnes.pp[]",
+    "personnes.pm[]",
+    "personnes.pnc[]"
+   ],
+   "ref_or_text": true,
+   "source": "financier-v1.4.0.xsd:1543-1549 (id of the person already declared, or free field)"
+  },
+  {
+   "template": "operations.operation[].beneficiaireTypeBeneficiaire",
+   "targets": [
+    "personnes.pp[]",
+    "personnes.pm[]",
+    "personnes.pnc[]"
+   ],
+   "ref_or_text": true,
+   "source": "financier-v1.4.0.xsd:1566-1572 (id of the person already declared, or free field)"
+  },
+  {
+   "template": "operations.operation[].refFinanciereEmission",
+   "targets": [
+    "personnes.pp[].referencesFinancieres.referenceFinanciereAutre[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereCagnotteEnLigne[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereCryptoActif[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereEspeces[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereIban[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereIdentifiantCompte[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereInconnue[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereNumeroCarteBancaire[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereNumeroCartePrepayee[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereNumeroCheque[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereNumeroContrat[]",
+    "personnes.pp[].referencesFinancieres.referenceFinancierePortefeuilleElectronique[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereAutre[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereCagnotteEnLigne[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereCryptoActif[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereEspeces[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereIban[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereIdentifiantCompte[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereInconnue[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereNumeroCarteBancaire[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereNumeroCartePrepayee[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereNumeroCheque[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereNumeroContrat[]",
+    "personnes.pm[].referencesFinancieres.referenceFinancierePortefeuilleElectronique[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereAutre[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereCagnotteEnLigne[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereCryptoActif[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereEspeces[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereIban[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereIdentifiantCompte[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereInconnue[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereNumeroCarteBancaire[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereNumeroCartePrepayee[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereNumeroCheque[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereNumeroContrat[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinancierePortefeuilleElectronique[]"
+   ],
+   "ref_or_text": true,
+   "source": "financier-v1.4.0.xsd:1558-1565 (id of the financial equipment already declared, or free field)"
+  },
+  {
+   "template": "operations.operation[].refFinanciereReception",
+   "targets": [
+    "personnes.pp[].referencesFinancieres.referenceFinanciereAutre[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereCagnotteEnLigne[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereCryptoActif[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereEspeces[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereIban[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereIdentifiantCompte[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereInconnue[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereNumeroCarteBancaire[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereNumeroCartePrepayee[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereNumeroCheque[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereNumeroContrat[]",
+    "personnes.pp[].referencesFinancieres.referenceFinancierePortefeuilleElectronique[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereAutre[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereCagnotteEnLigne[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereCryptoActif[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereEspeces[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereIban[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereIdentifiantCompte[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereInconnue[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereNumeroCarteBancaire[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereNumeroCartePrepayee[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereNumeroCheque[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereNumeroContrat[]",
+    "personnes.pm[].referencesFinancieres.referenceFinancierePortefeuilleElectronique[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereAutre[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereCagnotteEnLigne[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereCryptoActif[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereEspeces[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereIban[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereIdentifiantCompte[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereInconnue[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereNumeroCarteBancaire[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereNumeroCartePrepayee[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereNumeroCheque[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereNumeroContrat[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinancierePortefeuilleElectronique[]"
+   ],
+   "ref_or_text": true,
+   "source": "financier-v1.4.0.xsd:1581-1587 (id of the financial equipment already declared, or free field)"
+  },
+  {
+   "template": "work.transactions[].refEmission",
+   "targets": [
+    "personnes.pp[].referencesFinancieres.referenceFinanciereAutre[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereCagnotteEnLigne[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereCryptoActif[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereEspeces[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereIban[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereIdentifiantCompte[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereInconnue[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereNumeroCarteBancaire[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereNumeroCartePrepayee[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereNumeroCheque[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereNumeroContrat[]",
+    "personnes.pp[].referencesFinancieres.referenceFinancierePortefeuilleElectronique[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereAutre[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereCagnotteEnLigne[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereCryptoActif[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereEspeces[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereIban[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereIdentifiantCompte[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereInconnue[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereNumeroCarteBancaire[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereNumeroCartePrepayee[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereNumeroCheque[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereNumeroContrat[]",
+    "personnes.pm[].referencesFinancieres.referenceFinancierePortefeuilleElectronique[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereAutre[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereCagnotteEnLigne[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereCryptoActif[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereEspeces[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereIban[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereIdentifiantCompte[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereInconnue[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereNumeroCarteBancaire[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereNumeroCartePrepayee[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereNumeroCheque[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereNumeroContrat[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinancierePortefeuilleElectronique[]"
+   ],
+   "ref_or_text": true,
+   "source": "Design decision: mirrors operations.operation[].refFinanciereEmission (financier-v1.4.0.xsd:1558)"
+  },
+  {
+   "template": "work.transactions[].refReception",
+   "targets": [
+    "personnes.pp[].referencesFinancieres.referenceFinanciereAutre[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereCagnotteEnLigne[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereCryptoActif[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereEspeces[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereIban[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereIdentifiantCompte[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereInconnue[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereNumeroCarteBancaire[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereNumeroCartePrepayee[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereNumeroCheque[]",
+    "personnes.pp[].referencesFinancieres.referenceFinanciereNumeroContrat[]",
+    "personnes.pp[].referencesFinancieres.referenceFinancierePortefeuilleElectronique[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereAutre[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereCagnotteEnLigne[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereCryptoActif[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereEspeces[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereIban[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereIdentifiantCompte[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereInconnue[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereNumeroCarteBancaire[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereNumeroCartePrepayee[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereNumeroCheque[]",
+    "personnes.pm[].referencesFinancieres.referenceFinanciereNumeroContrat[]",
+    "personnes.pm[].referencesFinancieres.referenceFinancierePortefeuilleElectronique[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereAutre[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereCagnotteEnLigne[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereCryptoActif[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereEspeces[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereIban[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereIdentifiantCompte[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereInconnue[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereNumeroCarteBancaire[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereNumeroCartePrepayee[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereNumeroCheque[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinanciereNumeroContrat[]",
+    "personnes.pnc[].referencesFinancieres.referenceFinancierePortefeuilleElectronique[]"
+   ],
+   "ref_or_text": true,
+   "source": "Design decision: mirrors operations.operation[].refFinanciereReception (financier-v1.4.0.xsd:1581)"
+  }
+ ],
+ "natures": [
+  {
+   "template": "organisme",
+   "nature": "setting",
+   "source": "Design decision: identity of the reporting institution, organization setting; financier-v1.4.0.xsd:933 (t_organisme)"
+  },
+  {
+   "template": "declarant",
+   "nature": "setting",
+   "source": "Design decision: contact details of the declarant, organization setting; financier-v1.4.0.xsd:1768 (t_declarant)"
+  },
+  {
+   "template": "contact",
+   "nature": "setting",
+   "source": "Design decision: correspondent, organization setting; financier-v1.4.0.xsd:1781 (t_contact)"
+  },
+  {
+   "template": "work.montantCredits",
+   "nature": "computed",
+   "source": "TRACFIN framing sheet « Le montant en jeu » (June 2025): credits and debits are not added together; the backend computes each total separately (working field, never exported)"
+  },
+  {
+   "template": "work.montantDebits",
+   "nature": "computed",
+   "source": "TRACFIN framing sheet « Le montant en jeu » (June 2025): credits and debits are not added together; the backend computes each total separately (working field, never exported)"
+  },
+  {
+   "template": "work.sensMontantTotal",
+   "nature": "judgment",
+   "source": "TRACFIN framing sheet « Le montant en jeu » (June 2025): the declarant keeps the direction that is most significant for the typology; choice made at the judgment step"
+  },
+  {
+   "template": "analyse",
+   "nature": "analyst",
+   "source": "Design decision: narrative written by the analyst; financier-v1.4.0.xsd:1837 (analyse)"
+  },
+  {
+   "template": "operations",
+   "nature": "computed",
+   "source": "Design decision: the LLM works only on work.transactions, the backend derives the lines from them; financier-v1.4.0.xsd:1643 (t_operations)"
+  },
+  {
+   "template": "context.general.refInterne",
+   "nature": "computed",
+   "source": "Design decision (default value, see defaults); financier-v1.4.0.xsd:1732"
+  },
+  {
+   "template": "context.general.estPrecisionSignalement",
+   "nature": "computed",
+   "source": "Design decision (default value, see defaults); financier-v1.4.0.xsd:1734"
+  },
+  {
+   "template": "context.general.estRequisitionJudiciaire",
+   "nature": "computed",
+   "source": "Design decision (default value, see defaults); financier-v1.4.0.xsd:1736"
+  },
+  {
+   "template": "context.natureSoupcon",
+   "nature": "judgment",
+   "source": "Design decision: legal framework and natures of suspicion, analyst judgment; financier-v1.4.0.xsd:1681 (t_natureSoupcon)"
+  },
+  {
+   "template": "context.information",
+   "nature": "judgment",
+   "source": "Design decision; financier-v1.4.0.xsd:1742 (t_information, 4 booleans)"
+  },
+  {
+   "template": "personnes.pp[].implication",
+   "nature": "judgment",
+   "source": "Design decision: involvement of the person; financier-v1.4.0.xsd:1467, 1499, 1520"
+  },
+  {
+   "template": "personnes.pm[].implication",
+   "nature": "judgment",
+   "source": "Design decision; financier-v1.4.0.xsd:1467-1469, 1499-1501, 1520"
+  },
+  {
+   "template": "personnes.pnc[].implication",
+   "nature": "judgment",
+   "source": "Design decision; financier-v1.4.0.xsd:1467-1469, 1499-1501, 1520"
+  },
+  {
+   "template": "personnes.pp[].natureRelation",
+   "nature": "judgment",
+   "source": "Design decision; financier-v1.4.0.xsd:1467-1469, 1499-1501, 1520"
+  },
+  {
+   "template": "personnes.pm[].natureRelation",
+   "nature": "judgment",
+   "source": "Design decision; financier-v1.4.0.xsd:1467-1469, 1499-1501, 1520"
+  },
+  {
+   "template": "personnes.pp[].elementsRelation",
+   "nature": "judgment",
+   "source": "Design decision; financier-v1.4.0.xsd:1467-1469, 1499-1501, 1520"
+  },
+  {
+   "template": "personnes.pm[].elementsRelation",
+   "nature": "judgment",
+   "source": "Design decision; financier-v1.4.0.xsd:1467-1469, 1499-1501, 1520"
+  }
+ ],
+ "labels": [
+  {
+   "template": "",
+   "label": "Déclaration de soupçon",
+   "source": "financier-v1.4.0.xsd:1824-1828 (root ds)"
+  },
+  {
+   "template": "organisme",
+   "label": "Organisme déclarant",
+   "source": "financier-v1.4.0.xsd:933-945 (« Section : Organisme »)"
+  },
+  {
+   "template": "declarant",
+   "label": "Déclarant",
+   "source": "financier-v1.4.0.xsd:1768-1780 (« Section : Declarant »)"
+  },
+  {
+   "template": "contact",
+   "label": "Contact",
+   "source": "financier-v1.4.0.xsd:1781-1792"
+  },
+  {
+   "template": "context",
+   "label": "Contexte et périmètre de la déclaration",
+   "source": "financier-v1.4.0.xsd:1669-1680 (« Etape 2 - Contexte et périmètre de la déclaration »)"
+  },
+  {
+   "template": "context.natureSoupcon",
+   "label": "Nature du soupçon",
+   "source": "financier-v1.4.0.xsd:1681-1722"
+  },
+  {
+   "template": "context.general",
+   "label": "Informations générales",
+   "source": "financier-v1.4.0.xsd:1723-1741"
+  },
+  {
+   "template": "context.information",
+   "label": "Informations complémentaires",
+   "source": "financier-v1.4.0.xsd:1742-1767"
+  },
+  {
+   "template": "analyse",
+   "label": "Analyse des faits",
+   "source": "financier-v1.4.0.xsd:1837 (analyse)"
+  },
+  {
+   "template": "personnes",
+   "label": "Personnes",
+   "source": "financier-v1.4.0.xsd:1811-1822"
+  },
+  {
+   "template": "personnes.pp[]",
+   "label": "Personne physique",
+   "source": "financier-v1.4.0.xsd:1453-1484"
+  },
+  {
+   "template": "personnes.pm[]",
+   "label": "Personne morale",
+   "source": "financier-v1.4.0.xsd:1485-1511"
+  },
+  {
+   "template": "personnes.pnc[]",
+   "label": "Personne non connue",
+   "source": "financier-v1.4.0.xsd:1512-1527"
+  },
+  {
+   "template": "operations",
+   "label": "Opérations",
+   "source": "financier-v1.4.0.xsd:1643-1657"
+  },
+  {
+   "template": "operations.operation[]",
+   "label": "Opération",
+   "source": "financier-v1.4.0.xsd:1528-1593"
+  }
+ ],
+ "descriptions": [
+  {
+   "template": "personnes.pp[].activite.nomAutreTypeRegistre",
+   "text": "Champ obligatoire seulement si le code du type de registre est « étranger » [RN6] ou « autre » [RN7].",
+   "source": "financier-v1.4.0.xsd:1024, 1031, 1323, 1330 (the annotation cites [RE07] and [RE08], codes absent from t_registre); t_registre, financier-v1.4.0.xsd:561-584: étranger → RN6, autre → RN7"
+  },
+  {
+   "template": "personnes.pp[].activite.paysAutreTypeRegistre",
+   "text": "Champ obligatoire seulement si le code du type de registre est « étranger » [RN6] ou « autre » [RN7].",
+   "source": "financier-v1.4.0.xsd:1024, 1031, 1323, 1330 (the annotation cites [RE07] and [RE08], codes absent from t_registre); t_registre, financier-v1.4.0.xsd:561-584: étranger → RN6, autre → RN7"
+  },
+  {
+   "template": "personnes.pm[].activiteCoordonnee.nomAutreTypeRegistre",
+   "text": "Champ obligatoire seulement si le code du type de registre est « étranger » [RN6] ou « autre » [RN7].",
+   "source": "financier-v1.4.0.xsd:1024, 1031, 1323, 1330 (the annotation cites [RE07] and [RE08], codes absent from t_registre); t_registre, financier-v1.4.0.xsd:561-584: étranger → RN6, autre → RN7"
+  },
+  {
+   "template": "personnes.pm[].activiteCoordonnee.paysAutreTypeRegistre",
+   "text": "Champ obligatoire seulement si le code du type de registre est « étranger » [RN6] ou « autre » [RN7].",
+   "source": "financier-v1.4.0.xsd:1024, 1031, 1323, 1330 (the annotation cites [RE07] and [RE08], codes absent from t_registre); t_registre, financier-v1.4.0.xsd:561-584: étranger → RN6, autre → RN7"
+  },
+  {
+   "template": "personnes.pm[].dirigeant[].autreDirigeantM.nomAutreTypeRegistre",
+   "text": "Champ obligatoire seulement si le code du type de registre est « étranger » [RN6] ou « autre » [RN7].",
+   "source": "financier-v1.4.0.xsd:1024, 1031, 1323, 1330 (the annotation cites [RE07] and [RE08], codes absent from t_registre); t_registre, financier-v1.4.0.xsd:561-584: étranger → RN6, autre → RN7"
+  },
+  {
+   "template": "personnes.pm[].dirigeant[].autreDirigeantM.paysAutreTypeRegistre",
+   "text": "Champ obligatoire seulement si le code du type de registre est « étranger » [RN6] ou « autre » [RN7].",
+   "source": "financier-v1.4.0.xsd:1024, 1031, 1323, 1330 (the annotation cites [RE07] and [RE08], codes absent from t_registre); t_registre, financier-v1.4.0.xsd:561-584: étranger → RN6, autre → RN7"
+  },
+  {
+   "template": "analyse",
+   "text": "Narratif de la déclaration, en texte brut, de 1 à 23 000 caractères. Décrit les faits (qui, quoi, quand, comment, pourquoi le soupçon) sans répéter les champs déjà structurés ; inclut les opérations refusées, qui n'ont pas de champ dédié.",
+   "source": "financier-v1.4.0.xsd:1837 ; GuideUtilisateurs.pdf (step 3: analysis of the facts)"
+  },
+  {
+   "template": "personnes.pp[].elementsRelation",
+   "text": "Éléments factuels sur la relation entre le déclarant et la personne : date et circonstances de l'entrée en relation, produits ou services, ancienneté, mouvements notables. 700 caractères au plus ; ne pas y mettre l'analyse du soupçon.",
+   "source": "financier-v1.4.0.xsd:1469 (t_string_700) ; GuideUtilisateurs.pdf (nature of the customer relationship, L.561-10 and L.561-2-1) ; FicheFocus-DeclarationInitialeOuComplementaireVF.pdf"
+  },
+  {
+   "template": "personnes.pm[].elementsRelation",
+   "text": "Éléments factuels sur la relation entre le déclarant et la personne morale : date et circonstances de l'entrée en relation, produits ou services, ancienneté, mouvements notables. 700 caractères au plus ; ne pas y mettre l'analyse du soupçon.",
+   "source": "financier-v1.4.0.xsd:1501 (t_string_700) ; GuideUtilisateurs.pdf ; FicheFocus-DeclarationInitialeOuComplementaireVF.pdf"
+  },
+  {
+   "template": "personnes.pnc[].elementsIdentification",
+   "text": "Tout ce qui permet d'identifier la personne non connue : description physique, pseudonyme, coordonnées partielles, circonstances de la rencontre. 700 caractères au plus.",
+   "source": "financier-v1.4.0.xsd:1521 (PNC)"
+  },
+  {
+   "template": "operations.montantTotal",
+   "text": "Montant total soupçonné, en euros, pour toute la période. Calculé par le backend à partir des transactions retenues.",
+   "source": "financier-v1.4.0.xsd:1653 ; FicheFocus-OperationFinancierePrincipaleVF.pdf"
+  },
+  {
+   "template": "operations.dateDebut",
+   "text": "Début de la période couverte par les opérations déclarées (une seule période pour toute la déclaration). Calculé à partir des transactions retenues.",
+   "source": "financier-v1.4.0.xsd:1650-1651 ; FicheFocus-OperationFinancierePrincipaleVF.pdf"
+  },
+  {
+   "template": "operations.dateFin",
+   "text": "Fin de la période couverte par les opérations déclarées. Calculé à partir des transactions retenues.",
+   "source": "financier-v1.4.0.xsd:1650-1651 ; FicheFocus-OperationFinancierePrincipaleVF.pdf"
+  }
+ ],
+ "working_nodes": {
+  "source": "Design decision: transactions are entered under work, then grouped into operation lines; financier-v1.4.0.xsd:1543-1587 (sender and beneficiary: identifier of a declared person or free text of 200 characters)",
+  "root": {
+   "name": "work",
+   "label": "Travail (non exporté)",
+   "description": "Données de travail qui ne figurent pas dans le XML : le backend en déduit les lignes de operations.",
+   "fields": [
+    {
+     "name": "montantCredits",
+     "type": "decimal",
+     "min": 0,
+     "max_length": 15,
+     "label": "Total des crédits",
+     "description": "Total des transactions comptées de sens crédit (calculé). Il ne s'ajoute jamais au total des débits."
+    },
+    {
+     "name": "montantDebits",
+     "type": "decimal",
+     "min": 0,
+     "max_length": 15,
+     "label": "Total des débits",
+     "description": "Total des transactions comptées de sens débit (calculé). Il ne s'ajoute jamais au total des crédits."
+    },
+    {
+     "name": "sensMontantTotal",
+     "type": "code",
+     "min": 0,
+     "code_list": "sens_transaction",
+     "label": "Sens du montant en jeu",
+     "description": "Sens des flux suspects retenu pour le montant total de la déclaration (étape de jugement). Vide : le backend retient le sens dont le total est le plus élevé."
+    }
+   ]
+  },
+  "items": {
+   "name": "transactions",
+   "min": 0,
+   "max": -1,
+   "label": "Transactions retenues",
+   "description": "Transactions suspectes retenues pour la déclaration, une par ligne de travail. Le backend en déduit la période, le montant total et les opérations.",
+   "fields": [
+    {
+     "name": "montant",
+     "type": "decimal",
+     "min": 1,
+     "max_length": 12,
+     "pattern": "0*[1-9][0-9]*(\\.[0-9]+)?|0*\\.0*[1-9][0-9]*",
+     "label": "Montant",
+     "description": "Montant strictement positif de la transaction, dans la devise indiquée (le sens est donné par le champ sens)."
+    },
+    {
+     "name": "sens",
+     "type": "code",
+     "min": 1,
+     "code_list": "sens_transaction",
+     "label": "Sens",
+     "description": "debit si l'argent sort du compte du client, credit s'il y entre."
+    },
+    {
+     "name": "devise",
+     "type": "code",
+     "min": 1,
+     "code_list": "liste_ref_devises.csv",
+     "label": "Devise",
+     "description": "Code de la devise de la transaction. TRACFIN n'accepte que l'euro : une autre devise est signalée à l'analyste."
+    },
+    {
+     "name": "date",
+     "type": "date",
+     "min": 1,
+     "label": "Date",
+     "description": "Date de la transaction."
+    },
+    {
+     "name": "typeOperation",
+     "type": "code",
+     "min": 1,
+     "code_list": "liste_ref_type_operations.csv",
+     "label": "Type d'opération",
+     "description": "Code du type d'opération (virement, retrait d'espèces, chèque…)."
+    },
+    {
+     "name": "autretypeOperation",
+     "type": "string",
+     "min": 0,
+     "max_length": 200,
+     "label": "Précision du type d'opération",
+     "description": "Précision du type d'opération, obligatoire quand le type est « Autre » (OT11). Recopiée dans autretypeOperation de la ligne d'opération."
+    },
+    {
+     "name": "emetteurPersonne",
+     "type": "ref",
+     "min": 0,
+     "ref_targets": [
+      "personnes.pp[]",
+      "personnes.pm[]",
+      "personnes.pnc[]"
+     ],
+     "label": "Émetteur (personne déclarée)",
+     "description": "Personne déclarée qui émet les fonds. À renseigner seulement si l'émetteur est une personne de la déclaration ; sinon utiliser emetteurLibre."
+    },
+    {
+     "name": "emetteurLibre",
+     "type": "string",
+     "min": 0,
+     "max_length": 200,
+     "label": "Émetteur (texte libre)",
+     "description": "Émetteur des fonds quand ce n'est pas une personne déclarée (nom, raison sociale)."
+    },
+    {
+     "name": "refEmission",
+     "type": "string",
+     "min": 0,
+     "max_length": 200,
+     "label": "Référence d'émission",
+     "description": "Référence financière de l'émetteur (IBAN, numéro de carte, de chèque…)."
+    },
+    {
+     "name": "beneficiairePersonne",
+     "type": "ref",
+     "min": 0,
+     "ref_targets": [
+      "personnes.pp[]",
+      "personnes.pm[]",
+      "personnes.pnc[]"
+     ],
+     "label": "Bénéficiaire (personne déclarée)",
+     "description": "Personne déclarée qui reçoit les fonds. À renseigner seulement si le bénéficiaire est une personne de la déclaration ; sinon utiliser beneficiaireLibre."
+    },
+    {
+     "name": "beneficiaireLibre",
+     "type": "string",
+     "min": 0,
+     "max_length": 200,
+     "label": "Bénéficiaire (texte libre)",
+     "description": "Bénéficiaire des fonds quand ce n'est pas une personne déclarée (nom, raison sociale)."
+    },
+    {
+     "name": "refReception",
+     "type": "string",
+     "min": 0,
+     "max_length": 200,
+     "label": "Référence de réception",
+     "description": "Référence financière du bénéficiaire (IBAN, numéro de carte…)."
+    },
+    {
+     "name": "paysOrigine",
+     "type": "code",
+     "code_or_text": true,
+     "min": 0,
+     "min_length": 2,
+     "max_length": 200,
+     "code_list": "liste_ref_dromcom.csv+liste_ref_pays.csv",
+     "label": "Pays d'origine des fonds",
+     "description": "Code pays (ou DROM-COM) d'où viennent les fonds."
+    },
+    {
+     "name": "paysArrivee",
+     "type": "code",
+     "code_or_text": true,
+     "min": 0,
+     "min_length": 2,
+     "max_length": 200,
+     "code_list": "liste_ref_dromcom.csv+liste_ref_pays.csv",
+     "label": "Pays d'arrivée des fonds",
+     "description": "Code pays (ou DROM-COM) où vont les fonds."
+    }
+   ]
+  }
+ },
+ "rules": [
+  {
+   "id": "nsp_requise_si_cl02",
+   "kind": "required_if",
+   "scope": "context.natureSoupcon",
+   "then": [
+    "context.natureSoupcon.natureSoupconPenale[]"
+   ],
+   "when": {
+    "path": "context.natureSoupcon.cadreLegal[]",
+    "op": "in",
+    "values": [
+     "CL02"
+    ]
+   },
+   "description": "The nature of the suspected criminal offence is required when the legal framework contains CL02.",
+   "source": "financier-v1.4.0.xsd:1693-1699"
+  },
+  {
+   "id": "nsp_interdite_hors_cl02",
+   "kind": "forbidden_if",
+   "scope": "context.natureSoupcon",
+   "then": [
+    "context.natureSoupcon.natureSoupconPenale[]"
+   ],
+   "when": {
+    "path": "context.natureSoupcon.cadreLegal[]",
+    "op": "not_in",
+    "values": [
+     "CL02"
+    ]
+   },
+   "description": "The nature of the suspected criminal offence must be filled only if the legal framework contains CL02.",
+   "source": "financier-v1.4.0.xsd:1693-1699"
+  },
+  {
+   "id": "nff_requise_si_cl03",
+   "kind": "required_if",
+   "scope": "context.natureSoupcon",
+   "then": [
+    "context.natureSoupcon.natureFraudeFiscale[]"
+   ],
+   "when": {
+    "path": "context.natureSoupcon.cadreLegal[]",
+    "op": "in",
+    "values": [
+     "CL03"
+    ]
+   },
+   "description": "The nature of the tax fraud is required when the legal framework contains CL03.",
+   "source": "financier-v1.4.0.xsd:1707-1713"
+  },
+  {
+   "id": "nff_interdite_hors_cl03",
+   "kind": "forbidden_if",
+   "scope": "context.natureSoupcon",
+   "then": [
+    "context.natureSoupcon.natureFraudeFiscale[]"
+   ],
+   "when": {
+    "path": "context.natureSoupcon.cadreLegal[]",
+    "op": "not_in",
+    "values": [
+     "CL03"
+    ]
+   },
+   "description": "The nature of the tax fraud must be filled only if the legal framework contains CL03.",
+   "source": "financier-v1.4.0.xsd:1707-1713"
+  },
+  {
+   "id": "autre_nsp_requise_si_nsp15",
+   "kind": "required_if",
+   "scope": "context.natureSoupcon",
+   "then": [
+    "context.natureSoupcon.autreNatureSoupconPenale"
+   ],
+   "when": {
+    "path": "context.natureSoupcon.natureSoupconPenale[]",
+    "op": "in",
+    "values": [
+     "NSP15"
+    ]
+   },
+   "description": "The « autre nature de soupçon pénal » precision is required when the nature NSP15 is chosen.",
+   "source": "financier-v1.4.0.xsd:1700-1706"
+  },
+  {
+   "id": "autre_nsp_interdite_hors_nsp15",
+   "kind": "forbidden_if",
+   "scope": "context.natureSoupcon",
+   "then": [
+    "context.natureSoupcon.autreNatureSoupconPenale"
+   ],
+   "when": {
+    "path": "context.natureSoupcon.natureSoupconPenale[]",
+    "op": "not_in",
+    "values": [
+     "NSP15"
+    ]
+   },
+   "description": "The « autre nature de soupçon pénal » precision must be filled only if the nature NSP15 is chosen.",
+   "source": "financier-v1.4.0.xsd:1700-1706"
+  },
+  {
+   "id": "autre_nff_requise_si_nff10",
+   "kind": "required_if",
+   "scope": "context.natureSoupcon",
+   "then": [
+    "context.natureSoupcon.autreNatureFraudeFiscale"
+   ],
+   "when": {
+    "path": "context.natureSoupcon.natureFraudeFiscale[]",
+    "op": "in",
+    "values": [
+     "NFF10"
+    ]
+   },
+   "description": "The « autre nature de fraude fiscale » precision is required when the nature NFF10 is chosen.",
+   "source": "financier-v1.4.0.xsd:1714-1720"
+  },
+  {
+   "id": "autre_nff_interdite_hors_nff10",
+   "kind": "forbidden_if",
+   "scope": "context.natureSoupcon",
+   "then": [
+    "context.natureSoupcon.autreNatureFraudeFiscale"
+   ],
+   "when": {
+    "path": "context.natureSoupcon.natureFraudeFiscale[]",
+    "op": "not_in",
+    "values": [
+     "NFF10"
+    ]
+   },
+   "description": "The « autre nature de fraude fiscale » precision must be filled only if the nature NFF10 is chosen.",
+   "source": "financier-v1.4.0.xsd:1714-1720"
+  },
+  {
+   "id": "banque_gestion_fortune_requise",
+   "kind": "required_if",
+   "scope": "context.information",
+   "then": [
+    "context.information.gestionFortuneBanquePrivee"
+   ],
+   "when": {
+    "path": "organisme.profession",
+    "op": "eq",
+    "values": [
+     "TPI1"
+    ]
+   },
+   "description": "The « gestion de fortune / banque privée » indication is required for the profession « Banque, établissement de crédit » (TPI1).",
+   "source": "financier-v1.4.0.xsd:1744-1750"
+  },
+  {
+   "id": "banque_correspondance_requise",
+   "kind": "required_if",
+   "scope": "context.information",
+   "then": [
+    "context.information.correspondanceBancaire"
+   ],
+   "when": {
+    "path": "organisme.profession",
+    "op": "eq",
+    "values": [
+     "TPI1"
+    ]
+   },
+   "description": "The « correspondance bancaire » indication is required for the profession « Banque, établissement de crédit » (TPI1).",
+   "source": "financier-v1.4.0.xsd:1751-1757"
+  },
+  {
+   "id": "nom_usage_requis_sans_nom_naissance",
+   "kind": "required_if",
+   "for_each_scope": [
+    "personnes.pp[].etatCivil",
+    "personnes.pp[].etatCivil.autreIdentite[]"
+   ],
+   "then": [
+    "{scope}.nomDusage"
+   ],
+   "when": {
+    "path": "{scope}.nomNaissance",
+    "op": "absent"
+   },
+   "description": "The usage name is required when the birth name is absent.",
+   "source": "financier-v1.4.0.xsd:851-857, 888-894"
+  },
+  {
+   "id": "alias_requis_sans_prenom",
+   "kind": "required_if",
+   "for_each_scope": [
+    "personnes.pp[].etatCivil",
+    "personnes.pp[].etatCivil.autreIdentite[]"
+   ],
+   "then": [
+    "{scope}.alias[]"
+   ],
+   "when": {
+    "path": "{scope}.prenom[]",
+    "op": "absent"
+   },
+   "description": "At least one alias is required when the first name is absent.",
+   "source": "financier-v1.4.0.xsd:859-865, 896-902"
+  },
+  {
+   "id": "naissance_precise_ou_estimee",
+   "kind": "at_most_one",
+   "for_each_scope": [
+    "personnes.pp[].etatCivil",
+    "personnes.pp[].etatCivil.autreIdentite[]",
+    "personnes.pm[].dirigeant[].autreBeneficiaireEffectif"
+   ],
+   "among": [
+    "{scope}.dateNaissance",
+    "{scope}.dateNaissanceEstimation"
+   ],
+   "description": "The estimated birth date is filled only when the precise birth date is absent: one or the other, not both.",
+   "source": "financier-v1.4.0.xsd:868-874, 905-911, 1358-1364"
+  },
+  {
+   "id": "dirigeant_autre_fonction_si_mf14",
+   "kind": "required_if",
+   "scope": "personnes.pm[].dirigeant[]",
+   "then": [
+    "personnes.pm[].dirigeant[].autreFonctionDirigeant"
+   ],
+   "when": {
+    "path": "personnes.pm[].dirigeant[].fonctionDirigeant",
+    "op": "eq",
+    "values": [
+     "MF14"
+    ]
+   },
+   "description": "The function must be specified when the director function is « other » (MF14).",
+   "source": "financier-v1.4.0.xsd:1391-1398"
+  },
+  {
+   "id": "dirigeant_identite_exclusive",
+   "kind": "at_most_one",
+   "scope": "personnes.pm[].dirigeant[]",
+   "among": [
+    "personnes.pm[].dirigeant[].idPersonne",
+    "personnes.pm[].dirigeant[].autreDirigeantP",
+    "personnes.pm[].dirigeant[].autreDirigeantM"
+   ],
+   "description": "The identity of the director is either an already declared person, another natural person, or another legal entity: at most one of the three.",
+   "source": "financier-v1.4.0.xsd:1399-1423"
+  },
+  {
+   "id": "dirigeant_beneficiaire_exclusif",
+   "kind": "at_most_one",
+   "scope": "personnes.pm[].dirigeant[]",
+   "among": [
+    "personnes.pm[].dirigeant[].idBeneficiaireEffectif",
+    "personnes.pm[].dirigeant[].autreBeneficiaireEffectif"
+   ],
+   "description": "The beneficial owner is either an already declared person or a new person: not both.",
+   "source": "financier-v1.4.0.xsd:1425-1440"
+  },
+  {
+   "id": "dirigeant_beneficiaire_requis_si_non",
+   "kind": "exactly_one",
+   "scope": "personnes.pm[].dirigeant[]",
+   "among": [
+    "personnes.pm[].dirigeant[].idBeneficiaireEffectif",
+    "personnes.pm[].dirigeant[].autreBeneficiaireEffectif"
+   ],
+   "when": {
+    "path": "personnes.pm[].dirigeant[].beneficiaireEffectif",
+    "op": "eq",
+    "values": [
+     "Non"
+    ]
+   },
+   "description": "When the director is not the beneficial owner, the beneficiary must be designated (already declared person or new person).",
+   "source": "financier-v1.4.0.xsd:1425-1440"
+  },
+  {
+   "id": "registre_denomination_requise",
+   "kind": "required_if",
+   "for_each_scope": [
+    "personnes.pp[].activite",
+    "personnes.pm[].activiteCoordonnee",
+    "personnes.pm[].dirigeant[].autreDirigeantM"
+   ],
+   "then": [
+    "{scope}.denominationSociale"
+   ],
+   "when": {
+    "path": "{scope}.numeroIdentification.type",
+    "op": "in",
+    "values": [
+     "SIREN",
+     "RN1",
+     "RN2",
+     "RN3",
+     "RN4",
+     "RN5",
+     "RN6",
+     "RN7",
+     "Non"
+    ]
+   },
+   "description": "The company name is required as soon as the register type is known (other than « Je ne sais pas »).",
+   "source": "financier-v1.4.0.xsd:986-992, 1271-1277"
+  },
+  {
+   "id": "registre_secteur_requis_siren",
+   "kind": "required_if",
+   "for_each_scope": [
+    "personnes.pp[].activite",
+    "personnes.pm[].activiteCoordonnee",
+    "personnes.pm[].dirigeant[].autreDirigeantM"
+   ],
+   "then": [
+    "{scope}.secteurActivite"
+   ],
+   "when": {
+    "path": "{scope}.numeroIdentification.type",
+    "op": "eq",
+    "values": [
+     "SIREN"
+    ]
+   },
+   "description": "The business sector is required when the register type is SIREN.",
+   "source": "financier-v1.4.0.xsd:993-999, 1278-1284"
+  },
+  {
+   "id": "registre_autre_requis_rn6_rn7",
+   "kind": "required_if",
+   "for_each_scope": [
+    "personnes.pp[].activite",
+    "personnes.pm[].activiteCoordonnee",
+    "personnes.pm[].dirigeant[].autreDirigeantM"
+   ],
+   "then": [
+    "{scope}.nomAutreTypeRegistre",
+    "{scope}.paysAutreTypeRegistre"
+   ],
+   "when": {
+    "path": "{scope}.numeroIdentification.type",
+    "op": "in",
+    "values": [
+     "RN6",
+     "RN7"
+    ]
+   },
+   "description": "The register name and country are required when the register is foreign (RN6) or other (RN7).",
+   "source": "financier-v1.4.0.xsd:1021-1034, 1320-1333 (the documentation cites RE07/RE08 while t_registre defines RN6/RN7: the t_registre codes are followed)"
+  },
+  {
+   "id": "registre_forme_activite_hors_siren",
+   "kind": "forbidden_if",
+   "severity": "warning",
+   "for_each_scope": [
+    "personnes.pp[].activite",
+    "personnes.pm[].activiteCoordonnee",
+    "personnes.pm[].dirigeant[].autreDirigeantM"
+   ],
+   "then": [
+    "{scope}.formeJuridique",
+    "{scope}.activitePrincipale"
+   ],
+   "when": {
+    "path": "{scope}.numeroIdentification.type",
+    "op": "eq",
+    "values": [
+     "SIREN"
+    ]
+   },
+   "description": "The legal form and the main activity are to be filled only when the register type is not SIREN.",
+   "source": "financier-v1.4.0.xsd:1000-1013, 1292-1305"
+  },
+  {
+   "id": "registre_autre_adresse_siren",
+   "kind": "forbidden_if",
+   "severity": "warning",
+   "for_each_scope": [
+    "personnes.pp[].activite",
+    "personnes.pm[].activiteCoordonnee",
+    "personnes.pm[].dirigeant[].autreDirigeantM"
+   ],
+   "then": [
+    "{scope}.autreAdresse"
+   ],
+   "when": {
+    "path": "{scope}.numeroIdentification.type",
+    "op": "not_in",
+    "values": [
+     "SIREN"
+    ]
+   },
+   "description": "The other address is filled only when the register type is SIREN.",
+   "source": "financier-v1.4.0.xsd:1035-1041, 1313-1319"
+  },
+  {
+   "id": "registre_enseigne_hors_siren",
+   "kind": "forbidden_if",
+   "severity": "warning",
+   "for_each_scope": [
+    "personnes.pm[].activiteCoordonnee",
+    "personnes.pm[].dirigeant[].autreDirigeantM"
+   ],
+   "then": [
+    "{scope}.enseigneSigle"
+   ],
+   "when": {
+    "path": "{scope}.numeroIdentification.type",
+    "op": "eq",
+    "values": [
+     "SIREN"
+    ]
+   },
+   "description": "The trade name or acronym is filled only when the register type is not SIREN.",
+   "source": "financier-v1.4.0.xsd:1285-1291"
+  },
+  {
+   "id": "registre_adresse_requise_pm",
+   "kind": "required_if",
+   "for_each_scope": [
+    "personnes.pm[].activiteCoordonnee",
+    "personnes.pm[].dirigeant[].autreDirigeantM"
+   ],
+   "then": [
+    "{scope}.adresse"
+   ],
+   "when": {
+    "path": "{scope}.numeroIdentification._text",
+    "op": "present"
+   },
+   "description": "The address is required when the legal entity has a professional identification number, that is when the number is filled (with the type « Je ne sais pas » the number may be absent, and then no address is required).",
+   "source": "financier-v1.4.0.xsd:1306-1312"
+  },
+  {
+   "id": "registre_adresse_pp_si_numero",
+   "kind": "forbidden_if",
+   "severity": "warning",
+   "scope": "personnes.pp[].activite",
+   "then": [
+    "personnes.pp[].activite.adresse"
+   ],
+   "when": {
+    "path": "personnes.pp[].activite.numeroIdentification._text",
+    "op": "absent"
+   },
+   "description": "The professional address of a natural person is filled only if they have a professional identification number, that is when the number is filled (the register type alone, « Je ne sais pas » included, is not enough).",
+   "source": "financier-v1.4.0.xsd:1014-1020"
+  },
+  {
+   "id": "sanctions_listes_si_presence",
+   "kind": "forbidden_if",
+   "severity": "warning",
+   "for_each_scope": [
+    "personnes.pp[].notorieteDefavorable",
+    "personnes.pm[].notorieteDefavorable"
+   ],
+   "then": [
+    "{scope}.listesSanctions"
+   ],
+   "when": {
+    "path": "{scope}.presenceSanction",
+    "op": "not_in",
+    "values": [
+     "Oui"
+    ]
+   },
+   "description": "The sanction lists are filled only if a sanction presence is indicated (« Oui »).",
+   "source": "financier-v1.4.0.xsd:1219-1225 (the text says « true » while the type is Oui/Non/Je ne sais pas: « Oui » is retained, open question to TRACFIN)"
+  },
+  {
+   "id": "operation_autre_type_requis_ot11",
+   "kind": "required_if",
+   "scope": "operations.operation[]",
+   "then": [
+    "operations.operation[].autretypeOperation"
+   ],
+   "when": {
+    "path": "operations.operation[].typeOperation",
+    "op": "eq",
+    "values": [
+     "OT11"
+    ]
+   },
+   "description": "The operation type must be specified when it is « Autre » (OT11).",
+   "source": "financier-v1.4.0.xsd:1536-1542"
+  },
+  {
+   "id": "transaction_autre_type_requis_ot11",
+   "kind": "required_if",
+   "scope": "work.transactions[]",
+   "then": [
+    "work.transactions[].autretypeOperation"
+   ],
+   "when": {
+    "path": "work.transactions[].typeOperation",
+    "op": "eq",
+    "values": [
+     "OT11"
+    ]
+   },
+   "description": "The operation type of the transaction must be specified when it is « Autre » (OT11): the precision is copied onto the operation line.",
+   "source": "financier-v1.4.0.xsd:1536-1542 ; operation lines are computed: their precision comes from this working field"
+  },
+  {
+   "id": "operation_emetteur_requis_sauf_ot07",
+   "kind": "required_if",
+   "scope": "operations.operation[]",
+   "then": [
+    "operations.operation[].emetteurTypeEmetteur",
+    "operations.operation[].paysOrigineFonds",
+    "operations.operation[].refFinanciereEmission"
+   ],
+   "when": {
+    "path": "operations.operation[].typeOperation",
+    "op": "not_in",
+    "values": [
+     "OT07"
+    ]
+   },
+   "description": "The sender, the country of origin of the funds and the issuing financial reference are required except for a cash deposit (OT07).",
+   "source": "financier-v1.4.0.xsd:1543-1565"
+  },
+  {
+   "id": "operation_beneficiaire_requis_sauf_ot06",
+   "kind": "required_if",
+   "scope": "operations.operation[]",
+   "then": [
+    "operations.operation[].beneficiaireTypeBeneficiaire",
+    "operations.operation[].paysArriveeFonds",
+    "operations.operation[].refFinanciereReception"
+   ],
+   "when": {
+    "path": "operations.operation[].typeOperation",
+    "op": "not_in",
+    "values": [
+     "OT06"
+    ]
+   },
+   "description": "The beneficiary, the destination country of the funds and the receiving financial reference are required except for a cash withdrawal (OT06).",
+   "source": "financier-v1.4.0.xsd:1566-1588"
+  },
+  {
+   "id": "transaction_emetteur_requis_sauf_ot07",
+   "kind": "exactly_one",
+   "scope": "work.transactions[]",
+   "among": [
+    "work.transactions[].emetteurPersonne",
+    "work.transactions[].emetteurLibre"
+   ],
+   "when": {
+    "path": "work.transactions[].typeOperation",
+    "op": "not_in",
+    "values": [
+     "OT07"
+    ]
+   },
+   "description": "The sender is required, either a declared person or free text, except for a cash deposit (OT07).",
+   "source": "financier-v1.4.0.xsd:1543-1565 (sender required except OT07) ; rule operation_emetteur_requis_sauf_ot07"
+  },
+  {
+   "id": "transaction_emetteur_exclusif",
+   "kind": "at_most_one",
+   "scope": "work.transactions[]",
+   "among": [
+    "work.transactions[].emetteurPersonne",
+    "work.transactions[].emetteurLibre"
+   ],
+   "description": "The sender is either a declared person or free text: not both.",
+   "source": "financier-v1.4.0.xsd:1543-1550 (id of an already declared person or free field), applied to the working nodes (working_nodes)"
+  },
+  {
+   "id": "transaction_beneficiaire_requis_sauf_ot06",
+   "kind": "exactly_one",
+   "scope": "work.transactions[]",
+   "among": [
+    "work.transactions[].beneficiairePersonne",
+    "work.transactions[].beneficiaireLibre"
+   ],
+   "when": {
+    "path": "work.transactions[].typeOperation",
+    "op": "not_in",
+    "values": [
+     "OT06"
+    ]
+   },
+   "description": "The beneficiary is required, either a declared person or free text, except for a cash withdrawal (OT06).",
+   "source": "financier-v1.4.0.xsd:1566-1573 (id of an already declared person or free field), applied to the working nodes (working_nodes)"
+  },
+  {
+   "id": "transaction_beneficiaire_exclusif",
+   "kind": "at_most_one",
+   "scope": "work.transactions[]",
+   "among": [
+    "work.transactions[].beneficiairePersonne",
+    "work.transactions[].beneficiaireLibre"
+   ],
+   "description": "The beneficiary is either a declared person or free text: not both.",
+   "source": "financier-v1.4.0.xsd:1566-1573 (id of an already declared person or free field), applied to the working nodes (working_nodes)"
+  }
+ ],
+ "hand_rules": [
+  {
+   "id": "dirigeant_beneficiaire_distinct",
+   "description": "When the director is not the beneficial owner (beneficiaireEffectif = Non), the beneficial owner referenced by idBeneficiaireEffectif cannot be the director themselves (idPersonne).",
+   "source": "financier-v1.4.0.xsd:1399-1431 (« Ce champ est à remplir obligatoirement si le dirigeant n'est pas le bénéficiaire »)"
+  },
+  {
+   "id": "lien_autre_personne_distincte",
+   "description": "A link to an already declared person (lienAutrePersonneDejaDeclaree) cannot target the person holding the link.",
+   "source": "financier-v1.4.0.xsd:697-711 (« Lien avec une personne déja déclarée »)"
+  },
+  {
+   "id": "periode_operations_ordonnee",
+   "description": "The operations period cannot end before it starts: operations.dateFin is not earlier than operations.dateDebut.",
+   "source": "financier-v1.4.0.xsd:1650-1651 (dateDebut, dateFin)"
+  },
+  {
+   "id": "cadre_legal_principal",
+   "description": "The legal framework must contain at least one of the three codes CL01, CL02 or CL03 (CL04 and CL05 alone are not enough).",
+   "source": "financier-v1.4.0.xsd:1683-1692"
+  },
+  {
+   "id": "personnes_au_moins_une",
+   "description": "When the persons section is present, it must contain at least one person (pp, pm or pnc).",
+   "source": "financier-v1.4.0.xsd:1811-1816"
+  },
+  {
+   "id": "references_financieres_max_20",
+   "description": "The combined number of financial references of all types must not exceed 20 per person.",
+   "source": "financier-v1.4.0.xsd:1070-1076 (« Le nombre combiné de reference de tout type ne doit pas dépassé 20 »)"
+  },
+  {
+   "id": "sous_categorie_relation_autre",
+   "description": "The precision of the relation sub-category is to be filled only if the chosen sub-category is « other » (label of liste_ref_relations.csv).",
+   "source": "financier-v1.4.0.xsd:663-669"
+  }
+ ]
+}
