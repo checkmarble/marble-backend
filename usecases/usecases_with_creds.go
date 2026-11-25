@@ -14,6 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/feature_access"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
+	"github.com/checkmarble/marble-backend/usecases/sargen"
 	"github.com/checkmarble/marble-backend/usecases/scoring"
 	"github.com/checkmarble/marble-backend/usecases/scoring/scoring_jobs"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -558,6 +559,26 @@ func (usecases *UsecasesWithCreds) NewSuspiciousActivityReportUsecase() *Suspici
 		blobRepository:       usecases.NewCaseUseCase().blobRepository,
 		caseManagerBucketUrl: usecases.caseManagerBucketUrl,
 	}
+}
+
+func (usecases *UsecasesWithCreds) NewSarGenerationUsecase() *sargen.Usecase {
+	repo := usecases.Repositories.MarbleDbRepository
+	return sargen.NewUsecase(sargen.Deps{
+		ExecutorFactory:     usecases.NewExecutorFactory(),
+		TransactionFactory:  usecases.NewTransactionFactory(),
+		EnforceCaseSecurity: usecases.NewEnforceCaseSecurity(),
+		Repository:          repo,
+		CaseReader:          repo,
+		InboxReader:         utils.Ptr(usecases.NewInboxReader()),
+		BlobRepository:      usecases.Repositories.BlobRepository,
+		BucketUrl:           usecases.caseManagerBucketUrl,
+		SelectionRepo:       repo,
+		DecisionReader:      repo,
+		CaseEntityLister:    repo,
+		CaseEntityObjects:   usecases.NewCaseEntityReader(),
+		IngestedReader:      usecases.NewIngestedDataReaderUsecase(),
+		DataModelReader:     utils.Ptr(usecases.NewDataModelUseCase()),
+	})
 }
 
 func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {
