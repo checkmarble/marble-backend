@@ -104,7 +104,11 @@ func engFill(path, value string) core.Fill {
 }
 
 func engSpec(kind, target string, dependsOn ...string) core.TaskSpec {
-	return core.TaskSpec{Kind: kind, TargetPath: core.Path(target), Tier: core.TierLight, DependsOnKinds: dependsOn}
+	// engFill cites t/o: the task inputs are the fallback allowed sources.
+	return core.TaskSpec{
+		Kind: kind, TargetPath: core.Path(target), Tier: core.TierLight, DependsOnKinds: dependsOn,
+		Inputs: []core.ObjectRef{{Table: "t", ObjectID: "o"}},
+	}
 }
 
 // newEngHarness creates a declaration holding one personne (pp-1) and a

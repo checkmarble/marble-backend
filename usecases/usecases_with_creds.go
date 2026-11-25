@@ -593,6 +593,8 @@ func (usecases *UsecasesWithCreds) NewSarGenerationUsecase() *sargen.Usecase {
 // (<= 0 -> engine defaults), both parsed by the worker config.
 func (usecases *UsecasesWithCreds) NewSarGenerationWorker(timeout time.Duration, parallelism int) *engine.Worker {
 	repo := usecases.Repositories.MarbleDbRepository
+	aiAgent := usecases.NewAiAgentUsecase()
+	prompts := engine.FSPrompts{FS: usecases.aiPromptsFS}
 	o := engine.NewOrchestrator(engine.Deps{
 		ExecutorFactory:    usecases.NewExecutorFactory(),
 		TransactionFactory: usecases.NewTransactionFactory(),
@@ -600,8 +602,8 @@ func (usecases *UsecasesWithCreds) NewSarGenerationWorker(timeout time.Duration,
 		Selection:          repo,
 		Generation:         repo,
 		DataModels:         utils.Ptr(usecases.NewDataModelUseCase()),
-		Runner:             engine.UnavailableRunner{}, // Task 13
-		Prompts:            engine.FSPrompts{FS: usecases.aiPromptsFS},
+		Runner:             engine.NewAgentRunner(engine.NewLlmberjackLLM(&aiAgent, usecases.aiAgentModelConfig), prompts, engine.AgentLimits{}),
+		Prompts:            prompts,
 		FormatGetter:       formats.Get,
 		Parallelism:        parallelism,
 		StaleAfter:         2 * timeout,

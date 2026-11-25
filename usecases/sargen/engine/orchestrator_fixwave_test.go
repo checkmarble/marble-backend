@@ -61,7 +61,7 @@ func TestRunJob_QuestionOutsideTargetIsNotPersisted(t *testing.T) {
 			}}},
 		},
 		{
-			// Every path outside: persisted path-less, its option cannot write.
+			// Every path outside: persisted path-less, its option cannot write and is dropped.
 			Paths:   []core.Path{pathNomPP2},
 			Text:    "Nom de l'autre personne ?",
 			Options: []core.QuestionOption{{Label: "y", Fills: []core.Fill{{Path: pathNomPP2, Value: "Z"}}}},
@@ -85,8 +85,7 @@ func TestRunJob_QuestionOutsideTargetIsNotPersisted(t *testing.T) {
 
 	other := byText["Nom de l'autre personne ?"]
 	require.Empty(t, other.Paths)
-	require.NoError(t, json.Unmarshal(other.Options, &opts))
-	require.Empty(t, opts[0].Fills)
+	require.Empty(t, other.Options, "its only option cannot write: dropped, the question is a free question")
 
 	var res taskResult
 	require.NoError(t, json.Unmarshal(f.Repo.Task(t, "a", tgtPP1).Output, &res))
@@ -96,7 +95,7 @@ func TestRunJob_QuestionOutsideTargetIsNotPersisted(t *testing.T) {
 	}
 	require.ElementsMatch(t, []string{
 		pathNomPP2 + "|" + core.CodeOutOfScope, // question path (mixed)
-		unresolved + "|" + CodeUnresolvedPath,  // question path (mixed)
+		unresolved + "|" + core.CodeOutOfScope, // question path (mixed): known container, outside the part
 		pathNomPP2 + "|" + core.CodeOutOfScope, // option fill (mixed)
 		pathNomPP2 + "|" + core.CodeOutOfScope, // question path (other)
 		pathNomPP2 + "|" + core.CodeOutOfScope, // option fill (other)
