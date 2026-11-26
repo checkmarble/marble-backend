@@ -1,6 +1,5 @@
 services:
   db:
-    container_name: postgres
     image: postgis/postgis:18-3.6-alpine
     platform: linux/x86_64
     shm_size: 1g
@@ -20,7 +19,6 @@ services:
       timeout: 1s
       retries: 5
   elasticsearch:
-    container_name: es
     image: docker.elastic.co/elasticsearch/elasticsearch:9.4.0
     ports:
       - "9200:9200"
@@ -47,7 +45,6 @@ services:
       retries: 5
       start_period: 30s
   yente:
-    container_name: yente
     image: ghcr.io/opensanctions/yente:5.3.0
     depends_on:
       elasticsearch:
@@ -63,7 +60,6 @@ services:
     extra_hosts:
       - "marble-backend:host-gateway"
   worker-monitor:
-    container_name: worker-monitor
     image: ghcr.io/riverqueue/riverui:latest
     ports:
       - "8001:8080"
@@ -74,7 +70,6 @@ services:
     depends_on:
       - db
   redis:
-    container_name: redis
     image: redis:8-alpine
     ports:
       - "6379:6379"
@@ -85,7 +80,6 @@ services:
       retries: 5
   dex:
     profiles: [oidc]
-    container_name: dex
     image: ghcr.io/dexidp/dex:v2.41.1
     command: [dex, serve, /etc/dex/config.yaml]
     ports:
@@ -93,7 +87,6 @@ services:
     volumes:
       - ./contrib/dex/config.yaml:/etc/dex/config.yaml:ro
   motiva:
-    container_name: motiva
     image: ghcr.io/apognu/motiva:v0.10.1
     platform: linux/x86_64
     ports:
@@ -110,7 +103,6 @@ services:
     extra_hosts:
       - "marble-backend:host-gateway"
   firebase-emulator:
-    container_name: firebase-emulator
     image: europe-west1-docker.pkg.dev/marble-infra/marble/firebase-emulator:latest
     restart: always
     ports:
@@ -121,7 +113,6 @@ services:
 
 volumes:
   postgres-db:
-    name: marble-backend-postgres-db
     driver: local
   es:
     driver: local
