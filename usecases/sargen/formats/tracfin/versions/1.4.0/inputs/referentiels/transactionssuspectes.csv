@@ -1,0 +1,8 @@
+code;label
+STN01;Achat
+STN02;Vente
+STN03;Conversion entre crypto-actifs
+STN04;Dépôt
+STN05;Retrait
+STN06;Chargement carte prépayée 
+STN07;Autre

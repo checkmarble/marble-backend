@@ -1,0 +1,167 @@
+{
+ "format": "tracfin:FR:1.4.0",
+ "status": "active",
+ "inputs": [
+  {
+   "path": "inputs/financier-v1.4.0.xsd",
+   "sha256": "393e07591f988b2d58e2c889dd57a3751e428489e25728422816693898704f12",
+   "encoding": "UTF-8",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/complementsvoies.csv",
+   "sha256": "cf29696d8cba0c65d4785597f954b641a3015bbaed03f9cc5b35651d040f042d",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/devises.csv",
+   "sha256": "c963594fc731f9775aca541645d8525b3b9a4f669471e6ee5be89f30a15f0626",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/dromcom.csv",
+   "sha256": "b9ce9344b4ee1cd4ea28c68bd8dbf54da9a136a4454ecbe7aa850010f56f10b4",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/fonctionsdirigeants.csv",
+   "sha256": "2bf7e24ceb4c778e5eee83ab3130274f3af1b7b7e60dc6251098b385dfeb20ac",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/fonctionsppe.csv",
+   "sha256": "a302309eb2fee9426cefd6a8c34aaf4b77a8adccdc990066d8d145531d786a57",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/formeslegales.csv",
+   "sha256": "a38925162165e1a2de9ec9c567f324360112a9beacd51e7082c774eb315d6ab9",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/genres.csv",
+   "sha256": "319a03ec91a3d00431573e425796c1e013baefba8ac3241904e84a07f3f53189",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/methodespaiement.csv",
+   "sha256": "16ff520c2a4a786954ee21efb3171121084cd74797df536ff2bc23d4f9e21ddd",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/naturessoupcons.csv",
+   "sha256": "1540f0260a2c9a6910e5452ab529f6e886ce50cf3156f52c819fbb5643c929e9",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/nomsregistres.csv",
+   "sha256": "51e994f5db12bc23576f8251fdfd057ba715812c6cc3eb50d42bfaeaebf6c291",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/operationsfinancieres.csv",
+   "sha256": "82c46bd67f2d12866c348823155029a39f696d2aadafef11554af664d65bed44",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/pays.csv",
+   "sha256": "5525bf6e0403c4c55b44ae4cbd3bf1fc81e4506e43a197e32ea8fcebea99449a",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/professions.csv",
+   "sha256": "242e03c16db533ff7714033032339ce7e93bfd6ba21f7eba6cf82379921f6045",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-11-25"
+  },
+  {
+   "path": "inputs/referentiels/relationsentrepersonnes.csv",
+   "sha256": "ee51479dfae094bb7e14e1a540b142ccade86811e251c636b020697fb93d8e88",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/transactionssuspectes.csv",
+   "sha256": "013499fdd00d9acc9eb074683d49e00cf0df9d1daa2f69940be84294ee3d22a8",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/typesadresses.csv",
+   "sha256": "76b3b074cf3ef3413fe57c164c04d88a77bc8f602b22fcba26ca90fa7e60093c",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/typesdedocuments.csv",
+   "sha256": "35fcc9500b3f12cdbfab950c3e570bad32bae15caaa68b340c6ca130dc03cec5",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/typesgaranties.csv",
+   "sha256": "cdbcaeb9114c6d8e8bed557dd6b5314569d701e4a7c22e5aa9fb1698cf1f9efc",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/typesoperations.csv",
+   "sha256": "3cf257ee9415c7e6afcbdac224520ee73ab72286465ffbc62400f177e689ae57",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/typesvoies.csv",
+   "sha256": "0a5c85139075fda75ef6a85dd1a2ecedaa5a7115bc98e5d6692569eeaa0c595d",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/violationspenaltype.csv",
+   "sha256": "b8ab4e274e2175ff04840dc5964b81fb96e5629059a4aee542e1e5402226e086",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  },
+  {
+   "path": "inputs/referentiels/violationstypefiscal.csv",
+   "sha256": "eb3714be553258a5e7d19a89c9ac6d4a12487a9c4529847ac1a69005e6c5c648",
+   "encoding": "windows-1252",
+   "source_url": "https://tracfin.finances.gouv.fr/Support/documentation-technique",
+   "retrieved_on": "2026-10-21"
+  }
+ ]
+}
