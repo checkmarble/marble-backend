@@ -62,6 +62,12 @@ type TaskQueueRepository interface {
 		caseId uuid.UUID,
 		aiCaseReviewId uuid.UUID,
 	) error
+	EnqueueSarGenerationTask(
+		ctx context.Context,
+		tx Transaction,
+		organizationId uuid.UUID,
+		jobId, declarationId uuid.UUID,
+	) error
 	EnqueueRuleDescriptionTask(
 		ctx context.Context,
 		tx Transaction,
@@ -424,6 +430,37 @@ func (r riverRepository) EnqueueCaseReviewTask(
 
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued case review task", "job_id", res.Job.ID)
+	return nil
+}
+
+// EnqueueSarGenerationTask enqueues the River job running a persisted SAR
+// generation job. MaxAttempts is fixed at insert time (5, with River's default
+// backoff between attempts); the worker snoozes on LLM rate limit, and
+// task-level resumption is handled by the persisted tasks.
+func (r riverRepository) EnqueueSarGenerationTask(
+	ctx context.Context,
+	tx Transaction,
+	organizationId uuid.UUID,
+	jobId, declarationId uuid.UUID,
+) error {
+	res, err := r.client.InsertTx(
+		ctx,
+		tx.RawTx(),
+		models.SarGenerationArgs{
+			JobId:         jobId,
+			DeclarationId: declarationId,
+		},
+		&river.InsertOpts{
+			Queue:       organizationId.String(),
+			MaxAttempts: models.SarGenerationMaxAttempts,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	logger.DebugContext(ctx, "Enqueued sar generation task", "job_id", res.Job.ID)
 	return nil
 }
 

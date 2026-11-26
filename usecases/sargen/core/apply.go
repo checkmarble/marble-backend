@@ -39,19 +39,19 @@ const (
 
 // Fill is one requested write of a leaf of the document.
 type Fill struct {
-	Path          Path
-	Value         string
-	Origin        Origin
-	Sources       []SourceRef
-	RuleIDs       []string
-	Justification string
-	Confidence    Confidence
-	Computation   *Computation
-	TaskID        *uuid.UUID
+	Path          Path         `json:"path"`
+	Value         string       `json:"value"`
+	Origin        Origin       `json:"origin"`
+	Sources       []SourceRef  `json:"sources"`
+	RuleIDs       []string     `json:"rule_ids"` //nolint:tagliatelle
+	Justification string       `json:"justification"`
+	Confidence    Confidence   `json:"confidence"`
+	Computation   *Computation `json:"computation,omitempty"`
+	TaskID        *uuid.UUID   `json:"task_id,omitempty"`
 	// Reviewed is stored as is, whatever the origin: typing a value is not
 	// reviewing it. A caller whose write is a review (an option chosen in a
 	// question) marks it with MarkReviewed.
-	Reviewed bool
+	Reviewed bool `json:"reviewed"`
 }
 
 type ApplyOptions struct {
@@ -346,6 +346,14 @@ func write(doc *Document, p Path, f Fill) {
 	doc.Values[p] = v
 }
 
+// PathAllowed reports whether p lies within one of the prefixes (by segments,
+// an item key `[k]` on the prefix's last segment counting as within it). No
+// prefix allows nothing here, unlike ApplyOptions.AllowedPrefixes where an
+// empty list means "no restriction".
+func PathAllowed(p Path, prefixes []Path) bool {
+	return slices.ContainsFunc(prefixes, func(pre Path) bool { return prefixAllows(p, pre) })
+}
+
 func prefixAllows(real, prefix Path) bool {
 	if prefix == "" {
 		return false
@@ -423,7 +431,7 @@ func walkPath(spec *Spec, doc *Document, p Path, opts ApplyOptions, resolved map
 		real = Path(string(container) + "[" + key + "]")
 	}
 	if !create && len(opts.AllowedPrefixes) > 0 {
-		if !slices.ContainsFunc(opts.AllowedPrefixes, func(pre Path) bool { return prefixAllows(real, pre) }) {
+		if !PathAllowed(real, opts.AllowedPrefixes) {
 			return "", nil, blocking(p, CodeOutOfScope, "path outside the part assigned to this task")
 		}
 	}

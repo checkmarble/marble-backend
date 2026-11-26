@@ -71,6 +71,26 @@ func (f *format) Status() core.VersionStatus               { return f.status }
 func (f *format) Spec() *core.Spec                         { return f.spec }
 func (f *format) Validate(doc *core.Document) []core.Issue { return Validate(f.spec, doc) }
 
+// Plan, ApplyStructured, Compute and Tools are filled in by later tasks.
+func (f *format) Plan(core.PlanState) []core.TaskSpec { return nil }
+func (f *format) ApplyStructured(string, *core.Document, json.RawMessage) error {
+	return nil
+}
+func (f *format) Compute(*core.Document) core.ComputeResult   { return core.ComputeResult{} }
+func (f *format) Tools(core.ToolContext) map[string]core.Tool { return nil }
+
+// RequiredSettings lists the organization settings needed to generate a
+// declaration: the declarant contact is optional in the XSD but always needed
+// to file (core.SettingsRequirer).
+func (f *format) RequiredSettings() []core.Path {
+	return []core.Path{
+		"declarant.coordonnees.nom",
+		"declarant.coordonnees.prenom",
+		"declarant.coordonnees.tel",
+		"declarant.coordonnees.courriel",
+	}
+}
+
 func (f *format) WriteXML(doc *core.Document, w io.Writer) error {
 	return errors.Wrap(core.WriteXML(f.spec, doc, rootElement, w), "export TRACFIN")
 }

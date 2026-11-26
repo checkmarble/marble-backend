@@ -99,6 +99,20 @@ type CaseReviewArgs struct {
 
 func (CaseReviewArgs) Kind() string { return "case_review" }
 
+// SarGenerationArgs runs a persisted SAR generation job. The job and its tasks
+// live in the sar_generation_* tables; the River job only points to the job id.
+type SarGenerationArgs struct {
+	JobId         uuid.UUID `json:"job_id"`
+	DeclarationId uuid.UUID `json:"declaration_id"`
+}
+
+func (SarGenerationArgs) Kind() string { return "sar_generation" }
+
+// SarGenerationMaxAttempts is the number of River attempts of a generation
+// job, set at insert time (River fixes MaxAttempts then). With River's default
+// backoff it covers a provider outage of about a quarter of an hour.
+const SarGenerationMaxAttempts = 5
+
 type ScreeningHitSuggestionArgs struct {
 	ScreeningId string `json:"screening_id"`
 }
