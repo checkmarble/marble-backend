@@ -198,17 +198,18 @@ func AdaptContinuousScreeningDto(m models.ContinuousScreeningWithMatches) Contin
 }
 
 type ContinuousScreeningMatchDto struct {
-	Id                    uuid.UUID                  `json:"id"`
-	ContinuousScreeningId uuid.UUID                  `json:"continuous_screening_id"`
-	OpenSanctionEntityId  string                     `json:"opensanction_entity_id"` //nolint:tagliatelle
-	ObjectType            string                     `json:"object_type"`
-	ObjectId              string                     `json:"object_id"`
-	Status                string                     `json:"status"`
-	Payload               json.RawMessage            `json:"payload"`
-	ReviewedBy            *uuid.UUID                 `json:"reviewed_by"`
-	Comments              []ScreeningMatchCommentDto `json:"comments"`
-	CreatedAt             time.Time                  `json:"created_at"`
-	UpdatedAt             time.Time                  `json:"updated_at"`
+	Id                    uuid.UUID                                `json:"id"`
+	ContinuousScreeningId uuid.UUID                                `json:"continuous_screening_id"`
+	OpenSanctionEntityId  string                                   `json:"opensanction_entity_id"` //nolint:tagliatelle
+	ObjectType            string                                   `json:"object_type"`
+	ObjectId              string                                   `json:"object_id"`
+	Status                string                                   `json:"status"`
+	Payload               json.RawMessage                          `json:"payload"`
+	ReviewedBy            *uuid.UUID                               `json:"reviewed_by"`
+	Comments              []ScreeningMatchCommentDto               `json:"comments"`
+	TentativeReview       *ScreeningMatchTentativeReviewCommentDto `json:"tentative_review"`
+	CreatedAt             time.Time                                `json:"created_at"`
+	UpdatedAt             time.Time                                `json:"updated_at"`
 }
 
 func AdaptContinuousScreeningMatchDto(m models.ContinuousScreeningMatch) ContinuousScreeningMatchDto {
@@ -219,6 +220,8 @@ func AdaptContinuousScreeningMatchDto(m models.ContinuousScreeningMatch) Continu
 		objectId = m.Metadata.ObjectId
 	}
 
+	comments, review := adaptScreeningMatchComments(m.Comments)
+
 	return ContinuousScreeningMatchDto{
 		Id:                    m.Id,
 		ContinuousScreeningId: m.ContinuousScreeningId,
@@ -228,7 +231,8 @@ func AdaptContinuousScreeningMatchDto(m models.ContinuousScreeningMatch) Continu
 		Status:                m.Status.String(),
 		Payload:               m.Payload,
 		ReviewedBy:            m.ReviewedBy,
-		Comments:              pure_utils.Map(m.Comments, AdaptScreeningMatchCommentDto),
+		Comments:              comments,
+		TentativeReview:       review,
 		CreatedAt:             m.CreatedAt,
 		UpdatedAt:             m.UpdatedAt,
 	}

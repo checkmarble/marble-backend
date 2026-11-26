@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -60,6 +61,8 @@ func TestListScreeningOnDecision(t *testing.T) {
 	for i := range mockComments {
 		mockComments[i].ScreeningMatchId = &matchId
 		mockComments[i].ContinuousScreeningMatchId = nil
+		mockComments[i].TentativeReview = nil
+		mockComments[i].SupersededAt = nil
 		mockCommentsRows[i] = utils.StructToMockRow(mockComments[i])
 	}
 
@@ -86,7 +89,7 @@ func TestListScreeningOnDecision(t *testing.T) {
 	exec.Mock.ExpectQuery(`SELECT .* FROM screening_match_comments WHERE screening_match_id = ANY\(\$1\)`).
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(
-			pgxmock.NewRows([]string{"id", "screening_match_id", "continuous_screening_match_id", "commented_by", "comment", "created_at"}).
+			pgxmock.NewRows([]string{"id", "screening_match_id", "continuous_screening_match_id", "commented_by", "comment", "tentative_review", "superseded_at", "created_at"}).
 				AddRows(mockCommentsRows...),
 		)
 
@@ -186,6 +189,76 @@ func TestUpdateMatchStatus(t *testing.T) {
 		ReviewerId: &userId,
 	})
 	assert.NoError(t, err)
+	assert.NoError(t, exec.Mock.ExpectationsWereMet())
+}
+
+func mockScreeningMatchRow(status string) []any {
+	_, row := utils.FakeStruct[dbmodels.DBScreeningMatch](
+		ops.WithCustomFieldProvider("Id", func() (interface{}, error) { return "matchid", nil }),
+		ops.WithCustomFieldProvider("ScreeningId", func() (interface{}, error) { return "screening_id", nil }),
+		ops.WithCustomFieldProvider("Status", func() (interface{}, error) { return status, nil }))
+
+	return row
+}
+
+func expectTentativeReviewPrecheck(exec executor_factory.ExecutorFactoryStub) {
+	_, mockScRow := utils.FakeStruct[dbmodels.DBScreeningAndConfig](
+		ops.WithCustomFieldProvider("Id", func() (interface{}, error) { return "screening_id", nil }),
+		ops.WithCustomFieldProvider("IsArchived", func() (interface{}, error) { return false, nil }),
+		ops.WithCustomFieldProvider("Status", func() (interface{}, error) { return "in_review", nil }))
+
+	exec.Mock.ExpectQuery(`SELECT .* FROM screening_matches WHERE id = \$1$`).
+		WithArgs("matchid").
+		WillReturnRows(pgxmock.NewRows(dbmodels.SelectScreeningMatchesColumn).AddRow(mockScreeningMatchRow("pending")...))
+	exec.Mock.ExpectQuery(`SELECT .* FROM screenings AS sc .* WHERE sc.id = \$1`).
+		WithArgs("screening_id").
+		WillReturnRows(pgxmock.NewRows(dbmodels.SelectScreeningAndConfigColumn).AddRow(mockScRow...))
+}
+
+func TestMatchAddComment_TentativeReview(t *testing.T) {
+	uc, exec := buildScreeningUsecaseMock()
+	uc.enforceSecurity = screeningUserEnforcerMock{userId: "userid"}
+
+	expectTentativeReviewPrecheck(exec)
+
+	exec.Mock.ExpectQuery(`SELECT .* FROM screening_matches WHERE id = \$1 FOR NO KEY UPDATE`).
+		WithArgs("matchid").
+		WillReturnRows(pgxmock.NewRows(dbmodels.SelectScreeningMatchesColumn).AddRow(mockScreeningMatchRow("pending")...))
+	exec.Mock.ExpectExec(`UPDATE screening_match_comments SET superseded_at = now\(\) WHERE screening_match_id = \$1`).
+		WithArgs("matchid").
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+	exec.Mock.ExpectQuery(`INSERT INTO screening_match_comments`).
+		WithArgs(pgxmock.AnyArg(), "matchid", models.UserId("userid"), "comment", pgxmock.AnyArg()).
+		WillReturnRows(pgxmock.NewRows(dbmodels.SelectScreeningMatchCommentsColumn).
+			AddRow(uuid.NewString(), utils.Ptr("matchid"), nil, "userid", "comment", []byte(`{"status":"no_hit"}`), nil, time.Now()))
+
+	_, err := uc.MatchAddComment(context.TODO(), "matchid", models.ScreeningMatchComment{
+		MatchId:         "matchid",
+		Comment:         "comment",
+		TentativeReview: &models.ScreeningMatchTentativeReview{Status: "no_hit"},
+	})
+
+	assert.NoError(t, err)
+	assert.NoError(t, exec.Mock.ExpectationsWereMet())
+}
+
+func TestMatchAddComment_TentativeReviewOnMatchReviewedConcurrently(t *testing.T) {
+	uc, exec := buildScreeningUsecaseMock()
+	uc.enforceSecurity = screeningUserEnforcerMock{userId: "userid"}
+
+	expectTentativeReviewPrecheck(exec)
+
+	exec.Mock.ExpectQuery(`SELECT .* FROM screening_matches WHERE id = \$1 FOR NO KEY UPDATE`).
+		WithArgs("matchid").
+		WillReturnRows(pgxmock.NewRows(dbmodels.SelectScreeningMatchesColumn).AddRow(mockScreeningMatchRow("no_hit")...))
+
+	_, err := uc.MatchAddComment(context.TODO(), "matchid", models.ScreeningMatchComment{
+		MatchId:         "matchid",
+		Comment:         "comment",
+		TentativeReview: &models.ScreeningMatchTentativeReview{Status: "confirmed_hit"},
+	})
+
+	assert.ErrorIs(t, err, models.UnprocessableEntityError)
 	assert.NoError(t, exec.Mock.ExpectationsWereMet())
 }
 

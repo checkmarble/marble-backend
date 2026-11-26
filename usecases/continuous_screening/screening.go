@@ -244,6 +244,87 @@ func (uc *ContinuousScreeningUsecase) UpdateContinuousScreeningMatchStatus(
 	return updatedMatch, nil
 }
 
+func (uc *ContinuousScreeningUsecase) AddMatchComment(ctx context.Context, matchId uuid.UUID, comment models.ScreeningMatchComment) (models.ScreeningMatchComment, error) {
+	userId := uc.enforceSecurity.UserId()
+	if userId == nil {
+		return models.ScreeningMatchComment{}, errors.Wrap(models.ForbiddenError, "a comment needs an authenticated user")
+	}
+
+	commenterId := models.UserId(*userId)
+
+	if comment.TentativeReview != nil {
+		if err := comment.TentativeReview.Validate(); err != nil {
+			return models.ScreeningMatchComment{}, err
+		}
+	}
+
+	var created models.ScreeningMatchComment
+
+	err := uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		// Serializes with other reviews of this screening, so a match never gets two active tentative reviews.
+		if err := uc.repository.LockContinuousScreeningByMatchId(ctx, tx, matchId); err != nil {
+			return err
+		}
+
+		match, err := uc.repository.GetContinuousScreeningMatch(ctx, tx, matchId)
+		if err != nil {
+			return err
+		}
+
+		continuousScreening, err := uc.repository.GetContinuousScreeningWithMatchesById(ctx, tx, match.ContinuousScreeningId)
+		if err != nil {
+			return err
+		}
+
+		if continuousScreening.CaseId == nil {
+			return errors.Wrap(models.UnprocessableEntityError, "continuous screening is not in case")
+		}
+
+		caseId := continuousScreening.CaseId.String()
+
+		caseData, err := uc.repository.GetCaseById(ctx, tx, caseId)
+		if err != nil {
+			return err
+		}
+
+		if err := uc.checkPermissionOnCaseAndContinuousScreening(ctx, tx, caseData, continuousScreening); err != nil {
+			return err
+		}
+
+		comment.MatchId = match.Id.String()
+		comment.CommenterId = commenterId
+
+		if comment.TentativeReview == nil {
+			created, err = uc.repository.AddContinuousScreeningMatchComment(ctx, tx, comment)
+
+			return err
+		}
+
+		if continuousScreening.Status != models.ScreeningStatusInReview {
+			return errors.Wrap(models.UnprocessableEntityError, "continuous screening is not in review")
+		}
+
+		if match.Status != models.ScreeningMatchStatusPending {
+			return errors.Wrap(models.UnprocessableEntityError, "continuous screening match is not pending review")
+		}
+
+		comment.TentativeReview.InboxId = caseData.InboxId
+
+		created, err = uc.repository.SetContinuousScreeningMatchTentativeReview(ctx, tx, comment)
+		if err != nil {
+			return err
+		}
+
+		caseEvent := created.ToCaseEvent(models.ContinuousScreeningMatchResourceType, continuousScreening.OrgId, caseId)
+
+		_, err = uc.repository.CreateCaseEvent(ctx, tx, caseEvent)
+
+		return err
+	})
+
+	return created, err
+}
+
 // Check if the user has permission to change continuous screening and match status
 // Check if the user can access and modify the case
 func (uc *ContinuousScreeningUsecase) checkPermissionOnCaseAndContinuousScreening(
@@ -416,6 +497,10 @@ func (uc *ContinuousScreeningUsecase) DismissContinuousScreening(ctx context.Con
 	}
 
 	if err := uc.hydrateContinuousScreening(ctx, &continuousScreening); err != nil {
+		return models.ContinuousScreeningWithMatches{}, err
+	}
+
+	if err := uc.loadMatchComments(ctx, []models.ContinuousScreeningWithMatches{continuousScreening}); err != nil {
 		return models.ContinuousScreeningWithMatches{}, err
 	}
 
@@ -623,6 +708,10 @@ func (uc *ContinuousScreeningUsecase) LoadMoreContinuousScreeningMatches(
 	}
 
 	if err := uc.hydrateContinuousScreening(ctx, &continuousScreening); err != nil {
+		return models.ContinuousScreeningWithMatches{}, err
+	}
+
+	if err := uc.loadMatchComments(ctx, []models.ContinuousScreeningWithMatches{continuousScreening}); err != nil {
 		return models.ContinuousScreeningWithMatches{}, err
 	}
 

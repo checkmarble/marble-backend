@@ -194,7 +194,6 @@ func handleDownloadScreeningMatchFile(uc usecases.Usecases) func(c *gin.Context)
 	}
 }
 
-//nolint:unused
 func handleCreateScreeningMatchComment(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -206,15 +205,8 @@ func handleCreateScreeningMatchComment(uc usecases.Usecases) func(c *gin.Context
 			return
 		}
 
-		creds, ok := utils.CredentialsFromCtx(ctx)
-
-		if !ok {
-			presentError(ctx, c, models.ErrUnknownUser)
-			return
-		}
-
 		uc := usecasesWithCreds(ctx, uc).NewScreeningUsecase()
-		comment, err := dto.AdaptScreeningMatchCommentInputDto(matchId, creds.ActorIdentity.UserId, payload)
+		comment, err := dto.AdaptScreeningMatchCommentInputDto(matchId, payload)
 
 		if presentError(ctx, c, err) {
 			return

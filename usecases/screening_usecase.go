@@ -40,6 +40,7 @@ type ScreeningEnforceSecurityCase interface {
 
 type ScreeningEnforceSecurity interface {
 	OrgId() uuid.UUID
+	UserId() *string
 	ReadWhitelist(context.Context) error
 	WriteWhitelist(context.Context) error
 	PerformFreeformSearch(context.Context) error
@@ -86,11 +87,14 @@ type ScreeningRepository interface {
 	ListScreeningMatches(ctx context.Context, exec repositories.Executor, screeningId string) (
 		[]models.ScreeningMatch, error)
 	GetScreeningMatch(ctx context.Context, exec repositories.Executor, matchId string) (models.ScreeningMatch, error)
+	GetScreeningMatchForUpdate(ctx context.Context, exec repositories.Executor, matchId string) (models.ScreeningMatch, error)
 	UpdateScreeningMatchStatus(ctx context.Context, exec repositories.Executor,
 		match models.ScreeningMatch, update models.ScreeningMatchUpdate) (models.ScreeningMatch, error)
 	ListScreeningCommentsByIds(ctx context.Context, exec repositories.Executor, ids []string) (
 		[]models.ScreeningMatchComment, error)
 	AddScreeningMatchComment(ctx context.Context, exec repositories.Executor,
+		comment models.ScreeningMatchComment) (models.ScreeningMatchComment, error)
+	SetScreeningMatchTentativeReview(ctx context.Context, exec repositories.Executor,
 		comment models.ScreeningMatchComment) (models.ScreeningMatchComment, error)
 	CreateScreeningFile(ctx context.Context, exec repositories.Executor,
 		input models.ScreeningFileInput) (models.ScreeningFile, error)
@@ -958,11 +962,64 @@ func (uc ScreeningUsecase) SearchWhitelist(ctx context.Context, exec repositorie
 func (uc ScreeningUsecase) MatchAddComment(ctx context.Context, matchId string,
 	comment models.ScreeningMatchComment,
 ) (models.ScreeningMatchComment, error) {
-	if _, err := uc.enforceCanReadOrUpdateScreeningMatch(ctx, matchId); err != nil {
+	data, err := uc.enforceCanReadOrUpdateScreeningMatch(ctx, matchId)
+	if err != nil {
 		return models.ScreeningMatchComment{}, err
 	}
 
-	return uc.repository.AddScreeningMatchComment(ctx, uc.executorFactory.NewExecutor(), comment)
+	userId := uc.enforceSecurity.UserId()
+	if userId == nil {
+		return models.ScreeningMatchComment{}, errors.Wrap(models.ForbiddenError, "a comment needs an authenticated user")
+	}
+
+	comment.CommenterId = models.UserId(*userId)
+
+	if comment.TentativeReview == nil {
+		return uc.repository.AddScreeningMatchComment(ctx, uc.executorFactory.NewExecutor(), comment)
+	}
+
+	if err := comment.TentativeReview.Validate(); err != nil {
+		return models.ScreeningMatchComment{}, err
+	}
+
+	if data.decision.Case == nil {
+		return models.ScreeningMatchComment{}, errors.WithDetail(models.UnprocessableEntityError,
+			"this screening is not attached to a case")
+	}
+
+	if !data.sanction.Status.IsReviewable() {
+		return models.ScreeningMatchComment{}, errors.WithDetail(models.UnprocessableEntityError,
+			"this sanction is not pending review")
+	}
+
+	comment.TentativeReview.InboxId = data.decision.Case.InboxId
+
+	var created models.ScreeningMatchComment
+
+	err = uc.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		// Read under the lock, so a review committed since the authorization check is seen.
+		match, err := uc.repository.GetScreeningMatchForUpdate(ctx, tx, matchId)
+		if err != nil {
+			return err
+		}
+
+		if match.Status != models.ScreeningMatchStatusPending {
+			return errors.WithDetail(models.UnprocessableEntityError, "this match is not pending review")
+		}
+
+		created, err = uc.repository.SetScreeningMatchTentativeReview(ctx, tx, comment)
+		if err != nil {
+			return err
+		}
+
+		caseEvent := created.ToCaseEvent(models.ScreeningMatchResourceType, data.decision.OrganizationId, data.decision.Case.Id)
+
+		_, err = uc.externalRepository.CreateCaseEvent(ctx, tx, caseEvent)
+
+		return err
+	})
+
+	return created, err
 }
 
 func (uc ScreeningUsecase) EnrichMatch(ctx context.Context, matchId string) (models.ScreeningMatch, error) {

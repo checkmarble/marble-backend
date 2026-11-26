@@ -160,6 +160,11 @@ type ContinuousScreeningUsecaseRepository interface {
 		exec repositories.Executor,
 		comment models.ScreeningMatchComment,
 	) (models.ScreeningMatchComment, error)
+	SetContinuousScreeningMatchTentativeReview(
+		ctx context.Context,
+		exec repositories.Executor,
+		comment models.ScreeningMatchComment,
+	) (models.ScreeningMatchComment, error)
 	ListContinuousScreeningMatchCommentsByMatchIds(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -480,4 +485,12 @@ func continuousScreeningMatchStatusRank(s models.ScreeningMatchStatus) int {
 	default:
 		return 4
 	}
+}
+
+func (uc *ContinuousScreeningUsecase) loadMatchComments(ctx context.Context, screenings []models.ContinuousScreeningWithMatches) error {
+	err := models.AttachMatchComments(screenings, func(ids []uuid.UUID) ([]models.ScreeningMatchComment, error) {
+		return uc.repository.ListContinuousScreeningMatchCommentsByMatchIds(ctx, uc.executorFactory.NewExecutor(), ids)
+	})
+
+	return errors.Wrap(err, "failed to load continuous screening match comments")
 }

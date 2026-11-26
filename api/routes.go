@@ -211,6 +211,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		handleEnqueueScreeningHitSuggestion(uc))
 	router.PATCH("/screenings/matches/:id", tom, handleUpdateScreeningMatchStatus(uc))
 	router.POST("/screenings/matches/:id/enrich", tom, handleEnrichScreeningMatch(uc))
+	router.POST("/screenings/matches/:id/comments", tom, handleCreateScreeningMatchComment(uc))
 
 	router.POST("/screenings/searches", tom, handleSaveScreeningManualSearch(uc))
 	router.GET("/screenings/searches", tom, handleListScreeningManualSearch(uc))
@@ -237,6 +238,8 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 		handleDeleteContinuousScreeningObject(uc))
 	router.PATCH("/continuous-screenings/matches/:id", tom,
 		handleUpdateContinuousScreeningMatchStatus(uc))
+	router.POST("/continuous-screenings/matches/:id/comments", tom,
+		handleCreateContinuousScreeningMatchComment(uc))
 	// A batch reviews its matches one by one, each in its own transaction, which can outlast the default timeout.
 	router.POST("/continuous-screenings/matches/review", timeoutMiddleware(conf.BatchTimeout),
 		handleReviewContinuousScreeningMatches(uc))

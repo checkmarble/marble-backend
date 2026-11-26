@@ -1499,26 +1499,11 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 			}
 		}
 
-		// Batch-load comments for all matches
-		matchIdToMatch := make(map[string]*models.ContinuousScreeningMatch)
-		matchUUIDs := make([]uuid.UUID, 0)
-		for si := range continuousScreeningsWithMatches {
-			for mi := range continuousScreeningsWithMatches[si].Matches {
-				m := &continuousScreeningsWithMatches[si].Matches[mi]
-				matchIdToMatch[m.Id.String()] = m
-				matchUUIDs = append(matchUUIDs, m.Id)
-			}
-		}
-		if len(matchUUIDs) > 0 {
-			comments, err := usecase.repository.ListContinuousScreeningMatchCommentsByMatchIds(ctx, exec, matchUUIDs)
-			if err != nil {
-				return models.Case{}, errors.Wrap(err, "failed to load continuous screening match comments")
-			}
-			for _, comment := range comments {
-				if m, ok := matchIdToMatch[comment.MatchId]; ok {
-					m.Comments = append(m.Comments, comment)
-				}
-			}
+		err = models.AttachMatchComments(continuousScreeningsWithMatches, func(ids []uuid.UUID) ([]models.ScreeningMatchComment, error) {
+			return usecase.repository.ListContinuousScreeningMatchCommentsByMatchIds(ctx, exec, ids)
+		})
+		if err != nil {
+			return models.Case{}, errors.Wrap(err, "failed to load continuous screening match comments")
 		}
 
 		c.ContinuousScreenings = continuousScreeningsWithMatches
