@@ -1,14 +1,18 @@
 package sargen
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
 	"github.com/checkmarble/marble-backend/usecases/sargen/formats"
 )
@@ -146,8 +150,18 @@ func TestExport_RefusedWhileABlockingQuestionIsOpen(t *testing.T) {
 
 	_, err = uc.Export(f.Ctx, d.Id, d.Version)
 	require.ErrorIs(t, err, models.BadParameterError)
-	assert.Contains(t, err.Error(), CodeQuestionOpen, "the refusal names the open question")
-	assert.Contains(t, err.Error(), "Déclarer la personne ?")
+	var ie *IssuesError
+	require.ErrorAs(t, err, &ie)
+	assert.Equal(t, models.SarCodeExportBlocked, ie.SarCode())
+	var found bool
+	for _, is := range ie.SarIssues() {
+		if is.Code == CodeQuestionOpen {
+			found = true
+			assert.Equal(t, core.Path("personnes.pp[pp-1]"), is.Path)
+			assert.Equal(t, "Déclarer la personne ?", is.Message)
+		}
+	}
+	assert.True(t, found, "the open question is listed as a blocking issue")
 	require.Empty(t, f.Blobs.Keys())
 
 	// Answered (the person is declared): the export goes through.
@@ -223,4 +237,68 @@ func TestChooseQuestionOption_UnknownCountryOptionUnblocksTheExport(t *testing.T
 	for _, is := range st.Issues {
 		assert.False(t, string(is.Path) == path && is.Blocks(), "the country no longer blocks: %s", is.Message)
 	}
+}
+
+// A blocking question is never ignored: only one of its options closes it.
+func TestDismissQuestion_BlockingQuestionIsRefused(t *testing.T) {
+	uc, f, _, q := removalScenario(t)
+
+	err := uc.DismissQuestion(f.Ctx, q.Id)
+	var se *models.SarError
+	require.ErrorAs(t, err, &se)
+	assert.Equal(t, models.SarCodeQuestionBlocking, se.Code)
+	assert.ErrorIs(t, err, models.ConflictError)
+	assert.Equal(t, "cette question doit être tranchée par une de ses options", se.Error())
+	assert.Equal(t, models.SarQuestionStatusOpen, f.Gen.Questions[q.Id].Status)
+
+	// A question that is not blocking can still be dismissed.
+	other := f.SeedQuestion(t, q.DeclarationId, []core.Path{"organisme.libelle"}, "Libellé ?", nil)
+	require.NoError(t, uc.DismissQuestion(f.Ctx, other.Id))
+}
+
+// Defence in depth: the stored removal must name a list item the analyst could
+// remove by hand, never a computed container or a field.
+func TestChooseQuestionOption_RemovalOfANonListOrComputedItemIsRefused(t *testing.T) {
+	for name, item := range map[string]core.Path{
+		"a field":              "personnes.pp[pp-1].etatCivil.nomNaissance",
+		"a computed list item": "operations.operation[operation-1]",
+	} {
+		t.Run(name, func(t *testing.T) {
+			uc, f, d, q := removalScenario(t)
+			genEditDoc(t, f, d.Id, func(doc *core.Document) { doc.AddItem("operations.operation", "operation") })
+			d = f.Repo.Declarations[d.Id]
+			raw, err := json.Marshal([]core.QuestionOption{{Label: "Garder"}, {Label: "Retirer", RemoveItem: item}})
+			require.NoError(t, err)
+			q.Paths, q.Options = []string{string(item)}, raw
+			f.Gen.Questions[q.Id] = q
+
+			_, err = uc.ChooseQuestionOption(f.Ctx, q.Id, d.Version, 1)
+			var se *models.SarError
+			require.ErrorAs(t, err, &se)
+			assert.Equal(t, models.SarCodeInvalidRequest, se.Code)
+			assert.Equal(t, models.SarQuestionStatusOpen, f.Gen.Questions[q.Id].Status)
+		})
+	}
+}
+
+type conflictingSelectionRepo struct{ SarSelectionRepository }
+
+func (conflictingSelectionRepo) AddSarSelection(context.Context, repositories.Executor, []models.SarSelectedObject) error {
+	return errors.Wrap(models.ConflictError, "objet déjà sélectionné pour cette déclaration")
+}
+
+// A concurrent duplicate selection reaches the client with its own code and message.
+func TestUpdateSelection_AlreadySelectedHasItsOwnCode(t *testing.T) {
+	uc, f, declId := genReady(t, false)
+	f.Decisions.Add(f.OrgId, "transactions", map[string]any{"object_id": "t2", "amount": 1}, time.Now())
+	uc.selectionRepo = conflictingSelectionRepo{uc.selectionRepo}
+
+	_, err := uc.UpdateSelection(f.Ctx, declId, f.Repo.Declarations[declId].Version,
+		[]SelectionAdd{{Ref: selRef("transactions", "t2")}}, nil)
+
+	var se *models.SarError
+	require.ErrorAs(t, err, &se)
+	assert.Equal(t, models.SarCodeAlreadySelected, se.Code)
+	assert.Equal(t, "objet déjà sélectionné pour cette déclaration", se.Error())
+	assert.ErrorIs(t, err, models.ConflictError)
 }

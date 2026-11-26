@@ -184,7 +184,19 @@ type TodoItem struct {
 	Code    string
 	Paths   []core.Path
 	Message string
-	RefId   *uuid.UUID
+	// Params are the parameters of the core issue the item comes from (the front
+	// end translates from Code and Params); nil otherwise.
+	Params map[string]string
+	RefId  *uuid.UUID
+}
+
+// GenerationState is the state of the last generate job: its status (a stale
+// active job reads failed, as in GetJob), its id and its public error.
+type GenerationState struct {
+	Status models.SarJobStatus `json:"status"`
+	JobId  uuid.UUID           `json:"job_id"`
+	// Error is the public message of the job, empty when none.
+	Error string `json:"error"`
 }
 
 type DeclarationState struct {
@@ -196,13 +208,24 @@ type DeclarationState struct {
 	// ExportsCount and LastExportAt come from GetSarDeclarationExportsSummary.
 	ExportsCount int
 	LastExportAt *time.Time
+	// ActiveJobId is the pending or running generation job, nil when none
+	// (set by buildState; exposed as active_job_id by the API).
+	ActiveJobId *uuid.UUID
+	// Generation is the last generate job of the declaration, nil when it was
+	// never generated (set by buildState).
+	Generation *GenerationState
+	// Resolved maps each provisional item prefix written in the fills of an
+	// UpdateFields call to the real item path it was given (core.ApplyResult.
+	// Resolved). Set by UpdateFields only. AddItem returns the created item path itself,
+	// so it needs no mapping.
+	Resolved map[core.Path]core.Path
 }
 
 // credsOrg returns the organization of the credentials in ctx.
 func credsOrg(ctx context.Context) (uuid.UUID, error) {
 	creds, ok := utils.CredentialsFromCtx(ctx)
 	if !ok || creds.OrganizationId == uuid.Nil {
-		return uuid.Nil, errors.Wrap(models.ForbiddenError, "aucune organisation dans les droits de l'appelant")
+		return uuid.Nil, models.NewSarError(models.ForbiddenError, models.SarCodeForbidden, "aucune organisation dans les droits de l'appelant")
 	}
 	return creds.OrganizationId, nil
 }
@@ -227,7 +250,7 @@ func (uc *Usecase) checkCaseAccess(ctx context.Context, exec repositories.Execut
 		return err
 	}
 	if c.OrganizationId != orgId {
-		return errors.Wrap(models.ForbiddenError, "ce dossier n'appartient pas à votre organisation")
+		return models.NewSarError(models.ForbiddenError, models.SarCodeForbidden, "ce dossier n'appartient pas à votre organisation")
 	}
 	inboxes, err := uc.inboxReader.ListInboxes(ctx, exec, c.OrganizationId, false)
 	if err != nil {
@@ -248,7 +271,7 @@ func (uc *Usecase) checkDeclarationAccess(ctx context.Context, exec repositories
 		return err
 	}
 	if d.OrganizationId != orgId {
-		return errors.Wrap(models.ForbiddenError, "cette déclaration n'appartient pas à votre organisation")
+		return models.NewSarError(models.ForbiddenError, models.SarCodeForbidden, "cette déclaration n'appartient pas à votre organisation")
 	}
 	return uc.checkCaseAccess(ctx, exec, orgId, d.CaseId)
 }
@@ -306,6 +329,19 @@ func (uc *Usecase) buildState(ctx context.Context, exec repositories.Executor, d
 	if err != nil {
 		return DeclarationState{}, err
 	}
+	jobs, err := uc.generation.ListSarGenerationJobs(ctx, exec, d.Id)
+	if err != nil {
+		return DeclarationState{}, err
+	}
+	var activeJobId *uuid.UUID
+	for _, j := range jobs {
+		// A stale active job reads failed (see lastGeneration): not active.
+		if isActiveJob(j.Status) && !uc.isStale(j) {
+			id := j.Id
+			activeJobId = &id
+			break
+		}
+	}
 	return DeclarationState{
 		Declaration:  d,
 		Format:       format,
@@ -314,6 +350,8 @@ func (uc *Usecase) buildState(ctx context.Context, exec repositories.Executor, d
 		Todo:         withComputedNotes(buildTodo(format.Spec(), confirmComputedOf(format), issues, doc, open), format, doc),
 		ExportsCount: count,
 		LastExportAt: last,
+		ActiveJobId:  activeJobId,
+		Generation:   uc.lastGeneration(jobs),
 	}, nil
 }
 
@@ -332,19 +370,19 @@ func (uc *Usecase) CreateDeclaration(ctx context.Context, caseId uuid.UUID, form
 	}
 	key, err := core.ParseFormatKey(formatKey)
 	if err != nil {
-		return DeclarationState{}, errors.Wrap(models.BadParameterError, err.Error())
+		return DeclarationState{}, models.NewSarError(models.BadParameterError, models.SarCodeUnknownFormat, err.Error())
 	}
 	format, ok := uc.formatGetter(key)
 	if !ok {
-		return DeclarationState{}, errors.Wrapf(models.BadParameterError, "format inconnu : %s", formatKey)
+		return DeclarationState{}, models.NewSarErrorf(models.BadParameterError, models.SarCodeUnknownFormat, "format inconnu : %s", formatKey)
 	}
 	if format.Status() != core.VersionActive {
-		return DeclarationState{}, errors.Wrap(models.BadParameterError,
+		return DeclarationState{}, models.NewSarError(models.BadParameterError, models.SarCodeFormatRetired,
 			"cette version du format n'accepte plus de nouvelle déclaration")
 	}
 	spec := format.Spec()
 	if !slices.Contains(spec.ReportTypes, reportType) {
-		return DeclarationState{}, errors.Wrapf(models.BadParameterError, "type de déclaration inconnu : %s", reportType)
+		return DeclarationState{}, models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest, "type de déclaration inconnu : %s", reportType)
 	}
 
 	doc := core.NewDocument()
@@ -521,12 +559,61 @@ func (uc *Usecase) mutateWithPost(ctx context.Context, id uuid.UUID, version int
 	return uc.buildState(ctx, exec, saved)
 }
 
-func issuesToError(issues []core.Issue) error {
-	msgs := make([]string, 0, len(issues))
-	for _, i := range issues {
-		msgs = append(msgs, i.Code+" ("+string(i.Path)+") : "+i.Message)
+// IssuesError is a BadParameterError that carries the structured issues of a
+// refused write and the stable code of the refusal, so the API can return them
+// as error_code and details.issues. Its message is the clean French text the
+// analyst reads (no code, no sentinel suffix).
+type IssuesError struct {
+	code   models.SarErrorCode
+	issues []core.Issue
+	// prefix, when set, introduces the message (e.g. why the operation is refused).
+	prefix string
+	// message, when set, is the whole message (the issues are then only in
+	// details.issues, with their technical paths).
+	message string
+}
+
+func (e *IssuesError) Error() string {
+	if e.message != "" {
+		return e.message
 	}
-	return errors.Wrap(models.BadParameterError, strings.Join(msgs, " ; "))
+	if e.prefix != "" {
+		return e.prefix + " : " + e.issuesText()
+	}
+	return e.issuesText()
+}
+
+func (e *IssuesError) issuesText() string {
+	msgs := make([]string, 0, len(e.issues))
+	for _, i := range e.issues {
+		msgs = append(msgs, string(i.Path)+" : "+i.Message)
+	}
+	return strings.Join(msgs, " ; ")
+}
+
+func (e *IssuesError) Unwrap() error { return models.BadParameterError }
+
+// SarIssues returns the issues of the refused write.
+func (e *IssuesError) SarIssues() []core.Issue { return e.issues }
+
+// SarCode returns the stable code of the refusal.
+func (e *IssuesError) SarCode() models.SarErrorCode { return e.code }
+
+// NewIssuesError builds the refusal, with the given code, of a write rejected
+// with issues.
+func NewIssuesError(code models.SarErrorCode, issues []core.Issue) *IssuesError {
+	return &IssuesError{code: code, issues: issues}
+}
+
+// NewIssuesErrorWithMessage is NewIssuesError with a French sentence introducing
+// the issues in the message.
+func NewIssuesErrorWithMessage(code models.SarErrorCode, prefix string, issues []core.Issue) *IssuesError {
+	return &IssuesError{code: code, issues: issues, prefix: prefix}
+}
+
+// issuesToError is the refusal of a write to a field of the document.
+func issuesToError(issues []core.Issue) error {
+	return NewIssuesError(models.SarCodeInvalidField, issues)
 }
 
 // UpdateFields applies fills with OriginManual and OverwriteAll, all-or-nothing.
@@ -536,45 +623,64 @@ func (uc *Usecase) UpdateFields(ctx context.Context, id uuid.UUID, version int, 
 	for _, f := range fills {
 		filled = append(filled, f.Path)
 	}
-	return uc.mutateWithPost(ctx, id, version, func(format core.Format, doc *core.Document, _, _ *string) error {
-		spec := format.Spec()
-		var issues []core.Issue
-		prepared := make([]core.Fill, 0, len(fills))
-		for _, in := range fills {
-			// A manual edit carries only a path and a value: caller-supplied
-			// metadata (reviewed, confidence, sources, task) is dropped.
-			f := core.Fill{Path: in.Path, Value: in.Value, Origin: core.OriginManual}
-			n := spec.NodeAt(f.Path.Template())
-			if n != nil && n.EffectiveNature() == core.NatureAnalyst {
-				issues = append(issues, core.Issue{
-					Path: f.Path, Code: "analyst_field", Severity: core.SeverityBlocking,
-					Message: "champ d'analyse : utilisez la mise à jour de l'analyse",
-				})
-				continue
-			}
-			if n != nil && n.EffectiveNature() == core.NatureComputed &&
-				strings.Contains(f.Path.Template(), "[]") {
-				issues = append(issues, core.Issue{
-					Path: f.Path, Code: "computed_line", Severity: core.SeverityBlocking,
-					Message: "champ calculé : modifiez la transaction correspondante",
-				})
-				continue
-			}
-			prepared = append(prepared, f)
-		}
-		res := core.ApplyFills(spec, doc, prepared, core.ApplyOptions{Overwrite: core.OverwriteAll})
-		for _, r := range res.Rejected {
-			issues = append(issues, r.Issue)
-		}
-		if len(issues) > 0 {
-			return issuesToError(issues)
-		}
-		// Computed values follow the edit, in the same write.
-		uc.recompute(ctx, format, doc)
-		return nil
+	var resolved map[core.Path]core.Path
+	st, err := uc.mutateWithPost(ctx, id, version, func(format core.Format, doc *core.Document, _, _ *string) error {
+		var err error
+		resolved, err = uc.applyManualFills(ctx, format, doc, fills)
+		return err
 	}, func(tx repositories.Transaction, doc *core.Document) error {
 		return uc.resolveAnsweredQuestions(ctx, tx, id, doc, filled)
 	})
+	if err != nil {
+		return DeclarationState{}, err
+	}
+	st.Resolved = resolved
+	return st, nil
+}
+
+// applyManualFills is the write path of a manual edit, shared by the PATCH of
+// fields and the free answer to a question: the fills keep only a path and a
+// value, take OriginManual, and overwrite any stored value. Analyst-text
+// fields and computed lines of a list item are refused. All-or-nothing:
+// any issue returns an IssuesError and the document is to be discarded. The
+// computed values are recomputed on success. It returns the provisional keys
+// resolved to real item paths.
+func (uc *Usecase) applyManualFills(ctx context.Context, format core.Format, doc *core.Document, fills []core.Fill) (map[core.Path]core.Path, error) {
+	spec := format.Spec()
+	var issues []core.Issue
+	prepared := make([]core.Fill, 0, len(fills))
+	for _, in := range fills {
+		// A manual edit carries only a path and a value: caller-supplied
+		// metadata (reviewed, confidence, sources, task) is dropped.
+		f := core.Fill{Path: in.Path, Value: in.Value, Origin: core.OriginManual}
+		n := spec.NodeAt(f.Path.Template())
+		if n != nil && n.EffectiveNature() == core.NatureAnalyst {
+			issues = append(issues, core.Issue{
+				Path: f.Path, Code: "analyst_field", Severity: core.SeverityBlocking,
+				Message: "champ d'analyse : utilisez la mise à jour de l'analyse",
+			})
+			continue
+		}
+		if n != nil && n.EffectiveNature() == core.NatureComputed &&
+			strings.Contains(f.Path.Template(), "[]") {
+			issues = append(issues, core.Issue{
+				Path: f.Path, Code: "computed_line", Severity: core.SeverityBlocking,
+				Message: "champ calculé : modifiez la transaction correspondante",
+			})
+			continue
+		}
+		prepared = append(prepared, f)
+	}
+	res := core.ApplyFills(spec, doc, prepared, core.ApplyOptions{Overwrite: core.OverwriteAll})
+	for _, r := range res.Rejected {
+		issues = append(issues, r.Issue)
+	}
+	if len(issues) > 0 {
+		return nil, issuesToError(issues)
+	}
+	// Computed values follow the edit, in the same write.
+	uc.recompute(ctx, format, doc)
+	return res.Resolved, nil
 }
 
 func (uc *Usecase) AddItem(ctx context.Context, id uuid.UUID, version int, container core.Path) (core.Path, DeclarationState, error) {
@@ -582,19 +688,19 @@ func (uc *Usecase) AddItem(ctx context.Context, id uuid.UUID, version int, conta
 	st, err := uc.mutate(ctx, id, version, func(format core.Format, doc *core.Document) error {
 		n := format.Spec().NodeAt(container.Template() + "[]")
 		if n == nil || !n.IsRepeatable() {
-			return errors.Wrapf(models.BadParameterError, "%s n'est pas une liste", container)
+			return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest, "%s n'est pas une liste", container)
 		}
 		if onlyComputed(n) {
-			return errors.Wrapf(models.BadParameterError,
+			return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest,
 				"%s est calculée : les éléments ne s'ajoutent pas à la main", container)
 		}
 		for _, anc := range keyedAncestors(container) {
 			if !doc.HasItem(anc) {
-				return errors.Wrapf(models.BadParameterError, "l'élément parent %s n'existe pas", anc)
+				return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest, "l'élément parent %s n'existe pas", anc)
 			}
 		}
 		if n.Max > 0 && len(doc.ItemKeys(container)) >= n.Max {
-			return errors.Wrapf(models.BadParameterError, "nombre maximal d'éléments atteint pour %s", container)
+			return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest, "nombre maximal d'éléments atteint pour %s", container)
 		}
 		prefix := n.Name
 		if prefix == "" {
@@ -613,25 +719,27 @@ func (uc *Usecase) AddItem(ctx context.Context, id uuid.UUID, version int, conta
 // RemoveItem removes a list item by hand. What refers to the item is rewritten
 // like for a removal option (removeItemRewritingReferences).
 func (uc *Usecase) RemoveItem(ctx context.Context, id uuid.UUID, version int, item core.Path) (DeclarationState, error) {
+	var removalFormat core.Format
 	return uc.mutateWithPost(ctx, id, version, func(format core.Format, doc *core.Document, _, _ *string) error {
+		removalFormat = format
 		if !strings.HasSuffix(string(item), "]") {
-			return errors.Wrapf(models.BadParameterError, "%s n'est pas un élément de liste", item)
+			return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest, "%s n'est pas un élément de liste", item)
 		}
 		n := format.Spec().NodeAt(item.Template())
 		if n == nil || !n.IsRepeatable() {
-			return errors.Wrapf(models.BadParameterError, "%s n'est pas un élément de liste", item)
+			return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest, "%s n'est pas un élément de liste", item)
 		}
 		if onlyComputed(n) {
-			return errors.Wrapf(models.BadParameterError,
+			return models.NewSarErrorf(models.BadParameterError, models.SarCodeInvalidRequest,
 				"%s est calculée : les éléments ne se retirent pas à la main", item)
 		}
 		if !doc.HasItem(item) {
-			return errors.Wrapf(models.NotFoundError, "l'élément %s n'existe pas", item)
+			return models.NewSarErrorf(models.NotFoundError, models.SarCodeNotFound, "l'élément %s n'existe pas", item)
 		}
 		return uc.removeItemRewritingReferences(ctx, format, doc, item)
 	}, func(tx repositories.Transaction, _ *core.Document) error {
 		// An item removed by hand leaves nothing to answer about it.
-		return uc.dismissQuestionsOfItem(ctx, tx, id, item)
+		return uc.dismissQuestionsOfItem(ctx, tx, removalFormat, id, item)
 	})
 }
 
@@ -715,4 +823,23 @@ func (uc *Usecase) recompute(ctx context.Context, format core.Format, doc *core.
 		utils.LoggerFromContext(ctx).WarnContext(ctx, "sar declaration: computed fills not applied",
 			"rejected", len(res.Rejected), "conflicts", len(res.Conflicts), "first_rejected", first)
 	}
+}
+
+// lastGeneration returns the state of the most recent generate job (jobs are
+// newest first), nil when there is none.
+func (uc *Usecase) lastGeneration(jobs []models.SarGenerationJob) *GenerationState {
+	for _, j := range jobs {
+		if j.Kind != models.SarJobKindGenerate {
+			continue
+		}
+		g := &GenerationState{Status: j.Status, JobId: j.Id, Error: j.Error}
+		if uc.isStale(j) {
+			g.Status = models.SarJobStatusFailed
+			if g.Error == "" {
+				g.Error = "la génération ne répond plus"
+			}
+		}
+		return g
+	}
+	return nil
 }

@@ -2,6 +2,7 @@ package sargen
 
 import (
 	"bytes"
+	"github.com/cockroachdb/errors"
 	"strings"
 	"testing"
 
@@ -430,7 +431,10 @@ func TestChooseQuestionOption_AddOptionBeyondMaxItemsRefused(t *testing.T) {
 
 	_, err = uc.ChooseQuestionOption(f.Ctx, q.Id, version, 0)
 	require.ErrorIs(t, err, models.BadParameterError)
-	assert.Contains(t, err.Error(), core.CodeTooManyItems)
+	var ie *IssuesError
+	require.True(t, errors.As(err, &ie), "%v", err)
+	require.NotEmpty(t, ie.SarIssues())
+	assert.Equal(t, core.CodeTooManyItems, ie.SarIssues()[0].Code)
 	assert.True(t, bytes.Equal(docBefore, f.Repo.Declarations[declId].Document), "nothing applied")
 	assert.Equal(t, version, f.Repo.Declarations[declId].Version)
 	assert.Equal(t, models.SarQuestionStatusOpen, f.Gen.Questions[q.Id].Status)

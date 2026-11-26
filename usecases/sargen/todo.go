@@ -1,6 +1,7 @@
 package sargen
 
 import (
+	"maps"
 	"slices"
 	"sort"
 	"strings"
@@ -13,6 +14,9 @@ import (
 // confirmer » item.
 const TodoCodeComputedToConfirm = "computed_to_confirm"
 
+// TodoCodeLowConfidence is the stable Code of the low-confidence value item.
+const TodoCodeLowConfidence = "low_confidence"
+
 // buildTodoBase: issues and low-confidence values, sorted blocking, review, warning.
 func buildTodoBase(issues []core.Issue, doc *core.Document) []TodoItem {
 	var todo []TodoItem
@@ -21,13 +25,18 @@ func buildTodoBase(issues []core.Issue, doc *core.Document) []TodoItem {
 		if i.Severity == core.SeverityBlocking {
 			sev = TodoBlocking
 		}
-		paths, msg := []core.Path{i.Path}, i.Message
+		paths, msg, params := []core.Path{i.Path}, i.Message, i.Params
 		if inputs := computedSources(doc, i.Path); inputs != nil && i.Severity == core.SeverityBlocking {
 			// A computed value cannot be corrected itself: its source fields can.
 			paths = append(paths, inputs...)
-			msg += " — corrigez les transactions sources"
+			msg += "; fix the source transactions"
+			params = maps.Clone(params)
+			if params == nil {
+				params = map[string]string{}
+			}
+			params["fix"] = "source_transactions"
 		}
-		todo = append(todo, TodoItem{Kind: TodoIssue, Severity: sev, Paths: paths, Message: msg})
+		todo = append(todo, TodoItem{Kind: TodoIssue, Severity: sev, Code: i.Code, Paths: paths, Message: msg, Params: params})
 	}
 	if doc != nil {
 		var low []core.Path
@@ -40,7 +49,7 @@ func buildTodoBase(issues []core.Issue, doc *core.Document) []TodoItem {
 		for _, p := range low {
 			todo = append(todo, TodoItem{
 				Kind: TodoLowConfidence, Severity: TodoReview, Paths: []core.Path{p},
-				Message: "valeur à faible confiance, à relire",
+				Code: TodoCodeLowConfidence, Message: "low-confidence value, to review",
 			})
 		}
 	}
@@ -66,7 +75,11 @@ func buildTodo(spec *core.Spec, confirm []core.Path, issues []core.Issue, doc *c
 		}
 		switch q.Kind {
 		case models.SarQuestionKindReviewFinding:
-			todo = append(todo, TodoItem{Kind: TodoReviewFinding, Severity: TodoReview, Paths: paths, Message: q.Text, RefId: &id})
+			sev := TodoReview
+			if q.Severity == models.SarQuestionSeverityBlocking {
+				sev = TodoBlocking // it replaced a blocking question
+			}
+			todo = append(todo, TodoItem{Kind: TodoReviewFinding, Severity: sev, Paths: paths, Message: q.Text, RefId: &id})
 		default:
 			sev := TodoWarning
 			if q.Severity == models.SarQuestionSeverityBlocking {
@@ -90,7 +103,7 @@ func buildTodo(spec *core.Spec, confirm []core.Path, issues []core.Issue, doc *c
 		for _, p := range computed {
 			todo = append(todo, TodoItem{
 				Kind: TodoIssue, Severity: TodoReview, Code: TodoCodeComputedToConfirm, Paths: []core.Path{p},
-				Message: "valeur calculée à confirmer",
+				Message: "computed value to confirm",
 			})
 		}
 	}

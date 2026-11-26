@@ -13,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/ai_agent"
 	"github.com/checkmarble/marble-backend/usecases/sargen/core"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 // LLM runs one turn of an agent conversation. The runner owns the loop (limits,
@@ -183,7 +184,8 @@ func (l *llmberjackLLM) Step(ctx context.Context, req AgentRequest) (step AgentS
 	provider := ai_agent.ProviderForModel(model)
 	client, err := l.agent.GetClient(ctx)
 	if err != nil {
-		return AgentStep{}, unavailable(errors.Wrap(err, "client LLM indisponible"))
+		utils.LoggerFromContext(ctx).WarnContext(ctx, "sar generation: LLM client unavailable", "error", err.Error())
+		return AgentStep{}, unavailable(errors.New("client LLM indisponible"))
 	}
 
 	st := l.run(req.RunID)
@@ -206,7 +208,7 @@ func (l *llmberjackLLM) Step(ctx context.Context, req AgentRequest) (step AgentS
 	if err != nil {
 		if !isNoContent(err) {
 			// Provider and model still reach the trace header.
-			return step, errors.Wrap(err, "appel du modèle")
+			return step, errors.Mark(errors.Wrap(err, "appel du modèle"), ErrLLMCall)
 		}
 		// The input of this turn is in the thread's history but nothing
 		// answered it: the next turn continues the thread (not a candidate).

@@ -219,6 +219,21 @@ func (r *fakeGenRepo) GetSarQuestion(_ context.Context, _ repositories.Executor,
 	return q, nil
 }
 
+func (r *fakeGenRepo) CreateSarQuestions(_ context.Context, _ repositories.Executor, qs []models.SarQuestion) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, q := range qs {
+		if q.Id == uuid.Nil {
+			q.Id = uuid.New()
+		}
+		if q.CreatedAt.IsZero() {
+			q.CreatedAt = r.clock()
+		}
+		r.Questions[q.Id] = q
+	}
+	return nil
+}
+
 func (r *fakeGenRepo) CloseSarQuestions(_ context.Context, _ repositories.Executor, ids []uuid.UUID, status string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

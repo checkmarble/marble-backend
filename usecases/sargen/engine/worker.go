@@ -95,7 +95,7 @@ func (w *Worker) Work(ctx context.Context, job *river.Job[models.SarGenerationAr
 		dctx, cancel := detached(ctx)
 		defer cancel()
 		if _, serr := w.jobs.SetSarGenerationJobStatus(dctx, w.executorFactory.NewExecutor(), job.Args.JobId,
-			models.SarJobStatusFailed, err.Error()); serr != nil {
+			models.SarJobStatusFailed, PublicError(err)); serr != nil {
 			return errors.Wrap(err, "cannot mark job failed: "+serr.Error())
 		}
 	}
