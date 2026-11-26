@@ -1,0 +1,16 @@
+{
+ "title": "Une référence vers un élément pas encore créé",
+ "description": "Dans un appel, l'ordre compte : une référence vers [+b] doit venir après le fill qui crée [+b].",
+ "start": "generated",
+ "steps": [
+  {"role": "llm", "note": "Le dirigeant référence [+b] avant sa création, puis [+b] est créé, puis la même référence est réécrite.",
+   "fills": [
+    {"path": "personnes.pm[+m].dirigeant[+d].idPersonne", "value": "personnes.pp[+b]", "sources": [{"object": {"table": "client", "object_id": "client-1"}, "field": "last_name", "raw_value": "x"}]},
+    {"path": "personnes.pp[+b].etatCivil.nomNaissance", "value": "DUPUIS", "sources": [{"object": {"table": "client", "object_id": "client-1"}, "field": "last_name", "raw_value": "x"}]},
+    {"path": "personnes.pm[+m].dirigeant[+d].idPersonne", "value": "personnes.pp[+b]", "sources": [{"object": {"table": "client", "object_id": "client-1"}, "field": "last_name", "raw_value": "x"}]}],
+   "expect": ["rejected:bad_ref", "applied", "applied"]},
+  {"role": "llm", "note": "Une vraie clé qui n'existe pas.",
+   "fills": [{"path": "personnes.pm[pm-1].dirigeant[dirigeant-1].idPersonne", "value": "personnes.pp[pp-9]", "sources": [{"object": {"table": "client", "object_id": "client-1"}, "field": "last_name", "raw_value": "x"}]}],
+   "expect": ["rejected:dangling_ref"]}
+ ]
+}

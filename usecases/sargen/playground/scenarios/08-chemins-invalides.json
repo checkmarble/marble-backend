@@ -1,0 +1,16 @@
+{
+ "title": "Chemins invalides",
+ "description": "Chaque refus de chemin, dans l'ordre où ApplyFills les vérifie.",
+ "start": "generated",
+ "steps": [
+  {"role": "analyst",
+   "fills": [
+    {"path": "personnes.pp[pp-1].etatCivil.nomNaisance", "value": "X"},
+    {"path": "personnes.pp[pp-9].etatCivil.nomNaissance", "value": "X"},
+    {"path": "personnes.pp[pp-1].etatCivil", "value": "X"},
+    {"path": "personnes.pp[pp-1].id", "value": "1"},
+    {"path": "personnes.pp[+a].etatCivil.nomNaissance", "value": ""},
+    {"path": "personnes.pp[pp-1].etatCivil.dateNaissance", "value": "12/04/1980"}],
+   "expect": ["rejected:unknown_path", "rejected:unknown_item", "rejected:not_a_field", "rejected:export_id_value", "rejected:empty_new_item", "rejected:bad_date"]}
+ ]
+}

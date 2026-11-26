@@ -1,0 +1,18 @@
+{
+ "title": "Le LLM écrit un réglage ou un champ calculé",
+ "description": "Les réglages de l'organisation ne s'écrivent que par les réglages ou par l'analyste ; le LLM ne touche ni aux réglages, ni aux champs calculés.",
+ "start": "empty",
+ "steps": [
+  {"role": "llm", "note": "Réglage et champ calculé : interdits au LLM, même avec une source.",
+   "fills": [
+    {"path": "organisme.libelle", "value": "Banque X", "sources": [{"object": {"table": "client", "object_id": "client-1"}, "field": "last_name", "raw_value": "x"}]},
+    {"path": "operations.montantTotal", "value": "100.00", "sources": [{"object": {"table": "client", "object_id": "client-1"}, "field": "last_name", "raw_value": "x"}]}],
+   "expect": ["rejected:not_writable_by_llm", "rejected:not_writable_by_llm"]},
+  {"role": "org_setting", "note": "Les réglages de l'organisation écrivent le libellé.",
+   "fills": [{"path": "organisme.libelle", "value": "Banque Test"}], "expect": ["applied"]},
+  {"role": "computed", "note": "Un calcul ne peut pas écrire un réglage.",
+   "fills": [{"path": "organisme.numIdPro", "value": "12345"}], "expect": ["rejected:origin_not_allowed"]},
+  {"role": "org_setting", "note": "Les réglages n'écrivent que des réglages.",
+   "fills": [{"path": "analyse", "value": "texte"}], "expect": ["rejected:origin_not_allowed"]}
+ ]
+}

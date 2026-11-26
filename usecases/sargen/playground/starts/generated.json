@@ -1,0 +1,382 @@
+{
+ "items": {
+  "context.natureSoupcon.cadreLegal": [
+   {
+    "key": "cl-1"
+   }
+  ],
+  "context.natureSoupcon.natureSoupconPenale": [
+   {
+    "key": "nsp-1"
+   }
+  ],
+  "operations.operation": [
+   {
+    "key": "op-1"
+   }
+  ],
+  "personnes.pp": [
+   {
+    "key": "pp-1",
+    "sources": [
+     {
+      "object_id": "client-1",
+      "table": "client"
+     }
+    ]
+   }
+  ],
+  "personnes.pp[pp-1].etatCivil.prenom": [
+   {
+    "key": "fn-1"
+   }
+  ],
+  "personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban": [
+   {
+    "key": "iban-1",
+    "sources": [
+     {
+      "object_id": "account-1",
+      "table": "account"
+     }
+    ]
+   }
+  ]
+ },
+ "next_key": {
+  "context.natureSoupcon.cadreLegal": 1,
+  "context.natureSoupcon.natureSoupconPenale": 1,
+  "operations.operation": 1,
+  "personnes.pp": 1,
+  "personnes.pp[pp-1].etatCivil.prenom": 1,
+  "personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban": 1
+ },
+ "values": {
+  "analyse": {
+   "origin": "manual",
+   "reviewed": false,
+   "value": "Le client a recu plusieurs virements de provenance inconnue, rapidement retires en especes, sans rapport avec son activite declaree."
+  },
+  "context.general.estPrecisionSignalement": {
+   "computation": {
+    "inputs": [],
+    "name": "case"
+   },
+   "origin": "computed",
+   "reviewed": false,
+   "value": "false"
+  },
+  "context.general.estRequisitionJudiciaire": {
+   "computation": {
+    "inputs": [],
+    "name": "case"
+   },
+   "origin": "computed",
+   "reviewed": false,
+   "value": "false"
+  },
+  "context.general.refInterne": {
+   "computation": {
+    "inputs": [],
+    "name": "case"
+   },
+   "origin": "computed",
+   "reviewed": false,
+   "value": "CASE-2026-0042"
+  },
+  "context.information.correspondanceBancaire": {
+   "confidence": "low",
+   "justification": "déduit des opérations et de l’analyse du dossier",
+   "origin": "llm",
+   "reviewed": false,
+   "sources": [
+    {
+     "field": "correspondanceBancaire",
+     "object": {
+      "object_id": "case-42",
+      "table": "case"
+     },
+     "raw_value": "false"
+    }
+   ],
+   "value": "false"
+  },
+  "context.information.gestionFortuneBanquePrivee": {
+   "confidence": "high",
+   "justification": "déduit des opérations et de l’analyse du dossier",
+   "origin": "llm",
+   "reviewed": false,
+   "sources": [
+    {
+     "field": "gestionFortuneBanquePrivee",
+     "object": {
+      "object_id": "case-42",
+      "table": "case"
+     },
+     "raw_value": "false"
+    }
+   ],
+   "value": "false"
+  },
+  "context.natureSoupcon.cadreLegal[cl-1]": {
+   "confidence": "high",
+   "justification": "déduit des opérations et de l’analyse du dossier",
+   "origin": "llm",
+   "reviewed": false,
+   "sources": [
+    {
+     "field": "cadreLegal",
+     "object": {
+      "object_id": "case-42",
+      "table": "case"
+     },
+     "raw_value": "CL02"
+    }
+   ],
+   "value": "CL02"
+  },
+  "context.natureSoupcon.natureSoupconPenale[nsp-1]": {
+   "confidence": "high",
+   "justification": "déduit des opérations et de l’analyse du dossier",
+   "origin": "llm",
+   "reviewed": false,
+   "sources": [
+    {
+     "field": "natureSoupconPenale",
+     "object": {
+      "object_id": "case-42",
+      "table": "case"
+     },
+     "raw_value": "NSP07"
+    }
+   ],
+   "value": "NSP07"
+  },
+  "declarant.coordonnees.courriel": {
+   "origin": "org_setting",
+   "reviewed": false,
+   "value": "jean.dupont@banque.fr"
+  },
+  "declarant.coordonnees.nom": {
+   "origin": "org_setting",
+   "reviewed": false,
+   "value": "Dupont"
+  },
+  "declarant.coordonnees.prenom": {
+   "origin": "org_setting",
+   "reviewed": false,
+   "value": "Jean"
+  },
+  "declarant.coordonnees.tel": {
+   "origin": "org_setting",
+   "reviewed": false,
+   "value": "+33 1 23 45 67 89"
+  },
+  "operations.dateDebut": {
+   "computation": {
+    "inputs": [],
+    "name": "operations"
+   },
+   "origin": "computed",
+   "reviewed": false,
+   "value": "2026-10-01"
+  },
+  "operations.dateFin": {
+   "computation": {
+    "inputs": [],
+    "name": "operations"
+   },
+   "origin": "computed",
+   "reviewed": false,
+   "value": "2026-10-31"
+  },
+  "operations.montantTotal": {
+   "computation": {
+    "inputs": [],
+    "name": "operations"
+   },
+   "origin": "computed",
+   "reviewed": false,
+   "value": "12500.00"
+  },
+  "operations.operation[op-1].beneficiaireTypeBeneficiaire": {
+   "computation": {
+    "inputs": [],
+    "name": "operations"
+   },
+   "origin": "computed",
+   "reviewed": false,
+   "value": "Société Beta SARL"
+  },
+  "operations.operation[op-1].emetteurTypeEmetteur": {
+   "computation": {
+    "inputs": [],
+    "name": "operations"
+   },
+   "origin": "computed",
+   "reviewed": false,
+   "value": "personnes.pp[pp-1]"
+  },
+  "operations.operation[op-1].montantTotal": {
+   "computation": {
+    "inputs": [],
+    "name": "operations"
+   },
+   "origin": "computed",
+   "reviewed": false,
+   "value": "12500.00"
+  },
+  "operations.operation[op-1].paysArriveeFonds": {
+   "computation": {
+    "inputs": [],
+    "name": "operations"
+   },
+   "origin": "computed",
+   "reviewed": false,
+   "value": "FR"
+  },
+  "operations.operation[op-1].paysOrigineFonds": {
+   "computation": {
+    "inputs": [],
+    "name": "operations"
+   },
+   "origin": "computed",
+   "reviewed": false,
+   "value": "FR"
+  },
+  "operations.operation[op-1].refFinanciereEmission": {
+   "computation": {
+    "inputs": [],
+    "name": "operations"
+   },
+   "origin": "computed",
+   "reviewed": false,
+   "value": "personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban[iban-1]"
+  },
+  "operations.operation[op-1].refFinanciereReception": {
+   "computation": {
+    "inputs": [],
+    "name": "operations"
+   },
+   "origin": "computed",
+   "reviewed": false,
+   "value": "FR7612345987650123456789014"
+  },
+  "operations.operation[op-1].typeOperation": {
+   "computation": {
+    "inputs": [],
+    "name": "operations"
+   },
+   "origin": "computed",
+   "reviewed": false,
+   "value": "OT10"
+  },
+  "organisme.adresse.codePostal": {
+   "origin": "org_setting",
+   "reviewed": false,
+   "value": "75002"
+  },
+  "organisme.adresse.nomVoie": {
+   "origin": "org_setting",
+   "reviewed": false,
+   "value": "Rue de la Paix"
+  },
+  "organisme.adresse.numero": {
+   "origin": "org_setting",
+   "reviewed": false,
+   "value": "12"
+  },
+  "organisme.adresse.pays": {
+   "origin": "org_setting",
+   "reviewed": false,
+   "value": "FR"
+  },
+  "organisme.adresse.tel": {
+   "origin": "org_setting",
+   "reviewed": false,
+   "value": "+33 1 40 00 00 00"
+  },
+  "organisme.adresse.ville": {
+   "origin": "org_setting",
+   "reviewed": false,
+   "value": "Paris"
+  },
+  "organisme.libelle": {
+   "origin": "org_setting",
+   "reviewed": false,
+   "value": "Banque Exemple SA"
+  },
+  "organisme.numIdPro": {
+   "origin": "org_setting",
+   "reviewed": false,
+   "value": "123456789"
+  },
+  "organisme.profession": {
+   "origin": "org_setting",
+   "reviewed": false,
+   "value": "TPI1"
+  },
+  "personnes.pp[pp-1].etatCivil.nomNaissance": {
+   "origin": "llm",
+   "reviewed": false,
+   "sources": [
+    {
+     "field": "nomNaissance",
+     "object": {
+      "object_id": "client-1",
+      "table": "client"
+     },
+     "raw_value": "Martin"
+    }
+   ],
+   "value": "Martin"
+  },
+  "personnes.pp[pp-1].etatCivil.prenom[fn-1]": {
+   "origin": "llm",
+   "reviewed": false,
+   "sources": [
+    {
+     "field": "prenom",
+     "object": {
+      "object_id": "client-1",
+      "table": "client"
+     },
+     "raw_value": "Paul"
+    }
+   ],
+   "value": "Paul"
+  },
+  "personnes.pp[pp-1].implication": {
+   "confidence": "high",
+   "justification": "déduit des opérations et de l’analyse du dossier",
+   "origin": "llm",
+   "reviewed": false,
+   "sources": [
+    {
+     "field": "implication",
+     "object": {
+      "object_id": "client-1",
+      "table": "client"
+     },
+     "raw_value": "Personne soupçonnée / Personne impliquée"
+    }
+   ],
+   "value": "Personne soupçonnée / Personne impliquée"
+  },
+  "personnes.pp[pp-1].referencesFinancieres.referenceFinanciereIban[iban-1].iban": {
+   "origin": "llm",
+   "reviewed": false,
+   "sources": [
+    {
+     "field": "iban",
+     "object": {
+      "object_id": "account-1",
+      "table": "account"
+     },
+     "raw_value": "FR7630006000011234567890189"
+    }
+   ],
+   "value": "FR7630006000011234567890189"
+  }
+ }
+}
