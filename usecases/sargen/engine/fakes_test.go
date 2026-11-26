@@ -38,6 +38,7 @@ type fakeRunner struct {
 	mu     sync.Mutex
 	script map[string][]Step
 	calls  map[string]int
+	specs  map[string]core.TaskSpec
 	// Calls lists the runs in order (kind|target).
 	Calls []string
 	// TCs are the tool contexts of the runs, in order.
@@ -45,7 +46,7 @@ type fakeRunner struct {
 }
 
 func newFakeRunner() *fakeRunner {
-	return &fakeRunner{script: map[string][]Step{}, calls: map[string]int{}}
+	return &fakeRunner{script: map[string][]Step{}, calls: map[string]int{}, specs: map[string]core.TaskSpec{}}
 }
 
 func key(kind, target string) string { return kind + "|" + target }
@@ -64,9 +65,17 @@ func (r *fakeRunner) Count(kind, target string) int {
 	return r.calls[key(kind, target)]
 }
 
-func (r *fakeRunner) Run(_ context.Context, tc core.ToolContext, task models.SarGenerationTask, _ core.TaskSpec) (core.TaskOutput, error) {
+// LastSpec returns the spec the task was last run with.
+func (r *fakeRunner) LastSpec(kind, target string) core.TaskSpec {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.specs[key(kind, target)]
+}
+
+func (r *fakeRunner) Run(_ context.Context, tc core.ToolContext, task models.SarGenerationTask, spec core.TaskSpec) (core.TaskOutput, error) {
 	k := key(task.Kind, task.TargetPath)
 	r.mu.Lock()
+	r.specs[k] = spec
 	steps := r.script[k]
 	n := r.calls[k]
 	r.calls[k]++
@@ -164,7 +173,7 @@ func (f *fakeFormat) Compute(doc *core.Document) core.ComputeResult {
 	return f.ComputeFn(doc)
 }
 
-func (f *fakeFormat) ApplyStructured(kind string, doc *core.Document, out json.RawMessage) error {
+func (f *fakeFormat) ApplyStructured(kind string, doc *core.Document, out json.RawMessage, _ core.StructuredContext) error {
 	if f.StructuredFn == nil {
 		return nil
 	}

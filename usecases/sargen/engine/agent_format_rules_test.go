@@ -315,6 +315,7 @@ func TestAgent_FormatInstructionsMissingIsAnError(t *testing.T) {
 
 func TestAgent_FormatWithoutInstructionsIsUnchanged(t *testing.T) {
 	tc := agentToolContext(t)
+	tc.Format = instructedFormat{Format: tc.Format} // implements the interface, empty path
 	llm := newScriptedLLM(FinalStep(agFinal()))
 	out, err := agRun(t, llm, fakeAgentPrompts{}, AgentLimits{}, tc, agentSpec("fill", agentPersonPath))
 	require.NoError(t, err)
@@ -395,7 +396,7 @@ func TestAgent_AnalystTextNeverShowsEnglishOrStepKind(t *testing.T) {
 	tc := agentToolContext(t)
 	spec := core.TaskSpec{Kind: "understanding", PromptPath: "prompts/understanding.md"}
 	run := &agentRun{
-		tc: tc, spec: spec, mode: modeStructured, tr: newTrace("", ""),
+		tc: tc, spec: spec, mode: modeFills, tr: newTrace("", ""),
 		chk: newChecker(tc, spec, tc.TaskId, nil),
 	}
 

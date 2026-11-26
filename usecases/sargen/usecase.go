@@ -311,7 +311,7 @@ func (uc *Usecase) buildState(ctx context.Context, exec repositories.Executor, d
 		Format:       format,
 		Doc:          doc,
 		Issues:       issues,
-		Todo:         buildTodo(format.Spec(), issues, doc, open),
+		Todo:         withComputedNotes(buildTodo(format.Spec(), confirmComputedOf(format), issues, doc, open), format, doc),
 		ExportsCount: count,
 		LastExportAt: last,
 	}, nil
@@ -569,6 +569,8 @@ func (uc *Usecase) UpdateFields(ctx context.Context, id uuid.UUID, version int, 
 		if len(issues) > 0 {
 			return issuesToError(issues)
 		}
+		// Computed values follow the edit, in the same write.
+		uc.recompute(ctx, format, doc)
 		return nil
 	}, func(tx repositories.Transaction, doc *core.Document) error {
 		return uc.resolveAnsweredQuestions(ctx, tx, id, doc, filled)
@@ -599,6 +601,7 @@ func (uc *Usecase) AddItem(ctx context.Context, id uuid.UUID, version int, conta
 			prefix = "item"
 		}
 		item = doc.AddItem(container, prefix)
+		uc.recompute(ctx, format, doc)
 		return nil
 	})
 	if err != nil {
@@ -607,8 +610,10 @@ func (uc *Usecase) AddItem(ctx context.Context, id uuid.UUID, version int, conta
 	return item, st, nil
 }
 
+// RemoveItem removes a list item by hand. What refers to the item is rewritten
+// like for a removal option (removeItemRewritingReferences).
 func (uc *Usecase) RemoveItem(ctx context.Context, id uuid.UUID, version int, item core.Path) (DeclarationState, error) {
-	return uc.mutate(ctx, id, version, func(format core.Format, doc *core.Document) error {
+	return uc.mutateWithPost(ctx, id, version, func(format core.Format, doc *core.Document, _, _ *string) error {
 		if !strings.HasSuffix(string(item), "]") {
 			return errors.Wrapf(models.BadParameterError, "%s n'est pas un élément de liste", item)
 		}
@@ -623,8 +628,10 @@ func (uc *Usecase) RemoveItem(ctx context.Context, id uuid.UUID, version int, it
 		if !doc.HasItem(item) {
 			return errors.Wrapf(models.NotFoundError, "l'élément %s n'existe pas", item)
 		}
-		doc.RemoveItem(item)
-		return nil
+		return uc.removeItemRewritingReferences(ctx, format, doc, item)
+	}, func(tx repositories.Transaction, _ *core.Document) error {
+		// An item removed by hand leaves nothing to answer about it.
+		return uc.dismissQuestionsOfItem(ctx, tx, id, item)
 	})
 }
 
@@ -694,4 +701,18 @@ func (uc *Usecase) GetSelection(ctx context.Context, declarationId uuid.UUID) ([
 		return nil, err
 	}
 	return uc.selectionRepo.ListSarSelection(ctx, exec, declarationId)
+}
+
+// recompute derives the computed values after a manual edit (same write) and
+// logs the computed fills that could not be applied (the edit itself is kept).
+func (uc *Usecase) recompute(ctx context.Context, format core.Format, doc *core.Document) {
+	res, _ := core.ComputeInto(format, doc)
+	if len(res.Rejected) > 0 || len(res.Conflicts) > 0 {
+		first := ""
+		if len(res.Rejected) > 0 {
+			first = string(res.Rejected[0].Fill.Path) + ": " + res.Rejected[0].Issue.Message
+		}
+		utils.LoggerFromContext(ctx).WarnContext(ctx, "sar declaration: computed fills not applied",
+			"rejected", len(res.Rejected), "conflicts", len(res.Conflicts), "first_rejected", first)
+	}
 }

@@ -283,3 +283,13 @@ func (d *Document) UnmarshalJSON(data []byte) error {
 	}
 	return nil
 }
+
+// ValueAt returns the value stored at p, false when there is none (a nil
+// document has none).
+func (d *Document) ValueAt(p Path) (Value, bool) {
+	if d == nil {
+		return Value{}, false
+	}
+	v, ok := d.Values[p]
+	return v, ok
+}

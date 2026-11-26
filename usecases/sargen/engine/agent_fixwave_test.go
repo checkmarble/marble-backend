@@ -187,7 +187,7 @@ type structuredFormat struct {
 	cite []core.ObjectRef
 }
 
-func (f *structuredFormat) ApplyStructured(_ string, doc *core.Document, _ json.RawMessage) error {
+func (f *structuredFormat) ApplyStructured(_ string, doc *core.Document, _ json.RawMessage, _ core.StructuredContext) error {
 	doc.AddItem("personnes.pp", "pp", f.cite...)
 	return nil
 }
