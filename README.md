@@ -139,7 +139,6 @@ Install them with `npx skills i` or `npx skills i --agent <your-prefered-agent>`
 
 ### How to reset the DB ?
 
-`docker volume rm marble-backend-postgres-db` deletes the PG volume, useful to reset the app to a known state
-
 In practice, this single-line will delete the stack and create a new one:
-`docker compose down && docker volume rm marble-backend-postgres-db && docker compose up -d`
+
+`docker compose down -v && docker compose up -d`
