@@ -1,0 +1,22 @@
+{
+ "title": "L'analyste corrige un total calculé",
+ "description": "La correction tient tant que le calcul redonne le même résultat à partir des mêmes données ; sinon le calcul reprend la main et la valeur est à relire.",
+ "start": "empty",
+ "steps": [
+  {"role": "computed", "note": "Le calcul écrit le total à partir d'une transaction.",
+   "fills": [{"path": "operations.montantTotal", "value": "1000.00", "computation": {"name": "operations", "inputs": ["work.transactions[tx-1].montant"]}}],
+   "expect": ["applied"]},
+  {"role": "analyst", "note": "L'analyste corrige : le résultat du calcul (1000.00) est gardé dans computation.result.",
+   "fills": [{"path": "operations.montantTotal", "value": "950.00"}], "expect": ["applied"]},
+  {"role": "computed", "note": "Recalcul à données égales : la correction reste.",
+   "fills": [{"path": "operations.montantTotal", "value": "1000.00", "computation": {"name": "operations", "inputs": ["work.transactions[tx-1].montant"]}}],
+   "expect": ["noop"]},
+  {"role": "computed", "note": "Une transaction ajoutée, même total : autres données, la correction tombe.",
+   "fills": [{"path": "operations.montantTotal", "value": "1000.00", "computation": {"name": "operations", "inputs": ["work.transactions[tx-1].montant", "work.transactions[tx-2].montant"]}}],
+   "expect": ["applied"]},
+  {"role": "analyst", "fills": [{"path": "operations.montantTotal", "value": "900.00"}], "expect": ["applied"]},
+  {"role": "computed", "note": "Un autre résultat : la correction tombe.",
+   "fills": [{"path": "operations.montantTotal", "value": "1200.00", "computation": {"name": "operations", "inputs": ["work.transactions[tx-1].montant", "work.transactions[tx-2].montant"]}}],
+   "expect": ["applied"]}
+ ]
+}

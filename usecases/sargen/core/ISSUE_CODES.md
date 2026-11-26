@@ -54,6 +54,30 @@ The front end translates from `code` + `params`. Rule issues (`rule:<id>`) are t
 
 The other `rule:<id>` issues of TRACFIN come from `constraints.json` (generic rules) and carry no params.
 
+## Write codes (ApplyFills)
+
+A write (a generation fill, a manual edit, an option chosen by the analyst) is checked by `ApplyFills` before the value is stored. A refused fill carries one of the value codes above (from `ValidateValue`) or one of these, all blocking:
+
+| code | when | params |
+|---|---|---|
+| `unknown_path` | empty, malformed or unknown path | none |
+| `not_found` | marking as reviewed a path that has no value | none |
+| `empty_new_item` | clearing a value of an item that does not exist yet | none |
+| `unknown_item` | the path goes through an item that does not exist | `item` (the keyed segment) |
+| `bad_provisional_key` | a provisional key `[+x]` on a node that is not repeatable | none |
+| `too_many_items` | creating an item would exceed the maximum | `max` |
+| `out_of_scope` | path outside the part assigned to the generation task | none |
+| `missing_origin` | the write has no origin | none |
+| `unknown_origin` | the origin is not one of llm, org_setting, computed, manual | `origin` |
+| `bad_confidence` | the confidence is not low, medium or high | `confidence` |
+| `bad_ref` | reference to a provisional item not created in the same write | `value` |
+| `dangling_ref` | reference to an item that does not exist | `value` |
+| `not_writable_by_llm` | the LLM writes a field it may not fill (setting, computed, analyst text) | none |
+| `origin_not_allowed` | an organization setting written by an origin other than org_setting or manual, or the org_setting origin on a field that is not a setting | `origin` |
+| `missing_source` | a copied value cites no source | none |
+| `missing_justification` | a judgment has no justification or confidence | none |
+| `source_out_of_scope` | the cited source is outside the objects allowed for the field | none |
+
 ## Export errors
 
 `WriteXML` refuses a document with an `*core.ExportError` (`errors.As`): `Code`, `Path`, `Params`, English `Message`. Nothing is written. A failure of the underlying writer is a plain wrapped error ("cannot write XML").

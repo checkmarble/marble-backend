@@ -50,6 +50,11 @@ type Computation struct {
 	Name string `json:"name"`
 	// Inputs are the document paths the computation read.
 	Inputs []Path `json:"inputs"`
+	// Result is set on a manual correction of a computed value: the value the
+	// computation gave when the analyst corrected it. A recompute giving the
+	// same value from the same Inputs keeps the correction; another value or
+	// other inputs replace it.
+	Result string `json:"result,omitempty"`
 }
 
 // Value is the content of one document path, with how it was obtained.

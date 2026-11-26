@@ -1,0 +1,18 @@
+{
+ "title": "Le LLM doit prouver ce qu'il écrit",
+ "description": "Une valeur recopiée cite au moins une source ; un jugement donne une justification et une confiance.",
+ "start": "generated",
+ "steps": [
+  {"role": "llm", "note": "Valeur recopiée sans source.",
+   "fills": [{"path": "personnes.pp[pp-1].etatCivil.dateNaissance", "value": "1980-04-12"}],
+   "expect": ["rejected:missing_source"]},
+  {"role": "llm", "note": "Jugement sans justification.",
+   "fills": [{"path": "context.natureSoupcon.cadreLegal[+a]", "value": "CL02"}],
+   "expect": ["rejected:missing_justification"]},
+  {"role": "llm", "note": "Avec une source, et avec une justification et une confiance : accepté.",
+   "fills": [
+    {"path": "personnes.pp[pp-1].etatCivil.dateNaissance", "value": "1980-04-12", "sources": [{"object": {"table": "client", "object_id": "client-1"}, "field": "last_name", "raw_value": "x"}]},
+    {"path": "context.natureSoupcon.cadreLegal[+a]", "value": "CL02", "justification": "virements fractionnés", "confidence": "medium"}],
+   "expect": ["applied", "applied"]}
+ ]
+}

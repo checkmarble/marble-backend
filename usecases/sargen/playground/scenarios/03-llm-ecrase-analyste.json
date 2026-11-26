@@ -1,0 +1,12 @@
+{
+ "title": "Le LLM tente d'écraser l'analyste",
+ "description": "Une valeur saisie par l'analyste est protégée : la tentative du LLM devient un conflit, que la suite de la pile transforme en question.",
+ "start": "generated",
+ "steps": [
+  {"role": "analyst", "note": "L'analyste corrige le nom de naissance (saisir n'est pas relire).",
+   "fills": [{"path": "personnes.pp[pp-1].etatCivil.nomNaissance", "value": "MARTIN"}], "expect": ["applied"]},
+  {"role": "llm", "note": "Le LLM propose une autre valeur, avec une source.",
+   "fills": [{"path": "personnes.pp[pp-1].etatCivil.nomNaissance", "value": "MARTINS", "sources": [{"object": {"table": "client", "object_id": "client-1"}, "field": "last_name", "raw_value": "x"}]}], "expect": ["conflict"]},
+  {"role": "analyst", "note": "L'analyste relit sa valeur.", "review": ["personnes.pp[pp-1].etatCivil.nomNaissance"], "expect": ["reviewed"]}
+ ]
+}
