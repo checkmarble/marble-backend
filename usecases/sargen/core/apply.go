@@ -516,7 +516,8 @@ func resolveRef(spec *Spec, doc *Document, f Fill, resolved map[string]Path) (st
 // settings only through OriginOrgSetting or by the analyst, OriginOrgSetting
 // only on settings, and the LLM output rules.
 func checkNature(spec *Spec, f Fill) *Issue {
-	nature := spec.NodeAt(f.Path.Template()).EffectiveNature()
+	node := spec.NodeAt(f.Path.Template())
+	nature := node.EffectiveNature()
 	if f.Origin != OriginLLM {
 		settingOrigin := f.Origin == OriginOrgSetting || f.Origin == OriginManual
 		if (nature == NatureSetting && !settingOrigin) || (f.Origin == OriginOrgSetting && nature != NatureSetting) {
@@ -528,7 +529,8 @@ func checkNature(spec *Spec, f Fill) *Issue {
 	case NatureSetting, NatureComputed, NatureAnalyst:
 		return blocking(f.Path, CodeNotWritableByLLM, "this field cannot be filled by the AI")
 	case NatureCopied:
-		if len(f.Sources) == 0 {
+		// The unknown code of a list says the data are silent: nothing to cite.
+		if len(f.Sources) == 0 && !isUnknownCode(spec, node, f.Value) {
 			return blocking(f.Path, CodeMissingSource, "a copied value must cite at least one source")
 		}
 	case NatureJudgment:
@@ -537,6 +539,14 @@ func checkNature(spec *Spec, f Fill) *Issue {
 		}
 	}
 	return nil
+}
+
+// isUnknownCode tells whether value is the unknown code of the node's code list.
+func isUnknownCode(spec *Spec, node *Node, value string) bool {
+	if node == nil || node.CodeList == "" || value == "" {
+		return false
+	}
+	return spec.CodeLists[node.CodeList].UnknownCode == value
 }
 
 func checkSources(f Fill, target Path, opts ApplyOptions) *Issue {

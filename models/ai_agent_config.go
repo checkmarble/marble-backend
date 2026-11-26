@@ -24,6 +24,7 @@ const (
 	AiFeatureRuleDescription        AiFeature = "rule_description"
 	AiFeatureRuleBuilder            AiFeature = "rule_builder"
 	AiFeatureScreeningHitSuggestion AiFeature = "screening_hit_suggestion"
+	AiFeatureSarGeneration          AiFeature = "sar_generation"
 )
 
 // FeatureModelOverride overrides the light and/or heavy model for a single feature. Both
@@ -45,6 +46,7 @@ type AiAgentModelConfig struct {
 	RuleDescription        *FeatureModelOverride `json:"rule_description,omitempty"`
 	RuleBuilder            *FeatureModelOverride `json:"rule_builder,omitempty"`
 	ScreeningHitSuggestion *FeatureModelOverride `json:"screening_hit_suggestion,omitempty"`
+	SarGeneration          *FeatureModelOverride `json:"sar_generation,omitempty"`
 }
 
 func (c *AiAgentModelConfig) featureOverride(feature AiFeature) *FeatureModelOverride {
@@ -57,6 +59,8 @@ func (c *AiAgentModelConfig) featureOverride(feature AiFeature) *FeatureModelOve
 		return c.RuleBuilder
 	case AiFeatureScreeningHitSuggestion:
 		return c.ScreeningHitSuggestion
+	case AiFeatureSarGeneration:
+		return c.SarGeneration
 	default:
 		return nil
 	}

@@ -37,9 +37,12 @@ type SarGenerationJob struct {
 	Error         string
 	CreatedBy     *uuid.UUID
 	// Attempt is the River attempt currently (or last) running the job.
-	Attempt   int
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	Attempt int
+	// RateLimitedSince is when the provider first rate-limited the job in its
+	// current streak (nil when it is not being rate-limited).
+	RateLimitedSince *time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 type SarGenerationTask struct {

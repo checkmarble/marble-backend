@@ -40,6 +40,8 @@ type fakeRunner struct {
 	calls  map[string]int
 	// Calls lists the runs in order (kind|target).
 	Calls []string
+	// TCs are the tool contexts of the runs, in order.
+	TCs []core.ToolContext
 }
 
 func newFakeRunner() *fakeRunner {
@@ -62,13 +64,14 @@ func (r *fakeRunner) Count(kind, target string) int {
 	return r.calls[key(kind, target)]
 }
 
-func (r *fakeRunner) Run(_ context.Context, _ core.ToolContext, task models.SarGenerationTask, _ core.TaskSpec) (core.TaskOutput, error) {
+func (r *fakeRunner) Run(_ context.Context, tc core.ToolContext, task models.SarGenerationTask, _ core.TaskSpec) (core.TaskOutput, error) {
 	k := key(task.Kind, task.TargetPath)
 	r.mu.Lock()
 	steps := r.script[k]
 	n := r.calls[k]
 	r.calls[k]++
 	r.Calls = append(r.Calls, k)
+	r.TCs = append(r.TCs, tc)
 	r.mu.Unlock()
 	if len(steps) == 0 {
 		return core.TaskOutput{}, nil
@@ -95,6 +98,39 @@ type fakeFormat struct {
 	OnPlan       func(st core.PlanState)
 	ComputeFn    func(doc *core.Document) core.ComputeResult
 	StructuredFn func(kind string, doc *core.Document, out json.RawMessage) error
+	// InstructionsPath is the format instructions prompt (none when empty).
+	InstructionsPath string
+	DocQuestionsFn   func(doc *core.Document) []core.QuestionDraft
+	CodeSemantics    map[string][]models.FieldSemanticType
+	CodeFromValueFn  func(raw string) (string, bool)
+	// ComputedInputs scripts core.ComputedInputsMapper.
+	ComputedInputs map[core.Path][]core.Path
+}
+
+func (f *fakeFormat) ComputedInputFields(_ *core.Document, p core.Path) []core.Path {
+	return f.ComputedInputs[p]
+}
+
+func (f *fakeFormat) InstructionsPromptPath() string { return f.InstructionsPath }
+
+// DocumentQuestions scripts core.DocumentQuestioner.
+func (f *fakeFormat) DocumentQuestions(doc *core.Document) []core.QuestionDraft {
+	if f.DocQuestionsFn == nil {
+		return nil
+	}
+	return f.DocQuestionsFn(doc)
+}
+
+// CodeListSemantics and CodeFromValue script core.CodeSourceMapper.
+func (f *fakeFormat) CodeListSemantics(list string) []models.FieldSemanticType {
+	return f.CodeSemantics[list]
+}
+
+func (f *fakeFormat) CodeFromValue(_ string, _ models.FieldSemanticType, raw string) (string, bool) {
+	if f.CodeFromValueFn == nil {
+		return "", false
+	}
+	return f.CodeFromValueFn(raw)
 }
 
 func (f *fakeFormat) Plan(st core.PlanState) []core.TaskSpec {
@@ -140,6 +176,8 @@ func Spec(kind, target string, dependsOnKinds ...string) core.TaskSpec {
 	return core.TaskSpec{
 		Kind: kind, TargetPath: core.Path(target), PromptPath: "prompts/" + kind + ".md",
 		Tier: core.TierLight, DependsOnKinds: dependsOnKinds,
+		// Fill() cites t/o: the task inputs are the fallback allowed sources.
+		Inputs: []core.ObjectRef{{Table: "t", ObjectID: "o"}},
 	}
 }
 
@@ -280,6 +318,24 @@ func (r *memRepo) TouchSarGenerationJob(_ context.Context, _ repositories.Execut
 	defer r.mu.Unlock()
 	r.jobs[id].UpdatedAt = r.now()
 	r.Touches++
+	return nil
+}
+
+func (r *memRepo) MarkSarGenerationJobRateLimited(_ context.Context, _ repositories.Executor, id uuid.UUID) (time.Duration, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	j := r.jobs[id]
+	if j.RateLimitedSince == nil {
+		now := r.now()
+		j.RateLimitedSince = &now
+	}
+	return r.now().Sub(*j.RateLimitedSince), nil
+}
+
+func (r *memRepo) ClearSarGenerationJobRateLimited(_ context.Context, _ repositories.Executor, id uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.jobs[id].RateLimitedSince = nil
 	return nil
 }
 
