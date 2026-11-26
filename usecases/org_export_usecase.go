@@ -143,7 +143,7 @@ func (uc *OrgExportUsecase) Export(ctx context.Context, orgId uuid.UUID) (dto.Or
 			continue
 		}
 
-		iteration, err := uc.iterationRepository.GetScenarioIteration(ctx, exec, *scenario.LiveVersionID, false)
+		iteration, err := uc.iterationRepository.GetScenarioIteration(ctx, exec, *scenario.LiveVersionID)
 		if err != nil {
 			return dto.OrgImport{}, errors.Wrapf(err,
 				"failed to fetch iteration for scenario %s", scenario.Id)

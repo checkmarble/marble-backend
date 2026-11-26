@@ -20,9 +20,8 @@ func (repo *MarbleDbRepository) GetScenarioIteration(
 	ctx context.Context,
 	exec Executor,
 	scenarioIterationId string,
-	useCache bool,
 ) (models.ScenarioIteration, error) {
-	if useCache && repo.withCache {
+	if repo.withCache {
 		if iteration, ok := scenarioIterationCache.Get(scenarioIterationId); ok {
 			return iteration, nil
 		}
@@ -33,15 +32,9 @@ func (repo *MarbleDbRepository) GetScenarioIteration(
 	}
 
 	// Query Insights ranked this lookup second by total execution time over Nov 17–24, 2026.
-	// 
-	// Measure how much load comes from callers that opt into caching before replacing the
-	// local 24-hour LRU. For Redis, bypass reads and fills for opt-outs and transactions.
-	// Register invalidation in the iteration and rule repository write paths, not in
-	// individual use cases: snoozes and AI assistance also update rules, and data-model
-	// deletion can archive iterations. Run invalidation only after the outer PostgreSQL
-	// transaction commits, or after a successful write if there is no transaction.
-	// A bounded TTL limits staleness, and an atomic generation check on fill can prevent
-	// an in-flight read from restoring an invalidated value.
+	//
+	// Measure how much load comes from callers that opt into useCache before replacing the
+	// local 24-hour LRU.
 	iteration, err := SqlToModel(
 		ctx,
 		exec,
@@ -52,7 +45,10 @@ func (repo *MarbleDbRepository) GetScenarioIteration(
 		return models.ScenarioIteration{}, err
 	}
 
-	scenarioIterationCache.Add(scenarioIterationId, iteration)
+	// If this iteration is not a draft, we cache it in local LRU:
+	if iteration.Version != nil {
+		scenarioIterationCache.Add(scenarioIterationId, iteration)
+	}
 
 	return iteration, nil
 }

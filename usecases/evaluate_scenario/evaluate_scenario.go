@@ -481,7 +481,7 @@ func (e ScenarioEvaluator) EvalTestRunScenario(
 		return false, se, nil
 	}
 
-	testRunIteration, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, testruns[0].ScenarioIterationId, true)
+	testRunIteration, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, testruns[0].ScenarioIterationId)
 	if err != nil {
 		return false, se, err
 	}
@@ -592,7 +592,7 @@ func (e ScenarioEvaluator) EvalScenario(
 	)
 	defer span.End()
 
-	versionToRun, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, targetVersionId, true)
+	versionToRun, err := e.evalScenarioRepository.GetScenarioIteration(ctx, exec, targetVersionId)
 	if err != nil {
 		return false, models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting scenario iteration in EvalScenario")

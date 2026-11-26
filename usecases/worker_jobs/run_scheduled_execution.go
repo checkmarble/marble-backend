@@ -67,8 +67,7 @@ func finishScheduledExecution(ctx context.Context, repository scheduledExecution
 
 type RunScheduledExecutionRepository interface {
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string, screeningProvider models.ScreeningProvider) (models.Scenario, error)
-	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string,
-		useCache bool) (models.ScenarioIteration, error)
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
 	StoreDecisionsToCreate(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -200,7 +199,7 @@ func (usecase *RunScheduledExecution) ExecuteScheduledExecutionById(
 	}
 
 	liveVersion, err := usecase.repository.GetScenarioIteration(ctx, exec,
-		scheduledExecution.ScenarioIterationId, true)
+		scheduledExecution.ScenarioIterationId)
 	if err != nil {
 		return err
 	}

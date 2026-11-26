@@ -32,9 +32,9 @@ func (s *ScenarioFetcherRepositoryMock) GetScenarioById(ctx context.Context,
 }
 
 func (s *ScenarioFetcherRepositoryMock) GetScenarioIteration(ctx context.Context,
-	exec repositories.Executor, scenarioIterationId string, useCache bool,
+	exec repositories.Executor, scenarioIterationId string,
 ) (models.ScenarioIteration, error) {
-	args := s.Called(ctx, exec, scenarioIterationId, useCache)
+	args := s.Called(ctx, exec, scenarioIterationId)
 	return args.Get(0).(models.ScenarioIteration), args.Error(1)
 }
 

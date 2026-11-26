@@ -12,7 +12,7 @@ type ScenarioFetcherRepository interface {
 	GetOrganizationById(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (models.Organization, error)
 	ListLiveIterationsAndNeighbors(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) ([]models.ScenarioIteration, error)
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string, screeningProvider models.ScreeningProvider) (models.Scenario, error)
-	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string, useCache bool) (
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (
 		models.ScenarioIteration, error,
 	)
 	ListScreeningConfigs(ctx context.Context, exec repositories.Executor,
@@ -28,7 +28,7 @@ type ScenarioFetcher struct {
 func (fetcher ScenarioFetcher) FetchScenarioAndIteration(ctx context.Context,
 	exec repositories.Executor, iterationId string,
 ) (result models.ScenarioAndIteration, err error) {
-	result.Iteration, err = fetcher.Repository.GetScenarioIteration(ctx, exec, iterationId, false)
+	result.Iteration, err = fetcher.Repository.GetScenarioIteration(ctx, exec, iterationId)
 	if err != nil {
 		return models.ScenarioAndIteration{}, err
 	}

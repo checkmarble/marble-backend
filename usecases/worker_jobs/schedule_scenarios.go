@@ -144,7 +144,7 @@ func (usecase *RunScheduledExecution) getPublishedScenarioIteration(
 		return nil, nil
 	}
 
-	liveVersion, err := usecase.repository.GetScenarioIteration(ctx, exec, *scenario.LiveVersionID, false)
+	liveVersion, err := usecase.repository.GetScenarioIteration(ctx, exec, *scenario.LiveVersionID)
 	if err != nil {
 		return nil, err
 	}

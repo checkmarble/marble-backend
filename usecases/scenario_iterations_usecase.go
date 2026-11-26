@@ -26,7 +26,6 @@ type IterationUsecaseRepository interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		scenarioIterationId string,
-		useCache bool,
 	) (models.ScenarioIteration, error)
 	ListScenarioIterations(
 		ctx context.Context,
@@ -123,7 +122,7 @@ func (usecase *ScenarioIterationUsecase) GetScenarioIteration(ctx context.Contex
 	scenarioIterationId string,
 ) (models.ScenarioIteration, error) {
 	si, err := usecase.repository.GetScenarioIteration(ctx,
-		usecase.executorFactory.NewExecutor(), scenarioIterationId, false)
+		usecase.executorFactory.NewExecutor(), scenarioIterationId)
 	if err != nil {
 		return models.ScenarioIteration{}, err
 	}
@@ -295,7 +294,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.ScenarioIteration, error) {
-			si, err := usecase.repository.GetScenarioIteration(ctx, tx, scenarioIterationId, false)
+			si, err := usecase.repository.GetScenarioIteration(ctx, tx, scenarioIterationId)
 			if err != nil {
 				return models.ScenarioIteration{}, err
 			}
@@ -475,7 +474,7 @@ func (usecase *ScenarioIterationUsecase) CommitScenarioIterationVersion(
 			if err = usecase.repository.UpdateScenarioIterationVersion(ctx, tx, iterationId, version); err != nil {
 				return iteration, err
 			}
-			return usecase.repository.GetScenarioIteration(ctx, tx, iterationId, false)
+			return usecase.repository.GetScenarioIteration(ctx, tx, iterationId)
 		},
 	)
 }

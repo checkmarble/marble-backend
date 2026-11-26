@@ -65,7 +65,7 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
 		return models.ScenarioTestRun{}, models.ErrWrongIterationForTestRun
 	}
 
-	phantomIteration, err := usecase.scenarioIteratorRepository.GetScenarioIteration(ctx, exec, input.PhantomIterationId, false)
+	phantomIteration, err := usecase.scenarioIteratorRepository.GetScenarioIteration(ctx, exec, input.PhantomIterationId)
 	if err != nil {
 		return models.ScenarioTestRun{}, models.ErrScenarioIterationNotValid
 	}

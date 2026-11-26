@@ -19,7 +19,7 @@ type ScheduledExecutionUsecaseRepository interface {
 	GetOrganizationById(ctx context.Context, exec repositories.Executor, orgId uuid.UUID) (models.Organization, error)
 
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string, screeningProvider models.ScreeningProvider) (models.Scenario, error)
-	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string, useCache bool) (
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (
 		models.ScenarioIteration, error,
 	)
 
@@ -129,7 +129,7 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.C
 		return err
 	}
 
-	scenarioIteration, err := usecase.repository.GetScenarioIteration(ctx, exec, input.ScenarioIterationId, false)
+	scenarioIteration, err := usecase.repository.GetScenarioIteration(ctx, exec, input.ScenarioIterationId)
 	if err != nil {
 		return err
 	}

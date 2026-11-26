@@ -18,7 +18,7 @@ type decisionGetter interface {
 	DecisionsById(ctx context.Context, exec repositories.Executor, decisionIds []string) ([]models.Decision, error)
 }
 type iterationGetter interface {
-	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string, useCache bool) (
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (
 		models.ScenarioIteration, error,
 	)
 }
@@ -110,7 +110,7 @@ func (usecase RuleSnoozeUsecase) ActiveSnoozesForDecision(ctx context.Context, d
 	}
 
 	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec,
-		decision.ScenarioIterationId.String(), true)
+		decision.ScenarioIterationId.String())
 	if err != nil {
 		return models.SnoozesOfDecision{}, err
 	}
@@ -188,7 +188,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 	}
 
 	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec,
-		decision.ScenarioIterationId.String(), false)
+		decision.ScenarioIterationId.String())
 	if err != nil {
 		return models.SnoozesOfDecision{}, err
 	}
@@ -332,7 +332,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecisionWithoutCase(
 	}
 
 	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec,
-		decision.ScenarioIterationId.String(), false)
+		decision.ScenarioIterationId.String())
 	if err != nil {
 		return models.SnoozesOfDecision{}, err
 	}
@@ -424,7 +424,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecisionWithoutCase(
 
 func (usecase RuleSnoozeUsecase) ActiveSnoozesForScenarioIteration(ctx context.Context, iterationId string) (models.SnoozesOfIteration, error) {
 	exec := usecase.executorFactory.NewExecutor()
-	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, iterationId, true)
+	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, iterationId)
 	if err != nil {
 		return models.SnoozesOfIteration{}, err
 	}

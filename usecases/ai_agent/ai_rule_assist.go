@@ -398,7 +398,7 @@ func (uc *AiAgentUsecase) GenerateAndSaveRuleDescription(ctx context.Context, ru
 		return nil
 	}
 
-	iteration, err := uc.repository.GetScenarioIteration(ctx, exec, rule.ScenarioIterationId, false)
+	iteration, err := uc.repository.GetScenarioIteration(ctx, exec, rule.ScenarioIterationId)
 	if err != nil {
 		return errors.Errorf("error while getting scenario iteration %s: %w", rule.ScenarioIterationId, err)
 	}

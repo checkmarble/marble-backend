@@ -158,7 +158,7 @@ func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(
 	// return at least one count object with 0 count by default, because the watermark on it is needed for the summary calculation.
 	// See the usage in the caller test run summary job.
 	if len(out) == 0 {
-		si, err := repo.GetScenarioIteration(ctx, exec, scenarioLiveIterationId, true)
+		si, err := repo.GetScenarioIteration(ctx, exec, scenarioLiveIterationId)
 		if err != nil {
 			return nil, err
 		}

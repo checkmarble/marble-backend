@@ -1100,7 +1100,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 			break
 		}
 		iteration, err := uc.repository.GetScenarioIteration(ctx, exec,
-			decision.Decision.ScenarioIterationId.String(), true)
+			decision.Decision.ScenarioIterationId.String())
 		if err != nil {
 			return caseData{}, casePivotDataByPivot{}, errors.Wrapf(err,
 				"could not retrieve scenario for decision %s", decision.DecisionId)
@@ -1211,7 +1211,7 @@ func (uc *AiAgentUsecase) getCaseDataWithPermissions(ctx context.Context, caseId
 				decisions,
 				tags, inboxes, users,
 				func(scenarioIterationId string) (models.ScenarioIteration, error) {
-					return uc.repository.GetScenarioIteration(ctx, exec, scenarioIterationId, true)
+					return uc.repository.GetScenarioIteration(ctx, exec, scenarioIterationId)
 				},
 			)
 			if err != nil {

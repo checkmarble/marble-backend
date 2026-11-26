@@ -36,8 +36,7 @@ type webhookEventsUsecase interface {
 }
 
 type asyncDecisionWorkerRepository interface {
-	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string,
-		useCache bool) (models.ScenarioIteration, error)
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
 	UpdateDecisionToCreateStatus(
 		ctx context.Context,
 		exec repositories.Executor,
