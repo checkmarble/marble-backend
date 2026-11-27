@@ -46,14 +46,18 @@ func SectionsVisibility(hidden []AppSection) map[AppSection]bool {
 	return sections
 }
 
-func RoleBindingsSections(bindings []RoleBinding) map[AppSection]bool {
-	if len(bindings) == 0 {
+func RoleBindingsSections(bindings []RoleBinding, bundle RoleBindingBundle) map[AppSection]bool {
+	active := slices.DeleteFunc(slices.Clone(bindings), func(binding RoleBinding) bool {
+		return !binding.IsActive(bundle)
+	})
+
+	if len(active) == 0 {
 		return SectionsVisibility(nil)
 	}
 
-	hiddenByAll := slices.Clone(bindings[0].HiddenSections)
+	hiddenByAll := slices.Clone(active[0].HiddenSections)
 
-	for _, binding := range bindings[1:] {
+	for _, binding := range active[1:] {
 		hiddenByAll = slices.DeleteFunc(hiddenByAll, func(section AppSection) bool {
 			return !slices.Contains(binding.HiddenSections, section)
 		})

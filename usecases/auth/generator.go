@@ -36,9 +36,10 @@ type TokenGenerator interface {
 }
 
 type Token struct {
-	Credentials models.Credentials
-	Value       string
-	Expiration  time.Time
+	Credentials      models.Credentials
+	Value            string
+	Expiration       time.Time
+	UsedSecondFactor bool
 }
 
 type MarbleTokenGenerator struct {
@@ -119,8 +120,18 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 	tokenCredentials := baseCredentials
 	tokenCredentials.OrganizationId = selectedOrganizationID
 	tokenCredentials.AuthTenantId = authTenantID
+	tokenCredentials.RoleBindingBundle = models.RoleBindingBundle{
+		UsedSecondFactor: claims.GetUsedSecondFactor(),
+		ClientIp:         creds.ClientIp,
+		// Platform tokens have no organization, and so fall back to UTC.
+		Location: selectedOrganization.Timezone(),
+	}
 	tokenCredentials.RoleBindings = models.ScopeAuthRoleBindings(grants, selectedOrganizationID, selectedOrganization.TenantId, authTenantID)
-	tokenCredentials.Permissions = models.RoleBindingsPermissions(tokenCredentials.RoleBindings)
+	// Caveats are evaluated with the generator's clock, which is not kept in
+	// the token's credentials.
+	bundle := tokenCredentials.RoleBindingBundle
+	bundle.Clock = g.clock
+	tokenCredentials.Permissions = models.RoleBindingsPermissions(tokenCredentials.RoleBindings, bundle)
 
 	switch creds.Type {
 	case CredentialsBearer:
@@ -150,5 +161,5 @@ func (g MarbleTokenGenerator) GenerateToken(ctx context.Context, creds Credentia
 		"user_id", tokenCredentials.ActorIdentity.UserId,
 	)
 
-	return Token{tokenCredentials, token, expirationTime}, nil
+	return Token{tokenCredentials, token, expirationTime, claims.GetUsedSecondFactor()}, nil
 }

@@ -5,6 +5,7 @@ type IdentityClaims interface {
 	GetSubject() string
 	GetEmail() string
 	GetProfile() *IdentityUpdatableClaims
+	GetUsedSecondFactor() bool
 }
 
 type IdentityUpdatableClaims struct {
@@ -14,10 +15,11 @@ type IdentityUpdatableClaims struct {
 }
 
 type FirebaseIdentity struct {
-	Issuer  string
-	Subject string
-	Email   string
-	Picture string
+	Issuer           string
+	Subject          string
+	Email            string
+	Picture          string
+	UsedSecondFactor bool
 }
 
 func (i FirebaseIdentity) GetIssuer() string {
@@ -36,6 +38,10 @@ func (i FirebaseIdentity) GetProfile() *IdentityUpdatableClaims {
 
 func (i FirebaseIdentity) GetEmail() string {
 	return i.Email
+}
+
+func (i FirebaseIdentity) GetUsedSecondFactor() bool {
+	return i.UsedSecondFactor
 }
 
 type OidcIdentity struct {
@@ -73,6 +79,10 @@ func (i OidcIdentity) GetEmail() string {
 	return i.Email
 }
 
+func (i OidcIdentity) GetUsedSecondFactor() bool {
+	return false
+}
+
 type ApiKeyIdentity struct {
 	Issuer string
 }
@@ -91,4 +101,8 @@ func (i ApiKeyIdentity) GetProfile() *IdentityUpdatableClaims {
 
 func (i ApiKeyIdentity) GetEmail() string {
 	return ""
+}
+
+func (i ApiKeyIdentity) GetUsedSecondFactor() bool {
+	return false
 }

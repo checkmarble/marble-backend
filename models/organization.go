@@ -2,6 +2,7 @@ package models
 
 import (
 	"net"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -112,4 +113,19 @@ type SeedOrgConfiguration struct {
 type InitOrgInput struct {
 	OrgName    string
 	AdminEmail string
+}
+
+// Timezone returns the organization's default time zone, falling back to UTC
+// when it is not set or cannot be loaded.
+func (org Organization) Timezone() *time.Location {
+	if org.DefaultScenarioTimezone == nil || *org.DefaultScenarioTimezone == "" {
+		return time.UTC
+	}
+
+	location, err := time.LoadLocation(*org.DefaultScenarioTimezone)
+	if err != nil {
+		return time.UTC
+	}
+
+	return location
 }

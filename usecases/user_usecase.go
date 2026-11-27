@@ -27,6 +27,7 @@ type UserUseCase struct {
 	grantRepository        repositories.GrantRepository
 	organizationRepository repositories.OrganizationRepository
 	firebaseAdmin          idp.Adminer
+	featureAccessReader    OrganizationUsecaseFeatureAccessReader
 }
 
 func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.CreateUser) (models.User, error) {
@@ -49,6 +50,11 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 
 	if err := usecase.enforceUserSecurity.CreateUser(createUser); err != nil {
 		return models.User{}, err
+	}
+	if createUser.OrganizationId != uuid.Nil && models.RequireRolesFeature(createUser.RoleBindings) {
+		if err := usecase.checkRolesFeature(ctx, createUser.OrganizationId); err != nil {
+			return models.User{}, err
+		}
 	}
 
 	var org models.Organization
@@ -134,6 +140,12 @@ func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.Up
 			if err := usecase.enforceUserSecurity.UpdateUser(user, updateUser); err != nil {
 				return models.User{}, err
 			}
+			if user.OrganizationId != uuid.Nil && updateUser.RoleBindings != nil &&
+				models.RequireRolesFeature(*updateUser.RoleBindings) {
+				if err := usecase.checkRolesFeature(ctx, user.OrganizationId); err != nil {
+					return models.User{}, err
+				}
+			}
 			if err := usecase.userRepository.UpdateUser(ctx, tx, updateUser); err != nil {
 				return models.User{}, err
 			}
@@ -172,6 +184,10 @@ func (usecase *UserUseCase) resolveUserRoleBindings(
 			return nil, errors.Wrap(models.BadParameterError, "role binding must reference a role")
 		}
 		if err := checkRoleBindingFeatureFlags(orgId, *binding); err != nil {
+			return nil, err
+		}
+
+		if err := binding.Conditions.Validate(); err != nil {
 			return nil, err
 		}
 
@@ -320,6 +336,11 @@ func (usecase *UserUseCase) ReplaceOrganizationGrant(
 		if err := usecase.enforceUserSecurity.ManageOrganizationGrant(organizationID, user); err != nil {
 			return err
 		}
+		if models.RequireRolesFeature(resolved) {
+			if err := usecase.checkRolesFeature(ctx, organizationID); err != nil {
+				return err
+			}
+		}
 		if err := usecase.ensureUserBelongsToOrganizationTenant(ctx, tx, user, targetOrganization); err != nil {
 			return err
 		}
@@ -435,6 +456,19 @@ func (usecase *UserUseCase) GetUserByEmail(ctx context.Context, email string) (m
 	return *user, nil
 }
 
+func (usecase *UserUseCase) checkRolesFeature(ctx context.Context, orgId uuid.UUID) error {
+	features, err := usecase.featureAccessReader.GetOrganizationFeatureAccess(ctx, orgId, nil)
+	if err != nil {
+		return errors.Wrap(err, "could not check feature access")
+	}
+
+	if !features.Roles.IsAllowed() {
+		return errors.Wrap(models.ForbiddenError, "user roles feature is not allowed")
+	}
+
+	return nil
+}
+
 func (usecase *UserUseCase) GetRoles(ctx context.Context) ([]models.RbacRole, error) {
 	if err := usecase.enforceUserSecurity.ReadOrganization(usecase.enforceUserSecurity.OrgId()); err != nil {
 		return nil, err
@@ -453,6 +487,9 @@ func (usecase *UserUseCase) GetRoles(ctx context.Context) ([]models.RbacRole, er
 
 func (usecase *UserUseCase) CreateRole(ctx context.Context, slug, name string) (models.RbacRole, error) {
 	if err := usecase.enforceUserSecurity.ManageRoles(); err != nil {
+		return models.RbacRole{}, err
+	}
+	if err := usecase.checkRolesFeature(ctx, usecase.enforceUserSecurity.OrgId()); err != nil {
 		return models.RbacRole{}, err
 	}
 
@@ -485,6 +522,9 @@ func (usecase *UserUseCase) CreateRole(ctx context.Context, slug, name string) (
 
 func (usecase *UserUseCase) UpdateRolePermissions(ctx context.Context, slug models.Role, permissions []models.Permission) (models.RbacRole, error) {
 	if err := usecase.enforceUserSecurity.ManageRoles(); err != nil {
+		return models.RbacRole{}, err
+	}
+	if err := usecase.checkRolesFeature(ctx, usecase.enforceUserSecurity.OrgId()); err != nil {
 		return models.RbacRole{}, err
 	}
 	if !slug.IsValidCustom() {
@@ -546,6 +586,9 @@ func (usecase *UserUseCase) DeleteRole(ctx context.Context, slug models.Role) er
 	if err := usecase.enforceUserSecurity.ManageRoles(); err != nil {
 		return err
 	}
+	if err := usecase.checkRolesFeature(ctx, usecase.enforceUserSecurity.OrgId()); err != nil {
+		return err
+	}
 	if !slug.IsValidCustom() {
 		return errors.Wrap(models.BadParameterError, "invalid custom role slug")
 	}
@@ -569,6 +612,9 @@ func (usecase *UserUseCase) DeleteRole(ctx context.Context, slug models.Role) er
 
 func (usecase *UserUseCase) UpdateRoleSections(ctx context.Context, slug models.Role, sections map[models.AppSection]bool) (models.RbacRole, error) {
 	if err := usecase.enforceUserSecurity.ManageRoles(); err != nil {
+		return models.RbacRole{}, err
+	}
+	if err := usecase.checkRolesFeature(ctx, usecase.enforceUserSecurity.OrgId()); err != nil {
 		return models.RbacRole{}, err
 	}
 	if !slug.IsValidCustom() {
