@@ -16,6 +16,8 @@ import (
 )
 
 func TestResolveUserRoleBindingsResolvesCustomRoleSlug(t *testing.T) {
+	t.Setenv("ENABLE_CUSTOM_ROLES", "all")
+
 	ctx := context.Background()
 	orgId := uuid.New()
 	slug := models.Role("org/custom.name")

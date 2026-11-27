@@ -85,6 +85,8 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_nominal() {
 }
 
 func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_resolves_custom_role_slug() {
+	suite.T().Setenv("ENABLE_CUSTOM_ROLES", "all")
+
 	ctx := context.Background()
 	slug := models.Role("org/custom.name")
 	role := models.RbacRole{
@@ -177,6 +179,8 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_repository_error() {
 }
 
 func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_cannot_grant_custom_role() {
+	suite.T().Setenv("ENABLE_CUSTOM_ROLES", "all")
+
 	ctx := context.Background()
 	slug := models.Role("org/custom.name")
 	role := models.RbacRole{
@@ -202,6 +206,23 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_cannot_grant_custom_role(
 
 	suite.ErrorIs(err, suite.securityError)
 	suite.apiKeyRepository.AssertNotCalled(suite.T(), "CreateApiKey", mock.Anything, mock.Anything)
+	suite.AssertExpectations()
+}
+
+func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_rejects_custom_role_without_feature_flag() {
+	suite.T().Setenv("ENABLE_CUSTOM_ROLES", "")
+
+	input := models.CreateApiKeyInput{
+		OrganizationId: suite.organizationId,
+		Description:    "test key",
+		RoleBindings:   []models.RoleBinding{{Role: models.Role("org/custom.name")}},
+	}
+
+	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
+
+	_, err := suite.makeUsecase().CreateApiKey(context.Background(), input)
+
+	suite.ErrorIs(err, models.BadParameterError)
 	suite.AssertExpectations()
 }
 

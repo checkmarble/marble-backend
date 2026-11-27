@@ -16,6 +16,7 @@ type featureFlag string
 const (
 	TEST_UNUSED_FEATURE_FLAG            featureFlag = "TEST_UNUSED_FEATURE_FLAG"
 	ASYNC_DECISION_STORAGE_FEATURE_FLAG featureFlag = "ASYNC_DECISION_STORAGE"
+	CUSTOM_ROLES_FEATURE_FLAG           featureFlag = "CUSTOM_ROLES"
 )
 
 func HasGlobalFeatureFlag(flag featureFlag) bool {

@@ -330,6 +330,8 @@ func TestUserUseCaseListGrantsOfUsers(t *testing.T) {
 }
 
 func TestUserUseCaseReplaceOrganizationGrantResolvesCustomRolesInTargetOrganization(t *testing.T) {
+	t.Setenv("ENABLE_CUSTOM_ROLES", "all")
+
 	userID := uuid.NewString()
 	homeOrganizationID := uuid.New()
 	targetOrganizationID := uuid.New()
