@@ -359,7 +359,7 @@ func TestRunJob_StampsOriginAndTaskIdOnFills(t *testing.T) {
 	a := Spec("a", tgtPP1)
 	f.Format.Waves = [][]core.TaskSpec{{a}}
 	fill := Fill(pathNomPP1, "DUPONT")
-	fill.Origin = core.OriginManual // the agent claims an analyst origin, and gives no task id
+	fill.Origin = core.OriginManual // the agent claims the manual origin, and gives no task id
 	f.Runner.On("a", tgtPP1, Step{Out: outputWith(fill)})
 
 	require.NoError(t, o.RunJob(ctx, f.JobId))
