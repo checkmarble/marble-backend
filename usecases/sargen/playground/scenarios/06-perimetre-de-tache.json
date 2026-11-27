@@ -1,0 +1,15 @@
+{
+ "title": "Une tâche du LLM écrit hors de son périmètre",
+ "description": "Une tâche ne peut écrire que sous ses chemins autorisés. Une liste vide n'impose aucune restriction ; une liste qui ne contient que \"\" n'autorise rien.",
+ "start": "generated",
+ "steps": [
+  {"role": "llm", "allowed_prefixes": ["personnes.pp[pp-1]"], "note": "Tâche « remplir pp-1 ».",
+   "fills": [
+    {"path": "personnes.pp[pp-1].etatCivil.dateNaissance", "value": "1980-04-12", "sources": [{"object": {"table": "client", "object_id": "client-1"}, "field": "last_name", "raw_value": "x"}]},
+    {"path": "context.natureSoupcon.cadreLegal[+a]", "value": "CL02", "justification": "j", "confidence": "low"}],
+   "expect": ["applied", "rejected:out_of_scope"]},
+  {"role": "llm", "allowed_prefixes": [""], "note": "Tâche sans cible ni chemins autorisés (compréhension, relecture).",
+   "fills": [{"path": "personnes.pp[pp-1].etatCivil.lieuNaissance", "value": "Lyon", "sources": [{"object": {"table": "client", "object_id": "client-1"}, "field": "last_name", "raw_value": "x"}]}],
+   "expect": ["rejected:out_of_scope"]}
+ ]
+}

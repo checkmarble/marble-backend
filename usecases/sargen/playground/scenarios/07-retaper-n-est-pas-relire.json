@@ -1,0 +1,12 @@
+{
+ "title": "Retaper la valeur proposée ne la relit pas",
+ "description": "Réécrire la valeur déjà stockée ne change rien. Relire, c'est « marquer relu », qui garde l'origine et les sources.",
+ "start": "generated",
+ "steps": [
+  {"role": "llm", "fills": [{"path": "personnes.pp[pp-1].etatCivil.dateNaissance", "value": "1980-04-12", "sources": [{"object": {"table": "client", "object_id": "client-1"}, "field": "last_name", "raw_value": "x"}]}], "expect": ["applied"]},
+  {"role": "analyst", "note": "L'analyste retape la même valeur.",
+   "fills": [{"path": "personnes.pp[pp-1].etatCivil.dateNaissance", "value": "1980-04-12"}], "expect": ["noop"]},
+  {"role": "analyst", "review": ["personnes.pp[pp-1].etatCivil.dateNaissance"], "expect": ["reviewed"]},
+  {"role": "analyst", "note": "Rien à relire là où il n'y a pas de valeur.", "review": ["personnes.pp[pp-1].etatCivil.lieuNaissance"], "expect": ["rejected:not_found"]}
+ ]
+}

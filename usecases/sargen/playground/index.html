@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>sargen playground</title>
+<style>
+:root { --bg:#f7f7f5; --card:#fff; --line:#e2e1dc; --text:#1f1f1d; --muted:#76756f; --accent:#2f6fd1; --ok:#2e7d32; --okbg:#e8f3e3; --ko:#b3261e; --kobg:#fbe9e7; --warn:#8a5a00; --warnbg:#fdf3dc; --mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
+@media (prefers-color-scheme: dark) { :root { --bg:#191918; --card:#232322; --line:#3a3a38; --text:#ececea; --muted:#a3a29d; --accent:#7aa7f0; --ok:#8fd18f; --okbg:#1f3320; --ko:#f19a92; --kobg:#3b1f1c; --warn:#f0c46a; --warnbg:#3a2f14; } }
+* { box-sizing:border-box; }
+body { margin:0; font:14px/1.45 system-ui,sans-serif; background:var(--bg); color:var(--text); }
+header { display:flex; align-items:center; gap:12px; padding:10px 18px; border-bottom:1px solid var(--line); background:var(--card); }
+header h1 { font-size:16px; font-weight:600; margin:0; } header .sp { flex:1; }
+main { display:grid; grid-template-columns:minmax(360px,430px) minmax(0,1fr); gap:14px; padding:14px 18px; }
+.col { display:flex; flex-direction:column; gap:14px; min-width:0; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+.card h2 { font-size:12px; font-weight:600; color:var(--muted); text-transform:none; margin:0 0 8px; }
+button { font:inherit; padding:5px 10px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--text); cursor:pointer; }
+button:hover { border-color:var(--muted); } button.primary { background:var(--text); color:var(--card); border-color:var(--text); }
+input, select, textarea { font:inherit; width:100%; padding:6px 8px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--text); }
+label.small, .small { font-size:12px; color:var(--muted); }
+.row { display:flex; gap:6px; align-items:center; } .row > * { flex:1; } .row > .fit { flex:0 0 auto; }
+.roles { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.role { border:1px solid var(--line); border-radius:8px; padding:6px 8px; cursor:pointer; }
+.role.on { border:2px solid var(--accent); padding:5px 7px; } .role b { display:block; font-weight:600; } .role span { font-size:11px; color:var(--muted); font-family:var(--mono); }
+.mono { font-family:var(--mono); font-size:12px; }
+.results { border:1px solid var(--line); border-radius:7px; max-height:220px; overflow:auto; margin-top:4px; }
+.res { padding:5px 8px; cursor:pointer; border-top:1px solid var(--line); } .res:first-child { border-top:none; }
+.res:hover, .res.on { background:color-mix(in srgb, var(--accent) 12%, transparent); }
+.badge { display:inline-block; font-size:11px; padding:0 6px; border-radius:6px; background:color-mix(in srgb, var(--muted) 18%, transparent); color:var(--muted); margin-left:4px; }
+.n-copied { background:#e6f0fd; color:#1d4f9c; } .n-judgment { background:#efe9fd; color:#5a3ea8; } .n-computed { background:#e2f5f0; color:#0f6e56; } .n-setting { background:#fdf0e2; color:#8a4b0b; } .n-analyst { background:#fbe7ef; color:#93345a; }
+@media (prefers-color-scheme: dark) { .n-copied,.n-judgment,.n-computed,.n-setting,.n-analyst { background:color-mix(in srgb, currentColor 18%, transparent); } .n-copied{color:#8fb7f0}.n-judgment{color:#b9a5f2}.n-computed{color:#79d4bb}.n-setting{color:#f0bb7f}.n-analyst{color:#f0a0c0} }
+.keys { display:flex; flex-wrap:wrap; gap:5px; } .key { border:1px solid var(--line); border-radius:6px; padding:2px 8px; cursor:pointer; font-family:var(--mono); font-size:12px; } .key.on { border:2px solid var(--accent); padding:1px 7px; }
+.preview { background:color-mix(in srgb, var(--muted) 10%, transparent); border-radius:7px; padding:6px 8px; font-family:var(--mono); font-size:12px; word-break:break-all; }
+.verdict { border-radius:8px; padding:7px 10px; margin-top:6px; font-size:13px; }
+.v-applied, .v-reviewed { background:var(--okbg); color:var(--ok); } .v-rejected { background:var(--kobg); color:var(--ko); } .v-conflict { background:var(--warnbg); color:var(--warn); } .v-noop, .v-refreshed { background:color-mix(in srgb, var(--muted) 14%, transparent); color:var(--muted); }
+.verdict b { font-weight:600; } .verdict .mono { word-break:break-all; }
+pre { margin:0; font-family:var(--mono); font-size:12px; line-height:1.55; white-space:pre-wrap; word-break:break-all; }
+.section { font-size:11px; font-weight:600; color:var(--muted); margin:10px 0 2px; } .section:first-child { margin-top:0; }
+.val { border-top:1px solid var(--line); } .val:first-of-type { border-top:none; }
+.val > summary { list-style:none; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 8px; padding:5px 6px; cursor:pointer; }
+.val > summary::-webkit-details-marker { display:none; }
+.val > summary:hover { background:color-mix(in srgb, var(--muted) 8%, transparent); }
+.val .p { font-family:var(--mono); font-size:11px; color:var(--muted); word-break:break-all; }
+.val .v { grid-column:1; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.val .tags { grid-column:2; grid-row:1 / span 2; align-self:center; white-space:nowrap; }
+.val pre { margin:0 6px 6px; padding:6px 8px; border-radius:6px; background:color-mix(in srgb, var(--muted) 9%, transparent); }
+.val.chg { border-left:3px solid var(--ok); background:color-mix(in srgb, var(--okbg) 60%, transparent); }
+.val.gone .v { text-decoration:line-through; color:var(--muted); }
+.o-llm { background:#e6f0fd; color:#1d4f9c; } .o-manual { background:#fbe7ef; color:#93345a; } .o-computed { background:#e2f5f0; color:#0f6e56; } .o-org_setting { background:#fdf0e2; color:#8a4b0b; }
+@media (prefers-color-scheme: dark) { .o-llm,.o-manual,.o-computed,.o-org_setting { background:color-mix(in srgb, currentColor 18%, transparent); } .o-llm{color:#8fb7f0}.o-manual{color:#f0a0c0}.o-computed{color:#79d4bb}.o-org_setting{color:#f0bb7f} }
+.doctools { display:flex; gap:8px; align-items:center; margin-bottom:8px; } .doctools input[type=text] { flex:1; }
+.issue { font-size:12px; padding:2px 0; } .sev { font-size:11px; padding:0 6px; border-radius:6px; margin-right:4px; } .sev-blocking { background:var(--kobg); color:var(--ko); } .sev-warning { background:var(--warnbg); color:var(--warn); }
+.hist { font-size:12px; padding:3px 0; border-top:1px solid var(--line); color:var(--muted); } .hist:first-child { border-top:none; } .hist.last { color:var(--text); }
+.ok { color:var(--ok); } .ko { color:var(--ko); } .warn { color:var(--warn); }
+.scen { padding:6px 0; border-top:1px solid var(--line); cursor:pointer; } .scen:first-child { border-top:none; } .scen:hover b { color:var(--accent); } .scen b { font-weight:600; font-size:13px; } .scen div { font-size:12px; color:var(--muted); }
+.hidden { display:none !important; } .err { color:var(--ko); font-size:12px; }
+details summary { cursor:pointer; color:var(--muted); font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>sargen playground</h1><span class="small" id="version"></span>
+  <span class="sp"></span>
+  <button id="undo">Annuler</button>
+  <button id="startGenerated">Déclaration générée</button>
+  <button id="startEmpty">Document vide</button>
+</header>
+<main>
+<div class="col">
+  <div class="card">
+    <h2>Je suis</h2>
+    <div class="roles" id="roles"></div>
+  </div>
+  <div class="card" id="writeCard">
+    <h2>Écriture</h2>
+    <div class="row" style="margin-bottom:8px;"><label class="small fit"><input type="checkbox" id="freePath" style="width:auto;"> chemin libre</label><span></span></div>
+    <div id="picker">
+      <label class="small">1. Champ</label>
+      <input id="search" placeholder="nom de naissance, cadreLegal, montant…" autocomplete="off">
+      <div class="results" id="results"></div>
+      <div id="fieldInfo" class="small" style="margin-top:6px;"></div>
+      <div id="keysBox" style="margin-top:8px;"></div>
+    </div>
+    <div id="freeBox" class="hidden">
+      <label class="small">Chemin, envoyé tel quel</label>
+      <input id="freeInput" class="mono" placeholder="personnes.pp[pp-1].etatCivil.nomNaissance">
+    </div>
+    <div style="margin-top:8px;">
+      <label class="small" id="valueLabel">Valeur</label>
+      <div id="valueBox"></div>
+      <label class="small"><input type="checkbox" id="freeValue" style="width:auto;"> valeur libre</label>
+    </div>
+    <div id="llmBox" style="margin-top:8px; display:flex; flex-direction:column; gap:6px;">
+      <div class="small">Propre au LLM</div>
+      <div class="row"><input id="srcTable" placeholder="table (client)"><input id="srcId" placeholder="object_id (client-1)"><input id="srcField" placeholder="champ"></div>
+      <div class="row"><input id="justif" placeholder="justification (jugement)"><select id="conf" class="fit" style="width:100px;"><option value="">confiance</option><option>low</option><option>medium</option><option>high</option></select></div>
+      <input id="scope" class="mono" placeholder="périmètre de la tâche : personnes.pp[pp-1] ; vide = aucun ; &quot;&quot; = rien d’autorisé">
+    </div>
+    <div id="computedBox" class="hidden" style="margin-top:8px; display:flex; flex-direction:column; gap:6px;">
+      <div class="small">Propre au calcul</div>
+      <input id="compInputs" class="mono" placeholder="inputs, séparés par des virgules">
+    </div>
+    <div class="preview" id="preview" style="margin-top:8px;"></div>
+    <div class="err" id="writeErr"></div>
+    <div class="row" style="margin-top:8px;">
+      <button class="primary" id="apply">Appliquer</button>
+      <button class="fit" id="addBatch">Ajouter au lot</button>
+      <button class="fit" id="review">Marquer relu</button>
+    </div>
+    <div id="batchBox" class="hidden" style="margin-top:8px;">
+      <div class="small">Lot (un seul appel à ApplyFills, dans cet ordre)</div>
+      <div id="batch"></div>
+      <div class="row" style="margin-top:6px;"><button class="primary" id="applyBatch">Appliquer le lot</button><button class="fit" id="clearBatch">Vider</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Scénarios</h2>
+    <div id="scenarios"></div>
+  </div>
+</div>
+<div class="col">
+  <div class="card" id="verdictCard">
+    <h2>Dernière action</h2>
+    <div id="verdicts" class="small">Choisissez un rôle, un champ et une valeur, ou lancez un scénario.</div>
+  </div>
+  <div class="card">
+    <h2 id="docTitle">Document</h2>
+    <div class="doctools">
+      <input type="text" id="docFilter" placeholder="filtrer par chemin">
+      <label class="small"><input type="checkbox" id="onlyChanged" style="width:auto;"> changements seulement</label>
+      <button id="toggleAll" class="fit">Tout déplier</button>
+      <button id="toggleRaw" class="fit">JSON brut</button>
+    </div>
+    <div id="doc"></div>
+    <div id="rawBox" class="hidden">
+      <div class="row" style="margin-bottom:6px;"><span class="small">Le document tel qu'il est stocké (sar_declarations.document).</span><button id="copyRaw" class="fit">Copier</button></div>
+      <pre id="raw" style="max-height:640px; overflow:auto; padding:8px; border-radius:6px; background:color-mix(in srgb, var(--muted) 9%, transparent);"></pre>
+    </div>
+    <details style="margin-top:10px;"><summary>Éléments des listes (items)</summary><div id="items"></div></details>
+  </div>
+  <div class="card">
+    <h2>Validation du document</h2>
+    <div id="issues"></div>
+  </div>
+  <div class="card">
+    <h2>Historique</h2>
+    <div id="history" class="small">Rien encore.</div>
+  </div>
+</div>
+</main>
+<script>
+const ROLES = [
+  {id:'llm', name:'LLM', sub:'llm · non_manual'},
+  {id:'analyst', name:'Analyste', sub:'manual · all'},
+  {id:'computed', name:'Calcul', sub:'computed · non_manual'},
+  {id:'org_setting', name:'Réglages', sub:'org_setting · non_manual'},
+];
+const ROLE_NAME = Object.fromEntries(ROLES.map(r => [r.id, r.name]));
+const OUTCOME = {applied:'appliqué', noop:'rien ne change', refreshed:'trace du calcul rafraîchie', conflict:'conflit, rien n\'est écrit', rejected:'rejeté', reviewed:'relu'};
+let spec = null, byTemplate = {}, state = {doc:null, changed:[], issues:[]}, undoStack = [], history = [];
+let role = 'llm', field = null, keys = [], batch = [], scenarios = [];
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function api(path, body) {
+  const r = await fetch(path, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {});
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+function renderRoles() {
+  $('roles').innerHTML = ROLES.map(r => `<div class="role ${r.id===role?'on':''}" data-r="${r.id}"><b>${r.name}</b><span>${r.sub}</span></div>`).join('');
+  document.querySelectorAll('.role').forEach(el => el.onclick = () => { role = el.dataset.r; renderRoles(); renderExtras(); renderPreview(); });
+}
+function renderExtras() {
+  $('llmBox').classList.toggle('hidden', role !== 'llm');
+  $('computedBox').classList.toggle('hidden', role !== 'computed');
+}
+
+function search(q) {
+  q = q.trim().toLowerCase();
+  const fields = spec.fields.filter(f => f.kind === 'field');
+  const hits = q ? fields.filter(f => f.template.toLowerCase().includes(q) || f.label.toLowerCase().includes(q)) : fields;
+  $('results').innerHTML = hits.slice(0, 40).map(f => `<div class="res ${field&&f.template===field.template?'on':''}" data-t="${esc(f.template)}">
+    <div><span>${esc(f.label)}</span><span class="badge n-${f.nature}">${f.nature}</span>${f.export_id?'<span class="badge">généré à l\'export</span>':''}${f.working?'<span class="badge">travail</span>':''}</div>
+    <div class="mono small">${esc(f.template)}</div></div>`).join('') || '<div class="res small">Aucun champ</div>';
+  document.querySelectorAll('.res[data-t]').forEach(el => el.onclick = () => pickField(el.dataset.t));
+}
+
+function pickField(t) {
+  field = byTemplate[t];
+  const segs = t.split('.');
+  keys = segs.map(s => s.endsWith('[]') ? '+a' : null);
+  search($('search').value);
+  renderFieldInfo(); renderKeys(); renderValue(); renderPreview();
+}
+
+function renderFieldInfo() {
+  if (!field) { $('fieldInfo').innerHTML = ''; return; }
+  const c = [];
+  c.push(`type ${field.type || 'texte'}`);
+  c.push(field.max < 0 ? `${field.min}..n` : `${field.min}..${field.max}`);
+  if (field.max_length) c.push(`max ${field.max_length} car.`);
+  if (field.code_list) c.push(`liste ${field.code_list}`);
+  if (field.ref_targets) c.push(`référence vers ${field.ref_targets.join(', ')}`);
+  const proof = {copied:'le LLM doit citer une source', judgment:'le LLM doit justifier et donner une confiance', computed:'interdit au LLM, calculé par le backend', setting:'réglage de l\'organisation', analyst:'texte de l\'analyste'}[field.nature];
+  $('fieldInfo').innerHTML = esc(c.join(' · ')) + (proof ? `<br>${esc(proof)}` : '') + (field.description ? `<br><i>${esc(field.description)}</i>` : '');
+}
+
+function concretePrefix(upto) {
+  const segs = field.template.split('.');
+  const out = [];
+  for (let i = 0; i <= upto; i++) {
+    let s = segs[i];
+    if (s.endsWith('[]')) s = s.slice(0, -2) + (i === upto ? '' : `[${keys[i]}]`);
+    out.push(s);
+  }
+  return out.join('.');
+}
+
+function renderKeys() {
+  const box = $('keysBox');
+  if (!field) { box.innerHTML = ''; return; }
+  const segs = field.template.split('.');
+  let html = '';
+  segs.forEach((s, i) => {
+    if (!s.endsWith('[]')) return;
+    const container = concretePrefix(i);
+    const existing = (state.doc.items[container] || []).map(it => it.key);
+    const isNew = keys[i].startsWith('+');
+    html += `<label class="small">Élément de ${esc(container)}</label><div class="keys" style="margin-bottom:6px;">` +
+      existing.map(k => `<span class="key ${keys[i]===k?'on':''}" data-i="${i}" data-k="${esc(k)}">${esc(k)}</span>`).join('') +
+      `<span class="key ${isNew?'on':''}" data-i="${i}" data-k="${isNew?esc(keys[i]):'+a'}">nouvel élément [${isNew?esc(keys[i]):'+a'}]</span>` +
+      (isNew ? `<input data-letter="${i}" value="${esc(keys[i].slice(1))}" style="width:60px;" title="nom de la clé provisoire">` : '') + `</div>`;
+  });
+  box.innerHTML = html;
+  box.querySelectorAll('.key').forEach(el => el.onclick = () => {
+    const i = +el.dataset.i; keys[i] = el.dataset.k;
+    for (let j = i + 1; j < keys.length; j++) if (keys[j] !== null && !keys[j].startsWith('+')) keys[j] = '+a';
+    renderKeys(); renderValue(); renderPreview();
+  });
+  box.querySelectorAll('input[data-letter]').forEach(el => el.oninput = () => { keys[+el.dataset.letter] = '+' + (el.value || 'a'); renderPreview(); });
+}
+
+function currentPath() {
+  if ($('freePath').checked) return $('freeInput').value.trim();
+  if (!field) return '';
+  return field.template.split('.').map((s, i) => s.endsWith('[]') ? `${s.slice(0, -2)}[${keys[i]}]` : s).join('.');
+}
+
+function refOptions(targets) {
+  const out = [];
+  for (const [container, items] of Object.entries(state.doc.items)) {
+    const tmpl = container.replace(/\[[^\]]+\]/g, '[]') + '[]';
+    if (!targets.includes(tmpl)) continue;
+    for (const it of items) out.push(`${container}[${it.key}]`);
+  }
+  return out;
+}
+
+function renderValue() {
+  const box = $('valueBox');
+  const free = $('freeValue').checked || $('freePath').checked || !field;
+  let html = '<input id="value" placeholder="valeur (vide = effacer)">';
+  if (!free && field.type === 'code' && spec.code_lists[field.code_list]) {
+    const codes = spec.code_lists[field.code_list].codes || [];
+    html = `<select id="value"><option value="">(vide = effacer)</option>${codes.map(c => `<option value="${esc(c.value)}">${esc(c.value)} · ${esc(c.label)}</option>`).join('')}</select>`;
+  } else if (!free && field.type === 'boolean') {
+    html = '<select id="value"><option value="">(vide)</option><option>true</option><option>false</option></select>';
+  } else if (!free && field.type === 'date') {
+    html = '<input id="value" type="date">';
+  } else if (!free && field.type === 'ref') {
+    const opts = refOptions(field.ref_targets || []);
+    html = `<select id="value"><option value="">(vide)</option>${opts.map(o => `<option>${esc(o)}</option>`).join('')}</select>` + (opts.length ? '' : '<div class="small">Aucun élément cible dans le document : cochez « valeur libre » pour taper une clé provisoire.</div>');
+  }
+  const old = $('value') ? $('value').value : '';
+  box.innerHTML = html;
+  const v = $('value');
+  if (old && (v.tagName !== 'SELECT' || [...v.options].some(o => o.value === old))) v.value = old;
+  v.oninput = v.onchange = renderPreview;
+}
+
+function currentFill() {
+  const f = {path: currentPath(), value: $('value').value};
+  if (role === 'llm') {
+    if ($('srcTable').value || $('srcId').value) f.sources = [{object:{table:$('srcTable').value, object_id:$('srcId').value}, field:$('srcField').value, raw_value:f.value}];
+    if ($('justif').value) f.justification = $('justif').value;
+    if ($('conf').value) f.confidence = $('conf').value;
+  }
+  if (role === 'computed' && $('compInputs').value.trim()) f.computation = {name:'playground', inputs:$('compInputs').value.split(',').map(s => s.trim()).filter(Boolean)};
+  return f;
+}
+function scopeList() {
+  const s = $('scope').value.trim();
+  if (role !== 'llm' || s === '') return [];
+  return s.split(',').map(x => x.trim()).map(x => x === '""' ? '' : x);
+}
+
+function renderPreview() {
+  const f = currentFill();
+  $('preview').textContent = f.path ? `${ROLE_NAME[role]} · ${f.path} = ${JSON.stringify(f.value)}` : 'Choisissez un champ.';
+  $('writeErr').textContent = '';
+}
+
+async function runStep(step, label) {
+  const res = await api('/api/step', {doc: state.doc, step});
+  undoStack.push(state);
+  state = res;
+  history.push({label, outcomes: res.outcomes, role: step.role, note: step.note, expect: step.expect});
+  renderAll(res.outcomes, step);
+}
+
+function renderVerdicts(outcomes, step) {
+  if (!outcomes) return;
+  const head = step && step.note ? `<div class="small" style="margin-bottom:4px;">${esc(step.note)}</div>` : '';
+  $('verdicts').innerHTML = head + outcomes.map((o, i) => {
+    let detail = '';
+    if (o.outcome === 'rejected') detail = `<div><span class="mono">${esc(o.code)}</span> · ${esc(o.message)}${o.params ? ' · ' + esc(JSON.stringify(o.params)) : ''}</div>`;
+    if (o.outcome === 'conflict' && o.before) detail = `<div class="mono">en place : ${esc(JSON.stringify(o.before.value))} (${esc(o.before.origin)}${o.before.reviewed ? ', relu' : ''})<br>tenté : ${esc(JSON.stringify(o.value))}</div>`;
+    if ((o.outcome === 'applied' || o.outcome === 'noop') && o.real_path && o.real_path !== o.path) detail = `<div class="mono">écrit en ${esc(o.real_path)}</div>`;
+    const exp = step && step.expect && step.expect[i];
+    const lab = o.outcome === 'rejected' ? 'rejected:' + o.code : o.outcome;
+    const expTag = exp ? (exp === lab ? ' <span class="small">(attendu)</span>' : ` <span class="small">(attendu : ${esc(exp)})</span>`) : '';
+    return `<div class="verdict v-${o.outcome}"><b>${esc(OUTCOME[o.outcome])}</b>${expTag}<div class="mono">${esc(o.path)}${o.value !== undefined && o.value !== '' ? ' = ' + esc(JSON.stringify(o.value)) : ''}</div>${detail}</div>`;
+  }).join('');
+}
+
+const ORIGIN = {llm:'LLM', manual:'analyste', computed:'calcul', org_setting:'réglage'};
+let openPaths = new Set(), allOpen = false;
+function valueRow(p, v, isChanged, gone) {
+  const shown = gone ? '(supprimé)' : (v.value === '' ? '(vide)' : v.value);
+  const tags = [];
+  if (!gone) tags.push(`<span class="badge o-${esc(v.origin)}">${esc(ORIGIN[v.origin] || v.origin)}</span>`);
+  if (v && v.reviewed) tags.push('<span class="badge">relu</span>');
+  if (v && v.confidence) tags.push(`<span class="badge">${esc(v.confidence)}</span>`);
+  if (v && v.computation && v.computation.result) tags.push(`<span class="badge">calcul : ${esc(v.computation.result)}</span>`);
+  const open = allOpen || openPaths.has(p) || isChanged;
+  return `<details class="val ${isChanged ? 'chg' : ''} ${gone ? 'gone' : ''}" data-p="${esc(p)}" ${open ? 'open' : ''}>
+    <summary><span class="p">${esc(p)}</span><span class="tags">${tags.join('')}</span><span class="v" title="${esc(shown)}">${esc(shown)}</span></summary>
+    ${gone ? '' : `<pre>${esc(JSON.stringify(v, null, 2))}</pre>`}</details>`;
+}
+function renderDoc() {
+  const vals = state.doc.values || {};
+  const changed = new Set(state.changed || []);
+  const filter = $('docFilter').value.trim().toLowerCase();
+  const only = $('onlyChanged').checked;
+  const paths = Object.keys(vals);
+  [...changed].filter(p => !(p in vals) && !/\]$/.test(p)).forEach(p => paths.push(p));
+  paths.sort();
+  let html = '', section = null, shown = 0;
+  for (const p of paths) {
+    if (filter && !p.toLowerCase().includes(filter)) continue;
+    if (only && !changed.has(p)) continue;
+    const top = p.split(/[.[]/)[0];
+    if (top !== section) { section = top; html += `<div class="section">${esc(top)}</div>`; }
+    html += valueRow(p, vals[p], changed.has(p), !(p in vals));
+    shown++;
+  }
+  $('doc').innerHTML = html || '<div class="small">(aucune valeur)</div>';
+  $('doc').querySelectorAll('details.val').forEach(d => d.ontoggle = () => { d.open ? openPaths.add(d.dataset.p) : openPaths.delete(d.dataset.p); });
+  $('docTitle').textContent = `Document · ${Object.keys(vals).length} valeurs` + (changed.size ? ` · ${changed.size} changement(s) à la dernière action` : '') + (shown !== paths.length ? ` · ${shown} affichées` : '');
+  const items = Object.entries(state.doc.items || {}).sort();
+  $('items').innerHTML = items.length ? items.map(([c, its]) => `<details class="val ${its.some(i => changed.has(`${c}[${i.key}]`)) ? 'chg' : ''}">
+    <summary><span class="p">${esc(c)}</span><span class="tags"><span class="badge">${its.length}</span></span><span class="v">${its.map(i => esc(i.key) + (changed.has(`${c}[${i.key}]`) ? ' (nouveau)' : '')).join(', ')}</span></summary>
+    <pre>${esc(JSON.stringify(its, null, 2))}</pre></details>`).join('') : '<div class="small">(aucun)</div>';
+}
+let rawView = false;
+function renderRaw() {
+  $('raw').textContent = JSON.stringify(state.doc, null, 2);
+}
+$('toggleRaw').onclick = () => {
+  rawView = !rawView;
+  $('toggleRaw').textContent = rawView ? 'Vue en lignes' : 'JSON brut';
+  $('rawBox').classList.toggle('hidden', !rawView);
+  [$('doc'), $('docFilter'), $('onlyChanged').closest('label'), $('toggleAll')].forEach(el => el.classList.toggle('hidden', rawView));
+  renderRaw();
+};
+$('copyRaw').onclick = async () => { await navigator.clipboard.writeText($('raw').textContent); $('copyRaw').textContent = 'Copié'; setTimeout(() => $('copyRaw').textContent = 'Copier', 1200); };
+$('docFilter').oninput = renderDoc;
+$('onlyChanged').onchange = renderDoc;
+$('toggleAll').onclick = () => { allOpen = !allOpen; if (!allOpen) openPaths.clear(); $('toggleAll').textContent = allOpen ? 'Tout replier' : 'Tout déplier'; renderDoc(); };
+
+function renderIssues() {
+  const is = state.issues || [];
+  $('issues').innerHTML = is.length ? is.slice(0, 60).map(i => `<div class="issue"><span class="sev sev-${i.severity}">${i.severity === 'blocking' ? 'bloquant' : 'warning'}</span><span class="mono">${esc(i.code)}</span> ${esc(i.path)}</div>`).join('') + (is.length > 60 ? `<div class="small">… ${is.length - 60} de plus</div>` : '') : '<div class="small ok">Aucune issue : le document est exportable.</div>';
+}
+
+function renderHistory() {
+  $('history').innerHTML = history.length ? history.map((h, n) => {
+    const out = h.outcomes.map(o => `<span class="${o.outcome === 'rejected' ? 'ko' : o.outcome === 'conflict' ? 'warn' : o.outcome === 'applied' || o.outcome === 'reviewed' ? 'ok' : ''}">${esc(o.outcome === 'rejected' ? 'rejeté ' + o.code : OUTCOME[o.outcome])}</span>`).join(', ');
+    return `<div class="hist ${n === history.length - 1 ? 'last' : ''}">${n + 1} · ${esc(ROLE_NAME[h.role] || h.role)} · ${esc(h.label)} · ${out}</div>`;
+  }).join('') : 'Rien encore.';
+}
+
+function renderAll(outcomes, step) {
+  renderVerdicts(outcomes, step); renderDoc(); if (rawView) renderRaw(); renderIssues(); renderHistory();
+  if (field) renderKeys();
+  renderValue();
+  renderPreview();
+}
+
+async function start(name) {
+  state = await api('/api/start/' + name);
+  undoStack = []; history = []; batch = []; renderBatch();
+  const START = {generated: 'une déclaration telle qu\'une génération la laisse (réglages, calculs, valeurs du LLM avec leurs sources, analyse), rien n\'est encore relu', empty: 'document vide'};
+  $('verdicts').innerHTML = `<span class="small">Départ : ${START[name] || name}.</span>`;
+  renderAll();
+}
+
+function renderBatch() {
+  $('batchBox').classList.toggle('hidden', batch.length === 0);
+  $('batch').innerHTML = batch.map((f, i) => `<div class="mono small">${i + 1}. ${esc(f.path)} = ${esc(JSON.stringify(f.value))}</div>`).join('');
+}
+
+function renderScenarios() {
+  $('scenarios').innerHTML = scenarios.map((s, i) => `<div class="scen" data-i="${i}"><b>${esc(s.title)}</b><div>${esc(s.description)}</div></div>`).join('');
+  document.querySelectorAll('.scen').forEach(el => el.onclick = () => playScenario(scenarios[+el.dataset.i]));
+}
+async function playScenario(s) {
+  await start(s.start || 'empty');
+  for (const step of s.steps) {
+    const label = step.review ? 'marquer relu ' + step.review.join(', ') : step.fills.map(f => f.path.split('.').slice(-1)[0] + ' = ' + JSON.stringify(f.value)).join(' ; ');
+    await runStep(step, label);
+  }
+}
+
+$('search').oninput = () => search($('search').value);
+$('freePath').onchange = () => {
+  const free = $('freePath').checked;
+  if (free && field) $('freeInput').value = currentPathFromPicker();
+  $('picker').classList.toggle('hidden', free); $('freeBox').classList.toggle('hidden', !free);
+  renderValue(); renderPreview();
+};
+function currentPathFromPicker() { return field.template.split('.').map((s, i) => s.endsWith('[]') ? `${s.slice(0, -2)}[${keys[i]}]` : s).join('.'); }
+$('freeInput').oninput = renderPreview;
+$('freeValue').onchange = () => { renderValue(); renderPreview(); };
+['srcTable', 'srcId', 'srcField', 'justif', 'conf', 'scope', 'compInputs'].forEach(id => $(id).oninput = renderPreview);
+$('apply').onclick = async () => {
+  const f = currentFill();
+  if (!f.path) { $('writeErr').textContent = 'Choisissez un champ ou tapez un chemin.'; return; }
+  try { await runStep({role, fills:[f], allowed_prefixes: scopeList()}, f.path.split('.').slice(-1)[0] + ' = ' + JSON.stringify(f.value)); }
+  catch (e) { $('writeErr').textContent = e.message; }
+};
+$('addBatch').onclick = () => {
+  const f = currentFill();
+  if (!f.path) { $('writeErr').textContent = 'Choisissez un champ ou tapez un chemin.'; return; }
+  batch.push(f); renderBatch();
+};
+$('applyBatch').onclick = async () => {
+  const fills = batch; batch = []; renderBatch();
+  await runStep({role, fills, allowed_prefixes: scopeList()}, `lot de ${fills.length} écritures`);
+};
+$('clearBatch').onclick = () => { batch = []; renderBatch(); };
+$('review').onclick = async () => {
+  const p = currentPath();
+  if (!p) { $('writeErr').textContent = 'Choisissez un champ ou tapez un chemin.'; return; }
+  await runStep({role:'analyst', review:[p]}, 'marquer relu ' + p.split('.').slice(-1)[0]);
+};
+$('undo').onclick = () => {
+  if (!undoStack.length) return;
+  state = undoStack.pop(); history.pop();
+  $('verdicts').innerHTML = '<span class="small">Dernière action annulée.</span>';
+  renderAll();
+};
+$('startEmpty').onclick = () => start('empty');
+$('startGenerated').onclick = () => start('generated');
+
+(async () => {
+  spec = await api('/api/spec');
+  spec.fields.forEach(f => byTemplate[f.template] = f);
+  $('version').textContent = 'TRACFIN ' + spec.version;
+  scenarios = await api('/api/scenarios');
+  renderRoles(); renderExtras(); renderScenarios(); search(''); renderValue();
+  await start('generated');
+})();
+</script>
+</body>
+</html>

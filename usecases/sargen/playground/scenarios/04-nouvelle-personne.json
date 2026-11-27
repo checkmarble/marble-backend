@@ -1,0 +1,13 @@
+{
+ "title": "Une nouvelle personne dont un champ est refusé",
+ "description": "Les fills d'un même appel sont indépendants : la personne [+a] est créée avec les champs acceptés, les autres sont rejetés.",
+ "start": "generated",
+ "steps": [
+  {"role": "llm", "note": "Trois champs pour la même personne provisoire [+a].",
+   "fills": [
+    {"path": "personnes.pp[+a].etatCivil.nomNaissance", "value": "DURAND", "sources": [{"object": {"table": "client", "object_id": "client-1"}, "field": "last_name", "raw_value": "x"}]},
+    {"path": "personnes.pp[+a].etatCivil.prenom[+x]", "value": "Paul"},
+    {"path": "personnes.pp[+a].etatCivil.dateNaissance", "value": "1980-13-01", "sources": [{"object": {"table": "client", "object_id": "client-1"}, "field": "last_name", "raw_value": "x"}]}],
+   "expect": ["applied", "rejected:missing_source", "rejected:bad_date"]}
+ ]
+}
