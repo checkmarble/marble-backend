@@ -115,13 +115,22 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.PATCH("/config/usage-tracking", tom, handleUpdateUsageTracking(uc))
 	router.GET("/me/organizations", tom, handleMyOrganizations(uc))
 
-	infra.RouteWithFeatureFlag(router, infra.CUSTOM_ROLES_FEATURE_FLAG, func(r gin.IRoutes) {
+	iam := router.Group("/iam")
+	infra.RouteWithFeatureFlag(iam, infra.CUSTOM_ROLES_FEATURE_FLAG, func(r gin.IRoutes) {
 		r.GET("/roles", tom, handleGetRoles(uc))
 		r.POST("/roles", tom, handleCreateRole(uc))
 		r.PUT("/roles/permissions", tom, handleUpdateRolePermissions(uc))
-		r.DELETE("/roles/*slug", tom, handleDeleteRole(uc))
 		r.PUT("/roles/sections", tom, handleUpdateRoleSections(uc))
+		r.DELETE("/roles/*slug", tom, handleDeleteRole(uc))
 	})
+
+	iam.GET("/groups", tom, handleListGroups(uc))
+	iam.POST("/groups", tom, handleCreateGroup(uc))
+	iam.GET("/groups/:group_id", tom, handleGetGroup(uc))
+	iam.PATCH("/groups/:group_id", tom, handleRenameGroup(uc))
+	iam.DELETE("/groups/:group_id", tom, handleDeleteGroup(uc))
+	iam.PUT("/groups/:group_id/members", tom, handleReplaceGroupMembers(uc))
+	iam.PUT("/groups/:group_id/roles", tom, handleReplaceGroupBindings(uc))
 
 	router.GET("/decisions",
 		timeoutMiddleware(conf.DecisionTimeout),
