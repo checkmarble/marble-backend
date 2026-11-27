@@ -395,3 +395,24 @@ func TestAgent_RecoveryAsksOnceAboutAPath(t *testing.T) {
 	}
 	assert.True(t, unverifiable, "the « valeur non vérifiable » question wins: %v", out.Questions)
 }
+
+// A task created before the budgets changed resumes with the planned limits of
+// its hash (they are not part of the hash).
+func TestResume_TaskTakesLimitsOfThePlannedSpec(t *testing.T) {
+	ctx := context.Background()
+	o, f := newTestOrchestrator(t)
+	seedDocument(t, f, withTwoPersons)
+
+	old := Spec("a", tgtPP1)
+	f.Format.Waves = [][]core.TaskSpec{{old}}
+	f.Runner.On("a", tgtPP1, Step{Err: errProvider})
+	require.Error(t, o.RunJob(ctx, f.JobId))
+	require.Equal(t, core.TaskLimits{}, f.Runner.LastSpec("a", tgtPP1).Limits)
+
+	cur := Spec("a", tgtPP1)
+	cur.Limits = core.TaskLimits{MaxTurns: 25, MaxToolCalls: 50, TimeoutSeconds: 260}
+	f.Format.Waves = [][]core.TaskSpec{{cur}}
+	f.Runner.On("a", tgtPP1, Step{Out: outputWith(Fill(pathNomPP1, "DUPONT"))})
+	require.NoError(t, o.RunJob(ctx, f.JobId))
+	assert.Equal(t, cur.Limits, f.Runner.LastSpec("a", tgtPP1).Limits)
+}

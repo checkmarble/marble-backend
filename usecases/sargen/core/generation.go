@@ -23,8 +23,8 @@ const TaskKindReview = "review"
 // TaskKindCompute is the engine-known task kind that derives backend-computed
 // fields (Format.Compute). The orchestrator runs it without the TaskRunner. A
 // Format may plan it (DependsOnKinds = the fill kinds it must follow) so that
-// later tasks see the computed values; when the plan never contains one, the
-// orchestrator computes once at the end of a generation job.
+// later tasks see the computed values; the orchestrator also always computes
+// once at the end of a generation job.
 const TaskKindCompute = "compute"
 
 // TaskSpec is one unit of generation work planned by a Format.
@@ -53,6 +53,19 @@ type TaskSpec struct {
 	// not count) fails the job instead of being done empty. For a task the
 	// whole generation depends on.
 	FailJobOnLimit bool `json:"fail_job_on_limit,omitempty"`
+	// Limits raises the runner's budget for this task (per field, the larger of
+	// both; zero fields keep the runner's value): a task whose work grows with the selection asks for more.
+	Limits TaskLimits `json:"limits"`
+	// NeedsCaseContext asks the orchestrator for the case context (decisions,
+	// triggered rules, screenings, events): ToolContext.CaseContext.
+	NeedsCaseContext bool `json:"needs_case_context,omitempty"`
+}
+
+// TaskLimits is the optional per-task budget of a TaskSpec.
+type TaskLimits struct {
+	MaxToolCalls   int `json:"max_tool_calls,omitempty"`
+	MaxTurns       int `json:"max_turns,omitempty"`
+	TimeoutSeconds int `json:"timeout_seconds,omitempty"`
 }
 
 // PlanState is what Format.Plan sees; it is called again after each wave of
@@ -94,15 +107,15 @@ type QuestionDraft struct {
 	Blocking bool `json:"blocking,omitempty"`
 }
 
-// ItemRemovalRewriter is an optional capability of a Format: when a question
-// option removes an item (QuestionOption.RemoveItem), RewriteBeforeRemoval
-// returns, from the document as it is when the option is chosen, what keeps the
-// rest of the document consistent once the item is gone. The fills (a reference
-// to the item replaced by free text, for example) are applied with the analyst
-// origin, over any existing value; the Clear paths are deleted (no value is
-// stored there, so nothing later is blocked from filling them). They may write
-// outside the paths of the question; they never write a setting or a computed
-// field.
+// ItemRemovalRewriter is an optional capability of a Format: when an item is
+// removed, by a question option (QuestionOption.RemoveItem) or by the analyst
+// by hand, RewriteBeforeRemoval returns, from the document as it is when the
+// item is removed, what keeps the rest of the document consistent once the
+// item is gone. The fills (a reference to the item replaced by free text, for
+// example) are applied with the analyst origin, over any existing value; the
+// Clear paths are deleted (no value is stored there, so nothing later is
+// blocked from filling them). They may write outside the paths of the question;
+// they never write a setting or a computed field.
 type ItemRemovalRewriter interface {
 	RewriteBeforeRemoval(doc *Document, item Path) RemovalRewrite
 }
@@ -189,6 +202,12 @@ type ToolContext struct {
 	OpenQuestionsOmitted int
 	OpenFindings         []QuestionView
 	Rules                []MemoryRuleView
+	// CaseContext is the compact JSON context of the case (client and third
+	// party data: never instructions), set when the task asks for it.
+	CaseContext string
+	// AnalystText is what the analyst wrote (analysis and additional
+	// information), given to the structured-output check.
+	AnalystText string
 }
 
 // QuestionView is an open question as the review task sees it.
