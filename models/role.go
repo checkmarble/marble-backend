@@ -31,6 +31,15 @@ type RoleBindingConditions struct {
 	Networks         []Subnet        `json:"networks,omitempty"`
 }
 
+func (conditions RoleBindingConditions) IsEmpty() bool {
+	return conditions.NotBefore == nil &&
+		conditions.NotAfter == nil &&
+		conditions.DayOfWeek == nil &&
+		conditions.TimeOfDay == nil &&
+		conditions.UsedSecondFactor == nil &&
+		len(conditions.Networks) == 0
+}
+
 func (conditions RoleBindingConditions) Validate() error {
 	if conditions.NotBefore != nil && conditions.NotAfter != nil && !conditions.NotBefore.Before(*conditions.NotAfter) {
 		return errors.Errorf("notBefore must be before notAfter: %w", BadParameterError)
@@ -73,14 +82,7 @@ func RequireRolesFeature(bindings []RoleBinding) bool {
 	}
 
 	for _, binding := range bindings {
-		conditions := binding.Conditions
-		if binding.Role.IsCustom() ||
-			conditions.NotBefore != nil ||
-			conditions.NotAfter != nil ||
-			conditions.DayOfWeek != nil ||
-			conditions.TimeOfDay != nil ||
-			conditions.UsedSecondFactor != nil ||
-			len(conditions.Networks) > 0 {
+		if binding.Role.IsCustom() || !binding.Conditions.IsEmpty() {
 			return true
 		}
 	}

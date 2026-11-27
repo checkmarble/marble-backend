@@ -413,6 +413,8 @@ func TestUserUseCaseReplaceOrganizationGrantRequiresRolesFeatureForCustomRoles(t
 }
 
 func TestUserUseCaseUpdateUserChecksRolesFeatureOnlyForOrganizationUsers(t *testing.T) {
+	t.Setenv("ENABLE_ROLE_BINDING_CAVEATS", "all")
+
 	notAfter := time.Now().Add(time.Hour)
 
 	for _, tt := range []struct {

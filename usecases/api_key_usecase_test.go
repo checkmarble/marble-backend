@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"testing"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -245,6 +246,25 @@ func (suite *ApiKeyUsecaseTestSuite) TestCreateApiKey_custom_role_requires_roles
 	suite.ErrorIs(err, models.ForbiddenError)
 	suite.apiKeyRepository.AssertNotCalled(suite.T(), "GetRoleBySlug", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	suite.apiKeyRepository.AssertNotCalled(suite.T(), "CreateApiKey", mock.Anything, mock.Anything)
+	suite.AssertExpectations()
+}
+
+func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_rejects_conditions_without_feature_flag() {
+	notAfter := time.Now().Add(time.Hour)
+	input := models.CreateApiKeyInput{
+		OrganizationId: suite.organizationId,
+		Description:    "test key",
+		RoleBindings: []models.RoleBinding{{
+			Role:       models.API_CLIENT,
+			Conditions: models.RoleBindingConditions{NotAfter: &notAfter},
+		}},
+	}
+
+	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
+
+	_, err := suite.makeUsecase().CreateApiKey(context.Background(), input)
+
+	suite.ErrorIs(err, models.BadParameterError)
 	suite.AssertExpectations()
 }
 

@@ -11,6 +11,9 @@ func checkRoleBindingFeatureFlags(orgId uuid.UUID, binding models.RoleBinding) e
 	if binding.Role.IsCustom() && !infra.HasFeatureFlag(infra.CUSTOM_ROLES_FEATURE_FLAG, orgId) {
 		return errors.Wrap(models.BadParameterError, "custom roles are not enabled for this organization")
 	}
+	if !binding.Conditions.IsEmpty() && !infra.HasFeatureFlag(infra.ROLE_BINDING_CAVEATS_FEATURE_FLAG, orgId) {
+		return errors.Wrap(models.BadParameterError, "role binding conditions are not enabled for this organization")
+	}
 
 	return nil
 }
