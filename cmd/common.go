@@ -37,6 +37,24 @@ func GetDeploymentMetadata(ctx context.Context, repositories repositories.Reposi
 	return *deploymentMetadata, nil
 }
 
+func LoadFeatureFlags(ctx context.Context, repositories repositories.Repositories) {
+	logger := utils.LoggerFromContext(ctx)
+
+	executor, err := repositories.ExecutorGetter.GetExecutor(ctx, models.DATABASE_SCHEMA_TYPE_MARBLE, nil)
+	if err != nil {
+		logger.WarnContext(ctx, "could not load feature flags from database, using environment only", "error", err.Error())
+		return
+	}
+
+	flags, err := repositories.MarbleDbRepository.ListFeatureFlags(ctx, executor)
+	if err != nil {
+		logger.WarnContext(ctx, "could not load feature flags from database, using environment only", "error", err.Error())
+		return
+	}
+
+	infra.SetFeatureFlagsFromDatabase(flags)
+}
+
 // IsWebhookSystemMigrated checks if the webhook system has been migrated to the new internal system.
 // Returns false if the metadata key is not found (pre-migration state).
 func IsWebhookSystemMigrated(ctx context.Context, repositories repositories.Repositories) bool {

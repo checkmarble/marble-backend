@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
+	"sync"
 
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/gin-gonic/gin"
@@ -18,18 +20,54 @@ const (
 	ASYNC_DECISION_STORAGE_FEATURE_FLAG featureFlag = "ASYNC_DECISION_STORAGE"
 )
 
+var knownFeatureFlags = []featureFlag{
+	ASYNC_DECISION_STORAGE_FEATURE_FLAG,
+}
+
+var (
+	databaseFeatureFlagsLock sync.RWMutex
+	databaseFeatureFlags     = map[featureFlag]string{}
+)
+
+func IsKnownFeatureFlag(flag string) bool {
+	return slices.Contains(knownFeatureFlags, featureFlag(flag))
+}
+
+func KnownFeatureFlags() []string {
+	flags := make([]string, len(knownFeatureFlags))
+
+	for idx, flag := range knownFeatureFlags {
+		flags[idx] = string(flag)
+	}
+
+	return flags
+}
+
+func SetFeatureFlagsFromDatabase(flags map[string]string) {
+	values := make(map[featureFlag]string, len(flags))
+
+	for flag, value := range flags {
+		values[featureFlag(flag)] = value
+	}
+
+	databaseFeatureFlagsLock.Lock()
+	defer databaseFeatureFlagsLock.Unlock()
+
+	databaseFeatureFlags = values
+}
+
 func HasGlobalFeatureFlag(flag featureFlag) bool {
-	return getFeatureFlagEnv(flag) != ""
+	return getFeatureFlagValue(flag) != ""
 }
 
 func HasFeatureFlag(flag featureFlag, orgId uuid.UUID) bool {
-	env := getFeatureFlagEnv(flag)
+	value := getFeatureFlagValue(flag)
 
-	if env == "" {
+	if value == "" {
 		return false
 	}
 
-	for org := range strings.SplitSeq(env, ",") {
+	for org := range strings.SplitSeq(value, ",") {
 		if org == "all" {
 			return true
 		}
@@ -55,8 +93,7 @@ func featureFlagMiddleware(flag featureFlag) func(*gin.Context) {
 	return func(c *gin.Context) {
 		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if err != nil {
-			c.Next()
-			return
+			orgId = uuid.Nil
 		}
 
 		switch HasFeatureFlag(flag, orgId) {
@@ -69,6 +106,13 @@ func featureFlagMiddleware(flag featureFlag) func(*gin.Context) {
 	}
 }
 
-func getFeatureFlagEnv(flag featureFlag) string {
-	return os.Getenv(fmt.Sprintf("ENABLE_%s", string(flag)))
+func getFeatureFlagValue(flag featureFlag) string {
+	if value, ok := os.LookupEnv(fmt.Sprintf("ENABLE_%s", string(flag))); ok {
+		return value
+	}
+
+	databaseFeatureFlagsLock.RLock()
+	defer databaseFeatureFlagsLock.RUnlock()
+
+	return databaseFeatureFlags[flag]
 }

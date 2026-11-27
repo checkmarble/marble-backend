@@ -266,6 +266,8 @@ func RunTaskQueue(apiVersion string, only, onlyArgs string) error {
 	}
 	license := infra.VerifyLicense(licenseConfig, deploymentMetadata.Value)
 
+	LoadFeatureFlags(ctx, repositories)
+
 	// Start the task queue workers
 	workers := river.NewWorkers()
 	periodicIntervals := usecases.PeriodicIntervals{

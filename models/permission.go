@@ -63,4 +63,6 @@ const (
 	TENANTS_MERGE                     Permission = "TENANTS_MERGE"
 	TENANTS_LIST                      Permission = "TENANTS_LIST"
 	TENANTS_UPDATE                    Permission = "TENANTS_UPDATE"
+	FEATURE_FLAGS_READ                Permission = "FEATURE_FLAGS_READ"
+	FEATURE_FLAGS_WRITE               Permission = "FEATURE_FLAGS_WRITE"
 )

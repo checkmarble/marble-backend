@@ -16,6 +16,7 @@ const (
 	MetadataKeyWebhookSystemMigrated MetadataKey = "webhook_system_migrated"
 	MetadataKeyFirstCaseClosed       MetadataKey = "first_case_closed"
 	ScoringInitialInsertionDone      MetadataKey = "scoring_initial_insertion_done"
+	MetadataKeyFeatureFlag           MetadataKey = "feature_flag"
 )
 
 type Metadata struct {
@@ -40,6 +41,8 @@ func MetadataKeyFromString(key string) (MetadataKey, error) {
 		return MetadataKeyFirstCaseClosed, nil
 	case "scoring_initial_insertion_done":
 		return ScoringInitialInsertionDone, nil
+	case "feature_flag":
+		return MetadataKeyFeatureFlag, nil
 	default:
 		return "", errors.Newf("invalid metadata key: %s", key)
 	}
