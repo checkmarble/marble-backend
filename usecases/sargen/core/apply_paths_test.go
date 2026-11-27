@@ -211,3 +211,15 @@ func TestApplyFills_ResolvedAndRewrite(t *testing.T) {
 	assert.Equal(t, core.Path("personnes.pp[+b].x"), res.Rewrite("personnes.pp[+b].x"))
 	assert.Equal(t, core.Path("operations.montantTotal"), res.Rewrite("operations.montantTotal"))
 }
+
+func TestPathAllowed(t *testing.T) {
+	pre := []core.Path{"personnes.pp[pp-1]", "operations.montantTotal", "organisme"}
+	assert.True(t, core.PathAllowed(pp1Name, pre))
+	assert.True(t, core.PathAllowed("organisme.libelle", pre))
+	assert.True(t, core.PathAllowed("operations.montantTotal", pre))
+	assert.False(t, core.PathAllowed("personnes.pp[pp-2].etatCivil.nomNaissance", pre))
+	assert.False(t, core.PathAllowed("organismeX.libelle", pre))
+	assert.True(t, core.PathAllowed("personnes.pp[pp-1]", []core.Path{"personnes.pp"}), "a container prefix allows its items")
+	assert.False(t, core.PathAllowed(pp1Name, nil), "no prefix allows nothing")
+	assert.False(t, core.PathAllowed(pp1Name, []core.Path{""}))
+}

@@ -288,9 +288,13 @@ func TestExport_AllowedWithWarningsAndRecordsOutstanding(t *testing.T) {
 	require.NoError(t, err)
 	d.Document = raw
 	f.Repo.Declarations[d.Id] = d
+	question := f.SeedQuestion(t, d.Id, []core.Path{"operations.dateFin"}, "Date de fin à établir ?", nil)
+	finding := f.SeedReviewFinding(t, d.Id, []core.Path{"declarant.coordonnees.nom"}, "important", "Nom à relire")
 
 	exp, err := uc.Export(f.Ctx, d.Id, d.Version)
 	require.NoError(t, err, "warnings and unreviewed low-confidence values do not block the export")
+	require.Contains(t, string(exp.Outstanding), question.Text, "an open question must be recorded")
+	require.Contains(t, string(exp.Outstanding), finding.Text, "an open review finding must be recorded")
 	require.Contains(t, string(exp.Outstanding), "test_warning", "remaining warning must be recorded")
 	require.Contains(t, string(exp.Outstanding), "declarant.coordonnees.prenom",
 		"unreviewed low-confidence value must be recorded")
