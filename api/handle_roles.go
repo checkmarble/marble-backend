@@ -1,0 +1,124 @@
+package api
+
+import (
+	"net/http"
+	"strings"
+
+	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/gin-gonic/gin"
+)
+
+func handleGetRoles(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		uc := usecasesWithCreds(ctx, uc)
+		userUsecase := uc.NewUserUseCase()
+
+		roles, err := userUsecase.GetRoles(ctx)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, pure_utils.Map(roles, dto.AdaptRole))
+	}
+}
+
+func handleCreateRole(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var p dto.RoleCreateInput
+
+		if err := c.ShouldBindJSON(&p); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		if !models.Role(p.Slug).IsValidCustom() {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc)
+		userUsecase := uc.NewUserUseCase()
+
+		role, err := userUsecase.CreateRole(ctx, p.Slug, p.Name)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusCreated, dto.AdaptRole(role))
+	}
+}
+
+func handleDeleteRole(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		slug := models.Role(strings.TrimPrefix(c.Param("slug"), "/"))
+
+		if !slug.IsValidCustom() {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc)
+		userUsecase := uc.NewUserUseCase()
+
+		if err := userUsecase.DeleteRole(ctx, slug); presentError(ctx, c, err) {
+			return
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func handleUpdateRolePermissions(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var p dto.RoleGrant
+
+		if err := c.ShouldBindJSON(&p); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc)
+		userUsecase := uc.NewUserUseCase()
+
+		role, err := userUsecase.UpdateRolePermissions(ctx, p.Role, p.Permissions)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.AdaptRole(role))
+	}
+}
+
+func handleUpdateRoleSections(uc usecases.Usecases) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		var p dto.RoleSections
+
+		if err := c.ShouldBindJSON(&p); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		uc := usecasesWithCreds(ctx, uc)
+		userUsecase := uc.NewUserUseCase()
+
+		role, err := userUsecase.UpdateRoleSections(ctx, p.Role, p.Sections)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.AdaptRole(role))
+	}
+}

@@ -16,6 +16,14 @@ func (screeningEnforcerMock) ReadDecision(models.Decision) error {
 	return nil
 }
 
+func (screeningEnforcerMock) Permission(models.Permission) error {
+	return nil
+}
+
+func (screeningEnforcerMock) ReadOrganization(uuid.UUID) error {
+	return nil
+}
+
 func (screeningEnforcerMock) ReadOrUpdateCase(models.CaseMetadata, []uuid.UUID) error {
 	return nil
 }

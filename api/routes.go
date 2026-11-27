@@ -115,6 +115,14 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.PATCH("/config/usage-tracking", tom, handleUpdateUsageTracking(uc))
 	router.GET("/me/organizations", tom, handleMyOrganizations(uc))
 
+	infra.RouteWithFeatureFlag(router, infra.CUSTOM_ROLES_FEATURE_FLAG, func(r gin.IRoutes) {
+		r.GET("/roles", tom, handleGetRoles(uc))
+		r.POST("/roles", tom, handleCreateRole(uc))
+		r.PUT("/roles/permissions", tom, handleUpdateRolePermissions(uc))
+		r.DELETE("/roles/*slug", tom, handleDeleteRole(uc))
+		r.PUT("/roles/sections", tom, handleUpdateRoleSections(uc))
+	})
+
 	router.GET("/decisions",
 		timeoutMiddleware(conf.DecisionTimeout),
 		handleListDecisions(uc, parsedAppUrl))
