@@ -414,6 +414,9 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth uti
 	router.PATCH("/licenses/:license_id", tom, handleUpdateLicense(uc))
 	router.GET("/licenses/:license_id", tom, handleGetLicenseById(uc))
 
+	router.GET("/feature-flags", tom, handleListFeatureFlags(uc))
+	router.PUT("/feature-flags", tom, handleReplaceFeatureFlags(uc))
+
 	router.GET("/webhooks", tom, handleListWebhooks(uc))
 	router.POST("/webhooks", tom, handleRegisterWebhook(uc))
 	router.GET("/webhooks/:webhook_id", tom, handleGetWebhook(uc))

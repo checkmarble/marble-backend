@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
@@ -48,6 +49,68 @@ func (repo *MarbleDbRepository) CreateMetadata(ctx context.Context, exec Executo
 		Values(metadata.ID, metadata.OrgID, string(metadata.Key), metadata.Value)
 
 	return ExecBuilder(ctx, exec, query)
+}
+
+func (repo *MarbleDbRepository) ListFeatureFlags(ctx context.Context, exec Executor) (map[string]string, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	prefix := string(models.MetadataKeyFeatureFlag) + ":"
+
+	query := selectMetadata().
+		Where(squirrel.Eq{"org_id": nil}).
+		Where(squirrel.Expr("starts_with(key, ?)", prefix))
+
+	rows, err := SqlToListOfModels(ctx, exec, query, func(db dbmodels.DBMetadata) (dbmodels.DBMetadata, error) {
+		return db, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	flags := make(map[string]string, len(rows))
+
+	for _, row := range rows {
+		flags[strings.TrimPrefix(row.Key, prefix)] = row.Value
+	}
+
+	return flags, nil
+}
+
+func (repo *MarbleDbRepository) ReplaceFeatureFlags(ctx context.Context, exec Transaction, flags map[string]string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	if err := GetAdvisoryLockTx(ctx, exec, "feature_flags_replace"); err != nil {
+		return err
+	}
+
+	prefix := string(models.MetadataKeyFeatureFlag) + ":"
+
+	deleteQuery := NewQueryBuilder().
+		Delete(dbmodels.TABLE_METADATA).
+		Where(squirrel.Eq{"org_id": nil}).
+		Where(squirrel.Expr("starts_with(key, ?)", prefix))
+
+	if err := ExecBuilder(ctx, exec, deleteQuery); err != nil {
+		return err
+	}
+
+	if len(flags) == 0 {
+		return nil
+	}
+
+	insertQuery := NewQueryBuilder().
+		Insert(dbmodels.TABLE_METADATA).
+		Columns("id", "org_id", "key", "value")
+
+	for flag, value := range flags {
+		insertQuery = insertQuery.Values(pure_utils.NewId(), nil, prefix+flag, value)
+	}
+
+	return ExecBuilder(ctx, exec, insertQuery)
 }
 
 func (repo *MarbleDbRepository) UpsertMetadata(ctx context.Context, exec Executor, metadata models.Metadata) error {

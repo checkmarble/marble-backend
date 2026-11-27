@@ -626,6 +626,15 @@ func (usecases *UsecasesWithCreds) NewLicenseUsecase() ProtectedLicenseUseCase {
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewFeatureFlagUsecase() FeatureFlagUsecase {
+	return FeatureFlagUsecase{
+		enforceSecurity:    security.NewEnforceSecurity(usecases.Credentials),
+		transactionFactory: usecases.NewTransactionFactory(),
+		executorFactory:    usecases.NewExecutorFactory(),
+		repository:         usecases.Repositories.MarbleDbRepository,
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewWebhookEventsUsecase() webhooks.WebhookEventsUsecase {
 	return webhooks.NewWebhookEventsUsecase(
 		security.NewEnforceSecurity(usecases.Credentials),

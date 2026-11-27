@@ -383,6 +383,8 @@ func RunServer(config CompiledConfig, mode api.ServerMode) error {
 	}
 	license := infra.VerifyLicense(licenseConfig, deploymentMetadata.Value)
 
+	LoadFeatureFlags(ctx, repositories)
+
 	if (apiConfig.TokenProviders.Has(auth.TokenProviderOidc) || tenantOIDCEnabled) && !license.Sso {
 		if !apiConfig.TokenProviders.Has(auth.TokenProviderFirebase) {
 			logger.Error("OpenID Connect provider cannot be started because the SSO license entitlement is missing")

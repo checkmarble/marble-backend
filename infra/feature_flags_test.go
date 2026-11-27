@@ -53,6 +53,39 @@ func TestHasFeatureFlag_SpecificOrg_NoMatch(t *testing.T) {
 	assert.False(t, HasFeatureFlag(TEST_UNUSED_FEATURE_FLAG, pure_utils.NewId()))
 }
 
+func setDatabaseFeatureFlags(t *testing.T, flags map[string]string) {
+	t.Helper()
+
+	SetFeatureFlagsFromDatabase(flags)
+	t.Cleanup(func() { SetFeatureFlagsFromDatabase(nil) })
+}
+
+func TestHasFeatureFlag_FromDatabase(t *testing.T) {
+	orgId := pure_utils.NewId()
+
+	setDatabaseFeatureFlags(t, map[string]string{string(TEST_UNUSED_FEATURE_FLAG): orgId.String()})
+
+	assert.True(t, HasFeatureFlag(TEST_UNUSED_FEATURE_FLAG, orgId))
+	assert.False(t, HasFeatureFlag(TEST_UNUSED_FEATURE_FLAG, pure_utils.NewId()))
+}
+
+func TestHasFeatureFlag_EnvOverridesDatabase(t *testing.T) {
+	orgId := pure_utils.NewId()
+
+	setDatabaseFeatureFlags(t, map[string]string{string(TEST_UNUSED_FEATURE_FLAG): "all"})
+	setFeatureFlagEnv(t, TEST_UNUSED_FEATURE_FLAG, orgId.String())
+
+	assert.True(t, HasFeatureFlag(TEST_UNUSED_FEATURE_FLAG, orgId))
+	assert.False(t, HasFeatureFlag(TEST_UNUSED_FEATURE_FLAG, pure_utils.NewId()))
+}
+
+func TestHasFeatureFlag_EmptyEnvDisablesDatabase(t *testing.T) {
+	setDatabaseFeatureFlags(t, map[string]string{string(TEST_UNUSED_FEATURE_FLAG): "all"})
+	setFeatureFlagEnv(t, TEST_UNUSED_FEATURE_FLAG, "")
+
+	assert.False(t, HasGlobalFeatureFlag(TEST_UNUSED_FEATURE_FLAG))
+}
+
 func TestHasFeatureFlag_MultipleOrgs(t *testing.T) {
 	org1 := pure_utils.NewId()
 	org2 := pure_utils.NewId()
