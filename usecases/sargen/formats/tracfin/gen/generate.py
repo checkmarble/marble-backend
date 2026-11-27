@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Deterministic generator of the TRACFIN format description (spec.gen.json).
 
 Usage: python3 -I generate.py --version 1.4.0 --out <file>

@@ -34,6 +34,8 @@ cd usecases/sargen/formats/tracfin/gen
 python3 -I generate.py --version 1.4.0 --out ../versions/1.4.0/spec.gen.json
 ```
 
+Or, from the repository root: `mise run tracfin:gen`. `mise install` also provides Python and `xmllint` (needed by the XSD validation tests).
+
 The script resolves `versions/<version>/` from its own location. Deterministic output: sorted keys, `indent=1`, `\n` line endings, no timestamp or absolute path. It fails (exit code 1, message in English) on: digest mismatch, input file missing from the manifest, simple type missing from `type_map`, list reference without a binding, XSD regex construct that Go cannot read (`\i`, `\c`, `\p{Is…}`, character class subtraction), exclusion, dropped attribute or `code_or_text` entry that no longer matches anything, `code_or_text` attribute that is mandatory or not an enumeration containing the value, or whose element does not end up a single `code` field.
 
 ## Node properties and where they come from

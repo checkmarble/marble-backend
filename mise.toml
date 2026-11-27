@@ -6,6 +6,8 @@ golangci-lint = "2.13.1" # Sources of truth are in .github/workflows/*.yaml
 "go:golang.org/x/tools/gopls" = "latest"
 golangci-lint-langserver = "latest"
 air = "latest"
+python = "3" # usecases/sargen/formats/tracfin/gen/generate.py
+"conda:libxml2" = "latest" # xmllint, for the TRACFIN XSD validation tests
 
 [env]
 _.file = '.env'
@@ -21,3 +23,7 @@ dir = "repositories/migrations"
 env.GOOSE_DBSTRING = "$PG_CONNECTION_STRING"
 run = "goose postgres down"
 
+[tasks."tracfin:gen"]
+description = "Regenerate the TRACFIN spec (spec.gen.json)"
+dir = "usecases/sargen/formats/tracfin/gen"
+run = "python3 -I generate.py --version 1.4.0 --out ../versions/1.4.0/spec.gen.json"
